@@ -14,6 +14,9 @@ let package = Package(
         .library(name: "HarnessPluginKit", type: .dynamic, targets: ["HarnessPluginKit"]),
         .library(name: "FableThinkingPlugin", type: .dynamic, targets: ["FableThinkingPlugin"]),
         .library(name: "HelloPlugin", type: .dynamic, targets: ["HelloPlugin"]),
+        // Not linked by the app; dlopen'd on first transcription so whisper +
+        // ggml/Metal never enter the launch-time dyld graph when voice is unused.
+        .library(name: "WhisperVoice", type: .dynamic, targets: ["WhisperVoice"]),
     ],
     targets: [
         .target(
@@ -26,8 +29,13 @@ let package = Package(
             path: "Sources/PluginRuntime"
         ),
         .target(
+            name: "WhisperVoice",
+            dependencies: ["whisper"],
+            path: "Sources/WhisperVoice"
+        ),
+        .target(
             name: "DotsHarnessCore",
-            dependencies: ["HarnessPluginKit", "PluginRuntime", "whisper"],
+            dependencies: ["HarnessPluginKit", "PluginRuntime"],
             path: "Sources/DotsHarnessCore",
             resources: [.process("Resources")],
             linkerSettings: [

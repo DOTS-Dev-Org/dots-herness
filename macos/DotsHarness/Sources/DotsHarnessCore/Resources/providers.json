@@ -1,0 +1,248 @@
+[
+  {
+    "id": "gpt",
+    "name": "GPT",
+    "category": "oauth",
+    "logoSymbol": "sparkles",
+    "hint": "Sign in with ChatGPT",
+    "transport": {
+      "baseURL": "https://chatgpt.com/backend-api/codex",
+      "format": "responses"
+    },
+    "oauth": {
+      "clientID": "app_EMoamEEZ73f0CkXaXp7hrann",
+      "authorizeURL": "https://auth.openai.com/oauth/authorize",
+      "tokenURL": "https://auth.openai.com/oauth/token",
+      "scopes": "openid profile email offline_access api.connectors.read api.connectors.invoke",
+      "redirectURI": "http://localhost:1455/auth/callback",
+      "callbackPort": 1455,
+      "tokenEncoding": "form",
+      "refreshEncoding": "form",
+      "extraAuthorizeParams": {
+        "id_token_add_organizations": "true",
+        "codex_cli_simplified_flow": "true",
+        "originator": "dots_harness"
+      }
+    },
+    "models": [{ "id": "gpt-4.1-mini" }]
+  },
+  {
+    "id": "claude",
+    "name": "Claude",
+    "category": "oauth",
+    "logoSymbol": "circle.hexagongrid",
+    "hint": "Sign in with Claude",
+    "transport": {
+      "baseURL": "https://api.anthropic.com/v1",
+      "format": "anthropic",
+      "urlSuffix": "?beta=true",
+      "extraHeaders": {
+        "anthropic-beta": "oauth-2025-04-20,claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
+        "anthropic-dangerous-direct-browser-access": "true",
+        "user-agent": "claude-cli/2.1.92 (external, sdk-cli)",
+        "x-app": "cli"
+      },
+      "quirks": {
+        "cloakToolsOnOAuth": true,
+        "injectAgentIdentity": "You are Claude Code, Anthropic's official CLI for Claude."
+      }
+    },
+    "oauth": {
+      "clientID": "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
+      "authorizeURL": "https://claude.ai/oauth/authorize",
+      "tokenURL": "https://api.anthropic.com/v1/oauth/token",
+      "scopes": "org:create_api_key user:profile user:inference",
+      "redirectURI": "http://localhost:54545/callback",
+      "callbackPort": 54545,
+      "tokenEncoding": "json",
+      "refreshEncoding": "json",
+      "manualCodeSeparator": "#"
+    },
+    "models": [{ "id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4" }]
+  },
+  {
+    "id": "anthropic",
+    "name": "Anthropic",
+    "category": "apiKey",
+    "logoSymbol": "circle.hexagongrid",
+    "hint": "API key",
+    "transport": {
+      "baseURL": "https://api.anthropic.com/v1",
+      "format": "anthropic"
+    },
+    "apiKey": { "header": "x-api-key", "scheme": "raw", "modelsURL": "https://api.anthropic.com/v1/models" },
+    "models": [{ "id": "claude-sonnet-4-20250514" }]
+  },
+  {
+    "id": "opencode",
+    "name": "OpenCode Free",
+    "category": "passthrough",
+    "logoSymbol": "chevron.left.forwardslash.chevron.right",
+    "hint": "No key required",
+    "transport": {
+      "baseURL": "https://opencode.ai/zen/v1",
+      "format": "openaiChat"
+    },
+    "models": []
+  },
+  {
+    "id": "gemini",
+    "name": "Gemini",
+    "category": "apiKey",
+    "logoSymbol": "diamond",
+    "hint": "API key",
+    "transport": { "baseURL": "https://generativelanguage.googleapis.com/v1beta/openai", "format": "openai-chat" },
+    "apiKey": { "header": "Authorization", "scheme": "bearer" },
+    "models": [{ "id": "gemini-2.5-flash" }]
+  },
+  {
+    "id": "deepseek",
+    "name": "DeepSeek",
+    "category": "apiKey",
+    "logoSymbol": "wave.3.right.circle",
+    "hint": "API key",
+    "transport": { "baseURL": "https://api.deepseek.com/v1", "format": "openai-chat" },
+    "apiKey": { "header": "Authorization", "scheme": "bearer", "modelsURL": "https://api.deepseek.com/v1/models" },
+    "models": [{ "id": "deepseek-chat" }]
+  },
+  {
+    "id": "openai",
+    "name": "OpenAI",
+    "category": "apiKey",
+    "logoSymbol": "hexagon",
+    "hint": "API key",
+    "transport": { "baseURL": "https://api.openai.com/v1", "format": "openai-chat" },
+    "apiKey": { "header": "Authorization", "scheme": "bearer", "modelsURL": "https://api.openai.com/v1/models" },
+    "models": [{ "id": "gpt-4.1-mini" }]
+  },
+  {
+    "id": "openrouter",
+    "name": "OpenRouter",
+    "category": "apiKey",
+    "logoSymbol": "arrow.triangle.branch",
+    "hint": "API key",
+    "transport": { "baseURL": "https://openrouter.ai/api/v1", "format": "openai-chat" },
+    "apiKey": { "header": "Authorization", "scheme": "bearer", "modelsURL": "https://openrouter.ai/api/v1/models" },
+    "models": [{ "id": "openai/gpt-4.1-mini" }]
+  },
+  {
+    "id": "qwen",
+    "name": "Qwen",
+    "category": "apiKey",
+    "logoSymbol": "q.circle",
+    "hint": "API key",
+    "transport": { "baseURL": "https://dashscope.aliyuncs.com/compatible-mode/v1", "format": "openai-chat" },
+    "apiKey": { "header": "Authorization", "scheme": "bearer" },
+    "models": [{ "id": "qwen-plus" }]
+  },
+  {
+    "id": "grok",
+    "name": "Grok",
+    "category": "apiKey",
+    "logoSymbol": "bolt.circle",
+    "hint": "API key",
+    "transport": { "baseURL": "https://api.x.ai/v1", "format": "openai-chat" },
+    "apiKey": { "header": "Authorization", "scheme": "bearer", "modelsURL": "https://api.x.ai/v1/models" },
+    "models": [{ "id": "grok-3-mini" }]
+  },
+  {
+    "id": "glm",
+    "name": "GLM",
+    "category": "apiKey",
+    "logoSymbol": "g.circle",
+    "hint": "API key",
+    "transport": { "baseURL": "https://open.bigmodel.cn/api/paas/v4", "format": "openai-chat" },
+    "apiKey": { "header": "Authorization", "scheme": "bearer" },
+    "models": [{ "id": "glm-4.5" }]
+  },
+  {
+    "id": "kimi",
+    "name": "Kimi",
+    "category": "apiKey",
+    "logoSymbol": "moon.circle",
+    "hint": "API key",
+    "transport": { "baseURL": "https://api.moonshot.cn/v1", "format": "openai-chat" },
+    "apiKey": { "header": "Authorization", "scheme": "bearer" },
+    "models": [{ "id": "moonshot-v1-8k" }]
+  },
+  {
+    "id": "minimax",
+    "name": "MiniMax",
+    "category": "apiKey",
+    "logoSymbol": "m.circle",
+    "hint": "API key",
+    "transport": { "baseURL": "https://api.minimax.io/v1", "format": "openai-chat" },
+    "apiKey": { "header": "Authorization", "scheme": "bearer" },
+    "models": [{ "id": "MiniMax-Text-01" }]
+  },
+  {
+    "id": "groq",
+    "name": "Groq",
+    "category": "apiKey",
+    "logoSymbol": "gauge.with.dots.needle.67percent",
+    "hint": "API key",
+    "transport": { "baseURL": "https://api.groq.com/openai/v1", "format": "openai-chat" },
+    "apiKey": { "header": "Authorization", "scheme": "bearer", "modelsURL": "https://api.groq.com/openai/v1/models" },
+    "models": [{ "id": "llama-3.3-70b-versatile" }]
+  },
+  {
+    "id": "mistral",
+    "name": "Mistral",
+    "category": "apiKey",
+    "logoSymbol": "wind",
+    "hint": "API key",
+    "transport": { "baseURL": "https://api.mistral.ai/v1", "format": "openai-chat" },
+    "apiKey": { "header": "Authorization", "scheme": "bearer", "modelsURL": "https://api.mistral.ai/v1/models" },
+    "models": [{ "id": "mistral-small-latest" }]
+  },
+  {
+    "id": "perplexity",
+    "name": "Perplexity",
+    "category": "apiKey",
+    "logoSymbol": "magnifyingglass",
+    "hint": "API key",
+    "transport": { "baseURL": "https://api.perplexity.ai", "format": "openai-chat" },
+    "apiKey": { "header": "Authorization", "scheme": "bearer" },
+    "models": [{ "id": "sonar" }]
+  },
+  {
+    "id": "together",
+    "name": "Together AI",
+    "category": "apiKey",
+    "logoSymbol": "person.3",
+    "hint": "API key",
+    "transport": { "baseURL": "https://api.together.xyz/v1", "format": "openai-chat" },
+    "apiKey": { "header": "Authorization", "scheme": "bearer", "modelsURL": "https://api.together.xyz/v1/models" },
+    "models": [{ "id": "meta-llama/Llama-3.3-70B-Instruct-Turbo" }]
+  },
+  {
+    "id": "fireworks",
+    "name": "Fireworks",
+    "category": "apiKey",
+    "logoSymbol": "flame",
+    "hint": "API key",
+    "transport": { "baseURL": "https://api.fireworks.ai/inference/v1", "format": "openai-chat" },
+    "apiKey": { "header": "Authorization", "scheme": "bearer" },
+    "models": [{ "id": "accounts/fireworks/models/llama-v3p1-70b-instruct" }]
+  },
+  {
+    "id": "cerebras",
+    "name": "Cerebras",
+    "category": "apiKey",
+    "logoSymbol": "cpu",
+    "hint": "API key",
+    "transport": { "baseURL": "https://api.cerebras.ai/v1", "format": "openai-chat" },
+    "apiKey": { "header": "Authorization", "scheme": "bearer" },
+    "models": [{ "id": "llama-3.3-70b" }]
+  },
+  {
+    "id": "deepinfra",
+    "name": "DeepInfra",
+    "category": "apiKey",
+    "logoSymbol": "square.stack.3d.up",
+    "hint": "API key",
+    "transport": { "baseURL": "https://api.deepinfra.com/v1/openai", "format": "openai-chat" },
+    "apiKey": { "header": "Authorization", "scheme": "bearer" },
+    "models": [{ "id": "meta-llama/Meta-Llama-3.1-70B-Instruct" }]
+  }
+]

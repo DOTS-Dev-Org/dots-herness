@@ -14,6 +14,17 @@ struct DotsHarnessApp: App {
         FableThinkingPlugin.self,
     ])
 
+    init() {
+        // AsyncImage uses URLSession.shared; give it a real disk cache so pet
+        // avatars are fetched from the CDN once, then served from disk/memory.
+        URLCache.shared = URLCache(
+            memoryCapacity: 8 << 20,
+            diskCapacity: 64 << 20,
+            directory: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)
+                .first?.appendingPathComponent("DotsHarnessAvatars")
+        )
+    }
+
     var body: some Scene {
         WindowGroup("Dots Harness") {
             RootView(model: model, logo: Image("ai-watcher", bundle: .module))

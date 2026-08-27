@@ -263,15 +263,10 @@ private struct SimulatorScreenPanel: View {
     var body: some View {
         ZStack {
             Color(nsColor: .underPageBackgroundColor)
-            if let image = frameStore.image {
+            if let frame = frameStore.frame {
                 GeometryReader { geometry in
-                    DeviceBezelView(image: image, containerSize: geometry.size) { start, end, drawnSize in
-                        onGesture(
-                            start,
-                            end,
-                            drawnSize,
-                            CGSize(width: image.width, height: image.height)
-                        )
+                    DeviceBezelView(frame: frame, containerSize: geometry.size) { start, end, drawnSize in
+                        onGesture(start, end, drawnSize, frame.displayPixelSize)
                     }
                     .frame(width: geometry.size.width, height: geometry.size.height)
                 }
@@ -296,7 +291,7 @@ private struct SimulatorScreenPanel: View {
 /// side buttons — sized to the image's own aspect ratio so the screen fills
 /// its slot exactly with no letterboxing.
 private struct DeviceBezelView: View {
-    let image: CGImage
+    let frame: SimulatorDisplayFrame
     let containerSize: CGSize
     let onGesture: (CGPoint, CGPoint, CGSize) -> Void
 
@@ -304,7 +299,8 @@ private struct DeviceBezelView: View {
     private let cornerRadius: CGFloat = 44
 
     var body: some View {
-        let aspect = max(CGFloat(image.width), 1) / max(CGFloat(image.height), 1)
+        let displaySize = frame.displayPixelSize
+        let aspect = max(displaySize.width, 1) / max(displaySize.height, 1)
         let outer = fittedSize(aspect: aspect, in: containerSize)
         let screenSize = CGSize(width: outer.width - bezelWidth * 2, height: outer.height - bezelWidth * 2)
         let screenRadius = max(cornerRadius - bezelWidth, 4)
@@ -315,7 +311,7 @@ private struct DeviceBezelView: View {
                 .frame(width: outer.width, height: outer.height)
                 .shadow(color: .black.opacity(0.45), radius: 22, y: 10)
 
-            SimulatorFrameLayerView(image: image)
+            SimulatorFrameLayerView(frame: frame)
                 .frame(width: screenSize.width, height: screenSize.height)
                 .clipShape(RoundedRectangle(cornerRadius: screenRadius, style: .continuous))
                 .allowsHitTesting(false)
@@ -364,20 +360,21 @@ private struct DeviceBezelView: View {
     }
 }
 
-/// Presents the latest CGImage through a single AppKit layer update. SwiftUI
-/// still owns the surrounding bezel, while AppKit avoids rebuilding an image
-/// view hierarchy and allocating an NSImage wrapper for every frame.
+/// Presents the latest frame through a single AppKit layer update. The live
+/// path assigns the capture's IOSurface straight to `layer.contents` — no copy,
+/// no CGImage allocation — and crops the device screen out of the captured
+/// window via `contentsRect`.
 private struct SimulatorFrameLayerView: NSViewRepresentable {
-    let image: CGImage
+    let frame: SimulatorDisplayFrame
 
     func makeNSView(context: Context) -> SimulatorFrameLayerNSView {
         let view = SimulatorFrameLayerNSView()
-        view.setImage(image)
+        view.setFrame(frame)
         return view
     }
 
     func updateNSView(_ nsView: SimulatorFrameLayerNSView, context: Context) {
-        nsView.setImage(image)
+        nsView.setFrame(frame)
     }
 }
 
@@ -397,10 +394,11 @@ private final class SimulatorFrameLayerNSView: NSView {
         layer?.frame = bounds
     }
 
-    func setImage(_ image: CGImage) {
+    func setFrame(_ frame: SimulatorDisplayFrame) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        layer?.contents = image
+        layer?.contents = frame.layerContents
+        layer?.contentsRect = frame.contentsRect
         CATransaction.commit()
     }
 

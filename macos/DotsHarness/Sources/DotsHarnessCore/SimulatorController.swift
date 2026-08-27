@@ -5,24 +5,82 @@ import AppKit
 import ApplicationServices
 import Combine
 import CoreGraphics
+import CoreVideo
 import Foundation
 import ImageIO
+import IOSurface
+
+/// A frame ready for display. The live path carries an IOSurface-backed
+/// `CVPixelBuffer` handed straight to a `CALayer` (no copy, no render); the
+/// screenshot fallback carries a `CGImage`. `cropRect` is normalized with a
+/// top-left origin and describes the device screen inside the captured area.
+public struct SimulatorDisplayFrame: @unchecked Sendable {
+    public enum Source {
+        case buffer(CVPixelBuffer)
+        case image(CGImage)
+    }
+
+    public let source: Source
+    public let fullPixelSize: CGSize
+    public let cropRect: CGRect
+
+    public init(source: Source, fullPixelSize: CGSize, cropRect: CGRect) {
+        self.source = source
+        self.fullPixelSize = fullPixelSize
+        self.cropRect = cropRect
+    }
+
+    /// Cropped device-screen size in pixels — used for pointer mapping and the
+    /// panel's aspect ratio.
+    public var displayPixelSize: CGSize {
+        CGSize(
+            width: max(fullPixelSize.width * cropRect.width, 1),
+            height: max(fullPixelSize.height * cropRect.height, 1)
+        )
+    }
+
+    /// `CALayer.contents` value: an IOSurface for the live path, a CGImage for
+    /// the fallback. Both are valid layer contents.
+    public var layerContents: Any? {
+        switch source {
+        case let .buffer(pixelBuffer):
+            // ponytail: hands back the pooled surface; the frame store keeps the
+            // CVPixelBuffer alive until the next frame replaces it. At queueDepth
+            // 3 that is enough to avoid the layer reading a recycled surface.
+            guard let surface = CVPixelBufferGetIOSurface(pixelBuffer) else { return nil }
+            return surface.takeUnretainedValue() as IOSurface
+        case let .image(image):
+            return image
+        }
+    }
+
+    /// `CALayer.contentsRect`: unit rect with a bottom-left origin (CoreAnimation
+    /// convention), converted from the top-left `cropRect`.
+    public var contentsRect: CGRect {
+        CGRect(
+            x: cropRect.minX,
+            y: max(0, 1 - cropRect.minY - cropRect.height),
+            width: cropRect.width,
+            height: cropRect.height
+        )
+    }
+}
 
 /// High-frequency frame state lives outside `SimulatorController` so the
 /// complete simulator panel does not recompute its SwiftUI body for every
 /// captured frame.
 @MainActor
 public final class SimulatorFrameStore: ObservableObject {
-    @Published public private(set) var image: CGImage?
+    @Published public private(set) var frame: SimulatorDisplayFrame?
 
     public init() {}
 
-    public func set(_ image: CGImage) {
-        self.image = image
+    public func set(_ frame: SimulatorDisplayFrame) {
+        self.frame = frame
     }
 
     public func clear() {
-        image = nil
+        frame = nil
     }
 }
 
@@ -280,11 +338,11 @@ public final class SimulatorController: ObservableObject {
                 latency: latency,
                 quality: quality,
                 displayAspectRatio: displayAspectRatio,
-                frameHandler: { @MainActor [weak self] image in
+                frameHandler: { @MainActor [weak self] frame in
                     guard let self,
                           self.isCurrentStream(token),
                           self.captureBackend == .screenCaptureKit else { return }
-                    self.acceptFrame(image)
+                    self.acceptFrame(frame)
                 },
                 geometryHandler: { @MainActor [weak self] normalizedRect in
                     guard let self,
@@ -321,6 +379,7 @@ public final class SimulatorController: ObservableObject {
         captureBackend = .simctlFallback
         captureScreenRect = nil
         if let cause {
+            NSLog("[Simulator] ScreenCaptureKit unavailable, using screenshot fallback: %@", cause.localizedDescription)
             status = AppCopy.format("simulator.capture.fallbackMessage", cause.localizedDescription)
         }
 
@@ -339,7 +398,11 @@ public final class SimulatorController: ObservableObject {
                     let data = try await self.background { try SimulatorService.screenshot(udid) }
                     guard !Task.isCancelled, self.isCurrentStream(token) else { return }
                     if let image = Self.decodeImage(data) {
-                        self.acceptFrame(image)
+                        self.acceptFrame(SimulatorDisplayFrame(
+                            source: .image(image),
+                            fullPixelSize: CGSize(width: image.width, height: image.height),
+                            cropRect: CGRect(x: 0, y: 0, width: 1, height: 1)
+                        ))
                     }
                 } catch {
                     guard !Task.isCancelled, self.isCurrentStream(token) else { return }
@@ -364,8 +427,8 @@ public final class SimulatorController: ObservableObject {
         isStreaming && streamToken == token
     }
 
-    private func acceptFrame(_ image: CGImage) {
-        frameStore.set(image)
+    private func acceptFrame(_ frame: SimulatorDisplayFrame) {
+        frameStore.set(frame)
     }
 
     private static func decodeImage(_ data: Data) -> CGImage? {
@@ -429,8 +492,7 @@ public final class SimulatorController: ObservableObject {
 
     /// - Parameter point: position inside the streamed frame, in image points.
     public func tap(at point: CGPoint) {
-        guard let image = frameStore.image else { return }
-        let imageSize = CGSize(width: image.width, height: image.height)
+        guard let imageSize = frameStore.frame?.displayPixelSize else { return }
         if isInputTrusted,
            let screenPoint = screenPoint(for: point, imageSize: imageSize),
            pressSimulatorElement(at: screenPoint) {
@@ -451,14 +513,10 @@ public final class SimulatorController: ObservableObject {
     }
 
     public func swipe(from start: CGPoint, to end: CGPoint) {
-        guard let image = frameStore.image,
+        guard let imageSize = frameStore.frame?.displayPixelSize,
               let udid = selectedDeviceID,
               let input = hidInput(for: udid),
-              input.swipe(
-                  from: start,
-                  to: end,
-                  size: CGSize(width: image.width, height: image.height)
-              ) else {
+              input.swipe(from: start, to: end, size: imageSize) else {
             status = AppCopy.text("simulator.inputFailed")
             return
         }

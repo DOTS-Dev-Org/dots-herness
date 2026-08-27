@@ -147,6 +147,16 @@ fi
 printf 'Native Swift macOS uygulamasi derleniyor...\n'
 "${SWIFT_BUILD[@]}"
 
+# WhisperVoice ana uygulamaya linklenmez (tembel dlopen); ayri urun.
+if [[ "$PRODUCT" == "DotsHarness" ]]; then
+    WHISPER_BUILD=("${SWIFT_BUILD[@]}")
+    for i in "${!WHISPER_BUILD[@]}"; do
+        [[ "${WHISPER_BUILD[$i]}" == "$PRODUCT" ]] && WHISPER_BUILD[$i]="WhisperVoice"
+    done
+    printf 'WhisperVoice yardimci dylib derleniyor...\n'
+    "${WHISPER_BUILD[@]}"
+fi
+
 SHOW_BIN=("${SWIFT_BUILD[@]}" --show-bin-path)
 BIN_DIR="$("${SHOW_BIN[@]}")"
 APP_PATH="$BIN_DIR/$PRODUCT"
@@ -169,7 +179,23 @@ done
 for fw in "$BIN_DIR"/*.framework; do
     cp -R "$fw" "$APP_BUNDLE/Contents/MacOS/"
 done
+# Tembel yuklenen yardimci dylib'ler (libWhisperVoice.dylib); binary yaninda olmali.
+for dylib in "$BIN_DIR"/*.dylib; do
+    cp "$dylib" "$APP_BUNDLE/Contents/MacOS/"
+    install_name_tool -add_rpath @loader_path \
+        "$APP_BUNDLE/Contents/MacOS/$(basename "$dylib")" 2>/dev/null || true
+done
 shopt -u nullglob
+
+# Release'de sembol tablosunu at: __LINKEDIT ~20 MB kuculur, daha az sayfa map'lenir.
+if [[ "$SWIFT_CONFIG" == "release" ]]; then
+    strip -x "$APP_BUNDLE/Contents/MacOS/$PRODUCT" 2>/dev/null || true
+    shopt -s nullglob
+    for dylib in "$APP_BUNDLE/Contents/MacOS/"*.dylib; do
+        strip -x "$dylib" 2>/dev/null || true
+    done
+    shopt -u nullglob
+fi
 
 cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>

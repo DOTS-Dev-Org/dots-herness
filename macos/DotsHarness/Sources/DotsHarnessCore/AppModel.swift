@@ -660,6 +660,55 @@ public final class AppModel: ObservableObject {
         isUsagePresented = true
     }
 
+    // MARK: - /goal
+
+    /// Freeform goal for the current session, injected into the agent system
+    /// prompt. Empty means "no goal set".
+    @Published public private(set) var sessionGoal: String = ""
+    private var sessionGoalRetract: (() -> Void)?
+
+    /// Sets (or clears, when blank) the session goal and refreshes the system prompt.
+    public func setSessionGoal(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        sessionGoal = trimmed
+        sessionGoalRetract?()
+        sessionGoalRetract = nil
+        if !trimmed.isEmpty {
+            sessionGoalRetract = host.prompt.section(
+                name: "session:goal",
+                order: 10,
+                text: "## Session goal\n\nThe user is working toward this goal for the current session. Keep responses aligned with it and flag when work drifts away from it:\n\n\(trimmed)"
+            )
+        }
+        bridge.updateSystemPrompt(host.prompt.assembledText())
+    }
+
+    // MARK: - /loop
+
+    /// Creates a recurring scheduled task that re-runs `instruction` in the current
+    /// workspace every `everyMinutes` minutes. Managed afterwards from the Tasks sheet.
+    @discardableResult
+    public func createLoopTask(everyMinutes: Int, instruction: String) -> ScheduledTask {
+        let task = ScheduledTask(
+            name: String(instruction.prefix(48)),
+            cron: Self.loopCron(everyMinutes: everyMinutes),
+            prompt: instruction,
+            workspacePath: workspacePath
+        )
+        scheduler.upsert(task)
+        return task
+    }
+
+    /// ponytail: minute intervals that don't divide 60 fire on the hour boundary
+    /// (e.g. `*/45` -> :00 and :45), not as a true rolling interval. Good enough
+    /// for "every N minutes" loops; upgrade to a real interval scheduler if needed.
+    static func loopCron(everyMinutes m: Int) -> String {
+        let mins = max(1, m)
+        if mins < 60 { return "*/\(mins) * * * *" }
+        let hours = mins / 60
+        return hours < 24 ? "0 */\(hours) * * *" : "0 0 * * *"
+    }
+
     public func signOut() {
         isPetVisible = false
         setWorkspace("")
