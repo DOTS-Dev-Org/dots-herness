@@ -12,6 +12,11 @@ public struct AgentConfiguration: Sendable, Equatable {
     public var api: String
     public var sessionAccountID: String?
     public var cacheCapabilities: AgentCacheCapabilities
+    /// Registry spec id, used to pull transport headers / quirks. Empty for
+    /// direct endpoints configured by hand.
+    public var specID: String
+    /// "oauth" when `apiKey` holds a bearer OAuth token rather than an API key.
+    public var authType: String
 
     public init(
         baseURL: String,
@@ -20,7 +25,9 @@ public struct AgentConfiguration: Sendable, Equatable {
         provider: String = "Custom API",
         api: String = "openai-compatible",
         sessionAccountID: String? = nil,
-        cacheCapabilities: AgentCacheCapabilities = .unsupported
+        cacheCapabilities: AgentCacheCapabilities = .unsupported,
+        specID: String = "",
+        authType: String = ""
     ) {
         self.baseURL = baseURL
         self.model = model
@@ -29,7 +36,12 @@ public struct AgentConfiguration: Sendable, Equatable {
         self.api = api
         self.sessionAccountID = sessionAccountID
         self.cacheCapabilities = cacheCapabilities
+        self.specID = specID
+        self.authType = authType
     }
+
+    var transportSpec: ProviderSpec.Transport? { ProviderRegistry.shared.spec(specID)?.transport }
+    var isOAuth: Bool { authType == "oauth" || authType == "chatgpt" }
 }
 
 public struct AgentCacheCapabilities: Sendable, Equatable {
@@ -215,7 +227,7 @@ public struct NativeAgentClient: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if let apiKey = configuration.apiKey, !apiKey.isEmpty {
-            if configuration.api == RouterAPIKind.anthropic.rawValue {
+            if configuration.api == RouterAPIKind.anthropic.rawValue && !configuration.isOAuth {
                 request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
             } else {
                 request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -233,6 +245,11 @@ public struct NativeAgentClient: Sendable {
             request.setValue("dots_harness", forHTTPHeaderField: "originator")
             request.setValue(UUID().uuidString, forHTTPHeaderField: "session_id")
         }
+        // Registry-supplied transport headers (spoof / beta flags). Applied last
+        // so a provider spec can override the defaults above.
+        for (key, value) in configuration.transportSpec?.extraHeaders ?? [:] {
+            request.setValue(value, forHTTPHeaderField: key)
+        }
         request.httpBody = data
 
         do {
@@ -246,7 +263,13 @@ public struct NativeAgentClient: Sendable {
                     retryable: Self.isRetryable(status)
                 )
             }
-            return try Self.response(from: value)
+            var result = try Self.response(from: value)
+            if configuration.transportSpec?.quirks.cloakToolsOnOAuth == true, configuration.isOAuth {
+                result.message.toolCalls = result.message.toolCalls.map {
+                    AgentToolCall(id: $0.id, name: ToolCloak.restore($0.name), arguments: $0.arguments)
+                }
+            }
+            return result
         } catch let error as NativeAgentError {
             throw error
         } catch is CancellationError {
@@ -276,6 +299,9 @@ public struct NativeAgentClient: Sendable {
             components.path = basePath + "/responses"
         } else {
             components.path = basePath + "/chat/completions"
+        }
+        if let suffix = configuration.transportSpec?.urlSuffix, !suffix.isEmpty {
+            components.percentEncodedQuery = suffix.hasPrefix("?") ? String(suffix.dropFirst()) : suffix
         }
         return components.url
     }
@@ -321,9 +347,20 @@ public struct NativeAgentClient: Sendable {
             return ["role": message.role == .assistant ? "assistant" : "user", "content": content]
         }
         var body: [String: Any] = ["model": configuration.model, "max_tokens": 4096, "messages": converted]
-        if let system, !system.isEmpty { body["system"] = system }
+        let quirks = configuration.transportSpec?.quirks
+        // OAuth (subscription) tokens require Claude Code's identity as the first
+        // system block, otherwise Anthropic rejects the request.
+        if let identity = quirks?.injectAgentIdentity, configuration.isOAuth {
+            let user = (system?.isEmpty == false) ? "\n\n\(system!)" : ""
+            body["system"] = identity + user
+        } else if let system, !system.isEmpty {
+            body["system"] = system
+        }
         if !tools.isEmpty {
             body["tools"] = tools.map { ["name": $0.name, "description": $0.description, "input_schema": $0.parameters.any] }
+        }
+        if quirks?.cloakToolsOnOAuth == true, configuration.isOAuth {
+            ToolCloak.apply(to: &body)
         }
         return body
     }

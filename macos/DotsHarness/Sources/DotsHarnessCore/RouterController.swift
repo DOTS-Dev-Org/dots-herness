@@ -43,6 +43,7 @@ public final class RouterController: ObservableObject {
     private let cloudTunnel: CloudTunnelProcess
     private var callbackListener: NWListener?
     private var callbackConnection: NWConnection?
+    private var callbackPort = 1455
     private var modelRefreshAttempted = false
 
     public init(baseURL: String = "", paths: SupportPaths = .default()) {
@@ -158,32 +159,24 @@ public final class RouterController: ObservableObject {
             apiKey: key,
             provider: RouterCatalog.label(for: account.provider),
             api: account.api,
-            sessionAccountID: account.sessionAccountID
+            sessionAccountID: account.sessionAccountID,
+            specID: account.provider,
+            authType: account.authType
         )
     }
 
     private func refreshCredential(for account: StoredProviderAccount) async -> Bool {
-        guard account.provider == "gpt", account.authType == "chatgpt" else { return false }
+        guard let spec = RouterCatalog.spec(for: account.provider), let oauth = spec.oauth else { return false }
         guard let refresh = try? store.refreshCredential(for: account), !refresh.isEmpty else { return false }
         do {
-            var request = URLRequest(url: URL(string: "https://auth.openai.com/oauth/token")!, timeoutInterval: 20)
-            request.httpMethod = "POST"
-            request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-            request.httpBody = form([
-                ("grant_type", "refresh_token"),
-                ("refresh_token", refresh),
-                ("client_id", "app_EMoamEEZ73f0CkXaXp7hrann"),
-            ]).data(using: .utf8)
-            let (data, response) = try await URLSession.shared.data(for: request)
-            try check(response, data: data)
-            let token = try JSONDecoder().decode(OAuthResponse.self, from: data)
-            try store.replaceCredential(for: account, with: token.accessToken)
-            if let idToken = token.idToken,
-               let accountID = decodeJWTClaims(idToken)["chatgpt_account_id"] as? String,
+            let tokens = try await OAuthFlow(spec: oauth).refresh(refresh)
+            try store.replaceCredential(for: account, with: tokens.accessToken)
+            if let idToken = tokens.idToken,
+               let accountID = OAuthFlow.jwtClaims(idToken)["chatgpt_account_id"] as? String,
                !accountID.isEmpty {
                 try store.updateSessionAccountID(for: account, with: accountID)
             }
-            if let nextRefresh = token.refreshToken { try store.replaceRefreshCredential(for: account, with: nextRefresh) }
+            if let next = tokens.refreshToken { try store.replaceRefreshCredential(for: account, with: next) }
             return true
         } catch {
             return false
@@ -197,8 +190,23 @@ public final class RouterController: ObservableObject {
             await createAPIKey()
         case .oauthBrowser:
             await startBrowser()
+        case .passthrough:
+            await connectPassthrough()
         case .oauthDevice:
             error = "This provider does not expose a native device login yet. Use an API key or Custom API."
+        }
+    }
+
+    /// Providers that need no credential (e.g. OpenCode Free). Records a keyless
+    /// account so routing picks it up like any other.
+    public func connectPassthrough() async {
+        do {
+            _ = try store.addAccount(provider: selectedKind, name: selectedKind.name, secret: "", authType: "passthrough")
+            status = AppCopy.format("router.connected", selectedKind.name)
+            await refresh()
+            await refreshModels(force: true)
+        } catch {
+            self.error = error.localizedDescription
         }
     }
 
@@ -225,46 +233,37 @@ public final class RouterController: ObservableObject {
     }
 
     public func startBrowser() async {
-        guard selectedKind.id == "gpt" else {
-            error = "Native browser login is currently available for GPT. Use an API key or Custom API for this provider."
+        guard let spec = RouterCatalog.spec(for: selectedKind.id), let oauth = spec.oauth else {
+            error = "This provider does not support browser sign-in. Use an API key or Custom API."
             return
         }
+        let engine = OAuthFlow(spec: oauth)
+        let verifier = OAuthFlow.randomToken()
+        let state = OAuthFlow.randomToken()
+        guard let authURL = engine.authorizeURL(verifier: verifier, state: state)?.absoluteString else {
+            error = "Could not build the sign-in URL."
+            return
+        }
+        flow = .browser(provider: selectedKind.id, authURL: authURL, redirectURI: oauth.redirectURI, codeVerifier: verifier, state: state)
         do {
-            let verifier = randomToken()
-            let challenge = Data(SHA256.hash(data: Data(verifier.utf8))).base64URLEncoded
-            let state = randomToken()
-            let port = 1455
-            let redirect = "http://localhost:\(port)/auth/callback"
-            var components = URLComponents(string: "https://auth.openai.com/oauth/authorize")!
-            components.queryItems = [
-                URLQueryItem(name: "response_type", value: "code"),
-                URLQueryItem(name: "client_id", value: "app_EMoamEEZ73f0CkXaXp7hrann"),
-                URLQueryItem(name: "redirect_uri", value: redirect),
-                URLQueryItem(name: "scope", value: "openid profile email offline_access api.connectors.read api.connectors.invoke"),
-                URLQueryItem(name: "code_challenge", value: challenge),
-                URLQueryItem(name: "code_challenge_method", value: "S256"),
-                URLQueryItem(name: "id_token_add_organizations", value: "true"),
-                URLQueryItem(name: "codex_cli_simplified_flow", value: "true"),
-                URLQueryItem(name: "originator", value: "dots_harness"),
-                URLQueryItem(name: "state", value: state),
-            ]
-            guard let authURL = components.url?.absoluteString else { throw ProviderStoreError.invalidEndpoint }
-            flow = .browser(provider: selectedKind.id, authURL: authURL, redirectURI: redirect, codeVerifier: verifier, state: state)
+            callbackPort = oauth.callbackPort
             try startCallbackListener()
-            NSWorkspace.shared.open(components.url!)
-            let loginState = state
-            Task { @MainActor [weak self] in
-                try? await Task.sleep(nanoseconds: 300_000_000_000)
-                guard let self,
-                      case .browser(_, _, _, _, let currentState) = self.flow,
-                      currentState == loginState else { return }
-                self.error = "The sign-in request timed out. Start it again."
-                self.cancelFlow()
-            }
-            status = AppCopy.text("router.oauthWaiting")
         } catch {
             self.error = error.localizedDescription
+            flow = .idle
+            return
         }
+        if let url = URL(string: authURL) { NSWorkspace.shared.open(url) }
+        let loginState = state
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 300_000_000_000)
+            guard let self,
+                  case .browser(_, _, _, _, let currentState) = self.flow,
+                  currentState == loginState else { return }
+            self.error = "The sign-in request timed out. Start it again."
+            self.cancelFlow()
+        }
+        status = AppCopy.text("router.oauthWaiting")
     }
 
     public func finishBrowser() async {
@@ -273,21 +272,39 @@ public final class RouterController: ObservableObject {
     }
 
     private func finishBrowser(callback: String) async {
-        guard case .browser(let provider, _, let redirect, let verifier, let expectedState) = flow,
+        guard case .browser(let providerID, _, _, let verifier, let expectedState) = flow,
               let url = URL(string: callback),
-              let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let spec = RouterCatalog.spec(for: providerID), let oauth = spec.oauth else {
             if !callback.isEmpty { error = AppCopy.text("router.pasteCallbackURL") }
             return
         }
         let params = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).compactMap { item in item.value.map { (item.name, $0) } })
-        guard params["state"] == expectedState else { error = "The login callback state did not match."; return }
         if let fail = params["error"] { error = params["error_description"] ?? fail; return }
-        guard let code = params["code"], !code.isEmpty else { error = AppCopy.text("router.noAuthorizationCode"); return }
+        let rawCode = params["code"] ?? ""
+        guard !rawCode.isEmpty else { error = AppCopy.text("router.noAuthorizationCode"); return }
+        // Claude sends `code#state` and omits the `state` query item.
+        let returnedState = params["state"]
+            ?? oauth.manualCodeSeparator.flatMap { sep in
+                rawCode.components(separatedBy: sep).count > 1 ? rawCode.components(separatedBy: sep).last : nil
+            }
+        if let returnedState, returnedState != expectedState { error = "The login callback state did not match."; return }
         do {
-            let token = try await exchangeCode(code, redirect: redirect, verifier: verifier)
-            let name = token.email ?? token.accountID ?? "GPT account"
-            let provider = RouterCatalog.kind(for: provider)!
-            _ = try store.addAccount(provider: provider, name: name, secret: token.accessToken, model: provider.defaultModel, api: RouterAPIKind.chatGPT.rawValue, authType: "chatgpt", email: token.email, sessionAccountID: token.accountID, refreshSecret: token.refreshToken)
+            let tokens = try await OAuthFlow(spec: oauth).exchange(code: rawCode, verifier: verifier)
+            let provider = RouterCatalog.kind(for: providerID) ?? selectedKind
+            let isGPT = spec.transport.format == .responses
+            let name = tokens.email ?? tokens.accountID ?? "\(provider.name) account"
+            _ = try store.addAccount(
+                provider: provider,
+                name: name,
+                secret: tokens.accessToken,
+                model: provider.defaultModel,
+                api: provider.api.rawValue,
+                authType: isGPT ? "chatgpt" : "oauth",
+                email: tokens.email,
+                sessionAccountID: tokens.accountID,
+                refreshSecret: tokens.refreshToken
+            )
             callbackListener?.cancel(); callbackListener = nil; callbackConnection = nil
             flow = .idle; callbackPaste = ""
             status = AppCopy.format("router.connected", provider.name)
@@ -538,32 +555,9 @@ public final class RouterController: ObservableObject {
         return AgentToolDefinition(name: name, description: function["description"] as? String ?? "", parameters: parameters)
     }
 
-    private struct OAuthToken {
-        var accessToken: String
-        var refreshToken: String?
-        var email: String?
-        var accountID: String?
-    }
-
-    private func exchangeCode(_ code: String, redirect: String, verifier: String) async throws -> OAuthToken {
-        var request = URLRequest(url: URL(string: "https://auth.openai.com/oauth/token")!, timeoutInterval: 20)
-        request.httpMethod = "POST"
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        request.httpBody = form([
-            ("grant_type", "authorization_code"), ("code", code), ("redirect_uri", redirect),
-            ("client_id", "app_EMoamEEZ73f0CkXaXp7hrann"), ("code_verifier", verifier),
-        ]).data(using: .utf8)
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try check(response, data: data)
-        let token = try JSONDecoder().decode(OAuthResponse.self, from: data)
-        let idToken = token.idToken ?? token.accessToken
-        let claims = decodeJWTClaims(idToken)
-        return OAuthToken(accessToken: token.accessToken, refreshToken: token.refreshToken, email: claims["email"] as? String, accountID: claims["chatgpt_account_id"] as? String)
-    }
-
     private func startCallbackListener() throws {
         callbackListener?.cancel()
-        guard let port = NWEndpoint.Port(rawValue: 1455) else { throw RouterTestError.message("Invalid callback port") }
+        guard let port = NWEndpoint.Port(rawValue: UInt16(callbackPort)) else { throw RouterTestError.message("Invalid callback port") }
         let parameters = NWParameters.tcp
         parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: port)
         let listener = try NWListener(using: parameters)
@@ -589,37 +583,6 @@ public final class RouterController: ObservableObject {
         callbackListener = listener
     }
 
-    private func check(_ response: URLResponse, data: Data) throws {
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard (200..<300).contains(status) else {
-            let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error_description"] as? String
-                ?? (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
-                ?? "HTTP \(status)"
-            throw RouterTestError.message(message)
-        }
-    }
-
-    private func form(_ values: [(String, String)]) -> String {
-        values.map { "\($0.0)=\($0.1.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? $0.1)" }.joined(separator: "&")
-    }
-
-    private func randomToken() -> String {
-        Data((0..<32).map { _ in UInt8.random(in: 0...255) }).base64URLEncoded
-    }
-
-    private func decodeJWTClaims(_ token: String) -> [String: Any] {
-        let parts = token.split(separator: ".")
-        guard parts.count > 1, let data = Data(base64Encoded: String(parts[1]) + String(repeating: "=", count: (4 - parts[1].count % 4) % 4), options: .ignoreUnknownCharacters),
-              let value = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [:] }
-        return value
-    }
-}
-
-private struct OAuthResponse: Decodable {
-    var accessToken: String
-    var refreshToken: String?
-    var idToken: String?
-    enum CodingKeys: String, CodingKey { case accessToken = "access_token"; case refreshToken = "refresh_token"; case idToken = "id_token" }
 }
 
 public enum RouterTestError: Error, LocalizedError, Sendable {
@@ -627,11 +590,5 @@ public enum RouterTestError: Error, LocalizedError, Sendable {
     case message(String)
     public var errorDescription: String? {
         switch self { case .http(let code): return "Provider returned HTTP \(code)."; case .message(let message): return message }
-    }
-}
-
-private extension Data {
-    var base64URLEncoded: String {
-        base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
     }
 }

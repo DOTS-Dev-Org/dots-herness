@@ -8,6 +8,7 @@ public enum RouterAuthKind: String, Sendable, Hashable {
     case oauthBrowser
     case oauthDevice
     case apiKey
+    case passthrough
 }
 
 public enum RouterAPIKind: String, Sendable, Hashable {
@@ -25,6 +26,8 @@ public struct RouterProviderKind: Identifiable, Sendable, Equatable, Hashable {
     public var defaultModel: String
     public var api: RouterAPIKind
     public var logoSymbol: String
+    /// Registry spec id. Equal to `id` for catalog providers.
+    public var specID: String
 
     public init(
         id: String,
@@ -34,7 +37,8 @@ public struct RouterProviderKind: Identifiable, Sendable, Equatable, Hashable {
         baseURL: String,
         defaultModel: String,
         api: RouterAPIKind = .openAICompatible,
-        logoSymbol: String = "sparkles"
+        logoSymbol: String = "sparkles",
+        specID: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -44,42 +48,47 @@ public struct RouterProviderKind: Identifiable, Sendable, Equatable, Hashable {
         self.defaultModel = defaultModel
         self.api = api
         self.logoSymbol = logoSymbol
+        self.specID = specID ?? id
+    }
+
+    init(spec: ProviderSpec) {
+        self.init(
+            id: spec.id,
+            name: spec.name,
+            kind: RouterCatalog.authKind(for: spec.category),
+            hint: spec.hint,
+            baseURL: spec.transport.baseURL,
+            defaultModel: spec.defaultModel,
+            api: RouterCatalog.apiKind(for: spec.transport.format),
+            logoSymbol: spec.logoSymbol,
+            specID: spec.id
+        )
     }
 }
 
 public enum RouterCatalog {
-    public static let providers: [RouterProviderKind] = [
-        .init(id: "gpt", name: "GPT", kind: .oauthBrowser, hint: "Sign in with ChatGPT", baseURL: "https://chatgpt.com/backend-api/codex", defaultModel: "gpt-4.1-mini", api: .chatGPT, logoSymbol: "sparkles"),
-        .init(id: "claude", name: "Claude", kind: .apiKey, hint: "API key", baseURL: "https://api.anthropic.com/v1", defaultModel: "claude-sonnet-4-20250514", api: .anthropic, logoSymbol: "circle.hexagongrid"),
-        .init(id: "gemini", name: "Gemini", kind: .apiKey, hint: "API key", baseURL: "https://generativelanguage.googleapis.com/v1beta/openai", defaultModel: "gemini-2.5-flash", logoSymbol: "diamond"),
-        .init(id: "antigravity", name: "Antigravity", kind: .apiKey, hint: "API key or Custom API", baseURL: "", defaultModel: "", logoSymbol: "arrow.up.forward.circle"),
-        .init(id: "iflow", name: "iFlow", kind: .apiKey, hint: "API key or Custom API", baseURL: "", defaultModel: "", logoSymbol: "waveform"),
-        .init(id: "github", name: "GitHub Copilot", kind: .apiKey, hint: "API key or Custom API", baseURL: "", defaultModel: "", logoSymbol: "chevron.left.forwardslash.chevron.right"),
-        .init(id: "qwen", name: "Qwen", kind: .apiKey, hint: "API key", baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", defaultModel: "qwen-plus", logoSymbol: "q.circle"),
-        .init(id: "kiro", name: "Kiro", kind: .apiKey, hint: "API key or Custom API", baseURL: "", defaultModel: "", logoSymbol: "k.circle"),
-        .init(id: "grok", name: "Grok", kind: .apiKey, hint: "API key", baseURL: "https://api.x.ai/v1", defaultModel: "grok-3-mini", logoSymbol: "bolt.circle"),
-        .init(id: "openrouter", name: "OpenRouter", kind: .apiKey, hint: "API key", baseURL: "https://openrouter.ai/api/v1", defaultModel: "openai/gpt-4.1-mini", logoSymbol: "arrow.triangle.branch"),
-        .init(id: "openai", name: "OpenAI", kind: .apiKey, hint: "API key", baseURL: "https://api.openai.com/v1", defaultModel: "gpt-4.1-mini", logoSymbol: "hexagon"),
-        .init(id: "anthropic", name: "Anthropic", kind: .apiKey, hint: "API key", baseURL: "https://api.anthropic.com/v1", defaultModel: "claude-sonnet-4-20250514", api: .anthropic, logoSymbol: "circle.hexagongrid"),
-        .init(id: "glm", name: "GLM", kind: .apiKey, hint: "API key", baseURL: "https://open.bigmodel.cn/api/paas/v4", defaultModel: "glm-4.5", logoSymbol: "g.circle"),
-        .init(id: "kimi", name: "Kimi", kind: .apiKey, hint: "API key", baseURL: "https://api.moonshot.cn/v1", defaultModel: "moonshot-v1-8k", logoSymbol: "moon.circle"),
-        .init(id: "minimax", name: "MiniMax", kind: .apiKey, hint: "API key", baseURL: "https://api.minimax.io/v1", defaultModel: "MiniMax-Text-01", logoSymbol: "m.circle"),
-        .init(id: "deepseek", name: "DeepSeek", kind: .apiKey, hint: "API key", baseURL: "https://api.deepseek.com/v1", defaultModel: "deepseek-chat", logoSymbol: "wave.3.right.circle"),
-        .init(id: "groq", name: "Groq", kind: .apiKey, hint: "API key", baseURL: "https://api.groq.com/openai/v1", defaultModel: "llama-3.3-70b-versatile", logoSymbol: "gauge.with.dots.needle.67percent"),
-        .init(id: "xai", name: "xAI", kind: .apiKey, hint: "API key", baseURL: "https://api.x.ai/v1", defaultModel: "grok-3-mini", logoSymbol: "xmark.circle"),
-        .init(id: "mistral", name: "Mistral", kind: .apiKey, hint: "API key", baseURL: "https://api.mistral.ai/v1", defaultModel: "mistral-small-latest", logoSymbol: "wind"),
-        .init(id: "perplexity", name: "Perplexity", kind: .apiKey, hint: "API key", baseURL: "https://api.perplexity.ai", defaultModel: "sonar", logoSymbol: "magnifyingglass"),
-        .init(id: "together", name: "Together AI", kind: .apiKey, hint: "API key", baseURL: "https://api.together.xyz/v1", defaultModel: "meta-llama/Llama-3.3-70B-Instruct-Turbo", logoSymbol: "person.3"),
-        .init(id: "fireworks", name: "Fireworks", kind: .apiKey, hint: "API key", baseURL: "https://api.fireworks.ai/inference/v1", defaultModel: "accounts/fireworks/models/llama-v3p1-70b-instruct", logoSymbol: "flame"),
-        .init(id: "cerebras", name: "Cerebras", kind: .apiKey, hint: "API key", baseURL: "https://api.cerebras.ai/v1", defaultModel: "llama-3.3-70b", logoSymbol: "cpu"),
-        .init(id: "cohere", name: "Cohere", kind: .apiKey, hint: "API key", baseURL: "https://api.cohere.com/compatibility/v1", defaultModel: "command-a-03-2025", logoSymbol: "c.circle"),
-        .init(id: "nvidia", name: "NVIDIA", kind: .apiKey, hint: "API key", baseURL: "https://integrate.api.nvidia.com/v1", defaultModel: "meta/llama-3.1-70b-instruct", logoSymbol: "triangle"),
-        .init(id: "siliconflow", name: "SiliconFlow", kind: .apiKey, hint: "API key", baseURL: "https://api.siliconflow.cn/v1", defaultModel: "deepseek-ai/DeepSeek-V3", logoSymbol: "square.stack.3d.up"),
-        .init(id: "nebius", name: "Nebius", kind: .apiKey, hint: "API key", baseURL: "https://api.tokenfactory.nebius.com/v1", defaultModel: "meta-llama/Meta-Llama-3.1-70B-Instruct", logoSymbol: "cloud"),
-        .init(id: "chutes", name: "Chutes", kind: .apiKey, hint: "API key", baseURL: "https://llm.chutes.ai/v1", defaultModel: "deepseek-ai/DeepSeek-V3", logoSymbol: "arrow.down.circle"),
-        .init(id: "hyperbolic", name: "Hyperbolic", kind: .apiKey, hint: "API key", baseURL: "https://api.hyperbolic.xyz/v1", defaultModel: "meta-llama/Meta-Llama-3.1-70B-Instruct", logoSymbol: "circle.dotted"),
-        .init(id: "vertex", name: "Vertex AI", kind: .apiKey, hint: "API key or Custom API", baseURL: "", defaultModel: "", logoSymbol: "cloud.fill"),
-    ]
+    /// UI-facing provider list, derived from the data-driven registry.
+    public static var providers: [RouterProviderKind] {
+        ProviderRegistry.shared.specs.map(RouterProviderKind.init(spec:))
+    }
+
+    public static func spec(for id: String) -> ProviderSpec? { ProviderRegistry.shared.spec(id) }
+
+    static func authKind(for category: ProviderSpec.Category) -> RouterAuthKind {
+        switch category {
+        case .oauth: return .oauthBrowser
+        case .apiKey: return .apiKey
+        case .passthrough: return .passthrough
+        }
+    }
+
+    static func apiKind(for format: ProviderSpec.Format) -> RouterAPIKind {
+        switch format {
+        case .openaiChat: return .openAICompatible
+        case .anthropic: return .anthropic
+        case .responses: return .chatGPT
+        }
+    }
 
     public static func kind(for id: String) -> RouterProviderKind? { providers.first { $0.id == id } }
     public static func label(for id: String) -> String { id.hasPrefix("custom:") ? "Custom API" : kind(for: id)?.name ?? "Provider" }
