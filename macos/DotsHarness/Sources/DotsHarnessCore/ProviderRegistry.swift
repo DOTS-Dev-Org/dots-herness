@@ -31,6 +31,10 @@ public struct ProviderSpec: Codable, Sendable, Identifiable, Equatable {
         case bearer
     }
 
+    // Synthesised Codable ignores property default values, so every struct that
+    // has optional-in-JSON fields decodes them explicitly with a fallback. This
+    // keeps `providers.json` lean.
+
     public struct Quirks: Codable, Sendable, Equatable {
         public var cloakToolsOnOAuth: Bool = false
         public var injectAgentIdentity: String?
@@ -38,6 +42,13 @@ public struct ProviderSpec: Codable, Sendable, Identifiable, Equatable {
         public init(cloakToolsOnOAuth: Bool = false, injectAgentIdentity: String? = nil) {
             self.cloakToolsOnOAuth = cloakToolsOnOAuth
             self.injectAgentIdentity = injectAgentIdentity
+        }
+
+        enum CodingKeys: String, CodingKey { case cloakToolsOnOAuth, injectAgentIdentity }
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            cloakToolsOnOAuth = try c.decodeIfPresent(Bool.self, forKey: .cloakToolsOnOAuth) ?? false
+            injectAgentIdentity = try c.decodeIfPresent(String.self, forKey: .injectAgentIdentity)
         }
     }
 
@@ -61,6 +72,16 @@ public struct ProviderSpec: Codable, Sendable, Identifiable, Equatable {
             self.extraHeaders = extraHeaders
             self.quirks = quirks
         }
+
+        enum CodingKeys: String, CodingKey { case baseURL, format, urlSuffix, extraHeaders, quirks }
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            baseURL = try c.decode(String.self, forKey: .baseURL)
+            format = try c.decode(Format.self, forKey: .format)
+            urlSuffix = try c.decodeIfPresent(String.self, forKey: .urlSuffix)
+            extraHeaders = try c.decodeIfPresent([String: String].self, forKey: .extraHeaders) ?? [:]
+            quirks = try c.decodeIfPresent(Quirks.self, forKey: .quirks) ?? Quirks()
+        }
     }
 
     public struct OAuthSpec: Codable, Sendable, Equatable {
@@ -78,12 +99,45 @@ public struct ProviderSpec: Codable, Sendable, Identifiable, Equatable {
         public var extraAuthorizeParams: [String: String] = [:]
         /// Extra form/JSON fields sent with the token + refresh requests.
         public var extraTokenParams: [String: String] = [:]
+
+        enum CodingKeys: String, CodingKey {
+            case clientID, authorizeURL, tokenURL, scopes, redirectURI, callbackPort
+            case tokenEncoding, refreshEncoding, manualCodeSeparator, extraAuthorizeParams, extraTokenParams
+        }
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            clientID = try c.decode(String.self, forKey: .clientID)
+            authorizeURL = try c.decode(String.self, forKey: .authorizeURL)
+            tokenURL = try c.decode(String.self, forKey: .tokenURL)
+            scopes = try c.decode(String.self, forKey: .scopes)
+            redirectURI = try c.decode(String.self, forKey: .redirectURI)
+            callbackPort = try c.decode(Int.self, forKey: .callbackPort)
+            tokenEncoding = try c.decodeIfPresent(Encoding.self, forKey: .tokenEncoding) ?? .form
+            refreshEncoding = try c.decodeIfPresent(Encoding.self, forKey: .refreshEncoding) ?? .form
+            manualCodeSeparator = try c.decodeIfPresent(String.self, forKey: .manualCodeSeparator)
+            extraAuthorizeParams = try c.decodeIfPresent([String: String].self, forKey: .extraAuthorizeParams) ?? [:]
+            extraTokenParams = try c.decodeIfPresent([String: String].self, forKey: .extraTokenParams) ?? [:]
+        }
     }
 
     public struct APIKeySpec: Codable, Sendable, Equatable {
         public var header: String = "Authorization"
         public var scheme: Scheme = .bearer
         public var modelsURL: String?
+
+        public init(header: String = "Authorization", scheme: Scheme = .bearer, modelsURL: String? = nil) {
+            self.header = header
+            self.scheme = scheme
+            self.modelsURL = modelsURL
+        }
+
+        enum CodingKeys: String, CodingKey { case header, scheme, modelsURL }
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            header = try c.decodeIfPresent(String.self, forKey: .header) ?? "Authorization"
+            scheme = try c.decodeIfPresent(Scheme.self, forKey: .scheme) ?? .bearer
+            modelsURL = try c.decodeIfPresent(String.self, forKey: .modelsURL)
+        }
     }
 
     public struct ModelSpec: Codable, Sendable, Equatable {
@@ -102,6 +156,32 @@ public struct ProviderSpec: Codable, Sendable, Identifiable, Equatable {
     public var models: [ModelSpec] = []
 
     public var defaultModel: String { models.first?.id ?? "" }
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, category, logoSymbol, hint, transport, oauth, apiKey, models
+    }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        category = try c.decode(Category.self, forKey: .category)
+        logoSymbol = try c.decodeIfPresent(String.self, forKey: .logoSymbol) ?? "sparkles"
+        hint = try c.decodeIfPresent(String.self, forKey: .hint) ?? ""
+        transport = try c.decode(Transport.self, forKey: .transport)
+        oauth = try c.decodeIfPresent(OAuthSpec.self, forKey: .oauth)
+        apiKey = try c.decodeIfPresent(APIKeySpec.self, forKey: .apiKey)
+        models = try c.decodeIfPresent([ModelSpec].self, forKey: .models) ?? []
+    }
+
+    init(
+        id: String, name: String, category: Category, logoSymbol: String = "sparkles",
+        hint: String = "", transport: Transport, oauth: OAuthSpec? = nil,
+        apiKey: APIKeySpec? = nil, models: [ModelSpec] = []
+    ) {
+        self.id = id; self.name = name; self.category = category; self.logoSymbol = logoSymbol
+        self.hint = hint; self.transport = transport; self.oauth = oauth
+        self.apiKey = apiKey; self.models = models
+    }
 }
 
 public final class ProviderRegistry: @unchecked Sendable {
@@ -127,13 +207,31 @@ public final class ProviderRegistry: @unchecked Sendable {
     public func spec(_ id: String) -> ProviderSpec? { byID[id] }
 
     private static func decode(_ data: Data) -> [ProviderSpec] {
-        (try? JSONDecoder().decode([ProviderSpec].self, from: data)) ?? []
+        do {
+            return try JSONDecoder().decode([ProviderSpec].self, from: data)
+        } catch {
+            FileHandle.standardError.write(Data("ProviderRegistry decode error: \(error)\n".utf8))
+            return []
+        }
     }
 
     private static func loadBundled() -> [ProviderSpec] {
-        guard let url = Bundle.module.url(forResource: "providers", withExtension: "json"),
-              let data = try? Data(contentsOf: url) else { return [] }
-        return decode(data)
+        let candidates: [Bundle] = [.module] + Bundle.allBundles
+        for bundle in candidates {
+            if let url = bundle.url(forResource: "providers", withExtension: "json"),
+               let data = try? Data(contentsOf: url) {
+                return decode(data)
+            }
+            // Nested resource bundle (SwiftPM copies it as a sub-bundle).
+            if let nested = bundle.url(forResource: "DotsHarness_DotsHarnessCore", withExtension: "bundle"),
+               let sub = Bundle(url: nested),
+               let url = sub.url(forResource: "providers", withExtension: "json"),
+               let data = try? Data(contentsOf: url) {
+                return decode(data)
+            }
+        }
+        FileHandle.standardError.write(Data("ProviderRegistry: providers.json not found in any bundle\n".utf8))
+        return []
     }
 
     private static func loadOverride() -> [ProviderSpec] {
