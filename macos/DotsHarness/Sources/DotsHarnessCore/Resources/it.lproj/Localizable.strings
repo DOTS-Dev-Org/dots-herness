@@ -288,6 +288,15 @@
 "slash.planDetail" = "Attiva la modalità piano";
 "slash.mascot" = "Pet";
 "slash.mascotDetail" = "Riattiva o nascondi il Pet";
+"slash.loop" = "Loop";
+"slash.loopDetail" = "Repeat a prompt on a schedule";
+"common.save" = "Save";
+"goal.dialogTitle" = "Session goal";
+"goal.dialogBody" = "Describe what this session should work toward. Leave blank to clear.";
+"loop.dialogTitle" = "Loop a prompt";
+"loop.dialogBody" = "Re-run an instruction on a fixed interval. Manage it later in Tasks.";
+"loop.minutesLabel" = "Every (minutes)";
+"loop.instructionLabel" = "Instruction";
 "skill.documentsDetail" = "Crea e modifica file Word e Google Docs";
 "skill.pdfDetail" = "Leggi, crea e verifica file PDF";
 "skill.spreadsheetsDetail" = "Crea e modifica file di fogli di calcolo";
@@ -562,3 +571,19 @@
 "tasks.cancel" = "Cancel";
 "tasks.background" = "Run tasks while the app is closed";
 "tasks.background.hint" = "Installs a background helper (launchd) that runs due tasks even when Dots Harness is not open.";
+
+/* Memory vault */
+"settings.tab.memory" = "Memoria";
+"memory.vault.title" = "Cassaforte della memoria";
+"memory.notInitialized" = "La memoria inizia dopo il primo prompt in questo spazio di lavoro.";
+"memory.section.map" = "Mappa";
+"memory.section.index" = "Indice";
+"memory.section.tasks" = "Attività";
+"memory.section.decisions" = "Decisioni";
+"memory.section.preferences" = "Preferenze";
+"memory.backlinks" = "Menzioni collegate";
+"memory.noBacklinks" = "Nessuna menzione collegata.";
+"memory.reveal" = "Mostra .mem nel Finder";
+"memory.refresh" = "Aggiorna";
+"memory.graph" = "Grafico";
+"memory.selectNote" = "Seleziona una nota per visualizzarla.";

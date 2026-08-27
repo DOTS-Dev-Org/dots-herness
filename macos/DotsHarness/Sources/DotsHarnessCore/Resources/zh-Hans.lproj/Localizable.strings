@@ -288,6 +288,15 @@
 "slash.planDetail" = "开启计划模式";
 "slash.mascot" = "Pet";
 "slash.mascotDetail" = "唤醒或隐藏 Pet";
+"slash.loop" = "Loop";
+"slash.loopDetail" = "Repeat a prompt on a schedule";
+"common.save" = "Save";
+"goal.dialogTitle" = "Session goal";
+"goal.dialogBody" = "Describe what this session should work toward. Leave blank to clear.";
+"loop.dialogTitle" = "Loop a prompt";
+"loop.dialogBody" = "Re-run an instruction on a fixed interval. Manage it later in Tasks.";
+"loop.minutesLabel" = "Every (minutes)";
+"loop.instructionLabel" = "Instruction";
 "skill.documentsDetail" = "创建和编辑 Word 与 Google Docs 文件";
 "skill.pdfDetail" = "读取、创建和验证 PDF 文件";
 "skill.spreadsheetsDetail" = "创建和编辑电子表格文件";
@@ -562,3 +571,19 @@
 "tasks.cancel" = "Cancel";
 "tasks.background" = "Run tasks while the app is closed";
 "tasks.background.hint" = "Installs a background helper (launchd) that runs due tasks even when Dots Harness is not open.";
+
+/* Memory vault */
+"settings.tab.memory" = "记忆";
+"memory.vault.title" = "记忆库";
+"memory.notInitialized" = "记忆将在此工作区中的首次提示后开始。";
+"memory.section.map" = "映射";
+"memory.section.index" = "索引";
+"memory.section.tasks" = "任务";
+"memory.section.decisions" = "决策";
+"memory.section.preferences" = "偏好设置";
+"memory.backlinks" = "关联提及";
+"memory.noBacklinks" = "无关联提及。";
+"memory.reveal" = "在访达中显示 .mem";
+"memory.refresh" = "刷新";
+"memory.graph" = "图谱";
+"memory.selectNote" = "选择一条笔记以查看。";

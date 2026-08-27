@@ -158,32 +158,24 @@ public final class RouterController: ObservableObject {
             apiKey: key,
             provider: RouterCatalog.label(for: account.provider),
             api: account.api,
-            sessionAccountID: account.sessionAccountID
+            sessionAccountID: account.sessionAccountID,
+            specID: account.provider,
+            authType: account.authType
         )
     }
 
     private func refreshCredential(for account: StoredProviderAccount) async -> Bool {
-        guard account.provider == "gpt", account.authType == "chatgpt" else { return false }
+        guard let spec = RouterCatalog.spec(for: account.provider), let oauth = spec.oauth else { return false }
         guard let refresh = try? store.refreshCredential(for: account), !refresh.isEmpty else { return false }
         do {
-            var request = URLRequest(url: URL(string: "https://auth.openai.com/oauth/token")!, timeoutInterval: 20)
-            request.httpMethod = "POST"
-            request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-            request.httpBody = form([
-                ("grant_type", "refresh_token"),
-                ("refresh_token", refresh),
-                ("client_id", "app_EMoamEEZ73f0CkXaXp7hrann"),
-            ]).data(using: .utf8)
-            let (data, response) = try await URLSession.shared.data(for: request)
-            try check(response, data: data)
-            let token = try JSONDecoder().decode(OAuthResponse.self, from: data)
-            try store.replaceCredential(for: account, with: token.accessToken)
-            if let idToken = token.idToken,
-               let accountID = decodeJWTClaims(idToken)["chatgpt_account_id"] as? String,
+            let tokens = try await OAuthFlow(spec: oauth).refresh(refresh)
+            try store.replaceCredential(for: account, with: tokens.accessToken)
+            if let idToken = tokens.idToken,
+               let accountID = OAuthFlow.jwtClaims(idToken)["chatgpt_account_id"] as? String,
                !accountID.isEmpty {
                 try store.updateSessionAccountID(for: account, with: accountID)
             }
-            if let nextRefresh = token.refreshToken { try store.replaceRefreshCredential(for: account, with: nextRefresh) }
+            if let next = tokens.refreshToken { try store.replaceRefreshCredential(for: account, with: next) }
             return true
         } catch {
             return false
@@ -197,8 +189,23 @@ public final class RouterController: ObservableObject {
             await createAPIKey()
         case .oauthBrowser:
             await startBrowser()
+        case .passthrough:
+            await connectPassthrough()
         case .oauthDevice:
             error = "This provider does not expose a native device login yet. Use an API key or Custom API."
+        }
+    }
+
+    /// Providers that need no credential (e.g. OpenCode Free). Records a keyless
+    /// account so routing can pick it up like any other.
+    public func connectPassthrough() async {
+        do {
+            _ = try store.addAccount(provider: selectedKind, name: selectedKind.name, secret: "", authType: "passthrough")
+            status = AppCopy.format("router.connected", selectedKind.name)
+            await refresh()
+            await refreshModels(force: true)
+        } catch {
+            self.error = error.localizedDescription
         }
     }
 
@@ -538,32 +545,9 @@ public final class RouterController: ObservableObject {
         return AgentToolDefinition(name: name, description: function["description"] as? String ?? "", parameters: parameters)
     }
 
-    private struct OAuthToken {
-        var accessToken: String
-        var refreshToken: String?
-        var email: String?
-        var accountID: String?
-    }
-
-    private func exchangeCode(_ code: String, redirect: String, verifier: String) async throws -> OAuthToken {
-        var request = URLRequest(url: URL(string: "https://auth.openai.com/oauth/token")!, timeoutInterval: 20)
-        request.httpMethod = "POST"
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        request.httpBody = form([
-            ("grant_type", "authorization_code"), ("code", code), ("redirect_uri", redirect),
-            ("client_id", "app_EMoamEEZ73f0CkXaXp7hrann"), ("code_verifier", verifier),
-        ]).data(using: .utf8)
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try check(response, data: data)
-        let token = try JSONDecoder().decode(OAuthResponse.self, from: data)
-        let idToken = token.idToken ?? token.accessToken
-        let claims = decodeJWTClaims(idToken)
-        return OAuthToken(accessToken: token.accessToken, refreshToken: token.refreshToken, email: claims["email"] as? String, accountID: claims["chatgpt_account_id"] as? String)
-    }
-
     private func startCallbackListener() throws {
         callbackListener?.cancel()
-        guard let port = NWEndpoint.Port(rawValue: 1455) else { throw RouterTestError.message("Invalid callback port") }
+        guard let port = NWEndpoint.Port(rawValue: UInt16(callbackPort)) else { throw RouterTestError.message("Invalid callback port") }
         let parameters = NWParameters.tcp
         parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: port)
         let listener = try NWListener(using: parameters)
@@ -589,37 +573,6 @@ public final class RouterController: ObservableObject {
         callbackListener = listener
     }
 
-    private func check(_ response: URLResponse, data: Data) throws {
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard (200..<300).contains(status) else {
-            let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error_description"] as? String
-                ?? (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
-                ?? "HTTP \(status)"
-            throw RouterTestError.message(message)
-        }
-    }
-
-    private func form(_ values: [(String, String)]) -> String {
-        values.map { "\($0.0)=\($0.1.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? $0.1)" }.joined(separator: "&")
-    }
-
-    private func randomToken() -> String {
-        Data((0..<32).map { _ in UInt8.random(in: 0...255) }).base64URLEncoded
-    }
-
-    private func decodeJWTClaims(_ token: String) -> [String: Any] {
-        let parts = token.split(separator: ".")
-        guard parts.count > 1, let data = Data(base64Encoded: String(parts[1]) + String(repeating: "=", count: (4 - parts[1].count % 4) % 4), options: .ignoreUnknownCharacters),
-              let value = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [:] }
-        return value
-    }
-}
-
-private struct OAuthResponse: Decodable {
-    var accessToken: String
-    var refreshToken: String?
-    var idToken: String?
-    enum CodingKeys: String, CodingKey { case accessToken = "access_token"; case refreshToken = "refresh_token"; case idToken = "id_token" }
 }
 
 public enum RouterTestError: Error, LocalizedError, Sendable {
@@ -627,11 +580,5 @@ public enum RouterTestError: Error, LocalizedError, Sendable {
     case message(String)
     public var errorDescription: String? {
         switch self { case .http(let code): return "Provider returned HTTP \(code)."; case .message(let message): return message }
-    }
-}
-
-private extension Data {
-    var base64URLEncoded: String {
-        base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
     }
 }

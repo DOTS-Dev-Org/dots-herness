@@ -42,6 +42,10 @@ public final class NativeAgentHost: ObservableObject {
     public var memoryDevicePublicKey: String? { memory.actorPublicKey }
     public var workspaceMembers: [[String: String]] { memory.memberSummaries() }
     public var pendingWorkspaceDecisions: [[String: Any]] { memory.pendingDecisions() }
+    /// Obsidian-style `.mem` vault (notes + link graph) for the Memory settings view.
+    public var memoryVault: MemoryVault { memory.vault() }
+    public var memoryFolderURL: URL? { memory.memoryDirectory }
+    public var memoryReady: Bool { memory.accessStatus().memoryReady }
     // A busy agent can still accept a normal queued prompt or a steering prompt.
     public var isReady: Bool { workspaceURL != nil && connection != nil }
 

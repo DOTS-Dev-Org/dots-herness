@@ -15,7 +15,7 @@ import IOSurface
 /// screenshot fallback carries a `CGImage`. `cropRect` is normalized with a
 /// top-left origin and describes the device screen inside the captured area.
 public struct SimulatorDisplayFrame: @unchecked Sendable {
-    public enum Source {
+    public enum Source: @unchecked Sendable {
         case buffer(CVPixelBuffer)
         case image(CGImage)
     }
@@ -170,7 +170,7 @@ public final class SimulatorController: ObservableObject {
             restartStreamIfNeeded()
         }
     }
-    @Published public var captureQuality: CaptureQuality = .balanced {
+    @Published public var captureQuality: CaptureQuality = .performance {
         didSet {
             UserDefaults.standard.set(captureQuality.rawValue, forKey: Self.captureQualityKey)
             restartStreamIfNeeded()
@@ -210,7 +210,7 @@ public final class SimulatorController: ObservableObject {
 
         captureRate = CaptureRate(rawValue: storedRate ?? CaptureRate.thirty.rawValue) ?? .thirty
         captureLatency = CaptureLatency(rawValue: storedLatency ?? CaptureLatency.low.rawValue) ?? .low
-        captureQuality = CaptureQuality(rawValue: storedQuality ?? CaptureQuality.balanced.rawValue) ?? .balanced
+        captureQuality = CaptureQuality(rawValue: storedQuality ?? CaptureQuality.performance.rawValue) ?? .performance
     }
 
     public var selectedDevice: SimulatorDevice? {

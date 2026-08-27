@@ -355,6 +355,94 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertTrue(memory.snapshot(for: "next").text.contains("English"))
     }
 
+    @MainActor
+    func testMemoryNotesUseObsidianFrontmatterAndLinks() throws {
+        let paths = temporaryPaths()
+        let workspace = paths.root.appendingPathComponent("obsidian-notes-project", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+
+        let memory = WorkspaceMemory(paths: paths)
+        memory.setWorkspace(workspace)
+
+        let runID = UUID()
+        memory.prepareForPrompt(
+            prompt: "karar: use SQLite for storage",
+            runID: runID,
+            provider: "Direct",
+            model: "test/model"
+        )
+        memory.finishTask(runID: runID, success: true, finalText: "done")
+
+        let memoryRoot = workspace.appendingPathComponent(".mem")
+        let taskNoteURL = memoryRoot.appendingPathComponent("tasks/\(runID.uuidString).md")
+        for relative in ["map.md", "index.md", "preferences.md", "tasks/\(runID.uuidString).md"] {
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: memoryRoot.appendingPathComponent(relative).path),
+                "expected .mem/\(relative) to be written"
+            )
+        }
+
+        func frontmatter(of url: URL) throws -> String {
+            let lines = try String(contentsOf: url, encoding: .utf8).components(separatedBy: "\n")
+            XCTAssertEqual(lines.first, "---", "\(url.lastPathComponent) must open with a YAML frontmatter block")
+            guard let closing = lines.dropFirst().firstIndex(of: "---") else {
+                XCTFail("frontmatter block is not closed in \(url.lastPathComponent)")
+                return ""
+            }
+            return lines[1..<closing].joined(separator: "\n")
+        }
+
+        let indexFront = try frontmatter(of: memoryRoot.appendingPathComponent("index.md"))
+        XCTAssertTrue(indexFront.contains("id: index"))
+        XCTAssertTrue(indexFront.contains("type:"))
+        XCTAssertTrue(indexFront.contains("tags: ["))
+        XCTAssertTrue(indexFront.contains("links: ["))
+        let indexBody = try String(contentsOf: memoryRoot.appendingPathComponent("index.md"), encoding: .utf8)
+        XCTAssertTrue(indexBody.contains("[[task-\(runID.uuidString)]]"))
+
+        let taskFront = try frontmatter(of: taskNoteURL)
+        XCTAssertTrue(taskFront.contains("id: task-\(runID.uuidString)"))
+        XCTAssertTrue(taskFront.contains("type: task"))
+        XCTAssertTrue(taskFront.contains("tags: ["))
+        XCTAssertTrue(taskFront.contains("links: ["))
+        let taskBody = try String(contentsOf: taskNoteURL, encoding: .utf8)
+        XCTAssertTrue(taskBody.contains("[[index]]"))
+    }
+
+    @MainActor
+    func testMemoryVaultParsesNotesEdgesAndBacklinks() throws {
+        let paths = temporaryPaths()
+        let workspace = paths.root.appendingPathComponent("vault-project", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+
+        let memory = WorkspaceMemory(paths: paths)
+        memory.setWorkspace(workspace)
+
+        let runID = UUID()
+        memory.prepareForPrompt(
+            prompt: "karar: use SQLite for storage",
+            runID: runID,
+            provider: "Direct",
+            model: "test/model"
+        )
+        memory.finishTask(runID: runID, success: true, finalText: "done")
+
+        let vault = memory.vault()
+
+        let indexNote = try XCTUnwrap(vault.notes.first { $0.id == "index" })
+        let taskNote = try XCTUnwrap(vault.notes.first { $0.id.hasPrefix("task-") })
+        XCTAssertEqual(taskNote.id, "task-\(runID.uuidString)")
+
+        XCTAssertTrue(taskNote.links.contains("index"), "task note should wikilink to the index")
+        XCTAssertTrue(indexNote.backlinks.contains(taskNote.id), "index note should be backlinked from the task note")
+
+        XCTAssertFalse(vault.edges.isEmpty)
+        XCTAssertTrue(
+            vault.edges.contains { $0.from == taskNote.id && $0.to == "index" },
+            "vault should contain a task-* -> index edge"
+        )
+    }
+
     func testSupportedCacheFieldsAreOptInAndUsageIsParsed() async throws {
         MockURLProtocol.response = Data("""
         {"choices":[{"message":{"role":"assistant","content":"ready"}}],"usage":{"prompt_tokens":10,"completion_tokens":2,"prompt_tokens_details":{"cached_tokens":7,"cache_write_tokens":3}}}

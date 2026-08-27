@@ -244,7 +244,13 @@ private struct ProviderLogoView: View {
         case "generic": return Color.secondary
         default: break
         }
-        let value = abs(key.unicodeScalars.reduce(0) { ($0 * 31) + Int($1.value) })
+        // Overflow-safe FNV-1a style hash. `reduce(0)` as Int traps on arithmetic
+        // overflow in debug builds once the string is more than ~13 characters,
+        // which crashed the whole app when a provider row with a long SF Symbol
+        // name (e.g. Claude's "circle.hexagongrid") rendered.
+        let value = key.unicodeScalars.reduce(UInt64(14_695_981_039_346_656_037)) {
+            ($0 ^ UInt64($1.value)) &* 1_099_511_628_211
+        }
         return Color(hue: Double(value % 360) / 360, saturation: 0.56, brightness: 0.78)
     }
 
