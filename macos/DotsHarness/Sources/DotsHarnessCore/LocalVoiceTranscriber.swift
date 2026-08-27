@@ -2,8 +2,59 @@
 // Offline multilingual speech-to-text powered by whisper.cpp.
 
 import Foundation
-import whisper
 import PluginRuntime
+
+/// Resolves `dots_whisper_transcribe` from libWhisperVoice.dylib on first use.
+/// Keeping whisper behind dlopen means ggml/Metal are never mapped at launch
+/// when the user does not use voice.
+enum WhisperBridge {
+    typealias TranscribeFn = @convention(c) (
+        UnsafePointer<CChar>, UnsafePointer<Float>, Int32, Int32,
+        UnsafeMutablePointer<CChar>, Int32
+    ) -> Int32
+
+    private static let entry: TranscribeFn? = {
+        let dir = Bundle.main.executableURL?.deletingLastPathComponent()
+        let candidates = [
+            dir?.appendingPathComponent("libWhisperVoice.dylib").path,
+            "libWhisperVoice.dylib",
+        ].compactMap { $0 }
+        for path in candidates {
+            guard let handle = dlopen(path, RTLD_NOW | RTLD_LOCAL) else { continue }
+            guard let symbol = dlsym(handle, "dots_whisper_transcribe") else { continue }
+            return unsafeBitCast(symbol, to: TranscribeFn.self)
+        }
+        return nil
+    }()
+
+    static func transcribe(modelPath: String, samples: [Float], threads: Int32) throws -> String {
+        guard let entry else {
+            throw NativeAgentError(AppCopy.text("voice.modelLoadFailed"))
+        }
+        var capacity = 8_192
+        while true {
+            var buffer = [CChar](repeating: 0, count: capacity)
+            let code = modelPath.withCString { modelPointer in
+                samples.withUnsafeBufferPointer { samplePointer in
+                    entry(
+                        modelPointer,
+                        samplePointer.baseAddress!,
+                        Int32(samplePointer.count),
+                        threads,
+                        &buffer,
+                        Int32(capacity)
+                    )
+                }
+            }
+            switch code {
+            case 0: return String(cString: buffer)
+            case let needed where needed > 0: capacity = Int(needed) + 16
+            case -1: throw NativeAgentError(AppCopy.text("voice.modelLoadFailed"))
+            default: throw NativeAgentError(AppCopy.text("voice.transcriptionFailed"))
+            }
+        }
+    }
+}
 
 public struct LocalVoiceModel: Sendable, Equatable {
     public let id: String
@@ -79,7 +130,6 @@ public final class LocalVoiceTranscriber: @unchecked Sendable {
     public private(set) var selectedModel: LocalVoiceModel
 
     private let lock = NSLock()
-    private var context: OpaquePointer?
 
     public init(paths: SupportPaths, model: LocalVoiceModel = .model) {
         self.paths = paths
@@ -153,14 +203,9 @@ public final class LocalVoiceTranscriber: @unchecked Sendable {
         }
     }
 
-    public func unloadModel() {
-        lock.lock()
-        defer { lock.unlock() }
-        if let context {
-            whisper_free(context)
-            self.context = nil
-        }
-    }
+    /// No-op: the dlopen'd helper loads and frees the whisper context per call,
+    /// so nothing is retained between transcriptions. Kept for call-site parity.
+    public func unloadModel() {}
 
     public func transcribe(samples: [Float], sampleRate: Double) async throws -> String {
         let pcm = Self.resample(samples, from: sampleRate)
@@ -196,49 +241,11 @@ public final class LocalVoiceTranscriber: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
 
-        let ctx = try contextForModel()
-        var params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY)
-        params.n_threads = Int32(min(8, max(1, ProcessInfo.processInfo.activeProcessorCount - 1)))
-        params.translate = false
-        params.no_context = true
-        params.no_timestamps = true
-        params.print_realtime = false
-        params.print_progress = false
-        params.print_timestamps = false
-        params.print_special = false
-        params.detect_language = true
-        params.language = nil
-        params.temperature = 0
-
-        let result = samples.withUnsafeBufferPointer { buffer in
-            whisper_full(ctx, params, buffer.baseAddress, Int32(buffer.count))
-        }
-        guard result == 0 else {
-            throw NativeAgentError(AppCopy.text("voice.transcriptionFailed"))
-        }
-
-        return (0..<Int(whisper_full_n_segments(ctx))).compactMap { index in
-            guard let text = whisper_full_get_segment_text(ctx, Int32(index)) else { return nil }
-            return String(cString: text).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        .filter { !$0.isEmpty }
-        .joined(separator: " ")
-        .trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private func contextForModel() throws -> OpaquePointer {
-        if let context { return context }
-
-        var params = whisper_context_default_params()
-        params.use_gpu = true
-        guard let context = whisper_init_from_file_with_params(modelURL.path, params) else {
-            throw NativeAgentError(AppCopy.text("voice.modelLoadFailed"))
-        }
-        self.context = context
-        return context
-    }
-
-    deinit {
-        unloadModel()
+        let threads = Int32(min(8, max(1, ProcessInfo.processInfo.activeProcessorCount - 1)))
+        return try WhisperBridge.transcribe(
+            modelPath: modelURL.path,
+            samples: samples,
+            threads: threads
+        )
     }
 }

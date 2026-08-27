@@ -16,7 +16,7 @@ public struct SettingsView: View {
     }
 
     enum Tab: String, CaseIterable, Identifiable {
-        case general, access, pet, providers, custom, local, share, plugins, prompt
+        case general, access, memory, pet, providers, custom, local, share, plugins, prompt
         var id: String { rawValue }
         var title: String {
             return AppCopy.text("settings.tab.\(rawValue)")
@@ -47,6 +47,7 @@ public struct SettingsView: View {
             switch tab {
             case .general: general
             case .access: WorkspaceAccessView(bridge: model.bridge)
+            case .memory: MemoryVaultView(bridge: model.bridge)
             case .pet: PetSettingsView(model: model)
             case .providers: RouterProvidersView(router: model.router)
             case .custom: CustomAPIView(router: model.router, local: model.local)

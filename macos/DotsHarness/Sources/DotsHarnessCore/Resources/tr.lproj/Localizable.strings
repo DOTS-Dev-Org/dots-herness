@@ -288,6 +288,15 @@
 "slash.planDetail" = "Plan modunu aç";
 "slash.mascot" = "Pet";
 "slash.mascotDetail" = "Pet'i uyandır veya gizle";
+"slash.loop" = "Döngü";
+"slash.loopDetail" = "Bir istemi zamanlanmış olarak tekrarla";
+"common.save" = "Kaydet";
+"goal.dialogTitle" = "Oturum hedefi";
+"goal.dialogBody" = "Bu oturumun neye yönelik çalışması gerektiğini yaz. Temizlemek için boş bırak.";
+"loop.dialogTitle" = "İstemi döngüye al";
+"loop.dialogBody" = "Bir talimatı sabit aralıklarla yeniden çalıştır. Sonra Görevler'den yönet.";
+"loop.minutesLabel" = "Her (dakika)";
+"loop.instructionLabel" = "Talimat";
 "skill.documentsDetail" = "Word ve Google Docs dosyaları oluşturup düzenleyin";
 "skill.pdfDetail" = "PDF dosyalarını okuyun, oluşturun ve doğrulayın";
 "skill.spreadsheetsDetail" = "Hesap tablosu dosyaları oluşturup düzenleyin";
@@ -576,3 +585,19 @@
 "tasks.cancel" = "İptal";
 "tasks.background" = "Uygulama kapalıyken görevleri çalıştır";
 "tasks.background.hint" = "Dots Harness açık olmasa bile zamanı gelen görevleri çalıştıran bir arka plan yardımcısı (launchd) kurar.";
+
+/* Memory vault */
+"settings.tab.memory" = "Bellek";
+"memory.vault.title" = "Bellek kasası";
+"memory.notInitialized" = "Bellek, bu çalışma alanındaki ilk istekten sonra başlar.";
+"memory.section.map" = "Harita";
+"memory.section.index" = "Dizin";
+"memory.section.tasks" = "Görevler";
+"memory.section.decisions" = "Kararlar";
+"memory.section.preferences" = "Tercihler";
+"memory.backlinks" = "Bağlantılı bahsetmeler";
+"memory.noBacklinks" = "Bağlantılı bahsetme yok.";
+"memory.reveal" = "Finder'da .mem klasörünü göster";
+"memory.refresh" = "Yenile";
+"memory.graph" = "Grafik";
+"memory.selectNote" = "Görüntülemek için bir not seçin.";

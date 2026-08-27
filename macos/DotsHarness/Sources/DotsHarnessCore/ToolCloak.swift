@@ -10,14 +10,12 @@ import Foundation
 public enum ToolCloak {
     public static let suffix = "_cc"
 
-    private static func decoyTools() -> [[String: Any]] {
-        [
-            ["name": "Read", "description": "Read a file from the filesystem.",
-             "input_schema": ["type": "object", "properties": ["file_path": ["type": "string"]], "required": ["file_path"]]],
-            ["name": "Bash", "description": "Run a shell command.",
-             "input_schema": ["type": "object", "properties": ["command": ["type": "string"]], "required": ["command"]]],
-        ]
-    }
+    private static let decoyTools: [[String: Any]] = [
+        ["name": "Read", "description": "Read a file from the filesystem.",
+         "input_schema": ["type": "object", "properties": ["file_path": ["type": "string"]], "required": ["file_path"]]],
+        ["name": "Bash", "description": "Run a shell command.",
+         "input_schema": ["type": "object", "properties": ["command": ["type": "string"]], "required": ["command"]]],
+    ]
 
     /// Rewrites `body` in place. Returns true if anything was cloaked.
     @discardableResult
@@ -33,7 +31,7 @@ public enum ToolCloak {
             copy["name"] = name + suffix
             return copy
         }
-        for decoy in decoyTools() where !renamed.contains(decoy["name"] as? String ?? "") {
+        for decoy in decoyTools where !renamed.contains(decoy["name"] as? String ?? "") {
             tools.append(decoy)
         }
         body["tools"] = tools

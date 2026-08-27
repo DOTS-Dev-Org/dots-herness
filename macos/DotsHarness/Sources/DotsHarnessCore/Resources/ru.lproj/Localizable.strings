@@ -288,6 +288,15 @@
 "slash.planDetail" = "Включить режим плана";
 "slash.mascot" = "Pet";
 "slash.mascotDetail" = "Разбудить или скрыть Pet";
+"slash.loop" = "Loop";
+"slash.loopDetail" = "Repeat a prompt on a schedule";
+"common.save" = "Save";
+"goal.dialogTitle" = "Session goal";
+"goal.dialogBody" = "Describe what this session should work toward. Leave blank to clear.";
+"loop.dialogTitle" = "Loop a prompt";
+"loop.dialogBody" = "Re-run an instruction on a fixed interval. Manage it later in Tasks.";
+"loop.minutesLabel" = "Every (minutes)";
+"loop.instructionLabel" = "Instruction";
 "skill.documentsDetail" = "Создавать и редактировать файлы Word и Google Docs";
 "skill.pdfDetail" = "Читать, создавать и проверять PDF-файлы";
 "skill.spreadsheetsDetail" = "Создавать и редактировать таблицы";
@@ -562,3 +571,19 @@
 "tasks.cancel" = "Cancel";
 "tasks.background" = "Run tasks while the app is closed";
 "tasks.background.hint" = "Installs a background helper (launchd) that runs due tasks even when Dots Harness is not open.";
+
+/* Memory vault */
+"settings.tab.memory" = "Память";
+"memory.vault.title" = "Хранилище памяти";
+"memory.notInitialized" = "Память начинается после первого запроса в этом рабочем пространстве.";
+"memory.section.map" = "Карта";
+"memory.section.index" = "Индекс";
+"memory.section.tasks" = "Задачи";
+"memory.section.decisions" = "Решения";
+"memory.section.preferences" = "Настройки";
+"memory.backlinks" = "Связанные упоминания";
+"memory.noBacklinks" = "Нет связанных упоминаний.";
+"memory.reveal" = "Показать .mem в Finder";
+"memory.refresh" = "Обновить";
+"memory.graph" = "Граф";
+"memory.selectNote" = "Выберите заметку для просмотра.";

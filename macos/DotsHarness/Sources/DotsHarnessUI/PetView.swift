@@ -168,6 +168,7 @@ struct PetFloatingOverlay: View {
     @State private var isFloating = false
     @State private var isPulsing = false
     @State private var isDragging = false
+    @State private var isBreathingActive = true
 
     init(
         model: AppModel,
@@ -208,13 +209,11 @@ struct PetFloatingOverlay: View {
                         .scaleEffect(voiceInput.isListening && isFloating ? 1.06 : 1)
                 }
 
-                PetAssets.image(for: selectedAvatar.id)
-                    .resizable()
-                    .interpolation(.none)
-                    .scaledToFit()
+                PetAvatarImage(id: selectedAvatar.id)
                     .frame(width: CGFloat(petSize), height: CGFloat(petSize))
                     .scaleEffect(isPulsing && !isDragging ? 1.09 : 1)
-                    .rotationEffect(.degrees(isDragging ? 0 : (isFloating ? 1.5 : -1.5)))
+                    // ponytail: bob only. rotationEffect on a raster image forces a
+                    // re-rasterize + shadow-blur recompute every animation frame.
                     .offset(y: isDragging ? 0 : (isFloating ? -3 : 3))
                     .shadow(color: selectedAvatar.accent.opacity(0.32), radius: 10, y: 5)
 
@@ -271,11 +270,25 @@ struct PetFloatingOverlay: View {
                         isDragging = false
                     }
             )
-            .onAppear {
-                withAnimation(.easeInOut(duration: 2.1).repeatForever(autoreverses: true)) {
-                    isFloating = true
-                }
+            .onAppear { startBreathing() }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+                // App not frontmost: kill the repeatForever loop so the pet costs
+                // zero CPU/GPU while the user is working elsewhere.
+                isBreathingActive = false
+                withAnimation(.easeOut(duration: 0.3)) { isFloating = false }
             }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                guard !isBreathingActive else { return }
+                isBreathingActive = true
+                startBreathing()
+            }
+        }
+    }
+
+    private func startBreathing() {
+        guard isBreathingActive else { return }
+        withAnimation(.easeInOut(duration: 2.1).repeatForever(autoreverses: true)) {
+            isFloating = true
         }
     }
 
@@ -400,10 +413,7 @@ struct PetSettingsView: View {
                     showAvatarPicker = true
                 } label: {
                     HStack(spacing: 12) {
-                        PetAssets.image(for: selectedAvatar.id)
-                            .resizable()
-                            .interpolation(.none)
-                            .scaledToFit()
+                        PetAvatarImage(id: selectedAvatar.id)
                             .frame(width: 54, height: 54)
 
                         VStack(alignment: .leading, spacing: 3) {
@@ -544,10 +554,7 @@ struct PetSettingsView: View {
                         showAvatarPicker = false
                     } label: {
                         VStack(spacing: 4) {
-                            PetAssets.image(for: avatar.id)
-                                .resizable()
-                                .interpolation(.none)
-                                .scaledToFit()
+                            PetAvatarImage(id: avatar.id)
                                 .frame(width: 58, height: 58)
 
                             Text(avatar.name)
@@ -598,13 +605,38 @@ struct PetSettingsView: View {
     }
 }
 
-private enum PetAssets {
-    static func image(for id: Int) -> Image {
-        guard let url = Bundle.module.url(forResource: "pet-\(id)", withExtension: "png"),
-              let image = NSImage(contentsOf: url) else {
-            return Image(systemName: "pawprint.fill")
+enum PetAssets {
+    // Avatars live on the aiwatcher CDN (preset-N.webp, N == avatar id). Fetched
+    // once via AsyncImage + URLCache, then served from disk/memory — no PNGs in
+    // the app bundle. See DotsHarnessApp for the persistent URLCache setup.
+    private static let base = URL(string: "https://aiwatcher.dots.net.tr/assets/presets/")!
+
+    static func url(for id: Int) -> URL {
+        base.appendingPathComponent("preset-\(id).webp")
+    }
+
+    /// First-paint / offline fallback: bundled PNG if still shipped, else a symbol.
+    static func fallback(for id: Int) -> Image {
+        if let url = Bundle.module.url(forResource: "pet-\(id)", withExtension: "png"),
+           let image = NSImage(contentsOf: url) {
+            return Image(nsImage: image)
         }
-        return Image(nsImage: image)
+        return Image(systemName: "pawprint.fill")
+    }
+}
+
+struct PetAvatarImage: View {
+    let id: Int
+
+    var body: some View {
+        AsyncImage(url: PetAssets.url(for: id), transaction: Transaction(animation: nil)) { phase in
+            switch phase {
+            case .success(let image):
+                image.resizable().interpolation(.none).scaledToFit()
+            default:
+                PetAssets.fallback(for: id).resizable().interpolation(.none).scaledToFit()
+            }
+        }
     }
 }
 

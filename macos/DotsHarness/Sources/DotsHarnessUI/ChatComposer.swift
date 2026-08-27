@@ -161,7 +161,11 @@ struct ChatComposer: View {
                 AttachmentMenu(
                     onChooseFiles: chooseFiles,
                     onChooseWorkspace: model.chooseWorkspace,
-                    onOpenSkills: openSkillsFromAttachmentMenu
+                    onOpenSkills: openSkillsFromAttachmentMenu,
+                    onSetGoal: {
+                        showAttachmentMenu = false
+                        promptForGoal()
+                    }
                 )
             }
             .help(AppCopy.text("composer.add"))
@@ -307,6 +311,7 @@ struct ChatComposer: View {
             SlashCommand(id: "status", title: AppCopy.text("slash.status"), detail: AppCopy.text("slash.statusDetail"), icon: "gauge", kind: .setting),
             SlashCommand(id: "feedback", title: AppCopy.text("slash.feedback"), detail: AppCopy.text("slash.feedbackDetail"), icon: "bubble.left.and.exclamationmark.bubble.right", kind: .setting),
             SlashCommand(id: "goal", title: AppCopy.text("slash.goal"), detail: AppCopy.text("slash.goalDetail"), icon: "scope", kind: .setting),
+            SlashCommand(id: "loop", title: AppCopy.text("slash.loop"), detail: AppCopy.text("slash.loopDetail"), icon: "repeat", kind: .setting),
             SlashCommand(id: "speed", title: AppCopy.text("slash.speed"), detail: AppCopy.text("slash.speedDetail"), icon: "bolt", kind: .setting),
             SlashCommand(id: "billing", title: AppCopy.text("slash.billing"), detail: AppCopy.text("slash.billingDetail"), icon: "chart.bar", kind: .setting),
             SlashCommand(id: "mcp", title: AppCopy.text("slash.mcp"), detail: AppCopy.text("slash.mcpDetail"), icon: "point.3.connected.trianglepath.dotted", kind: .setting),
@@ -356,6 +361,10 @@ struct ChatComposer: View {
         switch command.id {
         case "model":
             showModelMenu = true
+        case "goal":
+            promptForGoal()
+        case "loop":
+            promptForLoop()
         case "project":
             model.chooseWorkspace()
         case "reasoning":
@@ -377,6 +386,66 @@ struct ChatComposer: View {
         guard let slashToken,
               let range = model.draft.range(of: slashToken, options: .backwards) else { return }
         model.draft.replaceSubrange(range, with: replacement)
+    }
+
+    private func promptForGoal() {
+        let alert = NSAlert()
+        alert.messageText = AppCopy.text("goal.dialogTitle")
+        alert.informativeText = AppCopy.text("goal.dialogBody")
+        alert.addButton(withTitle: AppCopy.text("common.save"))
+        alert.addButton(withTitle: AppCopy.text("common.cancel"))
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
+        field.stringValue = model.sessionGoal
+        field.placeholderString = AppCopy.text("slash.goalDetail")
+        alert.accessoryView = field
+        alert.window.initialFirstResponder = field
+        if alert.runModal() == .alertFirstButtonReturn {
+            model.setSessionGoal(field.stringValue)
+        }
+    }
+
+    private func promptForLoop() {
+        let alert = NSAlert()
+        alert.messageText = AppCopy.text("loop.dialogTitle")
+        alert.informativeText = AppCopy.text("loop.dialogBody")
+        alert.addButton(withTitle: AppCopy.text("common.save"))
+        alert.addButton(withTitle: AppCopy.text("common.cancel"))
+
+        let minutes = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
+        minutes.stringValue = "30"
+        let instruction = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
+        instruction.stringValue = model.draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        instruction.placeholderString = AppCopy.text("loop.instructionLabel")
+
+        let stack = NSStackView(views: [
+            labeledField(AppCopy.text("loop.minutesLabel"), minutes),
+            labeledField(AppCopy.text("loop.instructionLabel"), instruction),
+        ])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 8
+        stack.frame = NSRect(x: 0, y: 0, width: 320, height: 96)
+        alert.accessoryView = stack
+        alert.window.initialFirstResponder = instruction.stringValue.isEmpty ? instruction : minutes
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let mins = max(1, Int(minutes.stringValue.trimmingCharacters(in: .whitespaces)) ?? 30)
+        let text = instruction.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        model.createLoopTask(everyMinutes: mins, instruction: text)
+        model.draft = ""
+        model.presentTasks()
+    }
+
+    private func labeledField(_ title: String, _ field: NSView) -> NSView {
+        let label = NSTextField(labelWithString: title)
+        label.font = .preferredFont(forTextStyle: .caption1)
+        label.textColor = .secondaryLabelColor
+        let row = NSStackView(views: [label, field])
+        row.orientation = .vertical
+        row.alignment = .leading
+        row.spacing = 2
+        return row
     }
 
     private func openSkillsFromAttachmentMenu() {
@@ -615,6 +684,7 @@ private struct AttachmentMenu: View {
     let onChooseFiles: () -> Void
     let onChooseWorkspace: () -> Void
     let onOpenSkills: () -> Void
+    let onSetGoal: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -626,7 +696,7 @@ private struct AttachmentMenu: View {
             attachmentRow(icon: "paperclip", title: AppCopy.text("attachment.files"), action: onChooseFiles)
             attachmentRow(icon: "rectangle.stack", title: AppCopy.text("attachment.addApp")) {}
             attachmentRow(icon: "folder", title: AppCopy.text("attachment.project"), detail: AppCopy.text("attachment.projectDetail"), action: onChooseWorkspace)
-            attachmentRow(icon: "scope", title: AppCopy.text("attachment.goal"), detail: AppCopy.text("attachment.goalDetail")) {}
+            attachmentRow(icon: "scope", title: AppCopy.text("attachment.goal"), detail: AppCopy.text("attachment.goalDetail"), action: onSetGoal)
             attachmentRow(icon: "lightbulb", title: AppCopy.text("attachment.plan"), detail: AppCopy.text("attachment.planDetail")) {}
             attachmentRow(icon: "target", title: AppCopy.text("attachment.saveSkill"), action: onOpenSkills)
 
