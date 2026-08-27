@@ -500,6 +500,8 @@
 
 /* iOS simulator panel */
 "simulator.title" = "iOS Simülatörü";
+"simulator.running" = "Çalışan simülatörler";
+"simulator.stopped" = "Kapalı simülatörler";
 "simulator.close" = "Simülatör panelini kapat";
 "simulator.home" = "Ana ekran";
 "simulator.lock" = "Kilitle";

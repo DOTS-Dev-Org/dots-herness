@@ -2,6 +2,7 @@
 // Standalone plugin contract for Dots Harness.
 
 import Foundation
+import SwiftUI
 
 /// Live host handle. Never serialize this object.
 @MainActor
@@ -57,6 +58,13 @@ public final class ManifestPlugin: HarnessPlugin {
     }
 
     public func apply(_ ctx: PluginContext) throws {
+        applyPromptSection(ctx)
+        try applyTools(ctx)
+        applyPanels(ctx)
+    }
+
+    @MainActor
+    private func applyPromptSection(_ ctx: PluginContext) {
         guard let spec = resolved.promptSection else { return }
         let text: String
         if let raw = spec.text, !raw.isEmpty {
@@ -68,5 +76,45 @@ public final class ManifestPlugin: HarnessPlugin {
         }
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         ctx.prompt.section(name: spec.name, order: spec.order, text: text)
+    }
+
+    @MainActor
+    private func applyTools(_ ctx: PluginContext) throws {
+        for spec in resolved.tools {
+            if spec.action.needsTrust, ctx.trust == .untrusted {
+                throw PluginError.applyFailed("tool \(spec.name): \(spec.action.kind) actions need a trusted plugin")
+            }
+            let action = spec.action
+            ctx.tools.register(
+                name: spec.name,
+                description: spec.description,
+                parameters: spec.parameters.map {
+                    ToolParameter(name: $0.name, type: $0.type, description: $0.description, required: $0.required)
+                }
+            ) { [weak ctx] args in
+                switch action.kind {
+                case "emit":
+                    guard let event = action.event else { throw PluginError.applyFailed("emit action needs an event") }
+                    let payload = DeclarativeShell.subst(action.payload ?? "", args)
+                    await MainActor.run { ctx?.events.emit(event, payload) }
+                    return "emitted \(event)"
+                case "shell":
+                    return try DeclarativeShell.shell(action.command ?? [], args)
+                case "http":
+                    return try await DeclarativeShell.http(action, args)
+                default:
+                    throw PluginError.applyFailed("unknown action kind \(action.kind)")
+                }
+            }
+        }
+    }
+
+    @MainActor
+    private func applyPanels(_ ctx: PluginContext) {
+        for panel in resolved.panels {
+            ctx.slots.inject(panel.slot, id: panel.id, order: panel.order, label: panel.label) {
+                PanelView(node: panel.body, ctx: ctx)
+            }
+        }
     }
 }

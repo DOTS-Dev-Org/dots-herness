@@ -517,6 +517,8 @@
 
 /* iOS simulator panel */
 "simulator.title" = "iOS Simulator";
+"simulator.running" = "Running simulators";
+"simulator.stopped" = "Stopped simulators";
 "simulator.close" = "Close the simulator panel";
 "simulator.home" = "Home";
 "simulator.lock" = "Lock";

@@ -6,6 +6,25 @@ import ApplicationServices
 import Combine
 import CoreGraphics
 import Foundation
+import ImageIO
+
+/// High-frequency frame state lives outside `SimulatorController` so the
+/// complete simulator panel does not recompute its SwiftUI body for every
+/// captured frame.
+@MainActor
+public final class SimulatorFrameStore: ObservableObject {
+    @Published public private(set) var image: CGImage?
+
+    public init() {}
+
+    public func set(_ image: CGImage) {
+        self.image = image
+    }
+
+    public func clear() {
+        image = nil
+    }
+}
 
 @MainActor
 public final class SimulatorController: ObservableObject {
@@ -32,9 +51,12 @@ public final class SimulatorController: ObservableObject {
         /// trade-off. The frame delivery layer also drops stale frames.
         public var queueDepth: Int {
             switch self {
-            case .low: return 2
-            case .balanced: return 3
-            case .smooth: return 5
+            // Apple documents three frames as ScreenCaptureKit's minimum
+            // queue depth. Keep low latency at that floor instead of asking
+            // the framework for an unsupported smaller buffer.
+            case .low: return 3
+            case .balanced: return 4
+            case .smooth: return 6
             }
         }
     }
@@ -73,11 +95,10 @@ public final class SimulatorController: ObservableObject {
     }
 
     @Published public private(set) var devices: [SimulatorDevice] = []
-    @Published public private(set) var frame: NSImage?
+    public let frameStore = SimulatorFrameStore()
     @Published public private(set) var isStreaming = false
     @Published public private(set) var isBusy = false
     @Published public private(set) var status: String = ""
-    @Published public private(set) var measuredFPS: Double = 0
     @Published public private(set) var captureBackend: CaptureBackend = .screenCaptureKit
     @Published public var captureRate: CaptureRate = .thirty {
         didSet {
@@ -100,10 +121,14 @@ public final class SimulatorController: ObservableObject {
     @Published public var selectedDeviceID: String? {
         didSet {
             guard selectedDeviceID != oldValue else { return }
-            frame = nil
+            frameStore.clear()
             hidInput = nil
             hidInputDeviceID = nil
-            restartStreamIfNeeded()
+            if selectedDevice?.isBooted == true {
+                restartStreamIfNeeded()
+            } else {
+                stopStream()
+            }
         }
     }
 
@@ -115,7 +140,6 @@ public final class SimulatorController: ObservableObject {
     private var startupTask: Task<Void, Never>?
     private var liveCapture: SimulatorScreenCapture?
     private var streamToken = UUID()
-    private var frameTimestamps: [Date] = []
     private var captureScreenRect: CGRect?
     private var hidInput: SimulatorHIDInput?
     private var hidInputDeviceID: String?
@@ -161,7 +185,9 @@ public final class SimulatorController: ObservableObject {
         hidInputDeviceID = nil
         await perform("simulator.booting") { try SimulatorService.boot(udid) }
         await refreshDevices()
+        guard isSelectedDeviceBooted else { return }
         await relocateSimulatorWindowOffscreen()
+        stopStream()
         startStream()
     }
 
@@ -171,7 +197,7 @@ public final class SimulatorController: ObservableObject {
         hidInputDeviceID = nil
         stopStream()
         await perform("simulator.shuttingDown") { try SimulatorService.shutdown(udid) }
-        frame = nil
+        frameStore.clear()
         await refreshDevices()
     }
 
@@ -187,8 +213,6 @@ public final class SimulatorController: ObservableObject {
         let token = UUID()
         streamToken = token
         isStreaming = true
-        measuredFPS = 0
-        frameTimestamps.removeAll()
         captureScreenRect = nil
         captureBackend = .screenCaptureKit
 
@@ -215,8 +239,6 @@ public final class SimulatorController: ObservableObject {
         }
 
         isStreaming = false
-        measuredFPS = 0
-        frameTimestamps.removeAll()
         captureScreenRect = nil
     }
 
@@ -316,7 +338,7 @@ public final class SimulatorController: ObservableObject {
                 do {
                     let data = try await self.background { try SimulatorService.screenshot(udid) }
                     guard !Task.isCancelled, self.isCurrentStream(token) else { return }
-                    if let image = NSImage(data: data) {
+                    if let image = Self.decodeImage(data) {
                         self.acceptFrame(image)
                     }
                 } catch {
@@ -342,21 +364,13 @@ public final class SimulatorController: ObservableObject {
         isStreaming && streamToken == token
     }
 
-    private func acceptFrame(_ image: NSImage) {
-        frame = image
-        let now = Date()
-        frameTimestamps.append(now)
-        frameTimestamps.removeAll { now.timeIntervalSince($0) > 2 }
-        measuredFPS = frameTimestamps.count > 1
-            ? Double(frameTimestamps.count - 1) / max(now.timeIntervalSince(frameTimestamps[0]), 0.001)
-            : 0
+    private func acceptFrame(_ image: CGImage) {
+        frameStore.set(image)
     }
 
-    private func acceptFrame(_ image: CGImage) {
-        acceptFrame(NSImage(
-            cgImage: image,
-            size: NSSize(width: image.width, height: image.height)
-        ))
+    private static func decodeImage(_ data: Data) -> CGImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        return CGImageSourceCreateImageAtIndex(source, 0, nil)
     }
 
     private func reportStreamFailure(_ error: Error) {
@@ -415,16 +429,17 @@ public final class SimulatorController: ObservableObject {
 
     /// - Parameter point: position inside the streamed frame, in image points.
     public func tap(at point: CGPoint) {
-        guard let image = frame else { return }
+        guard let image = frameStore.image else { return }
+        let imageSize = CGSize(width: image.width, height: image.height)
         if isInputTrusted,
-           let screenPoint = screenPoint(for: point, imageSize: image.size),
+           let screenPoint = screenPoint(for: point, imageSize: imageSize),
            pressSimulatorElement(at: screenPoint) {
             return
         }
 
         guard let udid = selectedDeviceID,
               let input = hidInput(for: udid),
-              input.tap(at: point, size: image.size) else {
+              input.tap(at: point, size: imageSize) else {
             if !isInputTrusted {
                 status = AppCopy.text("simulator.accessibilityRequired")
                 requestAccessibilityPermission()
@@ -436,10 +451,14 @@ public final class SimulatorController: ObservableObject {
     }
 
     public func swipe(from start: CGPoint, to end: CGPoint) {
-        guard let image = frame,
+        guard let image = frameStore.image,
               let udid = selectedDeviceID,
               let input = hidInput(for: udid),
-              input.swipe(from: start, to: end, size: image.size) else {
+              input.swipe(
+                  from: start,
+                  to: end,
+                  size: CGSize(width: image.width, height: image.height)
+              ) else {
             status = AppCopy.text("simulator.inputFailed")
             return
         }

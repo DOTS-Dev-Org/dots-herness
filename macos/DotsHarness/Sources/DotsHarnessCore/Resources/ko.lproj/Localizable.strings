@@ -500,6 +500,8 @@
 
 /* iOS simulator panel */
 "simulator.title" = "iOS Simulator";
+"simulator.running" = "실행 중인 시뮬레이터";
+"simulator.stopped" = "종료된 시뮬레이터";
 "simulator.close" = "Close the simulator panel";
 "simulator.home" = "Home";
 "simulator.lock" = "Lock";

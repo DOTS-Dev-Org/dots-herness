@@ -10,6 +10,7 @@ let package = Package(
     products: [
         .executable(name: "DotsHarness", targets: ["DotsHarness"]),
         .executable(name: "DotsHarnessScheduler", targets: ["DotsHarnessScheduler"]),
+        .executable(name: "dotsplugin", targets: ["DotsPluginTool"]),
         .library(name: "HarnessPluginKit", type: .dynamic, targets: ["HarnessPluginKit"]),
         .library(name: "FableThinkingPlugin", type: .dynamic, targets: ["FableThinkingPlugin"]),
         .library(name: "HelloPlugin", type: .dynamic, targets: ["HelloPlugin"]),
@@ -63,6 +64,11 @@ let package = Package(
             ],
             path: "Sources/DotsHarness",
             resources: [.process("Resources")]
+        ),
+        .executableTarget(
+            name: "DotsPluginTool",
+            dependencies: ["DotsHarnessCore"],
+            path: "Sources/DotsPluginTool"
         ),
         .executableTarget(
             name: "DotsHarnessScheduler",

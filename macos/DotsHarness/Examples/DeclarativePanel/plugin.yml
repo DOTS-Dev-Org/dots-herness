@@ -1,0 +1,46 @@
+# Code-free plugin: a prompt section, one tool, one SwiftUI panel.
+# Drop this folder into ~/Library/Application Support/DotsHarness/plugins/
+id: com.example.declarative-panel
+name: Declarative Panel
+version: 0.1.0
+plane: session
+runtime: declarative
+
+promptSection:
+  name: panel:note
+  order: 40
+  text: The Declarative Panel example is mounted.
+
+tools:
+  - name: panel:ping
+    description: Fire a demo event on the bus.
+    action:
+      kind: emit
+      event: panel/ping
+      payload: pong
+  # shell / http actions need the plugin to be marked "trusted" by the user:
+  # - name: panel:date
+  #   action:
+  #     kind: shell
+  #     command:
+  #       - date
+
+panels:
+  - slot: conversation.composer.accessory
+    id: main
+    order: 10
+    label: Declarative Panel
+    body:
+      type: vstack
+      children:
+        - type: text
+          text: Hello from a code-free panel
+        - type: field
+          key: panel.note
+          placeholder: type something
+        - type: toggle
+          key: panel.enabled
+          label: Enabled
+        - type: button
+          label: Ping
+          tool: panel:ping

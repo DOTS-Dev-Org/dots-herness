@@ -41,6 +41,10 @@ public struct PluginManifest: Codable, Sendable, Equatable {
     public var description: String
     public var library: String?
     public var promptSection: PromptSectionSpec?
+    /// `native` (dylib / builtin), `declarative` (this file only), `js`.
+    public var runtime: String
+    public var tools: [ToolSpec]
+    public var panels: [PanelSpec]
 
     public static let currentABI = "1.0.0"
 
@@ -53,7 +57,10 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         inject: [String] = [],
         description: String = "",
         library: String? = nil,
-        promptSection: PromptSectionSpec? = nil
+        promptSection: PromptSectionSpec? = nil,
+        runtime: String = "native",
+        tools: [ToolSpec] = [],
+        panels: [PanelSpec] = []
     ) {
         self.id = id
         self.name = name
@@ -64,10 +71,14 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         self.description = description
         self.library = library
         self.promptSection = promptSection
+        self.runtime = runtime
+        self.tools = tools
+        self.panels = panels
     }
 
     enum CodingKeys: String, CodingKey {
         case id, name, version, abi, plane, inject, description, library, promptSection
+        case runtime, tools, panels
     }
 
     public init(from decoder: Decoder) throws {
@@ -81,6 +92,10 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
         library = try container.decodeIfPresent(String.self, forKey: .library)
         promptSection = try container.decodeIfPresent(PromptSectionSpec.self, forKey: .promptSection)
+        runtime = try container.decodeIfPresent(String.self, forKey: .runtime)
+            ?? (library == nil ? "declarative" : "native")
+        tools = try container.decodeIfPresent([ToolSpec].self, forKey: .tools) ?? []
+        panels = try container.decodeIfPresent([PanelSpec].self, forKey: .panels) ?? []
     }
 
     public var abiCompatible: Bool {

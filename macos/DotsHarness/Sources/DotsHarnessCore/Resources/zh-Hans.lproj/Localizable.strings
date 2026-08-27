@@ -500,6 +500,8 @@
 
 /* iOS simulator panel */
 "simulator.title" = "iOS Simulator";
+"simulator.running" = "正在运行的模拟器";
+"simulator.stopped" = "已关机的模拟器";
 "simulator.close" = "Close the simulator panel";
 "simulator.home" = "Home";
 "simulator.lock" = "Lock";

@@ -21,16 +21,24 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
 
     private let outputQueue = DispatchQueue(
         label: "com.dots.dotsharness.simulator.screen-capture",
+        qos: .userInteractive,
+        attributes: .concurrent
+    )
+    private let renderQueue = DispatchQueue(
+        label: "com.dots.dotsharness.simulator.screen-render",
         qos: .userInteractive
     )
     private let renderContext: CIContext
     private let frameDelivery: LatestFrameDelivery
     private let stateLock = NSLock()
+    private let processingLock = NSLock()
     private let displayAspectRatio: CGFloat?
     private let geometryHandler: GeometryHandler
     private var stream: SCStream?
     private var failureHandler: FailureHandler?
     private var isStopping = false
+    private var pendingPixelBuffer: CVPixelBuffer?
+    private var isDrainingFrames = false
     private var screenCrop: CGRect?
 
     private init(
@@ -144,11 +152,10 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
         guard type == .screen,
               CMSampleBufferIsValid(sampleBuffer),
               isCompleteFrame(sampleBuffer),
-              let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer),
-              let image = makeImage(from: pixelBuffer) else {
+              let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
             return
         }
-        frameDelivery.submit(image)
+        enqueue(pixelBuffer)
     }
 
     // MARK: - SCStreamDelegate
@@ -172,6 +179,48 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
         let shouldNotify = !isStopping
         stateLock.unlock()
         return shouldNotify
+    }
+
+    /// A concurrent callback queue lets newer sample buffers arrive while a
+    /// previous buffer is being rendered. Keep only the newest pending buffer
+    /// and drain it after the current conversion, so the renderer never works
+    /// through a stale frame backlog.
+    private func enqueue(_ pixelBuffer: CVPixelBuffer) {
+        processingLock.lock()
+        pendingPixelBuffer = pixelBuffer
+        let shouldDrain = !isDrainingFrames
+        isDrainingFrames = true
+        processingLock.unlock()
+
+        guard shouldDrain else { return }
+        renderQueue.async { [weak self] in
+            self?.drainPendingFrames()
+        }
+    }
+
+    private func drainPendingFrames() {
+        while true {
+            processingLock.lock()
+            let pixelBuffer = pendingPixelBuffer
+            pendingPixelBuffer = nil
+            if pixelBuffer == nil {
+                isDrainingFrames = false
+            }
+            processingLock.unlock()
+
+            guard let pixelBuffer else { return }
+            guard !shouldStopProcessing() else { continue }
+            let image = autoreleasepool { makeImage(from: pixelBuffer) }
+            guard let image else { continue }
+            frameDelivery.submit(image)
+        }
+    }
+
+    private func shouldStopProcessing() -> Bool {
+        stateLock.lock()
+        let shouldStop = isStopping
+        stateLock.unlock()
+        return shouldStop
     }
 
     // MARK: - Frames

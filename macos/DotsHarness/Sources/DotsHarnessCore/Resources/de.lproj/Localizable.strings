@@ -500,6 +500,8 @@
 
 /* iOS simulator panel */
 "simulator.title" = "iOS Simulator";
+"simulator.running" = "Laufende Simulatoren";
+"simulator.stopped" = "Ausgeschaltete Simulatoren";
 "simulator.close" = "Close the simulator panel";
 "simulator.home" = "Home";
 "simulator.lock" = "Lock";

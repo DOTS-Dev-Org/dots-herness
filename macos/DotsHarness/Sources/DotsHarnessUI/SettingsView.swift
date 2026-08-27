@@ -305,18 +305,23 @@ private struct WorkspaceAccessView: View {
 
 struct PluginSettingsView: View {
     @ObservedObject var model: AppModel
+    @State private var showMarketplace = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(AppCopy.text("settings.pluginsTitle")).font(.title2.weight(.semibold))
                 Spacer()
+                Button("Marketplace") { showMarketplace = true }
                 Button(AppCopy.text("settings.revealFolder")) {
                     NSWorkspace.shared.activateFileViewerSelecting([model.paths.plugins])
                 }
                 Button(AppCopy.text("settings.reload")) { model.remount() }
             }
             .padding()
+            .sheet(isPresented: $showMarketplace) {
+                MarketplaceView(model: model)
+            }
             Text(AppCopy.text("settings.pluginsHint"))
                 .font(.caption)
                 .foregroundStyle(.secondary)

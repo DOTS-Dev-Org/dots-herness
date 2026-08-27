@@ -89,6 +89,9 @@ public struct SupportPaths: Sendable {
         )
     }
 
+    /// Pinned publisher public keys for signed marketplace packages.
+    public var publishers: URL { root.appendingPathComponent("publishers.json") }
+
     public func ensure(fileManager: FileManager = .default) {
         try? fileManager.createDirectory(at: plugins, withIntermediateDirectories: true)
         try? fileManager.createDirectory(at: presets, withIntermediateDirectories: true)

@@ -4,6 +4,7 @@
 import SwiftUI
 import AppKit
 import DotsHarnessCore
+import QuartzCore
 
 public struct SimulatorPanelView: View {
     @ObservedObject var model: AppModel
@@ -49,14 +50,7 @@ public struct SimulatorPanelView: View {
                 .help(AppCopy.text("simulator.close"))
             }
 
-            Picker("", selection: $controller.selectedDeviceID) {
-                ForEach(controller.devices) { device in
-                    Text(device.title + (device.isBooted ? " ●" : ""))
-                        .tag(Optional(device.id))
-                }
-            }
-            .labelsHidden()
-            .disabled(controller.devices.isEmpty)
+            deviceMenu
 
             HStack(spacing: 8) {
                 Text(AppCopy.text("simulator.captureRate"))
@@ -71,12 +65,6 @@ public struct SimulatorPanelView: View {
                 .labelsHidden()
                 .frame(width: 88)
                 .help(AppCopy.text("simulator.captureRateHelp"))
-
-                Text(controller.measuredFPS > 0
-                     ? String(format: "%.1f", controller.measuredFPS)
-                     : "—")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
 
                 Text(AppCopy.text(controller.captureBackend.titleKey))
                     .font(.caption2)
@@ -123,30 +111,11 @@ public struct SimulatorPanelView: View {
         .padding(10)
     }
 
-    @ViewBuilder
     private var screen: some View {
-        ZStack {
-            Color(nsColor: .underPageBackgroundColor)
-            if let frame = controller.frame {
-                GeometryReader { geometry in
-                    DeviceBezelView(image: frame, containerSize: geometry.size) { start, end, drawnSize in
-                        send(start: start, end: end, in: drawnSize, image: frame.size)
-                    }
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-                }
-                .padding(16)
-            } else {
-                VStack(spacing: 10) {
-                    Image(systemName: "iphone.gen3")
-                        .font(.system(size: 36))
-                        .foregroundStyle(.secondary)
-                    Text(AppCopy.text("simulator.noFrame"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding()
-            }
+        SimulatorScreenPanel(frameStore: controller.frameStore) { start, end, viewSize, imageSize in
+            send(start: start, end: end, in: viewSize, image: imageSize)
+        }
+        .overlay {
             if controller.isBusy {
                 ProgressView().controlSize(.small)
             }
@@ -183,6 +152,66 @@ public struct SimulatorPanelView: View {
             }
         }
         .padding(10)
+    }
+
+    private var deviceMenu: some View {
+        Menu {
+            if !bootedDevices.isEmpty {
+                Section(AppCopy.text("simulator.running")) {
+                    ForEach(bootedDevices) { device in
+                        Button {
+                            controller.selectedDeviceID = device.id
+                        } label: {
+                            Label(
+                                device.title,
+                                systemImage: device.id == controller.selectedDeviceID
+                                    ? "checkmark.circle.fill"
+                                    : "circle.fill"
+                            )
+                        }
+                    }
+                }
+            }
+
+            if !shutdownDevices.isEmpty {
+                Section(AppCopy.text("simulator.stopped")) {
+                    ForEach(shutdownDevices) { device in
+                        Button {
+                            controller.selectedDeviceID = device.id
+                            Task { await controller.boot() }
+                        } label: {
+                            Label(device.title, systemImage: "play.fill")
+                        }
+                    }
+                }
+            }
+
+            if controller.devices.isEmpty {
+                Text(AppCopy.text("simulator.tool.noDevices"))
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: controller.isSelectedDeviceBooted ? "checkmark.circle.fill" : "play.circle")
+                    .foregroundStyle(controller.isSelectedDeviceBooted ? .green : .secondary)
+                Text(controller.selectedDevice?.title ?? AppCopy.text("simulator.tool.noDevices"))
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .menuStyle(.borderedButton)
+        .disabled(controller.devices.isEmpty || controller.isBusy)
+    }
+
+    private var bootedDevices: [SimulatorDevice] {
+        controller.devices.filter(\.isBooted)
+    }
+
+    private var shutdownDevices: [SimulatorDevice] {
+        controller.devices.filter { !$0.isBooted }
     }
 
     private func button(_ symbol: String, _ helpKey: String, action: @escaping () -> Void) -> some View {
@@ -224,11 +253,50 @@ public struct SimulatorPanelView: View {
     }
 }
 
+/// Observes only the high-frequency frame store. Keeping this subtree separate
+/// prevents the header, controls, and parent panel from being recomputed for
+/// every incoming frame.
+private struct SimulatorScreenPanel: View {
+    @ObservedObject var frameStore: SimulatorFrameStore
+    let onGesture: (CGPoint, CGPoint, CGSize, CGSize) -> Void
+
+    var body: some View {
+        ZStack {
+            Color(nsColor: .underPageBackgroundColor)
+            if let image = frameStore.image {
+                GeometryReader { geometry in
+                    DeviceBezelView(image: image, containerSize: geometry.size) { start, end, drawnSize in
+                        onGesture(
+                            start,
+                            end,
+                            drawnSize,
+                            CGSize(width: image.width, height: image.height)
+                        )
+                    }
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                }
+                .padding(16)
+            } else {
+                VStack(spacing: 10) {
+                    Image(systemName: "iphone.gen3")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.secondary)
+                    Text(AppCopy.text("simulator.noFrame"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding()
+            }
+        }
+    }
+}
+
 /// Draws the streamed frame inside a phone-shaped bezel — metal edge, notch,
 /// side buttons — sized to the image's own aspect ratio so the screen fills
 /// its slot exactly with no letterboxing.
 private struct DeviceBezelView: View {
-    let image: NSImage
+    let image: CGImage
     let containerSize: CGSize
     let onGesture: (CGPoint, CGPoint, CGSize) -> Void
 
@@ -236,7 +304,7 @@ private struct DeviceBezelView: View {
     private let cornerRadius: CGFloat = 44
 
     var body: some View {
-        let aspect = max(image.size.width, 1) / max(image.size.height, 1)
+        let aspect = max(CGFloat(image.width), 1) / max(CGFloat(image.height), 1)
         let outer = fittedSize(aspect: aspect, in: containerSize)
         let screenSize = CGSize(width: outer.width - bezelWidth * 2, height: outer.height - bezelWidth * 2)
         let screenRadius = max(cornerRadius - bezelWidth, 4)
@@ -247,9 +315,7 @@ private struct DeviceBezelView: View {
                 .frame(width: outer.width, height: outer.height)
                 .shadow(color: .black.opacity(0.45), radius: 22, y: 10)
 
-            Image(nsImage: image)
-                .resizable()
-                .interpolation(.high)
+            SimulatorFrameLayerView(image: image)
                 .frame(width: screenSize.width, height: screenSize.height)
                 .clipShape(RoundedRectangle(cornerRadius: screenRadius, style: .continuous))
                 .allowsHitTesting(false)
@@ -295,6 +361,55 @@ private struct DeviceBezelView: View {
             let width = container.width
             return CGSize(width: width, height: width / aspect)
         }
+    }
+}
+
+/// Presents the latest CGImage through a single AppKit layer update. SwiftUI
+/// still owns the surrounding bezel, while AppKit avoids rebuilding an image
+/// view hierarchy and allocating an NSImage wrapper for every frame.
+private struct SimulatorFrameLayerView: NSViewRepresentable {
+    let image: CGImage
+
+    func makeNSView(context: Context) -> SimulatorFrameLayerNSView {
+        let view = SimulatorFrameLayerNSView()
+        view.setImage(image)
+        return view
+    }
+
+    func updateNSView(_ nsView: SimulatorFrameLayerNSView, context: Context) {
+        nsView.setImage(image)
+    }
+}
+
+private final class SimulatorFrameLayerNSView: NSView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        configureLayer()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        configureLayer()
+    }
+
+    override func layout() {
+        super.layout()
+        layer?.frame = bounds
+    }
+
+    func setImage(_ image: CGImage) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        layer?.contents = image
+        CATransaction.commit()
+    }
+
+    private func configureLayer() {
+        wantsLayer = true
+        layer = CALayer()
+        layer?.contentsGravity = .resizeAspectFill
+        layer?.magnificationFilter = .linear
+        layer?.minificationFilter = .linear
     }
 }
 

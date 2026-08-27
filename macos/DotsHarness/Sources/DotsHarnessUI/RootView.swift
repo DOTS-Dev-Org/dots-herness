@@ -32,12 +32,8 @@ public struct RootView: View {
         .sheet(isPresented: $model.isTasksPresented) {
             TasksView(model: model)
         }
-        .task {
-            while !Task.isCancelled {
-                model.refreshVoiceModel()
-                try? await Task.sleep(for: .seconds(1))
-            }
-        }
+        .task { model.refreshVoiceModel() }
+        .onChange(of: model.voiceProvider) { _, _ in model.refreshVoiceModel() }
     }
 
     @ViewBuilder

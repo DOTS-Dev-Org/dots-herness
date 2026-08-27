@@ -105,6 +105,7 @@ public enum PluginError: Error, Sendable, Equatable, LocalizedError {
     case slotCollision(String)
     case invalidManifest(String)
     case invalidComposition(String)
+    case package(String)
 
     public var errorDescription: String? {
         switch self {
@@ -117,6 +118,7 @@ public enum PluginError: Error, Sendable, Equatable, LocalizedError {
         case .slotCollision(let message): return message
         case .invalidManifest(let message): return message
         case .invalidComposition(let message): return message
+        case .package(let message): return message
         }
     }
 }

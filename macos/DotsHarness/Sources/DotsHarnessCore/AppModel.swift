@@ -26,6 +26,11 @@ public final class AppModel: ObservableObject {
     public let bridge: AgentBridge
     public let router: RouterController
     public let endpoint: AgentEndpointController
+    public lazy var marketplace: MarketplaceClient = {
+        let raw = host.settings.get("marketplace.indexURL")?.string ?? MarketplaceClient.defaultIndex
+        let url = URL(string: raw) ?? URL(string: MarketplaceClient.defaultIndex)!
+        return MarketplaceClient(indexURL: url, catalog: catalog)
+    }()
     public lazy var local: LocalRuntimeController = LocalRuntimeController(paths: paths, router: router)
     public lazy var voice: LocalVoiceTranscriber = LocalVoiceTranscriber(paths: paths)
     public lazy var nemotron: NemotronRuntime = NemotronRuntime(paths: paths)
