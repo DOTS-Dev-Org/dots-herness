@@ -8,6 +8,7 @@ public enum PluginKind: String, Sendable {
     case builtin
     case manifest
     case dylib
+    case js
 }
 
 public struct CatalogEntry: Identifiable, Sendable {
@@ -147,7 +148,14 @@ public final class PluginCatalog: ObservableObject {
                 do {
                     let text = try String(contentsOf: yaml, encoding: .utf8)
                     let manifest = try MiniYAML.decode(PluginManifest.self, from: text)
-                    let kind: PluginKind = manifest.library == nil ? .manifest : .dylib
+                    let kind: PluginKind
+                    if manifest.library != nil {
+                        kind = .dylib
+                    } else if manifest.runtime == "js" || manifest.main != nil {
+                        kind = .js
+                    } else {
+                        kind = .manifest
+                    }
                     let trust = trustOverrides[manifest.id] ?? .untrusted
                     next.append(CatalogEntry(
                         manifest: manifest,
@@ -205,6 +213,11 @@ public final class PluginCatalog: ObservableObject {
         case .manifest:
             return ResolvedPlugin(manifest: entry.manifest, kind: .manifest, trust: entry.trust) {
                 ManifestPlugin(manifest: entry.manifest, directory: entry.url)
+            }
+        case .js:
+            let directory = entry.url
+            return ResolvedPlugin(manifest: entry.manifest, kind: .js, trust: entry.trust) {
+                JSPlugin(manifest: entry.manifest, directory: directory)
             }
         case .dylib:
             guard let folder = entry.url, let library = entry.manifest.library else {

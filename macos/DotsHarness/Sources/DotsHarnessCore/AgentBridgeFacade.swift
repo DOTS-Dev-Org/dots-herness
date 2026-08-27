@@ -25,6 +25,9 @@ public final class AgentBridge: ObservableObject {
     public var memoryDevicePublicKey: String? { host.memoryDevicePublicKey }
     public var workspaceMembers: [[String: String]] { host.workspaceMembers }
     public var pendingWorkspaceDecisions: [[String: Any]] { host.pendingWorkspaceDecisions }
+    public var memoryVault: MemoryVault { host.memoryVault }
+    public var memoryFolderURL: URL? { host.memoryFolderURL }
+    public var memoryReady: Bool { host.memoryReady }
     public var isReady: Bool { host.isReady }
 
     public init(paths: SupportPaths, endpoint: AgentEndpointController) {

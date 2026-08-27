@@ -5,6 +5,7 @@ import AppKit
 import SwiftUI
 import DotsHarnessCore
 import DotsHarnessUI
+import PluginRuntime
 import FableThinkingPlugin
 
 @main
@@ -12,6 +13,7 @@ struct DotsHarnessApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var model = AppModel(builtins: [
         FableThinkingPlugin.self,
+        PluginAuthorPlugin.self,
     ])
 
     init() {
