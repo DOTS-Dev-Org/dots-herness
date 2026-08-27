@@ -1,0 +1,10 @@
+id: com.example.note
+name: Note
+version: 0.1.0
+abi: 1.0.0
+plane: host
+description: Manifest-only plugin. No compiler required.
+promptSection:
+  name: note:remember
+  order: 40
+  file: prompt.md

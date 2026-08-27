@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>HarnessPluginKit</RootNamespace>
+    <Description>Locked plugin ABI 1.0.0 for DotsHarness on Linux.</Description>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,14 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="WindowBackground" Color="#F6F6F8"/>
+    <SolidColorBrush x:Key="PanelBackground" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="ChromeBackground" Color="#EEEFF1"/>
+    <SolidColorBrush x:Key="TextPrimary" Color="#1A1A1C"/>
+    <SolidColorBrush x:Key="TextSecondary" Color="#66666E"/>
+    <SolidColorBrush x:Key="Accent" Color="#2F6FED"/>
+    <SolidColorBrush x:Key="BubbleUser" Color="#E4EDFF"/>
+    <SolidColorBrush x:Key="BubbleAssistant" Color="#F0F0F2"/>
+    <SolidColorBrush x:Key="BubbleTool" Color="#FFF1D6"/>
+    <SolidColorBrush x:Key="BubbleSystem" Color="#FFE4E4"/>
+    <SolidColorBrush x:Key="BorderSubtle" Color="#E0E0E4"/>
+</ResourceDictionary>

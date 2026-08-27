@@ -1,0 +1,14 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="WindowBackground">#F6F6F8</SolidColorBrush>
+    <SolidColorBrush x:Key="PanelBackground">#FFFFFF</SolidColorBrush>
+    <SolidColorBrush x:Key="ChromeBackground">#EEEFF1</SolidColorBrush>
+    <SolidColorBrush x:Key="TextPrimary">#1A1A1C</SolidColorBrush>
+    <SolidColorBrush x:Key="TextSecondary">#66666E</SolidColorBrush>
+    <SolidColorBrush x:Key="Accent">#2F6FED</SolidColorBrush>
+    <SolidColorBrush x:Key="BubbleUser">#E4EDFF</SolidColorBrush>
+    <SolidColorBrush x:Key="BubbleAssistant">#F0F0F2</SolidColorBrush>
+    <SolidColorBrush x:Key="BubbleTool">#FFF1D6</SolidColorBrush>
+    <SolidColorBrush x:Key="BubbleSystem">#FFE4E4</SolidColorBrush>
+    <SolidColorBrush x:Key="BorderSubtle">#E0E0E4</SolidColorBrush>
+</ResourceDictionary>

@@ -1,0 +1,29 @@
+<UserControl x:Class="DotsHarness.Views.SettingsView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Background="{DynamicResource WindowBackground}">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="168"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <DockPanel Grid.Column="0" Background="{DynamicResource ChromeBackground}">
+            <Button DockPanel.Dock="Top" Content="← Back to chats" Click="OnBack"
+                    Margin="8,8,8,4" Padding="8,6" HorizontalContentAlignment="Left"/>
+            <ListBox x:Name="Tabs" SelectionChanged="OnTab"
+                     BorderThickness="0" Background="Transparent" Padding="8">
+                <ListBoxItem Content="General" Tag="general" IsSelected="True"/>
+                <ListBoxItem Content="Providers" Tag="providers"/>
+                <ListBoxItem Content="Custom API" Tag="custom"/>
+                <ListBoxItem Content="Local models" Tag="local"/>
+                <ListBoxItem Content="Share" Tag="share"/>
+                <ListBoxItem Content="Tasks" Tag="tasks"/>
+                <ListBoxItem Content="Plugins" Tag="plugins"/>
+                <ListBoxItem Content="Prompt" Tag="prompt"/>
+            </ListBox>
+        </DockPanel>
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="20">
+            <ContentControl x:Name="Body"/>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

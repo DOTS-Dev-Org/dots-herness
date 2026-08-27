@@ -1,0 +1,8 @@
+Dots Harness includes the following project dependencies and assets under
+their respective licenses:
+
+- Swift Package Manager runtime components included by this repository.
+- The bundled speech/runtime assets retain their upstream license notices.
+
+Provider logos are packaged local UI assets. No provider credential or
+external control-plane runtime is bundled.

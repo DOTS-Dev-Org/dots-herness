@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>DotsHarnessCore</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\..\shared\NativeProviderRouter.cs" Link="NativeProviderRouter.cs" />
+    <Compile Include="..\..\..\shared\NativeWorkspaceTools.cs" Link="NativeWorkspaceTools.cs" />
+    <Compile Include="..\..\..\shared\RouterException.cs" Link="RouterException.cs" />
+    <Compile Include="..\..\..\shared\CloudTunnel.cs" Link="CloudTunnel.cs" />
+    <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
+    <ProjectReference Include="..\PluginRuntime\PluginRuntime.csproj" />
+  </ItemGroup>
+</Project>

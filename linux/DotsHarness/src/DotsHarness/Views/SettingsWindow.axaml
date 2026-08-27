@@ -1,0 +1,28 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="DotsHarness.Views.SettingsWindow"
+        Title="Settings"
+        MinWidth="720" MinHeight="480"
+        Width="860" Height="600"
+        Background="{DynamicResource WindowBackground}">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="168"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <ListBox x:Name="Tabs" Grid.Column="0" SelectionChanged="OnTab"
+                 BorderThickness="0" Background="{DynamicResource ChromeBackground}" Padding="8">
+            <ListBoxItem Content="General" Tag="general" IsSelected="True"/>
+            <ListBoxItem Content="Providers" Tag="providers"/>
+            <ListBoxItem Content="Custom API" Tag="custom"/>
+            <ListBoxItem Content="Local models" Tag="local"/>
+            <ListBoxItem Content="Share" Tag="share"/>
+            <ListBoxItem Content="Tasks" Tag="tasks"/>
+            <ListBoxItem Content="Plugins" Tag="plugins"/>
+            <ListBoxItem Content="Prompt" Tag="prompt"/>
+        </ListBox>
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="20">
+            <ContentControl x:Name="Body"/>
+        </ScrollViewer>
+    </Grid>
+</Window>

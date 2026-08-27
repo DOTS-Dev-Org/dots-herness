@@ -1,0 +1,8 @@
+# Copy to:
+#   %AppData%\DotsHarness\host.patch.yml
+# then Settings → Plugins → Reload.
+#
+# - insert:
+#     - id: note
+#       plugin: com.example.note
+[]

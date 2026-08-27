@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>DotsHarnessScheduler</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>DotsHarnessScheduler</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\..\windows\DotsHarness\src\DotsHarnessScheduler\Program.cs" Link="Program.cs" />
+    <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
+    <ProjectReference Include="..\PluginRuntime\PluginRuntime.csproj" />
+    <ProjectReference Include="..\DotsHarnessCore\DotsHarnessCore.csproj" />
+    <ProjectReference Include="..\FableThinkingPlugin\FableThinkingPlugin.csproj" />
+  </ItemGroup>
+</Project>

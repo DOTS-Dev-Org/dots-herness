@@ -1,0 +1,16 @@
+.DS_Store
+
+# Build and package output
+**/.build/
+**/.swiftpm/
+**/dist/
+**/bin/
+**/obj/
+*.xcodeproj
+
+# Local editor and environment files
+.idea/
+.vscode/
+*.env
+*.env.*
+!.env.example

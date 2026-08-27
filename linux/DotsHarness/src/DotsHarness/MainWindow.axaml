@@ -1,0 +1,21 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:DotsHarness.Views"
+        x:Class="DotsHarness.MainWindow"
+        Title="Dots Harness"
+        MinWidth="960" MinHeight="640"
+        Width="1180" Height="760"
+        Background="{DynamicResource WindowBackground}">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="240" MinWidth="200"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <views:SidebarView x:Name="Sidebar" Grid.Column="0"/>
+        <views:ConversationView x:Name="Conversation" Grid.Column="1"/>
+        <views:SlotHost x:Name="OverlayHost"
+                        Grid.Column="0" Grid.ColumnSpan="2"
+                        ZIndex="20"
+                        IsHitTestVisible="True"/>
+    </Grid>
+</Window>

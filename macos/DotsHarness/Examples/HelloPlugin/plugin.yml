@@ -1,0 +1,10 @@
+id: com.example.hello
+name: Hello
+version: 0.1.0
+abi: 1.0.0
+plane: session
+inject:
+  - prompt
+  - slots
+description: Example third-party plugin. Prefer the manifest-only form below if you do not want to compile.
+library: HelloPlugin.dylib

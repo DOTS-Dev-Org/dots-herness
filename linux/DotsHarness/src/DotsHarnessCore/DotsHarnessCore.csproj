@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>DotsHarnessCore</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\..\shared\NativeProviderRouter.cs" Link="NativeProviderRouter.cs" />
+    <Compile Include="..\..\..\shared\NativeWorkspaceTools.cs" Link="NativeWorkspaceTools.cs" />
+    <Compile Include="..\..\..\shared\RouterException.cs" Link="RouterException.cs" />
+    <Compile Include="..\..\..\shared\CloudTunnel.cs" Link="CloudTunnel.cs" />
+    <Compile Include="..\..\..\windows\DotsHarness\src\DotsHarnessCore\RouterCatalog.cs" Link="RouterCatalog.cs" />
+    <Compile Include="..\..\..\windows\DotsHarness\src\DotsHarnessCore\RouterController.cs" Link="RouterController.cs" />
+    <Compile Include="..\..\..\windows\DotsHarness\src\DotsHarnessCore\AgentBridge.cs" Link="AgentBridge.cs" />
+    <Compile Include="..\..\..\windows\DotsHarness\src\DotsHarnessCore\CronExpression.cs" Link="CronExpression.cs" />
+    <Compile Include="..\..\..\windows\DotsHarness\src\DotsHarnessCore\ScheduledTask.cs" Link="ScheduledTask.cs" />
+    <Compile Include="..\..\..\windows\DotsHarness\src\DotsHarnessCore\HarnessScheduler.cs" Link="HarnessScheduler.cs" />
+    <Compile Include="..\..\..\windows\DotsHarness\src\DotsHarnessCore\ScheduledTaskRunner.cs" Link="ScheduledTaskRunner.cs" />
+    <Compile Include="..\..\..\windows\DotsHarness\src\DotsHarnessCore\SchedulerService.cs" Link="SchedulerService.cs" />
+    <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
+    <ProjectReference Include="..\PluginRuntime\PluginRuntime.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon />
+    <RootNamespace>DotsHarness</RootNamespace>
+    <AssemblyName>DotsHarness</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
+    <ProjectReference Include="..\PluginRuntime\PluginRuntime.csproj" />
+    <ProjectReference Include="..\DotsHarnessCore\DotsHarnessCore.csproj" />
+    <ProjectReference Include="..\FableThinkingPlugin\FableThinkingPlugin.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\presets\host.yml" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,96 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:DotsHarness.Views"
+             x:Class="DotsHarness.Views.ConversationView"
+             Background="{DynamicResource PanelBackground}">
+    <DockPanel>
+        <DockPanel DockPanel.Dock="Top" Margin="20,14,20,8">
+            <TextBlock x:Name="TitleText" FontSize="16" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+            <Button x:Name="StopButton" Content="Stop" HorizontalAlignment="Right"
+                    Padding="12,4" Click="OnStop" IsVisible="False"/>
+        </DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource ChromeBackground}" Padding="16">
+            <DockPanel>
+                <views:SlotHost x:Name="ComposerAccessory" DockPanel.Dock="Top" Margin="0,0,0,8"/>
+                <Button DockPanel.Dock="Right" Content="Send" Width="80" Height="36"
+                        Margin="8,0,0,0" Click="OnSend"/>
+                <TextBox x:Name="DraftBox"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         MinHeight="36" MaxHeight="140"
+                         Padding="10,8"
+                         KeyDown="OnDraftKey"/>
+            </DockPanel>
+        </Border>
+        <Border x:Name="QuestionBar" DockPanel.Dock="Bottom" Background="#142F6FED" Padding="12" IsVisible="False">
+            <DockPanel>
+                <TextBlock x:Name="QuestionPrompt" FontWeight="SemiBold" DockPanel.Dock="Top" Margin="0,0,0,8"
+                           Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
+                <WrapPanel x:Name="QuestionOptions"/>
+            </DockPanel>
+        </Border>
+        <Border x:Name="ApprovalBar" DockPanel.Dock="Bottom" Background="#22E67E22" Padding="12" IsVisible="False">
+            <DockPanel>
+                <StackPanel>
+                    <TextBlock x:Name="ApprovalTitle" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock x:Name="ApprovalReason" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Reject" Margin="0,0,8,0" Click="OnReject"/>
+                    <Button Content="Allow once" Click="OnAllow"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+        <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock x:Name="EmptyHint"
+                           Margin="24"
+                           FontSize="14"
+                           Foreground="{DynamicResource TextSecondary}"
+                           Text="Start a conversation from the sidebar."/>
+                <ItemsControl x:Name="Messages" Margin="24,8,24,24">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,0,12" Padding="12" CornerRadius="12"
+                                    Background="{Binding Kind, Converter={x:Static views:KindBrush.Instance}}">
+                                <StackPanel>
+                                    <DockPanel>
+                                        <TextBlock Text="{Binding Kind, Converter={x:Static views:KindLabel.Instance}}"
+                                                   FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextSecondary}"/>
+                                        <TextBlock Text="…" HorizontalAlignment="Right"
+                                                   IsVisible="{Binding Streaming}"/>
+                                    </DockPanel>
+                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                               Foreground="{DynamicResource TextPrimary}"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <ItemsControl x:Name="PendingMessages" Margin="24,0,24,24">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,0,12" Padding="12" CornerRadius="12"
+                                    Background="{DynamicResource BubbleUser}" Opacity="0.72">
+                                <StackPanel>
+                                    <DockPanel>
+                                        <TextBlock Text="{Binding Mode, Converter={x:Static views:PromptModeLabel.Instance}}"
+                                                   FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextSecondary}"/>
+                                        <TextBlock Text="{Binding Placement, Converter={x:Static views:PromptPlacementLabel.Instance}}"
+                                                   HorizontalAlignment="Right" FontSize="11"
+                                                   Foreground="{DynamicResource TextSecondary}"/>
+                                    </DockPanel>
+                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                               Foreground="{DynamicResource TextPrimary}"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

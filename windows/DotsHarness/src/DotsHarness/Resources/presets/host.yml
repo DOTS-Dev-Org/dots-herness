@@ -1,0 +1,4 @@
+plane: host
+entries:
+  - id: fable-thinking
+    plugin: dots.fable-thinking
