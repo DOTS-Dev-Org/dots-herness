@@ -190,6 +190,7 @@ public final class AppModel: ObservableObject {
             .store(in: &cancellables)
 
         host.provideService("appModel", appModelReference)
+        host.provideService("catalog", catalog)
         appModelReference.model = self
     }
 

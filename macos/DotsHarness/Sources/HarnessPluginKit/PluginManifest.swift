@@ -40,6 +40,8 @@ public struct PluginManifest: Codable, Sendable, Equatable {
     public var inject: [String]
     public var description: String
     public var library: String?
+    /// Entry script for `runtime: js` plugins (default `plugin.js`).
+    public var main: String?
     public var promptSection: PromptSectionSpec?
     /// `native` (dylib / builtin), `declarative` (this file only), `js`.
     public var runtime: String
@@ -57,6 +59,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         inject: [String] = [],
         description: String = "",
         library: String? = nil,
+        main: String? = nil,
         promptSection: PromptSectionSpec? = nil,
         runtime: String = "native",
         tools: [ToolSpec] = [],
@@ -70,6 +73,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         self.inject = inject
         self.description = description
         self.library = library
+        self.main = main
         self.promptSection = promptSection
         self.runtime = runtime
         self.tools = tools
@@ -77,7 +81,7 @@ public struct PluginManifest: Codable, Sendable, Equatable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, name, version, abi, plane, inject, description, library, promptSection
+        case id, name, version, abi, plane, inject, description, library, main, promptSection
         case runtime, tools, panels
     }
 
@@ -91,9 +95,11 @@ public struct PluginManifest: Codable, Sendable, Equatable {
         inject = try container.decodeIfPresent([String].self, forKey: .inject) ?? []
         description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
         library = try container.decodeIfPresent(String.self, forKey: .library)
+        main = try container.decodeIfPresent(String.self, forKey: .main)
+        let mainScript = main
         promptSection = try container.decodeIfPresent(PromptSectionSpec.self, forKey: .promptSection)
         runtime = try container.decodeIfPresent(String.self, forKey: .runtime)
-            ?? (library == nil ? "declarative" : "native")
+            ?? (library != nil ? "native" : (mainScript != nil ? "js" : "declarative"))
         tools = try container.decodeIfPresent([ToolSpec].self, forKey: .tools) ?? []
         panels = try container.decodeIfPresent([PanelSpec].self, forKey: .panels) ?? []
     }

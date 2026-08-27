@@ -1,0 +1,7 @@
+# JavaScript plugin. Sandboxed: only the `harness` bridge is available
+# (no fs, no network, no timers). As safe as a declarative plugin.
+id: com.example.js-panel
+name: JS Panel
+version: 0.1.0
+plane: session
+main: plugin.js
