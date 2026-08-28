@@ -5,6 +5,10 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Layout;
+using Avalonia.Threading;
+using DotsHarnessCore;
+using System.ComponentModel;
 using DotsHarness.Views;
 using HarnessPluginKit;
 
@@ -19,6 +23,7 @@ public partial class MainWindow : Window
         DataContext = model;
         Sidebar.DataContext = model;
         Conversation.DataContext = model;
+        model.PropertyChanged += OnModel;
         OverlayHost.Slot = WellKnownSlot.Overlay;
         OverlayHost.Registry = model.Host.Slots;
         KeyBindings.Add(new KeyBinding
@@ -26,8 +31,24 @@ public partial class MainWindow : Window
             Gesture = new KeyGesture(Key.OemComma, KeyModifiers.Control),
             Command = new RelayCommand(_ => new SettingsWindow { DataContext = model }.Show(this)),
         });
-        Title = "Dots Harness";
+        RefreshLocalization();
     }
+
+    private void OnModel(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(AppModel.Language) or nameof(AppModel.IsRightToLeft))) return;
+        Dispatcher.UIThread.Post(RefreshLocalization);
+    }
+
+    private void RefreshLocalization()
+    {
+        var model = ((App)Application.Current!).Model;
+        Title = model.L("app.title");
+        FlowDirection = model.IsRightToLeft ? Avalonia.Layout.FlowDirection.RightToLeft : Avalonia.Layout.FlowDirection.LeftToRight;
+        Sidebar.RefreshLocalization();
+    }
+
+    public void StopTerminal() => Conversation.StopTerminal();
 }
 
 internal sealed class RelayCommand : System.Windows.Input.ICommand

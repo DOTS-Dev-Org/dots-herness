@@ -10,17 +10,20 @@ public struct ScheduledTaskRunner {
     private let paths: SupportPaths
     private let router: RouterController
     private let endpoint: AgentEndpointController?
+    private let permissionMode: AgentPermissionMode
     private let systemPrompt: () -> String
 
     public init(
         paths: SupportPaths,
         router: RouterController,
         endpoint: AgentEndpointController? = nil,
+        permissionMode: AgentPermissionMode = .ask,
         systemPrompt: @escaping () -> String
     ) {
         self.paths = paths
         self.router = router
         self.endpoint = endpoint
+        self.permissionMode = permissionMode
         self.systemPrompt = systemPrompt
     }
 
@@ -37,9 +40,20 @@ public struct ScheduledTaskRunner {
 
         let host: AgentBridge
         if let endpoint {
-            host = AgentBridge(paths: paths, endpoint: endpoint, router: router)
+            host = AgentBridge(
+                paths: paths,
+                endpoint: endpoint,
+                router: router,
+                permissionMode: permissionMode,
+                nonInteractive: true
+            )
         } else {
-            host = AgentBridge(paths: paths, router: router)
+            host = AgentBridge(
+                paths: paths,
+                router: router,
+                permissionMode: permissionMode,
+                nonInteractive: true
+            )
         }
         host.updateSystemPrompt(systemPrompt())
         host.start(workspacePath: workspace)

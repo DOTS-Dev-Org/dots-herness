@@ -2,6 +2,8 @@
 // Native provider catalog and gateway contract tests.
 
 import XCTest
+import Foundation
+import PluginRuntime
 import DotsHarnessCore
 
 final class RouterAPITests: XCTestCase {
@@ -38,5 +40,41 @@ final class RouterAPITests: XCTestCase {
         let tunnel = RouterTunnel(enabled: true, running: true, tunnelURL: "http://127.0.0.1:18766/v1", publicURL: "", shortId: "", downloading: false, progress: 100)
         XCTAssertEqual(tunnel.shareURL, "http://127.0.0.1:18766/v1")
         XCTAssertTrue(tunnel.running)
+    }
+
+    @MainActor
+    func testMetadataConfigurationDoesNotRequireKeychainCredential() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("DotsHarnessTests-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = SupportPaths(
+            root: root,
+            plugins: root.appendingPathComponent("plugins", isDirectory: true),
+            presets: root.appendingPathComponent("presets", isDirectory: true),
+            settings: root.appendingPathComponent("settings.json"),
+            hostPatch: root.appendingPathComponent("host.patch.yml"),
+            trust: root.appendingPathComponent("trust.json"),
+            models: root.appendingPathComponent("models", isDirectory: true),
+            runtime: root.appendingPathComponent("runtime", isDirectory: true)
+        )
+        paths.ensure()
+
+        let account = StoredProviderAccount(
+            provider: "gpt",
+            name: "Test GPT",
+            authType: "chatgpt",
+            model: "gpt-5.6-luna",
+            baseURL: "https://chatgpt.com/backend-api/codex",
+            api: "chatgpt",
+            credentialID: "missing.\(UUID().uuidString)"
+        )
+        let stateURL = root.appendingPathComponent("provider-state.json")
+        try JSONEncoder().encode(StoredProviderState(accounts: [account])).write(to: stateURL)
+
+        let router = RouterController(paths: paths)
+        let configuration = await router.agentConfiguration(loadCredentials: false)
+        XCTAssertEqual(configuration?.baseURL, account.baseURL)
+        XCTAssertEqual(configuration?.model, account.model)
+        XCTAssertNil(configuration?.apiKey)
     }
 }

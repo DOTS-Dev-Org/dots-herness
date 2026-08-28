@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using HarnessPluginKit;
 using PluginRuntime;
 
 namespace DotsHarnessCore;
@@ -21,6 +22,8 @@ public sealed class RouterController : ObservableObject, IDisposable
 {
     private readonly NativeProviderStore _store;
     private readonly NativeProviderRouter _router;
+    private readonly ProviderImageAdapterRegistry _imageAdapters;
+    private readonly NativeProviderImageRouter _imageRouter;
     private readonly NativeProviderGateway _gateway;
     private readonly CloudTunnelProcess _tunnelProcess;
     private HttpListener? _callbackListener;
@@ -39,8 +42,11 @@ public sealed class RouterController : ObservableObject, IDisposable
     private CustomApiKind _customKind = CustomApiKind.OpenaiCompatible;
     private CustomOpenAiApiType _customApiType = CustomOpenAiApiType.Chat;
     private string? _editingNodeId;
+    private string _selectedModelID = "";
+    private readonly Dictionary<string, int> _contextWindows = new(StringComparer.Ordinal);
 
     public ObservableCollection<RouterConnection> Connections { get; } = new();
+    public ObservableCollection<string> Models { get; } = new();
     public ObservableCollection<RouterKey> Keys { get; } = new();
     public ObservableCollection<RouterNode> Nodes { get; } = new();
     public RouterFlow Flow { get => _flow; private set => SetProperty(ref _flow, value); }
@@ -58,24 +64,29 @@ public sealed class RouterController : ObservableObject, IDisposable
     public string CustomApiKey { get => _customApiKey; set => SetProperty(ref _customApiKey, value); }
     public CustomApiKind CustomKind { get => _customKind; set => SetProperty(ref _customKind, value); }
     public CustomOpenAiApiType CustomApiType { get => _customApiType; set => SetProperty(ref _customApiType, value); }
+    public string SelectedModelID { get => _selectedModelID; set => SetProperty(ref _selectedModelID, value?.Trim() ?? ""); }
     public bool IsEditingCustom => _editingNodeId is not null;
     public NativeProviderStore Store => _store;
+    public ProviderImageAdapterRegistry ImageAdapters => _imageAdapters;
 
-    public RouterController(SupportPaths paths)
+    public RouterController(SupportPaths paths, ProviderImageAdapterRegistry? imageAdapters = null)
     {
         paths.Ensure();
         _store = new NativeProviderStore(paths.Root, new PlatformProviderSecrets(paths.Root));
         _router = new NativeProviderRouter(_store, RefreshCredentialAsync);
+        _imageAdapters = imageAdapters ?? new ProviderImageAdapterRegistry();
+        NativeProviderImageAdapters.Register(_imageAdapters);
+        _imageRouter = new NativeProviderImageRouter(_store, _imageAdapters);
         _gateway = new NativeProviderGateway(18767, HandleGatewayAsync);
         _tunnelProcess = new CloudTunnelProcess(paths);
         RefreshState();
     }
 
-    public Task RefreshAsync()
+    public async Task RefreshAsync()
     {
         RefreshState();
+        await RefreshModelsAsync();
         Status = $"{Connections.Count(c => c.Active)} active · {Connections.Count} connections";
-        return Task.CompletedTask;
     }
 
     public Task StartConnectAsync() => SelectedKind.Kind switch
@@ -163,6 +174,12 @@ public sealed class RouterController : ObservableObject, IDisposable
     }
 
     public Task ToggleAsync(RouterConnection connection) { _store.SetActive(connection.Id, !connection.Active); return RefreshAsync(); }
+
+    public Task ToggleImageFallbackAsync(RouterConnection connection)
+    {
+        _store.SetImageFallback(connection.Id, !connection.ImageFallbackEnabled);
+        return RefreshAsync();
+    }
 
     public async Task TestAsync(RouterConnection connection)
     {
@@ -308,17 +325,144 @@ public sealed class RouterController : ObservableObject, IDisposable
 
     public Task CreateShareKeyAsync() { var key = CreateShareKey(); Keys.Clear(); Keys.Add(new RouterKey("share.key", "Share key", key)); return Task.CompletedTask; }
 
-    public Task<NativeResponse> CompleteAsync(IReadOnlyList<NativeMessage> messages, IReadOnlyList<NativeToolDefinition> tools, string? model = null, CancellationToken ct = default) => _router.CompleteAsync(messages, tools, model, ct);
+    public Task<NativeResponse> CompleteAsync(IReadOnlyList<NativeMessage> messages, IReadOnlyList<NativeToolDefinition> tools, string? model = null, CancellationToken ct = default) => _router.CompleteAsync(messages, tools, string.IsNullOrWhiteSpace(model) ? SelectedModelID : model, ct);
+    public bool HasImageFallback => _imageRouter.HasFallback;
+    public bool ImageGenerationCommandVisible => _imageRouter.CommandVisible(SelectedModelID);
+    public Task<NativeImageGeneration> GenerateImageAsync(string prompt, CancellationToken ct = default) => _imageRouter.GenerateAsync(prompt, SelectedModelID, ct);
     public bool HasActiveRoute => _store.State.Accounts.Any(a => a.Active);
-    public string CurrentProvider => _store.State.Accounts.Where(a => a.Active).OrderBy(a => a.Priority).Select(a => RouterCatalog.LabelFor(a.Provider)).FirstOrDefault() ?? "Provider";
-    public string CurrentModel => _store.State.Accounts.Where(a => a.Active).OrderBy(a => a.Priority).Select(a => a.Model).FirstOrDefault() ?? "";
+    public string CurrentProvider => CurrentAccount is { } account ? RouterCatalog.LabelFor(account.Provider) : "Provider";
+    public string CurrentModel => CurrentAccount is { } account
+        ? (CanServe(account, SelectedModelID) ? SelectedModelID : account.Model)
+        : "";
+
+    public int ContextWindowFor(string? model)
+    {
+        if (!string.IsNullOrWhiteSpace(model) && _contextWindows.TryGetValue(model, out var live) && live > 0) return live;
+        var account = _store.State.Accounts
+            .Where(a => a.Active)
+            .OrderBy(a => a.Priority)
+            .FirstOrDefault(a => CanServe(a, model))
+            ?? CurrentAccount;
+        return account?.Protocol switch
+        {
+            // Provider defaults are only a safety fallback; live context_length wins.
+            NativeProviderProtocol.Anthropic => 200_000,
+            NativeProviderProtocol.ChatGpt => 128_000,
+            _ => ContextCompaction.DefaultContextWindow,
+        };
+    }
+
+    public ContextBudget ContextBudgetFor(string? model, IReadOnlyList<NativeToolDefinition> tools) =>
+        ContextCompaction.Budget(ContextWindowFor(model), toolDefinitionTokens: ContextCompaction.EstimateTokens(tools));
+
+    public string? CompactionModelID(string? avoid)
+    {
+        var account = _store.State.Accounts
+            .Where(a => a.Active)
+            .OrderBy(a => a.Priority)
+            .FirstOrDefault(a => CanServe(a, SelectedModelID))
+            ?? CurrentAccount;
+        if (account is null) return null;
+        var candidates = ModelsFor(account)
+            .Where(model => !string.IsNullOrWhiteSpace(model))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(model => string.Equals(model, avoid, StringComparison.Ordinal) ? 1 : 0)
+            .ThenBy(model => IsCompactModel(model) ? 0 : 1)
+            .ToList();
+        return candidates.FirstOrDefault() ?? account.Model;
+    }
+
+    public bool PreserveProviderItems(string? model) =>
+        _store.State.Accounts.Any(account => account.Active
+            && account.Protocol == NativeProviderProtocol.ChatGpt
+            && CanServe(account, model));
+
+    private NativeProviderAccount? CurrentAccount => _store.State.Accounts
+        .Where(a => a.Active)
+        .OrderBy(a => a.Priority)
+        .FirstOrDefault(a => CanServe(a, SelectedModelID))
+        ?? _store.State.Accounts.Where(a => a.Active).OrderBy(a => a.Priority).FirstOrDefault();
 
     private void RefreshState()
     {
         Connections.Clear(); foreach (var account in _store.State.Accounts) Connections.Add(new RouterConnection(account));
+        Models.Clear();
+        foreach (var model in _store.State.Accounts.Where(a => a.Active).SelectMany(ModelsFor))
+        {
+            if (!Models.Contains(model, StringComparer.Ordinal)) Models.Add(model);
+        }
+        if (string.IsNullOrWhiteSpace(SelectedModelID))
+        {
+            SelectedModelID = Models.FirstOrDefault() ?? "";
+        }
         Nodes.Clear(); foreach (var endpoint in _store.State.Endpoints) Nodes.Add(new RouterNode(endpoint));
         Keys.Clear(); if (_store.Secrets.Read("share.key") is { } key) Keys.Add(new RouterKey("share.key", "Share key", key));
         Reachable = true; OnPropertyChanged(nameof(Reachable));
+    }
+
+    private async Task RefreshModelsAsync()
+    {
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
+        foreach (var account in _store.State.Accounts.Where(a => a.Active))
+        {
+            var fallback = ModelsFor(account).ToList();
+            if (account.Protocol == NativeProviderProtocol.ChatGpt) { account.Models = fallback; continue; }
+            try
+            {
+                var url = NativeProviderStore.NormalizeUrl(account.BaseUrl).TrimEnd('/') + "/models";
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                var key = _store.Secrets.Read(account.CredentialId);
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    if (account.Protocol == NativeProviderProtocol.Anthropic) request.Headers.TryAddWithoutValidation("x-api-key", key);
+                    else request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", key);
+                }
+                if (account.Protocol == NativeProviderProtocol.Anthropic) request.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
+                using var response = await http.SendAsync(request);
+                var root = JsonNode.Parse(await response.Content.ReadAsStringAsync());
+                var live = new List<string>();
+                if (response.IsSuccessStatusCode)
+                {
+                    foreach (var item in root?["data"]?.AsArray() ?? new JsonArray())
+                    {
+                        var id = item?["id"]?.GetValue<string>();
+                        if (string.IsNullOrWhiteSpace(id)) continue;
+                        var context = item?["context_length"]?.GetValue<int>() ?? item?["context_window"]?.GetValue<int>() ?? 0;
+                        if (context > 0) _contextWindows[id] = context;
+                        if (!live.Contains(id, StringComparer.Ordinal)) live.Add(id);
+                    }
+                }
+                account.Models = live.Count > 0 ? live : fallback;
+            }
+            catch { account.Models = fallback; }
+        }
+        _store.Save();
+        RefreshState();
+    }
+
+    private static IEnumerable<string> ModelsFor(NativeProviderAccount account)
+    {
+        if ((account.Models ?? []).Count > 0)
+        {
+            foreach (var model in account.Models.Where(model => !string.IsNullOrWhiteSpace(model))) yield return model;
+            yield break;
+        }
+        if (!string.IsNullOrWhiteSpace(account.Model)) yield return account.Model;
+        if (RouterCatalog.KindFor(account.Provider) is { DefaultModel: { Length: > 0 } fallback }) yield return fallback;
+    }
+
+    private static bool CanServe(NativeProviderAccount account, string? model) =>
+        string.IsNullOrWhiteSpace(model)
+        || string.Equals(account.Model, model, StringComparison.Ordinal)
+        || (account.Models ?? []).Contains(model, StringComparer.Ordinal)
+        || (account.Models ?? []).Count == 0
+            && string.Equals(RouterCatalog.KindFor(account.Provider)?.DefaultModel, model, StringComparison.Ordinal);
+
+    private static bool IsCompactModel(string model)
+    {
+        var id = model.ToLowerInvariant();
+        return id.Contains("mini") || id.Contains("nano") || id.Contains("haiku")
+            || id.Contains("flash") || id.Contains("lite") || id.Contains("small");
     }
 
     private string CreateShareKey()
@@ -333,7 +477,7 @@ public sealed class RouterController : ObservableObject, IDisposable
         if (string.IsNullOrEmpty(expected) || !string.Equals(request.Headers.GetValueOrDefault("authorization"), $"Bearer {expected}", StringComparison.Ordinal)) return JsonResponse(401, new { error = new { message = "A valid share key is required" } });
         if (request.Method == "GET" && request.Path == "/v1/models")
         {
-            var data = _store.State.Accounts.Where(a => a.Active).Select(a => new { id = a.Model, @object = "model", owned_by = RouterCatalog.LabelFor(a.Provider) });
+            var data = _store.State.Accounts.Where(a => a.Active).SelectMany(account => ModelsFor(account).Distinct(StringComparer.Ordinal).Select(model => new { id = model, @object = "model", owned_by = RouterCatalog.LabelFor(account.Provider) }));
             return JsonResponse(200, new { @object = "list", data });
         }
         if (request.Method != "POST" || request.Path != "/v1/chat/completions") return JsonResponse(404, new { error = new { message = "Not found" } });
@@ -349,7 +493,7 @@ public sealed class RouterController : ObservableObject, IDisposable
             if (response.Usage is { } usage) result["usage"] = new JsonObject { ["prompt_tokens"] = usage.InputTokens, ["completion_tokens"] = usage.OutputTokens, ["total_tokens"] = usage.InputTokens + usage.OutputTokens };
             return new NativeGatewayResponse(200, Encoding.UTF8.GetBytes(result.ToJsonString()));
         }
-        catch (NativeProviderException ex) { return JsonResponse(ex.StatusCode ?? 502, new { error = new { message = ex.Message } }); }
+        catch (NativeProviderException ex) { return JsonResponse(ex.StatusCode ?? 502, new { error = new { message = ex.Message, type = ex.IsLimit ? "provider_limit" : "provider_error" } }); }
         catch (Exception ex) { return JsonResponse(400, new { error = new { message = ex.Message } }); }
     }
 

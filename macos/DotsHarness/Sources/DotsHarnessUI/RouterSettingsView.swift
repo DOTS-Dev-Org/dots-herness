@@ -7,6 +7,9 @@ import DotsHarnessCore
 
 struct RouterProvidersView: View {
     @ObservedObject var router: RouterController
+    @State private var isProviderPickerPresented = false
+    @State private var isAPIKeyVisible = false
+    @FocusState private var isAPIKeyFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -16,13 +19,35 @@ struct RouterProvidersView: View {
             }
             Form {
                 Section(AppCopy.text("router.addAccount")) {
-                    Picker(AppCopy.text("router.provider"), selection: $router.selectedKind) {
-                        ForEach(RouterCatalog.providers) { kind in
-                            HStack(spacing: 8) {
-                                ProviderLogoView(name: kind.name, key: kind.logoSymbol)
-                                Text(kind.name)
+                    LabeledContent(AppCopy.text("router.provider")) {
+                        Button {
+                            isProviderPickerPresented.toggle()
+                        } label: {
+                            ZStack(alignment: .leading) {
+                                Text(router.selectedKind.name)
+                                    .lineLimit(1)
+                                    .padding(.leading, 38)
+                                    .padding(.trailing, 28)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                ProviderLogoView(name: router.selectedKind.name, providerID: router.selectedKind.id)
+                                HStack {
+                                    Spacer(minLength: 8)
+                                    Image(systemName: "chevron.up.chevron.down")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                }
                             }
-                            .tag(kind)
+                            .frame(width: 280, height: 28, alignment: .leading)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityValue(router.selectedKind.name)
+                        .popover(isPresented: $isProviderPickerPresented, arrowEdge: .bottom) {
+                            ProviderPickerPopover(
+                                providers: RouterCatalog.providers,
+                                selection: $router.selectedKind,
+                                isPresented: $isProviderPickerPresented
+                            )
                         }
                     }
                     Text(connectHint)
@@ -45,22 +70,28 @@ struct RouterProvidersView: View {
                     }
                 } else {
                     ForEach(RouterCatalog.groups(from: router.connections)) { group in
-                        Section(AppCopy.format(
-                            "router.accountSection",
-                            group.label,
-                            group.accounts.count,
-                            group.accounts.count == 1 ? AppCopy.text("router.account") : AppCopy.text("router.accounts")
-                        )) {
+                        Section {
                             ForEach(group.accounts) { connection in
                                 connectionRow(connection)
                             }
-                            Button(AppCopy.format("router.addAnotherProviderAccount", group.label)) {
-                                if let kind = RouterCatalog.kind(for: group.provider) {
-                                    router.selectedKind = kind
+                            if let kind = RouterCatalog.kind(for: group.provider) {
+                                HStack {
+                                    Spacer(minLength: 0)
+                                    Button {
+                                        router.selectedKind = kind
+                                        Task { await router.startConnect() }
+                                    } label: {
+                                        Image(systemName: "plus")
+                                            .frame(width: 24, height: 24)
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .help(AppCopy.text("router.addAnotherAccount"))
+                                    .accessibilityLabel(AppCopy.text("router.addAnotherAccount"))
+                                    .disabled(!router.reachable || router.flow != .idle && kind.kind != .apiKey)
                                 }
-                                Task { await router.startConnect() }
                             }
-                            .disabled(!router.reachable || router.flow != .idle && RouterCatalog.kind(for: group.provider)?.kind != .apiKey)
+                        } header: {
+                            providerHeader(group)
                         }
                     }
                 }
@@ -68,6 +99,7 @@ struct RouterProvidersView: View {
             .formStyle(.grouped)
         }
         .navigationTitle(AppCopy.text("settings.tab.providers"))
+        .onChange(of: router.selectedKind.id) { _, _ in isAPIKeyVisible = false }
         .task {
             await router.refresh()
             await router.refreshModels(force: true)
@@ -88,7 +120,7 @@ struct RouterProvidersView: View {
         let extra = selectedAccountCount == 0
             ? ""
             : AppCopy.format("router.connectedExtra", selectedAccountCount)
-        let hint = router.selectedKind.baseURL.isEmpty ? "Custom API endpoint" : RouterCatalog.hint(for: router.selectedKind.id)
+        let hint = router.selectedKind.baseURL.isEmpty ? AppCopy.text("router.customEndpointHint") : RouterCatalog.hint(for: router.selectedKind.id)
         return hint + extra
     }
 
@@ -109,12 +141,35 @@ struct RouterProvidersView: View {
         switch router.selectedKind.kind {
         case .apiKey:
             if router.selectedKind.baseURL.isEmpty {
-                Text("Add this provider through Custom API.")
+                Text(AppCopy.text("settings.addProviderCustom"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
                 TextField(AppCopy.text("router.name"), text: $router.apiKeyName)
-                SecureField(AppCopy.text("router.apiKey"), text: $router.apiKeyValue)
+                LabeledContent(AppCopy.text("router.apiKey")) {
+                    HStack(spacing: 6) {
+                        Group {
+                            if isAPIKeyVisible {
+                                TextField("", text: $router.apiKeyValue)
+                            } else {
+                                SecureField("", text: $router.apiKeyValue)
+                            }
+                        }
+                        .focused($isAPIKeyFocused)
+                        .frame(maxWidth: .infinity)
+                        Button {
+                            isAPIKeyVisible.toggle()
+                            isAPIKeyFocused = true
+                        } label: {
+                            Image(systemName: isAPIKeyVisible ? "eye.slash" : "eye")
+                                .font(.caption)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        .help(isAPIKeyVisible ? "Hide API key" : "Show API key")
+                        .accessibilityLabel(isAPIKeyVisible ? "Hide API key" : "Show API key")
+                    }
+                }
             }
         case .oauthBrowser, .oauthDevice:
             Text(selectedAccountCount == 0
@@ -123,7 +178,7 @@ struct RouterProvidersView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .passthrough:
-            Text("No key required. Connect to route through this provider.")
+            Text(AppCopy.text("router.noKeyRequired"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -155,17 +210,7 @@ struct RouterProvidersView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 8) {
-                        if let kind = RouterCatalog.kind(for: connection.provider) {
-                            ProviderLogoView(name: kind.name, key: kind.logoSymbol)
-                        } else {
-                            ProviderLogoView(name: AppCopy.text("router.custom"), key: "generic")
-                        }
-                        Text(connection.name).font(.headline)
-                    }
-                    Text(RouterCatalog.label(for: connection.provider))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text(connection.name).font(.headline)
                 }
                 Spacer()
                 Toggle(AppCopy.text("router.active"), isOn: Binding(
@@ -181,14 +226,45 @@ struct RouterProvidersView: View {
                     Text(email).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button(AppCopy.text("common.test")) { Task { await router.test(connection) } }
-                Button(AppCopy.text("common.remove"), role: .destructive) { Task { await router.remove(connection) } }
+                Button { Task { await router.test(connection) } } label: {
+                    Image(systemName: "checkmark.circle")
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.borderless)
+                .help(AppCopy.text("common.test"))
+                .accessibilityLabel(AppCopy.text("common.test"))
+                Button(role: .destructive) { Task { await router.remove(connection) } } label: {
+                    Image(systemName: "trash")
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.borderless)
+                .help(AppCopy.text("common.remove"))
+                .accessibilityLabel(AppCopy.text("common.remove"))
             }
+            Toggle(AppCopy.text("router.imageFallback"), isOn: Binding(
+                get: { connection.imageFallbackEnabled },
+                set: { _ in Task { await router.toggleImageFallback(connection) } }
+            ))
+            .font(.caption)
             if let error = connection.error, !error.isEmpty {
                 Text(error).font(.caption).foregroundStyle(.red)
             }
         }
         .padding(.vertical, 4)
+    }
+
+    private func providerHeader(_ group: ProviderAccountGroup) -> some View {
+        HStack(spacing: 8) {
+            ProviderLogoView(name: group.label, providerID: group.provider)
+            Text(AppCopy.format(
+                "router.accountSection",
+                group.label,
+                group.accounts.count,
+                group.accounts.count == 1 ? AppCopy.text("router.account") : AppCopy.text("router.accounts")
+            ))
+            .font(.headline.weight(.semibold))
+        }
+        .padding(.vertical, 2)
     }
 
     private func badge(_ text: String) -> some View {
@@ -211,60 +287,155 @@ struct RouterProvidersView: View {
 
 private struct ProviderLogoView: View {
     let name: String
-    let key: String
+    let providerID: String
+    @State private var imageData: Data?
 
     private var mark: String {
-        switch key {
-        case "gpt": return "✳"
-        case "gemini": return "✦"
-        case "openai": return "◎"
-        case "openrouter": return "↗"
-        case "github": return "GH"
-        case "iflow": return "iF"
-        case "minimax": return "MM"
-        case "cohere": return "Co"
-        case "siliconflow": return "SF"
-        case "chutes": return "Ch"
-        case "generic": return "•"
-        default: break
-        }
         let words = name.split(separator: " ")
         if words.count > 1 { return words.prefix(2).compactMap { $0.first }.map(String.init).joined() }
         return String(name.prefix(2)).uppercased()
     }
 
-    private var color: Color {
-        switch key {
-        case "gpt", "openai": return Color(red: 0.16, green: 0.47, blue: 0.34)
-        case "claude", "anthropic": return Color(red: 0.84, green: 0.42, blue: 0.19)
-        case "gemini": return Color(red: 0.26, green: 0.48, blue: 0.88)
-        case "github": return Color(red: 0.20, green: 0.20, blue: 0.23)
-        case "grok", "xai": return Color(red: 0.08, green: 0.08, blue: 0.09)
-        case "deepseek": return Color(red: 0.20, green: 0.40, blue: 0.86)
-        case "mistral": return Color(red: 0.88, green: 0.32, blue: 0.15)
-        case "perplexity": return Color(red: 0.10, green: 0.52, blue: 0.48)
-        case "nvidia": return Color(red: 0.35, green: 0.62, blue: 0.15)
-        case "vertex": return Color(red: 0.25, green: 0.48, blue: 0.88)
-        case "generic": return Color.secondary
-        default: break
-        }
-        // Overflow-safe FNV-1a hash. `reduce(0)` as Int traps on arithmetic
-        // overflow in debug builds once the string passes ~13 characters, which
-        // crashed the app whenever a provider row with a long SF Symbol name
-        // (e.g. Claude's "circle.hexagongrid") rendered.
-        let value = key.unicodeScalars.reduce(UInt64(14_695_981_039_346_656_037)) {
-            ($0 ^ UInt64($1.value)) &* 1_099_511_628_211
-        }
-        return Color(hue: Double(value % 360) / 360, saturation: 0.56, brightness: 0.78)
-    }
+    private var logoURL: URL? { ProviderLogoSource.url(for: providerID) }
 
     var body: some View {
-        Text(mark)
-            .font(.caption2.weight(.bold).monospaced())
-            .foregroundStyle(.white)
-            .frame(width: 25, height: 25)
-            .background(color, in: RoundedRectangle(cornerRadius: 7))
-            .accessibilityLabel(name)
+        Group {
+            if let imageData, let image = NSImage(data: imageData) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .padding(4)
+            } else {
+                Text(mark)
+                    .font(.caption2.weight(.bold).monospaced())
+                    .foregroundStyle(.black)
+            }
+        }
+        .frame(width: 28, height: 28)
+        .background(.white, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .stroke(Color.black.opacity(0.12), lineWidth: 1)
+        }
+        .accessibilityHidden(true)
+        .task(id: logoURL) {
+            imageData = nil
+            guard let logoURL else { return }
+            do {
+                let (data, response) = try await URLSession.shared.data(from: logoURL)
+                guard (response as? HTTPURLResponse)?.statusCode == 200 else { return }
+                guard NSImage(data: data) != nil else { return }
+                imageData = data
+            } catch {
+                // Keep the readable initials fallback when the logo is offline.
+            }
+        }
+    }
+}
+
+private enum ProviderLogoSource {
+    // Brand marks come from Iconify's SVG logo collections; initials are the
+    // offline fallback when a logo cannot be fetched.
+    private static let icons: [String: String] = [
+        "gpt": "logos:openai-icon",
+        "claude": "logos:claude-icon",
+        "anthropic": "logos:anthropic-icon",
+        "grok-cli": "logos:grok-icon",
+        "gemini-cli": "thesvg-color:gemini",
+        "antigravity": "thesvg-color:antigravity-google",
+        "opencode": "thesvg-color:opencode",
+        "opencode-go": "thesvg-color:opencode",
+        "nvidia": "logos:nvidia",
+        "zai": "thesvg-color:glm-v",
+        "gemini": "thesvg-color:gemini",
+        "deepseek": "logos:deepseek-icon",
+        "openai": "logos:openai-icon",
+        "openrouter": "thesvg-color:openrouter-light",
+        "qwen": "logos:qwen-icon",
+        "grok": "logos:grok-icon",
+        "glm": "thesvg-color:glm-v",
+        "kimi": "thesvg-color:kimi",
+        "minimax": "logos:minimax-icon",
+        "groq": "thesvg-color:groq",
+        "mistral": "logos:mistral-ai-icon",
+        "perplexity": "logos:perplexity-icon",
+        "together": "thesvg-color:togetherdotai",
+        "fireworks": "thesvg-color:fireworks",
+        "cerebras": "thesvg-color:cerebras",
+        "deepinfra": "thesvg-color:deepinfra",
+    ]
+
+    static func url(for providerID: String) -> URL? {
+        guard let icon = icons[providerID] else { return nil }
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "api.iconify.design"
+        components.path = "/\(icon).svg"
+        components.queryItems = [URLQueryItem(name: "height", value: "48")]
+        return components.url
+    }
+}
+
+private struct ProviderPickerPopover: View {
+    let providers: [RouterProviderKind]
+    @Binding var selection: RouterProviderKind
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(AppCopy.text("router.provider"))
+                .font(.headline)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 10)
+
+            Divider()
+
+            ScrollView {
+                LazyVStack(spacing: 2) {
+                    ForEach(providers) { kind in
+                        Button {
+                            selection = kind
+                            isPresented = false
+                        } label: {
+                            HStack(spacing: 10) {
+                                ProviderLogoView(name: kind.name, providerID: kind.id)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(kind.name)
+                                        .font(.body.weight(.medium))
+                                        .lineLimit(1)
+                                    Text(RouterCatalog.hint(for: kind.id))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                                Spacer(minLength: 8)
+                                if selection.id == kind.id {
+                                    Image(systemName: "checkmark")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundStyle(.tint)
+                                }
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                            .background(
+                                selection.id == kind.id
+                                    ? Color.accentColor.opacity(0.12)
+                                    : Color.clear,
+                                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(kind.name)
+                        .accessibilityAddTraits(selection.id == kind.id ? .isSelected : [])
+                    }
+                }
+                .padding(8)
+            }
+        }
+        .frame(width: 320, height: 430)
     }
 }
 
@@ -332,7 +503,10 @@ struct RouterShareView: View {
         .formStyle(.grouped)
         .padding()
         .navigationTitle(AppCopy.text("settings.tab.share"))
-        .task { await router.refresh() }
+        .task {
+            await router.refresh()
+            router.refreshShareKey()
+        }
     }
 
     private var shareEndpoint: String {

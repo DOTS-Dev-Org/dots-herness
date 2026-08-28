@@ -14,6 +14,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\..\..\..\windows\DotsHarness\tests\DotsHarness.Tests\ScheduledTaskTests.cs" Link="ScheduledTaskTests.cs" />
+    <Compile Include="..\..\..\..\shared\SkillCatalogTests.cs" Link="SkillCatalogTests.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\tests\DotsHarness.Tests\ProviderImageTests.cs" Link="ProviderImageTests.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\tests\DotsHarness.Tests\ContextCompactionTests.cs" Link="ContextCompactionTests.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\tests\DotsHarness.Tests\LocalizationTests.cs" Link="LocalizationTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\HarnessPluginKit\HarnessPluginKit.csproj" />

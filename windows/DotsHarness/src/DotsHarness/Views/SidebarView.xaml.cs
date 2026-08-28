@@ -33,6 +33,10 @@ public partial class SidebarView : UserControl
 
     private void OnModel(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(AppModel.Language) or nameof(AppModel.IsRightToLeft))
+        {
+            Dispatcher.Invoke(RefreshLocalization);
+        }
         if (e.PropertyName is nameof(AppModel.Conversations) or nameof(AppModel.SelectedConversationId)
             or nameof(AppModel.StatusLine) or nameof(AppModel.Selected) or null)
         {
@@ -43,12 +47,24 @@ public partial class SidebarView : UserControl
     private void Bind()
     {
         if (Model is null) return;
+        RefreshLocalization();
         FooterHost.Slot = WellKnownSlot.SidebarFooter;
         FooterHost.Registry = Model.Host.Slots;
         StatusText.Text = Model.StatusLine;
         ChatList.ItemsSource = Model.Bridge.Conversations;
         ChatList.SelectedItem = Model.Selected;
         ChatList.IsEnabled = Model.Bridge.Connection is not null || Model.Bridge.Conversations.Count > 0;
+    }
+
+    public void RefreshLocalization()
+    {
+        if (Model is null) return;
+        ChatsText.Text = Model.L("sidebar.chats");
+        NewButton.ToolTip = Model.L("sidebar.newChat");
+        UserButton.ToolTip = Model.L("sidebar.userMenu");
+        UserMenuText.Text = Model.L("sidebar.userMenu");
+        SettingsMenu.Header = Model.L("sidebar.settings");
+        StatusText.Text = Model.StatusLine;
     }
 
     private void OnNew(object sender, RoutedEventArgs e) => Model?.NewConversation();

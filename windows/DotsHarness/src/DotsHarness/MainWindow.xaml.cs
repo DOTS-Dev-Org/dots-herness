@@ -6,6 +6,7 @@ using System.Windows;
 using System.ComponentModel;
 using System.Windows.Controls;
 using System.Windows.Input;
+using DotsHarnessCore;
 using DotsHarness.Views;
 using HarnessPluginKit;
 
@@ -21,13 +22,29 @@ public partial class MainWindow : Window
         Sidebar.DataContext = model;
         Conversation.DataContext = model;
         Settings.DataContext = model;
+        model.PropertyChanged += OnModel;
         Settings.BackRequested += (_, _) => ShowConversation();
         OverlayHost.Slot = WellKnownSlot.Overlay;
         OverlayHost.Registry = model.Host.Slots;
         CommandBindings.Add(new CommandBinding(ApplicationCommands.New, (_, _) => model.NewConversation()));
         InputBindings.Add(new KeyBinding(new RelayCommand(_ => ShowSettings()), Key.OemComma, ModifierKeys.Control));
         Closing += OnClosing;
-        Title = "Dots Harness";
+        RefreshLocalization();
+    }
+
+    private void OnModel(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(AppModel.Language) or nameof(AppModel.IsRightToLeft))
+            Dispatcher.Invoke(RefreshLocalization);
+    }
+
+    private void RefreshLocalization()
+    {
+        var model = ((App)Application.Current).Model;
+        Title = model.L("app.title");
+        FlowDirection = model.IsRightToLeft ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
+        Sidebar.RefreshLocalization();
+        Settings.RefreshLocalization();
     }
 
     public void ShowSettings()
@@ -47,9 +64,14 @@ public partial class MainWindow : Window
     private void OnClosing(object? sender, CancelEventArgs e)
     {
         var model = ((App)Application.Current).Model;
-        if (_allowClose || !model.ConfirmBeforeExit) return;
+        if (_allowClose || !model.ConfirmBeforeExit)
+        {
+            Conversation.StopVoiceInput();
+            Conversation.StopTerminal();
+            return;
+        }
 
-        var dialog = new CloseConfirmationDialog { Owner = this };
+        var dialog = new CloseConfirmationDialog(model) { Owner = this, Icon = this.Icon };
         if (dialog.ShowDialog() != true)
         {
             e.Cancel = true;
@@ -58,6 +80,8 @@ public partial class MainWindow : Window
 
         if (dialog.Remember) model.SetConfirmBeforeExit(false);
         _allowClose = true;
+        Conversation.StopVoiceInput();
+        Conversation.StopTerminal();
     }
 }
 
@@ -67,9 +91,10 @@ internal sealed class CloseConfirmationDialog : Window
 
     public bool Remember => _remember.IsChecked == true;
 
-    public CloseConfirmationDialog()
+    public CloseConfirmationDialog(AppModel model)
     {
-        Title = "Confirm close";
+        Title = model.L("window.confirmClose");
+        FlowDirection = model.IsRightToLeft ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
         Width = 380;
         SizeToContent = SizeToContent.Height;
         ResizeMode = ResizeMode.NoResize;
@@ -78,12 +103,12 @@ internal sealed class CloseConfirmationDialog : Window
 
         _remember = new CheckBox
         {
-            Content = "Remember this choice",
+            Content = model.L("window.remember"),
             Margin = new Thickness(0, 14, 0, 18),
         };
         var close = new Button
         {
-            Content = "Close",
+            Content = model.L("window.close"),
             IsDefault = true,
             Padding = new Thickness(14, 6, 14, 6),
             Margin = new Thickness(0, 0, 8, 0),
@@ -91,7 +116,7 @@ internal sealed class CloseConfirmationDialog : Window
         close.Click += (_, _) => DialogResult = true;
         var cancel = new Button
         {
-            Content = "Cancel",
+            Content = model.L("window.cancel"),
             IsCancel = true,
             Padding = new Thickness(14, 6, 14, 6),
         };
@@ -103,7 +128,7 @@ internal sealed class CloseConfirmationDialog : Window
             {
                 new TextBlock
                 {
-                    Text = "Are you sure you want to close?",
+                    Text = model.L("window.closeQuestion"),
                     TextWrapping = TextWrapping.Wrap,
                 },
                 _remember,

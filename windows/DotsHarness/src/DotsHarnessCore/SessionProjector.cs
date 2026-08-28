@@ -4,6 +4,7 @@
 // Copyright (c) 2026 DeepSeek. MIT. See NOTICE.
 
 using HarnessPluginKit;
+using System.Text.Json.Serialization;
 
 namespace DotsHarnessCore;
 
@@ -13,6 +14,100 @@ public enum ChatKind
     Assistant,
     Tool,
     System,
+    Plan,
+}
+
+public enum ChatAttachmentKind
+{
+    Image,
+    Audio,
+    Video,
+    File,
+}
+
+public enum ChangedFileOperation
+{
+    Added,
+    Modified,
+    Deleted,
+}
+
+public sealed record ChangedFile(string Path, ChangedFileOperation Operation);
+
+public sealed class ChatAttachment
+{
+    public string FilePath { get; set; } = "";
+    public ChatAttachmentKind Kind { get; set; }
+    public string MimeType { get; set; } = "application/octet-stream";
+
+    [JsonIgnore]
+    public string Name => Path.GetFileName(FilePath);
+
+    [JsonIgnore]
+    public bool IsImage => Kind == ChatAttachmentKind.Image;
+
+    public static bool TryCreate(string path, out ChatAttachment attachment)
+    {
+        attachment = new ChatAttachment();
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return false;
+        try
+        {
+            var fullPath = Path.GetFullPath(path);
+            var extension = Path.GetExtension(fullPath).ToLowerInvariant();
+            var kind = extension switch
+            {
+                ".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" or ".bmp" or ".tif" or ".tiff" or ".heic" or ".heif" or ".avif" => ChatAttachmentKind.Image,
+                ".mp3" or ".wav" or ".m4a" or ".aac" or ".flac" or ".ogg" or ".oga" => ChatAttachmentKind.Audio,
+                ".mp4" or ".mov" or ".m4v" or ".avi" or ".mkv" or ".webm" or ".wmv" => ChatAttachmentKind.Video,
+                _ => ChatAttachmentKind.File,
+            };
+            attachment = new ChatAttachment
+            {
+                FilePath = fullPath,
+                Kind = kind,
+                MimeType = extension switch
+                {
+                    ".jpg" or ".jpeg" => "image/jpeg",
+                    ".png" => "image/png",
+                    ".gif" => "image/gif",
+                    ".webp" => "image/webp",
+                    ".bmp" => "image/bmp",
+                    ".tif" or ".tiff" => "image/tiff",
+                    ".heic" => "image/heic",
+                    ".heif" => "image/heif",
+                    ".avif" => "image/avif",
+                    ".mp3" => "audio/mpeg",
+                    ".wav" => "audio/wav",
+                    ".m4a" => "audio/mp4",
+                    ".aac" => "audio/aac",
+                    ".flac" => "audio/flac",
+                    ".ogg" or ".oga" => "audio/ogg",
+                    ".mp4" => "video/mp4",
+                    ".mov" => "video/quicktime",
+                    ".m4v" => "video/x-m4v",
+                    ".webm" => "video/webm",
+                    _ => "application/octet-stream",
+                },
+            };
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}
+
+public sealed class ChatMedia
+{
+    public string FilePath { get; set; } = "";
+    public string MimeType { get; set; } = "image/png";
+    public string Provider { get; set; } = "";
+    public string Model { get; set; } = "";
+    public string? FallbackFrom { get; set; }
+
+    [JsonIgnore]
+    public string Name => Path.GetFileName(FilePath);
 }
 
 public enum PromptMode
@@ -37,17 +132,51 @@ public static class PromptModeExtensions
     };
 }
 
+public static class PlanApproval
+{
+    private static readonly HashSet<string> Phrases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "onaylıyorum",
+        "onayliyorum",
+        "onayla",
+        "planı uygula",
+        "plani uygula",
+        "planı onayla",
+        "plani onayla",
+        "uygula",
+        "devam et",
+        "approve",
+        "approve plan",
+        "apply plan",
+        "proceed",
+        "go ahead",
+    };
+
+    public static bool Matches(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        var normalized = new string(text.Trim().ToLowerInvariant()
+            .Select(character => char.IsPunctuation(character) ? ' ' : character)
+            .ToArray());
+        normalized = string.Join(' ', normalized.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return Phrases.Contains(normalized);
+    }
+}
+
 public sealed class PendingPrompt : PluginRuntime.ObservableObject
 {
     private string _id = Guid.NewGuid().ToString();
     private string _text = "";
     private PromptMode _mode;
     private PromptPlacement _placement;
+    private bool _planMode;
 
     public string Id { get => _id; set => SetProperty(ref _id, value); }
     public string Text { get => _text; set => SetProperty(ref _text, value); }
     public PromptMode Mode { get => _mode; set => SetProperty(ref _mode, value); }
     public PromptPlacement Placement { get => _placement; set => SetProperty(ref _placement, value); }
+    public bool PlanMode { get => _planMode; set => SetProperty(ref _planMode, value); }
+    public List<ChatAttachment> Attachments { get; set; } = [];
 }
 
 public sealed class ChatMessage : PluginRuntime.ObservableObject
@@ -57,12 +186,47 @@ public sealed class ChatMessage : PluginRuntime.ObservableObject
     private string _text = "";
     private DateTimeOffset _createdAt = DateTimeOffset.Now;
     private bool _streaming;
+    private bool _isPendingPlan;
+    private bool _canApplyPlan;
+    private bool _isApplyingPlan;
+    private string? _planError;
+    private List<ChangedFile> _changedFiles = [];
+    private List<string> _usedSkills = [];
+    private List<string> _usedTools = [];
 
     public string Id { get => _id; set => SetProperty(ref _id, value); }
     public ChatKind Kind { get => _kind; set => SetProperty(ref _kind, value); }
     public string Text { get => _text; set => SetProperty(ref _text, value); }
     public DateTimeOffset CreatedAt { get => _createdAt; set => SetProperty(ref _createdAt, value); }
     public bool Streaming { get => _streaming; set => SetProperty(ref _streaming, value); }
+    public string? TurnId { get; set; }
+    public List<ChangedFile> ChangedFiles { get => _changedFiles; set => SetProperty(ref _changedFiles, value ?? []); }
+    public List<string> UsedSkills { get => _usedSkills; set => SetProperty(ref _usedSkills, value ?? []); }
+    public List<string> UsedTools { get => _usedTools; set => SetProperty(ref _usedTools, value ?? []); }
+    [JsonIgnore]
+    public bool IsPendingPlan { get => _isPendingPlan; set => SetProperty(ref _isPendingPlan, value); }
+    [JsonIgnore]
+    public bool CanApplyPlan { get => _canApplyPlan; set => SetProperty(ref _canApplyPlan, value); }
+    [JsonIgnore]
+    public bool IsApplyingPlan { get => _isApplyingPlan; set => SetProperty(ref _isApplyingPlan, value); }
+    [JsonIgnore]
+    public string? PlanError { get => _planError; set => SetProperty(ref _planError, value); }
+    public List<ChatAttachment> Attachments { get; set; } = [];
+    public ChatMedia? Media { get; set; }
+}
+
+public enum ContinuationPauseReason
+{
+    ProviderLimit,
+    UserStopped,
+}
+
+public sealed class ContinuationState
+{
+    public ContinuationPauseReason Reason { get; set; }
+    public string Provider { get; set; } = "";
+    public string Model { get; set; } = "";
+    public string Message { get; set; } = "";
 }
 
 public sealed class Conversation : PluginRuntime.ObservableObject
@@ -70,13 +234,31 @@ public sealed class Conversation : PluginRuntime.ObservableObject
     private string _title = "New chat";
     private bool _running;
     private bool _blank = true;
+    private string? _pendingPlanMessageId;
+    private DateTimeOffset? _runStartedAt;
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Title { get => _title; set => SetProperty(ref _title, value); }
     public System.Collections.ObjectModel.ObservableCollection<ChatMessage> Messages { get; set; } = new();
+    /// Model-facing provider transcript; compaction may replace archived history.
+    /// The visible Messages collection remains complete.
+    public List<NativeMessage> ModelContext { get; set; } = [];
+    /// The latest structured summary replaces only archived model context; the
+    /// visible transcript remains complete.
+    public string ContextSummary { get; set; } = "";
+    public int ContextCompactionCount { get; set; }
+    public int LastContextInputTokens { get; set; }
+    public int ContextWindow { get; set; }
+    public ContinuationState? Continuation { get; set; }
+    [JsonIgnore]
+    public bool CanContinue => !Running && Continuation is not null;
+    [JsonIgnore]
     public System.Collections.ObjectModel.ObservableCollection<PendingPrompt> PendingPrompts { get; set; } = new();
     public bool Running { get => _running; set => SetProperty(ref _running, value); }
+    [JsonIgnore]
+    public DateTimeOffset? RunStartedAt { get => _runStartedAt; set => SetProperty(ref _runStartedAt, value); }
     public bool Blank { get => _blank; set => SetProperty(ref _blank, value); }
+    public string? PendingPlanMessageId { get => _pendingPlanMessageId; set => SetProperty(ref _pendingPlanMessageId, value); }
     public string? Cwd { get; set; }
     public string? AgentPreset { get; set; }
 }

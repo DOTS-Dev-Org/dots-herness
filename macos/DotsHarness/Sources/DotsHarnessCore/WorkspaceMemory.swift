@@ -25,6 +25,12 @@ public enum MemoryRole: String, Codable, Sendable, CaseIterable {
     }
 }
 
+public enum ConversationLifecycleState: String, Sendable {
+    case archived
+    case restored
+    case deleted
+}
+
 public struct WorkspaceAccessStatus: Sendable, Equatable {
     public var personID: String
     public var deviceID: String
@@ -127,6 +133,8 @@ public enum WorkspaceMemoryError: Error, LocalizedError, Sendable {
     case invalidManifest
     case invalidInvitation
     case wrongDevice
+    case snapshotUnavailable
+    case snapshotRestoreFailed(String)
 
     public var errorDescription: String? {
         switch self {
@@ -135,6 +143,8 @@ public enum WorkspaceMemoryError: Error, LocalizedError, Sendable {
         case .invalidManifest: return AppCopy.text("workspaceMemory.invalidManifest")
         case .invalidInvitation: return AppCopy.text("workspaceMemory.invalidInvitation")
         case .wrongDevice: return AppCopy.text("workspaceMemory.wrongDevice")
+        case .snapshotUnavailable: return AppCopy.text("conversation.historyUnavailable")
+        case .snapshotRestoreFailed(let path): return AppCopy.format("conversation.historyRestoreFailed", path)
         }
     }
 }
@@ -163,6 +173,7 @@ public final class WorkspaceMemory {
 
     private let paths: SupportPaths
     private let fileManager: FileManager
+    private let snapshotStore: WorkspaceSnapshotStore
     private var workspaceURL: URL?
     private var identity: StoredIdentity?
     private var privateKey: P256.Signing.PrivateKey?
@@ -175,6 +186,7 @@ public final class WorkspaceMemory {
     public init(paths: SupportPaths, fileManager: FileManager = .default) {
         self.paths = paths
         self.fileManager = fileManager
+        self.snapshotStore = WorkspaceSnapshotStore(paths: paths, fileManager: fileManager)
         self.state = Self.emptyState()
     }
 
@@ -230,6 +242,76 @@ public final class WorkspaceMemory {
         }
     }
 
+    @discardableResult
+    public func beginTurn(
+        conversationID: String,
+        turnID: String,
+        workspace: URL?
+    ) -> Bool {
+        guard let workspace else { return false }
+        return snapshotStore.begin(
+            conversationID: conversationID,
+            turnID: turnID,
+            workspace: workspace
+        )
+    }
+
+    public func finishTurn(
+        conversationID: String,
+        turnID: String,
+        workspace: URL?
+    ) -> [ChangedFile] {
+        guard let workspace else { return [] }
+        return snapshotStore.finish(
+            conversationID: conversationID,
+            turnID: turnID,
+            workspace: workspace
+        )
+    }
+
+    public func hasCompleteTurnSnapshot(
+        conversationID: String,
+        turnID: String,
+        workspace: URL?
+    ) -> Bool {
+        guard let workspace else { return false }
+        return snapshotStore.hasCompleteSnapshot(
+            conversationID: conversationID,
+            turnID: turnID,
+            workspace: workspace
+        )
+    }
+
+    public func restoreTurns(
+        conversationID: String,
+        turnIDs: [String],
+        workspace: URL?,
+        abortOnConflict: Bool
+    ) throws -> RewindResult {
+        guard let workspace else { throw WorkspaceMemoryError.noWorkspace }
+        do {
+            return try snapshotStore.restore(
+                conversationID: conversationID,
+                turnIDs: turnIDs,
+                workspace: workspace,
+                abortOnConflict: abortOnConflict
+            )
+        } catch let error as WorkspaceSnapshotError {
+            switch error {
+            case .restoreFailed(let path):
+                throw WorkspaceMemoryError.snapshotRestoreFailed(path)
+            case .unavailable, .unsupportedEntry, .invalidPath:
+                throw WorkspaceMemoryError.snapshotUnavailable
+            }
+        } catch {
+            throw WorkspaceMemoryError.snapshotUnavailable
+        }
+    }
+
+    public func removeTurnSnapshots(conversationID: String) {
+        snapshotStore.removeConversation(conversationID)
+    }
+
     public func snapshot(for prompt: String) -> MemorySnapshot {
         guard manifest != nil else { return MemorySnapshot(text: "", revision: 0) }
         let decisions = markdownList(state["acceptedDecisions"] as? [[String: Any]] ?? [])
@@ -237,6 +319,7 @@ public final class WorkspaceMemory {
         let preferences = preferencesText()
         let defaults = markdownDictionary(state["projectDefaults"] as? [String: Any] ?? [:])
         let tasksText = relevantTasks(for: prompt)
+        let conversationStates = conversationLifecycleText()
         let body = [
             "Private project context. It is verified by the native host.",
             "Current user instructions are authoritative over this context.",
@@ -246,6 +329,7 @@ public final class WorkspaceMemory {
             "\n## Current actor preferences\n\(preferences.isEmpty ? "None" : preferences)",
             "\n## Project defaults\n\(defaults.isEmpty ? "None" : defaults)",
             "\n## Relevant task history\n\(tasksText.isEmpty ? "None" : tasksText)",
+            "\n## Conversation lifecycle\n\(conversationStates.isEmpty ? "None" : conversationStates)",
             proposals.isEmpty ? "" : "\n## Unauthoritative proposals\n\(proposals)",
         ].filter { !$0.isEmpty }.joined(separator: "\n")
         return MemorySnapshot(text: trimSnapshot(body), revision: revision)
@@ -524,6 +608,45 @@ public final class WorkspaceMemory {
         }
     }
 
+    /// Keeps chat lifecycle separate from task outcome so archive/delete actions
+    /// remain visible without falsely changing a completed or failed task.
+    public func recordConversationLifecycle(
+        conversationID: String,
+        title: String,
+        state: ConversationLifecycleState
+    ) {
+        guard manifest != nil, !conversationID.isEmpty else { return }
+        _ = try? writeEvent(
+            type: "conversation.\(state.rawValue)",
+            scope: "conversation",
+            payload: [
+                "conversationId": conversationID,
+                "title": sanitize(title, limit: 120),
+            ]
+        )
+    }
+
+    public func recordConversationRewind(
+        conversationID: String,
+        title: String,
+        beforeMessageID: String,
+        restoredPaths: [String],
+        conflictPaths: [String]
+    ) {
+        guard manifest != nil, !conversationID.isEmpty else { return }
+        _ = try? writeEvent(
+            type: "conversation.rewound",
+            scope: "conversation",
+            payload: [
+                "conversationId": conversationID,
+                "title": sanitize(title, limit: 120),
+                "beforeMessageId": beforeMessageID,
+                "restoredPaths": restoredPaths,
+                "conflictPaths": conflictPaths,
+            ]
+        )
+    }
+
     private func loadExisting() {
         guard let root = memoryDirectory else { return }
         guard let data = try? Data(contentsOf: root.appendingPathComponent("manifest.json")),
@@ -540,7 +663,7 @@ public final class WorkspaceMemory {
     private func initializeWorkspace() throws {
         guard let root = memoryDirectory, let identity else { throw WorkspaceMemoryError.noWorkspace }
         try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
-        for folder in ["events", "tasks", "decisions"] {
+        for folder in ["events", "tasks", "decisions", "conversations"] {
             try fileManager.createDirectory(at: root.appendingPathComponent(folder, isDirectory: true), withIntermediateDirectories: true)
         }
         let projectID = UUID().uuidString
@@ -708,6 +831,7 @@ public final class WorkspaceMemory {
         }
         if let root = memoryDirectory { try? writeJSON(state, to: root.appendingPathComponent("state.json")) }
         writeDecisionNotes()
+        writeConversationNotes()
         writeIndexNote()
         writePreferencesNote()
     }
@@ -808,6 +932,18 @@ public final class WorkspaceMemory {
             state["pendingProposals"] = (state["pendingProposals"] as? [[String: Any]] ?? []).filter { $0["eventId"] as? String != payload["proposalEventId"] as? String }
         case "map.updated":
             state["lastMapRevision"] = payload["revision"] as? Int ?? (state["lastMapRevision"] as? Int ?? 0)
+        case "conversation.archived", "conversation.restored", "conversation.deleted":
+            guard let conversationID = payload["conversationId"] as? String else { return }
+            var conversations = state["conversationStates"] as? [String: Any] ?? [:]
+            conversations[conversationID] = [
+                "conversationId": conversationID,
+                "title": payload["title"] as? String ?? conversationID,
+                "state": String(type.dropFirst("conversation.".count)),
+                "eventId": event["eventId"] as? String ?? "",
+                "updatedAt": event["createdAt"] as? String ?? "",
+                "revision": event["lamport"] as? Int ?? 0,
+            ]
+            state["conversationStates"] = conversations
         default: break
         }
     }
@@ -983,6 +1119,65 @@ public final class WorkspaceMemory {
         writeIndexNote()
     }
 
+    private func writeConversationNotes() {
+        guard let root = memoryDirectory else { return }
+        let directory = root.appendingPathComponent("conversations", isDirectory: true)
+        try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        let conversations = state["conversationStates"] as? [String: Any] ?? [:]
+        for conversationID in conversations.keys.sorted() {
+            guard let record = conversations[conversationID] as? [String: Any] else { continue }
+            let title = sanitize(record["title"] as? String ?? conversationID, limit: 120)
+            let lifecycle = record["state"] as? String ?? "unknown"
+            let updated = record["updatedAt"] as? String ?? ""
+            let noteID = conversationNoteID(conversationID)
+            let meaning: String
+            switch lifecycle {
+            case ConversationLifecycleState.archived.rawValue:
+                meaning = "The chat is hidden from active conversations. Its task result is unchanged."
+            case ConversationLifecycleState.restored.rawValue:
+                meaning = "The chat was returned to active conversations. Its task result is unchanged."
+            case ConversationLifecycleState.deleted.rawValue:
+                meaning = "The chat was deleted. This memory record is retained as an audit trail."
+            default:
+                meaning = "The chat lifecycle was updated."
+            }
+            let front = frontmatter([
+                "id": noteID,
+                "type": "conversation",
+                "title": quoted(title, limit: 120),
+                "state": lifecycle,
+                "updated": updated,
+                "revision": String(record["revision"] as? Int ?? 0),
+                "actor": identity?.personID ?? "unknown",
+            ], tags: ["conversation", lifecycle], links: ["index"])
+            let note = [
+                front,
+                "# Conversation: \(title)",
+                "",
+                "Back to [[index]]",
+                "",
+                "- Lifecycle: \(lifecycle.capitalized)",
+                "- Updated: \(updated)",
+                "- Conversation ID: `\(sanitize(conversationID, limit: 120))`",
+                "",
+                "## What this means",
+                "",
+                meaning,
+                "",
+                "Task success or failure is recorded separately in the related task note.",
+            ].joined(separator: "\n")
+            try? note.write(
+                to: directory.appendingPathComponent("\(noteID).md"),
+                atomically: true,
+                encoding: .utf8
+            )
+        }
+    }
+
+    private func conversationNoteID(_ conversationID: String) -> String {
+        "conversation-\(String(digest(Data(conversationID.utf8)).prefix(16)))"
+    }
+
     private func decisionRunID(_ event: [String: Any]) -> String? {
         let payload = event["payload"] as? [String: Any] ?? [:]
         return payload["runId"] as? String ?? payload["runID"] as? String
@@ -998,6 +1193,16 @@ public final class WorkspaceMemory {
         }
         if !notes.isEmpty { return notes.prefix(3).joined(separator: "\n\n") }
         return files.sorted { $0.lastPathComponent > $1.lastPathComponent }.prefix(3).compactMap { try? String(contentsOf: $0, encoding: .utf8) }.joined(separator: "\n\n")
+    }
+
+    private func conversationLifecycleText() -> String {
+        let conversations = state["conversationStates"] as? [String: Any] ?? [:]
+        return conversations.keys.sorted().compactMap { conversationID in
+            guard let record = conversations[conversationID] as? [String: Any] else { return nil }
+            let title = sanitize(record["title"] as? String ?? conversationID, limit: 120)
+            let lifecycle = record["state"] as? String ?? "unknown"
+            return "- `\(title)` — \(lifecycle)"
+        }.joined(separator: "\n")
     }
 
     private func preferencesText() -> String {
@@ -1115,7 +1320,7 @@ public final class WorkspaceMemory {
     // MARK: - Obsidian-style vault
 
     /// Regenerates `.mem/index.md`, the map-of-content note that links every
-    /// task and decision note. Cheap; called after any note write.
+    /// task, decision, and conversation note. Cheap; called after any note write.
     private func writeIndexNote() {
         guard let root = memoryDirectory else { return }
         func notes(in folder: String) -> [(id: String, title: String, created: String)] {
@@ -1125,7 +1330,8 @@ public final class WorkspaceMemory {
                 guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
                 let front = parseFrontmatter(text)
                 let stem = url.deletingPathExtension().lastPathComponent
-                let id = front["id"] ?? "\(folder == "tasks" ? "task" : "decision")-\(stem)"
+                let prefix = folder == "tasks" ? "task" : folder == "decisions" ? "decision" : "conversation"
+                let id = front["id"] ?? "\(prefix)-\(stem)"
                 let title = unquoted(front["title"] ?? stem)
                 let created = front["created"] ?? front["updated"] ?? front["revision"] ?? ""
                 return (id, title, created)
@@ -1133,6 +1339,7 @@ public final class WorkspaceMemory {
         }
         let taskLines = notes(in: "tasks").map { "- [[\($0.id)]] — \($0.title)" }
         let decisionLines = notes(in: "decisions").map { "- [[\($0.id)]] — \($0.title)" }
+        let conversationLines = notes(in: "conversations").map { "- [[\($0.id)]] — \($0.title)" }
         let front = frontmatter([
             "id": "index",
             "type": "index",
@@ -1153,6 +1360,10 @@ public final class WorkspaceMemory {
             "## Decisions",
             "",
             decisionLines.isEmpty ? "- None yet" : decisionLines.joined(separator: "\n"),
+            "",
+            "## Conversations",
+            "",
+            conversationLines.isEmpty ? "- None yet" : conversationLines.joined(separator: "\n"),
         ].joined(separator: "\n")
         try? body.write(to: root.appendingPathComponent("index.md"), atomically: true, encoding: .utf8)
     }
@@ -1210,11 +1421,12 @@ public final class WorkspaceMemory {
         for name in ["map.md", "index.md", "preferences.md"] {
             ingest(root.appendingPathComponent(name), fallbackKind: "note")
         }
-        for folder in ["tasks", "decisions"] {
+        for folder in ["tasks", "decisions", "conversations"] {
             let dir = root.appendingPathComponent(folder)
             let files = (try? fileManager.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
             for file in files.sorted(by: { $0.lastPathComponent > $1.lastPathComponent }) {
-                ingest(file, fallbackKind: folder == "tasks" ? "task" : "decision")
+                let kind = folder == "tasks" ? "task" : folder == "decisions" ? "decision" : "conversation"
+                ingest(file, fallbackKind: kind)
             }
         }
         // Synthetic nodes for wikilinked workspace files that have no note.
@@ -1379,6 +1591,7 @@ public final class WorkspaceMemory {
             "acceptedDecisions": [[String: Any]](),
             "pendingProposals": [[String: Any]](),
             "supersededValues": [[String: Any]](),
+            "conversationStates": [String: Any](),
             "lastMapRevision": 0,
         ]
     }

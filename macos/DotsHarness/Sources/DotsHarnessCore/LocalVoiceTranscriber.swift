@@ -73,6 +73,15 @@ public struct LocalVoiceModel: Sendable, Equatable {
         self.sizeLabel = sizeLabel
     }
 
+    public static let whisperTinyQ5 = LocalVoiceModel(
+        id: "whisper-tiny-q5",
+        name: "Whisper Tiny Q5 (hızlı)",
+        filename: "ggml-tiny-q5_1.bin",
+        url: URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q5_1.bin?download=true"),
+        bytes: 32_152_673,
+        sizeLabel: VoiceCopy.whisperTinySize
+    )
+
     public static let whisperLargeV3Turbo = LocalVoiceModel(
         id: "whisper-large-v3-turbo",
         name: "Whisper Large-v3-Turbo",
@@ -100,12 +109,13 @@ public struct LocalVoiceModel: Sendable, Equatable {
         sizeLabel: VoiceCopy.customLocalSize
     )
 
-    public static let model = whisperLargeV3Turbo
+    public static let model = whisperTinyQ5
 }
 
 public enum LocalVoiceModelState: Equatable, Sendable {
     case notInstalled
     case downloading
+    case paused
     case installed
     case failed(String)
 
@@ -117,6 +127,7 @@ public enum LocalVoiceModelState: Equatable, Sendable {
         switch self {
         case .notInstalled: return VoiceCopy.statusNotInstalled
         case .downloading: return VoiceCopy.statusDownloading
+        case .paused: return VoiceCopy.statusPaused
         case .installed: return VoiceCopy.statusInstalled
         case .failed: return VoiceCopy.statusFailed
         }
@@ -161,7 +172,6 @@ public final class LocalVoiceTranscriber: @unchecked Sendable {
         if FileManager.default.fileExists(atPath: modelURL.path) {
             try? FileManager.default.removeItem(at: modelURL)
         }
-        try? FileManager.default.removeItem(at: modelURL.appendingPathExtension("part"))
         try await FileDownloader.download(
             from: url,
             to: modelURL,
@@ -203,8 +213,7 @@ public final class LocalVoiceTranscriber: @unchecked Sendable {
         }
     }
 
-    /// No-op: the dlopen'd helper loads and frees the whisper context per call,
-    /// so nothing is retained between transcriptions. Kept for call-site parity.
+    /// The helper owns a process-lifetime context cache; kept for call-site parity.
     public func unloadModel() {}
 
     public func transcribe(samples: [Float], sampleRate: Double) async throws -> String {

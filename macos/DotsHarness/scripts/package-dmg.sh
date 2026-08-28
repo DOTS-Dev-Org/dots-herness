@@ -185,16 +185,13 @@ do
 done
 shopt -u nullglob
 
-if [[ -f "$ROOT/Resources/AppIcon.icns" ]]; then
-    echo "    Uygulama ikonu kopyalanıyor"
-    cp "$ROOT/Resources/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
-fi
+ICON_SOURCE="$ROOT/Resources/AppIcon.icns"
+[[ -f "$ICON_SOURCE" ]] || fail "Uygulama ikonu bulunamadı: $ICON_SOURCE"
+echo "    Uygulama ikonu kopyalanıyor"
+cp "$ICON_SOURCE" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
 
 echo "    Info.plist yazılıyor"
-ICON_KEYS=""
-if [[ -f "$APP_BUNDLE/Contents/Resources/AppIcon.icns" ]]; then
-    ICON_KEYS=$'\n\t<key>CFBundleIconFile</key>\n\t<string>AppIcon</string>'
-fi
+ICON_KEYS=$'\n\t<key>CFBundleIconFile</key>\n\t<string>AppIcon</string>'
 
 cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -227,6 +224,8 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>DOTS Pet, seçili proje ve sohbette sesli etkileşim için mikrofonu kullanır.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>DotsHarness, simülatör ve sistem sesini kaydetmek için sistem ses çıkışını yakalar.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>${ICON_KEYS}
 </dict>
@@ -235,11 +234,21 @@ EOF
 
 printf 'APPL????' > "$APP_BUNDLE/Contents/PkgInfo"
 
-echo "    Ad-hoc code signing (Apple Silicon: imzasız binary'de Info.plist SecCode'a bağlanmaz)"
-codesign --force --sign - --identifier "$BUNDLE_ID" "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE"
-codesign --force --sign - --identifier "${BUNDLE_ID}.scheduler" "$APP_BUNDLE/Contents/MacOS/$SCHEDULER_EXECUTABLE"
-codesign --force --sign - --identifier "$BUNDLE_ID" "$APP_BUNDLE"
-codesign --verify --verbose=2 "$APP_BUNDLE"
+echo "    Kararlı code signing kimliği aranıyor"
+SIGN_IDENTITY="${CODE_SIGN_IDENTITY:-}"
+if [[ -z "$SIGN_IDENTITY" ]]; then
+    SIGN_IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
+        | awk -F '"' '/Apple Development|Developer ID Application/ { print $2; exit }' || true)"
+fi
+[[ -n "$SIGN_IDENTITY" ]] || fail "Kararlı bir codesign kimligi bulunamadi. CODE_SIGN_IDENTITY ayarlayin."
+printf '    Imzalama kimligi: %s\n' "$SIGN_IDENTITY"
+codesign --force --sign "$SIGN_IDENTITY" --timestamp=none \
+    --identifier "$BUNDLE_ID" "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE"
+codesign --force --sign "$SIGN_IDENTITY" --timestamp=none \
+    --identifier "${BUNDLE_ID}.scheduler" "$APP_BUNDLE/Contents/MacOS/$SCHEDULER_EXECUTABLE"
+codesign --force --sign "$SIGN_IDENTITY" --timestamp=none \
+    --identifier "$BUNDLE_ID" "$APP_BUNDLE"
+codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
 
 # Applications kısayolu (klasik DMG kurulumu)
 echo "    Applications kısayolu ekleniyor"

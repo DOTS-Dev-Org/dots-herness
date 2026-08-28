@@ -175,8 +175,15 @@ shopt -s nullglob
 for bundle in "$BIN_DIR"/*.bundle; do
     cp -R "$bundle" "$APP_BUNDLE/Contents/Resources/"
 done
-# whisper.framework vb. @loader_path ile cozulur; binary yaninda olmali
+# whisper.framework vb. @loader_path ile cozulur; binary yaninda olmali.
+# SPM'nin statik framework arşivleri çalışma zamanı kodu değildir; bunları
+# bundle'a koymak codesign'i bozuyor (dylib/framework imzası gibi görünürler).
 for fw in "$BIN_DIR"/*.framework; do
+    fw_binary="$fw/$(basename "$fw" .framework)"
+    if [[ ! -f "$fw_binary" ]] || ! file -L "$fw_binary" | grep -q 'dynamically linked shared library'; then
+        printf 'Statik framework atlandi: %s\n' "$(basename "$fw")"
+        continue
+    fi
     cp -R "$fw" "$APP_BUNDLE/Contents/MacOS/"
 done
 # Tembel yuklenen yardimci dylib'ler (libWhisperVoice.dylib); binary yaninda olmali.
@@ -186,6 +193,15 @@ for dylib in "$BIN_DIR"/*.dylib; do
         "$APP_BUNDLE/Contents/MacOS/$(basename "$dylib")" 2>/dev/null || true
 done
 shopt -u nullglob
+
+# macOS uses the bundle icon for the Dock and native alerts.
+ICON_KEYS=""
+if [[ "$PRODUCT" == "$PROJECT_NAME" ]]; then
+    ICON_SOURCE="$NATIVE_DIR/Resources/AppIcon.icns"
+    [[ -f "$ICON_SOURCE" ]] || fail "Uygulama ikonu bulunamadi: $ICON_SOURCE"
+    cp "$ICON_SOURCE" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
+    ICON_KEYS=$'\n    <key>CFBundleIconFile</key>\n    <string>AppIcon</string>'
+fi
 
 # Release'de sembol tablosunu at: __LINKEDIT ~20 MB kuculur, daha az sayfa map'lenir.
 if [[ "$SWIFT_CONFIG" == "release" ]]; then
@@ -228,35 +244,35 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
     <true/>
     <key>NSMicrophoneUsageDescription</key>
     <string>DOTS Pet, secili proje ve sohbette sesli etkilesim icin mikrofonu kullanir.</string>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>DotsHarness, simulator ve sistem sesini kaydetmek icin sistem ses cikisini yakalar.</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
+${ICON_KEYS}
 </dict>
 </plist>
 EOF
 printf 'APPL????' > "$APP_BUNDLE/Contents/PkgInfo"
-# Bundle icerigi degisti; yeniden imzala (sealed resources).
-#
-# Adhoc imza ("--sign -") her derlemede farkli bir cdhash uretir; TCC
-# (Accessibility, Microphone vb.) bu hash'e gore izin verdiginden, adhoc ile
-# imzalanan bir uygulama her yeniden derlemede izinleri kaybeder. Kullanicinin
-# Keychain'inde gercek bir imzalama kimligi varsa onu kullaniyoruz (sabit Team
-# ID -> izin derlemeler arasinda kalici olur); yoksa adhoc'a geri duseriz.
-# --options runtime EKLEMIYORUZ: hardened runtime, plugin .dylib'lerinin
-# dlopen ile yuklenmesini (kutuphane dogrulamasi) bloke eder.
-SIGN_IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
-    | grep -m1 -E 'Apple Development|Developer ID Application' \
-    | sed -E 's/.*"(.*)"/\1/')"
-if [[ -n "$SIGN_IDENTITY" ]]; then
-    printf 'Imzalama kimligi: %s\n' "$SIGN_IDENTITY"
-    # --deep: whisper.framework (binary xcframework) ayrica imzalanmadan
-    # gercek bir kimlikle disaridaki bundle imzalanamiyor ("code object is
-    # not signed at all" hatasi verir).
-    codesign --deep --force --sign "$SIGN_IDENTITY" --timestamp=none \
-        --identifier com.dots.dotsharness "$APP_BUNDLE" >/dev/null 2>&1 \
-        || codesign --force --sign - --timestamp=none "$APP_BUNDLE" >/dev/null 2>&1 || true
-else
-    codesign --force --sign - --timestamp=none "$APP_BUNDLE" >/dev/null 2>&1 || true
+# Bundle icerigi degisti; once nested code, sonra app bundle imzalanir.
+# Ad-hoc imza her derlemede farkli cdhash uretir ve Keychain/TCC izinlerini
+# kalici yapmaz. --deep signing deprecated; --options runtime da eklenmez,
+# cunku plugin dylib'leri dlopen ile yuklenir.
+SIGN_IDENTITY="${CODE_SIGN_IDENTITY:-}"
+if [[ -z "$SIGN_IDENTITY" ]]; then
+    SIGN_IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
+        | awk -F '"' '/Apple Development|Developer ID Application/ { print $2; exit }' || true)"
 fi
+[[ -n "$SIGN_IDENTITY" ]] || fail "Kararli bir codesign kimligi bulunamadi. CODE_SIGN_IDENTITY ayarlayin."
+printf 'Imzalama kimligi: %s\n' "$SIGN_IDENTITY"
+
+shopt -s nullglob
+for nested in "$APP_BUNDLE/Contents/MacOS/"*.dylib "$APP_BUNDLE/Contents/MacOS/"*.framework; do
+    codesign --force --sign "$SIGN_IDENTITY" --timestamp=none "$nested"
+done
+shopt -u nullglob
+codesign --force --sign "$SIGN_IDENTITY" --timestamp=none \
+    --identifier com.dots.dotsharness "$APP_BUNDLE"
+codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
 printf 'Uygulama bundle: %s\n' "$APP_BUNDLE"
 
 if [[ "$BUILD_ONLY" == true ]]; then

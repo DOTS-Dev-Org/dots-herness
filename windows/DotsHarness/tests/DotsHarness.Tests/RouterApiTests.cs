@@ -109,6 +109,59 @@ public sealed class RouterApiTests
         }
     }
 
+    [Fact]
+    public async Task ProviderLimitDoesNotFallThroughToAnotherRoute()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"DotsHarnessTests-{Guid.NewGuid()}");
+        try
+        {
+            var secrets = new MemoryProviderSecretStore();
+            var store = new NativeProviderStore(root, secrets);
+            var first = new NativeProviderAccount
+            {
+                Provider = "first",
+                ProviderName = "First",
+                Name = "First",
+                Model = "test-model",
+                Models = ["test-model"],
+                BaseUrl = "https://first.example/v1",
+                CredentialId = "first-key",
+                Priority = 0,
+            };
+            var second = new NativeProviderAccount
+            {
+                Provider = "second",
+                ProviderName = "Second",
+                Name = "Second",
+                Model = "test-model",
+                Models = ["test-model"],
+                BaseUrl = "https://second.example/v1",
+                CredentialId = "second-key",
+                Priority = 1,
+            };
+            store.State.Accounts.Add(first);
+            store.State.Accounts.Add(second);
+            secrets.Write(first.CredentialId, "first-secret");
+            secrets.Write(second.CredentialId, "second-secret");
+
+            var handler = new LimitHandler();
+            var router = new NativeProviderRouter(store, http: new HttpClient(handler));
+            var failure = await Assert.ThrowsAsync<NativeProviderException>(() =>
+                router.CompleteAsync([new NativeMessage("user", "hello")], [], "test-model"));
+
+            Assert.Equal(1, handler.CallCount);
+            Assert.Equal(429, failure.StatusCode);
+            Assert.True(failure.IsLimit);
+            Assert.False(failure.Retryable);
+            Assert.Equal(NativeProviderLimitKind.Rate, failure.LimitKind);
+            Assert.Equal("First", failure.ProviderName);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
     private sealed class RecordingHandler : HttpMessageHandler
     {
         public HttpRequestMessage? Request { get; private set; }
@@ -122,6 +175,20 @@ public sealed class RouterApiTests
             {
                 Content = new StringContent("{\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"ready\"}]}],\"usage\":{\"input_tokens\":1,\"output_tokens\":2}}"),
             };
+        }
+    }
+
+    private sealed class LimitHandler : HttpMessageHandler
+    {
+        public int CallCount { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, System.Threading.CancellationToken cancellationToken)
+        {
+            CallCount++;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+            {
+                Content = new StringContent("{\"error\":{\"message\":\"rate limit reached\"}}"),
+            });
         }
     }
 }

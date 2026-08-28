@@ -5,11 +5,11 @@
              Background="{DynamicResource ChromeBackground}">
     <DockPanel>
         <DockPanel DockPanel.Dock="Top" Margin="12,12,12,8">
-            <TextBlock Text="Chats" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"
+            <TextBlock x:Name="ChatsText" Text="Chats" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"
                        Foreground="{DynamicResource TextPrimary}"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="+" Width="28" Height="26" Click="OnNew" ToolTip.Tip="New chat" Margin="0,0,6,0"/>
-                <Button Content="⚙" Width="28" Height="26" Click="OnSettings" ToolTip.Tip="Settings"/>
+                <Button x:Name="NewButton" Content="+" Width="28" Height="26" Click="OnNew" ToolTip.Tip="New chat" Margin="0,0,6,0"/>
+                <Button x:Name="SettingsButton" Content="⚙" Width="28" Height="26" Click="OnSettings" ToolTip.Tip="Settings"/>
             </StackPanel>
         </DockPanel>
         <DockPanel DockPanel.Dock="Bottom" Margin="10">

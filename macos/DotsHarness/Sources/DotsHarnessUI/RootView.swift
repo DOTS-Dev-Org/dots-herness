@@ -8,9 +8,11 @@ import DotsHarnessCore
 
 public struct RootView: View {
     @ObservedObject var model: AppModel
+    private let logo: Image?
 
-    public init(model: AppModel, logo _: Image? = nil) {
+    public init(model: AppModel, logo: Image? = nil) {
         self.model = model
+        self.logo = logo
     }
 
     public var body: some View {
@@ -22,6 +24,8 @@ public struct RootView: View {
             }
         }
         .preferredColorScheme(model.appearance.colorScheme)
+        .environment(\.locale, model.appLocale)
+        .environment(\.layoutDirection, model.isRTL ? .rightToLeft : .leftToRight)
         .background {
             PetFloatingWindowHost(model: model)
                 .frame(width: 0, height: 0)
@@ -39,7 +43,7 @@ public struct RootView: View {
     @ViewBuilder
     private var mainContent: some View {
         NavigationSplitView {
-            SidebarView(model: model)
+            SidebarView(model: model, logo: logo)
         } detail: {
             HStack(spacing: 0) {
                 ConversationView(model: model)

@@ -11,22 +11,18 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Styling;
 using DotsHarnessCore;
-using FableThinkingPlugin;
 
 namespace DotsHarness;
 
 public partial class App : Application
 {
-    public AppModel Model { get; } = new(
-        builtins: new Func<HarnessPluginKit.IHarnessPlugin>[]
-        {
-            () => new FableThinkingPlugin.FableThinkingPlugin(),
-        });
+    public AppModel Model { get; } = new();
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
     public override void OnFrameworkInitializationCompleted()
     {
+        Model.Bridge.AssistantResponseReceived += OnAssistantResponse;
         ApplyAppearance(Model.Appearance);
         Model.Start();
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -34,12 +30,39 @@ public partial class App : Application
             desktop.ShutdownRequested += (_, e) => OnShutdownRequested(desktop, e);
             desktop.Exit += (_, _) =>
             {
+                Model.Bridge.AssistantResponseReceived -= OnAssistantResponse;
+                if (desktop.MainWindow is MainWindow window) window.StopTerminal();
                 Model.Bridge.Stop();
                 Model.Local.Stop();
             };
             desktop.MainWindow = new MainWindow();
         }
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private void OnAssistantResponse(object? sender, AssistantResponseEventArgs e)
+    {
+        try
+        {
+            var start = new ProcessStartInfo("notify-send")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            start.ArgumentList.Add(e.ConversationTitle);
+            start.ArgumentList.Add(Preview(e.Text));
+            Process.Start(start)?.Dispose();
+        }
+        catch
+        {
+            // libnotify is optional on Linux; the chat still contains the response.
+        }
+    }
+
+    private static string Preview(string text)
+    {
+        var compact = string.Join(" ", text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return compact.Length > 240 ? compact[..240] + "…" : compact;
     }
 
     private bool _isConfirmingShutdown;
@@ -55,7 +78,7 @@ public partial class App : Application
         _isConfirmingShutdown = true;
         try
         {
-            var dialog = new CloseConfirmationWindow();
+            var dialog = new CloseConfirmationWindow(Model) { Icon = owner.Icon };
             if (await dialog.ShowDialog<bool>(owner))
             {
                 if (dialog.Remember) Model.SetConfirmBeforeExit(false);
@@ -125,9 +148,10 @@ internal sealed class CloseConfirmationWindow : Window
 {
     public bool Remember { get; private set; }
 
-    public CloseConfirmationWindow()
+    public CloseConfirmationWindow(AppModel model)
     {
-        Title = "Confirm close";
+        Title = model.L("window.confirmClose");
+        FlowDirection = model.IsRightToLeft ? Avalonia.Layout.FlowDirection.RightToLeft : Avalonia.Layout.FlowDirection.LeftToRight;
         Width = 380;
         SizeToContent = SizeToContent.Height;
         CanResize = false;
@@ -135,12 +159,12 @@ internal sealed class CloseConfirmationWindow : Window
 
         var remember = new CheckBox
         {
-            Content = "Remember this choice",
+            Content = model.L("window.remember"),
             Margin = new Thickness(0, 14, 0, 18),
         };
         var close = new Button
         {
-            Content = "Close",
+            Content = model.L("window.close"),
             Padding = new Thickness(14, 6),
             Margin = new Thickness(0, 0, 8, 0),
         };
@@ -151,7 +175,7 @@ internal sealed class CloseConfirmationWindow : Window
         };
         var cancel = new Button
         {
-            Content = "Cancel",
+            Content = model.L("window.cancel"),
             Padding = new Thickness(14, 6),
         };
         cancel.Click += (_, _) => Close(false);
@@ -163,7 +187,7 @@ internal sealed class CloseConfirmationWindow : Window
             {
                 new TextBlock
                 {
-                    Text = "Are you sure you want to close?",
+                    Text = model.L("window.closeQuestion"),
                     TextWrapping = Avalonia.Media.TextWrapping.Wrap,
                 },
                 remember,

@@ -8,9 +8,16 @@ public enum FileDownloader {
     public struct Progress: Sendable, Equatable {
         public var received: Int64
         public var expected: Int64
+        public var bytesPerSecond: Double
         public var fraction: Double {
             guard expected > 0 else { return 0 }
             return min(1, Double(received) / Double(expected))
+        }
+
+        public init(received: Int64, expected: Int64, bytesPerSecond: Double = 0) {
+            self.received = received
+            self.expected = expected
+            self.bytesPerSecond = bytesPerSecond
         }
     }
 
@@ -51,26 +58,39 @@ public enum FileDownloader {
             if !fm.fileExists(atPath: part.path) { fm.createFile(atPath: part.path, contents: nil) }
         }
         let expectedTotal = response.expectedContentLength > 0 ? response.expectedContentLength + offset : expected
-        progress?(Progress(received: offset, expected: expectedTotal))
+        let transferStart = offset
+        let startedAt = ProcessInfo.processInfo.systemUptime
+        var lastSpeed = 0.0
+        func report(_ received: Int64) {
+            let elapsed = ProcessInfo.processInfo.systemUptime - startedAt
+            lastSpeed = elapsed > 0
+                ? Double(max(0, received - transferStart)) / elapsed
+                : 0
+            progress?(Progress(received: received, expected: expectedTotal, bytesPerSecond: lastSpeed))
+        }
+        report(offset)
         let handle = try FileHandle(forWritingTo: part)
+        defer { try? handle.close() }
         if append { try handle.seekToEnd() } else { try handle.truncate(atOffset: 0) }
         var received = offset
         var buffer = Data()
         buffer.reserveCapacity(128 * 1024)
         for try await byte in bytes {
+            try Task.checkCancellation()
             buffer.append(byte)
             if buffer.count >= 128 * 1024 {
                 try handle.write(contentsOf: buffer)
                 received += Int64(buffer.count)
                 buffer.removeAll(keepingCapacity: true)
-                progress?(Progress(received: received, expected: expectedTotal))
+                report(received)
             }
         }
         if !buffer.isEmpty {
             try handle.write(contentsOf: buffer)
             received += Int64(buffer.count)
         }
-        try handle.close()
+        report(received)
+        try Task.checkCancellation()
         if fm.fileExists(atPath: destination.path) { try fm.removeItem(at: destination) }
         try fm.moveItem(at: part, to: destination)
         let size = (try? fm.attributesOfItem(atPath: destination.path)[.size] as? NSNumber)?.int64Value ?? received
@@ -82,7 +102,7 @@ public enum FileDownloader {
             try? fm.removeItem(at: destination)
             throw RouterError(AppCopy.text("download.checksumMismatch"))
         }
-        progress?(Progress(received: size, expected: max(expected, size)))
+        progress?(Progress(received: size, expected: max(expected, size), bytesPerSecond: lastSpeed))
     }
 
     private static func checksum(of url: URL) throws -> String {

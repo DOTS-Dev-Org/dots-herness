@@ -23,7 +23,11 @@ final class SimulatorToolsTests: XCTestCase {
             (101) CarPlay:
                 Pixel Size: {720, 480}
         Connected Screens:
+            (2) TVOut:
+                Screen Type: TVOut
+                Pixel Size: {720, 480}
             (1) LCD:
+                Screen Type: Integrated
                 Pixel Size: {1206, 2622}
         """
         XCTAssertEqual(

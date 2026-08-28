@@ -22,6 +22,10 @@ public final class RouterController: ObservableObject {
     @Published public var nodes: [RouterNode] = []
     @Published public var models: [RouterModel] = []
     @Published public var selectedModelID: String = ""
+    /// Reasoning effort for the selected model. Empty means "provider default".
+    @Published public var selectedEffort: String = ""
+    /// What automatic routing picked for the last request, for the picker to show.
+    @Published public private(set) var lastAutoDecision: ModelDecision?
     @Published public var status: String = AppCopy.text("common.idle")
     @Published public var error: String?
     @Published public var flow: RouterFlow = .idle
@@ -39,16 +43,25 @@ public final class RouterController: ObservableObject {
     @Published public var editingNodeID: String?
 
     public let store: NativeProviderStore
+    public let imageAdapters: ProviderImageAdapterRegistry
     private var gateway: ProviderGateway?
     private let cloudTunnel: CloudTunnelProcess
     private var callbackListener: NWListener?
     private var callbackConnection: NWConnection?
     private var callbackPort = 1455
     private var modelRefreshAttempted = false
+    /// Effort chosen by automatic routing for the in-flight request.
+    private var autoEffortOverride: String?
 
-    public init(baseURL: String = "", paths: SupportPaths = .default()) {
+    public init(
+        baseURL: String = "",
+        paths: SupportPaths = .default(),
+        imageAdapters: ProviderImageAdapterRegistry? = nil
+    ) {
         _ = baseURL
         store = NativeProviderStore(paths: paths)
+        self.imageAdapters = imageAdapters ?? ProviderImageAdapterRegistry()
+        BuiltInProviderImageAdapters.register(on: self.imageAdapters)
         cloudTunnel = CloudTunnelProcess(runtimeURL: paths.runtime)
         gateway = try? ProviderGateway { [weak self] request in
             await self?.gatewayResponse(request) ?? .json(["error": ["message": "Gateway is unavailable"]], status: 503)
@@ -63,49 +76,321 @@ public final class RouterController: ObservableObject {
 
     public func refreshModels(force: Bool = false) async {
         if !force, modelRefreshAttempted { return }
-        guard force else { return }
         modelRefreshAttempted = true
         var next: [RouterModel] = []
         for account in store.state.accounts where account.active {
+            let owner = RouterCatalog.label(for: account.provider)
+            let specModels = RouterCatalog.spec(for: account.provider)?.models ?? []
+            // Effort levels are model-specific and no provider publishes them, so
+            // they always come from the registry — matched by id against whatever
+            // the live listing returns.
+            func model(id: String, name: String? = nil) -> RouterModel {
+                let spec = specModels.first { $0.id == id }
+                return RouterModel(
+                    id: id,
+                    owner: owner,
+                    contextWindow: spec?.contextWindow,
+                    efforts: spec?.efforts ?? [],
+                    displayName: name ?? spec?.name,
+                    provider: account.provider,
+                    tier: spec?.tier
+                )
+            }
+
+            // The Codex backend has no model listing (its `/models` 400s and the
+            // ChatGPT web list carries different ids), so it stays registry-driven.
             if account.api == RouterAPIKind.chatGPT.rawValue {
-                if !account.model.isEmpty { next.append(RouterModel(id: account.model, owner: RouterCatalog.label(for: account.provider))) }
+                for spec in specModels { next.append(model(id: spec.id)) }
+                if specModels.isEmpty, !account.model.isEmpty { next.append(model(id: account.model)) }
                 continue
             }
-            if let url = URL(string: account.baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/models") {
+
+            var live: [RouterModel] = []
+            if let url = modelsURL(for: account) {
                 var request = URLRequest(url: url, timeoutInterval: 8)
-                if let key = try? store.credential(for: account), !key.isEmpty {
-                    if account.api == RouterAPIKind.anthropic.rawValue { request.setValue(key, forHTTPHeaderField: "x-api-key") }
-                    else { request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization") }
-                }
-                if account.api == RouterAPIKind.anthropic.rawValue { request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version") }
+                authorize(&request, for: account)
                 if let (data, response) = try? await URLSession.shared.data(for: request),
                    (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) == true,
                    let payload = try? JSONCodec.parse(data),
                    case .array(let items) = payload["data"] {
-                    next.append(contentsOf: items.compactMap { item in
+                    live = items.compactMap { item in
                         guard let id = item["id"]?.string, !id.isEmpty else { return nil }
-                        return RouterModel(id: id, owner: RouterCatalog.label(for: account.provider))
-                    })
+                        var discovered = model(id: id, name: item["display_name"]?.string)
+                        discovered.contextWindow = item["context_length"]?.int
+                            ?? item["contextWindow"]?.int
+                            ?? discovered.contextWindow
+                        return discovered
+                    }
                 }
             }
-            if !account.model.isEmpty { next.append(RouterModel(id: account.model, owner: RouterCatalog.label(for: account.provider))) }
+            next.append(contentsOf: live)
+            // Registry entries the listing omits (aliases such as `claude-haiku-4-5`)
+            // still route fine, so keep them as a floor rather than losing them.
+            for spec in specModels where !live.contains(where: { $0.id == spec.id }) {
+                next.append(model(id: spec.id))
+            }
+            if live.isEmpty,
+               !account.model.isEmpty,
+               !next.contains(where: { $0.id == account.model && $0.provider == account.provider }) {
+                next.append(model(id: account.model))
+            }
         }
         models = next.reduce(into: []) { result, model in
             if !result.contains(where: { $0.id == model.id }) { result.append(model) }
         }
-        if models.contains(where: { $0.id == selectedModelID }) == false {
+        if selectedModelID.isEmpty {
             selectedModelID = models.first?.id ?? ""
         }
     }
 
     public func refreshModelsIfNeeded() async { await refreshModels() }
 
-    public func agentConfiguration() async -> AgentConfiguration? {
+    public func contextWindow(for model: String? = nil) -> Int {
+        if let model, let live = models.first(where: { $0.id == model })?.contextWindow, live > 0 { return live }
+        if let model, let staticWindow = ProviderRegistry.shared.specs
+            .flatMap(\.models)
+            .first(where: { $0.id == model })?.contextWindow, staticWindow > 0 { return staticWindow }
+        let account = store.state.accounts
+            .filter(\.active)
+            .sorted { $0.priority < $1.priority }
+            .first { canServe($0, model: model ?? "") }
+        switch account?.api {
+        case RouterAPIKind.anthropic.rawValue: return 200_000
+        case RouterAPIKind.chatGPT.rawValue: return 128_000
+        default: return AgentContextCompaction.defaultContextWindow
+        }
+    }
+
+    public func compactionModelID(avoiding model: String?) -> String? {
+        let account = store.state.accounts
+            .filter(\.active)
+            .sorted { $0.priority < $1.priority }
+            .first { canServe($0, model: selectedModelID) }
+        guard let account else { return nil }
+        let candidates = models
+            .filter { canServe(account, model: $0.id) }
+            .map(\.id)
+            .filter { !$0.isEmpty }
+            .sorted {
+                let lhsAvoid = $0 == model ? 1 : 0
+                let rhsAvoid = $1 == model ? 1 : 0
+                if lhsAvoid != rhsAvoid { return lhsAvoid < rhsAvoid }
+                return isCompactModel($0) && !isCompactModel($1)
+            }
+        return candidates.first ?? effectiveModel(for: account)
+    }
+
+    public func preserveProviderItems(for model: String? = nil) -> Bool {
+        store.state.accounts.contains {
+            $0.active && $0.api == RouterAPIKind.chatGPT.rawValue && canServe($0, model: model ?? selectedModelID)
+        }
+    }
+
+    /// Whether `account` can serve `model`. A model may come from the static
+    /// registry or from a provider's live `/models` listing, so both are checked.
+    private func canServe(_ account: StoredProviderAccount, model: String) -> Bool {
+        // The auto sentinel is not a real model: any active account qualifies, and
+        // the concrete choice is made per request in `complete`.
+        if model.isEmpty || model == ModelRouter.autoModelID || account.model == model { return true }
+        if RouterCatalog.spec(for: account.provider)?.models.contains(where: { $0.id == model }) == true { return true }
+        return models.contains { $0.id == model && $0.provider == account.provider }
+    }
+
+    public func agentConfiguration(
+        model requestedModel: String? = nil,
+        loadCredentials: Bool = true
+    ) async -> AgentConfiguration? {
         let accounts = store.state.accounts.filter(\.active).sorted { $0.priority < $1.priority }
-        for account in accounts where (selectedModelID.isEmpty || account.model == selectedModelID) {
-            if let configuration = try? configuration(for: account) { return configuration }
+        var selected = (requestedModel ?? selectedModelID).trimmingCharacters(in: .whitespacesAndNewlines)
+        // Report a concrete model in the ready banner rather than the sentinel.
+        if selected == ModelRouter.autoModelID { selected = "" }
+        for account in accounts where canServe(account, model: selected) {
+            if let configuration = try? configuration(
+                for: account,
+                model: selected.isEmpty ? nil : selected,
+                loadCredentials: loadCredentials
+            ) {
+                return configuration
+            }
         }
         return nil
+    }
+
+    public func mediaConfiguration(for kind: MediaKind) async -> (configuration: AgentConfiguration, provider: ProviderMediaSpec)? {
+        let accounts = store.state.accounts.filter(\.active).sorted { $0.priority < $1.priority }
+        for account in accounts {
+            guard let provider = RouterCatalog.spec(for: account.provider)?.media?.spec(for: kind),
+                  let configuration = try? configuration(for: account) else { continue }
+            return (configuration, provider)
+        }
+        return nil
+    }
+
+    public var hasImageFallback: Bool {
+        store.state.accounts.contains { $0.active && $0.imageFallbackEnabled }
+    }
+
+    public var imageGenerationCommandVisible: Bool {
+        guard let account = imagePrimaryAccount else { return false }
+        let model = imageModel(for: account)
+        let route = imageRoute(for: account, model: model)
+        let adapterID = imageAdapters.adapter(for: route)?.id ?? "none"
+        return imageAdapters.capability(for: route, adapterID: adapterID) != .unsupported || hasImageFallback
+    }
+
+    public func generateImage(prompt: String, session: URLSession = .shared) async throws -> ProviderImageGeneration {
+        let prompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !prompt.isEmpty else { throw ProviderImageGenerationError.unsupported(AppCopy.text("media.promptMissing")) }
+        guard let primary = imagePrimaryAccount else {
+            throw ProviderImageGenerationError.unsupported(AppCopy.text("media.unsupportedStatus"))
+        }
+        let primaryModel = imageModel(for: primary)
+        let primaryRoute = imageRoute(for: primary, model: primaryModel)
+        let primaryAdapter = imageAdapters.adapter(for: primaryRoute)
+        let primaryAdapterID = primaryAdapter?.id ?? "none"
+
+        if imageAdapters.capability(for: primaryRoute, adapterID: primaryAdapterID) != .unsupported,
+           let primaryAdapter {
+            let result = try await imageAttempt(
+                adapter: primaryAdapter,
+                route: primaryRoute,
+                configuration: try imageConfiguration(for: primary, model: primaryModel),
+                prompt: prompt,
+                session: session
+            )
+            switch result {
+            case .generated(let output):
+                imageAdapters.record(.supported, for: primaryRoute, adapterID: primaryAdapterID)
+                return ProviderImageGeneration(output: output, provider: RouterCatalog.label(for: primary.provider), model: primaryModel)
+            case .failed(let failure):
+                throw ProviderImageGenerationError.failed(failure)
+            case .unsupported:
+                imageAdapters.record(.unsupported, for: primaryRoute, adapterID: primaryAdapterID)
+            }
+        } else {
+            imageAdapters.record(.unsupported, for: primaryRoute, adapterID: primaryAdapterID)
+        }
+
+        let fallbackSource = "\(RouterCatalog.label(for: primary.provider))/\(primaryModel)"
+        let candidates = store.state.accounts
+            .filter { $0.active && $0.imageFallbackEnabled }
+            .sorted { $0.priority < $1.priority }
+        for account in candidates {
+            let model = effectiveModel(for: account)
+            let route = imageRoute(for: account, model: model)
+            let adapter = imageAdapters.adapter(for: route, includeFallbackOnly: true)
+            let adapterID = adapter?.id ?? "none"
+            if imageAdapters.capability(for: route, adapterID: adapterID) == .unsupported { continue }
+            guard let adapter else {
+                imageAdapters.record(.unsupported, for: route, adapterID: adapterID)
+                continue
+            }
+            let result = try await imageAttempt(
+                adapter: adapter,
+                route: route,
+                configuration: try imageConfiguration(for: account, model: model),
+                prompt: prompt,
+                session: session
+            )
+            switch result {
+            case .generated(let output):
+                imageAdapters.record(.supported, for: route, adapterID: adapterID)
+                let generatedModel = adapterID == "openai.images.fallback" ? "gpt-image-1.5" : model
+                return ProviderImageGeneration(
+                    output: output,
+                    provider: RouterCatalog.label(for: account.provider),
+                    model: generatedModel,
+                    fallbackFrom: fallbackSource
+                )
+            case .unsupported:
+                imageAdapters.record(.unsupported, for: route, adapterID: adapterID)
+            case .failed(let failure):
+                throw ProviderImageGenerationError.failed(failure)
+            }
+        }
+        throw ProviderImageGenerationError.unsupported(
+            "\(fallbackSource) does not support image generation. Enable an image fallback connection in Settings."
+        )
+    }
+
+    private var imagePrimaryAccount: StoredProviderAccount? {
+        let selected = selectedModelID == ModelRouter.autoModelID ? "" : selectedModelID
+        let active = store.state.accounts.filter(\.active).sorted { $0.priority < $1.priority }
+        return active.first(where: { canServe($0, model: selected) }) ?? active.first
+    }
+
+    private func imageModel(for account: StoredProviderAccount) -> String {
+        let selected = selectedModelID == ModelRouter.autoModelID ? "" : selectedModelID
+        return selected.isEmpty ? effectiveModel(for: account) : selected
+    }
+
+    private func imageRoute(for account: StoredProviderAccount, model: String) -> ProviderImageRoute {
+        ProviderImageRoute(
+            accountID: account.id,
+            providerID: account.provider,
+            baseURL: account.baseURL,
+            api: account.api,
+            model: model,
+            authType: account.authType,
+            sessionAccountID: account.sessionAccountID
+        )
+    }
+
+    private func imageConfiguration(for account: StoredProviderAccount, model: String) throws -> AgentConfiguration {
+        try configuration(for: account, model: model)
+    }
+
+    private func imageAttempt(
+        adapter: any ProviderImageAdapter,
+        route: ProviderImageRoute,
+        configuration: AgentConfiguration,
+        prompt: String,
+        session: URLSession
+    ) async throws -> ProviderImageResult {
+        do {
+            let prepared = try adapter.prepareImageRequest(prompt: prompt, model: route.model, route: route)
+            var request = URLRequest(url: prepared.url, timeoutInterval: 180)
+            request.httpMethod = "POST"
+            request.httpBody = prepared.body
+            for (header, value) in prepared.headers { request.setValue(value, forHTTPHeaderField: header) }
+            if let key = configuration.apiKey, !key.isEmpty {
+                switch prepared.authentication {
+                case .none: break
+                case .bearer: request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+                case .rawHeader(let header): request.setValue(key, forHTTPHeaderField: header)
+                }
+            }
+            if configuration.api == RouterAPIKind.chatGPT.rawValue {
+                if configuration.transportSpec?.quirks.requiresSessionAccountID == true,
+                   let accountID = configuration.sessionAccountID, !accountID.isEmpty {
+                    request.setValue(accountID, forHTTPHeaderField: "ChatGPT-Account-ID")
+                    request.setValue("codex", forHTTPHeaderField: "OAI-Product-Sku")
+                    request.setValue("codex_cli_rs", forHTTPHeaderField: "originator")
+                }
+                request.setValue(UUID().uuidString, forHTTPHeaderField: "session-id")
+                let threadID = UUID().uuidString
+                request.setValue(threadID, forHTTPHeaderField: "thread-id")
+                request.setValue(threadID, forHTTPHeaderField: "x-client-request-id")
+            }
+            for (header, value) in configuration.transportSpec?.extraHeaders ?? [:] {
+                request.setValue(value, forHTTPHeaderField: header)
+            }
+            let (data, response) = try await session.data(for: request)
+            let http = response as? HTTPURLResponse
+            var headers: [String: String] = [:]
+            for (key, value) in http?.allHeaderFields ?? [:] {
+                headers[String(describing: key)] = String(describing: value)
+            }
+            return adapter.parseImageResponse(data: data, status: http?.statusCode ?? 0, headers: headers)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as URLError {
+            return .failed(ProviderImageFailure(kind: .network, message: error.localizedDescription))
+        } catch let error as NativeAgentError {
+            return .failed(ProviderImageFailure(kind: .other, message: error.message))
+        } catch {
+            return .failed(ProviderImageFailure(kind: .other, message: error.localizedDescription))
+        }
     }
 
     public func complete(
@@ -114,9 +399,37 @@ public final class RouterController: ObservableObject {
         cachePolicy: AgentCachePolicy = AgentCachePolicy(),
         model: String? = nil
     ) async throws -> AgentResponse {
+        let requestedModel = (model ?? selectedModelID).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard requestedModel == ModelRouter.autoModelID else {
+            autoEffortOverride = nil
+            return try await send(
+                messages: messages,
+                tools: tools,
+                cachePolicy: cachePolicy,
+                model: requestedModel.isEmpty ? nil : requestedModel
+            )
+        }
+
+        // Auto chooses once before the request. A provider limit is surfaced to
+        // the bridge so the conversation can pause instead of rerouting.
+        guard let decision = ModelRouter.decide(messages: messages, available: routableModels) else {
+            throw NativeAgentError(AppCopy.text("agent.configureEndpoint"))
+        }
+        lastAutoDecision = decision
+        autoEffortOverride = decision.effort
+        status = decision.reason
+        return try await send(messages: messages, tools: tools, cachePolicy: cachePolicy, model: decision.model)
+    }
+
+    private func send(
+        messages: [AgentMessage],
+        tools: [AgentToolDefinition],
+        cachePolicy: AgentCachePolicy,
+        model requestedModel: String?
+    ) async throws -> AgentResponse {
         let routes = store.state.accounts
             .filter(\.active)
-            .filter { model?.isEmpty != false || $0.model == model }
+            .filter { canServe($0, model: requestedModel ?? "") }
             .sorted { $0.priority < $1.priority }
         guard !routes.isEmpty else { throw NativeAgentError(AppCopy.text("agent.configureEndpoint")) }
         var failures: [String] = []
@@ -124,13 +437,14 @@ public final class RouterController: ObservableObject {
             var refreshed = false
             while true {
                 do {
-                    let configuration = try configuration(for: account, model: model)
+                    let configuration = try configuration(for: account, model: requestedModel)
                     let response = try await NativeAgentClient(configuration: configuration).complete(messages: messages, tools: tools, cachePolicy: cachePolicy)
                     status = AppCopy.format("router.connected", configuration.provider)
                     return response
                 } catch is CancellationError {
                     throw CancellationError()
                 } catch let failure as NativeAgentError {
+                    if failure.isLimit { throw failure }
                     if failure.statusCode == 401, !refreshed {
                         refreshed = true
                         if await refreshCredential(for: account) { continue }
@@ -147,22 +461,76 @@ public final class RouterController: ObservableObject {
         throw NativeAgentError(failures.joined(separator: "\n"), retryable: false)
     }
 
-    private func configuration(for account: StoredProviderAccount, model: String? = nil) throws -> AgentConfiguration {
+    private func configuration(
+        for account: StoredProviderAccount,
+        model: String? = nil,
+        loadCredentials: Bool = true
+    ) throws -> AgentConfiguration {
         guard !account.baseURL.isEmpty, !account.model.isEmpty else { throw NativeAgentError("Provider endpoint is incomplete.") }
-        let key = try store.credential(for: account)
-        if account.api == RouterAPIKind.anthropic.rawValue || account.api == RouterAPIKind.chatGPT.rawValue {
+        let key = loadCredentials ? try store.credential(for: account) : nil
+        if loadCredentials && (account.api == RouterAPIKind.anthropic.rawValue || account.api == RouterAPIKind.chatGPT.rawValue) {
             guard key != nil else { throw ProviderStoreError.credentialUnavailable }
         }
         return AgentConfiguration(
             baseURL: account.baseURL,
-            model: model?.isEmpty == false ? model! : account.model,
+            model: model?.isEmpty == false ? model! : effectiveModel(for: account),
             apiKey: key,
             provider: RouterCatalog.label(for: account.provider),
             api: account.api,
             sessionAccountID: account.sessionAccountID,
             specID: account.provider,
-            authType: account.authType
+            authType: account.authType,
+            effort: effort(for: model?.isEmpty == false ? model! : effectiveModel(for: account)),
+            contextWindow: contextWindow(for: model?.isEmpty == false ? model : effectiveModel(for: account)),
+            supportsNativeCompaction: RouterCatalog.spec(for: account.provider)?.transport.quirks.supportsNativeCompaction ?? false
         )
+    }
+
+    /// Effort levels the picker offers for `model`, low to high. Empty means the
+    /// model rejects the parameter, so the control is hidden.
+    public func efforts(for model: String) -> [String] {
+        if let resolved = models.first(where: { $0.id == model }) { return resolved.efforts }
+        return ProviderRegistry.shared.specs.flatMap(\.models).first { $0.id == model }?.efforts ?? []
+    }
+
+    /// The selected effort, but only when the target model actually accepts it.
+    /// Automatic routing chooses its own level, which wins for that request.
+    private func effort(for model: String) -> String {
+        let supported = efforts(for: model)
+        if let override = autoEffortOverride {
+            return supported.contains(override) ? override : ""
+        }
+        return supported.contains(selectedEffort) ? selectedEffort : ""
+    }
+
+    /// True when the user picked "Auto" rather than a specific model.
+    public var isAutoSelected: Bool { selectedModelID == ModelRouter.autoModelID }
+
+    /// Models automatic routing may choose from: everything a connected account
+    /// can actually serve.
+    public var routableModels: [RouterModel] {
+        models.filter { candidate in
+            store.state.accounts.contains { $0.active && canServe($0, model: candidate.id) }
+        }
+    }
+
+    /// Preview of what automatic routing would do for `messages`, without sending.
+    public func previewAutoDecision(for messages: [AgentMessage]) -> ModelDecision? {
+        ModelRouter.decide(messages: messages, available: routableModels)
+    }
+
+    private func effectiveModel(for account: StoredProviderAccount) -> String {
+        guard account.api == RouterAPIKind.chatGPT.rawValue
+            || account.authType == "oauth"
+            || account.authType == "chatgpt" else { return account.model }
+        let registered = RouterCatalog.spec(for: account.provider)?.models.map(\.id) ?? []
+        return registered.contains(account.model) || registered.isEmpty ? account.model : registered[0]
+    }
+
+    private func isCompactModel(_ model: String) -> Bool {
+        let id = model.lowercased()
+        return id.contains("mini") || id.contains("nano") || id.contains("haiku")
+            || id.contains("flash") || id.contains("lite") || id.contains("small")
     }
 
     private func refreshCredential(for account: StoredProviderAccount) async -> Bool {
@@ -171,8 +539,8 @@ public final class RouterController: ObservableObject {
         do {
             let tokens = try await OAuthFlow(spec: oauth).refresh(refresh)
             try store.replaceCredential(for: account, with: tokens.accessToken)
-            if let idToken = tokens.idToken,
-               let accountID = OAuthFlow.jwtClaims(idToken)["chatgpt_account_id"] as? String,
+            if let accountID = tokens.accountID
+                ?? tokens.idToken.flatMap({ OAuthFlow.chatGPTAccountID(OAuthFlow.jwtClaims($0)) }),
                !accountID.isEmpty {
                 try store.updateSessionAccountID(for: account, with: accountID)
             }
@@ -193,7 +561,7 @@ public final class RouterController: ObservableObject {
         case .passthrough:
             await connectPassthrough()
         case .oauthDevice:
-            error = "This provider does not expose a native device login yet. Use an API key or Custom API."
+            await startDevice()
         }
     }
 
@@ -263,7 +631,7 @@ public final class RouterController: ObservableObject {
             self.error = "The sign-in request timed out. Start it again."
             self.cancelFlow()
         }
-        status = AppCopy.text("router.oauthWaiting")
+        status = AppCopy.text("router.waitingAuthorization")
     }
 
     public func finishBrowser() async {
@@ -290,8 +658,11 @@ public final class RouterController: ObservableObject {
             }
         if let returnedState, returnedState != expectedState { error = "The login callback state did not match."; return }
         do {
-            let tokens = try await OAuthFlow(spec: oauth).exchange(code: rawCode, verifier: verifier)
+            let tokens = try await OAuthFlow(spec: oauth).exchange(code: rawCode, verifier: verifier, state: expectedState)
             let provider = RouterCatalog.kind(for: providerID) ?? selectedKind
+            // Cloud Code Assist requires a project id on every later call, and it
+            // is only obtainable once we hold the access token.
+            let discovered = try await discoverProject(oauth: oauth, accessToken: tokens.accessToken)
             let isGPT = spec.transport.format == .responses
             let name = tokens.email ?? tokens.accountID ?? "\(provider.name) account"
             _ = try store.addAccount(
@@ -302,7 +673,7 @@ public final class RouterController: ObservableObject {
                 api: provider.api.rawValue,
                 authType: isGPT ? "chatgpt" : "oauth",
                 email: tokens.email,
-                sessionAccountID: tokens.accountID,
+                sessionAccountID: discovered ?? tokens.accountID,
                 refreshSecret: tokens.refreshToken
             )
             callbackListener?.cancel(); callbackListener = nil; callbackConnection = nil
@@ -314,7 +685,85 @@ public final class RouterController: ObservableObject {
         }
     }
 
-    public func startDevice() async { error = "Native device login is not available for this provider yet. Use an API key or Custom API." }
+    /// Device sign-in: show the user a short code, open the provider's page, then
+    /// poll for approval. No local callback listener is involved.
+    /// One-shot `loadCodeAssist` call: returns the Cloud Code Assist project id
+    /// the provider will demand on every generate call. `nil` when the provider
+    /// declares no discovery endpoint.
+    private func discoverProject(oauth: ProviderSpec.OAuthSpec, accessToken: String) async throws -> String? {
+        guard let raw = oauth.projectDiscoveryURL, let url = URL(string: raw) else { return nil }
+        var request = URLRequest(url: url, timeoutInterval: 20)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        let metadata: [String: Any] = ["ideType": 9, "platform": 2, "pluginType": 2]
+        request.setValue(
+            String(decoding: (try? JSONSerialization.data(withJSONObject: metadata)) ?? Data("{}".utf8), as: UTF8.self),
+            forHTTPHeaderField: "Client-Metadata"
+        )
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["metadata": metadata, "mode": 1])
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) == true,
+              let payload = try? JSONCodec.parse(data) else {
+            throw RouterTestError.message("Could not read the Google Code Assist project for this account.")
+        }
+        // The field is a bare string on some accounts and an object on others.
+        let project = payload["cloudaicompanionProject"]?.string
+            ?? payload["cloudaicompanionProject"]?["id"]?.string
+        guard let project, !project.isEmpty else {
+            throw RouterTestError.message("This Google account has no Gemini Code Assist project.")
+        }
+        return project
+    }
+
+    public func startDevice() async {
+        guard let spec = RouterCatalog.spec(for: selectedKind.id), let oauth = spec.oauth,
+              oauth.deviceCodeURL?.isEmpty == false else {
+            error = "This provider does not expose a native device login yet. Use an API key or Custom API."
+            return
+        }
+        let engine = OAuthFlow(spec: oauth)
+        let device: OAuthFlow.DeviceCode
+        do {
+            device = try await engine.startDevice()
+        } catch {
+            self.error = error.localizedDescription
+            return
+        }
+        flow = .device(
+            provider: selectedKind.id,
+            userCode: device.userCode,
+            verificationURL: device.verificationURL,
+            deviceCode: device.deviceCode,
+            codeVerifier: nil,
+            extra: [:]
+        )
+        status = AppCopy.text("router.waitingAuthorization")
+        if let url = URL(string: device.verificationURL) { NSWorkspace.shared.open(url) }
+
+        do {
+            let tokens = try await engine.pollDevice(device)
+            guard case .device(let providerID, _, _, _, _, _) = flow, providerID == selectedKind.id else { return }
+            let provider = RouterCatalog.kind(for: providerID) ?? selectedKind
+            _ = try store.addAccount(
+                provider: provider,
+                name: tokens.email ?? "\(provider.name) account",
+                secret: tokens.accessToken,
+                model: provider.defaultModel,
+                api: provider.api.rawValue,
+                authType: "oauth",
+                email: tokens.email,
+                refreshSecret: tokens.refreshToken
+            )
+            flow = .idle
+            status = AppCopy.format("router.connected", provider.name)
+            await refresh()
+            await refreshModels(force: true)
+        } catch {
+            self.error = error.localizedDescription
+            flow = .idle
+        }
+    }
     public func cancelFlow() { callbackListener?.cancel(); callbackListener = nil; callbackConnection = nil; flow = .idle; callbackPaste = "" }
 
     public func toggle(_ connection: RouterConnection) async {
@@ -322,22 +771,54 @@ public final class RouterController: ObservableObject {
         catch { self.error = error.localizedDescription }
     }
 
+    public func toggleImageFallback(_ connection: RouterConnection) async {
+        do { try store.setImageFallback(connection.id, !connection.imageFallbackEnabled); await refresh() }
+        catch { self.error = error.localizedDescription }
+    }
+
+    /// Where to list this account's models. A provider may host the listing off
+    /// its chat base path, so the registry's `modelsURL` wins when present.
+    private func modelsURL(for account: StoredProviderAccount) -> URL? {
+        if let declared = RouterCatalog.spec(for: account.provider)?.apiKey?.modelsURL, !declared.isEmpty {
+            return URL(string: declared)
+        }
+        let base = account.baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        return URL(string: base + "/models")
+    }
+
+    /// Applies the account's credential to `request`. An OAuth/subscription token
+    /// is a bearer token even on Anthropic, whose API-key header is `x-api-key` —
+    /// sending an OAuth token there is rejected with HTTP 401.
+    private func authorize(_ request: inout URLRequest, for account: StoredProviderAccount) {
+        guard let key = (try? store.credential(for: account)) ?? nil, !key.isEmpty else { return }
+        let isOAuth = account.authType == "oauth" || account.authType == "chatgpt"
+        if account.api == RouterAPIKind.anthropic.rawValue, !isOAuth {
+            request.setValue(key, forHTTPHeaderField: "x-api-key")
+        } else {
+            request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        }
+        if account.api == RouterAPIKind.anthropic.rawValue {
+            request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        }
+        for (header, value) in RouterCatalog.spec(for: account.provider)?.transport.extraHeaders ?? [:] {
+            request.setValue(value, forHTTPHeaderField: header)
+        }
+    }
+
     public func test(_ connection: RouterConnection) async {
         guard let account = store.state.accounts.first(where: { $0.id == connection.id }) else { return }
         do {
-            if account.api == RouterAPIKind.chatGPT.rawValue {
+            // A subscription token can't list `/models` on every provider, but it can
+            // always complete — so probe the path the app actually uses.
+            if account.authType == "oauth" || account.authType == "chatgpt" {
                 let configuration = try configuration(for: account)
                 _ = try await NativeAgentClient(configuration: configuration).complete(messages: [AgentMessage(role: .user, content: "ping")])
                 status = AppCopy.format("router.connected", RouterCatalog.label(for: account.provider))
                 return
             }
-            guard let url = URL(string: account.baseURL + "/models") else { throw ProviderStoreError.invalidEndpoint }
+            guard let url = modelsURL(for: account) else { throw ProviderStoreError.invalidEndpoint }
             var request = URLRequest(url: url, timeoutInterval: 8)
-            if let key = try store.credential(for: account), !key.isEmpty {
-                if account.api == RouterAPIKind.anthropic.rawValue { request.setValue(key, forHTTPHeaderField: "x-api-key") }
-                else { request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization") }
-            }
-            if account.api == RouterAPIKind.anthropic.rawValue { request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version") }
+            authorize(&request, for: account)
             let (_, response) = try await URLSession.shared.data(for: request)
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard (200..<300).contains(code) else { throw RouterTestError.http(code) }
@@ -365,7 +846,7 @@ public final class RouterController: ObservableObject {
                 request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 request.httpBody = try JSONSerialization.data(withJSONObject: [
-                    "model": "claude-3-5-haiku-latest",
+                    "model": "claude-haiku-4-5",
                     "max_tokens": 1,
                     "messages": [["role": "user", "content": "ping"]],
                 ])
@@ -469,20 +950,42 @@ public final class RouterController: ObservableObject {
         catch { self.error = error.localizedDescription }
     }
 
-    private func refreshState() {
-        connections = store.state.accounts.map(RouterConnection.init(from:))
-        nodes = store.state.endpoints.map(RouterNode.init(from:))
+    public func refreshShareKey() {
         do {
-            if let key = try store.shareKey() {
-                keys = [RouterKey(id: "share.key", name: "Share key", key: key)]
-            } else {
-                keys = []
-            }
+            keys = try store.shareKey().map { [RouterKey(id: "share.key", name: "Share key", key: $0)] } ?? []
         } catch {
             keys = []
         }
+    }
+
+    private func refreshState() {
+        connections = store.state.accounts.map(RouterConnection.init(from:))
+        nodes = store.state.endpoints.map(RouterNode.init(from:))
+        // Seed from the registry so the picker has the connected accounts' models
+        // on launch, without waiting on (or requiring) a live listing.
+        if models.isEmpty { models = registryModels() }
         selectedModelID = selectedModelID.isEmpty ? store.state.accounts.first(where: \.active)?.model ?? "" : selectedModelID
         reachable = true
+    }
+
+    /// Models known offline: every active account's registry entry, plus the model
+    /// the account was stored with. No network, so it is safe during init.
+    private func registryModels() -> [RouterModel] {
+        var seeded: [RouterModel] = []
+        for account in store.state.accounts where account.active {
+            let owner = RouterCatalog.label(for: account.provider)
+            let specModels = RouterCatalog.spec(for: account.provider)?.models ?? []
+            for spec in specModels {
+                seeded.append(RouterModel(
+                    id: spec.id, owner: owner, contextWindow: spec.contextWindow, efforts: spec.efforts,
+                    displayName: spec.name, provider: account.provider, tier: spec.tier
+                ))
+            }
+            if !account.model.isEmpty, !seeded.contains(where: { $0.id == account.model }) {
+                seeded.append(RouterModel(id: account.model, owner: owner, provider: account.provider))
+            }
+        }
+        return seeded
     }
 
     private func gatewayResponse(_ request: GatewayRequest) async -> GatewayResponse {
@@ -522,7 +1025,13 @@ public final class RouterController: ObservableObject {
             }
             return .json(result)
         } catch let failure as NativeAgentError {
-            return .json(["error": ["message": failure.message]], status: failure.statusCode ?? 502)
+            return .json(
+                ["error": [
+                    "message": failure.message,
+                    "type": failure.isLimit ? "provider_limit" : "provider_error",
+                ]],
+                status: failure.statusCode ?? 502
+            )
         } catch {
             return .json(["error": ["message": error.localizedDescription]], status: 500)
         }

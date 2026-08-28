@@ -2,6 +2,7 @@
 // Plugin composition model derived from DeepSeek Harness.
 // Copyright (c) 2026 DeepSeek. MIT. See NOTICE.
 
+using System.Collections.ObjectModel;
 using HarnessPluginKit;
 using PluginRuntime;
 
@@ -21,14 +22,23 @@ public sealed class AppModel : ObservableObject
     private bool _confirmBeforeExit = true;
     private string _preferredHost;
     private string _workspacePath;
+    private bool _isPlanMode;
+
+    public ObservableCollection<ChatAttachment> DraftAttachments { get; } = new();
 
     public PluginCatalog Catalog { get; }
+    public SkillCatalog Skills { get; }
     public PluginHost Host { get; }
     public SupportPaths Paths { get; }
     public AgentBridge Bridge { get; }
     public RouterController Router { get; }
     public LocalRuntimeController Local { get; }
     public HarnessScheduler Scheduler { get; }
+    public LocalizationService Localization { get; }
+    public AppLanguage Language => Localization.Language;
+    public bool IsRightToLeft => Localization.IsRightToLeft;
+
+    public string L(string key, params object?[] arguments) => Localization.Get(key, arguments);
 
     public string Draft
     {
@@ -60,6 +70,12 @@ public sealed class AppModel : ObservableObject
         private set => SetProperty(ref _workspacePath, value);
     }
 
+    public bool IsPlanMode
+    {
+        get => _isPlanMode;
+        private set => SetProperty(ref _isPlanMode, value);
+    }
+
     public IReadOnlyList<Conversation> Conversations => Bridge.Conversations;
 
     public string? SelectedConversationId
@@ -75,6 +91,11 @@ public sealed class AppModel : ObservableObject
 
     public Conversation? Selected => Bridge.Selected;
     public string StatusLine => Bridge.Status;
+    public string SelectedModelID
+    {
+        get => Router.SelectedModelID;
+        set => SetSelectedModel(value);
+    }
 
     public AppModel(SupportPaths? paths = null, IEnumerable<Func<IHarnessPlugin>>? builtins = null)
     {
@@ -85,10 +106,28 @@ public sealed class AppModel : ObservableObject
         {
             foreach (var builtin in builtins) Catalog.RegisterBuiltin(builtin);
         }
+        Skills = new SkillCatalog(Paths);
         var settings = LoadSettings(Paths.Settings);
+        var migratedFableSetting = false;
+        if (settings.Get("skills.fableMigration.v1") is null
+            && new[] { "fable.enabled", "fableThinking.enabled", "dots.fable-thinking.enabled" }
+                .Select(key => settings.Get(key)?.AsBool())
+                .FirstOrDefault(value => value is not null) is { } legacyEnabled)
+        {
+            Skills.SetEnabled("fable-thinking", legacyEnabled);
+            settings.Set("skills.fableMigration.v1", JsonValue.Bool(true));
+            migratedFableSetting = true;
+        }
+        Localization = new LocalizationService();
+        if (settings.Get("ui.language")?.AsString() is { } storedLanguage
+            && AppLanguages.TryParse(storedLanguage, out var language))
+        {
+            Localization.SetLanguage(language);
+        }
         Host = new PluginHost(Catalog, settings);
-        Router = new RouterController(Paths);
-        Bridge = new AgentBridge(Router, Paths);
+        Router = new RouterController(Paths, Host.ImageAdapters);
+        Router.SelectedModelID = settings.Get("agent.model")?.AsString() ?? "";
+        Bridge = new AgentBridge(Router, Paths, Skills);
         Local = new LocalRuntimeController(Paths, Router);
         var taskRunner = new ScheduledTaskRunner(Paths, Router);
         Scheduler = new HarnessScheduler(
@@ -107,6 +146,7 @@ public sealed class AppModel : ObservableObject
         PreferredHost = "native";
         WorkspacePath = settings.Get("agent.workspace")?.AsString()
             ?? Environment.CurrentDirectory;
+        Skills.SetWorkspace(WorkspacePath);
         Remount();
         Bridge.PropertyChanged += (_, _) =>
         {
@@ -117,6 +157,12 @@ public sealed class AppModel : ObservableObject
         };
         Router.PropertyChanged += (_, e) => OnPropertyChanged(e.PropertyName);
         Local.PropertyChanged += (_, e) => OnPropertyChanged(e.PropertyName);
+        Localization.PropertyChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(Language));
+            OnPropertyChanged(nameof(IsRightToLeft));
+        };
+        if (migratedFableSetting) PersistSettings();
     }
 
     public void Start()
@@ -170,8 +216,10 @@ public sealed class AppModel : ObservableObject
     public void Remount()
     {
         Catalog.Refresh();
+        Skills.Refresh();
         var document = CompositionLoader.LoadHost(Paths, Catalog);
         var issues = Host.Mount(document);
+        Bridge.UpdateSystemPrompt(Host.Prompt.AssembledText());
         if (issues.Count > 0)
         {
             Bridge.Status = string.Join(" · ", issues.Select(i => $"{i.RowId}: {i.Message}"));
@@ -182,21 +230,73 @@ public sealed class AppModel : ObservableObject
 
     public void NewConversation() => _ = Bridge.NewConversationAsync(WorkspacePath);
 
+    public void AddDraftAttachments(IEnumerable<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            if (!ChatAttachment.TryCreate(path, out var attachment)
+                || DraftAttachments.Any(item => string.Equals(item.FilePath, attachment.FilePath, StringComparison.OrdinalIgnoreCase))) continue;
+            DraftAttachments.Add(attachment);
+        }
+    }
+
+    public void RemoveDraftAttachment(ChatAttachment attachment) => DraftAttachments.Remove(attachment);
+
     public void Send(PromptMode mode = PromptMode.Queue)
     {
         var text = Draft.Trim();
-        if (string.IsNullOrEmpty(text)) return;
+        if (string.IsNullOrEmpty(text) && DraftAttachments.Count == 0)
+        {
+            if (Bridge.CanContinue) _ = Bridge.ContinueAsync();
+            return;
+        }
+        var attachments = DraftAttachments.ToList();
+        var isApproval = attachments.Count == 0
+            && PlanApproval.Matches(text)
+            && Bridge.Selected?.PendingPlanMessageId is { } planId
+            && Bridge.Selected.Messages.Any(message => message.Id == planId && message.Kind == ChatKind.Plan);
+        var planMode = IsPlanMode && !isApproval;
+        if (isApproval) IsPlanMode = false;
         Draft = "";
-        _ = Bridge.SendAsync(text, mode);
+        DraftAttachments.Clear();
+        _ = Bridge.SendAsync(text, attachments, mode, planMode);
+    }
+
+    public void TogglePlanMode() => IsPlanMode = !IsPlanMode;
+
+    public void ApplyPlan()
+    {
+        if (Bridge.Connection is null || Bridge.Selected?.PendingPlanMessageId is null || Bridge.Selected.Running) return;
+        IsPlanMode = false;
+        _ = Bridge.ApplyPlanAsync();
     }
 
     public void Cancel() => _ = Bridge.CancelAsync();
+
+    public void Continue() => _ = Bridge.ContinueAsync();
+
+    public void SetSelectedModel(string value)
+    {
+        Router.SelectedModelID = value;
+        Host.Settings.Set("agent.model", JsonValue.String(Router.SelectedModelID));
+        PersistSettings();
+        OnPropertyChanged(nameof(SelectedModelID));
+    }
 
     public void SetAppearance(AppearanceKind value)
     {
         Appearance = value;
         Host.Settings.Set("ui.appearance", JsonValue.String(value.ToString().ToLowerInvariant()));
         PersistSettings();
+    }
+
+    public void SetAppLanguage(AppLanguage value)
+    {
+        Localization.SetLanguage(value);
+        Host.Settings.Set("ui.language", JsonValue.String(value.Code()));
+        PersistSettings();
+        OnPropertyChanged(nameof(Language));
+        OnPropertyChanged(nameof(IsRightToLeft));
     }
 
     public void SetConfirmBeforeExit(bool value)
@@ -216,6 +316,7 @@ public sealed class AppModel : ObservableObject
     public void SetWorkspace(string value)
     {
         WorkspacePath = value;
+        Skills.SetWorkspace(value);
         Host.Settings.Set("agent.workspace", JsonValue.String(value));
         PersistSettings();
     }
@@ -251,10 +352,7 @@ public sealed class AppModel : ObservableObject
 
 public static class CompositionLoader
 {
-    public static CompositionDocument BundledHost() => new(PluginPlane.Host, new[]
-    {
-        new CompositionEntry("fable-thinking", "dots.fable-thinking"),
-    });
+    public static CompositionDocument BundledHost() => new(PluginPlane.Host, Array.Empty<CompositionEntry>());
 
     public static CompositionDocument LoadHost(SupportPaths paths, PluginCatalog catalog)
     {

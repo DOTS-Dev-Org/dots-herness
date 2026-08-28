@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="app.title" xml:space="preserve"><value>Dots Harness</value></data>
+  <data name="language.system" xml:space="preserve"><value>系统语言</value></data>
+  <data name="settings.language" xml:space="preserve"><value>应用语言</value></data>
+  <data name="settings.general" xml:space="preserve"><value>常规</value></data>
+  <data name="settings.back" xml:space="preserve"><value>Back to chats</value></data>
+  <data name="settings.appearance" xml:space="preserve"><value>外观</value></data>
+  <data name="settings.theme" xml:space="preserve"><value>Theme</value></data>
+  <data name="settings.confirmBeforeExit" xml:space="preserve"><value>Ask before closing</value></data>
+  <data name="settings.workspace" xml:space="preserve"><value>工作区</value></data>
+  <data name="settings.folder" xml:space="preserve"><value>Folder</value></data>
+  <data name="settings.chooseWorkspace" xml:space="preserve"><value>Choose workspace</value></data>
+  <data name="settings.changeWorkspace" xml:space="preserve"><value>Change workspace</value></data>
+  <data name="settings.connectedModel" xml:space="preserve"><value>Connected model</value></data>
+  <data name="settings.supportFolder" xml:space="preserve"><value>Support folder</value></data>
+  <data name="settings.userPlugins" xml:space="preserve"><value>User plugins</value></data>
+  <data name="settings.providers" xml:space="preserve"><value>提供商</value></data>
+  <data name="settings.provider" xml:space="preserve"><value>Provider</value></data>
+  <data name="settings.connectedAccounts" xml:space="preserve"><value>Connected accounts</value></data>
+  <data name="settings.noConnections" xml:space="preserve"><value>No connections yet.</value></data>
+  <data name="settings.addProviderCustom" xml:space="preserve"><value>Add this provider through Custom API.</value></data>
+  <data name="settings.signInBrowser" xml:space="preserve"><value>Complete the provider sign-in in your system browser.</value></data>
+  <data name="settings.connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="settings.cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="settings.refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="settings.browserLogin" xml:space="preserve"><value>Browser login</value></data>
+  <data name="settings.authUrl" xml:space="preserve"><value>Auth URL</value></data>
+  <data name="settings.pasteCallbackUrl" xml:space="preserve"><value>Paste callback URL</value></data>
+  <data name="settings.finishLogin" xml:space="preserve"><value>Finish login</value></data>
+  <data name="settings.deviceLogin" xml:space="preserve"><value>Device login</value></data>
+  <data name="settings.verify" xml:space="preserve"><value>Verify</value></data>
+  <data name="settings.waitingAuthorization" xml:space="preserve"><value>Waiting for authorization…</value></data>
+  <data name="settings.active" xml:space="preserve"><value>Active</value></data>
+  <data name="settings.test" xml:space="preserve"><value>Test</value></data>
+  <data name="settings.remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="settings.account" xml:space="preserve"><value>account</value></data>
+  <data name="settings.accounts" xml:space="preserve"><value>accounts</value></data>
+  <data name="settings.addAccount" xml:space="preserve"><value>Add account</value></data>
+  <data name="settings.addCustomEndpoint" xml:space="preserve"><value>Add a custom endpoint</value></data>
+  <data name="settings.customEndpointHint" xml:space="preserve"><value>Ollama, LM Studio, vLLM, llama.cpp, or any OpenAI/Anthropic-compatible server.</value></data>
+  <data name="settings.name" xml:space="preserve"><value>Name</value></data>
+  <data name="settings.prefix" xml:space="preserve"><value>Prefix (model id, e.g. local)</value></data>
+  <data name="settings.baseUrl" xml:space="preserve"><value>Base URL</value></data>
+  <data name="settings.apiKeyOptional" xml:space="preserve"><value>API key (optional for local)</value></data>
+  <data name="settings.api" xml:space="preserve"><value>API</value></data>
+  <data name="settings.saveChanges" xml:space="preserve"><value>Save changes</value></data>
+  <data name="settings.addCustomApi" xml:space="preserve"><value>Add custom API</value></data>
+  <data name="settings.cancelEdit" xml:space="preserve"><value>Cancel edit</value></data>
+  <data name="settings.customProviders" xml:space="preserve"><value>Custom providers</value></data>
+  <data name="settings.noneYet" xml:space="preserve"><value>None yet.</value></data>
+  <data name="settings.localModels" xml:space="preserve"><value>Local models</value></data>
+  <data name="settings.installed" xml:space="preserve"><value>Installed</value></data>
+  <data name="settings.notInstalled" xml:space="preserve"><value>Not installed</value></data>
+  <data name="settings.listen" xml:space="preserve"><value>Listen</value></data>
+  <data name="settings.serving" xml:space="preserve"><value>Serving</value></data>
+  <data name="settings.reinstallRuntime" xml:space="preserve"><value>Reinstall runtime</value></data>
+  <data name="settings.installLlama" xml:space="preserve"><value>Install llama.cpp</value></data>
+  <data name="settings.stopLocal" xml:space="preserve"><value>Stop local server</value></data>
+  <data name="settings.downloadRun" xml:space="preserve"><value>Download and run</value></data>
+  <data name="settings.stop" xml:space="preserve"><value>Stop</value></data>
+  <data name="settings.start" xml:space="preserve"><value>Start</value></data>
+  <data name="settings.download" xml:space="preserve"><value>Download</value></data>
+  <data name="settings.onDisk" xml:space="preserve"><value>On disk · {0}</value></data>
+  <data name="settings.sharing" xml:space="preserve"><value>Sharing</value></data>
+  <data name="settings.status" xml:space="preserve"><value>Status</value></data>
+  <data name="settings.running" xml:space="preserve"><value>Running</value></data>
+  <data name="settings.enabled" xml:space="preserve"><value>Enabled</value></data>
+  <data name="settings.stopped" xml:space="preserve"><value>Stopped</value></data>
+  <data name="settings.shortId" xml:space="preserve"><value>Short id</value></data>
+  <data name="settings.publicUrl" xml:space="preserve"><value>Public URL</value></data>
+  <data name="settings.stopSharing" xml:space="preserve"><value>Stop sharing</value></data>
+  <data name="settings.enableSharing" xml:space="preserve"><value>Download and enable sharing</value></data>
+  <data name="settings.copyUrl" xml:space="preserve"><value>Copy URL</value></data>
+  <data name="settings.sharingHint" xml:space="preserve"><value>Enabling sharing starts the loopback gateway and downloads the verified sharing binary once.</value></data>
+  <data name="settings.client" xml:space="preserve"><value>Give this to a client</value></data>
+  <data name="settings.endpoint" xml:space="preserve"><value>Endpoint</value></data>
+  <data name="settings.copyEndpoint" xml:space="preserve"><value>Copy endpoint</value></data>
+  <data name="settings.copyApiKey" xml:space="preserve"><value>Copy API key</value></data>
+  <data name="settings.noShareKey" xml:space="preserve"><value>No share key yet.</value></data>
+  <data name="settings.createKey" xml:space="preserve"><value>Create key</value></data>
+  <data name="settings.revealFolder" xml:space="preserve"><value>Reveal folder</value></data>
+  <data name="settings.reload" xml:space="preserve"><value>Reload</value></data>
+  <data name="settings.plugins" xml:space="preserve"><value>Plugins</value></data>
+  <data name="settings.pluginsHint" xml:space="preserve"><value>Drop a folder with plugin.yml into the plugins directory. Manifest plugins work untrusted. Compiled assemblies need Trust.</value></data>
+  <data name="settings.lastMountFailed" xml:space="preserve"><value>Last mount failed</value></data>
+  <data name="settings.scheduledTasks" xml:space="preserve"><value>Scheduled Tasks</value></data>
+  <data name="settings.tasksHint" xml:space="preserve"><value>Run a prompt on a cron schedule.</value></data>
+  <data name="settings.backgroundTasks" xml:space="preserve"><value>Run tasks while the app is closed (background helper)</value></data>
+  <data name="settings.newTask" xml:space="preserve"><value>New task</value></data>
+  <data name="settings.cronExpression" xml:space="preserve"><value>Cron expression</value></data>
+  <data name="settings.promptField" xml:space="preserve"><value>Prompt</value></data>
+  <data name="settings.addTask" xml:space="preserve"><value>Add task</value></data>
+  <data name="settings.required" xml:space="preserve"><value>Name, a valid cron expression, a workspace, and a prompt are required.</value></data>
+  <data name="settings.noTasks" xml:space="preserve"><value>No tasks yet.</value></data>
+  <data name="settings.next" xml:space="preserve"><value>Next: {0}</value></data>
+  <data name="settings.invalidCron" xml:space="preserve"><value>Invalid cron</value></data>
+  <data name="settings.last" xml:space="preserve"><value>Last: {0}</value></data>
+  <data name="settings.runNow" xml:space="preserve"><value>Run now</value></data>
+  <data name="settings.noPrompt" xml:space="preserve"><value>No prompt sections mounted.</value></data>
+  <data name="conversation.title" xml:space="preserve"><value>Dots Harness</value></data>
+  <data name="conversation.emptyNoProvider" xml:space="preserve"><value>Connect a provider account to start chatting.</value></data>
+  <data name="conversation.emptySidebar" xml:space="preserve"><value>Start a conversation from the sidebar.</value></data>
+  <data name="conversation.allow" xml:space="preserve"><value>Allow {0}?</value></data>
+  <data name="conversation.ok" xml:space="preserve"><value>OK</value></data>
+  <data name="conversation.stop" xml:space="preserve"><value>Stop</value></data>
+  <data name="conversation.stopVoice" xml:space="preserve"><value>Stop voice input</value></data>
+  <data name="conversation.mic" xml:space="preserve"><value>Mic</value></data>
+  <data name="conversation.startVoice" xml:space="preserve"><value>Start voice input</value></data>
+  <data name="conversation.listening" xml:space="preserve"><value>Listening…</value></data>
+  <data name="conversation.heard" xml:space="preserve"><value>Heard: {0}</value></data>
+  <data name="conversation.voiceStopped" xml:space="preserve"><value>Voice input stopped.</value></data>
+  <data name="conversation.voiceUnavailable" xml:space="preserve"><value>Voice input unavailable. Check your microphone privacy settings and an installed speech language. {0}</value></data>
+  <data name="conversation.priority" xml:space="preserve"><value>Priority instruction</value></data>
+  <data name="conversation.queued" xml:space="preserve"><value>Queued message</value></data>
+  <data name="conversation.interrupting" xml:space="preserve"><value>Interrupting</value></data>
+  <data name="conversation.inContext" xml:space="preserve"><value>In context</value></data>
+  <data name="conversation.waiting" xml:space="preserve"><value>Waiting</value></data>
+  <data name="conversation.you" xml:space="preserve"><value>You</value></data>
+  <data name="conversation.assistant" xml:space="preserve"><value>Harness</value></data>
+  <data name="conversation.plan" xml:space="preserve"><value>Plan</value></data>
+  <data name="conversation.tool" xml:space="preserve"><value>Tool</value></data>
+  <data name="conversation.system" xml:space="preserve"><value>System</value></data>
+  <data name="conversation.dropFiles" xml:space="preserve"><value>Drop files here</value></data>
+  <data name="conversation.send" xml:space="preserve"><value>发送</value></data>
+  <data name="conversation.planMode" xml:space="preserve"><value>Plan mode</value></data>
+  <data name="conversation.applyPlan" xml:space="preserve"><value>Apply plan</value></data>
+  <data name="conversation.applyPlanHelp" xml:space="preserve"><value>Apply this plan in the workspace</value></data>
+  <data name="conversation.steer" xml:space="preserve"><value>Steer</value></data>
+  <data name="conversation.steerHelp" xml:space="preserve"><value>Steer queued message</value></data>
+  <data name="conversation.terminal" xml:space="preserve"><value>Terminal</value></data>
+  <data name="conversation.closeTerminal" xml:space="preserve"><value>Close terminal</value></data>
+  <data name="conversation.startTerminalError" xml:space="preserve"><value>Unable to start terminal: {0}</value></data>
+  <data name="window.confirmClose" xml:space="preserve"><value>Confirm close</value></data>
+  <data name="window.remember" xml:space="preserve"><value>Remember this choice</value></data>
+  <data name="window.close" xml:space="preserve"><value>关闭</value></data>
+  <data name="window.cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="window.closeQuestion" xml:space="preserve"><value>Are you sure you want to close?</value></data>
+  <data name="status.chooseProviderWorkspace" xml:space="preserve"><value>Choose a provider and workspace.</value></data>
+  <data name="status.generationStopped" xml:space="preserve"><value>Generation stopped.</value></data>
+  <data name="status.copied" xml:space="preserve"><value>Copied</value></data>
+  <data name="status.noModel" xml:space="preserve"><value>No connected model</value></data>
+  <data name="status.routerUnavailable" xml:space="preserve"><value>Router unavailable</value></data>
+  <data name="status.modelRequestFailed" xml:space="preserve"><value>Model request failed (HTTP {0})</value></data>
+  <data name="status.connectionRequired" xml:space="preserve"><value>Connect a provider account to continue.</value></data>
+  <data name="status.workspaceRequired" xml:space="preserve"><value>Choose a workspace before sending a message.</value></data>
+  <data name="copyright" xml:space="preserve"><value>Copyright (c) 2026 DOTS. Derived from DeepSeek Harness — Copyright (c) 2026 DeepSeek. MIT.</value></data>
+  <data name="settings.title" xml:space="preserve"><value>Settings</value></data>
+  <data name="settings.custom" xml:space="preserve"><value>Custom API</value></data>
+  <data name="settings.share" xml:space="preserve"><value>Share</value></data>
+  <data name="settings.tasks" xml:space="preserve"><value>Tasks</value></data>
+  <data name="settings.systemPrompt" xml:space="preserve"><value>System prompt</value></data>
+  <data name="sidebar.chats" xml:space="preserve"><value>聊天</value></data>
+  <data name="sidebar.newChat" xml:space="preserve"><value>新聊天</value></data>
+  <data name="sidebar.settings" xml:space="preserve"><value>设置</value></data>
+  <data name="sidebar.userMenu" xml:space="preserve"><value>用户菜单</value></data>
+  <data name="conversation.model" xml:space="preserve"><value>模型</value></data>
+  <data name="conversation.continue" xml:space="preserve"><value>继续</value></data>
+  <data name="conversation.reject" xml:space="preserve"><value>拒绝</value></data>
+  <data name="conversation.allowOnce" xml:space="preserve"><value>允许一次</value></data>
+  <data name="conversation.error" xml:space="preserve"><value>错误 · {0}</value></data>
+  <data name="conversation.applying" xml:space="preserve"><value>正在应用…</value></data>
+  <data name="conversation.waitingApproval" xml:space="preserve"><value>等待批准</value></data>
+  <data name="conversation.applied" xml:space="preserve"><value>已应用</value></data>
+  <data name="settings.imageFallback" xml:space="preserve"><value>用作图像备用项</value></data>
+  <data name="settings.edit" xml:space="preserve"><value>编辑</value></data>
+  <data name="settings.delete" xml:space="preserve"><value>删除</value></data>
+  <data name="settings.enableSharingEndpoint" xml:space="preserve"><value>启用共享以创建端点</value></data>
+  <data name="settings.autoApprove" xml:space="preserve"><value>自动批准命令执行（无人值守）</value></data>
+  <data name="settings.appearanceSystem" xml:space="preserve"><value>系统</value></data>
+  <data name="settings.appearanceLight" xml:space="preserve"><value>浅色</value></data>
+  <data name="settings.appearanceDark" xml:space="preserve"><value>深色</value></data>
+  <data name="status.connectProviderChat" xml:space="preserve"><value>Connect a provider before starting a chat.</value></data>
+  <data name="status.connectProviderPlan" xml:space="preserve"><value>Connect a provider before applying a plan.</value></data>
+  <data name="status.emptyResponse" xml:space="preserve"><value>The provider returned an empty response.</value></data>
+  <data name="status.toolLimit" xml:space="preserve"><value>The tool step limit was reached.</value></data>
+  <data name="status.toolUnavailablePlan" xml:space="preserve"><value>This tool is unavailable in plan mode.</value></data>
+  <data name="status.userRejectedCommand" xml:space="preserve"><value>The user rejected this command.</value></data>
+  <data name="status.toolInterrupted" xml:space="preserve"><value>Tool call interrupted before it completed.</value></data>
+  <data name="status.contextCompacting" xml:space="preserve"><value>Context automatically compacting…</value></data>
+  <data name="status.contextCompacted" xml:space="preserve"><value>Context compacted.</value></data>
+  <data name="status.pressContinue" xml:space="preserve"><value>Press Continue to resume this message.</value></data>
+  <data name="conversation.used" xml:space="preserve"><value>Used</value></data>
+  <data name="conversation.changedFiles" xml:space="preserve"><value>Changed files</value></data>
+  <data name="conversation.skills" xml:space="preserve"><value>Skills</value></data>
+  <data name="conversation.tools" xml:space="preserve"><value>Tools</value></data>
+  <data name="settings.taskNever" xml:space="preserve"><value>Never run</value></data>
+  <data name="settings.taskRunning" xml:space="preserve"><value>Running…</value></data>
+  <data name="settings.taskSucceeded" xml:space="preserve"><value>Succeeded</value></data>
+  <data name="settings.taskFailed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.workingFor" xml:space="preserve"><value>Working for {0}</value></data>
+  <data name="conversation.workingUsing" xml:space="preserve"><value>Working for {0}. Using: {1}</value></data>
+  <data name="settings.skillsSnapshot" xml:space="preserve"><value>SkillsMP Popular snapshot</value></data>
+  <data name="settings.skillsMetadata" xml:space="preserve"><value>Metadata only. Inspect the source before downloading; no SkillsMP API key is used.</value></data>
+  <data name="settings.skillsSnapshotDate" xml:space="preserve"><value>Snapshot {0}</value></data>
+  <data name="settings.noSnapshot" xml:space="preserve"><value>No snapshot entries available.</value></data>
+  <data name="settings.skillsInstalled" xml:space="preserve"><value>Downloaded and enabled</value></data>
+  <data name="settings.skillsCatalog" xml:space="preserve"><value>Catalog</value></data>
+  <data name="settings.view" xml:space="preserve"><value>View</value></data>
+  <data name="settings.noSkills" xml:space="preserve"><value>No discovered skills.</value></data>
+  <data name="settings.skillsHint" xml:space="preserve"><value>Project and bundled skills can be disabled, but only downloaded app-owned skills can be deleted.</value></data>
+  <data name="settings.skillReadFailed" xml:space="preserve"><value>Could not read SKILL.md.</value></data>
+</root>

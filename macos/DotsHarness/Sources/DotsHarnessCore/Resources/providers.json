@@ -7,13 +7,21 @@
     "hint": "Sign in with ChatGPT",
     "transport": {
       "baseURL": "https://chatgpt.com/backend-api/codex",
-      "format": "responses"
+      "format": "responses",
+      "extraHeaders": {
+        "originator": "codex_cli_rs",
+        "user-agent": "codex_cli_rs/0.136.0"
+      },
+      "quirks": {
+        "requiresSessionAccountID": true,
+        "usesCodexInstructions": true
+      }
     },
     "oauth": {
       "clientID": "app_EMoamEEZ73f0CkXaXp7hrann",
       "authorizeURL": "https://auth.openai.com/oauth/authorize",
       "tokenURL": "https://auth.openai.com/oauth/token",
-      "scopes": "openid profile email offline_access api.connectors.read api.connectors.invoke",
+      "scopes": "openid profile email offline_access",
       "redirectURI": "http://localhost:1455/auth/callback",
       "callbackPort": 1455,
       "tokenEncoding": "form",
@@ -21,10 +29,86 @@
       "extraAuthorizeParams": {
         "id_token_add_organizations": "true",
         "codex_cli_simplified_flow": "true",
-        "originator": "dots_harness"
+        "originator": "codex_cli_rs"
       }
     },
-    "models": [{ "id": "gpt-4.1-mini" }]
+    "models": [
+      {
+        "id": "gpt-5.6-terra",
+        "name": "GPT 5.6 Terra",
+        "efforts": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "gpt-5.6-sol",
+        "name": "GPT 5.6 Sol",
+        "efforts": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "gpt-5.6-luna",
+        "name": "GPT 5.6 Luna",
+        "efforts": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "standard"
+      },
+      {
+        "id": "gpt-5.5",
+        "name": "GPT 5.5",
+        "efforts": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh"
+        ],
+        "tier": "standard"
+      },
+      {
+        "id": "gpt-5.4",
+        "name": "GPT 5.4",
+        "efforts": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh"
+        ],
+        "tier": "standard"
+      },
+      {
+        "id": "gpt-5.4-mini",
+        "name": "GPT 5.4 Mini",
+        "efforts": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh"
+        ],
+        "tier": "light"
+      }
+    ]
   },
   {
     "id": "claude",
@@ -58,7 +142,272 @@
       "refreshEncoding": "json",
       "manualCodeSeparator": "#"
     },
-    "models": [{ "id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4" }]
+    "models": [
+      {
+        "id": "claude-sonnet-5",
+        "name": "Claude Sonnet 5",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "standard"
+      },
+      {
+        "id": "claude-opus-5",
+        "name": "Claude Opus 5",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "claude-opus-4-8",
+        "name": "Claude Opus 4.8",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "claude-sonnet-4-6",
+        "name": "Claude Sonnet 4.6",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "max"
+        ],
+        "tier": "standard"
+      },
+      {
+        "id": "claude-fable-5",
+        "name": "Claude Fable 5",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "claude-opus-4-7",
+        "name": "Claude Opus 4.7",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "claude-opus-4-6",
+        "name": "Claude Opus 4.6",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "max"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "claude-opus-4-5-20251101",
+        "name": "Claude Opus 4.5",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "claude-haiku-4-5",
+        "name": "Claude Haiku 4.5",
+        "tier": "light"
+      },
+      {
+        "id": "claude-haiku-4-5-20251001",
+        "name": "Claude Haiku 4.5",
+        "tier": "light"
+      },
+      {
+        "id": "claude-sonnet-4-5-20250929",
+        "name": "Claude Sonnet 4.5",
+        "tier": "standard"
+      }
+    ]
+  },
+  {
+    "id": "grok-cli",
+    "name": "Grok Build",
+    "category": "oauthDevice",
+    "logoSymbol": "bolt.circle",
+    "hint": "Sign in with your xAI subscription",
+    "transport": {
+      "baseURL": "https://cli-chat-proxy.grok.com/v1",
+      "format": "responses",
+      "extraHeaders": {
+        "user-agent": "grok-shell/0.2.99 (macos; arm64)",
+        "x-grok-client-identifier": "grok-shell",
+        "x-grok-client-version": "0.2.99"
+      }
+    },
+    "oauth": {
+      "clientID": "b1a00492-073a-47ea-816f-4c329264a828",
+      "authorizeURL": "https://accounts.x.ai/oauth2/device",
+      "tokenURL": "https://auth.x.ai/oauth2/token",
+      "deviceCodeURL": "https://auth.x.ai/oauth2/device/code",
+      "scopes": "openid profile email offline_access grok-cli:access api:access conversations:read conversations:write",
+      "redirectURI": "",
+      "callbackPort": 0,
+      "tokenEncoding": "form",
+      "refreshEncoding": "form"
+    },
+    "models": [
+      {
+        "id": "grok-build",
+        "name": "Grok Build",
+        "tier": "standard"
+      },
+      {
+        "id": "grok-4.5",
+        "name": "Grok 4.5",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "xhigh"
+        ],
+        "tier": "standard"
+      }
+    ]
+  },
+  {
+    "id": "gemini-cli",
+    "name": "Gemini Code Assist",
+    "category": "oauth",
+    "logoSymbol": "diamond",
+    "hint": "Sign in with your Google account",
+    "transport": {
+      "baseURL": "https://cloudcode-pa.googleapis.com/v1internal",
+      "format": "gemini-cli"
+    },
+    "oauth": {
+      "clientID": "",
+      "authorizeURL": "https://accounts.google.com/o/oauth2/v2/auth",
+      "tokenURL": "https://oauth2.googleapis.com/token",
+      "projectDiscoveryURL": "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
+      "scopes": "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
+      "redirectURI": "http://localhost:8085/oauth2callback",
+      "callbackPort": 8085,
+      "tokenEncoding": "form",
+      "refreshEncoding": "form",
+      "extraAuthorizeParams": {
+        "access_type": "offline",
+        "prompt": "consent"
+      }
+    },
+    "models": [
+      {
+        "id": "gemini-3-pro-preview",
+        "name": "Gemini 3 Pro Preview",
+        "tier": "premium"
+      },
+      {
+        "id": "gemini-3-flash-preview",
+        "name": "Gemini 3 Flash Preview",
+        "tier": "light"
+      },
+      {
+        "id": "gemini-2.5-pro",
+        "name": "Gemini 2.5 Pro",
+        "tier": "premium"
+      },
+      {
+        "id": "gemini-2.5-flash",
+        "name": "Gemini 2.5 Flash",
+        "tier": "light"
+      }
+    ]
+  },
+  {
+    "id": "antigravity",
+    "name": "Antigravity",
+    "category": "oauth",
+    "logoSymbol": "paperplane",
+    "hint": "Sign in with your Antigravity Google account",
+    "transport": {
+      "baseURL": "https://daily-cloudcode-pa.googleapis.com/v1internal",
+      "format": "gemini-cli",
+      "extraHeaders": {
+        "user-agent": "antigravity/ide/1.0.0 darwin/arm64"
+      },
+      "quirks": {
+        "antigravityEnvelope": true
+      }
+    },
+    "oauth": {
+      "clientID": "",
+      "authorizeURL": "https://accounts.google.com/o/oauth2/v2/auth",
+      "tokenURL": "https://oauth2.googleapis.com/token",
+      "projectDiscoveryURL": "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
+      "scopes": "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/cclog https://www.googleapis.com/auth/experimentsandconfigs",
+      "redirectURI": "http://localhost:8086/oauth2callback",
+      "callbackPort": 8086,
+      "tokenEncoding": "form",
+      "refreshEncoding": "form",
+      "extraAuthorizeParams": {
+        "access_type": "offline",
+        "prompt": "consent"
+      }
+    },
+    "models": [
+      {
+        "id": "gemini-pro-agent",
+        "name": "Gemini 3.1 Pro (High)",
+        "tier": "premium"
+      },
+      {
+        "id": "gemini-3.1-pro-low",
+        "name": "Gemini 3.1 Pro (Low)",
+        "tier": "standard"
+      },
+      {
+        "id": "claude-opus-4-6-thinking",
+        "name": "Claude Opus 4.6 (Thinking)",
+        "tier": "premium"
+      },
+      {
+        "id": "claude-sonnet-4-6",
+        "name": "Claude Sonnet 4.6 (Thinking)",
+        "tier": "standard"
+      },
+      {
+        "id": "gemini-3-flash-agent",
+        "name": "Gemini 3.5 Flash (High)",
+        "tier": "light"
+      },
+      {
+        "id": "gemini-3-flash",
+        "name": "Gemini 3 Flash",
+        "tier": "light"
+      }
+    ]
   },
   {
     "id": "anthropic",
@@ -70,20 +419,118 @@
       "baseURL": "https://api.anthropic.com/v1",
       "format": "anthropic"
     },
-    "apiKey": { "header": "x-api-key", "scheme": "raw", "modelsURL": "https://api.anthropic.com/v1/models" },
-    "models": [{ "id": "claude-sonnet-4-20250514" }]
+    "apiKey": {
+      "header": "x-api-key",
+      "scheme": "raw",
+      "modelsURL": "https://api.anthropic.com/v1/models"
+    },
+    "models": [
+      {
+        "id": "claude-sonnet-5",
+        "name": "Claude Sonnet 5",
+        "tier": "standard"
+      },
+      {
+        "id": "claude-opus-5",
+        "name": "Claude Opus 5",
+        "tier": "premium"
+      },
+      {
+        "id": "claude-haiku-4-5",
+        "name": "Claude Haiku 4.5",
+        "tier": "light"
+      }
+    ]
   },
   {
     "id": "opencode",
-    "name": "OpenCode Free",
-    "category": "passthrough",
+    "name": "OpenCode Zen",
+    "category": "apiKey",
     "logoSymbol": "chevron.left.forwardslash.chevron.right",
-    "hint": "No key required",
+    "hint": "API key from opencode.ai",
     "transport": {
       "baseURL": "https://opencode.ai/zen/v1",
-      "format": "openai-chat"
+      "format": "openai-chat",
+      "extraHeaders": {
+        "x-opencode-client": "desktop"
+      }
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer",
+      "modelsURL": "https://opencode.ai/zen/v1/models"
     },
     "models": []
+  },
+  {
+    "id": "opencode-go",
+    "name": "OpenCode Go",
+    "category": "apiKey",
+    "logoSymbol": "chevron.left.forwardslash.chevron.right",
+    "hint": "Go subscription key from opencode.ai",
+    "transport": {
+      "baseURL": "https://opencode.ai/zen/go/v1",
+      "format": "openai-chat",
+      "extraHeaders": {
+        "x-opencode-client": "desktop"
+      }
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer",
+      "modelsURL": "https://opencode.ai/zen/go/v1/models"
+    },
+    "models": []
+  },
+  {
+    "id": "nvidia",
+    "name": "NVIDIA NIM",
+    "category": "apiKey",
+    "logoSymbol": "cpu",
+    "hint": "Free tier · API key from build.nvidia.com",
+    "transport": {
+      "baseURL": "https://integrate.api.nvidia.com/v1",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer",
+      "modelsURL": "https://integrate.api.nvidia.com/v1/models"
+    },
+    "models": []
+  },
+  {
+    "id": "zai",
+    "name": "GLM Coding (Z.ai)",
+    "category": "apiKey",
+    "logoSymbol": "g.circle",
+    "hint": "Coding plan key from z.ai",
+    "transport": {
+      "baseURL": "https://api.z.ai/api/coding/paas/v4",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer",
+      "modelsURL": "https://api.z.ai/api/coding/paas/v4/models"
+    },
+    "models": [
+      {
+        "id": "glm-4.6",
+        "name": "GLM 4.6",
+        "tier": "standard"
+      },
+      {
+        "id": "glm-4.5",
+        "name": "GLM 4.5",
+        "tier": "standard"
+      },
+      {
+        "id": "glm-4.5-air",
+        "name": "GLM 4.5 Air",
+        "tier": "light"
+      }
+    ]
   },
   {
     "id": "gemini",
@@ -91,9 +538,20 @@
     "category": "apiKey",
     "logoSymbol": "diamond",
     "hint": "API key",
-    "transport": { "baseURL": "https://generativelanguage.googleapis.com/v1beta/openai", "format": "openai-chat" },
-    "apiKey": { "header": "Authorization", "scheme": "bearer" },
-    "models": [{ "id": "gemini-2.5-flash" }]
+    "transport": {
+      "baseURL": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer"
+    },
+    "models": [
+      {
+        "id": "gemini-2.5-flash",
+        "tier": "light"
+      }
+    ]
   },
   {
     "id": "deepseek",
@@ -101,9 +559,20 @@
     "category": "apiKey",
     "logoSymbol": "wave.3.right.circle",
     "hint": "API key",
-    "transport": { "baseURL": "https://api.deepseek.com/v1", "format": "openai-chat" },
-    "apiKey": { "header": "Authorization", "scheme": "bearer", "modelsURL": "https://api.deepseek.com/v1/models" },
-    "models": [{ "id": "deepseek-chat" }]
+    "transport": {
+      "baseURL": "https://api.deepseek.com/v1",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer",
+      "modelsURL": "https://api.deepseek.com/v1/models"
+    },
+    "models": [
+      {
+        "id": "deepseek-chat"
+      }
+    ]
   },
   {
     "id": "openai",
@@ -111,9 +580,28 @@
     "category": "apiKey",
     "logoSymbol": "hexagon",
     "hint": "API key",
-    "transport": { "baseURL": "https://api.openai.com/v1", "format": "openai-chat" },
-    "apiKey": { "header": "Authorization", "scheme": "bearer", "modelsURL": "https://api.openai.com/v1/models" },
-    "models": [{ "id": "gpt-4.1-mini" }]
+    "transport": {
+      "baseURL": "https://api.openai.com/v1",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer",
+      "modelsURL": "https://api.openai.com/v1/models"
+    },
+    "models": [
+      {
+        "id": "gpt-4.1-mini"
+      }
+    ],
+    "media": {
+      "video": {
+        "model": "sora-2"
+      },
+      "audio": {
+        "model": "gpt-4o-mini-tts"
+      }
+    }
   },
   {
     "id": "openrouter",
@@ -121,9 +609,20 @@
     "category": "apiKey",
     "logoSymbol": "arrow.triangle.branch",
     "hint": "API key",
-    "transport": { "baseURL": "https://openrouter.ai/api/v1", "format": "openai-chat" },
-    "apiKey": { "header": "Authorization", "scheme": "bearer", "modelsURL": "https://openrouter.ai/api/v1/models" },
-    "models": [{ "id": "openai/gpt-4.1-mini" }]
+    "transport": {
+      "baseURL": "https://openrouter.ai/api/v1",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer",
+      "modelsURL": "https://openrouter.ai/api/v1/models"
+    },
+    "models": [
+      {
+        "id": "openai/gpt-4.1-mini"
+      }
+    ]
   },
   {
     "id": "qwen",
@@ -131,9 +630,19 @@
     "category": "apiKey",
     "logoSymbol": "q.circle",
     "hint": "API key",
-    "transport": { "baseURL": "https://dashscope.aliyuncs.com/compatible-mode/v1", "format": "openai-chat" },
-    "apiKey": { "header": "Authorization", "scheme": "bearer" },
-    "models": [{ "id": "qwen-plus" }]
+    "transport": {
+      "baseURL": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer"
+    },
+    "models": [
+      {
+        "id": "qwen-plus"
+      }
+    ]
   },
   {
     "id": "grok",
@@ -141,9 +650,20 @@
     "category": "apiKey",
     "logoSymbol": "bolt.circle",
     "hint": "API key",
-    "transport": { "baseURL": "https://api.x.ai/v1", "format": "openai-chat" },
-    "apiKey": { "header": "Authorization", "scheme": "bearer", "modelsURL": "https://api.x.ai/v1/models" },
-    "models": [{ "id": "grok-3-mini" }]
+    "transport": {
+      "baseURL": "https://api.x.ai/v1",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer",
+      "modelsURL": "https://api.x.ai/v1/models"
+    },
+    "models": [
+      {
+        "id": "grok-3-mini"
+      }
+    ]
   },
   {
     "id": "glm",
@@ -151,9 +671,20 @@
     "category": "apiKey",
     "logoSymbol": "g.circle",
     "hint": "API key",
-    "transport": { "baseURL": "https://open.bigmodel.cn/api/paas/v4", "format": "openai-chat" },
-    "apiKey": { "header": "Authorization", "scheme": "bearer" },
-    "models": [{ "id": "glm-4.5" }]
+    "transport": {
+      "baseURL": "https://open.bigmodel.cn/api/paas/v4",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer"
+    },
+    "models": [
+      {
+        "id": "glm-4.5",
+        "tier": "standard"
+      }
+    ]
   },
   {
     "id": "kimi",
@@ -161,9 +692,19 @@
     "category": "apiKey",
     "logoSymbol": "moon.circle",
     "hint": "API key",
-    "transport": { "baseURL": "https://api.moonshot.cn/v1", "format": "openai-chat" },
-    "apiKey": { "header": "Authorization", "scheme": "bearer" },
-    "models": [{ "id": "moonshot-v1-8k" }]
+    "transport": {
+      "baseURL": "https://api.moonshot.cn/v1",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer"
+    },
+    "models": [
+      {
+        "id": "moonshot-v1-8k"
+      }
+    ]
   },
   {
     "id": "minimax",
@@ -171,9 +712,19 @@
     "category": "apiKey",
     "logoSymbol": "m.circle",
     "hint": "API key",
-    "transport": { "baseURL": "https://api.minimax.io/v1", "format": "openai-chat" },
-    "apiKey": { "header": "Authorization", "scheme": "bearer" },
-    "models": [{ "id": "MiniMax-Text-01" }]
+    "transport": {
+      "baseURL": "https://api.minimax.io/v1",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer"
+    },
+    "models": [
+      {
+        "id": "MiniMax-Text-01"
+      }
+    ]
   },
   {
     "id": "groq",
@@ -181,9 +732,20 @@
     "category": "apiKey",
     "logoSymbol": "gauge.with.dots.needle.67percent",
     "hint": "API key",
-    "transport": { "baseURL": "https://api.groq.com/openai/v1", "format": "openai-chat" },
-    "apiKey": { "header": "Authorization", "scheme": "bearer", "modelsURL": "https://api.groq.com/openai/v1/models" },
-    "models": [{ "id": "llama-3.3-70b-versatile" }]
+    "transport": {
+      "baseURL": "https://api.groq.com/openai/v1",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer",
+      "modelsURL": "https://api.groq.com/openai/v1/models"
+    },
+    "models": [
+      {
+        "id": "llama-3.3-70b-versatile"
+      }
+    ]
   },
   {
     "id": "mistral",
@@ -191,9 +753,20 @@
     "category": "apiKey",
     "logoSymbol": "wind",
     "hint": "API key",
-    "transport": { "baseURL": "https://api.mistral.ai/v1", "format": "openai-chat" },
-    "apiKey": { "header": "Authorization", "scheme": "bearer", "modelsURL": "https://api.mistral.ai/v1/models" },
-    "models": [{ "id": "mistral-small-latest" }]
+    "transport": {
+      "baseURL": "https://api.mistral.ai/v1",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer",
+      "modelsURL": "https://api.mistral.ai/v1/models"
+    },
+    "models": [
+      {
+        "id": "mistral-small-latest"
+      }
+    ]
   },
   {
     "id": "perplexity",
@@ -201,9 +774,19 @@
     "category": "apiKey",
     "logoSymbol": "magnifyingglass",
     "hint": "API key",
-    "transport": { "baseURL": "https://api.perplexity.ai", "format": "openai-chat" },
-    "apiKey": { "header": "Authorization", "scheme": "bearer" },
-    "models": [{ "id": "sonar" }]
+    "transport": {
+      "baseURL": "https://api.perplexity.ai",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer"
+    },
+    "models": [
+      {
+        "id": "sonar"
+      }
+    ]
   },
   {
     "id": "together",
@@ -211,9 +794,20 @@
     "category": "apiKey",
     "logoSymbol": "person.3",
     "hint": "API key",
-    "transport": { "baseURL": "https://api.together.xyz/v1", "format": "openai-chat" },
-    "apiKey": { "header": "Authorization", "scheme": "bearer", "modelsURL": "https://api.together.xyz/v1/models" },
-    "models": [{ "id": "meta-llama/Llama-3.3-70B-Instruct-Turbo" }]
+    "transport": {
+      "baseURL": "https://api.together.xyz/v1",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer",
+      "modelsURL": "https://api.together.xyz/v1/models"
+    },
+    "models": [
+      {
+        "id": "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+      }
+    ]
   },
   {
     "id": "fireworks",
@@ -221,9 +815,19 @@
     "category": "apiKey",
     "logoSymbol": "flame",
     "hint": "API key",
-    "transport": { "baseURL": "https://api.fireworks.ai/inference/v1", "format": "openai-chat" },
-    "apiKey": { "header": "Authorization", "scheme": "bearer" },
-    "models": [{ "id": "accounts/fireworks/models/llama-v3p1-70b-instruct" }]
+    "transport": {
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer"
+    },
+    "models": [
+      {
+        "id": "accounts/fireworks/models/llama-v3p1-70b-instruct"
+      }
+    ]
   },
   {
     "id": "cerebras",
@@ -231,9 +835,19 @@
     "category": "apiKey",
     "logoSymbol": "cpu",
     "hint": "API key",
-    "transport": { "baseURL": "https://api.cerebras.ai/v1", "format": "openai-chat" },
-    "apiKey": { "header": "Authorization", "scheme": "bearer" },
-    "models": [{ "id": "llama-3.3-70b" }]
+    "transport": {
+      "baseURL": "https://api.cerebras.ai/v1",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer"
+    },
+    "models": [
+      {
+        "id": "llama-3.3-70b"
+      }
+    ]
   },
   {
     "id": "deepinfra",
@@ -241,8 +855,18 @@
     "category": "apiKey",
     "logoSymbol": "square.stack.3d.up",
     "hint": "API key",
-    "transport": { "baseURL": "https://api.deepinfra.com/v1/openai", "format": "openai-chat" },
-    "apiKey": { "header": "Authorization", "scheme": "bearer" },
-    "models": [{ "id": "meta-llama/Meta-Llama-3.1-70B-Instruct" }]
+    "transport": {
+      "baseURL": "https://api.deepinfra.com/v1/openai",
+      "format": "openai-chat"
+    },
+    "apiKey": {
+      "header": "Authorization",
+      "scheme": "bearer"
+    },
+    "models": [
+      {
+        "id": "meta-llama/Meta-Llama-3.1-70B-Instruct"
+      }
+    ]
   }
 ]

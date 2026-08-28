@@ -4,6 +4,7 @@
 
 using DotsHarnessCore;
 using HarnessPluginKit;
+using System.Text.Json;
 using Xunit;
 
 namespace DotsHarness.Tests;
@@ -16,6 +17,82 @@ public sealed class AgentBridgeTests
     public void PromptDeliveryModesMatchHostContract(PromptMode mode, string wireValue)
     {
         Assert.Equal(wireValue, mode.ToWireValue());
+    }
+
+    [Fact]
+    public void PlanApprovalRequiresAnExplicitPhrase()
+    {
+        Assert.True(PlanApproval.Matches("  Onaylıyorum!!! "));
+        Assert.True(PlanApproval.Matches("apply plan."));
+        Assert.True(PlanApproval.Matches("GO AHEAD"));
+        Assert.True(PlanApproval.Matches("PLANI UYGULA"));
+        Assert.False(PlanApproval.Matches("evet"));
+        Assert.False(PlanApproval.Matches("please apply the plan"));
+        Assert.False(PlanApproval.Matches("continue"));
+    }
+
+    [Fact]
+    public void PlanMessagesAndPendingIdRoundTrip()
+    {
+        var conversation = new Conversation
+        {
+            Id = "plan-chat",
+            Blank = false,
+            PendingPlanMessageId = "plan-1",
+        };
+        conversation.Messages.Add(new ChatMessage { Id = "plan-1", Kind = ChatKind.Plan, Text = "# Plan" });
+
+        var restored = JsonSerializer.Deserialize<Conversation>(JsonSerializer.Serialize(conversation));
+
+        Assert.NotNull(restored);
+        Assert.Equal("plan-1", restored!.PendingPlanMessageId);
+        Assert.Equal(ChatKind.Plan, Assert.Single(restored.Messages).Kind);
+    }
+
+    [Fact]
+    public void ContinuationSnapshotRoundTripsToolCallsAndFullOutput()
+    {
+        var conversation = new Conversation
+        {
+            Id = "paused-chat",
+            Blank = false,
+            Continuation = new ContinuationState
+            {
+                Reason = ContinuationPauseReason.ProviderLimit,
+                Provider = "OpenAI",
+                Model = "test-model",
+                Message = "Provider limit reached.",
+            },
+            ModelContext =
+            [
+                new NativeMessage("system", "system prompt"),
+                new NativeMessage("user", "inspect"),
+                new NativeMessage("assistant", "", ToolCalls: [new NativeToolCall("call-1", "read_file", "{\"path\":\"a.txt\"}")]),
+                new NativeMessage("tool", "the complete file contents", "call-1"),
+            ],
+        };
+
+        var restored = JsonSerializer.Deserialize<Conversation>(JsonSerializer.Serialize(conversation));
+
+        Assert.NotNull(restored);
+        Assert.True(restored!.CanContinue);
+        Assert.Equal(ContinuationPauseReason.ProviderLimit, restored.Continuation!.Reason);
+        Assert.Equal("OpenAI", restored.Continuation.Provider);
+        Assert.Equal("test-model", restored.Continuation.Model);
+        Assert.Equal(4, restored.ModelContext.Count);
+        Assert.Equal("{\"path\":\"a.txt\"}", restored.ModelContext[2].ToolCalls![0].Arguments);
+        Assert.Equal("the complete file contents", restored.ModelContext[3].Content);
+        Assert.Equal("call-1", restored.ModelContext[3].ToolCallId);
+    }
+
+    [Fact]
+    public void PlanModeOnlyExposesReadOnlyWorkspaceTools()
+    {
+        Assert.Equal(new[] { "list_files", "read_file" }, NativeWorkspaceTools.ReadOnlyDefinitions.Select(tool => tool.Name));
+        Assert.True(NativeWorkspaceTools.IsReadOnly("list_files"));
+        Assert.True(NativeWorkspaceTools.IsReadOnly("read_file"));
+        Assert.False(NativeWorkspaceTools.IsReadOnly("write_file"));
+        Assert.False(NativeWorkspaceTools.IsReadOnly("run_command"));
     }
 
     [Fact]

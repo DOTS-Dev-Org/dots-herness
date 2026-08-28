@@ -3,6 +3,7 @@
 
 import Foundation
 import HarnessPluginKit
+import PluginRuntime
 
 public struct AgentConfiguration: Sendable, Equatable {
     public var baseURL: String
@@ -17,6 +18,15 @@ public struct AgentConfiguration: Sendable, Equatable {
     public var specID: String
     /// "oauth" when `apiKey` holds a bearer OAuth token rather than an API key.
     public var authType: String
+    /// Reasoning-effort level for this request. Only sent when non-empty, since
+    /// providers reject the parameter on models that don't support it.
+    public var effort: String = ""
+    /// Input context window used by the compaction guard when live metadata is
+    /// unavailable. RouterController supplies the provider/model-specific value.
+    public var contextWindow: Int = AgentContextCompaction.defaultContextWindow
+    /// Only enabled by a provider registry entry that explicitly supports the
+    /// public Responses compaction contract.
+    public var supportsNativeCompaction: Bool = false
 
     public init(
         baseURL: String,
@@ -27,8 +37,14 @@ public struct AgentConfiguration: Sendable, Equatable {
         sessionAccountID: String? = nil,
         cacheCapabilities: AgentCacheCapabilities = .unsupported,
         specID: String = "",
-        authType: String = ""
+        authType: String = "",
+        effort: String = "",
+        contextWindow: Int = AgentContextCompaction.defaultContextWindow,
+        supportsNativeCompaction: Bool = false
     ) {
+        self.effort = effort
+        self.contextWindow = contextWindow
+        self.supportsNativeCompaction = supportsNativeCompaction
         self.baseURL = baseURL
         self.model = model
         self.apiKey = apiKey
@@ -76,8 +92,8 @@ public struct AgentCachePolicy: Sendable, Equatable {
     }
 }
 
-public struct AgentMessage: Sendable, Equatable {
-    public enum Role: String, Sendable {
+public struct AgentMessage: Sendable, Equatable, Codable {
+    public enum Role: String, Sendable, Codable, Equatable {
         case system
         case user
         case assistant
@@ -89,19 +105,53 @@ public struct AgentMessage: Sendable, Equatable {
     public var name: String?
     public var toolCallID: String?
     public var toolCalls: [AgentToolCall]
+    public var attachments: [ChatAttachment]
+    /// Raw Responses output items are kept only when the same Responses route is
+    /// reused. Other transports use the normalized role/tool representation.
+    public var providerItems: [JSONObject]
 
     public init(
         role: Role,
         content: String,
         name: String? = nil,
         toolCallID: String? = nil,
-        toolCalls: [AgentToolCall] = []
+        toolCalls: [AgentToolCall] = [],
+        attachments: [ChatAttachment] = [],
+        providerItems: [JSONObject] = []
     ) {
         self.role = role
         self.content = content
         self.name = name
         self.toolCallID = toolCallID
         self.toolCalls = toolCalls
+        self.attachments = attachments
+        self.providerItems = providerItems
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case role, content, name, toolCallID, toolCalls, attachments, providerItems
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        role = try container.decodeIfPresent(Role.self, forKey: .role) ?? .user
+        content = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
+        name = try container.decodeIfPresent(String.self, forKey: .name)
+        toolCallID = try container.decodeIfPresent(String.self, forKey: .toolCallID)
+        toolCalls = try container.decodeIfPresent([AgentToolCall].self, forKey: .toolCalls) ?? []
+        attachments = try container.decodeIfPresent([ChatAttachment].self, forKey: .attachments) ?? []
+        providerItems = try container.decodeIfPresent([JSONObject].self, forKey: .providerItems) ?? []
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(role, forKey: .role)
+        try container.encode(content, forKey: .content)
+        try container.encodeIfPresent(name, forKey: .name)
+        try container.encodeIfPresent(toolCallID, forKey: .toolCallID)
+        try container.encode(toolCalls, forKey: .toolCalls)
+        try container.encode(attachments, forKey: .attachments)
+        try container.encode(providerItems, forKey: .providerItems)
     }
 
     public func jsonObject() -> [String: Any] {
@@ -109,6 +159,7 @@ public struct AgentMessage: Sendable, Equatable {
             "role": role.rawValue,
             "content": content,
         ]
+        if !attachments.isEmpty { object["content"] = openAIContent() }
         if let name { object["name"] = name }
         if let toolCallID { object["tool_call_id"] = toolCallID }
         if !toolCalls.isEmpty {
@@ -125,9 +176,85 @@ public struct AgentMessage: Sendable, Equatable {
         }
         return object
     }
+
+    private func openAIContent() -> [[String: Any]] {
+        var blocks: [[String: Any]] = []
+        if !content.isEmpty { blocks.append(["type": "text", "text": content]) }
+        for attachment in attachments {
+            if let data = inlineImageData(attachment) {
+                blocks.append([
+                    "type": "image_url",
+                    "image_url": ["url": "data:" + attachment.mimeType + ";base64," + data.base64EncodedString()],
+                ])
+            } else {
+                blocks.append(["type": "text", "text": attachmentDescription(attachment)])
+            }
+        }
+        return blocks
+    }
+
+    func anthropicContent() -> [[String: Any]] {
+        var blocks: [[String: Any]] = []
+        if !content.isEmpty { blocks.append(["type": "text", "text": content]) }
+        for attachment in attachments {
+            if let data = inlineImageData(attachment) {
+                blocks.append([
+                    "type": "image",
+                    "source": [
+                        "type": "base64",
+                        "media_type": attachment.mimeType,
+                        "data": data.base64EncodedString(),
+                    ],
+                ])
+            } else {
+                blocks.append(["type": "text", "text": attachmentDescription(attachment)])
+            }
+        }
+        return blocks
+    }
+
+    func responsesContent() -> [[String: Any]] {
+        var blocks: [[String: Any]] = []
+        if !content.isEmpty { blocks.append(["type": "input_text", "text": content]) }
+        for attachment in attachments {
+            if let data = inlineImageData(attachment) {
+                blocks.append([
+                    "type": "input_image",
+                    "image_url": "data:" + attachment.mimeType + ";base64," + data.base64EncodedString(),
+                ])
+            } else {
+                blocks.append(["type": "input_text", "text": attachmentDescription(attachment)])
+            }
+        }
+        return blocks
+    }
+
+    func geminiParts() -> [[String: Any]] {
+        var parts: [[String: Any]] = []
+        if !content.isEmpty { parts.append(["text": content]) }
+        for attachment in attachments {
+            if let data = inlineImageData(attachment) {
+                parts.append(["inlineData": ["mimeType": attachment.mimeType, "data": data.base64EncodedString()]])
+            } else {
+                parts.append(["text": attachmentDescription(attachment)])
+            }
+        }
+        return parts.isEmpty ? [["text": ""]] : parts
+    }
+
+    private func inlineImageData(_ attachment: ChatAttachment) -> Data? {
+        guard attachment.kind == .image,
+              let data = try? Data(contentsOf: attachment.url),
+              data.count <= 20 * 1024 * 1024 else { return nil }
+        return data
+    }
+
+    private func attachmentDescription(_ attachment: ChatAttachment) -> String {
+        "Attached " + attachment.kind.rawValue + ": " + attachment.name + " (" + attachment.path + ")"
+    }
 }
 
-public struct AgentToolCall: Sendable, Equatable, Identifiable {
+public struct AgentToolCall: Sendable, Equatable, Identifiable, Codable {
     public var id: String
     public var name: String
     public var arguments: String
@@ -192,11 +319,13 @@ public struct NativeAgentError: Error, Sendable, LocalizedError, Equatable {
     public var message: String
     public var statusCode: Int?
     public var retryable: Bool
+    public var isLimit: Bool
 
-    public init(_ message: String, statusCode: Int? = nil, retryable: Bool = false) {
+    public init(_ message: String, statusCode: Int? = nil, retryable: Bool = false, isLimit: Bool = false) {
         self.message = message
         self.statusCode = statusCode
-        self.retryable = retryable
+        self.isLimit = isLimit || statusCode == 429
+        self.retryable = self.isLimit ? false : retryable
     }
 
     public var errorDescription: String? { message }
@@ -221,49 +350,40 @@ public struct NativeAgentClient: Sendable {
             throw NativeAgentError(AppCopy.text("agent.encodeRequestFailed"))
         }
 
-        guard let endpoint else { throw NativeAgentError(AppCopy.text("agent.invalidEndpoint")) }
-        var request = URLRequest(url: endpoint, timeoutInterval: 180)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        if let apiKey = configuration.apiKey, !apiKey.isEmpty {
-            if configuration.api == RouterAPIKind.anthropic.rawValue && !configuration.isOAuth {
-                request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-            } else {
-                request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-            }
-        }
-        if configuration.api == RouterAPIKind.anthropic.rawValue {
-            request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        } else if configuration.api == RouterAPIKind.chatGPT.rawValue {
-            guard let accountID = configuration.sessionAccountID, !accountID.isEmpty else {
-                throw NativeAgentError("The GPT session account is unavailable.")
-            }
-            request.setValue(accountID, forHTTPHeaderField: "ChatGPT-Account-ID")
-            request.setValue("codex", forHTTPHeaderField: "OAI-Product-Sku")
-            request.setValue("responses=v1", forHTTPHeaderField: "OpenAI-Beta")
-            request.setValue("dots_harness", forHTTPHeaderField: "originator")
-            request.setValue(UUID().uuidString, forHTTPHeaderField: "session_id")
-        }
-        // Registry-supplied transport headers (spoof / beta flags). Applied last
-        // so a provider spec can override the defaults above.
-        for (key, value) in configuration.transportSpec?.extraHeaders ?? [:] {
-            request.setValue(value, forHTTPHeaderField: key)
-        }
-        request.httpBody = data
+        let request = try makeRequest(
+            body: data,
+            accept: configuration.api == RouterAPIKind.chatGPT.rawValue ? "text/event-stream" : "application/json"
+        )
 
         do {
             let (responseData, response) = try await session.data(for: request)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             let value = (try? JSONCodec.parse(responseData)) ?? .null
             guard (200..<300).contains(status) else {
+                if status == 400, configuration.supportsNativeCompaction {
+                    var fallback = configuration
+                    fallback.supportsNativeCompaction = false
+                    return try await NativeAgentClient(configuration: fallback, session: session).complete(
+                        messages: messages,
+                        tools: tools,
+                        cachePolicy: cachePolicy
+                    )
+                }
                 throw NativeAgentError(
                     Self.errorMessage(from: value, status: status),
                     statusCode: status,
-                    retryable: Self.isRetryable(status)
+                    retryable: Self.isRetryable(status),
+                    isLimit: Self.limitKind(from: value, status: status) != nil
                 )
             }
-            var result = try Self.response(from: value)
+            var result: AgentResponse
+            if configuration.api == RouterAPIKind.chatGPT.rawValue {
+                result = try Self.responseFromSSE(responseData)
+            } else if configuration.api == RouterAPIKind.geminiCLI.rawValue {
+                result = try Self.geminiResponse(from: value)
+            } else {
+                result = try Self.response(from: value)
+            }
             if configuration.transportSpec?.quirks.cloakToolsOnOAuth == true, configuration.isOAuth {
                 result.message.toolCalls = result.message.toolCalls.map {
                     AgentToolCall(id: $0.id, name: ToolCloak.restore($0.name), arguments: $0.arguments)
@@ -284,7 +404,110 @@ public struct NativeAgentClient: Sendable {
         }
     }
 
+    /// Uses the selected Responses model's built-in image-generation tool.
+    /// The tool returns the finished PNG as base64 in an image-generation call.
+    public func generateImage(prompt: String, paths: SupportPaths) async throws -> ChatMedia {
+        let prompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !prompt.isEmpty else {
+            throw NativeAgentError(AppCopy.text("media.promptMissing"))
+        }
+        guard configuration.api == RouterAPIKind.chatGPT.rawValue else {
+            throw NativeAgentError(AppCopy.format("media.unsupported", MediaKind.image.displayName))
+        }
+
+        var body = makeResponsesBody(
+            messages: [AgentMessage(role: .user, content: prompt)],
+            tools: []
+        )
+        body["tools"] = [["type": "image_generation"]]
+        guard let data = try? JSONSerialization.data(withJSONObject: body) else {
+            throw NativeAgentError(AppCopy.text("agent.encodeRequestFailed"))
+        }
+        let request = try makeRequest(body: data, accept: "text/event-stream")
+
+        do {
+            let (responseData, response) = try await session.data(for: request)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            let value = (try? JSONCodec.parse(responseData)) ?? .null
+            guard (200..<300).contains(status) else {
+                throw NativeAgentError(
+                    Self.errorMessage(from: value, status: status),
+                    statusCode: status,
+                    retryable: Self.isRetryable(status),
+                    isLimit: Self.limitKind(from: value, status: status) != nil
+                )
+            }
+            let encoded = try Self.imageBase64FromResponse(responseData)
+            let raw = encoded.components(separatedBy: ",").last ?? encoded
+            guard let imageData = Data(base64Encoded: raw, options: .ignoreUnknownCharacters) else {
+                throw NativeAgentError(AppCopy.text("media.invalidOutput"))
+            }
+            return try MediaGenerationClient.save(imageData, kind: .image, paths: paths)
+        } catch let error as NativeAgentError {
+            throw error
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as URLError where error.code == .cancelled {
+            throw CancellationError()
+        } catch {
+            if Task.isCancelled { throw CancellationError() }
+            throw NativeAgentError(error.localizedDescription, retryable: Self.isRetryable(error))
+        }
+    }
+
+    private func makeRequest(body: Data, accept: String) throws -> URLRequest {
+        guard let endpoint else { throw NativeAgentError(AppCopy.text("agent.invalidEndpoint")) }
+        var request = URLRequest(url: endpoint, timeoutInterval: 180)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(accept, forHTTPHeaderField: "Accept")
+        if let apiKey = configuration.apiKey, !apiKey.isEmpty {
+            if configuration.api == RouterAPIKind.anthropic.rawValue && !configuration.isOAuth {
+                request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+            } else {
+                request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+            }
+        }
+        if configuration.api == RouterAPIKind.geminiCLI.rawValue {
+            // Cloud Code Assist identifies the caller by UA, and answers
+            // `:generateContent` as plain JSON.
+            request.setValue("GeminiCLI/0.34.0/\(configuration.model) (darwin; arm64; terminal)", forHTTPHeaderField: "User-Agent")
+            request.setValue("google-genai-sdk/1.41.0 gl-node/v22.19.0", forHTTPHeaderField: "X-Goog-Api-Client")
+        } else if configuration.api == RouterAPIKind.anthropic.rawValue {
+            request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        } else if configuration.api == RouterAPIKind.chatGPT.rawValue {
+            // The Responses transport is shared (Codex, Grok CLI, …); only the
+            // ChatGPT backend binds requests to an account id.
+            if configuration.transportSpec?.quirks.requiresSessionAccountID == true {
+                guard let accountID = configuration.sessionAccountID, !accountID.isEmpty else {
+                    throw NativeAgentError("The GPT session account is unavailable.")
+                }
+                request.setValue(accountID, forHTTPHeaderField: "ChatGPT-Account-ID")
+                request.setValue("codex", forHTTPHeaderField: "OAI-Product-Sku")
+                request.setValue("codex_cli_rs", forHTTPHeaderField: "originator")
+            }
+            let sessionID = UUID().uuidString
+            let threadID = UUID().uuidString
+            request.setValue(sessionID, forHTTPHeaderField: "session-id")
+            request.setValue(threadID, forHTTPHeaderField: "thread-id")
+            request.setValue(threadID, forHTTPHeaderField: "x-client-request-id")
+        }
+        // Registry-supplied transport headers are applied last so a provider
+        // spec can override the defaults above.
+        for (key, value) in configuration.transportSpec?.extraHeaders ?? [:] {
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+        request.httpBody = body
+        return request
+    }
+
     private var endpoint: URL? {
+        // Code Assist methods hang off the base as `…/v1internal:generateContent`,
+        // which is not a path segment — build it by string, not URLComponents.
+        if configuration.api == RouterAPIKind.geminiCLI.rawValue {
+            let base = configuration.baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            return URL(string: base + ":generateContent")
+        }
         guard var components = URLComponents(string: configuration.baseURL),
               let scheme = components.scheme?.lowercased(),
               ["http", "https"].contains(scheme),
@@ -306,7 +529,7 @@ public struct NativeAgentClient: Sendable {
         return components.url
     }
 
-    private func makeBody(
+    func makeBody(
         messages: [AgentMessage],
         tools: [AgentToolDefinition],
         cachePolicy: AgentCachePolicy
@@ -316,6 +539,9 @@ public struct NativeAgentClient: Sendable {
         }
         if configuration.api == RouterAPIKind.chatGPT.rawValue {
             return makeResponsesBody(messages: messages, tools: tools)
+        }
+        if configuration.api == RouterAPIKind.geminiCLI.rawValue {
+            return makeGeminiBody(messages: messages, tools: tools)
         }
         var body: [String: Any] = ["model": configuration.model, "messages": messages.map { $0.jsonObject() }, "temperature": 0.2]
         if configuration.cacheCapabilities.promptCacheKey,
@@ -331,7 +557,11 @@ public struct NativeAgentClient: Sendable {
     }
 
     private func makeAnthropicBody(messages: [AgentMessage], tools: [AgentToolDefinition]) -> [String: Any] {
-        let system = messages.first(where: { $0.role == .system })?.content
+        let system = messages
+            .filter { $0.role == .system }
+            .map(\.content)
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
         let converted = messages.filter { $0.role != .system }.map { message -> [String: Any] in
             if message.role == .tool {
                 return [
@@ -340,20 +570,32 @@ public struct NativeAgentClient: Sendable {
                 ]
             }
             var content: Any = message.content
+            if !message.attachments.isEmpty { content = message.anthropicContent() }
             if message.role == .assistant && !message.toolCalls.isEmpty {
                 content = ([message.content.isEmpty ? nil : ["type": "text", "text": message.content] as [String: Any]?].compactMap { $0 })
                     + message.toolCalls.map { ["type": "tool_use", "id": $0.id, "name": $0.name, "input": Self.jsonObject(from: $0.arguments)] }
             }
             return ["role": message.role == .assistant ? "assistant" : "user", "content": content]
         }
-        var body: [String: Any] = ["model": configuration.model, "max_tokens": 4096, "messages": converted]
+        // High effort spends most of the budget on reasoning before it writes a
+        // word, so a fixed 4096 ceiling can end a request with thinking only and
+        // no answer. Scale the ceiling with the requested depth.
+        var body: [String: Any] = [
+            "model": configuration.model,
+            "max_tokens": Self.maxTokens(forEffort: configuration.effort),
+            "messages": converted,
+        ]
         let quirks = configuration.transportSpec?.quirks
         // OAuth (subscription) tokens require Claude Code's identity as the first
         // system block, otherwise Anthropic rejects the request.
         if let identity = quirks?.injectAgentIdentity, configuration.isOAuth {
-            let user = (system?.isEmpty == false) ? "\n\n\(system!)" : ""
-            body["system"] = identity + user
-        } else if let system, !system.isEmpty {
+            // Anthropic's OAuth endpoint validates that the FIRST system block is
+            // exactly the Claude Code identity string. A single concatenated
+            // string fails that check with HTTP 400 — send discrete blocks.
+            var blocks: [[String: Any]] = [["type": "text", "text": identity]]
+            if !system.isEmpty { blocks.append(["type": "text", "text": system]) }
+            body["system"] = blocks
+        } else if !system.isEmpty {
             body["system"] = system
         }
         if !tools.isEmpty {
@@ -362,14 +604,79 @@ public struct NativeAgentClient: Sendable {
         if quirks?.cloakToolsOnOAuth == true, configuration.isOAuth {
             ToolCloak.apply(to: &body)
         }
+        if !configuration.effort.isEmpty {
+            body["output_config"] = ["effort": configuration.effort]
+        }
+        return body
+    }
+
+    /// Cloud Code Assist envelope: `{project, model, request}` where `request` is
+    /// an ordinary Gemini `generateContent` payload.
+    private func makeGeminiBody(messages: [AgentMessage], tools: [AgentToolDefinition]) -> [String: Any] {
+        var contents: [[String: Any]] = []
+        for message in messages where message.role != .system {
+            switch message.role {
+            case .tool:
+                contents.append([
+                    "role": "user",
+                    "parts": [["functionResponse": [
+                        "name": message.toolCallID ?? "tool",
+                        "response": ["result": message.content],
+                    ]]],
+                ])
+            case .assistant:
+                var parts: [[String: Any]] = []
+                if !message.content.isEmpty { parts.append(["text": message.content]) }
+                for call in message.toolCalls {
+                    parts.append(["functionCall": ["name": call.name, "args": Self.jsonObject(from: call.arguments)]])
+                }
+                contents.append(["role": "model", "parts": parts.isEmpty ? [["text": ""]] : parts])
+            default:
+                contents.append(["role": "user", "parts": message.geminiParts()])
+            }
+        }
+
+        var inner: [String: Any] = ["contents": contents]
+        let system = messages.filter { $0.role == .system }.map(\.content).filter { !$0.isEmpty }.joined(separator: "\n\n")
+        if !system.isEmpty {
+            inner["systemInstruction"] = ["role": "user", "parts": [["text": system]]]
+        }
+        if !tools.isEmpty {
+            inner["tools"] = [["functionDeclarations": tools.map { tool -> [String: Any] in
+                ["name": tool.name, "description": tool.description, "parameters": tool.parameters.any]
+            }]]
+        }
+        if !configuration.effort.isEmpty {
+            inner["generationConfig"] = ["thinkingConfig": ["thinkingLevel": configuration.effort]]
+        }
+        var body: [String: Any] = ["model": configuration.model, "request": inner]
+        // The project id is discovered once at sign-in and stored on the account.
+        if let project = configuration.sessionAccountID, !project.isEmpty { body["project"] = project }
+        if configuration.transportSpec?.quirks.antigravityEnvelope == true {
+            body["userAgent"] = "antigravity"
+            body["requestType"] = "agent"
+            body["requestId"] = UUID().uuidString
+        }
         return body
     }
 
     private func makeResponsesBody(messages: [AgentMessage], tools: [AgentToolDefinition]) -> [String: Any] {
-        let system = messages.first(where: { $0.role == .system })?.content ?? "You are a helpful assistant."
+        // The Codex backend keeps `instructions` pinned to the Codex CLI prompt;
+        // the caller's own system prompt rides along as a leading developer turn.
+        let systemMessages = messages.filter { $0.role == .system }.map(\.content).filter { !$0.isEmpty }
+        let pinnedInstructions = configuration.transportSpec?.quirks.usesCodexInstructions == true
         var input: [[String: Any]] = []
+        // Only worth a developer turn when `instructions` is pinned to the Codex
+        // prompt; otherwise the system prompt is already the instructions.
+        if pinnedInstructions {
+            input.append(contentsOf: systemMessages.map { system in
+                ["role": "developer", "content": [["type": "input_text", "text": system]]]
+            })
+        }
         for message in messages where message.role != .system {
-            if message.role == .tool {
+            if !message.providerItems.isEmpty {
+                input.append(contentsOf: message.providerItems.map { item in item.mapValues { $0.any } })
+            } else if message.role == .tool {
                 input.append(["type": "function_call_output", "call_id": message.toolCallID ?? "tool", "output": message.content])
             } else if message.role == .assistant && !message.toolCalls.isEmpty {
                 if !message.content.isEmpty {
@@ -383,16 +690,27 @@ public struct NativeAgentClient: Sendable {
                 ] })
             } else {
                 let role = message.role == .assistant ? "assistant" : "user"
-                let type = role == "assistant" ? "output_text" : "input_text"
-                input.append(["role": role, "content": [["type": type, "text": message.content]]])
+                let content: [[String: Any]]
+                if role == "assistant" {
+                    content = [["type": "output_text", "text": message.content]]
+                } else if message.attachments.isEmpty {
+                    content = [["type": "input_text", "text": message.content]]
+                } else {
+                    content = message.responsesContent()
+                }
+                input.append(["role": role, "content": content])
             }
         }
         var body: [String: Any] = [
             "model": configuration.model,
-            "instructions": system,
+            "instructions": configuration.transportSpec?.quirks.usesCodexInstructions == true
+                ? CodexInstructions.default
+                : (systemMessages.joined(separator: "\n\n").isEmpty ? "You are a helpful assistant." : systemMessages.joined(separator: "\n\n")),
             "input": input,
             "store": false,
-            "stream": false,
+            // The ChatGPT/Codex backend only serves `/responses` as SSE; a
+            // non-streaming request is rejected with HTTP 400.
+            "stream": true,
         ]
         if !tools.isEmpty {
             body["tools"] = tools.map { [
@@ -401,6 +719,16 @@ public struct NativeAgentClient: Sendable {
                 "description": $0.description,
                 "parameters": $0.parameters.any,
             ] }
+        }
+        if !configuration.effort.isEmpty {
+            body["reasoning"] = ["effort": configuration.effort]
+        }
+        if configuration.supportsNativeCompaction,
+           configuration.api == RouterAPIKind.chatGPT.rawValue {
+            body["context_management"] = [[
+                "type": "compaction",
+                "compact_threshold": Int(Double(max(1, configuration.contextWindow)) * AgentContextCompaction.triggerRatio),
+            ]]
         }
         return body
     }
@@ -417,8 +745,9 @@ public struct NativeAgentClient: Sendable {
                 guard block["type"]?.string == "function_call", let name = block["name"]?.string else { return nil }
                 return AgentToolCall(id: block["call_id"]?.string ?? block["id"]?.string ?? UUID().uuidString, name: name, arguments: block["arguments"]?.string ?? "{}")
             }
+            let providerItems = blocks.compactMap(\.object)
             let usage = value["usage"]?.object.map { AgentUsage(inputTokens: $0["input_tokens"]?.int ?? 0, outputTokens: $0["output_tokens"]?.int ?? 0) }
-            return AgentResponse(message: AgentMessage(role: .assistant, content: text, toolCalls: calls), usage: usage)
+            return AgentResponse(message: AgentMessage(role: .assistant, content: text, toolCalls: calls, providerItems: providerItems), usage: usage)
         }
         if value["type"]?.string == "message" || value["content"] != nil && value["choices"] == nil {
             let blocks: [JSONValue]
@@ -466,6 +795,181 @@ public struct NativeAgentClient: Sendable {
         )
     }
 
+    /// The Codex `/responses` endpoint answers only as an SSE stream, and its
+    /// terminal `response.completed` payload ships an EMPTY `output` array —
+    /// content lives solely in the incremental events. So the stream itself is
+    /// the source of truth for text and tool calls; `response.completed` only
+    /// contributes usage (and the output blocks, on backends that do send them).
+    static func responseFromSSE(_ data: Data) throws -> AgentResponse {
+        let text = String(decoding: data, as: UTF8.self)
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("{") || trimmed.hasPrefix("[") {
+            return try response(from: JSONCodec.parse(data))
+        }
+        var finalResponse: JSONValue?
+        var textAcc = ""
+        var callOrder: [String] = []
+        var calls: [String: (name: String, args: String)] = [:]
+        var providerItems: [JSONObject] = []
+
+        for rawLine in text.split(separator: "\n", omittingEmptySubsequences: false) {
+            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard line.hasPrefix("data:") else { continue }
+            let payload = line.dropFirst(5).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !payload.isEmpty, payload != "[DONE]",
+                  let event = try? JSONCodec.parse(Data(payload.utf8)) else { continue }
+            switch event["type"]?.string ?? "" {
+            case "response.output_text.delta":
+                textAcc += event["delta"]?.string ?? ""
+            case "response.completed", "response.incomplete":
+                finalResponse = event["response"]
+            case "response.output_item.done":
+                guard let item = event["item"]?.object else { break }
+                providerItems.append(item)
+                switch item["type"]?.string {
+                case "function_call":
+                    let id = item["call_id"]?.string ?? item["id"]?.string ?? UUID().uuidString
+                    if calls[id] == nil { callOrder.append(id) }
+                    calls[id] = (item["name"]?.string ?? "", item["arguments"]?.string ?? "{}")
+                case "message" where textAcc.isEmpty:
+                    // No text deltas arrived (some models emit the message whole).
+                    if case .array(let blocks) = item["content"] {
+                        textAcc = blocks.compactMap { $0["text"]?.string }.joined()
+                    }
+                default:
+                    break
+                }
+            case "response.failed", "error":
+                let message = event["message"]?.string
+                    ?? event["error"]?["message"]?.string
+                    ?? event["response"]?["error"]?["message"]?.string
+                    ?? "The Codex stream reported an error."
+                let status = event["status"]?.int
+                    ?? event["error"]?["status"]?.int
+                    ?? event["response"]?["status"]?.int
+                    ?? event["response"]?["error"]?["status"]?.int
+                    ?? 502
+                throw NativeAgentError(
+                    message,
+                    statusCode: status,
+                    isLimit: Self.limitKind(from: event, status: status) != nil
+                )
+            default:
+                break
+            }
+        }
+
+        let toolCalls = callOrder.compactMap { id in
+            calls[id].map { AgentToolCall(id: id, name: $0.name, arguments: $0.args) }
+        }
+        let usage = finalResponse?["usage"]?.object.map {
+            AgentUsage(
+                inputTokens: $0["input_tokens"]?.int ?? 0,
+                outputTokens: $0["output_tokens"]?.int ?? 0,
+                cachedTokens: $0["input_tokens_details"]?["cached_tokens"]?.int,
+                cacheWriteTokens: $0["input_tokens_details"]?["cache_write_tokens"]?.int
+            )
+        }
+
+        if textAcc.isEmpty, toolCalls.isEmpty, providerItems.isEmpty {
+            // Nothing in the stream — fall back to the terminal payload for
+            // backends that do populate `output` there.
+            if let finalResponse, case .array(let output) = finalResponse["output"], !output.isEmpty {
+                return try response(from: finalResponse)
+            }
+            throw NativeAgentError(AppCopy.text("agent.noMessage"))
+        }
+        return AgentResponse(
+            message: AgentMessage(role: .assistant, content: textAcc, toolCalls: toolCalls, providerItems: providerItems),
+            usage: usage
+        )
+    }
+
+    static func imageBase64FromResponse(_ data: Data) throws -> String {
+        let text = String(decoding: data, as: UTF8.self)
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("{") || trimmed.hasPrefix("[") {
+            guard let result = imageBase64(from: try JSONCodec.parse(data)), !result.isEmpty else {
+                throw NativeAgentError(AppCopy.text("media.noOutput"))
+            }
+            return result
+        }
+
+        var result: String?
+        for rawLine in text.split(separator: "\n", omittingEmptySubsequences: false) {
+            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard line.hasPrefix("data:") else { continue }
+            let payload = line.dropFirst(5).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !payload.isEmpty, payload != "[DONE]",
+                  let event = try? JSONCodec.parse(Data(payload.utf8)) else { continue }
+            switch event["type"]?.string ?? "" {
+            case "response.output_item.done":
+                result = imageBase64(from: event["item"] ?? .null) ?? result
+            case "response.completed", "response.incomplete":
+                result = imageBase64(from: event["response"] ?? event) ?? result
+            case "response.image_generation_call.completed":
+                result = event["result"]?.string
+                    ?? event["image_generation_call"]?["result"]?.string
+                    ?? result
+            case "response.failed", "error":
+                let message = event["message"]?.string
+                    ?? event["error"]?["message"]?.string
+                    ?? event["response"]?["error"]?["message"]?.string
+                    ?? "The image generation stream reported an error."
+                let status = event["status"]?.int
+                    ?? event["error"]?["status"]?.int
+                    ?? event["response"]?["status"]?.int
+                    ?? event["response"]?["error"]?["status"]?.int
+                    ?? 502
+                throw NativeAgentError(
+                    message,
+                    statusCode: status,
+                    isLimit: Self.limitKind(from: event, status: status) != nil
+                )
+            default:
+                break
+            }
+        }
+        guard let result, !result.isEmpty else {
+            throw NativeAgentError(AppCopy.text("media.noOutput"))
+        }
+        return result
+    }
+
+    private static func imageBase64(from value: JSONValue) -> String? {
+        if value["type"]?.string == "image_generation_call" {
+            return value["result"]?.string
+        }
+        let payload = value["response"] ?? value
+        guard case .array(let output) = payload["output"] else { return nil }
+        return output.first { $0["type"]?.string == "image_generation_call" }?["result"]?.string
+    }
+
+    /// Code Assist nests the Gemini reply under `response`; older shapes return it
+    /// at the top level, so accept both.
+    static func geminiResponse(from value: JSONValue) throws -> AgentResponse {
+        let payload = value["response"] ?? value
+        guard case .array(let candidates) = payload["candidates"], let first = candidates.first,
+              case .array(let parts) = first["content"]?["parts"] else {
+            throw NativeAgentError(AppCopy.text("agent.noMessage"))
+        }
+        let text = parts.compactMap { $0["text"]?.string }.joined()
+        let calls = parts.compactMap { part -> AgentToolCall? in
+            guard let call = part["functionCall"]?.object, let name = call["name"]?.string else { return nil }
+            let arguments = call["args"]?.any ?? [:]
+            let data = (try? JSONSerialization.data(withJSONObject: arguments)) ?? Data("{}".utf8)
+            return AgentToolCall(id: name, name: name, arguments: String(data: data, encoding: .utf8) ?? "{}")
+        }
+        let usage = payload["usageMetadata"]?.object.map {
+            AgentUsage(
+                inputTokens: $0["promptTokenCount"]?.int ?? 0,
+                outputTokens: $0["candidatesTokenCount"]?.int ?? 0,
+                cachedTokens: $0["cachedContentTokenCount"]?.int
+            )
+        }
+        return AgentResponse(message: AgentMessage(role: .assistant, content: text, toolCalls: calls), usage: usage)
+    }
+
     private static func errorMessage(from value: JSONValue, status: Int) -> String {
         if let message = value["error"]?["message"]?.string ?? value["message"]?.string,
            !message.isEmpty {
@@ -474,11 +978,46 @@ public struct NativeAgentClient: Sendable {
         return AppCopy.format("agent.requestFailed", status)
     }
 
+    private static func limitKind(from value: JSONValue, status: Int) -> String? {
+        if status == 429 { return "rate" }
+        let message = [
+            value["error"]?["message"]?.string,
+            value["error"]?["type"]?.string,
+            value["error"]?["code"]?.string,
+            value["response"]?["error"]?["message"]?.string,
+            value["response"]?["error"]?["type"]?.string,
+            value["response"]?["error"]?["code"]?.string,
+            value["message"]?.string,
+            value["type"]?.string,
+            value["code"]?.string,
+        ]
+        .compactMap { $0 }
+        .joined(separator: " ")
+        .lowercased()
+        if message.contains("rate limit") || message.contains("rate-limit") || message.contains("rate_limit") { return "rate" }
+        if message.contains("quota") { return "quota" }
+        if message.contains("credit") { return "credits" }
+        if message.contains("usage limit") || message.contains("usage-limit") || message.contains("usage_limit") || message.contains("provider limit") || message.contains("provider_limit") { return "usage" }
+        if message.contains("insufficient balance") || message.contains("insufficient_balance") || message.contains("insufficient funds") { return "balance" }
+        return nil
+    }
+
     private static func isRetryable(_ status: Int) -> Bool { status == 408 || status == 409 || status == 425 || status == 429 || (500..<600).contains(status) }
 
     private static func isRetryable(_ error: Error) -> Bool {
         guard let error = error as? URLError else { return false }
         return [.timedOut, .cannotConnectToHost, .networkConnectionLost, .notConnectedToInternet].contains(error.code)
+    }
+
+    /// Output ceiling for an Anthropic request. Thinking is billed against the
+    /// same budget as the answer, so deeper effort needs more room.
+    static func maxTokens(forEffort effort: String) -> Int {
+        switch effort {
+        case "max": return 32_000
+        case "xhigh": return 24_000
+        case "high": return 16_000
+        default: return 8_192
+        }
     }
 
     private static func jsonObject(from string: String) -> Any {

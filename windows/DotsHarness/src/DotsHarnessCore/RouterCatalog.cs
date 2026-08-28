@@ -63,15 +63,17 @@ public sealed class RouterConnection
     public string Name { get; }
     public string? Email { get; }
     public bool Active { get; }
+    public bool ImageFallbackEnabled { get; }
     public string Status { get; }
     public string AuthType { get; }
     public string Model { get; }
+    public IReadOnlyList<string> Models { get; }
     public int Priority { get; }
     public string? Error { get; }
 
     public RouterConnection(NativeProviderAccount account)
     {
-        Id = account.Id; Provider = account.Provider; Name = account.Name; Email = account.Email; Active = account.Active; Status = account.Status; AuthType = account.AuthType; Model = account.Model; Priority = account.Priority; Error = account.Error;
+        Id = account.Id; Provider = account.Provider; Name = account.Name; Email = account.Email; Active = account.Active; ImageFallbackEnabled = account.ImageFallbackEnabled; Status = account.Status; AuthType = account.AuthType; Model = account.Model; Models = account.Models ?? []; Priority = account.Priority; Error = account.Error;
     }
 
     public RouterConnection(IReadOnlyDictionary<string, JsonValue> obj)
@@ -81,9 +83,11 @@ public sealed class RouterConnection
         Name = obj.TryGetValue("name", out var name) ? name.AsString() ?? "Unnamed" : "Unnamed";
         Email = obj.TryGetValue("email", out var email) ? email.AsString() : null;
         Active = !obj.TryGetValue("isActive", out var active) || active.AsBool() != false;
+        ImageFallbackEnabled = obj.TryGetValue("imageFallbackEnabled", out var fallback) && fallback.AsBool() == true;
         Status = obj.TryGetValue("testStatus", out var status) ? status.AsString() ?? "connected" : "connected";
         AuthType = obj.TryGetValue("authType", out var auth) ? auth.AsString() ?? "" : "";
         Model = obj.TryGetValue("model", out var model) ? model.AsString() ?? "" : "";
+        Models = Model.Length == 0 ? [] : [Model];
         Priority = obj.TryGetValue("priority", out var priority) ? priority.AsInt() ?? 0 : 0;
         Error = obj.TryGetValue("lastError", out var error) ? error.AsString() : null;
     }

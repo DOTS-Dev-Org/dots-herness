@@ -28,12 +28,12 @@ struct CustomAPIView: View {
                         Text(AppCopy.text("custom.chatCompletions")).tag(CustomOpenAIAPIType.chat)
                     }
                 }
-                Button(router.editingNodeID == nil ? AppCopy.text("custom.addAPI") : "Save changes") {
+                Button(router.editingNodeID == nil ? AppCopy.text("custom.addAPI") : AppCopy.text("common.save")) {
                     Task { await router.createCustomNode(registerKey: router.editingNodeID == nil) }
                 }
                 .disabled(!router.reachable)
                 if router.editingNodeID != nil {
-                    Button("Cancel edit") { router.cancelEditNode() }
+                    Button(AppCopy.text("conversation.cancelEdit")) { router.cancelEditNode() }
                 }
             }
             Section(AppCopy.text("custom.providers")) {
@@ -51,7 +51,7 @@ struct CustomAPIView: View {
                         HStack {
                             Button(AppCopy.text("common.connect")) { Task { await router.connectExistingNode(node) } }
                             Button(AppCopy.text("common.test")) { Task { await router.testNode(node) } }
-                            Button("Edit") { router.beginEditNode(node) }
+                            Button(AppCopy.text("conversation.edit")) { router.beginEditNode(node) }
                             Button(AppCopy.text("common.delete"), role: .destructive) { Task { await router.deleteNode(node) } }
                         }
                     }

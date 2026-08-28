@@ -25,17 +25,23 @@ public enum VoiceCopy {
 
     public static var settingsSection: String { text("voice.settings.section") }
     public static var settingsSource: String { text("voice.settings.source") }
+    public static var sourceWhisperTiny: String { text("voice.source.whisperTiny") }
     public static var sourceWhisper: String { text("voice.source.whisper") }
     public static var sourceNemotron: String { text("voice.source.nemotron") }
     public static var sourceCustomLocal: String { text("voice.source.customLocal") }
     public static var sourceAPI: String { text("voice.source.api") }
     public static var modelReady: String { text("voice.model.ready") }
+    public static var statusPaused: String { text("voice.status.paused") }
+    public static var whisperTinySize: String { text("voice.model.whisperTinySize") }
     public static var whisperTurboSize: String { text("voice.model.whisperTurboSize") }
     public static var nemotronSize: String { text("voice.model.nemotronSize") }
     public static var customLocalSize: String { text("voice.model.customLocalSize") }
     public static var customAPISize: String { text("voice.model.customAPISize") }
     public static var localModelNotInstalled: String { text("voice.local.notInstalled") }
     public static var downloadModel: String { text("voice.local.download") }
+    public static var pauseDownload: String { text("voice.local.pause") }
+    public static var resumeDownload: String { text("voice.local.resume") }
+    public static var cancelDownload: String { text("voice.local.cancel") }
     public static var importModel: String { text("voice.local.import") }
     public static var deleteModel: String { text("voice.local.delete") }
     public static var localModelHint: String { text("voice.local.hint") }
@@ -45,6 +51,7 @@ public enum VoiceCopy {
     public static var apiKey: String { text("voice.api.key") }
     public static var apiModel: String { text("voice.api.model") }
     public static var apiModelPlaceholder: String { text("voice.api.modelPlaceholder") }
+    public static var realtimeEndpoint: String { text("voice.api.realtimeEndpoint") }
     public static var microphoneReady: String { text("voice.input.ready") }
     public static var microphoneNeedsModel: String { text("voice.input.needsModel") }
     public static var microphoneNeedsSetup: String { text("voice.input.needsSetup") }

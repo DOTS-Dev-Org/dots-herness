@@ -154,17 +154,21 @@ public enum SimulatorService {
 
         let connectedText = String(output[connectedScreens.upperBound...])
         let pattern = #"(?m)^\s*Pixel Size:\s*\{\s*(\d+)\s*,\s*(\d+)\s*\}"#
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(
-                in: connectedText,
-                range: NSRange(location: 0, length: connectedText.utf16.count)
-              ),
-              let widthRange = Range(match.range(at: 1), in: connectedText),
-              let heightRange = Range(match.range(at: 2), in: connectedText),
-              let width = Double(connectedText[widthRange]),
-              let height = Double(connectedText[heightRange]),
-              width > 0,
-              height > 0 else {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return nil
+        }
+
+        let range = NSRange(location: 0, length: connectedText.utf16.count)
+        let dimensions = regex.matches(in: connectedText, range: range).compactMap { match -> (Double, Double)? in
+            guard let widthRange = Range(match.range(at: 1), in: connectedText),
+                  let heightRange = Range(match.range(at: 2), in: connectedText),
+                  let width = Double(connectedText[widthRange]),
+                  let height = Double(connectedText[heightRange]),
+                  width > 0,
+                  height > 0 else { return nil }
+            return (width, height)
+        }
+        guard let (width, height) = dimensions.max(by: { $0.0 * $0.1 < $1.0 * $1.1 }) else {
             return nil
         }
         return width / height

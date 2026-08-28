@@ -4,30 +4,72 @@
 
 using System.Windows;
 using DotsHarnessCore;
-using FableThinkingPlugin;
+using DrawingSystemIcons = System.Drawing.SystemIcons;
+using FormsNotifyIcon = System.Windows.Forms.NotifyIcon;
+using FormsToolTipIcon = System.Windows.Forms.ToolTipIcon;
 
 namespace DotsHarness;
 
 public partial class App : Application
 {
-    public AppModel Model { get; } = new(
-        builtins: new Func<HarnessPluginKit.IHarnessPlugin>[]
-        {
-            () => new FableThinkingPlugin.FableThinkingPlugin(),
-        });
+    private FormsNotifyIcon? _notificationIcon;
+
+    public AppModel Model { get; } = new();
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        _notificationIcon = new FormsNotifyIcon
+        {
+            Icon = ApplicationIcon(),
+            Text = Model.L("app.title"),
+            Visible = true,
+        };
+        Model.Bridge.AssistantResponseReceived += OnAssistantResponse;
         ApplyAppearance(Model.Appearance);
         Model.Start();
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
+        Model.Bridge.AssistantResponseReceived -= OnAssistantResponse;
+        _notificationIcon?.Dispose();
         Model.Bridge.Stop();
         Model.Local.Stop();
         base.OnExit(e);
+    }
+
+    private static System.Drawing.Icon ApplicationIcon()
+    {
+        try
+        {
+            var path = Environment.ProcessPath;
+            return path is not null
+                ? System.Drawing.Icon.ExtractAssociatedIcon(path) ?? DrawingSystemIcons.Application
+                : DrawingSystemIcons.Application;
+        }
+        catch
+        {
+            return DrawingSystemIcons.Application;
+        }
+    }
+
+    private void OnAssistantResponse(object? sender, AssistantResponseEventArgs e)
+    {
+        try
+        {
+            _notificationIcon?.ShowBalloonTip(5000, e.ConversationTitle, Preview(e.Text), FormsToolTipIcon.Info);
+        }
+        catch (ObjectDisposedException)
+        {
+            // The app can finish closing while an in-flight response completes.
+        }
+    }
+
+    private static string Preview(string text)
+    {
+        var compact = string.Join(" ", text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return compact.Length > 240 ? compact[..240] + "…" : compact;
     }
 
     public void ApplyAppearance(AppModel.AppearanceKind kind)

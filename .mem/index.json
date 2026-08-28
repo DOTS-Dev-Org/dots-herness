@@ -1,0 +1,16 @@
+{
+  "fingerprint" : "c333f15f7fd00089ded39a32793e3318b22867d6c6479c0da8fde8e165c3096a",
+  "manifests" : [
+    "README.md"
+  ],
+  "schemaVersion" : 1,
+  "topLevel" : [
+    "LICENSE",
+    "README.md",
+    "linux\/",
+    "macos\/",
+    "shared\/",
+    "windows\/"
+  ],
+  "updatedAt" : "2026-08-28T00:04:15Z"
+}

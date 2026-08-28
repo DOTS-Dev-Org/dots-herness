@@ -12,6 +12,7 @@ public struct StoredProviderAccount: Codable, Sendable, Equatable {
     public var email: String?
     public var sessionAccountID: String?
     public var active: Bool
+    public var imageFallbackEnabled: Bool
     public var status: String
     public var authType: String
     public var model: String
@@ -29,6 +30,7 @@ public struct StoredProviderAccount: Codable, Sendable, Equatable {
         email: String? = nil,
         sessionAccountID: String? = nil,
         active: Bool = true,
+        imageFallbackEnabled: Bool = false,
         status: String = "connected",
         authType: String = "apiKey",
         model: String,
@@ -45,6 +47,7 @@ public struct StoredProviderAccount: Codable, Sendable, Equatable {
         self.email = email
         self.sessionAccountID = sessionAccountID
         self.active = active
+        self.imageFallbackEnabled = imageFallbackEnabled
         self.status = status
         self.authType = authType
         self.model = model
@@ -56,7 +59,7 @@ public struct StoredProviderAccount: Codable, Sendable, Equatable {
         self.error = error
     }
 
-    enum CodingKeys: String, CodingKey { case id, provider, name, email, sessionAccountID, active, status, authType, model, baseURL, api, credentialID, refreshCredentialID, priority, error }
+    enum CodingKeys: String, CodingKey { case id, provider, name, email, sessionAccountID, active, imageFallbackEnabled, status, authType, model, baseURL, api, credentialID, refreshCredentialID, priority, error }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -67,6 +70,7 @@ public struct StoredProviderAccount: Codable, Sendable, Equatable {
             email: try values.decodeIfPresent(String.self, forKey: .email),
             sessionAccountID: try values.decodeIfPresent(String.self, forKey: .sessionAccountID),
             active: try values.decodeIfPresent(Bool.self, forKey: .active) ?? true,
+            imageFallbackEnabled: try values.decodeIfPresent(Bool.self, forKey: .imageFallbackEnabled) ?? false,
             status: try values.decodeIfPresent(String.self, forKey: .status) ?? "connected",
             authType: try values.decodeIfPresent(String.self, forKey: .authType) ?? "apiKey",
             model: try values.decode(String.self, forKey: .model),
@@ -213,6 +217,22 @@ public final class NativeProviderStore {
             self.state = StoredProviderState()
         }
         migratePlaintextSecrets()
+        migrateRetiredModels()
+    }
+
+    /// Providers retire model ids (the Codex backend rejects anything outside its
+    /// current list with HTTP 400). An account saved against a retired id would
+    /// fail forever, so snap it to the spec's current default on load.
+    private func migrateRetiredModels() {
+        var changed = false
+        for index in state.accounts.indices {
+            let account = state.accounts[index]
+            guard let spec = RouterCatalog.spec(for: account.provider), !spec.models.isEmpty else { continue }
+            guard !spec.models.contains(where: { $0.id == account.model }) else { continue }
+            state.accounts[index].model = spec.defaultModel
+            changed = true
+        }
+        if changed { try? save() }
     }
 
     public func save() throws {
@@ -383,6 +403,12 @@ public final class NativeProviderStore {
     public func setActive(_ accountID: String, _ active: Bool) throws {
         guard let index = state.accounts.firstIndex(where: { $0.id == accountID }) else { return }
         state.accounts[index].active = active
+        try save()
+    }
+
+    public func setImageFallback(_ accountID: String, _ enabled: Bool) throws {
+        guard let index = state.accounts.firstIndex(where: { $0.id == accountID }) else { return }
+        state.accounts[index].imageFallbackEnabled = enabled
         try save()
     }
 

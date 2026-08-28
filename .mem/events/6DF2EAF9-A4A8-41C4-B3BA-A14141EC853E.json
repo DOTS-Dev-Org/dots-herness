@@ -1,0 +1,34 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-08-28T00:23:09Z",
+  "eventId" : "6DF2EAF9-A4A8-41C4-B3BA-A14141EC853E",
+  "lamport" : 9,
+  "parents" : [
+    "793F593E-1B9E-43A5-8B2E-B143B25B34AC"
+  ],
+  "payload" : {
+    "memoryRevision" : 8,
+    "model" : "gpt-5.6-luna",
+    "promptHash" : "0751b08a23b3195f43f5c3586cd67ccce5a2c466c8e73a640f171644df864274",
+    "promptSummary" : "sen kimsin bana model adını söyle",
+    "provider" : "GPT",
+    "runId" : "D3725F70-7211-4D06-AEE9-8D63FEFE0BE3",
+    "startedAt" : "2026-08-28T00:23:09Z"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "zuyOW+wvDZrgdKv9Z94KCHbuSWXZFHCY0I7u0iUpN4lY1JSuQVCokfr\/NxSmuSYXl0o69MDoh8gGKIfdeDUR+Q=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "task.started"
+}

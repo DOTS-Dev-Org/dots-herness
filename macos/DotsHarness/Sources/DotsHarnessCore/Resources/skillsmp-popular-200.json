@@ -1,0 +1,46 @@
+[
+  {
+    "id": "frontend-design",
+    "name": "Frontend Design",
+    "description": "Guidance for distinctive, intentional visual design when building new UI or reshaping an existing one.",
+    "githubURL": "https://github.com/anthropics/skills",
+    "skillURL": "https://github.com/anthropics/skills/blob/main/skills/frontend-design/SKILL.md",
+    "downloadURL": "https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md",
+    "revision": "main",
+    "sha256": null,
+    "snapshotDate": "2026-08-28"
+  },
+  {
+    "id": "skill-creator",
+    "name": "Skill Creator",
+    "description": "Create, modify, improve, and evaluate reusable agent skills with focused instructions and validation.",
+    "githubURL": "https://github.com/anthropics/skills",
+    "skillURL": "https://github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md",
+    "downloadURL": "https://raw.githubusercontent.com/anthropics/skills/main/skills/skill-creator/SKILL.md",
+    "revision": "main",
+    "sha256": null,
+    "snapshotDate": "2026-08-28"
+  },
+  {
+    "id": "vercel-react-best-practices",
+    "name": "Vercel React Best Practices",
+    "description": "Performance guidance for React and Next.js code, including data fetching, rendering, and bundle optimization.",
+    "githubURL": "https://github.com/vercel-labs/agent-skills",
+    "skillURL": "https://github.com/vercel-labs/agent-skills/blob/main/skills/react-best-practices/SKILL.md",
+    "downloadURL": "https://raw.githubusercontent.com/vercel-labs/agent-skills/main/skills/react-best-practices/SKILL.md",
+    "revision": "main",
+    "sha256": null,
+    "snapshotDate": "2026-08-28"
+  },
+  {
+    "id": "ppt-generation",
+    "name": "PPT Generation",
+    "description": "Create visually rich PowerPoint presentations by composing slide content and visual assets.",
+    "githubURL": "https://github.com/bytedance/deer-flow",
+    "skillURL": "https://github.com/bytedance/deer-flow/blob/main/skills/public/ppt-generation/SKILL.md",
+    "downloadURL": "https://raw.githubusercontent.com/bytedance/deer-flow/main/skills/public/ppt-generation/SKILL.md",
+    "revision": "main",
+    "sha256": null,
+    "snapshotDate": "2026-08-28"
+  }
+]

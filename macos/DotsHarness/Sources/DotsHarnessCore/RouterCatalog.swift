@@ -15,6 +15,7 @@ public enum RouterAPIKind: String, Sendable, Hashable {
     case openAICompatible = "openai-compatible"
     case anthropic = "anthropic"
     case chatGPT = "chatgpt"
+    case geminiCLI = "gemini-cli"
 }
 
 public struct RouterProviderKind: Identifiable, Sendable, Equatable, Hashable {
@@ -77,6 +78,7 @@ public enum RouterCatalog {
     static func authKind(for category: ProviderSpec.Category) -> RouterAuthKind {
         switch category {
         case .oauth: return .oauthBrowser
+        case .oauthDevice: return .oauthDevice
         case .apiKey: return .apiKey
         case .passthrough: return .passthrough
         }
@@ -87,6 +89,7 @@ public enum RouterCatalog {
         case .openaiChat: return .openAICompatible
         case .anthropic: return .anthropic
         case .responses: return .chatGPT
+        case .geminiCLI: return .geminiCLI
         }
     }
 
@@ -135,13 +138,14 @@ public struct RouterConnection: Identifiable, Sendable, Equatable {
     public var name: String
     public var email: String?
     public var active: Bool
+    public var imageFallbackEnabled: Bool
     public var status: String
     public var authType: String
     public var error: String?
 
     public init(from account: StoredProviderAccount) {
         id = account.id; provider = account.provider; name = account.name; email = account.email
-        active = account.active; status = account.status; authType = account.authType; error = account.error
+        active = account.active; imageFallbackEnabled = account.imageFallbackEnabled; status = account.status; authType = account.authType; error = account.error
     }
 
     public init(from object: JSONObject) {
@@ -150,6 +154,7 @@ public struct RouterConnection: Identifiable, Sendable, Equatable {
         name = object["name"]?.string ?? object["email"]?.string ?? object["displayName"]?.string ?? AppCopy.text("router.unnamed")
         email = object["email"]?.string
         active = object["isActive"]?.bool ?? false
+        imageFallbackEnabled = object["imageFallbackEnabled"]?.bool ?? false
         status = object["testStatus"]?.string ?? AppCopy.text("router.unknown")
         authType = object["authType"]?.string ?? ""
         error = object["lastError"]?.string
@@ -217,8 +222,34 @@ public struct RouterModel: Identifiable, Sendable, Equatable {
     public var owner: String
     public var contextWindow: Int?
     public var tools: Bool
+    /// Reasoning-effort levels this model accepts, low to high. Empty hides the
+    /// effort control rather than offering a level the provider rejects.
+    public var efforts: [String] = []
+    public var displayName: String?
+    /// Provider spec id that resolved this model. Routing needs it because a
+    /// model discovered from a live listing is not in the static registry.
+    public var provider: String = ""
+    /// Registry-declared tier. `nil` means automatic routing infers one from the id.
+    public var tier: ModelTier?
 
-    public init(id: String, owner: String = "") { self.id = id; self.owner = owner; contextWindow = nil; tools = false }
+    public init(
+        id: String,
+        owner: String = "",
+        contextWindow: Int? = nil,
+        efforts: [String] = [],
+        displayName: String? = nil,
+        provider: String = "",
+        tier: ModelTier? = nil
+    ) {
+        self.id = id
+        self.owner = owner
+        self.contextWindow = contextWindow
+        tools = false
+        self.efforts = efforts
+        self.displayName = displayName
+        self.provider = provider
+        self.tier = tier
+    }
 
     public init(from object: JSONObject) {
         id = object["id"]?.string ?? ""

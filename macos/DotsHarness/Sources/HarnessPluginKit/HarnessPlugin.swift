@@ -9,6 +9,7 @@ import SwiftUI
 public protocol PluginContext: AnyObject {
     var rowId: String { get }
     var pluginId: String { get }
+    var pluginDirectory: URL? { get }
     var plane: PluginPlane { get }
     var trust: PluginTrust { get }
     var config: JSONObject { get }

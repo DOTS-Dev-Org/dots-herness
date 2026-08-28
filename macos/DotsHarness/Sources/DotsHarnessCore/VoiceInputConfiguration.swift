@@ -4,6 +4,7 @@
 import Foundation
 
 public enum VoiceInputProvider: String, CaseIterable, Hashable, Identifiable, Sendable {
+    case whisperTinyQ5 = "whisper-tiny-q5"
     case whisperLargeV3Turbo = "whisper-large-v3-turbo"
     case nemotron = "nemotron-3.5-asr"
     case customLocal = "custom-local"
@@ -13,6 +14,7 @@ public enum VoiceInputProvider: String, CaseIterable, Hashable, Identifiable, Se
 
     public var title: String {
         switch self {
+        case .whisperTinyQ5: return VoiceCopy.sourceWhisperTiny
         case .whisperLargeV3Turbo: return VoiceCopy.sourceWhisper
         case .nemotron: return VoiceCopy.sourceNemotron
         case .customLocal: return VoiceCopy.sourceCustomLocal
@@ -21,11 +23,12 @@ public enum VoiceInputProvider: String, CaseIterable, Hashable, Identifiable, Se
     }
 
     public var isFileBacked: Bool {
-        self == .whisperLargeV3Turbo || self == .nemotron || self == .customLocal
+        self == .whisperTinyQ5 || self == .whisperLargeV3Turbo || self == .nemotron || self == .customLocal
     }
 
     public var sizeLabel: String {
         switch self {
+        case .whisperTinyQ5: return VoiceCopy.whisperTinySize
         case .whisperLargeV3Turbo: return VoiceCopy.whisperTurboSize
         case .nemotron: return VoiceCopy.nemotronSize
         case .customLocal: return VoiceCopy.customLocalSize
@@ -38,11 +41,13 @@ public struct VoiceAPIConfiguration: Equatable, Sendable {
     public var endpoint: String
     public var apiKey: String
     public var model: String
+    public var realtimeEndpoint: String
 
-    public init(endpoint: String, apiKey: String, model: String) {
+    public init(endpoint: String, apiKey: String, model: String, realtimeEndpoint: String = "") {
         self.endpoint = endpoint
         self.apiKey = apiKey
         self.model = model
+        self.realtimeEndpoint = realtimeEndpoint
     }
 
     public var isConfigured: Bool {

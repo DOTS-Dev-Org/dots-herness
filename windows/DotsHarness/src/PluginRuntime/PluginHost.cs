@@ -13,6 +13,7 @@ public sealed class LivePluginContext : IPluginContext
 
     public string RowId { get; }
     public string PluginId { get; }
+    public string? PluginDirectory { get; }
     public PluginPlane Plane { get; }
     public PluginTrust Trust { get; }
     public IReadOnlyDictionary<string, JsonValue> Config { get; }
@@ -25,6 +26,7 @@ public sealed class LivePluginContext : IPluginContext
     public LivePluginContext(
         string rowId,
         string pluginId,
+        string? pluginDirectory,
         PluginPlane plane,
         PluginTrust trust,
         IReadOnlyDictionary<string, JsonValue> config,
@@ -37,6 +39,7 @@ public sealed class LivePluginContext : IPluginContext
     {
         RowId = rowId;
         PluginId = pluginId;
+        PluginDirectory = pluginDirectory;
         Plane = plane;
         Trust = trust;
         Config = config;
@@ -75,6 +78,7 @@ public sealed class LivePluginContext : IPluginContext
             try { _disposers[i](); } catch { /* undo must not throw out of unmount */ }
         }
         _disposers.Clear();
+        (_services.Get("provider.imageAdapters") as ProviderImageAdapterRegistry)?.UnregisterOwner(RowId);
         if (Prompt is InMemoryPromptRegistry prompt) prompt.RetractOwner(RowId);
         if (Tools is InMemoryToolRegistry tools) tools.RetractOwner(RowId);
         if (Slots is InMemorySlotRegistry slots) slots.RetractOwner(RowId);
@@ -118,6 +122,11 @@ public sealed class PluginHost : ObservableObject
     public InMemorySlotRegistry Slots { get; }
     public InMemorySettingsRegistry Settings { get; }
     public InMemoryEventBus Events { get; }
+    public ProviderImageAdapterRegistry ImageAdapters { get; }
+
+    public T? GetService<T>(string name) where T : class => _root.Get(name) as T;
+
+    public void ProvideService(string name, object value) => _root.Provide(name, value);
 
     public IReadOnlyList<MountedFiber> Fibers
     {
@@ -139,6 +148,7 @@ public sealed class PluginHost : ObservableObject
         Slots = new InMemorySlotRegistry();
         Settings = settings ?? new InMemorySettingsRegistry();
         Events = new InMemoryEventBus();
+        ImageAdapters = new ProviderImageAdapterRegistry();
         _root = new ServiceRealm(seed: new Dictionary<string, object>(StringComparer.Ordinal)
         {
             ["tools"] = Tools,
@@ -146,6 +156,7 @@ public sealed class PluginHost : ObservableObject
             ["slots"] = Slots,
             ["settings"] = Settings,
             ["events"] = Events,
+            ["provider.imageAdapters"] = ImageAdapters,
         });
     }
 
@@ -190,6 +201,7 @@ public sealed class PluginHost : ObservableObject
                 var context = new LivePluginContext(
                     entry.Id,
                     resolved.Manifest.Id,
+                    entry.Url,
                     document.Plane,
                     resolved.Trust,
                     entry.Config,

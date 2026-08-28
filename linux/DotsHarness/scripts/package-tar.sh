@@ -185,6 +185,10 @@ if [[ -f "$SCHEDULER_PROJECT" ]]; then
     chmod +x "$STAGE_DIR/DotsHarnessScheduler"
 fi
 
+ICON_SOURCE="$ROOT/src/DotsHarness/Resources/DotsHarness.png"
+[[ -f "$ICON_SOURCE" ]] || fail "Uygulama ikonu bulunamadı: $ICON_SOURCE"
+cp "$ICON_SOURCE" "$STAGE_DIR/${APP_NAME}.png"
+
 cat > "$STAGE_DIR/${APP_NAME}.desktop" <<EOF
 [Desktop Entry]
 Type=Application
@@ -195,6 +199,7 @@ TryExec=${APP_NAME}
 Terminal=false
 Categories=Development;Utility;
 StartupNotify=true
+Icon=${APP_NAME}
 EOF
 
 cat > "$STAGE_DIR/README.txt" <<EOF
@@ -207,6 +212,7 @@ Linux x64 / arm64 native Avalonia build.
   ./${APP_NAME}
 
 İstersen ${APP_NAME}.desktop dosyasını ~/.local/share/applications
+altına, ${APP_NAME}.png dosyasını da ~/.local/share/icons/hicolor/512x512/apps
 altına kopyalayabilirsin. Exec yolunu tam path yapman gerekir.
 EOF
 

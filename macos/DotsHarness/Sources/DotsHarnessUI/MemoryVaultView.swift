@@ -63,7 +63,7 @@ public struct MemoryVaultView: View {
 
     private func noteList(_ vault: MemoryVault) -> some View {
         let groups = Dictionary(grouping: vault.notes, by: \.kind)
-        let sectionOrder = ["map", "index", "preference", "task", "decision", "file", "missing", "note"]
+        let sectionOrder = ["map", "index", "preference", "task", "conversation", "decision", "file", "missing", "note"]
         return List(selection: $selectedID) {
             ForEach(sectionOrder.filter { groups[$0] != nil }, id: \.self) { kind in
                 Section(sectionTitle(kind)) {
@@ -90,6 +90,7 @@ public struct MemoryVaultView: View {
         case "index": return AppCopy.text("memory.section.index")
         case "task": return AppCopy.text("memory.section.tasks")
         case "decision": return AppCopy.text("memory.section.decisions")
+        case "conversation": return AppCopy.text("memory.section.conversations")
         case "preference": return AppCopy.text("memory.section.preferences")
         default: return kind.capitalized
         }
@@ -220,6 +221,7 @@ private struct GraphView: View {
         switch kind {
         case "task": return .blue
         case "decision": return .green
+        case "conversation": return .teal
         case "index": return .orange
         case "map": return .purple
         case "preference": return .pink

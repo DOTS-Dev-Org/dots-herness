@@ -36,9 +36,12 @@ public sealed class NativeProviderAccount
     public string? Email { get; set; }
     public string? SessionAccountId { get; set; }
     public bool Active { get; set; } = true;
+    public bool ImageFallbackEnabled { get; set; }
     public string Status { get; set; } = "connected";
     public string AuthType { get; set; } = "apiKey";
     public string Model { get; set; } = "";
+    // Discovered models are metadata only; credentials stay in the secret store.
+    public List<string> Models { get; set; } = [];
     public string BaseUrl { get; set; } = "";
     public NativeProviderProtocol Protocol { get; set; }
     public string CredentialId { get; set; } = "";
@@ -122,6 +125,7 @@ public sealed class NativeProviderStore
             Email = email,
             SessionAccountId = sessionAccountId,
             Model = model ?? provider.DefaultModel,
+            Models = string.IsNullOrWhiteSpace(model) ? [provider.DefaultModel] : [model],
             BaseUrl = NormalizeUrl(baseUrl ?? provider.BaseUrl),
             Protocol = provider.Protocol,
             AuthType = authType,
@@ -189,6 +193,7 @@ public sealed class NativeProviderStore
             account.Name = trimmedName;
             account.ProviderName = trimmedName;
             account.Model = sanitized + "/";
+            account.Models = [account.Model];
             account.BaseUrl = normalized;
             account.Protocol = protocol;
             if (secret is not null)
@@ -214,6 +219,7 @@ public sealed class NativeProviderStore
             Protocol = endpoint.Protocol,
             AuthType = "custom",
             CredentialId = $"account.{id}",
+            Models = [endpoint.Prefix + "/"],
         };
         if (!string.IsNullOrWhiteSpace(secret)) Secrets.Write(account.CredentialId, secret);
         State.Accounts.Add(account);
@@ -223,6 +229,7 @@ public sealed class NativeProviderStore
     }
 
     public void SetActive(string id, bool active) { if (State.Accounts.FirstOrDefault(a => a.Id == id) is { } account) { account.Active = active; Save(); } }
+    public void SetImageFallback(string id, bool enabled) { if (State.Accounts.FirstOrDefault(a => a.Id == id) is { } account) { account.ImageFallbackEnabled = enabled; Save(); } }
     public void SetPriority(string id, int priority) { if (State.Accounts.FirstOrDefault(a => a.Id == id) is { } account) { account.Priority = priority; Save(); } }
     public void ReplaceCredential(NativeProviderAccount account, string value) => Secrets.Write(account.CredentialId, value);
     public void ReplaceRefreshCredential(NativeProviderAccount account, string value)
@@ -307,17 +314,50 @@ public sealed class NativeProviderStore
             .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 }
 
-public sealed record NativeMessage(string Role, string Content, string? ToolCallId = null, IReadOnlyList<NativeToolCall>? ToolCalls = null);
+public sealed record NativeAttachment(string FilePath, string Name, string Kind, string MimeType);
+public sealed record NativeMessage(
+    string Role,
+    string Content,
+    string? ToolCallId = null,
+    IReadOnlyList<NativeToolCall>? ToolCalls = null,
+    IReadOnlyList<NativeAttachment>? Attachments = null,
+    IReadOnlyList<JsonObject>? ProviderItems = null);
 public sealed record NativeToolCall(string Id, string Name, string Arguments);
 public sealed record NativeToolDefinition(string Name, string Description, JsonNode Parameters);
 public sealed record NativeUsage(int InputTokens, int OutputTokens);
 public sealed record NativeResponse(NativeMessage Message, NativeUsage? Usage);
 
+public enum NativeProviderLimitKind
+{
+    Rate,
+    Quota,
+    Credits,
+    Usage,
+    Balance,
+}
+
 public sealed class NativeProviderException : Exception
 {
     public int? StatusCode { get; }
     public bool Retryable { get; }
-    public NativeProviderException(string message, int? statusCode = null, bool retryable = false) : base(message) { StatusCode = statusCode; Retryable = retryable; }
+    public bool IsLimit { get; }
+    public NativeProviderLimitKind? LimitKind { get; }
+    public string? ProviderName { get; }
+
+    public NativeProviderException(
+        string message,
+        int? statusCode = null,
+        bool retryable = false,
+        bool isLimit = false,
+        NativeProviderLimitKind? limitKind = null,
+        string? providerName = null) : base(message)
+    {
+        StatusCode = statusCode;
+        IsLimit = isLimit || statusCode == 429;
+        LimitKind = limitKind ?? (statusCode == 429 ? NativeProviderLimitKind.Rate : null);
+        ProviderName = providerName;
+        Retryable = IsLimit ? false : retryable;
+    }
 }
 
 public sealed class NativeProviderRouter
@@ -335,7 +375,10 @@ public sealed class NativeProviderRouter
 
     public async Task<NativeResponse> CompleteAsync(IReadOnlyList<NativeMessage> messages, IReadOnlyList<NativeToolDefinition> tools, string? model = null, CancellationToken ct = default)
     {
-        var routes = _store.State.Accounts.Where(a => a.Active && (string.IsNullOrWhiteSpace(model) || a.Model == model)).OrderBy(a => a.Priority).ToList();
+        var routes = _store.State.Accounts
+            .Where(a => a.Active && (string.IsNullOrWhiteSpace(model) || CanServe(a, model)))
+            .OrderBy(a => a.Priority)
+            .ToList();
         if (routes.Count == 0) throw new NativeProviderException("Connect a provider account before starting a chat.");
         var failures = new List<string>();
         foreach (var route in routes)
@@ -346,6 +389,7 @@ public sealed class NativeProviderRouter
             catch (OperationCanceledException) { throw; }
             catch (NativeProviderException ex)
             {
+                if (ex.IsLimit) throw;
                 failures.Add($"{route.ProviderName}: {ex.Message}");
                 if (ex.StatusCode == 401 && !refreshed && _refresh is not null)
                 {
@@ -357,6 +401,7 @@ public sealed class NativeProviderRouter
                         catch (HttpRequestException retry) { failures.Add($"{route.ProviderName}: {retry.Message}"); continue; }
                         catch (NativeProviderException retry)
                         {
+                            if (retry.IsLimit) throw;
                             failures.Add($"{route.ProviderName}: {retry.Message}");
                             if (!retry.Retryable) throw;
                             ex = retry;
@@ -404,7 +449,23 @@ public sealed class NativeProviderRouter
         {
             var message = node?["error"]?["message"]?.GetValue<string>() ?? node?["message"]?.GetValue<string>() ?? $"HTTP {(int)response.StatusCode}";
             var status = (int)response.StatusCode;
-            throw new NativeProviderException(message, status, status is 408 or 409 or 425 or 429 or >= 500);
+            var limitKind = DetectLimitKind(
+                string.Join(" ", new[]
+                {
+                    message,
+                    node?["error"]?["type"]?.GetValue<string>() ?? "",
+                    node?["error"]?["code"]?.GetValue<string>() ?? "",
+                    node?["type"]?.GetValue<string>() ?? "",
+                    node?["code"]?.GetValue<string>() ?? "",
+                }),
+                status);
+            throw new NativeProviderException(
+                message,
+                status,
+                status is 408 or 409 or 425 or >= 500,
+                limitKind is not null,
+                limitKind,
+                route.ProviderName);
         }
         return route.Protocol switch
         {
@@ -412,6 +473,22 @@ public sealed class NativeProviderRouter
             NativeProviderProtocol.ChatGpt => ParseResponses(node),
             _ => ParseOpenAi(node),
         };
+    }
+
+    private static bool CanServe(NativeProviderAccount account, string? model)
+    {
+        if (string.IsNullOrWhiteSpace(model) || string.Equals(account.Model, model, StringComparison.Ordinal)) return true;
+        return (account.Models ?? []).Contains(model, StringComparer.Ordinal);
+    }
+
+    private static NativeProviderLimitKind? DetectLimitKind(string message, int status)
+    {
+        if (status == 429 || message.Contains("rate limit", StringComparison.OrdinalIgnoreCase) || message.Contains("rate-limit", StringComparison.OrdinalIgnoreCase) || message.Contains("rate_limit", StringComparison.OrdinalIgnoreCase)) return NativeProviderLimitKind.Rate;
+        if (message.Contains("quota", StringComparison.OrdinalIgnoreCase)) return NativeProviderLimitKind.Quota;
+        if (message.Contains("credit", StringComparison.OrdinalIgnoreCase)) return NativeProviderLimitKind.Credits;
+        if (message.Contains("usage limit", StringComparison.OrdinalIgnoreCase) || message.Contains("usage-limit", StringComparison.OrdinalIgnoreCase) || message.Contains("usage_limit", StringComparison.OrdinalIgnoreCase) || message.Contains("provider limit", StringComparison.OrdinalIgnoreCase) || message.Contains("provider_limit", StringComparison.OrdinalIgnoreCase)) return NativeProviderLimitKind.Usage;
+        if (message.Contains("insufficient balance", StringComparison.OrdinalIgnoreCase) || message.Contains("insufficient_balance", StringComparison.OrdinalIgnoreCase) || message.Contains("insufficient funds", StringComparison.OrdinalIgnoreCase)) return NativeProviderLimitKind.Balance;
+        return null;
     }
 
     private static Uri Endpoint(string baseUrl, NativeProviderProtocol protocol)
@@ -434,7 +511,11 @@ public sealed class NativeProviderRouter
         var input = new JsonArray();
         foreach (var message in messages.Where(message => message.Role != "system"))
         {
-            if (message.Role == "tool")
+            if (message.ProviderItems is { Count: > 0 })
+            {
+                foreach (var item in message.ProviderItems) input.Add(item.DeepClone());
+            }
+            else if (message.Role == "tool")
             {
                 input.Add(new JsonObject { ["type"] = "function_call_output", ["call_id"] = message.ToolCallId ?? "tool", ["output"] = message.Content });
             }
@@ -448,13 +529,21 @@ public sealed class NativeProviderRouter
             {
                 var role = message.Role == "assistant" ? "assistant" : "user";
                 var type = role == "assistant" ? "output_text" : "input_text";
-                input.Add(new JsonObject { ["role"] = role, ["content"] = new JsonArray(new JsonObject { ["type"] = type, ["text"] = message.Content }) });
+                var content = message.Attachments is { Count: > 0 }
+                    ? ResponsesContent(message)
+                    : new JsonArray(new JsonObject { ["type"] = type, ["text"] = message.Content });
+                input.Add(new JsonObject { ["role"] = role, ["content"] = content });
             }
         }
+        var system = messages
+            .Where(message => message.Role == "system")
+            .Select(message => message.Content)
+            .Where(content => !string.IsNullOrWhiteSpace(content))
+            .ToList();
         var body = new JsonObject
         {
             ["model"] = model ?? route.Model,
-            ["instructions"] = messages.FirstOrDefault(message => message.Role == "system")?.Content ?? "You are a helpful assistant.",
+            ["instructions"] = system.Count == 0 ? "You are a helpful assistant." : string.Join("\n\n", system),
             ["input"] = input,
             ["store"] = false,
             ["stream"] = false,
@@ -465,7 +554,10 @@ public sealed class NativeProviderRouter
 
     private static JsonNode MessageNode(NativeMessage message)
     {
-        var node = new JsonObject { ["role"] = message.Role, ["content"] = message.Content };
+        JsonNode content = message.Attachments is { Count: > 0 }
+            ? OpenAiContent(message)
+            : JsonValue.Create(message.Content)!;
+        var node = new JsonObject { ["role"] = message.Role, ["content"] = content };
         if (message.ToolCallId is not null) node["tool_call_id"] = message.ToolCallId;
         if (message.ToolCalls is { Count: > 0 }) node["tool_calls"] = new JsonArray(message.ToolCalls.Select(call => new JsonObject { ["id"] = call.Id, ["type"] = "function", ["function"] = new JsonObject { ["name"] = call.Name, ["arguments"] = call.Arguments } }).ToArray());
         return node;
@@ -476,7 +568,7 @@ public sealed class NativeProviderRouter
         var converted = new JsonArray();
         foreach (var message in messages.Where(m => m.Role != "system")) converted.Add(AnthropicMessageNode(message));
         var body = new JsonObject { ["model"] = model ?? route.Model, ["max_tokens"] = 4096, ["messages"] = converted };
-        var system = messages.FirstOrDefault(m => m.Role == "system")?.Content;
+        var system = string.Join("\n\n", messages.Where(m => m.Role == "system").Select(m => m.Content).Where(content => !string.IsNullOrWhiteSpace(content)));
         if (!string.IsNullOrEmpty(system)) body["system"] = system;
         if (tools.Count > 0) body["tools"] = new JsonArray(tools.Select(t => new JsonObject { ["name"] = t.Name, ["description"] = t.Description, ["input_schema"] = t.Parameters.DeepClone() }).ToArray());
         return body;
@@ -512,8 +604,104 @@ public sealed class NativeProviderRouter
             return new JsonObject { ["role"] = "assistant", ["content"] = blocks };
         }
 
-        return new JsonObject { ["role"] = message.Role == "assistant" ? "assistant" : "user", ["content"] = message.Content };
+        var content = message.Attachments is { Count: > 0 }
+            ? AnthropicContent(message)
+            : JsonValue.Create(message.Content)!;
+        return new JsonObject { ["role"] = message.Role == "assistant" ? "assistant" : "user", ["content"] = content };
     }
+
+    private const long MaxInlineImageBytes = 20L * 1024 * 1024;
+
+    private static JsonArray OpenAiContent(NativeMessage message)
+    {
+        var blocks = new JsonArray();
+        if (!string.IsNullOrEmpty(message.Content)) blocks.Add(new JsonObject { ["type"] = "text", ["text"] = message.Content });
+        foreach (var attachment in message.Attachments ?? Enumerable.Empty<NativeAttachment>())
+        {
+            if (TryReadInlineImage(attachment, out var base64))
+            {
+                blocks.Add(new JsonObject
+                {
+                    ["type"] = "image_url",
+                    ["image_url"] = new JsonObject { ["url"] = DataUrl(attachment, base64) },
+                });
+            }
+            else
+            {
+                blocks.Add(new JsonObject { ["type"] = "text", ["text"] = AttachmentDescription(attachment) });
+            }
+        }
+        return blocks;
+    }
+
+    private static JsonArray ResponsesContent(NativeMessage message)
+    {
+        var blocks = new JsonArray();
+        if (!string.IsNullOrEmpty(message.Content)) blocks.Add(new JsonObject { ["type"] = "input_text", ["text"] = message.Content });
+        foreach (var attachment in message.Attachments ?? Enumerable.Empty<NativeAttachment>())
+        {
+            if (TryReadInlineImage(attachment, out var base64))
+            {
+                blocks.Add(new JsonObject { ["type"] = "input_image", ["image_url"] = DataUrl(attachment, base64) });
+            }
+            else
+            {
+                blocks.Add(new JsonObject { ["type"] = "input_text", ["text"] = AttachmentDescription(attachment) });
+            }
+        }
+        return blocks;
+    }
+
+    private static JsonArray AnthropicContent(NativeMessage message)
+    {
+        var blocks = new JsonArray();
+        if (!string.IsNullOrEmpty(message.Content)) blocks.Add(new JsonObject { ["type"] = "text", ["text"] = message.Content });
+        foreach (var attachment in message.Attachments ?? Enumerable.Empty<NativeAttachment>())
+        {
+            if (TryReadInlineImage(attachment, out var base64))
+            {
+                blocks.Add(new JsonObject
+                {
+                    ["type"] = "image",
+                    ["source"] = new JsonObject
+                    {
+                        ["type"] = "base64",
+                        ["media_type"] = attachment.MimeType,
+                        ["data"] = base64,
+                    },
+                });
+            }
+            else
+            {
+                blocks.Add(new JsonObject { ["type"] = "text", ["text"] = AttachmentDescription(attachment) });
+            }
+        }
+        return blocks;
+    }
+
+    // ponytail: inline images are capped at 20 MB; use provider file uploads if larger media needs model input.
+    private static bool TryReadInlineImage(NativeAttachment attachment, out string base64)
+    {
+        base64 = "";
+        if (!string.Equals(attachment.Kind, "image", StringComparison.OrdinalIgnoreCase)) return false;
+        try
+        {
+            var info = new FileInfo(attachment.FilePath);
+            if (!info.Exists || info.Length > MaxInlineImageBytes) return false;
+            base64 = Convert.ToBase64String(File.ReadAllBytes(info.FullName));
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string DataUrl(NativeAttachment attachment, string base64) =>
+        $"data:{(string.IsNullOrWhiteSpace(attachment.MimeType) ? "application/octet-stream" : attachment.MimeType)};base64,{base64}";
+
+    private static string AttachmentDescription(NativeAttachment attachment) =>
+        $"Attached {attachment.Kind}: {attachment.Name} ({attachment.FilePath})";
 
     private static NativeResponse ParseOpenAi(JsonNode? node)
     {
@@ -530,7 +718,8 @@ public sealed class NativeProviderRouter
         var text = string.Join("", output.Where(item => item?["type"]?.GetValue<string>() == "message").SelectMany(item => item?["content"]?.AsArray() ?? new JsonArray()).Where(item => item?["text"] is not null).Select(item => item?["text"]?.GetValue<string>() ?? ""));
         var calls = output.Where(item => item?["type"]?.GetValue<string>() == "function_call").Select(item => new NativeToolCall(item?["call_id"]?.GetValue<string>() ?? item?["id"]?.GetValue<string>() ?? Guid.NewGuid().ToString(), item?["name"]?.GetValue<string>() ?? "tool", item?["arguments"]?.GetValue<string>() ?? "{}")).ToList();
         var usage = node?["usage"] is JsonObject value ? new NativeUsage(value["input_tokens"]?.GetValue<int>() ?? 0, value["output_tokens"]?.GetValue<int>() ?? 0) : null;
-        return new NativeResponse(new NativeMessage("assistant", text, ToolCalls: calls), usage);
+        var providerItems = output.OfType<JsonObject>().Select(item => item.DeepClone().AsObject()).ToList();
+        return new NativeResponse(new NativeMessage("assistant", text, ToolCalls: calls, ProviderItems: providerItems), usage);
     }
 
     private static NativeResponse ParseAnthropic(JsonNode? node)

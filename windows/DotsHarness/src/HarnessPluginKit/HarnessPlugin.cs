@@ -9,6 +9,7 @@ public interface IPluginContext
 {
     string RowId { get; }
     string PluginId { get; }
+    string? PluginDirectory { get; }
     PluginPlane Plane { get; }
     PluginTrust Trust { get; }
     IReadOnlyDictionary<string, JsonValue> Config { get; }

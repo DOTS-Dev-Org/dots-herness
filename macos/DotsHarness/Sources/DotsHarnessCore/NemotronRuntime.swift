@@ -107,7 +107,6 @@ public final class NemotronRuntime: @unchecked Sendable {
         guard let url = Self.model.url else {
             throw RouterError(AppCopy.text("voice.modelURLMissing"))
         }
-        try? FileManager.default.removeItem(at: modelURL.appendingPathExtension("part"))
         try await FileDownloader.download(
             from: url,
             to: modelURL,
@@ -128,17 +127,26 @@ public final class NemotronRuntime: @unchecked Sendable {
             throw RouterError(AppCopy.text("voice.modelNotReady"))
         }
 
+        #if arch(arm64)
+        let device = "metal"
+        #else
+        let device = "cpu"
+        #endif
         let process = Process()
         process.executableURL = binaryURL
         process.arguments = [
             "serve",
             "--asr-model", modelURL.path,
+            "--device", device,
+            "--no-ui",
             "--host", "127.0.0.1",
             "--port", String(port),
+            "--endpointing",
+            "--stop-history-eou-ms", "800",
         ]
         process.currentDirectoryURL = runtimeRoot
-        process.standardOutput = Pipe()
-        process.standardError = Pipe()
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
         try process.run()
         self.process = process
         return serverURL
@@ -149,7 +157,7 @@ public final class NemotronRuntime: @unchecked Sendable {
         process = nil
     }
 
-    public func waitUntilReady(timeoutMs: Int = 20_000) async -> Bool {
+    public func waitUntilReady(timeoutMs: Int = 60_000) async -> Bool {
         let deadline = Date().addingTimeInterval(Double(timeoutMs) / 1000)
         while Date() < deadline {
             if process?.isRunning == false { return false }
@@ -160,17 +168,14 @@ public final class NemotronRuntime: @unchecked Sendable {
     }
 
     public func ping() async -> Bool {
-        for path in ["/ready", "/v1/models"] {
-            guard let url = URL(string: "http://127.0.0.1:\(port)\(path)") else { continue }
-            do {
-                let (_, response) = try await URLSession.shared.data(for: URLRequest(url: url, timeoutInterval: 1.5))
-                let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-                if (200..<300).contains(status) { return true }
-            } catch {
-                continue
-            }
+        guard let url = URL(string: "http://127.0.0.1:\(port)/ready") else { return false }
+        do {
+            let (_, response) = try await URLSession.shared.data(for: URLRequest(url: url, timeoutInterval: 1.5))
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            return (200..<300).contains(status)
+        } catch {
+            return false
         }
-        return false
     }
 
     public func deleteModel() throws {
@@ -187,7 +192,7 @@ public final class NemotronRuntime: @unchecked Sendable {
 
     /// Removes only runtime artifacts created by a failed first install.
     /// The Settings delete action intentionally calls `deleteModel()` instead.
-    public func removeRuntimeArtifacts() throws {
+    public func removeRuntimeArtifacts(includePartial: Bool = false) throws {
         stop()
         let fm = FileManager.default
         if fm.fileExists(atPath: runtimeRoot.path) {
@@ -195,6 +200,12 @@ public final class NemotronRuntime: @unchecked Sendable {
         }
         if fm.fileExists(atPath: runtimeArchive.path) {
             try fm.removeItem(at: runtimeArchive)
+        }
+        if includePartial {
+            let partial = runtimeArchive.appendingPathExtension("part")
+            if fm.fileExists(atPath: partial.path) {
+                try fm.removeItem(at: partial)
+            }
         }
     }
 

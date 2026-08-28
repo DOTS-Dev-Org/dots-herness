@@ -6,6 +6,13 @@ import HarnessPluginKit
 
 public enum WorkspaceTools {
     public static let definitions: [AgentToolDefinition] = workspaceDefinitions + SimulatorTools.definitions
+    public static let readOnlyDefinitions: [AgentToolDefinition] = workspaceDefinitions.filter {
+        $0.name == "list_files" || $0.name == "read_file"
+    }
+
+    public static func isReadOnly(_ name: String) -> Bool {
+        name == "list_files" || name == "read_file"
+    }
 
     static let workspaceDefinitions: [AgentToolDefinition] = [
         AgentToolDefinition(

@@ -18,6 +18,9 @@ let package = Package(
         // ggml/Metal never enter the launch-time dyld graph when voice is unused.
         .library(name: "WhisperVoice", type: .dynamic, targets: ["WhisperVoice"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/k2-fsa/sherpa-onnx.git", exact: "1.13.6"),
+    ],
     targets: [
         .target(
             name: "HarnessPluginKit",
@@ -35,7 +38,11 @@ let package = Package(
         ),
         .target(
             name: "DotsHarnessCore",
-            dependencies: ["HarnessPluginKit", "PluginRuntime"],
+            dependencies: [
+                "HarnessPluginKit",
+                "PluginRuntime",
+                .product(name: "sherpa-onnx", package: "sherpa-onnx"),
+            ],
             path: "Sources/DotsHarnessCore",
             resources: [.process("Resources")],
             linkerSettings: [
@@ -43,6 +50,7 @@ let package = Package(
                 .linkedFramework("CoreImage"),
                 .linkedFramework("CoreMedia"),
                 .linkedFramework("CoreVideo"),
+                .linkedFramework("UserNotifications"),
             ]
         ),
         .target(

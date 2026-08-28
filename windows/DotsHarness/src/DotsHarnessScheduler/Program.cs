@@ -5,10 +5,7 @@
 
 using DotsHarnessCore;
 
-var model = new AppModel(builtins: new Func<HarnessPluginKit.IHarnessPlugin>[]
-{
-    () => new FableThinkingPlugin.FableThinkingPlugin(),
-});
+var model = new AppModel();
 model.StartHeadless();
 
 // Block until the OS job manager terminates this process.

@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-08-28T00:24:07Z",
+  "eventId" : "A1762ABD-4631-4000-92BE-A4E76778A27F",
+  "lamport" : 19,
+  "parents" : [
+    "18AB4C17-AB3B-45EA-9AE6-98B108F3A1FE"
+  ],
+  "payload" : {
+    "commandSummary" : "python3 - <<'PY' import urllib.parse, urllib.request, xml.etree.ElementTree as ET queries = [ 'AI after:2026-08-01', 'OpenAI after:2026-08-01', 'Anthropic after",
+    "name" : "run_command",
+    "path" : null,
+    "resultBytes" : 2493,
+    "resultStatus" : "completed",
+    "runId" : "4F107922-072B-4659-B3FA-6887E22F13D3"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "M8TUEEvjgJ5NkgWVw206LEKRLorpAbLyaeQ6nKtB5cxIjEh3zOuRLhPwG8eZZKqaCcThBV7gICcXR7gKcAvn9g=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

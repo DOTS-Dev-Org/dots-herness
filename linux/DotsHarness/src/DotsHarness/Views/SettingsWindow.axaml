@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="DotsHarness.Views.SettingsWindow"
+        Icon="avares://DotsHarness/Resources/DotsHarness.ico"
         Title="Settings"
         MinWidth="720" MinHeight="480"
         Width="860" Height="600"
@@ -18,6 +19,7 @@
             <ListBoxItem Content="Local models" Tag="local"/>
             <ListBoxItem Content="Share" Tag="share"/>
             <ListBoxItem Content="Tasks" Tag="tasks"/>
+            <ListBoxItem x:Name="SkillsTab" Content="Skills" Tag="skills"/>
             <ListBoxItem Content="Plugins" Tag="plugins"/>
             <ListBoxItem Content="Prompt" Tag="prompt"/>
         </ListBox>

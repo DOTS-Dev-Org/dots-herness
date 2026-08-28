@@ -1,50 +1,83 @@
 // Copyright (c) 2026 DOTS
-// Offline speech input used by the floating pet and composer.
+// Live microphone input shared by the floating pet and composer.
 
 import AVFoundation
 import SwiftUI
 import DotsHarnessCore
 
-private final class AudioSampleStore: @unchecked Sendable {
+private final class AudioPCMChunker: @unchecked Sendable {
     private let lock = NSLock()
-    private var samples: [Float] = []
-    private var sampleRate = 16_000.0
+    private var pending: [Float] = []
+    private var sourceRate = 16_000.0
+    private let outputChunkSamples = 2_560 // 160 ms at 16 kHz
 
-    func reset(sampleRate: Double) {
+    func reset(sourceRate: Double) {
         lock.lock()
-        samples.removeAll(keepingCapacity: true)
-        self.sampleRate = sampleRate
+        pending.removeAll(keepingCapacity: true)
+        self.sourceRate = sourceRate
         lock.unlock()
     }
 
-    func append(_ buffer: AVAudioPCMBuffer) {
-        guard let channelData = buffer.floatChannelData else { return }
+    func append(_ buffer: AVAudioPCMBuffer) -> [[Float]] {
+        guard buffer.frameLength > 0, buffer.format.channelCount > 0 else { return [] }
         let frameCount = Int(buffer.frameLength)
         let channelCount = Int(buffer.format.channelCount)
-        guard frameCount > 0, channelCount > 0 else { return }
+        var mono = [Float](repeating: 0, count: frameCount)
 
-        lock.lock()
-        if channelCount == 1 {
-            samples.append(contentsOf: UnsafeBufferPointer(start: channelData[0], count: frameCount))
-        } else {
-            samples.reserveCapacity(samples.count + frameCount)
+        if let channels = buffer.floatChannelData {
             for frame in 0..<frameCount {
                 var value: Float = 0
                 for channel in 0..<channelCount {
-                    value += channelData[channel][frame]
+                    value += channels[channel][frame]
                 }
-                samples.append(value / Float(channelCount))
+                mono[frame] = value / Float(channelCount)
             }
+        } else if let channels = buffer.int16ChannelData {
+            for frame in 0..<frameCount {
+                var value: Float = 0
+                for channel in 0..<channelCount {
+                    value += Float(channels[channel][frame]) / 32_768
+                }
+                mono[frame] = value / Float(channelCount)
+            }
+        } else {
+            return []
+        }
+
+        lock.lock()
+        let rate = sourceRate
+        pending.append(contentsOf: LocalVoiceTranscriber.resample(mono, from: rate))
+        var chunks: [[Float]] = []
+        while pending.count >= outputChunkSamples {
+            // ponytail: small callback buffers make removeFirst cheaper than a second ring-buffer type.
+            chunks.append(Array(pending.prefix(outputChunkSamples)))
+            pending.removeFirst(outputChunkSamples)
         }
         lock.unlock()
+        return chunks
     }
 
-    func take() -> (samples: [Float], sampleRate: Double) {
+    func drain() -> [Float] {
         lock.lock()
         defer { lock.unlock() }
-        let captured = samples
-        samples.removeAll(keepingCapacity: true)
-        return (captured, sampleRate)
+        let remaining = pending
+        pending.removeAll(keepingCapacity: true)
+        return remaining
+    }
+}
+
+// AVAudioEngine invokes taps on its realtime queue. The tap only normalizes
+// audio and enqueues 160 ms PCM blocks; model/network work stays off it.
+private func installAudioTap(
+    on inputNode: AVAudioInputNode,
+    format: AVAudioFormat,
+    chunker: AudioPCMChunker,
+    session: VoiceStreamingSession
+) {
+    inputNode.installTap(onBus: 0, bufferSize: 1_024, format: format) { @Sendable buffer, _ in
+        for chunk in chunker.append(buffer) {
+            session.push(chunk)
+        }
     }
 }
 
@@ -92,7 +125,8 @@ final class PetVoiceInput: NSObject, ObservableObject {
     private let model: AppModel
     private let onTranscript: ((String) -> Void)?
     private let audioEngine = AVAudioEngine()
-    private let audioSamples = AudioSampleStore()
+    private let audioChunker = AudioPCMChunker()
+    private var voiceSession: VoiceStreamingSession?
     private var sessionID = UUID()
     private var isTapInstalled = false
     private var errorResetTask: Task<Void, Never>?
@@ -114,11 +148,6 @@ final class PetVoiceInput: NSObject, ObservableObject {
         case .transcribing, .sending:
             break
         case .idle, .failed:
-            model.refreshVoiceModel()
-            guard model.isVoiceReady else {
-                model.requestVoiceInputSetup()
-                return
-            }
             startListening()
         }
     }
@@ -137,6 +166,8 @@ final class PetVoiceInput: NSObject, ObservableObject {
         }
 
         errorResetTask?.cancel()
+        voiceSession?.cancel()
+        voiceSession = nil
         transcript = ""
         state = .requesting
 
@@ -150,13 +181,13 @@ final class PetVoiceInput: NSObject, ObservableObject {
 
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized:
-            beginRecording(for: currentSession)
+            prepareStreamingSession(for: currentSession)
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
                 DispatchQueue.main.async {
                     guard let self, self.sessionID == currentSession else { return }
                     if granted {
-                        self.beginRecording(for: currentSession)
+                        self.prepareStreamingSession(for: currentSession)
                     } else {
                         self.fail(AppCopy.text("voice.microphonePermissionDenied"))
                     }
@@ -169,7 +200,41 @@ final class PetVoiceInput: NSObject, ObservableObject {
         }
     }
 
-    private func beginRecording(for currentSession: UUID) {
+    private func prepareStreamingSession(for currentSession: UUID) {
+        guard sessionID == currentSession else { return }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let session = try await model.makeVoiceStreamingSession(
+                    onUpdate: { [weak self] update in
+                        Task { @MainActor in
+                            self?.handle(update, for: currentSession)
+                        }
+                    },
+                    onError: { [weak self] error in
+                        Task { @MainActor in
+                            guard let self, self.sessionID == currentSession else { return }
+                            self.fail(AppCopy.format("voice.audioProcessingFailed", error.localizedDescription))
+                        }
+                    }
+                )
+                guard self.sessionID == currentSession, self.state == .requesting else {
+                    session.cancel()
+                    return
+                }
+                self.voiceSession = session
+                self.beginRecording(for: currentSession, session: session)
+            } catch is CancellationError {
+                guard self.sessionID == currentSession else { return }
+                self.state = .idle
+            } catch {
+                guard self.sessionID == currentSession else { return }
+                self.fail(error.localizedDescription)
+            }
+        }
+    }
+
+    private func beginRecording(for currentSession: UUID, session: VoiceStreamingSession) {
         guard sessionID == currentSession else { return }
 
         let inputNode = audioEngine.inputNode
@@ -184,11 +249,8 @@ final class PetVoiceInput: NSObject, ObservableObject {
             isTapInstalled = false
         }
 
-        audioSamples.reset(sampleRate: recordingFormat.sampleRate)
-        let audioSamples = audioSamples
-        inputNode.installTap(onBus: 0, bufferSize: 1_024, format: recordingFormat) { buffer, _ in
-            audioSamples.append(buffer)
-        }
+        audioChunker.reset(sourceRate: recordingFormat.sampleRate)
+        installAudioTap(on: inputNode, format: recordingFormat, chunker: audioChunker, session: session)
         isTapInstalled = true
 
         audioEngine.prepare()
@@ -203,51 +265,52 @@ final class PetVoiceInput: NSObject, ObservableObject {
     private func stopListening(sendTranscript: Bool) {
         guard isListening else { return }
 
-        stopAudioSession()
-        let capture = audioSamples.take()
-        guard sendTranscript, !capture.samples.isEmpty else {
+        let currentSession = sessionID
+        stopAudioCapture()
+
+        guard sendTranscript, let session = voiceSession else {
+            sessionID = UUID()
+            voiceSession?.cancel()
+            voiceSession = nil
+            audioChunker.drain()
             transcript = ""
             state = .idle
             return
         }
 
+        let remaining = audioChunker.drain()
+        if !remaining.isEmpty { session.push(remaining) }
         transcript = ""
         state = .transcribing
-        let model = model
-        Task { @MainActor [weak self] in
-            do {
-                let text = try await model.transcribeVoice(
-                    samples: capture.samples,
-                    sampleRate: capture.sampleRate
-                )
-                guard !text.isEmpty else {
-                    self?.fail(AppCopy.text("voice.noSpeechDetected"))
-                    return
-                }
-                guard let self else { return }
-                self.transcript = text
-
-                if let onTranscript {
-                    onTranscript(text)
-                    self.transcript = ""
-                    self.state = .idle
-                    return
-                }
-
-                self.state = .sending
-                await model.bridge.send(text: text, mode: .queue)
-                self.transcript = ""
-                self.state = .idle
-            } catch is CancellationError {
-                self?.state = .idle
-            } catch {
-                self?.fail(AppCopy.format("voice.audioProcessingFailed", error.localizedDescription))
+        session.stop { [weak self] in
+            Task { @MainActor in
+                guard let self, self.sessionID == currentSession else { return }
+                self.voiceSession = nil
+                if self.state == .transcribing { self.state = .idle }
             }
         }
     }
 
-    private func stopAudioSession() {
-        sessionID = UUID()
+    private func handle(_ update: VoiceTranscriptUpdate, for currentSession: UUID) {
+        guard sessionID == currentSession else { return }
+        let text = update.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+
+        if update.isFinal {
+            transcript = ""
+            if let onTranscript {
+                onTranscript(text)
+            } else {
+                state = .sending
+                model.send(text: text, mode: .queue)
+                state = .idle
+            }
+        } else {
+            transcript = text
+        }
+    }
+
+    private func stopAudioCapture() {
         audioEngine.stop()
         if isTapInstalled {
             audioEngine.inputNode.removeTap(onBus: 0)
@@ -256,7 +319,11 @@ final class PetVoiceInput: NSObject, ObservableObject {
     }
 
     private func fail(_ message: String) {
-        stopAudioSession()
+        sessionID = UUID()
+        stopAudioCapture()
+        voiceSession?.cancel()
+        voiceSession = nil
+        audioChunker.drain()
         transcript = ""
         state = .failed(message)
 

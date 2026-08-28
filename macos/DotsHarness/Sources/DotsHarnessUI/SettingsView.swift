@@ -16,10 +16,13 @@ public struct SettingsView: View {
     }
 
     enum Tab: String, CaseIterable, Identifiable {
-        case general, access, memory, pet, providers, custom, local, share, plugins, prompt
+        case general, access, memory, archive, pet, providers, custom, local, share, skills, plugins, prompt
         var id: String { rawValue }
         var title: String {
-            return AppCopy.text("settings.tab.\(rawValue)")
+            rawValue == "archive"
+                ? AppCopy.text("sidebar.archived")
+                : rawValue == "skills" ? AppCopy.text("settings.tab.skills")
+                : AppCopy.text("settings.tab.\(rawValue)")
         }
     }
 
@@ -48,11 +51,13 @@ public struct SettingsView: View {
             case .general: general
             case .access: WorkspaceAccessView(bridge: model.bridge)
             case .memory: MemoryVaultView(bridge: model.bridge)
+            case .archive: ConversationArchiveView(bridge: model.bridge)
             case .pet: PetSettingsView(model: model)
             case .providers: RouterProvidersView(router: model.router)
             case .custom: CustomAPIView(router: model.router, local: model.local)
             case .share: RouterShareView(router: model.router)
             case .local: LocalModelsView(local: model.local)
+            case .skills: SkillsSettingsView(model: model)
             case .plugins: PluginSettingsView(model: model)
             case .prompt: prompt
             }
@@ -98,7 +103,7 @@ public struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
                 LabeledContent(AppCopy.text("settings.endpoint")) {
-                    Text("Native provider routing")
+                    Text(AppCopy.text("settings.nativeRouting"))
                         .font(.caption)
                 }
                 HStack {
@@ -111,6 +116,15 @@ public struct SettingsView: View {
                 }
             }
             Section(AppCopy.text("settings.appearance")) {
+                Picker(AppCopy.text("settings.language"), selection: Binding(
+                    get: { model.appLanguage },
+                    set: { model.setAppLanguage($0) }
+                )) {
+                    ForEach(AppLanguage.allCases) { item in
+                        Text(item == .system ? AppCopy.text("language.system") : item.nativeName)
+                            .tag(item)
+                    }
+                }
                 Picker(AppCopy.text("settings.theme"), selection: Binding(
                     get: { model.appearance },
                     set: { model.setAppearance($0) }
@@ -162,6 +176,215 @@ public struct SettingsView: View {
                 .padding()
         }
         .navigationTitle(AppCopy.text("settings.promptTitle"))
+    }
+}
+
+private struct SkillsSettingsView: View {
+    @ObservedObject var model: AppModel
+    @ObservedObject var skills: SkillCatalog
+    @State private var tab: Section = .catalog
+    @State private var selectedSkill: SkillDescriptor?
+    @State private var error = ""
+
+    private enum Section: String, CaseIterable {
+        case catalog, installed
+
+        var title: String { AppCopy.text("settings.skills.\(rawValue)") }
+    }
+
+    init(model: AppModel) {
+        self.model = model
+        self.skills = model.skills
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(AppCopy.text("settings.tab.skills"))
+                .font(.title2.weight(.semibold))
+            Picker(AppCopy.text("settings.tab.skills"), selection: $tab) {
+                ForEach(Section.allCases, id: \.self) { item in
+                    Text(item.title).tag(item)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(maxWidth: 360)
+            if tab == .catalog { catalog } else { installed }
+            if !error.isEmpty {
+                Text(error).font(.caption).foregroundStyle(.red)
+            }
+        }
+        .padding()
+        .navigationTitle(AppCopy.text("settings.tab.skills"))
+        .sheet(item: $selectedSkill) { skill in
+            ScrollView {
+                Text((try? skills.read(id: skill.id, includeDisabled: true)) ?? AppCopy.text("settings.skillReadFailed"))
+                    .font(.system(.callout, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+            }
+            .frame(minWidth: 680, minHeight: 520)
+            .navigationTitle(skill.name)
+        }
+    }
+
+    private var catalog: some View {
+        List(skills.marketplaceEntries) { entry in
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(entry.name).font(.headline)
+                        Text(entry.id).font(.caption.monospaced()).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if skills.isInstalled(entry) {
+                        Text(AppCopy.text("local.installed")).font(.caption).foregroundStyle(.secondary)
+                    } else if entry.downloadURL != nil {
+                        Button(AppCopy.text("common.download")) {
+                            Task {
+                                do { try await skills.install(entry) }
+                                catch { self.error = error.localizedDescription }
+                            }
+                        }
+                    }
+                }
+                Text(entry.description).font(.caption)
+                HStack(spacing: 10) {
+                    if let githubURL = entry.githubURL, let url = URL(string: githubURL) { Link("GitHub", destination: url) }
+                    if let skillURL = entry.skillURL, let url = URL(string: skillURL) { Link("SKILL.md", destination: url) }
+                    Text(AppCopy.format("settings.skillsSnapshot", entry.snapshotDate))
+                        .font(.caption2).foregroundStyle(.tertiary)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    private var installed: some View {
+        List(skills.entries) { skill in
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(skill.name).font(.headline)
+                    Text("\(skill.id) · \(skill.source.rawValue)")
+                        .font(.caption.monospaced()).foregroundStyle(.secondary)
+                    Text(skill.description).font(.caption).lineLimit(2)
+                }
+                Spacer()
+                Button(AppCopy.text("common.view")) { selectedSkill = skill }
+                Toggle(AppCopy.text("settings.enabled"), isOn: Binding(
+                    get: { skill.enabled },
+                    set: { skills.setEnabled(skill.id, $0) }
+                ))
+                .labelsHidden()
+                if skill.isInstalled {
+                    Button(AppCopy.text("common.delete"), role: .destructive) {
+                        do { try skills.remove(skill.id) }
+                        catch let caughtError { error = caughtError.localizedDescription }
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .overlay(alignment: .bottomLeading) {
+            Text(AppCopy.text("settings.skillsHint"))
+                .font(.caption).foregroundStyle(.secondary).padding(.top, 8)
+        }
+    }
+}
+
+private struct ConversationArchiveView: View {
+    @ObservedObject var bridge: AgentBridge
+    @State private var pendingDeleteID: String?
+
+    private var archivedConversations: [Conversation] {
+        bridge.archivedConversations.sorted {
+            ($0.messages.map(\.createdAt).max() ?? .distantPast)
+                > ($1.messages.map(\.createdAt).max() ?? .distantPast)
+        }
+    }
+
+    var body: some View {
+        Form {
+            Section(AppCopy.text("sidebar.archived")) {
+                if archivedConversations.isEmpty {
+                    Text(AppCopy.text("sidebar.noChats"))
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(archivedConversations) { conversation in
+                        HStack(spacing: 10) {
+                            statusIcon(conversation)
+
+                            Text(conversation.title)
+                                .lineLimit(1)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            if conversation.pinned {
+                                Image(systemName: "pin.fill")
+                                    .foregroundStyle(Color.accentColor)
+                                    .accessibilityLabel(AppCopy.text("sidebar.pinChat"))
+                            }
+
+                            Button {
+                                bridge.setArchived(conversation.id, archived: false)
+                            } label: {
+                                Image(systemName: "arrow.uturn.backward")
+                                    .frame(width: 24, height: 24)
+                            }
+                            .buttonStyle(.borderless)
+                            .help(AppCopy.text("sidebar.unarchiveChat"))
+                            .accessibilityLabel(AppCopy.text("sidebar.unarchiveChat"))
+
+                            Button {
+                                pendingDeleteID = conversation.id
+                            } label: {
+                                Image(systemName: "trash")
+                                    .frame(width: 24, height: 24)
+                            }
+                            .buttonStyle(.borderless)
+                            .foregroundStyle(.red)
+                            .help(AppCopy.text("sidebar.deleteChat"))
+                            .accessibilityLabel(AppCopy.text("sidebar.deleteChat"))
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .padding()
+        .navigationTitle(AppCopy.text("sidebar.archived"))
+        .confirmationDialog(
+            AppCopy.text("sidebar.deleteChat"),
+            isPresented: Binding(
+                get: { pendingDeleteID != nil },
+                set: { if !$0 { pendingDeleteID = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button(AppCopy.text("sidebar.deleteChat"), role: .destructive) {
+                if let id = pendingDeleteID {
+                    bridge.deleteConversation(id)
+                }
+                pendingDeleteID = nil
+            }
+            Button(AppCopy.text("common.cancel"), role: .cancel) {
+                pendingDeleteID = nil
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func statusIcon(_ conversation: Conversation) -> some View {
+        if conversation.running {
+            ProgressView()
+                .controlSize(.small)
+                .frame(width: 16, height: 16)
+                .accessibilityLabel(AppCopy.text("sidebar.chatRunning"))
+        } else if !conversation.blank {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(Color.blue)
+                .accessibilityLabel(AppCopy.text("sidebar.chatCompleted"))
+        }
     }
 }
 
@@ -313,7 +536,7 @@ struct PluginSettingsView: View {
             HStack {
                 Text(AppCopy.text("settings.pluginsTitle")).font(.title2.weight(.semibold))
                 Spacer()
-                Button("Marketplace") { showMarketplace = true }
+                Button(AppCopy.text("settings.marketplace")) { showMarketplace = true }
                 Button(AppCopy.text("settings.revealFolder")) {
                     NSWorkspace.shared.activateFileViewerSelecting([model.paths.plugins])
                 }

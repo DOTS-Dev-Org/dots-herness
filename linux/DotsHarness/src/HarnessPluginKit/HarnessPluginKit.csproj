@@ -4,4 +4,7 @@
     <RootNamespace>HarnessPluginKit</RootNamespace>
     <Description>Locked plugin ABI 1.0.0 for DotsHarness on Linux.</Description>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\..\windows\DotsHarness\src\HarnessPluginKit\ProviderImageAdapter.cs" Link="ProviderImageAdapter.cs" />
+  </ItemGroup>
 </Project>

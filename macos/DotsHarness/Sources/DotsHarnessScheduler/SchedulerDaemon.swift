@@ -4,7 +4,6 @@
 
 import AppKit
 import DotsHarnessCore
-import FableThinkingPlugin
 
 @main
 struct SchedulerDaemon {
@@ -14,7 +13,7 @@ struct SchedulerDaemon {
         app.setActivationPolicy(.prohibited)
 
         // Retained for the process lifetime: `app.run()` never returns.
-        let model = AppModel(builtins: [FableThinkingPlugin.self])
+        let model = AppModel()
         model.startHeadless()
         _ = model
 

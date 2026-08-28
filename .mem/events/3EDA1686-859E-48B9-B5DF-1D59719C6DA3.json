@@ -1,0 +1,34 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-08-28T00:23:30Z",
+  "eventId" : "3EDA1686-859E-48B9-B5DF-1D59719C6DA3",
+  "lamport" : 12,
+  "parents" : [
+    "64BE9C30-F472-4499-A3F0-40938D7B8FC1"
+  ],
+  "payload" : {
+    "memoryRevision" : 11,
+    "model" : "gpt-5.6-luna",
+    "promptHash" : "bde24bbc3646aebb422faf3680fc18525b548eab5fe112cece97cceed0539549",
+    "promptSummary" : "2026 için ai haberlerini ver bana",
+    "provider" : "GPT",
+    "runId" : "4F107922-072B-4659-B3FA-6887E22F13D3",
+    "startedAt" : "2026-08-28T00:23:30Z"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "I1ZoodLpb83N8Xx4F8ksM64MfviMkgwEpNgAVXlxe7R7U+fz18o3gOT7d2Nu9SElHYGmh\/RUG9fGGVGYtCpKuQ=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "task.started"
+}

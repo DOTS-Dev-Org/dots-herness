@@ -387,8 +387,13 @@ struct PetSettingsView: View {
                         Text("\(provider.title) · \(provider.sizeLabel)").tag(provider)
                     }
                 }
+                .disabled(model.isVoiceModelDownloading || model.voiceModelState == .paused)
 
                 voiceProviderSettings
+            }
+
+            Section(AppCopy.text("speech.settings.section")) {
+                speechSettings
             }
 
             Section(AppCopy.text("pet.appearance")) {
@@ -442,15 +447,6 @@ struct PetSettingsView: View {
                 }
             }
 
-            Section(AppCopy.text("pet.preview")) {
-                HStack {
-                    Spacer()
-                    PetFloatingOverlay(model: model, voiceEnabled: false)
-                    Spacer()
-                }
-                .frame(minHeight: 150)
-                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
         }
         .formStyle(.grouped)
         .padding()
@@ -460,6 +456,13 @@ struct PetSettingsView: View {
     @ViewBuilder
     private var voiceProviderSettings: some View {
         switch model.voiceProvider {
+        case .whisperTinyQ5:
+            localModelSettings(
+                name: LocalVoiceModel.whisperTinyQ5.name,
+                size: LocalVoiceModel.whisperTinyQ5.sizeLabel,
+                hint: VoiceCopy.localModelHint,
+                importAction: nil
+            )
         case .whisperLargeV3Turbo:
             localModelSettings(
                 name: LocalVoiceModel.whisperLargeV3Turbo.name,
@@ -495,9 +498,15 @@ struct PetSettingsView: View {
         hint: String,
         importAction: (() -> Void)?
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let isDownloading = model.isVoiceModelDownloading
+        let isPaused = model.voiceModelState == .paused
+        let icon = model.isVoiceModelInstalled
+            ? "checkmark.circle.fill"
+            : (isDownloading ? "arrow.down.circle" : (isPaused ? "pause.circle" : "mic.circle"))
+
+        return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Image(systemName: model.isVoiceModelInstalled ? "checkmark.circle.fill" : "mic.circle")
+                Image(systemName: icon)
                     .foregroundStyle(model.isVoiceModelInstalled ? .green : .secondary)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(name)
@@ -515,11 +524,45 @@ struct PetSettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            if model.isVoiceModelDownloading {
-                ProgressView()
-                Text(VoiceCopy.downloading)
+            if isDownloading || isPaused {
+                if let progress = model.voiceModelDownloadProgress {
+                    ProgressView(value: progress.fraction, total: 1)
+                        .progressViewStyle(.linear)
+                    HStack {
+                        Text("\(Int(progress.fraction * 100))%")
+                        Spacer()
+                        Text(isPaused ? "—" : downloadSpeed(progress.bytesPerSecond))
+                    }
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                } else {
+                    ProgressView()
+                }
+                Text(isPaused ? VoiceCopy.statusPaused : VoiceCopy.downloading)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    if isDownloading {
+                        Button {
+                            model.pauseVoiceModelDownload()
+                        } label: {
+                            Label(VoiceCopy.pauseDownload, systemImage: "pause.fill")
+                        }
+                    } else {
+                        Button {
+                            model.resumeVoiceModelDownload()
+                        } label: {
+                            Label(VoiceCopy.resumeDownload, systemImage: "play.fill")
+                        }
+                    }
+                    Button(role: .destructive) {
+                        model.cancelVoiceModelDownload()
+                    } label: {
+                        Label(VoiceCopy.cancelDownload, systemImage: "xmark")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             } else if model.isVoiceModelInstalled {
                 Button(VoiceCopy.deleteModel, role: .destructive) {
                     model.deleteVoiceModel()
@@ -535,6 +578,70 @@ struct PetSettingsView: View {
             }
 
             if case .failed(let message) = model.voiceModelState {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+    }
+
+    private func downloadSpeed(_ bytesPerSecond: Double) -> String {
+        guard bytesPerSecond > 0 else { return "0 B/s" }
+        return "\(ByteCountFormatter.string(fromByteCount: Int64(bytesPerSecond), countStyle: .file))/s"
+    }
+
+    private var speechSettings: some View {
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: model.isSpeechModelInstalled ? "checkmark.circle.fill" : "waveform.circle")
+                    .foregroundStyle(model.isSpeechModelInstalled ? .green : .secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(AppCopy.text("speech.local.name"))
+                    Text(model.isSpeechModelInstalled
+                         ? VoiceCopy.modelReady
+                         : AppCopy.text("speech.local.notInstalled"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text(AppCopy.text("speech.local.size"))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+
+            Text(AppCopy.text("speech.local.hint"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if model.isSpeechModelDownloading {
+                if let progress = model.speechModelDownloadProgress {
+                    ProgressView(value: progress.fraction, total: 1)
+                        .progressViewStyle(.linear)
+                    HStack {
+                        Text("\(Int(progress.fraction * 100))%")
+                        Spacer()
+                        Text(downloadSpeed(progress.bytesPerSecond))
+                    }
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                } else {
+                    ProgressView()
+                }
+                Text(AppCopy.text("speech.local.downloading"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if model.isSpeechModelInstalled {
+                Button(AppCopy.text("speech.local.delete"), role: .destructive) {
+                    model.deleteSpeechModel()
+                }
+            } else {
+                Button(AppCopy.text("speech.local.download")) {
+                    model.requestSpeechModelDownload()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+
+            if case .failed(let message) = model.speechModelState {
                 Text(message)
                     .font(.caption)
                     .foregroundStyle(.red)
@@ -601,22 +708,19 @@ struct PetSettingsView: View {
                 get: { model.voiceAPIModel },
                 set: { model.setVoiceAPIModel($0) }
             ), prompt: Text(VoiceCopy.apiModelPlaceholder))
+            TextField(VoiceCopy.realtimeEndpoint, text: Binding(
+                get: { model.voiceAPIRealtimeEndpoint },
+                set: { model.setVoiceAPIRealtimeEndpoint($0) }
+            ))
+            Text(VoiceCopy.apiHint)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
         }
     }
 }
 
 enum PetAssets {
-    // Avatars live on the aiwatcher CDN (preset-N.webp, N == avatar id). Fetched
-    // once via AsyncImage + URLCache, then served from disk/memory — no PNGs in
-    // the app bundle. See DotsHarnessApp for the persistent URLCache setup.
-    private static let base = URL(string: "https://aiwatcher.dots.net.tr/assets/presets/")!
-
-    static func url(for id: Int) -> URL {
-        base.appendingPathComponent("preset-\(id).webp")
-    }
-
-    /// First-paint / offline fallback: bundled PNG if still shipped, else a symbol.
-    static func fallback(for id: Int) -> Image {
+    static func image(for id: Int) -> Image {
         if let url = Bundle.module.url(forResource: "pet-\(id)", withExtension: "png"),
            let image = NSImage(contentsOf: url) {
             return Image(nsImage: image)
@@ -629,14 +733,10 @@ struct PetAvatarImage: View {
     let id: Int
 
     var body: some View {
-        AsyncImage(url: PetAssets.url(for: id), transaction: Transaction(animation: nil)) { phase in
-            switch phase {
-            case .success(let image):
-                image.resizable().interpolation(.none).scaledToFit()
-            default:
-                PetAssets.fallback(for: id).resizable().interpolation(.none).scaledToFit()
-            }
-        }
+        PetAssets.image(for: id)
+            .resizable()
+            .interpolation(.none)
+            .scaledToFit()
     }
 }
 

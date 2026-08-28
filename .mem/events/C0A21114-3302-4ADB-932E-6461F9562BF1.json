@@ -1,0 +1,36 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-08-28T00:04:17Z",
+  "eventId" : "C0A21114-3302-4ADB-932E-6461F9562BF1",
+  "lamport" : 4,
+  "parents" : [
+    "E7C57367-11E0-487D-A91F-8C73FC014ECA"
+  ],
+  "payload" : {
+    "changedFiles" : [
+
+    ],
+    "promptHash" : "d7e69851a0c497628fb49b69624530f85aa25ad39ec1a780b81b3477f25eb195",
+    "promptSummary" : "selam",
+    "runId" : "CF35B6E0-0566-4C21-8138-196A631B86AD",
+    "semanticStatus" : "pending",
+    "status" : "completed",
+    "toolCount" : 0
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "I2o2oDSiyWjAiLv7vTgNCF2paea2NwMEFv3NL4YU\/yso1Nvd1qm\/Ep8j7XWdeuSbxdrcxbDOdaiMQRQtYGHpjA=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "task.completed"
+}

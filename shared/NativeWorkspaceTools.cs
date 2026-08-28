@@ -17,6 +17,11 @@ public static class NativeWorkspaceTools
         new("run_command", "Run a shell command with the workspace as its current directory.", Schema(("command", "Command to run in the workspace.", true))),
     ];
 
+    public static IReadOnlyList<NativeToolDefinition> ReadOnlyDefinitions { get; } =
+        Definitions.Where(tool => tool.Name is "list_files" or "read_file").ToArray();
+
+    public static bool IsReadOnly(string name) => name is "list_files" or "read_file";
+
     public static async Task<string> ExecuteAsync(NativeToolCall call, string workspace, CancellationToken ct = default)
     {
         try

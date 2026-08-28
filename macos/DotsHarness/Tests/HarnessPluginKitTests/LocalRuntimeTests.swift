@@ -74,6 +74,18 @@ final class LocalRuntimeTests: XCTestCase {
         try? FileManager.default.removeItem(at: dir)
     }
 
+    func testDownloadProgressCarriesSpeed() {
+        let progress = FileDownloader.Progress(received: 256, expected: 1_024, bytesPerSecond: 128)
+
+        XCTAssertEqual(progress.fraction, 0.25, accuracy: 0.0001)
+        XCTAssertEqual(progress.bytesPerSecond, 128)
+    }
+
+    func testVoiceDownloadCanBePaused() {
+        XCTAssertFalse(LocalVoiceModelState.paused.isInstalled)
+        XCTAssertEqual(LocalVoiceModelState.paused.title, VoiceCopy.statusPaused)
+    }
+
     func testDownloaderRejectsExistingFileWithBadChecksum() async throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("DotsHarness-dl-checksum-\(UUID().uuidString)", isDirectory: true)
@@ -108,7 +120,7 @@ final class LocalRuntimeTests: XCTestCase {
     func testVoiceInputCatalogIncludesLocalAndAPIChoices() {
         XCTAssertEqual(
             Set(VoiceInputProvider.allCases),
-            [.whisperLargeV3Turbo, .nemotron, .customLocal, .api]
+            [.whisperTinyQ5, .whisperLargeV3Turbo, .nemotron, .customLocal, .api]
         )
         XCTAssertEqual(LocalVoiceModel.whisperLargeV3Turbo.bytes, 574_041_195)
         XCTAssertEqual(LocalVoiceModel.whisperLargeV3Turbo.filename, "ggml-large-v3-turbo-q5_0.bin")
@@ -222,6 +234,18 @@ final class LocalRuntimeTests: XCTestCase {
             "en-US"
         )
     }
+
+    func testLocalPiperSpeechModelAndWAVOutput() throws {
+        XCTAssertEqual(LocalSpeechModel.turkishPiper.archiveBytes, 21_135_582)
+        XCTAssertEqual(LocalSpeechModel.turkishPiper.modelFilename, "tr_TR-dfki-medium.onnx")
+        XCTAssertTrue(LocalSpeechModel.turkishPiper.archiveURL.host == "github.com")
+
+        let wav = try LocalPiperSpeechSynthesizer.wavData(samples: [-1, 0, 1], sampleRate: 22_050)
+        XCTAssertEqual(Data(wav.prefix(4)), Data("RIFF".utf8))
+        XCTAssertEqual(Data(wav.dropFirst(8).prefix(4)), Data("WAVE".utf8))
+        XCTAssertEqual(wav.count, 50)
+    }
+
 }
 
 @MainActor

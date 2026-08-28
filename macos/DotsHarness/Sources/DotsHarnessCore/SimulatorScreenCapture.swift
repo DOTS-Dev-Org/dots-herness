@@ -34,10 +34,11 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
     private let stateLock = NSLock()
     private let displayAspectRatio: CGFloat?
     private let geometryHandler: GeometryHandler
+    private let renderContext: CIContext
     private var stream: SCStream?
     private var failureHandler: FailureHandler?
     private var isStopping = false
-    private var screenCropNormalized: CGRect?
+    private var screenCropPixels: CGRect?
 
     private init(
         displayAspectRatio: CGFloat?,
@@ -46,6 +47,7 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
         failureHandler: @escaping FailureHandler
     ) {
         self.displayAspectRatio = displayAspectRatio
+        renderContext = CIContext(options: [CIContextOption.cacheIntermediates: false])
         frameDelivery = LatestFrameDelivery(handler: frameHandler)
         self.geometryHandler = geometryHandler
         self.failureHandler = failureHandler
@@ -190,13 +192,18 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
 
     // MARK: - Frames
 
-    /// Wraps the IOSurface-backed buffer and forwards it. The device-screen
-    /// crop is computed from the first frame only; every frame after reuses the
-    /// cached normalized rect and does no pixel work at all.
+    /// Renders the frame to a CGImage and crops the device screen out of the
+    /// Simulator window chrome. The crop rect is detected from the first frame
+    /// only; every frame after reuses the cached pixel rect.
+    ///
+    /// ponytail: this deliberately keeps a per-frame `createCGImage` + crop
+    /// instead of handing the raw IOSurface to the layer via `contentsRect`.
+    /// The zero-copy path mis-rendered the sub-rect crop (wrong band + overscan
+    /// zoom) on the embedded panel; a pre-cropped CGImage draws 1:1 and sharp.
     private func process(_ pixelBuffer: CVPixelBuffer) {
         stateLock.lock()
         let stopping = isStopping
-        let cachedCrop = screenCropNormalized
+        let cachedCrop = screenCropPixels
         stateLock.unlock()
         guard !stopping else { return }
 
@@ -206,24 +213,36 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
         )
         guard fullSize.width > 0, fullSize.height > 0 else { return }
 
-        let crop: CGRect
-        if let cachedCrop {
-            crop = cachedCrop
-        } else {
-            crop = autoreleasepool { normalizedCrop(from: pixelBuffer, fullSize: fullSize) }
-            stateLock.lock()
-            screenCropNormalized = crop
-            stateLock.unlock()
-            Task { @MainActor [geometryHandler] in geometryHandler(crop) }
-        }
+        autoreleasepool {
+            let ciImage = CIImage(cvImageBuffer: pixelBuffer)
+            guard let image = renderContext.createCGImage(ciImage, from: ciImage.extent) else { return }
 
-        frameDelivery.submit(
-            SimulatorDisplayFrame(
-                source: .buffer(pixelBuffer),
-                fullPixelSize: fullSize,
-                cropRect: crop
+            let cropPixels: CGRect
+            if let cachedCrop {
+                cropPixels = cachedCrop
+            } else {
+                cropPixels = detectScreenCrop(in: image)
+                stateLock.lock()
+                screenCropPixels = cropPixels
+                stateLock.unlock()
+                let normalized = CGRect(
+                    x: cropPixels.minX / fullSize.width,
+                    y: cropPixels.minY / fullSize.height,
+                    width: cropPixels.width / fullSize.width,
+                    height: cropPixels.height / fullSize.height
+                )
+                Task { @MainActor [geometryHandler] in geometryHandler(normalized) }
+            }
+
+            let cropped = image.cropping(to: cropPixels) ?? image
+            frameDelivery.submit(
+                SimulatorDisplayFrame(
+                    source: .image(cropped),
+                    fullPixelSize: CGSize(width: cropped.width, height: cropped.height),
+                    cropRect: CGRect(x: 0, y: 0, width: 1, height: 1)
+                )
             )
-        )
+        }
     }
 
     private func isCompleteFrame(_ sampleBuffer: CMSampleBuffer) -> Bool {
@@ -237,24 +256,6 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
             return true
         }
         return status == .complete || status == .started
-    }
-
-    /// One-time render of a single frame to CGImage so the silhouette detector
-    /// can find the device screen inside the Simulator window chrome. The
-    /// result is a normalized (top-left origin) rect reused for every frame.
-    private func normalizedCrop(from pixelBuffer: CVPixelBuffer, fullSize: CGSize) -> CGRect {
-        let ciImage = CIImage(cvImageBuffer: pixelBuffer)
-        let context = CIContext(options: [CIContextOption.cacheIntermediates: false])
-        guard let image = context.createCGImage(ciImage, from: ciImage.extent) else {
-            return CGRect(x: 0, y: 0, width: 1, height: 1)
-        }
-        let cropPixels = detectScreenCrop(in: image)
-        return CGRect(
-            x: cropPixels.minX / fullSize.width,
-            y: cropPixels.minY / fullSize.height,
-            width: cropPixels.width / fullSize.width,
-            height: cropPixels.height / fullSize.height
-        )
     }
 
     private func detectScreenCrop(in image: CGImage) -> CGRect {

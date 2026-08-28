@@ -12,6 +12,5 @@
     <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
     <ProjectReference Include="..\PluginRuntime\PluginRuntime.csproj" />
     <ProjectReference Include="..\DotsHarnessCore\DotsHarnessCore.csproj" />
-    <ProjectReference Include="..\FableThinkingPlugin\FableThinkingPlugin.csproj" />
   </ItemGroup>
 </Project>

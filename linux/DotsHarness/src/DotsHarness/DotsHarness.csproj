@@ -19,9 +19,11 @@
     <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
     <ProjectReference Include="..\PluginRuntime\PluginRuntime.csproj" />
     <ProjectReference Include="..\DotsHarnessCore\DotsHarnessCore.csproj" />
-    <ProjectReference Include="..\FableThinkingPlugin\FableThinkingPlugin.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <AvaloniaResource Include="Resources\DotsHarness.ico" />
     <AvaloniaResource Include="Resources\presets\host.yml" />
+    <Content Include="Resources\skills\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Resources\skillsmp-popular-200.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

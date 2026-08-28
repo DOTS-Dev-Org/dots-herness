@@ -9,6 +9,7 @@ import PluginRuntime
 struct SidebarView: View {
     @ObservedObject var model: AppModel
     @ObservedObject var bridge: AgentBridge
+    let logo: Image?
 
     @State private var showSignOutConfirmation = false
     @State private var isSearchVisible = false
@@ -17,14 +18,16 @@ struct SidebarView: View {
     @State private var isRecentExpanded = false
     @State private var isWorkspaceExpanded = true
     @State private var isProjectHovered = false
+    @State private var hoveredConversationID: String?
     @State private var showRemoveProjectConfirmation = false
     @State private var showAllProjectChats = false
 
     private let visibleConversationLimit = 7
 
-    init(model: AppModel) {
+    init(model: AppModel, logo: Image? = nil) {
         self.model = model
         self.bridge = model.bridge
+        self.logo = logo
     }
 
     var body: some View {
@@ -58,6 +61,7 @@ struct SidebarView: View {
                     if isRecentExpanded {
                         recentSection
                     }
+
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
@@ -105,6 +109,14 @@ struct SidebarView: View {
 
     private var sidebarHeader: some View {
         HStack(spacing: 10) {
+            if let logo {
+                logo
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 22, height: 22)
+                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+            }
+
             HStack(spacing: 5) {
                 Text("Herness")
                     .font(.system(size: 16, weight: .semibold))
@@ -260,16 +272,37 @@ struct SidebarView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+
+                projectlessConversationRow
             } else {
                 projectRow
 
                 if isWorkspaceExpanded {
                     projectConversations
                 }
+
+                projectlessConversationRow
             }
         }
         .padding(.top, 3)
         .padding(.bottom, 13)
+    }
+
+    private var projectlessConversationRow: some View {
+        Button(action: model.startWithoutProject) {
+            HStack(spacing: 8) {
+                Image(systemName: "bubble.left.and.bubble.right")
+                    .font(.system(size: 13, weight: .medium))
+                Text(AppCopy.text("sidebar.continueWithoutProject"))
+                    .font(.system(size: 13))
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 9)
+            .frame(height: 30)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var projectRow: some View {
@@ -347,7 +380,7 @@ struct SidebarView: View {
 
     private var projectConversations: some View {
         VStack(alignment: .leading, spacing: 1) {
-            let conversations = filteredConversations(model.conversations)
+            let conversations = orderedConversations(model.conversations)
             let visible = showAllProjectChats
                 ? conversations
                 : Array(conversations.prefix(visibleConversationLimit))
@@ -404,41 +437,108 @@ struct SidebarView: View {
         .padding(.bottom, 13)
     }
 
-    private func conversationRow(_ conversation: Conversation, indented: Bool = true) -> some View {
-        Button {
-            model.selectedConversationID = conversation.id
-        } label: {
-            HStack(spacing: 8) {
+    private func conversationRow(
+        _ conversation: Conversation,
+        indented: Bool = true
+    ) -> some View {
+        HStack(spacing: 0) {
+            Button {
+                model.selectedConversationID = conversation.id
+            } label: {
                 Text(conversation.title)
                     .font(.system(size: 14))
                     .lineLimit(1)
                     .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
 
-                Spacer(minLength: 0)
+            HStack(spacing: 2) {
+                conversationStatus(conversation)
 
-                if conversation.running {
-                    ProgressView()
-                        .controlSize(.mini)
-                        .tint(Color.secondary)
+                if hoveredConversationID == conversation.id {
+                    Button {
+                        bridge.togglePinned(conversation.id)
+                    } label: {
+                        Image(systemName: conversation.pinned ? "pin.fill" : "pin")
+                            .font(.system(size: 12, weight: .medium))
+                            .frame(width: 22, height: 24)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(conversation.pinned ? Color.accentColor : .secondary)
+                    .help(AppCopy.text(
+                        conversation.pinned ? "sidebar.unpinChat" : "sidebar.pinChat"
+                    ))
+                    .accessibilityLabel(AppCopy.text(
+                        conversation.pinned ? "sidebar.unpinChat" : "sidebar.pinChat"
+                    ))
+
+                    Button {
+                        bridge.setArchived(conversation.id, archived: true)
+                    } label: {
+                        Image(systemName: "archivebox")
+                            .font(.system(size: 12, weight: .medium))
+                            .frame(width: 22, height: 24)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .help(AppCopy.text("sidebar.archiveChat"))
+                    .accessibilityLabel(AppCopy.text("sidebar.archiveChat"))
                 }
             }
-            .foregroundStyle(.primary)
-            .padding(.leading, indented ? 34 : 9)
-            .padding(.trailing, 8)
-            .frame(minHeight: 30)
-            .background(
-                model.selectedConversationID == conversation.id
-                    ? Color.primary.opacity(0.105)
-                    : Color.clear,
-                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-            )
-            .contentShape(Rectangle())
+            .frame(width: 72, alignment: .trailing)
         }
-        .buttonStyle(.plain)
+        .foregroundStyle(.primary)
+        .padding(.leading, indented ? 34 : 9)
+        .padding(.trailing, 6)
+        .frame(minHeight: 30)
+        .background(
+            model.selectedConversationID == conversation.id
+                ? Color.primary.opacity(0.105)
+                : Color.clear,
+            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+        )
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            if hovering {
+                hoveredConversationID = conversation.id
+            } else if hoveredConversationID == conversation.id {
+                hoveredConversationID = nil
+            }
+        }
         .contextMenu {
+            Button(
+                AppCopy.text(conversation.pinned ? "sidebar.unpinChat" : "sidebar.pinChat"),
+                systemImage: conversation.pinned ? "pin.slash" : "pin"
+            ) {
+                bridge.togglePinned(conversation.id)
+            }
+            Button(AppCopy.text("sidebar.archiveChat"), systemImage: "archivebox") {
+                bridge.setArchived(conversation.id, archived: true)
+            }
+            Divider()
             Button(AppCopy.text("sidebar.deleteChat"), systemImage: "trash", role: .destructive) {
                 bridge.deleteConversation(conversation.id)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func conversationStatus(_ conversation: Conversation) -> some View {
+        if conversation.running {
+            ProgressView()
+                .controlSize(.mini)
+                .tint(Color.secondary)
+                .frame(width: 16, height: 16)
+                .accessibilityLabel(AppCopy.text("sidebar.chatRunning"))
+        } else if !conversation.blank {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.blue)
+                .frame(width: 16, height: 16)
+                .accessibilityLabel(AppCopy.text("sidebar.chatCompleted"))
         }
     }
 
@@ -515,15 +615,26 @@ struct SidebarView: View {
     }
 
     private var recentConversations: [Conversation] {
-        filteredConversations(model.conversations)
-            .sorted { latestActivity(of: $0) > latestActivity(of: $1) }
+        orderedConversations(projectlessConversations)
             .prefix(visibleConversationLimit)
             .map { $0 }
     }
 
+    private var projectlessConversations: [Conversation] {
+        model.workspacePath.isEmpty ? model.conversations : bridge.projectlessConversations
+    }
+
+    private func orderedConversations(_ conversations: [Conversation]) -> [Conversation] {
+        filteredConversations(conversations)
+            .sorted {
+                if $0.pinned != $1.pinned { return $0.pinned }
+                return latestActivity(of: $0) > latestActivity(of: $1)
+            }
+    }
+
     private func filteredConversations(_ conversations: [Conversation]) -> [Conversation] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let visible = conversations.filter { !$0.blank }
+        let visible = conversations.filter { !$0.blank && !$0.archived }
         guard !query.isEmpty else { return visible }
         return visible.filter { conversation in
             conversation.title.localizedCaseInsensitiveContains(query)

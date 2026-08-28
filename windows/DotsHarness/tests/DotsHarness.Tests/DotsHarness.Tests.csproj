@@ -13,6 +13,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\..\..\shared\SkillCatalogTests.cs" Link="SkillCatalogTests.cs" />
     <ProjectReference Include="..\..\src\HarnessPluginKit\HarnessPluginKit.csproj" />
     <ProjectReference Include="..\..\src\PluginRuntime\PluginRuntime.csproj" />
     <ProjectReference Include="..\..\src\DotsHarnessCore\DotsHarnessCore.csproj" />

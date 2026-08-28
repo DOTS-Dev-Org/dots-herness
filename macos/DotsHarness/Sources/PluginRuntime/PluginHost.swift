@@ -8,6 +8,7 @@ import HarnessPluginKit
 public final class LivePluginContext: PluginContext {
     public let rowId: String
     public let pluginId: String
+    public let pluginDirectory: URL?
     public let plane: PluginPlane
     public let trust: PluginTrust
     public let config: JSONObject
@@ -23,6 +24,7 @@ public final class LivePluginContext: PluginContext {
     init(
         rowId: String,
         pluginId: String,
+        pluginDirectory: URL?,
         plane: PluginPlane,
         trust: PluginTrust,
         config: JSONObject,
@@ -35,6 +37,7 @@ public final class LivePluginContext: PluginContext {
     ) {
         self.rowId = rowId
         self.pluginId = pluginId
+        self.pluginDirectory = pluginDirectory
         self.plane = plane
         self.trust = trust
         self.config = config
@@ -72,6 +75,7 @@ public final class LivePluginContext: PluginContext {
     func dispose() {
         for disposer in disposers.reversed() { disposer() }
         disposers.removeAll()
+        (services.get("provider.imageAdapters") as? ProviderImageAdapterRegistry)?.unregister(owner: rowId)
         if let prompt = prompt as? InMemoryPromptRegistry { prompt.retractOwner(rowId) }
         if let tools = tools as? InMemoryToolRegistry { tools.retractOwner(rowId) }
         if let slots = slots as? InMemorySlotRegistry { slots.retractOwner(rowId) }
@@ -117,6 +121,11 @@ public final class PluginHost: ObservableObject {
     public let slots: InMemorySlotRegistry
     public let settings: InMemorySettingsRegistry
     public let events: InMemoryEventBus
+    public let imageAdapters: ProviderImageAdapterRegistry
+
+    public func getService<T>(_ name: String, as type: T.Type = T.self) -> T? {
+        root.get(name) as? T
+    }
 
     @Published public private(set) var fibers: [MountedFiber] = []
     @Published public private(set) var issues: [MountIssue] = []
@@ -132,12 +141,14 @@ public final class PluginHost: ObservableObject {
         self.slots = InMemorySlotRegistry()
         self.settings = settings ?? InMemorySettingsRegistry()
         self.events = InMemoryEventBus()
+        self.imageAdapters = ProviderImageAdapterRegistry()
         self.root = ServiceRealm(seed: [
             "tools": tools,
             "prompt": prompt,
             "slots": slots,
             "settings": self.settings,
             "events": events,
+            "provider.imageAdapters": imageAdapters,
         ])
     }
 
@@ -185,6 +196,7 @@ public final class PluginHost: ObservableObject {
                 let context = LivePluginContext(
                     rowId: entry.id,
                     pluginId: resolved.manifest.id,
+                    pluginDirectory: entry.url,
                     plane: document.plane,
                     trust: resolved.trust,
                     config: entry.config,

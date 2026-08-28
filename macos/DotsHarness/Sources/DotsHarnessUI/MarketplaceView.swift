@@ -30,15 +30,15 @@ public struct MarketplaceView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Marketplace").font(.title2.weight(.semibold))
+                Text(AppCopy.text("marketplace.title")).font(.title2.weight(.semibold))
                 Spacer()
                 if market.isLoading { ProgressView().controlSize(.small) }
-                Button("Refresh") { Task { await market.refresh() } }
+                Button(AppCopy.text("common.refresh")) { Task { await market.refresh() } }
                     .disabled(market.isLoading)
             }
             .padding()
 
-            TextField("Search plugins", text: $query)
+            TextField(AppCopy.text("marketplace.search"), text: $query)
                 .textFieldStyle(.roundedBorder)
                 .padding(.horizontal)
 
@@ -48,9 +48,9 @@ public struct MarketplaceView: View {
 
             if market.entries.isEmpty {
                 ContentUnavailableView(
-                    "No plugins",
+                    AppCopy.text("marketplace.empty"),
                     systemImage: "shippingbox",
-                    description: Text("Press Refresh to load the registry.")
+                    description: Text(AppCopy.text("marketplace.emptyHint"))
                 )
                 .frame(maxHeight: .infinity)
             } else {
@@ -77,7 +77,7 @@ public struct MarketplaceView: View {
                 badge(entry.tier)
                 if entry.signature != nil { badge("signed") }
                 if !entry.author.isEmpty {
-                    Text("by \(entry.author)").font(.caption).foregroundStyle(.secondary)
+                    Text(AppCopy.format("marketplace.by", entry.author)).font(.caption).foregroundStyle(.secondary)
                 }
             }
             if !entry.description.isEmpty {
@@ -93,13 +93,13 @@ public struct MarketplaceView: View {
         } else {
             switch market.status(entry) {
             case .notInstalled:
-                Button("Install") { install(entry) }
+                Button(AppCopy.text("marketplace.install")) { install(entry) }
             case .updateAvailable(let installed):
-                Button("Update v\(installed) → v\(entry.version)") { install(entry) }
+                Button(AppCopy.format("marketplace.update", installed, entry.version)) { install(entry) }
             case .upToDate:
                 HStack(spacing: 6) {
-                    Text("Installed").font(.caption).foregroundStyle(.secondary)
-                    Button("Remove", role: .destructive) {
+                    Text(AppCopy.text("local.installed")).font(.caption).foregroundStyle(.secondary)
+                    Button(AppCopy.text("common.remove"), role: .destructive) {
                         actionError = nil
                         do { try market.remove(entry.id); model.remount() }
                         catch { actionError = error.localizedDescription }

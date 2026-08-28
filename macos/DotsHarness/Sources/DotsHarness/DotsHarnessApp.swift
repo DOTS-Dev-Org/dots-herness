@@ -6,19 +6,16 @@ import SwiftUI
 import DotsHarnessCore
 import DotsHarnessUI
 import PluginRuntime
-import FableThinkingPlugin
 
 @main
 struct DotsHarnessApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var model = AppModel(builtins: [
-        FableThinkingPlugin.self,
         PluginAuthorPlugin.self,
     ])
 
     init() {
-        // AsyncImage uses URLSession.shared; give it a real disk cache so pet
-        // avatars are fetched from the CDN once, then served from disk/memory.
+        // AsyncImage-based remote assets use a real disk cache.
         URLCache.shared = URLCache(
             memoryCapacity: 8 << 20,
             diskCapacity: 64 << 20,
@@ -33,6 +30,7 @@ struct DotsHarnessApp: App {
                 .frame(minWidth: 960, minHeight: 640)
                 .onAppear {
                     appDelegate.model = model
+                    model.requestNotificationAuthorization()
                     model.start()
                     DispatchQueue.main.async {
                         let window = NSApplication.shared.keyWindow
@@ -82,6 +80,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelega
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard shouldAllowTermination() else { return .terminateCancel }
         model?.shutdownVoice()
+        model?.terminalManager.stopAll()
         terminationRequested = true
         return .terminateNow
     }
