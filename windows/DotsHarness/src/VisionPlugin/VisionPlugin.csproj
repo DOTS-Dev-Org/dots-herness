@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>VisionPlugin</RootNamespace>
+    <AssemblyName>VisionPlugin</AssemblyName>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\..\..\shared\VisionPlugin.cs" Link="VisionPlugin.cs" />
+    <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="plugin.yml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="assets\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

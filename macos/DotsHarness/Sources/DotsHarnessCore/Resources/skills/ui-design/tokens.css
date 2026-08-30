@@ -1,0 +1,138 @@
+/* Derived fluid tokens. One root unit; everything else is a ratio of it.
+   Change --u or --text-base and the whole interface rescales coherently. */
+
+:root {
+  /* Root spacing unit: 6px at 360px viewport, 8px at 1440px. */
+  --u: clamp(0.375rem, 0.33rem + 0.55vw, 0.5rem);
+
+  --space-1: var(--u);
+  --space-2: calc(var(--u) * 2);
+  --space-3: calc(var(--u) * 3);
+  --space-4: calc(var(--u) * 4);
+  --space-6: calc(var(--u) * 6);
+  --space-8: calc(var(--u) * 8);
+  --space-12: calc(var(--u) * 12);
+
+  /* Type: fluid base, fixed ratio above it. */
+  --text-sm:   calc(var(--text-base) / 1.125);
+  --text-base: clamp(0.9375rem, 0.89rem + 0.24vw, 1rem);
+  --text-lg:   calc(var(--text-base) * 1.25);
+  --text-xl:   calc(var(--text-base) * 1.5625);
+  --text-2xl:  calc(var(--text-base) * 1.953);
+  --text-3xl:  calc(var(--text-base) * 2.441);
+
+  --leading-tight: 1.15;
+  --leading-body: 1.55;
+
+  /* Radius by role. Derived from --u, so it breathes with density.
+     Nesting law: outer radius = inner radius + padding between them. */
+  --r-sm:   calc(var(--u) * 0.75);
+  --r-md:   calc(var(--u) * 1.5);
+  --r-lg:   calc(var(--u) * 3);
+  --r-full: 999px;
+
+  /* Measure and gutters. */
+  --measure: 68ch;
+  --gutter: clamp(var(--space-3), 4vw, var(--space-8));
+
+  /* Input capability, not screen size. */
+  --tap-min: 32px;
+
+  /* Neutral ramp — replace with the product's own ink. */
+  --n-0:  hsl(0 0% 100%);
+  --n-50: hsl(240 20% 98%);
+  --n-100:hsl(240 14% 95%);
+  --n-200:hsl(240 11% 90%);
+  --n-300:hsl(240 9% 80%);
+  --n-500:hsl(240 6% 55%);
+  --n-700:hsl(240 8% 32%);
+  --n-900:hsl(240 14% 12%);
+  --n-950:hsl(240 18% 7%);
+
+  --surface: var(--n-0);
+  --surface-raised: var(--n-50);
+  --border: var(--n-200);
+  --text: var(--n-900);
+  --text-muted: var(--n-500);
+
+  /* Exactly one accent. Adding a second needs a stated reason. */
+  --accent: hsl(212 88% 45%);
+  --accent-contrast: var(--n-0);
+
+  /* One shadow tier. A second tier is a defect unless the DNA allows it. */
+  --shadow: 0 1px 2px hsl(240 20% 10% / 0.06), 0 4px 12px hsl(240 20% 10% / 0.06);
+}
+
+@media (pointer: coarse) {
+  :root { --tap-min: 44px; }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: var(--n-950);
+    --surface-raised: var(--n-900);
+    --border: hsl(240 10% 22%);
+    --text: var(--n-50);
+    --text-muted: var(--n-300);
+    --accent: hsl(212 90% 62%);
+    --accent-contrast: var(--n-950);
+  }
+}
+
+:root[data-theme="dark"] {
+  --surface: var(--n-950);
+  --surface-raised: var(--n-900);
+  --border: hsl(240 10% 22%);
+  --text: var(--n-50);
+  --text-muted: var(--n-300);
+  --accent: hsl(212 90% 62%);
+  --accent-contrast: var(--n-950);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* --- Recipes. Adapt these; do not start from nothing. --- */
+
+body { background: var(--surface); color: var(--text); font-size: var(--text-base); line-height: var(--leading-body); }
+
+.stack > * + * { margin-block-start: var(--space-3); }
+
+.control {
+  min-block-size: var(--tap-min);
+  min-inline-size: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+}
+.control:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.control[aria-busy="true"], .control:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.control--primary { background: var(--accent); color: var(--accent-contrast); border-color: transparent; }
+
+.field { border-radius: var(--r-sm); }
+
+/* Nesting law in practice: padding --space-3 around an --r-md child. */
+.card {
+  container-type: inline-size;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--r-md) + var(--space-3));
+  background: var(--surface-raised);
+}
+
+@container (min-width: 28rem) {
+  .card__body { display: grid; grid-template-columns: auto 1fr; gap: var(--space-3); align-items: start; }
+}
+
+.sheet { border-radius: calc(var(--r-lg) + var(--space-4)); padding: var(--space-4); }
+
+.page { max-inline-size: var(--measure); margin-inline: auto; padding-inline: var(--gutter); }
+
+/* Every list has these three. A happy path alone is unfinished. */
+.state-empty, .state-loading, .state-error { padding: var(--space-6); text-align: center; color: var(--text-muted); }
+.state-error { color: hsl(2 70% 45%); }

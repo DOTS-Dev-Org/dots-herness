@@ -1,0 +1,10 @@
+id: dots.vision-fallback
+name: Vision fallback
+version: 1.0.0
+abi: 1.0.0
+plane: host
+runtime: native
+library: VisionPlugin.dll
+inject:
+  - support.paths
+description: Describes images locally with SmolVLM-256M-Instruct and libmtmd.

@@ -1,0 +1,85 @@
+name: Desktop tests
+
+on:
+  push:
+    paths:
+      - "shared/**"
+      - "windows/**"
+      - "linux/**"
+      - "macos/**"
+      - "mobile/**"
+      - "tools/sync_prompts.py"
+      - ".github/workflows/desktop-tests.yml"
+  pull_request:
+    paths:
+      - "shared/**"
+      - "windows/**"
+      - "linux/**"
+      - "macos/**"
+      - "mobile/**"
+      - "tools/sync_prompts.py"
+      - ".github/workflows/desktop-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  prompts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every platform prompt literal matches shared/prompts
+        run: python3 tools/sync_prompts.py --check
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            directory: linux/DotsHarness
+            command: dotnet test DotsHarness.sln
+          - os: windows-latest
+            directory: windows/DotsHarness
+            command: dotnet test DotsHarness.sln
+          - os: macos-14
+            directory: macos/DotsHarness
+            command: swift test
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up .NET
+        if: matrix.os != 'macos-14'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+      - name: Test desktop target
+        working-directory: ${{ matrix.directory }}
+        run: ${{ matrix.command }}
+
+  mobile-ios:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        working-directory: mobile/ios
+        run: xcodegen generate
+      - name: Test iOS target on the required simulator
+        working-directory: mobile/ios
+        run: xcodebuild test -project HerNessMobile.xcodeproj -scheme HerNessMobile -destination 'platform=iOS Simulator,name=iPhone 17 Pro' CODE_SIGNING_ALLOWED=NO
+
+  mobile-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK platform
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Run Android unit tests
+        working-directory: mobile/android
+        run: gradle testDebugUnitTest

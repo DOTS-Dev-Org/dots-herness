@@ -3,6 +3,7 @@
 // Copyright (c) 2026 DeepSeek. MIT. See NOTICE.
 
 using System.Collections.ObjectModel;
+using System.Text.Json.Nodes;
 using HarnessPluginKit;
 using PluginRuntime;
 
@@ -20,9 +21,19 @@ public sealed class AppModel : ObservableObject
     private string _draft = "";
     private AppearanceKind _appearance = AppearanceKind.System;
     private bool _confirmBeforeExit = true;
+    private bool _selfVerification = true;
+    private bool _seedProjectRules = true;
     private string _preferredHost;
     private string _workspacePath;
     private bool _isPlanMode;
+    private VoiceInputProvider _voiceProvider = VoiceInputProvider.WhisperTinyQ5;
+    private string _voiceApiEndpoint = "";
+    private string _voiceApiKey = "";
+    private string _voiceApiModel = "";
+    private string _voiceApiRealtimeEndpoint = "";
+    private string _voiceCustomModelPath = "";
+    private bool _voiceIntroSeen;
+    private double _visionModelProgress;
 
     public ObservableCollection<ChatAttachment> DraftAttachments { get; } = new();
 
@@ -31,8 +42,12 @@ public sealed class AppModel : ObservableObject
     public PluginHost Host { get; }
     public SupportPaths Paths { get; }
     public AgentBridge Bridge { get; }
+    public RemoteControlEventHub RemoteEvents { get; }
+    public RemoteControlHost RemoteControl { get; }
+    public RemotePairingInfo? RemotePairing => RemoteControl.Pairing;
     public RouterController Router { get; }
     public LocalRuntimeController Local { get; }
+    public VoiceInputController Voice { get; }
     public HarnessScheduler Scheduler { get; }
     public LocalizationService Localization { get; }
     public AppLanguage Language => Localization.Language;
@@ -58,6 +73,23 @@ public sealed class AppModel : ObservableObject
         private set => SetProperty(ref _confirmBeforeExit, value);
     }
 
+    /// <summary>Agent runs its own build/test/check after each change. Default on.</summary>
+    public bool SelfVerification
+    {
+        get => _selfVerification;
+        private set => SetProperty(ref _selfVerification, value);
+    }
+
+    /// <summary>
+    /// Seed AGENTS.md and CLAUDE.md into a workspace that ships neither, once
+    /// when the workspace opens. Default on; off means nothing is ever created.
+    /// </summary>
+    public bool SeedProjectRules
+    {
+        get => _seedProjectRules;
+        private set => SetProperty(ref _seedProjectRules, value);
+    }
+
     public string PreferredHost
     {
         get => _preferredHost;
@@ -76,6 +108,46 @@ public sealed class AppModel : ObservableObject
         private set => SetProperty(ref _isPlanMode, value);
     }
 
+    public VoiceInputProvider VoiceProvider
+    {
+        get => _voiceProvider;
+        private set => SetProperty(ref _voiceProvider, value);
+    }
+
+    public string VoiceApiEndpoint
+    {
+        get => _voiceApiEndpoint;
+        private set => SetProperty(ref _voiceApiEndpoint, value);
+    }
+
+    public string VoiceApiKey
+    {
+        get => _voiceApiKey;
+        private set => SetProperty(ref _voiceApiKey, value);
+    }
+
+    public string VoiceApiModel
+    {
+        get => _voiceApiModel;
+        private set => SetProperty(ref _voiceApiModel, value);
+    }
+
+    public string VoiceApiRealtimeEndpoint
+    {
+        get => _voiceApiRealtimeEndpoint;
+        private set => SetProperty(ref _voiceApiRealtimeEndpoint, value);
+    }
+
+    public string VoiceCustomModelPath
+    {
+        get => _voiceCustomModelPath;
+        private set => SetProperty(ref _voiceCustomModelPath, value);
+    }
+
+    public bool ShowsVoiceIntro => !_voiceIntroSeen;
+    public bool IsVoiceReady => Voice.IsReady;
+    public bool IsVoiceRunning => Voice.IsRunning;
+
     public IReadOnlyList<Conversation> Conversations => Bridge.Conversations;
 
     public string? SelectedConversationId
@@ -91,6 +163,17 @@ public sealed class AppModel : ObservableObject
 
     public Conversation? Selected => Bridge.Selected;
     public string StatusLine => Bridge.Status;
+    public bool VisionPluginInstalled => Catalog.Entries.Any(entry => entry.Manifest.Id == VisionFallbackDefaults.PluginId);
+    public bool VisionPluginEnabled => Catalog.Entries.FirstOrDefault(entry => entry.Manifest.Id == VisionFallbackDefaults.PluginId)?.Enabled == true;
+    public VisionFallbackState VisionState => Host.GetService<IVisionFallbackService>(VisionFallbackDefaults.ServiceName)?.State
+        ?? VisionFallbackState.Unavailable;
+    public double VisionModelProgress
+    {
+        get => _visionModelProgress;
+        private set => SetProperty(ref _visionModelProgress, Math.Clamp(value, 0, 1));
+    }
+    public long VisionModelBytes => Host.GetService<IVisionFallbackService>(VisionFallbackDefaults.ServiceName)?.ModelBytes
+        ?? VisionFallbackDefaults.ModelBytes;
     public string SelectedModelID
     {
         get => Router.SelectedModelID;
@@ -101,6 +184,7 @@ public sealed class AppModel : ObservableObject
     {
         Paths = paths ?? SupportPaths.Default();
         Paths.Ensure();
+        Voice = new VoiceInputController(Paths);
         Catalog = new PluginCatalog(Paths);
         if (builtins is not null)
         {
@@ -125,9 +209,34 @@ public sealed class AppModel : ObservableObject
             Localization.SetLanguage(language);
         }
         Host = new PluginHost(Catalog, settings);
+        Host.ProvideService("support.paths", new PluginSupportPaths(Paths.Root, Paths.Plugins, Paths.Models, Paths.Runtime));
+        Host.ProvideService(
+            VisionFallbackDefaults.InstallerServiceName,
+            new VisionMarketplaceInstaller(Paths, Catalog, Host, Remount));
         Router = new RouterController(Paths, Host.ImageAdapters);
         Router.SelectedModelID = settings.Get("agent.model")?.AsString() ?? "";
-        Bridge = new AgentBridge(Router, Paths, Skills);
+        RemoteEvents = new RemoteControlEventHub(Paths.Root);
+        Router.ConnectionChanged += transition =>
+        {
+            var artifacts = new JsonArray();
+            foreach (var artifact in transition.RemovedLocalArtifacts) artifacts.Add(artifact);
+            RemoteEvents.Publish(
+                "connection.changed",
+                RemoteControlIdentity.WorkspaceId(WorkspacePath),
+                null,
+                new JsonObject
+                {
+                    ["action"] = transition.Action,
+                    ["previousConnectionLabel"] = transition.PreviousConnectionLabel,
+                    ["currentConnectionLabel"] = transition.CurrentConnectionLabel,
+                    ["cleanupStatus"] = transition.CleanupStatus,
+                    ["removedLocalArtifacts"] = artifacts,
+                    ["remoteDataTouched"] = transition.RemoteDataTouched,
+                    ["userDataPreserved"] = transition.UserDataPreserved,
+                });
+        };
+        Bridge = new AgentBridge(Router, Paths, Skills, Host, RemoteEvents);
+        RemoteControl = new RemoteControlHost(Bridge, Paths, RemoteEvents, () => WorkspacePath);
         Local = new LocalRuntimeController(Paths, Router);
         var taskRunner = new ScheduledTaskRunner(Paths, Router);
         Scheduler = new HarnessScheduler(
@@ -143,9 +252,33 @@ public sealed class AppModel : ObservableObject
         {
             ConfirmBeforeExit = confirmBeforeExit;
         }
+        if (settings.Get("agent.selfVerification")?.AsBool() is { } selfVerification)
+        {
+            SelfVerification = selfVerification;
+        }
+        Bridge.SelfVerification = SelfVerification;
+        if (settings.Get("agent.seedProjectRules")?.AsBool() is { } seedProjectRules)
+        {
+            SeedProjectRules = seedProjectRules;
+        }
+        // Set before Start() binds the workspace, so a disabled setting never seeds.
+        Bridge.SeedProjectRules = SeedProjectRules;
+        _voiceIntroSeen = settings.Get("ui.voiceIntroSeen")?.AsBool() ?? false;
+        if (settings.Get("voice.provider")?.AsString() is { } voiceProvider
+            && Enum.TryParse<VoiceInputProvider>(voiceProvider, ignoreCase: true, out var parsedVoiceProvider))
+        {
+            _voiceProvider = parsedVoiceProvider;
+        }
+        _voiceApiEndpoint = settings.Get("voice.api.endpoint")?.AsString() ?? "";
+        _voiceApiKey = settings.Get("voice.api.key")?.AsString() ?? "";
+        _voiceApiModel = settings.Get("voice.api.model")?.AsString() ?? "";
+        _voiceApiRealtimeEndpoint = settings.Get("voice.api.realtimeEndpoint")?.AsString() ?? "";
+        _voiceCustomModelPath = settings.Get("voice.custom.path")?.AsString() ?? "";
+        Voice.Configure(_voiceProvider, _voiceApiEndpoint, _voiceApiKey, _voiceApiModel, _voiceApiRealtimeEndpoint, _voiceCustomModelPath);
         PreferredHost = "native";
         WorkspacePath = settings.Get("agent.workspace")?.AsString()
             ?? Environment.CurrentDirectory;
+        RemoteControl.SetWorkspacePath(WorkspacePath);
         Skills.SetWorkspace(WorkspacePath);
         Remount();
         Bridge.PropertyChanged += (_, _) =>
@@ -157,6 +290,19 @@ public sealed class AppModel : ObservableObject
         };
         Router.PropertyChanged += (_, e) => OnPropertyChanged(e.PropertyName);
         Local.PropertyChanged += (_, e) => OnPropertyChanged(e.PropertyName);
+        Voice.PropertyChanged += (_, e) =>
+        {
+            OnPropertyChanged(nameof(IsVoiceReady));
+            OnPropertyChanged(nameof(IsVoiceRunning));
+            if (e.PropertyName is nameof(VoiceInputController.Provider)
+                or nameof(VoiceInputController.ApiEndpoint)
+                or nameof(VoiceInputController.ApiKey)
+                or nameof(VoiceInputController.ApiModel)
+                or nameof(VoiceInputController.RealtimeEndpoint))
+            {
+                OnPropertyChanged(nameof(VoiceProvider));
+            }
+        };
         Localization.PropertyChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(Language));
@@ -167,6 +313,7 @@ public sealed class AppModel : ObservableObject
 
     public void Start()
     {
+        RemoteControl.Start();
         _ = Bridge.StartAsync(WorkspacePath);
         Scheduler.RunsDueTasks = !IsBackgroundDaemonEnabled;
         Scheduler.Start();
@@ -179,10 +326,26 @@ public sealed class AppModel : ObservableObject
     /// </summary>
     public void StartHeadless()
     {
+        RemoteControl.Start();
         Remount();
         _ = Router.RefreshAsync();
         Scheduler.RunsDueTasks = true;
         Scheduler.Start();
+    }
+
+    public RemotePairingInfo BeginRemotePairing()
+    {
+        var pairing = RemoteControl.BeginPairing(RemoteControl.PublicEndpoint ?? RemoteControl.PreferredEndpoint);
+        OnPropertyChanged(nameof(RemotePairing));
+        return pairing;
+    }
+
+    public Task<string> EnableRemoteCloudTunnelAsync() => RemoteControl.EnableCloudTunnelAsync();
+
+    public void DisableRemoteCloudTunnel()
+    {
+        RemoteControl.DisableCloudTunnel();
+        OnPropertyChanged(nameof(RemotePairing));
     }
 
     public bool IsBackgroundDaemonEnabled =>
@@ -226,6 +389,63 @@ public sealed class AppModel : ObservableObject
         }
         OnPropertyChanged(nameof(Catalog));
         OnPropertyChanged(nameof(Host));
+        OnPropertyChanged(nameof(VisionPluginInstalled));
+        OnPropertyChanged(nameof(VisionPluginEnabled));
+        OnPropertyChanged(nameof(VisionState));
+        VisionModelProgress = VisionState == VisionFallbackState.Ready ? 1 : 0;
+    }
+
+    public void SetVisionPluginEnabled(bool enabled)
+    {
+        Catalog.SetEnabled(VisionFallbackDefaults.PluginId, enabled);
+        Remount();
+    }
+
+    public async Task InstallVisionPluginAsync(CancellationToken cancellationToken = default)
+    {
+        var installer = Host.GetService<IVisionFallbackInstaller>(VisionFallbackDefaults.InstallerServiceName)
+            ?? throw new InvalidOperationException("Vision marketplace installer is unavailable.");
+        await installer.InstallAsync(cancellationToken);
+        OnPropertyChanged(nameof(VisionPluginInstalled));
+        OnPropertyChanged(nameof(VisionPluginEnabled));
+        OnPropertyChanged(nameof(VisionState));
+    }
+
+    public async Task PrepareVisionAsync(CancellationToken cancellationToken = default)
+    {
+        var service = Host.GetService<IVisionFallbackService>(VisionFallbackDefaults.ServiceName)
+            ?? throw new InvalidOperationException("Vision plugin is not installed.");
+        VisionModelProgress = 0;
+        try
+        {
+            await service.PrepareAsync(
+                new Progress<double>(value => VisionModelProgress = value),
+                cancellationToken);
+        }
+        finally
+        {
+            VisionModelProgress = VisionState == VisionFallbackState.Ready ? 1 : 0;
+            OnPropertyChanged(nameof(VisionState));
+        }
+    }
+
+    public async Task DeleteVisionModelAsync(CancellationToken cancellationToken = default)
+    {
+        var service = Host.GetService<IVisionFallbackService>(VisionFallbackDefaults.ServiceName)
+            ?? throw new InvalidOperationException("Vision plugin is not installed.");
+        await service.DeleteModelAsync(cancellationToken);
+        VisionModelProgress = 0;
+        OnPropertyChanged(nameof(VisionState));
+    }
+
+    public void RemoveVisionPlugin()
+    {
+        Host.UnmountAll();
+        var pluginDirectory = Path.Combine(Paths.Plugins, VisionFallbackDefaults.PluginId);
+        var modelDirectory = Path.Combine(Paths.Models, "vision", "smolvlm-256m-q8");
+        if (Directory.Exists(pluginDirectory)) Directory.Delete(pluginDirectory, recursive: true);
+        if (Directory.Exists(modelDirectory)) Directory.Delete(modelDirectory, recursive: true);
+        Remount();
     }
 
     public void NewConversation() => _ = Bridge.NewConversationAsync(WorkspacePath);
@@ -299,6 +519,22 @@ public sealed class AppModel : ObservableObject
         OnPropertyChanged(nameof(IsRightToLeft));
     }
 
+    public void SetSelfVerification(bool value)
+    {
+        SelfVerification = value;
+        Bridge.SelfVerification = value;
+        Host.Settings.Set("agent.selfVerification", JsonValue.Bool(value));
+        PersistSettings();
+    }
+
+    public void SetSeedProjectRules(bool value)
+    {
+        SeedProjectRules = value;
+        Bridge.SeedProjectRules = value;
+        Host.Settings.Set("agent.seedProjectRules", JsonValue.Bool(value));
+        PersistSettings();
+    }
+
     public void SetConfirmBeforeExit(bool value)
     {
         ConfirmBeforeExit = value;
@@ -316,18 +552,62 @@ public sealed class AppModel : ObservableObject
     public void SetWorkspace(string value)
     {
         WorkspacePath = value;
+        RemoteControl.SetWorkspacePath(value);
         Skills.SetWorkspace(value);
         Host.Settings.Set("agent.workspace", JsonValue.String(value));
         PersistSettings();
     }
 
+    public void DismissVoiceIntro()
+    {
+        if (_voiceIntroSeen) return;
+        _voiceIntroSeen = true;
+        Host.Settings.Set("ui.voiceIntroSeen", JsonValue.Bool(true));
+        OnPropertyChanged(nameof(ShowsVoiceIntro));
+        PersistSettings();
+    }
+
+    public void SetVoiceProvider(VoiceInputProvider value)
+    {
+        if (VoiceProvider == value) return;
+        VoiceProvider = value;
+        ConfigureVoice();
+        Host.Settings.Set("voice.provider", JsonValue.String(value.ToString()));
+        PersistSettings();
+    }
+
+    public void SetVoiceApiEndpoint(string value) { VoiceApiEndpoint = value; ConfigureVoice(); Host.Settings.Set("voice.api.endpoint", JsonValue.String(value)); PersistSettings(); }
+    public void SetVoiceApiKey(string value) { VoiceApiKey = value; ConfigureVoice(); Host.Settings.Set("voice.api.key", JsonValue.String(value)); PersistSettings(); }
+    public void SetVoiceApiModel(string value) { VoiceApiModel = value; ConfigureVoice(); Host.Settings.Set("voice.api.model", JsonValue.String(value)); PersistSettings(); }
+    public void SetVoiceApiRealtimeEndpoint(string value) { VoiceApiRealtimeEndpoint = value; ConfigureVoice(); Host.Settings.Set("voice.api.realtimeEndpoint", JsonValue.String(value)); PersistSettings(); }
+    public void SetVoiceCustomModelPath(string value) { VoiceCustomModelPath = value; ConfigureVoice(); Host.Settings.Set("voice.custom.path", JsonValue.String(value)); PersistSettings(); }
+    public Task StartVoiceAsync(CancellationToken ct = default) => Voice.StartAsync(ct);
+    public Task StopVoiceAsync(CancellationToken ct = default) => Voice.StopAsync(ct);
+    public Task EnsureVoiceAssetsAsync(Action<FileDownloader.Progress>? progress = null, CancellationToken ct = default) => Voice.EnsureAssetsAsync(progress, ct);
+
+    private void ConfigureVoice() => Voice.Configure(
+        VoiceProvider,
+        VoiceApiEndpoint,
+        VoiceApiKey,
+        VoiceApiModel,
+        VoiceApiRealtimeEndpoint,
+        VoiceCustomModelPath);
+
     public void PersistSettings()
     {
         var snapshot = Host.Settings.Snapshot();
         File.WriteAllText(Paths.Settings, JsonValue.Object(snapshot).ToJson());
+        try { File.SetUnixFileMode(Paths.Settings, UnixFileMode.UserRead | UnixFileMode.UserWrite); } catch { }
     }
 
+    /// <summary>Only the plugin/session prompt sections, fed back into <c>UpdateSystemPrompt</c>.</summary>
     public string AssembledSystemPrompt() => Host.Prompt.AssembledText();
+
+    /// <summary>
+    /// Everything actually sent as the system prompt - core policy, plan rules,
+    /// plugin text and skill metadata - broken out by section with sizes.
+    /// </summary>
+    public string EffectiveSystemPrompt() => Bridge.EffectiveSystemPromptReport(WorkspacePath);
 
     private static InMemorySettingsRegistry LoadSettings(string path)
     {
@@ -370,6 +650,13 @@ public static class CompositionLoader
             }
         }
         var entries = document.Entries.ToList();
+        if (catalog.Entries.Any(entry => entry.Manifest.Id == VisionFallbackDefaults.PluginId)
+            && entries.All(entry => entry.Plugin != VisionFallbackDefaults.PluginId))
+        {
+            entries.Add(new CompositionEntry(
+                VisionFallbackDefaults.PluginId,
+                VisionFallbackDefaults.PluginId));
+        }
         for (var i = 0; i < entries.Count; i++)
         {
             var item = catalog.Entries.FirstOrDefault(e => e.Manifest.Id == entries[i].Plugin);

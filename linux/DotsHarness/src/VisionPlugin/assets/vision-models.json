@@ -1,0 +1,18 @@
+{
+  "revision": "b9e4379657e1450d04d02eec8e345667265b0a00",
+  "runtimeLibrary": "assets/runtime/libdots_vision_runtime.so",
+  "textModel": "SmolVLM-256M-Instruct-Q8_0.gguf",
+  "projector": "mmproj-SmolVLM-256M-Instruct-Q8_0.gguf",
+  "files": [
+    {
+      "name": "SmolVLM-256M-Instruct-Q8_0.gguf",
+      "size": 175054528,
+      "sha256": "2a31195d3769c0b0fd0a4906201666108834848db768af11de1d2cef7cd35e65"
+    },
+    {
+      "name": "mmproj-SmolVLM-256M-Instruct-Q8_0.gguf",
+      "size": 103769856,
+      "sha256": "7e943f7c53f0382a6fc41b6ee0c2def63ba4fded9ab8ed039cc9e2ab905e0edd"
+    }
+  ]
+}

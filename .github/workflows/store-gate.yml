@@ -1,0 +1,39 @@
+name: Store preflight
+
+on:
+  push:
+    paths:
+      - "mobile/ios/**"
+      - "mobile/android/**"
+      - "tools/store-gate.sh"
+      - ".github/workflows/store-gate.yml"
+  pull_request:
+    paths:
+      - "mobile/ios/**"
+      - "mobile/android/**"
+      - "tools/store-gate.sh"
+      - ".github/workflows/store-gate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  greenlight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: Install Greenlight
+        run: go install github.com/RevylAI/greenlight/cmd/greenlight@latest
+      - name: Scan iOS and Android
+        run: |
+          set -o pipefail
+          "$(go env GOPATH)/bin/greenlight" preflight . --format json --exit-code | tee greenlight.json
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: greenlight-report
+          path: greenlight.json
