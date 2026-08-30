@@ -12,8 +12,8 @@
 - Voice API key (`voice.api.key`) her platformda `settings.json` içinde plaintext — `AppModel.cs:PersistSettings` 600 ile yazılıyor (Unix). Home 755 ise fallback dir 700 korur ama `settings.json` 600 şart.
 
 ## Localization
-- `shared/Localization.resx:7` 267 key, `macos/.../en.lproj/Localizable.strings` 868 key → ~600 key eksik (`voice.*`, `mcp.*`, `remote.*`, `vision.*`, `plan.*`).
-- Windows/Linux raw key fallback gösterir. Fix: `shared/Localization.*.resx` regen veya `tools/` l10n script. Şimdilik English fallback kabul, CI `LocalizationTests.swift:22` sadece `key != value` kontrol ediyor.
+- `shared/Localization.resx:7` 267 key, `macos/.../en.lproj/Localizable.strings` 868 key → farklı key setleri, kasıtlı. `shared` sadece Windows/Linux `L()` (148 key) kullanır, `macos` sadece `AppCopy.text()`. Cross-check: `shared` makos anahtarlarını içermez, tersi de öyle — bug değil.
+- Gerçek bug: `shared/Localization.*.resx` HEAD 200 key iken `L()` 148'in 39'u eksikti (örn `ask.*`, `voice.*`, `vision.*`). Diğer diller 221 key ile 25 `L()` eksikti → ilgili dilde English fallback. Fix: tüm `shared/Localization*.resx` 267'ye eşitlendi (46 eksik eklendi, English fallback). `LocalizationTests:4` artık geçiyor.
 
 ## Resource Skills
 - `Package.swift:47` `.copy("Resources/skills")` → `macos/.../Resources/skills/ui-design/` commitli olmalı, yoksa runtime 0 skill.

@@ -4,156 +4,156 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <data name="app.title" xml:space="preserve"><value>Dots Harness</value></data>
+  <data name="app.title" xml:space="preserve"><value>도트 하네스</value></data>
   <data name="language.system" xml:space="preserve"><value>시스템 언어</value></data>
   <data name="settings.language" xml:space="preserve"><value>앱 언어</value></data>
   <data name="settings.general" xml:space="preserve"><value>일반</value></data>
-  <data name="settings.back" xml:space="preserve"><value>Back to chats</value></data>
+  <data name="settings.back" xml:space="preserve"><value>채팅으로 돌아가기</value></data>
   <data name="settings.appearance" xml:space="preserve"><value>모양</value></data>
-  <data name="settings.theme" xml:space="preserve"><value>Theme</value></data>
-  <data name="settings.confirmBeforeExit" xml:space="preserve"><value>Ask before closing</value></data>
+  <data name="settings.theme" xml:space="preserve"><value>테마</value></data>
+  <data name="settings.confirmBeforeExit" xml:space="preserve"><value>닫기 전에 물어보세요</value></data>
   <data name="settings.workspace" xml:space="preserve"><value>작업 공간</value></data>
-  <data name="settings.folder" xml:space="preserve"><value>Folder</value></data>
-  <data name="settings.chooseWorkspace" xml:space="preserve"><value>Choose workspace</value></data>
-  <data name="settings.changeWorkspace" xml:space="preserve"><value>Change workspace</value></data>
-  <data name="settings.connectedModel" xml:space="preserve"><value>Connected model</value></data>
-  <data name="settings.supportFolder" xml:space="preserve"><value>Support folder</value></data>
-  <data name="settings.userPlugins" xml:space="preserve"><value>User plugins</value></data>
+  <data name="settings.folder" xml:space="preserve"><value>폴더</value></data>
+  <data name="settings.chooseWorkspace" xml:space="preserve"><value>작업공간 선택</value></data>
+  <data name="settings.changeWorkspace" xml:space="preserve"><value>작업공간 변경</value></data>
+  <data name="settings.connectedModel" xml:space="preserve"><value>연결된 모델</value></data>
+  <data name="settings.supportFolder" xml:space="preserve"><value>지원 폴더</value></data>
+  <data name="settings.userPlugins" xml:space="preserve"><value>사용자 플러그인</value></data>
   <data name="settings.providers" xml:space="preserve"><value>제공자</value></data>
-  <data name="settings.provider" xml:space="preserve"><value>Provider</value></data>
-  <data name="settings.connectedAccounts" xml:space="preserve"><value>Connected accounts</value></data>
-  <data name="settings.noConnections" xml:space="preserve"><value>No connections yet.</value></data>
-  <data name="settings.addProviderCustom" xml:space="preserve"><value>Add this provider through Custom API.</value></data>
-  <data name="settings.signInBrowser" xml:space="preserve"><value>Complete the provider sign-in in your system browser.</value></data>
-  <data name="settings.connect" xml:space="preserve"><value>Connect</value></data>
-  <data name="settings.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="settings.refresh" xml:space="preserve"><value>Refresh</value></data>
-  <data name="settings.browserLogin" xml:space="preserve"><value>Browser login</value></data>
-  <data name="settings.authUrl" xml:space="preserve"><value>Auth URL</value></data>
-  <data name="settings.pasteCallbackUrl" xml:space="preserve"><value>Paste callback URL</value></data>
-  <data name="settings.finishLogin" xml:space="preserve"><value>Finish login</value></data>
-  <data name="settings.deviceLogin" xml:space="preserve"><value>Device login</value></data>
-  <data name="settings.verify" xml:space="preserve"><value>Verify</value></data>
-  <data name="settings.waitingAuthorization" xml:space="preserve"><value>Waiting for authorization…</value></data>
-  <data name="settings.active" xml:space="preserve"><value>Active</value></data>
-  <data name="settings.test" xml:space="preserve"><value>Test</value></data>
-  <data name="settings.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="settings.account" xml:space="preserve"><value>account</value></data>
-  <data name="settings.accounts" xml:space="preserve"><value>accounts</value></data>
-  <data name="settings.addAccount" xml:space="preserve"><value>Add account</value></data>
-  <data name="settings.addCustomEndpoint" xml:space="preserve"><value>Add a custom endpoint</value></data>
-  <data name="settings.customEndpointHint" xml:space="preserve"><value>Ollama, LM Studio, vLLM, llama.cpp, or any OpenAI/Anthropic-compatible server.</value></data>
-  <data name="settings.name" xml:space="preserve"><value>Name</value></data>
-  <data name="settings.prefix" xml:space="preserve"><value>Prefix (model id, e.g. local)</value></data>
-  <data name="settings.baseUrl" xml:space="preserve"><value>Base URL</value></data>
-  <data name="settings.apiKeyOptional" xml:space="preserve"><value>API key (optional for local)</value></data>
+  <data name="settings.provider" xml:space="preserve"><value>공급자</value></data>
+  <data name="settings.connectedAccounts" xml:space="preserve"><value>연결된 계정</value></data>
+  <data name="settings.noConnections" xml:space="preserve"><value>아직 연결이 없습니다.</value></data>
+  <data name="settings.addProviderCustom" xml:space="preserve"><value>맞춤 API를 통해 이 공급자를 추가하세요.</value></data>
+  <data name="settings.signInBrowser" xml:space="preserve"><value>시스템 브라우저에서 공급자 로그인을 완료하세요.</value></data>
+  <data name="settings.connect" xml:space="preserve"><value>연결하다</value></data>
+  <data name="settings.cancel" xml:space="preserve"><value>취소</value></data>
+  <data name="settings.refresh" xml:space="preserve"><value>새로고침</value></data>
+  <data name="settings.browserLogin" xml:space="preserve"><value>브라우저 로그인</value></data>
+  <data name="settings.authUrl" xml:space="preserve"><value>인증 URL</value></data>
+  <data name="settings.pasteCallbackUrl" xml:space="preserve"><value>콜백 URL 붙여넣기</value></data>
+  <data name="settings.finishLogin" xml:space="preserve"><value>로그인 완료</value></data>
+  <data name="settings.deviceLogin" xml:space="preserve"><value>장치 로그인</value></data>
+  <data name="settings.verify" xml:space="preserve"><value>확인</value></data>
+  <data name="settings.waitingAuthorization" xml:space="preserve"><value>승인을 기다리는 중…</value></data>
+  <data name="settings.active" xml:space="preserve"><value>활성</value></data>
+  <data name="settings.test" xml:space="preserve"><value>테스트</value></data>
+  <data name="settings.remove" xml:space="preserve"><value>제거</value></data>
+  <data name="settings.account" xml:space="preserve"><value>계정</value></data>
+  <data name="settings.accounts" xml:space="preserve"><value>계정</value></data>
+  <data name="settings.addAccount" xml:space="preserve"><value>계정 추가</value></data>
+  <data name="settings.addCustomEndpoint" xml:space="preserve"><value>사용자 정의 엔드포인트 추가</value></data>
+  <data name="settings.customEndpointHint" xml:space="preserve"><value>Ollama, LM Studio, vLLM, llama.cpp 또는 모든 OpenAI/Anthropic 호환 서버.</value></data>
+  <data name="settings.name" xml:space="preserve"><value>이름</value></data>
+  <data name="settings.prefix" xml:space="preserve"><value>접두사(모델 ID, 예: 로컬)</value></data>
+  <data name="settings.baseUrl" xml:space="preserve"><value>기본 URL</value></data>
+  <data name="settings.apiKeyOptional" xml:space="preserve"><value>API 키(로컬의 경우 선택사항)</value></data>
   <data name="settings.api" xml:space="preserve"><value>API</value></data>
-  <data name="settings.saveChanges" xml:space="preserve"><value>Save changes</value></data>
-  <data name="settings.addCustomApi" xml:space="preserve"><value>Add custom API</value></data>
-  <data name="settings.cancelEdit" xml:space="preserve"><value>Cancel edit</value></data>
-  <data name="settings.customProviders" xml:space="preserve"><value>Custom providers</value></data>
-  <data name="settings.noneYet" xml:space="preserve"><value>None yet.</value></data>
-  <data name="settings.localModels" xml:space="preserve"><value>Local models</value></data>
-  <data name="settings.installed" xml:space="preserve"><value>Installed</value></data>
-  <data name="settings.notInstalled" xml:space="preserve"><value>Not installed</value></data>
-  <data name="settings.listen" xml:space="preserve"><value>Listen</value></data>
-  <data name="settings.serving" xml:space="preserve"><value>Serving</value></data>
-  <data name="settings.reinstallRuntime" xml:space="preserve"><value>Reinstall runtime</value></data>
-  <data name="settings.installLlama" xml:space="preserve"><value>Install llama.cpp</value></data>
-  <data name="settings.stopLocal" xml:space="preserve"><value>Stop local server</value></data>
-  <data name="settings.downloadRun" xml:space="preserve"><value>Download and run</value></data>
-  <data name="settings.stop" xml:space="preserve"><value>Stop</value></data>
-  <data name="settings.start" xml:space="preserve"><value>Start</value></data>
-  <data name="settings.download" xml:space="preserve"><value>Download</value></data>
-  <data name="settings.onDisk" xml:space="preserve"><value>On disk · {0}</value></data>
-  <data name="settings.sharing" xml:space="preserve"><value>Sharing</value></data>
-  <data name="settings.status" xml:space="preserve"><value>Status</value></data>
-  <data name="settings.running" xml:space="preserve"><value>Running</value></data>
-  <data name="settings.enabled" xml:space="preserve"><value>Enabled</value></data>
-  <data name="settings.stopped" xml:space="preserve"><value>Stopped</value></data>
-  <data name="settings.shortId" xml:space="preserve"><value>Short id</value></data>
-  <data name="settings.publicUrl" xml:space="preserve"><value>Public URL</value></data>
-  <data name="settings.stopSharing" xml:space="preserve"><value>Stop sharing</value></data>
-  <data name="settings.enableSharing" xml:space="preserve"><value>Download and enable sharing</value></data>
-  <data name="settings.copyUrl" xml:space="preserve"><value>Copy URL</value></data>
-  <data name="settings.sharingHint" xml:space="preserve"><value>Enabling sharing starts the loopback gateway and downloads the verified sharing binary once.</value></data>
-  <data name="settings.client" xml:space="preserve"><value>Give this to a client</value></data>
-  <data name="settings.endpoint" xml:space="preserve"><value>Endpoint</value></data>
-  <data name="settings.copyEndpoint" xml:space="preserve"><value>Copy endpoint</value></data>
-  <data name="settings.copyApiKey" xml:space="preserve"><value>Copy API key</value></data>
-  <data name="settings.noShareKey" xml:space="preserve"><value>No share key yet.</value></data>
-  <data name="settings.createKey" xml:space="preserve"><value>Create key</value></data>
-  <data name="settings.revealFolder" xml:space="preserve"><value>Reveal folder</value></data>
-  <data name="settings.reload" xml:space="preserve"><value>Reload</value></data>
-  <data name="settings.plugins" xml:space="preserve"><value>Plugins</value></data>
-  <data name="settings.pluginsHint" xml:space="preserve"><value>Drop a folder with plugin.yml into the plugins directory. Manifest plugins work untrusted. Compiled assemblies need Trust.</value></data>
-  <data name="settings.lastMountFailed" xml:space="preserve"><value>Last mount failed</value></data>
-  <data name="settings.scheduledTasks" xml:space="preserve"><value>Scheduled Tasks</value></data>
-  <data name="settings.tasksHint" xml:space="preserve"><value>Run a prompt on a cron schedule.</value></data>
-  <data name="settings.backgroundTasks" xml:space="preserve"><value>Run tasks while the app is closed (background helper)</value></data>
-  <data name="settings.newTask" xml:space="preserve"><value>New task</value></data>
-  <data name="settings.cronExpression" xml:space="preserve"><value>Cron expression</value></data>
-  <data name="settings.promptField" xml:space="preserve"><value>Prompt</value></data>
-  <data name="settings.addTask" xml:space="preserve"><value>Add task</value></data>
-  <data name="settings.required" xml:space="preserve"><value>Name, a valid cron expression, a workspace, and a prompt are required.</value></data>
-  <data name="settings.noTasks" xml:space="preserve"><value>No tasks yet.</value></data>
-  <data name="settings.next" xml:space="preserve"><value>Next: {0}</value></data>
-  <data name="settings.invalidCron" xml:space="preserve"><value>Invalid cron</value></data>
-  <data name="settings.last" xml:space="preserve"><value>Last: {0}</value></data>
-  <data name="settings.runNow" xml:space="preserve"><value>Run now</value></data>
-  <data name="settings.noPrompt" xml:space="preserve"><value>No prompt sections mounted.</value></data>
-  <data name="conversation.title" xml:space="preserve"><value>Dots Harness</value></data>
-  <data name="conversation.emptyNoProvider" xml:space="preserve"><value>Connect a provider account to start chatting.</value></data>
-  <data name="conversation.emptySidebar" xml:space="preserve"><value>Start a conversation from the sidebar.</value></data>
-  <data name="conversation.allow" xml:space="preserve"><value>Allow {0}?</value></data>
-  <data name="conversation.ok" xml:space="preserve"><value>OK</value></data>
-  <data name="conversation.stop" xml:space="preserve"><value>Stop</value></data>
-  <data name="conversation.stopVoice" xml:space="preserve"><value>Stop voice input</value></data>
-  <data name="conversation.mic" xml:space="preserve"><value>Mic</value></data>
-  <data name="conversation.startVoice" xml:space="preserve"><value>Start voice input</value></data>
-  <data name="conversation.listening" xml:space="preserve"><value>Listening…</value></data>
-  <data name="conversation.heard" xml:space="preserve"><value>Heard: {0}</value></data>
-  <data name="conversation.voiceStopped" xml:space="preserve"><value>Voice input stopped.</value></data>
-  <data name="conversation.voiceUnavailable" xml:space="preserve"><value>Voice input unavailable. Check your microphone privacy settings and an installed speech language. {0}</value></data>
-  <data name="conversation.priority" xml:space="preserve"><value>Priority instruction</value></data>
-  <data name="conversation.queued" xml:space="preserve"><value>Queued message</value></data>
-  <data name="conversation.interrupting" xml:space="preserve"><value>Interrupting</value></data>
-  <data name="conversation.inContext" xml:space="preserve"><value>In context</value></data>
-  <data name="conversation.waiting" xml:space="preserve"><value>Waiting</value></data>
-  <data name="conversation.you" xml:space="preserve"><value>You</value></data>
-  <data name="conversation.assistant" xml:space="preserve"><value>Harness</value></data>
-  <data name="conversation.plan" xml:space="preserve"><value>Plan</value></data>
-  <data name="conversation.tool" xml:space="preserve"><value>Tool</value></data>
-  <data name="conversation.system" xml:space="preserve"><value>System</value></data>
-  <data name="conversation.dropFiles" xml:space="preserve"><value>Drop files here</value></data>
+  <data name="settings.saveChanges" xml:space="preserve"><value>변경사항 저장</value></data>
+  <data name="settings.addCustomApi" xml:space="preserve"><value>커스텀 API 추가</value></data>
+  <data name="settings.cancelEdit" xml:space="preserve"><value>편집 취소</value></data>
+  <data name="settings.customProviders" xml:space="preserve"><value>맞춤 제공업체</value></data>
+  <data name="settings.noneYet" xml:space="preserve"><value>아직 없습니다.</value></data>
+  <data name="settings.localModels" xml:space="preserve"><value>현지 모델</value></data>
+  <data name="settings.installed" xml:space="preserve"><value>설치됨</value></data>
+  <data name="settings.notInstalled" xml:space="preserve"><value>설치되지 않음</value></data>
+  <data name="settings.listen" xml:space="preserve"><value>들어봐</value></data>
+  <data name="settings.serving" xml:space="preserve"><value>서빙</value></data>
+  <data name="settings.reinstallRuntime" xml:space="preserve"><value>런타임 재설치</value></data>
+  <data name="settings.installLlama" xml:space="preserve"><value>llama.cpp 설치</value></data>
+  <data name="settings.stopLocal" xml:space="preserve"><value>로컬 서버 중지</value></data>
+  <data name="settings.downloadRun" xml:space="preserve"><value>다운로드 및 실행</value></data>
+  <data name="settings.stop" xml:space="preserve"><value>중지</value></data>
+  <data name="settings.start" xml:space="preserve"><value>시작</value></data>
+  <data name="settings.download" xml:space="preserve"><value>다운로드</value></data>
+  <data name="settings.onDisk" xml:space="preserve"><value>디스크상 · {0}</value></data>
+  <data name="settings.sharing" xml:space="preserve"><value>공유</value></data>
+  <data name="settings.status" xml:space="preserve"><value>상태</value></data>
+  <data name="settings.running" xml:space="preserve"><value>달리기</value></data>
+  <data name="settings.enabled" xml:space="preserve"><value>활성화됨</value></data>
+  <data name="settings.stopped" xml:space="preserve"><value>중지됨</value></data>
+  <data name="settings.shortId" xml:space="preserve"><value>짧은 ID</value></data>
+  <data name="settings.publicUrl" xml:space="preserve"><value>공개 URL</value></data>
+  <data name="settings.stopSharing" xml:space="preserve"><value>공유 중지</value></data>
+  <data name="settings.enableSharing" xml:space="preserve"><value>다운로드 및 공유 활성화</value></data>
+  <data name="settings.copyUrl" xml:space="preserve"><value>URL 복사</value></data>
+  <data name="settings.sharingHint" xml:space="preserve"><value>공유를 활성화하면 루프백 게이트웨이가 시작되고 확인된 공유 바이너리가 한 번 다운로드됩니다.</value></data>
+  <data name="settings.client" xml:space="preserve"><value>이것을 고객에게 건네주세요</value></data>
+  <data name="settings.endpoint" xml:space="preserve"><value>엔드포인트</value></data>
+  <data name="settings.copyEndpoint" xml:space="preserve"><value>끝점 복사</value></data>
+  <data name="settings.copyApiKey" xml:space="preserve"><value>API 키 복사</value></data>
+  <data name="settings.noShareKey" xml:space="preserve"><value>아직 공유 키가 없습니다.</value></data>
+  <data name="settings.createKey" xml:space="preserve"><value>키 생성</value></data>
+  <data name="settings.revealFolder" xml:space="preserve"><value>폴더 공개</value></data>
+  <data name="settings.reload" xml:space="preserve"><value>새로고침</value></data>
+  <data name="settings.plugins" xml:space="preserve"><value>플러그인</value></data>
+  <data name="settings.pluginsHint" xml:space="preserve"><value>Plugin.yml이 포함된 폴더를 플러그인 디렉터리에 놓습니다. 매니페스트 플러그인은 신뢰할 수 없는 상태로 작동합니다. 컴파일된 어셈블리에는 신뢰가 필요합니다.</value></data>
+  <data name="settings.lastMountFailed" xml:space="preserve"><value>마지막 마운트 실패</value></data>
+  <data name="settings.scheduledTasks" xml:space="preserve"><value>예약된 작업</value></data>
+  <data name="settings.tasksHint" xml:space="preserve"><value>크론 일정에 따라 프롬프트를 실행합니다.</value></data>
+  <data name="settings.backgroundTasks" xml:space="preserve"><value>앱이 닫힌 동안 작업 실행(백그라운드 도우미)</value></data>
+  <data name="settings.newTask" xml:space="preserve"><value>새 작업</value></data>
+  <data name="settings.cronExpression" xml:space="preserve"><value>크론 표현</value></data>
+  <data name="settings.promptField" xml:space="preserve"><value>프롬프트</value></data>
+  <data name="settings.addTask" xml:space="preserve"><value>작업 추가</value></data>
+  <data name="settings.required" xml:space="preserve"><value>이름, 유효한 크론 표현식, 작업공간, 프롬프트가 필요합니다.</value></data>
+  <data name="settings.noTasks" xml:space="preserve"><value>아직 작업이 없습니다.</value></data>
+  <data name="settings.next" xml:space="preserve"><value>다음: {0}</value></data>
+  <data name="settings.invalidCron" xml:space="preserve"><value>잘못된 크론</value></data>
+  <data name="settings.last" xml:space="preserve"><value>마지막: {0}</value></data>
+  <data name="settings.runNow" xml:space="preserve"><value>지금 실행</value></data>
+  <data name="settings.noPrompt" xml:space="preserve"><value>프롬프트 섹션이 마운트되지 않았습니다.</value></data>
+  <data name="conversation.title" xml:space="preserve"><value>도트 하네스</value></data>
+  <data name="conversation.emptyNoProvider" xml:space="preserve"><value>채팅을 시작하려면 공급자 계정을 연결하세요.</value></data>
+  <data name="conversation.emptySidebar" xml:space="preserve"><value>사이드바에서 대화를 시작하세요.</value></data>
+  <data name="conversation.allow" xml:space="preserve"><value>{0}를 허용하시겠습니까?</value></data>
+  <data name="conversation.ok" xml:space="preserve"><value>알았어</value></data>
+  <data name="conversation.stop" xml:space="preserve"><value>중지</value></data>
+  <data name="conversation.stopVoice" xml:space="preserve"><value>음성 입력 중지</value></data>
+  <data name="conversation.mic" xml:space="preserve"><value>마이크</value></data>
+  <data name="conversation.startVoice" xml:space="preserve"><value>음성 입력 시작</value></data>
+  <data name="conversation.listening" xml:space="preserve"><value>듣는 중…</value></data>
+  <data name="conversation.heard" xml:space="preserve"><value>들음: {0}</value></data>
+  <data name="conversation.voiceStopped" xml:space="preserve"><value>음성 입력이 중지되었습니다.</value></data>
+  <data name="conversation.voiceUnavailable" xml:space="preserve"><value>음성 입력을 사용할 수 없습니다. 마이크 개인 정보 보호 설정과 설치된 음성 언어를 확인하세요. {0}</value></data>
+  <data name="conversation.priority" xml:space="preserve"><value>우선 교육</value></data>
+  <data name="conversation.queued" xml:space="preserve"><value>대기 중인 메시지</value></data>
+  <data name="conversation.interrupting" xml:space="preserve"><value>방해하다</value></data>
+  <data name="conversation.inContext" xml:space="preserve"><value>맥락에서</value></data>
+  <data name="conversation.waiting" xml:space="preserve"><value>대기 중</value></data>
+  <data name="conversation.you" xml:space="preserve"><value>당신</value></data>
+  <data name="conversation.assistant" xml:space="preserve"><value>하네스</value></data>
+  <data name="conversation.plan" xml:space="preserve"><value>계획</value></data>
+  <data name="conversation.tool" xml:space="preserve"><value>도구</value></data>
+  <data name="conversation.system" xml:space="preserve"><value>시스템</value></data>
+  <data name="conversation.dropFiles" xml:space="preserve"><value>여기에 파일을 드롭하세요.</value></data>
   <data name="conversation.send" xml:space="preserve"><value>보내기</value></data>
-  <data name="conversation.planMode" xml:space="preserve"><value>Plan mode</value></data>
-  <data name="conversation.applyPlan" xml:space="preserve"><value>Apply plan</value></data>
-  <data name="conversation.applyPlanHelp" xml:space="preserve"><value>Apply this plan in the workspace</value></data>
-  <data name="conversation.steer" xml:space="preserve"><value>Steer</value></data>
-  <data name="conversation.steerHelp" xml:space="preserve"><value>Steer queued message</value></data>
-  <data name="conversation.terminal" xml:space="preserve"><value>Terminal</value></data>
-  <data name="conversation.closeTerminal" xml:space="preserve"><value>Close terminal</value></data>
-  <data name="conversation.startTerminalError" xml:space="preserve"><value>Unable to start terminal: {0}</value></data>
-  <data name="window.confirmClose" xml:space="preserve"><value>Confirm close</value></data>
-  <data name="window.remember" xml:space="preserve"><value>Remember this choice</value></data>
+  <data name="conversation.planMode" xml:space="preserve"><value>계획 모드</value></data>
+  <data name="conversation.applyPlan" xml:space="preserve"><value>계획 적용</value></data>
+  <data name="conversation.applyPlanHelp" xml:space="preserve"><value>이 계획을 작업 공간에 적용하세요</value></data>
+  <data name="conversation.steer" xml:space="preserve"><value>조종하다</value></data>
+  <data name="conversation.steerHelp" xml:space="preserve"><value>대기 중인 메시지 조정</value></data>
+  <data name="conversation.terminal" xml:space="preserve"><value>터미널</value></data>
+  <data name="conversation.closeTerminal" xml:space="preserve"><value>터미널 닫기</value></data>
+  <data name="conversation.startTerminalError" xml:space="preserve"><value>터미널을 시작할 수 없습니다: {0}</value></data>
+  <data name="window.confirmClose" xml:space="preserve"><value>종료 확인</value></data>
+  <data name="window.remember" xml:space="preserve"><value>이 선택을 기억하세요</value></data>
   <data name="window.close" xml:space="preserve"><value>닫기</value></data>
-  <data name="window.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="window.closeQuestion" xml:space="preserve"><value>Are you sure you want to close?</value></data>
-  <data name="status.chooseProviderWorkspace" xml:space="preserve"><value>Choose a provider and workspace.</value></data>
-  <data name="status.generationStopped" xml:space="preserve"><value>Generation stopped.</value></data>
-  <data name="status.copied" xml:space="preserve"><value>Copied</value></data>
-  <data name="status.noModel" xml:space="preserve"><value>No connected model</value></data>
-  <data name="status.routerUnavailable" xml:space="preserve"><value>Router unavailable</value></data>
-  <data name="status.modelRequestFailed" xml:space="preserve"><value>Model request failed (HTTP {0})</value></data>
-  <data name="status.connectionRequired" xml:space="preserve"><value>Connect a provider account to continue.</value></data>
-  <data name="status.workspaceRequired" xml:space="preserve"><value>Choose a workspace before sending a message.</value></data>
-  <data name="copyright" xml:space="preserve"><value>Copyright (c) 2026 DOTS. Derived from DeepSeek Harness — Copyright (c) 2026 DeepSeek. MIT.</value></data>
-  <data name="settings.title" xml:space="preserve"><value>Settings</value></data>
-  <data name="settings.custom" xml:space="preserve"><value>Custom API</value></data>
-  <data name="settings.share" xml:space="preserve"><value>Share</value></data>
-  <data name="settings.tasks" xml:space="preserve"><value>Tasks</value></data>
-  <data name="settings.systemPrompt" xml:space="preserve"><value>System prompt</value></data>
+  <data name="window.cancel" xml:space="preserve"><value>취소</value></data>
+  <data name="window.closeQuestion" xml:space="preserve"><value>정말로 닫으시겠어요?</value></data>
+  <data name="status.chooseProviderWorkspace" xml:space="preserve"><value>공급자와 작업 공간을 선택하세요.</value></data>
+  <data name="status.generationStopped" xml:space="preserve"><value>세대가 중단되었습니다.</value></data>
+  <data name="status.copied" xml:space="preserve"><value>복사됨</value></data>
+  <data name="status.noModel" xml:space="preserve"><value>연결된 모델 없음</value></data>
+  <data name="status.routerUnavailable" xml:space="preserve"><value>라우터를 사용할 수 없음</value></data>
+  <data name="status.modelRequestFailed" xml:space="preserve"><value>모델 요청 실패(HTTP {0})</value></data>
+  <data name="status.connectionRequired" xml:space="preserve"><value>계속하려면 공급자 계정을 연결하세요.</value></data>
+  <data name="status.workspaceRequired" xml:space="preserve"><value>메시지를 보내기 전에 작업공간을 선택하세요.</value></data>
+  <data name="copyright" xml:space="preserve"><value>저작권 (c) 2026 DOTS. DeepSeek Harness에서 파생 — 저작권 (c) 2026 DeepSeek. MIT.</value></data>
+  <data name="settings.title" xml:space="preserve"><value>설정</value></data>
+  <data name="settings.custom" xml:space="preserve"><value>맞춤형 API</value></data>
+  <data name="settings.share" xml:space="preserve"><value>공유</value></data>
+  <data name="settings.tasks" xml:space="preserve"><value>작업</value></data>
+  <data name="settings.systemPrompt" xml:space="preserve"><value>시스템 프롬프트</value></data>
   <data name="sidebar.chats" xml:space="preserve"><value>채팅</value></data>
   <data name="sidebar.newChat" xml:space="preserve"><value>새 채팅</value></data>
   <data name="sidebar.settings" xml:space="preserve"><value>설정</value></data>
@@ -174,34 +174,101 @@
   <data name="settings.appearanceSystem" xml:space="preserve"><value>시스템</value></data>
   <data name="settings.appearanceLight" xml:space="preserve"><value>밝게</value></data>
   <data name="settings.appearanceDark" xml:space="preserve"><value>어둡게</value></data>
-  <data name="status.connectProviderChat" xml:space="preserve"><value>Connect a provider before starting a chat.</value></data>
-  <data name="status.connectProviderPlan" xml:space="preserve"><value>Connect a provider before applying a plan.</value></data>
-  <data name="status.emptyResponse" xml:space="preserve"><value>The provider returned an empty response.</value></data>
-  <data name="status.toolLimit" xml:space="preserve"><value>The tool step limit was reached.</value></data>
-  <data name="status.toolUnavailablePlan" xml:space="preserve"><value>This tool is unavailable in plan mode.</value></data>
-  <data name="status.userRejectedCommand" xml:space="preserve"><value>The user rejected this command.</value></data>
-  <data name="status.toolInterrupted" xml:space="preserve"><value>Tool call interrupted before it completed.</value></data>
-  <data name="status.contextCompacting" xml:space="preserve"><value>Context automatically compacting…</value></data>
-  <data name="status.contextCompacted" xml:space="preserve"><value>Context compacted.</value></data>
-  <data name="status.pressContinue" xml:space="preserve"><value>Press Continue to resume this message.</value></data>
-  <data name="conversation.used" xml:space="preserve"><value>Used</value></data>
-  <data name="conversation.changedFiles" xml:space="preserve"><value>Changed files</value></data>
-  <data name="conversation.skills" xml:space="preserve"><value>Skills</value></data>
-  <data name="conversation.tools" xml:space="preserve"><value>Tools</value></data>
-  <data name="settings.taskNever" xml:space="preserve"><value>Never run</value></data>
-  <data name="settings.taskRunning" xml:space="preserve"><value>Running…</value></data>
-  <data name="settings.taskSucceeded" xml:space="preserve"><value>Succeeded</value></data>
-  <data name="settings.taskFailed" xml:space="preserve"><value>Failed</value></data>
-  <data name="conversation.workingFor" xml:space="preserve"><value>Working for {0}</value></data>
-  <data name="conversation.workingUsing" xml:space="preserve"><value>Working for {0}. Using: {1}</value></data>
-  <data name="settings.skillsSnapshot" xml:space="preserve"><value>SkillsMP Popular snapshot</value></data>
-  <data name="settings.skillsMetadata" xml:space="preserve"><value>Metadata only. Inspect the source before downloading; no SkillsMP API key is used.</value></data>
-  <data name="settings.skillsSnapshotDate" xml:space="preserve"><value>Snapshot {0}</value></data>
-  <data name="settings.noSnapshot" xml:space="preserve"><value>No snapshot entries available.</value></data>
-  <data name="settings.skillsInstalled" xml:space="preserve"><value>Downloaded and enabled</value></data>
-  <data name="settings.skillsCatalog" xml:space="preserve"><value>Catalog</value></data>
-  <data name="settings.view" xml:space="preserve"><value>View</value></data>
-  <data name="settings.noSkills" xml:space="preserve"><value>No discovered skills.</value></data>
-  <data name="settings.skillsHint" xml:space="preserve"><value>Project and bundled skills can be disabled, but only downloaded app-owned skills can be deleted.</value></data>
-  <data name="settings.skillReadFailed" xml:space="preserve"><value>Could not read SKILL.md.</value></data>
+  <data name="status.connectProviderChat" xml:space="preserve"><value>채팅을 시작하기 전에 공급자를 연결하세요.</value></data>
+  <data name="status.connectProviderPlan" xml:space="preserve"><value>계획을 적용하기 전에 공급자를 연결하십시오.</value></data>
+  <data name="status.emptyResponse" xml:space="preserve"><value>공급자가 빈 응답을 반환했습니다.</value></data>
+  <data name="status.toolLimit" xml:space="preserve"><value>도구 단계 제한에 도달했습니다.</value></data>
+  <data name="status.toolUnavailablePlan" xml:space="preserve"><value>이 도구는 계획 모드에서는 사용할 수 없습니다.</value></data>
+  <data name="status.userRejectedCommand" xml:space="preserve"><value>사용자가 이 명령을 거부했습니다.</value></data>
+  <data name="status.toolInterrupted" xml:space="preserve"><value>도구 호출이 완료되기 전에 중단되었습니다.</value></data>
+  <data name="status.contextCompacting" xml:space="preserve"><value>컨텍스트 자동 압축 중…</value></data>
+  <data name="status.contextCompacted" xml:space="preserve"><value>컨텍스트가 압축되었습니다.</value></data>
+  <data name="status.pressContinue" xml:space="preserve"><value>이 메시지를 계속하려면 계속을 누르세요.</value></data>
+  <data name="conversation.used" xml:space="preserve"><value>중고</value></data>
+  <data name="conversation.changedFiles" xml:space="preserve"><value>변경된 파일</value></data>
+  <data name="conversation.skills" xml:space="preserve"><value>기술</value></data>
+  <data name="conversation.tools" xml:space="preserve"><value>도구</value></data>
+  <data name="settings.taskNever" xml:space="preserve"><value>절대 뛰지 마세요</value></data>
+  <data name="settings.taskRunning" xml:space="preserve"><value>실행 중…</value></data>
+  <data name="settings.taskSucceeded" xml:space="preserve"><value>성공함</value></data>
+  <data name="settings.taskFailed" xml:space="preserve"><value>실패</value></data>
+  <data name="conversation.workingFor" xml:space="preserve"><value>{0}에서 근무</value></data>
+  <data name="conversation.workingUsing" xml:space="preserve"><value>{0}에서 근무합니다. 사용: {1}</value></data>
+  <data name="settings.skillsSnapshot" xml:space="preserve"><value>SkillsMP 인기 스냅샷</value></data>
+  <data name="settings.skillsMetadata" xml:space="preserve"><value>메타데이터만 해당됩니다. 다운로드하기 전에 소스를 검사하세요. SkillsMP API 키는 사용되지 않습니다.</value></data>
+  <data name="settings.skillsSnapshotDate" xml:space="preserve"><value>스냅샷 {0}</value></data>
+  <data name="settings.noSnapshot" xml:space="preserve"><value>사용 가능한 스냅샷 항목이 없습니다.</value></data>
+  <data name="settings.skillsInstalled" xml:space="preserve"><value>다운로드 및 활성화됨</value></data>
+  <data name="settings.skillsCatalog" xml:space="preserve"><value>카탈로그</value></data>
+  <data name="settings.view" xml:space="preserve"><value>보기</value></data>
+  <data name="settings.noSkills" xml:space="preserve"><value>발견된 스킬이 없습니다.</value></data>
+  <data name="settings.skillsHint" xml:space="preserve"><value>프로젝트 및 번들 스킬은 비활성화할 수 있지만 다운로드한 앱 소유 스킬만 삭제할 수 있습니다.</value></data>
+  <data name="settings.skillReadFailed" xml:space="preserve"><value>SKILL.md를 읽을 수 없습니다.</value></data>
+  <data name="settings.voice" xml:space="preserve"><value>음성 입력</value></data>
+  <data name="voice.intro.title" xml:space="preserve"><value>헤르네스 보이스를 사용해 보세요</value></data>
+  <data name="voice.intro.body" xml:space="preserve"><value>빠른 로컬 또는 API 음성 인식을 통해 작곡가에게 받아쓰세요.</value></data>
+  <data name="voice.intro.start" xml:space="preserve"><value>음성 시작</value></data>
+  <data name="voice.intro.dismiss" xml:space="preserve"><value>음성 소개 닫기</value></data>
+  <data name="voice.source.tiny" xml:space="preserve"><value>속삭임 Tiny Q5 (로컬, 고속)</value></data>
+  <data name="voice.source.large" xml:space="preserve"><value>Whisper Large-v3-Turbo(로컬)</value></data>
+  <data name="voice.source.nemotron" xml:space="preserve"><value>Nemotron 3.5(로컬 스트리밍)</value></data>
+  <data name="voice.source.custom" xml:space="preserve"><value>맞춤형 로컬 모델</value></data>
+  <data name="voice.source.api" xml:space="preserve"><value>음성 API</value></data>
+  <data name="voice.api.endpoint" xml:space="preserve"><value>전사 종료점</value></data>
+  <data name="voice.api.key" xml:space="preserve"><value>API 키</value></data>
+  <data name="voice.api.model" xml:space="preserve"><value>모델</value></data>
+  <data name="voice.api.realtime" xml:space="preserve"><value>NeMo 실시간 WebSocket(선택 사항)</value></data>
+  <data name="voice.model.tinySize" xml:space="preserve"><value>31MiB · Q5_1</value></data>
+  <data name="voice.model.nemotronSize" xml:space="preserve"><value>742MB · Q8_0</value></data>
+  <data name="voice.status.ready" xml:space="preserve"><value>준비</value></data>
+  <data name="voice.status.notReady" xml:space="preserve"><value>먼저 음성 입력을 다운로드하거나 구성하세요.</value></data>
+  <data name="voice.status.downloading" xml:space="preserve"><value>음성 자산 다운로드 중…</value></data>
+  <data name="voice.download" xml:space="preserve"><value>음성 자산 다운로드</value></data>
+  <data name="voice.error" xml:space="preserve"><value>음성 입력 오류: {0}</value></data>
+  <data name="ask.customPlaceholder" xml:space="preserve"><value>Write your own answer…</value></data>
+  <data name="ask.skip" xml:space="preserve"><value>Skip and plan anyway</value></data>
+  <data name="ask.submit" xml:space="preserve"><value>Send answers</value></data>
+  <data name="ask.title" xml:space="preserve"><value>A few questions before the plan</value></data>
+  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Cleanup did not complete.</value></data>
+  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>No cleanup was requested.</value></data>
+  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Cleanup could not be verified; existing files were preserved.</value></data>
+  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Old code was preserved because cleanup was not needed or could not be proven.</value></data>
+  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Workspace changes could not be fully verified.</value></data>
+  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Old code cleanup verified.</value></data>
+  <data name="conversation.connectionAdded" xml:space="preserve"><value>Connection added: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
+  <data name="conversation.connectionChanged" xml:space="preserve"><value>Connection changed</value></data>
+  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Previous local connection data could not be fully verified; it was preserved.</value></data>
+  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Previous connection preserved: {0}. Conversations and user data were preserved; remote data was not touched.</value></data>
+  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Previous connection removed. Local connection data was cleared; conversations and user data were preserved. Remote data was not touched.</value></data>
+  <data name="conversation.connectionSelected" xml:space="preserve"><value>Connection selected: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
+  <data name="conversation.connectionSummary" xml:space="preserve"><value>Connection changed: {0} → {1}</value></data>
+  <data name="conversation.fileAdded" xml:space="preserve"><value>Added</value></data>
+  <data name="conversation.fileDeleted" xml:space="preserve"><value>Deleted</value></data>
+  <data name="conversation.fileModified" xml:space="preserve"><value>Modified</value></data>
+  <data name="conversation.filesSummary" xml:space="preserve"><value>Added {0}, modified {1}, deleted {2}</value></data>
+  <data name="conversation.runSummary" xml:space="preserve"><value>Run summary</value></data>
+  <data name="conversation.testStatus" xml:space="preserve"><value>Tests: {0}</value></data>
+  <data name="router.unknown" xml:space="preserve"><value>unknown</value></data>
+  <data name="settings.seedProjectRules" xml:space="preserve"><value>Create AGENTS.md and CLAUDE.md</value></data>
+  <data name="settings.selfVerification" xml:space="preserve"><value>Verify changes automatically</value></data>
+  <data name="vision.deleteModel" xml:space="preserve"><value>Delete model</value></data>
+  <data name="vision.disabled" xml:space="preserve"><value>Disabled</value></data>
+  <data name="vision.downloadAndContinue" xml:space="preserve"><value>Download and continue</value></data>
+  <data name="vision.downloading" xml:space="preserve"><value>Downloading the local vision model…</value></data>
+  <data name="vision.emptyDescription" xml:space="preserve"><value>The local Vision fallback returned no visual description.</value></data>
+  <data name="vision.failed" xml:space="preserve"><value>Vision fallback failed</value></data>
+  <data name="vision.installPlugin" xml:space="preserve"><value>Install from marketplace</value></data>
+  <data name="vision.installReason" xml:space="preserve"><value>{0} does not support image input. The Vision plugin will download about {1} and process the image on this device. The original image may already have reached the provider.</value></data>
+  <data name="vision.installTitle" xml:space="preserve"><value>This provider cannot read the image</value></data>
+  <data name="vision.modelMissing" xml:space="preserve"><value>Model not downloaded</value></data>
+  <data name="vision.notEnabled" xml:space="preserve"><value>The provider cannot read this image and the local Vision plugin was not enabled.</value></data>
+  <data name="vision.notInstalled" xml:space="preserve"><value>Not installed</value></data>
+  <data name="vision.notNow" xml:space="preserve"><value>Not now</value></data>
+  <data name="vision.pluginMissing" xml:space="preserve"><value>The local Vision fallback plugin is unavailable.</value></data>
+  <data name="vision.prepareModel" xml:space="preserve"><value>Download and prepare model</value></data>
+  <data name="vision.preparing" xml:space="preserve"><value>Preparing the local vision runtime…</value></data>
+  <data name="vision.ready" xml:space="preserve"><value>Vision fallback ready · {0}</value></data>
+  <data name="vision.removePlugin" xml:space="preserve"><value>Remove plugin</value></data>
+  <data name="vision.title" xml:space="preserve"><value>Vision fallback</value></data>
+  <data name="vision.unavailable" xml:space="preserve"><value>Vision fallback is unavailable</value></data>
 </root>

@@ -4,161 +4,209 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <data name="app.title" xml:space="preserve"><value>Dots Harness</value></data>
+  <data name="app.title" xml:space="preserve"><value>Nokta Demeti</value></data>
   <data name="language.system" xml:space="preserve"><value>Sistem dili</value></data>
   <data name="settings.language" xml:space="preserve"><value>Uygulama dili</value></data>
   <data name="settings.general" xml:space="preserve"><value>Genel</value></data>
-  <data name="settings.back" xml:space="preserve"><value>Back to chats</value></data>
+  <data name="settings.back" xml:space="preserve"><value>Sohbetlere geri dön</value></data>
   <data name="settings.appearance" xml:space="preserve"><value>Görünüm</value></data>
-  <data name="settings.theme" xml:space="preserve"><value>Theme</value></data>
-  <data name="settings.confirmBeforeExit" xml:space="preserve"><value>Ask before closing</value></data>
+  <data name="settings.theme" xml:space="preserve"><value>Tema</value></data>
+  <data name="settings.confirmBeforeExit" xml:space="preserve"><value>Kapatmadan önce sor</value></data>
+  <data name="settings.seedProjectRules" xml:space="preserve"><value>AGENTS.md ve CLAUDE.md oluştur</value></data>
+  <data name="settings.selfVerification" xml:space="preserve"><value>Değişiklikleri otomatik doğrula</value></data>
   <data name="settings.workspace" xml:space="preserve"><value>Çalışma alanı</value></data>
-  <data name="settings.folder" xml:space="preserve"><value>Folder</value></data>
-  <data name="settings.chooseWorkspace" xml:space="preserve"><value>Choose workspace</value></data>
-  <data name="settings.changeWorkspace" xml:space="preserve"><value>Change workspace</value></data>
-  <data name="settings.connectedModel" xml:space="preserve"><value>Connected model</value></data>
-  <data name="settings.supportFolder" xml:space="preserve"><value>Support folder</value></data>
-  <data name="settings.userPlugins" xml:space="preserve"><value>User plugins</value></data>
+  <data name="settings.folder" xml:space="preserve"><value>Klasör</value></data>
+  <data name="settings.chooseWorkspace" xml:space="preserve"><value>Çalışma alanını seçin</value></data>
+  <data name="settings.changeWorkspace" xml:space="preserve"><value>Çalışma alanını değiştir</value></data>
+  <data name="settings.connectedModel" xml:space="preserve"><value>Bağlı model</value></data>
+  <data name="settings.supportFolder" xml:space="preserve"><value>Destek klasörü</value></data>
+  <data name="settings.userPlugins" xml:space="preserve"><value>Kullanıcı eklentileri</value></data>
   <data name="settings.providers" xml:space="preserve"><value>Sağlayıcılar</value></data>
-  <data name="settings.provider" xml:space="preserve"><value>Provider</value></data>
-  <data name="settings.connectedAccounts" xml:space="preserve"><value>Connected accounts</value></data>
-  <data name="settings.noConnections" xml:space="preserve"><value>No connections yet.</value></data>
-  <data name="settings.addProviderCustom" xml:space="preserve"><value>Add this provider through Custom API.</value></data>
-  <data name="settings.signInBrowser" xml:space="preserve"><value>Complete the provider sign-in in your system browser.</value></data>
-  <data name="settings.connect" xml:space="preserve"><value>Connect</value></data>
-  <data name="settings.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="settings.refresh" xml:space="preserve"><value>Refresh</value></data>
-  <data name="settings.browserLogin" xml:space="preserve"><value>Browser login</value></data>
-  <data name="settings.authUrl" xml:space="preserve"><value>Auth URL</value></data>
-  <data name="settings.pasteCallbackUrl" xml:space="preserve"><value>Paste callback URL</value></data>
-  <data name="settings.finishLogin" xml:space="preserve"><value>Finish login</value></data>
-  <data name="settings.deviceLogin" xml:space="preserve"><value>Device login</value></data>
-  <data name="settings.verify" xml:space="preserve"><value>Verify</value></data>
-  <data name="settings.waitingAuthorization" xml:space="preserve"><value>Waiting for authorization…</value></data>
-  <data name="settings.active" xml:space="preserve"><value>Active</value></data>
-  <data name="settings.test" xml:space="preserve"><value>Test</value></data>
-  <data name="settings.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="settings.account" xml:space="preserve"><value>account</value></data>
-  <data name="settings.accounts" xml:space="preserve"><value>accounts</value></data>
-  <data name="settings.addAccount" xml:space="preserve"><value>Add account</value></data>
-  <data name="settings.addCustomEndpoint" xml:space="preserve"><value>Add a custom endpoint</value></data>
-  <data name="settings.customEndpointHint" xml:space="preserve"><value>Ollama, LM Studio, vLLM, llama.cpp, or any OpenAI/Anthropic-compatible server.</value></data>
-  <data name="settings.name" xml:space="preserve"><value>Name</value></data>
-  <data name="settings.prefix" xml:space="preserve"><value>Prefix (model id, e.g. local)</value></data>
-  <data name="settings.baseUrl" xml:space="preserve"><value>Base URL</value></data>
-  <data name="settings.apiKeyOptional" xml:space="preserve"><value>API key (optional for local)</value></data>
-  <data name="settings.api" xml:space="preserve"><value>API</value></data>
-  <data name="settings.saveChanges" xml:space="preserve"><value>Save changes</value></data>
-  <data name="settings.addCustomApi" xml:space="preserve"><value>Add custom API</value></data>
-  <data name="settings.cancelEdit" xml:space="preserve"><value>Cancel edit</value></data>
-  <data name="settings.customProviders" xml:space="preserve"><value>Custom providers</value></data>
-  <data name="settings.noneYet" xml:space="preserve"><value>None yet.</value></data>
-  <data name="settings.localModels" xml:space="preserve"><value>Local models</value></data>
-  <data name="settings.installed" xml:space="preserve"><value>Installed</value></data>
-  <data name="settings.notInstalled" xml:space="preserve"><value>Not installed</value></data>
-  <data name="settings.listen" xml:space="preserve"><value>Listen</value></data>
-  <data name="settings.serving" xml:space="preserve"><value>Serving</value></data>
-  <data name="settings.reinstallRuntime" xml:space="preserve"><value>Reinstall runtime</value></data>
-  <data name="settings.installLlama" xml:space="preserve"><value>Install llama.cpp</value></data>
-  <data name="settings.stopLocal" xml:space="preserve"><value>Stop local server</value></data>
-  <data name="settings.downloadRun" xml:space="preserve"><value>Download and run</value></data>
-  <data name="settings.stop" xml:space="preserve"><value>Stop</value></data>
-  <data name="settings.start" xml:space="preserve"><value>Start</value></data>
-  <data name="settings.download" xml:space="preserve"><value>Download</value></data>
-  <data name="settings.onDisk" xml:space="preserve"><value>On disk · {0}</value></data>
-  <data name="settings.sharing" xml:space="preserve"><value>Sharing</value></data>
-  <data name="settings.status" xml:space="preserve"><value>Status</value></data>
-  <data name="settings.running" xml:space="preserve"><value>Running</value></data>
-  <data name="settings.enabled" xml:space="preserve"><value>Enabled</value></data>
-  <data name="settings.stopped" xml:space="preserve"><value>Stopped</value></data>
-  <data name="settings.shortId" xml:space="preserve"><value>Short id</value></data>
-  <data name="settings.publicUrl" xml:space="preserve"><value>Public URL</value></data>
-  <data name="settings.stopSharing" xml:space="preserve"><value>Stop sharing</value></data>
-  <data name="settings.enableSharing" xml:space="preserve"><value>Download and enable sharing</value></data>
-  <data name="settings.copyUrl" xml:space="preserve"><value>Copy URL</value></data>
-  <data name="settings.sharingHint" xml:space="preserve"><value>Enabling sharing starts the loopback gateway and downloads the verified sharing binary once.</value></data>
-  <data name="settings.client" xml:space="preserve"><value>Give this to a client</value></data>
-  <data name="settings.endpoint" xml:space="preserve"><value>Endpoint</value></data>
-  <data name="settings.copyEndpoint" xml:space="preserve"><value>Copy endpoint</value></data>
-  <data name="settings.copyApiKey" xml:space="preserve"><value>Copy API key</value></data>
-  <data name="settings.noShareKey" xml:space="preserve"><value>No share key yet.</value></data>
-  <data name="settings.createKey" xml:space="preserve"><value>Create key</value></data>
-  <data name="settings.revealFolder" xml:space="preserve"><value>Reveal folder</value></data>
-  <data name="settings.reload" xml:space="preserve"><value>Reload</value></data>
-  <data name="settings.plugins" xml:space="preserve"><value>Plugins</value></data>
-  <data name="settings.pluginsHint" xml:space="preserve"><value>Drop a folder with plugin.yml into the plugins directory. Manifest plugins work untrusted. Compiled assemblies need Trust.</value></data>
-  <data name="settings.lastMountFailed" xml:space="preserve"><value>Last mount failed</value></data>
-  <data name="settings.scheduledTasks" xml:space="preserve"><value>Scheduled Tasks</value></data>
-  <data name="settings.tasksHint" xml:space="preserve"><value>Run a prompt on a cron schedule.</value></data>
-  <data name="settings.backgroundTasks" xml:space="preserve"><value>Run tasks while the app is closed (background helper)</value></data>
-  <data name="settings.newTask" xml:space="preserve"><value>New task</value></data>
-  <data name="settings.cronExpression" xml:space="preserve"><value>Cron expression</value></data>
-  <data name="settings.promptField" xml:space="preserve"><value>Prompt</value></data>
-  <data name="settings.addTask" xml:space="preserve"><value>Add task</value></data>
-  <data name="settings.required" xml:space="preserve"><value>Name, a valid cron expression, a workspace, and a prompt are required.</value></data>
-  <data name="settings.noTasks" xml:space="preserve"><value>No tasks yet.</value></data>
-  <data name="settings.next" xml:space="preserve"><value>Next: {0}</value></data>
-  <data name="settings.invalidCron" xml:space="preserve"><value>Invalid cron</value></data>
-  <data name="settings.last" xml:space="preserve"><value>Last: {0}</value></data>
-  <data name="settings.runNow" xml:space="preserve"><value>Run now</value></data>
-  <data name="settings.noPrompt" xml:space="preserve"><value>No prompt sections mounted.</value></data>
-  <data name="conversation.title" xml:space="preserve"><value>Dots Harness</value></data>
-  <data name="conversation.emptyNoProvider" xml:space="preserve"><value>Connect a provider account to start chatting.</value></data>
-  <data name="conversation.emptySidebar" xml:space="preserve"><value>Start a conversation from the sidebar.</value></data>
-  <data name="conversation.allow" xml:space="preserve"><value>Allow {0}?</value></data>
-  <data name="conversation.ok" xml:space="preserve"><value>OK</value></data>
-  <data name="conversation.stop" xml:space="preserve"><value>Stop</value></data>
-  <data name="conversation.stopVoice" xml:space="preserve"><value>Stop voice input</value></data>
-  <data name="conversation.mic" xml:space="preserve"><value>Mic</value></data>
-  <data name="conversation.startVoice" xml:space="preserve"><value>Start voice input</value></data>
-  <data name="conversation.listening" xml:space="preserve"><value>Listening…</value></data>
-  <data name="conversation.heard" xml:space="preserve"><value>Heard: {0}</value></data>
-  <data name="conversation.voiceStopped" xml:space="preserve"><value>Voice input stopped.</value></data>
-  <data name="conversation.voiceUnavailable" xml:space="preserve"><value>Voice input unavailable. Check your microphone privacy settings and an installed speech language. {0}</value></data>
-  <data name="conversation.priority" xml:space="preserve"><value>Priority instruction</value></data>
-  <data name="conversation.queued" xml:space="preserve"><value>Queued message</value></data>
-  <data name="conversation.interrupting" xml:space="preserve"><value>Interrupting</value></data>
-  <data name="conversation.inContext" xml:space="preserve"><value>In context</value></data>
-  <data name="conversation.waiting" xml:space="preserve"><value>Waiting</value></data>
-  <data name="conversation.you" xml:space="preserve"><value>You</value></data>
-  <data name="conversation.assistant" xml:space="preserve"><value>Harness</value></data>
-  <data name="conversation.plan" xml:space="preserve"><value>Plan</value></data>
-  <data name="conversation.tool" xml:space="preserve"><value>Tool</value></data>
-  <data name="conversation.system" xml:space="preserve"><value>System</value></data>
-  <data name="conversation.dropFiles" xml:space="preserve"><value>Drop files here</value></data>
+  <data name="settings.provider" xml:space="preserve"><value>sağlayıcı</value></data>
+  <data name="settings.connectedAccounts" xml:space="preserve"><value>Bağlı hesaplar</value></data>
+  <data name="settings.noConnections" xml:space="preserve"><value>Henüz bağlantı yok.</value></data>
+  <data name="settings.addProviderCustom" xml:space="preserve"><value>Bu sağlayıcıyı Özel API aracılığıyla ekleyin.</value></data>
+  <data name="settings.signInBrowser" xml:space="preserve"><value>Sistem tarayıcınızda sağlayıcı oturum açma işlemini tamamlayın.</value></data>
+  <data name="settings.connect" xml:space="preserve"><value>Bağlan</value></data>
+  <data name="settings.cancel" xml:space="preserve"><value>İptal</value></data>
+  <data name="settings.refresh" xml:space="preserve"><value>Yenile</value></data>
+  <data name="settings.browserLogin" xml:space="preserve"><value>Tarayıcı girişi</value></data>
+  <data name="settings.authUrl" xml:space="preserve"><value>Kimlik doğrulama URL'si</value></data>
+  <data name="settings.pasteCallbackUrl" xml:space="preserve"><value>Geri arama URL'sini yapıştır</value></data>
+  <data name="settings.finishLogin" xml:space="preserve"><value>Giriş yapmayı bitir</value></data>
+  <data name="settings.deviceLogin" xml:space="preserve"><value>Cihaz girişi</value></data>
+  <data name="settings.verify" xml:space="preserve"><value>Doğrula</value></data>
+  <data name="settings.waitingAuthorization" xml:space="preserve"><value>Yetki bekleniyor…</value></data>
+  <data name="settings.active" xml:space="preserve"><value>Aktif</value></data>
+  <data name="settings.test" xml:space="preserve"><value>testi</value></data>
+  <data name="settings.remove" xml:space="preserve"><value>Kaldır</value></data>
+  <data name="settings.account" xml:space="preserve"><value>hesap</value></data>
+  <data name="settings.accounts" xml:space="preserve"><value>hesaplar</value></data>
+  <data name="settings.addAccount" xml:space="preserve"><value>Hesap ekle</value></data>
+  <data name="settings.addCustomEndpoint" xml:space="preserve"><value>Özel bir uç nokta ekleyin</value></data>
+  <data name="settings.customEndpointHint" xml:space="preserve"><value>Ollama, LM Studio, vLLM, llama.cpp veya OpenAI/Antropik uyumlu herhangi bir sunucu.</value></data>
+  <data name="settings.name" xml:space="preserve"><value>İsim</value></data>
+  <data name="settings.prefix" xml:space="preserve"><value>Önek (model kimliği, örneğin yerel)</value></data>
+  <data name="settings.baseUrl" xml:space="preserve"><value>Temel URL</value></data>
+  <data name="settings.apiKeyOptional" xml:space="preserve"><value>API anahtarı (yerel için isteğe bağlı)</value></data>
+  <data name="settings.api" xml:space="preserve"><value>API'si</value></data>
+  <data name="settings.saveChanges" xml:space="preserve"><value>Değişiklikleri kaydet</value></data>
+  <data name="settings.addCustomApi" xml:space="preserve"><value>Özel API ekle</value></data>
+  <data name="settings.cancelEdit" xml:space="preserve"><value>Düzenlemeyi iptal et</value></data>
+  <data name="settings.customProviders" xml:space="preserve"><value>Özel sağlayıcılar</value></data>
+  <data name="settings.noneYet" xml:space="preserve"><value>Henüz yok.</value></data>
+  <data name="settings.localModels" xml:space="preserve"><value>Yerel modeller</value></data>
+  <data name="settings.voice" xml:space="preserve"><value>Sesli giriş</value></data>
+  <data name="settings.installed" xml:space="preserve"><value>Yüklendi</value></data>
+  <data name="settings.notInstalled" xml:space="preserve"><value>Kurulu değil</value></data>
+  <data name="settings.listen" xml:space="preserve"><value>Dinle</value></data>
+  <data name="settings.serving" xml:space="preserve"><value>Servis</value></data>
+  <data name="settings.reinstallRuntime" xml:space="preserve"><value>Çalışma zamanını yeniden yükle</value></data>
+  <data name="settings.installLlama" xml:space="preserve"><value>Llama.cpp'yi yükleyin</value></data>
+  <data name="settings.stopLocal" xml:space="preserve"><value>Yerel sunucuyu durdur</value></data>
+  <data name="settings.downloadRun" xml:space="preserve"><value>İndirin ve çalıştırın</value></data>
+  <data name="settings.stop" xml:space="preserve"><value>Durdur</value></data>
+  <data name="settings.start" xml:space="preserve"><value>Başlat</value></data>
+  <data name="settings.download" xml:space="preserve"><value>İndir</value></data>
+  <data name="settings.onDisk" xml:space="preserve"><value>Diskte · {0}</value></data>
+  <data name="settings.sharing" xml:space="preserve"><value>Paylaşma</value></data>
+  <data name="settings.status" xml:space="preserve"><value>Durum</value></data>
+  <data name="settings.running" xml:space="preserve"><value>Koşu</value></data>
+  <data name="settings.enabled" xml:space="preserve"><value>Etkin</value></data>
+  <data name="settings.stopped" xml:space="preserve"><value>Durduruldu</value></data>
+  <data name="settings.shortId" xml:space="preserve"><value>Kısa kimlik</value></data>
+  <data name="settings.publicUrl" xml:space="preserve"><value>Genel URL</value></data>
+  <data name="settings.stopSharing" xml:space="preserve"><value>Paylaşımı durdur</value></data>
+  <data name="settings.enableSharing" xml:space="preserve"><value>Paylaşımı indirin ve etkinleştirin</value></data>
+  <data name="settings.copyUrl" xml:space="preserve"><value>URL'yi kopyala</value></data>
+  <data name="settings.sharingHint" xml:space="preserve"><value>Paylaşımın etkinleştirilmesi geri döngü ağ geçidini başlatır ve doğrulanmış paylaşım ikili dosyasını bir kez indirir.</value></data>
+  <data name="settings.client" xml:space="preserve"><value>Bunu bir müşteriye ver</value></data>
+  <data name="settings.endpoint" xml:space="preserve"><value>Uç nokta</value></data>
+  <data name="settings.copyEndpoint" xml:space="preserve"><value>Uç noktayı kopyala</value></data>
+  <data name="settings.copyApiKey" xml:space="preserve"><value>API anahtarını kopyala</value></data>
+  <data name="settings.noShareKey" xml:space="preserve"><value>Henüz paylaşım anahtarı yok.</value></data>
+  <data name="settings.createKey" xml:space="preserve"><value>Anahtar oluştur</value></data>
+  <data name="settings.revealFolder" xml:space="preserve"><value>Klasörü göster</value></data>
+  <data name="settings.reload" xml:space="preserve"><value>Yeniden yükle</value></data>
+  <data name="settings.plugins" xml:space="preserve"><value>Eklentiler</value></data>
+  <data name="settings.pluginsHint" xml:space="preserve"><value>Plugin.yml içeren bir klasörü eklentiler dizinine bırakın. Manifest eklentileri güvenilmeden çalışır. Derlenmiş derlemelerin Güvene ihtiyacı vardır.</value></data>
+  <data name="settings.lastMountFailed" xml:space="preserve"><value>Son bağlama başarısız oldu</value></data>
+  <data name="settings.scheduledTasks" xml:space="preserve"><value>Zamanlanmış Görevler</value></data>
+  <data name="settings.tasksHint" xml:space="preserve"><value>Bir cron zamanlamasına göre bir istem çalıştırın.</value></data>
+  <data name="settings.backgroundTasks" xml:space="preserve"><value>Uygulama kapalıyken görevleri çalıştırın (arka plan yardımcısı)</value></data>
+  <data name="settings.newTask" xml:space="preserve"><value>Yeni görev</value></data>
+  <data name="settings.cronExpression" xml:space="preserve"><value>Cron ifadesi</value></data>
+  <data name="settings.promptField" xml:space="preserve"><value>İstemi</value></data>
+  <data name="settings.addTask" xml:space="preserve"><value>Görev ekle</value></data>
+  <data name="settings.required" xml:space="preserve"><value>Ad, geçerli bir cron ifadesi, çalışma alanı ve bilgi istemi gereklidir.</value></data>
+  <data name="settings.noTasks" xml:space="preserve"><value>Henüz görev yok.</value></data>
+  <data name="settings.next" xml:space="preserve"><value>Sonraki: {0}</value></data>
+  <data name="settings.invalidCron" xml:space="preserve"><value>Geçersiz cron</value></data>
+  <data name="settings.last" xml:space="preserve"><value>Son: {0}</value></data>
+  <data name="settings.runNow" xml:space="preserve"><value>Şimdi koş</value></data>
+  <data name="settings.noPrompt" xml:space="preserve"><value>Hiçbir bilgi istemi bölümü monte edilmedi.</value></data>
+  <data name="conversation.title" xml:space="preserve"><value>Nokta Demeti</value></data>
+  <data name="conversation.emptyNoProvider" xml:space="preserve"><value>Sohbete başlamak için bir sağlayıcı hesabı bağlayın.</value></data>
+  <data name="conversation.emptySidebar" xml:space="preserve"><value>Kenar çubuğundan bir konuşma başlatın.</value></data>
+  <data name="conversation.allow" xml:space="preserve"><value>{0}'e izin verilsin mi?</value></data>
+  <data name="vision.title" xml:space="preserve"><value>Görsel yedekleme</value></data>
+  <data name="vision.installTitle" xml:space="preserve"><value>Bu sağlayıcı görseli okuyamıyor</value></data>
+  <data name="vision.installReason" xml:space="preserve"><value>{0} görsel girdisini desteklemiyor. Vision eklentisi yaklaşık {1} indirerek görseli bu cihazda işleyebilir. Orijinal görsel sağlayıcıya ulaşmış olabilir.</value></data>
+  <data name="vision.downloadAndContinue" xml:space="preserve"><value>İndir ve devam et</value></data>
+  <data name="vision.notNow" xml:space="preserve"><value>Şimdi değil</value></data>
+  <data name="vision.notInstalled" xml:space="preserve"><value>Kurulu değil</value></data>
+  <data name="vision.disabled" xml:space="preserve"><value>Devre dışı</value></data>
+  <data name="vision.modelMissing" xml:space="preserve"><value>Model indirilmedi</value></data>
+  <data name="vision.downloading" xml:space="preserve"><value>Yerel görsel modeli indiriliyor…</value></data>
+  <data name="vision.preparing" xml:space="preserve"><value>Yerel görsel çalışma zamanı hazırlanıyor…</value></data>
+  <data name="vision.ready" xml:space="preserve"><value>Görsel yedekleme hazır · {0}</value></data>
+  <data name="vision.failed" xml:space="preserve"><value>Görsel yedekleme başarısız</value></data>
+  <data name="vision.unavailable" xml:space="preserve"><value>Görsel yedekleme kullanılamıyor</value></data>
+  <data name="vision.installPlugin" xml:space="preserve"><value>Marketplace'ten yükle</value></data>
+  <data name="vision.prepareModel" xml:space="preserve"><value>Modeli indir ve hazırla</value></data>
+  <data name="vision.deleteModel" xml:space="preserve"><value>Modeli sil</value></data>
+  <data name="vision.removePlugin" xml:space="preserve"><value>Eklentiyi kaldır</value></data>
+  <data name="vision.notEnabled" xml:space="preserve"><value>Sağlayıcı bu görseli okuyamıyor ve yerel Vision eklentisi etkinleştirilmedi.</value></data>
+  <data name="vision.pluginMissing" xml:space="preserve"><value>Yerel Vision yedekleme eklentisi kullanılamıyor.</value></data>
+  <data name="vision.emptyDescription" xml:space="preserve"><value>Yerel Vision yedekleme görsel açıklaması döndürmedi.</value></data>
+  <data name="ask.title" xml:space="preserve"><value>Plandan önce birkaç soru</value></data>
+  <data name="ask.submit" xml:space="preserve"><value>Cevapları gönder</value></data>
+  <data name="ask.skip" xml:space="preserve"><value>Atla, yine de planla</value></data>
+  <data name="ask.customPlaceholder" xml:space="preserve"><value>Kendi cevabını yaz…</value></data>
+  <data name="conversation.ok" xml:space="preserve"><value>tamam</value></data>
+  <data name="conversation.stop" xml:space="preserve"><value>Durdur</value></data>
+  <data name="conversation.stopVoice" xml:space="preserve"><value>Ses girişini durdur</value></data>
+  <data name="conversation.mic" xml:space="preserve"><value>Mikrofon</value></data>
+  <data name="conversation.startVoice" xml:space="preserve"><value>Ses girişini başlat</value></data>
+  <data name="conversation.listening" xml:space="preserve"><value>Dinleniyor...</value></data>
+  <data name="voice.intro.title" xml:space="preserve"><value>Herness Sesli Girişi</value></data>
+  <data name="voice.intro.body" xml:space="preserve"><value>Hızlı lokal veya API konuşma tanıma ile kompozitöre dikte et.</value></data>
+  <data name="voice.intro.start" xml:space="preserve"><value>Sesi Başlat</value></data>
+  <data name="voice.intro.dismiss" xml:space="preserve"><value>Sesli tanıtımı kapat</value></data>
+  <data name="voice.source.tiny" xml:space="preserve"><value>Whisper Tiny Q5 (lokal, hızlı)</value></data>
+  <data name="voice.source.large" xml:space="preserve"><value>Whisper Large-v3-Turbo (lokal)</value></data>
+  <data name="voice.source.nemotron" xml:space="preserve"><value>Nemotron 3.5 (lokal streaming)</value></data>
+  <data name="voice.source.custom" xml:space="preserve"><value>Özel lokal model</value></data>
+  <data name="voice.source.api" xml:space="preserve"><value>Ses API'si</value></data>
+  <data name="voice.api.endpoint" xml:space="preserve"><value>Transkripsiyon endpoint'i</value></data>
+  <data name="voice.api.key" xml:space="preserve"><value>API anahtarı</value></data>
+  <data name="voice.api.model" xml:space="preserve"><value>Modeli</value></data>
+  <data name="voice.api.realtime" xml:space="preserve"><value>NeMo gerçek zamanlı WebSocket (isteğe bağlı)</value></data>
+  <data name="voice.model.tinySize" xml:space="preserve"><value>31 MiB · Q5_1</value></data>
+  <data name="voice.model.nemotronSize" xml:space="preserve"><value>742 MB · Q8_0</value></data>
+  <data name="voice.status.ready" xml:space="preserve"><value>Hazır</value></data>
+  <data name="voice.status.notReady" xml:space="preserve"><value>Önce sesli giriş modelini indir veya yapılandır.</value></data>
+  <data name="voice.status.downloading" xml:space="preserve"><value>Ses varlıkları indiriliyor…</value></data>
+  <data name="voice.download" xml:space="preserve"><value>Ses varlıklarını indir</value></data>
+  <data name="voice.error" xml:space="preserve"><value>Sesli giriş hatası: {0}</value></data>
+  <data name="conversation.heard" xml:space="preserve"><value>Duyuldu: {0}</value></data>
+  <data name="conversation.voiceStopped" xml:space="preserve"><value>Ses girişi durduruldu.</value></data>
+  <data name="conversation.voiceUnavailable" xml:space="preserve"><value>Ses girişi kullanılamıyor. Mikrofon gizlilik ayarlarınızı ve yüklü konuşma dilini kontrol edin. {0}</value></data>
+  <data name="conversation.priority" xml:space="preserve"><value>Öncelik talimatı</value></data>
+  <data name="conversation.queued" xml:space="preserve"><value>Sıraya alınmış mesaj</value></data>
+  <data name="conversation.interrupting" xml:space="preserve"><value>Kesinti</value></data>
+  <data name="conversation.inContext" xml:space="preserve"><value>Bağlamda</value></data>
+  <data name="conversation.waiting" xml:space="preserve"><value>Bekliyor</value></data>
+  <data name="conversation.you" xml:space="preserve"><value>sen</value></data>
+  <data name="conversation.assistant" xml:space="preserve"><value>Koşum takımı</value></data>
+  <data name="conversation.plan" xml:space="preserve"><value>Planı</value></data>
+  <data name="conversation.tool" xml:space="preserve"><value>Araç</value></data>
+  <data name="conversation.system" xml:space="preserve"><value>Sistem</value></data>
+  <data name="conversation.dropFiles" xml:space="preserve"><value>Dosyaları buraya bırakın</value></data>
   <data name="conversation.send" xml:space="preserve"><value>Gönder</value></data>
-  <data name="conversation.planMode" xml:space="preserve"><value>Plan mode</value></data>
-  <data name="conversation.applyPlan" xml:space="preserve"><value>Apply plan</value></data>
-  <data name="conversation.applyPlanHelp" xml:space="preserve"><value>Apply this plan in the workspace</value></data>
-  <data name="conversation.steer" xml:space="preserve"><value>Steer</value></data>
-  <data name="conversation.steerHelp" xml:space="preserve"><value>Steer queued message</value></data>
-  <data name="conversation.terminal" xml:space="preserve"><value>Terminal</value></data>
-  <data name="conversation.closeTerminal" xml:space="preserve"><value>Close terminal</value></data>
-  <data name="conversation.startTerminalError" xml:space="preserve"><value>Unable to start terminal: {0}</value></data>
-  <data name="window.confirmClose" xml:space="preserve"><value>Confirm close</value></data>
-  <data name="window.remember" xml:space="preserve"><value>Remember this choice</value></data>
+  <data name="conversation.planMode" xml:space="preserve"><value>Plan modu</value></data>
+  <data name="conversation.applyPlan" xml:space="preserve"><value>Planı uygula</value></data>
+  <data name="conversation.applyPlanHelp" xml:space="preserve"><value>Bu planı çalışma alanına uygulayın</value></data>
+  <data name="conversation.steer" xml:space="preserve"><value>Yönlendir</value></data>
+  <data name="conversation.steerHelp" xml:space="preserve"><value>Sıraya alınmış mesajı yönlendir</value></data>
+  <data name="conversation.terminal" xml:space="preserve"><value>terminali</value></data>
+  <data name="conversation.closeTerminal" xml:space="preserve"><value>Terminali kapat</value></data>
+  <data name="conversation.startTerminalError" xml:space="preserve"><value>Terminal başlatılamıyor: {0}</value></data>
+  <data name="window.confirmClose" xml:space="preserve"><value>Kapatmayı onayla</value></data>
+  <data name="window.remember" xml:space="preserve"><value>Bu seçimi hatırla</value></data>
   <data name="window.close" xml:space="preserve"><value>Kapat</value></data>
-  <data name="window.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="window.closeQuestion" xml:space="preserve"><value>Are you sure you want to close?</value></data>
-  <data name="status.chooseProviderWorkspace" xml:space="preserve"><value>Choose a provider and workspace.</value></data>
-  <data name="status.generationStopped" xml:space="preserve"><value>Generation stopped.</value></data>
-  <data name="status.copied" xml:space="preserve"><value>Copied</value></data>
-  <data name="status.noModel" xml:space="preserve"><value>No connected model</value></data>
-  <data name="status.routerUnavailable" xml:space="preserve"><value>Router unavailable</value></data>
-  <data name="status.modelRequestFailed" xml:space="preserve"><value>Model request failed (HTTP {0})</value></data>
-  <data name="status.connectionRequired" xml:space="preserve"><value>Connect a provider account to continue.</value></data>
-  <data name="status.workspaceRequired" xml:space="preserve"><value>Choose a workspace before sending a message.</value></data>
-  <data name="copyright" xml:space="preserve"><value>Copyright (c) 2026 DOTS. Derived from DeepSeek Harness — Copyright (c) 2026 DeepSeek. MIT.</value></data>
-  <data name="settings.title" xml:space="preserve"><value>Settings</value></data>
-  <data name="settings.custom" xml:space="preserve"><value>Custom API</value></data>
-  <data name="settings.share" xml:space="preserve"><value>Share</value></data>
-  <data name="settings.tasks" xml:space="preserve"><value>Tasks</value></data>
-  <data name="settings.systemPrompt" xml:space="preserve"><value>System prompt</value></data>
+  <data name="window.cancel" xml:space="preserve"><value>İptal</value></data>
+  <data name="window.closeQuestion" xml:space="preserve"><value>Kapatmak istediğinizden emin misiniz?</value></data>
+  <data name="status.chooseProviderWorkspace" xml:space="preserve"><value>Bir sağlayıcı ve çalışma alanı seçin.</value></data>
+  <data name="status.generationStopped" xml:space="preserve"><value>Nesil durdu.</value></data>
+  <data name="status.copied" xml:space="preserve"><value>Kopyalandı</value></data>
+  <data name="status.noModel" xml:space="preserve"><value>Bağlı model yok</value></data>
+  <data name="status.routerUnavailable" xml:space="preserve"><value>Yönlendirici kullanılamıyor</value></data>
+  <data name="status.modelRequestFailed" xml:space="preserve"><value>Model isteği başarısız oldu (HTTP {0})</value></data>
+  <data name="status.connectionRequired" xml:space="preserve"><value>Devam etmek için bir sağlayıcı hesabı bağlayın.</value></data>
+  <data name="status.workspaceRequired" xml:space="preserve"><value>Mesaj göndermeden önce bir çalışma alanı seçin.</value></data>
+  <data name="router.unknown" xml:space="preserve"><value>bilinmiyor</value></data>
+  <data name="copyright" xml:space="preserve"><value>Telif Hakkı (c) 2026 NOKTA. DeepSeek Kayışından Türetilmiştir — Telif Hakkı (c) 2026 DeepSeek. MİT.</value></data>
+  <data name="settings.title" xml:space="preserve"><value>Ayarlar</value></data>
+  <data name="settings.custom" xml:space="preserve"><value>Özel API</value></data>
+  <data name="settings.share" xml:space="preserve"><value>Paylaş</value></data>
+  <data name="settings.tasks" xml:space="preserve"><value>Görevler</value></data>
+  <data name="settings.systemPrompt" xml:space="preserve"><value>Sistem istemi</value></data>
   <data name="sidebar.chats" xml:space="preserve"><value>Sohbetler</value></data>
   <data name="sidebar.newChat" xml:space="preserve"><value>Yeni sohbet</value></data>
   <data name="sidebar.settings" xml:space="preserve"><value>Ayarlar</value></data>
   <data name="sidebar.userMenu" xml:space="preserve"><value>Kullanıcı menüsü</value></data>
-  <data name="conversation.model" xml:space="preserve"><value>Model</value></data>
+  <data name="conversation.model" xml:space="preserve"><value>Modeli</value></data>
   <data name="conversation.continue" xml:space="preserve"><value>Devam et</value></data>
   <data name="conversation.reject" xml:space="preserve"><value>Reddet</value></data>
   <data name="conversation.allowOnce" xml:space="preserve"><value>Bir kez izin ver</value></data>
@@ -174,20 +222,39 @@
   <data name="settings.appearanceSystem" xml:space="preserve"><value>Sistem</value></data>
   <data name="settings.appearanceLight" xml:space="preserve"><value>Açık</value></data>
   <data name="settings.appearanceDark" xml:space="preserve"><value>Koyu</value></data>
-  <data name="status.connectProviderChat" xml:space="preserve"><value>Connect a provider before starting a chat.</value></data>
-  <data name="status.connectProviderPlan" xml:space="preserve"><value>Connect a provider before applying a plan.</value></data>
-  <data name="status.emptyResponse" xml:space="preserve"><value>The provider returned an empty response.</value></data>
-  <data name="status.toolLimit" xml:space="preserve"><value>The tool step limit was reached.</value></data>
-  <data name="status.toolUnavailablePlan" xml:space="preserve"><value>This tool is unavailable in plan mode.</value></data>
-  <data name="status.userRejectedCommand" xml:space="preserve"><value>The user rejected this command.</value></data>
-  <data name="status.toolInterrupted" xml:space="preserve"><value>Tool call interrupted before it completed.</value></data>
-  <data name="status.contextCompacting" xml:space="preserve"><value>Context automatically compacting…</value></data>
-  <data name="status.contextCompacted" xml:space="preserve"><value>Context compacted.</value></data>
-  <data name="status.pressContinue" xml:space="preserve"><value>Press Continue to resume this message.</value></data>
-  <data name="conversation.used" xml:space="preserve"><value>Used</value></data>
-  <data name="conversation.changedFiles" xml:space="preserve"><value>Changed files</value></data>
-  <data name="conversation.skills" xml:space="preserve"><value>Skills</value></data>
-  <data name="conversation.tools" xml:space="preserve"><value>Tools</value></data>
+  <data name="status.connectProviderChat" xml:space="preserve"><value>Sohbete başlamadan önce bir sağlayıcıya bağlanın.</value></data>
+  <data name="status.connectProviderPlan" xml:space="preserve"><value>Bir planı uygulamadan önce bir sağlayıcıya bağlanın.</value></data>
+  <data name="status.emptyResponse" xml:space="preserve"><value>Sağlayıcı boş bir yanıt verdi.</value></data>
+  <data name="status.toolLimit" xml:space="preserve"><value>Takım adımı sınırına ulaşıldı.</value></data>
+  <data name="status.toolUnavailablePlan" xml:space="preserve"><value>Bu araç plan modunda kullanılamaz.</value></data>
+  <data name="status.userRejectedCommand" xml:space="preserve"><value>Kullanıcı bu komutu reddetti.</value></data>
+  <data name="status.toolInterrupted" xml:space="preserve"><value>Takım çağrısı tamamlanmadan kesildi.</value></data>
+  <data name="status.contextCompacting" xml:space="preserve"><value>Bağlam otomatik olarak sıkıştırılıyor…</value></data>
+  <data name="status.contextCompacted" xml:space="preserve"><value>Bağlam sıkıştırıldı.</value></data>
+  <data name="status.pressContinue" xml:space="preserve"><value>Bu mesajı devam ettirmek için Devam'a basın.</value></data>
+  <data name="conversation.used" xml:space="preserve"><value>Kullanılmış</value></data>
+  <data name="conversation.changedFiles" xml:space="preserve"><value>Değiştirilen dosyalar</value></data>
+  <data name="conversation.skills" xml:space="preserve"><value>Beceriler</value></data>
+  <data name="conversation.tools" xml:space="preserve"><value>Araçlar</value></data>
+  <data name="conversation.runSummary" xml:space="preserve"><value>Çalışma özeti</value></data>
+  <data name="conversation.filesSummary" xml:space="preserve"><value>Eklendi {0}, değiştirildi {1}, silindi {2}</value></data>
+  <data name="conversation.fileAdded" xml:space="preserve"><value>Eklendi</value></data>
+  <data name="conversation.fileModified" xml:space="preserve"><value>Değiştirildi</value></data>
+  <data name="conversation.fileDeleted" xml:space="preserve"><value>Silindi</value></data>
+  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Eski kod temizliği doğrulandı.</value></data>
+  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Eski kod korundu; temizlik gerekli değildi veya kanıtlanamadı.</value></data>
+  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Temizlik doğrulanamadı; mevcut dosyalar korundu.</value></data>
+  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Temizlik tamamlanamadı.</value></data>
+  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>Temizlik istenmedi.</value></data>
+  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Çalışma alanı değişiklikleri tamamen doğrulanamadı.</value></data>
+  <data name="conversation.connectionChanged" xml:space="preserve"><value>Bağlantı değiştirildi</value></data>
+  <data name="conversation.connectionSummary" xml:space="preserve"><value>Bağlantı değiştirildi: {0} → {1}</value></data>
+  <data name="conversation.connectionAdded" xml:space="preserve"><value>Bağlantı eklendi: {0}. Mevcut bağlantılar ve kullanıcı verileri korundu; uzak verilere dokunulmadı.</value></data>
+  <data name="conversation.connectionSelected" xml:space="preserve"><value>Bağlantı seçildi: {0}. Mevcut bağlantılar ve kullanıcı verileri korundu; uzak verilere dokunulmadı.</value></data>
+  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Önceki bağlantı korundu: {0}. Sohbetler ve kullanıcı verileri korundu; uzak verilere dokunulmadı.</value></data>
+  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Önceki bağlantı kaldırıldı. Yerel bağlantı verileri temizlendi; sohbetler ve kullanıcı verileri korundu. Uzak verilere dokunulmadı.</value></data>
+  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Önceki yerel bağlantı verileri tamamen doğrulanamadı; korundu.</value></data>
+  <data name="conversation.testStatus" xml:space="preserve"><value>Testler: {0}</value></data>
   <data name="settings.taskNever" xml:space="preserve"><value>Henüz çalıştırılmadı</value></data>
   <data name="settings.taskRunning" xml:space="preserve"><value>Çalışıyor…</value></data>
   <data name="settings.taskSucceeded" xml:space="preserve"><value>Başarılı</value></data>
