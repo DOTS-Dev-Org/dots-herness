@@ -192,7 +192,7 @@ public sealed class ProviderImageTests
     }
 
     [Fact]
-    public async Task UnsupportedCacheHidesCommandButModelChangeRetries()
+    public async Task UnsupportedCacheKeepsCommandVisibleAndModelChangeRetries()
     {
         var root = Path.Combine(Path.GetTempPath(), $"DotsHarnessImageTests-{Guid.NewGuid()}");
         try
@@ -212,7 +212,7 @@ public sealed class ProviderImageTests
             Assert.True(router.CommandVisible(primary.Model));
             var error = await Assert.ThrowsAsync<NativeImageGenerationException>(() => router.GenerateAsync("a red fox", primary.Model));
             Assert.True(error.Unsupported);
-            Assert.False(router.CommandVisible(primary.Model));
+            Assert.True(router.CommandVisible(primary.Model));
             Assert.True(router.CommandVisible("unknown-model"));
         }
         finally

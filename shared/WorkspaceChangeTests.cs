@@ -37,24 +37,36 @@ public sealed class WorkspaceChangeTests : IDisposable
         Directory.CreateDirectory(Path.Combine(_root, ".git"));
         Directory.CreateDirectory(Path.Combine(_root, ".mem"));
         Directory.CreateDirectory(Path.Combine(_root, "build"));
+        Directory.CreateDirectory(Path.Combine(_root, "node_modules"));
+        Directory.CreateDirectory(Path.Combine(_root, "Pods"));
+        Directory.CreateDirectory(Path.Combine(_root, "DerivedData"));
         File.WriteAllText(Path.Combine(_root, ".git", "ignored.cs"), "one");
         File.WriteAllText(Path.Combine(_root, ".mem", "ignored.cs"), "one");
         File.WriteAllText(Path.Combine(_root, "build", "ignored.cs"), "one");
+        File.WriteAllText(Path.Combine(_root, "node_modules", "ignored.cs"), "one");
+        File.WriteAllText(Path.Combine(_root, "Pods", "ignored.cs"), "one");
+        File.WriteAllText(Path.Combine(_root, "DerivedData", "ignored.cs"), "one");
         var outside = Path.Combine(_root, "outside.cs");
         File.WriteAllText(outside, "outside");
-        try { File.CreateSymbolicLink(Path.Combine(_root, "link.cs"), outside); } catch (IOException or UnauthorizedAccessException) { }
+        try { File.CreateSymbolicLink(Path.Combine(_root, "link.cs"), outside); } catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
         var tracker = WorkspaceChangeTracker.Start(_root);
         Assert.NotNull(tracker);
 
         File.WriteAllText(Path.Combine(_root, ".git", "ignored.cs"), "two");
         File.WriteAllText(Path.Combine(_root, ".mem", "ignored.cs"), "two");
         File.WriteAllText(Path.Combine(_root, "build", "ignored.cs"), "two");
+        File.WriteAllText(Path.Combine(_root, "node_modules", "ignored.cs"), "two");
+        File.WriteAllText(Path.Combine(_root, "Pods", "ignored.cs"), "two");
+        File.WriteAllText(Path.Combine(_root, "DerivedData", "ignored.cs"), "two");
         File.WriteAllText(outside, "changed");
 
         var result = tracker!.FinishResult();
         Assert.DoesNotContain(result.ChangedFiles, file => file.Path.StartsWith(".git/", StringComparison.Ordinal));
         Assert.DoesNotContain(result.ChangedFiles, file => file.Path.StartsWith(".mem/", StringComparison.Ordinal));
         Assert.DoesNotContain(result.ChangedFiles, file => file.Path.StartsWith("build/", StringComparison.Ordinal));
+        Assert.DoesNotContain(result.ChangedFiles, file => file.Path.StartsWith("node_modules/", StringComparison.Ordinal));
+        Assert.DoesNotContain(result.ChangedFiles, file => file.Path.StartsWith("Pods/", StringComparison.Ordinal));
+        Assert.DoesNotContain(result.ChangedFiles, file => file.Path.StartsWith("DerivedData/", StringComparison.Ordinal));
         Assert.DoesNotContain(result.ChangedFiles, file => file.Path == "link.cs");
     }
 

@@ -1,7 +1,6 @@
 // Copyright (c) 2026 DOTS
-// Lets the harness agent author declarative / JS plugins from chat: it writes
-// a folder under the plugins directory, then validates it by mounting a probe
-// host. Iteration loop is the agent's normal tool loop — no bespoke LLM call.
+// Native plugin authoring helper. It creates source/IR drafts only; execution
+// happens after the marketplace build, signature verification, and trust gate.
 
 import Foundation
 import HarnessPluginKit
@@ -10,10 +9,10 @@ public final class PluginAuthorPlugin: DefaultPlugin {
     public static let manifest = PluginManifest(
         id: "dots.plugin-author",
         name: "Plugin Author",
-        version: "1.0.0",
+        version: "2.0.0",
         plane: .host,
         inject: ["prompt", "tools"],
-        description: "Author and validate Dots Harness plugins from chat."
+        description: "Create and validate native Dots Harness plugin drafts."
     )
 
     public init() {}
@@ -26,30 +25,31 @@ public final class PluginAuthorPlugin: DefaultPlugin {
         let plugins = catalog.paths.plugins
 
         ctx.prompt.section(name: "plugin-author", order: 60, text: """
-        You can build Dots Harness plugins for the user. Call `plugin.schema` for the
-        exact file format. Write the plugin with `plugin.save`, then `plugin.validate`;
-        fix issues and repeat until it returns `ok`. Prefer declarative plugins (no
-        code); use a `main: plugin.js` script only when logic is required.
+        You can create native Dots Harness plugin drafts. Use plugin.schema for the
+        package contract, then plugin.save with plugin.yml, plugin.ir.json, and
+        native source files. JavaScript and manifest-only plugins are not supported.
+        A draft must be built by the trusted marketplace CI before it can be loaded.
         """)
 
-        ctx.tools.register(name: "plugin.schema", description: "Return the plugin file format.", parameters: []) { _ in
+        ctx.tools.register(name: "plugin.schema", description: "Return the native plugin package format.", parameters: []) { _ in
             Self.schema
         }
 
         ctx.tools.register(
             name: "plugin.save",
-            description: "Write a plugin folder. `files` is a JSON object of relativePath -> file contents; must include plugin.yml.",
+            description: "Write a native plugin source draft under the local plugins directory.",
             parameters: [
-                ToolParameter(name: "id", type: "string", description: "plugin id, e.g. com.you.thing"),
-                ToolParameter(name: "files", type: "string", description: "JSON: {\"plugin.yml\": \"...\", \"prompt.md\": \"...\"}"),
+                ToolParameter(name: "id", type: "string", description: "Reverse-DNS plugin id, e.g. com.you.thing"),
+                ToolParameter(name: "files", type: "string", description: "JSON object of relative path to text content; plugin.yml and plugin.ir.json are required."),
             ]
         ) { args in
-            let id = args["id"] ?? ""
+            let id = args["id"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             guard Self.isSafeID(id) else { throw PluginError.package("unsafe plugin id \(id)") }
             guard let raw = args["files"]?.data(using: .utf8),
                   let files = try? JSONDecoder().decode([String: String].self, from: raw),
-                  files["plugin.yml"] != nil else {
-                throw PluginError.package("files must be a JSON object containing plugin.yml")
+                  files["plugin.yml"] != nil,
+                  files["plugin.ir.json"] != nil else {
+                throw PluginError.package("files must include plugin.yml and plugin.ir.json")
             }
             let folder = plugins.appendingPathComponent(id, isDirectory: true)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -60,33 +60,28 @@ public final class PluginAuthorPlugin: DefaultPlugin {
                 try contents.write(to: target, atomically: true, encoding: .utf8)
             }
             catalog.refresh()
-            return "saved \(files.count) file(s) to \(id). Run plugin.validate next."
+            return "saved native draft \(id) with \(files.count) file(s); build it in Marketplace before enabling it"
         }
 
         ctx.tools.register(
             name: "plugin.validate",
-            description: "Mount the plugin in a throwaway host and report issues or ok.",
+            description: "Validate a native plugin draft without loading untrusted code.",
             parameters: [ToolParameter(name: "id", type: "string", description: "plugin id")]
         ) { args in
             let id = args["id"] ?? ""
             catalog.refresh()
-            if let entry = catalog.entries.first(where: { $0.manifest.id == id }), let broken = entry.broken {
-                return "manifest error: \(broken)"
+            guard let entry = catalog.entries.first(where: { $0.manifest.id == id }) else {
+                return "error: no plugin named \(id)"
             }
-            let probe = PluginHost(catalog: catalog)
-            let issues = probe.mount(CompositionDocument(plane: .session, entries: [
-                CompositionEntry(id: "probe", plugin: id),
-            ]))
-            defer { probe.unmountAll() }
-            if !issues.isEmpty {
-                return "issues:\n" + issues.map { "- \($0.message)" }.joined(separator: "\n")
+            if let broken = entry.broken { return "native validation: \(broken)" }
+            guard let folder = entry.url else { return "error: plugin has no source folder" }
+            guard FileManager.default.fileExists(atPath: folder.appendingPathComponent("plugin.ir.json").path) else {
+                return "error: plugin.ir.json is missing"
             }
-            let tools = probe.tools.tools().map(\.name).sorted()
-            let sections = probe.prompt.sections().map(\.name)
-            return "ok — prompt sections \(sections), tools \(tools), panels \(probe.slots.all().count)"
+            return "ok — native package is ready for marketplace CI; runtime loading requires a signed library and explicit trust"
         }
 
-        ctx.tools.register(name: "plugin.list", description: "List installed plugins.", parameters: []) { _ in
+        ctx.tools.register(name: "plugin.list", description: "List installed native plugin drafts.", parameters: []) { _ in
             catalog.refresh()
             if catalog.entries.isEmpty { return "no plugins installed" }
             return catalog.entries.map {
@@ -97,7 +92,7 @@ public final class PluginAuthorPlugin: DefaultPlugin {
 
         ctx.tools.register(
             name: "plugin.remove",
-            description: "Delete an installed plugin folder.",
+            description: "Delete a local native plugin draft.",
             parameters: [ToolParameter(name: "id", type: "string", description: "plugin id")]
         ) { args in
             let id = args["id"] ?? ""
@@ -122,54 +117,20 @@ public final class PluginAuthorPlugin: DefaultPlugin {
     }
 
     static let schema = """
-    A plugin is a folder under the plugins directory named exactly its `id`, with a
-    `plugin.yml` manifest. Three kinds:
+    Native plugin package:
 
-    1. DECLARATIVE (preferred, no code). plugin.yml:
+      plugin.yml
+      plugin.ir.json
+      license
+      source/macos/       # Swift/SwiftUI + SwiftPM dynamic-library source
+      source/windows/     # C# + WPF + IHarnessPlugin source
+      source/linux/       # C# + Avalonia + IHarnessPlugin source
+      artifacts/<platform>/<architecture>/
 
-       id: com.you.thing          # folder name == id
-       name: Thing
-       version: 0.1.0
-       plane: session             # session (per chat) | host (global)
-       runtime: declarative
-       promptSection:             # optional system-prompt text
-         name: thing:note
-         order: 40
-         text: "One sentence the model should know."
-       tools:                     # optional
-         - name: thing:do
-           description: what it does
-           parameters:
-             - { name: who, type: string, description: "", required: true }
-           action:
-             kind: emit           # emit (always allowed) | shell | http (need trusted)
-             event: thing/done
-             payload: "{who}"     # {param} substitution
-       panels:                    # optional SwiftUI, described as a node tree
-         - slot: conversation.composer.accessory   # or shell.overlay, settings.sections, plugins.detail, shell.sidebar.footer
-           id: main
-           order: 10
-           label: Thing
-           body:
-             type: vstack         # vstack|hstack|text|button|field|toggle|spacer|image
-             children:
-               - { type: text, text: "Hello" }
-               - { type: field, key: thing.note, placeholder: "note" }
-               - { type: toggle, key: thing.on, label: "On" }
-               - { type: button, label: "Go", tool: thing:do, args: { who: world } }
-
-    2. JS. Add `main: plugin.js`; ship a plugin.js with a global `apply(h)`:
-       function apply(h) {
-         h.prompt("thing:note", 40, "text");
-         h.tool("thing:do", "desc", function (args) { return "result string"; });
-         h.on("evt", function (p) { h.emit("evt2", p); });
-         h.get("key"); h.set("key", value);
-         h.panel("conversation.composer.accessory", "main", 10, "Thing", { type: "vstack", children: [ ... ] });
-       }
-       Sandboxed: no fs, no network, no timers. Tool callbacks return synchronously.
-
-    3. NATIVE (compiled Swift dylib) — out of scope here; ships via the marketplace.
-
-    Workflow: plugin.save (files JSON incl. plugin.yml) -> plugin.validate -> fix -> repeat.
+    plugin.yml must contain id, name, version, abi, plane, runtime: native, and
+    library. plugin.ir.json is the shared IR for prompt sections, typed tools,
+    events, settings/state, and supported panel components. Platform-specific
+    source stays under its target directory; arbitrary SwiftUI cannot be
+    translated to C# automatically. Release versions and licenses are immutable.
     """
 }

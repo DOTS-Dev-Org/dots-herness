@@ -10,18 +10,26 @@ import NaturalLanguage
 public final class LocalSpeechSynthesizer: NSObject, ObservableObject {
     @Published public private(set) var activeMessageID: String?
 
-    private let synthesizer = AVSpeechSynthesizer()
+    // Created on first use: AVSpeechSynthesizer pulls in the speech stack, and this
+    // object is built while the first frame is laid out, whether or not anyone speaks.
+    private var createdSynthesizer: AVSpeechSynthesizer?
+    private var synthesizer: AVSpeechSynthesizer {
+        if let createdSynthesizer { return createdSynthesizer }
+        let created = AVSpeechSynthesizer()
+        created.delegate = self
+        createdSynthesizer = created
+        return created
+    }
     private var audioPlayer: AVAudioPlayer?
     private var remoteAudioPending = false
     private var activeUtterance: AVSpeechUtterance?
 
     public override init() {
         super.init()
-        synthesizer.delegate = self
     }
 
     public var isSpeaking: Bool {
-        synthesizer.isSpeaking || audioPlayer?.isPlaying == true || remoteAudioPending
+        createdSynthesizer?.isSpeaking == true || audioPlayer?.isPlaying == true || remoteAudioPending
     }
 
     public func toggle(_ text: String, messageID: String? = nil) {

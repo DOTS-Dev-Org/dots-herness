@@ -137,4 +137,68 @@ final class ScheduledTaskTests: XCTestCase {
         XCTAssertEqual(loaded[0].name, "mail")
         XCTAssertEqual(loaded[0].lastState, ScheduledTask.RunState.failed("boom"))
     }
+
+    func testLegacyTaskJSONDefaultsNewFields() throws {
+        let json = """
+        [{"id":"legacy","name":"old","cron":"0 8 * * *","prompt":"p","workspacePath":"/tmp","enabled":true,"createdAt":"2026-08-27T00:00:00Z","lastState":{"never":{}}}]
+        """
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let task = try decoder.decode([ScheduledTask].self, from: Data(json.utf8))[0]
+        XCTAssertEqual(task.fallbackModelID, "")
+        XCTAssertEqual(task.targetPath, "")
+        XCTAssertFalse(task.allowsNetwork)
+    }
+
+    func testTargetPathMustStayInsideWorkspaceAndRunRoundTrips() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("DotsHarnessTarget-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let child = root.appendingPathComponent("notes.txt")
+        try Data("notes".utf8).write(to: child)
+
+        let task = ScheduledTask(
+            name: "target", cron: "0 8 * * *", prompt: "p", workspacePath: root.path,
+            fallbackModelID: "fallback", targetPath: "notes.txt", allowsNetwork: true
+        )
+        XCTAssertEqual(task.resolvedTargetPath(), child.path)
+        XCTAssertNil(task.withTarget("../outside").resolvedTargetPath())
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(task)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let loaded = try decoder.decode(ScheduledTask.self, from: data)
+        XCTAssertEqual(loaded.fallbackModelID, "fallback")
+        XCTAssertEqual(loaded.targetPath, "notes.txt")
+        XCTAssertTrue(loaded.allowsNetwork)
+    }
+
+    func testTaskRunStoreFiltersAndKeepsNewestRuns() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("DotsHarnessRuns-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = SupportPaths(root: root, plugins: root, presets: root, settings: root, hostPatch: root, trust: root, models: root, runtime: root)
+        let store = TaskRunStore(paths: paths)
+        for index in 0..<21 {
+            store.append(ScheduledTaskRun(
+                taskID: index.isMultiple(of: 2) ? "a" : "b",
+                startedAt: date("2026-08-27T00:00:00Z").addingTimeInterval(TimeInterval(index)),
+                finishedAt: date("2026-08-27T00:00:01Z").addingTimeInterval(TimeInterval(index)),
+                ok: true,
+                output: "run \(index)"
+            ))
+        }
+        XCTAssertEqual(store.load().count, 20)
+        XCTAssertTrue(store.load(taskID: "a").allSatisfy { $0.taskID == "a" })
+    }
+}
+
+private extension ScheduledTask {
+    func withTarget(_ path: String) -> ScheduledTask {
+        var copy = self
+        copy.targetPath = path
+        return copy
+    }
 }

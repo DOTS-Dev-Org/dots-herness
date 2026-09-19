@@ -10,6 +10,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Xunit;
+using JsonValue = HarnessPluginKit.JsonValue;
 
 namespace DotsHarness.Tests;
 
@@ -21,6 +22,54 @@ public sealed class AgentBridgeTests
     public void PromptDeliveryModesMatchHostContract(PromptMode mode, string wireValue)
     {
         Assert.Equal(wireValue, mode.ToWireValue());
+    }
+
+    [Fact]
+    public void AskUserParsesQuestionsAndDropsBrokenOnes()
+    {
+        const string arguments = """
+        {"questions":[
+          {"header":"Scope","question":"Which surface first?","options":["macOS","Windows","Linux","All three"]},
+          {"question":"  ","options":["ignored"]},
+          {"question":"Migration?","options":["  ","Manual","Automatic","","Skip","Extra"]}
+        ]}
+        """;
+        var questions = AskUserTool.Parse(arguments);
+        Assert.Equal(2, questions.Count);
+        Assert.Equal("Scope", questions[0].Header);
+        Assert.Equal(new[] { "macOS", "Windows", "Linux", "All three" }, questions[0].Options);
+        // Blank options fall out and the list is capped at four suggestions.
+        Assert.Equal(new[] { "Manual", "Automatic", "Skip", "Extra" }, questions[1].Options);
+        Assert.NotEmpty(questions[1].Header);
+        Assert.Empty(AskUserTool.Parse("{}"));
+        Assert.Empty(AskUserTool.Parse("not json"));
+    }
+
+    [Fact]
+    public void AskUserTranscriptPairsAnswersWithQuestions()
+    {
+        var questions = AskUserTool.Parse("""{"questions":[{"question":"Target?","options":["A","B","C"]}]}""");
+        Assert.Equal("Q: Target?\nA: Custom answer", AskUserTool.Transcript(questions, new[] { "  Custom answer " }));
+    }
+
+    [Fact]
+    public void AskUserFingerprintIgnoresCaseSpacingAndPunctuation()
+    {
+        Assert.Equal(
+            AskUserTool.Fingerprint("Which target first?"),
+            AskUserTool.Fingerprint("  which   TARGET  first!! "));
+        Assert.NotEqual(
+            AskUserTool.Fingerprint("Which target first?"),
+            AskUserTool.Fingerprint("Which target last?"));
+        // Follow-up rounds exist, but the budget is finite.
+        Assert.Equal(3, AskUserTool.MaxRounds);
+    }
+
+    [Fact]
+    public void AskUserToolIsAdvertisedAsAQuestionArray()
+    {
+        Assert.Equal("ask_user", AskUserTool.Definition.Name);
+        Assert.Equal("array", AskUserTool.Definition.Parameters["properties"]?["questions"]?["type"]?.GetValue<string>());
     }
 
     [Fact]
@@ -92,11 +141,126 @@ public sealed class AgentBridgeTests
     [Fact]
     public void PlanModeOnlyExposesReadOnlyWorkspaceTools()
     {
-        Assert.Equal(new[] { "list_files", "read_file" }, NativeWorkspaceTools.ReadOnlyDefinitions.Select(tool => tool.Name));
+        Assert.Equal(
+            new[] { "list_files", "read_file", "grep_files", "run_command" },
+            NativeWorkspaceTools.PlanDefinitions.Select(tool => tool.Name));
+        Assert.True(NativeWorkspaceTools.IsWorkspaceMutation("write_file"));
+        Assert.True(NativeWorkspaceTools.IsWorkspaceMutation("remove_file"));
+        Assert.False(NativeWorkspaceTools.IsWorkspaceMutation("run_command"));
         Assert.True(NativeWorkspaceTools.IsReadOnly("list_files"));
         Assert.True(NativeWorkspaceTools.IsReadOnly("read_file"));
         Assert.False(NativeWorkspaceTools.IsReadOnly("write_file"));
+        Assert.True(NativeWorkspaceTools.IsReadOnly("grep_files"));
         Assert.False(NativeWorkspaceTools.IsReadOnly("run_command"));
+    }
+
+    [Fact]
+    public async Task ReadFilePagesAndWriteFileRefusesABlindRewrite()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "DotsHarnessRead-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        ReadLedger.Reset();
+        try
+        {
+            var file = Path.Combine(root, "a.txt");
+            File.WriteAllText(file, string.Join('\n', Enumerable.Range(1, 10).Select(number => $"line {number}")));
+
+            Assert.Equal("line 3\nline 4", await ReadAsync(root, """{"path":"a.txt","offset":3,"limit":2}"""));
+            Assert.Contains("10 lines", await ReadAsync(root, """{"path":"a.txt","offset":99}"""));
+
+            // A partial read is not a licence to rewrite the whole file.
+            Assert.Contains("before rewriting", await WriteAsync(root, "a.txt", "short"));
+            Assert.StartsWith("line 1", File.ReadAllText(file));
+
+            await ReadAsync(root, """{"path":"a.txt"}""");
+            Assert.StartsWith("Wrote", await WriteAsync(root, "a.txt", "replaced"));
+            Assert.Equal("replaced", File.ReadAllText(file));
+
+            File.WriteAllText(file, "changed by someone else");
+            Assert.Contains("changed on disk", await WriteAsync(root, "a.txt", "mine"));
+            Assert.Equal("changed by someone else", File.ReadAllText(file));
+
+            // A new file needs no read, and a write refreshes the ledger.
+            Assert.StartsWith("Wrote", await WriteAsync(root, "new.txt", "hello"));
+            Assert.StartsWith("Wrote", await WriteAsync(root, "new.txt", "hello again"));
+        }
+        finally
+        {
+            ReadLedger.Reset();
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ReadFileCutsOnALineAndNamesTheNextOffset()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "DotsHarnessRead-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        ReadLedger.Reset();
+        try
+        {
+            var line = new string('x', 1_000);
+            File.WriteAllText(
+                Path.Combine(root, "big.txt"),
+                string.Join('\n', Enumerable.Repeat(line, 200)));
+
+            var first = await ReadAsync(root, """{"path":"big.txt"}""");
+            Assert.Contains("[truncated] Continue with offset:", first);
+            Assert.True(Encoding.UTF8.GetByteCount(first) <= 60_200);
+            Assert.All(
+                first.Split('\n').Where(item => item.Length > 0 && !item.StartsWith('[')),
+                item => Assert.Equal(1_000, item.Length));
+        }
+        finally
+        {
+            ReadLedger.Reset();
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static Task<string> ReadAsync(string root, string arguments) =>
+        NativeWorkspaceTools.ExecuteAsync(new NativeToolCall("read", "read_file", arguments), root);
+
+    private static Task<string> WriteAsync(string root, string path, string content) =>
+        NativeWorkspaceTools.ExecuteAsync(
+            new NativeToolCall("write", "write_file", JsonSerializer.Serialize(new { path, content })),
+            root);
+
+    [Fact]
+    public async Task GrepFilesReportsPathLineTextAndSkipsBuildDirectories()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "DotsHarnessGrep-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        Directory.CreateDirectory(Path.Combine(root, "node_modules"));
+        try
+        {
+            File.WriteAllText(Path.Combine(root, "src", "a.cs"), "using X;\nvar needle = 1;\n");
+            File.WriteAllText(Path.Combine(root, "src", "b.json"), "{\"needle\": true}");
+            File.WriteAllText(Path.Combine(root, "node_modules", "c.cs"), "var needle = 2;");
+
+            var all = await NativeWorkspaceTools.ExecuteAsync(
+                new NativeToolCall("call-1", "grep_files", """{"pattern":"needle"}"""), root);
+            Assert.Contains("src/a.cs:2:var needle = 1;", all);
+            Assert.Contains("src/b.json:1:", all);
+            Assert.DoesNotContain("node_modules", all);
+
+            var filtered = await NativeWorkspaceTools.ExecuteAsync(
+                new NativeToolCall("call-2", "grep_files", """{"pattern":"needle","extensions":"cs"}"""), root);
+            Assert.Contains("src/a.cs:2:", filtered);
+            Assert.DoesNotContain("b.json", filtered);
+
+            var none = await NativeWorkspaceTools.ExecuteAsync(
+                new NativeToolCall("call-3", "grep_files", """{"pattern":"haystack"}"""), root);
+            Assert.Equal("No matches.", none);
+
+            var invalid = await NativeWorkspaceTools.ExecuteAsync(
+                new NativeToolCall("call-4", "grep_files", """{"pattern":"[unclosed"}"""), root);
+            Assert.StartsWith("Invalid search pattern", invalid);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     [Fact]
@@ -374,12 +538,21 @@ public sealed class AgentBridgeTests
             var conversation = Assert.IsType<Conversation>(bridge.Selected);
             var plan = Assert.Single(conversation.Messages.Where(message => message.Kind == ChatKind.Plan));
             Assert.Equal(plan.Id, conversation.PendingPlanMessageId);
-            Assert.Equal(new[] { "list_files", "read_file" }, provider.ToolNames[0]);
+            var planRequest = JsonNode.Parse(provider.Requests[0])!.AsObject();
+            var planSystem = Assert.Single(planRequest["messages"]!.AsArray()
+                .Where(message => message?["role"]?.GetValue<string>() == "system"));
+            Assert.Contains("Response language", planSystem!["content"]!.GetValue<string>());
+            // Tools go out sorted by name so the prompt-cache prefix is stable.
+            Assert.Equal(
+                new[] { "grep_files", "list_files", "read_file", "run_command" },
+                provider.ToolNames[0].Intersect(NativeWorkspaceTools.Definitions.Select(tool => tool.Name)).ToArray());
 
             await bridge.SendAsync("apply plan").WaitAsync(TimeSpan.FromSeconds(10));
 
             Assert.Null(conversation.PendingPlanMessageId);
-            Assert.Equal(new[] { "list_files", "read_file", "write_file", "run_command" }, provider.ToolNames[1]);
+            Assert.Equal(
+                NativeWorkspaceTools.Definitions.Select(tool => tool.Name).OrderBy(name => name, StringComparer.Ordinal).ToArray(),
+                provider.ToolNames[1].Intersect(NativeWorkspaceTools.Definitions.Select(tool => tool.Name)).ToArray());
             Assert.Contains(conversation.Messages, message => message.Kind == ChatKind.Assistant && message.Text == "Implemented.");
         }
         finally
@@ -431,6 +604,8 @@ public sealed class AgentBridgeTests
             var continuationBody = JsonNode.Parse(provider.Requests[2])!.AsObject();
             Assert.Equal("other-model", continuationBody["model"]!.GetValue<string>());
             var messages = continuationBody["messages"]!.AsArray();
+            var system = Assert.Single(messages.Where(message => message?["role"]?.GetValue<string>() == "system"));
+            Assert.Contains("Response language", system!["content"]!.GetValue<string>());
             var assistant = Assert.Single(messages.Where(message => message?["role"]?.GetValue<string>() == "assistant"));
             Assert.NotNull(assistant!["tool_calls"]);
             var tool = Assert.Single(messages.Where(message => message?["role"]?.GetValue<string>() == "tool"));
@@ -444,7 +619,7 @@ public sealed class AgentBridgeTests
         }
     }
 
-    private static SupportPaths PathsFor(string root) => new(
+    private static PluginRuntime.SupportPaths PathsFor(string root) => new(
         root,
         Path.Combine(root, "plugins"),
         Path.Combine(root, "presets"),
@@ -479,7 +654,8 @@ public sealed class AgentBridgeTests
             int count;
             lock (_lock)
             {
-                Prompts.Add(prompt);
+                // The host snapshot precedes the submitted text on each turn.
+                Prompts.Add(prompt.Split("\n\n", StringSplitOptions.None).Last());
                 count = ++_requestCount;
             }
             if (count == 1)
@@ -514,10 +690,12 @@ public sealed class AgentBridgeTests
 
         public Uri Url => _gateway.Url;
         public List<string[]> ToolNames { get; } = new();
+        public List<string> Requests { get; } = new();
 
         private Task<NativeGatewayResponse> HandleAsync(NativeGatewayRequest request)
         {
-            var node = JsonNode.Parse(Encoding.UTF8.GetString(request.Body));
+            var body = Encoding.UTF8.GetString(request.Body);
+            var node = JsonNode.Parse(body);
             var tools = node?["tools"]?.AsArray()
                 .Select(tool => tool?["function"]?["name"]?.GetValue<string>() ?? "")
                 .ToArray() ?? [];
@@ -525,14 +703,15 @@ public sealed class AgentBridgeTests
             lock (_lock)
             {
                 ToolNames.Add(tools);
+                Requests.Add(body);
                 count = ++_requestCount;
             }
             var text = count == 1 ? "# Plan\n\n## Summary\nInspect the project." : "Implemented.";
-            var body = JsonSerializer.SerializeToUtf8Bytes(new
+            var responseBody = JsonSerializer.SerializeToUtf8Bytes(new
             {
                 choices = new[] { new { message = new { role = "assistant", content = text } } },
             });
-            return Task.FromResult(new NativeGatewayResponse(200, body));
+            return Task.FromResult(new NativeGatewayResponse(200, responseBody));
         }
 
         public void Dispose() => _gateway.Dispose();

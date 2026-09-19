@@ -9,8 +9,24 @@
 *.xcodeproj
 
 # Local editor and environment files
+.commandcode/
 .idea/
 .vscode/
 *.env
 *.env.*
 !.env.example
+**/.dev.vars
+**/__pycache__/
+mobile/android/.gradle/
+mobile/android/app/build/
+mobile/android/app/.cxx/
+mobile/ios/build/
+
+# Android signing material and local Gradle properties must stay out of Git.
+mobile/android/keystore.properties
+mobile/android/gradle.properties
+mobile/android/*.jks
+mobile/android/*.keystore
+
+# Raw user feedback is local training data; derived project memory stays tracked.
+**/.mem/feedback.jsonl

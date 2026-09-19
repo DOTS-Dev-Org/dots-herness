@@ -82,7 +82,9 @@ public static class MiniYaml
             Inject: inject,
             Description: root.StringFor("description", ""),
             Library: root.TryGetValue("library", out var lib) ? lib.AsString() : null,
-            PromptSection: prompt);
+            PromptSection: prompt,
+            Runtime: root.StringFor("runtime", "native"),
+            Main: root.TryGetValue("main", out var main) ? main.AsString() : null);
     }
 
     public static IReadOnlyList<CompositionPatch> LoadPatches(string text)

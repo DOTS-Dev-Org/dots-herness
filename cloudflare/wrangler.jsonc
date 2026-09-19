@@ -1,0 +1,54 @@
+{
+  "name": "dotsherness-unified-backend",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-06-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "placement": { "mode": "smart" },
+  "routes": [
+    { "pattern": "dots.net.tr/harness/*", "zone_name": "dots.net.tr" }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DOTSHERNESS_DB",
+      "database_name": "dotsherness-db",
+      "database_id": "76d500d9-9b9c-4162-8de6-f242bfdf2b7d",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    { "binding": "DOTSHERNESS_ASSETS", "bucket_name": "dotsherness-assets" }
+  ],
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  },
+  "vars": {
+    "JWT_ISSUER": "dotsherness",
+    "FRONTEND_URL": "https://herness.dots.net.tr",
+    "DESKTOP_OAUTH_CALLBACK_URL": "herness://oauth/desktop",
+    "API_PUBLIC_URL": "https://dotsherness-unified-backend.dotsherness-unified-backend.workers.dev",
+    "MARKETPLACE_PUBLISHER_ID": "dots",
+    "MARKETPLACE_SIGNING_PUBLIC_KEY": "5BjXLUajc3JkmWmNHiBg5kmJoTFx2OVSe7BetYJEtCI=",
+    "MARKETPLACE_CI_OIDC_AUDIENCE": "https://dots.net.tr/marketplace-ci",
+    "MARKETPLACE_CI_REPOSITORY": "DOTS-Dev-Org/dots-herness",
+    "MARKETPLACE_CI_WORKFLOW": ".github/workflows/marketplace-build.yml",
+    "MARKETPLACE_MAX_UPLOAD_BYTES": "52428800",
+    "MARKETPLACE_BUILD_DISPATCH_URL": "https://api.github.com/repos/DOTS-Dev-Org/dots-herness/actions/workflows/marketplace-build.yml/dispatches",
+    "MARKETPLACE_BUILD_DISPATCH_REF": "main",
+    "GOOGLE_CLIENT_ID": "1015533762406-cp3dlnadpqbaaslf6n1ubmnqa7vs620d.apps.googleusercontent.com",
+    "GOOGLE_CLIENT_IDS": "1015533762406-cp3dlnadpqbaaslf6n1ubmnqa7vs620d.apps.googleusercontent.com,1015533762406-h472s29t9e2e2r1tequ0i8va2lku2f6b.apps.googleusercontent.com,1015533762406-8vqi2t55i92najqjtrssij91c87ki1ud.apps.googleusercontent.com",
+    "GITHUB_CLIENT_ID": "Ov23li5HxAB1H0yGipnc",
+    "PAYTR_TEST_MODE": "1",
+    "PAYTR_OK_URL": "https://herness.dots.net.tr/billing/success",
+    "PAYTR_FAIL_URL": "https://herness.dots.net.tr/billing/fail",
+    "LEGAL_CONTACT_EMAIL": "supportherness@dots.net.tr",
+    "PAYTR_LEGAL_SALES_ENABLED": "0",
+    "PAYTR_TAX_INCLUSIVE_CONFIRMED": "0",
+    "PAYTR_INVOICE_FLOW_CONFIRMED": "0",
+    "PAYTR_DURABLE_DELIVERY_CONFIRMED": "0",
+    "LEGAL_PUBLICATION_ENABLED": "1",
+    "SMTP_HOST": "mail.dots.net.tr",
+    "SMTP_PORT": "465",
+    "SMTP_FROM_EMAIL": "herness@dots.net.tr",
+    "SMTP_FROM_NAME": "DOTS Herness"
+  }
+}

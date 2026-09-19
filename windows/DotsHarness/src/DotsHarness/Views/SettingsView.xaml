@@ -16,11 +16,14 @@
                 <ListBoxItem x:Name="ProvidersTab" Content="Providers" Tag="providers"/>
                 <ListBoxItem x:Name="CustomTab" Content="Custom API" Tag="custom"/>
                 <ListBoxItem x:Name="LocalTab" Content="Local models" Tag="local"/>
+                <ListBoxItem x:Name="VoiceTab" Content="Voice input" Tag="voice"/>
                 <ListBoxItem x:Name="ShareTab" Content="Share" Tag="share"/>
+                <ListBoxItem x:Name="MobileTab" Content="Mobile control" Tag="mobile"/>
                 <ListBoxItem x:Name="TasksTab" Content="Tasks" Tag="tasks"/>
                 <ListBoxItem x:Name="SkillsTab" Content="Skills" Tag="skills"/>
                 <ListBoxItem x:Name="PluginsTab" Content="Plugins" Tag="plugins"/>
                 <ListBoxItem x:Name="PromptTab" Content="Prompt" Tag="prompt"/>
+                <ListBoxItem x:Name="LegalTab" Content="Legal" Tag="legal"/>
             </ListBox>
         </DockPanel>
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="20">

@@ -47,7 +47,9 @@ enum WhisperBridge {
                 }
             }
             switch code {
-            case 0: return String(cString: buffer)
+            case 0:
+                let bytes = buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }
+                return String(decoding: bytes, as: UTF8.self)
             case let needed where needed > 0: capacity = Int(needed) + 16
             case -1: throw NativeAgentError(AppCopy.text("voice.modelLoadFailed"))
             default: throw NativeAgentError(AppCopy.text("voice.transcriptionFailed"))
@@ -63,14 +65,16 @@ public struct LocalVoiceModel: Sendable, Equatable {
     public let url: URL?
     public let bytes: Int64
     public let sizeLabel: String
+    public let sha256: String?
 
-    public init(id: String, name: String, filename: String, url: URL?, bytes: Int64, sizeLabel: String) {
+    public init(id: String, name: String, filename: String, url: URL?, bytes: Int64, sizeLabel: String, sha256: String? = nil) {
         self.id = id
         self.name = name
         self.filename = filename
         self.url = url
         self.bytes = bytes
         self.sizeLabel = sizeLabel
+        self.sha256 = sha256
     }
 
     public static let whisperTinyQ5 = LocalVoiceModel(
@@ -79,7 +83,8 @@ public struct LocalVoiceModel: Sendable, Equatable {
         filename: "ggml-tiny-q5_1.bin",
         url: URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q5_1.bin?download=true"),
         bytes: 32_152_673,
-        sizeLabel: VoiceCopy.whisperTinySize
+        sizeLabel: VoiceCopy.whisperTinySize,
+        sha256: "818710568da3ca15689e31a743197b520007872ff9576237bda97bd1b469c3d7"
     )
 
     public static let whisperLargeV3Turbo = LocalVoiceModel(
@@ -97,7 +102,8 @@ public struct LocalVoiceModel: Sendable, Equatable {
         filename: "nemotron-3.5-asr-streaming-0.6b.q8_0.gguf",
         url: URL(string: "https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b/resolve/1c8deaecc64b91f034d73e08dd8b64625eb3395d/nemotron-3.5-asr-streaming-0.6b.q8_0.gguf?download=true"),
         bytes: 741_548_352,
-        sizeLabel: VoiceCopy.nemotronSize
+        sizeLabel: VoiceCopy.nemotronSize,
+        sha256: "a5c435f294eea8f88ce68dd27b8c3bfea7f777cb2fbba04fcd30eaa555f429ae"
     )
 
     public static let custom = LocalVoiceModel(
@@ -176,6 +182,7 @@ public final class LocalVoiceTranscriber: @unchecked Sendable {
             from: url,
             to: modelURL,
             expected: selectedModel.bytes,
+            sha256: selectedModel.sha256,
             progress: progress
         )
     }

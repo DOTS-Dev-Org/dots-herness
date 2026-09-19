@@ -17,11 +17,35 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(AppLanguage.tr.localeIdentifier, "tr-TR")
     }
 
-    func testEveryLanguageResolvesTheLocalizedSettingsLabel() {
+    func testEveryLanguageResolvesRepresentativeNewLabels() {
+        let keys = [
+            "vision.title",
+            "conversation.runSummary",
+            "ask.title",
+            "settings.selfVerification",
+        ]
+
         for language in AppLanguage.supported {
             AppCopy.setLanguage(language)
-            XCTAssertNotEqual(AppCopy.text("settings.language"), "settings.language", language.rawValue)
+            for key in keys {
+                XCTAssertNotEqual(AppCopy.text(key), key, "\(language.rawValue): \(key)")
+            }
             XCTAssertFalse(AppCopy.locale.identifier.isEmpty, language.rawValue)
+        }
+    }
+
+    func testEveryLanguageResolvesTheFollowUpHintWithoutEnglishFallback() {
+        AppCopy.setLanguage(.en)
+        let englishHint = AppCopy.text("composer.followUp.hint")
+
+        for language in AppLanguage.supported {
+            AppCopy.setLanguage(language)
+            let hint = AppCopy.text("composer.followUp.hint")
+            XCTAssertNotEqual(hint, "composer.followUp.hint", language.rawValue)
+            XCTAssertFalse(hint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, language.rawValue)
+            if language != .en {
+                XCTAssertNotEqual(hint, englishHint, language.rawValue)
+            }
         }
     }
 

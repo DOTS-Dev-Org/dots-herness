@@ -80,7 +80,7 @@ public static class SchedulerService
         }
     }
 
-    internal static string LinuxUnitContent(string exe) =>
+    public static string LinuxUnitContent(string exe) =>
         "[Unit]\n" +
         "Description=Dots Harness scheduled task runner\n" +
         "After=default.target\n\n" +

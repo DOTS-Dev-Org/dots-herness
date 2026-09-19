@@ -170,6 +170,8 @@ if (-not (Test-Path -LiteralPath $appPath)) {
 }
 
 Write-Output "Uygulama: $appPath"
+$appSize = [int64]((Get-ChildItem -LiteralPath $appDir -Recurse -File | Measure-Object -Property Length -Sum).Sum)
+Write-Output "Uygulama boyutu: $appSize bytes"
 
 if ($BuildOnly) {
     Write-Output 'Derleme tamamlandi.'

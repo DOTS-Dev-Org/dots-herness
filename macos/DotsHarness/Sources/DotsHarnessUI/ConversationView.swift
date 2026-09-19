@@ -2,6 +2,7 @@
 // Native conversation surface.
 
 import AppKit
+import AVFoundation
 import AVKit
 import SwiftUI
 import UniformTypeIdentifiers
@@ -10,100 +11,79 @@ import HarnessPluginKit
 
 struct ConversationView: View {
     @ObservedObject var model: AppModel
-    @ObservedObject var bridge: AgentBridge
     @ObservedObject private var speech: LocalSpeechSynthesizer
     @ObservedObject private var terminalManager: TerminalManager
+    @Binding private var isPanePickerVisible: Bool
 
     @State private var isTerminalVisible = false
-    @State private var isPanePickerVisible = false
     @State private var isNewPaneMenuPresented = false
-    @State private var isWorkspaceExpanded = false
     @State private var isDropTargeted = false
     @State private var draggedPromptID: String?
     @State private var expandedActivityIDs = Set<String>()
     @State private var expandedFileMessageIDs = Set<String>()
     @State private var expandedUsedMessageIDs = Set<String>()
     @State private var hoveredMessageID: String?
-    @State private var previousWindowFrame: NSRect?
+    /// Long chats render the newest page first; older pages load as the user
+    /// scrolls up. UI only: the agent always reads the full conversation.
+    /// nil = follow the newest page; set once the user pages back, so new
+    /// messages never shift what they are reading.
+    @State private var pagedStartIndex: Int?
+    private static let messagePageSize = 10
 
-    init(model: AppModel) {
+    private var bridge: AgentBridge { model.bridge }
+
+    init(model: AppModel, isPanePickerVisible: Binding<Bool>) {
         self.model = model
-        self.bridge = model.bridge
         self._speech = ObservedObject(wrappedValue: model.speech)
         self._terminalManager = ObservedObject(wrappedValue: model.terminalManager)
+        self._isPanePickerVisible = isPanePickerVisible
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            paneToolbar
-            Divider()
-
-            if isTerminalVisible {
-                VSplitView {
+        HStack(spacing: 0) {
+            VStack(spacing: 0) {
+                if isTerminalVisible {
+                    VSplitView {
+                        chatAndComposer
+                        terminalPanel
+                            .frame(minHeight: 180, idealHeight: 270, maxHeight: 440)
+                    }
+                } else {
                     chatAndComposer
-                    terminalPanel
-                        .frame(minHeight: 180, idealHeight: 270, maxHeight: 440)
                 }
-            } else {
-                chatAndComposer
             }
-        }
-        .navigationTitle(model.selected?.title ?? AppCopy.text("conversation.newChat"))
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                if let connection = bridge.connection {
-                    Label(connection.model, systemImage: "cpu")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+            if isPanePickerVisible {
+                Divider()
+                panePickerSurface
             }
         }
         .onChange(of: model.selected?.id) { _, id in
+            model.feedbackRequest = nil
             if id != nil {
                 isPanePickerVisible = false
             }
         }
         .onChange(of: model.workspacePath) { _, path in
+            model.feedbackRequest = nil
             if path.isEmpty {
                 isTerminalVisible = false
             }
         }
         .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isDropTargeted, perform: handleDrop)
-    }
-
-    private var paneToolbar: some View {
-        HStack(spacing: 8) {
-            Spacer(minLength: 0)
-
-            PaneToolbarButton(
-                systemImage: "arrow.up.left.and.arrow.down.right",
-                help: AppCopy.text("conversation.expandWorkspace"),
-                isSelected: isWorkspaceExpanded
-            ) {
-                toggleWindowZoom()
-            }
-
-            PaneToolbarButton(
-                systemImage: "rectangle.bottomhalf.inset.filled",
-                help: AppCopy.text("conversation.openTerminal"),
-                isSelected: isTerminalVisible
-            ) {
-                openTerminal(createNew: false)
-            }
-            .disabled(model.workspacePath.isEmpty)
-
-            PaneToolbarButton(
-                systemImage: "rectangle.split.2x1",
-                help: AppCopy.text("conversation.choosePane"),
-                isSelected: isPanePickerVisible
-            ) {
-                isPanePickerVisible.toggle()
+        .sheet(item: $model.feedbackRequest) { target in
+            FeedbackSheet(
+                target: target,
+                existing: bridge.feedback(for: target.messageID, in: target.conversationID)
+            ) { feedbackType, tags, comment in
+                try bridge.submitFeedback(
+                    conversationID: target.conversationID,
+                    messageID: target.messageID,
+                    feedbackType: feedbackType,
+                    tags: tags,
+                    userComment: comment
+                )
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .frame(height: 44)
-        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private var chatAndComposer: some View {
@@ -117,14 +97,22 @@ struct ConversationView: View {
         ZStack {
             Group {
                 if let conversation = model.selected {
-                    conversationBody(conversation)
+                    if !conversation.contentLoaded {
+                        // Title is shown; the transcript is still decoding off the main thread.
+                        ProgressView()
+                            .controlSize(.small)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if conversation.messages.isEmpty,
+                       !conversation.running,
+                       conversation.continuation == nil,
+                       conversation.pendingPrompts.isEmpty {
+                        emptyConversation
+                    } else {
+                        conversationBody(conversation)
+                    }
                 } else {
                     emptyConversation
                 }
-            }
-
-            if isPanePickerVisible {
-                panePickerSurface
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -142,7 +130,14 @@ struct ConversationView: View {
                     if conversation.running, conversation.runStartedAt != nil {
                         liveActivityHeader(conversation)
                     }
-                    ForEach(Array(conversation.messages.enumerated()), id: \.element.id) { index, message in
+                    let firstVisible = firstVisibleMessageIndex(in: conversation.messages)
+                    if firstVisible > 0 {
+                        ProgressView()
+                            .controlSize(.small)
+                            .frame(maxWidth: .infinity)
+                            .onAppear { loadOlderMessages(conversation, firstVisible: firstVisible, proxy: proxy) }
+                    }
+                    ForEach(Array(conversation.messages.enumerated().dropFirst(firstVisible)), id: \.element.id) { index, message in
                         if message.id == conversation.messages.last?.id {
                             ForEach(conversation.pendingPrompts) { prompt in
                                 pendingPromptBubble(prompt, in: conversation)
@@ -191,7 +186,15 @@ struct ConversationView: View {
                 .padding(.horizontal, 28)
                 .padding(.vertical, 28)
             }
+            .defaultScrollAnchor(.bottom)
             .background(Color(nsColor: .windowBackgroundColor))
+            .onAppear {
+                scrollToLast(using: proxy, conversation: conversation)
+            }
+            .onChange(of: conversation.id) { _, _ in
+                pagedStartIndex = nil
+                scrollToLast(using: proxy, conversation: conversation)
+            }
             .onChange(of: conversation.messages.count) { _, _ in
                 scrollToLast(using: proxy, conversation: conversation)
             }
@@ -237,89 +240,91 @@ struct ConversationView: View {
         }
     }
 
+    @ViewBuilder
     private var emptyConversation: some View {
-        VStack(spacing: 14) {
-            Image(systemName: model.workspacePath.isEmpty ? "folder.badge.questionmark" : "sparkles.rectangle.stack")
-                .font(.system(size: 42, weight: .medium))
-                .foregroundStyle(.tint)
-            Text(model.workspacePath.isEmpty
-                ? AppCopy.text("conversation.chooseWorkspace")
-                : AppCopy.text("conversation.startConversation"))
-                .font(.title2.weight(.semibold))
-            Text(emptyDescription)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: 440)
-            if model.workspacePath.isEmpty {
-                Button(AppCopy.text("conversation.chooseWorkspaceButton"), action: model.chooseWorkspace)
-                    .buttonStyle(.borderedProminent)
-                Button(AppCopy.text("sidebar.continueWithoutProject"), action: model.startWithoutProject)
-                    .buttonStyle(.bordered)
-            } else if bridge.connection == nil {
-                Text(AppCopy.text("conversation.connectProvider"))
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            } else {
-                Button(AppCopy.text("conversation.newChat"), action: model.newConversation)
-                    .buttonStyle(.borderedProminent)
-            }
+        WelcomeView(
+            projectName: workspaceName,
+            showConnectHint: bridge.connectionResolved && bridge.connection == nil,
+            showCards: model.draft.isEmpty,
+            cards: welcomeCards,
+            onSelect: runWelcomeCard
+        )
+    }
+
+    private var welcomeCards: [WelcomeCard] {
+        WelcomeCatalog.cards(
+            projectName: workspaceName,
+            stack: ProjectStackSniffer.detect(at: model.workspacePath)
+        )
+    }
+
+    private func runWelcomeCard(_ card: WelcomeCard) {
+        // The empty state also renders when model.selected == nil; draft
+        // persistence needs a selected conversation.
+        if model.selectedConversationID == nil {
+            model.newConversation()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(40)
+        model.fillComposer(with: card.prompt)
     }
 
     private var panePickerSurface: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
             panePicker()
-                .frame(maxWidth: 540)
-            Spacer()
-                .frame(height: 68)
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 52)
+        .frame(width: 320)
+        .frame(maxHeight: .infinity)
+        .padding(.horizontal, 20)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private func panePicker(createTerminal: Bool = false) -> some View {
-        VStack(spacing: 4) {
-            PaneChoiceRow(
-                systemImage: "folder",
-                title: AppCopy.text("conversation.files"),
-                shortcut: "⌘P"
-            ) {
-                openFiles()
-            }
-            .keyboardShortcut("p", modifiers: .command)
-
-            PaneChoiceRow(
-                systemImage: "globe",
-                title: AppCopy.text("conversation.browser"),
-                shortcut: "⌘T"
-            ) {
-                openBrowser()
-            }
-            .keyboardShortcut("t", modifiers: .command)
-
-            PaneChoiceRow(
-                systemImage: "terminal",
-                title: AppCopy.text("conversation.terminal"),
-                shortcut: "⌃`"
-            ) {
+        VStack(spacing: 8) {
+            paneRow(.review, "plusminus.circle") { openReview() }
+            paneRow(.terminal, "terminal", disabled: model.terminalWorkspaceKey.isEmpty) {
                 openTerminal(createNew: createTerminal)
             }
-            .disabled(model.workspacePath.isEmpty)
+            paneRow(.browser, "globe") { openBrowser() }
+            if model.activeArea == .coding {
+                paneRow(.files, "folder") { openFiles() }
+            }
+            paneRow(.sideChat, "plus.bubble") {
+                isPanePickerVisible = false
+                model.newConversation()
+            }
+            paneRow(.simulator, "iphone.gen3") {
+                isPanePickerVisible = false
+                model.isSimulatorPresented = true
+            }
         }
-        .padding(8)
-        .background(
-            Color(nsColor: .controlBackgroundColor).opacity(0.96),
-            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+    }
+
+    private func paneRow(
+        _ action: KeyboardShortcutAction,
+        _ image: String,
+        disabled: Bool = false,
+        perform: @escaping () -> Void
+    ) -> some View {
+        PaneChoiceRow(
+            systemImage: image,
+            title: action.title,
+            shortcut: model.shortcut(for: action).displayValue,
+            action: perform
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(Color.primary.opacity(0.07), lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.22), radius: 18, y: 8)
+        .keyboardShortcut(model.shortcut(for: action).swiftUIShortcut)
+        .disabled(disabled)
+    }
+
+    private func openReview() {
+        isPanePickerVisible = false
+        if model.selectedConversationID == nil { model.newConversation() }
+        model.fillComposer(with: AppCopy.format("welcome.card.review.prompt", projectNameForReview))
+    }
+
+    private var projectNameForReview: String {
+        let name = URL(fileURLWithPath: model.workspacePath).lastPathComponent
+        return name.isEmpty ? "the workspace" : name
     }
 
     private var terminalPanel: some View {
@@ -399,7 +404,7 @@ struct ConversationView: View {
                     let selected = session.id == selectedTerminal?.id
                     HStack(spacing: 0) {
                         Button {
-                            terminalManager.selectSession(session.id, for: model.workspacePath)
+                            terminalManager.selectSession(session.id, for: model.terminalWorkspaceKey)
                         } label: {
                             HStack(spacing: 6) {
                                 Circle()
@@ -416,7 +421,7 @@ struct ConversationView: View {
                         .buttonStyle(.plain)
 
                         Button {
-                            terminalManager.closeSession(session, for: model.workspacePath)
+                            terminalManager.closeSession(session, for: model.terminalWorkspaceKey)
                         } label: {
                             Image(systemName: "xmark")
                                 .font(.system(size: 9, weight: .semibold))
@@ -444,27 +449,18 @@ struct ConversationView: View {
         ChatComposer(model: model, bridge: bridge)
     }
 
-    private var emptyDescription: String {
-        if model.workspacePath.isEmpty {
-            return AppCopy.text("conversation.emptyWorkspaceDescription")
-        }
-        if bridge.connection == nil {
-            return AppCopy.text("conversation.workspaceReadyDescription")
-        }
-        return AppCopy.text("conversation.noChatsDescription")
-    }
-
     private var workspaceName: String {
-        guard !model.workspacePath.isEmpty else { return AppCopy.text("conversation.workspace") }
-        return URL(fileURLWithPath: model.workspacePath).lastPathComponent
+        let path = model.activeArea == .chat ? model.terminalWorkspaceKey : model.workspacePath
+        guard !path.isEmpty else { return AppCopy.text("conversation.workspace") }
+        return URL(fileURLWithPath: path).lastPathComponent
     }
 
     private var terminalSessions: [TerminalSession] {
-        terminalManager.sessions(for: model.workspacePath)
+        terminalManager.sessions(for: model.terminalWorkspaceKey)
     }
 
     private var selectedTerminal: TerminalSession? {
-        terminalManager.selectedSession(for: model.workspacePath)
+        terminalManager.selectedSession(for: model.terminalWorkspaceKey)
     }
 
     @ViewBuilder
@@ -489,13 +485,13 @@ struct ConversationView: View {
                     Text(planStatus(message, isPending: isPending, isRunning: conversation.running))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    messageActions(message, in: conversation)
                 }
                 PlanMarkdownView(text: message.text)
                     .textSelection(.enabled)
                 usedItemsDisclosure(for: message)
+                runSummaryView(for: message)
                 changedFilesDisclosure(for: message)
-                messageTimestamp(message.createdAt)
+                messageActions(message, in: conversation)
                 if isPending {
                     HStack {
                         Spacer(minLength: 0)
@@ -536,7 +532,6 @@ struct ConversationView: View {
         let isUser = message.kind == .user
         let isAssistant = message.kind == .assistant
         return HStack {
-            if isUser { Spacer(minLength: 80) }
             VStack(alignment: .leading, spacing: 7) {
                 if isAssistant {
                     HStack(spacing: 8) {
@@ -548,23 +543,6 @@ struct ConversationView: View {
                                 .foregroundStyle(Color.blue)
                             Text(AppCopy.text("conversation.completed"))
                                 .font(.callout.weight(.medium))
-                        }
-                        Spacer(minLength: 0)
-                        if !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Button {
-                                model.toggleSpeech(message.text, messageID: message.id)
-                            } label: {
-                                Image(systemName: speech.activeMessageID == message.id ? "stop.circle.fill" : "speaker.wave.2")
-                                    .font(.caption.weight(.semibold))
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(.secondary)
-                            .help(speech.activeMessageID == message.id
-                                ? AppCopy.text("conversation.stopSpeaking")
-                                : "\(AppCopy.text("conversation.speakResponse")) (AI)")
-                            .accessibilityLabel(speech.activeMessageID == message.id
-                                ? AppCopy.text("conversation.stopSpeaking")
-                                : "\(AppCopy.text("conversation.speakResponse")) (AI)")
                         }
                     }
                     .foregroundStyle(.primary)
@@ -583,89 +561,113 @@ struct ConversationView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .font(message.kind == .tool ? .callout.monospaced() : .body)
                 }
+                contextRootIndicators(for: message)
                 usedItemsDisclosure(for: message)
+                runSummaryView(for: message)
                 changedFilesDisclosure(for: message)
                 if !message.attachments.isEmpty {
                     attachmentViews(message.attachments)
                 }
-                if let media = message.media {
-                    mediaView(media)
+                if !message.mediaItems.isEmpty {
+                    ForEach(message.mediaItems) { media in
+                        mediaView(media)
+                    }
                 }
-                messageTimestamp(message.createdAt)
-            }
-            .padding(.horizontal, isAssistant ? 0 : 15)
-            .padding(.vertical, isAssistant ? 4 : 12)
-            .background(
-                isAssistant ? Color.clear : fill(for: message.kind),
-                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-            )
-            .frame(maxWidth: isUser ? 600 : 760, alignment: .leading)
-            .overlay(alignment: .topTrailing) {
                 messageActions(message, in: conversation)
-                    .padding(.top, 5)
-                    .padding(.trailing, 8)
             }
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .onHover { hovered in
                 hoveredMessageID = hovered ? message.id : nil
             }
-            if !isUser { Spacer(minLength: 80) }
         }
     }
 
     @ViewBuilder
     private func messageActions(_ message: ChatMessage, in conversation: Conversation) -> some View {
-        if message.kind == .user || message.kind == .assistant || message.kind == .plan {
+        if message.kind == .user || message.kind == .assistant || message.kind == .plan, !message.streaming {
             let latestUser = conversation.messages.last(where: { $0.kind == .user })?.id == message.id
             let canEdit = latestUser && bridge.canEdit(messageID: message.id, in: conversation.id)
             let canRewind = message.kind == .user && bridge.canRewind(messageID: message.id, in: conversation.id)
-            HStack(spacing: 2) {
-                Button {
-                    copyMessage(message)
-                } label: {
-                    Image(systemName: "doc.on.doc")
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(AppCopy.text("conversation.copy"))
-                .help(AppCopy.text("conversation.copy"))
+            let hasText = !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            let hasOutput = hasText || !message.mediaItems.isEmpty
+            let speaking = speech.activeMessageID == message.id
+            let canFeedback = bridge.workspacePath?.isEmpty == false && message.kind != .user && hasOutput
+            let feedback = canFeedback ? bridge.feedback(for: message.id, in: conversation.id) : nil
+            HStack(spacing: 16) {
+                actionButton("doc.on.doc", AppCopy.text("conversation.copy")) { copyMessage(message) }
 
                 if message.kind == .user, latestUser {
-                    Button {
+                    actionButton("pencil", actionHelp("conversation.edit", available: canEdit)) {
                         model.beginEditing(message)
-                    } label: {
-                        Image(systemName: "pencil")
                     }
-                    .buttonStyle(.plain)
                     .disabled(!canEdit)
-                    .accessibilityLabel(AppCopy.text("conversation.edit"))
-                    .help(actionHelp("conversation.edit", available: canEdit))
                 }
-
                 if message.kind == .user {
-                    Button {
+                    actionButton("arrow.uturn.backward", actionHelp("conversation.rewind", available: canRewind)) {
                         model.rewind(messageID: message.id)
-                    } label: {
-                        Image(systemName: "arrow.uturn.backward")
                     }
-                    .buttonStyle(.plain)
                     .disabled(!canRewind)
-                    .accessibilityLabel(AppCopy.text("conversation.rewind"))
-                    .help(actionHelp("conversation.rewind", available: canRewind))
                 }
+                if message.kind == .assistant, hasText {
+                    let title = speaking
+                        ? AppCopy.text("conversation.stopSpeaking")
+                        : "\(AppCopy.text("conversation.speakResponse")) (AI)"
+                    actionButton(speaking ? "stop.circle.fill" : "speaker.wave.2", title) {
+                        model.toggleSpeech(message.text, messageID: message.id)
+                    }
+                }
+                if canFeedback {
+                    feedbackButton(type: .good, selected: feedback?.feedbackType == .good, message: message, conversation: conversation)
+                    feedbackButton(type: .bad, selected: feedback?.feedbackType == .bad, message: message, conversation: conversation)
+                }
+                messageTimestamp(message.createdAt)
             }
-            .font(.caption.weight(.semibold))
+            .font(.callout)
             .foregroundStyle(.secondary)
-            .padding(4)
-            .background(.regularMaterial, in: Capsule())
-            .opacity(hoveredMessageID == message.id ? 1 : 0.16)
+            .padding(.top, 2)
+            .opacity(hoveredMessageID == message.id ? 1 : 0.55)
         }
+    }
+
+    private func actionButton(_ icon: String, _ help: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) { Image(systemName: icon) }
+            .buttonStyle(.plain)
+            .accessibilityLabel(help)
+            .help(help)
     }
 
     private func actionHelp(_ key: String, available: Bool) -> String {
         if available { return AppCopy.text(key) }
-        if bridge.isBusy || bridge.historyMutationBusy {
+        if bridge.anyRunBusy || bridge.historyMutationBusy {
             return AppCopy.text("conversation.historyBusy")
         }
         return AppCopy.text("conversation.historyUnavailable")
+    }
+
+    private func feedbackButton(
+        type: FeedbackType,
+        selected: Bool,
+        message: ChatMessage,
+        conversation: Conversation
+    ) -> some View {
+        let title = type == .good ? AppCopy.text("feedback.good") : AppCopy.text("feedback.bad")
+        return Button {
+            model.feedbackRequest = FeedbackTarget(
+                conversationID: conversation.id,
+                messageID: message.id,
+                feedbackType: type
+            )
+        } label: {
+            Image(systemName: type == .good
+                ? (selected ? "hand.thumbsup.fill" : "hand.thumbsup")
+                : (selected ? "hand.thumbsdown.fill" : "hand.thumbsdown"))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(selected ? Color.accentColor : Color.secondary)
+        .help(title)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private func copyMessage(_ message: ChatMessage) {
@@ -673,12 +675,35 @@ struct ConversationView: View {
         NSPasteboard.general.setString(message.text, forType: .string)
     }
 
+    private static let relativeFormatter: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .full
+        return f
+    }()
+
     private func messageTimestamp(_ date: Date) -> some View {
-        Text(date.formatted(date: .omitted, time: .shortened))
-            .font(.caption2)
-            .foregroundStyle(.tertiary)
+        Text(Self.relativeFormatter.localizedString(for: date, relativeTo: .now))
+            .font(.callout)
             .help(date.formatted(date: .complete, time: .complete))
             .accessibilityLabel(date.formatted(date: .complete, time: .complete))
+    }
+
+    @ViewBuilder
+    private func contextRootIndicators(for message: ChatMessage) -> some View {
+        let roots = message.contextRootIDs.compactMap { id in
+            bridge.chatContextRoots.first(where: { $0.id == id })
+        }
+        if !roots.isEmpty {
+            HStack(spacing: 5) {
+                Image(systemName: "paperclip")
+                Text(roots.map { URL(fileURLWithPath: $0.path).lastPathComponent }.joined(separator: " · "))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .help(roots.map(\.path).joined(separator: "\n"))
+        }
     }
 
     private func liveActivityHeader(_ conversation: Conversation) -> some View {
@@ -765,6 +790,27 @@ struct ConversationView: View {
                 else { expandedUsedMessageIDs.remove(id) }
             }
         )
+    }
+
+    @ViewBuilder
+    private func runSummaryView(for message: ChatMessage) -> some View {
+        if let summary = message.summary {
+            VStack(alignment: .leading, spacing: 3) {
+                Label(AppCopy.text("conversation.runSummary"), systemImage: "checkmark.shield")
+                    .font(.caption.weight(.semibold))
+                Text(AppCopy.format(
+                    "conversation.filesSummary",
+                    summary.addedCount,
+                    summary.modifiedCount,
+                    summary.deletedCount
+                ) + " · " + summary.cleanupNote)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+            .padding(.top, 2)
+            .accessibilityElement(children: .combine)
+        }
     }
 
     @ViewBuilder
@@ -979,34 +1025,75 @@ struct ConversationView: View {
 
     @ViewBuilder
     private func mediaView(_ media: ChatMedia) -> some View {
-        switch media.kind {
-        case .image:
-            if let image = NSImage(contentsOf: media.url) {
-                Image(nsImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: 620, maxHeight: 520)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            } else {
-                Text(AppCopy.text("media.fileMissing"))
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 7) {
+            switch media.kind {
+            case .image:
+                if let image = NSImage(contentsOf: media.url) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 620, maxHeight: 520)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                } else {
+                    missingMediaView
+                }
+            case .video:
+                if FileManager.default.fileExists(atPath: media.path) {
+                    VideoPlayer(player: AVPlayer(url: media.url))
+                        .frame(maxWidth: 620, minHeight: 260, maxHeight: 420)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                } else {
+                    missingMediaView
+                }
+            case .audio:
+                if FileManager.default.fileExists(atPath: media.path) {
+                    InlineAudioPlayer(url: media.url)
+                } else {
+                    missingMediaView
+                }
             }
-        case .video:
-            if FileManager.default.fileExists(atPath: media.path) {
-                VideoPlayer(player: AVPlayer(url: media.url))
-                    .frame(maxWidth: 620, minHeight: 260, maxHeight: 420)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            } else {
-                Text(AppCopy.text("media.fileMissing"))
-                    .foregroundStyle(.secondary)
-            }
-        case .audio:
+            mediaActions(for: media)
+        }
+    }
+
+    private var missingMediaView: some View {
+        Label(AppCopy.text("media.fileMissing"), systemImage: "exclamationmark.triangle")
+            .foregroundStyle(.secondary)
+    }
+
+    private func mediaActions(for media: ChatMedia) -> some View {
+        HStack(spacing: 8) {
             Button {
-                NSWorkspace.shared.open(media.url)
+                saveMedia(media)
             } label: {
-                Label(AppCopy.text("media.openAudio"), systemImage: "waveform")
+                Label(AppCopy.text("media.save"), systemImage: "arrow.down.circle")
             }
             .buttonStyle(.bordered)
+            .disabled(!FileManager.default.fileExists(atPath: media.path))
+
+            Button {
+                NSWorkspace.shared.activateFileViewerSelecting([media.url])
+            } label: {
+                Label(AppCopy.text("media.showInFinder"), systemImage: "folder")
+            }
+            .buttonStyle(.bordered)
+            .disabled(!FileManager.default.fileExists(atPath: media.path))
+        }
+        .controlSize(.small)
+    }
+
+    private func saveMedia(_ media: ChatMedia) {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = media.url.lastPathComponent
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let destination = panel.url else { return }
+        do {
+            if FileManager.default.fileExists(atPath: destination.path) {
+                try FileManager.default.removeItem(at: destination)
+            }
+            try FileManager.default.copyItem(at: media.url, to: destination)
+        } catch {
+            model.reportHistoryError(error.localizedDescription)
         }
     }
 
@@ -1025,7 +1112,7 @@ struct ConversationView: View {
                                 .frame(width: 42, height: 42)
                                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                         } else {
-                            Image(systemName: attachmentIcon(for: attachment))
+                            Image(systemName: attachment.kind.systemImageName)
                                 .frame(width: 28, height: 28)
                                 .foregroundStyle(.secondary)
                         }
@@ -1041,15 +1128,6 @@ struct ConversationView: View {
                 }
                 .buttonStyle(.plain)
             }
-        }
-    }
-
-    private func attachmentIcon(for attachment: ChatAttachment) -> String {
-        switch attachment.kind {
-        case .image: return "photo"
-        case .audio: return "waveform"
-        case .video: return "video"
-        case .file: return "doc"
         }
     }
 
@@ -1142,18 +1220,39 @@ struct ConversationView: View {
         }
     }
 
+    /// Start of the rendered tail, moved back so a tool-activity group is never split.
+    private func firstVisibleMessageIndex(in messages: [ChatMessage]) -> Int {
+        var start = pagedStartIndex.map { min($0, max(0, messages.count - 1)) } ?? max(0, messages.count - Self.messagePageSize)
+        while start > 0, messages[start].kind == .tool, messages[start - 1].kind == .tool {
+            start -= 1
+        }
+        return start
+    }
+
+    private func loadOlderMessages(_ conversation: Conversation, firstVisible: Int, proxy: ScrollViewProxy) {
+        let anchor = conversation.messages[firstVisible]
+        let anchorID = anchor.kind == .tool ? "activity-\(anchor.id)" : anchor.id
+        pagedStartIndex = max(0, firstVisible - Self.messagePageSize)
+        // Keep the message the user was reading in place while older ones appear above it.
+        DispatchQueue.main.async {
+            proxy.scrollTo(anchorID, anchor: .top)
+        }
+    }
+
     private func scrollToLast(using proxy: ScrollViewProxy, conversation: Conversation) {
-        if let last = conversation.messages.last {
-            let targetID: String
-            if last.kind == .tool {
-                var start = conversation.messages.count - 1
-                while start > 0, conversation.messages[start - 1].kind == .tool {
-                    start -= 1
-                }
-                targetID = "activity-\(conversation.messages[start].id)"
-            } else {
-                targetID = last.id
+        guard let last = conversation.messages.last else { return }
+        let targetID: String
+        if last.kind == .tool {
+            var start = conversation.messages.count - 1
+            while start > 0, conversation.messages[start - 1].kind == .tool {
+                start -= 1
             }
+            targetID = "activity-\(conversation.messages[start].id)"
+        } else {
+            targetID = last.id
+        }
+        // dispatch next runloop so LazyVStack layout is committed before scrolling
+        DispatchQueue.main.async {
             withAnimation(.easeOut(duration: 0.18)) {
                 proxy.scrollTo(targetID, anchor: .bottom)
             }
@@ -1180,19 +1279,11 @@ struct ConversationView: View {
         }
     }
 
-    private func fill(for kind: ChatMessage.Kind) -> Color {
-        switch kind {
-        case .user: return Color.accentColor.opacity(0.12)
-        case .assistant: return Color.primary.opacity(0.055)
-        case .plan: return Color.yellow.opacity(0.11)
-        case .tool: return Color.orange.opacity(0.11)
-        case .system: return Color.red.opacity(0.10)
-        }
-    }
 
     private func openFiles() {
         isPanePickerVisible = false
         isNewPaneMenuPresented = false
+        guard model.activeArea == .coding else { return }
         if model.workspacePath.isEmpty {
             model.chooseWorkspace()
         } else {
@@ -1210,13 +1301,20 @@ struct ConversationView: View {
     private func openTerminal(createNew: Bool) {
         isPanePickerVisible = false
         isNewPaneMenuPresented = false
-        guard !model.workspacePath.isEmpty else {
+        guard !model.terminalWorkspaceKey.isEmpty else {
+            if model.isRemoteWorkLocation { return }
             model.chooseWorkspace()
             return
         }
         isTerminalVisible = true
         if createNew || terminalSessions.isEmpty {
-            _ = terminalManager.openSession(for: model.workspacePath)
+            _ = terminalManager.openSession(
+                for: model.terminalWorkspaceKey,
+                executionPolicy: model.activeArea == .chat
+                    ? model.chatTerminalExecutionPolicy
+                    : (model.remoteWorkspace == nil ? model.sandboxExecutionPolicy : nil),
+                remoteTarget: model.remoteWorkspace
+            )
         }
     }
 
@@ -1225,24 +1323,6 @@ struct ConversationView: View {
         isTerminalVisible = false
     }
 
-    private func toggleWindowZoom() {
-        guard let window = NSApplication.shared.keyWindow ?? NSApplication.shared.mainWindow,
-              let screen = window.screen ?? NSScreen.main else {
-            return
-        }
-
-        if isWorkspaceExpanded {
-            if let previousWindowFrame {
-                window.setFrame(previousWindowFrame, display: true, animate: true)
-            }
-            isWorkspaceExpanded = false
-            return
-        }
-
-        previousWindowFrame = window.frame
-        window.setFrame(screen.visibleFrame, display: true, animate: true)
-        isWorkspaceExpanded = true
-    }
 }
 
 private struct PlanMarkdownView: View {
@@ -1373,32 +1453,7 @@ private struct PendingPromptDropDelegate: DropDelegate {
     }
 }
 
-private struct PaneToolbarButton: View {
-    let systemImage: String
-    let help: String
-    var isSelected = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 12, weight: .medium))
-                .frame(width: 27, height: 27)
-                .foregroundStyle(isSelected ? Color.accentColor : .secondary)
-                .background {
-                    if isSelected {
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .stroke(Color.accentColor, lineWidth: 1.5)
-                    }
-                }
-        }
-        .buttonStyle(.plain)
-        .contentShape(Rectangle())
-        .help(help)
-    }
-}
-
-private struct PaneChoiceRow: View {
+struct PaneChoiceRow: View {
     let systemImage: String
     let title: String
     let shortcut: String
@@ -1423,7 +1478,7 @@ private struct PaneChoiceRow: View {
                     .background(Color.primary.opacity(0.075), in: Capsule())
             }
             .padding(.horizontal, 10)
-            .frame(height: 36)
+            .frame(height: 40)
             .contentShape(Rectangle())
         }
         .buttonStyle(PaneChoiceButtonStyle())
@@ -1434,14 +1489,134 @@ private struct PaneChoiceButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .background(
-                Color.primary.opacity(configuration.isPressed ? 0.12 : 0),
-                in: RoundedRectangle(cornerRadius: 7, style: .continuous)
+                Color.primary.opacity(configuration.isPressed ? 0.12 : 0.06),
+                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
             )
             .opacity(configuration.isPressed ? 0.82 : 1)
     }
 }
 
-private struct TerminalView: View {
+/// Claude-Code-style new-chat welcome: app icon + project-aware heading + a 2x2
+/// grid of action cards. Selecting a card fills the composer draft (never sends).
+private struct WelcomeView: View {
+    let projectName: String
+    let showConnectHint: Bool
+    let showCards: Bool
+    let cards: [WelcomeCard]
+    let onSelect: (WelcomeCard) -> Void
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+    ]
+
+    var body: some View {
+        VStack(spacing: 20) {
+            logo
+                .frame(width: 104, height: 104)
+                .accessibilityHidden(true)
+
+            Text(AppCopy.format("welcome.heading", projectName))
+                .font(.title2.weight(.semibold))
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .truncationMode(.middle)
+                .frame(maxWidth: 460)
+
+            if showCards {
+                LazyVGrid(columns: columns, spacing: 12) {
+                    ForEach(cards) { card in
+                        WelcomeCardButton(card: card) { onSelect(card) }
+                    }
+                }
+                .frame(maxWidth: 520)
+            }
+
+            if showConnectHint {
+                Text(AppCopy.text("welcome.connectHint"))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 460)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(40)
+    }
+
+    @ViewBuilder
+    private var logo: some View {
+        // Transparent-background mark, cropped to the glyph (Resources/WelcomeLogo.png,
+        // bundled via .process). ponytail: derived from AppIcon.icns by flood-filling the
+        // cream backdrop; a faint edge fringe survives on very dark backgrounds — replace
+        // with a vector/native-transparent source if that ever shows at this size.
+        if let url = Bundle.module.url(forResource: "WelcomeLogo", withExtension: "png"),
+           let mark = NSImage(contentsOf: url) {
+            Image(nsImage: mark)
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+        } else {
+            Image(systemName: "sparkles")
+                .font(.system(size: 44, weight: .medium))
+                .foregroundStyle(.tint)
+        }
+    }
+}
+
+private struct WelcomeCardButton: View {
+    let card: WelcomeCard
+    let action: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Image(systemName: card.icon)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.tint)
+                        .frame(width: 18)
+                    Text(card.title)
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Spacer(minLength: 0)
+                }
+                Text(card.subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 13)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: 74, alignment: .topLeading)
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(WelcomeCardButtonStyle(hovered: hovered))
+        .onHover { hovered = $0 }
+        .accessibilityLabel(card.title)
+        .accessibilityHint(card.subtitle)
+    }
+}
+
+private struct WelcomeCardButtonStyle: ButtonStyle {
+    let hovered: Bool
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(
+                Color.primary.opacity(configuration.isPressed ? 0.12 : (hovered ? 0.08 : 0.045)),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+            }
+            .opacity(configuration.isPressed ? 0.85 : 1)
+    }
+}
+
+struct TerminalView: View {
     @ObservedObject var session: TerminalSession
 
     var body: some View {
@@ -1569,5 +1744,116 @@ private final class TerminalNSTextView: NSTextView {
         }
 
         return event.characters
+    }
+}
+
+@MainActor
+private final class InlineAudioPlayback: ObservableObject {
+    @Published private(set) var isPlaying = false
+    @Published private(set) var progress: Double = 0
+    @Published private(set) var duration: TimeInterval = 0
+
+    private let url: URL
+    private var player: AVAudioPlayer?
+    private var timer: Timer?
+
+    init(url: URL) {
+        self.url = url
+    }
+
+    func load() {
+        guard player == nil else { return }
+        do {
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.prepareToPlay()
+            self.player = player
+            duration = player.duration
+        } catch {
+            self.player = nil
+        }
+    }
+
+    func toggle() {
+        load()
+        guard let player else { return }
+        if player.isPlaying {
+            player.pause()
+            isPlaying = false
+            stopTimer()
+        } else if player.play() {
+            isPlaying = true
+            startTimer()
+        }
+    }
+
+    func seek(to value: Double) {
+        guard let player, duration > 0 else { return }
+        player.currentTime = min(duration, max(0, value * duration))
+        progress = player.currentTime / duration
+    }
+
+    func stop() {
+        player?.stop()
+        player?.currentTime = 0
+        progress = 0
+        isPlaying = false
+        stopTimer()
+    }
+
+    private func startTimer() {
+        stopTimer()
+        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, let player = self.player else { return }
+                if player.duration > 0 {
+                    self.progress = min(1, player.currentTime / player.duration)
+                }
+                if !player.isPlaying, self.progress >= 1 {
+                    self.isPlaying = false
+                    self.stopTimer()
+                }
+            }
+        }
+    }
+
+    private func stopTimer() {
+        timer?.invalidate()
+        timer = nil
+    }
+}
+
+private struct InlineAudioPlayer: View {
+    @StateObject private var playback: InlineAudioPlayback
+
+    init(url: URL) {
+        _playback = StateObject(wrappedValue: InlineAudioPlayback(url: url))
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button {
+                playback.toggle()
+            } label: {
+                Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityLabel(playback.isPlaying ? "Pause audio" : "Play audio")
+
+            Slider(
+                value: Binding(
+                    get: { playback.progress },
+                    set: { playback.seek(to: $0) }
+                ),
+                in: 0...1
+            )
+            .disabled(playback.duration <= 0)
+
+            Image(systemName: "waveform")
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: 620)
+        .onAppear { playback.load() }
+        .onDisappear { playback.stop() }
     }
 }

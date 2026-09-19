@@ -1,0 +1,23 @@
+# Local Worker dev — copy to .dev.vars (gitignored)
+# JWT_SECRET is REQUIRED (no fallback). Use a long random string, e.g. `openssl rand -hex 32`.
+JWT_SECRET=dev-local-change-me-to-a-long-random-string
+# ALLOW_LOCAL_ORIGINS=1  # enable only for local Wrangler/browser development
+# RESEND_API_KEY=re_...  # transactional mail (Resend); omit to use SMTP fallback
+# Must match the verified frontend VITE_LEGAL_CONTACT_EMAIL before publication.
+# LEGAL_CONTACT_EMAIL=supportherness@dots.net.tr
+#
+# Desktop/web Google OAuth code flow (GET /api/auth/google):
+# Production: wrangler secret put GOOGLE_CLIENT_SECRET
+# GOOGLE_CLIENT_ID can live in wrangler.jsonc vars; secret is required for code exchange.
+# GOOGLE_CLIENT_SECRET=
+# GITHUB_CLIENT_SECRET=
+# Native Marketplace production secrets:
+# wrangler secret put MARKETPLACE_SIGNING_PRIVATE_KEY  # Ed25519 JWK; never commit
+# wrangler secret put MARKETPLACE_CI_SECRET             # optional source/CI fallback
+# wrangler secret put MARKETPLACE_BUILD_DISPATCH_TOKEN  # GitHub workflow-dispatch scope
+# Public OIDC repository/workflow/audience are configured in wrangler.jsonc.
+#
+# FCM push notifications (Firebase project: dotsherness-app)
+# Production: wrangler secret put FCM_SERVICE_ACCOUNT_JSON
+# Paste the full Firebase service account JSON (single line or escaped newlines in private_key).
+# FCM_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"dotsherness-app","private_key_id":"...","private_key":"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n","client_email":"firebase-adminsdk-...@dotsherness-app.iam.gserviceaccount.com","client_id":"...","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_x509_cert_url":"..."}

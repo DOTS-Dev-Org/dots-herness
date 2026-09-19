@@ -15,8 +15,8 @@ namespace HarnessPluginKit;
 /// A compiled plugin may be either:
 /// <list type="bullet">
 /// <item>A managed DLL that exports a public <see cref="IHarnessPlugin"/> type
-/// with a parameterless constructor (preferred on Windows).</item>
-/// <item>A native DLL that exports the same C symbols as the macOS dylib ABI:
+/// with a parameterless constructor (preferred).</item>
+/// <item>A native DLL/shared object that exports the same C symbols as the macOS dylib ABI:
 /// <c>harness_plugin_abi_version</c>, <c>harness_plugin_id</c>,
 /// <c>harness_plugin_make</c>.</item>
 /// </list>

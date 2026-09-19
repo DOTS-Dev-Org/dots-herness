@@ -100,6 +100,23 @@ public struct ChatMedia: Identifiable, Codable, Sendable, Equatable {
     public var url: URL { URL(fileURLWithPath: path) }
 }
 
+/// Provider/tool content before it is materialized into the app's local
+/// generated-media directory. Keeping this out of AgentMessage prevents raw
+/// binary payloads from being persisted in the model transcript.
+public struct MediaPayload: Sendable, Equatable {
+    public var kind: MediaKind
+    public var mimeType: String
+    public var data: Data?
+    public var url: URL?
+
+    public init(kind: MediaKind, mimeType: String, data: Data? = nil, url: URL? = nil) {
+        self.kind = kind
+        self.mimeType = mimeType
+        self.data = data
+        self.url = url
+    }
+}
+
 public enum MediaGenerationClient {
     public static func generate(
         kind: MediaKind,
@@ -326,12 +343,38 @@ public enum MediaGenerationClient {
     }
 
     static func save(_ data: Data, kind: MediaKind, paths: SupportPaths) throws -> ChatMedia {
+        try save(data, kind: kind, mimeType: kind.mimeType, paths: paths)
+    }
+
+    static func save(_ data: Data, kind: MediaKind, mimeType: String, paths: SupportPaths) throws -> ChatMedia {
         let directory = paths.root.appendingPathComponent("generated-media", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        guard !data.isEmpty else { throw NativeAgentError(AppCopy.text("media.invalidOutput")) }
         let url = directory
             .appendingPathComponent("\(UUID().uuidString).\(kind.fileExtension)")
         try data.write(to: url, options: .atomic)
-        return ChatMedia(kind: kind, path: url.path, mimeType: kind.mimeType)
+        return ChatMedia(kind: kind, path: url.path, mimeType: mimeType)
+    }
+
+    public static func materialize(
+        _ payload: MediaPayload,
+        paths: SupportPaths,
+        session: URLSession = .shared
+    ) async throws -> ChatMedia {
+        if let data = payload.data {
+            return try save(data, kind: payload.kind, mimeType: payload.mimeType, paths: paths)
+        }
+        guard let url = payload.url,
+              ["http", "https"].contains(url.scheme?.lowercased()) else {
+            throw NativeAgentError(AppCopy.text("media.invalidOutput"))
+        }
+        let request = URLRequest(url: url, timeoutInterval: 180)
+        let (data, response) = try await session.data(for: request)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200..<300).contains(status) else {
+            throw NativeAgentError(AppCopy.format("agent.requestFailed", status))
+        }
+        return try save(data, kind: payload.kind, mimeType: payload.mimeType, paths: paths)
     }
 
     private static func appendField(_ name: String, value: String, boundary: String, to data: inout Data) {

@@ -6,9 +6,8 @@ import HarnessPluginKit
 
 public enum PluginKind: String, Sendable {
     case builtin
-    case manifest
     case dylib
-    case js
+    case unsupported
 }
 
 public struct CatalogEntry: Identifiable, Sendable {
@@ -41,7 +40,22 @@ public struct ResolvedPlugin {
     public var manifest: PluginManifest
     public var kind: PluginKind
     public var trust: PluginTrust
+    public var directory: URL?
     public var make: () throws -> HarnessPlugin
+
+    public init(
+        manifest: PluginManifest,
+        kind: PluginKind,
+        trust: PluginTrust,
+        directory: URL? = nil,
+        make: @escaping () throws -> HarnessPlugin
+    ) {
+        self.manifest = manifest
+        self.kind = kind
+        self.trust = trust
+        self.directory = directory
+        self.make = make
+    }
 }
 
 public struct SupportPaths: Sendable {
@@ -98,6 +112,10 @@ public struct SupportPaths: Sendable {
         try? fileManager.createDirectory(at: presets, withIntermediateDirectories: true)
         try? fileManager.createDirectory(at: models, withIntermediateDirectories: true)
         try? fileManager.createDirectory(at: runtime, withIntermediateDirectories: true)
+        try? fileManager.createDirectory(
+            at: root.appendingPathComponent("skills", isDirectory: true),
+            withIntermediateDirectories: true
+        )
     }
 }
 
@@ -148,18 +166,26 @@ public final class PluginCatalog: ObservableObject {
                 do {
                     let text = try String(contentsOf: yaml, encoding: .utf8)
                     let manifest = try MiniYAML.decode(PluginManifest.self, from: text)
-                    let kind: PluginKind
-                    if manifest.library != nil {
-                        kind = .dylib
-                    } else if manifest.runtime == "js" || manifest.main != nil {
-                        kind = .js
-                    } else {
-                        kind = .manifest
-                    }
                     let trust = trustOverrides[manifest.id] ?? .untrusted
+                    let runtime = manifest.runtime.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    let library = manifest.library?.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard runtime == "native", let library, !library.isEmpty,
+                          !library.hasPrefix("/"), !library.contains(".."),
+                          !library.contains("\\"),
+                          fm.fileExists(atPath: folder.appendingPathComponent(library).path) else {
+                        next.append(CatalogEntry(
+                            manifest: manifest,
+                            kind: .unsupported,
+                            trust: trust,
+                            enabled: false,
+                            broken: "Only native plugins with a safe `library` are supported. JavaScript and declarative plugins are no longer loadable.",
+                            url: folder
+                        ))
+                        continue
+                    }
                     next.append(CatalogEntry(
                         manifest: manifest,
-                        kind: kind,
+                        kind: .dylib,
                         trust: trust,
                         enabled: !disabled.contains(manifest.id),
                         url: folder
@@ -172,7 +198,7 @@ public final class PluginCatalog: ObservableObject {
                             version: "0.0.0",
                             plane: .session
                         ),
-                        kind: .manifest,
+                        kind: .unsupported,
                         trust: .untrusted,
                         enabled: false,
                         broken: error.localizedDescription,
@@ -210,21 +236,14 @@ public final class PluginCatalog: ObservableObject {
         switch entry.kind {
         case .builtin:
             throw PluginError.unknownPlugin(id)
-        case .manifest:
-            return ResolvedPlugin(manifest: entry.manifest, kind: .manifest, trust: entry.trust) {
-                ManifestPlugin(manifest: entry.manifest, directory: entry.url)
-            }
-        case .js:
-            let directory = entry.url
-            return ResolvedPlugin(manifest: entry.manifest, kind: .js, trust: entry.trust) {
-                JSPlugin(manifest: entry.manifest, directory: directory)
-            }
+        case .unsupported:
+            throw PluginError.invalidManifest("Only native plugins with a compiled library can be loaded")
         case .dylib:
             guard let folder = entry.url, let library = entry.manifest.library else {
                 throw PluginError.invalidManifest("missing library")
             }
             let url = folder.appendingPathComponent(library)
-            return ResolvedPlugin(manifest: entry.manifest, kind: .dylib, trust: entry.trust) {
+            return ResolvedPlugin(manifest: entry.manifest, kind: .dylib, trust: entry.trust, directory: folder) {
                 try PluginDylib.load(from: url)
             }
         }
@@ -255,6 +274,6 @@ private extension HarnessPlugin {
         if let type = self as? any DefaultPlugin.Type {
             return type.create()
         }
-        return ManifestPlugin(manifest: manifest, directory: nil)
+        fatalError("Built-in plugin \(manifest.id) must conform to DefaultPlugin")
     }
 }

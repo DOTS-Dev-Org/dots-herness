@@ -10,6 +10,7 @@ APP_ROOT="${APP_ROOT:-$NATIVE_DIR/DotsHarness}"
 CONFIGURATION="${CONFIGURATION:-Debug}"
 BUILD_PATH="${BUILD_PATH:-}"
 BUILD_ONLY=false
+PACKAGE=false
 FOREGROUND="${FOREGROUND:-0}"
 EXTRA_ARGS=()
 
@@ -21,6 +22,7 @@ Kullanim:
   ./run.sh
   ./run.sh --configuration Release
   ./run.sh --build-only
+  ./run.sh --package
   ./run.sh --foreground
   ./run.sh -- --help
 
@@ -29,18 +31,16 @@ Secenekler:
       --app-root PATH       Linux proje kokunu elle ver.
       --build-path PATH     Derleme cikti klasoru.
       --build-only          Derle, uygulamayi acma.
+      --package             Release tar.gz paketi olustur ve paketlenmis uygulamayi calistir.
       --foreground          Uygulamayi on planda calistir (Ctrl+C ile kapanir).
   -h, --help                Bu yardim metnini goster.
 
 Ortam degiskenleri:
-  CONFIGURATION, APP_ROOT, BUILD_PATH, FOREGROUND ayni ayarlari
-  argumansiz yapmak icin kullanilabilir.
+  CONFIGURATION, APP_ROOT, BUILD_PATH, FOREGROUND; paket icin VERSION,
+  RUNTIME, DOTNET_RUNTIME ve OUTPUT_PATH ayni ayarlari argumansiz yapmak
+  icin kullanilabilir.
 
 -- sonrasindaki argumanlar dogrudan DotsHarness surecine iletilir.
-
-Not: Bu agacta henuz linux/DotsHarness kaynagi yoksa script ayni
-arayuzle durur. macOS icin ../macos/run.sh, Windows icin
-../windows/run.sh kullanin.
 EOF
 }
 
@@ -76,6 +76,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --build-only)
             BUILD_ONLY=true
+            shift
+            ;;
+        --package)
+            PACKAGE=true
             shift
             ;;
         --foreground)
@@ -120,6 +124,54 @@ if [[ -n "$BUILD_PATH" && "$BUILD_PATH" != /* ]]; then
     BUILD_PATH="$NATIVE_DIR/$BUILD_PATH"
 fi
 
+detect_runtime() {
+    local arch
+    arch="$(uname -m 2>/dev/null || echo x86_64)"
+    case "$arch" in
+        x86_64|amd64) printf 'linux-x64\n' ;;
+        aarch64|arm64) printf 'linux-arm64\n' ;;
+        armv7l|armv7) printf 'linux-arm\n' ;;
+        *) fail "Desteklenmeyen mimari: $arch. RUNTIME ile RID verin (ornek: linux-x64)." ;;
+    esac
+}
+
+if [[ "$PACKAGE" == true ]]; then
+    VERSION_VALUE="${VERSION:-0.1.0}"
+    RUNTIME_VALUE="${RUNTIME:-${DOTNET_RUNTIME:-}}"
+    RUNTIME_VALUE="${RUNTIME_VALUE:-$(detect_runtime)}"
+    DIST_DIR="${OUTPUT_PATH:-$APP_ROOT/dist}"
+    if [[ "$DIST_DIR" != /* ]]; then
+        DIST_DIR="$APP_ROOT/$DIST_DIR"
+    fi
+    PACKAGE_SCRIPT="$APP_ROOT/scripts/package-tar.sh"
+    [[ -x "$PACKAGE_SCRIPT" ]] || fail "Paket scripti bulunamadi: $PACKAGE_SCRIPT"
+
+    CONFIGURATION=Release RUNTIME="$RUNTIME_VALUE" OUTPUT_PATH="$DIST_DIR" \
+        "$PACKAGE_SCRIPT" --no-open
+    STAGE_NAME="${PROJECT_NAME}-${VERSION_VALUE}-${RUNTIME_VALUE}"
+    STAGE_DIR="$DIST_DIR/$STAGE_NAME"
+    TAR_PATH="$DIST_DIR/${STAGE_NAME}.tar.gz"
+    APP_PATH="$STAGE_DIR/$PROJECT_NAME"
+    [[ -x "$APP_PATH" ]] || fail "Paketlenen uygulama bulunamadi: $APP_PATH"
+
+    printf 'Paketlenmis uygulama: %s\n' "$APP_PATH"
+    printf 'Uygulama boyutu: %s\n' "$(du -sh "$STAGE_DIR" | awk '{print $1}')"
+    printf 'Paket boyutu: %s\n' "$(du -sh "$TAR_PATH" | awk '{print $1}')"
+    if [[ "$BUILD_ONLY" == true ]]; then
+        printf 'Paketleme tamamlandi.\n'
+        exit 0
+    fi
+
+    printf 'Paketlenmis uygulama aciliyor...\n'
+    if [[ "$FOREGROUND" == "1" || "$FOREGROUND" == "true" || "$FOREGROUND" == "TRUE" ]]; then
+        exec "$APP_PATH" "${EXTRA_ARGS[@]}"
+    fi
+
+    "$APP_PATH" "${EXTRA_ARGS[@]}" &
+    printf 'Hazir: %s\n' "$PROJECT_NAME"
+    exit 0
+fi
+
 detect_kind() {
     if [[ -f "$APP_ROOT/CMakeLists.txt" ]]; then
         printf 'cmake\n'
@@ -151,6 +203,7 @@ printf 'Yapilandirma: %s\n' "$CONFIGURATION"
 printf 'Hedef turu: %s\n' "$KIND"
 
 APP_PATH=""
+SIZE_PATH=""
 
 case "$KIND" in
     cmake)
@@ -233,6 +286,7 @@ case "$KIND" in
                 APP_PATH="$APP_ROOT/bin/$CMAKE_BUILD_TYPE/net8.0/$PROJECT_NAME"
             fi
         fi
+        SIZE_PATH="$(dirname "$APP_PATH")"
         ;;
     *)
         fail "Desteklenmeyen Linux hedef turu: $KIND"
@@ -242,6 +296,10 @@ esac
 [[ -n "$APP_PATH" && -x "$APP_PATH" ]] || fail "Derlenen uygulama bulunamadi: ${APP_PATH:-$PROJECT_NAME}"
 
 printf 'Uygulama: %s\n' "$APP_PATH"
+if [[ -z "$SIZE_PATH" ]]; then
+    SIZE_PATH="$APP_PATH"
+fi
+printf 'Uygulama boyutu: %s\n' "$(du -sh "$SIZE_PATH" | awk '{print $1}')"
 
 if [[ "$BUILD_ONLY" == true ]]; then
     printf 'Derleme tamamlandi.\n'

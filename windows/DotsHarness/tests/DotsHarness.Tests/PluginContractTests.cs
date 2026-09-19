@@ -17,16 +17,18 @@ namespace DotsHarness.Tests;
 public sealed class PluginContractTests
 {
     [Fact]
-    public void BundledHostMountsNativePromptPlugin()
+    public void BundledHostMountsCleanlyWithoutBuiltinPrompt()
     {
+        // Fable guidance ships as the bundled fable-thinking skill now, so the
+        // default host composition mounts nothing even with the plugin registered.
         var catalog = new PluginCatalog(TemporaryPaths());
         catalog.RegisterBuiltin<FableThinkingPlugin.FableThinkingPlugin>();
         var host = new PluginHost(catalog);
         var issues = host.Mount(CompositionLoader.BundledHost());
 
         Assert.True(issues.Count == 0, string.Join("; ", issues.Select(issue => issue.Message)));
-        Assert.Single(host.Fibers);
-        Assert.Contains("Fable style", host.Prompt.AssembledText());
+        Assert.Empty(host.Fibers);
+        Assert.DoesNotContain("Fable style", host.Prompt.AssembledText());
     }
 
     [Fact]
@@ -79,7 +81,7 @@ public sealed class PluginContractTests
     }
 
     [Fact]
-    public void ManifestOnlyUserPlugin()
+    public void ManifestOnlyUserPluginIsRejected()
     {
         var paths = TemporaryPaths();
         var folder = Path.Combine(paths.Plugins, "note");
@@ -108,8 +110,9 @@ public sealed class PluginContractTests
         });
         var issues = host.Mount(document);
 
-        Assert.True(issues.Count == 0, string.Join("; ", issues.Select(issue => issue.Message)));
-        Assert.Contains("Remember the note plugin.", host.Prompt.AssembledText());
+        Assert.Single(issues);
+        Assert.Contains("native", issues[0].Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(host.Fibers);
     }
 
     [Fact]
@@ -126,6 +129,7 @@ public sealed class PluginContractTests
             plane: session
             library: HelloPlugin.dll
             """);
+        File.WriteAllText(Path.Combine(folder, "HelloPlugin.dll"), "placeholder");
 
         var catalog = new PluginCatalog(paths);
         catalog.Refresh();

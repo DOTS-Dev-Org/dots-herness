@@ -94,6 +94,47 @@ public enum AppLanguage: String, CaseIterable, Codable, Identifiable, Sendable {
         default: return false
         }
     }
+
+    public var flagEmoji: String {
+        switch self {
+        case .system: return AppLocalization.effectiveLanguage.flagEmoji
+        case .tr: return "🇹🇷"
+        case .en: return "🇺🇸"
+        case .de: return "🇩🇪"
+        case .es: return "🇪🇸"
+        case .fr: return "🇫🇷"
+        case .it: return "🇮🇹"
+        case .ja: return "🇯🇵"
+        case .ko: return "🇰🇷"
+        case .nl: return "🇳🇱"
+        case .pt: return "🇵🇹"
+        case .ru: return "🇷🇺"
+        case .zhHans: return "🇨🇳"
+        case .ar: return "🇸🇦"
+        case .bn: return "🇧🇩"
+        case .hi, .mr, .te, .ta: return "🇮🇳"
+        case .id: return "🇮🇩"
+        case .vi: return "🇻🇳"
+        case .ur: return "🇵🇰"
+        case .fa: return "🇮🇷"
+        case .pl: return "🇵🇱"
+        case .uk: return "🇺🇦"
+        case .th: return "🇹🇭"
+        case .ms: return "🇲🇾"
+        case .ro: return "🇷🇴"
+        case .el: return "🇬🇷"
+        case .cs: return "🇨🇿"
+        case .hu: return "🇭🇺"
+        }
+    }
+
+    public var shortCode: String {
+        switch self {
+        case .system: return AppLocalization.effectiveLanguage.shortCode
+        case .zhHans: return "ZH"
+        default: return rawValue.uppercased()
+        }
+    }
 }
 
 public enum AppLocalization {
@@ -129,7 +170,9 @@ public enum AppLocalization {
 
     fileprivate static func bundle(for language: AppLanguage) -> Bundle {
         let effective = language == .system ? effectiveLanguage : language
-        guard let path = Bundle.module.path(forResource: effective.rawValue, ofType: "lproj"),
+        let path = Bundle.module.path(forResource: effective.rawValue, ofType: "lproj")
+            ?? Bundle.module.path(forResource: effective.rawValue.lowercased(), ofType: "lproj")
+        guard let path,
               let bundle = Bundle(path: path) else {
             return Bundle.module
         }

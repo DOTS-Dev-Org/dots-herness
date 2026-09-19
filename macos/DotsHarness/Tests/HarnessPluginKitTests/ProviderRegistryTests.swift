@@ -107,6 +107,65 @@ final class ProviderRegistryTests: XCTestCase {
         XCTAssertEqual(result.usage?.cachedTokens, 5)
     }
 
+    func testResponsesNativeCompactionItemIsMarkedAndCanRoundTrip() throws {
+        let sse = """
+        data: {"type":"response.output_text.delta","delta":"continuing"}
+
+        data: {"type":"response.completed","response":{"output":[{"type":"compaction","id":"cmp-1","opaque":"keep-me"}],"usage":{"input_tokens":20,"output_tokens":2}}}
+        """
+        let result = try NativeAgentClient.responseFromSSE(Data(sse.utf8))
+        XCTAssertTrue(result.nativeCompactionApplied)
+        XCTAssertEqual(result.message.providerItems.first?["id"]?.string, "cmp-1")
+        let persisted = try JSONDecoder().decode(
+            AgentMessage.self,
+            from: JSONEncoder().encode(result.message)
+        )
+        XCTAssertEqual(persisted.providerItems.first?["opaque"]?.string, "keep-me")
+
+        let client = NativeAgentClient(configuration: AgentConfiguration(
+            baseURL: "https://example.test/v1",
+            model: "gpt-5.6",
+            api: RouterAPIKind.chatGPT.rawValue,
+            supportsNativeCompaction: true
+        ))
+        let body = client.makeBody(messages: [result.message], tools: [], cachePolicy: AgentCachePolicy())
+        let input = try XCTUnwrap(body["input"] as? [[String: Any]])
+        XCTAssertEqual(input.first?["type"] as? String, "compaction")
+        XCTAssertEqual(input.first?["id"] as? String, "cmp-1")
+    }
+
+    func testResponsesBodySeparatesStableInstructionsFromDynamicContext() throws {
+        let client = NativeAgentClient(configuration: AgentConfiguration(
+            baseURL: "https://example.test/v1",
+            model: "gpt-5.6",
+            api: RouterAPIKind.chatGPT.rawValue,
+            contextWindow: 10_000,
+            supportsNativeCompaction: true,
+            compactionPolicy: .cacheAware
+        ))
+        let body = client.makeBody(
+            messages: [
+                AgentMessage(role: .system, content: "stable policy", systemKind: .promptStable),
+                AgentMessage(role: .system, content: "workspace activity", systemKind: .promptDynamic),
+                AgentMessage(role: .user, content: "hello"),
+            ],
+            tools: [],
+            cachePolicy: AgentCachePolicy(promptCacheKey: "stable-prefix")
+        )
+
+        XCTAssertEqual(body["instructions"] as? String, "stable policy")
+        XCTAssertEqual(body["prompt_cache_key"] as? String, "stable-prefix")
+        // Per-turn data rides on the latest user message, not ahead of history.
+        let input = try XCTUnwrap(body["input"] as? [[String: Any]])
+        XCTAssertEqual(input.count, 1)
+        XCTAssertEqual(input.first?["role"] as? String, "user")
+        let userContent = try XCTUnwrap(input.first?["content"] as? [[String: Any]])
+        XCTAssertEqual(userContent.first?["text"] as? String, "workspace activity\n\nhello")
+
+        let management = try XCTUnwrap(body["context_management"] as? [[String: Any]])
+        XCTAssertEqual(management.first?["compact_threshold"] as? Int, 8_000)
+    }
+
     func testCodexSSESurfacesStreamError() {
         let sse = #"data: {"type":"response.failed","response":{"error":{"message":"boom"}}}"#
         XCTAssertThrowsError(try NativeAgentClient.responseFromSSE(Data(sse.utf8))) { error in

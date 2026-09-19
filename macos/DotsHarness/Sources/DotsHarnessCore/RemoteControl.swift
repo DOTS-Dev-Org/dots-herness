@@ -86,6 +86,7 @@ public struct RemotePairingDevice: Codable, Sendable, Equatable, Identifiable {
 
 public struct RemoteBootstrap: Codable, Sendable {
     public let protocolVersion: Int
+    public let area: AgentArea
     public let workspaceId: String
     public let workspace: String
     public let revision: Int64
@@ -467,6 +468,8 @@ public final class RemoteControlHost {
     public func disableCloudTunnel() { tunnel.stop(); publicEndpoint = nil; _ = beginPairing() }
 
     public func publish(_ kind: String, _ payload: [String: RemoteJSONValue] = [:]) {
+        var payload = payload
+        payload["area"] = .string(bridge.area.rawValue)
         events.publish(kind, workspaceId: Self.workspaceID(workspace), sessionId: bridge.selected?.id, payload: payload)
     }
 
@@ -616,13 +619,13 @@ public final class RemoteControlHost {
             let sessionId = bridge.selected?.id
             let commandId = command.id
             let commandKind = command.kind
-            let output = WorkspaceTools.execute(call, workspace: workspaceURL) { chunk in
+            let output = WorkspaceTools.execute(call, workspace: workspaceURL, sandboxPolicy: bridge.sandboxPolicy, onOutput: { chunk in
                 eventHub.publish("terminal.output", workspaceId: workspaceId, sessionId: sessionId, payload: [
                     "commandId": .string(commandId),
                     "kind": .string(commandKind),
-                    
+
                 ])
-            }
+            })
             let artifact = events.publishText(command.kind == "deploy" ? "deploy.progress" : "build.output", workspaceId: Self.workspaceID(workspace), sessionId: bridge.selected?.id, text: output, payload: ["commandId": .string(command.id), "kind": .string(command.kind), "phase": .string("output")])
             var outputArtifactId: String?
             if command.kind == "build", let artifactPath = command.payload["artifactPath"]?.string, !artifactPath.isEmpty {
@@ -642,7 +645,7 @@ public final class RemoteControlHost {
 
     private func bootstrap() -> RemoteBootstrap {
         let selected = bridge.selected
-        return RemoteBootstrap(protocolVersion: 1, workspaceId: Self.workspaceID(workspace), workspace: workspace, revision: revision, conversationId: selected?.id, provider: bridge.connection?.provider, model: bridge.connection?.model, status: bridge.status, isBusy: bridge.isBusy, accessMode: access, capabilities: ["events", "prompt", "continue", "stop", "approval", "files", "snapshot", "artifacts", "write", "terminal", "build", "deploy"], devices: pairingStore.list())
+        return RemoteBootstrap(protocolVersion: 1, area: bridge.area, workspaceId: Self.workspaceID(workspace), workspace: workspace, revision: revision, conversationId: selected?.id, provider: bridge.connection?.provider, model: bridge.connection?.model, status: bridge.status, isBusy: bridge.isBusy, accessMode: access, capabilities: ["events", "prompt", "continue", "stop", "approval", "files", "snapshot", "artifacts", "write", "terminal", "build", "deploy"], devices: pairingStore.list())
     }
 
     private func snapshot() -> RemoteWorkspaceSnapshot {
@@ -683,11 +686,11 @@ public final class RemoteControlHost {
     private func commandSummary(_ command: RemoteCommand) -> String { command.kind == "write_file" ? "Write \(command.payload["path"]?.string ?? ".")" : command.payload["command"]?.string ?? command.kind }
     private var workspace: String { let value = workspacePath.isEmpty ? FileManager.default.currentDirectoryPath : workspacePath; return URL(fileURLWithPath: value).standardizedFileURL.path }
 
-    private static func requestComplete(_ data: Data) -> Bool { guard let marker = data.range(of: Data([13, 10, 13, 10])) else { return false }; let headers = String(decoding: data[..<marker.lowerBound], as: UTF8.self); let length = headers.split(separator: "\r\n").compactMap { line -> Int? in let parts = line.split(separator: ":", maxSplits: 1); return parts.count == 2 && parts[0].lowercased() == "content-length" ? Int(parts[1].trimmingCharacters(in: .whitespaces)) : nil }.first ?? 0; return data.count - marker.upperBound >= length }
+    private static nonisolated func requestComplete(_ data: Data) -> Bool { guard let marker = data.range(of: Data([13, 10, 13, 10])) else { return false }; let headers = String(decoding: data[..<marker.lowerBound], as: UTF8.self); let length = headers.split(separator: "\r\n").compactMap { line -> Int? in let parts = line.split(separator: ":", maxSplits: 1); return parts.count == 2 && parts[0].lowercased() == "content-length" ? Int(parts[1].trimmingCharacters(in: .whitespaces)) : nil }.first ?? 0; return data.count - marker.upperBound >= length }
     private static func parse(_ data: Data) -> RemoteHTTPRequest? { guard let marker = data.range(of: Data([13, 10, 13, 10])) else { return nil }; let lines = String(decoding: data[..<marker.lowerBound], as: UTF8.self).split(separator: "\r\n", omittingEmptySubsequences: false); let first = lines.first?.split(separator: " ", maxSplits: 2).map(String.init) ?? []; guard first.count == 3 else { return nil }; var headers: [String: String] = [:]; for line in lines.dropFirst() { let parts = line.split(separator: ":", maxSplits: 1); if parts.count == 2 { headers[parts[0].lowercased()] = parts[1].trimmingCharacters(in: .whitespaces) } }; let body = Data(data[marker.upperBound...]); let path = first[1].split(separator: "?", maxSplits: 1).first.map(String.init) ?? first[1]; return RemoteHTTPRequest(method: first[0].uppercased(), target: first[1], path: path, headers: headers, body: body) }
     private static func query(_ target: String, _ key: String) -> String { guard let components = URLComponents(string: target), let item = components.queryItems?.first(where: { $0.name == key }) else { return "" }; return item.value ?? "" }
     private static func workspaceID(_ value: String) -> String { SHA256.hash(data: Data(URL(fileURLWithPath: value).standardizedFileURL.path.utf8)).map { String(format: "%02x", $0) }.joined().prefix(24).description }
-    private static func preferredHost() -> String { var addresses: UnsafeMutablePointer<ifaddrs>?; guard getifaddrs(&addresses) == 0 else { return "127.0.0.1" }; defer { freeifaddrs(addresses) }; var current = addresses; while let item = current { if item.pointee.ifa_addr.pointee.sa_family == UInt8(AF_INET), let name = String(validatingUTF8: item.pointee.ifa_name), name != "lo0" { var address = item.pointee.ifa_addr.pointee; var buffer = [CChar](repeating: 0, count: Int(NI_MAXHOST)); getnameinfo(item.pointee.ifa_addr, socklen_t(item.pointee.ifa_addr.pointee.sa_len), &buffer, socklen_t(buffer.count), nil, 0, NI_NUMERICHOST); let value = String(cString: buffer); if value != "127.0.0.1" { return value } }; current = item.pointee.ifa_next }; return "127.0.0.1" }
+    private static func preferredHost() -> String { var addresses: UnsafeMutablePointer<ifaddrs>?; guard getifaddrs(&addresses) == 0 else { return "127.0.0.1" }; defer { freeifaddrs(addresses) }; var current = addresses; while let item = current { if item.pointee.ifa_addr.pointee.sa_family == UInt8(AF_INET), let name = String(validatingCString: item.pointee.ifa_name), name != "lo0" { var buffer = [CChar](repeating: 0, count: Int(NI_MAXHOST)); getnameinfo(item.pointee.ifa_addr, socklen_t(item.pointee.ifa_addr.pointee.sa_len), &buffer, socklen_t(buffer.count), nil, 0, NI_NUMERICHOST); let bytes = buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }; let value = String(decoding: bytes, as: UTF8.self); if value != "127.0.0.1" { return value } }; current = item.pointee.ifa_next }; return "127.0.0.1" }
 }
 
 private struct PairRequest: Codable { let code: String; let deviceName: String? }
@@ -747,7 +750,7 @@ private enum RemoteWorkspaceMac {
         let temp = file.appendingPathExtension("remote-\(UUID().uuidString)")
         try Data(content.utf8).write(to: temp, options: .atomic)
         if FileManager.default.fileExists(atPath: file.path) {
-            try FileManager.default.replaceItemAt(file, withItemAt: temp, backupItemName: nil, options: .usingNewMetadataOnly)
+            _ = try FileManager.default.replaceItemAt(file, withItemAt: temp, backupItemName: nil, options: .usingNewMetadataOnly)
         } else {
             try FileManager.default.moveItem(at: temp, to: file)
         }

@@ -12,6 +12,7 @@ CONFIGURATION="${CONFIGURATION:-Debug}"
 BUILD_PATH="${BUILD_PATH:-$NATIVE_DIR/.build}"
 ARCH="${ARCH:-${SWIFT_ARCH:-}}"
 BUILD_ONLY=false
+PACKAGE=false
 FOREGROUND="${FOREGROUND:-0}"
 EXTRA_ARGS=()
 
@@ -23,6 +24,7 @@ Kullanim:
   ./run.sh
   ./run.sh --configuration Release
   ./run.sh --build-only
+  ./run.sh --package
   ./run.sh --foreground
   ./run.sh -- --help
 
@@ -32,11 +34,12 @@ Secenekler:
       --arch NAME           Hedef mimari (arm64 veya x86_64).
       --build-path PATH     SPM derleme klasoru (varsayilan: .build).
       --build-only          Derle, uygulamayi acma.
+      --package             Release .app/.dmg paketi olustur ve .app'i calistir.
       --foreground          Uygulamayi on planda calistir (Ctrl+C ile kapanir).
   -h, --help                Bu yardim metnini goster.
 
 Ortam degiskenleri:
-  CONFIGURATION, PRODUCT, ARCH, SWIFT_ARCH, BUILD_PATH, FOREGROUND
+  CONFIGURATION, PRODUCT, ARCH, SWIFT_ARCH, BUILD_PATH, FOREGROUND, VERSION
   ayni ayarlari argumansiz yapmak icin kullanilabilir.
 
 -- sonrasindaki argumanlar dogrudan DotsHarness surecine iletilir.
@@ -82,6 +85,10 @@ while [[ $# -gt 0 ]]; do
             BUILD_ONLY=true
             shift
             ;;
+        --package)
+            PACKAGE=true
+            shift
+            ;;
         --foreground)
             FOREGROUND=1
             shift
@@ -101,6 +108,39 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ "$(uname -s)" == "Darwin" ]] || fail "Bu script yalnizca macOS'ta calisir."
+
+if [[ "$PACKAGE" == true ]]; then
+    [[ "$PRODUCT" == "$PROJECT_NAME" ]] || fail "--package yalnizca $PROJECT_NAME urunuyle kullanilabilir."
+    PACKAGE_SCRIPT="$NATIVE_DIR/scripts/package-dmg.sh"
+    [[ -x "$PACKAGE_SCRIPT" ]] || fail "Paket scripti bulunamadi: $PACKAGE_SCRIPT"
+
+    "$PACKAGE_SCRIPT" --no-open
+    APP_BUNDLE="$NATIVE_DIR/dist/$PROJECT_NAME.app"
+    [[ -d "$APP_BUNDLE" ]] || fail "Paketlenen uygulama bulunamadi: $APP_BUNDLE"
+
+    printf 'Paketlenmis uygulama: %s\n' "$APP_BUNDLE"
+    printf 'Uygulama boyutu: %s\n' "$(du -sh "$APP_BUNDLE" | awk '{print $1}')"
+    if [[ "$BUILD_ONLY" == true ]]; then
+        printf 'Paketleme tamamlandi.\n'
+        exit 0
+    fi
+
+    printf 'Paketlenmis uygulama aciliyor...\n'
+    if [[ "$FOREGROUND" == "1" || "$FOREGROUND" == "true" || "$FOREGROUND" == "TRUE" ]]; then
+        if ((${#EXTRA_ARGS[@]} > 0)); then
+            exec "$APP_BUNDLE/Contents/MacOS/$PRODUCT" "${EXTRA_ARGS[@]}"
+        fi
+        exec "$APP_BUNDLE/Contents/MacOS/$PRODUCT"
+    fi
+
+    if ((${#EXTRA_ARGS[@]} > 0)); then
+        open -n "$APP_BUNDLE" --args "${EXTRA_ARGS[@]}" &
+    else
+        open -n "$APP_BUNDLE" &
+    fi
+    printf 'Hazir: %s\n' "$PRODUCT"
+    exit 0
+fi
 
 require_command swift
 [[ -f "$PACKAGE_FILE" ]] || fail "Swift paketi bulunamadi: $PACKAGE_FILE"
@@ -127,6 +167,26 @@ if [[ -n "$BUILD_PATH" && "$BUILD_PATH" != /* ]]; then
     BUILD_PATH="$NATIVE_DIR/$BUILD_PATH"
 fi
 
+# SwiftPM build.db mutlak yollar içerir. Repo başka bir klasöre taşındıysa
+# eski plan, mevcut artifact'ler yerinde olsa bile eski checkout yolundaki
+# XCFramework'i aramaya devam eder. Eski scratch klasörünü silmek yerine
+# geçici dizine taşıyarak yeni bir plan oluştur; böylece önceki cache
+# kurtarılabilir ve çalışma ağacında untracked dosya bırakılmaz.
+if [[ -f "$BUILD_PATH/build.db" ]] && command -v strings >/dev/null 2>&1; then
+    if ! LC_ALL=C strings "$BUILD_PATH/build.db" | grep -F -- "$NATIVE_DIR" >/dev/null; then
+        STALE_BUILD_ROOT="${TMPDIR:-/tmp}"
+        STALE_BUILD_PATH="${STALE_BUILD_ROOT%/}/dots-harness-spm-stale-$(basename "$NATIVE_DIR").$(date +%Y%m%d%H%M%S)"
+        STALE_SUFFIX=0
+        while [[ -e "$STALE_BUILD_PATH" ]]; do
+            STALE_SUFFIX=$((STALE_SUFFIX + 1))
+            STALE_BUILD_PATH="${STALE_BUILD_ROOT%/}/dots-harness-spm-stale-$(basename "$NATIVE_DIR").$(date +%Y%m%d%H%M%S).$STALE_SUFFIX"
+        done
+        mv "$BUILD_PATH" "$STALE_BUILD_PATH"
+        printf 'Eski SwiftPM build cache tasindi: %s\n' "$STALE_BUILD_PATH"
+        printf 'Yeni build plani olusturuluyor...\n'
+    fi
+fi
+
 printf 'Urun: %s\n' "$PRODUCT"
 printf 'Yapilandirma: %s\n' "$SWIFT_CONFIG"
 if [[ -n "$ARCH" ]]; then
@@ -138,7 +198,7 @@ SWIFT_BUILD=(
     --package-path "$NATIVE_DIR"
     --product "$PRODUCT"
     -c "$SWIFT_CONFIG"
-    --build-path "$BUILD_PATH"
+    --scratch-path "$BUILD_PATH"
 )
 if [[ -n "$ARCH" ]]; then
     SWIFT_BUILD+=(--arch "$ARCH")
@@ -232,6 +292,17 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
     <string>$PRODUCT</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>HerNess desktop OAuth</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>herness</string>
+            </array>
+        </dict>
+    </array>
     <key>CFBundleShortVersionString</key>
     <string>0.1.0</string>
     <key>CFBundleVersion</key>
@@ -274,6 +345,7 @@ codesign --force --sign "$SIGN_IDENTITY" --timestamp=none \
     --identifier com.dots.dotsharness "$APP_BUNDLE"
 codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
 printf 'Uygulama bundle: %s\n' "$APP_BUNDLE"
+printf 'Uygulama boyutu: %s\n' "$(du -sh "$APP_BUNDLE" | awk '{print $1}')"
 
 if [[ "$BUILD_ONLY" == true ]]; then
     printf 'Derleme tamamlandi.\n'

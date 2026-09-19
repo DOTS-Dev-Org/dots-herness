@@ -225,50 +225,89 @@
   <data name="voice.status.downloading" xml:space="preserve"><value>Завантаження голосових ресурсів…</value></data>
   <data name="voice.download" xml:space="preserve"><value>Завантажте голосові ресурси</value></data>
   <data name="voice.error" xml:space="preserve"><value>Помилка голосового введення: {0}</value></data>
-  <data name="ask.customPlaceholder" xml:space="preserve"><value>Write your own answer…</value></data>
-  <data name="ask.skip" xml:space="preserve"><value>Skip and plan anyway</value></data>
-  <data name="ask.submit" xml:space="preserve"><value>Send answers</value></data>
-  <data name="ask.title" xml:space="preserve"><value>A few questions before the plan</value></data>
-  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Cleanup did not complete.</value></data>
-  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>No cleanup was requested.</value></data>
-  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Cleanup could not be verified; existing files were preserved.</value></data>
-  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Old code was preserved because cleanup was not needed or could not be proven.</value></data>
-  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Workspace changes could not be fully verified.</value></data>
-  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Old code cleanup verified.</value></data>
-  <data name="conversation.connectionAdded" xml:space="preserve"><value>Connection added: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionChanged" xml:space="preserve"><value>Connection changed</value></data>
-  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Previous local connection data could not be fully verified; it was preserved.</value></data>
-  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Previous connection preserved: {0}. Conversations and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Previous connection removed. Local connection data was cleared; conversations and user data were preserved. Remote data was not touched.</value></data>
-  <data name="conversation.connectionSelected" xml:space="preserve"><value>Connection selected: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionSummary" xml:space="preserve"><value>Connection changed: {0} → {1}</value></data>
-  <data name="conversation.fileAdded" xml:space="preserve"><value>Added</value></data>
-  <data name="conversation.fileDeleted" xml:space="preserve"><value>Deleted</value></data>
-  <data name="conversation.fileModified" xml:space="preserve"><value>Modified</value></data>
-  <data name="conversation.filesSummary" xml:space="preserve"><value>Added {0}, modified {1}, deleted {2}</value></data>
-  <data name="conversation.runSummary" xml:space="preserve"><value>Run summary</value></data>
-  <data name="conversation.testStatus" xml:space="preserve"><value>Tests: {0}</value></data>
-  <data name="router.unknown" xml:space="preserve"><value>unknown</value></data>
-  <data name="settings.seedProjectRules" xml:space="preserve"><value>Create AGENTS.md and CLAUDE.md</value></data>
-  <data name="settings.selfVerification" xml:space="preserve"><value>Verify changes automatically</value></data>
-  <data name="vision.deleteModel" xml:space="preserve"><value>Delete model</value></data>
-  <data name="vision.disabled" xml:space="preserve"><value>Disabled</value></data>
-  <data name="vision.downloadAndContinue" xml:space="preserve"><value>Download and continue</value></data>
-  <data name="vision.downloading" xml:space="preserve"><value>Downloading the local vision model…</value></data>
-  <data name="vision.emptyDescription" xml:space="preserve"><value>The local Vision fallback returned no visual description.</value></data>
-  <data name="vision.failed" xml:space="preserve"><value>Vision fallback failed</value></data>
-  <data name="vision.installPlugin" xml:space="preserve"><value>Install from marketplace</value></data>
-  <data name="vision.installReason" xml:space="preserve"><value>{0} does not support image input. The Vision plugin will download about {1} and process the image on this device. The original image may already have reached the provider.</value></data>
-  <data name="vision.installTitle" xml:space="preserve"><value>This provider cannot read the image</value></data>
-  <data name="vision.modelMissing" xml:space="preserve"><value>Model not downloaded</value></data>
-  <data name="vision.notEnabled" xml:space="preserve"><value>The provider cannot read this image and the local Vision plugin was not enabled.</value></data>
-  <data name="vision.notInstalled" xml:space="preserve"><value>Not installed</value></data>
-  <data name="vision.notNow" xml:space="preserve"><value>Not now</value></data>
-  <data name="vision.pluginMissing" xml:space="preserve"><value>The local Vision fallback plugin is unavailable.</value></data>
-  <data name="vision.prepareModel" xml:space="preserve"><value>Download and prepare model</value></data>
-  <data name="vision.preparing" xml:space="preserve"><value>Preparing the local vision runtime…</value></data>
-  <data name="vision.ready" xml:space="preserve"><value>Vision fallback ready · {0}</value></data>
-  <data name="vision.removePlugin" xml:space="preserve"><value>Remove plugin</value></data>
-  <data name="vision.title" xml:space="preserve"><value>Vision fallback</value></data>
-  <data name="vision.unavailable" xml:space="preserve"><value>Vision fallback is unavailable</value></data>
+  <data name="ask.customPlaceholder" xml:space="preserve"><value>Напишіть власну відповідь…</value></data>
+  <data name="ask.skip" xml:space="preserve"><value>Пропустити й усе одно скласти план</value></data>
+  <data name="ask.submit" xml:space="preserve"><value>Надіслати відповіді</value></data>
+  <data name="ask.title" xml:space="preserve"><value>Кілька запитань перед планом</value></data>
+  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Очищення не завершено.</value></data>
+  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>Очищення не запитувалося.</value></data>
+  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Не вдалося перевірити очищення; наявні файли збережено.</value></data>
+  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Старий код збережено, оскільки очищення не було потрібне або його не вдалося довести.</value></data>
+  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Не вдалося повністю перевірити зміни робочого простору.</value></data>
+  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Очищення старого коду перевірено.</value></data>
+  <data name="conversation.connectionAdded" xml:space="preserve"><value>З’єднання додано: {0}. Наявні з’єднання та дані користувача збережено; віддалені дані не змінювалися.</value></data>
+  <data name="conversation.connectionChanged" xml:space="preserve"><value>З’єднання змінено</value></data>
+  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Не вдалося повністю перевірити попередні локальні дані з’єднання; їх збережено.</value></data>
+  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Попереднє з’єднання збережено: {0}. Розмови й дані користувача збережено; віддалені дані не змінювалися.</value></data>
+  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Попереднє з’єднання видалено. Локальні дані з’єднання очищено; розмови й дані користувача збережено. Віддалені дані не змінювалися.</value></data>
+  <data name="conversation.connectionSelected" xml:space="preserve"><value>З’єднання вибрано: {0}. Наявні з’єднання та дані користувача збережено; віддалені дані не змінювалися.</value></data>
+  <data name="conversation.connectionSummary" xml:space="preserve"><value>З’єднання змінено: {0} → {1}</value></data>
+  <data name="conversation.fileAdded" xml:space="preserve"><value>Додано</value></data>
+  <data name="conversation.fileDeleted" xml:space="preserve"><value>Видалено</value></data>
+  <data name="conversation.fileModified" xml:space="preserve"><value>Змінено</value></data>
+  <data name="conversation.filesSummary" xml:space="preserve"><value>Додано {0}, змінено {1}, видалено {2}</value></data>
+  <data name="conversation.runSummary" xml:space="preserve"><value>Підсумок запуску</value></data>
+  <data name="conversation.testStatus" xml:space="preserve"><value>Тести: {0}</value></data>
+  <data name="router.unknown" xml:space="preserve"><value>невідомо</value></data>
+  <data name="settings.seedProjectRules" xml:space="preserve"><value>Створити AGENTS.md і CLAUDE.md</value></data>
+  <data name="settings.selfVerification" xml:space="preserve"><value>Автоматично перевіряти зміни</value></data>
+  <data name="vision.deleteModel" xml:space="preserve"><value>Видалити модель</value></data>
+  <data name="vision.disabled" xml:space="preserve"><value>Вимкнено</value></data>
+  <data name="vision.downloadAndContinue" xml:space="preserve"><value>Завантажити й продовжити</value></data>
+  <data name="vision.downloading" xml:space="preserve"><value>Завантаження локальної моделі Vision…</value></data>
+  <data name="vision.emptyDescription" xml:space="preserve"><value>Локальний резерв Vision не повернув візуального опису.</value></data>
+  <data name="vision.failed" xml:space="preserve"><value>Збій резервного Vision</value></data>
+  <data name="vision.installPlugin" xml:space="preserve"><value>Встановити з маркетплейсу</value></data>
+  <data name="vision.installReason" xml:space="preserve"><value>{0} не підтримує введення зображень. Плагін Vision завантажить приблизно {1} і обробить зображення на цьому пристрої. Оригінальне зображення вже могло потрапити до постачальника.</value></data>
+  <data name="vision.installTitle" xml:space="preserve"><value>Цей постачальник не може прочитати зображення</value></data>
+  <data name="vision.modelMissing" xml:space="preserve"><value>Модель не завантажено</value></data>
+  <data name="vision.notEnabled" xml:space="preserve"><value>Постачальник не може прочитати це зображення, а локальний плагін Vision не ввімкнено.</value></data>
+  <data name="vision.notInstalled" xml:space="preserve"><value>Не встановлено</value></data>
+  <data name="vision.notNow" xml:space="preserve"><value>Не зараз</value></data>
+  <data name="vision.pluginMissing" xml:space="preserve"><value>Локальний плагін резервного Vision недоступний.</value></data>
+  <data name="vision.prepareModel" xml:space="preserve"><value>Завантажити й підготувати модель</value></data>
+  <data name="vision.preparing" xml:space="preserve"><value>Підготовка локального середовища Vision…</value></data>
+  <data name="vision.ready" xml:space="preserve"><value>Резерв Vision готовий · {0}</value></data>
+  <data name="vision.removePlugin" xml:space="preserve"><value>Видалити плагін</value></data>
+  <data name="vision.title" xml:space="preserve"><value>Резерв Vision</value></data>
+  <data name="vision.unavailable" xml:space="preserve"><value>Резерв Vision недоступний</value></data>
+  <data name="legal.title" xml:space="preserve"><value>Правові питання й конфіденційність</value></data>
+  <data name="legal.gateHeading" xml:space="preserve"><value>Перед початком</value></data>
+  <data name="legal.gateIntro" xml:space="preserve"><value>Перегляньте Угоду користувача та Політику конфіденційності. Вміст чатів і робочої області надсилається обраному вами постачальнику ШІ, який може бути за межами вашої країни.</value></data>
+  <data name="legal.termsTab" xml:space="preserve"><value>Угода користувача</value></data>
+  <data name="legal.privacyTab" xml:space="preserve"><value>Політика конфіденційності</value></data>
+  <data name="legal.acceptRequired" xml:space="preserve"><value>Я прочитав(ла) Угоду користувача та Політику конфіденційності й приймаю їх.</value></data>
+  <data name="legal.accept" xml:space="preserve"><value>Продовжити</value></data>
+  <data name="legal.openWeb" xml:space="preserve"><value>Відкрити у вебі</value></data>
+  <data name="legal.consentHeading" xml:space="preserve"><value>Optional permissions</value></data>
+  <data name="legal.consentPrefs" xml:space="preserve"><value>Consent preferences</value></data>
+  <data name="legal.consent.aiTransfer" xml:space="preserve"><value>Send my prompts and the files I choose to the AI provider so AI features work (required; involves transfer abroad).</value></data>
+  <data name="legal.consent.github" xml:space="preserve"><value>Allow GitHub integration to transfer my repository data when I connect it.</value></data>
+  <data name="legal.consent.voice" xml:space="preserve"><value>Allow voice input processing and speech-to-text conversion.</value></data>
+  <data name="legal.consent.marketing" xml:space="preserve"><value>Send me product news and campaigns by email.</value></data>
+  <data name="legal.updated" xml:space="preserve"><value>Юридичні документи оновлено. Перегляньте їх і прийміть повторно.</value></data>
+  <data name="legal.loadError" xml:space="preserve"><value>Не вдалося завантажити юридичні документи. Перевірте з’єднання й повторіть спробу.</value></data>
+  <data name="legal.retry" xml:space="preserve"><value>Повторити спробу</value></data>
+  <data name="legal.acceptHint" xml:space="preserve"><value>Натискаючи «Продовжити», ви приймаєте Угоду користувача та Політику конфіденційності.</value></data>
+  <data name="usage.window5h" xml:space="preserve"><value>5 год</value></data>
+  <data name="usage.windowWeek" xml:space="preserve"><value>Щотижня</value></data>
+  <data name="usage.resetsIn" xml:space="preserve"><value>скидання через {0}</value></data>
+  <data name="usage.resetsOn" xml:space="preserve"><value>скидання {0}</value></data>
+  <data name="usage.resetsAvailable" xml:space="preserve"><value>Доступно скидань: {0}</value></data>
+  <data name="usage.needLogin" xml:space="preserve"><value>Увійдіть у Claude, щоб переглянути ліміти</value></data>
+  <data name="usage.noLimitInfo" xml:space="preserve"><value>Немає інформації про ліміти</value></data>
+  <data name="usage.loadFailed" xml:space="preserve"><value>Не вдалося завантажити дані про використання</value></data>
+  <data name="usage.loading" xml:space="preserve"><value>Завантаження даних про використання…</value></data>
+  <data name="modelPicker.selectModel" xml:space="preserve"><value>Виберіть модель</value></data>
+  <data name="modelPicker.noModel" xml:space="preserve"><value>Немає підключеної моделі</value></data>
+  <data name="modelPicker.reset" xml:space="preserve"><value>Скинути до замовчування</value></data>
+  <data name="modelPicker.effort" xml:space="preserve"><value>зусилля</value></data>
+  <data name="modelPicker.effortUnsupported" xml:space="preserve"><value>Не підтримується</value></data>
+  <data name="modelPicker.effort.default" xml:space="preserve"><value>За замовчуванням</value></data>
+  <data name="modelPicker.effort.none" xml:space="preserve"><value>Жодного</value></data>
+  <data name="modelPicker.effort.low" xml:space="preserve"><value>світло</value></data>
+  <data name="modelPicker.effort.medium" xml:space="preserve"><value>Середній</value></data>
+  <data name="modelPicker.effort.high" xml:space="preserve"><value>Високий</value></data>
+  <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>Дуже високий</value></data>
+  <data name="modelPicker.effort.max" xml:space="preserve"><value>Макс</value></data>
 </root>

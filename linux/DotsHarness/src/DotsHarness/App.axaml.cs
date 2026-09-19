@@ -9,6 +9,8 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Avalonia.Styling;
 using DotsHarnessCore;
 
@@ -22,7 +24,14 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        Model.Bridge.AssistantResponseReceived += OnAssistantResponse;
+        Model.ChatBridge.AssistantResponseReceived += OnAssistantResponse;
+        Model.CodingBridge.AssistantResponseReceived += OnAssistantResponse;
+        Model.ChatBridge.RunSummaryReceived += OnRunSummary;
+        Model.CodingBridge.RunSummaryReceived += OnRunSummary;
+        Model.ChatBridge.AttentionNeeded += OnAttentionNeeded;
+        Model.CodingBridge.AttentionNeeded += OnAttentionNeeded;
+        Model.ChatRouter.ConnectionChanged += OnConnectionChanged;
+        Model.CodingRouter.ConnectionChanged += OnConnectionChanged;
         ApplyAppearance(Model.Appearance);
         Model.Start();
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -30,12 +39,31 @@ public partial class App : Application
             desktop.ShutdownRequested += (_, e) => OnShutdownRequested(desktop, e);
             desktop.Exit += (_, _) =>
             {
-                Model.Bridge.AssistantResponseReceived -= OnAssistantResponse;
+                Model.ChatBridge.AssistantResponseReceived -= OnAssistantResponse;
+                Model.CodingBridge.AssistantResponseReceived -= OnAssistantResponse;
+                Model.ChatBridge.RunSummaryReceived -= OnRunSummary;
+                Model.CodingBridge.RunSummaryReceived -= OnRunSummary;
+                Model.ChatBridge.AttentionNeeded -= OnAttentionNeeded;
+                Model.CodingBridge.AttentionNeeded -= OnAttentionNeeded;
+                Model.ChatRouter.ConnectionChanged -= OnConnectionChanged;
+                Model.CodingRouter.ConnectionChanged -= OnConnectionChanged;
                 if (desktop.MainWindow is MainWindow window) window.StopTerminal();
-                Model.Bridge.Stop();
+                Model.ChatBridge.Stop();
+                Model.CodingBridge.Stop();
+                Model.ChatBridge.CloseBrowserSessions();
+                Model.CodingBridge.CloseBrowserSessions();
                 Model.Local.Stop();
             };
             desktop.MainWindow = new MainWindow();
+            desktop.MainWindow.Opened += async (_, _) =>
+            {
+                await Model.LoadLegalAsync();
+                if (Model.LegalNeedsAcceptance && desktop.MainWindow is { } owner)
+                {
+                    var accepted = await new Views.LegalWindow(Model, gate: true).ShowDialog<bool>(owner);
+                    if (!accepted) desktop.Shutdown();
+                }
+            };
         }
         base.OnFrameworkInitializationCompleted();
     }
@@ -57,6 +85,67 @@ public partial class App : Application
         {
             // libnotify is optional on Linux; the chat still contains the response.
         }
+    }
+
+    private void OnRunSummary(object? sender, RunSummaryEventArgs e)
+    {
+        try
+        {
+            // The user stopped it themselves; nothing to tell them.
+            if (e.Outcome == "cancelled") return;
+            var failed = e.Outcome is "failed" or "paused";
+            var start = new ProcessStartInfo("notify-send") { UseShellExecute = false, CreateNoWindow = true };
+            if (failed) start.ArgumentList.Add("--urgency=critical");
+            start.ArgumentList.Add(e.ConversationTitle);
+            start.ArgumentList.Add(Preview(failed
+                ? Model.L("settings.taskFailed") + ": " + e.FailureMessage
+                : Model.L("conversation.runSummary") + ": "
+                    + Model.L("conversation.filesSummary", e.Summary.AddedCount, e.Summary.ModifiedCount, e.Summary.DeletedCount)
+                    + " · " + e.Summary.CleanupNote));
+            Process.Start(start)?.Dispose();
+        }
+        catch { }
+    }
+
+    /// Only chats the user cannot see right now: the visible one shows its own card.
+    private void OnAttentionNeeded(object? sender, RunAttentionEventArgs e)
+    {
+        try
+        {
+            var window = (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            var visible = window?.IsActive == true
+                && ReferenceEquals(Model.Bridge, sender)
+                && Model.Bridge.SelectedId == e.ConversationId;
+            if (visible) return;
+            var start = new ProcessStartInfo("notify-send") { UseShellExecute = false, CreateNoWindow = true };
+            start.ArgumentList.Add(e.ConversationTitle);
+            start.ArgumentList.Add(Preview(Model.L("conversation.waitingApproval") + ": " + e.Detail));
+            Process.Start(start)?.Dispose();
+        }
+        catch { }
+    }
+
+    private void OnConnectionChanged(ConnectionTransition transition)
+    {
+        try
+        {
+            var previous = transition.PreviousConnectionLabel ?? Model.L("router.unknown");
+            var current = transition.CurrentConnectionLabel ?? Model.L("router.unknown");
+            var message = transition.Action switch
+            {
+                "removed" when transition.CleanupStatus == "verified" => Model.L("conversation.connectionRemoved"),
+                "removed" when transition.CleanupStatus == "failed" => Model.L("conversation.connectionCleanupFailed"),
+                "added" when transition.PreviousConnectionLabel is null => Model.L("conversation.connectionAdded", current),
+                "selected" => Model.L("conversation.connectionSelected", current),
+                _ => Model.L("conversation.connectionSummary", previous, current) + " · "
+                    + Model.L("conversation.connectionPreserved", previous),
+            };
+            var start = new ProcessStartInfo("notify-send") { UseShellExecute = false, CreateNoWindow = true };
+            start.ArgumentList.Add(Model.L("conversation.connectionChanged"));
+            start.ArgumentList.Add(Preview(message));
+            Process.Start(start)?.Dispose();
+        }
+        catch { }
     }
 
     private static string Preview(string text)
@@ -151,8 +240,8 @@ internal sealed class CloseConfirmationWindow : Window
     public CloseConfirmationWindow(AppModel model)
     {
         Title = model.L("window.confirmClose");
-        FlowDirection = model.IsRightToLeft ? Avalonia.Layout.FlowDirection.RightToLeft : Avalonia.Layout.FlowDirection.LeftToRight;
-        Width = 380;
+        FlowDirection = model.IsRightToLeft ? Avalonia.Media.FlowDirection.RightToLeft : Avalonia.Media.FlowDirection.LeftToRight;
+        Width = 420;
         SizeToContent = SizeToContent.Height;
         CanResize = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -160,13 +249,50 @@ internal sealed class CloseConfirmationWindow : Window
         var remember = new CheckBox
         {
             Content = model.L("window.remember"),
-            Margin = new Thickness(0, 14, 0, 18),
+            Margin = new Thickness(0, 10, 0, 0),
         };
+        var copy = new StackPanel
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            Spacing = 4,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = model.L("window.closeQuestion"),
+                    FontSize = 16,
+                    FontWeight = FontWeight.SemiBold,
+                    Foreground = Application.Current?.Resources["TextPrimary"] as IBrush,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                },
+                remember,
+            },
+        };
+        var body = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("64,14,*"),
+        };
+        var icon = new Border
+        {
+            Width = 64,
+            Height = 64,
+            CornerRadius = new CornerRadius(14),
+            ClipToBounds = true,
+            Child = new Image
+            {
+                Source = LoadApplicationIcon(),
+                Stretch = Stretch.UniformToFill,
+            },
+        };
+        Grid.SetColumn(icon, 0);
+        Grid.SetColumn(copy, 2);
+        body.Children.Add(icon);
+        body.Children.Add(copy);
+
         var close = new Button
         {
             Content = model.L("window.close"),
-            Padding = new Thickness(14, 6),
-            Margin = new Thickness(0, 0, 8, 0),
+            Padding = new Thickness(14, 7),
         };
         close.Click += (_, _) =>
         {
@@ -176,28 +302,34 @@ internal sealed class CloseConfirmationWindow : Window
         var cancel = new Button
         {
             Content = model.L("window.cancel"),
-            Padding = new Thickness(14, 6),
+            Padding = new Thickness(14, 7),
         };
         cancel.Click += (_, _) => Close(false);
 
-        Content = new StackPanel
+        var buttons = new Grid
         {
-            Margin = new Thickness(24),
-            Children =
+            ColumnDefinitions = new ColumnDefinitions("*,8,*"),
+        };
+        Grid.SetColumn(close, 0);
+        Grid.SetColumn(cancel, 2);
+        buttons.Children.Add(close);
+        buttons.Children.Add(cancel);
+
+        Content = new Border
+        {
+            Background = Application.Current?.Resources["PanelBackground"] as IBrush,
+            Padding = new Thickness(20),
+            Child = new StackPanel
             {
-                new TextBlock
-                {
-                    Text = model.L("window.closeQuestion"),
-                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-                },
-                remember,
-                new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
-                    Children = { close, cancel },
-                },
+                Spacing = 14,
+                Children = { body, buttons },
             },
         };
+    }
+
+    private static Bitmap LoadApplicationIcon()
+    {
+        using var stream = AssetLoader.Open(new Uri("avares://DotsHarness/Resources/DotsHarness.png"));
+        return new Bitmap(stream);
     }
 }

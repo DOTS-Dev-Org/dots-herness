@@ -261,8 +261,18 @@ public final class WorkspaceMemory {
         turnID: String,
         workspace: URL?
     ) -> [ChangedFile] {
-        guard let workspace else { return [] }
-        return snapshotStore.finish(
+        finishTurnResult(conversationID: conversationID, turnID: turnID, workspace: workspace).changedFiles
+    }
+
+    func finishTurnResult(
+        conversationID: String,
+        turnID: String,
+        workspace: URL?
+    ) -> WorkspaceChangeResult {
+        guard let workspace else {
+            return WorkspaceChangeResult(changedFiles: [], trackingStatus: "incomplete", failureReason: "Workspace snapshot was unavailable.")
+        }
+        return snapshotStore.finishResult(
             conversationID: conversationID,
             turnID: turnID,
             workspace: workspace
@@ -320,6 +330,7 @@ public final class WorkspaceMemory {
         let defaults = markdownDictionary(state["projectDefaults"] as? [String: Any] ?? [:])
         let tasksText = relevantTasks(for: prompt)
         let conversationStates = conversationLifecycleText()
+        let backlog = backlogText()
         let body = [
             "Private project context. It is verified by the native host.",
             "Current user instructions are authoritative over this context.",
@@ -330,6 +341,7 @@ public final class WorkspaceMemory {
             "\n## Project defaults\n\(defaults.isEmpty ? "None" : defaults)",
             "\n## Relevant task history\n\(tasksText.isEmpty ? "None" : tasksText)",
             "\n## Conversation lifecycle\n\(conversationStates.isEmpty ? "None" : conversationStates)",
+            backlog.isEmpty ? "" : "\n## Unfinished work (backlog)\n\(backlog)\n\nIf the current request continues one of these, resume it. When you finish a reply that leaves work open, end with a line `BACKLOG: <what is left>` and ask the user whether to continue. When an item above is done, write `BACKLOG-DONE: <task id>`.",
             proposals.isEmpty ? "" : "\n## Unauthoritative proposals\n\(proposals)",
         ].filter { !$0.isEmpty }.joined(separator: "\n")
         return MemorySnapshot(text: trimSnapshot(body), revision: revision)
@@ -430,6 +442,33 @@ public final class WorkspaceMemory {
                 "publicKey": publicKey,
             ]
         )
+    }
+
+    /// Records a lasting actor preference. The projection supersedes any earlier
+    /// value under the same key, so repeated calls never pile up.
+    public func setPreference(key: String, value: String) throws {
+        guard let identity else { throw WorkspaceMemoryError.noWorkspace }
+        _ = try writeEvent(type: "preference.set", scope: "person", payload: [
+            "personId": identity.personID,
+            "key": sanitize(key, limit: 60),
+            "value": sanitize(value, limit: 240),
+        ])
+    }
+
+    /// Records a project-wide fact - what this project is for, what it must not
+    /// do. Writable by an owner or approver, which is what the person who created
+    /// the vault already is; an invited contributor cannot rewrite the brief.
+    public func setProjectDefault(key: String, value: String) throws {
+        _ = try writeEvent(type: "project.default.set", scope: "project", payload: [
+            "key": sanitize(key, limit: 60),
+            "value": sanitize(value, limit: 240),
+        ])
+    }
+
+    /// True once the project brief has any entry, so the host asks for one only
+    /// while the vault still knows nothing about the project.
+    public var hasProjectBrief: Bool {
+        !((state["projectDefaults"] as? [String: Any]) ?? [:]).isEmpty
     }
 
     public func proposeDecision(summary: String, details: [String: Any] = [:]) throws {
@@ -556,7 +595,15 @@ public final class WorkspaceMemory {
 
     public func finishTask(runID: UUID, success: Bool, finalText: String = "") {
         guard let task = tasks.removeValue(forKey: runID.uuidString) else { return }
-        let status = success ? "completed" : "failed"
+        let open = openItems(in: finalText)
+        let status = success ? (open.isEmpty ? "completed" : "unfinished") : "failed"
+        closeBacklog(mentionedIn: finalText)
+        // A run that read nothing and changed nothing is chat, not work. Its note
+        // would still be injected by `relevantTasks(for:)`, which falls back to the
+        // three most recent notes when no term matches, so recording it costs every
+        // later prompt. The preference and decision extraction below still runs:
+        // a lasting instruction is often given in exactly such a turn.
+        let didWork = !task.tools.isEmpty || !task.changedFiles.isEmpty
         let payload: [String: Any] = [
             "runId": task.runID,
             "status": status,
@@ -566,8 +613,10 @@ public final class WorkspaceMemory {
             "toolCount": task.tools.count,
             "semanticStatus": "pending",
         ]
-        _ = try? writeEvent(type: "task.\(status)", scope: "task", payload: payload)
-        writeTaskNote(task, status: status, finalText: finalText)
+        if didWork || !open.isEmpty {
+            _ = try? writeEvent(type: "task.\(status)", scope: "task", payload: payload)
+            writeTaskNote(task, status: status, finalText: finalText, openItems: open)
+        }
         let language = explicitLanguage(in: task.promptSummary)
         let decision = explicitDecision(in: task.promptSummary)
         Task { @MainActor [weak self] in
@@ -1017,7 +1066,7 @@ public final class WorkspaceMemory {
         ])
     }
 
-    private func writeTaskNote(_ task: TaskRecord, status: String, finalText: String) {
+    private func writeTaskNote(_ task: TaskRecord, status: String, finalText: String, openItems: [String] = []) {
         guard let root = memoryDirectory else { return }
         let changedPaths = task.changedFiles.compactMap { $0["path"] as? String }
         let fileLinks = changedPaths.map { "file:\($0)" }
@@ -1065,6 +1114,10 @@ public final class WorkspaceMemory {
             "## Result",
             "",
             sanitize(finalText, limit: 600),
+            "",
+            "## Open items",
+            "",
+            openItems.isEmpty ? "- None" : openItems.map { "- [ ] \($0)" }.joined(separator: "\n"),
             "",
             "## Decisions",
             "",
@@ -1181,6 +1234,55 @@ public final class WorkspaceMemory {
     private func decisionRunID(_ event: [String: Any]) -> String? {
         let payload = event["payload"] as? [String: Any] ?? [:]
         return payload["runId"] as? String ?? payload["runID"] as? String
+    }
+
+    /// Backlog markers the model writes into its final reply. Frees the note
+    /// format from guessing which runs left work open.
+    private func openItems(in finalText: String) -> [String] {
+        finalText.split(whereSeparator: \.isNewline).compactMap { line in
+            let value = line.trimmingCharacters(in: .whitespaces)
+            guard value.lowercased().hasPrefix("backlog:") else { return nil }
+            let item = sanitize(String(value.dropFirst("backlog:".count)), limit: 200)
+            return item.isEmpty ? nil : item
+        }
+    }
+
+    private func taskNoteURLs() -> [URL] {
+        guard let root = memoryDirectory,
+              let files = try? fileManager.contentsOfDirectory(at: root.appendingPathComponent("tasks"), includingPropertiesForKeys: nil)
+        else { return [] }
+        return files.filter { $0.pathExtension == "md" }
+    }
+
+    /// `BACKLOG-DONE: <run id>` in a reply flips that note out of the backlog.
+    private func closeBacklog(mentionedIn finalText: String) {
+        let text = finalText.lowercased()
+        guard text.contains("backlog-done:") else { return }
+        for url in taskNoteURLs() {
+            let runID = url.deletingPathExtension().lastPathComponent
+            guard text.contains(runID.lowercased()),
+                  var note = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            note = note.replacingOccurrences(of: "status: unfinished", with: "status: completed")
+                .replacingOccurrences(of: "status: failed", with: "status: completed")
+                .replacingOccurrences(of: "- [ ] ", with: "- [x] ")
+            try? note.write(to: url, atomically: true, encoding: .utf8)
+        }
+    }
+
+    private func backlogText() -> String {
+        taskNoteURLs().sorted { $0.lastPathComponent > $1.lastPathComponent }.compactMap { url -> String? in
+            guard let note = try? String(contentsOf: url, encoding: .utf8),
+                  note.contains("status: unfinished") || note.contains("status: failed") else { return nil }
+            let title = note.split(whereSeparator: \.isNewline)
+                .first { $0.hasPrefix("title:") }
+                .map { String($0.dropFirst("title:".count)).trimmingCharacters(in: CharacterSet(charactersIn: " \"")) } ?? "untitled"
+            let items = note.split(whereSeparator: \.isNewline)
+                .filter { $0.hasPrefix("- [ ] ") }
+                .map { "  " + $0 }
+                .joined(separator: "\n")
+            let id = url.deletingPathExtension().lastPathComponent
+            return "- `\(id)` — \(title)" + (items.isEmpty ? "" : "\n\(items)")
+        }.prefix(5).joined(separator: "\n")
     }
 
     private func relevantTasks(for prompt: String) -> String {

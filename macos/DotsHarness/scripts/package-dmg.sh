@@ -29,11 +29,16 @@ APP_BUNDLE="$DIST_DIR/${APP_NAME}.app"
 DMG_NAME="${APP_NAME}-${VERSION}"
 DMG_PATH="$DIST_DIR/${DMG_NAME}.dmg"
 VOLUME_NAME="$DISPLAY_NAME"
+# Finder icon-view backgrounds are rendered at their native point size. Keep
+# the default asset equal to the compact content area instead of letting
+# Finder crop the larger concept artwork.
+DMG_BACKGROUND="${DMG_BACKGROUND:-$ROOT/Resources/DMGBackgroundCompactV2.png}"
 # ULMO (LZMA) is materially smaller than UDZO while remaining mountable by
 # supported macOS versions. Set DMG_FORMAT=UDZO for the more conventional
 # zlib-compressed image when maximum compatibility is preferred.
 DMG_FORMAT="${DMG_FORMAT:-ULMO}"
 STRIP_SYMBOLS="${STRIP_SYMBOLS:-true}"
+SKIP_BUILD="${SKIP_BUILD:-false}"
 
 usage() {
     cat <<'EOF'
@@ -50,7 +55,7 @@ Seçenekler:
   -h, --help              Bu yardım metnini göster.
 
 Ortam değişkenleri:
-  VERSION, BUILD_NUMBER, BUNDLE_ID, BUILD_PATH, STRIP_SYMBOLS, DMG_FORMAT
+  VERSION, BUILD_NUMBER, BUNDLE_ID, BUILD_PATH, STRIP_SYMBOLS, SKIP_BUILD, DMG_FORMAT, DMG_BACKGROUND
 EOF
 }
 
@@ -88,6 +93,11 @@ case "$(printf '%s' "$STRIP_SYMBOLS" | tr '[:upper:]' '[:lower:]')" in
     0|false|no) STRIP_SYMBOLS=false ;;
     *) fail "Geçersiz STRIP_SYMBOLS değeri: $STRIP_SYMBOLS (true veya false kullanın)." ;;
 esac
+case "$(printf '%s' "$SKIP_BUILD" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes) SKIP_BUILD=true ;;
+    0|false|no) SKIP_BUILD=false ;;
+    *) fail "Geçersiz SKIP_BUILD değeri: $SKIP_BUILD (true veya false kullanın)." ;;
+esac
 if [[ "$STRIP_SYMBOLS" == true ]]; then
     command -v strip >/dev/null 2>&1 || fail "'strip' bulunamadı. Xcode Command Line Tools kurulu olmalı."
 fi
@@ -97,6 +107,8 @@ case "$DMG_FORMAT" in
     *) fail "Geçersiz DMG_FORMAT: $DMG_FORMAT (ULMO, UDZO, ULFO veya UDBZ kullanın)." ;;
 esac
 [[ -f "$ROOT/Package.swift" ]] || fail "Swift paketi bulunamadı: $ROOT/Package.swift"
+[[ -f "$DMG_BACKGROUND" ]] || fail "DMG arka planı bulunamadı: $DMG_BACKGROUND"
+command -v osascript >/dev/null 2>&1 || fail "'osascript' bulunamadı. Finder yerleşimi yapılandırılamıyor."
 
 # SPM binary konumu (symlink veya triple klasör)
 resolve_bin() {
@@ -133,9 +145,13 @@ swift_release() {
 
 mkdir -p "$BUILD_PATH" "$DIST_DIR"
 
-echo "==> Release build"
-swift_release "$EXECUTABLE"
-swift_release "$SCHEDULER_EXECUTABLE"
+if [[ "$SKIP_BUILD" == true ]]; then
+    echo "==> Release build atlanıyor (SKIP_BUILD=true)"
+else
+    echo "==> Release build"
+    swift_release "$EXECUTABLE"
+    swift_release "$SCHEDULER_EXECUTABLE"
+fi
 
 EXEC_BIN="$(resolve_bin "$EXECUTABLE")"
 echo "    $EXECUTABLE → $EXEC_BIN"
@@ -212,6 +228,17 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
 	<string>${DISPLAY_NAME}</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>HerNess desktop OAuth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>herness</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleShortVersionString</key>
 	<string>${VERSION}</string>
 	<key>CFBundleVersion</key>
@@ -256,6 +283,12 @@ mkdir -p "$STAGING"
 cp -R "$APP_BUNDLE" "$STAGING/${APP_NAME}.app"
 ln -sf /Applications "$STAGING/Applications"
 
+# Finder'ın DMG açılış görünümü için arka plan. .background klasörü Finder'da
+# gizli kalır; ikonlar ve Applications kısayolu bunun üzerinde görünür.
+echo "    DMG arka planı ekleniyor"
+mkdir -p "$STAGING/.background"
+cp "$DMG_BACKGROUND" "$STAGING/.background/dmg-background.png"
+
 echo "==> DMG oluştur"
 TMP_DMG="$DIST_DIR/${DMG_NAME}-tmp.dmg"
 rm -f "$TMP_DMG"
@@ -267,6 +300,81 @@ hdiutil create \
     -ov \
     -format UDRW \
     "$TMP_DMG" >/dev/null
+
+configure_finder_layout() {
+    local mount_path="$1"
+
+    echo "    Finder pencere ve ikon yerleşimi ayarlanıyor"
+    osascript - "$mount_path" "$APP_NAME" <<'APPLESCRIPT'
+on run argv
+    set mountPath to item 1 of argv
+    set appName to item 2 of argv
+    set backgroundPath to mountPath & "/.background/dmg-background.png"
+    set mountFolder to (POSIX file mountPath as alias)
+
+    tell application "Finder"
+        open mountFolder
+        delay 1
+
+        set dmgWindow to container window of mountFolder
+        set current view of dmgWindow to icon view
+        set toolbar visible of dmgWindow to false
+        set statusbar visible of dmgWindow to false
+        -- Kompakt kurulum penceresi: içerik alanı yaklaşık 800x400 pt.
+        set bounds of dmgWindow to {280, 220, 1080, 655}
+
+        set viewOptions to icon view options of dmgWindow
+        set arrangement of viewOptions to not arranged
+        set icon size of viewOptions to 96
+        set text size of viewOptions to 12
+        set background picture of viewOptions to (POSIX file backgroundPath as alias)
+
+        -- Finder adds the label baseline below the icon; these values center
+        -- the actual file icons on the two compact glass cards.
+        set position of item (appName & ".app") of mountFolder to {165, 156}
+        set position of item "Applications" of mountFolder to {635, 156}
+        update mountFolder without registering applications
+        delay 1
+        close dmgWindow
+    end tell
+end run
+APPLESCRIPT
+}
+
+# Yazılabilir imajı Finder'a açıp .DS_Store içine görünüm ayarlarını yazdır.
+# Bu ayarlar daha sonra sıkıştırılmış DMG'ye taşınır.
+MOUNT_DIR=""
+MOUNTED=false
+cleanup_dmg_mount() {
+    if [[ "$MOUNTED" == true && -n "$MOUNT_DIR" ]]; then
+        hdiutil detach "$MOUNT_DIR" -quiet >/dev/null 2>&1 \
+            || hdiutil detach "$MOUNT_DIR" -force -quiet >/dev/null 2>&1 \
+            || true
+        MOUNTED=false
+    fi
+    if [[ -n "$MOUNT_DIR" && -d "$MOUNT_DIR" ]]; then
+        rmdir "$MOUNT_DIR" 2>/dev/null || true
+    fi
+}
+trap cleanup_dmg_mount EXIT
+
+# DiskImages, harici çalışma birimlerindeki mount noktalarını bazı macOS
+# kurulumlarında reddedebiliyor; geçici mount noktası yerel diskte olmalı.
+MOUNT_DIR="$(mktemp -d "${TMPDIR:-/tmp}dots-harness-dmg-mount.XXXXXX")"
+echo "    Yazılabilir DMG Finder'a bağlanıyor"
+hdiutil attach \
+    -readwrite \
+    -noverify \
+    -noautoopen \
+    -mountpoint "$MOUNT_DIR" \
+    "$TMP_DMG" >/dev/null
+MOUNTED=true
+configure_finder_layout "$MOUNT_DIR"
+sync
+hdiutil detach "$MOUNT_DIR" -quiet >/dev/null
+MOUNTED=false
+rmdir "$MOUNT_DIR"
+MOUNT_DIR=""
 
 echo "    Sıkıştırılmış DMG'ye dönüştürülüyor"
 CONVERT_ARGS=(
@@ -282,6 +390,8 @@ hdiutil convert "$TMP_DMG" \
 
 echo "    DMG checksum doğrulanıyor ($DMG_FORMAT)"
 hdiutil verify "$DMG_PATH" >/dev/null
+printf '    Uygulama boyutu: %s\n' "$(du -sh "$APP_BUNDLE" | awk '{print $1}')"
+printf '    DMG boyutu: %s\n' "$(du -sh "$DMG_PATH" | awk '{print $1}')"
 
 rm -f "$TMP_DMG"
 rm -rf "$STAGING"

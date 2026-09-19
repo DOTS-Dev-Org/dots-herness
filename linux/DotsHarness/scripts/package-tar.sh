@@ -18,7 +18,7 @@ FRAMEWORK="${FRAMEWORK:-net8.0}"
 CONFIGURATION="${CONFIGURATION:-Release}"
 DIST_DIR="${OUTPUT_PATH:-$ROOT/dist}"
 SELF_CONTAINED=true
-READY_TO_RUN="${READY_TO_RUN:-false}"
+READY_TO_RUN="${READY_TO_RUN:-true}"
 OPEN_RESULT=true
 
 usage() {
@@ -37,7 +37,7 @@ Seçenekler:
       --framework TFM           Hedef çerçeve (varsayılan: net8.0).
   -c, --configuration NAME      Yapılandırma (varsayılan: Release).
       --framework-dependent     Self-contained değil, paylaşılan runtime kullan.
-      --ready-to-run            Başlangıç hızını artırır, fakat paketi büyütür.
+      --ready-to-run            ReadyToRun (varsayılan açık; kapatmak için READY_TO_RUN=false).
       --output PATH             dist klasörü.
   -h, --help                    Bu yardım metnini göster.
 
@@ -221,6 +221,8 @@ tar -C "$DIST_DIR" -czf "$TAR_PATH" "$STAGE_NAME"
 
 echo "==> Hazır: $TAR_PATH"
 echo "    Uygulama: $APP_PATH"
+echo "    Uygulama boyutu: $(du -sh "$STAGE_DIR" | awk '{print $1}')"
+echo "    Paket boyutu: $(du -sh "$TAR_PATH" | awk '{print $1}')"
 
 if [[ "$OPEN_RESULT" != true ]]; then
     echo "Bitti. --no-open verildiği için dosya yöneticisi açılmadı."

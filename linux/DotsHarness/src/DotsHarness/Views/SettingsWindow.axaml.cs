@@ -4,15 +4,20 @@
 
 using System.Diagnostics;
 using System.ComponentModel;
+using System.IO;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using DotsHarnessCore;
 using HarnessPluginKit;
 using PluginRuntime;
+using QRCoder;
 
 namespace DotsHarness.Views;
 
@@ -29,6 +34,7 @@ public partial class SettingsWindow : Window
         ["Add a custom endpoint"] = "settings.addCustomEndpoint", ["Prefix (model id, e.g. local)"] = "settings.prefix",
         ["Base URL"] = "settings.baseUrl", ["API"] = "settings.api", ["Custom providers"] = "settings.customProviders",
         ["Local models"] = "settings.localModels", ["Listen"] = "settings.listen", ["Serving"] = "settings.serving",
+        ["Voice input"] = "settings.voice",
         ["Download and run"] = "settings.downloadRun", ["Sharing"] = "settings.sharing", ["Status"] = "settings.status",
         ["Short id"] = "settings.shortId", ["Public URL"] = "settings.publicUrl", ["Endpoint"] = "settings.endpoint",
         ["Give this to a client"] = "settings.client", ["Plugins"] = "settings.plugins", ["Last mount failed"] = "settings.lastMountFailed",
@@ -73,8 +79,16 @@ public partial class SettingsWindow : Window
 
     private void OnModel(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is not (nameof(AppModel.Language) or nameof(AppModel.IsRightToLeft))) return;
-        Dispatcher.UIThread.Post(RefreshLocalization);
+        if (e.PropertyName is nameof(AppModel.VisionState)
+            or nameof(AppModel.VisionModelProgress)
+            or nameof(AppModel.VisionPluginInstalled)
+            or nameof(AppModel.VisionPluginEnabled))
+        {
+            if (_tab == "plugins") Dispatcher.UIThread.Post(ShowCurrentTab);
+            return;
+        }
+        if (e.PropertyName is nameof(AppModel.Language) or nameof(AppModel.IsRightToLeft))
+            Dispatcher.UIThread.Post(RefreshLocalization);
     }
 
     private void ShowCurrentTab()
@@ -84,11 +98,14 @@ public partial class SettingsWindow : Window
             case "providers": ShowProviders(); break;
             case "custom": ShowCustom(); break;
             case "local": ShowLocal(); break;
+            case "voice": ShowVoice(); break;
             case "share": ShowShare(); break;
+            case "mobile": ShowMobile(); break;
             case "tasks": ShowTasks(); break;
             case "skills": ShowSkills(); break;
             case "plugins": ShowPlugins(); break;
             case "prompt": ShowPrompt(); break;
+            case "legal": ShowLegal(); break;
             default: ShowGeneral(); break;
         }
     }
@@ -97,16 +114,19 @@ public partial class SettingsWindow : Window
     {
         var model = Model;
         Title = model.L("settings.title");
-        FlowDirection = model.IsRightToLeft ? Avalonia.Layout.FlowDirection.RightToLeft : Avalonia.Layout.FlowDirection.LeftToRight;
+        FlowDirection = model.IsRightToLeft ? Avalonia.Media.FlowDirection.RightToLeft : Avalonia.Media.FlowDirection.LeftToRight;
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "general"))!.Content = model.L("settings.general");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "providers"))!.Content = model.L("settings.providers");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "custom"))!.Content = model.L("settings.custom");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "local"))!.Content = model.L("settings.localModels");
+        Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "voice"))!.Content = model.L("settings.voice");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "share"))!.Content = model.L("settings.share");
+        Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "mobile"))!.Content = "Mobile control";
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "tasks"))!.Content = model.L("settings.tasks");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "skills"))!.Content = model.L("conversation.skills");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "plugins"))!.Content = model.L("settings.plugins");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "prompt"))!.Content = model.L("settings.systemPrompt");
+        Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "legal"))!.Content = model.L("legal.title");
         ShowCurrentTab();
     }
 
@@ -140,6 +160,35 @@ public partial class SettingsWindow : Window
             }
         };
         panel.Children.Add(appearance);
+        panel.Children.Add(Label("Browser backend"));
+        var browserBackends = new (string Label, BrowserBackend? Value)[]
+        {
+            ("Automatic (ask when unclear)", null),
+            ("Managed isolated browser", BrowserBackend.Managed),
+            ("Existing Chrome profile", BrowserBackend.Extension),
+        };
+        var browser = new ComboBox { Margin = new Thickness(0, 0, 0, 4) };
+        foreach (var choice in browserBackends) browser.Items.Add(choice.Label);
+        browser.SelectedIndex = Model.SelectedBrowserBackend switch
+        {
+            BrowserBackend.Managed => 1,
+            BrowserBackend.Extension => 2,
+            _ => 0,
+        };
+        browser.SelectionChanged += (_, _) =>
+        {
+            if (browser.SelectedIndex >= 0 && browser.SelectedIndex < browserBackends.Length)
+                Model.SetBrowserBackend(browserBackends[browser.SelectedIndex].Value);
+        };
+        panel.Children.Add(browser);
+        panel.Children.Add(new TextBlock
+        {
+            Text = "The selected backend is fixed for each run. Extension setup failures are shown instead of falling back silently.",
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 12),
+        });
         var confirmBeforeExit = new CheckBox
         {
             Content = Model.L("settings.confirmBeforeExit"),
@@ -148,11 +197,30 @@ public partial class SettingsWindow : Window
         };
         confirmBeforeExit.IsCheckedChanged += (_, _) => Model.SetConfirmBeforeExit(confirmBeforeExit.IsChecked == true);
         panel.Children.Add(confirmBeforeExit);
-        panel.Children.Add(BoundField("settings.workspace", Model.WorkspacePath, Model.SetWorkspace));
-        if (Model.Bridge.Connection is { } info)
+        var selfVerification = new CheckBox
         {
-            panel.Children.Add(Readonly("settings.connectedModel", $"{info.Provider}/{info.Model}"));
-            panel.Children.Add(Readonly("settings.workspace", info.Workspace));
+            Content = Model.L("settings.selfVerification"),
+            IsChecked = Model.SelfVerification,
+            Margin = new Thickness(0, 0, 0, 12),
+        };
+        selfVerification.IsCheckedChanged += (_, _) => Model.SetSelfVerification(selfVerification.IsChecked == true);
+        panel.Children.Add(selfVerification);
+        var seedProjectRules = new CheckBox
+        {
+            Content = Model.L("settings.seedProjectRules"),
+            IsChecked = Model.SeedProjectRules,
+            Margin = new Thickness(0, 0, 0, 12),
+        };
+        seedProjectRules.IsCheckedChanged += (_, _) => Model.SetSeedProjectRules(seedProjectRules.IsChecked == true);
+        panel.Children.Add(seedProjectRules);
+        if (Model.ActiveArea == AgentArea.Coding)
+        {
+            panel.Children.Add(BoundField("settings.workspace", Model.WorkspacePath, Model.SetWorkspace));
+            if (Model.Bridge.Connection is { } info)
+            {
+                panel.Children.Add(Readonly("settings.connectedModel", $"{info.Provider}/{info.Model}"));
+                panel.Children.Add(Readonly("settings.workspace", info.Workspace));
+            }
         }
         panel.Children.Add(Readonly("settings.supportFolder", Model.Paths.Root));
         panel.Children.Add(Readonly("settings.userPlugins", Model.Paths.Plugins));
@@ -572,6 +640,79 @@ public partial class SettingsWindow : Window
         Body.Content = panel;
     }
 
+    private void ShowVoice()
+    {
+        var panel = new StackPanel();
+        panel.Children.Add(Heading("settings.voice"));
+        panel.Children.Add(Label("settings.provider"));
+        var providers = Enum.GetValues<VoiceInputProvider>();
+        var picker = new ComboBox { Margin = new Thickness(0, 0, 0, 10) };
+        foreach (var voiceProvider in providers)
+        {
+            picker.Items.Add(voiceProvider switch
+            {
+                VoiceInputProvider.WhisperTinyQ5 => Model.L("voice.source.tiny"),
+                VoiceInputProvider.WhisperLargeV3Turbo => Model.L("voice.source.large"),
+                VoiceInputProvider.Nemotron => Model.L("voice.source.nemotron"),
+                VoiceInputProvider.CustomLocal => Model.L("voice.source.custom"),
+                _ => Model.L("voice.source.api"),
+            });
+        }
+        picker.SelectedIndex = Array.IndexOf(providers, Model.VoiceProvider);
+        picker.SelectionChanged += (_, _) =>
+        {
+            if (picker.SelectedIndex >= 0 && picker.SelectedIndex < providers.Length)
+            {
+                Model.SetVoiceProvider(providers[picker.SelectedIndex]);
+                ShowVoice();
+            }
+        };
+        panel.Children.Add(picker);
+
+        var provider = Model.VoiceProvider;
+        var spec = provider switch
+        {
+            VoiceInputProvider.WhisperTinyQ5 => VoiceModelCatalog.WhisperTinyQ5,
+            VoiceInputProvider.WhisperLargeV3Turbo => VoiceModelCatalog.WhisperLargeV3Turbo,
+            VoiceInputProvider.Nemotron => VoiceModelCatalog.Nemotron,
+            _ => default,
+        };
+        var state = Model.IsVoiceReady ? Model.L("voice.status.ready") : Model.L("voice.status.notReady");
+        panel.Children.Add(Readonly("settings.status", spec.Bytes > 0 ? $"{state} · {spec.Name} · {spec.Bytes / 1_048_576d:0} MiB" : state));
+        if (provider == VoiceInputProvider.CustomLocal)
+            panel.Children.Add(BoundField("voice.source.custom", Model.VoiceCustomModelPath, Model.SetVoiceCustomModelPath));
+        panel.Children.Add(BoundField("voice.api.endpoint", Model.VoiceApiEndpoint, Model.SetVoiceApiEndpoint));
+        panel.Children.Add(BoundField("voice.api.key", Model.VoiceApiKey, Model.SetVoiceApiKey, password: true));
+        panel.Children.Add(BoundField("voice.api.model", Model.VoiceApiModel, Model.SetVoiceApiModel));
+        panel.Children.Add(BoundField("voice.api.realtime", Model.VoiceApiRealtimeEndpoint, Model.SetVoiceApiRealtimeEndpoint));
+
+        var status = new TextBlock
+        {
+            Text = Model.IsVoiceReady ? Model.L("voice.status.ready") : "",
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 8),
+        };
+        var downloadable = provider is VoiceInputProvider.WhisperTinyQ5 or VoiceInputProvider.WhisperLargeV3Turbo or VoiceInputProvider.Nemotron;
+        var download = new Button { Content = Model.L("voice.download"), IsEnabled = downloadable, Padding = new Thickness(12, 4) };
+        download.Click += async (_, _) =>
+        {
+            download.IsEnabled = false;
+            status.Text = Model.L("voice.status.downloading");
+            try
+            {
+                await Model.EnsureVoiceAssetsAsync(progress => Dispatcher.UIThread.Post(() => status.Text = $"{Model.L("voice.status.downloading")} {progress.Fraction:P0}"));
+                status.Text = Model.L("voice.status.ready");
+            }
+            catch (Exception error) { status.Text = Model.L("voice.error", error.Message); }
+            finally { download.IsEnabled = downloadable; }
+        };
+        panel.Children.Add(download);
+        panel.Children.Add(status);
+        Body.Content = panel;
+    }
+
     private void ShowShare()
     {
         var router = Model.Router;
@@ -640,6 +781,53 @@ public partial class SettingsWindow : Window
         Body.Content = panel;
     }
 
+    private void ShowMobile()
+    {
+        var panel = new StackPanel();
+        panel.Children.Add(Heading("Mobile control"));
+        panel.Children.Add(Readonly("LAN endpoint", Model.RemoteControl.PreferredEndpoint));
+        var pairing = Model.RemotePairing is { } current && current.ExpiresAt > DateTimeOffset.UtcNow
+            ? current
+            : Model.BeginRemotePairing();
+        var qr = PairingQr(pairing.Payload);
+        if (qr is not null)
+        {
+            panel.Children.Add(new Border
+            {
+                Background = Brushes.White,
+                CornerRadius = new CornerRadius(10),
+                Padding = new Avalonia.Thickness(12),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Margin = new Avalonia.Thickness(0, 4, 0, 12),
+                Child = new Image { Source = qr, Width = 220, Height = 220 },
+            });
+        }
+        panel.Children.Add(Readonly("One-time code", pairing.Code));
+        panel.Children.Add(Readonly("Expires", pairing.ExpiresAt.ToLocalTime().ToString("g")));
+        panel.Children.Add(Readonly("Pairing link", pairing.Payload));
+        panel.Children.Add(new TextBlock { Text = "Enter this link/code in HerNess Mobile. It expires in five minutes and is consumed once.", TextWrapping = TextWrapping.Wrap, FontSize = 11, Foreground = TryBrush("TextSecondary"), Margin = new Avalonia.Thickness(0, 0, 0, 12) });
+        var row = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Margin = new Avalonia.Thickness(0, 0, 0, 12) };
+        var renew = new Button { Content = "New pairing code", Padding = new Avalonia.Thickness(12, 4) };
+        renew.Click += (_, _) => { Model.BeginRemotePairing(); ShowMobile(); };
+        var copy = new Button { Content = "Copy pairing link", Padding = new Avalonia.Thickness(12, 4), Margin = new Avalonia.Thickness(8, 0, 0, 0) };
+        copy.Click += (_, _) => NativeClipboard.SetText(pairing.Payload);
+        row.Children.Add(renew); row.Children.Add(copy); panel.Children.Add(row);
+        var tunnel = new Button { Content = "Enable Cloudflare Quick Tunnel", Padding = new Avalonia.Thickness(12, 4) };
+        tunnel.Click += async (_, _) => { tunnel.IsEnabled = false; try { await Model.EnableRemoteCloudTunnelAsync(); } finally { ShowMobile(); } };
+        panel.Children.Add(tunnel);
+        if (Model.RemoteControl.PublicEndpoint is { } publicEndpoint) panel.Children.Add(Readonly("Public endpoint", publicEndpoint));
+        panel.Children.Add(new TextBlock { Text = "Provider keys stay on this computer; remote commands use the same ask / approve me / full access rules.", TextWrapping = TextWrapping.Wrap, FontSize = 11, Foreground = TryBrush("TextSecondary"), Margin = new Avalonia.Thickness(0, 12, 0, 0) });
+        Body.Content = panel;
+    }
+
+    private static Bitmap? PairingQr(string payload)
+    {
+        using var generator = new QRCodeGenerator();
+        using var data = generator.CreateQrCode(payload, QRCodeGenerator.ECCLevel.Q);
+        var bytes = new PngByteQRCode(data).GetGraphic(8, true);
+        return new Bitmap(new MemoryStream(bytes));
+    }
+
     private void ShowSkills()
     {
         var tabs = new TabControl();
@@ -653,7 +841,7 @@ public partial class SettingsWindow : Window
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 0, 0, 12),
         });
-        foreach (var entry in Model.Skills.MarketplaceEntries)
+        foreach (var entry in Model.ActiveSkills.MarketplaceEntries)
         {
             var card = new Border
             {
@@ -669,11 +857,11 @@ public partial class SettingsWindow : Window
             title.Children.Add(new TextBlock { Text = entry.Name, FontWeight = FontWeight.SemiBold });
             title.Children.Add(new TextBlock { Text = entry.Id, FontSize = 11, FontFamily = new FontFamily("monospace"), Foreground = TryBrush("TextSecondary") });
             top.Children.Add(title);
-            if (Model.Skills.IsInstalled(entry))
+            if (Model.ActiveSkills.IsInstalled(entry))
             {
-                var installed = new TextBlock { Text = Model.L("settings.installed"), FontSize = 11, Foreground = TryBrush("TextSecondary"), HorizontalAlignment = HorizontalAlignment.Right };
-                DockPanel.SetDock(installed, Dock.Right);
-                top.Children.Add(installed);
+                var installedLabel = new TextBlock { Text = Model.L("settings.installed"), FontSize = 11, Foreground = TryBrush("TextSecondary"), HorizontalAlignment = HorizontalAlignment.Right };
+                DockPanel.SetDock(installedLabel, Dock.Right);
+                top.Children.Add(installedLabel);
             }
             else if (!string.IsNullOrWhiteSpace(entry.DownloadUrl))
             {
@@ -681,7 +869,7 @@ public partial class SettingsWindow : Window
                 download.Click += async (_, _) =>
                 {
                     download.IsEnabled = false;
-                    try { await Model.Skills.InstallAsync(entry); }
+                    try { await Model.ActiveSkills.InstallAsync(entry); }
                     catch (Exception error) { Model.Bridge.Status = error.Message; }
                     ShowSkills();
                 };
@@ -698,11 +886,11 @@ public partial class SettingsWindow : Window
             card.Child = stack;
             catalog.Children.Add(card);
         }
-        if (Model.Skills.MarketplaceEntries.Count == 0) catalog.Children.Add(new TextBlock { Text = Model.L("settings.noSnapshot"), Foreground = TryBrush("TextSecondary") });
+        if (Model.ActiveSkills.MarketplaceEntries.Count == 0) catalog.Children.Add(new TextBlock { Text = Model.L("settings.noSnapshot"), Foreground = TryBrush("TextSecondary") });
 
         var installed = new StackPanel();
         installed.Children.Add(Heading("Downloaded and enabled"));
-        foreach (var skill in Model.Skills.Entries)
+        foreach (var skill in Model.ActiveSkills.Entries)
         {
             var card = new Border
             {
@@ -723,14 +911,14 @@ public partial class SettingsWindow : Window
             view.Click += (_, _) => ShowSkillContent(skill);
             actions.Children.Add(view);
             var toggle = new CheckBox { Content = Model.L("settings.enabled"), IsChecked = skill.Enabled, Margin = new Thickness(8, 3, 0, 0) };
-            toggle.IsCheckedChanged += (_, _) => { Model.Skills.SetEnabled(skill.Id, toggle.IsChecked == true); ShowSkills(); };
+            toggle.IsCheckedChanged += (_, _) => { Model.ActiveSkills.SetEnabled(skill.Id, toggle.IsChecked == true); ShowSkills(); };
             actions.Children.Add(toggle);
             if (skill.IsInstalled)
             {
                 var remove = new Button { Content = Model.L("settings.delete"), Padding = new Thickness(8, 3), Margin = new Thickness(8, 0, 0, 0) };
                 remove.Click += (_, _) =>
                 {
-                    try { Model.Skills.Remove(skill.Id); ShowSkills(); }
+                    try { Model.ActiveSkills.Remove(skill.Id); ShowSkills(); }
                     catch (Exception error) { Model.Bridge.Status = error.Message; }
                 };
                 actions.Children.Add(remove);
@@ -740,7 +928,7 @@ public partial class SettingsWindow : Window
             card.Child = row;
             installed.Children.Add(card);
         }
-        if (Model.Skills.Entries.Count == 0) installed.Children.Add(new TextBlock { Text = Model.L("settings.noSkills"), Foreground = TryBrush("TextSecondary") });
+        if (Model.ActiveSkills.Entries.Count == 0) installed.Children.Add(new TextBlock { Text = Model.L("settings.noSkills"), Foreground = TryBrush("TextSecondary") });
         installed.Children.Add(new TextBlock
         {
             Text = Model.L("settings.skillsHint"),
@@ -770,7 +958,7 @@ public partial class SettingsWindow : Window
     private void ShowSkillContent(SkillDescriptor skill)
     {
         var text = Model.L("settings.skillReadFailed");
-        try { text = Model.Skills.Read(skill.Id, includeDisabled: true); }
+        try { text = Model.ActiveSkills.Read(skill.Id, includeDisabled: true); }
         catch (Exception error) { text = error.Message; }
         var viewer = new TextBox
         {
@@ -778,11 +966,11 @@ public partial class SettingsWindow : Window
             IsReadOnly = true,
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             FontFamily = new FontFamily("monospace"),
             Padding = new Thickness(12),
         };
+        ScrollViewer.SetVerticalScrollBarVisibility(viewer, ScrollBarVisibility.Auto);
+        ScrollViewer.SetHorizontalScrollBarVisibility(viewer, ScrollBarVisibility.Auto);
         var window = new Window
         {
             Title = skill.Name,
@@ -815,6 +1003,8 @@ public partial class SettingsWindow : Window
         DockPanel.SetDock(buttons, Dock.Right);
         header.Children.Add(buttons);
         panel.Children.Add(header);
+        AddVisionSettings(panel);
+        AddMarketplaceSettings(panel);
         panel.Children.Add(new TextBlock
         {
             Text = Model.L("settings.pluginsHint"),
@@ -897,6 +1087,198 @@ public partial class SettingsWindow : Window
             }
         }
         Body.Content = panel;
+    }
+
+    private void AddMarketplaceSettings(Panel panel)
+    {
+        var card = new Border
+        {
+            BorderBrush = TryBrush("BorderSubtle"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(12),
+            Margin = new Thickness(0, 0, 0, 12),
+        };
+        var content = new StackPanel();
+        var header = new DockPanel();
+        header.Children.Add(new TextBlock { Text = "Native Marketplace", FontWeight = FontWeight.SemiBold });
+        var refresh = new Button { Content = "Registry yenile", Padding = new Thickness(8, 3) };
+        DockPanel.SetDock(refresh, Dock.Right);
+        header.Children.Add(refresh);
+        content.Children.Add(header);
+        content.Children.Add(new TextBlock
+        {
+            Text = "Pluginler herkese açık listelenir. Doğrulanmamış native kod yalnızca açık onayınızdan sonra etkinleştirilir.",
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 6, 0, 8),
+        });
+        var list = new StackPanel();
+        content.Children.Add(list);
+        card.Child = content;
+        panel.Children.Add(card);
+
+        void Render()
+        {
+            list.Children.Clear();
+            if (Model.Marketplace.Entries.Count == 0)
+            {
+                list.Children.Add(new TextBlock { Text = "Marketplace kaydı yok veya henüz yenilenmedi.", FontSize = 11, Foreground = TryBrush("TextSecondary") });
+                return;
+            }
+            foreach (var entry in Model.Marketplace.Entries)
+            {
+                var row = new DockPanel { Margin = new Thickness(0, 4) };
+                var text = new StackPanel();
+                text.Children.Add(new TextBlock { Text = $"{entry.Name} v{entry.Version}", FontWeight = FontWeight.SemiBold });
+                text.Children.Add(new TextBlock { Text = $"{entry.Id} · {entry.VerificationStatus} · {string.Join(", ", (entry.Artifacts ?? Array.Empty<NativeMarketplaceArtifact>()).Select(a => $"{a.Platform}/{a.Architecture}:{a.Status}"))}", FontSize = 10, Foreground = TryBrush("TextSecondary") });
+                row.Children.Add(text);
+                var install = new Button { Content = "Kabul et ve etkinleştir", Padding = new Thickness(8, 3), IsEnabled = (entry.Artifacts ?? Array.Empty<NativeMarketplaceArtifact>()).Any(a => a.Status == "ready") };
+                DockPanel.SetDock(install, Dock.Right);
+                install.Click += async (_, _) =>
+                {
+                    var consent = await new NativeMarketplaceConsentWindow(entry).ShowDialog<bool>(this);
+                    if (!consent) return;
+                    try
+                    {
+                        await Model.Marketplace.InstallAsync(entry);
+                        Model.Remount();
+                        ShowPlugins();
+                    }
+                    catch (Exception error) { list.Children.Add(ErrorText(error.Message)); }
+                };
+                row.Children.Add(install);
+                list.Children.Add(row);
+            }
+        }
+
+        refresh.Click += async (_, _) =>
+        {
+            try { await Model.Marketplace.RefreshAsync(); Render(); }
+            catch (Exception error) { list.Children.Clear(); list.Children.Add(ErrorText(error.Message)); }
+        };
+        Render();
+        _ = Task.Run(async () =>
+        {
+            try { await Model.Marketplace.RefreshAsync(); Dispatcher.UIThread.Post(Render); }
+            catch { /* keep the public empty state */ }
+        });
+    }
+
+    private void AddVisionSettings(Panel panel)
+    {
+        var card = new Border
+        {
+            BorderBrush = TryBrush("BorderSubtle"),
+            BorderThickness = new Avalonia.Thickness(1),
+            CornerRadius = new Avalonia.CornerRadius(8),
+            Padding = new Avalonia.Thickness(12),
+            Margin = new Avalonia.Thickness(0, 0, 0, 12),
+        };
+        var stack = new StackPanel();
+        var header = new DockPanel();
+        header.Children.Add(new TextBlock { Text = Model.L("vision.title"), FontWeight = FontWeight.SemiBold });
+        if (Model.VisionPluginInstalled)
+        {
+            var enabled = new CheckBox
+            {
+                Content = Model.L("settings.enabled"),
+                IsChecked = Model.VisionPluginEnabled,
+                HorizontalAlignment = HorizontalAlignment.Right,
+            };
+            enabled.IsCheckedChanged += (_, _) => { Model.SetVisionPluginEnabled(enabled.IsChecked == true); ShowPlugins(); };
+            DockPanel.SetDock(enabled, Dock.Right);
+            header.Children.Add(enabled);
+        }
+        stack.Children.Add(header);
+        stack.Children.Add(new TextBlock
+        {
+            Text = Model.VisionPluginInstalled ? VisionStatus(Model) : Model.L("vision.notInstalled"),
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Avalonia.Thickness(0, 6, 0, 8),
+        });
+        if (Model.VisionState is VisionFallbackState.Downloading or VisionFallbackState.Preparing)
+        {
+            stack.Children.Add(new ProgressBar
+            {
+                Value = Model.VisionModelProgress * 100,
+                Maximum = 100,
+                Height = 8,
+                Margin = new Avalonia.Thickness(0, 0, 0, 8),
+            });
+        }
+        var actions = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+        if (!Model.VisionPluginInstalled)
+        {
+            var install = new Button { Content = Model.L("vision.installPlugin"), Padding = new Avalonia.Thickness(10, 4) };
+            install.Click += async (_, _) =>
+            {
+                try { await Model.InstallVisionPluginAsync(); ShowPlugins(); }
+                catch (Exception error) { ShowVisionError(error); }
+            };
+            actions.Children.Add(install);
+        }
+        else
+        {
+            if (Model.VisionPluginEnabled && Model.VisionState != VisionFallbackState.Ready)
+            {
+                var prepare = new Button { Content = Model.L("vision.prepareModel"), Padding = new Avalonia.Thickness(10, 4) };
+                prepare.Click += async (_, _) =>
+                {
+                    try { await Model.PrepareVisionAsync(); ShowPlugins(); }
+                    catch (Exception error) { ShowVisionError(error); }
+                };
+                actions.Children.Add(prepare);
+            }
+            if (Model.VisionState != VisionFallbackState.Unavailable && Model.VisionState != VisionFallbackState.ModelMissing)
+            {
+                var deleteModel = new Button { Content = Model.L("vision.deleteModel"), Padding = new Avalonia.Thickness(10, 4), Margin = new Avalonia.Thickness(8, 0, 0, 0) };
+                deleteModel.Click += async (_, _) =>
+                {
+                    try { await Model.DeleteVisionModelAsync(); ShowPlugins(); }
+                    catch (Exception error) { ShowVisionError(error); }
+                };
+                actions.Children.Add(deleteModel);
+            }
+            var remove = new Button { Content = Model.L("vision.removePlugin"), Padding = new Avalonia.Thickness(10, 4), Margin = new Avalonia.Thickness(8, 0, 0, 0) };
+            remove.Click += (_, _) =>
+            {
+                try { Model.RemoveVisionPlugin(); ShowPlugins(); }
+                catch (Exception error) { ShowVisionError(error); }
+            };
+            actions.Children.Add(remove);
+        }
+        stack.Children.Add(actions);
+        card.Child = stack;
+        panel.Children.Add(card);
+    }
+
+    private void ShowVisionError(Exception error)
+    {
+        Model.Bridge.Status = error.Message;
+        ShowPlugins();
+    }
+
+    private static string VisionStatus(AppModel model) => model.VisionState switch
+    {
+        VisionFallbackState.ModelMissing => $"{model.L("vision.modelMissing")} · {ByteCount(model.VisionModelBytes)}",
+        VisionFallbackState.Downloading => $"{model.L("vision.downloading")} ({model.VisionModelProgress:P0})",
+        VisionFallbackState.Preparing => $"{model.L("vision.preparing")} ({model.VisionModelProgress:P0})",
+        VisionFallbackState.Ready => model.L("vision.ready", ByteCount(model.VisionModelBytes)),
+        VisionFallbackState.Failed => model.L("vision.failed"),
+        _ => model.L("vision.unavailable"),
+    };
+
+    private static string ByteCount(long bytes)
+    {
+        var value = bytes;
+        var units = new[] { "B", "KB", "MB", "GB" };
+        var index = 0;
+        while (value >= 1024 && index < units.Length - 1) { value /= 1024; index++; }
+        return $"{value} {units[index]}";
     }
 
     private void ShowTasks()
@@ -1050,9 +1432,35 @@ public partial class SettingsWindow : Window
         }
     }
 
+    private void ShowLegal()
+    {
+        var panel = new StackPanel { Spacing = 10 };
+        panel.Children.Add(Heading("legal.title"));
+        panel.Children.Add(new TextBlock
+        {
+            Text = Model.L("legal.gateIntro"),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = TryBrush("TextSecondary"),
+        });
+        var open = new Button { Content = Model.L("legal.openWeb") };
+        open.Click += (_, _) => new LegalWindow(Model, gate: false).Show(this);
+        panel.Children.Add(open);
+        panel.Children.Add(new TextBlock
+        {
+            Text = Model.L("legal.consentPrefs"),
+            FontWeight = FontWeight.SemiBold,
+            Margin = new Thickness(0, 8, 0, 0),
+        });
+        foreach (var name in DotsHarnessCore.LegalService.ConsentKeys)
+        {
+            panel.Children.Add(new TextBlock { Text = Model.L($"legal.consent.{name}"), TextWrapping = TextWrapping.Wrap });
+        }
+        Body.Content = panel;
+    }
+
     private void ShowPrompt()
     {
-        var text = Model.AssembledSystemPrompt();
+        var text = Model.EffectiveSystemPrompt();
         Body.Content = new TextBox
         {
             Text = string.IsNullOrEmpty(text) ? Model.L("settings.noPrompt") : text,
@@ -1220,6 +1628,71 @@ public partial class SettingsWindow : Window
         Margin = new Thickness(0, 0, 6, 0),
         Child = new TextBlock { Text = text, FontSize = 10, FontWeight = FontWeight.SemiBold },
     };
+
+    private static IBrush TryBrush(string key)
+    {
+        if (Application.Current?.TryGetResource(key, Application.Current.ActualThemeVariant, out var resource) == true
+            && resource is IBrush brush)
+        {
+            return brush;
+        }
+        return Brushes.Gray;
+    }
+}
+
+internal sealed class NativeMarketplaceConsentWindow : Window
+{
+    public NativeMarketplaceConsentWindow(NativeMarketplaceEntry entry)
+    {
+        Title = "Doğrulanmamış native plugin";
+        Width = 500;
+        SizeToContent = SizeToContent.Height;
+        CanResize = false;
+        WindowStartupLocation = WindowStartupLocation.CenterOwner;
+
+        var accept = new Button
+        {
+            Content = "Kabul et ve etkinleştir",
+            Padding = new Thickness(12, 7),
+        };
+        accept.Click += (_, _) => Close(true);
+
+        var cancel = new Button
+        {
+            Content = "İptal",
+            Padding = new Thickness(12, 7),
+        };
+        cancel.Click += (_, _) => Close(false);
+
+        Content = new StackPanel
+        {
+            Spacing = 12,
+            Margin = new Thickness(20),
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = $"{entry.Name} v{entry.Version}",
+                    FontSize = 17,
+                    FontWeight = FontWeight.SemiBold,
+                    TextWrapping = TextWrapping.Wrap,
+                },
+                new TextBlock
+                {
+                    Text = "Bu işlem DOTS imzalı bir native kütüphane indirir ve çalıştırır. Plugin otomatik doğrulamadan geçmiş olabilir ancak güvenlik incelemesi yapılmış anlamına gelmez. Kaynak kodunu ve lisansını inceledikten sonra açıkça kabul etmeden plugin etkinleştirilmeyecektir.",
+                    TextWrapping = TextWrapping.Wrap,
+                    Foreground = TryBrush("TextSecondary"),
+                },
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    Spacing = 8,
+                    Children = { cancel, accept },
+                },
+            },
+        };
+    }
 
     private static IBrush TryBrush(string key)
     {

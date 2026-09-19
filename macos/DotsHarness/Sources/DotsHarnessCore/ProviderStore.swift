@@ -21,6 +21,9 @@ public struct StoredProviderAccount: Codable, Sendable, Equatable {
     public var credentialID: String
     public var refreshCredentialID: String?
     public var priority: Int
+    /// Set when this account last reported a rate/quota limit. Routing skips the
+    /// account until this passes, then falls back to the usual ordering.
+    public var cooldownUntil: Date?
     public var error: String?
 
     public init(
@@ -39,6 +42,7 @@ public struct StoredProviderAccount: Codable, Sendable, Equatable {
         credentialID: String,
         refreshCredentialID: String? = nil,
         priority: Int = 0,
+        cooldownUntil: Date? = nil,
         error: String? = nil
     ) {
         self.id = id
@@ -56,10 +60,11 @@ public struct StoredProviderAccount: Codable, Sendable, Equatable {
         self.credentialID = credentialID
         self.refreshCredentialID = refreshCredentialID
         self.priority = priority
+        self.cooldownUntil = cooldownUntil
         self.error = error
     }
 
-    enum CodingKeys: String, CodingKey { case id, provider, name, email, sessionAccountID, active, imageFallbackEnabled, status, authType, model, baseURL, api, credentialID, refreshCredentialID, priority, error }
+    enum CodingKeys: String, CodingKey { case id, provider, name, email, sessionAccountID, active, imageFallbackEnabled, status, authType, model, baseURL, api, credentialID, refreshCredentialID, priority, cooldownUntil, error }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -79,6 +84,7 @@ public struct StoredProviderAccount: Codable, Sendable, Equatable {
             credentialID: try values.decode(String.self, forKey: .credentialID),
             refreshCredentialID: try values.decodeIfPresent(String.self, forKey: .refreshCredentialID),
             priority: try values.decodeIfPresent(Int.self, forKey: .priority) ?? 0,
+            cooldownUntil: try values.decodeIfPresent(Date.self, forKey: .cooldownUntil),
             error: try values.decodeIfPresent(String.self, forKey: .error)
         )
     }
@@ -441,6 +447,14 @@ public final class NativeProviderStore {
     public func setPriority(_ accountID: String, _ priority: Int) throws {
         guard let index = state.accounts.firstIndex(where: { $0.id == accountID }) else { return }
         state.accounts[index].priority = priority
+        try save()
+    }
+
+    /// Records (or clears, with `nil`) a rate/quota cooldown for one account.
+    public func setCooldown(_ accountID: String, until date: Date?) throws {
+        guard let index = state.accounts.firstIndex(where: { $0.id == accountID }) else { return }
+        guard state.accounts[index].cooldownUntil != date else { return }
+        state.accounts[index].cooldownUntil = date
         try save()
     }
 

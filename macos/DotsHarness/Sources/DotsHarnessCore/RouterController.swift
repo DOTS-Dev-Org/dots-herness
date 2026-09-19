@@ -14,6 +14,26 @@ public enum RouterFlow: Equatable {
     case device(provider: String, userCode: String, verificationURL: String, deviceCode: String, codeVerifier: String?, extra: JSONObject)
 }
 
+public struct ConnectionTransition: Equatable, Sendable {
+    public let action: String
+    public let previousConnectionLabel: String?
+    public let currentConnectionLabel: String?
+    public let cleanupStatus: String
+    public let removedLocalArtifacts: [String]
+    public let remoteDataTouched: Bool
+    public let userDataPreserved: Bool
+
+    public init(action: String, previousConnectionLabel: String? = nil, currentConnectionLabel: String? = nil, cleanupStatus: String, removedLocalArtifacts: [String] = [], remoteDataTouched: Bool = false, userDataPreserved: Bool = true) {
+        self.action = action
+        self.previousConnectionLabel = previousConnectionLabel
+        self.currentConnectionLabel = currentConnectionLabel
+        self.cleanupStatus = cleanupStatus
+        self.removedLocalArtifacts = removedLocalArtifacts
+        self.remoteDataTouched = remoteDataTouched
+        self.userDataPreserved = userDataPreserved
+    }
+}
+
 @MainActor
 public final class RouterController: ObservableObject {
     @Published public var connections: [RouterConnection] = []
@@ -24,10 +44,23 @@ public final class RouterController: ObservableObject {
     @Published public var selectedModelID: String = ""
     /// Reasoning effort for the selected model. Empty means "provider default".
     @Published public var selectedEffort: String = ""
+    /// Fast response speed; only honoured when `supportsFast` for the model.
+    @Published public var fastMode = false
     /// What automatic routing picked for the last request, for the picker to show.
     @Published public private(set) var lastAutoDecision: ModelDecision?
+    /// Set when a request only succeeded after stepping past a provider that was out
+    /// of quota, so the run can tell the user its model changed under it.
+    @Published public private(set) var lastFailover: String?
     @Published public var status: String = AppCopy.text("common.idle")
     @Published public var error: String?
+    /// Live Claude subscription rate-limit usage. In-memory only, no persistence.
+    @Published public var claudeUsage: ClaudeUsageState = .idle
+    /// Per-account rate-limit picture keyed by account id. In-memory only.
+    @Published public var accountUsage: [String: AccountUsageSnapshot] = [:]
+    /// The account and concrete model that actually served the most recent request.
+    /// `AgentBridge` reads these to pin the conversation to that account.
+    @Published public private(set) var lastServedAccountID: String?
+    @Published public private(set) var lastServedModelID: String?
     @Published public var flow: RouterFlow = .idle
     @Published public var callbackPaste: String = ""
     @Published public var apiKeyName: String = ""
@@ -41,27 +74,33 @@ public final class RouterController: ObservableObject {
     @Published public var customKind: CustomAPIKind = .openai
     @Published public var customAPIType: CustomOpenAIAPIType = .chat
     @Published public var editingNodeID: String?
+    public var onConnectionChanged: ((ConnectionTransition) -> Void)?
 
     public let store: NativeProviderStore
     public let imageAdapters: ProviderImageAdapterRegistry
     private var gateway: ProviderGateway?
     private let cloudTunnel: CloudTunnelProcess
+    private let oauthSession: URLSession
     private var callbackListener: NWListener?
     private var callbackConnection: NWConnection?
     private var callbackPort = 1455
     private var modelRefreshAttempted = false
+    private var modelRefreshTask: Task<Void, Never>?
     /// Effort chosen by automatic routing for the in-flight request.
     private var autoEffortOverride: String?
 
     public init(
         baseURL: String = "",
         paths: SupportPaths = .default(),
-        imageAdapters: ProviderImageAdapterRegistry? = nil
+        imageAdapters: ProviderImageAdapterRegistry? = nil,
+        oauthSession: URLSession = .shared,
+        providerStore: NativeProviderStore? = nil
     ) {
         _ = baseURL
-        store = NativeProviderStore(paths: paths)
+        store = providerStore ?? NativeProviderStore(paths: paths)
         self.imageAdapters = imageAdapters ?? ProviderImageAdapterRegistry()
         BuiltInProviderImageAdapters.register(on: self.imageAdapters)
+        self.oauthSession = oauthSession
         cloudTunnel = CloudTunnelProcess(runtimeURL: paths.runtime)
         gateway = try? ProviderGateway { [weak self] request in
             await self?.gatewayResponse(request) ?? .json(["error": ["message": "Gateway is unavailable"]], status: 503)
@@ -74,11 +113,74 @@ public final class RouterController: ObservableObject {
         status = AppCopy.format("router.activeConnections", connections.filter(\.active).count, connections.count)
     }
 
+    /// Rewrites every account's `priority` so provider families sort in
+    /// `orderedProviderIDs` order (`providerIndex * 100 + accountIndex`), keeping
+    /// each family's own account order. Providers left out keep their current
+    /// relative order after the listed ones.
+    public func reorderProviders(_ orderedProviderIDs: [String]) {
+        let present = store.state.accounts.reduce(into: [String]()) { seen, account in
+            if !seen.contains(account.provider) { seen.append(account.provider) }
+        }
+        let ordered = orderedProviderIDs.filter(present.contains)
+            + present.filter { !orderedProviderIDs.contains($0) }
+        for (providerIndex, provider) in ordered.enumerated() {
+            let accounts = store.state.accounts
+                .filter { $0.provider == provider }
+                .sorted { $0.priority < $1.priority }
+            for (accountIndex, account) in accounts.enumerated() {
+                try? store.setPriority(account.id, providerIndex * 100 + accountIndex)
+            }
+        }
+        Task { await refresh() }
+    }
+
     public func refreshModels(force: Bool = false) async {
+        // A refresh already running (the startup prewarm) is joined, not repeated or
+        // skipped: a send that arrives meanwhile must see the finished model list.
+        if let inflight = modelRefreshTask {
+            await inflight.value
+            if !force { return }
+        }
         if !force, modelRefreshAttempted { return }
         modelRefreshAttempted = true
+        let task = Task { @MainActor [self] in await performModelRefresh() }
+        modelRefreshTask = task
+        await task.value
+        if modelRefreshTask == task { modelRefreshTask = nil }
+    }
+
+    private func performModelRefresh() async {
         var next: [RouterModel] = []
-        for account in store.state.accounts where account.active {
+        let activeAccounts = store.state.accounts.filter(\.active)
+
+        // Every provider's `/models` request is in flight at once: the wait is the
+        // slowest provider, not the sum. Requests are built here so Keychain reads
+        // stay on the main actor.
+        var requests: [String: URLRequest] = [:]
+        for account in activeAccounts where account.api != RouterAPIKind.chatGPT.rawValue {
+            guard let url = modelsURL(for: account) else { continue }
+            var request = URLRequest(url: url, timeoutInterval: 8)
+            authorize(&request, for: account)
+            requests[account.id] = request
+        }
+        let payloads: [String: Data] = await withTaskGroup(of: (String, Data?).self) { group in
+            for (id, request) in requests {
+                group.addTask {
+                    guard let (data, response) = try? await URLSession.shared.data(for: request),
+                          (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) == true else {
+                        return (id, nil)
+                    }
+                    return (id, data)
+                }
+            }
+            var collected: [String: Data] = [:]
+            for await (id, data) in group {
+                if let data { collected[id] = data }
+            }
+            return collected
+        }
+
+        for account in activeAccounts {
             let owner = RouterCatalog.label(for: account.provider)
             let specModels = RouterCatalog.spec(for: account.provider)?.models ?? []
             // Effort levels are model-specific and no provider publishes them, so
@@ -93,7 +195,8 @@ public final class RouterController: ObservableObject {
                     efforts: spec?.efforts ?? [],
                     displayName: name ?? spec?.name,
                     provider: account.provider,
-                    tier: spec?.tier
+                    tier: spec?.tier,
+                    fast: spec?.fast ?? false
                 )
             }
 
@@ -106,21 +209,16 @@ public final class RouterController: ObservableObject {
             }
 
             var live: [RouterModel] = []
-            if let url = modelsURL(for: account) {
-                var request = URLRequest(url: url, timeoutInterval: 8)
-                authorize(&request, for: account)
-                if let (data, response) = try? await URLSession.shared.data(for: request),
-                   (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) == true,
-                   let payload = try? JSONCodec.parse(data),
-                   case .array(let items) = payload["data"] {
-                    live = items.compactMap { item in
-                        guard let id = item["id"]?.string, !id.isEmpty else { return nil }
-                        var discovered = model(id: id, name: item["display_name"]?.string)
-                        discovered.contextWindow = item["context_length"]?.int
-                            ?? item["contextWindow"]?.int
-                            ?? discovered.contextWindow
-                        return discovered
-                    }
+            if let data = payloads[account.id],
+               let payload = try? JSONCodec.parse(data),
+               case .array(let items) = payload["data"] {
+                live = items.compactMap { item in
+                    guard let id = item["id"]?.string, !id.isEmpty else { return nil }
+                    var discovered = model(id: id, name: item["display_name"]?.string)
+                    discovered.contextWindow = item["context_length"]?.int
+                        ?? item["contextWindow"]?.int
+                        ?? discovered.contextWindow
+                    return discovered
                 }
             }
             next.append(contentsOf: live)
@@ -231,11 +329,10 @@ public final class RouterController: ObservableObject {
     }
 
     public var imageGenerationCommandVisible: Bool {
-        guard let account = imagePrimaryAccount else { return false }
-        let model = imageModel(for: account)
-        let route = imageRoute(for: account, model: model)
-        let adapterID = imageAdapters.adapter(for: route)?.id ?? "none"
-        return imageAdapters.capability(for: route, adapterID: adapterID) != .unsupported || hasImageFallback
+        // Keep the command discoverable for providers whose image capability is
+        // not known yet. A missing adapter is an extension point, not a deny
+        // decision: a later catalog entry or trusted plugin may add support.
+        return imagePrimaryAccount != nil
     }
 
     public func generateImage(prompt: String, session: URLSession = .shared) async throws -> ProviderImageGeneration {
@@ -251,10 +348,11 @@ public final class RouterController: ObservableObject {
 
         if imageAdapters.capability(for: primaryRoute, adapterID: primaryAdapterID) != .unsupported,
            let primaryAdapter {
-            let result = try await imageAttempt(
+            let result = try await imageAttemptWithRefresh(
+                account: primary,
                 adapter: primaryAdapter,
                 route: primaryRoute,
-                configuration: try imageConfiguration(for: primary, model: primaryModel),
+                model: primaryModel,
                 prompt: prompt,
                 session: session
             )
@@ -267,8 +365,6 @@ public final class RouterController: ObservableObject {
             case .unsupported:
                 imageAdapters.record(.unsupported, for: primaryRoute, adapterID: primaryAdapterID)
             }
-        } else {
-            imageAdapters.record(.unsupported, for: primaryRoute, adapterID: primaryAdapterID)
         }
 
         let fallbackSource = "\(RouterCatalog.label(for: primary.provider))/\(primaryModel)"
@@ -282,13 +378,13 @@ public final class RouterController: ObservableObject {
             let adapterID = adapter?.id ?? "none"
             if imageAdapters.capability(for: route, adapterID: adapterID) == .unsupported { continue }
             guard let adapter else {
-                imageAdapters.record(.unsupported, for: route, adapterID: adapterID)
                 continue
             }
-            let result = try await imageAttempt(
+            let result = try await imageAttemptWithRefresh(
+                account: account,
                 adapter: adapter,
                 route: route,
-                configuration: try imageConfiguration(for: account, model: model),
+                model: model,
                 prompt: prompt,
                 session: session
             )
@@ -338,6 +434,31 @@ public final class RouterController: ObservableObject {
 
     private func imageConfiguration(for account: StoredProviderAccount, model: String) throws -> AgentConfiguration {
         try configuration(for: account, model: model)
+    }
+
+    private func imageAttemptWithRefresh(
+        account: StoredProviderAccount,
+        adapter: any ProviderImageAdapter,
+        route: ProviderImageRoute,
+        model: String,
+        prompt: String,
+        session: URLSession
+    ) async throws -> ProviderImageResult {
+        var refreshed = false
+        while true {
+            let result = try await imageAttempt(
+                adapter: adapter,
+                route: route,
+                configuration: try imageConfiguration(for: account, model: model),
+                prompt: prompt,
+                session: session
+            )
+            guard case .failed(let failure) = result,
+                  failure.kind == .auth,
+                  !refreshed else { return result }
+            guard await refreshCredential(for: account) else { return result }
+            refreshed = true
+        }
     }
 
     private func imageAttempt(
@@ -397,7 +518,8 @@ public final class RouterController: ObservableObject {
         messages: [AgentMessage],
         tools: [AgentToolDefinition] = [],
         cachePolicy: AgentCachePolicy = AgentCachePolicy(),
-        model: String? = nil
+        model: String? = nil,
+        preferredAccountID: String? = nil
     ) async throws -> AgentResponse {
         let requestedModel = (model ?? selectedModelID).trimmingCharacters(in: .whitespacesAndNewlines)
         guard requestedModel == ModelRouter.autoModelID else {
@@ -406,31 +528,163 @@ public final class RouterController: ObservableObject {
                 messages: messages,
                 tools: tools,
                 cachePolicy: cachePolicy,
-                model: requestedModel.isEmpty ? nil : requestedModel
+                model: requestedModel.isEmpty ? nil : requestedModel,
+                preferredAccountID: preferredAccountID
             )
         }
 
-        // Auto chooses once before the request. A provider limit is surfaced to
-        // the bridge so the conversation can pause instead of rerouting.
-        guard let decision = ModelRouter.decide(messages: messages, available: routableModels) else {
-            throw NativeAgentError(AppCopy.text("agent.configureEndpoint"))
+        // Auto picked the model, so auto may pick another one when the first runs out
+        // of quota: pausing is only the right answer once no route is left. A pinned
+        // model is the user's own choice and is never swapped behind their back.
+        return try await sendAcrossProviders(
+            messages: messages,
+            tools: tools,
+            cachePolicy: cachePolicy,
+            recordDecision: true,
+            preferredAccountID: preferredAccountID
+        )
+    }
+
+    /// Sends `messages`, stepping to the next provider whenever one reports that it
+    /// is out of quota. Only when every route is exhausted does the limit surface,
+    /// which is where pausing the conversation is the honest answer.
+    private func sendAcrossProviders(
+        messages: [AgentMessage],
+        tools: [AgentToolDefinition],
+        cachePolicy: AgentCachePolicy,
+        recordDecision: Bool,
+        preferredAccountID: String? = nil
+    ) async throws -> AgentResponse {
+        var excluded: Set<String> = []
+        var dropped: [String] = []
+        while true {
+            guard let decision = ModelRouter.decide(
+                messages: messages,
+                available: routableModels,
+                excluding: excluded
+            ) else { throw NativeAgentError(AppCopy.text("agent.configureEndpoint")) }
+            if recordDecision {
+                lastAutoDecision = decision
+                autoEffortOverride = decision.effort
+                status = decision.reason
+            }
+            do {
+                let response = try await send(
+                    messages: messages,
+                    tools: tools,
+                    cachePolicy: cachePolicy,
+                    model: decision.model,
+                    preferredAccountID: preferredAccountID
+                )
+                if recordDecision {
+                    let name = routableModels.first { $0.id == decision.model }?.displayName ?? decision.model
+                    lastFailover = dropped.isEmpty
+                        ? nil
+                        : AppCopy.format("router.failedOver", dropped.joined(separator: ", "), name)
+                }
+                return response
+            } catch let failure as NativeAgentError where failure.isLimit {
+                guard let provider = routableModels.first(where: { $0.id == decision.model })?.provider,
+                      !excluded.contains(provider) else { throw failure }
+                excluded.insert(provider)
+                dropped.append(RouterCatalog.label(for: provider))
+            }
         }
-        lastAutoDecision = decision
-        autoEffortOverride = decision.effort
-        status = decision.reason
-        return try await send(messages: messages, tools: tools, cachePolicy: cachePolicy, model: decision.model)
+    }
+
+    /// Like `complete`, but never records the routing decision as the conversation's
+    /// own. Side runs - the exploration subagent - use it so their model choice does
+    /// not overwrite what the picker shows for the main run.
+    public func completeWithFailover(
+        messages: [AgentMessage],
+        tools: [AgentToolDefinition] = []
+    ) async throws -> AgentResponse {
+        try await sendAcrossProviders(
+            messages: messages,
+            tools: tools,
+            cachePolicy: AgentCachePolicy(),
+            recordDecision: false
+        )
+    }
+
+    /// Active accounts that can serve `model`, ordered best-first:
+    /// 1. a live `preferred` account (conversation affinity) that is not cooling
+    ///    down comes first, so follow-up turns keep the provider's prompt cache;
+    /// 2. otherwise accounts not in cooldown, most remaining quota first
+    ///    (unknown usage sorts below known-healthy but above known-exhausted),
+    ///    `priority` (provider order) breaking ties;
+    /// 3. cooling-down accounts last, as a final fallback.
+    /// Pure and side-effect free so it can be unit tested without the network.
+    func orderedRoutes(
+        _ accounts: [StoredProviderAccount],
+        model: String,
+        preferred: String?,
+        usage: [String: AccountUsageSnapshot],
+        now: Date
+    ) -> [StoredProviderAccount] {
+        let serving = accounts
+            .filter { $0.active && canServe($0, model: model) }
+
+        func coolingDown(_ account: StoredProviderAccount) -> Bool {
+            guard let until = account.cooldownUntil else { return false }
+            return until > now
+        }
+        // nil usage -> 0 so it sorts between healthy (>0) and exhausted (<0).
+        func remainingRank(_ account: StoredProviderAccount) -> Double {
+            guard let fraction = usage[account.id]?.remainingFraction else { return 0 }
+            return fraction <= 0 ? -1 : fraction
+        }
+
+        let ranked = serving.sorted { lhs, rhs in
+            let lc = coolingDown(lhs), rc = coolingDown(rhs)
+            if lc != rc { return !lc }
+            let lr = remainingRank(lhs), rr = remainingRank(rhs)
+            if lr != rr { return lr > rr }
+            if lhs.priority != rhs.priority { return lhs.priority < rhs.priority }
+            return lhs.id < rhs.id
+        }
+
+        if let preferred,
+           let pinned = ranked.first(where: { $0.id == preferred }),
+           !coolingDown(pinned) {
+            return [pinned] + ranked.filter { $0.id != preferred }
+        }
+        return ranked
+    }
+
+    /// Validates a conversation's pinned account against the turn about to run.
+    /// Returns `sticky` when the pin still holds, `nil` when it must be dropped
+    /// and the account re-selected (model changed, provider can no longer serve
+    /// it, account gone/inactive, or the account is cooling down).
+    public func affinityAccountID(sticky: String, stickyModelID: String?, targetModel: String) -> String? {
+        let resolved = targetModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isAuto = resolved.isEmpty || resolved == ModelRouter.autoModelID
+        if let stickyModelID, !stickyModelID.isEmpty, !isAuto, resolved != stickyModelID {
+            return nil
+        }
+        guard let account = store.state.accounts.first(where: { $0.id == sticky }), account.active else {
+            return nil
+        }
+        if let until = account.cooldownUntil, until > Date() { return nil }
+        let probeModel = isAuto ? (stickyModelID ?? "") : resolved
+        guard canServe(account, model: probeModel) else { return nil }
+        return sticky
     }
 
     private func send(
         messages: [AgentMessage],
         tools: [AgentToolDefinition],
         cachePolicy: AgentCachePolicy,
-        model requestedModel: String?
+        model requestedModel: String?,
+        preferredAccountID: String? = nil
     ) async throws -> AgentResponse {
-        let routes = store.state.accounts
-            .filter(\.active)
-            .filter { canServe($0, model: requestedModel ?? "") }
-            .sorted { $0.priority < $1.priority }
+        let routes = orderedRoutes(
+            store.state.accounts,
+            model: requestedModel ?? "",
+            preferred: preferredAccountID,
+            usage: accountUsage,
+            now: Date()
+        )
         guard !routes.isEmpty else { throw NativeAgentError(AppCopy.text("agent.configureEndpoint")) }
         var failures: [String] = []
         for account in routes {
@@ -438,13 +692,27 @@ public final class RouterController: ObservableObject {
             while true {
                 do {
                     let configuration = try configuration(for: account, model: requestedModel)
-                    let response = try await NativeAgentClient(configuration: configuration).complete(messages: messages, tools: tools, cachePolicy: cachePolicy)
+                    let routeKey = Self.routeCacheKey(cachePolicy.promptCacheKey, accountID: account.id, provider: account.provider, api: account.api)
+                    let response = try await NativeAgentClient(configuration: configuration).complete(
+                        messages: messages,
+                        tools: tools,
+                        cachePolicy: AgentCachePolicy(promptCacheKey: routeKey)
+                    )
                     status = AppCopy.format("router.connected", configuration.provider)
+                    lastServedAccountID = account.id
+                    lastServedModelID = configuration.model
+                    try? store.setCooldown(account.id, until: nil)
                     return response
                 } catch is CancellationError {
                     throw CancellationError()
                 } catch let failure as NativeAgentError {
-                    if failure.isLimit { throw failure }
+                    if failure.isLimit {
+                        try? store.setCooldown(
+                            account.id,
+                            until: failure.retryAt ?? Date().addingTimeInterval(900)
+                        )
+                        throw failure
+                    }
                     if failure.statusCode == 401, !refreshed {
                         refreshed = true
                         if await refreshCredential(for: account) { continue }
@@ -471,19 +739,32 @@ public final class RouterController: ObservableObject {
         if loadCredentials && (account.api == RouterAPIKind.anthropic.rawValue || account.api == RouterAPIKind.chatGPT.rawValue) {
             guard key != nil else { throw ProviderStoreError.credentialUnavailable }
         }
-        return AgentConfiguration(
+        var config = AgentConfiguration(
             baseURL: account.baseURL,
             model: model?.isEmpty == false ? model! : effectiveModel(for: account),
             apiKey: key,
             provider: RouterCatalog.label(for: account.provider),
             api: account.api,
+            accountID: account.id,
             sessionAccountID: account.sessionAccountID,
             specID: account.provider,
             authType: account.authType,
             effort: effort(for: model?.isEmpty == false ? model! : effectiveModel(for: account)),
             contextWindow: contextWindow(for: model?.isEmpty == false ? model : effectiveModel(for: account)),
-            supportsNativeCompaction: RouterCatalog.spec(for: account.provider)?.transport.quirks.supportsNativeCompaction ?? false
+            supportsNativeCompaction: RouterCatalog.spec(for: account.provider)?.transport.quirks.supportsNativeCompaction ?? false,
+            compactionPolicy: AgentContextCompactionPolicy.current()
         )
+        config.fast = fastMode && supportsFast(config.model)
+        return config
+    }
+
+    private static func routeCacheKey(_ base: String?, accountID: String, provider: String, api: String) -> String? {
+        guard let base, !base.isEmpty else { return nil }
+        let identity = "\(base)|\(provider)|\(api)|\(accountID)"
+        let digest = SHA256.hash(data: Data(identity.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
+        return base + ":route-" + String(digest.prefix(24))
     }
 
     /// Effort levels the picker offers for `model`, low to high. Empty means the
@@ -493,6 +774,12 @@ public final class RouterController: ObservableObject {
         return ProviderRegistry.shared.specs.flatMap(\.models).first { $0.id == model }?.efforts ?? []
     }
 
+    /// Whether `model` offers a fast (priority) mode, per the provider registry.
+    public func supportsFast(_ model: String) -> Bool {
+        if let resolved = models.first(where: { $0.id == model }) { return resolved.fast }
+        return ProviderRegistry.shared.specs.flatMap(\.models).first { $0.id == model }?.fast ?? false
+    }
+
     /// The selected effort, but only when the target model actually accepts it.
     /// Automatic routing chooses its own level, which wins for that request.
     private func effort(for model: String) -> String {
@@ -500,7 +787,14 @@ public final class RouterController: ObservableObject {
         if let override = autoEffortOverride {
             return supported.contains(override) ? override : ""
         }
-        return supported.contains(selectedEffort) ? selectedEffort : ""
+        return effectiveEffort(for: model)
+    }
+
+    /// Selected effort, falling back to "low" (or the lowest level) when none is set.
+    public func effectiveEffort(for model: String) -> String {
+        let supported = efforts(for: model)
+        if supported.contains(selectedEffort) { return selectedEffort }
+        return supported.contains("low") ? "low" : (supported.first ?? "")
     }
 
     /// True when the user picked "Auto" rather than a specific model.
@@ -533,11 +827,11 @@ public final class RouterController: ObservableObject {
             || id.contains("flash") || id.contains("lite") || id.contains("small")
     }
 
-    private func refreshCredential(for account: StoredProviderAccount) async -> Bool {
+    func refreshCredential(for account: StoredProviderAccount) async -> Bool {
         guard let spec = RouterCatalog.spec(for: account.provider), let oauth = spec.oauth else { return false }
         guard let refresh = try? store.refreshCredential(for: account), !refresh.isEmpty else { return false }
         do {
-            let tokens = try await OAuthFlow(spec: oauth).refresh(refresh)
+            let tokens = try await OAuthFlow(spec: oauth, session: oauthSession).refresh(refresh)
             try store.replaceCredential(for: account, with: tokens.accessToken)
             if let accountID = tokens.accountID
                 ?? tokens.idToken.flatMap({ OAuthFlow.chatGPTAccountID(OAuthFlow.jwtClaims($0)) }),
@@ -569,7 +863,8 @@ public final class RouterController: ObservableObject {
     /// account so routing picks it up like any other.
     public func connectPassthrough() async {
         do {
-            _ = try store.addAccount(provider: selectedKind, name: selectedKind.name, secret: "", authType: "passthrough")
+            let added = try store.addAccount(provider: selectedKind, name: selectedKind.name, secret: "", authType: "passthrough")
+            onConnectionChanged?(ConnectionTransition(action: "added", currentConnectionLabel: added.name, cleanupStatus: "preserved"))
             status = AppCopy.format("router.connected", selectedKind.name)
             await refresh()
             await refreshModels(force: true)
@@ -590,7 +885,8 @@ public final class RouterController: ObservableObject {
             return
         }
         do {
-            _ = try store.addAccount(provider: selectedKind, name: name, secret: key)
+            let added = try store.addAccount(provider: selectedKind, name: name, secret: key)
+            onConnectionChanged?(ConnectionTransition(action: "added", currentConnectionLabel: added.name, cleanupStatus: "preserved"))
             apiKeyValue = ""
             status = AppCopy.format("router.connected", selectedKind.name)
             await refresh()
@@ -605,7 +901,7 @@ public final class RouterController: ObservableObject {
             error = "This provider does not support browser sign-in. Use an API key or Custom API."
             return
         }
-        let engine = OAuthFlow(spec: oauth)
+        let engine = OAuthFlow(spec: oauth, session: oauthSession)
         let verifier = OAuthFlow.randomToken()
         let state = OAuthFlow.randomToken()
         guard let authURL = engine.authorizeURL(verifier: verifier, state: state)?.absoluteString else {
@@ -658,14 +954,14 @@ public final class RouterController: ObservableObject {
             }
         if let returnedState, returnedState != expectedState { error = "The login callback state did not match."; return }
         do {
-            let tokens = try await OAuthFlow(spec: oauth).exchange(code: rawCode, verifier: verifier, state: expectedState)
+            let tokens = try await OAuthFlow(spec: oauth, session: oauthSession).exchange(code: rawCode, verifier: verifier, state: expectedState)
             let provider = RouterCatalog.kind(for: providerID) ?? selectedKind
             // Cloud Code Assist requires a project id on every later call, and it
             // is only obtainable once we hold the access token.
             let discovered = try await discoverProject(oauth: oauth, accessToken: tokens.accessToken)
             let isGPT = spec.transport.format == .responses
             let name = tokens.email ?? tokens.accountID ?? "\(provider.name) account"
-            _ = try store.addAccount(
+            let added = try store.addAccount(
                 provider: provider,
                 name: name,
                 secret: tokens.accessToken,
@@ -676,6 +972,7 @@ public final class RouterController: ObservableObject {
                 sessionAccountID: discovered ?? tokens.accountID,
                 refreshSecret: tokens.refreshToken
             )
+            onConnectionChanged?(ConnectionTransition(action: "added", currentConnectionLabel: added.name, cleanupStatus: "preserved"))
             callbackListener?.cancel(); callbackListener = nil; callbackConnection = nil
             flow = .idle; callbackPaste = ""
             status = AppCopy.format("router.connected", provider.name)
@@ -722,7 +1019,7 @@ public final class RouterController: ObservableObject {
             error = "This provider does not expose a native device login yet. Use an API key or Custom API."
             return
         }
-        let engine = OAuthFlow(spec: oauth)
+        let engine = OAuthFlow(spec: oauth, session: oauthSession)
         let device: OAuthFlow.DeviceCode
         do {
             device = try await engine.startDevice()
@@ -745,7 +1042,7 @@ public final class RouterController: ObservableObject {
             let tokens = try await engine.pollDevice(device)
             guard case .device(let providerID, _, _, _, _, _) = flow, providerID == selectedKind.id else { return }
             let provider = RouterCatalog.kind(for: providerID) ?? selectedKind
-            _ = try store.addAccount(
+            let added = try store.addAccount(
                 provider: provider,
                 name: tokens.email ?? "\(provider.name) account",
                 secret: tokens.accessToken,
@@ -755,6 +1052,7 @@ public final class RouterController: ObservableObject {
                 email: tokens.email,
                 refreshSecret: tokens.refreshToken
             )
+            onConnectionChanged?(ConnectionTransition(action: "added", currentConnectionLabel: added.name, cleanupStatus: "preserved"))
             flow = .idle
             status = AppCopy.format("router.connected", provider.name)
             await refresh()
@@ -767,7 +1065,11 @@ public final class RouterController: ObservableObject {
     public func cancelFlow() { callbackListener?.cancel(); callbackListener = nil; callbackConnection = nil; flow = .idle; callbackPaste = "" }
 
     public func toggle(_ connection: RouterConnection) async {
-        do { try store.setActive(connection.id, !connection.active); await refresh() }
+        do {
+            try store.setActive(connection.id, !connection.active)
+            onConnectionChanged?(ConnectionTransition(action: "selected", previousConnectionLabel: connection.name, currentConnectionLabel: connection.name, cleanupStatus: "preserved"))
+            await refresh()
+        }
         catch { self.error = error.localizedDescription }
     }
 
@@ -827,8 +1129,18 @@ public final class RouterController: ObservableObject {
     }
 
     public func remove(_ connection: RouterConnection) async {
-        do { if let account = store.state.accounts.first(where: { $0.id == connection.id }) { try store.removeAccount(account) }; await refresh() }
-        catch { self.error = error.localizedDescription }
+        guard let account = store.state.accounts.first(where: { $0.id == connection.id }) else { return }
+        do {
+            try store.removeAccount(account)
+            let verified = !store.state.accounts.contains(where: { $0.id == account.id })
+                && credentialIsAbsent(account.credentialID)
+                && credentialIsAbsent(account.refreshCredentialID)
+            onConnectionChanged?(ConnectionTransition(action: "removed", previousConnectionLabel: account.name, cleanupStatus: verified ? "verified" : "failed", removedLocalArtifacts: verified ? ["connection record", "credential reference", "model metadata"] : []))
+            await refresh()
+        } catch {
+            onConnectionChanged?(ConnectionTransition(action: "removed", previousConnectionLabel: account.name, cleanupStatus: "failed"))
+            self.error = error.localizedDescription
+        }
     }
 
     public func testNode(_ node: RouterNode) async {
@@ -900,11 +1212,13 @@ public final class RouterController: ObservableObject {
             let secret = customAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
             if let editingNodeID, let endpoint = store.state.endpoints.first(where: { $0.id == editingNodeID }) {
                 try store.updateCustom(endpoint: endpoint, name: name, prefix: prefix, baseURL: base, api: customKind.rawValue, apiType: customAPIType.rawValue, secret: secret.isEmpty ? nil : secret)
+                onConnectionChanged?(ConnectionTransition(action: "replaced", previousConnectionLabel: endpoint.name, currentConnectionLabel: name, cleanupStatus: "preserved"))
                 self.editingNodeID = nil
                 status = "Custom API “\(name)” updated"
             } else {
                 let endpoint = try store.addCustom(name: name, prefix: prefix, baseURL: base, api: customKind.rawValue, apiType: customAPIType.rawValue, secret: secret)
                 if registerKey { _ = try store.addCustomAccount(endpoint: endpoint, secret: secret) }
+                onConnectionChanged?(ConnectionTransition(action: "added", currentConnectionLabel: name, cleanupStatus: "preserved"))
                 status = AppCopy.format("router.customAPIAdded", name)
             }
             customAPIKey = ""
@@ -930,19 +1244,41 @@ public final class RouterController: ObservableObject {
     }
 
     public func deleteNode(_ node: RouterNode) async {
-        do { if let endpoint = store.state.endpoints.first(where: { $0.id == node.id }) { try store.removeEndpoint(endpoint) }; await refresh() }
-        catch { self.error = error.localizedDescription }
+        guard let endpoint = store.state.endpoints.first(where: { $0.id == node.id }) else { return }
+        let accounts = store.state.accounts.filter { $0.provider == "custom:\(endpoint.id)" }
+        do {
+            try store.removeEndpoint(endpoint)
+            let verified = !store.state.endpoints.contains(where: { $0.id == endpoint.id })
+                && !store.state.accounts.contains(where: { $0.provider == "custom:\(endpoint.id)" })
+                && credentialIsAbsent(endpoint.credentialID)
+                && accounts.allSatisfy { credentialIsAbsent($0.credentialID) && credentialIsAbsent($0.refreshCredentialID) }
+            onConnectionChanged?(ConnectionTransition(action: "removed", previousConnectionLabel: endpoint.name, cleanupStatus: verified ? "verified" : "failed", removedLocalArtifacts: verified ? ["endpoint record", "connection record", "credential references", "model metadata"] : []))
+            await refresh()
+        } catch {
+            onConnectionChanged?(ConnectionTransition(action: "removed", previousConnectionLabel: endpoint.name, cleanupStatus: "failed"))
+            self.error = error.localizedDescription
+        }
     }
 
     public func connectExistingNode(_ node: RouterNode) async {
         guard let endpoint = store.state.endpoints.first(where: { $0.id == node.id }) else { return }
-        do { _ = try store.addCustomAccount(endpoint: endpoint, secret: customAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)); customAPIKey = ""; await refresh() }
+        do {
+            let account = try store.addCustomAccount(endpoint: endpoint, secret: customAPIKey.trimmingCharacters(in: .whitespacesAndNewlines))
+            onConnectionChanged?(ConnectionTransition(action: "added", currentConnectionLabel: account.name, cleanupStatus: "preserved"))
+            customAPIKey = ""
+            await refresh()
+        }
         catch { self.error = error.localizedDescription }
     }
 
     public func sanitizedPrefix(_ raw: String) -> String {
         let kept = raw.lowercased().map { $0.isLetter || $0.isNumber ? $0 : "-" }
         return String(String(kept).split(separator: "-").joined(separator: "-").prefix(24))
+    }
+
+    private func credentialIsAbsent(_ id: String?) -> Bool {
+        guard let id else { return true }
+        do { return try store.vault.get(id) == nil } catch { return false }
     }
 
     public func createShareKey() async {
@@ -978,7 +1314,7 @@ public final class RouterController: ObservableObject {
             for spec in specModels {
                 seeded.append(RouterModel(
                     id: spec.id, owner: owner, contextWindow: spec.contextWindow, efforts: spec.efforts,
-                    displayName: spec.name, provider: account.provider, tier: spec.tier
+                    displayName: spec.name, provider: account.provider, tier: spec.tier, fast: spec.fast
                 ))
             }
             if !account.model.isEmpty, !seeded.contains(where: { $0.id == account.model }) {

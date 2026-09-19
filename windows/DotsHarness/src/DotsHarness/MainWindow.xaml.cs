@@ -6,6 +6,7 @@ using System.Windows;
 using System.ComponentModel;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using DotsHarnessCore;
 using DotsHarness.Views;
 using HarnessPluginKit;
@@ -29,7 +30,19 @@ public partial class MainWindow : Window
         CommandBindings.Add(new CommandBinding(ApplicationCommands.New, (_, _) => model.NewConversation()));
         InputBindings.Add(new KeyBinding(new RelayCommand(_ => ShowSettings()), Key.OemComma, ModifierKeys.Control));
         Closing += OnClosing;
+        Loaded += OnLoaded;
         RefreshLocalization();
+    }
+
+    private async void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        var model = ((App)Application.Current).Model;
+        await model.LoadLegalAsync();
+        if (model.LegalNeedsAcceptance)
+        {
+            var dialog = new LegalDialog(model, gate: true) { Owner = this };
+            if (dialog.ShowDialog() != true) Application.Current.Shutdown();
+        }
     }
 
     private void OnModel(object? sender, PropertyChangedEventArgs e)
@@ -71,7 +84,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var dialog = new CloseConfirmationDialog(model) { Owner = this, Icon = this.Icon };
+        var dialog = new CloseConfirmationDialog(model, Icon) { Owner = this };
         if (dialog.ShowDialog() != true)
         {
             e.Cancel = true;
@@ -91,53 +104,87 @@ internal sealed class CloseConfirmationDialog : Window
 
     public bool Remember => _remember.IsChecked == true;
 
-    public CloseConfirmationDialog(AppModel model)
+    public CloseConfirmationDialog(AppModel model, ImageSource? icon)
     {
         Title = model.L("window.confirmClose");
         FlowDirection = model.IsRightToLeft ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
-        Width = 380;
+        Width = 420;
         SizeToContent = SizeToContent.Height;
         ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        Background = (Brush)Application.Current.FindResource("PanelBackground");
 
         _remember = new CheckBox
         {
             Content = model.L("window.remember"),
-            Margin = new Thickness(0, 14, 0, 18),
+            Margin = new Thickness(0, 10, 0, 0),
+            FontSize = 13,
         };
+        var copy = new StackPanel
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(14, 0, 0, 0),
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = model.L("window.closeQuestion"),
+                    FontSize = 16,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = (Brush)Application.Current.FindResource("TextPrimary"),
+                    TextWrapping = TextWrapping.Wrap,
+                },
+                _remember,
+            },
+        };
+        var body = new Grid { Margin = new Thickness(0, 0, 0, 14) };
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(64) });
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var iconFrame = new Border
+        {
+            Width = 64,
+            Height = 64,
+            CornerRadius = new CornerRadius(14),
+            ClipToBounds = true,
+            Child = new Image
+            {
+                Source = icon,
+                Stretch = Stretch.UniformToFill,
+            },
+        };
+        Grid.SetColumn(copy, 1);
+        body.Children.Add(iconFrame);
+        body.Children.Add(copy);
+
         var close = new Button
         {
             Content = model.L("window.close"),
             IsDefault = true,
-            Padding = new Thickness(14, 6, 14, 6),
-            Margin = new Thickness(0, 0, 8, 0),
+            Height = 36,
         };
         close.Click += (_, _) => DialogResult = true;
         var cancel = new Button
         {
             Content = model.L("window.cancel"),
             IsCancel = true,
-            Padding = new Thickness(14, 6, 14, 6),
+            Height = 36,
         };
 
-        Content = new StackPanel
+        var buttons = new Grid();
+        buttons.ColumnDefinitions.Add(new ColumnDefinition());
+        buttons.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+        buttons.ColumnDefinitions.Add(new ColumnDefinition());
+        Grid.SetColumn(cancel, 2);
+        buttons.Children.Add(close);
+        buttons.Children.Add(cancel);
+
+        Content = new Border
         {
-            Margin = new Thickness(24),
-            Children =
+            Padding = new Thickness(20),
+            Child = new StackPanel
             {
-                new TextBlock
-                {
-                    Text = model.L("window.closeQuestion"),
-                    TextWrapping = TextWrapping.Wrap,
-                },
-                _remember,
-                new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    Children = { close, cancel },
-                },
+                Children = { body, buttons },
             },
         };
     }

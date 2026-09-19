@@ -1,0 +1,9 @@
+{
+  "name": "com.dots.herness.browser",
+  "description": "HerNess Browser Native Messaging host",
+  "path": "/ABSOLUTE/PATH/TO/herness-browser-host",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://REPLACE_WITH_32_CHARACTER_EXTENSION_ID/"
+  ]
+}

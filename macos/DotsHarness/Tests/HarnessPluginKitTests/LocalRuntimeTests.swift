@@ -139,6 +139,35 @@ final class LocalRuntimeTests: XCTestCase {
         XCTAssertFalse(VoiceCopy.downloadAction.isEmpty)
     }
 
+    func testWhisperTinyQ5MetadataIsPinned() {
+        XCTAssertEqual(LocalVoiceModel.whisperTinyQ5.filename, "ggml-tiny-q5_1.bin")
+        XCTAssertEqual(LocalVoiceModel.whisperTinyQ5.bytes, 32_152_673)
+        XCTAssertEqual(LocalVoiceModel.whisperTinyQ5.sha256, "818710568da3ca15689e31a743197b520007872ff9576237bda97bd1b469c3d7")
+        XCTAssertTrue(LocalVoiceModel.whisperTinyQ5.url?.absoluteString.contains("huggingface.co/ggerganov/whisper.cpp") == true)
+    }
+
+    func testVoiceVADKeepsBreathGapAndEndpointsAfter800Milliseconds() {
+        let detector = VoiceActivityDetector()
+        let speech = Array(repeating: Float(0.08), count: VoiceStreamTuning().frameSamples)
+        let silence = Array(repeating: Float(0), count: VoiceStreamTuning().frameSamples)
+
+        for _ in 0..<12 { _ = detector.consume(speech) }
+        let breathEvents = (0..<20).flatMap { _ in detector.consume(silence) }
+        XCTAssertFalse(breathEvents.contains { if case .utteranceEnded = $0 { true } else { false } })
+
+        let endpointEvents = (0..<20).flatMap { _ in detector.consume(silence) }
+        XCTAssertTrue(endpointEvents.contains { if case .utteranceEnded = $0 { true } else { false } })
+    }
+
+    func testVoiceVADFlushEndsRemainingSpeech() {
+        let detector = VoiceActivityDetector()
+        let speech = Array(repeating: Float(0.08), count: VoiceStreamTuning().frameSamples * 12)
+        _ = detector.consume(speech)
+
+        let events = detector.flush()
+        XCTAssertTrue(events.contains { if case .utteranceEnded = $0 { true } else { false } })
+    }
+
     func testNemotronMacRuntimeAssetsArePinnedPerArchitecture() throws {
         let arm = try NemotronRuntime.macAsset(arch: "arm64")
         XCTAssertTrue(arm.url.absoluteString.contains("macos-aarch64-metal"))

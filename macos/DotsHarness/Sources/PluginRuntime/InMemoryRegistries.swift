@@ -137,6 +137,11 @@ public final class InMemorySettingsRegistry: SettingsRegistry {
         persist?(values)
     }
 
+    public func remove(_ key: String) {
+        guard values.removeValue(forKey: key) != nil else { return }
+        persist?(values)
+    }
+
     public func snapshot() -> [String: JSONValue] { values }
 }
 

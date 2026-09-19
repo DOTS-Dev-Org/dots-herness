@@ -99,6 +99,10 @@ public enum ModelRouter {
         guard !available.isEmpty else { return nil }
         let role = self.role(for: messages)
         let target: ModelTier = role == .planner ? .premium : .light
+        // A turn that only consumes a tool result is mechanical. Every other worker
+        // turn still writes code, and stacking a light model with the lowest effort
+        // downgrades it twice for no measured saving.
+        let mechanical = messages.last?.role == .tool
 
         // Walk down from the target tier: a premium plan is better than no plan,
         // but if nothing premium is connected, the best standard model still runs.
@@ -106,7 +110,7 @@ public enum ModelRouter {
             ?? firstModel(atOrAbove: target, in: available, tierOf: tierOf)
         guard let candidate else { return nil }
 
-        let effort = self.effort(for: role, supported: candidate.efforts)
+        let effort = self.effort(for: role, supported: candidate.efforts, mechanical: mechanical)
         return ModelDecision(
             model: candidate.id,
             effort: effort,
@@ -137,15 +141,19 @@ public enum ModelRouter {
 
     // MARK: Effort
 
-    /// Highest supported level for a planner, lowest useful one for a worker.
+    /// Highest supported level for a planner. A worker takes the lowest level only
+    /// when the turn is mechanical; otherwise it takes the middle of what the model
+    /// offers, since that turn still has to get an edit right.
     /// `none` is only ever chosen when it is the sole option, since it disables
     /// reasoning entirely.
-    static func effort(for role: ModelRole, supported: [String]) -> String {
+    static func effort(for role: ModelRole, supported: [String], mechanical: Bool = true) -> String {
         let usable = supported.filter { $0 != "none" }
         guard !usable.isEmpty else { return "" }
         let order = ["low", "medium", "high", "xhigh", "max"]
         let ranked = usable.sorted { (order.firstIndex(of: $0) ?? 0) < (order.firstIndex(of: $1) ?? 0) }
-        return role == .planner ? (ranked.last ?? "") : (ranked.first ?? "")
+        if role == .planner { return ranked.last ?? "" }
+        if mechanical { return ranked.first ?? "" }
+        return ranked[min(1, ranked.count - 1)]
     }
 
     // MARK: Helpers

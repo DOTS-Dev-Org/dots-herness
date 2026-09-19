@@ -159,6 +159,11 @@ public sealed class InMemorySettingsRegistry : ISettingsRegistry
         _persist?.Invoke(_values);
     }
 
+    public void Remove(string key)
+    {
+        if (_values.Remove(key)) _persist?.Invoke(_values);
+    }
+
     public IReadOnlyDictionary<string, JsonValue> Snapshot() =>
         new ReadOnlyDictionary<string, JsonValue>(new Dictionary<string, JsonValue>(_values, StringComparer.Ordinal));
 }

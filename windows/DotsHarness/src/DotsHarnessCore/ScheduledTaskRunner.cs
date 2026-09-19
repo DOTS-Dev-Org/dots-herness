@@ -30,7 +30,11 @@ public sealed class ScheduledTaskRunner
         var workspace = NormalizeWorkspace(task.WorkspacePath);
         if (workspace is null) return new TaskRunResult(false, $"Workspace not found: {task.WorkspacePath}");
 
-        var bridge = new AgentBridge(_router, _paths)
+        var bridge = new AgentBridge(
+            _router,
+            _paths,
+            area: AgentArea.Coding,
+            sessionFileName: AgentArea.Coding.SessionFileName())
         {
             NonInteractive = true,
             AutoApproveCommands = task.AutoApproveCommands,

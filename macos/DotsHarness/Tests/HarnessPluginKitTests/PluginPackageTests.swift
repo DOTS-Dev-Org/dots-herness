@@ -17,11 +17,13 @@ final class PluginPackageTests: XCTestCase {
         name: Packed
         version: 0.2.0
         plane: session
-        promptSection:
-          name: packed:note
-          order: 40
-          text: packed and signed
+        runtime: native
+        library: plugin.native
         """.write(to: folder.appendingPathComponent("plugin.yml"), atomically: true, encoding: .utf8)
+        try "{\"version\":1,\"prompt\":[],\"tools\":[],\"events\":[],\"settings\":[],\"panels\":[]}".write(
+            to: folder.appendingPathComponent("plugin.ir.json"), atomically: true, encoding: .utf8
+        )
+        try Data("native placeholder".utf8).write(to: folder.appendingPathComponent("plugin.native"))
 
         let package = work.appendingPathComponent("packed.dotsplugin")
         try PluginPackage.pack(folder: folder, to: package)
@@ -61,7 +63,13 @@ final class PluginPackageTests: XCTestCase {
         name: Installed
         version: 0.1.0
         plane: session
+        runtime: native
+        library: plugin.native
         """.write(to: folder.appendingPathComponent("plugin.yml"), atomically: true, encoding: .utf8)
+        try "{\"version\":1,\"prompt\":[],\"tools\":[],\"events\":[],\"settings\":[],\"panels\":[]}".write(
+            to: folder.appendingPathComponent("plugin.ir.json"), atomically: true, encoding: .utf8
+        )
+        try Data("native placeholder".utf8).write(to: folder.appendingPathComponent("plugin.native"))
         let package = work.appendingPathComponent("installed.dotsplugin")
         try PluginPackage.pack(folder: folder, to: package)
 

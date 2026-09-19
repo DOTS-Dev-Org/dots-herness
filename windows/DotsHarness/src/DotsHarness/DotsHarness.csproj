@@ -3,7 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-    <UseWindowsForms>true</UseWindowsForms>
+    <UseWindowsForms>false</UseWindowsForms>
     <ApplicationIcon>Resources\DotsHarness.ico</ApplicationIcon>
     <RootNamespace>DotsHarness</RootNamespace>
     <AssemblyName>DotsHarness</AssemblyName>
@@ -11,8 +11,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App" />
+  </ItemGroup>
+  <ItemGroup>
     <Resource Include="Resources\DotsHarness.ico" />
-    <PackageReference Include="System.Speech" Version="8.0.0" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="QRCoder" Version="1.8.0" />
     <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
     <ProjectReference Include="..\PluginRuntime\PluginRuntime.csproj" />
     <ProjectReference Include="..\DotsHarnessCore\DotsHarnessCore.csproj" />

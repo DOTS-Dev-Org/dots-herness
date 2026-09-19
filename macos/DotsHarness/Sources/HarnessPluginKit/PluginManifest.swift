@@ -40,10 +40,10 @@ public struct PluginManifest: Codable, Sendable, Equatable {
     public var inject: [String]
     public var description: String
     public var library: String?
-    /// Entry script for `runtime: js` plugins (default `plugin.js`).
+    /// Legacy field retained only so old manifests can be rejected clearly.
     public var main: String?
     public var promptSection: PromptSectionSpec?
-    /// `native` (dylib / builtin), `declarative` (this file only), `js`.
+    /// Native manifests must use `native`; legacy values are rejected by the catalog.
     public var runtime: String
     public var tools: [ToolSpec]
     public var panels: [PanelSpec]

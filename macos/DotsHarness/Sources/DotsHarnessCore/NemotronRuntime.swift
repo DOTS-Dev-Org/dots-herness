@@ -37,12 +37,31 @@ public final class NemotronRuntime: @unchecked Sendable {
         paths.models.appendingPathComponent(Self.model.filename)
     }
 
+    private let binaryCacheLock = NSLock()
+    private var cachedBinaryURL: URL?
+
+    /// The runtime archive nests its files, so the binary is usually not at the expected
+    /// path and finding it walks the whole runtime folder. `isReady` is read whenever
+    /// the composer redraws, so the location is remembered (and re-checked with one stat).
     public var binaryURL: URL {
+        binaryCacheLock.lock()
+        let cached = cachedBinaryURL
+        binaryCacheLock.unlock()
+        if let cached, FileManager.default.fileExists(atPath: cached.path) { return cached }
+
         let expected = runtimeRoot.appendingPathComponent("bin/nemo-speech")
+        let found: URL
         if FileManager.default.fileExists(atPath: expected.path) {
-            return expected
+            found = expected
+        } else if let scanned = firstFile(named: "nemo-speech", under: runtimeRoot) {
+            found = scanned
+        } else {
+            return expected   // not installed: nothing worth remembering
         }
-        return firstFile(named: "nemo-speech", under: runtimeRoot) ?? expected
+        binaryCacheLock.lock()
+        cachedBinaryURL = found
+        binaryCacheLock.unlock()
+        return found
     }
 
     public var isModelInstalled: Bool {

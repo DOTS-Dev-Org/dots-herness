@@ -87,4 +87,39 @@ final class WorkspaceReadWriteTests: XCTestCase {
         // A write refreshes the ledger, so consecutive writes do not need a re-read.
         XCTAssertTrue(write("new.txt", "hello again").contains("new.txt"))
     }
+
+    func testAdditionalReadRootIsReadableButNotWritable() throws {
+        let extra = workspace.deletingLastPathComponent()
+            .appendingPathComponent("WorkspaceReadRoot-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: extra, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: extra) }
+        let file = extra.appendingPathComponent("notes.txt")
+        try "extra root".write(to: file, atomically: true, encoding: .utf8)
+
+        let list = WorkspaceTools.execute(
+            AgentToolCall(id: "list", name: "list_files", arguments: "{\"path\":\"\(extra.path)\"}"),
+            workspace: workspace,
+            readRoots: [extra]
+        )
+        XCTAssertTrue(list.contains("notes.txt"))
+
+        let contents = WorkspaceTools.execute(
+            AgentToolCall(id: "read", name: "read_file", arguments: "{\"path\":\"\(file.path)\"}"),
+            workspace: workspace,
+            readRoots: [extra]
+        )
+        XCTAssertEqual(contents, "extra root")
+
+        let write = WorkspaceTools.execute(
+            AgentToolCall(
+                id: "write",
+                name: "write_file",
+                arguments: "{\"path\":\"\(file.path)\",\"content\":\"changed\"}"
+            ),
+            workspace: workspace,
+            readRoots: [extra]
+        )
+        XCTAssertTrue(write.lowercased().contains("outside"))
+        XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), "extra root")
+    }
 }

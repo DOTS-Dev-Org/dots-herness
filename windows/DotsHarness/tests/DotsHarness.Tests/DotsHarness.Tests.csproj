@@ -14,6 +14,21 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\..\..\..\shared\SkillCatalogTests.cs" Link="SkillCatalogTests.cs" />
+    <Compile Include="..\..\..\..\shared\SkillSuggestionEngineTests.cs" Link="SkillSuggestionEngineTests.cs" />
+    <Compile Include="..\..\..\..\shared\HerNessPromptTests.cs" Link="HerNessPromptTests.cs" />
+    <Compile Include="..\..\..\..\shared\ProjectRulesTests.cs" Link="ProjectRulesTests.cs" />
+    <Compile Include="..\..\..\..\shared\WorkspaceBacklogTests.cs" Link="WorkspaceBacklogTests.cs" />
+    <Compile Include="..\..\..\..\shared\WorkspaceFactsTests.cs" Link="WorkspaceFactsTests.cs" />
+    <Compile Include="..\..\..\..\shared\ResponsesStreamTests.cs" Link="ResponsesStreamTests.cs" />
+    <Compile Include="..\..\..\..\shared\RemoteControlTests.cs" Link="RemoteControlTests.cs" />
+    <Compile Include="..\..\..\..\shared\VisionFallbackTests.cs" Link="VisionFallbackTests.cs" />
+    <Compile Include="..\..\..\..\shared\WorkspaceChangeTests.cs" Link="WorkspaceChangeTests.cs" />
+    <Compile Include="..\..\..\..\shared\LegalConsentTests.cs" Link="LegalConsentTests.cs" />
+    <Compile Include="..\..\..\..\shared\AgentAreaTests.cs" Link="AgentAreaTests.cs" />
+    <Compile Include="..\..\..\..\shared\MessageTailTests.cs" Link="MessageTailTests.cs" />
+    <Compile Include="..\..\..\..\shared\ConversationLoadTests.cs" Link="ConversationLoadTests.cs" />
+    <Compile Include="..\..\..\..\shared\ConcurrentRunsTests.cs" Link="ConcurrentRunsTests.cs" />
+    <Compile Include="..\..\..\..\shared\BrowserSecurityTests.cs" Link="BrowserSecurityTests.cs" />
     <ProjectReference Include="..\..\src\HarnessPluginKit\HarnessPluginKit.csproj" />
     <ProjectReference Include="..\..\src\PluginRuntime\PluginRuntime.csproj" />
     <ProjectReference Include="..\..\src\DotsHarnessCore\DotsHarnessCore.csproj" />

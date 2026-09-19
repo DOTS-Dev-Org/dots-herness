@@ -99,13 +99,14 @@ public actor MCPClient {
 
     init(
         config: MCPServerConfig,
-        transportFactory: (@Sendable (MCPServerConfig) -> MCPRawTransport)? = nil
+        transportFactory: (@Sendable (MCPServerConfig) -> MCPRawTransport)? = nil,
+        sandboxPolicy: SandboxExecutionPolicy? = nil
     ) {
         self.config = config
         self.makeTransport = transportFactory ?? { cfg in
             switch cfg.transport {
             case .http: return MCPHTTPTransport(config: cfg)
-            case .stdio: return MCPStdioTransport(config: cfg)
+            case .stdio: return MCPStdioTransport(config: cfg, sandboxPolicy: sandboxPolicy)
             }
         }
     }
@@ -248,6 +249,7 @@ final class MCPHTTPTransport: MCPRawTransport, @unchecked Sendable {
 /// transport. One reader task fans responses out to callers by request id.
 final class MCPStdioTransport: MCPRawTransport, @unchecked Sendable {
     private let config: MCPServerConfig
+    private let sandboxPolicy: SandboxExecutionPolicy?
     private let process = Process()
     private let stdin = Pipe()
     private let stdout = Pipe()
@@ -256,18 +258,35 @@ final class MCPStdioTransport: MCPRawTransport, @unchecked Sendable {
     private var buffer = Data()
     private var started = false
 
-    init(config: MCPServerConfig) {
+    init(config: MCPServerConfig, sandboxPolicy: SandboxExecutionPolicy? = nil) {
         self.config = config
+        self.sandboxPolicy = sandboxPolicy
     }
 
     private func startIfNeeded() throws {
         lock.lock(); defer { lock.unlock() }
         guard !started else { return }
-        process.executableURL = URL(fileURLWithPath: config.command)
-        process.arguments = config.arguments
-        if !config.environment.isEmpty {
-            process.environment = ProcessInfo.processInfo.environment.merging(config.environment) { _, new in new }
+        var environment = config.environment.isEmpty
+            ? ProcessInfo.processInfo.environment
+            : ProcessInfo.processInfo.environment.merging(config.environment) { _, new in new }
+        // A local MCP server is a process the agent's tools can drive, same
+        // as `run_command` — while a sandbox is active it goes through the
+        // same `sandbox-exec` jail rather than running with the app's full
+        // access. HTTP-transport servers aren't a local process and can't be
+        // wrapped this way; those are unaffected.
+        if let sandboxPolicy {
+            process.executableURL = SandboxProfile.executableURL
+            process.arguments = try SandboxProfile.arguments(
+                executable: config.command,
+                arguments: config.arguments,
+                policy: sandboxPolicy
+            )
+            environment = environment.merging(SandboxProfile.cacheEnvironment(workspaceURL: sandboxPolicy.workspaceURL)) { _, new in new }
+        } else {
+            process.executableURL = URL(fileURLWithPath: config.command)
+            process.arguments = config.arguments
         }
+        process.environment = environment
         process.standardInput = stdin
         process.standardOutput = stdout
         stdout.fileHandleForReading.readabilityHandler = { [weak self] handle in

@@ -11,8 +11,8 @@ namespace PluginRuntime;
 public enum PluginKind
 {
     Builtin,
-    Manifest,
     Dylib,
+    Unsupported,
 }
 
 public sealed record CatalogEntry(
@@ -30,7 +30,8 @@ public sealed record ResolvedPlugin(
     PluginManifest Manifest,
     PluginKind Kind,
     PluginTrust Trust,
-    Func<IHarnessPlugin> Make);
+    Func<IHarnessPlugin> Make,
+    string? PluginDirectory = null);
 
 public sealed record SupportPaths(
     string Root,
@@ -44,7 +45,16 @@ public sealed record SupportPaths(
 {
     public static SupportPaths Default()
     {
-        var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        // Linux: XDG data dir (ApplicationData maps to ~/.config there).
+        var xdg = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+        var baseDir = OperatingSystem.IsWindows()
+            ? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
+            : !string.IsNullOrWhiteSpace(xdg)
+                ? xdg
+                : Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    ".local",
+                    "share");
         if (string.IsNullOrEmpty(baseDir))
         {
             baseDir = Path.GetTempPath();
@@ -67,6 +77,7 @@ public sealed record SupportPaths(
         Directory.CreateDirectory(Presets);
         Directory.CreateDirectory(Models);
         Directory.CreateDirectory(Runtime);
+        Directory.CreateDirectory(Path.Combine(Root, "skills"));
     }
 }
 
@@ -121,16 +132,32 @@ public sealed class PluginCatalog : ObservableObject
                 try
                 {
                     var manifest = MiniYaml.DecodeManifest(File.ReadAllText(yaml));
-                    var kind = manifest.Library is null ? PluginKind.Manifest : PluginKind.Dylib;
                     var trust = _trustOverrides.TryGetValue(manifest.Id, out var t) ? t : PluginTrust.Untrusted;
-                    next.Add(new CatalogEntry(manifest, kind, trust, !_disabled.Contains(manifest.Id), Url: folder));
+                    var runtime = manifest.Runtime.Trim().ToLowerInvariant();
+                    var library = manifest.Library?.Trim();
+                    if (runtime != "native"
+                        || string.IsNullOrWhiteSpace(library)
+                        || Path.IsPathRooted(library)
+                        || library.Contains("..", StringComparison.Ordinal)
+                        || !File.Exists(Path.Combine(folder, library)))
+                    {
+                        next.Add(new CatalogEntry(
+                            manifest,
+                            PluginKind.Unsupported,
+                            trust,
+                            Enabled: false,
+                            Broken: "Only native plugins with a safe library are supported. JavaScript and declarative plugins are no longer loadable.",
+                            Url: folder));
+                        continue;
+                    }
+                    next.Add(new CatalogEntry(manifest, PluginKind.Dylib, trust, !_disabled.Contains(manifest.Id), Url: folder));
                 }
                 catch (Exception ex)
                 {
                     var name = Path.GetFileName(folder);
                     next.Add(new CatalogEntry(
                         new PluginManifest(name, name, "0.0.0", PluginPlane.Session),
-                        PluginKind.Manifest,
+                        PluginKind.Unsupported,
                         PluginTrust.Untrusted,
                         Enabled: false,
                         Broken: ex.Message,
@@ -172,8 +199,7 @@ public sealed class PluginCatalog : ObservableObject
         return entry.Kind switch
         {
             PluginKind.Builtin => throw PluginException.UnknownPlugin(id),
-            PluginKind.Manifest => new ResolvedPlugin(entry.Manifest, PluginKind.Manifest, entry.Trust,
-                () => new ManifestPlugin(entry.Manifest, entry.Url)),
+            PluginKind.Unsupported => throw PluginException.InvalidManifest("Only native plugins with a compiled library can be loaded"),
             PluginKind.Dylib => ResolveLibrary(entry),
             _ => throw PluginException.UnknownPlugin(id),
         };
@@ -186,7 +212,7 @@ public sealed class PluginCatalog : ObservableObject
             throw PluginException.InvalidManifest("missing library");
         }
         var path = Path.Combine(entry.Url, entry.Manifest.Library);
-        return new ResolvedPlugin(entry.Manifest, PluginKind.Dylib, entry.Trust, () => PluginLibrary.Load(path));
+        return new ResolvedPlugin(entry.Manifest, PluginKind.Dylib, entry.Trust, () => PluginLibrary.Load(path), entry.Url);
     }
 
     private void LoadTrust()

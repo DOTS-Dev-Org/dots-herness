@@ -3,18 +3,67 @@
              xmlns:views="using:DotsHarness.Views"
              x:Class="DotsHarness.Views.ConversationView"
              DragDrop.AllowDrop="True"
-             DragOver="OnDragOver"
-             DragLeave="OnDragLeave"
-             Drop="OnDrop"
+             DragDrop.DragOver="OnDragOver"
+             DragDrop.DragLeave="OnDragLeave"
+             DragDrop.Drop="OnDrop"
              Background="{DynamicResource PanelBackground}">
+    <UserControl.Styles>
+        <Style Selector="Border.composer-banner">
+            <Setter Property="Background" Value="{DynamicResource PanelBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="18"/>
+            <Setter Property="Padding" Value="14"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+    </UserControl.Styles>
     <DockPanel>
         <DockPanel DockPanel.Dock="Top" Margin="20,14,20,8">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                 <Button x:Name="TerminalButton" Content="Terminal" Padding="12,4"
                         Click="OnTerminal"/>
-                <ComboBox x:Name="ModelPicker" Width="220" Margin="8,0,0,0"
-                          SelectionChanged="OnModelChanged"
-                          ToolTip.Tip="Model"/>
+                <Button x:Name="ModelPicker" Margin="8,0,0,0" Padding="12,4" ToolTip.Tip="Model">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock x:Name="ModelPickerName" Foreground="{DynamicResource TextPrimary}"/>
+                        <TextBlock x:Name="ModelPickerEffort" Foreground="{DynamicResource TextSecondary}"/>
+                        <TextBlock Text="⌄" Foreground="{DynamicResource TextSecondary}"/>
+                    </StackPanel>
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight" Opened="OnModelFlyoutOpened">
+                            <StackPanel Width="300" Spacing="8">
+                                <Border x:Name="EffortCard" CornerRadius="12" Padding="10" Background="{DynamicResource PanelBackground}"
+                                        BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1">
+                                    <StackPanel Spacing="10">
+                                        <Grid ColumnDefinitions="28,*,28">
+                                            <Button x:Name="EffortTitleButton" Grid.Column="1" HorizontalAlignment="Center" Padding="0"
+                                                    Background="Transparent" BorderThickness="0" Click="OnShowModels">
+                                                <StackPanel>
+                                                    <TextBlock x:Name="EffortTitle" FontSize="15" FontWeight="SemiBold"
+                                                               HorizontalAlignment="Center"/>
+                                                    <TextBlock x:Name="EffortModelName" FontSize="11" HorizontalAlignment="Center"
+                                                               Foreground="{DynamicResource TextSecondary}"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button x:Name="EffortResetButton" Grid.Column="2" Content="↺" Padding="4,0"
+                                                    Background="Transparent" Click="OnEffortReset"/>
+                                        </Grid>
+                                        <Canvas x:Name="EffortTrack" Height="30" Background="Transparent"
+                                                PointerPressed="OnEffortPressed" PointerMoved="OnEffortPointer"
+                                                SizeChanged="OnEffortTrackSized"/>
+                                    </StackPanel>
+                                </Border>
+                                <StackPanel x:Name="ModelListPanel" IsVisible="False">
+                                    <Button x:Name="ModelListBack" HorizontalAlignment="Left" Padding="10,4" Background="Transparent"
+                                            BorderThickness="0" Click="OnHideModels">
+                                        <TextBlock x:Name="ModelListHeader" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                    </Button>
+                                    <ListBox x:Name="ModelList" MaxHeight="340" Background="Transparent"
+                                             SelectionChanged="OnModelChanged"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
                 <Button x:Name="StopButton" Content="Stop" Margin="8,0,0,0" Padding="12,4"
                         Click="OnStop" IsVisible="False"/>
             </StackPanel>
@@ -24,6 +73,38 @@
         <Border DockPanel.Dock="Bottom" Background="{DynamicResource ChromeBackground}" Padding="16">
             <DockPanel>
                 <views:SlotHost x:Name="ComposerAccessory" DockPanel.Dock="Top" Margin="0,0,0,8"/>
+                <Border x:Name="VoiceIntro" DockPanel.Dock="Top" Classes="composer-banner" IsVisible="False">
+                    <DockPanel>
+                        <Button x:Name="DismissVoiceIntroButton" DockPanel.Dock="Right" Content="×" Width="30" Height="30"
+                                Padding="0" Click="OnDismissVoiceIntro" ToolTip.Tip="Dismiss voice introduction"/>
+                        <Button x:Name="StartVoiceIntroButton" DockPanel.Dock="Right" Content="Start Voice" Margin="12,0,10,0"
+                                Padding="14,7" Click="OnStartVoiceIntro"/>
+                        <StackPanel Orientation="Horizontal">
+                            <PathIcon Width="28" Height="28" Margin="0,0,12,0" Foreground="{DynamicResource TextPrimary}"
+                                      Data="M12,14 C13.66,14 15,12.66 15,11 L15,5 C15,3.34 13.66,2 12,2 C10.34,2 9,3.34 9,5 L9,11 C9,12.66 10.34,14 12,14 Z M17.3,11 C17.3,14 14.76,16.1 12,16.1 C9.24,16.1 6.7,14 6.7,11 L5,11 C5,14.41 7.72,17.23 11,17.72 L11,21 L9,21 L9,23 L15,23 L15,21 L13,21 L13,17.72 C16.28,17.23 19,14.41 19,11 Z"/>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock x:Name="VoiceIntroTitle" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                                <TextBlock x:Name="VoiceIntroBody" FontSize="12" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+                <Border x:Name="SkillSuggestionBanner" DockPanel.Dock="Top" Classes="composer-banner" IsVisible="False">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button x:Name="DismissSkillSuggestionButton" Content="Not now" Margin="0,0,8,0"
+                                    Padding="12,6" Click="OnDismissSkillSuggestion"/>
+                            <Button x:Name="AcceptSkillSuggestionButton" Content="Create Skill"
+                                    Padding="12,6" Click="OnAcceptSkillSuggestion"/>
+                        </StackPanel>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock x:Name="SkillSuggestionTitle" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimary}"/>
+                            <TextBlock x:Name="SkillSuggestionDescription" FontSize="12" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
                 <TextBlock x:Name="DropHint" DockPanel.Dock="Top" Text="Drop files here"
                            IsVisible="False" Margin="0,0,0,8"
                            Foreground="{DynamicResource Accent}"/>
@@ -55,12 +136,14 @@
                                   Click="OnPlanMode" ToolTip.Tip="Toggle plan mode"
                                   AutomationProperties.Name="Plan mode">
                         <ToggleButton.Styles>
-                            <Style Selector="^:checked">
+                            <Style Selector="ToggleButton:checked">
                                 <Setter Property="Foreground" Value="{DynamicResource Accent}"/>
                             </Style>
                         </ToggleButton.Styles>
                     </ToggleButton>
                 </StackPanel>
+                <Button x:Name="VoiceButton" DockPanel.Dock="Right" Content="Mic" Width="80" Height="36"
+                        Margin="8,0,0,0" Click="OnVoice" ToolTip.Tip="Start voice input"/>
                 <Button x:Name="SendButton" DockPanel.Dock="Right" Content="Send" Width="80" Height="36"
                         Margin="8,0,0,0" Click="OnSend"/>
                 <TextBox x:Name="DraftBox"
@@ -69,16 +152,36 @@
                          MinHeight="36" MaxHeight="140"
                          Padding="10,8"
                          KeyDown="OnDraftKey"/>
+                <TextBlock x:Name="VoiceStatus" DockPanel.Dock="Top" Margin="0,6,0,0" FontSize="11"
+                           Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" IsVisible="False"/>
             </DockPanel>
         </Border>
-        <Border x:Name="QuestionBar" DockPanel.Dock="Bottom" Background="#142F6FED" Padding="12" IsVisible="False">
+        <Border x:Name="QuestionBar" DockPanel.Dock="Bottom" Classes="composer-banner" IsVisible="False">
             <DockPanel>
-                <TextBlock x:Name="QuestionPrompt" FontWeight="SemiBold" DockPanel.Dock="Top" Margin="0,0,0,8"
+                <TextBlock x:Name="QuestionTitle" FontWeight="SemiBold" DockPanel.Dock="Top" Margin="0,0,0,8"
                            Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
-                <WrapPanel x:Name="QuestionOptions"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                    <Button x:Name="QuestionSkipButton" Margin="0,0,8,0" Click="OnQuestionSkip"/>
+                    <Button x:Name="QuestionSubmitButton" Click="OnQuestionSubmit"/>
+                </StackPanel>
+                <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="QuestionOptions"/>
+                </ScrollViewer>
             </DockPanel>
         </Border>
-        <Border x:Name="ApprovalBar" DockPanel.Dock="Bottom" Background="#22E67E22" Padding="12" IsVisible="False">
+        <Border x:Name="VisionBar" DockPanel.Dock="Bottom" Classes="composer-banner" IsVisible="False">
+            <DockPanel>
+                <StackPanel>
+                    <TextBlock x:Name="VisionTitle" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock x:Name="VisionReason" FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="VisionRejectButton" Content="Not now" Margin="0,0,8,0" Click="OnVisionReject"/>
+                    <Button x:Name="VisionAllowButton" Content="Download and continue" Click="OnVisionAllow"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+        <Border x:Name="ApprovalBar" DockPanel.Dock="Bottom" Classes="composer-banner" IsVisible="False">
             <DockPanel>
                 <StackPanel>
                     <TextBlock x:Name="ApprovalTitle" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
@@ -104,8 +207,8 @@
                                         CaretBrush="#E6E6E6" BorderThickness="0"
                                         Padding="14,12" FontFamily="monospace" FontSize="13"
                                         TextWrapping="NoWrap" AcceptsReturn="True" AcceptsTab="True"
-                                        IsReadOnly="True" VerticalScrollBarVisibility="Auto"
-                                        HorizontalScrollBarVisibility="Auto"/>
+                                        IsReadOnly="True" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                        ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
             </DockPanel>
         </Border>
         <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto">
@@ -122,11 +225,16 @@
                            TextWrapping="Wrap"
                            IsVisible="False"/>
                 <ItemsControl x:Name="Messages" Margin="24,8,24,24">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Margin="0,0,0,12" Padding="12" CornerRadius="12"
-                                    Background="{Binding Kind, Converter={x:Static views:KindBrush.Instance}}">
-                                <Grid>
+                            <Border Margin="0,0,0,20">
+                                <StackPanel>
+<Grid>
                                     <StackPanel IsVisible="{Binding Kind, Converter={x:Static views:NotPlanVisibility.Instance}}">
                                         <DockPanel>
                                             <TextBlock Text="{Binding Kind, Converter={x:Static views:KindLabel.Instance}}"
@@ -137,6 +245,11 @@
                                         </DockPanel>
                                         <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,6,0,0"
                                                    Foreground="{DynamicResource TextPrimary}"/>
+                                        <TextBlock Text="{Binding ContextRootIds, Converter={x:Static views:ContextRootLabel.Instance}}"
+                                                   FontSize="11" Foreground="{DynamicResource TextSecondary}" Margin="0,6,0,0"/>
+                                        <TextBlock Text="{Binding ., Converter={x:Static views:RunSummaryLabel.Instance}}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                                   Foreground="{DynamicResource TextSecondary}"
+                                                   IsVisible="{Binding ., Converter={x:Static views:RunSummaryVisibility.Instance}}"/>
                                         <Image MaxWidth="520" MaxHeight="520" Stretch="Uniform" HorizontalAlignment="Left" Margin="0,8,0,0"
                                                Source="{Binding Media.FilePath, Converter={x:Static views:AttachmentImage.Instance}}"/>
                                         <ItemsControl ItemsSource="{Binding Attachments}" Margin="0,8,0,0">
@@ -183,12 +296,13 @@
                                                 </ItemsControl>
                                             </StackPanel>
                                         </Expander>
-                                        <Expander Header="Değişen dosyalar" IsExpanded="False" Margin="0,6,0,0"
+                                        <Expander Header="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.changedFiles}" IsExpanded="False" Margin="0,6,0,0"
                                                   IsVisible="{Binding ., Converter={x:Static views:MetadataVisibility.Instance}, ConverterParameter=files}">
                                             <ItemsControl ItemsSource="{Binding ChangedFiles}" Margin="8,6,0,0">
                                                 <ItemsControl.ItemTemplate><DataTemplate>
-                                                    <TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis"
-                                                               Foreground="{DynamicResource TextPrimary}"/>
+                                                    <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}" TextTrimming="CharacterEllipsis"
+                                                               Foreground="{DynamicResource TextPrimary}"
+                                                               AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"/>
                                                 </DataTemplate></ItemsControl.ItemTemplate>
                                             </ItemsControl>
                                         </Expander>
@@ -210,6 +324,9 @@
                                             </DockPanel>
                                             <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,10,0,10"
                                                        FontFamily="Consolas" Foreground="{DynamicResource TextPrimary}"/>
+                                            <TextBlock Text="{Binding ., Converter={x:Static views:RunSummaryLabel.Instance}}" TextWrapping="Wrap" Margin="0,0,0,10"
+                                                       Foreground="{DynamicResource TextSecondary}"
+                                                       IsVisible="{Binding ., Converter={x:Static views:RunSummaryVisibility.Instance}}"/>
                                             <Expander Header="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.used}" IsExpanded="False" Margin="0,0,0,6"
                                                       IsVisible="{Binding ., Converter={x:Static views:MetadataVisibility.Instance}, ConverterParameter=used}">
                                                 <StackPanel Margin="8,6,0,0">
@@ -236,8 +353,9 @@
                                                   IsVisible="{Binding ., Converter={x:Static views:MetadataVisibility.Instance}, ConverterParameter=files}">
                                                 <ItemsControl ItemsSource="{Binding ChangedFiles}" Margin="8,6,0,0">
                                                     <ItemsControl.ItemTemplate><DataTemplate>
-                                                        <TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis"
-                                                                   Foreground="{DynamicResource TextPrimary}"/>
+                                                        <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}" TextTrimming="CharacterEllipsis"
+                                                                   Foreground="{DynamicResource TextPrimary}"
+                                                                   AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"/>
                                                     </DataTemplate></ItemsControl.ItemTemplate>
                                                 </ItemsControl>
                                             </Expander>
@@ -249,11 +367,25 @@
                                         </StackPanel>
                                     </Border>
                                 </Grid>
+                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0" Opacity="0.7" IsVisible="{Binding ., Converter={x:Static views:MessageActionsVisibility.Instance}}">
+                                        <Button Tag="{Binding}" Click="OnCopyMessage" Padding="4" Background="Transparent" BorderThickness="0"
+                                                AutomationProperties.Name="Copy" ToolTip.Tip="Copy">
+                                            <Path Data="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" Fill="{DynamicResource TextSecondary}" Stretch="Uniform" Width="15" Height="15"/>
+                                        </Button>
+                                        <TextBlock Text="{Binding CreatedAt, Converter={x:Static views:RelativeTime.Instance}}" FontSize="13" Margin="12,0,0,0"
+                                                   VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+                                    </StackPanel>
+                                </StackPanel>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <ItemsControl x:Name="PendingMessages" Margin="24,0,24,24">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border Margin="0,0,0,12" Padding="12" CornerRadius="12"

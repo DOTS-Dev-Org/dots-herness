@@ -65,14 +65,25 @@ public sealed class RouterController : ObservableObject, IDisposable
     public CustomApiKind CustomKind { get => _customKind; set => SetProperty(ref _customKind, value); }
     public CustomOpenAiApiType CustomApiType { get => _customApiType; set => SetProperty(ref _customApiType, value); }
     public string SelectedModelID { get => _selectedModelID; set => SetProperty(ref _selectedModelID, value?.Trim() ?? ""); }
+    public string SelectedEffort
+    {
+        get => _router.Effort;
+        set { _router.Effort = value ?? ""; OnPropertyChanged(); }
+    }
+    public IReadOnlyList<string> Efforts(string? model) => NativeEffortCatalog.Levels(model);
     public bool IsEditingCustom => _editingNodeId is not null;
     public NativeProviderStore Store => _store;
     public ProviderImageAdapterRegistry ImageAdapters => _imageAdapters;
+    public event Action<ConnectionTransition>? ConnectionChanged;
 
-    public RouterController(SupportPaths paths, ProviderImageAdapterRegistry? imageAdapters = null)
+    public RouterController(
+        SupportPaths paths,
+        ProviderImageAdapterRegistry? imageAdapters = null,
+        IProviderSecretStore? providerSecrets = null,
+        NativeProviderStore? providerStore = null)
     {
         paths.Ensure();
-        _store = new NativeProviderStore(paths.Root, new PlatformProviderSecrets(paths.Root));
+        _store = providerStore ?? new NativeProviderStore(paths.Root, providerSecrets ?? new PlatformProviderSecrets(paths.Root));
         _router = new NativeProviderRouter(_store, RefreshCredentialAsync);
         _imageAdapters = imageAdapters ?? new ProviderImageAdapterRegistry();
         NativeProviderImageAdapters.Register(_imageAdapters);
@@ -84,7 +95,8 @@ public sealed class RouterController : ObservableObject, IDisposable
 
     public async Task RefreshAsync()
     {
-        RefreshState();
+        // Accounts and cached models are local: publish them now, then refine from the network.
+        RefreshState(readShareKey: false);
         await RefreshModelsAsync();
         Status = $"{Connections.Count(c => c.Active)} active · {Connections.Count} connections";
     }
@@ -102,8 +114,10 @@ public sealed class RouterController : ObservableObject, IDisposable
         {
             if (string.IsNullOrWhiteSpace(ApiKeyName) || string.IsNullOrWhiteSpace(ApiKeyValue)) throw new NativeProviderException("Name and API key are required.");
             if (string.IsNullOrWhiteSpace(SelectedKind.BaseUrl)) throw new NativeProviderException("Use Custom API for this provider until a direct endpoint is configured.");
-            _store.AddAccount(RouterCatalog.Descriptor(SelectedKind), ApiKeyName, ApiKeyValue);
+            var previous = CurrentAccount?.Name;
+            var added = _store.AddAccount(RouterCatalog.Descriptor(SelectedKind), ApiKeyName, ApiKeyValue);
             ApiKeyValue = "";
+            ConnectionChanged?.Invoke(new ConnectionTransition("added", previous, added.Name, "preserved", []));
             Status = $"Connected {SelectedKind.Name}";
             await RefreshAsync();
         }
@@ -150,7 +164,9 @@ public sealed class RouterController : ObservableObject, IDisposable
             var token = await ExchangeCodeAsync(query["code"]!, browser.RedirectUri, browser.CodeVerifier);
             var claims = Claims(token.IdToken ?? token.AccessToken);
             var provider = RouterCatalog.KindFor("gpt")!;
-            _store.AddAccount(RouterCatalog.Descriptor(provider), claims.TryGetValue("email", out var email) ? email : "GPT account", token.AccessToken, authType: "chatgpt", email: claims.GetValueOrDefault("email"), sessionAccountId: claims.GetValueOrDefault("chatgpt_account_id"), refreshSecret: token.RefreshToken);
+            var previous = CurrentAccount?.Name;
+            var added = _store.AddAccount(RouterCatalog.Descriptor(provider), claims.TryGetValue("email", out var email) ? email : "GPT account", token.AccessToken, authType: "chatgpt", email: claims.GetValueOrDefault("email"), sessionAccountId: claims.GetValueOrDefault("chatgpt_account_id"), refreshSecret: token.RefreshToken);
+            ConnectionChanged?.Invoke(new ConnectionTransition("added", previous, added.Name, "preserved", []));
             CallbackPaste = "";
             Flow = RouterFlow.IdleFlow;
             _callbackListener?.Stop(); _callbackListener = null;
@@ -173,7 +189,12 @@ public sealed class RouterController : ObservableObject, IDisposable
         }
     }
 
-    public Task ToggleAsync(RouterConnection connection) { _store.SetActive(connection.Id, !connection.Active); return RefreshAsync(); }
+    public Task ToggleAsync(RouterConnection connection)
+    {
+        _store.SetActive(connection.Id, !connection.Active);
+        ConnectionChanged?.Invoke(new ConnectionTransition("selected", connection.Name, connection.Name, "preserved", []));
+        return RefreshAsync();
+    }
 
     public Task ToggleImageFallbackAsync(RouterConnection connection)
     {
@@ -208,10 +229,26 @@ public sealed class RouterController : ObservableObject, IDisposable
         catch (Exception ex) { Error = ex.Message; }
     }
 
-    public Task RemoveAsync(RouterConnection connection)
+    public async Task RemoveAsync(RouterConnection connection)
     {
-        if (_store.State.Accounts.FirstOrDefault(a => a.Id == connection.Id) is { } account) _store.Remove(account);
-        return RefreshAsync();
+        if (_store.State.Accounts.FirstOrDefault(a => a.Id == connection.Id) is { } account)
+        {
+            try
+            {
+                var artifacts = _store.Remove(account);
+                var verified = !_store.State.Accounts.Any(item => item.Id == account.Id)
+                    && _store.Secrets.Read(account.CredentialId) is null
+                    && (account.RefreshCredentialId is null || _store.Secrets.Read(account.RefreshCredentialId) is null);
+                ConnectionChanged?.Invoke(new ConnectionTransition(
+                    "removed", connection.Name, null, verified ? "verified" : "failed", artifacts));
+            }
+            catch (Exception ex)
+            {
+                Error = ex.Message;
+                ConnectionChanged?.Invoke(new ConnectionTransition("removed", connection.Name, null, "failed", []));
+            }
+        }
+        await RefreshAsync();
     }
 
     public async Task TestNodeAsync(RouterNode node)
@@ -270,15 +307,18 @@ public sealed class RouterController : ObservableObject, IDisposable
                 : null;
             if (endpoint is not null)
             {
+                var previous = endpoint.Name;
                 _store.UpdateCustom(endpoint, CustomName, CustomPrefix, CustomBaseUrl, CustomKind.Protocol(), CustomApiType == CustomOpenAiApiType.Responses ? "responses" : "chat", secret);
                 _editingNodeId = null;
                 OnPropertyChanged(nameof(IsEditingCustom));
+                ConnectionChanged?.Invoke(new ConnectionTransition("replaced", previous, CustomName.Trim(), "preserved", []));
                 Status = $"Custom API “{CustomName.Trim()}” updated";
             }
             else
             {
                 var added = _store.AddCustom(CustomName, SanitizedPrefix(string.IsNullOrWhiteSpace(CustomPrefix) ? CustomName : CustomPrefix), CustomBaseUrl, CustomKind.Protocol(), CustomApiType == CustomOpenAiApiType.Responses ? "responses" : "chat", secret);
                 if (registerKey) _store.AddCustomAccount(added, CustomApiKey);
+                ConnectionChanged?.Invoke(new ConnectionTransition("added", null, added.Name, "preserved", []));
                 Status = $"Custom API “{added.Name}” added";
             }
             CustomApiKey = "";
@@ -294,7 +334,7 @@ public sealed class RouterController : ObservableObject, IDisposable
         CustomName = endpoint.Name;
         CustomPrefix = endpoint.Prefix;
         CustomBaseUrl = endpoint.BaseUrl;
-        CustomKind = endpoint.Type.StartsWith("anthropic", StringComparison.OrdinalIgnoreCase) ? CustomApiKind.AnthropicCompatible : CustomApiKind.OpenaiCompatible;
+        CustomKind = endpoint.Protocol == NativeProviderProtocol.Anthropic ? CustomApiKind.AnthropicCompatible : CustomApiKind.OpenaiCompatible;
         CustomApiType = endpoint.ApiType == "responses" ? CustomOpenAiApiType.Responses : CustomOpenAiApiType.Chat;
         CustomApiKey = "";
         Error = null;
@@ -308,24 +348,65 @@ public sealed class RouterController : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsEditingCustom));
     }
 
-    public Task DeleteNodeAsync(RouterNode node)
+    public async Task DeleteNodeAsync(RouterNode node)
     {
-        if (_store.State.Endpoints.FirstOrDefault(e => e.Id == node.Id) is { } endpoint) _store.Remove(endpoint);
-        return RefreshAsync();
+        if (_store.State.Endpoints.FirstOrDefault(e => e.Id == node.Id) is { } endpoint)
+        {
+            try
+            {
+                var accounts = _store.State.Accounts.Where(account => account.Provider == $"custom:{endpoint.Id}").ToArray();
+                var artifacts = _store.Remove(endpoint);
+                var verified = !_store.State.Endpoints.Any(item => item.Id == endpoint.Id)
+                    && !_store.State.Accounts.Any(account => account.Provider == $"custom:{endpoint.Id}")
+                    && (endpoint.CredentialId is null || _store.Secrets.Read(endpoint.CredentialId) is null)
+                    && accounts.All(account => _store.Secrets.Read(account.CredentialId) is null
+                        && (account.RefreshCredentialId is null || _store.Secrets.Read(account.RefreshCredentialId) is null));
+                ConnectionChanged?.Invoke(new ConnectionTransition("removed", endpoint.Name, null, verified ? "verified" : "failed", artifacts));
+            }
+            catch (Exception ex)
+            {
+                Error = ex.Message;
+                ConnectionChanged?.Invoke(new ConnectionTransition("removed", endpoint.Name, null, "failed", []));
+            }
+        }
+        await RefreshAsync();
     }
 
-    public Task ConnectExistingNodeAsync(RouterNode node)
+    public async Task ConnectExistingNodeAsync(RouterNode node)
     {
-        if (_store.State.Endpoints.FirstOrDefault(e => e.Id == node.Id) is { } endpoint) _store.AddCustomAccount(endpoint, string.IsNullOrWhiteSpace(CustomApiKey) ? null : CustomApiKey.Trim());
-        CustomApiKey = "";
-        return RefreshAsync();
+        try
+        {
+            if (_store.State.Endpoints.FirstOrDefault(e => e.Id == node.Id) is { } endpoint)
+            {
+                var previous = CurrentAccount?.Name;
+                var added = _store.AddCustomAccount(endpoint, string.IsNullOrWhiteSpace(CustomApiKey) ? null : CustomApiKey.Trim());
+                ConnectionChanged?.Invoke(new ConnectionTransition("added", previous, added.Name, "preserved", []));
+            }
+            CustomApiKey = "";
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
     }
 
     public string SanitizedPrefix(string raw) => NativeProviderStore.SanitizePrefix(raw);
 
     public Task CreateShareKeyAsync() { var key = CreateShareKey(); Keys.Clear(); Keys.Add(new RouterKey("share.key", "Share key", key)); return Task.CompletedTask; }
 
-    public Task<NativeResponse> CompleteAsync(IReadOnlyList<NativeMessage> messages, IReadOnlyList<NativeToolDefinition> tools, string? model = null, CancellationToken ct = default) => _router.CompleteAsync(messages, tools, string.IsNullOrWhiteSpace(model) ? SelectedModelID : model, ct);
+    public Task<NativeResponse> CompleteAsync(
+        IReadOnlyList<NativeMessage> messages,
+        IReadOnlyList<NativeToolDefinition> tools,
+        string? model = null,
+        CancellationToken ct = default,
+        string? promptCacheKey = null) =>
+        _router.CompleteAsync(
+            messages,
+            tools,
+            string.IsNullOrWhiteSpace(model) ? SelectedModelID : model,
+            ct,
+            promptCacheKey);
     public bool HasImageFallback => _imageRouter.HasFallback;
     public bool ImageGenerationCommandVisible => _imageRouter.CommandVisible(SelectedModelID);
     public Task<NativeImageGeneration> GenerateImageAsync(string prompt, CancellationToken ct = default) => _imageRouter.GenerateAsync(prompt, SelectedModelID, ct);
@@ -383,7 +464,7 @@ public sealed class RouterController : ObservableObject, IDisposable
         .FirstOrDefault(a => CanServe(a, SelectedModelID))
         ?? _store.State.Accounts.Where(a => a.Active).OrderBy(a => a.Priority).FirstOrDefault();
 
-    private void RefreshState()
+    private void RefreshState(bool readShareKey = true)
     {
         Connections.Clear(); foreach (var account in _store.State.Accounts) Connections.Add(new RouterConnection(account));
         Models.Clear();
@@ -396,48 +477,81 @@ public sealed class RouterController : ObservableObject, IDisposable
             SelectedModelID = Models.FirstOrDefault() ?? "";
         }
         Nodes.Clear(); foreach (var endpoint in _store.State.Endpoints) Nodes.Add(new RouterNode(endpoint));
-        Keys.Clear(); if (_store.Secrets.Read("share.key") is { } key) Keys.Add(new RouterKey("share.key", "Share key", key));
+        if (readShareKey) ApplyShareKey(_store.Secrets.Read("share.key"));
         Reachable = true; OnPropertyChanged(nameof(Reachable));
     }
 
+    private void ApplyShareKey(string? key)
+    {
+        Keys.Clear(); if (key is not null) Keys.Add(new RouterKey("share.key", "Share key", key));
+    }
+
+    private sealed record ModelDiscovery(List<string> Models, Dictionary<string, int> ContextWindows);
+
     private async Task RefreshModelsAsync()
     {
-        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
-        foreach (var account in _store.State.Accounts.Where(a => a.Active))
+        // All providers at once, off the UI thread (secret lookups may spawn a process on Linux).
+        var accounts = _store.State.Accounts.Where(a => a.Active).ToList();
+        var shareKey = Task.Run(() => _store.Secrets.Read("share.key"));
+        var results = await Task.WhenAll(accounts.Select(DiscoverSharedAsync));
+        for (var i = 0; i < accounts.Count; i++)
         {
-            var fallback = ModelsFor(account).ToList();
-            if (account.Protocol == NativeProviderProtocol.ChatGpt) { account.Models = fallback; continue; }
-            try
-            {
-                var url = NativeProviderStore.NormalizeUrl(account.BaseUrl).TrimEnd('/') + "/models";
-                using var request = new HttpRequestMessage(HttpMethod.Get, url);
-                var key = _store.Secrets.Read(account.CredentialId);
-                if (!string.IsNullOrWhiteSpace(key))
-                {
-                    if (account.Protocol == NativeProviderProtocol.Anthropic) request.Headers.TryAddWithoutValidation("x-api-key", key);
-                    else request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", key);
-                }
-                if (account.Protocol == NativeProviderProtocol.Anthropic) request.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
-                using var response = await http.SendAsync(request);
-                var root = JsonNode.Parse(await response.Content.ReadAsStringAsync());
-                var live = new List<string>();
-                if (response.IsSuccessStatusCode)
-                {
-                    foreach (var item in root?["data"]?.AsArray() ?? new JsonArray())
-                    {
-                        var id = item?["id"]?.GetValue<string>();
-                        if (string.IsNullOrWhiteSpace(id)) continue;
-                        var context = item?["context_length"]?.GetValue<int>() ?? item?["context_window"]?.GetValue<int>() ?? 0;
-                        if (context > 0) _contextWindows[id] = context;
-                        if (!live.Contains(id, StringComparer.Ordinal)) live.Add(id);
-                    }
-                }
-                account.Models = live.Count > 0 ? live : fallback;
-            }
-            catch { account.Models = fallback; }
+            accounts[i].Models = results[i].Models;
+            foreach (var (id, context) in results[i].ContextWindows) _contextWindows[id] = context;
         }
         _store.Save();
-        RefreshState();
+        RefreshState(readShareKey: false);
+        ApplyShareKey(await shareKey);
+    }
+
+    // Chat and Coding refresh the same accounts at startup, at the same time. The second
+    // caller joins the request already in flight instead of sending a duplicate; the entry
+    // is dropped when it finishes, so a later refresh always asks the provider again.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Task<ModelDiscovery>> InFlightDiscovery = new(StringComparer.Ordinal);
+
+    private Task<ModelDiscovery> DiscoverSharedAsync(NativeProviderAccount account)
+    {
+        var key = $"{account.Id}|{account.BaseUrl}|{account.Protocol}|{account.CredentialId}";
+        var task = InFlightDiscovery.GetOrAdd(key, _ => Task.Run(() => DiscoverModelsAsync(account)));
+        _ = task.ContinueWith(_ => InFlightDiscovery.TryRemove(key, out _), TaskScheduler.Default);
+        return task;
+    }
+
+    private async Task<ModelDiscovery> DiscoverModelsAsync(NativeProviderAccount account)
+    {
+        var fallback = ModelsFor(account).ToList();
+        var contexts = new Dictionary<string, int>(StringComparer.Ordinal);
+        if (account.Protocol == NativeProviderProtocol.ChatGpt) return new(fallback, contexts);
+        try
+        {
+            var url = NativeProviderStore.NormalizeUrl(account.BaseUrl).TrimEnd('/') + "/models";
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            var key = _store.Secrets.Read(account.CredentialId);
+            if (!string.IsNullOrWhiteSpace(key))
+            {
+                if (account.Protocol == NativeProviderProtocol.Anthropic) request.Headers.TryAddWithoutValidation("x-api-key", key);
+                else request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", key);
+            }
+            if (account.Protocol == NativeProviderProtocol.Anthropic) request.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
+            // Shared pool with chat requests (warms the connection); discovery keeps its 8 s cap.
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+            using var response = await NativeProviderRouter.SharedHttp.SendAsync(request, timeout.Token).ConfigureAwait(false);
+            var root = JsonNode.Parse(await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false));
+            var live = new List<string>();
+            if (response.IsSuccessStatusCode)
+            {
+                foreach (var item in root?["data"]?.AsArray() ?? new JsonArray())
+                {
+                    var id = item?["id"]?.GetValue<string>();
+                    if (string.IsNullOrWhiteSpace(id)) continue;
+                    var context = item?["context_length"]?.GetValue<int>() ?? item?["context_window"]?.GetValue<int>() ?? 0;
+                    if (context > 0) contexts[id] = context;
+                    if (!live.Contains(id, StringComparer.Ordinal)) live.Add(id);
+                }
+            }
+            return new(live.Count > 0 ? live : fallback, contexts);
+        }
+        catch { return new(fallback, contexts); }
     }
 
     private static IEnumerable<string> ModelsFor(NativeProviderAccount account)
@@ -490,7 +604,18 @@ public sealed class RouterController : ObservableObject, IDisposable
             var message = new JsonObject { ["role"] = "assistant", ["content"] = response.Message.Content };
             if (response.Message.ToolCalls is { Count: > 0 }) message["tool_calls"] = new JsonArray(response.Message.ToolCalls.Select(call => new JsonObject { ["id"] = call.Id, ["type"] = "function", ["function"] = new JsonObject { ["name"] = call.Name, ["arguments"] = call.Arguments } }).ToArray());
             var result = new JsonObject { ["id"] = $"chatcmpl-{Guid.NewGuid():N}", ["object"] = "chat.completion", ["choices"] = new JsonArray(new JsonObject { ["index"] = 0, ["message"] = message, ["finish_reason"] = response.Message.ToolCalls?.Count > 0 ? "tool_calls" : "stop" }) };
-            if (response.Usage is { } usage) result["usage"] = new JsonObject { ["prompt_tokens"] = usage.InputTokens, ["completion_tokens"] = usage.OutputTokens, ["total_tokens"] = usage.InputTokens + usage.OutputTokens };
+            if (response.Usage is { } usage)
+            {
+                result["usage"] = new JsonObject
+                {
+                    ["prompt_tokens"] = usage.InputTokens,
+                    ["completion_tokens"] = usage.OutputTokens,
+                    ["total_tokens"] = usage.InputTokens + usage.OutputTokens,
+                    ["prompt_cache_hit_tokens"] = usage.CachedInputTokens,
+                    ["prompt_cache_miss_tokens"] = usage.CacheMissTokens,
+                    ["cache_write_tokens"] = usage.CacheWriteTokens,
+                };
+            }
             return new NativeGatewayResponse(200, Encoding.UTF8.GetBytes(result.ToJsonString()));
         }
         catch (NativeProviderException ex) { return JsonResponse(ex.StatusCode ?? 502, new { error = new { message = ex.Message, type = ex.IsLimit ? "provider_limit" : "provider_error" } }); }

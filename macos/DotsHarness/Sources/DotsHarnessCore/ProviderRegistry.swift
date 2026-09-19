@@ -236,8 +236,11 @@ public struct ProviderSpec: Codable, Sendable, Identifiable, Equatable {
         /// Optional provider-declared input context window. Live model metadata
         /// takes precedence when the endpoint publishes `context_length`.
         public var contextWindow: Int?
+        /// Model offers a faster (priority) response mode.
+        public var fast = false
 
-        public init(id: String, name: String? = nil, efforts: [String] = [], tier: ModelTier? = nil, contextWindow: Int? = nil) {
+        public init(id: String, name: String? = nil, efforts: [String] = [], tier: ModelTier? = nil, contextWindow: Int? = nil, fast: Bool = false) {
+            self.fast = fast
             self.id = id
             self.name = name
             self.efforts = efforts
@@ -245,7 +248,7 @@ public struct ProviderSpec: Codable, Sendable, Identifiable, Equatable {
             self.contextWindow = contextWindow
         }
 
-        enum CodingKeys: String, CodingKey { case id, name, efforts, tier, contextWindow }
+        enum CodingKeys: String, CodingKey { case id, name, efforts, tier, contextWindow, fast }
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             id = try c.decode(String.self, forKey: .id)
@@ -253,6 +256,7 @@ public struct ProviderSpec: Codable, Sendable, Identifiable, Equatable {
             efforts = try c.decodeIfPresent([String].self, forKey: .efforts) ?? []
             tier = try c.decodeIfPresent(ModelTier.self, forKey: .tier)
             contextWindow = try c.decodeIfPresent(Int.self, forKey: .contextWindow)
+            fast = try c.decodeIfPresent(Bool.self, forKey: .fast) ?? false
         }
     }
 

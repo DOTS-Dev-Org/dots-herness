@@ -7,6 +7,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using HarnessPluginKit;
+using JsonNodeValue = System.Text.Json.Nodes.JsonValue;
 
 namespace DotsHarnessCore;
 
@@ -67,6 +69,15 @@ public sealed class NativeProviderState
     public List<NativeCustomEndpoint> Endpoints { get; set; } = [];
     public string? SelectedAccountId { get; set; }
 }
+
+public sealed record ConnectionTransition(
+    string Action,
+    string? PreviousConnectionLabel,
+    string? CurrentConnectionLabel,
+    string CleanupStatus,
+    IReadOnlyList<string> RemovedLocalArtifacts,
+    bool RemoteDataTouched = false,
+    bool UserDataPreserved = true);
 
 public interface IProviderSecretStore
 {
@@ -237,20 +248,30 @@ public sealed class NativeProviderStore
         if (account.RefreshCredentialId is not null) Secrets.Write(account.RefreshCredentialId, value);
     }
 
-    public void Remove(NativeProviderAccount account)
+    public IReadOnlyList<string> Remove(NativeProviderAccount account)
     {
         Secrets.Delete(account.CredentialId);
         if (account.RefreshCredentialId is not null) Secrets.Delete(account.RefreshCredentialId);
         State.Accounts.RemoveAll(a => a.Id == account.Id);
+        if (State.SelectedAccountId == account.Id) State.SelectedAccountId = State.Accounts.FirstOrDefault()?.Id;
         Save();
+        return ["connection record", "credential reference", "model metadata"];
     }
 
-    public void Remove(NativeCustomEndpoint endpoint)
+    public IReadOnlyList<string> Remove(NativeCustomEndpoint endpoint)
     {
         if (endpoint.CredentialId is not null) Secrets.Delete(endpoint.CredentialId);
+        var accounts = State.Accounts.Where(a => a.Provider == $"custom:{endpoint.Id}").ToArray();
+        foreach (var account in accounts)
+        {
+            Secrets.Delete(account.CredentialId);
+            if (account.RefreshCredentialId is not null) Secrets.Delete(account.RefreshCredentialId);
+        }
         State.Endpoints.RemoveAll(e => e.Id == endpoint.Id);
         State.Accounts.RemoveAll(a => a.Provider == $"custom:{endpoint.Id}");
+        if (State.SelectedAccountId is { } selected && accounts.Any(a => a.Id == selected)) State.SelectedAccountId = State.Accounts.FirstOrDefault()?.Id;
         Save();
+        return ["endpoint record", "connection record", "credential references", "model metadata"];
     }
 
     public static string NormalizeUrl(string value)
@@ -321,10 +342,50 @@ public sealed record NativeMessage(
     string? ToolCallId = null,
     IReadOnlyList<NativeToolCall>? ToolCalls = null,
     IReadOnlyList<NativeAttachment>? Attachments = null,
-    IReadOnlyList<JsonObject>? ProviderItems = null);
+    IReadOnlyList<JsonObject>? ProviderItems = null,
+    string? SystemKind = null,
+    bool PromptContextCaptured = false);
+
+/// Captures host context on a user turn before it is sent or persisted. Shared
+/// by Windows and Linux, independently of the selected provider protocol.
+public static class NativePromptHistory
+{
+    public static List<NativeMessage> Prepare(
+        IReadOnlyList<NativeMessage> messages, string policy, string turnContext)
+    {
+        var result = messages.ToList();
+        var systemIndex = result.FindIndex(message => message.Role == "system"
+            && !ContextCompaction.IsSummary(message));
+        var system = new NativeMessage("system", policy, SystemKind: "promptStable");
+        if (systemIndex >= 0) result[systemIndex] = system;
+        else result.Insert(0, system);
+        var userIndex = result.FindLastIndex(message => message.Role == "user");
+        if (userIndex >= 0 && !result[userIndex].PromptContextCaptured)
+        {
+            var user = result[userIndex];
+            result[userIndex] = user with
+            {
+                Content = string.IsNullOrEmpty(turnContext) ? user.Content : turnContext + "\n\n" + user.Content,
+                PromptContextCaptured = true,
+            };
+        }
+        return result;
+    }
+}
 public sealed record NativeToolCall(string Id, string Name, string Arguments);
 public sealed record NativeToolDefinition(string Name, string Description, JsonNode Parameters);
-public sealed record NativeUsage(int InputTokens, int OutputTokens);
+public sealed record NativeUsage(
+    int InputTokens,
+    int OutputTokens,
+    int? CachedInputTokens = null,
+    int? CacheWriteTokens = null,
+    int? CacheMissTokens = null,
+    bool InputExcludesCache = false)
+{
+    public int TotalInputTokens => InputExcludesCache
+        ? InputTokens + (CachedInputTokens ?? 0) + (CacheWriteTokens ?? 0)
+        : Math.Max(InputTokens, (CachedInputTokens ?? 0) + (CacheMissTokens ?? 0) + (CacheWriteTokens ?? 0));
+}
 public sealed record NativeResponse(NativeMessage Message, NativeUsage? Usage);
 
 public enum NativeProviderLimitKind
@@ -343,6 +404,7 @@ public sealed class NativeProviderException : Exception
     public bool IsLimit { get; }
     public NativeProviderLimitKind? LimitKind { get; }
     public string? ProviderName { get; }
+    public bool IsImageInputUnsupported { get; }
 
     public NativeProviderException(
         string message,
@@ -350,14 +412,25 @@ public sealed class NativeProviderException : Exception
         bool retryable = false,
         bool isLimit = false,
         NativeProviderLimitKind? limitKind = null,
-        string? providerName = null) : base(message)
+        string? providerName = null,
+        bool isImageInputUnsupported = false) : base(message)
     {
         StatusCode = statusCode;
         IsLimit = isLimit || statusCode == 429;
         LimitKind = limitKind ?? (statusCode == 429 ? NativeProviderLimitKind.Rate : null);
         ProviderName = providerName;
+        IsImageInputUnsupported = isImageInputUnsupported;
         Retryable = IsLimit ? false : retryable;
     }
+
+    public NativeProviderException MarkImageInputUnsupported() => new(
+        Message,
+        StatusCode,
+        Retryable,
+        IsLimit,
+        LimitKind,
+        ProviderName,
+        true);
 }
 
 public sealed class NativeProviderRouter
@@ -366,14 +439,33 @@ public sealed class NativeProviderRouter
     private readonly HttpClient _http;
     private readonly Func<NativeProviderAccount, CancellationToken, Task<bool>>? _refresh;
 
+    /// Reasoning effort for requests. Empty = provider default; ignored for models
+    /// that do not list the level in <see cref="NativeEffortCatalog"/>.
+    public string Effort { get; set; } = "";
+
+    /// One connection pool for every provider call: the startup model discovery
+    /// leaves a warm TLS connection that the first chat request reuses.
+    public static readonly HttpClient SharedHttp = new(new SocketsHttpHandler
+    {
+        PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
+    })
+    {
+        Timeout = TimeSpan.FromSeconds(180),
+    };
+
     public NativeProviderRouter(NativeProviderStore store, Func<NativeProviderAccount, CancellationToken, Task<bool>>? refresh = null, HttpClient? http = null)
     {
         _store = store;
         _refresh = refresh;
-        _http = http ?? new HttpClient { Timeout = TimeSpan.FromSeconds(180) };
+        _http = http ?? SharedHttp;
     }
 
-    public async Task<NativeResponse> CompleteAsync(IReadOnlyList<NativeMessage> messages, IReadOnlyList<NativeToolDefinition> tools, string? model = null, CancellationToken ct = default)
+    public async Task<NativeResponse> CompleteAsync(
+        IReadOnlyList<NativeMessage> messages,
+        IReadOnlyList<NativeToolDefinition> tools,
+        string? model = null,
+        CancellationToken ct = default,
+        string? promptCacheKey = null)
     {
         var routes = _store.State.Accounts
             .Where(a => a.Active && (string.IsNullOrWhiteSpace(model) || CanServe(a, model)))
@@ -381,27 +473,48 @@ public sealed class NativeProviderRouter
             .ToList();
         if (routes.Count == 0) throw new NativeProviderException("Connect a provider account before starting a chat.");
         var failures = new List<string>();
+        NativeProviderException? limitFailure = null;
         foreach (var route in routes)
         {
             var refreshed = false;
-            try { return await SendAsync(route, messages, tools, string.IsNullOrWhiteSpace(model) ? null : model, ct); }
+            try { return await SendAsync(route, messages, tools, string.IsNullOrWhiteSpace(model) ? null : model, promptCacheKey, ct); }
             catch (TaskCanceledException ex) when (!ct.IsCancellationRequested) { failures.Add($"{route.ProviderName}: {ex.Message}"); }
             catch (OperationCanceledException) { throw; }
             catch (NativeProviderException ex)
             {
-                if (ex.IsLimit) throw;
+                if (ex.IsLimit)
+                {
+                    limitFailure ??= ex;
+                    failures.Add($"{route.ProviderName}: {ex.Message}");
+                    continue;
+                }
+                if (HasImageAttachments(messages)
+                    && VisionProviderCapability.IsImageInputUnsupported(ex.Message, ex.StatusCode))
+                {
+                    throw ex.MarkImageInputUnsupported();
+                }
                 failures.Add($"{route.ProviderName}: {ex.Message}");
                 if (ex.StatusCode == 401 && !refreshed && _refresh is not null)
                 {
                     refreshed = true;
                     if (await _refresh(route, ct))
                     {
-                        try { return await SendAsync(route, messages, tools, string.IsNullOrWhiteSpace(model) ? null : model, ct); }
+                        try { return await SendAsync(route, messages, tools, string.IsNullOrWhiteSpace(model) ? null : model, promptCacheKey, ct); }
                         catch (TaskCanceledException retry) when (!ct.IsCancellationRequested) { failures.Add($"{route.ProviderName}: {retry.Message}"); continue; }
                         catch (HttpRequestException retry) { failures.Add($"{route.ProviderName}: {retry.Message}"); continue; }
                         catch (NativeProviderException retry)
                         {
-                            if (retry.IsLimit) throw;
+                            if (retry.IsLimit)
+                            {
+                                limitFailure ??= retry;
+                                failures.Add($"{route.ProviderName}: {retry.Message}");
+                                continue;
+                            }
+                            if (HasImageAttachments(messages)
+                                && VisionProviderCapability.IsImageInputUnsupported(retry.Message, retry.StatusCode))
+                            {
+                                throw retry.MarkImageInputUnsupported();
+                            }
                             failures.Add($"{route.ProviderName}: {retry.Message}");
                             if (!retry.Retryable) throw;
                             ex = retry;
@@ -412,10 +525,31 @@ public sealed class NativeProviderRouter
             }
             catch (HttpRequestException ex) { failures.Add($"{route.ProviderName}: {ex.Message}"); }
         }
+        if (limitFailure is not null)
+        {
+            var message = string.Join(Environment.NewLine, failures);
+            throw new NativeProviderException(
+                string.IsNullOrWhiteSpace(message) ? limitFailure.Message : message,
+                limitFailure.StatusCode,
+                retryable: false,
+                isLimit: true,
+                limitKind: limitFailure.LimitKind,
+                providerName: limitFailure.ProviderName);
+        }
         throw new NativeProviderException(string.Join(Environment.NewLine, failures));
     }
 
-    private async Task<NativeResponse> SendAsync(NativeProviderAccount route, IReadOnlyList<NativeMessage> messages, IReadOnlyList<NativeToolDefinition> tools, string? model, CancellationToken ct)
+    private static bool HasImageAttachments(IEnumerable<NativeMessage> messages) =>
+        messages.Any(message => message.Attachments?.Any(attachment =>
+            string.Equals(attachment.Kind, "image", StringComparison.OrdinalIgnoreCase)) == true);
+
+    private async Task<NativeResponse> SendAsync(
+        NativeProviderAccount route,
+        IReadOnlyList<NativeMessage> messages,
+        IReadOnlyList<NativeToolDefinition> tools,
+        string? model,
+        string? promptCacheKey,
+        CancellationToken ct)
     {
         var key = _store.Secrets.Read(route.CredentialId);
         if ((route.Protocol is NativeProviderProtocol.Anthropic or NativeProviderProtocol.ChatGpt) && string.IsNullOrEmpty(key)) throw new NativeProviderException("The provider credential is unavailable.");
@@ -426,6 +560,9 @@ public sealed class NativeProviderRouter
             NativeProviderProtocol.ChatGpt => ResponsesBody(route, messages, tools, model),
             _ => OpenAiBody(route, messages, tools, model),
         };
+        var effectivePromptCacheKey = RouteCacheKey(promptCacheKey, route);
+        ApplyPromptCacheKey(body, route.Protocol, effectivePromptCacheKey);
+        ApplyEffort(body, route.Protocol, model ?? route.Model, Effort);
         using var request = new HttpRequestMessage(HttpMethod.Post, endpoint) { Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json") };
         if (!string.IsNullOrEmpty(key))
         {
@@ -436,19 +573,32 @@ public sealed class NativeProviderRouter
         if (route.Protocol == NativeProviderProtocol.ChatGpt)
         {
             if (string.IsNullOrWhiteSpace(route.SessionAccountId)) throw new NativeProviderException("The GPT session account is unavailable.");
+            request.Headers.TryAddWithoutValidation("Accept", "text/event-stream");
             request.Headers.TryAddWithoutValidation("ChatGPT-Account-ID", route.SessionAccountId);
             request.Headers.TryAddWithoutValidation("OAI-Product-Sku", "codex");
             request.Headers.TryAddWithoutValidation("OpenAI-Beta", "responses=v1");
             request.Headers.TryAddWithoutValidation("originator", "dots_harness");
-            request.Headers.TryAddWithoutValidation("session_id", Guid.NewGuid().ToString());
+            // The backend routes its prompt cache by session: reuse the
+            // conversation's cache key so follow-up turns hit a warm shard.
+            request.Headers.TryAddWithoutValidation("session_id", string.IsNullOrWhiteSpace(effectivePromptCacheKey) ? Guid.NewGuid().ToString() : effectivePromptCacheKey);
         }
         using var response = await _http.SendAsync(request, ct);
         var text = await response.Content.ReadAsStringAsync(ct);
-        var node = JsonNode.Parse(text);
+        // A Codex success body is an SSE stream, not JSON. Error bodies stay JSON
+        // on every route, so parsing failure here just means "no structured error".
+        JsonNode? node;
+        try { node = JsonNode.Parse(text); }
+        catch (JsonException) { node = null; }
         if (!response.IsSuccessStatusCode)
         {
             var message = node?["error"]?["message"]?.GetValue<string>() ?? node?["message"]?.GetValue<string>() ?? $"HTTP {(int)response.StatusCode}";
             var status = (int)response.StatusCode;
+            // A strict OpenAI-style server may reject the unknown field; resend
+            // without it. Mirrors NativeAgentClient.complete on macOS.
+            if (status is 400 or 422
+                && body["prompt_cache_key"] is not null
+                && message.Contains("prompt_cache_key", StringComparison.OrdinalIgnoreCase))
+                return await SendAsync(route, messages, tools, model, null, ct);
             var limitKind = DetectLimitKind(
                 string.Join(" ", new[]
                 {
@@ -470,7 +620,7 @@ public sealed class NativeProviderRouter
         return route.Protocol switch
         {
             NativeProviderProtocol.Anthropic => ParseAnthropic(node),
-            NativeProviderProtocol.ChatGpt => ParseResponses(node),
+            NativeProviderProtocol.ChatGpt => ParseResponsesStream(text, route.ProviderName),
             _ => ParseOpenAi(node),
         };
     }
@@ -479,6 +629,24 @@ public sealed class NativeProviderRouter
     {
         if (string.IsNullOrWhiteSpace(model) || string.Equals(account.Model, model, StringComparison.Ordinal)) return true;
         return (account.Models ?? []).Contains(model, StringComparer.Ordinal);
+    }
+
+    private static void ApplyPromptCacheKey(JsonObject body, NativeProviderProtocol protocol, string? promptCacheKey)
+    {
+        if (string.IsNullOrWhiteSpace(promptCacheKey)) return;
+        // OpenAI-compatible and Responses transports accept the stable cache
+        // shard key. Anthropic uses cache_control breakpoints instead; adding
+        // an unknown field there would make otherwise valid requests fail.
+        if (protocol is NativeProviderProtocol.OpenAiCompatible or NativeProviderProtocol.ChatGpt)
+            body["prompt_cache_key"] = promptCacheKey;
+    }
+
+    private static string? RouteCacheKey(string? baseKey, NativeProviderAccount route)
+    {
+        if (string.IsNullOrWhiteSpace(baseKey)) return null;
+        var identity = $"{baseKey}|{route.Provider}|{route.Protocol}|{route.Id}|{route.Model}";
+        var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity))).ToLowerInvariant();
+        return $"{baseKey}:route-{digest[..24]}";
     }
 
     private static NativeProviderLimitKind? DetectLimitKind(string message, int status)
@@ -499,6 +667,26 @@ public sealed class NativeProviderRouter
         return new Uri(normalized + (protocol == NativeProviderProtocol.Anthropic ? "/messages" : "/chat/completions"));
     }
 
+    /// Mirrors NativeAgentClient.swift: Anthropic output_config + larger budget,
+    /// Responses `reasoning`, Chat Completions `reasoning_effort`.
+    private static void ApplyEffort(JsonObject body, NativeProviderProtocol protocol, string model, string effort)
+    {
+        if (string.IsNullOrEmpty(effort) || !NativeEffortCatalog.Levels(model).Contains(effort)) return;
+        switch (protocol)
+        {
+            case NativeProviderProtocol.Anthropic:
+                body["output_config"] = new JsonObject { ["effort"] = effort };
+                body["max_tokens"] = effort switch { "max" => 32_000, "xhigh" => 24_000, "high" => 16_000, _ => 8_192 };
+                break;
+            case NativeProviderProtocol.ChatGpt:
+                body["reasoning"] = new JsonObject { ["effort"] = effort };
+                break;
+            default:
+                body["reasoning_effort"] = effort;
+                break;
+        }
+    }
+
     private static JsonObject OpenAiBody(NativeProviderAccount route, IReadOnlyList<NativeMessage> messages, IReadOnlyList<NativeToolDefinition> tools, string? model)
     {
         var body = new JsonObject { ["model"] = model ?? route.Model, ["messages"] = new JsonArray(messages.Select(MessageNode).ToArray()), ["temperature"] = 0.2 };
@@ -508,7 +696,24 @@ public sealed class NativeProviderRouter
 
     private static JsonObject ResponsesBody(NativeProviderAccount route, IReadOnlyList<NativeMessage> messages, IReadOnlyList<NativeToolDefinition> tools, string? model)
     {
+        var system = messages
+            .Where(message => message.Role == "system")
+            .Select(message => message.Content)
+            .Where(content => !string.IsNullOrWhiteSpace(content))
+            .ToList();
         var input = new JsonArray();
+        // The Codex backend keeps `instructions` pinned to the Codex CLI prompt and
+        // rejects a body whose instructions do not look like it, so the harness
+        // prompt rides along as leading developer turns instead. Mirrors
+        // makeResponsesBody in macos/.../NativeAgentClient.swift.
+        foreach (var content in system)
+        {
+            input.Add(new JsonObject
+            {
+                ["role"] = "developer",
+                ["content"] = new JsonArray(new JsonObject { ["type"] = "input_text", ["text"] = content }),
+            });
+        }
         foreach (var message in messages.Where(message => message.Role != "system"))
         {
             if (message.ProviderItems is { Count: > 0 })
@@ -535,18 +740,15 @@ public sealed class NativeProviderRouter
                 input.Add(new JsonObject { ["role"] = role, ["content"] = content });
             }
         }
-        var system = messages
-            .Where(message => message.Role == "system")
-            .Select(message => message.Content)
-            .Where(content => !string.IsNullOrWhiteSpace(content))
-            .ToList();
         var body = new JsonObject
         {
             ["model"] = model ?? route.Model,
-            ["instructions"] = system.Count == 0 ? "You are a helpful assistant." : string.Join("\n\n", system),
+            ["instructions"] = CodexInstructions.Default,
             ["input"] = input,
             ["store"] = false,
-            ["stream"] = false,
+            // The ChatGPT/Codex backend only serves `/responses` as SSE; a
+            // non-streaming request is rejected with HTTP 400.
+            ["stream"] = true,
         };
         if (tools.Count > 0) body["tools"] = new JsonArray(tools.Select(tool => new JsonObject { ["type"] = "function", ["name"] = tool.Name, ["description"] = tool.Description, ["parameters"] = tool.Parameters.DeepClone() }).ToArray());
         return body;
@@ -556,7 +758,7 @@ public sealed class NativeProviderRouter
     {
         JsonNode content = message.Attachments is { Count: > 0 }
             ? OpenAiContent(message)
-            : JsonValue.Create(message.Content)!;
+            : JsonNodeValue.Create(message.Content)!;
         var node = new JsonObject { ["role"] = message.Role, ["content"] = content };
         if (message.ToolCallId is not null) node["tool_call_id"] = message.ToolCallId;
         if (message.ToolCalls is { Count: > 0 }) node["tool_calls"] = new JsonArray(message.ToolCalls.Select(call => new JsonObject { ["id"] = call.Id, ["type"] = "function", ["function"] = new JsonObject { ["name"] = call.Name, ["arguments"] = call.Arguments } }).ToArray());
@@ -571,8 +773,33 @@ public sealed class NativeProviderRouter
         var system = string.Join("\n\n", messages.Where(m => m.Role == "system").Select(m => m.Content).Where(content => !string.IsNullOrWhiteSpace(content)));
         if (!string.IsNullOrEmpty(system)) body["system"] = system;
         if (tools.Count > 0) body["tools"] = new JsonArray(tools.Select(t => new JsonObject { ["name"] = t.Name, ["description"] = t.Description, ["input_schema"] = t.Parameters.DeepClone() }).ToArray());
+        ApplyAnthropicCacheBreakpoints(body);
         return body;
     }
+
+    /// Mirrors applyAnthropicCacheBreakpoints in NativeAgentClient.swift: one
+    /// `cache_control` breakpoint on the system prompt, the last tool and the
+    /// last message, so each turn reads the previous turn's prefix from the
+    /// prompt cache. Below the minimum cacheable length Anthropic ignores it.
+    internal static void ApplyAnthropicCacheBreakpoints(JsonObject body)
+    {
+        if (body["system"] is JsonNodeValue systemValue && systemValue.TryGetValue<string>(out var system) && system.Length > 0)
+            body["system"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = system, ["cache_control"] = Ephemeral() });
+        if (body["tools"] is JsonArray { Count: > 0 } tools && tools[^1] is JsonObject lastTool)
+            lastTool["cache_control"] = Ephemeral();
+        if (body["messages"] is not JsonArray { Count: > 0 } messages || messages[^1] is not JsonObject last) return;
+        switch (last["content"])
+        {
+            case JsonNodeValue value when value.TryGetValue<string>(out var text) && text.Length > 0:
+                last["content"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = text, ["cache_control"] = Ephemeral() });
+                break;
+            case JsonArray { Count: > 0 } blocks when blocks[^1] is JsonObject lastBlock:
+                lastBlock["cache_control"] = Ephemeral();
+                break;
+        }
+    }
+
+    private static JsonObject Ephemeral() => new() { ["type"] = "ephemeral" };
 
     private static JsonObject AnthropicMessageNode(NativeMessage message)
     {
@@ -604,9 +831,9 @@ public sealed class NativeProviderRouter
             return new JsonObject { ["role"] = "assistant", ["content"] = blocks };
         }
 
-        var content = message.Attachments is { Count: > 0 }
+        JsonNode content = message.Attachments is { Count: > 0 }
             ? AnthropicContent(message)
-            : JsonValue.Create(message.Content)!;
+            : new JsonArray(new JsonObject { ["type"] = "text", ["text"] = message.Content });
         return new JsonObject { ["role"] = message.Role == "assistant" ? "assistant" : "user", ["content"] = content };
     }
 
@@ -708,8 +935,153 @@ public sealed class NativeProviderRouter
         var message = node?["choices"]?[0]?["message"] ?? throw new NativeProviderException("The provider returned no message.");
         var calls = new List<NativeToolCall>();
         foreach (var item in message["tool_calls"]?.AsArray() ?? new JsonArray()) calls.Add(new NativeToolCall(item?["id"]?.GetValue<string>() ?? Guid.NewGuid().ToString(), item?["function"]?["name"]?.GetValue<string>() ?? "tool", item?["function"]?["arguments"]?.GetValue<string>() ?? "{}"));
-        var usage = node?["usage"] is JsonObject u ? new NativeUsage(u["prompt_tokens"]?.GetValue<int>() ?? 0, u["completion_tokens"]?.GetValue<int>() ?? 0) : null;
+        var usage = node?["usage"] is JsonObject u ? ParseUsage(u) : null;
         return new NativeResponse(new NativeMessage("assistant", message["content"]?.GetValue<string>() ?? "", ToolCalls: calls), usage);
+    }
+
+    /// <summary>
+    /// The Codex `/responses` endpoint answers only as an SSE stream, and its
+    /// terminal `response.completed` payload ships an EMPTY `output` array -
+    /// content lives solely in the incremental events. So the stream itself is
+    /// the source of truth for text and tool calls; `response.completed` only
+    /// contributes usage (and the output blocks, on backends that do send them).
+    ///
+    /// Mirrors responseFromSSE in macos/.../NativeAgentClient.swift.
+    /// </summary>
+    public static NativeResponse ParseResponsesStream(string body, string? providerName = null)
+    {
+        var trimmed = body.TrimStart();
+        // Some gateways in front of the same protocol answer as plain JSON.
+        if (trimmed.StartsWith('{') || trimmed.StartsWith('['))
+        {
+            return ParseResponses(JsonNode.Parse(body));
+        }
+
+        JsonNode? finalResponse = null;
+        var text = new StringBuilder();
+        var callOrder = new List<string>();
+        var calls = new Dictionary<string, (string Name, string Arguments)>(StringComparer.Ordinal);
+        var providerItems = new List<JsonObject>();
+
+        foreach (var rawLine in body.Split('\n'))
+        {
+            var line = rawLine.Trim();
+            if (!line.StartsWith("data:", StringComparison.Ordinal)) continue;
+            var payload = line[5..].Trim();
+            if (payload.Length == 0 || payload == "[DONE]") continue;
+            JsonNode? evt;
+            try { evt = JsonNode.Parse(payload); }
+            catch (JsonException) { continue; }
+            if (evt is null) continue;
+
+            switch (Str(evt["type"]))
+            {
+                case "response.output_text.delta":
+                    text.Append(Str(evt["delta"]) ?? "");
+                    break;
+
+                case "response.completed":
+                case "response.incomplete":
+                    finalResponse = evt["response"];
+                    break;
+
+                case "response.output_item.done":
+                    if (evt["item"] is not JsonObject item) break;
+                    providerItems.Add(item.DeepClone().AsObject());
+                    switch (Str(item["type"]))
+                    {
+                        case "function_call":
+                            var id = Str(item["call_id"])
+                                ?? Str(item["id"])
+                                ?? Guid.NewGuid().ToString();
+                            if (!calls.ContainsKey(id)) callOrder.Add(id);
+                            calls[id] = (
+                                Str(item["name"]) ?? "",
+                                Str(item["arguments"]) ?? "{}");
+                            break;
+
+                        // No text deltas arrived (some models emit the message whole).
+                        case "message" when text.Length == 0:
+                            foreach (var block in item["content"]?.AsArray() ?? new JsonArray())
+                            {
+                                if (Str(block?["text"]) is { } chunk) text.Append(chunk);
+                            }
+                            break;
+                    }
+                    break;
+
+                case "response.failed":
+                case "error":
+                    throw StreamFailure(evt, providerName);
+            }
+        }
+
+        var toolCalls = callOrder
+            .Where(calls.ContainsKey)
+            .Select(id => new NativeToolCall(id, calls[id].Name, calls[id].Arguments))
+            .ToList();
+        var usage = finalResponse?["usage"] is JsonObject value
+            ? ParseUsage(value)
+            : null;
+
+        if (text.Length == 0 && toolCalls.Count == 0 && providerItems.Count == 0)
+        {
+            // Nothing in the stream - fall back to the terminal payload for
+            // backends that do populate `output` there.
+            if (finalResponse?["output"] is JsonArray output && output.Count > 0)
+            {
+                return ParseResponses(finalResponse);
+            }
+            throw new NativeProviderException("The provider returned no message.", providerName: providerName);
+        }
+
+        return new NativeResponse(
+            new NativeMessage("assistant", text.ToString(), ToolCalls: toolCalls, ProviderItems: providerItems),
+            usage);
+    }
+
+    private static NativeProviderException StreamFailure(JsonNode evt, string? providerName)
+    {
+        var message = Str(evt["message"])
+            ?? Str(evt["error"]?["message"])
+            ?? Str(evt["response"]?["error"]?["message"])
+            ?? "The Codex stream reported an error.";
+        var status = Int(evt["status"])
+            ?? Int(evt["error"]?["status"])
+            ?? Int(evt["response"]?["status"])
+            ?? Int(evt["response"]?["error"]?["status"])
+            ?? 502;
+        var limitKind = DetectLimitKind(
+            string.Join(" ", new[]
+            {
+                message,
+                Str(evt["error"]?["type"]) ?? "",
+                Str(evt["error"]?["code"]) ?? "",
+            }),
+            status);
+        return new NativeProviderException(
+            message,
+            status,
+            status is 408 or 409 or 425 or >= 500,
+            limitKind is not null,
+            limitKind,
+            providerName);
+    }
+
+    /// <summary>Tolerant reads: a stream event may carry an unexpected node type,
+    /// and <c>GetValue&lt;T&gt;</c> throws rather than returning null on mismatch.</summary>
+    private static string? Str(JsonNode? node)
+    {
+        try { return node?.GetValue<string>(); }
+        catch (InvalidOperationException) { return null; }
+        catch (FormatException) { return null; }
+    }
+
+    private static int? Int(JsonNode? node)
+    {
+        try { return node?.GetValue<int>(); }
+        catch (InvalidOperationException) { return null; }
+        catch (FormatException) { return null; }
     }
 
     private static NativeResponse ParseResponses(JsonNode? node)
@@ -717,7 +1089,7 @@ public sealed class NativeProviderRouter
         var output = node?["output"]?.AsArray() ?? throw new NativeProviderException("The provider returned no message.");
         var text = string.Join("", output.Where(item => item?["type"]?.GetValue<string>() == "message").SelectMany(item => item?["content"]?.AsArray() ?? new JsonArray()).Where(item => item?["text"] is not null).Select(item => item?["text"]?.GetValue<string>() ?? ""));
         var calls = output.Where(item => item?["type"]?.GetValue<string>() == "function_call").Select(item => new NativeToolCall(item?["call_id"]?.GetValue<string>() ?? item?["id"]?.GetValue<string>() ?? Guid.NewGuid().ToString(), item?["name"]?.GetValue<string>() ?? "tool", item?["arguments"]?.GetValue<string>() ?? "{}")).ToList();
-        var usage = node?["usage"] is JsonObject value ? new NativeUsage(value["input_tokens"]?.GetValue<int>() ?? 0, value["output_tokens"]?.GetValue<int>() ?? 0) : null;
+        var usage = node?["usage"] is JsonObject value ? ParseUsage(value) : null;
         var providerItems = output.OfType<JsonObject>().Select(item => item.DeepClone().AsObject()).ToList();
         return new NativeResponse(new NativeMessage("assistant", text, ToolCalls: calls, ProviderItems: providerItems), usage);
     }
@@ -727,8 +1099,28 @@ public sealed class NativeProviderRouter
         var content = node?["content"]?.AsArray() ?? throw new NativeProviderException("The provider returned no message.");
         var text = string.Join("", content.Where(x => x?["type"]?.GetValue<string>() == "text").Select(x => x?["text"]?.GetValue<string>() ?? ""));
         var calls = content.Where(x => x?["type"]?.GetValue<string>() == "tool_use").Select(x => new NativeToolCall(x?["id"]?.GetValue<string>() ?? Guid.NewGuid().ToString(), x?["name"]?.GetValue<string>() ?? "tool", (x?["input"] ?? new JsonObject()).ToJsonString())).ToList();
-        var usage = node?["usage"] is JsonObject u ? new NativeUsage(u["input_tokens"]?.GetValue<int>() ?? 0, u["output_tokens"]?.GetValue<int>() ?? 0) : null;
+        var usage = node?["usage"] is JsonObject u ? ParseUsage(u, inputExcludesCache: true) : null;
         return new NativeResponse(new NativeMessage("assistant", text, ToolCalls: calls), usage);
+    }
+
+    private static NativeUsage? ParseUsage(JsonObject usage, bool inputExcludesCache = false)
+    {
+        var input = Int(usage["prompt_tokens"] ?? usage["input_tokens"]);
+        var output = Int(usage["completion_tokens"] ?? usage["output_tokens"]);
+        var cached = Int(
+            usage["prompt_cache_hit_tokens"]
+            ?? usage["prompt_tokens_details"]?["cached_tokens"]
+            ?? usage["input_tokens_details"]?["cached_tokens"]
+            ?? usage["cache_read_input_tokens"]
+            ?? usage["cachedContentTokenCount"]);
+        var written = Int(
+            usage["prompt_tokens_details"]?["cache_write_tokens"]
+            ?? usage["input_tokens_details"]?["cache_write_tokens"]
+            ?? usage["cache_creation_input_tokens"]);
+        var missed = Int(usage["prompt_cache_miss_tokens"]);
+        if (input is null && output is null && cached is null && written is null && missed is null) return null;
+        var normalizedInput = input ?? (cached ?? 0) + (missed ?? 0) + (written ?? 0);
+        return new NativeUsage(normalizedInput, output ?? 0, cached, written, missed, inputExcludesCache);
     }
 }
 
@@ -801,4 +1193,33 @@ public sealed class NativeProviderGateway : IDisposable
     }
 
     public void Dispose() { Stop(); _listener.Close(); }
+}
+
+/// Effort levels per model, low to high. Keep in sync with the "efforts" fields in
+/// macos/DotsHarness/Sources/DotsHarnessCore/Resources/providers.json.
+public static class NativeEffortCatalog
+{
+    private static readonly string[] GptMax = ["none", "low", "medium", "high", "xhigh", "max"];
+    private static readonly string[] Gpt = ["none", "low", "medium", "high", "xhigh"];
+    private static readonly string[] ClaudeXhigh = ["low", "medium", "high", "xhigh", "max"];
+    private static readonly string[] ClaudeMax = ["low", "medium", "high", "max"];
+
+    private static readonly Dictionary<string, string[]> Table = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["gpt-5.6-terra"] = GptMax, ["gpt-5.6-sol"] = GptMax, ["gpt-5.6-luna"] = GptMax,
+        ["gpt-5.5"] = Gpt, ["gpt-5.4"] = Gpt, ["gpt-5.4-mini"] = Gpt,
+        ["claude-sonnet-5"] = ClaudeXhigh, ["claude-opus-5"] = ClaudeXhigh, ["claude-opus-4-8"] = ClaudeXhigh,
+        ["claude-fable-5"] = ClaudeXhigh, ["claude-opus-4-7"] = ClaudeXhigh,
+        ["claude-sonnet-4-6"] = ClaudeMax, ["claude-opus-4-6"] = ClaudeMax,
+        ["claude-opus-4-5-20251101"] = ["low", "medium", "high"],
+        ["grok-4.5"] = ["low", "medium", "high", "xhigh"],
+    };
+
+    public static IReadOnlyList<string> Levels(string? model)
+    {
+        if (string.IsNullOrEmpty(model)) return [];
+        // Router ids may carry a provider prefix ("claude/claude-opus-5").
+        var bare = model[(model.LastIndexOf('/') + 1)..];
+        return Table.TryGetValue(bare, out var levels) ? levels : [];
+    }
 }

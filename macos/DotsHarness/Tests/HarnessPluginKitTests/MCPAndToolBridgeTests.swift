@@ -83,6 +83,40 @@ final class MCPAndToolBridgeTests: XCTestCase {
         XCTAssertFalse(registry.shouldAutoRun("mcp__Docs_Server__search"))
     }
 
+    /// `sandbox-exec` wraps process launch — it cannot wrap an HTTP MCP
+    /// server, which is just a network call the app makes on its own. The
+    /// sandbox's network toggle is the only real stop for that, so it must
+    /// hide (and refuse) HTTP-transport tools, not only stdio ones.
+    @MainActor
+    func testSandboxWithNetworkOffHidesAndRefusesHTTPMCPTools() async throws {
+        let store = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mcp-\(UUID().uuidString).json")
+        let registry = MCPRegistry(storeURL: store)
+        registry.transportOverride = { _ in StubMCPTransport() }
+        let config = MCPServerConfig(name: "Docs Server", transport: .http)
+        registry.upsert(config)
+        await registry.connect(config.id)
+        XCTAssertEqual(registry.toolDefinitions().map(\.name).sorted(), ["mcp__Docs_Server__search", "mcp__Docs_Server__wipe"])
+
+        let workspace = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mcp-sandbox-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: workspace) }
+        registry.setSandboxPolicy(SandboxExecutionPolicy(workspaceURL: workspace, networkAccess: false))
+
+        XCTAssertTrue(registry.toolDefinitions().isEmpty)
+        do {
+            _ = try await registry.call("mcp__Docs_Server__search", arguments: .object(["q": .string("hi")]))
+            XCTFail("expected the HTTP tool call to be refused")
+        } catch {
+            // Refused, as expected.
+        }
+
+        // Turning network back on restores it.
+        registry.setSandboxPolicy(SandboxExecutionPolicy(workspaceURL: workspace, networkAccess: true))
+        XCTAssertEqual(registry.toolDefinitions().map(\.name).sorted(), ["mcp__Docs_Server__search", "mcp__Docs_Server__wipe"])
+    }
+
     func testMCPToolClassifiedAsSideEffect() {
         XCTAssertEqual(NativeAgentHost.risk("mcp__docs__search"), .sideEffect)
         XCTAssertTrue(NativeAgentHost.requiresApproval(mode: .safe, toolName: "mcp__docs__search"))

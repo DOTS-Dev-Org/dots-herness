@@ -18,7 +18,7 @@ PUBLISH_DIR="$DIST_DIR/publish"
 ZIP_NAME="${APP_NAME}-${VERSION}-${RUNTIME}.zip"
 ZIP_PATH="$DIST_DIR/${ZIP_NAME}"
 SELF_CONTAINED=true
-READY_TO_RUN="${READY_TO_RUN:-false}"
+READY_TO_RUN="${READY_TO_RUN:-true}"
 OPEN_RESULT=true
 
 usage() {
@@ -37,7 +37,7 @@ Seçenekler:
       --framework TFM           Hedef çerçeve (varsayılan: net8.0-windows).
   -c, --configuration NAME      Yapılandırma (varsayılan: Release).
       --framework-dependent     Self-contained değil, paylaşılan runtime kullan.
-      --ready-to-run            Başlangıç hızını artırır, fakat paketi büyütür.
+      --ready-to-run            ReadyToRun (varsayılan açık; kapatmak için READY_TO_RUN=false).
       --output PATH             dist klasörü.
   -h, --help                    Bu yardım metnini göster.
 
@@ -225,6 +225,8 @@ fi
 
 echo "==> Hazır: $ZIP_PATH"
 echo "    Uygulama: $APP_PATH"
+echo "    Uygulama boyutu: $(du -sh "$PUBLISH_DIR" | awk '{print $1}')"
+echo "    Paket boyutu: $(du -sh "$ZIP_PATH" | awk '{print $1}')"
 
 if [[ "$OPEN_RESULT" != true ]]; then
     echo "Bitti. --no-open verildiği için Explorer açılmadı."

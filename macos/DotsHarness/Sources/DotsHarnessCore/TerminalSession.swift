@@ -9,6 +9,12 @@ import Foundation
 public final class TerminalSession: ObservableObject, Identifiable {
     public let id: UUID
     public let workspacePath: String
+    public let sandboxPolicy: SandboxExecutionPolicy?
+    /// Set when this shell lives on another machine: the session then runs
+    /// `ssh` on the pty instead of a local login shell, and `workspacePath` is
+    /// the folder on that machine rather than a path on this disk.
+    public let remoteTarget: SSHTarget?
+    public var executionPolicy: SandboxExecutionPolicy? { sandboxPolicy }
 
     @Published public private(set) var output = ""
     @Published public private(set) var isRunning = false
@@ -18,9 +24,33 @@ public final class TerminalSession: ObservableObject, Identifiable {
     private var childPID: pid_t = 0
     private var generation = UUID()
 
-    public init(workspacePath: String, id: UUID = UUID()) {
+    public init(
+        workspacePath: String,
+        sandboxPolicy: SandboxExecutionPolicy? = nil,
+        remoteTarget: SSHTarget? = nil,
+        id: UUID = UUID()
+    ) {
         self.id = id
         self.workspacePath = workspacePath
+        self.sandboxPolicy = remoteTarget == nil ? sandboxPolicy : nil
+        self.remoteTarget = remoteTarget
+    }
+
+    public convenience init(remoteTarget: SSHTarget, id: UUID = UUID()) {
+        self.init(
+            workspacePath: remoteTarget.identity,
+            sandboxPolicy: nil,
+            remoteTarget: remoteTarget,
+            id: id
+        )
+    }
+
+    public convenience init(
+        workspacePath: String,
+        executionPolicy: SandboxExecutionPolicy?,
+        id: UUID = UUID()
+    ) {
+        self.init(workspacePath: workspacePath, sandboxPolicy: executionPolicy, id: id)
     }
 
     public func start() {
@@ -28,18 +58,57 @@ public final class TerminalSession: ObservableObject, Identifiable {
         output = ""
 
         let directory = URL(fileURLWithPath: workspacePath, isDirectory: true)
-        var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: directory.path, isDirectory: &isDirectory),
-              isDirectory.boolValue else {
+        if remoteTarget == nil {
+            var isDirectory: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: directory.path, isDirectory: &isDirectory),
+                  isDirectory.boolValue else {
+                output = AppCopy.format(
+                    "conversation.terminalStartError",
+                    "Working directory does not exist: \(workspacePath)"
+                ) + "\n"
+                return
+            }
+        }
+
+        let launchExecutable: String
+        let launchArguments: [String]
+        do {
+            if let remoteTarget {
+                guard SSHRunner.isAvailable else { throw SSHError.sshUnavailable }
+                // No pre-flight probe here: it would block the main thread for
+                // as long as the connect timeout. ssh writes its own failure to
+                // the pty, which is exactly what a terminal should show.
+                launchExecutable = SSHRunner.executableURL.path
+                // `$SHELL -l` here, not the tools' `/bin/sh`: an interactive
+                // shell should be the one the user actually set up remotely.
+                launchArguments = ["ssh"]
+                    + SSHRunner.launchPrefix(alias: remoteTarget.alias, interactive: true)
+                    + ["cd -- \(SSHRunner.shellQuote(remoteTarget.remotePath)) && exec ${SHELL:-/bin/sh} -l"]
+            } else if let sandboxPolicy {
+                guard SandboxProfile.canonicalURL(directory).path == sandboxPolicy.workspaceURL.path else {
+                    throw NativeAgentError("Sandbox policy workspace does not match the terminal workspace.")
+                }
+                launchExecutable = SandboxProfile.executableURL.path
+                launchArguments = ["sandbox-exec"] + (try SandboxProfile.arguments(
+                    executable: "/bin/zsh",
+                    arguments: ["-l", "-i"],
+                    policy: sandboxPolicy
+                ))
+            } else {
+                launchExecutable = "/bin/zsh"
+                launchArguments = ["zsh", "-l", "-i"]
+            }
+        } catch {
             output = AppCopy.format(
                 "conversation.terminalStartError",
-                "Working directory does not exist: \(workspacePath)"
+                error.localizedDescription
             ) + "\n"
             return
         }
 
         let currentGeneration = UUID()
         generation = currentGeneration
+        let remoteWorkspace = remoteTarget
 
         var master: Int32 = -1
         var size = winsize(ws_row: 24, ws_col: 120, ws_xpixel: 0, ws_ypixel: 0)
@@ -56,18 +125,24 @@ public final class TerminalSession: ObservableObject, Identifiable {
             // forkpty gives zsh a controlling terminal. The shell therefore
             // keeps its cwd, job control, stdin, signals, and interactive
             // programs instead of evaluating isolated lines through a pipe.
-            guard chdir(directory.path) == 0 else { _exit(126) }
+            // ssh does the cd on the far side; there is no such directory here.
+            if remoteWorkspace == nil {
+                guard chdir(directory.path) == 0 else { _exit(126) }
+            }
             setenv("TERM", "xterm-256color", 1)
             setenv("TERM_PROGRAM", "DotsHarness", 1)
             setenv("COLORTERM", "truecolor", 1)
+            if let sandboxPolicy {
+                for (key, value) in SandboxProfile.cacheEnvironment(workspaceURL: sandboxPolicy.workspaceURL) {
+                    setenv(key, value, 1)
+                }
+            }
 
-            let shell = strdup("/bin/zsh")!
-            let name = strdup("zsh")!
-            let login = strdup("-l")!
-            let interactive = strdup("-i")!
-            var arguments: [UnsafeMutablePointer<CChar>?] = [name, login, interactive, nil]
+            let executable = strdup(launchExecutable)!
+            var arguments: [UnsafeMutablePointer<CChar>?] = launchArguments.map { strdup($0)! }
+            arguments.append(nil)
             arguments.withUnsafeMutableBufferPointer { buffer in
-                _ = execv(shell, buffer.baseAddress)
+                _ = execv(executable, buffer.baseAddress)
             }
             _exit(127)
         }
@@ -255,13 +330,29 @@ public final class TerminalManager: ObservableObject {
     }
 
     @discardableResult
-    public func openSession(for workspacePath: String) -> TerminalSession? {
+    public func openSession(
+        for workspacePath: String,
+        executionPolicy: SandboxExecutionPolicy? = nil,
+        remoteTarget: SSHTarget? = nil
+    ) -> TerminalSession? {
         guard let key = Self.normalizedWorkspacePath(workspacePath) else { return nil }
-        let session = TerminalSession(workspacePath: key)
+        if let remoteTarget, remoteTarget.identity != key { return nil }
+        if remoteTarget == nil, let executionPolicy, executionPolicy.workspaceURL.path != key { return nil }
+        let session = remoteTarget.map { TerminalSession(remoteTarget: $0) }
+            ?? TerminalSession(workspacePath: key, sandboxPolicy: executionPolicy)
         sessionsByWorkspace[key, default: []].append(session)
         selectedSessionIDs[key] = session.id
         session.start()
         return session
+    }
+
+    /// Compatibility label for callers written against the initial Layer 2 API.
+    @discardableResult
+    public func openSession(
+        for workspacePath: String,
+        sandboxPolicy: SandboxExecutionPolicy?
+    ) -> TerminalSession? {
+        openSession(for: workspacePath, executionPolicy: sandboxPolicy)
     }
 
     public func selectSession(_ sessionID: UUID, for workspacePath: String) {
@@ -292,11 +383,19 @@ public final class TerminalManager: ObservableObject {
         selectedSessionIDs.removeAll()
     }
 
+    public func stopSessions(for workspacePath: String) {
+        guard let key = Self.normalizedWorkspacePath(workspacePath) else { return }
+        sessionsByWorkspace[key]?.forEach { $0.stop() }
+        sessionsByWorkspace[key] = nil
+        selectedSessionIDs[key] = nil
+    }
+
     private static func normalizedWorkspacePath(_ path: String) -> String? {
         guard !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-        let url = URL(fileURLWithPath: path, isDirectory: true)
-            .standardizedFileURL
-            .resolvingSymlinksInPath()
+        // A remote workspace key ("ssh://alias/path") names a folder on another
+        // machine; there is nothing here to canonicalise or stat.
+        if path.hasPrefix("ssh://") { return path }
+        let url = SandboxProfile.canonicalURL(URL(fileURLWithPath: path, isDirectory: true))
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
               isDirectory.boolValue else { return nil }

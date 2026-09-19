@@ -52,9 +52,9 @@ public sealed class VisionMarketplaceInstaller : IVisionFallbackInstaller
     private static readonly IReadOnlyDictionary<string, string> OfficialPublishers =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            // ponytail: keep the release key explicit; replace the empty value
-            // in the release configuration instead of trusting registry keys.
-            ["dots"] = "",
+            // DOTS marketplace Ed25519 raw public key. Keep this pinned in the
+            // clients; never accept a registry-provided root key.
+            ["dots"] = "5BjXLUajc3JkmWmNHiBg5kmJoTFx2OVSe7BetYJEtCI=",
         };
 
     private readonly SupportPaths _paths;
@@ -208,7 +208,14 @@ public sealed class VisionMarketplaceInstaller : IVisionFallbackInstaller
         if (File.Exists(pinFile))
         {
             var extra = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(pinFile), JsonOptions);
-            if (extra is not null) publishers = new Dictionary<string, string>(extra, StringComparer.Ordinal);
+            if (extra is not null)
+            {
+                foreach (var (publisher, key) in extra)
+                {
+                    if (!string.Equals(publisher, "dots", StringComparison.Ordinal) && !string.IsNullOrWhiteSpace(key))
+                        publishers[publisher] = key;
+                }
+            }
         }
         if (!publishers.TryGetValue(signature.Publisher, out var pinned)
             || string.IsNullOrWhiteSpace(pinned)

@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
@@ -225,50 +224,89 @@
   <data name="voice.status.downloading" xml:space="preserve"><value>குரல் சொத்துகளைப் பதிவிறக்குகிறது…</value></data>
   <data name="voice.download" xml:space="preserve"><value>குரல் சொத்துகளைப் பதிவிறக்கவும்</value></data>
   <data name="voice.error" xml:space="preserve"><value>குரல் உள்ளீடு பிழை: {0}</value></data>
-  <data name="ask.customPlaceholder" xml:space="preserve"><value>Write your own answer…</value></data>
-  <data name="ask.skip" xml:space="preserve"><value>Skip and plan anyway</value></data>
-  <data name="ask.submit" xml:space="preserve"><value>Send answers</value></data>
-  <data name="ask.title" xml:space="preserve"><value>A few questions before the plan</value></data>
-  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Cleanup did not complete.</value></data>
-  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>No cleanup was requested.</value></data>
-  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Cleanup could not be verified; existing files were preserved.</value></data>
-  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Old code was preserved because cleanup was not needed or could not be proven.</value></data>
-  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Workspace changes could not be fully verified.</value></data>
-  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Old code cleanup verified.</value></data>
-  <data name="conversation.connectionAdded" xml:space="preserve"><value>Connection added: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionChanged" xml:space="preserve"><value>Connection changed</value></data>
-  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Previous local connection data could not be fully verified; it was preserved.</value></data>
-  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Previous connection preserved: {0}. Conversations and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Previous connection removed. Local connection data was cleared; conversations and user data were preserved. Remote data was not touched.</value></data>
-  <data name="conversation.connectionSelected" xml:space="preserve"><value>Connection selected: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionSummary" xml:space="preserve"><value>Connection changed: {0} → {1}</value></data>
-  <data name="conversation.fileAdded" xml:space="preserve"><value>Added</value></data>
-  <data name="conversation.fileDeleted" xml:space="preserve"><value>Deleted</value></data>
-  <data name="conversation.fileModified" xml:space="preserve"><value>Modified</value></data>
-  <data name="conversation.filesSummary" xml:space="preserve"><value>Added {0}, modified {1}, deleted {2}</value></data>
-  <data name="conversation.runSummary" xml:space="preserve"><value>Run summary</value></data>
-  <data name="conversation.testStatus" xml:space="preserve"><value>Tests: {0}</value></data>
-  <data name="router.unknown" xml:space="preserve"><value>unknown</value></data>
-  <data name="settings.seedProjectRules" xml:space="preserve"><value>Create AGENTS.md and CLAUDE.md</value></data>
-  <data name="settings.selfVerification" xml:space="preserve"><value>Verify changes automatically</value></data>
-  <data name="vision.deleteModel" xml:space="preserve"><value>Delete model</value></data>
-  <data name="vision.disabled" xml:space="preserve"><value>Disabled</value></data>
-  <data name="vision.downloadAndContinue" xml:space="preserve"><value>Download and continue</value></data>
-  <data name="vision.downloading" xml:space="preserve"><value>Downloading the local vision model…</value></data>
-  <data name="vision.emptyDescription" xml:space="preserve"><value>The local Vision fallback returned no visual description.</value></data>
-  <data name="vision.failed" xml:space="preserve"><value>Vision fallback failed</value></data>
-  <data name="vision.installPlugin" xml:space="preserve"><value>Install from marketplace</value></data>
-  <data name="vision.installReason" xml:space="preserve"><value>{0} does not support image input. The Vision plugin will download about {1} and process the image on this device. The original image may already have reached the provider.</value></data>
-  <data name="vision.installTitle" xml:space="preserve"><value>This provider cannot read the image</value></data>
-  <data name="vision.modelMissing" xml:space="preserve"><value>Model not downloaded</value></data>
-  <data name="vision.notEnabled" xml:space="preserve"><value>The provider cannot read this image and the local Vision plugin was not enabled.</value></data>
-  <data name="vision.notInstalled" xml:space="preserve"><value>Not installed</value></data>
-  <data name="vision.notNow" xml:space="preserve"><value>Not now</value></data>
-  <data name="vision.pluginMissing" xml:space="preserve"><value>The local Vision fallback plugin is unavailable.</value></data>
-  <data name="vision.prepareModel" xml:space="preserve"><value>Download and prepare model</value></data>
-  <data name="vision.preparing" xml:space="preserve"><value>Preparing the local vision runtime…</value></data>
-  <data name="vision.ready" xml:space="preserve"><value>Vision fallback ready · {0}</value></data>
-  <data name="vision.removePlugin" xml:space="preserve"><value>Remove plugin</value></data>
-  <data name="vision.title" xml:space="preserve"><value>Vision fallback</value></data>
-  <data name="vision.unavailable" xml:space="preserve"><value>Vision fallback is unavailable</value></data>
+  <data name="ask.customPlaceholder" xml:space="preserve"><value>உங்கள் சொந்த பதிலை எழுதுங்கள்…</value></data>
+  <data name="ask.skip" xml:space="preserve"><value>தவிர்த்து எப்படியும் திட்டமிடுங்கள்</value></data>
+  <data name="ask.submit" xml:space="preserve"><value>பதில்களை அனுப்புங்கள்</value></data>
+  <data name="ask.title" xml:space="preserve"><value>திட்டத்திற்கு முன் சில கேள்விகள்</value></data>
+  <data name="conversation.cleanupFailed" xml:space="preserve"><value>சுத்தம் செய்தல் முடியவில்லை.</value></data>
+  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>சுத்தம் செய்தல் கோரப்படவில்லை.</value></data>
+  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>சுத்தம் செய்தலைச் சரிபார்க்க முடியவில்லை; ஏற்கனவே உள்ள கோப்புகள் பாதுகாக்கப்பட்டன.</value></data>
+  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>சுத்தம் செய்தல் தேவையில்லாததால் அல்லது நிரூபிக்க முடியாததால் பழைய குறியீடு பாதுகாக்கப்பட்டது.</value></data>
+  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>பணியிட மாற்றங்களை முழுமையாகச் சரிபார்க்க முடியவில்லை.</value></data>
+  <data name="conversation.cleanupVerified" xml:space="preserve"><value>பழைய குறியீடு சுத்தம் செய்தல் சரிபார்க்கப்பட்டது.</value></data>
+  <data name="conversation.connectionAdded" xml:space="preserve"><value>இணைப்பு சேர்க்கப்பட்டது: {0}. ஏற்கனவே உள்ள இணைப்புகளும் பயனர் தரவும் பாதுகாக்கப்பட்டன; தொலைநிலை தரவு தொடப்படவில்லை.</value></data>
+  <data name="conversation.connectionChanged" xml:space="preserve"><value>இணைப்பு மாற்றப்பட்டது</value></data>
+  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>முந்தைய உள்ளூர் இணைப்புத் தரவை முழுமையாகச் சரிபார்க்க முடியவில்லை; அது பாதுகாக்கப்பட்டது.</value></data>
+  <data name="conversation.connectionPreserved" xml:space="preserve"><value>முந்தைய இணைப்பு பாதுகாக்கப்பட்டது: {0}. உரையாடல்களும் பயனர் தரவும் பாதுகாக்கப்பட்டன; தொலைநிலை தரவு தொடப்படவில்லை.</value></data>
+  <data name="conversation.connectionRemoved" xml:space="preserve"><value>முந்தைய இணைப்பு அகற்றப்பட்டது. உள்ளூர் இணைப்புத் தரவு அழிக்கப்பட்டது; உரையாடல்களும் பயனர் தரவும் பாதுகாக்கப்பட்டன. தொலைநிலை தரவு தொடப்படவில்லை.</value></data>
+  <data name="conversation.connectionSelected" xml:space="preserve"><value>இணைப்பு தேர்ந்தெடுக்கப்பட்டது: {0}. ஏற்கனவே உள்ள இணைப்புகளும் பயனர் தரவும் பாதுகாக்கப்பட்டன; தொலைநிலை தரவு தொடப்படவில்லை.</value></data>
+  <data name="conversation.connectionSummary" xml:space="preserve"><value>இணைப்பு மாற்றப்பட்டது: {0} → {1}</value></data>
+  <data name="conversation.fileAdded" xml:space="preserve"><value>சேர்க்கப்பட்டது</value></data>
+  <data name="conversation.fileDeleted" xml:space="preserve"><value>நீக்கப்பட்டது</value></data>
+  <data name="conversation.fileModified" xml:space="preserve"><value>மாற்றப்பட்டது</value></data>
+  <data name="conversation.filesSummary" xml:space="preserve"><value>சேர்க்கப்பட்டது {0}, மாற்றப்பட்டது {1}, நீக்கப்பட்டது {2}</value></data>
+  <data name="conversation.runSummary" xml:space="preserve"><value>இயக்கச் சுருக்கம்</value></data>
+  <data name="conversation.testStatus" xml:space="preserve"><value>சோதனைகள்: {0}</value></data>
+  <data name="router.unknown" xml:space="preserve"><value>தெரியாதது</value></data>
+  <data name="settings.seedProjectRules" xml:space="preserve"><value>AGENTS.md மற்றும் CLAUDE.md உருவாக்கு</value></data>
+  <data name="settings.selfVerification" xml:space="preserve"><value>மாற்றங்களைத் தானாகச் சரிபார்</value></data>
+  <data name="vision.deleteModel" xml:space="preserve"><value>மாதிரியை நீக்கு</value></data>
+  <data name="vision.disabled" xml:space="preserve"><value>முடக்கப்பட்டது</value></data>
+  <data name="vision.downloadAndContinue" xml:space="preserve"><value>பதிவிறக்கி தொடரவும்</value></data>
+  <data name="vision.downloading" xml:space="preserve"><value>உள்ளூர் Vision மாதிரி பதிவிறக்கப்படுகிறது…</value></data>
+  <data name="vision.emptyDescription" xml:space="preserve"><value>உள்ளூர் Vision fallback காட்சி விளக்கத்தை வழங்கவில்லை.</value></data>
+  <data name="vision.failed" xml:space="preserve"><value>Vision fallback தோல்வியடைந்தது</value></data>
+  <data name="vision.installPlugin" xml:space="preserve"><value>Marketplace-இலிருந்து நிறுவு</value></data>
+  <data name="vision.installReason" xml:space="preserve"><value>{0} பட உள்ளீட்டை ஆதரிக்கவில்லை. Vision plugin சுமார் {1} பதிவிறக்கி இந்தச் சாதனத்தில் படத்தைச் செயலாக்கும். அசல் படம் ஏற்கனவே வழங்குநரை அடைந்திருக்கலாம்.</value></data>
+  <data name="vision.installTitle" xml:space="preserve"><value>இந்த வழங்குநரால் படத்தைப் படிக்க முடியாது</value></data>
+  <data name="vision.modelMissing" xml:space="preserve"><value>மாதிரி பதிவிறக்கப்படவில்லை</value></data>
+  <data name="vision.notEnabled" xml:space="preserve"><value>வழங்குநரால் இந்தப் படத்தைப் படிக்க முடியாது; உள்ளூர் Vision plugin இயக்கப்படவில்லை.</value></data>
+  <data name="vision.notInstalled" xml:space="preserve"><value>நிறுவப்படவில்லை</value></data>
+  <data name="vision.notNow" xml:space="preserve"><value>இப்போது வேண்டாம்</value></data>
+  <data name="vision.pluginMissing" xml:space="preserve"><value>உள்ளூர் Vision fallback plugin கிடைக்கவில்லை.</value></data>
+  <data name="vision.prepareModel" xml:space="preserve"><value>மாதிரியைப் பதிவிறக்கி தயார் செய்</value></data>
+  <data name="vision.preparing" xml:space="preserve"><value>உள்ளூர் Vision runtime தயாராகிறது…</value></data>
+  <data name="vision.ready" xml:space="preserve"><value>Vision fallback தயார் · {0}</value></data>
+  <data name="vision.removePlugin" xml:space="preserve"><value>Plugin-ஐ அகற்று</value></data>
+  <data name="vision.title" xml:space="preserve"><value>விஷன் மாற்று</value></data>
+  <data name="vision.unavailable" xml:space="preserve"><value>Vision fallback கிடைக்கவில்லை</value></data>
+  <data name="legal.title" xml:space="preserve"><value>சட்டம் மற்றும் தனியுரிமை</value></data>
+  <data name="legal.gateHeading" xml:space="preserve"><value>தொடங்குவதற்கு முன்</value></data>
+  <data name="legal.gateIntro" xml:space="preserve"><value>பயனர் ஒப்பந்தத்தையும் தனியுரிமைக் கொள்கையையும் மதிப்பாய்வு செய்யவும். உங்கள் உரையாடல் மற்றும் பணியிட உள்ளடக்கம் நீங்கள் தேர்ந்தெடுக்கும் AI வழங்குநருக்கு அனுப்பப்படும்; அவர் உங்கள் நாட்டுக்கு வெளியே இருக்கலாம்.</value></data>
+  <data name="legal.termsTab" xml:space="preserve"><value>பயனர் ஒப்பந்தம்</value></data>
+  <data name="legal.privacyTab" xml:space="preserve"><value>தனியுரிமைக் கொள்கை</value></data>
+  <data name="legal.acceptRequired" xml:space="preserve"><value>பயனர் ஒப்பந்தத்தையும் தனியுரிமைக் கொள்கையையும் படித்து ஏற்கிறேன்.</value></data>
+  <data name="legal.accept" xml:space="preserve"><value>தொடர்க</value></data>
+  <data name="legal.openWeb" xml:space="preserve"><value>வலையில் திறக்கவும்</value></data>
+  <data name="legal.consentHeading" xml:space="preserve"><value>Optional permissions</value></data>
+  <data name="legal.consentPrefs" xml:space="preserve"><value>Consent preferences</value></data>
+  <data name="legal.consent.aiTransfer" xml:space="preserve"><value>Send my prompts and the files I choose to the AI provider so AI features work (required; involves transfer abroad).</value></data>
+  <data name="legal.consent.github" xml:space="preserve"><value>Allow GitHub integration to transfer my repository data when I connect it.</value></data>
+  <data name="legal.consent.voice" xml:space="preserve"><value>Allow voice input processing and speech-to-text conversion.</value></data>
+  <data name="legal.consent.marketing" xml:space="preserve"><value>Send me product news and campaigns by email.</value></data>
+  <data name="legal.updated" xml:space="preserve"><value>சட்ட ஆவணங்கள் புதுப்பிக்கப்பட்டன. அவற்றை மீண்டும் மதிப்பாய்வு செய்து ஏற்கவும்.</value></data>
+  <data name="legal.loadError" xml:space="preserve"><value>சட்ட ஆவணங்களை ஏற்ற முடியவில்லை. இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.</value></data>
+  <data name="legal.retry" xml:space="preserve"><value>மீண்டும் முயற்சிக்கவும்</value></data>
+  <data name="legal.acceptHint" xml:space="preserve"><value>“தொடர்க” என்பதை அழுத்துவதன் மூலம் பயனர் ஒப்பந்தத்தையும் தனியுரிமைக் கொள்கையையும் ஏற்கிறீர்கள்.</value></data>
+  <data name="usage.window5h" xml:space="preserve"><value>5 மணி</value></data>
+  <data name="usage.windowWeek" xml:space="preserve"><value>வாராந்திர</value></data>
+  <data name="usage.resetsIn" xml:space="preserve"><value>{0} இல் மீட்டமைக்கப்படும்</value></data>
+  <data name="usage.resetsOn" xml:space="preserve"><value>{0} அன்று மீட்டமைக்கப்படும்</value></data>
+  <data name="usage.resetsAvailable" xml:space="preserve"><value>{0} மீட்டமைப்புகள் உள்ளன</value></data>
+  <data name="usage.needLogin" xml:space="preserve"><value>வரம்புகளைக் காண Claude-இல் உள்நுழையவும்</value></data>
+  <data name="usage.noLimitInfo" xml:space="preserve"><value>வரம்புத் தகவல் இல்லை</value></data>
+  <data name="usage.loadFailed" xml:space="preserve"><value>பயன்பாட்டை ஏற்ற முடியவில்லை</value></data>
+  <data name="usage.loading" xml:space="preserve"><value>பயன்பாடு ஏற்றப்படுகிறது…</value></data>
+  <data name="modelPicker.selectModel" xml:space="preserve"><value>மாதிரியைத் தேர்ந்தெடுக்கவும்</value></data>
+  <data name="modelPicker.noModel" xml:space="preserve"><value>இணைக்கப்பட்ட மாதிரி இல்லை</value></data>
+  <data name="modelPicker.reset" xml:space="preserve"><value>இயல்புநிலைக்கு மீட்டமைக்கவும்</value></data>
+  <data name="modelPicker.effort" xml:space="preserve"><value>முயற்சி</value></data>
+  <data name="modelPicker.effortUnsupported" xml:space="preserve"><value>ஆதரிக்கப்படவில்லை</value></data>
+  <data name="modelPicker.effort.default" xml:space="preserve"><value>இயல்புநிலை</value></data>
+  <data name="modelPicker.effort.none" xml:space="preserve"><value>இல்லை</value></data>
+  <data name="modelPicker.effort.low" xml:space="preserve"><value>ஒளி</value></data>
+  <data name="modelPicker.effort.medium" xml:space="preserve"><value>நடுத்தர</value></data>
+  <data name="modelPicker.effort.high" xml:space="preserve"><value>உயர்</value></data>
+  <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>கூடுதல் உயர்</value></data>
+  <data name="modelPicker.effort.max" xml:space="preserve"><value>அதிகபட்சம்</value></data>
 </root>

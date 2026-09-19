@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
@@ -225,50 +224,89 @@
   <data name="voice.status.downloading" xml:space="preserve"><value>Mengunduh aset suara…</value></data>
   <data name="voice.download" xml:space="preserve"><value>Unduh aset suara</value></data>
   <data name="voice.error" xml:space="preserve"><value>Kesalahan masukan suara: {0}</value></data>
-  <data name="ask.customPlaceholder" xml:space="preserve"><value>Write your own answer…</value></data>
-  <data name="ask.skip" xml:space="preserve"><value>Skip and plan anyway</value></data>
-  <data name="ask.submit" xml:space="preserve"><value>Send answers</value></data>
-  <data name="ask.title" xml:space="preserve"><value>A few questions before the plan</value></data>
-  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Cleanup did not complete.</value></data>
-  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>No cleanup was requested.</value></data>
-  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Cleanup could not be verified; existing files were preserved.</value></data>
-  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Old code was preserved because cleanup was not needed or could not be proven.</value></data>
-  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Workspace changes could not be fully verified.</value></data>
-  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Old code cleanup verified.</value></data>
-  <data name="conversation.connectionAdded" xml:space="preserve"><value>Connection added: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionChanged" xml:space="preserve"><value>Connection changed</value></data>
-  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Previous local connection data could not be fully verified; it was preserved.</value></data>
-  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Previous connection preserved: {0}. Conversations and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Previous connection removed. Local connection data was cleared; conversations and user data were preserved. Remote data was not touched.</value></data>
-  <data name="conversation.connectionSelected" xml:space="preserve"><value>Connection selected: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionSummary" xml:space="preserve"><value>Connection changed: {0} → {1}</value></data>
-  <data name="conversation.fileAdded" xml:space="preserve"><value>Added</value></data>
-  <data name="conversation.fileDeleted" xml:space="preserve"><value>Deleted</value></data>
-  <data name="conversation.fileModified" xml:space="preserve"><value>Modified</value></data>
-  <data name="conversation.filesSummary" xml:space="preserve"><value>Added {0}, modified {1}, deleted {2}</value></data>
-  <data name="conversation.runSummary" xml:space="preserve"><value>Run summary</value></data>
-  <data name="conversation.testStatus" xml:space="preserve"><value>Tests: {0}</value></data>
-  <data name="router.unknown" xml:space="preserve"><value>unknown</value></data>
-  <data name="settings.seedProjectRules" xml:space="preserve"><value>Create AGENTS.md and CLAUDE.md</value></data>
-  <data name="settings.selfVerification" xml:space="preserve"><value>Verify changes automatically</value></data>
-  <data name="vision.deleteModel" xml:space="preserve"><value>Delete model</value></data>
-  <data name="vision.disabled" xml:space="preserve"><value>Disabled</value></data>
-  <data name="vision.downloadAndContinue" xml:space="preserve"><value>Download and continue</value></data>
-  <data name="vision.downloading" xml:space="preserve"><value>Downloading the local vision model…</value></data>
-  <data name="vision.emptyDescription" xml:space="preserve"><value>The local Vision fallback returned no visual description.</value></data>
-  <data name="vision.failed" xml:space="preserve"><value>Vision fallback failed</value></data>
-  <data name="vision.installPlugin" xml:space="preserve"><value>Install from marketplace</value></data>
-  <data name="vision.installReason" xml:space="preserve"><value>{0} does not support image input. The Vision plugin will download about {1} and process the image on this device. The original image may already have reached the provider.</value></data>
-  <data name="vision.installTitle" xml:space="preserve"><value>This provider cannot read the image</value></data>
-  <data name="vision.modelMissing" xml:space="preserve"><value>Model not downloaded</value></data>
-  <data name="vision.notEnabled" xml:space="preserve"><value>The provider cannot read this image and the local Vision plugin was not enabled.</value></data>
-  <data name="vision.notInstalled" xml:space="preserve"><value>Not installed</value></data>
-  <data name="vision.notNow" xml:space="preserve"><value>Not now</value></data>
-  <data name="vision.pluginMissing" xml:space="preserve"><value>The local Vision fallback plugin is unavailable.</value></data>
-  <data name="vision.prepareModel" xml:space="preserve"><value>Download and prepare model</value></data>
-  <data name="vision.preparing" xml:space="preserve"><value>Preparing the local vision runtime…</value></data>
-  <data name="vision.ready" xml:space="preserve"><value>Vision fallback ready · {0}</value></data>
-  <data name="vision.removePlugin" xml:space="preserve"><value>Remove plugin</value></data>
-  <data name="vision.title" xml:space="preserve"><value>Vision fallback</value></data>
-  <data name="vision.unavailable" xml:space="preserve"><value>Vision fallback is unavailable</value></data>
+  <data name="ask.customPlaceholder" xml:space="preserve"><value>Tulis jawaban Anda sendiri…</value></data>
+  <data name="ask.skip" xml:space="preserve"><value>Lewati dan tetap buat rencana</value></data>
+  <data name="ask.submit" xml:space="preserve"><value>Kirim jawaban</value></data>
+  <data name="ask.title" xml:space="preserve"><value>Beberapa pertanyaan sebelum rencana</value></data>
+  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Pembersihan belum selesai.</value></data>
+  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>Tidak ada pembersihan yang diminta.</value></data>
+  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Pembersihan tidak dapat diverifikasi; file yang ada dipertahankan.</value></data>
+  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Kode lama dipertahankan karena pembersihan tidak diperlukan atau tidak dapat dibuktikan.</value></data>
+  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Perubahan ruang kerja tidak dapat diverifikasi sepenuhnya.</value></data>
+  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Pembersihan kode lama terverifikasi.</value></data>
+  <data name="conversation.connectionAdded" xml:space="preserve"><value>Koneksi ditambahkan: {0}. Koneksi dan data pengguna yang ada dipertahankan; data jarak jauh tidak disentuh.</value></data>
+  <data name="conversation.connectionChanged" xml:space="preserve"><value>Koneksi diubah</value></data>
+  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Data koneksi lokal sebelumnya tidak dapat diverifikasi sepenuhnya; data tersebut dipertahankan.</value></data>
+  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Koneksi sebelumnya dipertahankan: {0}. Percakapan dan data pengguna dipertahankan; data jarak jauh tidak disentuh.</value></data>
+  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Koneksi sebelumnya dihapus. Data koneksi lokal dihapus; percakapan dan data pengguna dipertahankan. Data jarak jauh tidak disentuh.</value></data>
+  <data name="conversation.connectionSelected" xml:space="preserve"><value>Koneksi dipilih: {0}. Koneksi dan data pengguna yang ada dipertahankan; data jarak jauh tidak disentuh.</value></data>
+  <data name="conversation.connectionSummary" xml:space="preserve"><value>Koneksi diubah: {0} → {1}</value></data>
+  <data name="conversation.fileAdded" xml:space="preserve"><value>Ditambahkan</value></data>
+  <data name="conversation.fileDeleted" xml:space="preserve"><value>Dihapus</value></data>
+  <data name="conversation.fileModified" xml:space="preserve"><value>Diubah</value></data>
+  <data name="conversation.filesSummary" xml:space="preserve"><value>Ditambahkan {0}, diubah {1}, dihapus {2}</value></data>
+  <data name="conversation.runSummary" xml:space="preserve"><value>Ringkasan proses</value></data>
+  <data name="conversation.testStatus" xml:space="preserve"><value>Tes: {0}</value></data>
+  <data name="router.unknown" xml:space="preserve"><value>tidak diketahui</value></data>
+  <data name="settings.seedProjectRules" xml:space="preserve"><value>Buat AGENTS.md dan CLAUDE.md</value></data>
+  <data name="settings.selfVerification" xml:space="preserve"><value>Verifikasi perubahan secara otomatis</value></data>
+  <data name="vision.deleteModel" xml:space="preserve"><value>Hapus model</value></data>
+  <data name="vision.disabled" xml:space="preserve"><value>Dinonaktifkan</value></data>
+  <data name="vision.downloadAndContinue" xml:space="preserve"><value>Unduh dan lanjutkan</value></data>
+  <data name="vision.downloading" xml:space="preserve"><value>Mengunduh model Vision lokal…</value></data>
+  <data name="vision.emptyDescription" xml:space="preserve"><value>Vision fallback lokal tidak mengembalikan deskripsi visual.</value></data>
+  <data name="vision.failed" xml:space="preserve"><value>Vision fallback gagal</value></data>
+  <data name="vision.installPlugin" xml:space="preserve"><value>Instal dari marketplace</value></data>
+  <data name="vision.installReason" xml:space="preserve"><value>{0} tidak mendukung input gambar. Plugin Vision akan mengunduh sekitar {1} dan memproses gambar di perangkat ini. Gambar asli mungkin sudah sampai ke penyedia.</value></data>
+  <data name="vision.installTitle" xml:space="preserve"><value>Penyedia ini tidak dapat membaca gambar</value></data>
+  <data name="vision.modelMissing" xml:space="preserve"><value>Model belum diunduh</value></data>
+  <data name="vision.notEnabled" xml:space="preserve"><value>Penyedia tidak dapat membaca gambar ini dan plugin Vision lokal belum diaktifkan.</value></data>
+  <data name="vision.notInstalled" xml:space="preserve"><value>Belum terpasang</value></data>
+  <data name="vision.notNow" xml:space="preserve"><value>Nanti saja</value></data>
+  <data name="vision.pluginMissing" xml:space="preserve"><value>Plugin Vision fallback lokal tidak tersedia.</value></data>
+  <data name="vision.prepareModel" xml:space="preserve"><value>Unduh dan siapkan model</value></data>
+  <data name="vision.preparing" xml:space="preserve"><value>Menyiapkan runtime Vision lokal…</value></data>
+  <data name="vision.ready" xml:space="preserve"><value>Vision fallback siap · {0}</value></data>
+  <data name="vision.removePlugin" xml:space="preserve"><value>Hapus plugin</value></data>
+  <data name="vision.title" xml:space="preserve"><value>Fallback visi</value></data>
+  <data name="vision.unavailable" xml:space="preserve"><value>Vision fallback tidak tersedia</value></data>
+  <data name="legal.title" xml:space="preserve"><value>Hukum &amp; Privasi</value></data>
+  <data name="legal.gateHeading" xml:space="preserve"><value>Sebelum memulai</value></data>
+  <data name="legal.gateIntro" xml:space="preserve"><value>Tinjau Perjanjian Pengguna dan Kebijakan Privasi. Konten chat dan ruang kerja Anda dikirim ke penyedia AI pilihan Anda, yang mungkin berada di luar negara Anda.</value></data>
+  <data name="legal.termsTab" xml:space="preserve"><value>Perjanjian Pengguna</value></data>
+  <data name="legal.privacyTab" xml:space="preserve"><value>Kebijakan Privasi</value></data>
+  <data name="legal.acceptRequired" xml:space="preserve"><value>Saya telah membaca dan menyetujui Perjanjian Pengguna serta Kebijakan Privasi.</value></data>
+  <data name="legal.accept" xml:space="preserve"><value>Lanjutkan</value></data>
+  <data name="legal.openWeb" xml:space="preserve"><value>Buka di web</value></data>
+  <data name="legal.consentHeading" xml:space="preserve"><value>Optional permissions</value></data>
+  <data name="legal.consentPrefs" xml:space="preserve"><value>Consent preferences</value></data>
+  <data name="legal.consent.aiTransfer" xml:space="preserve"><value>Send my prompts and the files I choose to the AI provider so AI features work (required; involves transfer abroad).</value></data>
+  <data name="legal.consent.github" xml:space="preserve"><value>Allow GitHub integration to transfer my repository data when I connect it.</value></data>
+  <data name="legal.consent.voice" xml:space="preserve"><value>Allow voice input processing and speech-to-text conversion.</value></data>
+  <data name="legal.consent.marketing" xml:space="preserve"><value>Send me product news and campaigns by email.</value></data>
+  <data name="legal.updated" xml:space="preserve"><value>Dokumen hukum telah diperbarui. Tinjau dan setujui lagi.</value></data>
+  <data name="legal.loadError" xml:space="preserve"><value>Dokumen hukum tidak dapat dimuat. Periksa koneksi Anda dan coba lagi.</value></data>
+  <data name="legal.retry" xml:space="preserve"><value>Coba lagi</value></data>
+  <data name="legal.acceptHint" xml:space="preserve"><value>Dengan menekan “Lanjutkan”, Anda menyetujui Perjanjian Pengguna dan Kebijakan Privasi.</value></data>
+  <data name="usage.window5h" xml:space="preserve"><value>5 jam</value></data>
+  <data name="usage.windowWeek" xml:space="preserve"><value>Mingguan</value></data>
+  <data name="usage.resetsIn" xml:space="preserve"><value>direset dalam {0}</value></data>
+  <data name="usage.resetsOn" xml:space="preserve"><value>direset {0}</value></data>
+  <data name="usage.resetsAvailable" xml:space="preserve"><value>{0} reset tersedia</value></data>
+  <data name="usage.needLogin" xml:space="preserve"><value>Masuk ke Claude untuk melihat batas</value></data>
+  <data name="usage.noLimitInfo" xml:space="preserve"><value>Tidak ada info batas</value></data>
+  <data name="usage.loadFailed" xml:space="preserve"><value>Penggunaan tidak dapat dimuat</value></data>
+  <data name="usage.loading" xml:space="preserve"><value>Memuat penggunaan…</value></data>
+  <data name="modelPicker.selectModel" xml:space="preserve"><value>Pilih modelnya</value></data>
+  <data name="modelPicker.noModel" xml:space="preserve"><value>Tidak ada model yang terhubung</value></data>
+  <data name="modelPicker.reset" xml:space="preserve"><value>Atur ulang ke default</value></data>
+  <data name="modelPicker.effort" xml:space="preserve"><value>Upaya</value></data>
+  <data name="modelPicker.effortUnsupported" xml:space="preserve"><value>Tidak didukung</value></data>
+  <data name="modelPicker.effort.default" xml:space="preserve"><value>Bawaan</value></data>
+  <data name="modelPicker.effort.none" xml:space="preserve"><value>Tidak ada</value></data>
+  <data name="modelPicker.effort.low" xml:space="preserve"><value>Ringan</value></data>
+  <data name="modelPicker.effort.medium" xml:space="preserve"><value>Sedang</value></data>
+  <data name="modelPicker.effort.high" xml:space="preserve"><value>Tinggi</value></data>
+  <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>Ekstra Tinggi</value></data>
+  <data name="modelPicker.effort.max" xml:space="preserve"><value>Maks</value></data>
 </root>

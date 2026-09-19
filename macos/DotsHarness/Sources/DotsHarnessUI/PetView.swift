@@ -234,7 +234,7 @@ struct PetFloatingOverlay: View {
                         }
                         .overlay(Circle().stroke(Color(nsColor: .windowBackgroundColor), lineWidth: 2))
                         .offset(x: -1, y: -2)
-                } else if model.bridge.isBusy && !isDragging {
+                } else if model.bridge.anyRunBusy && !isDragging {
                     Circle()
                         .fill(Color.orange)
                         .frame(width: 11, height: 11)

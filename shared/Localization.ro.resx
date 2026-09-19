@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
@@ -213,7 +212,7 @@
   <data name="voice.source.large" xml:space="preserve"><value>Whisper Large-v3-Turbo (local)</value></data>
   <data name="voice.source.nemotron" xml:space="preserve"><value>Nemotron 3.5 (streaming local)</value></data>
   <data name="voice.source.custom" xml:space="preserve"><value>Model local personalizat</value></data>
-  <data name="voice.source.api" xml:space="preserve"><value>Voice API</value></data>
+  <data name="voice.source.api" xml:space="preserve"><value>Motor vocal personalizat</value></data>
   <data name="voice.api.endpoint" xml:space="preserve"><value>Punctul final al transcripției</value></data>
   <data name="voice.api.key" xml:space="preserve"><value>cheie API</value></data>
   <data name="voice.api.model" xml:space="preserve"><value>Model</value></data>
@@ -225,50 +224,89 @@
   <data name="voice.status.downloading" xml:space="preserve"><value>Se descarcă elemente vocale...</value></data>
   <data name="voice.download" xml:space="preserve"><value>Descărcați elemente vocale</value></data>
   <data name="voice.error" xml:space="preserve"><value>Eroare de intrare vocală: {0}</value></data>
-  <data name="ask.customPlaceholder" xml:space="preserve"><value>Write your own answer…</value></data>
-  <data name="ask.skip" xml:space="preserve"><value>Skip and plan anyway</value></data>
-  <data name="ask.submit" xml:space="preserve"><value>Send answers</value></data>
-  <data name="ask.title" xml:space="preserve"><value>A few questions before the plan</value></data>
-  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Cleanup did not complete.</value></data>
-  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>No cleanup was requested.</value></data>
-  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Cleanup could not be verified; existing files were preserved.</value></data>
-  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Old code was preserved because cleanup was not needed or could not be proven.</value></data>
-  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Workspace changes could not be fully verified.</value></data>
-  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Old code cleanup verified.</value></data>
-  <data name="conversation.connectionAdded" xml:space="preserve"><value>Connection added: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionChanged" xml:space="preserve"><value>Connection changed</value></data>
-  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Previous local connection data could not be fully verified; it was preserved.</value></data>
-  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Previous connection preserved: {0}. Conversations and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Previous connection removed. Local connection data was cleared; conversations and user data were preserved. Remote data was not touched.</value></data>
-  <data name="conversation.connectionSelected" xml:space="preserve"><value>Connection selected: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionSummary" xml:space="preserve"><value>Connection changed: {0} → {1}</value></data>
-  <data name="conversation.fileAdded" xml:space="preserve"><value>Added</value></data>
-  <data name="conversation.fileDeleted" xml:space="preserve"><value>Deleted</value></data>
-  <data name="conversation.fileModified" xml:space="preserve"><value>Modified</value></data>
-  <data name="conversation.filesSummary" xml:space="preserve"><value>Added {0}, modified {1}, deleted {2}</value></data>
-  <data name="conversation.runSummary" xml:space="preserve"><value>Run summary</value></data>
-  <data name="conversation.testStatus" xml:space="preserve"><value>Tests: {0}</value></data>
-  <data name="router.unknown" xml:space="preserve"><value>unknown</value></data>
-  <data name="settings.seedProjectRules" xml:space="preserve"><value>Create AGENTS.md and CLAUDE.md</value></data>
-  <data name="settings.selfVerification" xml:space="preserve"><value>Verify changes automatically</value></data>
-  <data name="vision.deleteModel" xml:space="preserve"><value>Delete model</value></data>
-  <data name="vision.disabled" xml:space="preserve"><value>Disabled</value></data>
-  <data name="vision.downloadAndContinue" xml:space="preserve"><value>Download and continue</value></data>
-  <data name="vision.downloading" xml:space="preserve"><value>Downloading the local vision model…</value></data>
-  <data name="vision.emptyDescription" xml:space="preserve"><value>The local Vision fallback returned no visual description.</value></data>
-  <data name="vision.failed" xml:space="preserve"><value>Vision fallback failed</value></data>
-  <data name="vision.installPlugin" xml:space="preserve"><value>Install from marketplace</value></data>
-  <data name="vision.installReason" xml:space="preserve"><value>{0} does not support image input. The Vision plugin will download about {1} and process the image on this device. The original image may already have reached the provider.</value></data>
-  <data name="vision.installTitle" xml:space="preserve"><value>This provider cannot read the image</value></data>
-  <data name="vision.modelMissing" xml:space="preserve"><value>Model not downloaded</value></data>
-  <data name="vision.notEnabled" xml:space="preserve"><value>The provider cannot read this image and the local Vision plugin was not enabled.</value></data>
-  <data name="vision.notInstalled" xml:space="preserve"><value>Not installed</value></data>
-  <data name="vision.notNow" xml:space="preserve"><value>Not now</value></data>
-  <data name="vision.pluginMissing" xml:space="preserve"><value>The local Vision fallback plugin is unavailable.</value></data>
-  <data name="vision.prepareModel" xml:space="preserve"><value>Download and prepare model</value></data>
-  <data name="vision.preparing" xml:space="preserve"><value>Preparing the local vision runtime…</value></data>
-  <data name="vision.ready" xml:space="preserve"><value>Vision fallback ready · {0}</value></data>
-  <data name="vision.removePlugin" xml:space="preserve"><value>Remove plugin</value></data>
-  <data name="vision.title" xml:space="preserve"><value>Vision fallback</value></data>
-  <data name="vision.unavailable" xml:space="preserve"><value>Vision fallback is unavailable</value></data>
+  <data name="ask.customPlaceholder" xml:space="preserve"><value>Scrieți propriul răspuns…</value></data>
+  <data name="ask.skip" xml:space="preserve"><value>Omiteți și planificați oricum</value></data>
+  <data name="ask.submit" xml:space="preserve"><value>Trimiteți răspunsurile</value></data>
+  <data name="ask.title" xml:space="preserve"><value>Câteva întrebări înaintea planului</value></data>
+  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Curățarea nu s-a finalizat.</value></data>
+  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>Nu a fost solicitată nicio curățare.</value></data>
+  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Curățarea nu a putut fi verificată; fișierele existente au fost păstrate.</value></data>
+  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Codul vechi a fost păstrat deoarece curățarea nu era necesară sau nu putea fi demonstrată.</value></data>
+  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Modificările spațiului de lucru nu au putut fi verificate complet.</value></data>
+  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Curățarea codului vechi a fost verificată.</value></data>
+  <data name="conversation.connectionAdded" xml:space="preserve"><value>Conexiune adăugată: {0}. Conexiunile existente și datele utilizatorului au fost păstrate; datele la distanță nu au fost atinse.</value></data>
+  <data name="conversation.connectionChanged" xml:space="preserve"><value>Conexiune modificată</value></data>
+  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Datele locale ale conexiunii anterioare nu au putut fi verificate complet; au fost păstrate.</value></data>
+  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Conexiunea anterioară a fost păstrată: {0}. Conversațiile și datele utilizatorului au fost păstrate; datele la distanță nu au fost atinse.</value></data>
+  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Conexiunea anterioară a fost eliminată. Datele locale ale conexiunii au fost șterse; conversațiile și datele utilizatorului au fost păstrate. Datele la distanță nu au fost atinse.</value></data>
+  <data name="conversation.connectionSelected" xml:space="preserve"><value>Conexiune selectată: {0}. Conexiunile existente și datele utilizatorului au fost păstrate; datele la distanță nu au fost atinse.</value></data>
+  <data name="conversation.connectionSummary" xml:space="preserve"><value>Conexiune modificată: {0} → {1}</value></data>
+  <data name="conversation.fileAdded" xml:space="preserve"><value>Adăugat</value></data>
+  <data name="conversation.fileDeleted" xml:space="preserve"><value>Șters</value></data>
+  <data name="conversation.fileModified" xml:space="preserve"><value>Modificat</value></data>
+  <data name="conversation.filesSummary" xml:space="preserve"><value>Adăugat {0}, modificat {1}, șters {2}</value></data>
+  <data name="conversation.runSummary" xml:space="preserve"><value>Rezumatul rulării</value></data>
+  <data name="conversation.testStatus" xml:space="preserve"><value>Teste: {0}</value></data>
+  <data name="router.unknown" xml:space="preserve"><value>necunoscut</value></data>
+  <data name="settings.seedProjectRules" xml:space="preserve"><value>Creați AGENTS.md și CLAUDE.md</value></data>
+  <data name="settings.selfVerification" xml:space="preserve"><value>Verificați automat modificările</value></data>
+  <data name="vision.deleteModel" xml:space="preserve"><value>Ștergeți modelul</value></data>
+  <data name="vision.disabled" xml:space="preserve"><value>Dezactivat</value></data>
+  <data name="vision.downloadAndContinue" xml:space="preserve"><value>Descărcați și continuați</value></data>
+  <data name="vision.downloading" xml:space="preserve"><value>Se descarcă modelul local Vision…</value></data>
+  <data name="vision.emptyDescription" xml:space="preserve"><value>Fallback-ul local Vision nu a returnat nicio descriere vizuală.</value></data>
+  <data name="vision.failed" xml:space="preserve"><value>Fallback-ul Vision a eșuat</value></data>
+  <data name="vision.installPlugin" xml:space="preserve"><value>Instalați din marketplace</value></data>
+  <data name="vision.installReason" xml:space="preserve"><value>{0} nu acceptă intrări de imagine. Pluginul Vision va descărca aproximativ {1} și va procesa imaginea pe acest dispozitiv. Imaginea originală este posibil să fi ajuns deja la furnizor.</value></data>
+  <data name="vision.installTitle" xml:space="preserve"><value>Acest furnizor nu poate citi imaginea</value></data>
+  <data name="vision.modelMissing" xml:space="preserve"><value>Model nedescărcat</value></data>
+  <data name="vision.notEnabled" xml:space="preserve"><value>Furnizorul nu poate citi această imagine, iar pluginul Vision local nu este activat.</value></data>
+  <data name="vision.notInstalled" xml:space="preserve"><value>Neinstalat</value></data>
+  <data name="vision.notNow" xml:space="preserve"><value>Nu acum</value></data>
+  <data name="vision.pluginMissing" xml:space="preserve"><value>Pluginul local de fallback Vision nu este disponibil.</value></data>
+  <data name="vision.prepareModel" xml:space="preserve"><value>Descărcați și pregătiți modelul</value></data>
+  <data name="vision.preparing" xml:space="preserve"><value>Se pregătește runtime-ul local Vision…</value></data>
+  <data name="vision.ready" xml:space="preserve"><value>Fallback Vision gata · {0}</value></data>
+  <data name="vision.removePlugin" xml:space="preserve"><value>Eliminați pluginul</value></data>
+  <data name="vision.title" xml:space="preserve"><value>Fallback Vision</value></data>
+  <data name="vision.unavailable" xml:space="preserve"><value>Fallback-ul Vision nu este disponibil</value></data>
+  <data name="legal.title" xml:space="preserve"><value>Legal și confidențialitate</value></data>
+  <data name="legal.gateHeading" xml:space="preserve"><value>Înainte de a începe</value></data>
+  <data name="legal.gateIntro" xml:space="preserve"><value>Consultă Acordul utilizatorului și Politica de confidențialitate. Conținutul conversațiilor și al spațiului de lucru este trimis furnizorului AI ales, care poate fi în afara țării tale.</value></data>
+  <data name="legal.termsTab" xml:space="preserve"><value>Acordul utilizatorului</value></data>
+  <data name="legal.privacyTab" xml:space="preserve"><value>Politica de confidențialitate</value></data>
+  <data name="legal.acceptRequired" xml:space="preserve"><value>Am citit și accept Acordul utilizatorului și Politica de confidențialitate.</value></data>
+  <data name="legal.accept" xml:space="preserve"><value>Continuă</value></data>
+  <data name="legal.openWeb" xml:space="preserve"><value>Deschide pe web</value></data>
+  <data name="legal.consentHeading" xml:space="preserve"><value>Optional permissions</value></data>
+  <data name="legal.consentPrefs" xml:space="preserve"><value>Consent preferences</value></data>
+  <data name="legal.consent.aiTransfer" xml:space="preserve"><value>Send my prompts and the files I choose to the AI provider so AI features work (required; involves transfer abroad).</value></data>
+  <data name="legal.consent.github" xml:space="preserve"><value>Allow GitHub integration to transfer my repository data when I connect it.</value></data>
+  <data name="legal.consent.voice" xml:space="preserve"><value>Allow voice input processing and speech-to-text conversion.</value></data>
+  <data name="legal.consent.marketing" xml:space="preserve"><value>Send me product news and campaigns by email.</value></data>
+  <data name="legal.updated" xml:space="preserve"><value>Documentele juridice au fost actualizate. Consultă-le și acceptă-le din nou.</value></data>
+  <data name="legal.loadError" xml:space="preserve"><value>Nu s-au putut încărca documentele juridice. Verifică conexiunea și încearcă din nou.</value></data>
+  <data name="legal.retry" xml:space="preserve"><value>Încearcă din nou</value></data>
+  <data name="legal.acceptHint" xml:space="preserve"><value>Apăsând „Continuă”, accepți Acordul utilizatorului și Politica de confidențialitate.</value></data>
+  <data name="usage.window5h" xml:space="preserve"><value>5 h</value></data>
+  <data name="usage.windowWeek" xml:space="preserve"><value>Săptămânal</value></data>
+  <data name="usage.resetsIn" xml:space="preserve"><value>se resetează în {0}</value></data>
+  <data name="usage.resetsOn" xml:space="preserve"><value>se resetează {0}</value></data>
+  <data name="usage.resetsAvailable" xml:space="preserve"><value>{0} resetări disponibile</value></data>
+  <data name="usage.needLogin" xml:space="preserve"><value>Conectează-te la Claude pentru a vedea limitele</value></data>
+  <data name="usage.noLimitInfo" xml:space="preserve"><value>Nu există informații despre limite</value></data>
+  <data name="usage.loadFailed" xml:space="preserve"><value>Nu s-a putut încărca utilizarea</value></data>
+  <data name="usage.loading" xml:space="preserve"><value>Se încarcă utilizarea…</value></data>
+  <data name="modelPicker.selectModel" xml:space="preserve"><value>Selectați modelul</value></data>
+  <data name="modelPicker.noModel" xml:space="preserve"><value>Niciun model conectat</value></data>
+  <data name="modelPicker.reset" xml:space="preserve"><value>Resetați la valoarea implicită</value></data>
+  <data name="modelPicker.effort" xml:space="preserve"><value>Efort</value></data>
+  <data name="modelPicker.effortUnsupported" xml:space="preserve"><value>Nu este acceptat</value></data>
+  <data name="modelPicker.effort.default" xml:space="preserve"><value>Implicit</value></data>
+  <data name="modelPicker.effort.none" xml:space="preserve"><value>Niciuna</value></data>
+  <data name="modelPicker.effort.low" xml:space="preserve"><value>Lumină</value></data>
+  <data name="modelPicker.effort.medium" xml:space="preserve"><value>Mediu</value></data>
+  <data name="modelPicker.effort.high" xml:space="preserve"><value>Înalt</value></data>
+  <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>Extra mare</value></data>
+  <data name="modelPicker.effort.max" xml:space="preserve"><value>Max</value></data>
 </root>

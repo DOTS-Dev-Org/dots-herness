@@ -6,14 +6,19 @@ public static class NativeClipboard
 {
     public static void SetText(string text)
     {
-        try
+        var tools = OperatingSystem.IsWindows()
+            ? new[] { ("clip.exe", "") }
+            : new[] { ("wl-copy", ""), ("xclip", "-selection clipboard"), ("xsel", "--clipboard --input") };
+        foreach (var (file, args) in tools)
         {
-            using var process = Process.Start(new ProcessStartInfo("clip.exe") { RedirectStandardInput = true, UseShellExecute = false, CreateNoWindow = true });
-            if (process is null) return;
-            process.StandardInput.Write(text);
-            process.StandardInput.Close();
-            process.WaitForExit(1000);
+            try
+            {
+                using var process = Process.Start(new ProcessStartInfo(file, args) { RedirectStandardInput = true, UseShellExecute = false, CreateNoWindow = true });
+                if (process is null) continue;
+                process.StandardInput.Write(text); process.StandardInput.Close();
+                if (process.WaitForExit(1000)) return;
+            }
+            catch { }
         }
-        catch { }
     }
 }

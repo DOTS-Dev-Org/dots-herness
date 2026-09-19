@@ -170,7 +170,7 @@ public final class VoiceStreamingSession: @unchecked Sendable {
     private var inferenceRunning = false
     private var pendingInference: (samples: [Float], isFinal: Bool)?
     private var stopRequested = false
-    private var stopHandler: (() -> Void)?
+    private var stopHandler: (@Sendable () -> Void)?
     private var cancelled = false
 
     public init(
@@ -204,16 +204,13 @@ public final class VoiceStreamingSession: @unchecked Sendable {
         }
     }
 
-    public func stop(completion: (() -> Void)? = nil) {
+    public func stop(completion: (@Sendable () -> Void)? = nil) {
         queue.async { [weak self] in
             guard let self, !self.cancelled, !self.stopRequested else { return }
             self.stopRequested = true
             self.stopHandler = completion
             for event in self.detector.flush() {
                 self.consume(event)
-            }
-            if self.mode == .realtime {
-                self.realtimeCommit?()
             }
             self.finishIfPossible()
         }

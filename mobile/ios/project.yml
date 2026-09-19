@@ -1,0 +1,66 @@
+name: HerNessMobile
+options:
+  bundleIdPrefix: com.dots
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: 6.0
+    DEVELOPMENT_TEAM: ""
+    GCC_PREPROCESSOR_DEFINITIONS: ["HERNESS_HAS_LIBGIT2=1"]
+    OTHER_CFLAGS: ["-DHERNESS_HAS_LIBGIT2=1"]
+targets:
+  HerNessMobile:
+    type: application
+    platform: iOS
+    dependencies:
+      - sdk: libsqlite3.tbd
+    sources:
+      - Sources
+      - path: ../native/MobileGitClient.c
+      - path: Resources
+        buildPhase: resources
+    resources:
+      - path: Resources/Assets.xcassets
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: HerNess
+        HERNESS_GITHUB_CLIENT_ID: ""
+        LSApplicationCategoryType: public.app-category.developer-tools
+        NSLocalNetworkUsageDescription: Connect HerNess to services on your local network when you choose to use them.
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.dots.herness.loops
+        UILaunchStoryboardName: LaunchScreen
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - herness
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dots.herness
+        HERNESS_GITHUB_CLIENT_ID: ""
+        SWIFT_OBJC_BRIDGING_HEADER: "$(SRCROOT)/../native/MobileGitClient.h"
+        GCC_PREPROCESSOR_DEFINITIONS: ["HERNESS_HAS_LIBGIT2=1"]
+        OTHER_CFLAGS: ["-DHERNESS_HAS_LIBGIT2=1"]
+        # Production libgit2: vendor XCFramework to mobile/native/libgit2.xcframework,
+        # then add:
+        #   - framework: ../native/libgit2.xcframework
+        #   - OTHER_LDFLAGS: ["-lgit2"]
+        # Until then MobileGitClient.c auto-falls back to HERNESS_GIT_UNAVAILABLE without breaking build (has_include guard).
+    scheme:
+      gatherCoverageData: false
+      testTargets:
+        - HerNessMobileTests
+  HerNessMobileTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests
+    dependencies:
+      - target: HerNessMobile
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dots.herness.tests
+        GENERATE_INFOPLIST_FILE: YES

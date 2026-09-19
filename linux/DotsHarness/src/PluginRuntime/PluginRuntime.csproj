@@ -4,6 +4,10 @@
     <RootNamespace>PluginRuntime</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\..\..\windows\DotsHarness\src\PluginRuntime\InMemoryRegistries.cs" Link="InMemoryRegistries.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\src\PluginRuntime\MiniYaml.cs" Link="MiniYaml.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\src\PluginRuntime\PluginHost.cs" Link="PluginHost.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\src\PluginRuntime\PluginCatalog.cs" Link="PluginCatalog.cs" />
     <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
   </ItemGroup>
 </Project>

@@ -1,5 +1,5 @@
 // Copyright (c) 2026 DOTS
-// Declarative (code-free) plugin tests.
+// Legacy declarative packages must be rejected by the native-only runtime.
 
 import XCTest
 import HarnessPluginKit
@@ -7,7 +7,7 @@ import PluginRuntime
 
 @MainActor
 final class DeclarativePluginTests: XCTestCase {
-    func testDeclarativeManifestRegistersToolAndPanel() async throws {
+    func testDeclarativeManifestIsNotLoadable() throws {
         let paths = temporaryPaths()
         let folder = paths.plugins.appendingPathComponent("weather")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -44,14 +44,8 @@ final class DeclarativePluginTests: XCTestCase {
         let issues = host.mount(CompositionDocument(plane: .session, entries: [
             CompositionEntry(id: "weather", plugin: "com.example.weather"),
         ]))
-        XCTAssertTrue(issues.isEmpty, issues.map(\.message).joined())
-        XCTAssertTrue(host.tools.tools().contains { $0.name == "weather:ping" })
-        XCTAssertFalse(host.slots.occupants(in: "conversation.composer.accessory").isEmpty)
-
-        var received: Any?
-        _ = host.events.on("weather/ping") { received = $0 }
-        _ = try await host.tools.call("weather:ping", arguments: [:])
-        XCTAssertEqual(received as? String, "hi")
+        XCTAssertEqual(issues.count, 1)
+        XCTAssertTrue(issues[0].message.contains("native"))
     }
 
     func testUntrustedShellToolIsRejected() throws {
@@ -79,7 +73,7 @@ final class DeclarativePluginTests: XCTestCase {
             CompositionEntry(id: "sh", plugin: "com.example.sh"),
         ]))
         XCTAssertEqual(issues.count, 1)
-        XCTAssertTrue(issues[0].message.contains("trusted"))
+        XCTAssertTrue(issues[0].message.contains("native"))
     }
 
     private func temporaryPaths() -> SupportPaths {

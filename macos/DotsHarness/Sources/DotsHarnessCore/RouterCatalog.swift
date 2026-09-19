@@ -96,12 +96,61 @@ public enum RouterCatalog {
     public static func kind(for id: String) -> RouterProviderKind? { providers.first { $0.id == id } }
     public static func label(for id: String) -> String { id.hasPrefix("custom:") ? "Custom API" : kind(for: id)?.name ?? "Provider" }
 
+    public static func modelGroups(for models: [RouterModel]) -> [RouterModelGroup] {
+        var order: [String] = []
+        var grouped: [String: [RouterModel]] = [:]
+        for model in models where !model.id.isEmpty {
+            let provider = model.provider.isEmpty ? (model.owner.isEmpty ? "unknown" : model.owner) : model.provider
+            if grouped[provider] == nil { order.append(provider) }
+            grouped[provider, default: []].append(model)
+        }
+        return order.compactMap { provider in
+            guard let models = grouped[provider], !models.isEmpty else { return nil }
+            let kind = self.kind(for: provider)
+            return RouterModelGroup(
+                provider: provider,
+                name: kind?.name ?? models.first?.owner ?? provider,
+                logoSymbol: kind?.logoSymbol ?? "sparkles",
+                models: models
+            )
+        }
+    }
+
+    public static func modelDisplayName(for model: RouterModel) -> String {
+        let declared = model.displayName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasDeclaredName = !(declared?.isEmpty ?? true)
+        let source = hasDeclaredName ? declared! : (model.id.split(separator: "/").last.map(String.init) ?? model.id)
+        let readable = hasDeclaredName ? source : source.replacingOccurrences(of: "-", with: " ")
+        let prefixes = [kind(for: model.provider)?.name, model.owner, "Claude", "GPT", "OpenAI", "Gemini", "Grok"]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .sorted { $0.count > $1.count }
+        let withoutProvider = prefixes.first(where: { prefix in
+            readable.count > prefix.count
+                && readable.lowercased().hasPrefix(prefix.lowercased())
+                && readable.dropFirst(prefix.count).first == " "
+        }).map { String(readable.dropFirst($0.count)).trimmingCharacters(in: .whitespacesAndNewlines) } ?? readable
+        guard !withoutProvider.isEmpty else { return source }
+        guard !hasDeclaredName else { return withoutProvider }
+        return withoutProvider.split(separator: " ").map { word in
+            switch word.lowercased() {
+            case "gpt": return "GPT"
+            case "glm": return "GLM"
+            case "ai": return "AI"
+            default: return word.capitalized
+            }
+        }.joined(separator: " ")
+    }
+
     public static func hint(for id: String) -> String {
         let key = "provider.\(id).hint"
         let localized = AppCopy.text(key)
         return localized == key ? (kind(for: id)?.hint ?? "") : localized
     }
 
+    /// Groups accounts by provider, ordering the groups by the lowest `priority`
+    /// among their accounts (the provider-priority the Settings reorder UI writes),
+    /// insertion order breaking ties.
     public static func groups(from connections: [RouterConnection]) -> [ProviderAccountGroup] {
         var order: [String] = []
         var map: [String: [RouterConnection]] = [:]
@@ -109,9 +158,17 @@ public enum RouterCatalog {
             if map[connection.provider] == nil { order.append(connection.provider) }
             map[connection.provider, default: []].append(connection)
         }
-        return order.map { provider in
-            ProviderAccountGroup(provider: provider, label: label(for: provider), accounts: map[provider] ?? [])
-        }
+        let rank = Dictionary(uniqueKeysWithValues: order.enumerated().map { ($1, $0) })
+        return order
+            .sorted { lhs, rhs in
+                let lp = map[lhs]?.map(\.priority).min() ?? 0
+                let rp = map[rhs]?.map(\.priority).min() ?? 0
+                if lp != rp { return lp < rp }
+                return (rank[lhs] ?? 0) < (rank[rhs] ?? 0)
+            }
+            .map { provider in
+                ProviderAccountGroup(provider: provider, label: label(for: provider), accounts: map[provider] ?? [])
+            }
     }
 
     public static func uniqueName(desired: String, provider: String, existing: [RouterConnection]) -> String {
@@ -141,11 +198,13 @@ public struct RouterConnection: Identifiable, Sendable, Equatable {
     public var imageFallbackEnabled: Bool
     public var status: String
     public var authType: String
+    public var priority: Int
     public var error: String?
 
     public init(from account: StoredProviderAccount) {
         id = account.id; provider = account.provider; name = account.name; email = account.email
-        active = account.active; imageFallbackEnabled = account.imageFallbackEnabled; status = account.status; authType = account.authType; error = account.error
+        active = account.active; imageFallbackEnabled = account.imageFallbackEnabled; status = account.status; authType = account.authType
+        priority = account.priority; error = account.error
     }
 
     public init(from object: JSONObject) {
@@ -157,6 +216,7 @@ public struct RouterConnection: Identifiable, Sendable, Equatable {
         imageFallbackEnabled = object["imageFallbackEnabled"]?.bool ?? false
         status = object["testStatus"]?.string ?? AppCopy.text("router.unknown")
         authType = object["authType"]?.string ?? ""
+        priority = object["priority"]?.int ?? 0
         error = object["lastError"]?.string
     }
 }
@@ -231,6 +291,8 @@ public struct RouterModel: Identifiable, Sendable, Equatable {
     public var provider: String = ""
     /// Registry-declared tier. `nil` means automatic routing infers one from the id.
     public var tier: ModelTier?
+    /// Registry-declared fast (priority) mode support.
+    public var fast = false
 
     public init(
         id: String,
@@ -239,8 +301,10 @@ public struct RouterModel: Identifiable, Sendable, Equatable {
         efforts: [String] = [],
         displayName: String? = nil,
         provider: String = "",
-        tier: ModelTier? = nil
+        tier: ModelTier? = nil,
+        fast: Bool = false
     ) {
+        self.fast = fast
         self.id = id
         self.owner = owner
         self.contextWindow = contextWindow
@@ -256,6 +320,21 @@ public struct RouterModel: Identifiable, Sendable, Equatable {
         owner = object["owned_by"]?.string ?? object["ownedBy"]?.string ?? ""
         contextWindow = object["context_length"]?.int ?? object["contextWindow"]?.int
         tools = object["capabilities"]?["tools"]?.bool ?? false
+    }
+}
+
+public struct RouterModelGroup: Identifiable, Sendable, Equatable {
+    public var id: String { provider }
+    public let provider: String
+    public let name: String
+    public let logoSymbol: String
+    public let models: [RouterModel]
+
+    public init(provider: String, name: String, logoSymbol: String, models: [RouterModel]) {
+        self.provider = provider
+        self.name = name
+        self.logoSymbol = logoSymbol
+        self.models = models
     }
 }
 

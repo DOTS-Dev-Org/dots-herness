@@ -445,24 +445,29 @@ private final class SimulatorScreenInputNSView: NSView {
         return true
     }
 
-    override func accessibilityHitTest(_ point: NSPoint) -> Any? {
-        guard let local = localPoint(forScreenPoint: point), bounds.contains(local) else {
-            return super.accessibilityHitTest(point)
-        }
+    override nonisolated func accessibilityHitTest(_ point: NSPoint) -> Any? {
+        nonisolated(unsafe) var result: Any?
+        MainActor.assumeIsolated {
+            guard let local = localPoint(forScreenPoint: point), bounds.contains(local) else {
+                result = super.accessibilityHitTest(point)
+                return
+            }
 
-        let screenFrame = NSAccessibility.screenRect(
-            fromView: self,
-            rect: NSRect(x: local.x - 1, y: local.y - 1, width: 2, height: 2)
-        )
-        let element = SimulatorScreenAccessibilityElement(
-            frame: screenFrame,
-            label: "iOS simulator coordinate (Int(local.x)), (Int(local.y))"
-        ) { [weak self] in
-            guard let self else { return }
-            self.onGesture?(local, local)
+            let screenFrame = NSAccessibility.screenRect(
+                fromView: self,
+                rect: NSRect(x: local.x - 1, y: local.y - 1, width: 2, height: 2)
+            )
+            let element = SimulatorScreenAccessibilityElement(
+                frame: screenFrame,
+                label: "iOS simulator coordinate (Int(local.x)), (Int(local.y))"
+            ) { [weak self] in
+                guard let self else { return }
+                self.onGesture?(local, local)
+            }
+            lastAccessibilityElement = element
+            result = element
         }
-        lastAccessibilityElement = element
-        return element
+        return result
     }
 
     override func mouseDown(with event: NSEvent) {

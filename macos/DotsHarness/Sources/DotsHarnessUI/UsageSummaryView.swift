@@ -6,6 +6,7 @@ import DotsHarnessCore
 
 struct UsageSummaryView: View {
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject var model: AppModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -27,29 +28,9 @@ struct UsageSummaryView: View {
                 Spacer(minLength: 0)
             }
 
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text(AppCopy.text("usage.period"))
-                        .font(.callout.weight(.medium))
-                    Spacer()
-                    Text(AppCopy.text("usage.remaining"))
-                        .font(.callout.weight(.semibold).monospacedDigit())
-                        .foregroundStyle(.orange)
-                }
-
-                ProgressView(value: 0.7)
-                    .tint(.orange)
-
-                HStack {
-                    Text(AppCopy.text("usage.used"))
-                    Spacer()
-                    Text(AppCopy.text("usage.refreshing"))
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-            .padding(14)
-            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            ClaudeUsagePanel(router: model.router)
+                .padding(14)
+                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
             Text(AppCopy.text("usage.description"))
                 .font(.caption)

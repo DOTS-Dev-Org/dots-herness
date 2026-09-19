@@ -7,7 +7,7 @@ application; the chat loop runs in-process without a separate web host.
 `GPT` browser sign-in and `OpenAI` API-key connections remain separate.
 `Custom API` supports validated HTTP/HTTPS OpenAI-compatible and
 Anthropic-compatible endpoints. When Secret Service is unavailable, provider
-secrets are session-only and are never persisted.
+secrets use a user-only permissioned fallback directory.
 
 Runtime and model downloads require an explicit user action. Sharing starts a
 loopback gateway only after Enable sharing is pressed and requires a bearer

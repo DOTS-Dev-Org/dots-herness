@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "HerNess Browser Ownership",
+  "version": "1.0.0",
+  "description": "Owns and cleans up HerNess browser tabs through Native Messaging.",
+  "permissions": ["alarms", "storage", "tabs", "nativeMessaging"],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "minimum_chrome_version": "120"
+}

@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using HarnessPluginKit;
+using JsonNodeValue = System.Text.Json.Nodes.JsonValue;
 
 namespace DotsHarnessCore;
 
@@ -164,7 +165,7 @@ internal static class ProviderImageAdapterSupport
             try { return new ProviderImageOutput(Decode(encoded), String(inline["mimeType"]) ?? String(inline["mime_type"]) ?? "image/png"); }
             catch (FormatException) { return null; }
         }
-        foreach (var item in obj.Values())
+        foreach (var item in obj.Select(pair => pair.Value))
             if (FindGemini(item) is { } nested) return nested;
         return null;
     }
@@ -243,7 +244,7 @@ public sealed class GeminiNativeImageAdapter : IProviderImageAdapter
         var body = new JsonObject
         {
             ["contents"] = new JsonArray(new JsonObject { ["role"] = "user", ["parts"] = new JsonArray(new JsonObject { ["text"] = prompt }) }),
-            ["generationConfig"] = new JsonObject { ["responseModalities"] = new JsonArray(JsonValue.Create("TEXT"), JsonValue.Create("IMAGE")) },
+            ["generationConfig"] = new JsonObject { ["responseModalities"] = new JsonArray(JsonNodeValue.Create("TEXT"), JsonNodeValue.Create("IMAGE")) },
         };
         return new ProviderImageRequest(
             builder.Uri,
@@ -317,9 +318,10 @@ public sealed class NativeProviderImageRouter
     {
         var primary = Primary(selectedModel);
         if (primary is null) return false;
-        var route = Route(primary, Model(primary, selectedModel));
-        var adapter = _adapters.Find(route);
-        return _adapters.Capability(route, adapter?.Id ?? "none") != ProviderImageCapability.Unsupported || HasFallback;
+        // Keep the command discoverable for providers whose image capability is
+        // not known yet. A missing adapter is an extension point, not a deny
+        // decision: a later catalog entry or trusted plugin may add support.
+        return true;
     }
 
     public async Task<NativeImageGeneration> GenerateAsync(string prompt, string? selectedModel, CancellationToken ct = default)
@@ -346,7 +348,6 @@ public sealed class NativeProviderImageRouter
                     break;
             }
         }
-        else _adapters.Record(ProviderImageCapability.Unsupported, primaryRoute, primaryID);
 
         var source = $"{primary.ProviderName}/{primaryModel}";
         var fallbacks = _store.State.Accounts
@@ -361,7 +362,6 @@ public sealed class NativeProviderImageRouter
             if (_adapters.Capability(route, id) == ProviderImageCapability.Unsupported) continue;
             if (adapter is null)
             {
-                _adapters.Record(ProviderImageCapability.Unsupported, route, id);
                 continue;
             }
             switch (await AttemptAsync(account, route, adapter, prompt, ct))

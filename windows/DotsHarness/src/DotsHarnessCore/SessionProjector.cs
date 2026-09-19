@@ -1,5 +1,5 @@
 // Copyright (c) 2026 DOTS
-// Folds DSH session events into the WPF conversation surface.
+// Folds DSH session events into the WPF/Avalonia conversation surface.
 // Plugin composition model derived from DeepSeek Harness.
 // Copyright (c) 2026 DeepSeek. MIT. See NOTICE.
 
@@ -33,6 +33,21 @@ public enum ChangedFileOperation
 }
 
 public sealed record ChangedFile(string Path, ChangedFileOperation Operation);
+
+public sealed record WorkspaceRunSummary(
+    string RunId,
+    string TurnId,
+    string Status,
+    string TrackingStatus,
+    string CleanupStatus,
+    string CleanupNote,
+    int AddedCount,
+    int ModifiedCount,
+    int DeletedCount,
+    string TestStatus)
+{
+    public BrowserRunSummary? Browser { get; init; }
+}
 
 public sealed class ChatAttachment
 {
@@ -177,6 +192,7 @@ public sealed class PendingPrompt : PluginRuntime.ObservableObject
     public PromptPlacement Placement { get => _placement; set => SetProperty(ref _placement, value); }
     public bool PlanMode { get => _planMode; set => SetProperty(ref _planMode, value); }
     public List<ChatAttachment> Attachments { get; set; } = [];
+    public List<string> ContextRootIds { get; set; } = [];
 }
 
 public sealed class ChatMessage : PluginRuntime.ObservableObject
@@ -193,6 +209,7 @@ public sealed class ChatMessage : PluginRuntime.ObservableObject
     private List<ChangedFile> _changedFiles = [];
     private List<string> _usedSkills = [];
     private List<string> _usedTools = [];
+    private WorkspaceRunSummary? _summary;
 
     public string Id { get => _id; set => SetProperty(ref _id, value); }
     public ChatKind Kind { get => _kind; set => SetProperty(ref _kind, value); }
@@ -200,9 +217,12 @@ public sealed class ChatMessage : PluginRuntime.ObservableObject
     public DateTimeOffset CreatedAt { get => _createdAt; set => SetProperty(ref _createdAt, value); }
     public bool Streaming { get => _streaming; set => SetProperty(ref _streaming, value); }
     public string? TurnId { get; set; }
+    [JsonPropertyName("contextRootIDs")]
+    public List<string> ContextRootIds { get; set; } = [];
     public List<ChangedFile> ChangedFiles { get => _changedFiles; set => SetProperty(ref _changedFiles, value ?? []); }
     public List<string> UsedSkills { get => _usedSkills; set => SetProperty(ref _usedSkills, value ?? []); }
     public List<string> UsedTools { get => _usedTools; set => SetProperty(ref _usedTools, value ?? []); }
+    public WorkspaceRunSummary? Summary { get => _summary; set => SetProperty(ref _summary, value); }
     [JsonIgnore]
     public bool IsPendingPlan { get => _isPendingPlan; set => SetProperty(ref _isPendingPlan, value); }
     [JsonIgnore]
@@ -261,6 +281,10 @@ public sealed class Conversation : PluginRuntime.ObservableObject
     public string? PendingPlanMessageId { get => _pendingPlanMessageId; set => SetProperty(ref _pendingPlanMessageId, value); }
     public string? Cwd { get; set; }
     public string? AgentPreset { get; set; }
+    [JsonPropertyName("area")]
+    public AgentArea Area { get; set; } = AgentArea.Coding;
+    [JsonPropertyName("chatProjectID")]
+    public string? ChatProjectId { get; set; }
 }
 
 public sealed record PendingApproval(
@@ -269,13 +293,6 @@ public sealed record PendingApproval(
     string ApprovalId,
     string ToolName,
     string? Reason);
-
-public sealed record PendingQuestion(
-    string RpcId,
-    string SessionId,
-    string QuestionId,
-    string Prompt,
-    IReadOnlyList<string> Options);
 
 public static class SessionProjector
 {

@@ -76,6 +76,22 @@ final class HerNessPromptTests: XCTestCase {
     }
 
     @MainActor
+    func testAssistantModeChangesPromptPriority() {
+        let host = NativeAgentHost(paths: temporaryPaths(), endpoint: AgentEndpointController())
+        let workspace = URL(fileURLWithPath: NSTemporaryDirectory())
+
+        host.setAssistantMode(.chat)
+        let chatPrompt = HerNessPrompt.assemble(host.systemPromptSections(workspace: workspace))
+        XCTAssertTrue(chatPrompt.contains("Chat-first mode is active"))
+        XCTAssertTrue(chatPrompt.contains("Do not inspect or modify the workspace unless the user explicitly asks"))
+
+        host.setAssistantMode(.coding)
+        let codingPrompt = HerNessPrompt.assemble(host.systemPromptSections(workspace: workspace))
+        XCTAssertTrue(codingPrompt.contains("Coding-first mode is active"))
+        XCTAssertFalse(codingPrompt.contains("Chat-first mode is active"))
+    }
+
+    @MainActor
     func testBriefIsAskedOnlyWhereItCanBeRecorded() {
         let host = NativeAgentHost(paths: temporaryPaths(), endpoint: AgentEndpointController())
         let workspace = URL(fileURLWithPath: NSTemporaryDirectory())
@@ -93,7 +109,7 @@ final class HerNessPromptTests: XCTestCase {
     func testPlanPromptListsExactlyTheToolsPlanModeOffers() {
         let host = NativeAgentHost(paths: temporaryPaths(), endpoint: AgentEndpointController())
         let workspace = URL(fileURLWithPath: NSTemporaryDirectory())
-        let offered = host.agentTools(workspace: workspace, planMode: true).defs.map(\.name)
+        let offered = host.planToolNames(workspace: workspace)
         let prompt = HerNessPrompt.assemble(
             host.systemPromptSections(workspace: workspace, planMode: true))
 
@@ -103,6 +119,19 @@ final class HerNessPromptTests: XCTestCase {
         for name in offered {
             XCTAssertTrue(prompt.contains(name), "plan prompt does not mention \(name)")
         }
+    }
+
+    @MainActor
+    func testPlanModeWithholdsToolsAtRuntimeNotInTheToolList() {
+        let host = NativeAgentHost(paths: temporaryPaths(), endpoint: AgentEndpointController())
+        let workspace = URL(fileURLWithPath: NSTemporaryDirectory())
+        let all = host.agentTools(workspace: workspace).defs.map(\.name)
+        for name in ["write_file", "remove_file", "remember", "install_plugin", "update_plan", "browser_open"] {
+            XCTAssertTrue(all.contains(name), "\(name) must stay in the cached tool list")
+            XCTAssertTrue(NativeAgentHost.planWithholds(name), name)
+        }
+        XCTAssertFalse(NativeAgentHost.planWithholds("run_command"))
+        XCTAssertFalse(host.planToolNames(workspace: workspace).contains("write_file"))
     }
 
     /// The four platform literals are generated from shared/prompts/*.txt. This
@@ -135,6 +164,56 @@ final class HerNessPromptTests: XCTestCase {
         XCTAssertTrue(core.contains("tool line"))
         XCTAssertTrue(core.contains("tagged with a trust level"))
         XCTAssertFalse(core.contains("Clarification"))
+    }
+
+    func testCoreIncludesCompactResponseEconomyWithoutDroppingTechnicalContent() {
+        let core = HerNessPrompt.core(scope: "scope line", toolGuidance: "tool line")
+        XCTAssertTrue(core.contains("Response economy"))
+        XCTAssertTrue(core.contains("code blocks, commands, file paths, identifiers, API names"))
+        XCTAssertTrue(core.contains("exact errors, and negative qualifiers unchanged"))
+        XCTAssertTrue(core.contains("security warnings, irreversible confirmations"))
+        XCTAssertTrue(core.contains("generated code, comments, commits, docs, PR text"))
+    }
+
+    func testCoreIncludesPerConversationResponseLanguageContractAndPriority() {
+        let core = HerNessPrompt.core(scope: "scope line", toolGuidance: "tool line")
+        let normalized = core.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("Response language"))
+        XCTAssertTrue(normalized.contains("latest human-authored user request"))
+        XCTAssertTrue(normalized.contains("natural-language portion of the response only"))
+        XCTAssertTrue(normalized.contains("current conversation"))
+        XCTAssertTrue(normalized.contains("another conversation"))
+        XCTAssertTrue(normalized.contains("remembered preference, project memory"))
+        XCTAssertTrue(normalized.contains("application's interface language"))
+        XCTAssertTrue(normalized.contains("Ignore code blocks, inline code, file paths, identifiers, URLs, quoted source"))
+        XCTAssertTrue(normalized.contains("explicitly asks for a response in a named language"))
+        XCTAssertTrue(normalized.contains("Re-evaluate the language on the next user turn"))
+        XCTAssertTrue(normalized.contains("last reliable response language"))
+        XCTAssertTrue(normalized.contains("answer in English"))
+
+        func position(_ phrase: String) -> String.Index {
+            normalized.range(of: phrase)?.lowerBound ?? normalized.endIndex
+        }
+        XCTAssertLessThan(
+            position("latest human-authored user request"),
+            position("explicitly asks for a response in a named language")
+        )
+        XCTAssertLessThan(
+            position("explicitly asks for a response in a named language"),
+            position("latest request is mixed")
+        )
+    }
+
+    @MainActor
+    func testAppLocaleDoesNotChangeResponseLanguageContract() {
+        let before = HerNessPrompt.core(scope: "scope line", toolGuidance: "tool line")
+        AppCopy.setLanguage(.zhHans)
+        defer { AppCopy.setLanguage(.system) }
+
+        let after = HerNessPrompt.core(scope: "scope line", toolGuidance: "tool line")
+        XCTAssertEqual(after, before)
+        XCTAssertTrue(after.contains("application's interface language"))
     }
 
     @MainActor

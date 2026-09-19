@@ -96,7 +96,13 @@ public enum PluginPackage {
     /// copy. Returns the parsed manifest. Rejects archives that would escape
     /// `pluginsDir`.
     @discardableResult
-    public static func unpack(package: URL, into pluginsDir: URL) throws -> PluginManifest {
+    public static func unpack(
+        package: URL,
+        into pluginsDir: URL,
+        expectedID: String? = nil,
+        expectedVersion: String? = nil,
+        requireLicense: Bool = false
+    ) throws -> PluginManifest {
         let staging = FileManager.default.temporaryDirectory
             .appendingPathComponent("dotsplugin-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
@@ -106,6 +112,29 @@ public enum PluginPackage {
 
         let root = try folderContainingManifest(under: staging)
         let manifest = try self.manifest(atFolder: root)
+        if let expectedID, manifest.id != expectedID {
+            throw PluginError.package("plugin manifest id does not match the Marketplace entry")
+        }
+        if let expectedVersion, manifest.version != expectedVersion {
+            throw PluginError.package("plugin manifest version does not match the Marketplace release")
+        }
+        let library = manifest.library?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard manifest.runtime.lowercased() == "native", manifest.main == nil,
+              !library.isEmpty, !library.hasPrefix("/"), !library.contains("..") else {
+            throw PluginError.package("only native plugins with a safe compiled library can be installed")
+        }
+        guard FileManager.default.fileExists(atPath: root.appendingPathComponent(library).path) else {
+            throw PluginError.package("native plugin package is missing its compiled library")
+        }
+        guard FileManager.default.fileExists(atPath: root.appendingPathComponent("plugin.ir.json").path) else {
+            throw PluginError.package("native plugin package is missing plugin.ir.json")
+        }
+        if requireLicense {
+            let licenseURL = root.appendingPathComponent("license")
+            guard let licenseData = try? Data(contentsOf: licenseURL), !licenseData.isEmpty else {
+                throw PluginError.package("native Marketplace package is missing its license")
+            }
+        }
         let safeID = manifest.id
         guard !safeID.isEmpty, !safeID.contains("/"), !safeID.contains(".."), safeID != "." else {
             throw PluginError.package("unsafe plugin id \(safeID)")
@@ -116,8 +145,20 @@ public enum PluginPackage {
         guard destination.standardizedFileURL.path.hasPrefix(pluginsDir.standardizedFileURL.path) else {
             throw PluginError.package("archive escapes plugins directory")
         }
-        try? FileManager.default.removeItem(at: destination)
-        try FileManager.default.moveItem(at: root, to: destination)
+        let backup = pluginsDir.appendingPathComponent(".\(safeID).previous-\(UUID().uuidString)", isDirectory: true)
+        let hadPrevious = FileManager.default.fileExists(atPath: destination.path)
+        if hadPrevious { try FileManager.default.moveItem(at: destination, to: backup) }
+        do {
+            try FileManager.default.moveItem(at: root, to: destination)
+            if hadPrevious { try? FileManager.default.removeItem(at: backup) }
+        } catch {
+            if hadPrevious,
+               !FileManager.default.fileExists(atPath: destination.path),
+               FileManager.default.fileExists(atPath: backup.path) {
+                try? FileManager.default.moveItem(at: backup, to: destination)
+            }
+            throw error
+        }
         return manifest
     }
 

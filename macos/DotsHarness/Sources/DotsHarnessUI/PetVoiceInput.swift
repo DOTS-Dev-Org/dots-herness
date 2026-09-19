@@ -272,7 +272,7 @@ final class PetVoiceInput: NSObject, ObservableObject {
             sessionID = UUID()
             voiceSession?.cancel()
             voiceSession = nil
-            audioChunker.drain()
+            _ = audioChunker.drain()
             transcript = ""
             state = .idle
             return
@@ -323,7 +323,7 @@ final class PetVoiceInput: NSObject, ObservableObject {
         stopAudioCapture()
         voiceSession?.cancel()
         voiceSession = nil
-        audioChunker.drain()
+        _ = audioChunker.drain()
         transcript = ""
         state = .failed(message)
 

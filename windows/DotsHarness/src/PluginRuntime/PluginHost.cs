@@ -124,6 +124,9 @@ public sealed class PluginHost : ObservableObject
     public InMemoryEventBus Events { get; }
     public ProviderImageAdapterRegistry ImageAdapters { get; }
 
+    /// <summary>Read-only native app data exposed to plugins via <c>harness.host(topic)</c>.</summary>
+    public HostDataRegistry HostData { get; }
+
     public T? GetService<T>(string name) where T : class => _root.Get(name) as T;
 
     public void ProvideService(string name, object value) => _root.Provide(name, value);
@@ -149,6 +152,7 @@ public sealed class PluginHost : ObservableObject
         Settings = settings ?? new InMemorySettingsRegistry();
         Events = new InMemoryEventBus();
         ImageAdapters = new ProviderImageAdapterRegistry();
+        HostData = new HostDataRegistry();
         _root = new ServiceRealm(seed: new Dictionary<string, object>(StringComparer.Ordinal)
         {
             ["tools"] = Tools,
@@ -157,6 +161,7 @@ public sealed class PluginHost : ObservableObject
             ["settings"] = Settings,
             ["events"] = Events,
             ["provider.imageAdapters"] = ImageAdapters,
+            ["host.data"] = HostData,
         });
     }
 
@@ -201,7 +206,7 @@ public sealed class PluginHost : ObservableObject
                 var context = new LivePluginContext(
                     entry.Id,
                     resolved.Manifest.Id,
-                    entry.Url,
+                    resolved.PluginDirectory,
                     document.Plane,
                     resolved.Trust,
                     entry.Config,

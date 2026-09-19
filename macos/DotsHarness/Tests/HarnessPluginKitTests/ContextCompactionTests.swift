@@ -59,6 +59,132 @@ final class ContextCompactionTests: XCTestCase {
             recentGroupCount: 1
         ).compose(summary: summary, preserveProviderItems: false)
         XCTAssertTrue(composed[1].content.hasPrefix(AgentContextCompaction.summaryMarker))
+        XCTAssertEqual(composed[1].systemKind, AgentMessage.SystemKind.compactionSummary)
         XCTAssertEqual(composed.last?.content, "recent")
+    }
+
+    func testCompactionPoliciesExposeTheCacheAwareThresholds() {
+        XCTAssertEqual(AgentContextCompactionPolicy.baseline.triggerRatio, 0.75)
+        XCTAssertEqual(AgentContextCompactionPolicy.baseline.targetRatio, 0.40)
+        XCTAssertEqual(AgentContextCompactionPolicy.cacheAware.triggerRatio, 0.80)
+        XCTAssertEqual(AgentContextCompactionPolicy.cacheAware.targetRatio, 0.55)
+        XCTAssertEqual(AgentContextCompactionPolicy.highRetention.triggerRatio, 0.85)
+        XCTAssertEqual(AgentContextCompactionPolicy.highRetention.targetRatio, 0.65)
+
+        let suiteName = "ContextCompactionTests-\(UUID().uuidString)"
+        let defaults = try! XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set(
+            AgentContextCompactionPolicy.ID.cacheAware.rawValue,
+            forKey: AgentContextCompactionPolicy.userDefaultsKey
+        )
+
+        XCTAssertEqual(
+            AgentContextCompactionPolicy.current(defaults: defaults).id,
+            AgentContextCompactionPolicy.ID.cacheAware
+        )
+    }
+
+    func testUserThresholdScalesWithEachModelsContextWindow() throws {
+        let suiteName = "ContextCompactionTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        XCTAssertEqual(AgentContextCompactionPolicy.current(defaults: defaults), .cacheAware)
+
+        defaults.set(70.0, forKey: AgentContextCompactionPolicy.triggerPercentKey)
+        let percent = AgentContextCompactionPolicy.current(defaults: defaults)
+        XCTAssertEqual(percent.id, .custom)
+        XCTAssertEqual(percent.triggerTokens(window: 250_000), 175_000)
+        XCTAssertEqual(percent.triggerTokens(window: 1_000_000), 700_000)
+
+        defaults.set(300_000, forKey: AgentContextCompactionPolicy.maxTokensKey)
+        let capped = AgentContextCompactionPolicy.current(defaults: defaults)
+        XCTAssertEqual(capped.triggerTokens(window: 250_000), 175_000)
+        XCTAssertEqual(capped.triggerTokens(window: 1_000_000), 300_000)
+        let budget = AgentContextCompaction.budget(contextWindow: 1_000_000, policy: capped)
+        XCTAssertLessThanOrEqual(budget.triggerTokens, 300_000)
+        XCTAssertLessThan(budget.targetTokens, budget.triggerTokens)
+    }
+
+    func testForkInstructionProducesAValidSummaryShape() {
+        let instruction = AgentContextCompaction.summaryForkInstruction
+        XCTAssertTrue(instruction.contains("Do not call any tool"))
+        XCTAssertTrue(instruction.contains("Yukarıdaki konuşma geçmişini"))
+        XCTAssertTrue(AgentContextCompaction.isValidSummary("""
+        1. KULLANICI HEDEFİ: a
+        2. YAPILAN DEĞİŞİKLİKLER: b
+        3. ALINAN KARARLAR VE KISITLAR: c
+        4. MEVCUT DURUM VE SON KANITLAR: d
+        """))
+    }
+
+    func testCompactionPolicyControlsRecentTurnRetention() {
+        var messages = [AgentMessage(role: .system, content: "rules")]
+        for index in 1...7 {
+            messages.append(AgentMessage(role: .user, content: "request \(index)"))
+            messages.append(AgentMessage(role: .assistant, content: "answer \(index)"))
+        }
+
+        let policy = AgentContextCompactionPolicy(
+            id: .cacheAware,
+            triggerRatio: 0.80,
+            targetRatio: 0.95,
+            maxRecentGroups: 2
+        )
+        let selection = AgentContextCompaction.select(
+            messages,
+            previousSummary: nil,
+            budget: AgentContextCompaction.budget(contextWindow: 32_768, policy: policy)
+        )
+
+        XCTAssertEqual(selection?.recentGroupCount, 2)
+    }
+
+    func testCompactionKeepsTheLanguagePolicyInStableSystemContext() {
+        let policy = HerNessPrompt.core(scope: "scope line", toolGuidance: "tool line")
+        var messages = [AgentMessage(role: .system, content: policy)]
+        for index in 1...7 {
+            messages.append(AgentMessage(role: .user, content: "request \(index)"))
+            messages.append(AgentMessage(role: .assistant, content: "answer \(index)"))
+        }
+
+        let selection = AgentContextCompaction.select(
+            messages,
+            previousSummary: nil,
+            budget: AgentContextCompaction.budget(contextWindow: 32_768)
+        )
+
+        XCTAssertTrue(selection?.stableSystem.contains(where: { $0.content.contains("Response language") }) == true)
+        let composed = selection?.compose(summary: "summary", preserveProviderItems: false)
+        XCTAssertTrue(composed?.contains(where: { $0.role == .system && $0.content.contains("Response language") }) == true)
+        XCTAssertTrue(AgentContextCompaction.summarySystemPrompt.contains("son güvenilir sohbet dilini"))
+        XCTAssertTrue(AgentContextCompaction.summarySystemPrompt.contains("başka bir sohbetin dilini kullanma"))
+    }
+
+    func testCompactionPreservesTurkishEnglishAndSimplifiedChineseTurnSequence() {
+        let policy = HerNessPrompt.core(scope: "scope line", toolGuidance: "tool line")
+        let turns = [
+            ("Merhaba, Türkçe devam edelim.", "Türkçe yanıt"),
+            ("Please answer in English for this turn.", "English response"),
+            ("请用简体中文回答。", "简体中文回复"),
+        ]
+        var messages = [AgentMessage(role: .system, content: policy)]
+        for (user, assistant) in turns {
+            messages.append(AgentMessage(role: .user, content: user))
+            messages.append(AgentMessage(role: .assistant, content: assistant))
+        }
+
+        let selection = AgentContextCompaction.select(
+            messages,
+            previousSummary: nil,
+            budget: AgentContextCompaction.budget(contextWindow: 8_192)
+        )
+
+        XCTAssertNotNil(selection)
+        XCTAssertTrue(selection?.archiveText.contains("Türkçe") == true)
+        XCTAssertTrue(selection?.archiveText.contains("English") == true)
+        XCTAssertTrue(selection?.recentMessages.contains(where: { $0.content.contains("简体中文") }) == true)
+        XCTAssertTrue(selection?.stableSystem.contains(where: { $0.content.contains("Response language") }) == true)
     }
 }

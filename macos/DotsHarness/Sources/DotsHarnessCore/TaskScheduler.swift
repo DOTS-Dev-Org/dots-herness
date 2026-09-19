@@ -11,17 +11,28 @@ public final class TaskScheduler: ObservableObject {
         public var ok: Bool
         public var message: String
         public var conversationID: String?
+        public var modelID: String
+        public var fallbackUsed: Bool
 
-        public init(ok: Bool, message: String = "", conversationID: String? = nil) {
+        public init(
+            ok: Bool,
+            message: String = "",
+            conversationID: String? = nil,
+            modelID: String = "",
+            fallbackUsed: Bool = false
+        ) {
             self.ok = ok
             self.message = message
             self.conversationID = conversationID
+            self.modelID = modelID
+            self.fallbackUsed = fallbackUsed
         }
     }
 
     /// Executes one task and reports the outcome. Injected so the engine stays
     /// free of agent/UI wiring and can be reused by the headless daemon.
     public typealias Runner = @MainActor (ScheduledTask) async -> RunResult
+    public typealias Completion = @MainActor (ScheduledTask, RunResult) -> Void
 
     @Published public private(set) var tasks: [ScheduledTask] = []
 
@@ -33,6 +44,8 @@ public final class TaskScheduler: ObservableObject {
 
     private let store: TaskStore
     private let runner: Runner
+    private let runStore: TaskRunStore?
+    private let onCompletion: Completion?
     private let calendar: Calendar
     private var timer: Timer?
     private var inFlight = Set<String>()
@@ -41,12 +54,16 @@ public final class TaskScheduler: ObservableObject {
         store: TaskStore,
         calendar: Calendar = .current,
         runsDueTasks: Bool = true,
+        runStore: TaskRunStore? = nil,
+        onCompletion: Completion? = nil,
         runner: @escaping Runner
     ) {
         self.store = store
         self.runner = runner
         self.calendar = calendar
         self.runsDueTasks = runsDueTasks
+        self.runStore = runStore
+        self.onCompletion = onCompletion
         self.tasks = store.load()
     }
 
@@ -98,6 +115,10 @@ public final class TaskScheduler: ObservableObject {
         execute(task)
     }
 
+    public func runs(for taskID: String) -> [ScheduledTaskRun] {
+        runStore?.load(taskID: taskID) ?? []
+    }
+
     // MARK: Engine
 
     private func tick(now: Date = Date()) {
@@ -132,12 +153,25 @@ public final class TaskScheduler: ObservableObject {
 
         Task { @MainActor [weak self] in
             guard let self else { return }
+            let startedAt = Date()
             let result = await self.runner(task)
+            let finishedAt = Date()
             self.inFlight.remove(task.id)
             self.mutate(task.id) {
                 $0.lastState = result.ok ? .ok : .failed(result.message)
                 $0.lastConversationID = result.conversationID ?? $0.lastConversationID
             }
+            self.runStore?.append(ScheduledTaskRun(
+                taskID: task.id,
+                startedAt: startedAt,
+                finishedAt: finishedAt,
+                ok: result.ok,
+                output: result.message,
+                modelID: result.modelID,
+                fallbackUsed: result.fallbackUsed
+            ))
+            self.objectWillChange.send()
+            self.onCompletion?(task, result)
         }
     }
 

@@ -36,7 +36,9 @@ public enum ExploreTool {
         it, how a pattern is used across the project. It cannot edit anything, so verify and change \
         code yourself afterwards. Do not use it for a file you already know the path of: read that \
         directly. State the question in full, including the naming conventions and paths worth \
-        trying, since the subagent sees nothing of this conversation.
+        trying, since the subagent sees nothing of this conversation. For a broad investigation, \
+        split it into independent questions and call explore several times in the same turn: those \
+        subagents run in parallel and only their findings enter this conversation.
         """,
         parameters: .object([
             "type": .string("object"),

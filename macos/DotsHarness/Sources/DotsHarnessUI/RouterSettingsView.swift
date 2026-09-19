@@ -69,7 +69,8 @@ struct RouterProvidersView: View {
                             .foregroundStyle(.secondary)
                     }
                 } else {
-                    ForEach(RouterCatalog.groups(from: router.connections)) { group in
+                    let groups = RouterCatalog.groups(from: router.connections)
+                    ForEach(Array(groups.enumerated()), id: \.element.id) { index, group in
                         Section {
                             ForEach(group.accounts) { connection in
                                 connectionRow(connection)
@@ -91,7 +92,7 @@ struct RouterProvidersView: View {
                                 }
                             }
                         } header: {
-                            providerHeader(group)
+                            providerHeader(group, order: groups.map(\.provider), index: index)
                         }
                     }
                 }
@@ -103,6 +104,7 @@ struct RouterProvidersView: View {
         .task {
             await router.refresh()
             await router.refreshModels(force: true)
+            await router.refreshAccountUsage()
         }
     }
 
@@ -220,8 +222,11 @@ struct RouterProvidersView: View {
                 .labelsHidden()
             }
             HStack(spacing: 8) {
-                badge(connection.status)
-                badge(authLabel(connection.authType))
+                TagBadge(connection.status)
+                TagBadge(authLabel(connection.authType))
+                if let fraction = router.accountUsage[connection.id]?.remainingFraction {
+                    TagBadge(AppCopy.format("router.quotaRemaining", Int((fraction * 100).rounded())))
+                }
                 if let email = connection.email {
                     Text(email).font(.caption).foregroundStyle(.secondary)
                 }
@@ -253,7 +258,7 @@ struct RouterProvidersView: View {
         .padding(.vertical, 4)
     }
 
-    private func providerHeader(_ group: ProviderAccountGroup) -> some View {
+    private func providerHeader(_ group: ProviderAccountGroup, order: [String], index: Int) -> some View {
         HStack(spacing: 8) {
             ProviderLogoView(name: group.label, providerID: group.provider)
             Text(AppCopy.format(
@@ -263,16 +268,47 @@ struct RouterProvidersView: View {
                 group.accounts.count == 1 ? AppCopy.text("router.account") : AppCopy.text("router.accounts")
             ))
             .font(.headline.weight(.semibold))
+            Spacer(minLength: 0)
+            if order.count > 1 {
+                Button {
+                    router.reorderProviders(move(order, from: index, to: index - 1))
+                } label: {
+                    Image(systemName: "chevron.up").frame(width: 20, height: 20)
+                }
+                .buttonStyle(.borderless)
+                .disabled(index == 0)
+                .help(AppCopy.text("router.priorityUp"))
+                .accessibilityLabel(AppCopy.text("router.priorityUp"))
+                Button {
+                    router.reorderProviders(move(order, from: index, to: index + 1))
+                } label: {
+                    Image(systemName: "chevron.down").frame(width: 20, height: 20)
+                }
+                .buttonStyle(.borderless)
+                .disabled(index == order.count - 1)
+                .help(AppCopy.text("router.priorityDown"))
+                .accessibilityLabel(AppCopy.text("router.priorityDown"))
+            }
         }
         .padding(.vertical, 2)
+        .draggable(group.provider) {
+            Text(group.label).padding(6)
+        }
+        .dropDestination(for: String.self) { items, _ in
+            guard let dragged = items.first,
+                  let from = order.firstIndex(of: dragged) else { return false }
+            router.reorderProviders(move(order, from: from, to: index))
+            return true
+        }
     }
 
-    private func badge(_ text: String) -> some View {
-        Text(text)
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(Color.primary.opacity(0.08), in: Capsule())
+    /// Returns `order` with the element at `from` moved to `to` (clamped).
+    private func move(_ order: [String], from: Int, to: Int) -> [String] {
+        guard order.indices.contains(from) else { return order }
+        var next = order
+        let element = next.remove(at: from)
+        next.insert(element, at: min(max(to, 0), next.count))
+        return next
     }
 
     private func authLabel(_ value: String) -> String {

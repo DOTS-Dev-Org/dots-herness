@@ -37,10 +37,25 @@ public enum PluginBuilder {
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
         let manifestOut = destination.appendingPathComponent("plugin.yml")
         let dylibOut = destination.appendingPathComponent(library)
+        let assets = source.appendingPathComponent("assets", isDirectory: true)
+        let assetsOut = destination.appendingPathComponent("assets", isDirectory: true)
         try? FileManager.default.removeItem(at: manifestOut)
         try? FileManager.default.removeItem(at: dylibOut)
+        try? FileManager.default.removeItem(at: assetsOut)
         try FileManager.default.copyItem(at: source.appendingPathComponent("plugin.yml"), to: manifestOut)
         try FileManager.default.copyItem(at: dylib, to: dylibOut)
+        if FileManager.default.fileExists(atPath: assets.path) {
+            try FileManager.default.copyItem(at: assets, to: assetsOut)
+            if let files = FileManager.default.enumerator(
+                at: assetsOut,
+                includingPropertiesForKeys: [.isRegularFileKey],
+                options: [.skipsHiddenFiles]
+            ) {
+                for case let runtime as URL in files where runtime.pathExtension == "dylib" {
+                    try codesign(runtime, identity: signIdentity ?? "-", hardened: hardenedRuntime)
+                }
+            }
+        }
 
         return Output(pluginFolder: destination, dylib: dylibOut, manifest: manifest)
     }

@@ -1,0 +1,34 @@
+{
+  "name": "dotsherness-unified-backend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "zsh -ic \"wr-dotsherness deploy --config wrangler.jsonc\"",
+    "db:export:d1": "zsh -c \"source ~/.zshrc && wr-dotsherness d1 export dotsherness-db --remote --output=./d1_dump.sql\"",
+    "db:migrate:local": "wrangler d1 migrations apply dotsherness-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply dotsherness-db --remote",
+    "legal:seed": "node scripts/seed-legal-documents.mjs",
+    "legal:seed:remote": "node scripts/seed-legal-documents.mjs --remote",
+    "legal:readback": "node scripts/readback-legal-documents.mjs",
+    "typecheck": "tsc --noEmit",
+    "build:types": "tsc -p tsconfig.build.json",
+    "logs:slow-watch": "bash scripts/run-slow-log-watch.sh",
+    "logs:slow-report": "node scripts/slow-log-parser.mjs --summarize reports/latest.json --md ../docs/performance-report.md"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "^0.19.10",
+    "@hono/zod-validator": "^0.4.3",
+    "@scalar/hono-api-reference": "^0.11.8",
+    "bcryptjs": "^3.0.2",
+    "hono": "^4.7.4",
+    "jose": "^6.0.10",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260820.1",
+    "typescript": "~5.8.2",
+    "wrangler": "^4.125.0"
+  }
+}

@@ -8,7 +8,7 @@
     <AssemblyName>DotsHarnessScheduler</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\..\..\windows\DotsHarness\src\DotsHarnessScheduler\Program.cs" Link="Program.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessScheduler\Program.cs" Link="Program.cs" />
     <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
     <ProjectReference Include="..\PluginRuntime\PluginRuntime.csproj" />
     <ProjectReference Include="..\DotsHarnessCore\DotsHarnessCore.csproj" />

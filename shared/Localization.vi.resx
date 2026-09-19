@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
@@ -225,50 +224,89 @@
   <data name="voice.status.downloading" xml:space="preserve"><value>Đang tải nội dung giọng nói xuống…</value></data>
   <data name="voice.download" xml:space="preserve"><value>Tải xuống nội dung giọng nói</value></data>
   <data name="voice.error" xml:space="preserve"><value>Lỗi nhập giọng nói: {0}</value></data>
-  <data name="ask.customPlaceholder" xml:space="preserve"><value>Write your own answer…</value></data>
-  <data name="ask.skip" xml:space="preserve"><value>Skip and plan anyway</value></data>
-  <data name="ask.submit" xml:space="preserve"><value>Send answers</value></data>
-  <data name="ask.title" xml:space="preserve"><value>A few questions before the plan</value></data>
-  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Cleanup did not complete.</value></data>
-  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>No cleanup was requested.</value></data>
-  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Cleanup could not be verified; existing files were preserved.</value></data>
-  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Old code was preserved because cleanup was not needed or could not be proven.</value></data>
-  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Workspace changes could not be fully verified.</value></data>
-  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Old code cleanup verified.</value></data>
-  <data name="conversation.connectionAdded" xml:space="preserve"><value>Connection added: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionChanged" xml:space="preserve"><value>Connection changed</value></data>
-  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Previous local connection data could not be fully verified; it was preserved.</value></data>
-  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Previous connection preserved: {0}. Conversations and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Previous connection removed. Local connection data was cleared; conversations and user data were preserved. Remote data was not touched.</value></data>
-  <data name="conversation.connectionSelected" xml:space="preserve"><value>Connection selected: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionSummary" xml:space="preserve"><value>Connection changed: {0} → {1}</value></data>
-  <data name="conversation.fileAdded" xml:space="preserve"><value>Added</value></data>
-  <data name="conversation.fileDeleted" xml:space="preserve"><value>Deleted</value></data>
-  <data name="conversation.fileModified" xml:space="preserve"><value>Modified</value></data>
-  <data name="conversation.filesSummary" xml:space="preserve"><value>Added {0}, modified {1}, deleted {2}</value></data>
-  <data name="conversation.runSummary" xml:space="preserve"><value>Run summary</value></data>
-  <data name="conversation.testStatus" xml:space="preserve"><value>Tests: {0}</value></data>
-  <data name="router.unknown" xml:space="preserve"><value>unknown</value></data>
-  <data name="settings.seedProjectRules" xml:space="preserve"><value>Create AGENTS.md and CLAUDE.md</value></data>
-  <data name="settings.selfVerification" xml:space="preserve"><value>Verify changes automatically</value></data>
-  <data name="vision.deleteModel" xml:space="preserve"><value>Delete model</value></data>
-  <data name="vision.disabled" xml:space="preserve"><value>Disabled</value></data>
-  <data name="vision.downloadAndContinue" xml:space="preserve"><value>Download and continue</value></data>
-  <data name="vision.downloading" xml:space="preserve"><value>Downloading the local vision model…</value></data>
-  <data name="vision.emptyDescription" xml:space="preserve"><value>The local Vision fallback returned no visual description.</value></data>
-  <data name="vision.failed" xml:space="preserve"><value>Vision fallback failed</value></data>
-  <data name="vision.installPlugin" xml:space="preserve"><value>Install from marketplace</value></data>
-  <data name="vision.installReason" xml:space="preserve"><value>{0} does not support image input. The Vision plugin will download about {1} and process the image on this device. The original image may already have reached the provider.</value></data>
-  <data name="vision.installTitle" xml:space="preserve"><value>This provider cannot read the image</value></data>
-  <data name="vision.modelMissing" xml:space="preserve"><value>Model not downloaded</value></data>
-  <data name="vision.notEnabled" xml:space="preserve"><value>The provider cannot read this image and the local Vision plugin was not enabled.</value></data>
-  <data name="vision.notInstalled" xml:space="preserve"><value>Not installed</value></data>
-  <data name="vision.notNow" xml:space="preserve"><value>Not now</value></data>
-  <data name="vision.pluginMissing" xml:space="preserve"><value>The local Vision fallback plugin is unavailable.</value></data>
-  <data name="vision.prepareModel" xml:space="preserve"><value>Download and prepare model</value></data>
-  <data name="vision.preparing" xml:space="preserve"><value>Preparing the local vision runtime…</value></data>
-  <data name="vision.ready" xml:space="preserve"><value>Vision fallback ready · {0}</value></data>
-  <data name="vision.removePlugin" xml:space="preserve"><value>Remove plugin</value></data>
-  <data name="vision.title" xml:space="preserve"><value>Vision fallback</value></data>
-  <data name="vision.unavailable" xml:space="preserve"><value>Vision fallback is unavailable</value></data>
+  <data name="ask.customPlaceholder" xml:space="preserve"><value>Viết câu trả lời của riêng bạn…</value></data>
+  <data name="ask.skip" xml:space="preserve"><value>Bỏ qua và vẫn lập kế hoạch</value></data>
+  <data name="ask.submit" xml:space="preserve"><value>Gửi câu trả lời</value></data>
+  <data name="ask.title" xml:space="preserve"><value>Một vài câu hỏi trước khi lập kế hoạch</value></data>
+  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Dọn dẹp chưa hoàn tất.</value></data>
+  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>Không có yêu cầu dọn dẹp.</value></data>
+  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Không thể xác minh việc dọn dẹp; các tệp hiện có được giữ lại.</value></data>
+  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Mã cũ được giữ lại vì không cần dọn dẹp hoặc không thể chứng minh việc dọn dẹp.</value></data>
+  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Không thể xác minh đầy đủ các thay đổi trong không gian làm việc.</value></data>
+  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Đã xác minh việc dọn dẹp mã cũ.</value></data>
+  <data name="conversation.connectionAdded" xml:space="preserve"><value>Đã thêm kết nối: {0}. Các kết nối và dữ liệu người dùng hiện có được giữ lại; dữ liệu từ xa không bị chạm tới.</value></data>
+  <data name="conversation.connectionChanged" xml:space="preserve"><value>Đã thay đổi kết nối</value></data>
+  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Không thể xác minh đầy đủ dữ liệu kết nối cục bộ trước đó; dữ liệu được giữ lại.</value></data>
+  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Đã giữ kết nối trước đó: {0}. Các cuộc trò chuyện và dữ liệu người dùng được giữ lại; dữ liệu từ xa không bị chạm tới.</value></data>
+  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Đã xóa kết nối trước đó. Dữ liệu kết nối cục bộ đã được xóa; các cuộc trò chuyện và dữ liệu người dùng được giữ lại. Dữ liệu từ xa không bị chạm tới.</value></data>
+  <data name="conversation.connectionSelected" xml:space="preserve"><value>Đã chọn kết nối: {0}. Các kết nối và dữ liệu người dùng hiện có được giữ lại; dữ liệu từ xa không bị chạm tới.</value></data>
+  <data name="conversation.connectionSummary" xml:space="preserve"><value>Đã thay đổi kết nối: {0} → {1}</value></data>
+  <data name="conversation.fileAdded" xml:space="preserve"><value>Đã thêm</value></data>
+  <data name="conversation.fileDeleted" xml:space="preserve"><value>Đã xóa</value></data>
+  <data name="conversation.fileModified" xml:space="preserve"><value>Đã sửa đổi</value></data>
+  <data name="conversation.filesSummary" xml:space="preserve"><value>Đã thêm {0}, đã sửa đổi {1}, đã xóa {2}</value></data>
+  <data name="conversation.runSummary" xml:space="preserve"><value>Tóm tắt lần chạy</value></data>
+  <data name="conversation.testStatus" xml:space="preserve"><value>Bài kiểm tra: {0}</value></data>
+  <data name="router.unknown" xml:space="preserve"><value>không xác định</value></data>
+  <data name="settings.seedProjectRules" xml:space="preserve"><value>Tạo AGENTS.md và CLAUDE.md</value></data>
+  <data name="settings.selfVerification" xml:space="preserve"><value>Tự động xác minh thay đổi</value></data>
+  <data name="vision.deleteModel" xml:space="preserve"><value>Xóa mô hình</value></data>
+  <data name="vision.disabled" xml:space="preserve"><value>Đã tắt</value></data>
+  <data name="vision.downloadAndContinue" xml:space="preserve"><value>Tải xuống và tiếp tục</value></data>
+  <data name="vision.downloading" xml:space="preserve"><value>Đang tải mô hình Vision cục bộ…</value></data>
+  <data name="vision.emptyDescription" xml:space="preserve"><value>Vision fallback cục bộ không trả về mô tả hình ảnh.</value></data>
+  <data name="vision.failed" xml:space="preserve"><value>Vision fallback không thành công</value></data>
+  <data name="vision.installPlugin" xml:space="preserve"><value>Cài đặt từ marketplace</value></data>
+  <data name="vision.installReason" xml:space="preserve"><value>{0} không hỗ trợ đầu vào hình ảnh. Plugin Vision sẽ tải khoảng {1} và xử lý hình ảnh trên thiết bị này. Hình ảnh gốc có thể đã đến nhà cung cấp.</value></data>
+  <data name="vision.installTitle" xml:space="preserve"><value>Nhà cung cấp này không thể đọc hình ảnh</value></data>
+  <data name="vision.modelMissing" xml:space="preserve"><value>Chưa tải mô hình</value></data>
+  <data name="vision.notEnabled" xml:space="preserve"><value>Nhà cung cấp không thể đọc hình ảnh này và plugin Vision cục bộ chưa được bật.</value></data>
+  <data name="vision.notInstalled" xml:space="preserve"><value>Chưa cài đặt</value></data>
+  <data name="vision.notNow" xml:space="preserve"><value>Để sau</value></data>
+  <data name="vision.pluginMissing" xml:space="preserve"><value>Plugin Vision fallback cục bộ không khả dụng.</value></data>
+  <data name="vision.prepareModel" xml:space="preserve"><value>Tải xuống và chuẩn bị mô hình</value></data>
+  <data name="vision.preparing" xml:space="preserve"><value>Đang chuẩn bị runtime Vision cục bộ…</value></data>
+  <data name="vision.ready" xml:space="preserve"><value>Vision fallback đã sẵn sàng · {0}</value></data>
+  <data name="vision.removePlugin" xml:space="preserve"><value>Xóa plugin</value></data>
+  <data name="vision.title" xml:space="preserve"><value>Vision dự phòng</value></data>
+  <data name="vision.unavailable" xml:space="preserve"><value>Vision fallback không khả dụng</value></data>
+  <data name="legal.title" xml:space="preserve"><value>Pháp lý &amp; quyền riêng tư</value></data>
+  <data name="legal.gateHeading" xml:space="preserve"><value>Trước khi bắt đầu</value></data>
+  <data name="legal.gateIntro" xml:space="preserve"><value>Hãy xem Thỏa thuận người dùng và Chính sách quyền riêng tư. Nội dung trò chuyện và không gian làm việc của bạn được gửi đến nhà cung cấp AI bạn chọn, có thể ở ngoài quốc gia của bạn.</value></data>
+  <data name="legal.termsTab" xml:space="preserve"><value>Thỏa thuận người dùng</value></data>
+  <data name="legal.privacyTab" xml:space="preserve"><value>Chính sách quyền riêng tư</value></data>
+  <data name="legal.acceptRequired" xml:space="preserve"><value>Tôi đã đọc và chấp nhận Thỏa thuận người dùng và Chính sách quyền riêng tư.</value></data>
+  <data name="legal.accept" xml:space="preserve"><value>Tiếp tục</value></data>
+  <data name="legal.openWeb" xml:space="preserve"><value>Mở trên web</value></data>
+  <data name="legal.consentHeading" xml:space="preserve"><value>Optional permissions</value></data>
+  <data name="legal.consentPrefs" xml:space="preserve"><value>Consent preferences</value></data>
+  <data name="legal.consent.aiTransfer" xml:space="preserve"><value>Send my prompts and the files I choose to the AI provider so AI features work (required; involves transfer abroad).</value></data>
+  <data name="legal.consent.github" xml:space="preserve"><value>Allow GitHub integration to transfer my repository data when I connect it.</value></data>
+  <data name="legal.consent.voice" xml:space="preserve"><value>Allow voice input processing and speech-to-text conversion.</value></data>
+  <data name="legal.consent.marketing" xml:space="preserve"><value>Send me product news and campaigns by email.</value></data>
+  <data name="legal.updated" xml:space="preserve"><value>Tài liệu pháp lý đã được cập nhật. Hãy xem xét và chấp nhận lại.</value></data>
+  <data name="legal.loadError" xml:space="preserve"><value>Không thể tải tài liệu pháp lý. Hãy kiểm tra kết nối và thử lại.</value></data>
+  <data name="legal.retry" xml:space="preserve"><value>Thử lại</value></data>
+  <data name="legal.acceptHint" xml:space="preserve"><value>Nhấn “Tiếp tục” nghĩa là bạn chấp nhận Thỏa thuận người dùng và Chính sách quyền riêng tư.</value></data>
+  <data name="usage.window5h" xml:space="preserve"><value>5 giờ</value></data>
+  <data name="usage.windowWeek" xml:space="preserve"><value>Hàng tuần</value></data>
+  <data name="usage.resetsIn" xml:space="preserve"><value>đặt lại sau {0}</value></data>
+  <data name="usage.resetsOn" xml:space="preserve"><value>đặt lại vào {0}</value></data>
+  <data name="usage.resetsAvailable" xml:space="preserve"><value>Còn {0} lần đặt lại</value></data>
+  <data name="usage.needLogin" xml:space="preserve"><value>Đăng nhập Claude để xem giới hạn</value></data>
+  <data name="usage.noLimitInfo" xml:space="preserve"><value>Không có thông tin giới hạn</value></data>
+  <data name="usage.loadFailed" xml:space="preserve"><value>Không thể tải mức sử dụng</value></data>
+  <data name="usage.loading" xml:space="preserve"><value>Đang tải mức sử dụng…</value></data>
+  <data name="modelPicker.selectModel" xml:space="preserve"><value>Chọn mô hình</value></data>
+  <data name="modelPicker.noModel" xml:space="preserve"><value>Không có mô hình được kết nối</value></data>
+  <data name="modelPicker.reset" xml:space="preserve"><value>Đặt lại về mặc định</value></data>
+  <data name="modelPicker.effort" xml:space="preserve"><value>nỗ lực</value></data>
+  <data name="modelPicker.effortUnsupported" xml:space="preserve"><value>Không được hỗ trợ</value></data>
+  <data name="modelPicker.effort.default" xml:space="preserve"><value>Mặc định</value></data>
+  <data name="modelPicker.effort.none" xml:space="preserve"><value>không có</value></data>
+  <data name="modelPicker.effort.low" xml:space="preserve"><value>Ánh sáng</value></data>
+  <data name="modelPicker.effort.medium" xml:space="preserve"><value>Trung bình</value></data>
+  <data name="modelPicker.effort.high" xml:space="preserve"><value>Cao</value></data>
+  <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>Cực cao</value></data>
+  <data name="modelPicker.effort.max" xml:space="preserve"><value>Tối đa</value></data>
 </root>

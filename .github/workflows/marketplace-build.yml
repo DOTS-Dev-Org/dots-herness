@@ -1,0 +1,276 @@
+name: Native Marketplace build
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Marketplace release id
+        required: true
+        type: string
+      plugin_id:
+        description: Marketplace plugin id
+        required: true
+        type: string
+      version:
+        description: Immutable plugin version
+        required: true
+        type: string
+      source_url:
+        description: Public R2 source bundle URL
+        required: true
+        type: string
+      source_sha256:
+        description: Source bundle SHA-256
+        required: true
+        type: string
+      targets:
+        description: JSON build target matrix from the Marketplace API
+        required: false
+        default: '[{"platform":"macos","architecture":"arm64","runner":"macos-14"},{"platform":"macos","architecture":"x64","runner":"macos-13"},{"platform":"windows","architecture":"x64","runner":"windows-latest"},{"platform":"linux","architecture":"x64","runner":"ubuntu-latest"}]'
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.targets) }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout trusted harness ABI
+        uses: actions/checkout@v4
+      - name: Download source bundle
+        shell: bash
+        env:
+          SOURCE_URL: ${{ inputs.source_url }}
+          SOURCE_SHA256: ${{ inputs.source_sha256 }}
+          CI_TOKEN: ${{ secrets.MARKETPLACE_CI_SECRET }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/source
+          curl --fail --location --retry 3 \
+            --header "X-Marketplace-CI-Token: $CI_TOKEN" \
+            "$SOURCE_URL" -o build/source/source.dotsplugin
+          if command -v sha256sum >/dev/null 2>&1; then
+            echo "$SOURCE_SHA256  build/source/source.dotsplugin" | sha256sum --check -
+          else
+            echo "$SOURCE_SHA256  build/source/source.dotsplugin" | shasum -a 256 -c -
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          from stat import S_IFLNK, S_IFMT
+          from zipfile import ZipFile
+
+          archive_path = Path("build/source/source.dotsplugin")
+          destination = Path("build/source/unpacked").resolve()
+          destination.mkdir(parents=True, exist_ok=True)
+          total_size = 0
+          with ZipFile(archive_path) as archive:
+              for member in archive.infolist():
+                  name = member.filename.replace("\\", "/")
+                  if not name or name.startswith("/") or any(part in ("", ".", "..") for part in name.rstrip("/").split("/")):
+                      raise SystemExit(f"unsafe source archive path: {member.filename!r}")
+                  if S_IFMT(member.external_attr >> 16) == S_IFLNK:
+                      raise SystemExit(f"source archive symlinks are not allowed: {member.filename!r}")
+                  target = (destination / name).resolve()
+                  if destination not in target.parents and target != destination:
+                      raise SystemExit(f"source archive escapes extraction root: {member.filename!r}")
+                  if member.is_dir():
+                      target.mkdir(parents=True, exist_ok=True)
+                      continue
+                  total_size += member.file_size
+                  if total_size > 200 * 1024 * 1024:
+                      raise SystemExit("source archive expands beyond the CI safety limit")
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  with archive.open(member) as source, target.open("wb") as output:
+                      while True:
+                          chunk = source.read(1024 * 1024)
+                          if not chunk:
+                              break
+                          output.write(chunk)
+          PY
+      - name: Build native plugin when this target is present
+        id: compile
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -u
+          manifest="$(find build/source/unpacked -name plugin.yml -print -quit)"
+          if [[ -z "$manifest" ]]; then
+            echo "plugin.yml is missing" >&2
+            exit 1
+          fi
+          root="$(dirname "$manifest")"
+          [[ -f "$root/plugin.ir.json" ]] || { echo "plugin.ir.json is missing" >&2; exit 1; }
+          [[ -s "$root/license" ]] || { echo "license is missing or empty" >&2; exit 1; }
+          library="$(python3 - "$root/plugin.yml" "${{ inputs.plugin_id }}" "${{ inputs.version }}" <<'PY'
+          import re
+          import sys
+
+          path, expected_id, expected_version = sys.argv[1:]
+          values = {}
+          for line in open(path, encoding="utf-8"):
+              match = re.match(r"^(id|version|runtime|library|main):\s*(.*?)\s*$", line.rstrip("\n"))
+              if match:
+                  values[match.group(1)] = match.group(2).strip().strip("\"'")
+          if values.get("id") != expected_id:
+              raise SystemExit("plugin.yml id does not match the Marketplace release")
+          if values.get("version") != expected_version:
+              raise SystemExit("plugin.yml version does not match the Marketplace release")
+          if values.get("runtime", "").lower() != "native" or "main" in values:
+              raise SystemExit("only native plugin.yml manifests are accepted")
+          library = values.get("library", "")
+          if not library or library.startswith("/") or "\\" in library or "\x00" in library or any(part in ("", ".", "..") for part in library.split("/")):
+              raise SystemExit("plugin.yml library must be a safe relative path")
+          print(library)
+          PY
+          )"
+          jq -e 'type == "object" and .version == 1 and (has("prompt") and has("tools") and has("events") and has("settings") and has("panels"))' "$root/plugin.ir.json" >/dev/null
+          mkdir -p build/result
+          case "${{ matrix.platform }}" in
+            macos)
+              if [[ -d "$root/source/macos" ]]; then
+                HARNESS_PLUGIN_SDK="$GITHUB_WORKSPACE/macos/DotsHarness" \
+                  swift build --package-path "$root/source/macos" -c release
+              else
+                echo "source/macos is missing" >&2
+                exit 1
+              fi
+              ;;
+            windows)
+              if [[ -d "$root/source/windows" ]]; then
+                dotnet build "$root/source/windows" -c Release \
+                  -p:HarnessPluginSdk="$GITHUB_WORKSPACE/windows/DotsHarness/src"
+              else
+                echo "source/windows is missing" >&2
+                exit 1
+              fi
+              ;;
+            linux)
+              if [[ -d "$root/source/linux" ]]; then
+                dotnet build "$root/source/linux" -c Release \
+                  -p:HarnessPluginSdk="$GITHUB_WORKSPACE/linux/DotsHarness/src"
+              else
+                echo "source/linux is missing" >&2
+                exit 1
+              fi
+              ;;
+          esac
+          if [[ -z "$library" ]]; then
+            echo "native plugin library is missing from plugin.yml" >&2
+            exit 1
+          fi
+          library_dir="$(dirname "$library")"
+          library_base="$(basename "$library")"
+          library_stem="${library_base%.*}"
+          case "${{ matrix.platform }}" in
+            macos) library_ext="dylib" ;;
+            windows) library_ext="dll" ;;
+            linux) library_ext="so" ;;
+          esac
+          target_library="${library_stem}.${library_ext}"
+          [[ "$library_dir" == "." ]] || target_library="$library_dir/$target_library"
+          built="$(find "$root/source/${{ matrix.platform }}" -type f -name "$(basename "$target_library")" -print -quit 2>/dev/null || true)"
+          if [[ -z "$built" ]]; then
+            built="$(find "$root/source/${{ matrix.platform }}" -type f \( -name '*.dylib' -o -name '*.dll' -o -name '*.so' \) -print -quit 2>/dev/null || true)"
+          fi
+          if [[ -z "$built" ]]; then
+            echo "native library output was not produced" >&2
+            exit 1
+          fi
+          mkdir -p "$(dirname "$root/$target_library")"
+          cp "$built" "$root/$target_library"
+          # The common source manifest may name the macOS library. Each
+          # platform artifact carries its actual loader filename instead.
+          awk -v library="$target_library" '
+            BEGIN { replaced = 0 }
+            /^library:[[:space:]]*/ && replaced == 0 { print "library: " library; replaced = 1; next }
+            { print }
+            END { if (replaced == 0) exit 1 }
+          ' "$root/plugin.yml" > "$root/plugin.yml.marketplace"
+          mv "$root/plugin.yml.marketplace" "$root/plugin.yml"
+          cp -R "$root" build/result/plugin
+          (cd build/result && zip -qr "${{ inputs.plugin_id }}-${{ inputs.version }}-${{ matrix.platform }}-${{ matrix.architecture }}.dotsplugin" plugin)
+          echo ready=true >> "$GITHUB_OUTPUT"
+      - name: Record failed target
+        if: steps.compile.outputs.ready != 'true'
+        shell: bash
+        run: |
+          mkdir -p build/result
+          printf '%s\n' '{"status":"failed","error":"native target build failed or target source was not provided"}' > build/result/status.json
+      - name: Upload target result without secrets
+        uses: actions/upload-artifact@v4
+        with:
+          name: marketplace-${{ matrix.platform }}-${{ matrix.architecture }}
+          path: build/result
+
+  publish:
+    name: Publish artifact statuses
+    if: ${{ always() }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download target results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: marketplace-*
+          path: results
+          merge-multiple: false
+      - name: Mint a scoped GitHub OIDC token
+        id: oidc
+        shell: bash
+        env:
+          OIDC_AUDIENCE: ${{ vars.MARKETPLACE_CI_OIDC_AUDIENCE }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${OIDC_AUDIENCE:-}" || -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          oidc_response="$(curl --fail --silent --show-error \
+            --header "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            --get --data-urlencode "audience=$OIDC_AUDIENCE" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL")"
+          oidc_token="$(jq -er '.value' <<< "$oidc_response")"
+          {
+            echo 'token<<DOTS_MARKETPLACE_OIDC'
+            echo "$oidc_token"
+            echo 'DOTS_MARKETPLACE_OIDC'
+          } >> "$GITHUB_OUTPUT"
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+      - name: Upload ready artifacts to Worker
+        shell: bash
+        env:
+          API_URL: ${{ vars.MARKETPLACE_API_URL }}
+          CI_TOKEN: ${{ secrets.MARKETPLACE_CI_SECRET }}
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+          RELEASE_ID: ${{ inputs.release_id }}
+        run: |
+          set -euo pipefail
+          for dir in results/marketplace-*; do
+            platform_arch="${dir#results/marketplace-}"
+            platform="${platform_arch%-*}"
+            architecture="${platform_arch##*-}"
+            artifact="$(find "$dir" -name '*.dotsplugin' -print -quit || true)"
+            if [[ -n "$artifact" ]]; then
+              headers=(--header "Content-Type: application/zip")
+              [[ -n "${CI_TOKEN:-}" ]] && headers+=(--header "X-Marketplace-CI-Token: $CI_TOKEN")
+              [[ -n "${OIDC_TOKEN:-}" ]] && headers+=(--header "X-Marketplace-OIDC-Token: $OIDC_TOKEN")
+              curl --fail --request PUT "${headers[@]}" \
+                --data-binary "@$artifact" \
+                "$API_URL/api/marketplace/ci/$RELEASE_ID/artifacts/$platform/$architecture"
+            else
+              error="$(cat "$dir/status.json" 2>/dev/null || true)"
+              headers=(--header "Content-Type: application/json")
+              [[ -n "${CI_TOKEN:-}" ]] && headers+=(--header "X-Marketplace-CI-Token: $CI_TOKEN")
+              [[ -n "${OIDC_TOKEN:-}" ]] && headers+=(--header "X-Marketplace-OIDC-Token: $OIDC_TOKEN")
+              curl --fail --request POST "${headers[@]}" \
+                --data "{\"platform\":\"$platform\",\"architecture\":\"$architecture\",\"status\":\"failed\",\"error\":$(jq -Rs . <<< \"$error\")}" \
+                "$API_URL/api/marketplace/ci/$RELEASE_ID/complete"
+            fi
+          done

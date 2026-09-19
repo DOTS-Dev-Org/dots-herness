@@ -74,6 +74,7 @@
       },
       {
         "id": "gpt-5.5",
+        "fast": true,
         "name": "GPT 5.5",
         "efforts": [
           "none",
@@ -86,6 +87,7 @@
       },
       {
         "id": "gpt-5.4",
+        "fast": true,
         "name": "GPT 5.4",
         "efforts": [
           "none",
@@ -157,6 +159,7 @@
       },
       {
         "id": "claude-opus-5",
+        "fast": true,
         "name": "Claude Opus 5",
         "efforts": [
           "low",
@@ -169,6 +172,7 @@
       },
       {
         "id": "claude-opus-4-8",
+        "fast": true,
         "name": "Claude Opus 4.8",
         "efforts": [
           "low",
@@ -432,6 +436,7 @@
       },
       {
         "id": "claude-opus-5",
+        "fast": true,
         "name": "Claude Opus 5",
         "tier": "premium"
       },
@@ -570,7 +575,8 @@
     },
     "models": [
       {
-        "id": "deepseek-chat"
+        "id": "deepseek-chat",
+        "contextWindow": 128000
       }
     ]
   },

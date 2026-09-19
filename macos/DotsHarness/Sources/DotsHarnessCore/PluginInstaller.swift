@@ -18,20 +18,26 @@ public struct PluginInstaller {
     /// DOTS' own publisher key ships with the app; user-pinned keys are merged
     /// from `publishers.json` in the support directory.
     public static let officialPublishers: [String: String] = [
-        // Replace with the real Ed25519 public key (base64 raw) before release.
-        "dots": ""
+        // DOTS marketplace Ed25519 raw public key (base64). Rotate this key by
+        // shipping a new app version; never accept a registry-provided root key.
+        "dots": "5BjXLUajc3JkmWmNHiBg5kmJoTFx2OVSe7BetYJEtCI="
     ]
 
     public func trustedPublishers() -> [String: String] {
         var merged = Self.officialPublishers.filter { !$0.value.isEmpty }
         if let data = try? Data(contentsOf: catalog.paths.publishers),
            let extra = try? JSONDecoder().decode([String: String].self, from: data) {
-            merged.merge(extra) { _, new in new }
+            for (id, key) in extra where id != "dots" && !key.isEmpty {
+                merged[id] = key
+            }
         }
         return merged
     }
 
     public func pinPublisher(id: String, publicKey: String) throws {
+        guard id != "dots" else {
+            throw PluginError.package("the official DOTS publisher key is immutable")
+        }
         var current = (try? JSONDecoder().decode(
             [String: String].self,
             from: Data(contentsOf: catalog.paths.publishers)
@@ -49,7 +55,10 @@ public struct PluginInstaller {
     public func install(
         package: URL,
         signature: PluginSignature?,
-        trust: PluginTrust = .untrusted
+        trust: PluginTrust = .untrusted,
+        expectedID: String? = nil,
+        expectedVersion: String? = nil,
+        requireLicense: Bool = false
     ) throws -> PluginManifest {
         if let signature {
             try PluginPackage.verify(
@@ -59,7 +68,13 @@ public struct PluginInstaller {
             )
         }
         catalog.paths.ensure()
-        let manifest = try PluginPackage.unpack(package: package, into: catalog.paths.plugins)
+        let manifest = try PluginPackage.unpack(
+            package: package,
+            into: catalog.paths.plugins,
+            expectedID: expectedID,
+            expectedVersion: expectedVersion,
+            requireLicense: requireLicense
+        )
         catalog.refresh()
         if signature != nil, trust != .untrusted {
             catalog.setTrust(manifest.id, trust)
@@ -72,14 +87,27 @@ public struct PluginInstaller {
         url: URL,
         sha256: String? = nil,
         signature: PluginSignature? = nil,
-        trust: PluginTrust = .untrusted
+        trust: PluginTrust = .untrusted,
+        expectedID: String? = nil,
+        expectedVersion: String? = nil,
+        requireLicense: Bool = false
     ) async throws -> PluginManifest {
+        guard url.scheme?.lowercased() == "https" else {
+            throw PluginError.package("Marketplace downloads must use HTTPS")
+        }
         let scratch = catalog.paths.runtime.appendingPathComponent("downloads", isDirectory: true)
         let name = url.lastPathComponent.isEmpty ? "package.dotsplugin" : url.lastPathComponent
         let destination = scratch.appendingPathComponent(name)
         try await FileDownloader.download(from: url, to: destination, sha256: sha256 ?? signature?.sha256)
         defer { try? FileManager.default.removeItem(at: destination) }
-        return try install(package: destination, signature: signature, trust: trust)
+        return try install(
+            package: destination,
+            signature: signature,
+            trust: trust,
+            expectedID: expectedID,
+            expectedVersion: expectedVersion,
+            requireLicense: requireLicense
+        )
     }
 
     public func remove(id: String) throws {

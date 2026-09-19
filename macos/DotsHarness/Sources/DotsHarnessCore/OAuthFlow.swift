@@ -16,9 +16,11 @@ public struct OAuthTokens: Sendable, Equatable {
 
 public struct OAuthFlow: Sendable {
     public let spec: ProviderSpec.OAuthSpec
+    public let session: URLSession
 
-    public init(spec: ProviderSpec.OAuthSpec) {
+    public init(spec: ProviderSpec.OAuthSpec, session: URLSession = .shared) {
         self.spec = spec
+        self.session = session
     }
 
     // MARK: PKCE material
@@ -90,7 +92,7 @@ public struct OAuthFlow: Sendable {
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         request.httpBody = Self.formBody([("client_id", spec.clientID), ("scope", spec.scopes)])
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
         guard (200..<300).contains(status),
@@ -160,7 +162,7 @@ public struct OAuthFlow: Sendable {
             request.httpBody = try JSONSerialization.data(withJSONObject: Dictionary(fields, uniquingKeysWith: { _, last in last }))
         }
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
         guard (200..<300).contains(status) else {

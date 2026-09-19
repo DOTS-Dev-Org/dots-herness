@@ -225,50 +225,89 @@
   <data name="voice.status.downloading" xml:space="preserve"><value>Spraakitems downloaden…</value></data>
   <data name="voice.download" xml:space="preserve"><value>Spraakitems downloaden</value></data>
   <data name="voice.error" xml:space="preserve"><value>Fout bij steminvoer: {0}</value></data>
-  <data name="ask.customPlaceholder" xml:space="preserve"><value>Write your own answer…</value></data>
-  <data name="ask.skip" xml:space="preserve"><value>Skip and plan anyway</value></data>
-  <data name="ask.submit" xml:space="preserve"><value>Send answers</value></data>
-  <data name="ask.title" xml:space="preserve"><value>A few questions before the plan</value></data>
-  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Cleanup did not complete.</value></data>
-  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>No cleanup was requested.</value></data>
-  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Cleanup could not be verified; existing files were preserved.</value></data>
-  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Old code was preserved because cleanup was not needed or could not be proven.</value></data>
-  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Workspace changes could not be fully verified.</value></data>
-  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Old code cleanup verified.</value></data>
-  <data name="conversation.connectionAdded" xml:space="preserve"><value>Connection added: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionChanged" xml:space="preserve"><value>Connection changed</value></data>
-  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Previous local connection data could not be fully verified; it was preserved.</value></data>
-  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Previous connection preserved: {0}. Conversations and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Previous connection removed. Local connection data was cleared; conversations and user data were preserved. Remote data was not touched.</value></data>
-  <data name="conversation.connectionSelected" xml:space="preserve"><value>Connection selected: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionSummary" xml:space="preserve"><value>Connection changed: {0} → {1}</value></data>
-  <data name="conversation.fileAdded" xml:space="preserve"><value>Added</value></data>
-  <data name="conversation.fileDeleted" xml:space="preserve"><value>Deleted</value></data>
-  <data name="conversation.fileModified" xml:space="preserve"><value>Modified</value></data>
-  <data name="conversation.filesSummary" xml:space="preserve"><value>Added {0}, modified {1}, deleted {2}</value></data>
-  <data name="conversation.runSummary" xml:space="preserve"><value>Run summary</value></data>
+  <data name="ask.customPlaceholder" xml:space="preserve"><value>Schrijf je eigen antwoord…</value></data>
+  <data name="ask.skip" xml:space="preserve"><value>Overslaan en toch plannen</value></data>
+  <data name="ask.submit" xml:space="preserve"><value>Antwoorden verzenden</value></data>
+  <data name="ask.title" xml:space="preserve"><value>Enkele vragen vóór het plan</value></data>
+  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Opruimen is niet voltooid.</value></data>
+  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>Er is geen opruiming gevraagd.</value></data>
+  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Opruimen kon niet worden geverifieerd; bestaande bestanden zijn behouden.</value></data>
+  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Oude code is behouden omdat opruimen niet nodig was of niet kon worden bewezen.</value></data>
+  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Wijzigingen in de werkruimte konden niet volledig worden geverifieerd.</value></data>
+  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Opruimen van oude code is geverifieerd.</value></data>
+  <data name="conversation.connectionAdded" xml:space="preserve"><value>Verbinding toegevoegd: {0}. Bestaande verbindingen en gebruikersgegevens zijn behouden; externe gegevens zijn niet aangeraakt.</value></data>
+  <data name="conversation.connectionChanged" xml:space="preserve"><value>Verbinding gewijzigd</value></data>
+  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Vorige lokale verbindingsgegevens konden niet volledig worden geverifieerd; ze zijn behouden.</value></data>
+  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Vorige verbinding behouden: {0}. Gesprekken en gebruikersgegevens zijn behouden; externe gegevens zijn niet aangeraakt.</value></data>
+  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Vorige verbinding verwijderd. Lokale verbindingsgegevens zijn gewist; gesprekken en gebruikersgegevens zijn behouden. Externe gegevens zijn niet aangeraakt.</value></data>
+  <data name="conversation.connectionSelected" xml:space="preserve"><value>Verbinding geselecteerd: {0}. Bestaande verbindingen en gebruikersgegevens zijn behouden; externe gegevens zijn niet aangeraakt.</value></data>
+  <data name="conversation.connectionSummary" xml:space="preserve"><value>Verbinding gewijzigd: {0} → {1}</value></data>
+  <data name="conversation.fileAdded" xml:space="preserve"><value>Toegevoegd</value></data>
+  <data name="conversation.fileDeleted" xml:space="preserve"><value>Verwijderd</value></data>
+  <data name="conversation.fileModified" xml:space="preserve"><value>Gewijzigd</value></data>
+  <data name="conversation.filesSummary" xml:space="preserve"><value>Toegevoegd {0}, gewijzigd {1}, verwijderd {2}</value></data>
+  <data name="conversation.runSummary" xml:space="preserve"><value>Samenvatting van uitvoering</value></data>
   <data name="conversation.testStatus" xml:space="preserve"><value>Tests: {0}</value></data>
-  <data name="router.unknown" xml:space="preserve"><value>unknown</value></data>
-  <data name="settings.seedProjectRules" xml:space="preserve"><value>Create AGENTS.md and CLAUDE.md</value></data>
-  <data name="settings.selfVerification" xml:space="preserve"><value>Verify changes automatically</value></data>
-  <data name="vision.deleteModel" xml:space="preserve"><value>Delete model</value></data>
-  <data name="vision.disabled" xml:space="preserve"><value>Disabled</value></data>
-  <data name="vision.downloadAndContinue" xml:space="preserve"><value>Download and continue</value></data>
-  <data name="vision.downloading" xml:space="preserve"><value>Downloading the local vision model…</value></data>
-  <data name="vision.emptyDescription" xml:space="preserve"><value>The local Vision fallback returned no visual description.</value></data>
-  <data name="vision.failed" xml:space="preserve"><value>Vision fallback failed</value></data>
-  <data name="vision.installPlugin" xml:space="preserve"><value>Install from marketplace</value></data>
-  <data name="vision.installReason" xml:space="preserve"><value>{0} does not support image input. The Vision plugin will download about {1} and process the image on this device. The original image may already have reached the provider.</value></data>
-  <data name="vision.installTitle" xml:space="preserve"><value>This provider cannot read the image</value></data>
-  <data name="vision.modelMissing" xml:space="preserve"><value>Model not downloaded</value></data>
-  <data name="vision.notEnabled" xml:space="preserve"><value>The provider cannot read this image and the local Vision plugin was not enabled.</value></data>
-  <data name="vision.notInstalled" xml:space="preserve"><value>Not installed</value></data>
-  <data name="vision.notNow" xml:space="preserve"><value>Not now</value></data>
-  <data name="vision.pluginMissing" xml:space="preserve"><value>The local Vision fallback plugin is unavailable.</value></data>
-  <data name="vision.prepareModel" xml:space="preserve"><value>Download and prepare model</value></data>
-  <data name="vision.preparing" xml:space="preserve"><value>Preparing the local vision runtime…</value></data>
-  <data name="vision.ready" xml:space="preserve"><value>Vision fallback ready · {0}</value></data>
-  <data name="vision.removePlugin" xml:space="preserve"><value>Remove plugin</value></data>
-  <data name="vision.title" xml:space="preserve"><value>Vision fallback</value></data>
-  <data name="vision.unavailable" xml:space="preserve"><value>Vision fallback is unavailable</value></data>
+  <data name="router.unknown" xml:space="preserve"><value>onbekend</value></data>
+  <data name="settings.seedProjectRules" xml:space="preserve"><value>AGENTS.md en CLAUDE.md maken</value></data>
+  <data name="settings.selfVerification" xml:space="preserve"><value>Wijzigingen automatisch verifiëren</value></data>
+  <data name="vision.deleteModel" xml:space="preserve"><value>Model verwijderen</value></data>
+  <data name="vision.disabled" xml:space="preserve"><value>Uitgeschakeld</value></data>
+  <data name="vision.downloadAndContinue" xml:space="preserve"><value>Downloaden en doorgaan</value></data>
+  <data name="vision.downloading" xml:space="preserve"><value>Lokaal Vision-model wordt gedownload…</value></data>
+  <data name="vision.emptyDescription" xml:space="preserve"><value>De lokale Vision-fallback gaf geen visuele beschrijving terug.</value></data>
+  <data name="vision.failed" xml:space="preserve"><value>Vision-fallback mislukt</value></data>
+  <data name="vision.installPlugin" xml:space="preserve"><value>Installeren uit de marketplace</value></data>
+  <data name="vision.installReason" xml:space="preserve"><value>{0} ondersteunt geen afbeeldingsinvoer. De Vision-plugin downloadt ongeveer {1} en verwerkt de afbeelding op dit apparaat. De oorspronkelijke afbeelding kan de provider al hebben bereikt.</value></data>
+  <data name="vision.installTitle" xml:space="preserve"><value>Deze provider kan de afbeelding niet lezen</value></data>
+  <data name="vision.modelMissing" xml:space="preserve"><value>Model niet gedownload</value></data>
+  <data name="vision.notEnabled" xml:space="preserve"><value>De provider kan deze afbeelding niet lezen en de lokale Vision-plugin is niet ingeschakeld.</value></data>
+  <data name="vision.notInstalled" xml:space="preserve"><value>Niet geïnstalleerd</value></data>
+  <data name="vision.notNow" xml:space="preserve"><value>Niet nu</value></data>
+  <data name="vision.pluginMissing" xml:space="preserve"><value>De lokale Vision-fallbackplugin is niet beschikbaar.</value></data>
+  <data name="vision.prepareModel" xml:space="preserve"><value>Model downloaden en voorbereiden</value></data>
+  <data name="vision.preparing" xml:space="preserve"><value>Lokale Vision-runtime voorbereiden…</value></data>
+  <data name="vision.ready" xml:space="preserve"><value>Vision-fallback gereed · {0}</value></data>
+  <data name="vision.removePlugin" xml:space="preserve"><value>Plugin verwijderen</value></data>
+  <data name="vision.title" xml:space="preserve"><value>Vision-fallback</value></data>
+  <data name="vision.unavailable" xml:space="preserve"><value>Vision-fallback is niet beschikbaar</value></data>
+  <data name="legal.title" xml:space="preserve"><value>Juridisch en privacy</value></data>
+  <data name="legal.gateHeading" xml:space="preserve"><value>Voordat je begint</value></data>
+  <data name="legal.gateIntro" xml:space="preserve"><value>Lees de gebruikersovereenkomst en het privacybeleid. De inhoud van je gesprekken en werkruimte wordt verzonden naar de AI-provider van je keuze, die zich buiten je land kan bevinden.</value></data>
+  <data name="legal.termsTab" xml:space="preserve"><value>Gebruikersovereenkomst</value></data>
+  <data name="legal.privacyTab" xml:space="preserve"><value>Privacybeleid</value></data>
+  <data name="legal.acceptRequired" xml:space="preserve"><value>Ik heb de gebruikersovereenkomst en het privacybeleid gelezen en ga ermee akkoord.</value></data>
+  <data name="legal.accept" xml:space="preserve"><value>Doorgaan</value></data>
+  <data name="legal.openWeb" xml:space="preserve"><value>Openen op het web</value></data>
+  <data name="legal.consentHeading" xml:space="preserve"><value>Optional permissions</value></data>
+  <data name="legal.consentPrefs" xml:space="preserve"><value>Consent preferences</value></data>
+  <data name="legal.consent.aiTransfer" xml:space="preserve"><value>Send my prompts and the files I choose to the AI provider so AI features work (required; involves transfer abroad).</value></data>
+  <data name="legal.consent.github" xml:space="preserve"><value>Allow GitHub integration to transfer my repository data when I connect it.</value></data>
+  <data name="legal.consent.voice" xml:space="preserve"><value>Allow voice input processing and speech-to-text conversion.</value></data>
+  <data name="legal.consent.marketing" xml:space="preserve"><value>Send me product news and campaigns by email.</value></data>
+  <data name="legal.updated" xml:space="preserve"><value>De juridische documenten zijn bijgewerkt. Bekijk ze opnieuw en accepteer ze weer.</value></data>
+  <data name="legal.loadError" xml:space="preserve"><value>De juridische documenten konden niet worden geladen. Controleer je verbinding en probeer het opnieuw.</value></data>
+  <data name="legal.retry" xml:space="preserve"><value>Opnieuw proberen</value></data>
+  <data name="legal.acceptHint" xml:space="preserve"><value>Door op ‘Doorgaan’ te drukken, accepteer je de gebruikersovereenkomst en het privacybeleid.</value></data>
+  <data name="usage.window5h" xml:space="preserve"><value>5 uur</value></data>
+  <data name="usage.windowWeek" xml:space="preserve"><value>Wekelijks</value></data>
+  <data name="usage.resetsIn" xml:space="preserve"><value>wordt over {0} gereset</value></data>
+  <data name="usage.resetsOn" xml:space="preserve"><value>wordt {0} gereset</value></data>
+  <data name="usage.resetsAvailable" xml:space="preserve"><value>{0} resets beschikbaar</value></data>
+  <data name="usage.needLogin" xml:space="preserve"><value>Meld je aan bij Claude om limieten te bekijken</value></data>
+  <data name="usage.noLimitInfo" xml:space="preserve"><value>Geen limietinformatie</value></data>
+  <data name="usage.loadFailed" xml:space="preserve"><value>Gebruik kon niet worden geladen</value></data>
+  <data name="usage.loading" xml:space="preserve"><value>Gebruik wordt geladen…</value></data>
+  <data name="modelPicker.selectModel" xml:space="preserve"><value>Model kiezen</value></data>
+  <data name="modelPicker.noModel" xml:space="preserve"><value>Geen verbonden model</value></data>
+  <data name="modelPicker.reset" xml:space="preserve"><value>Standaard herstellen</value></data>
+  <data name="modelPicker.effort" xml:space="preserve"><value>Inspanning</value></data>
+  <data name="modelPicker.effortUnsupported" xml:space="preserve"><value>Niet ondersteund</value></data>
+  <data name="modelPicker.effort.default" xml:space="preserve"><value>Standaard</value></data>
+  <data name="modelPicker.effort.none" xml:space="preserve"><value>Geen</value></data>
+  <data name="modelPicker.effort.low" xml:space="preserve"><value>Licht</value></data>
+  <data name="modelPicker.effort.medium" xml:space="preserve"><value>Middelmatig</value></data>
+  <data name="modelPicker.effort.high" xml:space="preserve"><value>Hoog</value></data>
+  <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>Extra hoog</value></data>
+  <data name="modelPicker.effort.max" xml:space="preserve"><value>Max</value></data>
 </root>

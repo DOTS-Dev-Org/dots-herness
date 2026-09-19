@@ -180,6 +180,10 @@ public final class VoiceAPIRealtimeClient: @unchecked Sendable {
         self.onError = onError
     }
 
+    deinit {
+        cancel()
+    }
+
     public func start() async throws {
         let url = try Self.realtimeURL(from: configuration)
         var request = URLRequest(url: url)
@@ -192,7 +196,13 @@ public final class VoiceAPIRealtimeClient: @unchecked Sendable {
         let sender = Sender(socket: box)
         task.resume()
 
-        let first = try await task.receive()
+        let first: URLSessionWebSocketTask.Message
+        do {
+            first = try await Self.receiveHandshake(from: task)
+        } catch {
+            task.cancel(with: .goingAway, reason: nil)
+            throw error
+        }
         guard Self.eventType(from: first) == "session.created" else {
             task.cancel(with: .protocolError, reason: nil)
             throw NativeAgentError(AppCopy.text("voice.realtimeHandshakeFailed"))
@@ -209,7 +219,12 @@ public final class VoiceAPIRealtimeClient: @unchecked Sendable {
                 "endpointing_ms": 800,
             ],
         ]
-        try await sender.send(.text(Self.json(update)))
+        do {
+            try await sender.send(.text(Self.json(update)))
+        } catch {
+            cancel()
+            throw error
+        }
 
         receiveTask = Task { [weak self, box] in
             await self?.receiveLoop(box)
@@ -306,6 +321,8 @@ public final class VoiceAPIRealtimeClient: @unchecked Sendable {
             partialText = ""
             let text = completed.trimmingCharacters(in: .whitespacesAndNewlines)
             if !text.isEmpty { onUpdate(VoiceTranscriptUpdate(text: text, isFinal: true)) }
+        } else if type.contains("speech_stopped") || type.contains("endpoint") {
+            // Local VAD owns commits; the server endpoint only confirms completion.
         }
     }
 
@@ -339,6 +356,18 @@ public final class VoiceAPIRealtimeClient: @unchecked Sendable {
         @unknown default: return nil
         }
         return ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["type"] as? String
+    }
+
+    private static func receiveHandshake(from task: URLSessionWebSocketTask) async throws -> URLSessionWebSocketTask.Message {
+        try await withThrowingTaskGroup(of: URLSessionWebSocketTask.Message.self) { group in
+            group.addTask { try await task.receive() }
+            group.addTask {
+                try await Task.sleep(for: .seconds(3))
+                throw URLError(.timedOut)
+            }
+            defer { group.cancelAll() }
+            return try await group.next()!
+        }
     }
 
     private static func realtimeURL(from configuration: VoiceAPIConfiguration) throws -> URL {

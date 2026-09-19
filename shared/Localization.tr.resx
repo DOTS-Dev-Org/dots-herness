@@ -89,7 +89,7 @@
   <data name="settings.revealFolder" xml:space="preserve"><value>Klasörü göster</value></data>
   <data name="settings.reload" xml:space="preserve"><value>Yeniden yükle</value></data>
   <data name="settings.plugins" xml:space="preserve"><value>Eklentiler</value></data>
-  <data name="settings.pluginsHint" xml:space="preserve"><value>Plugin.yml içeren bir klasörü eklentiler dizinine bırakın. Manifest eklentileri güvenilmeden çalışır. Derlenmiş derlemelerin Güvene ihtiyacı vardır.</value></data>
+  <data name="settings.pluginsHint" xml:space="preserve"><value>Native pluginler imzalı Marketplace üzerinden kurulur. JavaScript ve yalnızca manifest içeren pluginler yüklenmez; native kod açık Trust onayı gerektirir.</value></data>
   <data name="settings.lastMountFailed" xml:space="preserve"><value>Son bağlama başarısız oldu</value></data>
   <data name="settings.scheduledTasks" xml:space="preserve"><value>Zamanlanmış Görevler</value></data>
   <data name="settings.tasksHint" xml:space="preserve"><value>Bir cron zamanlamasına göre bir istem çalıştırın.</value></data>
@@ -271,4 +271,43 @@
   <data name="settings.noSkills" xml:space="preserve"><value>Keşfedilen beceri yok.</value></data>
   <data name="settings.skillsHint" xml:space="preserve"><value>Proje ve paketlenmiş beceriler devre dışı bırakılabilir; yalnızca indirilen uygulama sahipli beceriler silinebilir.</value></data>
   <data name="settings.skillReadFailed" xml:space="preserve"><value>SKILL.md okunamadı.</value></data>
+  <data name="legal.title" xml:space="preserve"><value>Yasal ve Gizlilik</value></data>
+  <data name="legal.gateHeading" xml:space="preserve"><value>Başlamadan önce</value></data>
+  <data name="legal.gateIntro" xml:space="preserve"><value>Lütfen Kullanıcı Sözleşmesi'ni ve Gizlilik Politikası'nı inceleyin. Konuşma ve çalışma alanı içeriğiniz, seçtiğiniz ve yurt dışında bulunabilecek yapay zeka sağlayıcısına iletilir.</value></data>
+  <data name="legal.termsTab" xml:space="preserve"><value>Kullanıcı Sözleşmesi</value></data>
+  <data name="legal.privacyTab" xml:space="preserve"><value>Gizlilik Politikası</value></data>
+  <data name="legal.acceptRequired" xml:space="preserve"><value>Kullanıcı Sözleşmesi'ni ve Gizlilik Politikası'nı okudum, kabul ediyorum.</value></data>
+  <data name="legal.accept" xml:space="preserve"><value>İleri</value></data>
+  <data name="legal.openWeb" xml:space="preserve"><value>Web'de aç</value></data>
+  <data name="legal.consentHeading" xml:space="preserve"><value>Kabul ettiğiniz izinler</value></data>
+  <data name="legal.consentPrefs" xml:space="preserve"><value>Kabul ettiğiniz izinler</value></data>
+  <data name="legal.consent.aiTransfer" xml:space="preserve"><value>Yapay zeka özelliklerinin çalışması için istemleriniz ve seçtiğiniz dosyalar yapay zeka sağlayıcısına gönderilir (yurt dışına aktarım içerir).</value></data>
+  <data name="legal.consent.github" xml:space="preserve"><value>GitHub hesabınızı bağladığınızda depo verileriniz GitHub'a aktarılır.</value></data>
+  <data name="legal.consent.voice" xml:space="preserve"><value>Ses girişiniz işlenir ve konuşma-metin dönüşümü yapılır.</value></data>
+  <data name="legal.consent.marketing" xml:space="preserve"><value>E-posta ile ürün duyuruları ve kampanyalar gönderilir.</value></data>
+  <data name="legal.updated" xml:space="preserve"><value>Yasal metinler güncellendi. Lütfen tekrar inceleyip onaylayın.</value></data>
+  <data name="legal.loadError" xml:space="preserve"><value>Yasal metinler yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.</value></data>
+  <data name="legal.retry" xml:space="preserve"><value>Tekrar dene</value></data>
+  <data name="legal.acceptHint" xml:space="preserve"><value>İleri'ye basarak Kullanıcı Sözleşmesi'ni ve Gizlilik Politikası'nı kabul etmiş olursunuz.</value></data>
+  <data name="usage.window5h" xml:space="preserve"><value>5s</value></data>
+  <data name="usage.windowWeek" xml:space="preserve"><value>Haftalık</value></data>
+  <data name="usage.resetsIn" xml:space="preserve"><value>{0} içinde yenilenir</value></data>
+  <data name="usage.resetsOn" xml:space="preserve"><value>{0} yenilenir</value></data>
+  <data name="usage.resetsAvailable" xml:space="preserve"><value>{0} yenileme hakkı</value></data>
+  <data name="usage.needLogin" xml:space="preserve"><value>Limitleri görmek için Claude ile giriş yapın</value></data>
+  <data name="usage.noLimitInfo" xml:space="preserve"><value>Limit bilgisi yok</value></data>
+  <data name="usage.loadFailed" xml:space="preserve"><value>Kullanım yüklenemedi</value></data>
+  <data name="usage.loading" xml:space="preserve"><value>Kullanım yükleniyor…</value></data>
+  <data name="modelPicker.selectModel" xml:space="preserve"><value>Model seç</value></data>
+  <data name="modelPicker.noModel" xml:space="preserve"><value>Bağlı model bulunamadı</value></data>
+  <data name="modelPicker.reset" xml:space="preserve"><value>Varsayılana sıfırla</value></data>
+  <data name="modelPicker.effort" xml:space="preserve"><value>Çaba</value></data>
+  <data name="modelPicker.effortUnsupported" xml:space="preserve"><value>Desteklenmiyor</value></data>
+  <data name="modelPicker.effort.default" xml:space="preserve"><value>Varsayılan</value></data>
+  <data name="modelPicker.effort.none" xml:space="preserve"><value>Yok</value></data>
+  <data name="modelPicker.effort.low" xml:space="preserve"><value>Hafif</value></data>
+  <data name="modelPicker.effort.medium" xml:space="preserve"><value>Orta</value></data>
+  <data name="modelPicker.effort.high" xml:space="preserve"><value>Yüksek</value></data>
+  <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>Çok Yüksek</value></data>
+  <data name="modelPicker.effort.max" xml:space="preserve"><value>Maksimum</value></data>
 </root>

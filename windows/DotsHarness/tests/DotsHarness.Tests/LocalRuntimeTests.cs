@@ -22,17 +22,18 @@ public sealed class LocalRuntimeTests
     }
 
     [Fact]
-    public void RouterNodeMapsProviderNodePayload()
+    public void RouterNodeMapsCustomEndpoint()
     {
-        var node = new RouterNode(new Dictionary<string, JsonValue>
+        var node = new RouterNode(new NativeCustomEndpoint
         {
-            ["id"] = JsonValue.String("openai-compatible-chat-abc"),
-            ["type"] = JsonValue.String("openai-compatible"),
-            ["name"] = JsonValue.String("Ollama"),
-            ["prefix"] = JsonValue.String("local"),
-            ["apiType"] = JsonValue.String("chat"),
-            ["baseUrl"] = JsonValue.String("http://127.0.0.1:11434/v1"),
+            Id = "openai-compatible-chat-abc",
+            Name = "Ollama",
+            Prefix = "local",
+            Protocol = NativeProviderProtocol.OpenAiCompatible,
+            ApiType = "chat",
+            BaseUrl = "http://127.0.0.1:11434/v1",
         });
+        Assert.Equal("openai-compatible", node.Type);
         Assert.Equal("local", node.Prefix);
         Assert.Equal("http://127.0.0.1:11434/v1", node.BaseUrl);
         Assert.Equal("chat", node.ApiType);
@@ -82,5 +83,71 @@ public sealed class LocalRuntimeTests
         await FileDownloader.DownloadAsync(new Uri("https://example.invalid/missing.gguf"), dest, 128);
         Assert.Equal(128, new FileInfo(dest).Length);
         try { Directory.Delete(dir, recursive: true); } catch { /* ignore */ }
+    }
+
+    [Fact]
+    public void VoiceTinyModelMetadataIsPinned()
+    {
+        Assert.Equal("ggml-tiny-q5_1.bin", VoiceModelCatalog.WhisperTinyQ5.FileName);
+        Assert.Equal(32_152_673, VoiceModelCatalog.WhisperTinyQ5.Bytes);
+        Assert.Equal(64, VoiceModelCatalog.WhisperTinyQ5.Sha256?.Length);
+        Assert.Contains("huggingface.co/ggerganov/whisper.cpp", VoiceModelCatalog.WhisperTinyQ5.Url?.AbsoluteUri ?? "");
+    }
+
+    [Fact]
+    public void VoiceVADKeepsShortBreathGapAndEndpointsAfter800Milliseconds()
+    {
+        var detector = new VoiceActivityDetector();
+        var speech = Enumerable.Repeat(0.08f, VoiceActivityDetector.FrameSamples).ToArray();
+        var silence = new float[VoiceActivityDetector.FrameSamples];
+
+        for (var i = 0; i < 12; i++) detector.Consume(speech);
+        var breathEnded = false;
+        for (var i = 0; i < 20; i++)
+            breathEnded |= detector.Consume(silence).Any(item => item.Kind == VoiceActivityKind.UtteranceEnded);
+        Assert.False(breathEnded);
+        var ended = false;
+        for (var i = 0; i < 20; i++)
+            ended |= detector.Consume(silence).Any(item => item.Kind == VoiceActivityKind.UtteranceEnded);
+        Assert.True(ended);
+    }
+
+    [Fact]
+    public void VoiceVADFlushesRemainingSpeech()
+    {
+        var detector = new VoiceActivityDetector();
+        detector.Consume(Enumerable.Repeat(0.08f, VoiceActivityDetector.FrameSamples * 12).ToArray());
+        Assert.Contains(detector.Flush(), item => item.Kind == VoiceActivityKind.UtteranceEnded);
+    }
+
+    [Fact]
+    public void VoiceRealtimeUriUsesOnlyNemoPath()
+    {
+        var uri = VoiceRealtimeClient.RealtimeUri("https://voice.example.test/v1");
+        Assert.Equal("wss", uri.Scheme);
+        Assert.Equal("/v1/realtime", uri.AbsolutePath);
+    }
+
+    [Fact]
+    public async Task VoiceSessionTagsUpdatesWithItsSessionId()
+    {
+        var sessionId = Guid.NewGuid();
+        var update = new TaskCompletionSource<VoiceTranscriptUpdate>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var session = new VoiceInputSession(
+            VoiceStreamingMode.RollingWhisper,
+            batch: (_, _, _) => Task.FromResult("hello"),
+            onUpdate: value => update.TrySetResult(value),
+            sessionId: sessionId);
+
+        var pcm = new byte[VoiceActivityDetector.FrameSamples * 51 * 2];
+        for (var index = 0; index < pcm.Length; index += 2)
+        {
+            pcm[index] = 0;
+            pcm[index + 1] = 0x20;
+        }
+        session.PushPcm16(pcm);
+
+        var result = await update.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Equal(sessionId, result.SessionId);
     }
 }

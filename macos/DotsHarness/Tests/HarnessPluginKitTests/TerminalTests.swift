@@ -56,6 +56,56 @@ final class TerminalTests: XCTestCase {
         XCTAssertEqual(manager.sessions(for: first.path).map(\.id), [firstTerminal.id])
     }
 
+    func testSandboxTerminalCannotWriteOutsideItsWorkspace() throws {
+        let workspace = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dots-terminal-sandbox-\(UUID().uuidString)", isDirectory: true)
+        let outside = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dots-terminal-outside-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: workspace)
+            try? FileManager.default.removeItem(at: outside)
+        }
+
+        let session = TerminalSession(
+            workspacePath: workspace.path,
+            sandboxPolicy: SandboxExecutionPolicy(workspaceURL: workspace)
+        )
+        session.start()
+        defer { session.stop() }
+
+        XCTAssertTrue(waitForOutput(session, containing: "%"), session.output)
+        session.send("printf allowed > allowed.txt; printf 'sandbox-command-done\\n'")
+        XCTAssertTrue(waitForOutput(session, containing: "sandbox-command-done"), session.output)
+        session.send("printf blocked > '\(outside.appendingPathComponent("blocked").path)'; printf 'outside-command-done\\n'")
+        XCTAssertTrue(waitForOutput(session, containing: "outside-command-done"), session.output)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.appendingPathComponent("allowed.txt").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: outside.appendingPathComponent("blocked").path))
+    }
+
+    func testTerminalPolicyIsCapturedWhenTheSessionStarts() throws {
+        let workspace = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dots-terminal-policy-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: workspace) }
+
+        let manager = TerminalManager()
+        defer { manager.stopAll() }
+        let first = try XCTUnwrap(manager.openSession(
+            for: workspace.path,
+            executionPolicy: SandboxExecutionPolicy(workspaceURL: workspace, networkAccess: false)
+        ))
+        let second = try XCTUnwrap(manager.openSession(
+            for: workspace.path,
+            executionPolicy: SandboxExecutionPolicy(workspaceURL: workspace, networkAccess: true)
+        ))
+
+        XCTAssertEqual(first.sandboxPolicy?.networkAccess, false)
+        XCTAssertEqual(second.sandboxPolicy?.networkAccess, true)
+    }
+
     private func waitForOutput(_ session: TerminalSession, containing value: String) -> Bool {
         let deadline = Date().addingTimeInterval(3)
         while Date() < deadline {

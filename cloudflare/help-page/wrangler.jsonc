@@ -1,0 +1,8 @@
+{
+  "name": "dots-harness-help",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-06-14",
+  "routes": [
+    { "pattern": "dots.net.tr/harness/sandboxing*", "zone_name": "dots.net.tr" }
+  ]
+}

@@ -225,50 +225,89 @@
   <data name="voice.status.downloading" xml:space="preserve"><value>Stahování hlasových prostředků…</value></data>
   <data name="voice.download" xml:space="preserve"><value>Stáhnout hlasové prostředky</value></data>
   <data name="voice.error" xml:space="preserve"><value>Chyba hlasového vstupu: {0}</value></data>
-  <data name="ask.customPlaceholder" xml:space="preserve"><value>Write your own answer…</value></data>
-  <data name="ask.skip" xml:space="preserve"><value>Skip and plan anyway</value></data>
-  <data name="ask.submit" xml:space="preserve"><value>Send answers</value></data>
-  <data name="ask.title" xml:space="preserve"><value>A few questions before the plan</value></data>
-  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Cleanup did not complete.</value></data>
-  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>No cleanup was requested.</value></data>
-  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Cleanup could not be verified; existing files were preserved.</value></data>
-  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Old code was preserved because cleanup was not needed or could not be proven.</value></data>
-  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Workspace changes could not be fully verified.</value></data>
-  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Old code cleanup verified.</value></data>
-  <data name="conversation.connectionAdded" xml:space="preserve"><value>Connection added: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionChanged" xml:space="preserve"><value>Connection changed</value></data>
-  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Previous local connection data could not be fully verified; it was preserved.</value></data>
-  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Previous connection preserved: {0}. Conversations and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Previous connection removed. Local connection data was cleared; conversations and user data were preserved. Remote data was not touched.</value></data>
-  <data name="conversation.connectionSelected" xml:space="preserve"><value>Connection selected: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionSummary" xml:space="preserve"><value>Connection changed: {0} → {1}</value></data>
-  <data name="conversation.fileAdded" xml:space="preserve"><value>Added</value></data>
-  <data name="conversation.fileDeleted" xml:space="preserve"><value>Deleted</value></data>
-  <data name="conversation.fileModified" xml:space="preserve"><value>Modified</value></data>
-  <data name="conversation.filesSummary" xml:space="preserve"><value>Added {0}, modified {1}, deleted {2}</value></data>
-  <data name="conversation.runSummary" xml:space="preserve"><value>Run summary</value></data>
-  <data name="conversation.testStatus" xml:space="preserve"><value>Tests: {0}</value></data>
-  <data name="router.unknown" xml:space="preserve"><value>unknown</value></data>
-  <data name="settings.seedProjectRules" xml:space="preserve"><value>Create AGENTS.md and CLAUDE.md</value></data>
-  <data name="settings.selfVerification" xml:space="preserve"><value>Verify changes automatically</value></data>
-  <data name="vision.deleteModel" xml:space="preserve"><value>Delete model</value></data>
-  <data name="vision.disabled" xml:space="preserve"><value>Disabled</value></data>
-  <data name="vision.downloadAndContinue" xml:space="preserve"><value>Download and continue</value></data>
-  <data name="vision.downloading" xml:space="preserve"><value>Downloading the local vision model…</value></data>
-  <data name="vision.emptyDescription" xml:space="preserve"><value>The local Vision fallback returned no visual description.</value></data>
-  <data name="vision.failed" xml:space="preserve"><value>Vision fallback failed</value></data>
-  <data name="vision.installPlugin" xml:space="preserve"><value>Install from marketplace</value></data>
-  <data name="vision.installReason" xml:space="preserve"><value>{0} does not support image input. The Vision plugin will download about {1} and process the image on this device. The original image may already have reached the provider.</value></data>
-  <data name="vision.installTitle" xml:space="preserve"><value>This provider cannot read the image</value></data>
-  <data name="vision.modelMissing" xml:space="preserve"><value>Model not downloaded</value></data>
-  <data name="vision.notEnabled" xml:space="preserve"><value>The provider cannot read this image and the local Vision plugin was not enabled.</value></data>
-  <data name="vision.notInstalled" xml:space="preserve"><value>Not installed</value></data>
-  <data name="vision.notNow" xml:space="preserve"><value>Not now</value></data>
-  <data name="vision.pluginMissing" xml:space="preserve"><value>The local Vision fallback plugin is unavailable.</value></data>
-  <data name="vision.prepareModel" xml:space="preserve"><value>Download and prepare model</value></data>
-  <data name="vision.preparing" xml:space="preserve"><value>Preparing the local vision runtime…</value></data>
-  <data name="vision.ready" xml:space="preserve"><value>Vision fallback ready · {0}</value></data>
-  <data name="vision.removePlugin" xml:space="preserve"><value>Remove plugin</value></data>
-  <data name="vision.title" xml:space="preserve"><value>Vision fallback</value></data>
-  <data name="vision.unavailable" xml:space="preserve"><value>Vision fallback is unavailable</value></data>
+  <data name="ask.customPlaceholder" xml:space="preserve"><value>Napište vlastní odpověď…</value></data>
+  <data name="ask.skip" xml:space="preserve"><value>Přeskočit a přesto naplánovat</value></data>
+  <data name="ask.submit" xml:space="preserve"><value>Odeslat odpovědi</value></data>
+  <data name="ask.title" xml:space="preserve"><value>Několik otázek před plánem</value></data>
+  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Úklid nebyl dokončen.</value></data>
+  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>Úklid nebyl vyžádán.</value></data>
+  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Úklid se nepodařilo ověřit; stávající soubory byly zachovány.</value></data>
+  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Starý kód byl zachován, protože úklid nebyl potřeba nebo jej nebylo možné prokázat.</value></data>
+  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Změny v pracovním prostoru nebylo možné úplně ověřit.</value></data>
+  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Úklid starého kódu byl ověřen.</value></data>
+  <data name="conversation.connectionAdded" xml:space="preserve"><value>Připojení přidáno: {0}. Stávající připojení a uživatelská data byla zachována; vzdálených dat se nikdo nedotkl.</value></data>
+  <data name="conversation.connectionChanged" xml:space="preserve"><value>Připojení změněno</value></data>
+  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Předchozí místní data připojení nebylo možné úplně ověřit; byla zachována.</value></data>
+  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Předchozí připojení zachováno: {0}. Konverzace a uživatelská data byla zachována; vzdálených dat se nikdo nedotkl.</value></data>
+  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Předchozí připojení odstraněno. Místní data připojení byla vymazána; konverzace a uživatelská data byla zachována. Vzdálených dat se nikdo nedotkl.</value></data>
+  <data name="conversation.connectionSelected" xml:space="preserve"><value>Připojení vybráno: {0}. Stávající připojení a uživatelská data byla zachována; vzdálených dat se nikdo nedotkl.</value></data>
+  <data name="conversation.connectionSummary" xml:space="preserve"><value>Připojení změněno: {0} → {1}</value></data>
+  <data name="conversation.fileAdded" xml:space="preserve"><value>Přidáno</value></data>
+  <data name="conversation.fileDeleted" xml:space="preserve"><value>Odstraněno</value></data>
+  <data name="conversation.fileModified" xml:space="preserve"><value>Změněno</value></data>
+  <data name="conversation.filesSummary" xml:space="preserve"><value>Přidáno {0}, změněno {1}, odstraněno {2}</value></data>
+  <data name="conversation.runSummary" xml:space="preserve"><value>Souhrn spuštění</value></data>
+  <data name="conversation.testStatus" xml:space="preserve"><value>Testy: {0}</value></data>
+  <data name="router.unknown" xml:space="preserve"><value>neznámé</value></data>
+  <data name="settings.seedProjectRules" xml:space="preserve"><value>Vytvořit AGENTS.md a CLAUDE.md</value></data>
+  <data name="settings.selfVerification" xml:space="preserve"><value>Ověřovat změny automaticky</value></data>
+  <data name="vision.deleteModel" xml:space="preserve"><value>Smazat model</value></data>
+  <data name="vision.disabled" xml:space="preserve"><value>Zakázáno</value></data>
+  <data name="vision.downloadAndContinue" xml:space="preserve"><value>Stáhnout a pokračovat</value></data>
+  <data name="vision.downloading" xml:space="preserve"><value>Stahování místního modelu Vision…</value></data>
+  <data name="vision.emptyDescription" xml:space="preserve"><value>Místní záložní Vision nevrátil žádný vizuální popis.</value></data>
+  <data name="vision.failed" xml:space="preserve"><value>Záložní Vision selhal</value></data>
+  <data name="vision.installPlugin" xml:space="preserve"><value>Instalovat z tržiště</value></data>
+  <data name="vision.installReason" xml:space="preserve"><value>{0} nepodporuje obrazový vstup. Modul Vision stáhne přibližně {1} a zpracuje obraz v tomto zařízení. Původní obraz už mohl dorazit k poskytovateli.</value></data>
+  <data name="vision.installTitle" xml:space="preserve"><value>Tento poskytovatel neumí přečíst obraz</value></data>
+  <data name="vision.modelMissing" xml:space="preserve"><value>Model není stažen</value></data>
+  <data name="vision.notEnabled" xml:space="preserve"><value>Poskytovatel neumí přečíst tento obraz a místní modul Vision nebyl povolen.</value></data>
+  <data name="vision.notInstalled" xml:space="preserve"><value>Nenainstalováno</value></data>
+  <data name="vision.notNow" xml:space="preserve"><value>Teď ne</value></data>
+  <data name="vision.pluginMissing" xml:space="preserve"><value>Místní modul záložního Vision není dostupný.</value></data>
+  <data name="vision.prepareModel" xml:space="preserve"><value>Stáhnout a připravit model</value></data>
+  <data name="vision.preparing" xml:space="preserve"><value>Příprava místního běhu Vision…</value></data>
+  <data name="vision.ready" xml:space="preserve"><value>Záložní Vision je připraven · {0}</value></data>
+  <data name="vision.removePlugin" xml:space="preserve"><value>Odebrat modul</value></data>
+  <data name="vision.title" xml:space="preserve"><value>Záložní Vision</value></data>
+  <data name="vision.unavailable" xml:space="preserve"><value>Záložní Vision není dostupný</value></data>
+  <data name="legal.title" xml:space="preserve"><value>Právo a soukromí</value></data>
+  <data name="legal.gateHeading" xml:space="preserve"><value>Než začnete</value></data>
+  <data name="legal.gateIntro" xml:space="preserve"><value>Projděte si uživatelskou smlouvu a zásady ochrany soukromí. Obsah chatu a pracovního prostoru se odesílá vybranému poskytovateli AI, který může sídlit mimo vaši zemi.</value></data>
+  <data name="legal.termsTab" xml:space="preserve"><value>Uživatelská smlouva</value></data>
+  <data name="legal.privacyTab" xml:space="preserve"><value>Zásady ochrany soukromí</value></data>
+  <data name="legal.acceptRequired" xml:space="preserve"><value>Přečetl(a) jsem si uživatelskou smlouvu a zásady ochrany soukromí a přijímám je.</value></data>
+  <data name="legal.accept" xml:space="preserve"><value>Pokračovat</value></data>
+  <data name="legal.openWeb" xml:space="preserve"><value>Otevřít na webu</value></data>
+  <data name="legal.consentHeading" xml:space="preserve"><value>Optional permissions</value></data>
+  <data name="legal.consentPrefs" xml:space="preserve"><value>Consent preferences</value></data>
+  <data name="legal.consent.aiTransfer" xml:space="preserve"><value>Send my prompts and the files I choose to the AI provider so AI features work (required; involves transfer abroad).</value></data>
+  <data name="legal.consent.github" xml:space="preserve"><value>Allow GitHub integration to transfer my repository data when I connect it.</value></data>
+  <data name="legal.consent.voice" xml:space="preserve"><value>Allow voice input processing and speech-to-text conversion.</value></data>
+  <data name="legal.consent.marketing" xml:space="preserve"><value>Send me product news and campaigns by email.</value></data>
+  <data name="legal.updated" xml:space="preserve"><value>Právní dokumenty byly aktualizovány. Znovu si je projděte a přijměte je.</value></data>
+  <data name="legal.loadError" xml:space="preserve"><value>Právní dokumenty se nepodařilo načíst. Zkontrolujte připojení a zkuste to znovu.</value></data>
+  <data name="legal.retry" xml:space="preserve"><value>Zkusit znovu</value></data>
+  <data name="legal.acceptHint" xml:space="preserve"><value>Stisknutím tlačítka „Pokračovat“ přijímáte uživatelskou smlouvu a zásady ochrany soukromí.</value></data>
+  <data name="usage.window5h" xml:space="preserve"><value>5 h</value></data>
+  <data name="usage.windowWeek" xml:space="preserve"><value>Týdně</value></data>
+  <data name="usage.resetsIn" xml:space="preserve"><value>reset za {0}</value></data>
+  <data name="usage.resetsOn" xml:space="preserve"><value>reset {0}</value></data>
+  <data name="usage.resetsAvailable" xml:space="preserve"><value>K dispozici je {0} resetování</value></data>
+  <data name="usage.needLogin" xml:space="preserve"><value>Přihlaste se do Claude a zobrazte limity</value></data>
+  <data name="usage.noLimitInfo" xml:space="preserve"><value>Žádné informace o limitech</value></data>
+  <data name="usage.loadFailed" xml:space="preserve"><value>Využití se nepodařilo načíst</value></data>
+  <data name="usage.loading" xml:space="preserve"><value>Načítání využití…</value></data>
+  <data name="modelPicker.selectModel" xml:space="preserve"><value>Vyberte model</value></data>
+  <data name="modelPicker.noModel" xml:space="preserve"><value>Žádný připojený model</value></data>
+  <data name="modelPicker.reset" xml:space="preserve"><value>Obnovit výchozí</value></data>
+  <data name="modelPicker.effort" xml:space="preserve"><value>Snaha</value></data>
+  <data name="modelPicker.effortUnsupported" xml:space="preserve"><value>Není podporováno</value></data>
+  <data name="modelPicker.effort.default" xml:space="preserve"><value>Výchozí</value></data>
+  <data name="modelPicker.effort.none" xml:space="preserve"><value>žádný</value></data>
+  <data name="modelPicker.effort.low" xml:space="preserve"><value>Světlo</value></data>
+  <data name="modelPicker.effort.medium" xml:space="preserve"><value>Střední</value></data>
+  <data name="modelPicker.effort.high" xml:space="preserve"><value>Vysoká</value></data>
+  <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>Extra vysoká</value></data>
+  <data name="modelPicker.effort.max" xml:space="preserve"><value>Max</value></data>
 </root>

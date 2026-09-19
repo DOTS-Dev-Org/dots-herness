@@ -5,9 +5,9 @@
 //
 // `CodexBody` is kept identical to
 // macos/DotsHarness/Sources/DotsHarnessCore/CodexInstructions.swift. The overrides
-// deliberately differ: this harness registers a smaller tool set than the macOS one
-// (no update_plan, no grep_files, no explore), and the overrides must name the tools
-// that actually exist or the model will call something that is not there.
+// deliberately differ: this C# harness has no `update_plan`, `explore`, or
+// `install_plugin` tool, while `grep_files`, `other_chats`, and `remember`
+// are native C# tools.
 
 namespace DotsHarnessCore;
 
@@ -143,13 +143,17 @@ You are not running in the Codex CLI. The section above describes that harness; 
 with this section, this section wins.
 
 - There is no `apply_patch`, no `shell`, and no sandbox or approval-policy parameters. Use only the
-  tools listed in this request: `list_files`, `read_file`, `write_file`, `remove_file`,
-  `run_command`, `ask_user`, and the `skill.*` tools.
+  tools listed in this request. Depending on the mode, this C# harness provides
+  `list_files`, `read_file`, `grep_files`, `write_file`, `remove_file`,
+  `run_command`, `ask_user`, `other_chats`, `remember`, and the `skill.*` tools.
+  Plan mode omits `write_file`, `remove_file`, and `remember`.
+- This harness does not provide `update_plan`, `explore`, or `install_plugin`.
 - Edit files by writing their complete new contents with `write_file`; there is no patch format.
 - `run_command` runs one shell command in the workspace. Escalation is handled by the host, which
   asks the user itself, so never request permissions in a tool call.
 - There is no plan tool here: ignore the Plan tool section above.
-- There is no `grep_files` and no `rg` tool: search file contents with `run_command`.
+- Search file contents with `grep_files`; use `run_command` for shell commands that are
+  actually needed.
 """;
 
     public const string Default = CodexBody + "\n\n" + HarnessOverrides;

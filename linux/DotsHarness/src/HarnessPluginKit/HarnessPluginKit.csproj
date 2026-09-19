@@ -5,6 +5,14 @@
     <Description>Locked plugin ABI 1.0.0 for DotsHarness on Linux.</Description>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\..\..\windows\DotsHarness\src\HarnessPluginKit\ProviderImageAdapter.cs" Link="ProviderImageAdapter.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\src\HarnessPluginKit\Composition.cs" Link="Composition.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\src\HarnessPluginKit\HarnessPlugin.cs" Link="HarnessPlugin.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\src\HarnessPluginKit\HostData.cs" Link="HostData.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\src\HarnessPluginKit\JsonValue.cs" Link="JsonValue.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\src\HarnessPluginKit\PluginManifest.cs" Link="PluginManifest.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\src\HarnessPluginKit\VisionFallback.cs" Link="VisionFallback.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\src\HarnessPluginKit\ProviderImageAdapter.cs" Link="ProviderImageAdapter.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\src\HarnessPluginKit\PluginAbi.cs" Link="PluginAbi.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\src\HarnessPluginKit\Registries.cs" Link="Registries.cs" />
   </ItemGroup>
 </Project>

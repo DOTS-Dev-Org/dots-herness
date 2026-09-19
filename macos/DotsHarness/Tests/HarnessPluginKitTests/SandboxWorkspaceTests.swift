@@ -57,10 +57,10 @@ final class SandboxWorkspaceTests: XCTestCase {
         try write("a.txt", "origin\n")
         run(["commit", "-am", "origin edit"])
 
-        guard case .conflicted(let files) = try SandboxWorkspaces.exit(sandbox, merge: true) else {
+        guard case .conflicted(let conflict) = try SandboxWorkspaces.exit(sandbox, merge: true) else {
             return XCTFail("expected conflict")
         }
-        XCTAssertEqual(files, ["a.txt"])
+        XCTAssertEqual(conflict.files, ["a.txt"])
         XCTAssertTrue(FileManager.default.fileExists(atPath: sandbox.path))
         // Nothing half-applied: the abort restored the origin's own content.
         XCTAssertEqual(try String(contentsOf: origin.appendingPathComponent("a.txt")), "origin\n")
@@ -72,6 +72,82 @@ final class SandboxWorkspaceTests: XCTestCase {
         try write("a.txt", "uncommitted\n")
         XCTAssertThrowsError(try SandboxWorkspaces.exit(sandbox, merge: true))
         XCTAssertTrue(FileManager.default.fileExists(atPath: sandbox.path))
+    }
+
+    func testMergeRefusedWhileOriginHasUntrackedChanges() throws {
+        let sandbox = try SandboxWorkspaces.enter(origin: origin.path, name: "untracked")
+        try write("untracked.txt", "keep me\n")
+        XCTAssertThrowsError(try SandboxWorkspaces.exit(sandbox, merge: true))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: sandbox.path))
+        XCTAssertTrue(SandboxWorkspaces.git(
+            ["status", "--porcelain", "--untracked-files=all"],
+            in: origin
+        ).text.contains("untracked.txt"))
+    }
+
+    func testConflictCanBeResolvedInSandboxAndApproved() throws {
+        let sandbox = try SandboxWorkspaces.enter(origin: origin.path, name: "resolve")
+        try write("a.txt", "sandbox\n", in: URL(fileURLWithPath: sandbox.path))
+        try write("a.txt", "origin\n")
+        run(["commit", "-am", "origin edit"])
+
+        guard case .conflicted(let conflict) = try SandboxWorkspaces.exit(sandbox, merge: true) else {
+            return XCTFail("expected conflict")
+        }
+        try SandboxWorkspaces.prepareResolution(conflict)
+        try write("a.txt", "resolved\n", in: URL(fileURLWithPath: sandbox.path))
+
+        let preview = try SandboxWorkspaces.previewResolution(conflict)
+        XCTAssertEqual(preview.files, ["a.txt"])
+        XCTAssertTrue(preview.unresolvedFiles.isEmpty)
+        XCTAssertTrue(preview.diff.contains("resolved"))
+
+        guard case .merged = try SandboxWorkspaces.applyResolution(
+            conflict,
+            expectedFingerprint: preview.fingerprint
+        ) else {
+            return XCTFail("expected approved merge")
+        }
+        XCTAssertEqual(try String(contentsOf: origin.appendingPathComponent("a.txt")), "resolved\n")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: sandbox.path))
+    }
+
+    func testResolutionWithConflictMarkersCannotBeApproved() throws {
+        let sandbox = try SandboxWorkspaces.enter(origin: origin.path, name: "markers")
+        try write("a.txt", "sandbox\n", in: URL(fileURLWithPath: sandbox.path))
+        try write("a.txt", "origin\n")
+        run(["commit", "-am", "origin edit"])
+
+        guard case .conflicted(let conflict) = try SandboxWorkspaces.exit(sandbox, merge: true) else {
+            return XCTFail("expected conflict")
+        }
+        try SandboxWorkspaces.prepareResolution(conflict)
+        try write("a.txt", "<<<<<<< HEAD\nbad\n=======\norigin\n>>>>>>> origin\n", in: URL(fileURLWithPath: sandbox.path))
+        let preview = try SandboxWorkspaces.previewResolution(conflict)
+        XCTAssertEqual(preview.unresolvedFiles, ["a.txt"])
+        XCTAssertThrowsError(try SandboxWorkspaces.applyResolution(
+            conflict,
+            expectedFingerprint: preview.fingerprint
+        ))
+    }
+
+    func testCancelResolutionAbortsOnlySandboxMerge() throws {
+        let sandbox = try SandboxWorkspaces.enter(origin: origin.path, name: "cancel")
+        try write("a.txt", "sandbox\n", in: URL(fileURLWithPath: sandbox.path))
+        try write("a.txt", "origin\n")
+        run(["commit", "-am", "origin edit"])
+        let originHead = SandboxWorkspaces.git(["rev-parse", "HEAD"], in: origin).text
+
+        guard case .conflicted(let conflict) = try SandboxWorkspaces.exit(sandbox, merge: true) else {
+            return XCTFail("expected conflict")
+        }
+        try SandboxWorkspaces.prepareResolution(conflict)
+        XCTAssertEqual(SandboxWorkspaces.git(["rev-parse", "--verify", "MERGE_HEAD"], in: URL(fileURLWithPath: sandbox.path)).status, 0)
+        try SandboxWorkspaces.cancelResolution(conflict)
+
+        XCTAssertEqual(SandboxWorkspaces.git(["rev-parse", "HEAD"], in: origin).text, originHead)
+        XCTAssertNotEqual(SandboxWorkspaces.git(["rev-parse", "--verify", "MERGE_HEAD"], in: URL(fileURLWithPath: sandbox.path)).status, 0)
+        XCTAssertTrue(SandboxWorkspaces.git(["status", "--porcelain"], in: URL(fileURLWithPath: sandbox.path)).text.isEmpty)
     }
 
     func testDiscardRemovesWorktreeButKeepsBranch() throws {

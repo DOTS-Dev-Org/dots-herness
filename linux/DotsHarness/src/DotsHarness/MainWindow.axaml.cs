@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Threading;
 using DotsHarnessCore;
 using System.ComponentModel;
@@ -44,7 +45,7 @@ public partial class MainWindow : Window
     {
         var model = ((App)Application.Current!).Model;
         Title = model.L("app.title");
-        FlowDirection = model.IsRightToLeft ? Avalonia.Layout.FlowDirection.RightToLeft : Avalonia.Layout.FlowDirection.LeftToRight;
+        FlowDirection = model.IsRightToLeft ? Avalonia.Media.FlowDirection.RightToLeft : Avalonia.Media.FlowDirection.LeftToRight;
         Sidebar.RefreshLocalization();
     }
 

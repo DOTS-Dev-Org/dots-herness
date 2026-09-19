@@ -122,6 +122,8 @@ public final class PluginHost: ObservableObject {
     public let settings: InMemorySettingsRegistry
     public let events: InMemoryEventBus
     public let imageAdapters: ProviderImageAdapterRegistry
+    /// Read-only native app data exposed to plugins via `harness.host(topic)`.
+    public let hostData: HostDataRegistry
 
     public func getService<T>(_ name: String, as type: T.Type = T.self) -> T? {
         root.get(name) as? T
@@ -142,6 +144,7 @@ public final class PluginHost: ObservableObject {
         self.settings = settings ?? InMemorySettingsRegistry()
         self.events = InMemoryEventBus()
         self.imageAdapters = ProviderImageAdapterRegistry()
+        self.hostData = HostDataRegistry()
         self.root = ServiceRealm(seed: [
             "tools": tools,
             "prompt": prompt,
@@ -149,6 +152,7 @@ public final class PluginHost: ObservableObject {
             "settings": self.settings,
             "events": events,
             "provider.imageAdapters": imageAdapters,
+            "host.data": hostData,
         ])
     }
 
@@ -196,7 +200,7 @@ public final class PluginHost: ObservableObject {
                 let context = LivePluginContext(
                     rowId: entry.id,
                     pluginId: resolved.manifest.id,
-                    pluginDirectory: entry.url,
+                    pluginDirectory: resolved.directory,
                     plane: document.plane,
                     trust: resolved.trust,
                     config: entry.config,

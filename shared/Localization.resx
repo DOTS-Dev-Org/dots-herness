@@ -94,7 +94,7 @@
   <data name="settings.revealFolder" xml:space="preserve"><value>Reveal folder</value></data>
   <data name="settings.reload" xml:space="preserve"><value>Reload</value></data>
   <data name="settings.plugins" xml:space="preserve"><value>Plugins</value></data>
-  <data name="settings.pluginsHint" xml:space="preserve"><value>Drop a folder with plugin.yml into the plugins directory. Manifest plugins work untrusted. Compiled assemblies need Trust.</value></data>
+  <data name="settings.pluginsHint" xml:space="preserve"><value>Native plugins are installed from the signed Marketplace. JavaScript and manifest-only plugins are not loadable; native code requires explicit Trust.</value></data>
   <data name="settings.lastMountFailed" xml:space="preserve"><value>Last mount failed</value></data>
   <data name="settings.scheduledTasks" xml:space="preserve"><value>Scheduled Tasks</value></data>
   <data name="settings.tasksHint" xml:space="preserve"><value>Run a prompt on a cron schedule.</value></data>
@@ -271,4 +271,43 @@
   <data name="settings.noSkills" xml:space="preserve"><value>No discovered skills.</value></data>
   <data name="settings.skillsHint" xml:space="preserve"><value>Project and bundled skills can be disabled, but only downloaded app-owned skills can be deleted.</value></data>
   <data name="settings.skillReadFailed" xml:space="preserve"><value>Could not read SKILL.md.</value></data>
+  <data name="legal.title" xml:space="preserve"><value>Legal &amp; Privacy</value></data>
+  <data name="legal.gateHeading" xml:space="preserve"><value>Before you start</value></data>
+  <data name="legal.gateIntro" xml:space="preserve"><value>Please review the User Agreement and the Privacy Policy. Your conversation and workspace content is sent to the AI provider you choose, which may be located outside your country.</value></data>
+  <data name="legal.termsTab" xml:space="preserve"><value>User Agreement</value></data>
+  <data name="legal.privacyTab" xml:space="preserve"><value>Privacy Policy</value></data>
+  <data name="legal.acceptRequired" xml:space="preserve"><value>I have read and accept the User Agreement and the Privacy Policy.</value></data>
+  <data name="legal.accept" xml:space="preserve"><value>Continue</value></data>
+  <data name="legal.openWeb" xml:space="preserve"><value>Open on the web</value></data>
+  <data name="legal.consentHeading" xml:space="preserve"><value>Permissions you have granted</value></data>
+  <data name="legal.consentPrefs" xml:space="preserve"><value>Permissions you have granted</value></data>
+  <data name="legal.consent.aiTransfer" xml:space="preserve"><value>Your prompts and the files you choose are sent to the AI provider so AI features work (involves transfer abroad).</value></data>
+  <data name="legal.consent.github" xml:space="preserve"><value>When you connect your GitHub account, your repository data is transferred to GitHub.</value></data>
+  <data name="legal.consent.voice" xml:space="preserve"><value>Your voice input is processed and converted from speech to text.</value></data>
+  <data name="legal.consent.marketing" xml:space="preserve"><value>Product news and campaigns are sent to you by email.</value></data>
+  <data name="legal.updated" xml:space="preserve"><value>The legal documents have been updated. Please review and accept them again.</value></data>
+  <data name="legal.loadError" xml:space="preserve"><value>Could not load the legal documents. Check your connection and try again.</value></data>
+  <data name="legal.retry" xml:space="preserve"><value>Try again</value></data>
+  <data name="legal.acceptHint" xml:space="preserve"><value>By pressing Continue, you accept the User Agreement and Privacy Policy.</value></data>
+  <data name="usage.window5h" xml:space="preserve"><value>5h</value></data>
+  <data name="usage.windowWeek" xml:space="preserve"><value>Weekly</value></data>
+  <data name="usage.resetsIn" xml:space="preserve"><value>resets in {0}</value></data>
+  <data name="usage.resetsOn" xml:space="preserve"><value>resets {0}</value></data>
+  <data name="usage.resetsAvailable" xml:space="preserve"><value>{0} resets available</value></data>
+  <data name="usage.needLogin" xml:space="preserve"><value>Sign in to Claude to see limits</value></data>
+  <data name="usage.noLimitInfo" xml:space="preserve"><value>No limit info</value></data>
+  <data name="usage.loadFailed" xml:space="preserve"><value>Couldn’t load usage</value></data>
+  <data name="usage.loading" xml:space="preserve"><value>Loading usage…</value></data>
+  <data name="modelPicker.selectModel" xml:space="preserve"><value>Select model</value></data>
+  <data name="modelPicker.noModel" xml:space="preserve"><value>No connected model</value></data>
+  <data name="modelPicker.reset" xml:space="preserve"><value>Reset to default</value></data>
+  <data name="modelPicker.effort" xml:space="preserve"><value>Effort</value></data>
+  <data name="modelPicker.effortUnsupported" xml:space="preserve"><value>Not supported</value></data>
+  <data name="modelPicker.effort.default" xml:space="preserve"><value>Default</value></data>
+  <data name="modelPicker.effort.none" xml:space="preserve"><value>None</value></data>
+  <data name="modelPicker.effort.low" xml:space="preserve"><value>Light</value></data>
+  <data name="modelPicker.effort.medium" xml:space="preserve"><value>Medium</value></data>
+  <data name="modelPicker.effort.high" xml:space="preserve"><value>High</value></data>
+  <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>Extra High</value></data>
+  <data name="modelPicker.effort.max" xml:space="preserve"><value>Max</value></data>
 </root>

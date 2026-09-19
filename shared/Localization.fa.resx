@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
@@ -213,7 +212,7 @@
   <data name="voice.source.large" xml:space="preserve"><value>Whisper Large-v3-Turbo (محلی)</value></data>
   <data name="voice.source.nemotron" xml:space="preserve"><value>Nemotron 3.5 (استریم محلی)</value></data>
   <data name="voice.source.custom" xml:space="preserve"><value>مدل محلی سفارشی</value></data>
-  <data name="voice.source.api" xml:space="preserve"><value>Voice API</value></data>
+  <data name="voice.source.api" xml:space="preserve"><value>موتور صوتی سفارشی</value></data>
   <data name="voice.api.endpoint" xml:space="preserve"><value>نقطه پایان رونویسی</value></data>
   <data name="voice.api.key" xml:space="preserve"><value>کلید API</value></data>
   <data name="voice.api.model" xml:space="preserve"><value>مدل</value></data>
@@ -225,50 +224,89 @@
   <data name="voice.status.downloading" xml:space="preserve"><value>در حال بارگیری دارایی های صوتی…</value></data>
   <data name="voice.download" xml:space="preserve"><value>دارایی های صوتی را دانلود کنید</value></data>
   <data name="voice.error" xml:space="preserve"><value>خطای ورودی صوتی: {0}</value></data>
-  <data name="ask.customPlaceholder" xml:space="preserve"><value>Write your own answer…</value></data>
-  <data name="ask.skip" xml:space="preserve"><value>Skip and plan anyway</value></data>
-  <data name="ask.submit" xml:space="preserve"><value>Send answers</value></data>
-  <data name="ask.title" xml:space="preserve"><value>A few questions before the plan</value></data>
-  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Cleanup did not complete.</value></data>
-  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>No cleanup was requested.</value></data>
-  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Cleanup could not be verified; existing files were preserved.</value></data>
-  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Old code was preserved because cleanup was not needed or could not be proven.</value></data>
-  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Workspace changes could not be fully verified.</value></data>
-  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Old code cleanup verified.</value></data>
-  <data name="conversation.connectionAdded" xml:space="preserve"><value>Connection added: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionChanged" xml:space="preserve"><value>Connection changed</value></data>
-  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Previous local connection data could not be fully verified; it was preserved.</value></data>
-  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Previous connection preserved: {0}. Conversations and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Previous connection removed. Local connection data was cleared; conversations and user data were preserved. Remote data was not touched.</value></data>
-  <data name="conversation.connectionSelected" xml:space="preserve"><value>Connection selected: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionSummary" xml:space="preserve"><value>Connection changed: {0} → {1}</value></data>
-  <data name="conversation.fileAdded" xml:space="preserve"><value>Added</value></data>
-  <data name="conversation.fileDeleted" xml:space="preserve"><value>Deleted</value></data>
-  <data name="conversation.fileModified" xml:space="preserve"><value>Modified</value></data>
-  <data name="conversation.filesSummary" xml:space="preserve"><value>Added {0}, modified {1}, deleted {2}</value></data>
-  <data name="conversation.runSummary" xml:space="preserve"><value>Run summary</value></data>
-  <data name="conversation.testStatus" xml:space="preserve"><value>Tests: {0}</value></data>
-  <data name="router.unknown" xml:space="preserve"><value>unknown</value></data>
-  <data name="settings.seedProjectRules" xml:space="preserve"><value>Create AGENTS.md and CLAUDE.md</value></data>
-  <data name="settings.selfVerification" xml:space="preserve"><value>Verify changes automatically</value></data>
-  <data name="vision.deleteModel" xml:space="preserve"><value>Delete model</value></data>
-  <data name="vision.disabled" xml:space="preserve"><value>Disabled</value></data>
-  <data name="vision.downloadAndContinue" xml:space="preserve"><value>Download and continue</value></data>
-  <data name="vision.downloading" xml:space="preserve"><value>Downloading the local vision model…</value></data>
-  <data name="vision.emptyDescription" xml:space="preserve"><value>The local Vision fallback returned no visual description.</value></data>
-  <data name="vision.failed" xml:space="preserve"><value>Vision fallback failed</value></data>
-  <data name="vision.installPlugin" xml:space="preserve"><value>Install from marketplace</value></data>
-  <data name="vision.installReason" xml:space="preserve"><value>{0} does not support image input. The Vision plugin will download about {1} and process the image on this device. The original image may already have reached the provider.</value></data>
-  <data name="vision.installTitle" xml:space="preserve"><value>This provider cannot read the image</value></data>
-  <data name="vision.modelMissing" xml:space="preserve"><value>Model not downloaded</value></data>
-  <data name="vision.notEnabled" xml:space="preserve"><value>The provider cannot read this image and the local Vision plugin was not enabled.</value></data>
-  <data name="vision.notInstalled" xml:space="preserve"><value>Not installed</value></data>
-  <data name="vision.notNow" xml:space="preserve"><value>Not now</value></data>
-  <data name="vision.pluginMissing" xml:space="preserve"><value>The local Vision fallback plugin is unavailable.</value></data>
-  <data name="vision.prepareModel" xml:space="preserve"><value>Download and prepare model</value></data>
-  <data name="vision.preparing" xml:space="preserve"><value>Preparing the local vision runtime…</value></data>
-  <data name="vision.ready" xml:space="preserve"><value>Vision fallback ready · {0}</value></data>
-  <data name="vision.removePlugin" xml:space="preserve"><value>Remove plugin</value></data>
-  <data name="vision.title" xml:space="preserve"><value>Vision fallback</value></data>
-  <data name="vision.unavailable" xml:space="preserve"><value>Vision fallback is unavailable</value></data>
+  <data name="ask.customPlaceholder" xml:space="preserve"><value>پاسخ خود را بنویسید…</value></data>
+  <data name="ask.skip" xml:space="preserve"><value>رد کردن و ادامه برنامه‌ریزی</value></data>
+  <data name="ask.submit" xml:space="preserve"><value>ارسال پاسخ‌ها</value></data>
+  <data name="ask.title" xml:space="preserve"><value>چند سؤال پیش از برنامه</value></data>
+  <data name="conversation.cleanupFailed" xml:space="preserve"><value>پاک‌سازی کامل نشد.</value></data>
+  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>پاک‌سازی درخواست نشده بود.</value></data>
+  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>پاک‌سازی قابل تأیید نبود؛ فایل‌های موجود حفظ شدند.</value></data>
+  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>کد قدیمی حفظ شد، چون پاک‌سازی لازم نبود یا قابل اثبات نبود.</value></data>
+  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>تغییرات فضای کاری به‌طور کامل قابل تأیید نبودند.</value></data>
+  <data name="conversation.cleanupVerified" xml:space="preserve"><value>پاک‌سازی کد قدیمی تأیید شد.</value></data>
+  <data name="conversation.connectionAdded" xml:space="preserve"><value>اتصال اضافه شد: {0}. اتصال‌های موجود و داده‌های کاربر حفظ شدند؛ به داده‌های راه دور دست زده نشد.</value></data>
+  <data name="conversation.connectionChanged" xml:space="preserve"><value>اتصال تغییر کرد</value></data>
+  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>داده‌های اتصال محلی قبلی به‌طور کامل قابل تأیید نبودند؛ حفظ شدند.</value></data>
+  <data name="conversation.connectionPreserved" xml:space="preserve"><value>اتصال قبلی حفظ شد: {0}. مکالمه‌ها و داده‌های کاربر حفظ شدند؛ به داده‌های راه دور دست زده نشد.</value></data>
+  <data name="conversation.connectionRemoved" xml:space="preserve"><value>اتصال قبلی حذف شد. داده‌های اتصال محلی پاک شدند؛ مکالمه‌ها و داده‌های کاربر حفظ شدند. به داده‌های راه دور دست زده نشد.</value></data>
+  <data name="conversation.connectionSelected" xml:space="preserve"><value>اتصال انتخاب شد: {0}. اتصال‌های موجود و داده‌های کاربر حفظ شدند؛ به داده‌های راه دور دست زده نشد.</value></data>
+  <data name="conversation.connectionSummary" xml:space="preserve"><value>اتصال تغییر کرد: {0} → {1}</value></data>
+  <data name="conversation.fileAdded" xml:space="preserve"><value>افزوده شد</value></data>
+  <data name="conversation.fileDeleted" xml:space="preserve"><value>حذف شد</value></data>
+  <data name="conversation.fileModified" xml:space="preserve"><value>تغییر کرد</value></data>
+  <data name="conversation.filesSummary" xml:space="preserve"><value>افزوده: {0}، تغییرکرده: {1}، حذف‌شده: {2}</value></data>
+  <data name="conversation.runSummary" xml:space="preserve"><value>خلاصه اجرا</value></data>
+  <data name="conversation.testStatus" xml:space="preserve"><value>آزمایش‌ها: {0}</value></data>
+  <data name="router.unknown" xml:space="preserve"><value>ناشناخته</value></data>
+  <data name="settings.seedProjectRules" xml:space="preserve"><value>AGENTS.md و CLAUDE.md را ایجاد کنید</value></data>
+  <data name="settings.selfVerification" xml:space="preserve"><value>تغییرات را خودکار بررسی کنید</value></data>
+  <data name="vision.deleteModel" xml:space="preserve"><value>حذف مدل</value></data>
+  <data name="vision.disabled" xml:space="preserve"><value>غیرفعال</value></data>
+  <data name="vision.downloadAndContinue" xml:space="preserve"><value>دانلود و ادامه</value></data>
+  <data name="vision.downloading" xml:space="preserve"><value>در حال دانلود مدل بینایی محلی…</value></data>
+  <data name="vision.emptyDescription" xml:space="preserve"><value>بازگشت بینایی محلی هیچ توضیح بصری‌ای برنگرداند.</value></data>
+  <data name="vision.failed" xml:space="preserve"><value>بازگشت بینایی ناموفق بود</value></data>
+  <data name="vision.installPlugin" xml:space="preserve"><value>نصب از بازار</value></data>
+  <data name="vision.installReason" xml:space="preserve"><value>{0} از ورودی تصویر پشتیبانی نمی‌کند. افزونه Vision حدود {1} دانلود می‌کند و تصویر را روی این دستگاه پردازش می‌کند. ممکن است تصویر اصلی قبلاً به ارائه‌دهنده رسیده باشد.</value></data>
+  <data name="vision.installTitle" xml:space="preserve"><value>این ارائه‌دهنده نمی‌تواند تصویر را بخواند</value></data>
+  <data name="vision.modelMissing" xml:space="preserve"><value>مدل دانلود نشده است</value></data>
+  <data name="vision.notEnabled" xml:space="preserve"><value>ارائه‌دهنده نمی‌تواند این تصویر را بخواند و افزونه Vision محلی فعال نشده است.</value></data>
+  <data name="vision.notInstalled" xml:space="preserve"><value>نصب نشده</value></data>
+  <data name="vision.notNow" xml:space="preserve"><value>اکنون نه</value></data>
+  <data name="vision.pluginMissing" xml:space="preserve"><value>افزونه بازگشت بینایی محلی در دسترس نیست.</value></data>
+  <data name="vision.prepareModel" xml:space="preserve"><value>دانلود و آماده‌سازی مدل</value></data>
+  <data name="vision.preparing" xml:space="preserve"><value>در حال آماده‌سازی زمان اجرای Vision محلی…</value></data>
+  <data name="vision.ready" xml:space="preserve"><value>بازگشت بینایی آماده است · {0}</value></data>
+  <data name="vision.removePlugin" xml:space="preserve"><value>حذف افزونه</value></data>
+  <data name="vision.title" xml:space="preserve"><value>بازگشت بینایی</value></data>
+  <data name="vision.unavailable" xml:space="preserve"><value>بازگشت بینایی در دسترس نیست</value></data>
+  <data name="legal.title" xml:space="preserve"><value>حقوقی و حریم خصوصی</value></data>
+  <data name="legal.gateHeading" xml:space="preserve"><value>پیش از شروع</value></data>
+  <data name="legal.gateIntro" xml:space="preserve"><value>توافق‌نامه کاربر و سیاست حفظ حریم خصوصی را مرور کن. محتوای گفت‌وگو و فضای کاری تو برای ارائه‌دهنده هوش مصنوعی انتخابی‌ات ارسال می‌شود که ممکن است خارج از کشورت باشد.</value></data>
+  <data name="legal.termsTab" xml:space="preserve"><value>توافق‌نامه کاربر</value></data>
+  <data name="legal.privacyTab" xml:space="preserve"><value>سیاست حفظ حریم خصوصی</value></data>
+  <data name="legal.acceptRequired" xml:space="preserve"><value>توافق‌نامه کاربر و سیاست حفظ حریم خصوصی را خوانده‌ام و می‌پذیرم.</value></data>
+  <data name="legal.accept" xml:space="preserve"><value>ادامه</value></data>
+  <data name="legal.openWeb" xml:space="preserve"><value>باز کردن در وب</value></data>
+  <data name="legal.consentHeading" xml:space="preserve"><value>Optional permissions</value></data>
+  <data name="legal.consentPrefs" xml:space="preserve"><value>Consent preferences</value></data>
+  <data name="legal.consent.aiTransfer" xml:space="preserve"><value>Send my prompts and the files I choose to the AI provider so AI features work (required; involves transfer abroad).</value></data>
+  <data name="legal.consent.github" xml:space="preserve"><value>Allow GitHub integration to transfer my repository data when I connect it.</value></data>
+  <data name="legal.consent.voice" xml:space="preserve"><value>Allow voice input processing and speech-to-text conversion.</value></data>
+  <data name="legal.consent.marketing" xml:space="preserve"><value>Send me product news and campaigns by email.</value></data>
+  <data name="legal.updated" xml:space="preserve"><value>مدارک حقوقی به‌روز شده‌اند. آن‌ها را دوباره مرور و قبول کن.</value></data>
+  <data name="legal.loadError" xml:space="preserve"><value>مدارک حقوقی بارگیری نشدند. اتصال را بررسی و دوباره امتحان کن.</value></data>
+  <data name="legal.retry" xml:space="preserve"><value>دوباره تلاش کن</value></data>
+  <data name="legal.acceptHint" xml:space="preserve"><value>با فشردن «ادامه»، توافق‌نامه کاربر و سیاست حفظ حریم خصوصی را می‌پذیرید.</value></data>
+  <data name="usage.window5h" xml:space="preserve"><value>۵ ساعت</value></data>
+  <data name="usage.windowWeek" xml:space="preserve"><value>هفتگی</value></data>
+  <data name="usage.resetsIn" xml:space="preserve"><value>تا {0} بازنشانی می‌شود</value></data>
+  <data name="usage.resetsOn" xml:space="preserve"><value>در {0} بازنشانی می‌شود</value></data>
+  <data name="usage.resetsAvailable" xml:space="preserve"><value>{0} بازنشانی در دسترس</value></data>
+  <data name="usage.needLogin" xml:space="preserve"><value>برای دیدن محدودیت‌ها به Claude وارد شو</value></data>
+  <data name="usage.noLimitInfo" xml:space="preserve"><value>اطلاعاتی درباره محدودیت وجود ندارد</value></data>
+  <data name="usage.loadFailed" xml:space="preserve"><value>مصرف بارگیری نشد</value></data>
+  <data name="usage.loading" xml:space="preserve"><value>در حال بارگیری مصرف…</value></data>
+  <data name="modelPicker.selectModel" xml:space="preserve"><value>مدل را انتخاب کنید</value></data>
+  <data name="modelPicker.noModel" xml:space="preserve"><value>بدون مدل متصل</value></data>
+  <data name="modelPicker.reset" xml:space="preserve"><value>به حالت پیش فرض بازنشانی کنید</value></data>
+  <data name="modelPicker.effort" xml:space="preserve"><value>تلاش</value></data>
+  <data name="modelPicker.effortUnsupported" xml:space="preserve"><value>پشتیبانی نمی شود</value></data>
+  <data name="modelPicker.effort.default" xml:space="preserve"><value>پیش فرض</value></data>
+  <data name="modelPicker.effort.none" xml:space="preserve"><value>هیچ کدام</value></data>
+  <data name="modelPicker.effort.low" xml:space="preserve"><value>نور</value></data>
+  <data name="modelPicker.effort.medium" xml:space="preserve"><value>متوسط</value></data>
+  <data name="modelPicker.effort.high" xml:space="preserve"><value>بالا</value></data>
+  <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>فوق العاده بالا</value></data>
+  <data name="modelPicker.effort.max" xml:space="preserve"><value>حداکثر</value></data>
 </root>

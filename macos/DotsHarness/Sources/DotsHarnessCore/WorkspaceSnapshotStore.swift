@@ -12,6 +12,12 @@ enum WorkspaceSnapshotError: Error {
     case restoreFailed(String)
 }
 
+struct WorkspaceChangeResult: Sendable, Equatable {
+    let changedFiles: [ChangedFile]
+    let trackingStatus: String
+    let failureReason: String?
+}
+
 struct WorkspaceSnapshotStore {
     private struct FileState: Codable, Equatable {
         let hash: String
@@ -73,23 +79,29 @@ struct WorkspaceSnapshotStore {
         }
     }
 
-    func finish(conversationID: String, turnID: String, workspace: URL) -> [ChangedFile] {
+    func finishResult(conversationID: String, turnID: String, workspace: URL) -> WorkspaceChangeResult {
         let directory = snapshotDirectory(conversationID: conversationID, turnID: turnID)
         do {
             var snapshot = try read(from: manifestURL(in: directory))
             guard snapshot.conversationID == conversationID,
                   snapshot.turnID == turnID,
-                  snapshot.workspacePath == workspace.standardizedFileURL.path else { return [] }
+                  snapshot.workspacePath == workspace.standardizedFileURL.path else {
+                return WorkspaceChangeResult(changedFiles: [], trackingStatus: "incomplete", failureReason: "Snapshot identity did not match.")
+            }
             let after = try capture(workspace: workspace, backupDirectory: nil)
             let changedFiles = changedFiles(before: snapshot.before, after: after)
             snapshot.after = after
             snapshot.changedFiles = changedFiles
             snapshot.complete = true
             try write(snapshot, to: manifestURL(in: directory))
-            return changedFiles
+            return WorkspaceChangeResult(changedFiles: changedFiles, trackingStatus: "complete", failureReason: nil)
         } catch {
-            return []
+            return WorkspaceChangeResult(changedFiles: [], trackingStatus: "incomplete", failureReason: error.localizedDescription)
         }
+    }
+
+    func finish(conversationID: String, turnID: String, workspace: URL) -> [ChangedFile] {
+        finishResult(conversationID: conversationID, turnID: turnID, workspace: workspace).changedFiles
     }
 
     func hasCompleteSnapshot(
@@ -216,11 +228,14 @@ struct WorkspaceSnapshotStore {
             let values = try url.resourceValues(forKeys: keys)
             let relative = try relativePath(for: url, workspace: rootURL)
             let components = relative.split(separator: "/").map(String.init)
-            if components.contains(".git") || components.contains(".mem") {
+            if components.contains(where: { ignoredWorkspaceDirectories.contains($0) }) {
                 if values.isDirectory == true { enumerator.skipDescendants() }
                 continue
             }
-            if values.isSymbolicLink == true { throw WorkspaceSnapshotError.unsupportedEntry }
+            if values.isSymbolicLink == true {
+                if values.isDirectory == true { enumerator.skipDescendants() }
+                continue
+            }
             guard values.isRegularFile == true else { continue }
             let data = try Data(contentsOf: url)
             let state = FileState(
@@ -241,6 +256,10 @@ struct WorkspaceSnapshotStore {
         }
         return result
     }
+
+    private let ignoredWorkspaceDirectories: Set<String> = [
+        ".git", ".mem", ".build", "build", "bin", "obj", "dist", "node_modules", "Pods", "DerivedData",
+    ]
 
     private func observe(path: String, workspace: URL) throws -> Observation {
         let url = try safeURL(path, workspace: workspace)

@@ -38,51 +38,90 @@ public struct ScheduledTaskRunner {
             return TaskScheduler.RunResult(ok: false, message: "Workspace not found: \(task.workspacePath)")
         }
 
+        let models = [task.modelID, task.fallbackModelID]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        let attempts: [String?] = models.isEmpty ? [nil] : models.map(Optional.some)
+        var lastResult = TaskScheduler.RunResult(ok: false, message: "No response")
+
+        for (index, model) in attempts.enumerated() {
+            let result = await runAttempt(
+                task: task,
+                prompt: prompt,
+                workspace: workspace,
+                model: model,
+                fallbackUsed: index > 0
+            )
+            lastResult = result
+            if result.ok { return result }
+        }
+        return lastResult
+    }
+
+    private func runAttempt(
+        task: ScheduledTask,
+        prompt: String,
+        workspace: String,
+        model: String?,
+        fallbackUsed: Bool
+    ) async -> TaskScheduler.RunResult {
         let host: AgentBridge
         if let endpoint {
             host = AgentBridge(
                 paths: paths,
                 endpoint: endpoint,
                 router: router,
-                permissionMode: permissionMode,
-                nonInteractive: true
+                permissionMode: .full,
+                nonInteractive: true,
+                automaticNetworkAccess: task.allowsNetwork,
+                area: .coding,
+                sessionFileName: AgentArea.coding.sessionFileName
             )
         } else {
             host = AgentBridge(
                 paths: paths,
                 router: router,
-                permissionMode: permissionMode,
-                nonInteractive: true
+                permissionMode: .full,
+                nonInteractive: true,
+                automaticNetworkAccess: task.allowsNetwork,
+                area: .coding,
+                sessionFileName: AgentArea.coding.sessionFileName
             )
         }
         host.updateSystemPrompt(systemPrompt())
         host.start(workspacePath: workspace)
+        host.setSandboxPolicy(SandboxExecutionPolicy(
+            workspaceURL: URL(fileURLWithPath: workspace, isDirectory: true),
+            networkAccess: task.allowsNetwork
+        ))
         await host.refreshConnection()
         guard host.isReady else {
-            return TaskScheduler.RunResult(ok: false, message: host.status)
+            return TaskScheduler.RunResult(ok: false, message: host.status, modelID: model ?? "", fallbackUsed: fallbackUsed)
         }
 
         host.newConversation()
         guard let conversationID = host.selectedID else {
-            return TaskScheduler.RunResult(ok: false, message: "Could not open a conversation")
+            return TaskScheduler.RunResult(ok: false, message: "Could not open a conversation", modelID: model ?? "", fallbackUsed: fallbackUsed)
         }
         let stamp = DateFormatter.taskStamp.string(from: Date())
         host.renameConversation(conversationID, to: "\(task.name) — \(stamp)")
 
-        await host.send(text: prompt, mode: .queue)
+        let target = task.resolvedTargetPath()
+        let scopedPrompt = target.map {
+            "Work only on this target inside the workspace: \($0)\n\n\(prompt)"
+        } ?? prompt
+        await host.send(text: scopedPrompt, mode: .queue, modelOverride: model)
 
         let last = host.conversations.first { $0.id == conversationID }?.messages.last
-        if let last, last.kind == .assistant, !last.text.isEmpty {
-            return TaskScheduler.RunResult(
-                ok: true,
-                message: String(last.text.prefix(200)),
-                conversationID: conversationID
-            )
-        }
+        let output = last?.text.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let ok = last?.kind == .assistant && !output.isEmpty
+        let usedModel = model ?? host.connection?.model ?? ""
+        host.deleteConversation(conversationID)
         return TaskScheduler.RunResult(
-            ok: false,
-            message: last?.text ?? "No response",
-            conversationID: conversationID
+            ok: ok,
+            message: output.isEmpty ? "No response" : String(output.prefix(4000)),
+            modelID: usedModel,
+            fallbackUsed: fallbackUsed
         )
     }
 

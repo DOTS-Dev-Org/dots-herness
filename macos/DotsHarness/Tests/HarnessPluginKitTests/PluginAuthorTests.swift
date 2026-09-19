@@ -7,7 +7,7 @@ import PluginRuntime
 
 @MainActor
 final class PluginAuthorTests: XCTestCase {
-    func testSaveThenValidateDeclarativePlugin() async throws {
+    func testSaveThenValidateNativeDraft() async throws {
         let paths = temporaryPaths()
         let catalog = PluginCatalog(paths: paths)
         catalog.registerBuiltin(PluginAuthorPlugin.self)
@@ -19,14 +19,13 @@ final class PluginAuthorTests: XCTestCase {
         XCTAssertTrue(issues.isEmpty, issues.map(\.message).joined())
 
         let files = """
-        {"plugin.yml": "id: com.example.made\\nname: Made\\nversion: 0.1.0\\nplane: session\\npromptSection:\\n  name: made:note\\n  order: 40\\n  text: made by the author tool\\n"}
+        {"plugin.yml": "id: com.example.made\\nname: Made\\nversion: 0.1.0\\nplane: session\\n", "plugin.ir.json": "{\\"schemaVersion\\":1,\\"promptSections\\":[]}"}
         """
         let saved = try await host.tools.call("plugin.save", arguments: ["id": "com.example.made", "files": files])
-        XCTAssertTrue(saved.contains("saved"))
+        XCTAssertTrue(saved.contains("native draft"))
 
         let result = try await host.tools.call("plugin.validate", arguments: ["id": "com.example.made"])
-        XCTAssertTrue(result.hasPrefix("ok"), result)
-        XCTAssertTrue(result.contains("made:note"), result)
+        XCTAssertTrue(result.contains("native"), result)
 
         _ = try await host.tools.call("plugin.remove", arguments: ["id": "com.example.made"])
         XCTAssertFalse(catalog.entries.contains { $0.manifest.id == "com.example.made" })
@@ -42,10 +41,10 @@ final class PluginAuthorTests: XCTestCase {
             CompositionEntry(id: "author", plugin: "dots.plugin-author"),
         ]))
 
-        let files = #"{"plugin.yml": "name: NoId\nversion: 0.1.0\n"}"#
+        let files = #"{"plugin.yml": "name: NoId\nversion: 0.1.0\n", "plugin.ir.json": "{}"}"#
         _ = try await host.tools.call("plugin.save", arguments: ["id": "com.example.bad", "files": files])
         let result = try await host.tools.call("plugin.validate", arguments: ["id": "com.example.bad"])
-        XCTAssertTrue(result.contains("error") || result.contains("issues"), result)
+        XCTAssertTrue(result.contains("error") || result.contains("native"), result)
     }
 
     private func temporaryPaths() -> SupportPaths {

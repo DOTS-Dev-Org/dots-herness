@@ -17,11 +17,14 @@
             <ListBoxItem Content="Providers" Tag="providers"/>
             <ListBoxItem Content="Custom API" Tag="custom"/>
             <ListBoxItem Content="Local models" Tag="local"/>
+            <ListBoxItem x:Name="VoiceTab" Content="Voice input" Tag="voice"/>
             <ListBoxItem Content="Share" Tag="share"/>
+            <ListBoxItem Content="Mobile control" Tag="mobile"/>
             <ListBoxItem Content="Tasks" Tag="tasks"/>
             <ListBoxItem x:Name="SkillsTab" Content="Skills" Tag="skills"/>
             <ListBoxItem Content="Plugins" Tag="plugins"/>
             <ListBoxItem Content="Prompt" Tag="prompt"/>
+            <ListBoxItem Content="Legal" Tag="legal"/>
         </ListBox>
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="20">
             <ContentControl x:Name="Body"/>

@@ -27,6 +27,18 @@ public protocol PromptRegistry: AnyObject {
     func sections() -> [PromptSection]
 }
 
+/// How much damage a tool can do, independent of its name. Drives plan-mode
+/// filtering and per-permission-mode approval in one place.
+public enum ToolRisk: String, Sendable, Equatable, Codable {
+    /// Reads, searches, status queries. Runs in plan mode without approval.
+    case readOnly
+    /// Commands, simulator actions, terminal sessions, plugin/MCP calls.
+    /// Visible in plan mode, gated by the normal approval flow.
+    case sideEffect
+    /// Direct source edits (write_file, remove_file). Never offered in plan mode.
+    case workspaceMutation
+}
+
 public struct ToolParameter: Sendable, Equatable {
     public var name: String
     public var type: String
@@ -112,6 +124,7 @@ public protocol SlotRegistry: AnyObject {
 public protocol SettingsRegistry: AnyObject {
     func get(_ key: String) -> JSONValue?
     func set(_ key: String, _ value: JSONValue)
+    func remove(_ key: String)
 }
 
 @MainActor

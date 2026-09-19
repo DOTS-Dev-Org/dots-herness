@@ -225,50 +225,89 @@
   <data name="voice.status.downloading" xml:space="preserve"><value>音声アセットをダウンロードしています…</value></data>
   <data name="voice.download" xml:space="preserve"><value>音声アセットをダウンロードする</value></data>
   <data name="voice.error" xml:space="preserve"><value>音声入力エラー：{0}</value></data>
-  <data name="ask.customPlaceholder" xml:space="preserve"><value>Write your own answer…</value></data>
-  <data name="ask.skip" xml:space="preserve"><value>Skip and plan anyway</value></data>
-  <data name="ask.submit" xml:space="preserve"><value>Send answers</value></data>
-  <data name="ask.title" xml:space="preserve"><value>A few questions before the plan</value></data>
-  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Cleanup did not complete.</value></data>
-  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>No cleanup was requested.</value></data>
-  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Cleanup could not be verified; existing files were preserved.</value></data>
-  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Old code was preserved because cleanup was not needed or could not be proven.</value></data>
-  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Workspace changes could not be fully verified.</value></data>
-  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Old code cleanup verified.</value></data>
-  <data name="conversation.connectionAdded" xml:space="preserve"><value>Connection added: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionChanged" xml:space="preserve"><value>Connection changed</value></data>
-  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Previous local connection data could not be fully verified; it was preserved.</value></data>
-  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Previous connection preserved: {0}. Conversations and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Previous connection removed. Local connection data was cleared; conversations and user data were preserved. Remote data was not touched.</value></data>
-  <data name="conversation.connectionSelected" xml:space="preserve"><value>Connection selected: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionSummary" xml:space="preserve"><value>Connection changed: {0} → {1}</value></data>
-  <data name="conversation.fileAdded" xml:space="preserve"><value>Added</value></data>
-  <data name="conversation.fileDeleted" xml:space="preserve"><value>Deleted</value></data>
-  <data name="conversation.fileModified" xml:space="preserve"><value>Modified</value></data>
-  <data name="conversation.filesSummary" xml:space="preserve"><value>Added {0}, modified {1}, deleted {2}</value></data>
-  <data name="conversation.runSummary" xml:space="preserve"><value>Run summary</value></data>
-  <data name="conversation.testStatus" xml:space="preserve"><value>Tests: {0}</value></data>
-  <data name="router.unknown" xml:space="preserve"><value>unknown</value></data>
-  <data name="settings.seedProjectRules" xml:space="preserve"><value>Create AGENTS.md and CLAUDE.md</value></data>
-  <data name="settings.selfVerification" xml:space="preserve"><value>Verify changes automatically</value></data>
-  <data name="vision.deleteModel" xml:space="preserve"><value>Delete model</value></data>
-  <data name="vision.disabled" xml:space="preserve"><value>Disabled</value></data>
-  <data name="vision.downloadAndContinue" xml:space="preserve"><value>Download and continue</value></data>
-  <data name="vision.downloading" xml:space="preserve"><value>Downloading the local vision model…</value></data>
-  <data name="vision.emptyDescription" xml:space="preserve"><value>The local Vision fallback returned no visual description.</value></data>
-  <data name="vision.failed" xml:space="preserve"><value>Vision fallback failed</value></data>
-  <data name="vision.installPlugin" xml:space="preserve"><value>Install from marketplace</value></data>
-  <data name="vision.installReason" xml:space="preserve"><value>{0} does not support image input. The Vision plugin will download about {1} and process the image on this device. The original image may already have reached the provider.</value></data>
-  <data name="vision.installTitle" xml:space="preserve"><value>This provider cannot read the image</value></data>
-  <data name="vision.modelMissing" xml:space="preserve"><value>Model not downloaded</value></data>
-  <data name="vision.notEnabled" xml:space="preserve"><value>The provider cannot read this image and the local Vision plugin was not enabled.</value></data>
-  <data name="vision.notInstalled" xml:space="preserve"><value>Not installed</value></data>
-  <data name="vision.notNow" xml:space="preserve"><value>Not now</value></data>
-  <data name="vision.pluginMissing" xml:space="preserve"><value>The local Vision fallback plugin is unavailable.</value></data>
-  <data name="vision.prepareModel" xml:space="preserve"><value>Download and prepare model</value></data>
-  <data name="vision.preparing" xml:space="preserve"><value>Preparing the local vision runtime…</value></data>
-  <data name="vision.ready" xml:space="preserve"><value>Vision fallback ready · {0}</value></data>
-  <data name="vision.removePlugin" xml:space="preserve"><value>Remove plugin</value></data>
-  <data name="vision.title" xml:space="preserve"><value>Vision fallback</value></data>
-  <data name="vision.unavailable" xml:space="preserve"><value>Vision fallback is unavailable</value></data>
+  <data name="ask.customPlaceholder" xml:space="preserve"><value>自分の回答を書く…</value></data>
+  <data name="ask.skip" xml:space="preserve"><value>スキップしてそのまま計画する</value></data>
+  <data name="ask.submit" xml:space="preserve"><value>回答を送信</value></data>
+  <data name="ask.title" xml:space="preserve"><value>計画の前にいくつか質問があります</value></data>
+  <data name="conversation.cleanupFailed" xml:space="preserve"><value>クリーンアップは完了しませんでした。</value></data>
+  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>クリーンアップは要求されていません。</value></data>
+  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>クリーンアップを検証できなかったため、既存のファイルを保持しました。</value></data>
+  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>クリーンアップが不要だったか証明できなかったため、古いコードを保持しました。</value></data>
+  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>ワークスペースの変更を完全には検証できませんでした。</value></data>
+  <data name="conversation.cleanupVerified" xml:space="preserve"><value>古いコードのクリーンアップを検証しました。</value></data>
+  <data name="conversation.connectionAdded" xml:space="preserve"><value>接続を追加しました: {0}。既存の接続とユーザーデータは保持され、リモートデータには触れていません。</value></data>
+  <data name="conversation.connectionChanged" xml:space="preserve"><value>接続を変更しました</value></data>
+  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>以前のローカル接続データを完全には検証できなかったため、保持しました。</value></data>
+  <data name="conversation.connectionPreserved" xml:space="preserve"><value>以前の接続を保持しました: {0}。会話とユーザーデータは保持され、リモートデータには触れていません。</value></data>
+  <data name="conversation.connectionRemoved" xml:space="preserve"><value>以前の接続を削除しました。ローカル接続データは消去され、会話とユーザーデータは保持されています。リモートデータには触れていません。</value></data>
+  <data name="conversation.connectionSelected" xml:space="preserve"><value>接続を選択しました: {0}。既存の接続とユーザーデータは保持され、リモートデータには触れていません。</value></data>
+  <data name="conversation.connectionSummary" xml:space="preserve"><value>接続を変更しました: {0} → {1}</value></data>
+  <data name="conversation.fileAdded" xml:space="preserve"><value>追加</value></data>
+  <data name="conversation.fileDeleted" xml:space="preserve"><value>削除</value></data>
+  <data name="conversation.fileModified" xml:space="preserve"><value>変更</value></data>
+  <data name="conversation.filesSummary" xml:space="preserve"><value>追加 {0}、変更 {1}、削除 {2}</value></data>
+  <data name="conversation.runSummary" xml:space="preserve"><value>実行の概要</value></data>
+  <data name="conversation.testStatus" xml:space="preserve"><value>テスト: {0}</value></data>
+  <data name="router.unknown" xml:space="preserve"><value>不明</value></data>
+  <data name="settings.seedProjectRules" xml:space="preserve"><value>AGENTS.md と CLAUDE.md を作成</value></data>
+  <data name="settings.selfVerification" xml:space="preserve"><value>変更を自動的に検証</value></data>
+  <data name="vision.deleteModel" xml:space="preserve"><value>モデルを削除</value></data>
+  <data name="vision.disabled" xml:space="preserve"><value>無効</value></data>
+  <data name="vision.downloadAndContinue" xml:space="preserve"><value>ダウンロードして続行</value></data>
+  <data name="vision.downloading" xml:space="preserve"><value>ローカル Vision モデルをダウンロード中…</value></data>
+  <data name="vision.emptyDescription" xml:space="preserve"><value>ローカル Vision フォールバックは視覚的な説明を返しませんでした。</value></data>
+  <data name="vision.failed" xml:space="preserve"><value>Vision フォールバックに失敗</value></data>
+  <data name="vision.installPlugin" xml:space="preserve"><value>マーケットプレイスからインストール</value></data>
+  <data name="vision.installReason" xml:space="preserve"><value>{0} は画像入力に対応していません。Vision プラグインは約 {1} をダウンロードし、このデバイスで画像を処理します。元の画像はすでにプロバイダーに届いている可能性があります。</value></data>
+  <data name="vision.installTitle" xml:space="preserve"><value>このプロバイダーは画像を読み取れません</value></data>
+  <data name="vision.modelMissing" xml:space="preserve"><value>モデル未ダウンロード</value></data>
+  <data name="vision.notEnabled" xml:space="preserve"><value>プロバイダーはこの画像を読み取れず、ローカル Vision プラグインも有効になっていません。</value></data>
+  <data name="vision.notInstalled" xml:space="preserve"><value>未インストール</value></data>
+  <data name="vision.notNow" xml:space="preserve"><value>今はしない</value></data>
+  <data name="vision.pluginMissing" xml:space="preserve"><value>ローカル Vision フォールバックプラグインを利用できません。</value></data>
+  <data name="vision.prepareModel" xml:space="preserve"><value>モデルをダウンロードして準備</value></data>
+  <data name="vision.preparing" xml:space="preserve"><value>ローカル Vision ランタイムを準備中…</value></data>
+  <data name="vision.ready" xml:space="preserve"><value>Vision フォールバック準備完了 · {0}</value></data>
+  <data name="vision.removePlugin" xml:space="preserve"><value>プラグインを削除</value></data>
+  <data name="vision.title" xml:space="preserve"><value>Vision フォールバック</value></data>
+  <data name="vision.unavailable" xml:space="preserve"><value>Vision フォールバックを利用できません</value></data>
+  <data name="legal.title" xml:space="preserve"><value>法務とプライバシー</value></data>
+  <data name="legal.gateHeading" xml:space="preserve"><value>開始する前に</value></data>
+  <data name="legal.gateIntro" xml:space="preserve"><value>ユーザー契約とプライバシーポリシーを確認してください。チャットとワークスペースの内容は、国外に所在する場合がある選択したAIプロバイダーに送信されます。</value></data>
+  <data name="legal.termsTab" xml:space="preserve"><value>ユーザー契約</value></data>
+  <data name="legal.privacyTab" xml:space="preserve"><value>プライバシーポリシー</value></data>
+  <data name="legal.acceptRequired" xml:space="preserve"><value>ユーザー契約とプライバシーポリシーを読み、同意します。</value></data>
+  <data name="legal.accept" xml:space="preserve"><value>続ける</value></data>
+  <data name="legal.openWeb" xml:space="preserve"><value>Webで開く</value></data>
+  <data name="legal.consentHeading" xml:space="preserve"><value>Optional permissions</value></data>
+  <data name="legal.consentPrefs" xml:space="preserve"><value>Consent preferences</value></data>
+  <data name="legal.consent.aiTransfer" xml:space="preserve"><value>Send my prompts and the files I choose to the AI provider so AI features work (required; involves transfer abroad).</value></data>
+  <data name="legal.consent.github" xml:space="preserve"><value>Allow GitHub integration to transfer my repository data when I connect it.</value></data>
+  <data name="legal.consent.voice" xml:space="preserve"><value>Allow voice input processing and speech-to-text conversion.</value></data>
+  <data name="legal.consent.marketing" xml:space="preserve"><value>Send me product news and campaigns by email.</value></data>
+  <data name="legal.updated" xml:space="preserve"><value>法的文書が更新されました。もう一度確認して同意してください。</value></data>
+  <data name="legal.loadError" xml:space="preserve"><value>法的文書を読み込めませんでした。接続を確認して、もう一度お試しください。</value></data>
+  <data name="legal.retry" xml:space="preserve"><value>再試行</value></data>
+  <data name="legal.acceptHint" xml:space="preserve"><value>「続ける」を押すと、ユーザー契約とプライバシーポリシーに同意したことになります。</value></data>
+  <data name="usage.window5h" xml:space="preserve"><value>5時間</value></data>
+  <data name="usage.windowWeek" xml:space="preserve"><value>週間</value></data>
+  <data name="usage.resetsIn" xml:space="preserve"><value>{0}後にリセット</value></data>
+  <data name="usage.resetsOn" xml:space="preserve"><value>{0}にリセット</value></data>
+  <data name="usage.resetsAvailable" xml:space="preserve"><value>残り{0}回リセット可能</value></data>
+  <data name="usage.needLogin" xml:space="preserve"><value>制限を確認するにはClaudeにサインインしてください</value></data>
+  <data name="usage.noLimitInfo" xml:space="preserve"><value>制限情報なし</value></data>
+  <data name="usage.loadFailed" xml:space="preserve"><value>使用状況を読み込めませんでした</value></data>
+  <data name="usage.loading" xml:space="preserve"><value>使用状況を読み込み中…</value></data>
+  <data name="modelPicker.selectModel" xml:space="preserve"><value>モデルを選択</value></data>
+  <data name="modelPicker.noModel" xml:space="preserve"><value>接続済みモデルなし</value></data>
+  <data name="modelPicker.reset" xml:space="preserve"><value>デフォルトに戻す</value></data>
+  <data name="modelPicker.effort" xml:space="preserve"><value>推論量</value></data>
+  <data name="modelPicker.effortUnsupported" xml:space="preserve"><value>サポートされていません</value></data>
+  <data name="modelPicker.effort.default" xml:space="preserve"><value>デフォルト</value></data>
+  <data name="modelPicker.effort.none" xml:space="preserve"><value>なし</value></data>
+  <data name="modelPicker.effort.low" xml:space="preserve"><value>ライト</value></data>
+  <data name="modelPicker.effort.medium" xml:space="preserve"><value>中</value></data>
+  <data name="modelPicker.effort.high" xml:space="preserve"><value>高</value></data>
+  <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>エクストラハイ</value></data>
+  <data name="modelPicker.effort.max" xml:space="preserve"><value>マックス</value></data>
 </root>

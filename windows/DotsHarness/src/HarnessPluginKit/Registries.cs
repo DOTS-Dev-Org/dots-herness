@@ -35,8 +35,8 @@ public interface IToolRegistry
 }
 
 /// <summary>
-/// A named seat. The WPF shell erases the view as <see cref="object"/>
-/// (normally a <c>System.Windows.FrameworkElement</c> factory).
+/// A named seat. The WPF/Avalonia shell erases the view as <see cref="object"/>
+/// (a <c>FrameworkElement</c> or <c>Avalonia.Controls.Control</c> factory).
 /// </summary>
 public sealed record SlotRegistration(
     string Id,
@@ -65,6 +65,7 @@ public interface ISettingsRegistry
 {
     JsonValue? Get(string key);
     void Set(string key, JsonValue value);
+    void Remove(string key);
 }
 
 public interface IEventBus

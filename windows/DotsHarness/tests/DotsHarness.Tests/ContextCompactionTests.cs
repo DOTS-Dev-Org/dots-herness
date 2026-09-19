@@ -66,4 +66,56 @@ public sealed class ContextCompactionTests
 
         Assert.True(ContextCompaction.IsValidSummary(summary));
     }
+
+    [Fact]
+    public void CompactionKeepsTheLanguagePolicyInStableSystemContext()
+    {
+        var policy = HerNessPrompt.Core("scope line", "tool line");
+        var messages = new List<NativeMessage> { new("system", policy) };
+        for (var i = 1; i <= 7; i++)
+        {
+            messages.Add(new NativeMessage("user", $"request {i}"));
+            messages.Add(new NativeMessage("assistant", $"answer {i}"));
+        }
+
+        var selection = ContextCompaction.Select(
+            messages,
+            previousSummary: null,
+            ContextCompaction.Budget(32_768));
+
+        Assert.NotNull(selection);
+        Assert.Contains(selection!.StableSystem, message => message.Content.Contains("Response language"));
+        var composed = selection.Compose("summary", preserveNativeItems: false);
+        Assert.Contains(composed, message => message.Role == "system" && message.Content.Contains("Response language"));
+        Assert.Contains("son güvenilir sohbet dilini", ContextCompaction.SummarySystemPrompt);
+        Assert.Contains("başka bir sohbetin dilini kullanma", ContextCompaction.SummarySystemPrompt);
+    }
+
+    [Fact]
+    public void CompactionPreservesTurkishEnglishAndSimplifiedChineseTurnSequence()
+    {
+        var policy = HerNessPrompt.Core("scope line", "tool line");
+        var messages = new List<NativeMessage> { new("system", policy) };
+        foreach (var (user, assistant) in new[]
+        {
+            ("Merhaba, Türkçe devam edelim.", "Türkçe yanıt"),
+            ("Please answer in English for this turn.", "English response"),
+            ("请用简体中文回答。", "简体中文回复"),
+        })
+        {
+            messages.Add(new NativeMessage("user", user));
+            messages.Add(new NativeMessage("assistant", assistant));
+        }
+
+        var selection = ContextCompaction.Select(
+            messages,
+            previousSummary: null,
+            ContextCompaction.Budget(8_192));
+
+        Assert.NotNull(selection);
+        Assert.Contains("Türkçe", selection!.ArchiveText);
+        Assert.Contains("English", selection.ArchiveText);
+        Assert.Contains(selection.RecentMessages, message => message.Content.Contains("简体中文"));
+        Assert.Contains(selection.StableSystem, message => message.Content.Contains("Response language"));
+    }
 }

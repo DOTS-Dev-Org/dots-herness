@@ -53,7 +53,7 @@ Seçenekler:
   -Configuration NAME     Yapılandırma (varsayılan: Release).
   -Output PATH            dist klasörü.
   -FrameworkDependent     Self-contained değil, paylaşılan runtime kullan.
-  -ReadyToRun             Başlangıç hızını artırır, fakat paketi büyütür.
+  -ReadyToRun             ReadyToRun (varsayılan açık; kapatmak için READY_TO_RUN=false).
   -NoOpen                 Zip'i Explorer'da açma.
   -h, -Help               Bu yardım metnini göster.
 
@@ -108,7 +108,7 @@ $PublishDir = Join-Path $DistDir 'publish'
 $ZipName = "$AppName-$Version-$Runtime.zip"
 $ZipPath = Join-Path $DistDir $ZipName
 $SelfContained = -not $FrameworkDependent
-$UseReadyToRun = $ReadyToRun.IsPresent -or $env:READY_TO_RUN -in @('1', 'true', 'TRUE', 'yes', 'YES')
+$UseReadyToRun = $ReadyToRun.IsPresent -or $env:READY_TO_RUN -notin @('0', 'false', 'FALSE', 'no', 'NO')
 $ReadyToRunValue = if ($UseReadyToRun) { 'true' } else { 'false' }
 
 Write-Output '==> Release publish'
@@ -158,6 +158,10 @@ Compress-Archive -Path (Join-Path $PublishDir '*') -DestinationPath $ZipPath -Co
 
 Write-Output "==> Hazır: $ZipPath"
 Write-Output "    Uygulama: $appPath"
+$publishSize = (Get-ChildItem -LiteralPath $PublishDir -Recurse -File | Measure-Object -Property Length -Sum).Sum
+$zipSize = (Get-Item -LiteralPath $ZipPath).Length
+Write-Output "    Uygulama boyutu: $publishSize bytes"
+Write-Output "    Paket boyutu: $zipSize bytes"
 
 if ($NoOpen) {
     Write-Output 'Bitti. -NoOpen verildiği için Explorer açılmadı.'

@@ -72,6 +72,7 @@ public sealed record RemoteWorkspaceSnapshot(
 
 public sealed record RemoteBootstrap(
     int ProtocolVersion,
+    AgentArea Area,
     string WorkspaceId,
     string Workspace,
     long Revision,
@@ -266,7 +267,6 @@ public sealed class RemoteControlEventHub : IDisposable
                 if (workspaceId is null || item.WorkspaceId == workspaceId) yield return item;
             }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         finally
         {
             lock (_gate)
@@ -546,7 +546,7 @@ public sealed class RemoteControlHost : IDisposable
     public async Task<string> EnableCloudTunnelAsync(CancellationToken cancellationToken = default)
     {
         if (!_gateway.Running) _gateway.Start();
-        PublicEndpoint = await _tunnel.StartAsync(DefaultPort, cancellationToken: cancellationToken);
+        PublicEndpoint = await _tunnel.StartAsync(DefaultPort, ct: cancellationToken);
         BeginPairing(PublicEndpoint);
         Publish("tunnel.ready", new JsonObject { ["endpoint"] = PublicEndpoint });
         return PublicEndpoint;
@@ -829,9 +829,9 @@ public sealed class RemoteControlHost : IDisposable
         string? outputArtifactId = null;
         if (kind == "build" && payload["artifactPath"]?.GetValue<string>() is { Length: > 0 } artifactPath)
         {
-            var bytes = RemoteWorkspace.ReadArtifact(workspace, artifactPath);
-            outputArtifactId = _events.Artifacts.Save("build-artifact", bytes);
-            Publish("artifact.ready", new JsonObject { ["path"] = artifactPath, ["bytes"] = bytes.LongLength }, outputArtifactId);
+            var artifactBytes = RemoteWorkspace.ReadArtifact(workspace, artifactPath);
+            outputArtifactId = _events.Artifacts.Save("build-artifact", artifactBytes);
+            Publish("artifact.ready", new JsonObject { ["path"] = artifactPath, ["bytes"] = artifactBytes.LongLength }, outputArtifactId);
         }
         var bytes = Encoding.UTF8.GetByteCount(output);
         var deployFailed = kind == "deploy" && output.Contains("Command exited with status ", StringComparison.Ordinal);
@@ -853,6 +853,7 @@ public sealed class RemoteControlHost : IDisposable
         var selected = _bridge.Selected;
         return new RemoteBootstrap(
             ProtocolVersion,
+            _bridge.Area,
             WorkspaceId(workspace),
             workspace,
             Interlocked.Read(ref _revision),
@@ -918,7 +919,11 @@ public sealed class RemoteControlHost : IDisposable
         }
     }
 
-    private void Publish(string kind, JsonObject payload, string? artifactId = null) => _events.Publish(kind, WorkspaceId(CurrentWorkspace()), _bridge.Selected?.Id, payload, artifactId);
+    private void Publish(string kind, JsonObject payload, string? artifactId = null)
+    {
+        payload["area"] = _bridge.Area.WireValue();
+        _events.Publish(kind, WorkspaceId(CurrentWorkspace()), _bridge.Selected?.Id, payload, artifactId);
+    }
 
     private void Audit(RemoteControlCommand command, string deviceId, RemoteCommandResponse response) => Publish("audit.command", new JsonObject
     {
@@ -978,7 +983,7 @@ public sealed class RemoteControlHost : IDisposable
         await stream.FlushAsync(cancellationToken);
     }
 
-    private static Task WriteAsciiAsync(Stream stream, string value, CancellationToken cancellationToken) =>
+    private static ValueTask WriteAsciiAsync(Stream stream, string value, CancellationToken cancellationToken) =>
         stream.WriteAsync(Encoding.UTF8.GetBytes(value), cancellationToken);
 
     public void Dispose()
@@ -1271,7 +1276,7 @@ public sealed class RemoteControlGateway : IDisposable
 
     private async Task HandleClientAsync(TcpClient client, CancellationToken serverCancellation)
     {
-        using (client);
+        using var ownedClient = client;
         using var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(serverCancellation);
         try
         {

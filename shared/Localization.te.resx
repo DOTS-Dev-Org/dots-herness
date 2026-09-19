@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
@@ -225,50 +224,89 @@
   <data name="voice.status.downloading" xml:space="preserve"><value>వాయిస్ ఆస్తులను డౌన్‌లోడ్ చేస్తోంది…</value></data>
   <data name="voice.download" xml:space="preserve"><value>వాయిస్ ఆస్తులను డౌన్‌లోడ్ చేయండి</value></data>
   <data name="voice.error" xml:space="preserve"><value>వాయిస్ ఇన్‌పుట్ లోపం: {0}</value></data>
-  <data name="ask.customPlaceholder" xml:space="preserve"><value>Write your own answer…</value></data>
-  <data name="ask.skip" xml:space="preserve"><value>Skip and plan anyway</value></data>
-  <data name="ask.submit" xml:space="preserve"><value>Send answers</value></data>
-  <data name="ask.title" xml:space="preserve"><value>A few questions before the plan</value></data>
-  <data name="conversation.cleanupFailed" xml:space="preserve"><value>Cleanup did not complete.</value></data>
-  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>No cleanup was requested.</value></data>
-  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>Cleanup could not be verified; existing files were preserved.</value></data>
-  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>Old code was preserved because cleanup was not needed or could not be proven.</value></data>
-  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Workspace changes could not be fully verified.</value></data>
-  <data name="conversation.cleanupVerified" xml:space="preserve"><value>Old code cleanup verified.</value></data>
-  <data name="conversation.connectionAdded" xml:space="preserve"><value>Connection added: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionChanged" xml:space="preserve"><value>Connection changed</value></data>
-  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>Previous local connection data could not be fully verified; it was preserved.</value></data>
-  <data name="conversation.connectionPreserved" xml:space="preserve"><value>Previous connection preserved: {0}. Conversations and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionRemoved" xml:space="preserve"><value>Previous connection removed. Local connection data was cleared; conversations and user data were preserved. Remote data was not touched.</value></data>
-  <data name="conversation.connectionSelected" xml:space="preserve"><value>Connection selected: {0}. Existing connections and user data were preserved; remote data was not touched.</value></data>
-  <data name="conversation.connectionSummary" xml:space="preserve"><value>Connection changed: {0} → {1}</value></data>
-  <data name="conversation.fileAdded" xml:space="preserve"><value>Added</value></data>
-  <data name="conversation.fileDeleted" xml:space="preserve"><value>Deleted</value></data>
-  <data name="conversation.fileModified" xml:space="preserve"><value>Modified</value></data>
-  <data name="conversation.filesSummary" xml:space="preserve"><value>Added {0}, modified {1}, deleted {2}</value></data>
-  <data name="conversation.runSummary" xml:space="preserve"><value>Run summary</value></data>
-  <data name="conversation.testStatus" xml:space="preserve"><value>Tests: {0}</value></data>
-  <data name="router.unknown" xml:space="preserve"><value>unknown</value></data>
-  <data name="settings.seedProjectRules" xml:space="preserve"><value>Create AGENTS.md and CLAUDE.md</value></data>
-  <data name="settings.selfVerification" xml:space="preserve"><value>Verify changes automatically</value></data>
-  <data name="vision.deleteModel" xml:space="preserve"><value>Delete model</value></data>
-  <data name="vision.disabled" xml:space="preserve"><value>Disabled</value></data>
-  <data name="vision.downloadAndContinue" xml:space="preserve"><value>Download and continue</value></data>
-  <data name="vision.downloading" xml:space="preserve"><value>Downloading the local vision model…</value></data>
-  <data name="vision.emptyDescription" xml:space="preserve"><value>The local Vision fallback returned no visual description.</value></data>
-  <data name="vision.failed" xml:space="preserve"><value>Vision fallback failed</value></data>
-  <data name="vision.installPlugin" xml:space="preserve"><value>Install from marketplace</value></data>
-  <data name="vision.installReason" xml:space="preserve"><value>{0} does not support image input. The Vision plugin will download about {1} and process the image on this device. The original image may already have reached the provider.</value></data>
-  <data name="vision.installTitle" xml:space="preserve"><value>This provider cannot read the image</value></data>
-  <data name="vision.modelMissing" xml:space="preserve"><value>Model not downloaded</value></data>
-  <data name="vision.notEnabled" xml:space="preserve"><value>The provider cannot read this image and the local Vision plugin was not enabled.</value></data>
-  <data name="vision.notInstalled" xml:space="preserve"><value>Not installed</value></data>
-  <data name="vision.notNow" xml:space="preserve"><value>Not now</value></data>
-  <data name="vision.pluginMissing" xml:space="preserve"><value>The local Vision fallback plugin is unavailable.</value></data>
-  <data name="vision.prepareModel" xml:space="preserve"><value>Download and prepare model</value></data>
-  <data name="vision.preparing" xml:space="preserve"><value>Preparing the local vision runtime…</value></data>
-  <data name="vision.ready" xml:space="preserve"><value>Vision fallback ready · {0}</value></data>
-  <data name="vision.removePlugin" xml:space="preserve"><value>Remove plugin</value></data>
-  <data name="vision.title" xml:space="preserve"><value>Vision fallback</value></data>
-  <data name="vision.unavailable" xml:space="preserve"><value>Vision fallback is unavailable</value></data>
+  <data name="ask.customPlaceholder" xml:space="preserve"><value>మీ స్వంత సమాధానం రాయండి…</value></data>
+  <data name="ask.skip" xml:space="preserve"><value>దాటవేసి అయినా ప్రణాళిక రూపొందించండి</value></data>
+  <data name="ask.submit" xml:space="preserve"><value>సమాధానాలను పంపండి</value></data>
+  <data name="ask.title" xml:space="preserve"><value>ప్రణాళికకు ముందు కొన్ని ప్రశ్నలు</value></data>
+  <data name="conversation.cleanupFailed" xml:space="preserve"><value>క్లీనప్ పూర్తికాలేదు.</value></data>
+  <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>క్లీనప్ కోరబడలేదు.</value></data>
+  <data name="conversation.cleanupNotVerified" xml:space="preserve"><value>క్లీనప్‌ను ధృవీకరించలేకపోయాం; ఉన్న ఫైళ్లను భద్రపరిచాం.</value></data>
+  <data name="conversation.cleanupPreserved" xml:space="preserve"><value>క్లీనప్ అవసరం లేకపోవడం లేదా నిరూపించలేకపోవడం వల్ల పాత కోడ్‌ను భద్రపరిచాం.</value></data>
+  <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>వర్క్‌స్పేస్ మార్పులను పూర్తిగా ధృవీకరించలేకపోయాం.</value></data>
+  <data name="conversation.cleanupVerified" xml:space="preserve"><value>పాత కోడ్ క్లీనప్ ధృవీకరించబడింది.</value></data>
+  <data name="conversation.connectionAdded" xml:space="preserve"><value>కనెక్షన్ జోడించబడింది: {0}. ఉన్న కనెక్షన్లు మరియు వినియోగదారు డేటా భద్రంగా ఉన్నాయి; రిమోట్ డేటాను తాకలేదు.</value></data>
+  <data name="conversation.connectionChanged" xml:space="preserve"><value>కనెక్షన్ మార్చబడింది</value></data>
+  <data name="conversation.connectionCleanupFailed" xml:space="preserve"><value>మునుపటి స్థానిక కనెక్షన్ డేటాను పూర్తిగా ధృవీకరించలేకపోయాం; దాన్ని భద్రపరిచాం.</value></data>
+  <data name="conversation.connectionPreserved" xml:space="preserve"><value>మునుపటి కనెక్షన్ భద్రపరచబడింది: {0}. సంభాషణలు మరియు వినియోగదారు డేటా భద్రంగా ఉన్నాయి; రిమోట్ డేటాను తాకలేదు.</value></data>
+  <data name="conversation.connectionRemoved" xml:space="preserve"><value>మునుపటి కనెక్షన్ తొలగించబడింది. స్థానిక కనెక్షన్ డేటా తొలగించబడింది; సంభాషణలు మరియు వినియోగదారు డేటా భద్రంగా ఉన్నాయి. రిమోట్ డేటాను తాకలేదు.</value></data>
+  <data name="conversation.connectionSelected" xml:space="preserve"><value>కనెక్షన్ ఎంచుకోబడింది: {0}. ఉన్న కనెక్షన్లు మరియు వినియోగదారు డేటా భద్రంగా ఉన్నాయి; రిమోట్ డేటాను తాకలేదు.</value></data>
+  <data name="conversation.connectionSummary" xml:space="preserve"><value>కనెక్షన్ మార్చబడింది: {0} → {1}</value></data>
+  <data name="conversation.fileAdded" xml:space="preserve"><value>జోడించబడింది</value></data>
+  <data name="conversation.fileDeleted" xml:space="preserve"><value>తొలగించబడింది</value></data>
+  <data name="conversation.fileModified" xml:space="preserve"><value>మార్చబడింది</value></data>
+  <data name="conversation.filesSummary" xml:space="preserve"><value>జోడించబడింది {0}, మార్చబడింది {1}, తొలగించబడింది {2}</value></data>
+  <data name="conversation.runSummary" xml:space="preserve"><value>రన్ సారాంశం</value></data>
+  <data name="conversation.testStatus" xml:space="preserve"><value>పరీక్షలు: {0}</value></data>
+  <data name="router.unknown" xml:space="preserve"><value>తెలియదు</value></data>
+  <data name="settings.seedProjectRules" xml:space="preserve"><value>AGENTS.md మరియు CLAUDE.md సృష్టించండి</value></data>
+  <data name="settings.selfVerification" xml:space="preserve"><value>మార్పులను స్వయంచాలకంగా ధృవీకరించండి</value></data>
+  <data name="vision.deleteModel" xml:space="preserve"><value>మోడల్‌ను తొలగించండి</value></data>
+  <data name="vision.disabled" xml:space="preserve"><value>నిలిపివేయబడింది</value></data>
+  <data name="vision.downloadAndContinue" xml:space="preserve"><value>డౌన్‌లోడ్ చేసి కొనసాగించండి</value></data>
+  <data name="vision.downloading" xml:space="preserve"><value>స్థానిక Vision మోడల్ డౌన్‌లోడ్ అవుతోంది…</value></data>
+  <data name="vision.emptyDescription" xml:space="preserve"><value>స్థానిక Vision fallback దృశ్య వివరణను అందించలేదు.</value></data>
+  <data name="vision.failed" xml:space="preserve"><value>Vision fallback విఫలమైంది</value></data>
+  <data name="vision.installPlugin" xml:space="preserve"><value>మార్కెట్‌ప్లేస్ నుండి ఇన్‌స్టాల్ చేయండి</value></data>
+  <data name="vision.installReason" xml:space="preserve"><value>{0} చిత్రం ఇన్‌పుట్‌కు మద్దతు ఇవ్వదు. Vision plugin సుమారు {1} డౌన్‌లోడ్ చేసి ఈ పరికరంలో చిత్రాన్ని ప్రాసెస్ చేస్తుంది. అసలు చిత్రం ఇప్పటికే ప్రొవైడర్‌కు చేరి ఉండవచ్చు.</value></data>
+  <data name="vision.installTitle" xml:space="preserve"><value>ఈ ప్రొవైడర్ చిత్రాన్ని చదవలేడు</value></data>
+  <data name="vision.modelMissing" xml:space="preserve"><value>మోడల్ డౌన్‌లోడ్ కాలేదు</value></data>
+  <data name="vision.notEnabled" xml:space="preserve"><value>ప్రొవైడర్ ఈ చిత్రాన్ని చదవలేడు, స్థానిక Vision plugin ప్రారంభించబడలేదు.</value></data>
+  <data name="vision.notInstalled" xml:space="preserve"><value>ఇన్‌స్టాల్ కాలేదు</value></data>
+  <data name="vision.notNow" xml:space="preserve"><value>ఇప్పుడుకాదు</value></data>
+  <data name="vision.pluginMissing" xml:space="preserve"><value>స్థానిక Vision fallback plugin అందుబాటులో లేదు.</value></data>
+  <data name="vision.prepareModel" xml:space="preserve"><value>మోడల్‌ను డౌన్‌లోడ్ చేసి సిద్ధం చేయండి</value></data>
+  <data name="vision.preparing" xml:space="preserve"><value>స్థానిక Vision runtime సిద్ధమవుతోంది…</value></data>
+  <data name="vision.ready" xml:space="preserve"><value>Vision fallback సిద్ధంగా ఉంది · {0}</value></data>
+  <data name="vision.removePlugin" xml:space="preserve"><value>plugin తొలగించండి</value></data>
+  <data name="vision.title" xml:space="preserve"><value>విజన్ ఫాల్‌బ్యాక్</value></data>
+  <data name="vision.unavailable" xml:space="preserve"><value>Vision fallback అందుబాటులో లేదు</value></data>
+  <data name="legal.title" xml:space="preserve"><value>చట్టపరమైన మరియు గోప్యత</value></data>
+  <data name="legal.gateHeading" xml:space="preserve"><value>ప్రారంభించడానికి ముందు</value></data>
+  <data name="legal.gateIntro" xml:space="preserve"><value>వినియోగదారు ఒప్పందం మరియు గోప్యతా విధానాన్ని సమీక్షించండి. మీ చాట్ మరియు వర్క్‌స్పేస్ కంటెంట్ మీరు ఎంచుకున్న AI ప్రొవైడర్‌కు పంపబడుతుంది; అది మీ దేశం వెలుపల ఉండవచ్చు.</value></data>
+  <data name="legal.termsTab" xml:space="preserve"><value>వినియోగదారు ఒప్పందం</value></data>
+  <data name="legal.privacyTab" xml:space="preserve"><value>గోప్యతా విధానం</value></data>
+  <data name="legal.acceptRequired" xml:space="preserve"><value>వినియోగదారు ఒప్పందం మరియు గోప్యతా విధానాన్ని చదివి అంగీకరిస్తున్నాను.</value></data>
+  <data name="legal.accept" xml:space="preserve"><value>కొనసాగించండి</value></data>
+  <data name="legal.openWeb" xml:space="preserve"><value>వెబ్‌లో తెరవండి</value></data>
+  <data name="legal.consentHeading" xml:space="preserve"><value>Optional permissions</value></data>
+  <data name="legal.consentPrefs" xml:space="preserve"><value>Consent preferences</value></data>
+  <data name="legal.consent.aiTransfer" xml:space="preserve"><value>Send my prompts and the files I choose to the AI provider so AI features work (required; involves transfer abroad).</value></data>
+  <data name="legal.consent.github" xml:space="preserve"><value>Allow GitHub integration to transfer my repository data when I connect it.</value></data>
+  <data name="legal.consent.voice" xml:space="preserve"><value>Allow voice input processing and speech-to-text conversion.</value></data>
+  <data name="legal.consent.marketing" xml:space="preserve"><value>Send me product news and campaigns by email.</value></data>
+  <data name="legal.updated" xml:space="preserve"><value>చట్టపరమైన పత్రాలు నవీకరించబడ్డాయి. వాటిని మళ్లీ సమీక్షించి అంగీకరించండి.</value></data>
+  <data name="legal.loadError" xml:space="preserve"><value>చట్టపరమైన పత్రాలను లోడ్ చేయడం సాధ్యపడలేదు. కనెక్షన్‌ను తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.</value></data>
+  <data name="legal.retry" xml:space="preserve"><value>మళ్లీ ప్రయత్నించండి</value></data>
+  <data name="legal.acceptHint" xml:space="preserve"><value>“కొనసాగించండి” నొక్కడం ద్వారా మీరు వినియోగదారు ఒప్పందం మరియు గోప్యతా విధానాన్ని అంగీకరిస్తారు.</value></data>
+  <data name="usage.window5h" xml:space="preserve"><value>5 గంటలు</value></data>
+  <data name="usage.windowWeek" xml:space="preserve"><value>వారపు</value></data>
+  <data name="usage.resetsIn" xml:space="preserve"><value>{0}లో రీసెట్ అవుతుంది</value></data>
+  <data name="usage.resetsOn" xml:space="preserve"><value>{0}న రీసెట్ అవుతుంది</value></data>
+  <data name="usage.resetsAvailable" xml:space="preserve"><value>{0} రీసెట్‌లు అందుబాటులో ఉన్నాయి</value></data>
+  <data name="usage.needLogin" xml:space="preserve"><value>పరిమితులను చూడటానికి Claudeలో సైన్ ఇన్ చేయండి</value></data>
+  <data name="usage.noLimitInfo" xml:space="preserve"><value>పరిమితి సమాచారం లేదు</value></data>
+  <data name="usage.loadFailed" xml:space="preserve"><value>వినియోగాన్ని లోడ్ చేయడం సాధ్యపడలేదు</value></data>
+  <data name="usage.loading" xml:space="preserve"><value>వినియోగం లోడ్ అవుతోంది…</value></data>
+  <data name="modelPicker.selectModel" xml:space="preserve"><value>మోడల్‌ని ఎంచుకోండి</value></data>
+  <data name="modelPicker.noModel" xml:space="preserve"><value>కనెక్ట్ చేయబడిన మోడల్ లేదు</value></data>
+  <data name="modelPicker.reset" xml:space="preserve"><value>డిఫాల్ట్‌కి రీసెట్ చేయండి</value></data>
+  <data name="modelPicker.effort" xml:space="preserve"><value>ప్రయత్నం</value></data>
+  <data name="modelPicker.effortUnsupported" xml:space="preserve"><value>మద్దతు లేదు</value></data>
+  <data name="modelPicker.effort.default" xml:space="preserve"><value>డిఫాల్ట్</value></data>
+  <data name="modelPicker.effort.none" xml:space="preserve"><value>ఏదీ లేదు</value></data>
+  <data name="modelPicker.effort.low" xml:space="preserve"><value>కాంతి</value></data>
+  <data name="modelPicker.effort.medium" xml:space="preserve"><value>మధ్యస్థం</value></data>
+  <data name="modelPicker.effort.high" xml:space="preserve"><value>అధిక</value></data>
+  <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>అదనపు హై</value></data>
+  <data name="modelPicker.effort.max" xml:space="preserve"><value>గరిష్టంగా</value></data>
 </root>

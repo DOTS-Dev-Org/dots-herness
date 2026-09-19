@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\..\..\..\shared\Localization.cs" Link="Localization.cs" />
+    <Compile Include="..\..\..\..\shared\VoiceInput.cs" Link="VoiceInput.cs" />
     <EmbeddedResource Include="..\..\..\..\shared\Localization.resx">
       <LogicalName>DotsHarnessCore.Localization.resources</LogicalName>
     </EmbeddedResource>
@@ -12,14 +13,38 @@
       <Link>%(Filename)%(Extension)</Link>
     </EmbeddedResource>
     <Compile Include="..\..\..\..\shared\NativeProviderRouter.cs" Link="NativeProviderRouter.cs" />
+    <Compile Include="..\..\..\..\shared\VisionMarketplace.cs" Link="VisionMarketplace.cs" />
+    <Compile Include="..\..\..\..\shared\NativeMarketplace.cs" Link="NativeMarketplace.cs" />
     <Compile Include="..\..\..\..\shared\ContextCompaction.cs" Link="ContextCompaction.cs" />
     <Compile Include="..\..\..\..\shared\NativeProviderImage.cs" Link="NativeProviderImage.cs" />
     <Compile Include="..\..\..\..\shared\NativeWorkspaceTools.cs" Link="NativeWorkspaceTools.cs" />
+    <Compile Include="..\..\..\..\shared\BrowserContracts.cs" Link="BrowserContracts.cs" />
+    <Compile Include="..\..\..\..\shared\AgentCommandSandbox.cs" Link="AgentCommandSandbox.cs" />
+    <Compile Include="..\..\..\..\shared\BrowserSessionManager.cs" Link="BrowserSessionManager.cs" />
+    <Compile Include="..\..\..\..\shared\NativeMessagingInstaller.cs" Link="NativeMessagingInstaller.cs" />
+    <Compile Include="..\..\..\..\shared\AskUserTool.cs" Link="AskUserTool.cs" />
+    <Compile Include="..\..\..\..\shared\OtherChatsTool.cs" Link="OtherChatsTool.cs" />
+    <Compile Include="..\..\..\..\shared\HerNessPrompt.cs" Link="HerNessPrompt.cs" />
+    <Compile Include="..\..\..\..\shared\CodexInstructions.cs" Link="CodexInstructions.cs" />
+    <Compile Include="..\..\..\..\shared\ProjectRules.cs" Link="ProjectRules.cs" />
+    <Compile Include="..\..\..\..\shared\WorkspaceBacklog.cs" Link="WorkspaceBacklog.cs" />
+    <Compile Include="..\..\..\..\shared\WorkspaceFacts.cs" Link="WorkspaceFacts.cs" />
     <Compile Include="..\..\..\..\shared\SkillCatalog.cs" Link="SkillCatalog.cs" />
+    <Compile Include="..\..\..\..\shared\MemEventStore.cs" Link="MemEventStore.cs" />
+    <Compile Include="..\..\..\..\shared\SkillSuggestionEngine.cs" Link="SkillSuggestionEngine.cs" />
+    <Compile Include="..\..\..\..\shared\SkillSuggestionMonitor.cs" Link="SkillSuggestionMonitor.cs" />
     <Compile Include="..\..\..\..\shared\WorkspaceChangeTracker.cs" Link="WorkspaceChangeTracker.cs" />
     <Compile Include="..\..\..\..\shared\RouterException.cs" Link="RouterException.cs" />
     <Compile Include="..\..\..\..\shared\CloudTunnel.cs" Link="CloudTunnel.cs" />
+    <Compile Include="..\..\..\..\shared\RemoteControl.cs" Link="RemoteControl.cs" />
+    <Compile Include="..\..\..\..\shared\LegalConsent.cs" Link="LegalConsent.cs" />
+    <Compile Include="..\..\..\..\shared\AgentAreaContracts.cs" Link="AgentAreaContracts.cs" />
+    <Compile Include="..\..\..\..\shared\SessionAreaMigration.cs" Link="SessionAreaMigration.cs" />
+    <Compile Include="..\..\..\..\shared\MessageTail.cs" Link="MessageTail.cs" />
+    <Compile Include="..\..\..\..\shared\ExploreTool.cs" Link="ExploreTool.cs" />
     <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
     <ProjectReference Include="..\PluginRuntime\PluginRuntime.csproj" />
+    <PackageReference Include="Whisper.net" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
   </ItemGroup>
 </Project>

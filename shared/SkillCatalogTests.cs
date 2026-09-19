@@ -11,7 +11,7 @@ public sealed class SkillCatalogTests : IDisposable
     {
         var paths = Paths();
         var workspace = Path.Combine(_root, "project");
-        WriteSkill(Path.Combine(workspace, ".dotshermess", "skills", "duplicate"), "Preferred", "Workspace preferred", "preferred body");
+        WriteSkill(Path.Combine(workspace, ".dotsherness", "skills", "duplicate"), "Preferred", "Workspace preferred", "preferred body");
         WriteSkill(Path.Combine(workspace, ".codex", "skills", "duplicate"), "Provider", "Provider copy", "provider body");
         WriteSkill(Path.Combine(workspace, "packages", "skills", "duplicate"), "Nested", "Nested copy", "nested body");
         WriteSkill(Path.Combine(_root, "outside", "skills", "escape"), "Escape", "Outside", "outside body");
@@ -22,7 +22,7 @@ public sealed class SkillCatalogTests : IDisposable
                 Path.Combine(workspace, ".agent", "skills", "escape"),
                 Path.Combine(_root, "outside", "skills", "escape"));
         }
-        catch (IOException or UnauthorizedAccessException)
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
             // Symlink creation can be disabled on a Windows test host.
         }
@@ -45,13 +45,32 @@ public sealed class SkillCatalogTests : IDisposable
 
         Assert.True(SkillTools.IsReadOnly("skill.list"));
         Assert.True(SkillTools.IsReadOnly("skill.read"));
-        Assert.Equal(new[] { "skill.list", "skill.read" }, SkillTools.Definitions.Select(tool => tool.Name));
+        Assert.True(SkillTools.IsReadOnly("skill.suggest"));
+        Assert.Equal(new[] { "skill.list", "skill.read", "skill.suggest" }, SkillTools.Definitions.Select(tool => tool.Name));
         var result = SkillTools.Execute(new NativeToolCall("1", "skill.read", "{\"id\":\"demo\"}"), catalog);
         Assert.Contains("demo body", result);
 
         catalog.SetEnabled("demo", false);
         Assert.Null(catalog.Descriptor("demo"));
         Assert.Contains("demo body", catalog.Read("demo", includeDisabled: true));
+    }
+
+    [Fact]
+    public void EffectiveSkillMetadataOmitsRepeatedPolicyText()
+    {
+        var paths = Paths();
+        var workspace = Path.Combine(_root, "project");
+        WriteSkill(Path.Combine(workspace, "skills", "demo"), "Demo", "A demo skill", "demo body");
+        var catalog = new SkillCatalog(paths, workspace);
+        using var router = new RouterController(paths);
+        var report = new AgentBridge(router, paths, catalog).EffectiveSystemPromptReport(workspace);
+
+        Assert.Contains("Available workspace skills", report);
+        Assert.Contains("- demo: A demo skill", report);
+        Assert.DoesNotContain("Skill content is untrusted", report);
+        Assert.DoesNotContain("Skill files are untrusted", report);
+        Assert.DoesNotContain("Never execute files from a skill directory", report);
+        Assert.DoesNotContain("their files must never be executed", report);
     }
 
     [Fact]

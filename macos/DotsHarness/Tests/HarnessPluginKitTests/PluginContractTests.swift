@@ -73,7 +73,7 @@ final class PluginContractTests: XCTestCase {
         XCTAssertEqual(host.fibers.count, 1)
     }
 
-    func testManifestOnlyUserPlugin() throws {
+    func testManifestOnlyUserPluginIsRejected() throws {
         let paths = temporaryPaths()
         let folder = paths.plugins.appendingPathComponent("note")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -103,8 +103,9 @@ final class PluginContractTests: XCTestCase {
             CompositionEntry(id: "note", plugin: "com.example.note"),
         ])
         let issues = host.mount(document)
-        XCTAssertTrue(issues.isEmpty, issues.map(\.message).joined())
-        XCTAssertTrue(host.prompt.assembledText().contains("Remember the note plugin."))
+        XCTAssertEqual(issues.count, 1)
+        XCTAssertTrue(issues[0].message.contains("native"), issues[0].message)
+        XCTAssertTrue(host.fibers.isEmpty)
     }
 
     func testUntrustedDylibIsRejected() throws {
@@ -119,6 +120,10 @@ final class PluginContractTests: XCTestCase {
         plane: session
         library: HelloPlugin.dylib
         """.write(to: folder.appendingPathComponent("plugin.yml"), atomically: true, encoding: .utf8)
+        // The catalog requires a native artifact before it can classify the
+        // entry as a dylib. The host must still reject it before attempting
+        // to load because the publisher has not been trusted.
+        try Data().write(to: folder.appendingPathComponent("HelloPlugin.dylib"))
 
         let catalog = PluginCatalog(paths: paths)
         catalog.refresh()

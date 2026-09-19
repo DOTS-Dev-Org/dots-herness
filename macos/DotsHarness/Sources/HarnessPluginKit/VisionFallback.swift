@@ -38,6 +38,13 @@ public struct PluginSupportPaths: Sendable, Equatable {
     }
 }
 
+public enum VisionFallbackDefaults {
+    public static let pluginID = "dots.vision-fallback"
+    public static let serviceName = "vision.fallback"
+    public static let installerServiceName = "vision.installer"
+    public static let modelBytes: Int64 = 279_000_000
+}
+
 @MainActor
 public protocol VisionFallbackService: AnyObject {
     var state: VisionFallbackState { get }
@@ -50,20 +57,39 @@ public protocol VisionFallbackService: AnyObject {
     func shutdown()
 }
 
+@MainActor
+public protocol VisionFallbackInstaller: AnyObject {
+    func install() async throws -> (any VisionFallbackService)?
+}
+
 public enum VisionProviderCapability {
     private static let unsupportedStatusCodes: Set<Int> = [400, 404, 405, 415, 422]
     private static let positiveTerms = [
+        "image", "multimodal", "image_url", "image input", "image inputs", "image modality", "vision"
+    ]
+    private static let unsupportedTerms = [
         "does not support", "doesn't support", "not supported", "unsupported",
-        "multimodal", "image_url", "image input", "image inputs", "image modality", "vision"
+        "not available", "unavailable", "not implemented", "cannot process",
+        "can't process", "disabled"
     ]
     private static let invalidImageTerms = [
-        "invalid image", "malformed image", "decode image", "image decode", "corrupt image", "unsafe image"
+        "invalid image", "malformed image", "decode image", "image decode", "image decoding failed",
+        "failed to decode image", "corrupt image", "unsafe image", "unsupported image format"
     ]
 
     public static func isImageInputUnsupported(message: String, statusCode: Int?) -> Bool {
         guard let statusCode, unsupportedStatusCodes.contains(statusCode) else { return false }
         let text = message.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return positiveTerms.contains(where: text.contains)
+        let capability = positiveTerms.contains(where: text.contains)
+        let unsupported = unsupportedTerms.contains(where: text.contains)
+            || text.contains("no image support")
+            || text.contains("not multimodal")
+            || text.contains("no vision support")
+            || text.contains("image support unavailable")
+        let missingModel = text.contains("model")
+            && (text.contains("not found") || text.contains("not available")
+                || text.contains("unavailable") || text.contains("does not exist"))
+        return capability && unsupported && !missingModel
             && !invalidImageTerms.contains(where: text.contains)
     }
 }

@@ -14,6 +14,7 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.2.8" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.8" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.8" />
+    <PackageReference Include="QRCoder" Version="1.8.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
@@ -22,6 +23,7 @@
   </ItemGroup>
   <ItemGroup>
     <AvaloniaResource Include="Resources\DotsHarness.ico" />
+    <AvaloniaResource Include="Resources\DotsHarness.png" />
     <AvaloniaResource Include="Resources\presets\host.yml" />
     <Content Include="Resources\skills\**\*" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Resources\skillsmp-popular-200.json" CopyToOutputDirectory="PreserveNewest" />

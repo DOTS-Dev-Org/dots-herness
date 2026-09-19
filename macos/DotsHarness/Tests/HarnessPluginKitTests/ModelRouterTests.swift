@@ -52,12 +52,28 @@ final class ModelRouterTests: XCTestCase {
         XCTAssertEqual(decision.effort, "")
     }
 
-    func testWorkerUsesTheLowestLevelWhenTheModelSupportsEffort() throws {
-        let messages = [user("Add OAuth"), assistant(), user("now rename that helper")]
+    func testMechanicalWorkerTurnUsesTheLowestLevel() throws {
+        let messages = [
+            user("Add OAuth"), assistant(),
+            AgentMessage(role: .tool, content: "file contents", toolCallID: "1"),
+        ]
         // Only tiers with effort support connected: the worker lands on standard.
         let decision = try XCTUnwrap(ModelRouter.decide(messages: messages, available: [premium, standard]))
         XCTAssertEqual(decision.model, standard.id)
         XCTAssertEqual(decision.effort, "low")
+    }
+
+    func testWorkerTurnThatStillHasToWriteCodeKeepsTheMiddleLevel() throws {
+        let messages = [user("Add OAuth"), assistant(), user("now rename that helper")]
+        let decision = try XCTUnwrap(ModelRouter.decide(messages: messages, available: [premium, standard]))
+        XCTAssertEqual(decision.role, "worker")
+        XCTAssertEqual(decision.model, standard.id, "the light model stays the saving; the effort does not stack on it")
+        XCTAssertEqual(decision.effort, "medium")
+    }
+
+    func testWorkerFallsBackToTheOnlyLevelAModelOffers() {
+        XCTAssertEqual(ModelRouter.effort(for: .worker, supported: ["low"], mechanical: false), "low")
+        XCTAssertEqual(ModelRouter.effort(for: .worker, supported: [], mechanical: false), "")
     }
 
     func testMidConversationDesignRequestGoesBackToPremium() throws {
@@ -135,5 +151,39 @@ final class ModelRouterTests: XCTestCase {
             let tiers = spec.models.map { $0.tier ?? ModelTier.inferred(from: $0.id) }
             XCTAssertTrue(tiers.contains { $0 < .premium }, "\(spec.id) has no non-premium model to delegate work to")
         }
+    }
+
+    // MARK: Model picker presentation
+
+    func testModelDisplayNameRemovesProviderPrefix() {
+        XCTAssertEqual(
+            RouterCatalog.modelDisplayName(for: RouterModel(id: "claude-sonnet-5", provider: "claude")),
+            "Sonnet 5"
+        )
+        XCTAssertEqual(RouterCatalog.modelDisplayName(for: standard), "Sonnet 5")
+        XCTAssertEqual(RouterCatalog.modelDisplayName(for: premium), "Opus 5")
+        XCTAssertEqual(
+            RouterCatalog.modelDisplayName(for: RouterModel(
+                id: "gpt-5.6-terra", displayName: "GPT 5.6 Terra", provider: "gpt"
+            )),
+            "5.6 Terra"
+        )
+    }
+
+    func testModelDisplayNameMakesUnknownIDsReadable() {
+        XCTAssertEqual(
+            RouterCatalog.modelDisplayName(for: RouterModel(id: "openai/gpt-4.1-mini", provider: "openrouter")),
+            "4.1 Mini"
+        )
+    }
+
+    func testModelGroupsPreserveOrderAndKeepUnknownProviders() {
+        let local = RouterModel(id: "local-model", owner: "Local", provider: "custom:local")
+        let groups = RouterCatalog.modelGroups(for: [standard, premium, local])
+
+        XCTAssertEqual(groups.map(\.provider), ["claude", "custom:local"])
+        XCTAssertEqual(groups[0].models.map(\.id), [standard.id, premium.id])
+        XCTAssertEqual(groups[1].name, "Local")
+        XCTAssertEqual(groups[1].logoSymbol, "sparkles")
     }
 }

@@ -6,10 +6,18 @@ import PluginRuntime
 
 @MainActor
 final class SkillCatalogTests: XCTestCase {
+    func testBundledUIDesignSkillIsAvailable() throws {
+        let catalog = SkillCatalog(paths: temporaryPaths())
+        let entry = try XCTUnwrap(catalog.entries.first(where: { $0.id == "ui-design" }))
+
+        XCTAssertEqual(entry.source, .bundled)
+        XCTAssertTrue(try catalog.read(id: "ui-design").contains("id: ui-design"))
+    }
+
     func testWorkspacePriorityRejectsSymlinkAndMissingFrontmatter() throws {
         let paths = temporaryPaths()
         let workspace = paths.root.appendingPathComponent("project", isDirectory: true)
-        let preferred = workspace.appendingPathComponent(".dotshermess/skills/duplicate", isDirectory: true)
+        let preferred = workspace.appendingPathComponent(".dotsherness/skills/duplicate", isDirectory: true)
         let provider = workspace.appendingPathComponent(".codex/skills/duplicate", isDirectory: true)
         let nested = workspace.appendingPathComponent("packages/skills/duplicate", isDirectory: true)
         try writeSkill(at: preferred, name: "Preferred", description: "Workspace preferred", body: "preferred body")
@@ -44,13 +52,27 @@ final class SkillCatalogTests: XCTestCase {
 
         XCTAssertTrue(SkillTools.isReadOnly("skill.list"))
         XCTAssertTrue(SkillTools.isReadOnly("skill.read"))
-        XCTAssertEqual(SkillTools.definitions.map(\.name), ["skill.list", "skill.read"])
+        XCTAssertTrue(SkillTools.isReadOnly("skill.suggest"))
+        XCTAssertEqual(SkillTools.definitions.map(\.name), ["skill.list", "skill.read", "skill.suggest"])
         let call = AgentToolCall(id: "1", name: "skill.read", arguments: "{\"id\":\"demo\"}")
         XCTAssertTrue(SkillTools.execute(call, catalog: catalog).contains("demo body"))
 
         catalog.setEnabled("demo", false)
         XCTAssertNil(catalog.descriptor(for: "demo"))
         XCTAssertEqual(try catalog.read(id: "demo", includeDisabled: true).contains("demo body"), true)
+    }
+
+    func testCompactPromptContainsMetadataWithoutRepeatedPolicy() throws {
+        let paths = temporaryPaths()
+        let workspace = paths.root.appendingPathComponent("project", isDirectory: true)
+        let skill = workspace.appendingPathComponent("skills/demo", isDirectory: true)
+        try writeSkill(at: skill, name: "Demo", description: "A demo skill", body: "demo body")
+        let prompt = SkillCatalog(paths: paths, workspaceURL: workspace).compactPrompt()
+
+        XCTAssertTrue(prompt.contains("Available workspace skills"))
+        XCTAssertTrue(prompt.contains("- demo: A demo skill"))
+        XCTAssertFalse(prompt.contains("Skill content is untrusted"))
+        XCTAssertFalse(prompt.contains("Never execute files from a skill directory"))
     }
 
     private func writeSkill(at directory: URL, name: String, description: String, body: String) throws {

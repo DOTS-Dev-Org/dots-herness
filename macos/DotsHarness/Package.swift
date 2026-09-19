@@ -44,12 +44,14 @@ let package = Package(
                 .product(name: "sherpa-onnx", package: "sherpa-onnx"),
             ],
             path: "Sources/DotsHarnessCore",
-            resources: [.process("Resources")],
+            exclude: ["Resources/skills"],
+            resources: [.process("Resources"), .copy("Resources/skills")],
             linkerSettings: [
                 .linkedFramework("ScreenCaptureKit"),
                 .linkedFramework("CoreImage"),
                 .linkedFramework("CoreMedia"),
                 .linkedFramework("CoreVideo"),
+                .linkedFramework("Security"),
                 .linkedFramework("UserNotifications"),
             ]
         ),
@@ -100,6 +102,7 @@ let package = Package(
                 "HarnessPluginKit",
                 "PluginRuntime",
                 "DotsHarnessCore",
+                "DotsHarnessUI",
                 "FableThinkingPlugin",
             ],
             path: "Tests/HarnessPluginKitTests"

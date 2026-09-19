@@ -25,16 +25,33 @@ public partial class App : Application
             Text = Model.L("app.title"),
             Visible = true,
         };
-        Model.Bridge.AssistantResponseReceived += OnAssistantResponse;
+        Model.ChatBridge.AssistantResponseReceived += OnAssistantResponse;
+        Model.CodingBridge.AssistantResponseReceived += OnAssistantResponse;
+        Model.ChatBridge.RunSummaryReceived += OnRunSummary;
+        Model.CodingBridge.RunSummaryReceived += OnRunSummary;
+        Model.ChatBridge.AttentionNeeded += OnAttentionNeeded;
+        Model.CodingBridge.AttentionNeeded += OnAttentionNeeded;
+        Model.ChatRouter.ConnectionChanged += OnConnectionChanged;
+        Model.CodingRouter.ConnectionChanged += OnConnectionChanged;
         ApplyAppearance(Model.Appearance);
         Model.Start();
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
-        Model.Bridge.AssistantResponseReceived -= OnAssistantResponse;
+        Model.ChatBridge.AssistantResponseReceived -= OnAssistantResponse;
+        Model.CodingBridge.AssistantResponseReceived -= OnAssistantResponse;
+        Model.ChatBridge.RunSummaryReceived -= OnRunSummary;
+        Model.CodingBridge.RunSummaryReceived -= OnRunSummary;
+        Model.ChatBridge.AttentionNeeded -= OnAttentionNeeded;
+        Model.CodingBridge.AttentionNeeded -= OnAttentionNeeded;
+        Model.ChatRouter.ConnectionChanged -= OnConnectionChanged;
+        Model.CodingRouter.ConnectionChanged -= OnConnectionChanged;
         _notificationIcon?.Dispose();
-        Model.Bridge.Stop();
+        Model.ChatBridge.Stop();
+        Model.CodingBridge.Stop();
+        Model.ChatBridge.CloseBrowserSessions();
+        Model.CodingBridge.CloseBrowserSessions();
         Model.Local.Stop();
         base.OnExit(e);
     }
@@ -64,6 +81,61 @@ public partial class App : Application
         {
             // The app can finish closing while an in-flight response completes.
         }
+    }
+
+    private void OnRunSummary(object? sender, RunSummaryEventArgs e)
+    {
+        // The user stopped it themselves; nothing to tell them.
+        if (e.Outcome == "cancelled") return;
+        try
+        {
+            var failed = e.Outcome is "failed" or "paused";
+            var summary = failed
+                ? Model.L("settings.taskFailed") + ": " + e.FailureMessage
+                : Model.L("conversation.runSummary") + ": "
+                    + Model.L("conversation.filesSummary", e.Summary.AddedCount, e.Summary.ModifiedCount, e.Summary.DeletedCount)
+                    + " · " + e.Summary.CleanupNote;
+            _notificationIcon?.ShowBalloonTip(5000, e.ConversationTitle, Preview(summary), failed ? FormsToolTipIcon.Error : FormsToolTipIcon.Info);
+        }
+        catch (ObjectDisposedException) { }
+    }
+
+    /// Only chats the user cannot see right now: the visible one shows its own card.
+    private void OnAttentionNeeded(object? sender, RunAttentionEventArgs e)
+    {
+        try
+        {
+            var visible = MainWindow?.IsActive == true
+                && ReferenceEquals(Model.Bridge, sender)
+                && Model.Bridge.SelectedId == e.ConversationId;
+            if (visible) return;
+            _notificationIcon?.ShowBalloonTip(
+                5000,
+                e.ConversationTitle,
+                Preview(Model.L("conversation.waitingApproval") + ": " + e.Detail),
+                FormsToolTipIcon.Warning);
+        }
+        catch (ObjectDisposedException) { }
+    }
+
+    private void OnConnectionChanged(ConnectionTransition transition)
+    {
+        try
+        {
+            var previous = transition.PreviousConnectionLabel ?? Model.L("router.unknown");
+            var current = transition.CurrentConnectionLabel ?? Model.L("router.unknown");
+            var message = transition.Action switch
+            {
+                "removed" when transition.CleanupStatus == "verified" => Model.L("conversation.connectionRemoved"),
+                "removed" when transition.CleanupStatus == "failed" => Model.L("conversation.connectionCleanupFailed"),
+                "added" when transition.PreviousConnectionLabel is null => Model.L("conversation.connectionAdded", current),
+                "selected" => Model.L("conversation.connectionSelected", current),
+                _ => Model.L("conversation.connectionSummary", previous, current) + " · "
+                    + Model.L("conversation.connectionPreserved", previous),
+            };
+            _notificationIcon?.ShowBalloonTip(5000, Model.L("conversation.connectionChanged"), Preview(message), FormsToolTipIcon.Info);
+        }
+        catch (ObjectDisposedException) { }
     }
 
     private static string Preview(string text)

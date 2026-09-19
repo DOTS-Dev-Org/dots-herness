@@ -153,6 +153,54 @@ final class ProviderImageTests: XCTestCase {
         XCTAssertEqual(router.imageAdapters.capability(for: route, adapterID: "openai.images.fallback"), .supported)
     }
 
+    func testRouterRefreshesExpiredChatGPTCredentialBeforeRetryingImage() async throws {
+        let paths = temporaryPaths()
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [ImageRouterURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        let router = RouterController(paths: paths, oauthSession: session)
+        let provider = try XCTUnwrap(RouterCatalog.kind(for: "gpt"))
+        let account = try router.store.addAccount(
+            provider: provider,
+            name: "GPT",
+            secret: "expired-token",
+            model: "gpt-5.6-luna",
+            api: RouterAPIKind.chatGPT.rawValue,
+            authType: "chatgpt",
+            sessionAccountID: "account-1",
+            refreshSecret: "refresh-token"
+        )
+        router.selectedModelID = account.model
+        ImageRouterURLProtocol.responses = [
+            (401, Data(#"{"error":{"message":"Provided authentication token is expired."}}"#.utf8)),
+            (200, Data(#"{"access_token":"fresh-token","refresh_token":"next-refresh"}"#.utf8)),
+            (200, Data(#"{"output":[{"type":"image_generation_call","result":"AQID"}]}"#.utf8)),
+        ]
+        ImageRouterURLProtocol.paths = []
+        ImageRouterURLProtocol.requests = []
+        ImageRouterURLProtocol.bodies = []
+
+        let generated = try await router.generateImage(prompt: "a red fox", session: session)
+
+        XCTAssertEqual(generated.output.data, Data([1, 2, 3]))
+        XCTAssertEqual(
+            ImageRouterURLProtocol.paths,
+            ["/backend-api/codex/responses", "/oauth/token", "/backend-api/codex/responses"]
+        )
+        XCTAssertEqual(
+            ImageRouterURLProtocol.requests[0].value(forHTTPHeaderField: "Authorization"),
+            "Bearer expired-token"
+        )
+        XCTAssertEqual(
+            ImageRouterURLProtocol.requests[2].value(forHTTPHeaderField: "Authorization"),
+            "Bearer fresh-token"
+        )
+        let refreshBody = try XCTUnwrap(ImageRouterURLProtocol.bodies[1])
+        XCTAssertTrue(String(decoding: refreshBody, as: UTF8.self).contains("refresh_token=refresh-token"))
+        XCTAssertEqual(try router.store.credential(for: account), "fresh-token")
+        XCTAssertEqual(try router.store.refreshCredential(for: account), "next-refresh")
+    }
+
     func testRouterDoesNotCacheTransientFailureOrFallBack() async throws {
         let paths = temporaryPaths()
         let router = RouterController(paths: paths)
@@ -176,7 +224,7 @@ final class ProviderImageTests: XCTestCase {
         XCTAssertNil(router.imageAdapters.capability(for: route, adapterID: "openai.responses.image"))
     }
 
-    func testUnsupportedCacheHidesCommandWithoutFallbackButUnknownModelRetries() async throws {
+    func testUnsupportedCacheKeepsCommandVisibleButUnknownModelRetries() async throws {
         let paths = temporaryPaths()
         let router = RouterController(paths: paths)
         let provider = try XCTUnwrap(RouterCatalog.kind(for: "openai"))
@@ -189,8 +237,31 @@ final class ProviderImageTests: XCTestCase {
 
         XCTAssertTrue(router.imageGenerationCommandVisible)
         _ = try? await router.generateImage(prompt: "a red fox", session: URLSession(configuration: configuration))
-        XCTAssertFalse(router.imageGenerationCommandVisible)
+        XCTAssertTrue(router.imageGenerationCommandVisible)
         router.selectedModelID = "unknown-model"
+        XCTAssertTrue(router.imageGenerationCommandVisible)
+    }
+
+    func testProviderWithoutImageAdapterKeepsCommandDiscoverable() throws {
+        let paths = temporaryPaths()
+        let router = RouterController(paths: paths)
+        let provider = try XCTUnwrap(RouterCatalog.kind(for: "deepseek"))
+        let account = try router.store.addAccount(
+            provider: provider,
+            name: "DeepSeek",
+            secret: "key",
+            model: "deepseek-chat"
+        )
+        router.selectedModelID = account.model
+
+        XCTAssertNil(router.imageAdapters.adapter(for: ProviderImageRoute(
+            accountID: account.id,
+            providerID: account.provider,
+            baseURL: account.baseURL,
+            api: account.api,
+            model: account.model,
+            authType: account.authType
+        )))
         XCTAssertTrue(router.imageGenerationCommandVisible)
     }
 
@@ -250,11 +321,30 @@ private final class ImageAdapterPlugin: DefaultPlugin {
 private final class ImageRouterURLProtocol: URLProtocol {
     nonisolated(unsafe) static var responses: [(Int, Data)] = []
     nonisolated(unsafe) static var paths: [String] = []
+    nonisolated(unsafe) static var requests: [URLRequest] = []
+    nonisolated(unsafe) static var bodies: [Data?] = []
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
+        Self.requests.append(request)
+        var body = request.httpBody
+        if body == nil, let stream = request.httpBodyStream {
+            stream.open()
+            var data = Data()
+            var buffer = [UInt8](repeating: 0, count: 4096)
+            while stream.hasBytesAvailable {
+                let count = buffer.withUnsafeMutableBufferPointer { pointer in
+                    stream.read(pointer.baseAddress!, maxLength: pointer.count)
+                }
+                if count <= 0 { break }
+                data.append(contentsOf: buffer[0..<count])
+            }
+            stream.close()
+            body = data
+        }
+        Self.bodies.append(body)
         Self.paths.append(request.url?.path ?? "")
         let response = Self.responses.isEmpty ? (500, Data()) : Self.responses.removeFirst()
         let http = HTTPURLResponse(

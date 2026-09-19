@@ -31,7 +31,11 @@ public sealed record PluginManifest(
     IReadOnlyList<string>? Inject = null,
     string Description = "",
     string? Library = null,
-    PromptSectionSpec? PromptSection = null)
+    PromptSectionSpec? PromptSection = null,
+    /// <summary>Native compiled plugin or builtin. Legacy values are rejected.</summary>
+    string Runtime = "native",
+    /// <summary>Legacy field retained so old manifests can be rejected clearly.</summary>
+    string? Main = null)
 {
     public const string CurrentAbi = "1.0.0";
 
