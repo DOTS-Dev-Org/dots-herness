@@ -718,6 +718,107 @@ public sealed class AppModel : ObservableObject
 
     public void TogglePlanMode() => IsPlanMode = !IsPlanMode;
 
+    /// Rewinds to just before `message`; with `edit` the text goes back to the composer.
+    public void RewindTo(ChatMessage message, bool edit)
+    {
+        if (message.Kind != ChatKind.User || Bridge.RewindBefore(message.Id) is not { } removed) return;
+        if (!edit) return;
+        Draft = removed.Text;
+        DraftAttachments.Clear();
+        foreach (var attachment in removed.Attachments) DraftAttachments.Add(attachment);
+    }
+
+    public void SetFeedback(ChatMessage message, string type)
+    {
+        message.Feedback = message.Feedback == type ? null : type;
+        Bridge.SaveNow();
+    }
+
+    /// Shows or hides `message` translated into the UI language (English when it already is).
+    public async Task ToggleTranslationAsync(ChatMessage message)
+    {
+        if (message.HasTranslation) { message.Translation = null; return; }
+        if (message.IsTranslating || string.IsNullOrWhiteSpace(message.Text)) return;
+        message.IsTranslating = true;
+        try
+        {
+            message.Translation = await Router.TranslateAsync(message.Text, LocalizationService.Current.Culture.EnglishName);
+        }
+        catch (Exception ex)
+        {
+            message.Translation = ex.Message;
+        }
+        finally
+        {
+            message.IsTranslating = false;
+        }
+    }
+
+    private System.Diagnostics.Process? _speech;
+    private ChatMessage? _speaking;
+
+    /// Reads `message` aloud with the OS voice (SAPI on Windows, speech-dispatcher/espeak-ng on Linux); a second call stops it.
+    public void ToggleSpeech(ChatMessage message)
+    {
+        var wasSpeaking = ReferenceEquals(_speaking, message);
+        StopSpeech();
+        var text = message.Text.Trim();
+        if (wasSpeaking || text.Length == 0) return;
+        if (text.Length > 8000) text = text[..8000];
+        var context = SynchronizationContext.Current;
+        foreach (var info in SpeechCommands(text))
+        {
+            try
+            {
+                var process = System.Diagnostics.Process.Start(info);
+                if (process is null) continue;
+                process.EnableRaisingEvents = true;
+                _speech = process;
+                _speaking = message;
+                message.IsSpeaking = true;
+                process.Exited += (_, _) =>
+                {
+                    void Done() { if (ReferenceEquals(_speech, process)) { _speech = null; _speaking = null; } message.IsSpeaking = false; }
+                    if (context is null) Done(); else context.Post(_ => Done(), null);
+                };
+                return;
+            }
+            catch (System.ComponentModel.Win32Exception) { }
+        }
+    }
+
+    private void StopSpeech()
+    {
+        var process = _speech;
+        var message = _speaking;
+        _speech = null;
+        _speaking = null;
+        if (message is not null) message.IsSpeaking = false;
+        try { if (process is { HasExited: false }) process.Kill(true); } catch (InvalidOperationException) { }
+    }
+
+    private static IEnumerable<System.Diagnostics.ProcessStartInfo> SpeechCommands(string text)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            var info = new System.Diagnostics.ProcessStartInfo("powershell") { CreateNoWindow = true, UseShellExecute = false };
+            info.ArgumentList.Add("-NoProfile");
+            info.ArgumentList.Add("-Command");
+            info.ArgumentList.Add("Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak($env:DOTS_SPEAK)");
+            info.Environment["DOTS_SPEAK"] = text;
+            yield return info;
+            yield break;
+        }
+        foreach (var (tool, wait) in new[] { ("spd-say", "-w"), ("espeak-ng", "") })
+        {
+            var info = new System.Diagnostics.ProcessStartInfo(tool) { UseShellExecute = false };
+            if (wait.Length > 0) info.ArgumentList.Add(wait);
+            info.ArgumentList.Add("--");
+            info.ArgumentList.Add(text);
+            yield return info;
+        }
+    }
+
     public void ApplyPlan()
     {
         if (Bridge.Connection is null || Bridge.Selected?.PendingPlanMessageId is null || Bridge.Selected.Running) return;

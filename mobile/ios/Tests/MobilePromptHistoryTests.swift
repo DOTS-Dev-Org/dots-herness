@@ -24,4 +24,42 @@ final class MobilePromptHistoryTests: XCTestCase {
         XCTAssertEqual(history.capture(prompt: "new", policy: "new policy", context: ""), "new")
         XCTAssertEqual(history.policy, "new policy")
     }
+
+    func testPromptCacheKeyIsStableForSamePrefixAndRotatesForNewSegments() {
+        let tools = [
+            AgentToolSpec(name: "read_file", description: "read", schema: ["type": "object"]) { _ in "" },
+            AgentToolSpec(name: "list_files", description: "list", schema: ["type": "object"]) { _ in "" },
+        ]
+        let fingerprint = MobilePromptCache.toolFingerprint(tools)
+        let first = MobilePromptCache.key(
+            conversationID: "conversation-1",
+            provider: "openai",
+            route: "openai-chat",
+            model: "gpt-4.1",
+            accountScope: "openai",
+            toolFingerprint: fingerprint,
+            contextSegment: 0
+        )
+        let same = MobilePromptCache.key(
+            conversationID: "conversation-1",
+            provider: "openai",
+            route: "openai-chat",
+            model: "gpt-4.1",
+            accountScope: "openai",
+            toolFingerprint: fingerprint,
+            contextSegment: 0
+        )
+        let compacted = MobilePromptCache.key(
+            conversationID: "conversation-1",
+            provider: "openai",
+            route: "openai-chat",
+            model: "gpt-4.1",
+            accountScope: "openai",
+            toolFingerprint: fingerprint,
+            contextSegment: 1
+        )
+        XCTAssertEqual(first, same)
+        XCTAssertNotEqual(first, compacted)
+        XCTAssertTrue(first.hasPrefix("herness:mobile-v1:"))
+    }
 }

@@ -232,6 +232,9 @@
   <data name="status.contextCompacting" xml:space="preserve"><value>Bağlam otomatik olarak sıkıştırılıyor…</value></data>
   <data name="status.contextCompacted" xml:space="preserve"><value>Bağlam sıkıştırıldı.</value></data>
   <data name="status.pressContinue" xml:space="preserve"><value>Bu mesajı devam ettirmek için Devam'a basın.</value></data>
+  <data name="media.generated" xml:space="preserve"><value>Görsel oluşturuldu.</value></data>
+  <data name="media.fallbackUsed" xml:space="preserve"><value>Seçili provider bu görseli üretemedi. Görsel {0}/{1} üzerinden tek seferlik fallback isteğiyle üretildi; ana sohbet provider'ı ve modeli değiştirilmedi, bu nedenle prompt cache'i korunuyor.</value></data>
+  <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>Bu görseli {0} ile üretemiyorum. Görsel API'si/provider'ını fallback olarak yapılandırın. Yalnızca görsel üretmek için ana sohbet modelini değiştirmek provider prompt cache'ini bozabilir.</value></data>
   <data name="conversation.used" xml:space="preserve"><value>Kullanılmış</value></data>
   <data name="conversation.changedFiles" xml:space="preserve"><value>Değiştirilen dosyalar</value></data>
   <data name="conversation.skills" xml:space="preserve"><value>Beceriler</value></data>
@@ -310,4 +313,11 @@
   <data name="modelPicker.effort.high" xml:space="preserve"><value>Yüksek</value></data>
   <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>Çok Yüksek</value></data>
   <data name="modelPicker.effort.max" xml:space="preserve"><value>Maksimum</value></data>
+  <data name="conversation.copy" xml:space="preserve"><value>Kopyala</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Düzenle</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Geri sar</value></data>
+  <data name="conversation.speakResponse" xml:space="preserve"><value>Yanıtı seslendir</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>İyi yanıt</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>Kötü yanıt</value></data>
+  <data name="conversation.translate" xml:space="preserve"><value>Çevir</value></data>
 </root>

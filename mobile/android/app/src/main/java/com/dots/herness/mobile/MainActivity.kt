@@ -8,6 +8,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.WindowCompat
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -121,7 +123,7 @@ private fun HerNessApp(initialPairUri: Uri? = null) {
         legal.load()
     }
     val git = remember { MobileGitClient({ client.workspaceRoot() }, { client.phoneSecret("oauth.github.access") }) }
-    val agent = remember { MobileHarnessRuntime({ client.phoneSecret("provider") }, { PHONE_AGENT_SYSTEM_PROMPT }, stateStore, { client.phoneSecret("oauth.openai.access") }, { client.phoneSecret("oauth.openai.account") }, { AgentTools.snapshot(client.workspaceRoot()) }, git) }
+    val agent = remember { MobileHarnessRuntime({ client.phoneSecret("provider") }, { PHONE_AGENT_SYSTEM_PROMPT }, stateStore, { client.phoneSecret("oauth.openai.access") }, { client.phoneSecret("oauth.openai.account") }, { AgentTools.snapshot(client.workspaceRoot()) }, git, context.applicationContext) }
     val githubOAuth = remember { GitHubOAuth(context.applicationContext) }
     val chatGPTOAuth = remember { ChatGPTOAuth(context.applicationContext) }
     val shell = remember { LocalShell { client.workspaceRoot() } }
@@ -581,8 +583,20 @@ private fun AgentTab(agent: MobileAgent) { LocalAgentScreen(agent) }
 @Composable
 private fun LocalAgentScreen(agent: MobileAgent) {
     var prompt by remember { mutableStateOf("") }
+    var draftAttachments by remember { mutableStateOf<List<MobileAttachment>>(emptyList()) }
     var questionAnswer by remember { mutableStateOf("") }
     var showModels by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        uris.forEach { uri ->
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            MobileAttachment.fromUri(context, uri)?.let { attachment ->
+                if (draftAttachments.none { it.sourceLocator == attachment.sourceLocator }) draftAttachments = draftAttachments + attachment
+            }
+        }
+    }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             TextButton({ showModels = true }) { Text(agent.model) }
@@ -636,14 +650,18 @@ private fun LocalAgentScreen(agent: MobileAgent) {
                 Text(event.kind + " " + (event.payload["preview"] ?: event.payload["text"].orEmpty()), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall)
             }
         }
+        if (draftAttachments.isNotEmpty()) {
+            Text("📎 " + draftAttachments.joinToString(", ") { it.displayName }, modifier = Modifier.padding(horizontal = 8.dp))
+        }
         Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton({ picker.launch(arrayOf("*/*")) }) { Text("Attach") }
             OutlinedTextField(prompt, { prompt = it }, Modifier.weight(1f), label = { Text(stringResource(R.string.mobile_agent_ask)) })
             if (agent.running) {
-                Button({ agent.send(prompt, "queue", agent.planMode); prompt = "" }, enabled = prompt.isNotBlank()) { Text(stringResource(R.string.mobile_agent_queue)) }
-                TextButton({ agent.send(prompt, "steer", agent.planMode); prompt = "" }, enabled = prompt.isNotBlank()) { Text(stringResource(R.string.conversation_steer)) }
+                Button({ agent.send(prompt, attachments = draftAttachments, mode = "queue", planMode = agent.planMode); prompt = ""; draftAttachments = emptyList() }, enabled = prompt.isNotBlank() || draftAttachments.isNotEmpty()) { Text(stringResource(R.string.mobile_agent_queue)) }
+                TextButton({ agent.send(prompt, attachments = draftAttachments, mode = "steer", planMode = agent.planMode); prompt = ""; draftAttachments = emptyList() }, enabled = prompt.isNotBlank() || draftAttachments.isNotEmpty()) { Text(stringResource(R.string.conversation_steer)) }
                 Button({ agent.cancel() }) { Text(stringResource(R.string.common_stop)) }
             } else {
-                Button({ agent.send(prompt, "queue", agent.planMode); prompt = "" }, enabled = prompt.isNotBlank()) { Text(stringResource(R.string.mobile_agent_send)) }
+                Button({ agent.send(prompt, attachments = draftAttachments, mode = "queue", planMode = agent.planMode); prompt = ""; draftAttachments = emptyList() }, enabled = prompt.isNotBlank() || draftAttachments.isNotEmpty()) { Text(stringResource(R.string.mobile_agent_send)) }
             }
         }
         agent.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 8.dp)) }

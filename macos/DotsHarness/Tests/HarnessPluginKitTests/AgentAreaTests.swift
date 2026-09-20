@@ -71,6 +71,74 @@ final class AgentAreaTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: legacyURL.path))
     }
 
+    func testExistingAreaFilesRepairOwnershipUsingCwdAndDoNotLeakIntoCoding() throws {
+        let paths = temporaryPaths()
+        let codingURL = paths.root.appendingPathComponent(AgentArea.coding.sessionFileName)
+        let chatURL = paths.root.appendingPathComponent(AgentArea.chat.sessionFileName)
+        let coding = Conversation(
+            id: "coding-session",
+            title: "Coding",
+            blank: false,
+            cwd: "/tmp/coding-project",
+            area: .coding
+        )
+        let chatWrittenAsCoding = Conversation(
+            id: "chat-session",
+            title: "Chat accidentally in coding store",
+            messages: [ChatMessage(kind: .user, text: "chat content")],
+            blank: false,
+            area: .coding
+        )
+        let codingWrittenAsChat = Conversation(
+            id: "coding-in-chat",
+            title: "Coding accidentally in chat store",
+            blank: false,
+            cwd: "/tmp/another-project",
+            area: .chat
+        )
+        try JSONEncoder().encode([coding, chatWrittenAsCoding]).write(to: codingURL)
+        try JSONEncoder().encode([codingWrittenAsChat]).write(to: chatURL)
+        try Data("{}".utf8).write(to: paths.root.appendingPathComponent("area-session-migration-v1.json"))
+
+        SessionAreaMigration.run(paths: paths)
+
+        let repairedCoding = try decodeConversations(at: codingURL)
+        let repairedChat = try decodeConversations(at: chatURL)
+        XCTAssertEqual(Set(repairedCoding.map(\.id)), ["coding-session", "coding-in-chat"])
+        XCTAssertEqual(Set(repairedChat.map(\.id)), ["chat-session"])
+        XCTAssertTrue(repairedCoding.contains { $0.id == "coding-in-chat" && $0.area == .coding })
+        XCTAssertTrue(repairedChat.allSatisfy { $0.area == .chat && $0.cwd == nil })
+        XCTAssertTrue(FileManager.default.fileExists(atPath: paths.root.appendingPathComponent("area-session-migration-v2.json").path))
+    }
+
+    func testAreaStoreDoesNotPreserveForeignRecordsWhenSaving() throws {
+        let paths = temporaryPaths()
+        let codingURL = paths.root.appendingPathComponent(AgentArea.coding.sessionFileName)
+        let codingConversation = Conversation(
+            id: "coding-session",
+            title: "Coding",
+            blank: false,
+            cwd: "/tmp/coding-project",
+            area: .coding
+        )
+        let chatConversation = Conversation(
+            id: "chat-session",
+            title: "Chat accidentally in coding store",
+            messages: [ChatMessage(kind: .user, text: "chat content")],
+            blank: false,
+            area: .coding
+        )
+        try JSONEncoder().encode([codingConversation, chatConversation]).write(to: codingURL)
+
+        let store = ConversationStore(paths: paths, fileName: AgentArea.coding.sessionFileName, area: .coding)
+        let visible = store.loadAll()
+        XCTAssertEqual(visible.map(\.id), ["coding-session"])
+        store.save(visible)
+
+        let repaired = try decodeConversations(at: codingURL)
+        XCTAssertEqual(repaired.map(\.id), ["coding-session"])
+    }
+
     func testCacheNamespaceSeparatesAreasAndContextRevisionsWithoutRawPaths() {
         let chat = AgentCacheNamespace.key(
             area: .chat,

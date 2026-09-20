@@ -309,4 +309,11 @@
   <data name="modelPicker.effort.high" xml:space="preserve"><value>உயர்</value></data>
   <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>கூடுதல் உயர்</value></data>
   <data name="modelPicker.effort.max" xml:space="preserve"><value>அதிகபட்சம்</value></data>
+  <data name="conversation.copy" xml:space="preserve"><value>நகலெடுக்கவும்</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>திருத்தவும்</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>ரீவைண்ட்</value></data>
+  <data name="conversation.speakResponse" xml:space="preserve"><value>பதில் பேசு</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>நல்ல பதில்</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>மோசமான பதில்</value></data>
+  <data name="conversation.translate" xml:space="preserve"><value>மொழிபெயர்</value></data>
 </root>

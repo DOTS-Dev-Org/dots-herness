@@ -1126,3 +1126,4 @@
 "slash.compactDetail" = "总结此聊天以释放上下文空间";
 "settings.compactTrigger" = "自动压缩上下文的阈值";
 "settings.compactTrigger.hint" = "占每个模型上下文窗口的比例。压缩会重写提示缓存，因此数值越高，缓存保留得越久。";
+"conversation.translate" = "翻译";

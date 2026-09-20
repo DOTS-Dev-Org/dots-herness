@@ -2,6 +2,7 @@
 // Durable conversations owned by the native harness.
 
 import Foundation
+import CryptoKit
 import UniformTypeIdentifiers
 import PluginRuntime
 
@@ -13,13 +14,48 @@ public struct ChatAttachment: Identifiable, Hashable, Sendable, Codable {
         case file
     }
 
+    public enum SourceStatus: String, Sendable, Codable, Equatable {
+        case current
+        case changed
+        case missing
+        case unreadable
+    }
+
+    public struct SourceObservation: Sendable, Equatable {
+        public let status: SourceStatus
+        public let currentHash: String?
+
+        public init(status: SourceStatus, currentHash: String? = nil) {
+            self.status = status
+            self.currentHash = currentHash
+        }
+    }
+
+    /// Stable identity for the logical attachment across source-file revisions.
+    /// It is optional only so path-only sessions written by older builds remain
+    /// decodable; new attachments always receive a UUID.
+    public let attachmentID: String?
     public let path: String
     public let kind: Kind
     public let mimeType: String
+    /// Immutable provider payload for image attachments. `path` remains the
+    /// user-visible source path; this is only used when constructing a request.
+    public let snapshotPath: String?
+    public let contentHash: String?
+    public let revision: Int
+    /// The hash most recently accepted into a provider request. Historical
+    /// attachments keep this equal to `contentHash`; a changed source does not
+    /// mutate the historical object.
+    public let deliveredHash: String?
 
-    public var id: String { path }
+    public var id: String { attachmentID ?? path }
     public var name: String { URL(fileURLWithPath: path).lastPathComponent }
     public var url: URL { URL(fileURLWithPath: path) }
+    public var providerURL: URL? {
+        guard let snapshotPath else { return url }
+        let snapshot = URL(fileURLWithPath: snapshotPath)
+        return FileManager.default.fileExists(atPath: snapshot.path) ? snapshot : nil
+    }
 
     public init?(url: URL) {
         var isDirectory = ObjCBool(false)
@@ -27,6 +63,7 @@ public struct ChatAttachment: Identifiable, Hashable, Sendable, Codable {
               FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
               !isDirectory.boolValue else { return nil }
         let type = UTType(filenameExtension: url.pathExtension)
+        attachmentID = UUID().uuidString
         path = url.standardizedFileURL.path
         if type?.conforms(to: .image) == true {
             kind = .image
@@ -38,12 +75,210 @@ public struct ChatAttachment: Identifiable, Hashable, Sendable, Codable {
             kind = .file
         }
         mimeType = type?.preferredMIMEType ?? "application/octet-stream"
+        snapshotPath = nil
+        contentHash = nil
+        revision = 0
+        deliveredHash = nil
     }
 
-    public init(path: String, kind: Kind, mimeType: String) {
+    public init(
+        path: String,
+        kind: Kind,
+        mimeType: String,
+        snapshotPath: String? = nil,
+        contentHash: String? = nil,
+        attachmentID: String? = UUID().uuidString,
+        revision: Int = 0,
+        deliveredHash: String? = nil
+    ) {
+        self.attachmentID = attachmentID
         self.path = path
         self.kind = kind
         self.mimeType = mimeType
+        self.snapshotPath = snapshotPath
+        self.contentHash = contentHash
+        self.revision = revision
+        self.deliveredHash = deliveredHash
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case attachmentID, path, kind, mimeType, snapshotPath, contentHash, revision, deliveredHash
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        attachmentID = try container.decodeIfPresent(String.self, forKey: .attachmentID)
+        path = try container.decode(String.self, forKey: .path)
+        kind = try container.decode(Kind.self, forKey: .kind)
+        mimeType = try container.decode(String.self, forKey: .mimeType)
+        snapshotPath = try container.decodeIfPresent(String.self, forKey: .snapshotPath)
+        contentHash = try container.decodeIfPresent(String.self, forKey: .contentHash)
+        revision = try container.decodeIfPresent(Int.self, forKey: .revision) ?? (contentHash == nil ? 0 : 1)
+        deliveredHash = try container.decodeIfPresent(String.self, forKey: .deliveredHash) ?? contentHash
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(attachmentID, forKey: .attachmentID)
+        try container.encode(path, forKey: .path)
+        try container.encode(kind, forKey: .kind)
+        try container.encode(mimeType, forKey: .mimeType)
+        try container.encodeIfPresent(snapshotPath, forKey: .snapshotPath)
+        try container.encodeIfPresent(contentHash, forKey: .contentHash)
+        try container.encode(revision, forKey: .revision)
+        try container.encodeIfPresent(deliveredHash, forKey: .deliveredHash)
+    }
+
+    /// Copies the bytes used by the provider into a content-addressed store.
+    /// The source path is intentionally retained for display and recovery, but
+    /// never re-read for an already snapshotted historical message.
+    public func snapshot(
+        in directory: URL,
+        revision requestedRevision: Int? = nil,
+        fileManager: FileManager = .default
+    ) -> ChatAttachment {
+        if let snapshotPath {
+            // Older records may already have a snapshot but no logical ID.  Adding
+            // the ID is metadata-only; the historical bytes remain untouched.
+            guard attachmentID == nil else { return self }
+            return ChatAttachment(
+                path: path,
+                kind: kind,
+                mimeType: mimeType,
+                snapshotPath: snapshotPath,
+                contentHash: contentHash,
+                attachmentID: UUID().uuidString,
+                revision: max(revision, 1),
+                deliveredHash: deliveredHash ?? contentHash
+            )
+        }
+        let folder = directory.standardizedFileURL
+        let temporary = folder.appendingPathComponent("." + UUID().uuidString + ".tmp")
+        do {
+            try fileManager.createDirectory(at: folder, withIntermediateDirectories: true)
+            var result: (hash: String, bytes: Int64)?
+            for _ in 0..<3 {
+                let before = try Self.sourceSignature(url)
+                let attempt = try Self.copyAndHash(source: url, temporary: temporary, fileManager: fileManager)
+                let after = try Self.sourceSignature(url)
+                if before == after {
+                    result = attempt
+                    break
+                }
+                try? fileManager.removeItem(at: temporary)
+            }
+            guard let result else { throw SourceError.changedDuringRead }
+            let hash = result.hash
+            let extensionName = url.pathExtension.isEmpty ? "bin" : url.pathExtension.lowercased()
+            let destination = folder.appendingPathComponent(hash + "." + extensionName)
+            if !fileManager.fileExists(atPath: destination.path) {
+                try fileManager.moveItem(at: temporary, to: destination)
+            } else {
+                try? fileManager.removeItem(at: temporary)
+            }
+            return ChatAttachment(
+                path: path,
+                kind: kind,
+                mimeType: mimeType,
+                snapshotPath: destination.path,
+                contentHash: hash,
+                attachmentID: attachmentID ?? UUID().uuidString,
+                revision: max(requestedRevision ?? max(revision, 1), 1),
+                deliveredHash: deliveredHash
+            )
+        } catch {
+            try? fileManager.removeItem(at: temporary)
+            return self
+        }
+    }
+
+    /// Creates a new immutable revision from the current source path without
+    /// touching the snapshot referenced by a historical message.
+    public func refreshedSnapshot(in directory: URL, fileManager: FileManager = .default) -> ChatAttachment {
+        let source = ChatAttachment(
+            path: path,
+            kind: kind,
+            mimeType: mimeType,
+            attachmentID: attachmentID,
+            revision: max(revision, 1) + 1
+        )
+        return source.snapshot(in: directory, revision: source.revision, fileManager: fileManager)
+    }
+
+    public func observeSource(fileManager: FileManager = .default) -> SourceObservation {
+        let baseline = deliveredHash ?? contentHash
+        // A path-only legacy record has no trustworthy historical bytes.  It is
+        // deliberately silent until the first successful baseline snapshot; a
+        // missing/unreadable legacy path must not be reported as a revision of
+        // bytes we never captured.
+        guard baseline != nil else {
+            guard fileManager.fileExists(atPath: path) else { return SourceObservation(status: .current) }
+            return (try? Self.hash(source: url)).map {
+                SourceObservation(status: .current, currentHash: $0)
+            } ?? SourceObservation(status: .current)
+        }
+        guard fileManager.fileExists(atPath: path) else {
+            return SourceObservation(status: .missing)
+        }
+        do {
+            let hash = try Self.hash(source: url)
+            return SourceObservation(status: baseline == hash ? .current : .changed, currentHash: hash)
+        } catch {
+            return SourceObservation(status: .unreadable)
+        }
+    }
+
+    private static func hash(source: URL) throws -> String {
+        for _ in 0..<3 {
+            let before = try sourceSignature(source)
+            let handle = try FileHandle(forReadingFrom: source)
+            var hasher = SHA256()
+            defer { try? handle.close() }
+            while let chunk = try handle.read(upToCount: 1024 * 1024), !chunk.isEmpty {
+                hasher.update(data: chunk)
+            }
+            let hash = hasher.finalize().map { String(format: "%02x", $0) }.joined()
+            let after = try sourceSignature(source)
+            if before == after { return hash }
+        }
+        throw SourceError.changedDuringRead
+    }
+
+    private static func copyAndHash(source: URL, temporary: URL, fileManager: FileManager) throws -> (hash: String, bytes: Int64) {
+        guard fileManager.fileExists(atPath: source.path) else { throw CocoaError(.fileNoSuchFile) }
+        fileManager.createFile(atPath: temporary.path, contents: nil)
+        let input = try FileHandle(forReadingFrom: source)
+        let output = try FileHandle(forWritingTo: temporary)
+        var hasher = SHA256()
+        var bytes: Int64 = 0
+        defer {
+            try? input.close()
+            try? output.close()
+        }
+        while let chunk = try input.read(upToCount: 1024 * 1024), !chunk.isEmpty {
+            hasher.update(data: chunk)
+            try output.write(contentsOf: chunk)
+            bytes += Int64(chunk.count)
+        }
+        try output.close()
+        let hash = hasher.finalize().map { String(format: "%02x", $0) }.joined()
+        return (hash, bytes)
+    }
+
+    private struct SourceSignature: Equatable {
+        let size: Int64
+        let modificationDate: Date?
+    }
+
+    private enum SourceError: Error {
+        case changedDuringRead
+    }
+
+    private static func sourceSignature(_ source: URL) throws -> SourceSignature {
+        let attributes = try FileManager.default.attributesOfItem(atPath: source.path)
+        let size = (attributes[.size] as? NSNumber)?.int64Value ?? -1
+        let modificationDate = attributes[.modificationDate] as? Date
+        return SourceSignature(size: size, modificationDate: modificationDate)
     }
 }
 
@@ -431,6 +666,19 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         return messages.max { $0.createdAt < $1.createdAt }?.createdAt ?? .distantPast
     }
 
+    /// The sidebar form of this record: everything but the transcript and provider context,
+    /// equal to what decoding it in headers-only mode would produce.
+    func headerCopy() -> Conversation {
+        var header = self
+        header.headerActivityAt = activityDate
+        header.messages = []
+        header.modelContext = []
+        header.pendingPrompts = []
+        header.runStartedAt = nil
+        header.contentLoaded = false
+        return header
+    }
+
     /// Copies the fields a user can change from the sidebar (header) onto a full record.
     public mutating func applyMetadata(from header: Conversation) {
         title = header.title
@@ -629,7 +877,7 @@ public final class ConversationStore: @unchecked Sendable {
               let all = try? JSONDecoder().decode([Conversation].self, from: data) else {
             return []
         }
-        let sorted = all.filter { area == nil || $0.area == area }.sorted { $0.id < $1.id }
+        let sorted = all.filter(belongsToConfiguredArea).sorted { $0.id < $1.id }
         cacheLock.lock()
         cache = (stamp, sorted)
         revisionValue += 1
@@ -661,7 +909,7 @@ public final class ConversationStore: @unchecked Sendable {
               let all = try? decoder.decode([Conversation].self, from: data) else {
             return []
         }
-        let sorted = all.filter { area == nil || $0.area == area }.sorted { $0.id < $1.id }
+        let sorted = all.filter(belongsToConfiguredArea).sorted { $0.id < $1.id }
         cacheLock.lock()
         headerCache = (stamp, sorted)
         revisionValue += 1
@@ -688,46 +936,128 @@ public final class ConversationStore: @unchecked Sendable {
         )
     }
 
-    public func save(_ conversations: [Conversation]) {
-        var existing: [Conversation] = []
-        if let data = try? Data(contentsOf: fileURL),
-           let decoded = try? JSONDecoder().decode([Conversation].self, from: data) {
-            existing = decoded
+    /// One stored conversation as its own JSON object. The file is kept in this form so a
+    /// save re-encodes only what changed instead of decoding and encoding every chat.
+    private struct RawEntry {
+        let id: String
+        let data: Data
+    }
+
+    /// The file as it stood after our last write (or last read), valid while its stamp matches.
+    private var rawCache: (stamp: FileStamp, entries: [RawEntry])?
+    /// Last encoding of each conversation, reused while it compares equal.
+    private var encodedCache: [String: (value: Conversation, data: Data)] = [:]
+    private let writeLock = NSLock()
+
+    private func encodedData(for conversation: Conversation) -> Data? {
+        if let cached = encodedCache[conversation.id], cached.value == conversation { return cached.data }
+        guard let data = try? JSONEncoder().encode(conversation) else { return nil }
+        encodedCache[conversation.id] = (conversation, data)
+        return data
+    }
+
+    /// The stored conversations as raw entries; from memory when the file is unchanged since
+    /// we last saw it, otherwise decoded from disk (another process may have written).
+    private func currentEntries(stamp: FileStamp) -> [RawEntry] {
+        cacheLock.lock()
+        let cached = rawCache
+        cacheLock.unlock()
+        if let cached, cached.stamp == stamp { return cached.entries }
+        guard let data = try? Data(contentsOf: fileURL) else { return [] }
+        guard let decoded = try? JSONDecoder().decode([Conversation].self, from: data) else {
+            // The save that follows rewrites the file from what is known now: keep the
+            // unreadable original instead of silently dropping it.
+            if !data.isEmpty {
+                try? data.write(to: fileURL.appendingPathExtension("corrupt"), options: .atomic)
+            }
+            return []
         }
+        return decoded.filter(belongsToConfiguredArea).compactMap { conversation in
+            encodedData(for: conversation).map { RawEntry(id: conversation.id, data: $0) }
+        }
+    }
+
+    public func save(_ conversations: [Conversation]) {
+        writeLock.lock()
+        defer { writeLock.unlock() }
+
+        let stampBefore = fileStamp()
+        let existing = currentEntries(stamp: stampBefore)
 
         // A header carries no transcript: keep the stored record, update its metadata.
-        let stored = Dictionary(existing.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let incoming = conversations.compactMap { conversation -> Conversation? in
-            guard !conversation.contentLoaded else { return conversation }
-            guard var full = stored[conversation.id] else { return nil }
-            full.applyMetadata(from: conversation)
-            return full
+        var incoming: [(conversation: Conversation, data: Data)] = []
+        for conversation in conversations where belongsToConfiguredArea(conversation) {
+            if conversation.contentLoaded {
+                guard let data = encodedData(for: conversation) else { return }
+                incoming.append((conversation, data))
+            } else {
+                guard let entry = existing.first(where: { $0.id == conversation.id }),
+                      var full = try? JSONDecoder().decode(Conversation.self, from: entry.data) else { continue }
+                full.applyMetadata(from: conversation)
+                guard let data = encodedData(for: full) else { return }
+                incoming.append((full, data))
+            }
         }
-        let ids = Set(incoming.map(\.id))
-        existing.removeAll { ids.contains($0.id) }
-        let merged = existing + incoming
-        guard let data = try? JSONEncoder().encode(merged) else { return }
+        let ids = Set(incoming.map { $0.conversation.id })
+        let merged = existing.filter { !ids.contains($0.id) }
+            + incoming.map { RawEntry(id: $0.conversation.id, data: $0.data) }
+
+        var body = Data()
+        body.reserveCapacity(merged.reduce(2) { $0 + $1.data.count + 1 })
+        body.append(UInt8(ascii: "["))
+        for (index, entry) in merged.enumerated() {
+            if index > 0 { body.append(UInt8(ascii: ",")) }
+            body.append(entry.data)
+        }
+        body.append(UInt8(ascii: "]"))
+
         try? fileManager.createDirectory(
             at: fileURL.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )
-        try? data.write(to: fileURL, options: .atomic)
+        guard (try? body.write(to: fileURL, options: .atomic)) != nil else {
+            cacheLock.lock()
+            rawCache = nil
+            cache = nil
+            headerCache = nil
+            revisionValue += 1
+            cacheLock.unlock()
+            return
+        }
+
+        let stampAfter = fileStamp()
         cacheLock.lock()
+        rawCache = (stampAfter, merged)
         cache = nil
-        headerCache = nil
+        // The header list follows the write instead of being decoded again on the next
+        // sidebar redraw (which happens on every change while a run is in progress).
+        if let headers = headerCache, headers.stamp == stampBefore {
+            var byID = Dictionary(headers.conversations.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            for (conversation, _) in incoming where belongsToConfiguredArea(conversation) {
+                byID[conversation.id] = conversation.headerCopy()
+            }
+            headerCache = (stampAfter, byID.values.sorted { $0.id < $1.id })
+        } else {
+            headerCache = nil
+        }
         revisionValue += 1
         cacheLock.unlock()
     }
 
     public func delete(_ conversationID: String) {
+        writeLock.lock()
+        defer { writeLock.unlock() }
         guard let data = try? Data(contentsOf: fileURL),
               var all = try? JSONDecoder().decode([Conversation].self, from: data) else {
             return
         }
+        all = all.filter(belongsToConfiguredArea)
         all.removeAll { $0.id == conversationID }
         guard let data = try? JSONEncoder().encode(all) else { return }
         try? data.write(to: fileURL, options: .atomic)
         cacheLock.lock()
+        rawCache = nil
+        encodedCache[conversationID] = nil
         cache = nil
         headerCache = nil
         revisionValue += 1
@@ -739,5 +1069,16 @@ public final class ConversationStore: @unchecked Sendable {
             return nil
         }
         return URL(fileURLWithPath: raw).standardizedFileURL.path
+    }
+
+    /// An area store is authoritative only for records that satisfy both parts
+    /// of the persisted ownership contract. The cwd check repairs the older
+    /// records that were written with the default `area = coding` while being
+    /// projectless Chat conversations.
+    private func belongsToConfiguredArea(_ conversation: Conversation) -> Bool {
+        guard let area else { return true }
+        guard conversation.area == area else { return false }
+        let hasWorkspace = Self.normalizedPath(conversation.cwd) != nil
+        return area == .chat ? !hasWorkspace : hasWorkspace
     }
 }

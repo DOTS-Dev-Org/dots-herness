@@ -248,6 +248,34 @@ final class ProviderRegistryTests: XCTestCase {
         XCTAssertTrue((content[2]["text"] as? String)?.contains("Attached file: notes.txt") == true)
     }
 
+    func testHistoricalAttachmentUsesSnapshotAfterSourceFileChanges() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("DotsHarnessAttachmentSnapshot-(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let imageURL = root.appendingPathComponent("reference.png")
+        try Data([1, 2, 3]).write(to: imageURL)
+        let attachment = try XCTUnwrap(ChatAttachment(url: imageURL))
+            .snapshot(in: root.appendingPathComponent("snapshots", isDirectory: true))
+        XCTAssertNotNil(attachment.snapshotPath)
+
+        // The source file is edited after the user already sent the image.
+        try Data([9, 8, 7]).write(to: imageURL)
+        let client = NativeAgentClient(configuration: AgentConfiguration(
+            baseURL: "https://example.test/v1", model: "m"
+        ))
+        let body = client.makeBody(
+            messages: [AgentMessage(role: .user, content: "Inspect", attachments: [attachment])],
+            tools: [],
+            cachePolicy: AgentCachePolicy()
+        )
+        let content = try XCTUnwrap((body["messages"] as? [[String: Any]])?.first?["content"] as? [[String: Any]])
+        let encoded = try XCTUnwrap((content[1]["image_url"] as? [String: String])?["url"])
+        XCTAssertTrue(encoded.hasSuffix("AQID"), "Historical prompt bytes must stay on the immutable snapshot")
+        XCTAssertFalse(encoded.hasSuffix("CQgH"), "An edited source file must be a new attachment, not a rewrite")
+    }
+
     func testToolCloakRoundTrips() {
         var body: [String: Any] = [
             "tools": [["name": "search_web", "description": "d", "input_schema": ["type": "object"]]],

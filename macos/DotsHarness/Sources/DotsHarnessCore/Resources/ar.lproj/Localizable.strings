@@ -1146,3 +1146,4 @@
 "slash.compactDetail" = "لخّص هذه المحادثة لتفريغ مساحة السياق";
 "settings.compactTrigger" = "ضغط السياق تلقائيًا عند";
 "settings.compactTrigger.hint" = "نسبة من نافذة سياق كل نموذج. القيمة الأعلى تُبقي ذاكرة التخزين المؤقت للموجّه فترة أطول لأن الضغط يعيد كتابتها.";
+"conversation.translate" = "ترجمة";

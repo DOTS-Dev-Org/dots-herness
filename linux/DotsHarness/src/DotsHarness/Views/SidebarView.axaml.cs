@@ -63,8 +63,8 @@ public partial class SidebarView : UserControl
         var selectedProjectId = Model.Selected?.ChatProjectId;
         ChatProjectList.SelectedItem = Model.ChatProjects.FirstOrDefault(project => project.Id == selectedProjectId);
         var conversations = Model.ActiveArea == AgentArea.Chat
-            ? Model.Bridge.Conversations.Where(item => item.ChatProjectId == selectedProjectId).ToList()
-            : Model.Bridge.Conversations.Where(item => SamePath(item.Cwd, Model.WorkspacePath)).ToList();
+            ? Model.Bridge.Conversations.Where(item => item.Area == AgentArea.Chat && item.ChatProjectId == selectedProjectId).ToList()
+            : Model.Bridge.Conversations.Where(item => item.Area == AgentArea.Coding && SamePath(item.Cwd, Model.WorkspacePath)).ToList();
         ChatList.ItemsSource = conversations;
         ChatList.SelectedItem = Model.Selected;
         NewButton.IsEnabled = Model.ActiveArea == AgentArea.Chat || !string.IsNullOrWhiteSpace(Model.WorkspacePath);

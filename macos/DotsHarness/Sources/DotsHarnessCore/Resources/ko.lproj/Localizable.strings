@@ -1126,3 +1126,4 @@
 "slash.compactDetail" = "이 채팅을 요약해 컨텍스트 공간 확보";
 "settings.compactTrigger" = "컨텍스트 자동 압축 기준";
 "settings.compactTrigger.hint" = "각 모델 컨텍스트 창에 대한 비율입니다. 압축은 프롬프트 캐시를 다시 쓰므로 값이 높을수록 캐시가 더 오래 유지됩니다.";
+"conversation.translate" = "번역";

@@ -1,5 +1,6 @@
 package com.dots.herness.mobile
 
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -42,6 +43,7 @@ class MobileHarnessRuntime(
     private val sessionAccountId: () -> String = { "" },
     private val workspaceSnapshotProvider: (() -> Map<String, String>)? = null,
     private val gitClient: MobileGitClient? = null,
+    private val appContext: Context? = null,
 ) {
     var transcript by mutableStateOf<List<AgentTurn>>(emptyList()); private set
     var running by mutableStateOf(false); private set
@@ -59,10 +61,12 @@ class MobileHarnessRuntime(
     private val tools = linkedMapOf<String, AgentToolSpec>()
     private val wire = mutableListOf<JSONObject>()
     private var promptHistory = MobilePromptHistory()
+    /** A compaction replaces the serialized prefix and starts a new cache segment. */
+    private var contextSegment = 0
     private val orderedTools get() = tools.values.sortedBy { it.name }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var job: Job? = null
-    private data class QueuedPrompt(val text: String, val mode: String, val planMode: Boolean)
+    private data class QueuedPrompt(val text: String, val attachments: List<MobileAttachment>, val mode: String, val planMode: Boolean)
     private data class PendingTool(val id: String, val name: String, val input: JSONObject)
     private val queuedPrompts = ArrayDeque<QueuedPrompt>()
     private var pendingTool: PendingTool? = null
@@ -77,11 +81,24 @@ class MobileHarnessRuntime(
     private var activeUnverifiedDeletion = false
     private var activeCleanupFailure = false
     private var activeTestStatus = "not_reported"
+    private val attachments = linkedMapOf<String, MobileAttachment>()
+    private var pendingLatestAttachment: MobileAttachment? = null
 
     init {
         // Every run can read what the other chats on this device did, so a shared
         // workspace mirror never gets one chat blaming another chat's edit on itself.
         stateStore?.let { store -> register(AgentTools.chats(store) { conversationId }) }
+        register(listOf(
+            AgentToolSpec(
+                "get_latest_attachment",
+                "Read the latest immutable source revision for an attachment after a revision notice. Call only when current bytes are needed.",
+                JSONObject()
+                    .put("type", "object")
+                    .put("properties", JSONObject().put("attachment_id", JSONObject().put("type", "string").put("description", "The stable attachment_id from the revision notice.")))
+                    .put("required", JSONArray().put("attachment_id"))
+                    .put("additionalProperties", false),
+            ) { input -> latestAttachmentResult(input) },
+        ))
     }
 
     fun register(specs: List<AgentToolSpec>) { specs.forEach { tools[it.name] = it } }
@@ -117,13 +134,25 @@ class MobileHarnessRuntime(
         stateStore?.finishRun(conversationId, "cancelled")
         emit("run.cancelled", mapOf("reason" to "user"))
     }
-    fun reset() { cancel(); wire.clear(); promptHistory = MobilePromptHistory(); transcript = emptyList(); conversationId = null; runtimeState = "idle" }
+    fun reset() {
+        cancel()
+        wire.clear()
+        attachments.clear()
+        pendingLatestAttachment = null
+        promptHistory = MobilePromptHistory()
+        contextSegment = 0
+        transcript = emptyList()
+        conversationId = null
+        runtimeState = "idle"
+    }
 
-    fun send(text: String, mode: String = "queue", planMode: Boolean = false) {
+    fun send(text: String, attachments: List<MobileAttachment> = emptyList(), mode: String = "queue", planMode: Boolean = false) {
         val prompt = text.trim()
-        if (prompt.isEmpty()) return
+        if (prompt.isEmpty() && attachments.isEmpty()) return
+        val stableAttachments = appContext?.let { context -> attachments.map { it.stabilized(context) } } ?: attachments
+        stableAttachments.forEach { this.attachments[it.attachmentId] = it }
         if (running) {
-            queuedPrompts.addLast(QueuedPrompt(prompt, mode, planMode))
+            queuedPrompts.addLast(QueuedPrompt(prompt, stableAttachments, mode, planMode))
             emit("prompt.queued", mapOf("mode" to mode, "planMode" to planMode.toString(), "text" to prompt))
             return
         }
@@ -131,10 +160,10 @@ class MobileHarnessRuntime(
             error = if (provider == "gpt") "Sign in with ChatGPT in Settings to run GPT on this phone." else "Add a provider API key in Settings to run the agent on this phone."
             return
         }
-        beginRun(prompt, mode, planMode)
+        beginRun(prompt, stableAttachments, mode, planMode)
     }
 
-    private fun beginRun(prompt: String, mode: String, planMode: Boolean) {
+    private fun beginRun(prompt: String, attachments: List<MobileAttachment> = emptyList(), mode: String, planMode: Boolean) {
         activeRunId = UUID.randomUUID().toString()
         activeTurnId = UUID.randomUUID().toString()
         activePlanMode = planMode
@@ -156,10 +185,11 @@ class MobileHarnessRuntime(
         else stateStore?.appendMessage(conversationId, "user", prompt)
         runtimeState = "running"
         emit("run.started", mapOf("mode" to mode, "planMode" to planMode.toString()))
-        transcript = transcript + AgentTurn("user", prompt)
-        emit("message.user", mapOf("text" to prompt))
+        val attachmentLabel = attachments.joinToString(", ") { it.displayName }
+        transcript = transcript + AgentTurn("user", listOf(prompt, attachmentLabel.takeIf { it.isNotEmpty() }?.let { "[Attachments: $it]" }).filterNotNull().filter { it.isNotEmpty() }.joinToString("\n"))
+        emit("message.user", mapOf("text" to prompt, "attachments" to attachments.size.toString()))
         val captured = promptHistory.capture(prompt, systemPrompt(), HerNessPrompt.pluginGuidance(pluginPrompt))
-        wire += JSONObject().put("role", "user").put("content", JSONArray().put(JSONObject().put("type", "text").put("text", captured)))
+        wire += canonicalUserMessage(captured, attachments)
         persistModelContext()
         running = true
         job = scope.launch { runLoop() }
@@ -326,7 +356,7 @@ class MobileHarnessRuntime(
             running = false
             if (runtimeState == "completed" && queuedPrompts.isNotEmpty()) {
                 val next = queuedPrompts.removeFirst()
-                beginRun(next.text, next.mode, next.planMode)
+                beginRun(next.text, next.attachments, next.mode, next.planMode)
             }
         }
     }
@@ -346,11 +376,102 @@ class MobileHarnessRuntime(
         transcript = transcript + AgentTurn("tool", output.first, name)
         stateStore?.appendMessage(conversationId, "tool", output.first, name)
         emit("tool.finished", mapOf("name" to name, "callId" to id, "isError" to output.second.toString()))
-        return JSONObject()
+        val result = JSONObject()
             .put("type", "tool_result")
             .put("tool_use_id", id)
             .put("content", output.first.take(MAXIMUM_TOOL_RESULT_CHARACTERS))
             .put("is_error", output.second)
+        pendingLatestAttachment?.let {
+            result.put("attachment", it.canonicalBlock())
+            pendingLatestAttachment = null
+        }
+        return result
+    }
+
+    private fun canonicalUserMessage(text: String, attachments: List<MobileAttachment>): JSONObject = JSONObject().apply {
+        put("role", "user")
+        val content = JSONArray().put(JSONObject().put("type", "text").put("text", text))
+        attachments.forEach { content.put(it.canonicalBlock()) }
+        put("content", content)
+    }
+
+    private suspend fun latestAttachmentResult(input: JSONObject): String {
+        val id = input.optString("attachment_id").takeIf { it.isNotBlank() }
+            ?: return "attachment_not_found\nhistorical_revision_preserved\nlatest_revision_unavailable"
+        val current = attachments[id]
+            ?: return "attachment_not_found\nhistorical_revision_preserved\nlatest_revision_unavailable"
+        val context = appContext
+            ?: return "source_unreadable\nhistorical_revision_preserved\nlatest_revision_unavailable\nattachment_id: $id"
+        val observation = current.observe(context)
+        when (observation.status) {
+            MobileAttachmentSourceStatus.MISSING -> return "source_missing\nhistorical_revision_preserved\nlatest_revision_unavailable\nattachment_id: $id"
+            MobileAttachmentSourceStatus.UNREADABLE -> return "source_unreadable\nhistorical_revision_preserved\nlatest_revision_unavailable\nattachment_id: $id"
+            MobileAttachmentSourceStatus.CURRENT -> if (current.snapshotPath != null && current.contentHash == observation.currentHash) {
+                pendingLatestAttachment = current
+                return "latest_revision_current\nattachment_id: $id\nrevision: V${maxOf(current.revision, 1)}\ncontent_hash: ${current.contentHash.orEmpty()}"
+            }
+            MobileAttachmentSourceStatus.CHANGED -> Unit
+        }
+        val latest = current.refreshed(context)
+        if (latest.snapshotPath == null || latest.contentHash == null || latest.contentHash != observation.currentHash || latest.providerData() == null) {
+            return "source_unreadable\nhistorical_revision_preserved\nlatest_revision_unavailable\nattachment_id: $id"
+        }
+        attachments[id] = latest
+        pendingLatestAttachment = latest
+        return "latest_revision_created\nattachment_id: $id\nrevision: V${latest.revision}\ncontent_hash: ${latest.contentHash}"
+    }
+
+    private fun attachmentRevisionNotice(): String? {
+        val notices = attachments.values.sortedBy { it.attachmentId }.mapNotNull { attachment ->
+            val context = appContext ?: return@mapNotNull null
+            val observation = attachment.observe(context)
+            val status = when (observation.status) {
+                MobileAttachmentSourceStatus.CURRENT -> return@mapNotNull null
+                MobileAttachmentSourceStatus.CHANGED -> "changed"
+                MobileAttachmentSourceStatus.MISSING -> "missing"
+                MobileAttachmentSourceStatus.UNREADABLE -> "unreadable"
+            }
+            val detail = when (observation.status) {
+                MobileAttachmentSourceStatus.MISSING -> "source_missing\nhistorical_revision_preserved\nlatest_revision_unavailable"
+                MobileAttachmentSourceStatus.UNREADABLE -> "source_unreadable\nhistorical_revision_preserved\nlatest_revision_unavailable"
+                else -> "The source file changed. The historical V1 bytes remain immutable and must not be treated as current."
+            }
+            "[Attachment revision notice]\nattachment_id: ${attachment.attachmentId}\nname: ${attachment.displayName}\nrevision: V${maxOf(attachment.revision, 1) + 1}\nstatus: $status\n$detail\nIf current content is needed, call get_latest_attachment with {\"attachment_id\":\"${attachment.attachmentId}\"}. Do not infer missing or unreadable bytes."
+        }
+        return notices.takeIf { it.isNotEmpty() }?.joinToString("\n\n")
+    }
+
+    private fun wireForRequest(): List<JSONObject> {
+        val copies = wire.map { JSONObject(it.toString()) }.toMutableList()
+        val notice = attachmentRevisionNotice() ?: return copies
+        val index = copies.indexOfLast { message ->
+            if (message.optString("role") != "user") return@indexOfLast false
+            val content = message.optJSONArray("content") ?: return@indexOfLast false
+            (0 until content.length()).any { content.optJSONObject(it)?.optString("type") != "tool_result" }
+        }
+        if (index < 0) return copies
+        val content = copies[index].optJSONArray("content") ?: JSONArray()
+        content.put(0, JSONObject().put("type", "text").put("text", notice))
+        copies[index].put("content", content)
+        return copies
+    }
+
+    private fun markDelivered() {
+        attachments.toMap().forEach { (id, attachment) ->
+            val hash = attachment.contentHash ?: return@forEach
+            if (attachment.snapshotPath == null || attachment.deliveredHash == hash) return@forEach
+            attachments[id] = attachment.copy(deliveredHash = hash, sourceStatus = MobileAttachmentSourceStatus.CURRENT)
+        }
+        wire.forEach { message ->
+            val content = message.optJSONArray("content") ?: return@forEach
+            for (index in 0 until content.length()) {
+                val block = content.optJSONObject(index) ?: continue
+                val attachment = if (block.optString("type") == "attachment") block else block.optJSONObject("attachment")
+                val id = attachment?.optString("attachment_id").orEmpty()
+                val hash = attachments[id]?.deliveredHash
+                if (attachment != null && id.isNotEmpty() && hash != null) attachment.put("delivered_hash", hash)
+            }
+        }
     }
 
     private fun blockedInPlanMode(name: String): Boolean =
@@ -410,12 +531,91 @@ class MobileHarnessRuntime(
     private suspend fun complete(): JSONObject {
         compactContextIfNeeded()
         emit("provider.request", mapOf("provider" to provider, "model" to model))
-        return when (provider) {
+        val response = when (provider) {
             "anthropic" -> completeAnthropic()
             "openai-responses" -> completeOpenAIResponses()
             "gpt" -> completeChatGPT()
             else -> completeOpenAI()
         }
+        markDelivered()
+        return response
+    }
+
+    private fun attachmentBlock(block: JSONObject, format: String): JSONObject {
+        val id = block.optString("attachment_id", "unknown")
+        val attachment = attachments[id]
+        val data = attachment?.providerData()
+        if (attachment == null || data == null) {
+            return JSONObject().put("type", if (format == "responses") "input_text" else "text")
+                .put("text", "source_missing: attachment_id $id; historical_revision_preserved; latest_revision_unavailable")
+        }
+        val base64 = android.util.Base64.encodeToString(data, android.util.Base64.NO_WRAP)
+        val document = attachment.kind == MobileAttachmentKind.FILE &&
+            (attachment.mimeType == "application/pdf" || attachment.mimeType.startsWith("text/") || attachment.mimeType == "application/json")
+        return when (format) {
+            "anthropic" -> when {
+                attachment.kind == MobileAttachmentKind.IMAGE -> JSONObject().put("type", "image").put("source", JSONObject().put("type", "base64").put("media_type", attachment.mimeType).put("data", base64))
+                document && attachment.mimeType == "application/pdf" -> JSONObject().put("type", "document").put("source", JSONObject().put("type", "base64").put("media_type", attachment.mimeType).put("data", base64))
+                else -> unsupportedAttachmentBlock(attachment, format)
+            }
+            "responses" -> when {
+                attachment.kind == MobileAttachmentKind.IMAGE -> JSONObject().put("type", "input_image").put("image_url", "data:${attachment.mimeType};base64,$base64")
+                document -> JSONObject().put("type", "input_file").put("filename", attachment.displayName).put("file_data", "data:${attachment.mimeType};base64,$base64")
+                else -> unsupportedAttachmentBlock(attachment, format)
+            }
+            else -> when {
+                attachment.kind == MobileAttachmentKind.IMAGE -> JSONObject().put("type", "image_url").put("image_url", JSONObject().put("url", "data:${attachment.mimeType};base64,$base64"))
+                document -> JSONObject().put("type", "file").put("file", JSONObject().put("filename", attachment.displayName).put("file_data", "data:${attachment.mimeType};base64,$base64"))
+                else -> unsupportedAttachmentBlock(attachment, format)
+            }
+        }
+    }
+
+    private fun unsupportedAttachmentBlock(attachment: MobileAttachment, format: String): JSONObject = JSONObject()
+        .put("type", if (format == "responses") "input_text" else "text")
+        .put("text", "unsupported_attachment_kind: ${attachment.kind.name.lowercase()}; attachment_id: ${attachment.attachmentId}; name: ${attachment.displayName}. The host did not silently drop this attachment, but this provider route does not support its wire format.")
+
+    private fun anthropicMessages(): JSONArray {
+        val result = JSONArray()
+        wireForRequest().forEach { message ->
+            val role = message.optString("role")
+            val content = message.optJSONArray("content") ?: JSONArray()
+            if (role == "assistant") {
+                val blocks = JSONArray()
+                for (index in 0 until content.length()) {
+                    val block = content.optJSONObject(index) ?: continue
+                    if (block.optString("type") == "text" || block.optString("type") == "tool_use") blocks.put(block)
+                }
+                result.put(JSONObject().put("role", "assistant").put("content", blocks))
+            } else {
+                val results = (0 until content.length()).mapNotNull { content.optJSONObject(it)?.takeIf { block -> block.optString("type") == "tool_result" } }
+                if (results.isNotEmpty()) {
+                    val blocks = JSONArray()
+                    results.forEach { item ->
+                        val tool = JSONObject()
+                            .put("type", "tool_result")
+                            .put("tool_use_id", item.optString("tool_use_id", "tool"))
+                            .put("content", item.optString("content"))
+                        item.optJSONObject("attachment")?.let { attachment ->
+                            tool.put("content", JSONArray().put(JSONObject().put("type", "text").put("text", item.optString("content"))).put(attachmentBlock(attachment, "anthropic")))
+                        }
+                        blocks.put(tool)
+                    }
+                    result.put(JSONObject().put("role", "user").put("content", blocks))
+                } else {
+                    val blocks = JSONArray()
+                    for (index in 0 until content.length()) {
+                        val block = content.optJSONObject(index) ?: continue
+                        when (block.optString("type")) {
+                            "text" -> blocks.put(block)
+                            "attachment" -> blocks.put(attachmentBlock(block, "anthropic"))
+                        }
+                    }
+                    result.put(JSONObject().put("role", "user").put("content", blocks))
+                }
+            }
+        }
+        return result
     }
 
     private suspend fun completeAnthropic(): JSONObject = withContext(Dispatchers.IO) {
@@ -423,8 +623,9 @@ class MobileHarnessRuntime(
             .put("model", model)
             .put("max_tokens", 8192)
             .put("system", promptHistory.policy.orEmpty())
-            .put("messages", JSONArray(wire))
+            .put("messages", anthropicMessages())
         if (tools.isNotEmpty()) body.put("tools", JSONArray(orderedTools.map { it.wire() }))
+        applyAnthropicCacheBreakpoints(body)
 
         val response = providerRequest("https://api.anthropic.com/v1/messages", body, apiKey(), mapOf("x-api-key" to apiKey(), "anthropic-version" to "2023-06-01"))
         val status = response.status
@@ -442,6 +643,7 @@ class MobileHarnessRuntime(
             .put("model", model)
             .put("max_completion_tokens", 8192)
             .put("messages", openAiMessages())
+            .put("prompt_cache_key", promptCacheKey("openai-chat"))
         if (definitions.length() > 0) body.put("tools", definitions)
         val response = providerRequest("https://api.openai.com/v1/chat/completions", body, apiKey(), emptyMap())
         val status = response.status
@@ -490,6 +692,7 @@ class MobileHarnessRuntime(
             .put("input", responsesInput())
             .put("store", false)
             .put("stream", false)
+            .put("prompt_cache_key", promptCacheKey(if (providerName == "gpt") "chatgpt-responses" else "openai-responses"))
         if (tools.isNotEmpty()) {
             body.put("tools", JSONArray(orderedTools.map { JSONObject().put("type", "function").put("name", it.name).put("description", it.description).put("parameters", it.schema) }))
         }
@@ -518,19 +721,93 @@ class MobileHarnessRuntime(
         JSONObject().put("content", blocks)
     }
 
+    private fun promptCacheKey(route: String): String {
+        val account = sessionAccountId().trim()
+        return MobilePromptCache.key(
+            conversationId = conversationId,
+            provider = provider,
+            route = route,
+            model = model,
+            accountScope = account.ifBlank { provider },
+            toolFingerprint = MobilePromptCache.toolFingerprint(orderedTools),
+            contextSegment = contextSegment,
+        )
+    }
+
+    /**
+     * Anthropic caches the prefix ending at explicit cache_control breakpoints.
+     * Work on cloned JSON objects so provider metadata never enters the
+     * durable append-only transcript.
+     */
+    private fun applyAnthropicCacheBreakpoints(body: JSONObject) {
+        val ephemeral = JSONObject().put("type", "ephemeral")
+        val policy = body.optString("system")
+        if (policy.isNotEmpty()) {
+            body.put("system", JSONArray().put(JSONObject()
+                .put("type", "text")
+                .put("text", policy)
+                .put("cache_control", JSONObject(ephemeral.toString()))))
+        }
+
+        body.optJSONArray("tools")?.let { tools ->
+            if (tools.length() > 0) {
+                val copy = JSONArray()
+                for (index in 0 until tools.length()) {
+                    val tool = JSONObject(tools.optJSONObject(index)?.toString() ?: "{}")
+                    if (index == tools.length() - 1) tool.put("cache_control", JSONObject(ephemeral.toString()))
+                    copy.put(tool)
+                }
+                body.put("tools", copy)
+            }
+        }
+
+        body.optJSONArray("messages")?.let { messages ->
+            val copy = JSONArray()
+            for (index in 0 until messages.length()) {
+                val message = JSONObject(messages.optJSONObject(index)?.toString() ?: "{}")
+                if (index == messages.length() - 1) {
+                    val content = message.optJSONArray("content")
+                    if (content != null && content.length() > 0) {
+                        val blocks = JSONArray()
+                        for (blockIndex in 0 until content.length()) {
+                            val block = JSONObject(content.optJSONObject(blockIndex)?.toString() ?: "{}")
+                            if (blockIndex == content.length() - 1) block.put("cache_control", JSONObject(ephemeral.toString()))
+                            blocks.put(block)
+                        }
+                        message.put("content", blocks)
+                    } else {
+                        val text = message.optString("content")
+                        if (text.isNotEmpty()) message.put("content", JSONArray().put(JSONObject()
+                            .put("type", "text")
+                            .put("text", text)
+                            .put("cache_control", JSONObject(ephemeral.toString()))))
+                    }
+                }
+                copy.put(message)
+            }
+            body.put("messages", copy)
+        }
+    }
+
     private fun responsesInput(): JSONArray {
         val result = JSONArray()
-        wire.forEach { message ->
+        wireForRequest().forEach { message ->
             val role = message.optString("role")
             val content = message.optJSONArray("content") ?: JSONArray()
             if (role == "user") {
                 val results = (0 until content.length()).mapNotNull { content.optJSONObject(it)?.takeIf { item -> item.optString("type") == "tool_result" } }
                 if (results.isEmpty()) {
-                    val text = JSONArray()
-                    for (index in 0 until content.length()) content.optJSONObject(index)?.optString("text")?.takeIf(String::isNotEmpty)?.let { text.put(JSONObject().put("type", "input_text").put("text", it)) }
-                    result.put(JSONObject().put("role", "user").put("content", text))
+                    val blocks = JSONArray()
+                    for (index in 0 until content.length()) {
+                        val block = content.optJSONObject(index) ?: continue
+                        blocks.put(if (block.optString("type") == "attachment") attachmentBlock(block, "responses") else JSONObject().put("type", "input_text").put("text", block.optString("text")))
+                    }
+                    result.put(JSONObject().put("role", "user").put("content", blocks))
                 } else {
-                    results.forEach { item -> result.put(JSONObject().put("type", "function_call_output").put("call_id", item.optString("tool_use_id", "tool")).put("output", item.optString("content"))) }
+                    results.forEach { item ->
+                        result.put(JSONObject().put("type", "function_call_output").put("call_id", item.optString("tool_use_id", "tool")).put("output", item.optString("content")))
+                        item.optJSONObject("attachment")?.let { attachment -> result.put(JSONObject().put("role", "user").put("content", JSONArray().put(attachmentBlock(attachment, "responses")))) }
+                    }
                 }
             } else if (role == "assistant") {
                 val text = (0 until content.length()).mapNotNull { content.optJSONObject(it)?.takeIf { item -> item.optString("type") == "text" }?.optString("text") }.joinToString("\n")
@@ -570,7 +847,7 @@ class MobileHarnessRuntime(
 
     private fun openAiMessages(): JSONArray {
         val result = JSONArray().put(JSONObject().put("role", "system").put("content", promptHistory.policy.orEmpty()))
-        wire.forEach { message ->
+        wireForRequest().forEach { message ->
             val role = message.optString("role")
             val blocks = message.optJSONArray("content") ?: JSONArray()
             when (role) {
@@ -589,9 +866,17 @@ class MobileHarnessRuntime(
                 "user" -> {
                     val toolResults = (0 until blocks.length()).mapNotNull { blocks.optJSONObject(it)?.takeIf { block -> block.optString("type") == "tool_result" } }
                     if (toolResults.isEmpty()) {
-                        result.put(JSONObject().put("role", "user").put("content", (0 until blocks.length()).mapNotNull { blocks.optJSONObject(it)?.optString("text") }.joinToString("\n")))
+                        val providerBlocks = JSONArray()
+                        for (index in 0 until blocks.length()) {
+                            val block = blocks.optJSONObject(index) ?: continue
+                            providerBlocks.put(if (block.optString("type") == "attachment") attachmentBlock(block, "openai") else JSONObject().put("type", "text").put("text", block.optString("text")))
+                        }
+                        result.put(JSONObject().put("role", "user").put("content", providerBlocks))
                     } else {
-                        toolResults.forEach { block -> result.put(JSONObject().put("role", "tool").put("tool_call_id", block.optString("tool_use_id")).put("content", block.optString("content"))) }
+                        toolResults.forEach { block ->
+                            result.put(JSONObject().put("role", "tool").put("tool_call_id", block.optString("tool_use_id")).put("content", block.optString("content")))
+                            block.optJSONObject("attachment")?.let { attachment -> result.put(JSONObject().put("role", "user").put("content", JSONArray().put(attachmentBlock(attachment, "openai")))) }
+                        }
                     }
                 }
             }
@@ -612,6 +897,7 @@ class MobileHarnessRuntime(
         kept += wire.drop(1).takeLast(12)
         wire.clear()
         wire.addAll(kept)
+        contextSegment += 1
         val compacted = JSONArray(wire).toString()
         persistModelContext()
         emit("context.compacted", mapOf("bytes" to encoded.toByteArray().size.toString(), "keptBytes" to compacted.toByteArray().size.toString()))

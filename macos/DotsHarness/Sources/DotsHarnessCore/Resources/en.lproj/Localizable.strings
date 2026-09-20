@@ -861,6 +861,8 @@
 "media.unsupported" = "I can't generate this here. The selected provider does not have this capability.";
 "media.unsupportedStatus" = "Media generation is not supported by the selected provider.";
 "media.generated" = "%@ generated.";
+"media.fallbackUsed" = "The selected provider could not generate this image. It was generated through a one-shot fallback request via %@/%@; the main conversation provider and model were not changed, so its prompt cache remains intact.";
+"media.imageUnsupportedWithFallbackHint" = "I can't generate this image with %@. Configure an image API/provider as a fallback. Switching the main chat model just for image generation can break the provider prompt cache.";
 "media.fileMissing" = "The generated file is no longer available.";
 "media.openAudio" = "Open generated audio";
 "media.save" = "Save";
@@ -1162,3 +1164,4 @@
 "dock.openFile" = "Open file";
 "dock.selectFile" = "Select a file from the workspace tree";
 "dock.binaryFile" = "Binary or unreadable file";
+"conversation.translate" = "Translate";

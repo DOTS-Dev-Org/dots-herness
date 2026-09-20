@@ -232,6 +232,9 @@
   <data name="status.contextCompacting" xml:space="preserve"><value>Context automatically compacting…</value></data>
   <data name="status.contextCompacted" xml:space="preserve"><value>Context compacted.</value></data>
   <data name="status.pressContinue" xml:space="preserve"><value>Press Continue to resume this message.</value></data>
+  <data name="media.generated" xml:space="preserve"><value>Image generated.</value></data>
+  <data name="media.fallbackUsed" xml:space="preserve"><value>The selected provider could not generate this image. It was generated through a one-shot fallback request via {0}/{1}; the main conversation provider and model were not changed, so its prompt cache remains intact.</value></data>
+  <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>I can't generate this image with {0}. Configure an image API/provider as a fallback. Switching the main chat model just for image generation can break the provider prompt cache.</value></data>
   <data name="conversation.used" xml:space="preserve"><value>Used</value></data>
   <data name="conversation.changedFiles" xml:space="preserve"><value>Changed files</value></data>
   <data name="conversation.skills" xml:space="preserve"><value>Skills</value></data>
@@ -310,4 +313,11 @@
   <data name="modelPicker.effort.high" xml:space="preserve"><value>High</value></data>
   <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>Extra High</value></data>
   <data name="modelPicker.effort.max" xml:space="preserve"><value>Max</value></data>
+  <data name="conversation.copy" xml:space="preserve"><value>Copy</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Rewind</value></data>
+  <data name="conversation.speakResponse" xml:space="preserve"><value>Speak response</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>Good response</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>Bad response</value></data>
+  <data name="conversation.translate" xml:space="preserve"><value>Translate</value></data>
 </root>

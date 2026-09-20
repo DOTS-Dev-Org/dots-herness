@@ -24,6 +24,8 @@ struct ConversationView: View {
     @State private var expandedUsedMessageIDs = Set<String>()
     @State private var expandedThinkingMessageIDs = Set<String>()
     @State private var hoveredMessageID: String?
+    @State private var translations: [String: String] = [:]
+    @State private var translating: Set<String> = []
     @ObservedObject private var startupGate = StartupGate.shared
     /// Long chats render the newest page first; older pages load as the user
     /// scrolls up. UI only: the agent always reads the full conversation.
@@ -510,6 +512,7 @@ struct ConversationView: View {
                 usedItemsDisclosure(for: message)
                 runSummaryView(for: message)
                 changedFilesDisclosure(for: message)
+                translationText(message, alignment: .leading)
                 messageActions(message, in: conversation)
                 if isPending {
                     HStack {
@@ -595,6 +598,7 @@ struct ConversationView: View {
                         mediaView(media)
                     }
                 }
+                translationText(message, alignment: isUser ? .trailing : .leading)
                 messageActions(message, in: conversation)
             }
             .padding(.vertical, 4)
@@ -640,6 +644,14 @@ struct ConversationView: View {
                         model.toggleSpeech(message.text, messageID: message.id)
                     }
                 }
+                if hasText {
+                    if translating.contains(message.id) {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        actionButton("globe", AppCopy.text("conversation.translate")) { toggleTranslation(message) }
+                            .foregroundStyle(translations[message.id] == nil ? Color.secondary : Color.accentColor)
+                    }
+                }
                 if canFeedback {
                     feedbackButton(type: .good, selected: feedback?.feedbackType == .good, message: message, conversation: conversation)
                     feedbackButton(type: .bad, selected: feedback?.feedbackType == .bad, message: message, conversation: conversation)
@@ -650,6 +662,29 @@ struct ConversationView: View {
             .foregroundStyle(.secondary)
             .padding(.top, 2)
             .opacity(hoveredMessageID == message.id ? 1 : 0.55)
+        }
+    }
+
+    @ViewBuilder
+    private func translationText(_ message: ChatMessage, alignment: Alignment) -> some View {
+        if let text = translations[message.id] {
+            Text(text)
+                .textSelection(.enabled)
+                .multilineTextAlignment(alignment == .trailing ? .trailing : .leading)
+                .frame(maxWidth: .infinity, alignment: alignment)
+        }
+    }
+
+    private func toggleTranslation(_ message: ChatMessage) {
+        if translations.removeValue(forKey: message.id) != nil { return }
+        translating.insert(message.id)
+        Task { @MainActor in
+            defer { translating.remove(message.id) }
+            do {
+                translations[message.id] = try await model.translate(message.text)
+            } catch {
+                translations[message.id] = error.localizedDescription
+            }
         }
     }
 

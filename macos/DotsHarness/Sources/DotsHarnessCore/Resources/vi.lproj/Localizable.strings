@@ -1146,3 +1146,4 @@
 "slash.compactDetail" = "Tóm tắt cuộc trò chuyện này để giải phóng không gian ngữ cảnh";
 "settings.compactTrigger" = "Tự động nén ngữ cảnh ở mức";
 "settings.compactTrigger.hint" = "Tỷ lệ trên cửa sổ ngữ cảnh của từng mô hình. Giá trị cao hơn giữ bộ nhớ đệm prompt lâu hơn, vì việc nén sẽ ghi lại bộ nhớ đệm.";
+"conversation.translate" = "Dịch";

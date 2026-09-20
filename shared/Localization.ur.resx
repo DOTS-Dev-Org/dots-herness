@@ -309,4 +309,11 @@
   <data name="modelPicker.effort.high" xml:space="preserve"><value>اعلی</value></data>
   <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>اضافی اعلی</value></data>
   <data name="modelPicker.effort.max" xml:space="preserve"><value>زیادہ سے زیادہ</value></data>
+  <data name="conversation.copy" xml:space="preserve"><value>کاپی</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>ترمیم کریں۔</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>ریوائنڈ</value></data>
+  <data name="conversation.speakResponse" xml:space="preserve"><value>جواب بولیں۔</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>اچھا جواب</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>خراب جواب</value></data>
+  <data name="conversation.translate" xml:space="preserve"><value>ترجمہ کریں</value></data>
 </root>

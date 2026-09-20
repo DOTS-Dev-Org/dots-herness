@@ -310,4 +310,11 @@
   <data name="modelPicker.effort.high" xml:space="preserve"><value>高</value></data>
   <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>エクストラハイ</value></data>
   <data name="modelPicker.effort.max" xml:space="preserve"><value>マックス</value></data>
+  <data name="conversation.copy" xml:space="preserve"><value>コピー</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>編集</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>巻き戻し</value></data>
+  <data name="conversation.speakResponse" xml:space="preserve"><value>回答を読み上げ</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>良い回答</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>悪い回答</value></data>
+  <data name="conversation.translate" xml:space="preserve"><value>翻訳</value></data>
 </root>

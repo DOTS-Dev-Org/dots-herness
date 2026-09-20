@@ -1126,3 +1126,4 @@
 "slash.compactDetail" = "Vat deze chat samen om contextruimte vrij te maken";
 "settings.compactTrigger" = "Context automatisch comprimeren bij";
 "settings.compactTrigger.hint" = "Aandeel van het contextvenster van elk model. Een hogere waarde houdt de promptcache langer intact, omdat comprimeren die herschrijft.";
+"conversation.translate" = "Vertalen";

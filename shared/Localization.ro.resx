@@ -309,4 +309,11 @@
   <data name="modelPicker.effort.high" xml:space="preserve"><value>Înalt</value></data>
   <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>Extra mare</value></data>
   <data name="modelPicker.effort.max" xml:space="preserve"><value>Max</value></data>
+  <data name="conversation.copy" xml:space="preserve"><value>Copiere</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Editați</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Derulează înapoi</value></data>
+  <data name="conversation.speakResponse" xml:space="preserve"><value>Spune răspuns</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>Răspuns bun</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>Răspuns slab</value></data>
+  <data name="conversation.translate" xml:space="preserve"><value>Traduceți</value></data>
 </root>

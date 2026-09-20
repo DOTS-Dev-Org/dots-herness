@@ -17,6 +17,8 @@ struct LocalAgentView: View {
     @EnvironmentObject private var localization: MobileLocalization
     @State private var prompt = ""
     @State private var questionAnswer = ""
+    @State private var draftAttachments: [MobileAttachment] = []
+    @State private var showingFileImporter = false
 
     var body: some View {
         NavigationStack {
@@ -79,19 +81,42 @@ struct LocalAgentView: View {
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 6)
+                if !draftAttachments.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(draftAttachments) { attachment in
+                                HStack(spacing: 4) {
+                                    Image(systemName: "paperclip")
+                                    Text(attachment.displayName).lineLimit(1)
+                                    Button { draftAttachments.removeAll { $0.id == attachment.id } } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .font(.caption)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 5)
+                                .background(.thinMaterial, in: Capsule())
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                }
                 HStack {
+                    Button { showingFileImporter = true } label: { Image(systemName: "paperclip") }
+                        .accessibilityLabel("Attach file")
                     TextField(localization.text("mobile.agent.ask") + "…", text: $prompt, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                         .lineLimit(1...4)
                     if agent.isRunning {
-                        Button(localization.text("mobile.agent.queue")) { agent.send(prompt, mode: "queue", planMode: agent.planMode); prompt = "" }
-                            .disabled(prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        Button(localization.text("conversation.steer")) { agent.send(prompt, mode: "steer", planMode: agent.planMode); prompt = "" }
-                            .disabled(prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        Button(localization.text("mobile.agent.queue")) { send(mode: "queue") }
+                            .disabled(prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && draftAttachments.isEmpty)
+                        Button(localization.text("conversation.steer")) { send(mode: "steer") }
+                            .disabled(prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && draftAttachments.isEmpty)
                         Button(localization.text("common.stop"), role: .destructive) { agent.cancel() }
                     } else {
-                        Button(localization.text("mobile.agent.send")) { agent.send(prompt, planMode: agent.planMode); prompt = "" }
-                            .disabled(prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        Button(localization.text("mobile.agent.send")) { send(mode: "queue") }
+                            .disabled(prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && draftAttachments.isEmpty)
                     }
                 }
                 .padding()
@@ -108,7 +133,24 @@ struct LocalAgentView: View {
                     } label: { Image(systemName: "ellipsis.circle") }
                 }
             }
+            .fileImporter(
+                isPresented: $showingFileImporter,
+                allowedContentTypes: [.item],
+                allowsMultipleSelection: true
+            ) { result in
+                guard let urls = try? result.get() else { return }
+                for url in urls {
+                    guard let attachment = MobileAttachment(url: url), !draftAttachments.contains(where: { $0.sourceLocator == attachment.sourceLocator }) else { continue }
+                    draftAttachments.append(attachment)
+                }
+            }
         }
+    }
+
+    private func send(mode: String) {
+        agent.send(prompt, attachments: draftAttachments, mode: mode, planMode: agent.planMode)
+        prompt = ""
+        draftAttachments = []
     }
 
     private func label(for turn: AgentTurn) -> String {

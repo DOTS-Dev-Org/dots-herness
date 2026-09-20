@@ -1126,3 +1126,4 @@
 "slash.compactDetail" = "Diesen Chat zusammenfassen, um Kontextplatz freizugeben";
 "settings.compactTrigger" = "Kontext automatisch komprimieren ab";
 "settings.compactTrigger.hint" = "Anteil am Kontextfenster des jeweiligen Modells. Ein höherer Wert erhält den Prompt-Cache länger, da die Komprimierung ihn neu schreibt.";
+"conversation.translate" = "Übersetzen";

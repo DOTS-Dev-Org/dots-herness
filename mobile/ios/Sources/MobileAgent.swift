@@ -1,6 +1,47 @@
 import CryptoKit
 import Foundation
 
+/// Provider-facing cache identity for the on-device agent.
+///
+/// The key deliberately describes the request shape, not the current user
+/// message or any file path.  The conversation history is append-only, so the
+/// provider can reuse the unchanged prefix while a new turn is added at the
+/// end.  Compaction, a provider/route/model change, or a tool-schema change
+/// starts a new segment instead of poisoning the previous one.
+enum MobilePromptCache {
+    static func key(
+        conversationID: String?,
+        provider: String,
+        route: String,
+        model: String,
+        accountScope: String,
+        toolFingerprint: String,
+        contextSegment: Int
+    ) -> String {
+        let identity = [
+            "mobile-v1",
+            conversationID?.isEmpty == false ? conversationID! : "unbound",
+            provider,
+            route,
+            model,
+            accountScope,
+            toolFingerprint,
+            "context-\(contextSegment)",
+        ].joined(separator: "\u{1f}")
+        return "herness:mobile-v1:" + digest(Data(identity.utf8))
+    }
+
+    static func toolFingerprint(_ tools: [AgentToolSpec]) -> String {
+        let wire = tools.sorted { $0.name < $1.name }.map(\.wire)
+        let data = (try? JSONSerialization.data(withJSONObject: wire, options: [.sortedKeys])) ?? Data()
+        return digest(data)
+    }
+
+    private static func digest(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+}
+
 /// The agent loop that runs *on the phone*, with no desktop pairing requirement.
 ///
 /// This deliberately does not reuse the desktop `NativeAgentClient`: that type
@@ -97,6 +138,7 @@ final class MobileHarnessRuntime: ObservableObject {
     private var conversationID: String?
     private struct QueuedPrompt {
         let text: String
+        let attachments: [MobileAttachment]
         let mode: String
         let planMode: Bool
     }
@@ -120,6 +162,11 @@ final class MobileHarnessRuntime: ObservableObject {
     private var activeCleanupFailure = false
     private var activeTestStatus = "not_reported"
     private var gitClient: MobileGitClient?
+    /// Latest known immutable revision for each logical attachment. Historical
+    /// V1 blocks stay in `wire`; this map only selects the source revision for
+    /// a provider-only notice or an explicit latest-content tool call.
+    private var attachments: [String: MobileAttachment] = [:]
+    private var pendingLatestAttachment: MobileAttachment?
 
     static let providers = ["anthropic", "openai", "openai-responses", "gpt"]
     static let models = ["claude-sonnet-4-5", "claude-opus-4-1", "claude-haiku-4-5", "gpt-4.1-mini", "gpt-4.1", "o4-mini", "gpt-5.6-luna", "gpt-5.6-terra"]
@@ -138,6 +185,23 @@ final class MobileHarnessRuntime: ObservableObject {
         register(AgentTools.chats(store: store) { [weak self] in
             await MainActor.run { self?.conversationID }
         })
+        register([
+            AgentToolSpec(
+                name: "get_latest_attachment",
+                description: "Read the latest immutable source revision for an attachment after a revision notice. Call only when current bytes are needed.",
+                schema: [
+                    "type": "object",
+                    "properties": [
+                        "attachment_id": ["type": "string", "description": "The stable attachment_id from the revision notice."],
+                    ],
+                    "required": ["attachment_id"],
+                    "additionalProperties": false,
+                ]
+            ) { [weak self] input in
+                guard let self else { throw AgentError.server("The attachment runtime is unavailable.") }
+                return await self.latestAttachmentResult(input)
+            },
+        ])
     }
 
     func register(_ specs: [AgentToolSpec]) {
@@ -183,6 +247,8 @@ final class MobileHarnessRuntime: ObservableObject {
         task = nil
         stateStore.finishRun(conversationID: conversationID, status: "cancelled")
         wire = []
+        attachments = [:]
+        pendingLatestAttachment = nil
         promptHistory = MobilePromptHistory()
         contextSegment = 0
         queuedPrompts = []
@@ -212,11 +278,18 @@ final class MobileHarnessRuntime: ObservableObject {
 
     func start() { runtimeState = "ready" }
 
-    func send(_ text: String, mode: String = "queue", planMode: Bool = false) {
+    func send(
+        _ text: String,
+        attachments incomingAttachments: [MobileAttachment] = [],
+        mode: String = "queue",
+        planMode: Bool = false
+    ) {
         let prompt = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !prompt.isEmpty else { return }
+        guard !prompt.isEmpty || !incomingAttachments.isEmpty else { return }
+        let stableAttachments = incomingAttachments.map { $0.stabilized(in: MobileAttachmentStore.snapshotDirectory) }
+        for attachment in stableAttachments { attachments[attachment.id] = attachment }
         if isRunning {
-            queuedPrompts.append(QueuedPrompt(text: prompt, mode: mode, planMode: planMode))
+            queuedPrompts.append(QueuedPrompt(text: prompt, attachments: stableAttachments, mode: mode, planMode: planMode))
             emit("prompt.queued", ["mode": mode, "planMode": planMode ? "true" : "false", "text": prompt])
             return
         }
@@ -224,10 +297,10 @@ final class MobileHarnessRuntime: ObservableObject {
             errorMessage = provider == "gpt" ? "Sign in with ChatGPT in Settings to run GPT on this phone." : "Add a provider API key in Settings to run the agent on this phone."
             return
         }
-        beginRun(prompt: prompt, mode: mode, planMode: planMode)
+        beginRun(prompt: prompt, attachments: stableAttachments, mode: mode, planMode: planMode)
     }
 
-    private func beginRun(prompt: String, mode: String, planMode: Bool) {
+    private func beginRun(prompt: String, attachments: [MobileAttachment] = [], mode: String, planMode: Bool) {
         activeRunID = UUID()
         activeTurnID = UUID().uuidString
         activePlanMode = planMode
@@ -255,12 +328,13 @@ final class MobileHarnessRuntime: ObservableObject {
         }
         runtimeState = "running"
         emit("run.started", ["mode": mode, "planMode": planMode ? "true" : "false"])
-        transcript.append(AgentTurn(role: .user, text: prompt))
-        emit("message.user", ["text": prompt])
+        let attachmentLabel = attachments.map(\.displayName).joined(separator: ", ")
+        transcript.append(AgentTurn(role: .user, text: [prompt, attachmentLabel.isEmpty ? "" : "[Attachments: \(attachmentLabel)]"].filter { !$0.isEmpty }.joined(separator: "\n")))
+        emit("message.user", ["text": prompt, "attachments": String(attachments.count)])
         let captured = promptHistory.capture(
             prompt: prompt, policy: systemPrompt(), context: HerNessPrompt.pluginGuidance(pluginPrompt)
         )
-        wire.append(["role": "user", "content": [["type": "text", "text": captured]]])
+        wire.append(canonicalUserMessage(text: captured, attachments: attachments))
         persistModelContext()
         isRunning = true
         task = Task { await run() }
@@ -360,7 +434,7 @@ final class MobileHarnessRuntime: ObservableObject {
             if runtimeState == "completed", !queuedPrompts.isEmpty {
                 let next = queuedPrompts.removeFirst()
                 Task { @MainActor in
-                    self.beginRun(prompt: next.text, mode: next.mode, planMode: next.planMode)
+                    self.beginRun(prompt: next.text, attachments: next.attachments, mode: next.mode, planMode: next.planMode)
                 }
             }
             }
@@ -445,12 +519,134 @@ final class MobileHarnessRuntime: ObservableObject {
         transcript.append(AgentTurn(role: .tool, text: output.text, toolName: name))
         stateStore.appendMessage(conversationID: conversationID, role: "tool", content: output.text, toolName: name)
         emit("tool.finished", ["name": name, "callId": id, "isError": output.failed ? "true" : "false"])
-        return [
+        var result: [String: Any] = [
             "type": "tool_result",
             "tool_use_id": id,
             "content": String(output.text.prefix(Self.maximumToolResultCharacters)),
             "is_error": output.failed,
         ]
+        if let latest = pendingLatestAttachment {
+            result["attachment"] = latest.canonicalBlock()
+            pendingLatestAttachment = nil
+        }
+        return result
+    }
+
+    private func canonicalUserMessage(text: String, attachments: [MobileAttachment]) -> [String: Any] {
+        var content: [[String: Any]] = [["type": "text", "text": text]]
+        content.append(contentsOf: attachments.map(\.canonicalBlock))
+        return ["role": "user", "content": content]
+    }
+
+    private func latestAttachmentResult(_ input: AgentInput) async -> String {
+        guard let id = input.string("attachment_id"), let current = attachments[id] else {
+            return "attachment_not_found\nhistorical_revision_preserved\nlatest_revision_unavailable"
+        }
+        let observation = current.observeSource()
+        switch observation.status {
+        case .missing:
+            return "source_missing\nhistorical_revision_preserved\nlatest_revision_unavailable\nattachment_id: \(id)"
+        case .unreadable:
+            return "source_unreadable\nhistorical_revision_preserved\nlatest_revision_unavailable\nattachment_id: \(id)"
+        case .current:
+            if current.snapshotPath != nil, current.contentHash == observation.currentHash {
+                pendingLatestAttachment = current
+                return "latest_revision_current\nattachment_id: \(id)\nrevision: V\(max(current.revision, 1))\ncontent_hash: \(current.contentHash ?? "")"
+            }
+        case .changed:
+            break
+        }
+        let latest = current.refreshed(in: MobileAttachmentStore.snapshotDirectory)
+        guard latest.snapshotPath != nil,
+              latest.contentHash != nil,
+              latest.contentHash == observation.currentHash,
+              latest.providerData() != nil else {
+            return "source_unreadable\nhistorical_revision_preserved\nlatest_revision_unavailable\nattachment_id: \(id)"
+        }
+        attachments[id] = latest
+        pendingLatestAttachment = latest
+        return "latest_revision_created\nattachment_id: \(id)\nrevision: V\(latest.revision)\ncontent_hash: \(latest.contentHash!)"
+    }
+
+    private func attachmentRevisionNotice() -> String? {
+        let notices = attachments.values.sorted { $0.id < $1.id }.compactMap { attachment -> String? in
+            let observation = attachment.observeSource()
+            let status: String
+            switch observation.status {
+            case .current: return nil
+            case .changed: status = "changed"
+            case .missing: status = "missing"
+            case .unreadable: status = "unreadable"
+            }
+            let detail: String = switch observation.status {
+            case .missing: "source_missing\nhistorical_revision_preserved\nlatest_revision_unavailable"
+            case .unreadable: "source_unreadable\nhistorical_revision_preserved\nlatest_revision_unavailable"
+            default: "The source file changed. The historical V1 bytes remain immutable and must not be treated as current."
+            }
+            return """
+            [Attachment revision notice]
+            attachment_id: \(attachment.id)
+            name: \(attachment.displayName)
+            revision: V\(max(attachment.revision, 1) + 1)
+            status: \(status)
+            \(detail)
+            If current content is needed, call get_latest_attachment with {"attachment_id":"\(attachment.id)"}. Do not infer missing or unreadable bytes.
+            """
+        }
+        return notices.isEmpty ? nil : notices.joined(separator: "\n\n")
+    }
+
+    /// Builds an ephemeral request copy. The canonical wire transcript and the
+    /// persisted model context never receive this revision text.
+    private func wireForRequest() -> [[String: Any]] {
+        var result = wire
+        guard let notice = attachmentRevisionNotice(),
+              let index = result.lastIndex(where: { message in
+                  guard let content = message["content"] as? [[String: Any]] else { return false }
+                  return message["role"] as? String == "user"
+                      && content.contains { ($0["type"] as? String) != "tool_result" }
+              }),
+              var content = result[index]["content"] as? [[String: Any]] else { return result }
+        content.insert(["type": "text", "text": notice], at: 0)
+        result[index]["content"] = content
+        return result
+    }
+
+    private func markDelivered() {
+        for (id, attachment) in attachments {
+            guard let hash = attachment.contentHash,
+                  attachment.snapshotPath != nil,
+                  attachment.deliveredHash != hash else { continue }
+            attachments[id] = MobileAttachment(
+                attachmentID: attachment.attachmentID,
+                displayName: attachment.displayName,
+                kind: attachment.kind,
+                mimeType: attachment.mimeType,
+                sourceLocator: attachment.sourceLocator,
+                bookmarkData: attachment.bookmarkData,
+                snapshotPath: attachment.snapshotPath,
+                contentHash: attachment.contentHash,
+                revision: attachment.revision,
+                deliveredHash: hash,
+                sourceStatus: .current
+            )
+        }
+        for index in wire.indices {
+            guard var content = wire[index]["content"] as? [[String: Any]] else { continue }
+            for blockIndex in content.indices {
+                if let id = content[blockIndex]["attachment_id"] as? String,
+                   let hash = attachments[id]?.deliveredHash {
+                    content[blockIndex]["delivered_hash"] = hash
+                }
+                if var toolAttachment = content[blockIndex]["attachment"] as? [String: Any],
+                   let id = toolAttachment["attachment_id"] as? String,
+                   let hash = attachments[id]?.deliveredHash {
+                    toolAttachment["delivered_hash"] = hash
+                    content[blockIndex]["attachment"] = toolAttachment
+                }
+            }
+            wire[index]["content"] = content
+        }
     }
 
     private func blockedInPlanMode(_ name: String) -> Bool {
@@ -540,11 +736,151 @@ final class MobileHarnessRuntime: ObservableObject {
     private func complete() async throws -> [String: Any] {
         compactContextIfNeeded()
         emit("provider.request", ["provider": provider, "model": model])
+        let response: [String: Any]
         switch provider {
-        case "anthropic": return try await completeAnthropic()
-        case "openai-responses": return try await completeOpenAIResponses()
-        case "gpt": return try await completeChatGPT()
-        default: return try await completeOpenAI()
+        case "anthropic": response = try await completeAnthropic()
+        case "openai-responses": response = try await completeOpenAIResponses()
+        case "gpt": response = try await completeChatGPT()
+        default: response = try await completeOpenAI()
+        }
+        // A payload is considered delivered only after the provider accepted
+        // the request. Failed/retried requests therefore cannot advance the
+        // attachment revision baseline.
+        markDelivered()
+        return response
+    }
+
+    private func promptCacheKey(route: String) -> String {
+        let account = sessionAccountID().trimmingCharacters(in: .whitespacesAndNewlines)
+        return MobilePromptCache.key(
+            conversationID: conversationID,
+            provider: provider,
+            route: route,
+            model: model,
+            accountScope: account.isEmpty ? provider : account,
+            toolFingerprint: MobilePromptCache.toolFingerprint(orderedTools),
+            contextSegment: contextSegment
+        )
+    }
+
+    /// Anthropic caches the prefix ending at explicit `cache_control`
+    /// breakpoints.  This mutates a request copy only; the durable transcript
+    /// never acquires provider metadata, which keeps later turns byte-stable.
+    private func applyAnthropicCacheBreakpoints(to body: inout [String: Any]) {
+        let ephemeral: [String: Any] = ["type": "ephemeral"]
+
+        if let text = body["system"] as? String, !text.isEmpty {
+            body["system"] = [["type": "text", "text": text, "cache_control": ephemeral]]
+        } else if var blocks = body["system"] as? [[String: Any]], !blocks.isEmpty {
+            blocks[blocks.count - 1]["cache_control"] = ephemeral
+            body["system"] = blocks
+        }
+
+        if var tools = body["tools"] as? [[String: Any]], !tools.isEmpty {
+            tools[tools.count - 1]["cache_control"] = ephemeral
+            body["tools"] = tools
+        }
+
+        if var messages = body["messages"] as? [[String: Any]], !messages.isEmpty {
+            let lastIndex = messages.count - 1
+            var message = messages[lastIndex]
+            if let text = message["content"] as? String, !text.isEmpty {
+                message["content"] = [["type": "text", "text": text, "cache_control": ephemeral]]
+            } else if var blocks = message["content"] as? [[String: Any]], !blocks.isEmpty {
+                blocks[blocks.count - 1]["cache_control"] = ephemeral
+                message["content"] = blocks
+            }
+            messages[lastIndex] = message
+            body["messages"] = messages
+        }
+    }
+
+    private func attachmentBlock(_ block: [String: Any], format: String) -> [String: Any] {
+        let id = block["attachment_id"] as? String ?? "unknown"
+        guard let attachment = attachments[id], let data = attachment.providerData() else {
+            return [
+                "type": format == "responses" ? "input_text" : "text",
+                "text": "source_missing: attachment_id (id); historical_revision_preserved; latest_revision_unavailable",
+            ]
+        }
+        let base64 = data.base64EncodedString()
+        let isDocument = attachment.kind == .file
+            && (attachment.mimeType == "application/pdf" || attachment.mimeType.hasPrefix("text/") || attachment.mimeType == "application/json")
+        switch format {
+        case "anthropic":
+            if attachment.kind == .image {
+                return [
+                    "type": "image",
+                    "source": ["type": "base64", "media_type": attachment.mimeType, "data": base64],
+                ]
+            }
+            if isDocument && attachment.mimeType == "application/pdf" {
+                return [
+                    "type": "document",
+                    "source": ["type": "base64", "media_type": attachment.mimeType, "data": base64],
+                ]
+            }
+        case "responses":
+            if attachment.kind == .image {
+                return ["type": "input_image", "image_url": "data:\(attachment.mimeType);base64,\(base64)"]
+            }
+            if isDocument {
+                return ["type": "input_file", "filename": attachment.displayName, "file_data": "data:\(attachment.mimeType);base64,\(base64)"]
+            }
+        default:
+            if attachment.kind == .image {
+                return ["type": "image_url", "image_url": ["url": "data:\(attachment.mimeType);base64,\(base64)"]]
+            }
+            if isDocument {
+                return ["type": "file", "file": ["filename": attachment.displayName, "file_data": "data:\(attachment.mimeType);base64,\(base64)"]]
+            }
+        }
+        let wireType = format == "responses" ? "input_text" : "text"
+        return [
+            "type": wireType,
+            "text": "unsupported_attachment_kind: \(attachment.kind.rawValue); attachment_id: \(attachment.id); name: \(attachment.displayName). The host did not silently drop this attachment, but this provider route does not support its wire format.",
+        ]
+    }
+
+    private func anthropicMessages() -> [[String: Any]] {
+        let source = wireForRequest()
+        return source.compactMap { message in
+            guard let role = message["role"] as? String else { return nil }
+            let content = message["content"] as? [[String: Any]] ?? []
+            if role == "assistant" {
+                let blocks = content.compactMap { block -> [String: Any]? in
+                    switch block["type"] as? String {
+                    case "text": return block
+                    case "tool_use": return block
+                    default: return nil
+                    }
+                }
+                return ["role": "assistant", "content": blocks]
+            }
+            let toolResults = content.filter { $0["type"] as? String == "tool_result" }
+            if !toolResults.isEmpty {
+                var blocks: [[String: Any]] = []
+                for item in toolResults {
+                    var result: [String: Any] = [
+                        "type": "tool_result",
+                        "tool_use_id": item["tool_use_id"] as? String ?? "tool",
+                        "content": item["content"] as? String ?? "",
+                    ]
+                    if let attachment = item["attachment"] as? [String: Any] {
+                        var nested: [[String: Any]] = [["type": "text", "text": item["content"] as? String ?? ""]]
+                        nested.append(attachmentBlock(attachment, format: "anthropic"))
+                        result["content"] = nested
+                    }
+                    blocks.append(result)
+                }
+                return ["role": "user", "content": blocks]
+            }
+            var blocks: [[String: Any]] = []
+            for block in content {
+                if block["type"] as? String == "attachment" { blocks.append(attachmentBlock(block, format: "anthropic")) }
+                else if block["type"] as? String == "text" { blocks.append(block) }
+            }
+            return ["role": "user", "content": blocks]
         }
     }
 
@@ -558,9 +894,10 @@ final class MobileHarnessRuntime: ObservableObject {
             "model": model,
             "max_tokens": 8_192,
             "system": promptHistory.policy ?? "",
-            "messages": wire,
+            "messages": anthropicMessages(),
         ]
         if !tools.isEmpty { body["tools"] = orderedTools.map(\.wire) }
+        applyAnthropicCacheBreakpoints(to: &body)
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         request.timeoutInterval = 300
 
@@ -592,6 +929,7 @@ final class MobileHarnessRuntime: ObservableObject {
             "model": model,
             "max_completion_tokens": 8_192,
             "messages": openAIMessages(),
+            "prompt_cache_key": promptCacheKey(route: "openai-chat"),
         ]
         if !definitions.isEmpty { body["tools"] = definitions }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -653,6 +991,7 @@ final class MobileHarnessRuntime: ObservableObject {
             "input": responsesInput(),
             "store": false,
             "stream": false,
+            "prompt_cache_key": promptCacheKey(route: providerName == "gpt" ? "chatgpt-responses" : "openai-responses"),
         ]
         if !tools.isEmpty {
             body["tools"] = orderedTools.map { ["type": "function", "name": $0.name, "description": $0.description, "parameters": (try? JSONSerialization.jsonObject(with: $0.schemaData)) ?? ["type": "object"]] }
@@ -681,15 +1020,24 @@ final class MobileHarnessRuntime: ObservableObject {
 
     private func responsesInput() -> [[String: Any]] {
         var result: [[String: Any]] = []
-        for message in wire {
+        for message in wireForRequest() {
             guard let role = message["role"] as? String else { continue }
             let content = message["content"] as? [[String: Any]] ?? []
             if role == "user" {
                 let results = content.filter { $0["type"] as? String == "tool_result" }
                 if results.isEmpty {
-                    result.append(["role": "user", "content": content.compactMap { block in block["text"] as? String }.map { ["type": "input_text", "text": $0] }])
+                    let blocks = content.map { block -> [String: Any] in
+                        if block["type"] as? String == "attachment" { return attachmentBlock(block, format: "responses") }
+                        return ["type": "input_text", "text": block["text"] as? String ?? ""]
+                    }
+                    result.append(["role": "user", "content": blocks])
                 } else {
-                    for item in results { result.append(["type": "function_call_output", "call_id": item["tool_use_id"] as? String ?? "tool", "output": item["content"] as? String ?? ""]) }
+                    for item in results {
+                        result.append(["type": "function_call_output", "call_id": item["tool_use_id"] as? String ?? "tool", "output": item["content"] as? String ?? ""])
+                        if let attachment = item["attachment"] as? [String: Any] {
+                            result.append(["role": "user", "content": [attachmentBlock(attachment, format: "responses")]])
+                        }
+                    }
                 }
             } else if role == "assistant" {
                 let text = content.compactMap { $0["type"] as? String == "text" ? $0["text"] as? String : nil }.joined(separator: "\n")
@@ -717,7 +1065,7 @@ final class MobileHarnessRuntime: ObservableObject {
 
     private func openAIMessages() -> [[String: Any]] {
         var result: [[String: Any]] = [["role": "system", "content": promptHistory.policy ?? ""]]
-        for message in wire {
+        for message in wireForRequest() {
             guard let role = message["role"] as? String else { continue }
             let content = message["content"] as? [[String: Any]] ?? []
             if role == "assistant" {
@@ -733,10 +1081,17 @@ final class MobileHarnessRuntime: ObservableObject {
             } else if role == "user" {
                 let toolResults = content.filter { $0["type"] as? String == "tool_result" }
                 if toolResults.isEmpty {
-                    result.append(["role": "user", "content": content.compactMap { $0["text"] as? String }.joined(separator: "\n")])
+                    let blocks = content.map { block -> [String: Any] in
+                        if block["type"] as? String == "attachment" { return attachmentBlock(block, format: "openai") }
+                        return ["type": "text", "text": block["text"] as? String ?? ""]
+                    }
+                    result.append(["role": "user", "content": blocks])
                 } else {
                     for block in toolResults {
                         result.append(["role": "tool", "tool_call_id": block["tool_use_id"] as? String ?? "", "content": block["content"] as? String ?? ""])
+                        if let attachment = block["attachment"] as? [String: Any] {
+                            result.append(["role": "user", "content": [attachmentBlock(attachment, format: "openai")]])
+                        }
                     }
                 }
             }

@@ -43,6 +43,9 @@ public static class NativeWorkspaceTools
             ("path", "Relative directory to search. Defaults to the workspace root.", false),
             ("extensions", "Optional comma-separated file extensions to limit the search, e.g. cs,json.", false))),
         new("run_command", "Run a shell command with the workspace as its current directory.", Schema(("command", "Command to run in the workspace.", true))),
+        new("copy_generated_media", "Copy a generated image from the current conversation into the current coding workspace. Use only when the user asks to reuse the generated asset in the project.", Schema(
+            ("source_path", "Exact absolute path from the Generated media artifact context.", true),
+            ("destination_path", "Workspace-relative destination path, including the filename.", true))),
     ];
 
     /// What plan mode offers: everything except the two tools that change the
@@ -53,14 +56,14 @@ public static class NativeWorkspaceTools
     /// Chat has no implicit workspace. Every filesystem call must name the
     /// verified root that came from a user message.
     public static IReadOnlyList<NativeToolDefinition> ChatDefinitions { get; } =
-        Definitions.Select(AddContextRootId).ToArray();
+        Definitions.Where(tool => tool.Name != "copy_generated_media").Select(AddContextRootId).ToArray();
 
     public static IReadOnlyList<NativeToolDefinition> ChatPlanDefinitions { get; } =
         ChatDefinitions.Where(tool => !IsWorkspaceMutation(tool.Name)).ToArray();
 
     public static bool IsReadOnly(string name) => name is "list_files" or "read_file" or "grep_files";
 
-    public static bool IsWorkspaceMutation(string name) => name is "write_file" or "remove_file";
+    public static bool IsWorkspaceMutation(string name) => name is "write_file" or "remove_file" or "copy_generated_media";
 
     public static bool IsVerifiedRemovalResult(string result) => result.StartsWith(VerifiedRemovalMarker, StringComparison.Ordinal);
     public static bool IsPreservedRemovalResult(string result) => result.StartsWith(PreservedRemovalMarker, StringComparison.Ordinal);
@@ -171,6 +174,36 @@ public static class NativeWorkspaceTools
         CancellationToken ct = default,
         AgentCommandSandboxMode commandSandbox = AgentCommandSandboxMode.Legacy) =>
         RunCommandAsync(command, workspace, ct, onOutput, commandSandbox);
+
+    public static string CopyGeneratedMedia(
+        string? sourcePath,
+        string? destinationPath,
+        string workspace,
+        IEnumerable<string> allowedSourcePaths)
+    {
+        if (string.IsNullOrWhiteSpace(sourcePath) || string.IsNullOrWhiteSpace(destinationPath))
+            return "Tool error: source_path and destination_path are required.";
+        if (Path.IsPathRooted(destinationPath))
+            return "Tool error: destination_path must be relative to the workspace.";
+
+        var source = Path.GetFullPath(sourcePath);
+        var allowed = allowedSourcePaths.Select(Path.GetFullPath).ToHashSet(
+            OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        if (!allowed.Contains(source) || !File.Exists(source))
+            return "Tool error: the generated media artifact is not available in this conversation.";
+
+        string destination;
+        try { destination = Resolve(destinationPath, workspace); }
+        catch (Exception ex) { return $"Tool error: {ex.Message}"; }
+        if (File.Exists(destination)) return $"Tool error: destination already exists: {Path.GetRelativePath(workspace, destination)}";
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Copy(source, destination);
+            return $"Copied generated media to {Path.GetRelativePath(Path.GetFullPath(workspace), destination)}.";
+        }
+        catch (Exception ex) { return $"Tool error: could not copy generated media: {ex.Message}"; }
+    }
 
     private static string ListFiles(string? path, string workspace)
     {

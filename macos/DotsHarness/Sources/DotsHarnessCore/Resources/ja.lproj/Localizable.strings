@@ -1126,3 +1126,4 @@
 "slash.compactDetail" = "このチャットを要約してコンテキストの空きを確保";
 "settings.compactTrigger" = "コンテキストを自動圧縮する上限";
 "settings.compactTrigger.hint" = "各モデルのコンテキストウィンドウに対する割合です。圧縮はプロンプトキャッシュを書き換えるため、値が大きいほどキャッシュを長く保てます。";
+"conversation.translate" = "翻訳";

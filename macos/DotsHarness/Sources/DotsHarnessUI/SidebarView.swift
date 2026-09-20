@@ -1202,8 +1202,11 @@ struct SidebarView: View {
     private var projectlessConversations: [Conversation] {
         // Coding "Recent" = chats whose project was removed: they keep a cwd.
         // Projectless chats belong to the Chat area and never show here.
-        bridge.conversations(outsideProjects: model.projectPaths)
-            .filter { ConversationStore.normalizedPath($0.cwd) != nil }
+        guard model.activeArea == .coding, bridge.area == .coding else { return [] }
+        return bridge.conversations(outsideProjects: model.projectPaths)
+            .filter {
+                $0.area == .coding && ConversationStore.normalizedPath($0.cwd) != nil
+            }
     }
 
     /// `forProject` picks the sort order to apply; pass `nil` for lists (like

@@ -1127,6 +1127,10 @@ public final class AppModel: ObservableObject {
             loadVoiceAPIKeyInBackground()
         }
         // Voice and speech runtimes are loaded purely on-demand when the user activates voice input
+        // Speech servers an earlier run left behind (killed or crashed app). Off the main
+        // thread: it runs `ps`.
+        let speechRuntime = paths.runtime.appendingPathComponent("nemo-speech", isDirectory: true)
+        Task.detached(priority: .utility) { NemotronRuntime.reapOrphans(runtimeRoot: speechRuntime) }
         // Show the gate immediately on a fresh install; loadLegal() refines it.
         let needsAcceptance = !legal.hasAnyAcceptance
         if legalNeedsAcceptance != needsAcceptance { legalNeedsAcceptance = needsAcceptance }
@@ -1450,12 +1454,20 @@ public final class AppModel: ObservableObject {
 
     public var unassignedChatConversations: [Conversation] {
         startChatBridgeIfNeeded()
-        return chatBridge.conversations.filter { $0.chatProjectID == nil }
+        return chatBridge.conversations.filter {
+            $0.area == .chat
+                && ConversationStore.normalizedPath($0.cwd) == nil
+                && $0.chatProjectID == nil
+        }
     }
 
     public func chatConversations(in projectID: String) -> [Conversation] {
         startChatBridgeIfNeeded()
-        return chatBridge.conversations.filter { $0.chatProjectID == projectID }
+        return chatBridge.conversations.filter {
+            $0.area == .chat
+                && ConversationStore.normalizedPath($0.cwd) == nil
+                && $0.chatProjectID == projectID
+        }
     }
 
     @discardableResult
@@ -2250,6 +2262,18 @@ public final class AppModel: ObservableObject {
                 onError: onError
             )
         }
+    }
+
+    /// Translates `text` into the app language (into English when it already is in
+    /// it) with the lightest connected model at its lowest effort.
+    public func translate(_ text: String) async throws -> String {
+        let language = AppCopy.effectiveLanguage.nativeName
+        let system = "Translate the user's text into \(language). If it is already in \(language), translate it into English. Output only the translation, nothing else."
+        let response = try await router.completeCheapest(messages: [
+            AgentMessage(role: .system, content: system),
+            AgentMessage(role: .user, content: String(text.prefix(8000))),
+        ])
+        return response.message.content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     public func toggleSpeech(_ text: String, messageID: String? = nil) {
@@ -3213,13 +3237,16 @@ public final class AppModel: ObservableObject {
     public func loadLegal() async {
         let lang = AppCopy.effectiveLanguage.rawValue
         if let docs = await legal.fetch(lang: lang) {
-            legalDocuments = docs
-            legalNeedsAcceptance = legal.needsAcceptance(docs)
-            legalLoadFailed = false
+            // Every @Published write re-renders the window, even with an equal value.
+            let needsAcceptance = legal.needsAcceptance(docs)
+            if legalDocuments != docs { legalDocuments = docs }
+            if legalNeedsAcceptance != needsAcceptance { legalNeedsAcceptance = needsAcceptance }
+            if legalLoadFailed { legalLoadFailed = false }
         } else {
             // Offline with nothing cached: gate only if the user never accepted.
-            legalLoadFailed = true
-            legalNeedsAcceptance = !legal.hasAnyAcceptance
+            let needsAcceptance = !legal.hasAnyAcceptance
+            if !legalLoadFailed { legalLoadFailed = true }
+            if legalNeedsAcceptance != needsAcceptance { legalNeedsAcceptance = needsAcceptance }
         }
     }
 
@@ -3357,12 +3384,13 @@ public final class AppModel: ObservableObject {
             .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
             .joined(separator: " ")
         let name = displayName.isEmpty ? profile.email : displayName
-        account = AccountIdentity(
+        let identity = AccountIdentity(
             displayName: name,
             username: profile.username ?? profile.email,
             initials: AccountIdentity.initials(from: name),
             isSignedIn: true
         )
+        if account != identity { account = identity }
     }
 
     /// Browser URL for the project's code-forge pull/merge request list, derived

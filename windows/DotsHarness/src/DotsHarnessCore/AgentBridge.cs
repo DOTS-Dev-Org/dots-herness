@@ -51,6 +51,7 @@ public sealed class AgentBridge : ObservableObject
 {
     public AgentArea Area { get; }
     private readonly RouterController _router;
+    private readonly SupportPaths _paths;
     private readonly string _file;
     private readonly ChatContextStore? _chatContextStore;
     private readonly SkillCatalog _skills;
@@ -140,6 +141,24 @@ public sealed class AgentBridge : ObservableObject
     /// of reporting it unverified. The user turns it off in Settings.
     public bool SelfVerification { get; set; } = true;
     private static string GenerationStoppedMessage => LocalizationService.Current.Get("status.generationStopped");
+    private const string LatestAttachmentToolName = "get_latest_attachment";
+    private static NativeToolDefinition LatestAttachmentDefinition => new(
+        LatestAttachmentToolName,
+        "Read the latest immutable source revision for an attachment after a revision notice. This is read-only; call it only when the current bytes are needed.",
+        new JsonObject
+        {
+            ["type"] = "object",
+            ["properties"] = new JsonObject
+            {
+                ["attachment_id"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "The stable attachment_id from the revision notice.",
+                },
+            },
+            ["required"] = new JsonArray(JsonValue.Create("attachment_id")),
+            ["additionalProperties"] = false,
+        });
 
     private sealed class QueuedPrompt
     {
@@ -326,6 +345,7 @@ public sealed class AgentBridge : ObservableObject
     {
         Area = area;
         _router = router;
+        _paths = paths;
         _file = Path.Combine(paths.Root, sessionFileName ?? "conversations.json");
         var effectiveSkills = area == AgentArea.Chat
             ? new SkillCatalog(paths)
@@ -353,6 +373,7 @@ public sealed class AgentBridge : ObservableObject
             .Concat(SkillTools.Definitions)
             .Append(AskUserTool.Definition)
             .Append(OtherChatsTool.Definition)
+            .Append(LatestAttachmentDefinition)
             // Read-only side agent; Chat has no workspace to search.
             .Concat(Area == AgentArea.Coding ? new[] { ExploreTool.Definition } : Array.Empty<NativeToolDefinition>())
             .Concat(planMode ? Array.Empty<NativeToolDefinition>() : new[] { WorkspaceFacts.Definition })
@@ -383,6 +404,9 @@ public sealed class AgentBridge : ObservableObject
           - Search file contents with grep_files rather than a shell grep.
           - Read a file only once: its contents stay in this conversation.
           - Use the browser_* tools for web pages; never open a browser through run_command.
+          - Attachment history is immutable. If a revision notice says a source changed,
+            call get_latest_attachment with its attachment_id before relying on current bytes.
+            A missing or unreadable source must never be inferred as available.
           """ + "\n" + otherChatGuidance + "\n"),
         new("runtime_context", PromptTrust.Core,
             $"- Current date: {DateTime.Now:yyyy-MM-dd}"),
@@ -513,9 +537,7 @@ public sealed class AgentBridge : ObservableObject
         {
             var known = Conversations.Select(c => c.Id).ToHashSet();
             var items = JsonSerializer.Deserialize<List<Conversation>>(File.ReadAllText(_file)) ?? [];
-            foreach (var item in items.Where(i => !known.Contains(i.Id)
-                && i.Area == Area
-                && (Area == AgentArea.Chat || SameWorkspace(i.Cwd, _activeWorkspace))))
+            foreach (var item in items.Where(i => !known.Contains(i.Id) && BelongsToArea(i, _activeWorkspace)))
             {
                 Recover(item);
                 Conversations.Add(item);
@@ -748,6 +770,81 @@ public sealed class AgentBridge : ObservableObject
         }
     }
 
+    private static bool IsImageMediaMessage(ChatMessage message) =>
+        message.Kind == ChatKind.User
+        && message.Attachments.Count == 0
+        && MediaRequest.TryParse(message.Text, out var request)
+        && request.Kind == NativeMediaKind.Image;
+
+    private static NativeMessage GeneratedMediaContextMessage(ChatMessage message)
+    {
+        var media = message.Media!;
+        var outcome = string.IsNullOrWhiteSpace(message.Text) ? "generated" : message.Text.Trim();
+        var content = $"""
+            [Generated media artifact]
+            The image was generated successfully and is available as a local artifact. This is a result reference, not a new user instruction.
+            - kind: image
+            - path: {media.FilePath}
+            - mime_type: {media.MimeType}
+            Result: {outcome}
+            If the user asks to reuse this image, use the exact asset path above. Do not claim to know pixel details unless the image is actually supplied for visual inspection.
+            """;
+        return new NativeMessage("assistant", content);
+    }
+
+    private static NativeMessage MediaFailureContextMessage(ChatMessage message)
+    {
+        var outcome = message.Text.Trim();
+        return new NativeMessage(
+            "assistant",
+            $"[Generated media result]\nNo image asset was produced for the previous image request. Do not assume that an image exists.\nResult: {outcome}");
+    }
+
+    private static NativeMessage? ModelMessageFromVisible(ChatMessage message, ISet<string> mediaTurnIds)
+    {
+        if (IsImageMediaMessage(message)) return null;
+        if (message.Media is not null) return GeneratedMediaContextMessage(message);
+        if (message.TurnId is { } turnId && mediaTurnIds.Contains(turnId))
+        {
+            return message.Kind is ChatKind.Assistant or ChatKind.System
+                && !string.IsNullOrWhiteSpace(message.Text)
+                ? MediaFailureContextMessage(message)
+                : null;
+        }
+        return message.Kind switch
+        {
+            ChatKind.User => new NativeMessage("user", message.Text, Attachments: ToNativeAttachments(message.Attachments)),
+            ChatKind.Assistant => new NativeMessage("assistant", message.Text),
+            ChatKind.Plan => new NativeMessage("assistant", message.Text),
+            _ => null,
+        };
+    }
+
+    private static bool EnsureGeneratedMediaContext(Conversation conversation)
+    {
+        if (conversation.ModelContext.Count == 0) return false;
+        var mediaTurnIds = conversation.Messages
+            .Where(IsImageMediaMessage)
+            .Select(message => message.TurnId)
+            .Where(turnId => turnId is not null)
+            .Select(turnId => turnId!)
+            .ToHashSet(StringComparer.Ordinal);
+        var artifacts = conversation.Messages
+            .Select(message => ModelMessageFromVisible(message, mediaTurnIds))
+            .Where(message => message is not null
+                && message.Role == "assistant"
+                && message.Content.StartsWith("[Generated media", StringComparison.Ordinal))
+            .Select(message => message!)
+            .ToList();
+        var changed = false;
+        foreach (var artifact in artifacts.Where(artifact => !conversation.ModelContext.Any(existing => existing.Content == artifact.Content)))
+        {
+            conversation.ModelContext.Add(artifact);
+            changed = true;
+        }
+        return changed;
+    }
+
     private async Task ProcessPromptAsync(QueuedPrompt request)
     {
         var parsedMedia = new MediaRequest(NativeMediaKind.Image, "");
@@ -789,6 +886,14 @@ public sealed class AgentBridge : ObservableObject
             return;
         }
 
+        var mediaTurnIds = conversation.Messages
+            .Where(IsImageMediaMessage)
+            .Select(message => message.TurnId)
+            .Where(turnId => turnId is not null)
+            .Select(turnId => turnId!)
+            .ToHashSet(StringComparer.Ordinal);
+        if (EnsureGeneratedMediaContext(conversation)) SaveModelContext(conversation, conversation.ModelContext);
+
         request.ConversationId = conversation.Id;
         if (request.ApprovedPlanMessageId is { } approvedPlanMessageId
             && (conversation.PendingPlanMessageId != approvedPlanMessageId
@@ -802,12 +907,17 @@ public sealed class AgentBridge : ObservableObject
         {
             pendingPlan.PlanError = null;
         }
+        var stableAttachments = request.Attachments.Select(StabilizeAttachment).ToList();
+        // Materialize legacy path-only attachments before constructing the next
+        // provider request. A later edit to the source file must not rewrite a
+        // historical prefix that the provider can already cache.
+        StabilizePersistedAttachments(conversation);
         var turnId = Guid.NewGuid().ToString();
-        var hasUserContent = !string.IsNullOrWhiteSpace(request.Text) || request.Attachments.Count > 0;
+        var hasUserContent = !string.IsNullOrWhiteSpace(request.Text) || stableAttachments.Count > 0;
         if (hasUserContent)
         {
             var messageId = Guid.NewGuid().ToString();
-            var roots = Area == AgentArea.Chat
+            var roots = Area == AgentArea.Chat && !isImageRequest
                 ? AttachChatRoots(request.Text, conversation, messageId)
                 : [];
             if (request.VisiblePrompt is { } visiblePrompt)
@@ -818,11 +928,11 @@ public sealed class AgentBridge : ObservableObject
                 Kind = ChatKind.User,
                 Text = request.Text,
                 TurnId = turnId,
-                Attachments = request.Attachments.ToList(),
+                Attachments = stableAttachments,
                 ContextRootIds = roots.Select(root => root.Id).ToList(),
             });
             var titleText = string.IsNullOrWhiteSpace(request.Text)
-                ? string.Join(", ", request.Attachments.Select(attachment => attachment.Name))
+                ? string.Join(", ", stableAttachments.Select(attachment => attachment.Name))
                 : request.Text;
             conversation.Title = conversation.Blank ? SessionProjector.TitleFor(titleText) : conversation.Title;
             conversation.Blank = false;
@@ -868,9 +978,11 @@ public sealed class AgentBridge : ObservableObject
                 ["planMode"] = request.PlanMode,
                 ["model"] = request.Model,
             });
-        var changeTracker = Area == AgentArea.Chat || string.IsNullOrWhiteSpace(workspacePath)
-            ? null
-            : WorkspaceChangeTracker.Start(workspacePath);
+        var changeTracker = !isImageRequest
+            && Area != AgentArea.Chat
+            && !string.IsNullOrWhiteSpace(workspacePath)
+            ? WorkspaceChangeTracker.Start(workspacePath)
+            : null;
         var browserScope = new BrowserScope(
             Area.WireValue(),
             conversation.Id,
@@ -889,8 +1001,11 @@ public sealed class AgentBridge : ObservableObject
                 var generated = await _router.GenerateImageAsync(parsedMedia.Prompt, run.Token);
                 var path = NativeImageFileStore.Save(generated.Output, Path.GetDirectoryName(_file)!);
                 var notice = generated.FallbackFrom is null
-                    ? "Image generated."
-                    : $"{generated.FallbackFrom} image output was unavailable; generated with {generated.Provider}/{generated.Model}.";
+                    ? LocalizationService.Current.Get("media.generated")
+                    : LocalizationService.Current.Get(
+                        "media.fallbackUsed",
+                        generated.FallbackFrom,
+                        $"{generated.Provider}/{generated.Model}");
                 conversation.Messages.Add(new ChatMessage
                 {
                     Kind = ChatKind.Assistant,
@@ -908,7 +1023,9 @@ public sealed class AgentBridge : ObservableObject
                 conversation.Continuation = null;
                 lock (_sendQueueLock) _queuePausedAfterStop = false;
                 AssistantResponseReceived?.Invoke(this, new AssistantResponseEventArgs(conversation.Title, notice));
-                Status = $"{generated.Provider} · {generated.Model}";
+                Status = generated.FallbackFrom is null
+                    ? $"{generated.Provider} · {generated.Model}"
+                    : notice;
                 return;
             }
             if (Area == AgentArea.Chat) ActivateChatContext(conversation);
@@ -927,18 +1044,23 @@ public sealed class AgentBridge : ObservableObject
                 : new List<NativeMessage> { new("system", systemPrompt) };
             if (!hasStoredContext)
             {
-                messages.AddRange(conversation.Messages
-                    .Where(m => m.Kind is ChatKind.User or ChatKind.Assistant or ChatKind.Plan)
-                    .Select(m => new NativeMessage(
-                        m.Kind == ChatKind.User ? "user" : "assistant",
-                        m.TurnId == turnId ? modelPrompt : m.Text,
-                        Attachments: ToNativeAttachments(m.Attachments))));
+                var visibleMessages = conversation.Messages
+                    .Select(m => ModelMessageFromVisible(m, mediaTurnIds))
+                    .OfType<NativeMessage>()
+                    .ToList();
+                if (visibleMessages.FindLastIndex(message => message.Role == "user") is var lastUserIndex
+                    && lastUserIndex >= 0
+                    && visibleMessages[lastUserIndex].Content == request.Text)
+                {
+                    visibleMessages[lastUserIndex] = visibleMessages[lastUserIndex] with { Content = modelPrompt };
+                }
+                messages.AddRange(visibleMessages);
             }
             else
             {
                 if (hasUserContent || request.ExecutionText is not null)
                 {
-                    messages.Add(new NativeMessage("user", modelPrompt, Attachments: ToNativeAttachments(request.Attachments)));
+                    messages.Add(new NativeMessage("user", modelPrompt, Attachments: ToNativeAttachments(stableAttachments)));
                 }
             }
             if (request.ExecutionText is { } executionText
@@ -949,6 +1071,7 @@ public sealed class AgentBridge : ObservableObject
             }
             messages = NativePromptHistory.Prepare(messages, systemPrompt, turnContext);
             SaveModelContext(conversation, messages);
+            var attachmentLedger = LatestAttachments(conversation);
             var tools = ToolsFor(request.PlanMode);
             _askUserRounds = 0;
             _askedQuestionKeys.Clear();
@@ -957,11 +1080,13 @@ public sealed class AgentBridge : ObservableObject
             while (true)
             {
                 await MaybeCompactAsync(conversation, messages, request.Model, tools, run.Token);
+                MergeLatestAttachments(conversation, attachmentLedger);
+                var requestMessages = WithAttachmentRevisionNotice(messages, AttachmentRevisionNotice(attachmentLedger.Values));
                 NativeResponse response;
                 try
                 {
                     response = await _router.CompleteAsync(
-                        messages,
+                        requestMessages,
                         tools,
                         request.Model,
                         run.Token,
@@ -974,6 +1099,7 @@ public sealed class AgentBridge : ObservableObject
                     await ApplyVisionFallbackAsync(conversation, request, messages, ex, run.Token);
                     continue;
                 }
+                MarkDelivered(messages, conversation);
                 conversation.LastContextInputTokens = response.Usage?.TotalInputTokens ?? ContextCompaction.EstimateTokens(messages);
                 if (response.Message.ProviderItems?.Any(item => item["type"]?.GetValue<string>() == "compaction") == true)
                 {
@@ -1058,6 +1184,33 @@ public sealed class AgentBridge : ObservableObject
                         workspaceId,
                         conversation.Id,
                         new JsonObject { ["turnId"] = turnId, ["callId"] = call.Id, ["name"] = call.Name });
+                    if (call.Name == LatestAttachmentToolName)
+                    {
+                        var outcome = LatestAttachmentResult(call, attachmentLedger);
+                        if (outcome.Attachment is { } latest)
+                        {
+                            attachmentLedger[AttachmentKey(latest)] = latest;
+                        }
+                        var nativeAttachments = outcome.Attachment is { } current
+                            ? ToNativeAttachments([current])
+                            : Array.Empty<NativeAttachment>();
+                        conversation.Messages.Add(new ChatMessage
+                        {
+                            Kind = ChatKind.Tool,
+                            Text = $"✓ {call.Name}\n{ToolPreview(outcome.Message)}",
+                            TurnId = turnId,
+                            Attachments = outcome.Attachment is { } visibleAttachment
+                                ? [visibleAttachment]
+                                : [],
+                        });
+                        messages.Add(new NativeMessage(
+                            "tool",
+                            outcome.Message,
+                            ToolCallId: call.Id,
+                            Attachments: nativeAttachments));
+                        SaveModelContext(conversation, messages);
+                        continue;
+                    }
                     if (call.Name == AskUserTool.Name)
                     {
                         var answered = await AskUserAsync(call, conversation.Id, run.Token);
@@ -1129,6 +1282,7 @@ public sealed class AgentBridge : ObservableObject
                         : workspacePath;
                     if ((call.Name == "run_command"
                             || call.Name == "remove_file"
+                            || call.Name == "copy_generated_media"
                             || call.Name is BrowserTools.OpenName or BrowserTools.NavigateName or BrowserTools.CloseName)
                         && !await RequestApprovalAsync(call, conversation.Id, selectedRoot ?? workspacePath, run.Token))
                     {
@@ -1176,6 +1330,12 @@ public sealed class AgentBridge : ObservableObject
                     else if (prefetched.TryGetValue(call.Id, out var ready))
                     {
                         result = ready;
+                    }
+                    else if (call.Name == "copy_generated_media")
+                    {
+                        result = Area == AgentArea.Chat
+                            ? "Tool error: generated media can only be copied into a coding workspace."
+                            : CopyGeneratedMedia(call, conversation, workspacePath);
                     }
                     else
                     {
@@ -1308,10 +1468,12 @@ public sealed class AgentBridge : ObservableObject
                     BrowserCleanupStatus.Failed,
                     ex.GetType().Name);
             }
-            var tracking = changeTracker?.FinishResult()
-                ?? new WorkspaceChangeResult([], "incomplete", "Workspace snapshot was unavailable.");
+            var tracking = isImageRequest
+                ? new WorkspaceChangeResult([], "not_applicable", null)
+                : changeTracker?.FinishResult()
+                    ?? new WorkspaceChangeResult([], "incomplete", "Workspace snapshot was unavailable.");
             var changedFiles = tracking.ChangedFiles;
-            if (_activeTurnAttributionKnown)
+            if (!isImageRequest && _activeTurnAttributionKnown)
             {
                 var foreign = changedFiles
                     .Where(file => !_activeTurnWrittenPaths.Contains(file.Path))
@@ -1362,12 +1524,15 @@ public sealed class AgentBridge : ObservableObject
             {
                 finalMessage.ChangedFiles = changedFiles.ToList();
             }
-            WorkspaceBacklog.Record(
-                Area == AgentArea.Chat ? null : workspacePath,
-                _activeRunId,
-                request.Text,
-                conversation.Messages.LastOrDefault(message => message.TurnId == turnId && message.Kind is ChatKind.Assistant or ChatKind.Plan)?.Text,
-                runOutcome);
+            if (!isImageRequest)
+            {
+                WorkspaceBacklog.Record(
+                    Area == AgentArea.Chat ? null : workspacePath,
+                    _activeRunId,
+                    request.Text,
+                    conversation.Messages.LastOrDefault(message => message.TurnId == turnId && message.Kind is ChatKind.Assistant or ChatKind.Plan)?.Text,
+                    runOutcome);
+            }
             if (conversation.Messages.LastOrDefault(message => message.TurnId == turnId && message.Kind is ChatKind.Assistant or ChatKind.Plan or ChatKind.System) is { } metadataMessage)
             {
                 metadataMessage.UsedSkills = _activeUsedSkills.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
@@ -1378,7 +1543,11 @@ public sealed class AgentBridge : ObservableObject
             {
                 conversation.Messages.Add(new ChatMessage { Kind = ChatKind.System, TurnId = turnId, Summary = summary });
             }
-            if (Area == AgentArea.Chat && _chatContextStore is not null)
+            if (isImageRequest && EnsureGeneratedMediaContext(conversation))
+            {
+                SaveModelContext(conversation, conversation.ModelContext);
+            }
+            if (!isImageRequest && Area == AgentArea.Chat && _chatContextStore is not null)
             {
                 var response = conversation.Messages
                     .LastOrDefault(message => message.TurnId == turnId && message.Kind == ChatKind.Assistant)
@@ -1835,8 +2004,7 @@ public sealed class AgentBridge : ObservableObject
         var generation = ++_loadGeneration;
         if (!File.Exists(_file)) return;
         var activeWorkspace = Area == AgentArea.Coding ? NormalizeWorkspacePath(workspace) : null;
-        bool Owned(Conversation item) => item.Area == Area
-            && (Area == AgentArea.Chat || SameWorkspace(item.Cwd, activeWorkspace));
+        bool Owned(Conversation item) => BelongsToArea(item, activeWorkspace);
         List<Conversation> headers;
         try
         {
@@ -1911,6 +2079,14 @@ public sealed class AgentBridge : ObservableObject
         catch { return null; }
     }
 
+    private bool BelongsToArea(Conversation item, string? workspace)
+    {
+        if (item.Area != Area) return false;
+        return Area == AgentArea.Chat
+            ? string.IsNullOrWhiteSpace(item.Cwd)
+            : !string.IsNullOrWhiteSpace(item.Cwd) && SameWorkspace(item.Cwd, workspace);
+    }
+
     private static bool SameWorkspace(string? left, string? right)
     {
         var normalizedLeft = NormalizeWorkspacePath(left);
@@ -1922,12 +2098,42 @@ public sealed class AgentBridge : ObservableObject
             OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
     }
 
+    public void SaveNow() => Save();
+
+    /// Drops the user message `messageId` and everything after it from the selected
+    /// conversation. History only: workspace files are not restored. The model
+    /// transcript is rebuilt from the remaining visible messages on the next send.
+    public ChatMessage? RewindBefore(string messageId)
+    {
+        var conversation = Selected;
+        if (conversation is null || AnyRunBusy || conversation.Running || conversation.PendingPrompts.Count > 0) return null;
+        var index = -1;
+        for (var i = 0; i < conversation.Messages.Count; i++)
+        {
+            if (conversation.Messages[i].Id == messageId && conversation.Messages[i].Kind == ChatKind.User) { index = i; break; }
+        }
+        if (index < 0) return null;
+        var target = conversation.Messages[index];
+        while (conversation.Messages.Count > index) conversation.Messages.RemoveAt(conversation.Messages.Count - 1);
+        conversation.ModelContext = [];
+        conversation.ContextSummary = "";
+        conversation.ContextCompactionCount = 0;
+        conversation.Continuation = null;
+        if (conversation.PendingPlanMessageId is { } planId && conversation.Messages.All(message => message.Id != planId))
+            conversation.PendingPlanMessageId = null;
+        conversation.Blank = conversation.Messages.Count == 0;
+        Save();
+        return target;
+    }
+
     private bool Recover(Conversation conversation)
     {
         var changed = conversation.Running;
         conversation.Running = false;
         conversation.ModelContext ??= [];
+        changed |= StabilizePersistedAttachments(conversation);
         changed |= SanitizeVisibleSkillPreviews(conversation);
+        changed |= EnsureGeneratedMediaContext(conversation);
         conversation.PendingPrompts.Clear();
         if (conversation.ModelContext.Count == 0 && conversation.Messages.Count > 0)
         {
@@ -1936,12 +2142,16 @@ public sealed class AgentBridge : ObservableObject
                 new("system", PromptAssembly.Assemble(
                     SystemPromptSections(Area == AgentArea.Chat ? "" : conversation.Cwd ?? "", planMode: false))),
             };
+            var mediaTurnIds = conversation.Messages
+                .Where(IsImageMediaMessage)
+                .Select(message => message.TurnId)
+                .Where(turnId => turnId is not null)
+                .Select(turnId => turnId!)
+                .ToHashSet(StringComparer.Ordinal);
             context.AddRange(conversation.Messages
-                .Where(message => message.Kind is ChatKind.User or ChatKind.Assistant or ChatKind.Plan)
-                .Select(message => new NativeMessage(
-                    message.Kind == ChatKind.User ? "user" : "assistant",
-                    message.Text,
-                    Attachments: ToNativeAttachments(message.Attachments))));
+                .Select(message => ModelMessageFromVisible(message, mediaTurnIds))
+                .Where(message => message is not null)
+                .Select(message => message!));
             conversation.ModelContext = context;
             changed = true;
         }
@@ -2070,6 +2280,8 @@ public sealed class AgentBridge : ObservableObject
         _approvalAnswer = answer;
         var reason = call.Name == "remove_file"
             ? $"Remove one proven-unused workspace artifact in {workspace}?"
+            : call.Name == "copy_generated_media"
+                ? $"Copy the generated image into {workspace}?"
             : call.Name is BrowserTools.OpenName or BrowserTools.NavigateName or BrowserTools.CloseName
                 ? "Allow this run to control its owned browser page?"
                 : $"Run this command in {workspace}?";
@@ -2116,7 +2328,9 @@ public sealed class AgentBridge : ObservableObject
             _activeTurnAttributionKnown = false;
             return;
         }
-        if (WorkspaceRelativePath(ToolArgument(call, "path"), workspacePath) is { } relative)
+        if (WorkspaceRelativePath(
+                ToolArgument(call, "path") ?? ToolArgument(call, "destination_path"),
+                workspacePath) is { } relative)
         {
             _activeTurnWrittenPaths.Add(relative);
         }
@@ -2124,6 +2338,19 @@ public sealed class AgentBridge : ObservableObject
         {
             _activeTurnAttributionKnown = false;
         }
+    }
+
+    private string CopyGeneratedMedia(NativeToolCall call, Conversation conversation, string workspacePath)
+    {
+        var allowed = conversation.Messages
+            .Where(message => message.Media is not null)
+            .Select(message => message.Media!.FilePath)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return NativeWorkspaceTools.CopyGeneratedMedia(
+            ToolArgument(call, "source_path"),
+            ToolArgument(call, "destination_path"),
+            workspacePath,
+            allowed);
     }
 
     internal static string? WorkspaceRelativePath(string? path, string workspacePath)
@@ -2175,6 +2402,40 @@ public sealed class AgentBridge : ObservableObject
     {
         // Preview redaction must not rewrite the provider's model transcript.
         return messages.ToList();
+    }
+
+    private string AttachmentSnapshotDirectory => Path.Combine(_paths.Runtime, "attachment-snapshots");
+
+    private ChatAttachment StabilizeAttachment(ChatAttachment attachment) =>
+        attachment.Snapshot(AttachmentSnapshotDirectory);
+
+    private bool StabilizePersistedAttachments(Conversation conversation)
+    {
+        var changed = false;
+        foreach (var message in conversation.Messages)
+        {
+            var current = message.Attachments ?? [];
+            var stable = current.Select(StabilizeAttachment).ToList();
+            if (!current.SequenceEqual(stable))
+            {
+                message.Attachments = stable;
+                changed = true;
+            }
+        }
+
+        var context = conversation.ModelContext ?? [];
+        for (var index = 0; index < context.Count; index++)
+        {
+            var current = context[index].Attachments ?? [];
+            var stable = current.Select(StabilizeAttachment).ToList();
+            if (!current.SequenceEqual(stable))
+            {
+                context[index] = context[index] with { Attachments = stable };
+                changed = true;
+            }
+        }
+        if (changed) conversation.ModelContext = context;
+        return changed;
     }
 
     private static bool SanitizeVisibleSkillPreviews(Conversation conversation)
@@ -2328,10 +2589,165 @@ public sealed class AgentBridge : ObservableObject
         + "\n[End local image context]\n\n"
         + (string.IsNullOrWhiteSpace(original) ? "Answer using the visual context above." : original);
 
+    private static string AttachmentKey(ChatAttachment attachment) =>
+        string.IsNullOrWhiteSpace(attachment.AttachmentId) ? attachment.FilePath : attachment.AttachmentId;
+
+    private static Dictionary<string, ChatAttachment> LatestAttachments(Conversation conversation)
+    {
+        var result = new Dictionary<string, ChatAttachment>(StringComparer.Ordinal);
+        foreach (var attachment in conversation.Messages.SelectMany(message => message.Attachments ?? []))
+        {
+            var key = AttachmentKey(attachment);
+            if (!result.TryGetValue(key, out var previous)
+                || attachment.Revision > previous.Revision
+                || (attachment.Revision == previous.Revision && attachment.DeliveredHash is not null && previous.DeliveredHash is null))
+            {
+                result[key] = attachment;
+            }
+        }
+        return result;
+    }
+
+    private static void MergeLatestAttachments(Conversation conversation, Dictionary<string, ChatAttachment> ledger)
+    {
+        foreach (var attachment in conversation.Messages.SelectMany(message => message.Attachments ?? []))
+        {
+            var key = AttachmentKey(attachment);
+            if (!ledger.TryGetValue(key, out var previous)
+                || attachment.Revision > previous.Revision
+                || (attachment.Revision == previous.Revision && attachment.DeliveredHash is not null && previous.DeliveredHash is null))
+            {
+                ledger[key] = attachment;
+            }
+        }
+    }
+
+    private static string? AttachmentRevisionNotice(IEnumerable<ChatAttachment> attachments)
+    {
+        var notices = new List<string>();
+        foreach (var attachment in attachments.OrderBy(AttachmentKey, StringComparer.Ordinal))
+        {
+            var observation = attachment.ObserveSource();
+            var status = observation.Status switch
+            {
+                ChatAttachmentSourceStatus.Changed => "changed",
+                ChatAttachmentSourceStatus.Missing => "missing",
+                ChatAttachmentSourceStatus.Unreadable => "unreadable",
+                _ => null,
+            };
+            if (status is null) continue;
+            var detail = observation.Status switch
+            {
+                ChatAttachmentSourceStatus.Missing => "source_missing\nhistorical_revision_preserved\nlatest_revision_unavailable",
+                ChatAttachmentSourceStatus.Unreadable => "source_unreadable\nhistorical_revision_preserved\nlatest_revision_unavailable",
+                _ => "The source file changed. The historical V1 bytes remain immutable and must not be treated as current.",
+            };
+            var nextRevision = Math.Max(attachment.Revision, 1) + 1;
+            notices.Add(
+                "[Attachment revision notice]\n"
+                + $"attachment_id: {attachment.AttachmentId}\n"
+                + $"name: {attachment.Name}\n"
+                + $"revision: V{nextRevision}\n"
+                + $"status: {status}\n"
+                + detail + "\n"
+                + "If current content is needed, call get_latest_attachment with {\"attachment_id\":\""
+                + attachment.AttachmentId
+                + "\"}. Do not infer missing or unreadable bytes.");
+        }
+        return notices.Count == 0 ? null : string.Join("\n\n", notices);
+    }
+
+    private static List<NativeMessage> WithAttachmentRevisionNotice(
+        IReadOnlyList<NativeMessage> messages,
+        string? notice)
+    {
+        var result = messages.ToList();
+        if (string.IsNullOrWhiteSpace(notice)) return result;
+        var index = result.FindLastIndex(message => message.Role == "user");
+        if (index < 0) return result;
+        result[index] = result[index] with { Content = notice + "\n\n" + result[index].Content };
+        return result;
+    }
+
+    private ChatAttachment? FindAttachment(string attachmentId, Conversation conversation, IReadOnlyList<NativeMessage> messages)
+    {
+        var visible = conversation.Messages
+            .SelectMany(message => message.Attachments ?? [])
+            .FirstOrDefault(attachment => string.Equals(attachment.AttachmentId, attachmentId, StringComparison.Ordinal));
+        if (visible is not null) return visible;
+        foreach (var message in messages)
+        {
+            foreach (var native in message.Attachments ?? [])
+            {
+                if (!string.Equals(native.AttachmentId, attachmentId, StringComparison.Ordinal)) continue;
+                var historical = conversation.Messages
+                    .SelectMany(item => item.Attachments ?? [])
+                    .FirstOrDefault(attachment => string.Equals(attachment.AttachmentId, attachmentId, StringComparison.Ordinal));
+                if (historical is not null) return historical;
+            }
+        }
+        return null;
+    }
+
+    private (string Message, ChatAttachment? Attachment) LatestAttachmentResult(
+        NativeToolCall call,
+        IReadOnlyDictionary<string, ChatAttachment> ledger)
+    {
+        var id = ToolArgument(call, "attachment_id");
+        if (string.IsNullOrWhiteSpace(id) || !ledger.TryGetValue(id, out var current))
+            return ("attachment_not_found\nhistorical_revision_preserved\nlatest_revision_unavailable", null);
+
+        var observation = current.ObserveSource();
+        if (observation.Status == ChatAttachmentSourceStatus.Missing)
+            return ($"source_missing\nhistorical_revision_preserved\nlatest_revision_unavailable\nattachment_id: {current.AttachmentId}", null);
+        if (observation.Status == ChatAttachmentSourceStatus.Unreadable)
+            return ($"source_unreadable\nhistorical_revision_preserved\nlatest_revision_unavailable\nattachment_id: {current.AttachmentId}", null);
+
+        if (observation.Status == ChatAttachmentSourceStatus.Current
+            && current.SnapshotPath is not null
+            && string.Equals(current.ContentHash, observation.CurrentHash, StringComparison.OrdinalIgnoreCase))
+        {
+            return ($"latest_revision_current\nattachment_id: {current.AttachmentId}\nrevision: V{Math.Max(current.Revision, 1)}\ncontent_hash: {current.ContentHash}", current);
+        }
+
+        var refreshed = current.RefreshedSnapshot(AttachmentSnapshotDirectory);
+        if (string.IsNullOrWhiteSpace(refreshed.SnapshotPath)
+            || string.IsNullOrWhiteSpace(refreshed.ContentHash)
+            || !string.Equals(refreshed.ContentHash, observation.CurrentHash, StringComparison.OrdinalIgnoreCase)
+            || string.IsNullOrWhiteSpace(refreshed.ProviderFilePath))
+        {
+            return ($"source_unreadable\nhistorical_revision_preserved\nlatest_revision_unavailable\nattachment_id: {current.AttachmentId}", null);
+        }
+        return ($"latest_revision_created\nattachment_id: {refreshed.AttachmentId}\nrevision: V{refreshed.Revision}\ncontent_hash: {refreshed.ContentHash}", refreshed);
+    }
+
     private static IReadOnlyList<NativeAttachment> ToNativeAttachments(IEnumerable<ChatAttachment> attachments) =>
         attachments.Select(attachment => new NativeAttachment(
-            attachment.FilePath,
+            attachment.ProviderFilePath,
             attachment.Name,
             attachment.Kind.ToString().ToLowerInvariant(),
-            attachment.MimeType)).ToList();
+            attachment.MimeType,
+            attachment.AttachmentId,
+            attachment.Revision,
+            attachment.ContentHash,
+            attachment.DeliveredHash)).ToList();
+
+    private static void MarkDelivered(List<NativeMessage> messages, Conversation conversation)
+    {
+        for (var index = 0; index < messages.Count; index++)
+        {
+            if (messages[index].Attachments is not { Count: > 0 } attachments) continue;
+            messages[index] = messages[index] with
+            {
+                Attachments = attachments.Select(attachment => attachment.ContentHash is { } hash
+                    && attachment.DeliveredHash != hash
+                    ? attachment with { DeliveredHash = hash }
+                    : attachment).ToList(),
+            };
+        }
+        foreach (var attachment in conversation.Messages.SelectMany(message => message.Attachments ?? []))
+        {
+            if (attachment.ContentHash is { } hash && attachment.DeliveredHash != hash) attachment.DeliveredHash = hash;
+        }
+    }
 }

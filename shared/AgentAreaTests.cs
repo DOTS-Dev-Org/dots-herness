@@ -56,6 +56,50 @@ public sealed class AgentAreaTests : IDisposable
     }
 
     [Fact]
+    public void ExistingAreaFilesRepairOwnershipUsingCwdAndDoNotLeakIntoCoding()
+    {
+        var codingPath = Path.Combine(_paths.Root, AgentArea.Coding.SessionFileName());
+        var chatPath = Path.Combine(_paths.Root, AgentArea.Chat.SessionFileName());
+        var coding = new Conversation
+        {
+            Id = "coding-session",
+            Title = "Coding",
+            Cwd = Path.Combine(_root, "coding-project"),
+            Area = AgentArea.Coding,
+        };
+        var chatWrittenAsCoding = new Conversation
+        {
+            Id = "chat-session",
+            Title = "Chat accidentally in coding store",
+            Area = AgentArea.Coding,
+        };
+        var codingWrittenAsChat = new Conversation
+        {
+            Id = "coding-in-chat",
+            Title = "Coding accidentally in chat store",
+            Cwd = Path.Combine(_root, "another-project"),
+            Area = AgentArea.Chat,
+        };
+        File.WriteAllText(codingPath, JsonSerializer.Serialize(new[] { coding, chatWrittenAsCoding }));
+        File.WriteAllText(chatPath, JsonSerializer.Serialize(new[] { codingWrittenAsChat }));
+        File.WriteAllText(Path.Combine(_paths.Root, "area-session-migration-v1.json"), "{}");
+
+        SessionAreaMigration.Run(_paths);
+
+        var repairedCoding = Read(codingPath);
+        var repairedChat = Read(chatPath);
+        Assert.Equal(new[] { "coding-session", "coding-in-chat" }, repairedCoding.Select(item => item.Id));
+        Assert.Equal(new[] { "chat-session" }, repairedChat.Select(item => item.Id));
+        Assert.Contains(repairedCoding, item => item.Id == "coding-in-chat" && item.Area == AgentArea.Coding);
+        Assert.All(repairedChat, item =>
+        {
+            Assert.Equal(AgentArea.Chat, item.Area);
+            Assert.Null(item.Cwd);
+        });
+        Assert.True(File.Exists(Path.Combine(_paths.Root, "area-session-migration-v2.json")));
+    }
+
+    [Fact]
     public void PathParserRecognizesPosixWindowsDriveAndUncCandidates()
     {
         var extracted = ChatPathParser.ExtractPaths(

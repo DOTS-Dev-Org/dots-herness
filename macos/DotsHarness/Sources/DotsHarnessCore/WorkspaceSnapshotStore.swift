@@ -34,7 +34,48 @@ struct WorkspaceSnapshotStore {
         var after: [String: FileState]?
         var changedFiles: [ChangedFile]
         var complete: Bool
+        /// When each `before` file was last modified, and when the capture started. Later
+        /// captures skip reading a file whose modification time and size still match.
+        var beforeModified: [String: Double]?
+        var capturedAt: Double?
+        /// Files whose backup was not copied into this turn: each maps to the earlier turn's
+        /// backup that already holds the same content (path relative to the rewind root).
+        /// Creating a directory entry per file costs ~0.3 ms on APFS, which for a project
+        /// of a thousand files is most of a snapshot; unchanged files need none.
+        var beforeSources: [String: String]?
     }
+
+    /// The last capture of one workspace, kept between turns so the next one can skip the
+    /// files that did not change and link their backups instead of copying them again.
+    private struct WorkspaceIndex: Codable {
+        let workspacePath: String
+        let capturedAt: Double
+        let states: [String: FileState]
+        let modified: [String: Double]
+        /// Backup file holding each file's content, relative to the rewind root.
+        let backups: [String: String]
+    }
+
+    /// Earlier knowledge a capture may rely on for files that have not changed.
+    private struct TrustedFiles {
+        let states: [String: FileState]
+        let modified: [String: Double]
+        /// Files modified at or after this are read again: a change in the same instant
+        /// as the earlier capture cannot be told apart by time (git's "racily clean" rule).
+        let cutoff: Double
+        /// Existing backup files with the same content, relative to the rewind root, for a
+        /// capture that keeps backups.
+        let backups: [String: String]
+    }
+
+    private struct Captured {
+        var states: [String: FileState]
+        var modified: [String: Double]
+        /// Files of this capture that reference an earlier backup instead of copying.
+        var sources: [String: String] = [:]
+    }
+
+    private static let racyWindow: Double = 2
 
     private enum Observation {
         case missing
@@ -60,18 +101,44 @@ struct WorkspaceSnapshotStore {
             try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
             let beforeDirectory = directory.appendingPathComponent("before", isDirectory: true)
             try fileManager.createDirectory(at: beforeDirectory, withIntermediateDirectories: true)
-            let before = try capture(workspace: workspace, backupDirectory: beforeDirectory)
+            let workspacePath = workspace.standardizedFileURL.path
+            let capturedAt = Date().timeIntervalSince1970
+            var trusted: TrustedFiles?
+            if let index = readIndex(for: workspacePath) {
+                trusted = TrustedFiles(
+                    states: index.states,
+                    modified: index.modified,
+                    cutoff: index.capturedAt - Self.racyWindow,
+                    backups: index.backups
+                )
+            }
+            let before = try capture(workspace: workspace, backupDirectory: beforeDirectory, trusted: trusted)
             let snapshot = Snapshot(
                 version: 1,
                 conversationID: conversationID,
                 turnID: turnID,
-                workspacePath: workspace.standardizedFileURL.path,
-                before: before,
+                workspacePath: workspacePath,
+                before: before.states,
                 after: nil,
                 changedFiles: [],
-                complete: false
+                complete: false,
+                beforeModified: before.modified,
+                capturedAt: capturedAt,
+                beforeSources: before.sources.isEmpty ? nil : before.sources
             )
             try write(snapshot, to: manifestURL(in: directory))
+            let ownPrefix = "\(safeComponent(conversationID))/\(safeComponent(turnID))/before/"
+            writeIndex(WorkspaceIndex(
+                workspacePath: workspacePath,
+                capturedAt: capturedAt,
+                states: before.states,
+                modified: before.modified,
+                // Where each file's content physically lives: an earlier turn's copy when this
+                // turn referenced it, this turn's own copy otherwise.
+                backups: Dictionary(uniqueKeysWithValues: before.states.keys.map { path in
+                    (path, before.sources[path] ?? ownPrefix + path)
+                })
+            ))
             return true
         } catch {
             try? fileManager.removeItem(at: directory)
@@ -88,7 +155,14 @@ struct WorkspaceSnapshotStore {
                   snapshot.workspacePath == workspace.standardizedFileURL.path else {
                 return WorkspaceChangeResult(changedFiles: [], trackingStatus: "incomplete", failureReason: "Snapshot identity did not match.")
             }
-            let after = try capture(workspace: workspace, backupDirectory: nil)
+            // Only files whose time or size moved since the pre-turn capture are read again.
+            let trusted = TrustedFiles(
+                states: snapshot.before,
+                modified: snapshot.beforeModified ?? [:],
+                cutoff: (snapshot.capturedAt ?? 0) - Self.racyWindow,
+                backups: [:]
+            )
+            let after = try capture(workspace: workspace, backupDirectory: nil, trusted: trusted).states
             let changedFiles = changedFiles(before: snapshot.before, after: after)
             snapshot.after = after
             snapshot.changedFiles = changedFiles
@@ -205,11 +279,66 @@ struct WorkspaceSnapshotStore {
         return RewindResult(restoredPaths: restored, conflictPaths: conflicts)
     }
 
-    func removeConversation(_ conversationID: String) {
-        try? fileManager.removeItem(at: root.appendingPathComponent(safeComponent(conversationID), isDirectory: true))
+    private func indexURL(for workspacePath: String) -> URL {
+        let name = SHA256.hash(data: Data(workspacePath.utf8)).prefix(12).map { String(format: "%02x", $0) }.joined()
+        return root
+            .appendingPathComponent("_workspace-index", isDirectory: true)
+            .appendingPathComponent(name + ".json")
     }
 
-    private func capture(workspace: URL, backupDirectory: URL?) throws -> [String: FileState] {
+    private func readIndex(for workspacePath: String) -> WorkspaceIndex? {
+        guard let data = try? Data(contentsOf: indexURL(for: workspacePath)),
+              let index = try? JSONDecoder().decode(WorkspaceIndex.self, from: data),
+              index.workspacePath == workspacePath else { return nil }
+        return index
+    }
+
+    /// Losing the index only costs the next capture a full read.
+    private func writeIndex(_ index: WorkspaceIndex) {
+        let url = indexURL(for: index.workspacePath)
+        try? fileManager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        guard let data = try? JSONEncoder().encode(index) else { return }
+        try? data.write(to: url, options: .atomic)
+    }
+
+    func removeConversation(_ conversationID: String) {
+        let component = safeComponent(conversationID)
+        materializeReferences(pointingInto: component)
+        try? fileManager.removeItem(at: root.appendingPathComponent(component, isDirectory: true))
+    }
+
+    /// Other turns may reference backups stored under this conversation. Before it is deleted
+    /// those files are given to the turns that use them, so their rewind keeps working.
+    private func materializeReferences(pointingInto component: String) {
+        let prefix = component + "/"
+        guard let conversations = try? fileManager.contentsOfDirectory(atPath: root.path) else { return }
+        for other in conversations where other != component && !other.hasPrefix("_") {
+            let otherDirectory = root.appendingPathComponent(other, isDirectory: true)
+            guard let turns = try? fileManager.contentsOfDirectory(atPath: otherDirectory.path) else { continue }
+            for turn in turns {
+                let turnDirectory = otherDirectory.appendingPathComponent(turn, isDirectory: true)
+                let manifest = manifestURL(in: turnDirectory)
+                guard var snapshot = try? read(from: manifest),
+                      let sources = snapshot.beforeSources,
+                      sources.values.contains(where: { $0.hasPrefix(prefix) }) else { continue }
+                let beforeDirectory = turnDirectory.appendingPathComponent("before", isDirectory: true)
+                var remaining = sources
+                for (path, reference) in sources where reference.hasPrefix(prefix) {
+                    let source = root.appendingPathComponent(reference)
+                    guard let destination = safeBackupURL(path: path, relativeTo: beforeDirectory) else { continue }
+                    try? fileManager.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+                    if link(source.path, destination.path) == 0
+                        || (try? fileManager.copyItem(at: source, to: destination)) != nil {
+                        remaining[path] = nil
+                    }
+                }
+                snapshot.beforeSources = remaining.isEmpty ? nil : remaining
+                try? write(snapshot, to: manifest)
+            }
+        }
+    }
+
+    private func capture(workspace: URL, backupDirectory: URL?, trusted: TrustedFiles? = nil) throws -> Captured {
         let rootURL = workspace.standardizedFileURL
         let keys: Set<URLResourceKey> = [
             .isDirectoryKey,
@@ -228,11 +357,18 @@ struct WorkspaceSnapshotStore {
         // (an external drive) most of the time is spent waiting: overlapping the files
         // makes a snapshot cost far less than the sum of every file's wait.
         var entries: [(url: URL, relative: String)] = []
+        let rootPrefix = rootURL.path + "/"
         while let url = enumerator.nextObject() as? URL {
             let values = try url.resourceValues(forKeys: keys)
-            let relative = try relativePath(for: url, workspace: rootURL)
-            let components = relative.split(separator: "/").map(String.init)
-            if components.contains(where: { ignoredWorkspaceDirectories.contains($0) }) {
+            // Entries come back under the URL we handed in, so the relative path is a plain
+            // prefix strip; standardizing every URL costs more than the rest of the walk.
+            let path = url.path
+            let relative = path.hasPrefix(rootPrefix)
+                ? String(path.dropFirst(rootPrefix.count))
+                : try relativePath(for: url, workspace: rootURL)
+            let components = relative.split(separator: "/")
+            if components.contains(where: { $0 == "." || $0 == ".." }) { throw WorkspaceSnapshotError.invalidPath }
+            if components.contains(where: { ignoredWorkspaceDirectories.contains(String($0)) }) {
                 if values.isDirectory == true { enumerator.skipDescendants() }
                 continue
             }
@@ -244,47 +380,108 @@ struct WorkspaceSnapshotStore {
             entries.append((url, relative))
         }
 
-        let outcome = CaptureOutcome(count: entries.count)
-        DispatchQueue.concurrentPerform(iterations: entries.count) { index in
-            guard !outcome.hasFailed else { return }
-            let entry = entries[index]
-            do {
-                let data = try Data(contentsOf: entry.url)
-                let permissions = Self.posixPermissions(at: entry.url)
-                if let backupDirectory {
-                    let destination = backupDirectory.appendingPathComponent(entry.relative)
-                    try FileManager.default.createDirectory(
-                        at: destination.deletingLastPathComponent(),
-                        withIntermediateDirectories: true
-                    )
-                    try data.write(to: destination, options: .atomic)
-                    try? FileManager.default.setAttributes(
-                        [.posixPermissions: permissions],
-                        ofItemAtPath: destination.path
-                    )
+        // Backup directories once, up front, instead of a create call per file.
+        if let backupDirectory {
+            var directories = Set<String>()
+            for entry in entries {
+                if let slash = entry.relative.lastIndex(of: "/") { directories.insert(String(entry.relative[..<slash])) }
+            }
+            for directory in directories {
+                try fileManager.createDirectory(
+                    at: backupDirectory.appendingPathComponent(directory, isDirectory: true),
+                    withIntermediateDirectories: true
+                )
+            }
+        }
+
+        // Only reference a backup whose turn directory still exists.
+        var liveSources = Set<String>()
+        if backupDirectory != nil, let trusted {
+            for reference in Set(trusted.backups.values.map { $0.split(separator: "/").prefix(2).joined(separator: "/") }) {
+                var isDirectory = ObjCBool(false)
+                if fileManager.fileExists(atPath: root.appendingPathComponent(reference).path, isDirectory: &isDirectory),
+                   isDirectory.boolValue {
+                    liveSources.insert(reference)
                 }
-                outcome.set(FileState(hash: Self.digest(data), bytes: data.count, permissions: permissions), at: index)
+            }
+        }
+
+        let files = entries
+        let outcome = CaptureOutcome(count: files.count)
+        DispatchQueue.concurrentPerform(iterations: files.count) { index in
+            guard !outcome.hasFailed else { return }
+            let entry = files[index]
+            do {
+                // stat, link and chmod directly: per file, Foundation's attribute and link
+                // wrappers cost more than the system calls they wrap.
+                guard let facts = Self.fileFacts(at: entry.url.path) else {
+                    throw WorkspaceSnapshotError.restoreFailed(entry.relative)
+                }
+                let destination = backupDirectory?.appendingPathComponent(entry.relative)
+
+                // Unchanged since the earlier capture: no read, no hash, and the backup is a
+                // link to the copy that already exists.
+                if let trusted,
+                   let known = trusted.states[entry.relative],
+                   trusted.modified[entry.relative] == facts.modified,
+                   facts.modified < trusted.cutoff,
+                   known.bytes == facts.size,
+                   known.permissions == facts.permissions {
+                    if let destination {
+                        if let reference = trusted.backups[entry.relative],
+                           liveSources.contains(reference.split(separator: "/").prefix(2).joined(separator: "/")) {
+                            outcome.set(known, modified: facts.modified, source: reference, at: index)
+                            return
+                        }
+                        let data = try Data(contentsOf: entry.url)
+                        guard data.count == facts.size else { throw WorkspaceSnapshotError.restoreFailed(entry.relative) }
+                        try data.write(to: destination)
+                        _ = chmod(destination.path, mode_t(facts.permissions))
+                    }
+                    outcome.set(known, modified: facts.modified, at: index)
+                    return
+                }
+
+                let data = try Data(contentsOf: entry.url)
+                if let destination {
+                    try data.write(to: destination)
+                    _ = chmod(destination.path, mode_t(facts.permissions))
+                }
+                outcome.set(
+                    FileState(hash: Self.digest(data), bytes: data.count, permissions: facts.permissions),
+                    modified: facts.modified,
+                    at: index
+                )
             } catch {
                 outcome.fail(error)
             }
         }
         if let error = outcome.error { throw error }
 
-        var result: [String: FileState] = [:]
-        result.reserveCapacity(entries.count)
+        var captured = Captured(states: [:], modified: [:])
+        captured.states.reserveCapacity(entries.count)
         for (index, entry) in entries.enumerated() {
-            if let state = outcome.states[index] { result[entry.relative] = state }
+            guard let state = outcome.states[index] else { continue }
+            captured.states[entry.relative] = state
+            if let modified = outcome.modified[index] { captured.modified[entry.relative] = modified }
+            if let source = outcome.sources[index] { captured.sources[entry.relative] = source }
         }
-        return result
+        return captured
     }
 
     /// Per-file results of a parallel capture; the first failure stops the rest.
     private final class CaptureOutcome: @unchecked Sendable {
         private let lock = NSLock()
         private(set) var states: [FileState?]
+        private(set) var modified: [Double?]
+        private(set) var sources: [String?]
         private(set) var error: Error?
 
-        init(count: Int) { states = Array(repeating: nil, count: count) }
+        init(count: Int) {
+            states = Array(repeating: nil, count: count)
+            modified = Array(repeating: nil, count: count)
+            sources = Array(repeating: nil, count: count)
+        }
 
         var hasFailed: Bool {
             lock.lock()
@@ -292,9 +489,11 @@ struct WorkspaceSnapshotStore {
             return error != nil
         }
 
-        func set(_ state: FileState, at index: Int) {
+        func set(_ state: FileState, modified time: Double?, source: String? = nil, at index: Int) {
             lock.lock()
             states[index] = state
+            modified[index] = time
+            sources[index] = source
             lock.unlock()
         }
 
@@ -305,9 +504,14 @@ struct WorkspaceSnapshotStore {
         }
     }
 
-    private static func posixPermissions(at url: URL) -> Int {
-        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
-        return (attributes?[.posixPermissions] as? NSNumber)?.intValue ?? 0
+    private static func fileFacts(at path: String) -> (size: Int, permissions: Int, modified: Double)? {
+        var info = stat()
+        guard stat(path, &info) == 0 else { return nil }
+        return (
+            Int(info.st_size),
+            Int(info.st_mode & 0o7777),
+            Double(info.st_mtimespec.tv_sec) + Double(info.st_mtimespec.tv_nsec) / 1e9
+        )
     }
 
     private static func digest(_ data: Data) -> String {
@@ -316,6 +520,9 @@ struct WorkspaceSnapshotStore {
 
     private let ignoredWorkspaceDirectories: Set<String> = [
         ".git", ".mem", ".build", "build", "bin", "obj", "dist", "node_modules", "Pods", "DerivedData",
+        // Regenerated by tooling, and often thousands of files.
+        ".next", ".nuxt", ".turbo", ".gradle", ".dart_tool", ".venv", "venv", "__pycache__",
+        ".pytest_cache", ".mypy_cache",
     ]
 
     private func observe(path: String, workspace: URL) throws -> Observation {
@@ -407,7 +614,7 @@ struct WorkspaceSnapshotStore {
             turnID: snapshot.turnID
         ).appendingPathComponent("before", isDirectory: true)
         return snapshot.before.allSatisfy { path, state in
-            guard let backup = safeBackupURL(path: path, relativeTo: beforeDirectory) else { return false }
+            guard let backup = backupURL(path: path, snapshot: snapshot) else { return false }
             var isDirectory = ObjCBool(false)
             guard fileManager.fileExists(atPath: backup.path, isDirectory: &isDirectory),
                   !isDirectory.boolValue else { return false }
@@ -417,6 +624,10 @@ struct WorkspaceSnapshotStore {
     }
 
     private func backupURL(path: String, snapshot: Snapshot) -> URL? {
+        if let reference = snapshot.beforeSources?[path] {
+            let url = root.appendingPathComponent(reference).standardizedFileURL
+            return url.path.hasPrefix(root.standardizedFileURL.path + "/") ? url : nil
+        }
         let beforeDirectory = snapshotDirectory(
             conversationID: snapshot.conversationID,
             turnID: snapshot.turnID
@@ -484,3 +695,6 @@ struct WorkspaceSnapshotStore {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 }
+
+// The store holds only value types and a FileManager; a capture may run on a background queue.
+extension WorkspaceSnapshotStore: @unchecked Sendable {}

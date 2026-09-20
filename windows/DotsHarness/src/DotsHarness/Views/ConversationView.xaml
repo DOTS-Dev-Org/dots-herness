@@ -255,7 +255,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Margin="0,0,0,20">
+                            <Border Margin="0,0,0,20" MaxWidth="760" HorizontalAlignment="{Binding Kind, Converter={x:Static views:KindAlignment.Instance}}">
                                 <StackPanel>
 <Grid>
                                     <StackPanel Visibility="{Binding Kind, Converter={x:Static views:NotPlanVisibility.Instance}}">
@@ -266,7 +266,7 @@
                                             <TextBlock Text="…" HorizontalAlignment="Right"
                                                        Visibility="{Binding Streaming, Converter={x:Static views:BoolToVis.Instance}}"/>
                                         </DockPanel>
-                                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,6,0,0" TextAlignment="{Binding Kind, Converter={x:Static views:KindTextAlignment.Instance}}"
                                                    Foreground="{DynamicResource TextPrimary}"/>
                                         <TextBlock Text="{Binding ContextRootIds, Converter={x:Static views:ContextRootLabel.Instance}}"
                                                    FontSize="11" Foreground="{DynamicResource TextSecondary}" Margin="0,6,0,0"/>
@@ -393,13 +393,35 @@
                                         </StackPanel>
                                     </Border>
                                 </Grid>
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0" Opacity="0.7" Visibility="{Binding ., Converter={x:Static views:MessageActionsVisibility.Instance}}">
-                                        <Button Tag="{Binding}" Click="OnCopyMessage" Padding="4" Background="Transparent" BorderThickness="0"
-                                                AutomationProperties.Name="Copy" ToolTip="Copy">
-                                            <Path Data="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" Fill="{DynamicResource TextSecondary}" Stretch="Uniform" Width="15" Height="15"/>
-                                        </Button>
-                                        <TextBlock Text="{Binding CreatedAt, Converter={x:Static views:RelativeTime.Instance}}" FontSize="13" Margin="12,0,0,0"
-                                                   VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+                                    <TextBlock Text="{Binding Translation}" TextWrapping="Wrap" Margin="0,8,0,0" TextAlignment="{Binding Kind, Converter={x:Static views:KindTextAlignment.Instance}}"
+                                               Foreground="{DynamicResource TextPrimary}" Visibility="{Binding HasTranslation, Converter={x:Static views:BoolToVis.Instance}}"/>
+                                    <StackPanel Margin="0,8,0,0" HorizontalAlignment="{Binding Kind, Converter={x:Static views:KindAlignment.Instance}}" Visibility="{Binding Kind, Converter={x:Static views:KindVisibility.Instance}, ConverterParameter=row}">
+                                        <StackPanel Orientation="Horizontal" Opacity="0.75" Visibility="{Binding Streaming, Converter={x:Static views:InverseBoolToVis.Instance}}">
+                                            <Button Tag="{Binding}" Click="OnCopyMessage" Padding="4" Margin="0,0,10,0" Background="Transparent" BorderThickness="0" ToolTip="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.copy}" >
+                                                <Path Data="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" Fill="{DynamicResource TextSecondary}" Stretch="Uniform" Width="15" Height="15" />
+                                            </Button>
+                                            <Button Tag="{Binding}" Click="OnEditMessage" Padding="4" Margin="0,0,10,0" Background="Transparent" BorderThickness="0" ToolTip="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.edit}" Visibility="{Binding Kind, Converter={x:Static views:KindVisibility.Instance}, ConverterParameter=user}">
+                                                <Path Data="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" Fill="{DynamicResource TextSecondary}" Stretch="Uniform" Width="15" Height="15" />
+                                            </Button>
+                                            <Button Tag="{Binding}" Click="OnRewindMessage" Padding="4" Margin="0,0,10,0" Background="Transparent" BorderThickness="0" ToolTip="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.rewind}" Visibility="{Binding Kind, Converter={x:Static views:KindVisibility.Instance}, ConverterParameter=user}">
+                                                <Path Data="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" Fill="{DynamicResource TextSecondary}" Stretch="Uniform" Width="15" Height="15" />
+                                            </Button>
+                                            <Button Tag="{Binding}" Click="OnSpeakMessage" Padding="4" Margin="0,0,10,0" Background="Transparent" BorderThickness="0" ToolTip="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.speakResponse}" Visibility="{Binding Kind, Converter={x:Static views:KindVisibility.Instance}, ConverterParameter=assistant}">
+                                                <Grid><Path Data="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" Fill="{DynamicResource TextSecondary}" Stretch="Uniform" Width="15" Height="15" Visibility="{Binding IsNotSpeaking, Converter={x:Static views:BoolToVis.Instance}}"/><Path Data="M6 6h12v12H6z" Fill="{DynamicResource TextSecondary}" Stretch="Uniform" Width="15" Height="15" Visibility="{Binding IsSpeaking, Converter={x:Static views:BoolToVis.Instance}}"/></Grid>
+                                            </Button>
+                                            <Button Tag="{Binding}" Click="OnTranslateMessage" Padding="4" Margin="0,0,10,0" Background="Transparent" BorderThickness="0" ToolTip="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.translate}" >
+                                                <Path Data="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z" Fill="{DynamicResource TextSecondary}" Stretch="Uniform" Width="15" Height="15" />
+                                            </Button>
+                                            <TextBlock Text="…" Margin="0,0,10,0" VerticalAlignment="Center" Visibility="{Binding IsTranslating, Converter={x:Static views:BoolToVis.Instance}}"/>
+                                            <Button Tag="{Binding}" Click="OnFeedbackGood" Padding="4" Margin="0,0,10,0" Background="Transparent" BorderThickness="0" ToolTip="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=feedback.good}" Visibility="{Binding Kind, Converter={x:Static views:KindVisibility.Instance}, ConverterParameter=feedback}">
+                                                <Path Data="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z" Fill="{Binding Feedback, Converter={x:Static views:FeedbackBrush.Instance}, ConverterParameter=good}" Stretch="Uniform" Width="15" Height="15" />
+                                            </Button>
+                                            <Button Tag="{Binding}" Click="OnFeedbackBad" Padding="4" Margin="0,0,10,0" Background="Transparent" BorderThickness="0" ToolTip="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=feedback.bad}" Visibility="{Binding Kind, Converter={x:Static views:KindVisibility.Instance}, ConverterParameter=feedback}">
+                                                <Path Data="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z" Fill="{Binding Feedback, Converter={x:Static views:FeedbackBrush.Instance}, ConverterParameter=bad}" Stretch="Uniform" Width="15" Height="15" />
+                                            </Button>
+                                            <TextBlock Text="{Binding CreatedAt, Converter={x:Static views:RelativeTime.Instance}}" FontSize="13"
+                                                       VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+                                        </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
                             </Border>

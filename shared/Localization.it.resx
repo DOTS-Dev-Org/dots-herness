@@ -310,4 +310,11 @@
   <data name="modelPicker.effort.high" xml:space="preserve"><value>Alto</value></data>
   <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>Molto alto</value></data>
   <data name="modelPicker.effort.max" xml:space="preserve"><value>Massimo</value></data>
+  <data name="conversation.copy" xml:space="preserve"><value>Copia</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Modifica</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Riavvolgi</value></data>
+  <data name="conversation.speakResponse" xml:space="preserve"><value>Leggi risposta</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>Buona risposta</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>Risposta negativa</value></data>
+  <data name="conversation.translate" xml:space="preserve"><value>Traduci</value></data>
 </root>

@@ -131,6 +131,8 @@ final class ProviderImageTests: XCTestCase {
         try router.store.setImageFallback(account.id, true)
         router.selectedModelID = account.model
         ImageRouterURLProtocol.paths = []
+        ImageRouterURLProtocol.requests = []
+        ImageRouterURLProtocol.bodies = []
         ImageRouterURLProtocol.responses = [
             (400, Data(#"{"error":{"message":"image_generation is not supported by this model"}}"#.utf8)),
             (200, Data(#"{"data":[{"b64_json":"AQID"}]}"#.utf8)),
@@ -147,7 +149,14 @@ final class ProviderImageTests: XCTestCase {
         XCTAssertEqual(generated.provider, "OpenAI")
         XCTAssertEqual(generated.model, "gpt-image-1.5")
         XCTAssertEqual(generated.fallbackFrom, "OpenAI/gpt-4.1-mini")
+        XCTAssertNil(router.lastServedAccountID)
+        XCTAssertNil(router.lastServedModelID)
+        XCTAssertEqual(router.selectedModelID, account.model)
         XCTAssertEqual(ImageRouterURLProtocol.paths, ["/v1/responses", "/v1/images/generations"])
+        let fallbackBody = try XCTUnwrap(JSONSerialization.jsonObject(with: try XCTUnwrap(ImageRouterURLProtocol.bodies[1])) as? [String: Any])
+        XCTAssertEqual(fallbackBody["prompt"] as? String, "a red fox")
+        XCTAssertNil(fallbackBody["messages"])
+        XCTAssertNil(fallbackBody["tools"])
         let route = ProviderImageRoute(accountID: account.id, providerID: "openai", baseURL: account.baseURL, api: account.api, model: account.model, authType: account.authType)
         XCTAssertEqual(router.imageAdapters.capability(for: route, adapterID: "openai.responses.image"), .unsupported)
         XCTAssertEqual(router.imageAdapters.capability(for: route, adapterID: "openai.images.fallback"), .supported)
@@ -236,7 +245,17 @@ final class ProviderImageTests: XCTestCase {
         configuration.protocolClasses = [ImageRouterURLProtocol.self]
 
         XCTAssertTrue(router.imageGenerationCommandVisible)
-        _ = try? await router.generateImage(prompt: "a red fox", session: URLSession(configuration: configuration))
+        AppCopy.setLanguage(.en)
+        defer { AppCopy.setLanguage(.system) }
+        do {
+            _ = try await router.generateImage(prompt: "a red fox", session: URLSession(configuration: configuration))
+            XCTFail("unsupported image generation should fail without a fallback")
+        } catch let error as ProviderImageGenerationError {
+            guard case .unsupported(let message) = error else {
+                return XCTFail("unsupported image generation should return an unsupported error")
+            }
+            XCTAssertTrue(message.localizedCaseInsensitiveContains("prompt cache"))
+        }
         XCTAssertTrue(router.imageGenerationCommandVisible)
         router.selectedModelID = "unknown-model"
         XCTAssertTrue(router.imageGenerationCommandVisible)

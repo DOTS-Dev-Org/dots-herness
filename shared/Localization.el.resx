@@ -309,4 +309,11 @@
   <data name="modelPicker.effort.high" xml:space="preserve"><value>Ψηλά</value></data>
   <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>Extra High</value></data>
   <data name="modelPicker.effort.max" xml:space="preserve"><value>Μέγ</value></data>
+  <data name="conversation.copy" xml:space="preserve"><value>Αντιγραφή</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Επεξεργασία</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Πίσω</value></data>
+  <data name="conversation.speakResponse" xml:space="preserve"><value>Μίλα απάντηση</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>Καλή απάντηση</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>Κακή απάντηση</value></data>
+  <data name="conversation.translate" xml:space="preserve"><value>Μετάφραση</value></data>
 </root>

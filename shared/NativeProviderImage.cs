@@ -364,6 +364,9 @@ public sealed class NativeProviderImageRouter
             {
                 continue;
             }
+            // An image fallback is deliberately a one-shot side request. It
+            // receives only the image prompt and never changes chat routing or
+            // the conversation prompt cache.
             switch (await AttemptAsync(account, route, adapter, prompt, ct))
             {
                 case ProviderImageResult.Generated generated:
@@ -376,7 +379,8 @@ public sealed class NativeProviderImageRouter
                     throw NativeImageGenerationException.Failed(failed.Failure);
             }
         }
-        throw NativeImageGenerationException.UnsupportedResult($"{source} does not support image generation. Enable an image fallback connection in Settings.");
+        throw NativeImageGenerationException.UnsupportedResult(
+            LocalizationService.Current.Get("media.imageUnsupportedWithFallbackHint", source));
     }
 
     private async Task<ProviderImageResult> AttemptAsync(NativeProviderAccount account, ProviderImageRoute route, IProviderImageAdapter adapter, string prompt, CancellationToken ct)

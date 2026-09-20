@@ -309,4 +309,11 @@
   <data name="modelPicker.effort.high" xml:space="preserve"><value>అధిక</value></data>
   <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>అదనపు హై</value></data>
   <data name="modelPicker.effort.max" xml:space="preserve"><value>గరిష్టంగా</value></data>
+  <data name="conversation.copy" xml:space="preserve"><value>కాపీ చేయండి</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>సవరించు</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>రివైండ్ చేయండి</value></data>
+  <data name="conversation.speakResponse" xml:space="preserve"><value>ప్రతిస్పందనగా మాట్లాడండి</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>మంచి సమాధానం</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>చెడ్డ సమాధానం</value></data>
+  <data name="conversation.translate" xml:space="preserve"><value>అనువదించు</value></data>
 </root>

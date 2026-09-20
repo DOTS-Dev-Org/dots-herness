@@ -26,4 +26,14 @@ class MobilePromptHistoryTest {
         assertEquals("new", history.capture("new", "new policy", ""))
         assertEquals("new policy", history.policy)
     }
+
+    @Test fun `prompt cache key is stable for same prefix and rotates for new segments`() {
+        val fingerprint = "tool-fingerprint"
+        val first = MobilePromptCache.key("conversation-1", "openai", "openai-chat", "gpt-4.1", "openai", fingerprint, 0)
+        val same = MobilePromptCache.key("conversation-1", "openai", "openai-chat", "gpt-4.1", "openai", fingerprint, 0)
+        val compacted = MobilePromptCache.key("conversation-1", "openai", "openai-chat", "gpt-4.1", "openai", fingerprint, 1)
+        assertEquals(first, same)
+        assertNotEquals(first, compacted)
+        assertTrue(first.startsWith("herness:mobile-v1:"))
+    }
 }

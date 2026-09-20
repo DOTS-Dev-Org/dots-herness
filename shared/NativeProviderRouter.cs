@@ -335,7 +335,15 @@ public sealed class NativeProviderStore
             .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 }
 
-public sealed record NativeAttachment(string FilePath, string Name, string Kind, string MimeType);
+public sealed record NativeAttachment(
+    string FilePath,
+    string Name,
+    string Kind,
+    string MimeType,
+    string? AttachmentId = null,
+    int Revision = 0,
+    string? ContentHash = null,
+    string? DeliveredHash = null);
 public sealed record NativeMessage(
     string Role,
     string Content,
@@ -466,7 +474,8 @@ public sealed class NativeProviderRouter
         IReadOnlyList<NativeToolDefinition> tools,
         string? model = null,
         CancellationToken ct = default,
-        string? promptCacheKey = null)
+        string? promptCacheKey = null,
+        string? effortOverride = null)
     {
         var routes = _store.State.Accounts
             .Where(a => a.Active && (string.IsNullOrWhiteSpace(model) || CanServe(a, model)))
@@ -478,7 +487,7 @@ public sealed class NativeProviderRouter
         foreach (var route in routes)
         {
             var refreshed = false;
-            try { return await SendAsync(route, messages, tools, string.IsNullOrWhiteSpace(model) ? null : model, promptCacheKey, ct); }
+            try { return await SendAsync(route, messages, tools, string.IsNullOrWhiteSpace(model) ? null : model, promptCacheKey, ct, effortOverride); }
             catch (TaskCanceledException ex) when (!ct.IsCancellationRequested) { failures.Add($"{route.ProviderName}: {ex.Message}"); }
             catch (OperationCanceledException) { throw; }
             catch (NativeProviderException ex)
@@ -500,7 +509,7 @@ public sealed class NativeProviderRouter
                     refreshed = true;
                     if (await _refresh(route, ct))
                     {
-                        try { return await SendAsync(route, messages, tools, string.IsNullOrWhiteSpace(model) ? null : model, promptCacheKey, ct); }
+                        try { return await SendAsync(route, messages, tools, string.IsNullOrWhiteSpace(model) ? null : model, promptCacheKey, ct, effortOverride); }
                         catch (TaskCanceledException retry) when (!ct.IsCancellationRequested) { failures.Add($"{route.ProviderName}: {retry.Message}"); continue; }
                         catch (HttpRequestException retry) { failures.Add($"{route.ProviderName}: {retry.Message}"); continue; }
                         catch (NativeProviderException retry)
@@ -550,7 +559,8 @@ public sealed class NativeProviderRouter
         IReadOnlyList<NativeToolDefinition> tools,
         string? model,
         string? promptCacheKey,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? effortOverride = null)
     {
         var key = _store.Secrets.Read(route.CredentialId);
         if ((route.Protocol is NativeProviderProtocol.Anthropic or NativeProviderProtocol.ChatGpt) && string.IsNullOrEmpty(key)) throw new NativeProviderException("The provider credential is unavailable.");
@@ -563,7 +573,7 @@ public sealed class NativeProviderRouter
         };
         var effectivePromptCacheKey = RouteCacheKey(promptCacheKey, route);
         ApplyPromptCacheKey(body, route.Protocol, effectivePromptCacheKey);
-        ApplyEffort(body, route.Protocol, model ?? route.Model, Effort);
+        ApplyEffort(body, route.Protocol, model ?? route.Model, effortOverride ?? Effort);
         using var request = new HttpRequestMessage(HttpMethod.Post, endpoint) { Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json") };
         if (!string.IsNullOrEmpty(key))
         {
@@ -690,7 +700,20 @@ public sealed class NativeProviderRouter
 
     private static JsonObject OpenAiBody(NativeProviderAccount route, IReadOnlyList<NativeMessage> messages, IReadOnlyList<NativeToolDefinition> tools, string? model)
     {
-        var body = new JsonObject { ["model"] = model ?? route.Model, ["messages"] = new JsonArray(messages.Select(MessageNode).ToArray()), ["temperature"] = 0.2 };
+        var wireMessages = new JsonArray();
+        foreach (var message in messages)
+        {
+            wireMessages.Add(MessageNode(message));
+            if (message.Role == "tool" && message.Attachments is { Count: > 0 })
+            {
+                wireMessages.Add(new JsonObject
+                {
+                    ["role"] = "user",
+                    ["content"] = OpenAiContent(message),
+                });
+            }
+        }
+        var body = new JsonObject { ["model"] = model ?? route.Model, ["messages"] = wireMessages, ["temperature"] = 0.2 };
         if (tools.Count > 0) body["tools"] = new JsonArray(tools.Select(tool => new JsonObject { ["type"] = "function", ["function"] = new JsonObject { ["name"] = tool.Name, ["description"] = tool.Description, ["parameters"] = tool.Parameters.DeepClone() } }).ToArray());
         return body;
     }
@@ -724,6 +747,10 @@ public sealed class NativeProviderRouter
             else if (message.Role == "tool")
             {
                 input.Add(new JsonObject { ["type"] = "function_call_output", ["call_id"] = message.ToolCallId ?? "tool", ["output"] = message.Content });
+                if (message.Attachments is { Count: > 0 })
+                {
+                    input.Add(new JsonObject { ["role"] = "user", ["content"] = ResponsesContent(message) });
+                }
             }
             else if (message.Role == "assistant" && message.ToolCalls is { Count: > 0 })
             {
@@ -757,7 +784,7 @@ public sealed class NativeProviderRouter
 
     private static JsonNode MessageNode(NativeMessage message)
     {
-        JsonNode content = message.Attachments is { Count: > 0 }
+        JsonNode content = message.Role != "tool" && message.Attachments is { Count: > 0 }
             ? OpenAiContent(message)
             : JsonNodeValue.Create(message.Content)!;
         var node = new JsonObject { ["role"] = message.Role, ["content"] = content };
@@ -806,6 +833,9 @@ public sealed class NativeProviderRouter
     {
         if (message.Role == "tool")
         {
+            JsonNode resultContent = message.Attachments is { Count: > 0 }
+                ? AnthropicContent(message)
+                : JsonNodeValue.Create(message.Content)!;
             return new JsonObject
             {
                 ["role"] = "user",
@@ -813,7 +843,7 @@ public sealed class NativeProviderRouter
                 {
                     ["type"] = "tool_result",
                     ["tool_use_id"] = message.ToolCallId ?? "tool",
-                    ["content"] = message.Content,
+                    ["content"] = resultContent,
                 }),
             };
         }
@@ -856,7 +886,7 @@ public sealed class NativeProviderRouter
             }
             else
             {
-                blocks.Add(new JsonObject { ["type"] = "text", ["text"] = AttachmentDescription(attachment) });
+                blocks.Add(new JsonObject { ["type"] = "text", ["text"] = UnsupportedAttachmentNotice(attachment) });
             }
         }
         return blocks;
@@ -874,7 +904,7 @@ public sealed class NativeProviderRouter
             }
             else
             {
-                blocks.Add(new JsonObject { ["type"] = "input_text", ["text"] = AttachmentDescription(attachment) });
+                blocks.Add(new JsonObject { ["type"] = "input_text", ["text"] = UnsupportedAttachmentNotice(attachment) });
             }
         }
         return blocks;
@@ -901,7 +931,7 @@ public sealed class NativeProviderRouter
             }
             else
             {
-                blocks.Add(new JsonObject { ["type"] = "text", ["text"] = AttachmentDescription(attachment) });
+                blocks.Add(new JsonObject { ["type"] = "text", ["text"] = UnsupportedAttachmentNotice(attachment) });
             }
         }
         return blocks;
@@ -928,8 +958,8 @@ public sealed class NativeProviderRouter
     private static string DataUrl(NativeAttachment attachment, string base64) =>
         $"data:{(string.IsNullOrWhiteSpace(attachment.MimeType) ? "application/octet-stream" : attachment.MimeType)};base64,{base64}";
 
-    private static string AttachmentDescription(NativeAttachment attachment) =>
-        $"Attached {attachment.Kind}: {attachment.Name} ({attachment.FilePath})";
+    private static string UnsupportedAttachmentNotice(NativeAttachment attachment) =>
+        $"unsupported_attachment_kind: {attachment.Kind}; attachment_id: {attachment.AttachmentId ?? attachment.Name}; name: {attachment.Name}. The host did not silently drop this attachment, but this provider route does not support its wire format.";
 
     private static NativeResponse ParseOpenAi(JsonNode? node)
     {

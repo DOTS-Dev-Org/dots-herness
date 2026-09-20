@@ -873,6 +873,42 @@ public partial class ConversationView : UserControl
         e.Handled = true;
     }
 
+    private void OnEditMessage(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ChatMessage message }) Model?.RewindTo(message, edit: true);
+        e.Handled = true;
+    }
+
+    private void OnRewindMessage(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ChatMessage message }) Model?.RewindTo(message, edit: false);
+        e.Handled = true;
+    }
+
+    private void OnSpeakMessage(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ChatMessage message }) Model?.ToggleSpeech(message);
+        e.Handled = true;
+    }
+
+    private async void OnTranslateMessage(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ChatMessage message } && Model is { } model) await model.ToggleTranslationAsync(message);
+        e.Handled = true;
+    }
+
+    private void OnFeedbackGood(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ChatMessage message }) Model?.SetFeedback(message, "good");
+        e.Handled = true;
+    }
+
+    private void OnFeedbackBad(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ChatMessage message }) Model?.SetFeedback(message, "bad");
+        e.Handled = true;
+    }
+
     private void OnApplyPlan(object? sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: ChatMessage message } && message.CanApplyPlan)
@@ -1025,11 +1061,48 @@ public sealed class PlanVisibility : IValueConverter
         throw new NotSupportedException();
 }
 
-public sealed class MessageActionsVisibility : IValueConverter
+public sealed class KindVisibility : IValueConverter
 {
-    public static readonly MessageActionsVisibility Instance = new();
+    public static readonly KindVisibility Instance = new();
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        value is ChatMessage { Streaming: false, Kind: ChatKind.User or ChatKind.Assistant or ChatKind.Plan };
+        value is ChatKind kind && (parameter as string) switch
+        {
+            "user" => kind == ChatKind.User,
+            "assistant" => kind == ChatKind.Assistant,
+            "feedback" => kind is ChatKind.Assistant or ChatKind.Plan,
+            _ => kind is ChatKind.User or ChatKind.Assistant or ChatKind.Plan,
+        };
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+public sealed class KindAlignment : IValueConverter
+{
+    public static readonly KindAlignment Instance = new();
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is ChatKind.User ? Avalonia.Layout.HorizontalAlignment.Right : Avalonia.Layout.HorizontalAlignment.Left;
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+public sealed class KindTextAlignment : IValueConverter
+{
+    public static readonly KindTextAlignment Instance = new();
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is ChatKind.User ? TextAlignment.Right : TextAlignment.Left;
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+public sealed class FeedbackBrush : IValueConverter
+{
+    public static readonly FeedbackBrush Instance = new();
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var key = value as string == parameter as string ? "Accent" : "TextSecondary";
+        return Application.Current?.TryGetResource(key, Application.Current.ActualThemeVariant, out var resource) == true
+            && resource is IBrush brush ? brush : Brushes.Gray;
+    }
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }

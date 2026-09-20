@@ -894,19 +894,23 @@ public final class NativeAgentHost: ObservableObject {
     }
 
     public func refreshConnection() async {
-        defer { connectionResolved = true }
+        // Every @Published write re-renders the whole window, even with an equal value:
+        // only publish what changed.
+        func publish(_ connection: AgentConnection?, _ status: String) {
+            if self.connection != connection { self.connection = connection }
+            if self.status != status { self.status = status }
+            if !connectionResolved { connectionResolved = true }
+        }
         guard let configuration = await currentConfiguration(loadCredentials: false) else {
-            connection = nil
-            status = AppCopy.text("agent.configureEndpoint")
-            return
+            return publish(nil, AppCopy.text("agent.configureEndpoint"))
         }
         guard let endpoint = URL(string: configuration.baseURL) else {
-            connection = nil
-            status = AppCopy.text("agent.invalidEndpoint")
-            return
+            return publish(nil, AppCopy.text("agent.invalidEndpoint"))
         }
-        connection = AgentConnection(endpoint: endpoint, provider: configuration.provider, model: configuration.model)
-        status = AppCopy.format("agent.ready", configuration.model)
+        publish(
+            AgentConnection(endpoint: endpoint, provider: configuration.provider, model: configuration.model),
+            AppCopy.format("agent.ready", configuration.model)
+        )
     }
 
     private func currentConfiguration(model: String? = nil, loadCredentials: Bool = true) async -> AgentConfiguration? {
@@ -1652,7 +1656,7 @@ public final class NativeAgentHost: ObservableObject {
         mode: PromptMode = .queue,
         planMode: Bool = false,
         modelOverride: String? = nil
-    ) async {
+        ) async {
         await send(
             text: text,
             attachments: attachments,
@@ -1901,6 +1905,12 @@ public final class NativeAgentHost: ObservableObject {
         modelOverride: String?
     ) async {
         guard let index = conversations.firstIndex(where: { $0.id == conversationID }) else { return }
+        let stableAttachments = attachments.map(stabilizeAttachment)
+        // Older sessions contain only the source path.  Materialize those
+        // once before building the next request so a later edit cannot rewrite
+        // an already-sent historical message.
+        _ = stabilizePersistedAttachments(in: index)
+        _ = Self.synchronizeGeneratedMediaContext(&conversations[index])
         let runWorkspace = area == .chat ? nil : workspace
         if area == .chat {
             activateChatContext(for: conversations[index])
@@ -1920,7 +1930,7 @@ public final class NativeAgentHost: ObservableObject {
         let runID = UUID()
         let turnID = UUID().uuidString
         let explicitSkill = skillCatalog.explicitSelection(in: text)
-        _ = memory.beginTurn(
+        memory.beginTurnInBackground(
             conversationID: conversationID,
             turnID: turnID,
             workspace: runWorkspace
@@ -1935,7 +1945,7 @@ public final class NativeAgentHost: ObservableObject {
                 id: messageID,
                 kind: .user,
                 text: text,
-                attachments: attachments,
+                attachments: stableAttachments,
                 turnID: turnID,
                 contextRootIDs: roots.map(\.id)
             )
@@ -1963,7 +1973,7 @@ public final class NativeAgentHost: ObservableObject {
         if hasStoredContext {
             var stored = conversations[index].modelContext
             if hasUserContent || approvedPlanID != nil {
-                stored.append(AgentMessage(role: .user, content: explicitSkill?.prompt ?? text, attachments: attachments))
+                stored.append(AgentMessage(role: .user, content: explicitSkill?.prompt ?? text, attachments: stableAttachments))
             }
             context = stored
         } else {
@@ -2065,11 +2075,9 @@ public final class NativeAgentHost: ObservableObject {
         let userText = prompt.isEmpty ? command : "\(command) \(prompt)"
         let runID = UUID()
         let turnID = UUID().uuidString
-        _ = memory.beginTurn(
-            conversationID: id,
-            turnID: turnID,
-            workspace: area == .chat ? nil : workspaceURL
-        )
+        // Media generation is a one-shot side request, like an MCP/API call.
+        // It must not allocate a workspace snapshot or become part of the
+        // provider's conversational memory/cache prefix.
         let userMessage = ChatMessage(kind: .user, text: userText, turnID: turnID)
         let isFirstUserMessage = !conversations[index].messages.contains(where: { $0.kind == .user })
         conversations[index].messages.append(userMessage)
@@ -2111,7 +2119,10 @@ public final class NativeAgentHost: ObservableObject {
     ) async {
         defer {
             if activeRunID == runID {
-                _ = finishActiveTurn(conversationID: conversationID, workspace: workspaceURL)
+                _ = finishActiveTurn(conversationID: conversationID, workspace: workspaceURL, trackWorkspace: false)
+                if let index = conversations.firstIndex(where: { $0.id == conversationID }) {
+                    _ = Self.synchronizeGeneratedMediaContext(&conversations[index])
+                }
                 activeTask = nil
                 activeConversationID = nil
                 isBusy = false
@@ -2124,7 +2135,7 @@ public final class NativeAgentHost: ObservableObject {
 
         do {
             guard !prompt.isEmpty else {
-                let turn = finishActiveTurn(conversationID: conversationID, workspace: workspaceURL)
+                let turn = finishActiveTurn(conversationID: conversationID, workspace: workspaceURL, trackWorkspace: false)
                 append(
                     ChatMessage(kind: .assistant, text: AppCopy.format("media.promptMissingFor", request.kind.displayName)),
                     to: conversationID,
@@ -2138,7 +2149,7 @@ public final class NativeAgentHost: ObservableObject {
             let statusModel: String
             if request.kind == .image {
                 guard let router else {
-                    let turn = finishActiveTurn(conversationID: conversationID, workspace: workspaceURL)
+                    let turn = finishActiveTurn(conversationID: conversationID, workspace: workspaceURL, trackWorkspace: false)
                     append(
                         ChatMessage(kind: .assistant, text: AppCopy.format("media.unsupported", request.kind.displayName)),
                         to: conversationID,
@@ -2151,12 +2162,16 @@ public final class NativeAgentHost: ObservableObject {
                 let generated = try await router.generateImage(prompt: prompt)
                 media = try MediaGenerationClient.save(generated.output.data, kind: .image, paths: paths)
                 if let fallbackFrom = generated.fallbackFrom {
-                    fallbackNotice = "\(fallbackFrom) image output was unavailable; generated with \(generated.provider)/\(generated.model)."
+                    fallbackNotice = AppCopy.format(
+                        "media.fallbackUsed",
+                        fallbackFrom,
+                        "\(generated.provider)/\(generated.model)"
+                    )
                 }
                 statusModel = generated.model
             } else {
                 guard let configuration = await currentConfiguration() else {
-                    let turn = finishActiveTurn(conversationID: conversationID, workspace: workspaceURL)
+                    let turn = finishActiveTurn(conversationID: conversationID, workspace: workspaceURL, trackWorkspace: false)
                     append(
                         ChatMessage(kind: .assistant, text: AppCopy.format("media.unsupported", request.kind.displayName)),
                         to: conversationID,
@@ -2167,10 +2182,11 @@ public final class NativeAgentHost: ObservableObject {
                     return
                 }
                 guard let provider = ProviderRegistry.shared.spec(configuration.specID)?.media?.spec(for: request.kind) else {
-                    let turn = finishActiveTurn(conversationID: conversationID, workspace: workspaceURL)
+                    let turn = finishActiveTurn(conversationID: conversationID, workspace: workspaceURL, trackWorkspace: false)
                     append(
                         ChatMessage(kind: .assistant, text: AppCopy.format("media.unsupported", request.kind.displayName), turnID: turn.turnID, changedFiles: turn.changedFiles),
-                        to: conversationID
+                        to: conversationID,
+                        turnID: turn.turnID
                     )
                     status = AppCopy.text("media.unsupportedStatus")
                     return
@@ -2185,22 +2201,24 @@ public final class NativeAgentHost: ObservableObject {
                 )
                 statusModel = configuration.model
             }
-            let turn = finishActiveTurn(conversationID: conversationID, workspace: workspaceURL)
-            append(
-                ChatMessage(
-                    kind: .assistant,
-                    text: fallbackNotice ?? AppCopy.format("media.generated", request.kind.displayName),
-                    media: media,
-                    turnID: turn.turnID,
-                    changedFiles: turn.changedFiles
-                ),
-                to: conversationID
+            let turn = finishActiveTurn(conversationID: conversationID, workspace: workspaceURL, trackWorkspace: false)
+            let generatedMessage = ChatMessage(
+                kind: .assistant,
+                text: fallbackNotice ?? AppCopy.format("media.generated", request.kind.displayName),
+                media: media,
+                turnID: turn.turnID,
+                changedFiles: turn.changedFiles
             )
-            status = AppCopy.format("agent.ready", statusModel)
+            append(generatedMessage, to: conversationID)
+            if let index = conversations.firstIndex(where: { $0.id == conversationID }) {
+                _ = Self.synchronizeGeneratedMediaContext(&conversations[index])
+                persist()
+            }
+            status = fallbackNotice ?? AppCopy.format("agent.ready", statusModel)
         } catch is CancellationError {
             return
         } catch let error as ProviderImageGenerationError {
-            let turn = finishActiveTurn(conversationID: conversationID, workspace: workspaceURL)
+            let turn = finishActiveTurn(conversationID: conversationID, workspace: workspaceURL, trackWorkspace: false)
             append(
                 ChatMessage(kind: .assistant, text: error.localizedDescription),
                 to: conversationID,
@@ -2209,7 +2227,7 @@ public final class NativeAgentHost: ObservableObject {
             )
             status = error.localizedDescription
         } catch {
-            let turn = finishActiveTurn(conversationID: conversationID, workspace: workspaceURL)
+            let turn = finishActiveTurn(conversationID: conversationID, workspace: workspaceURL, trackWorkspace: false)
             append(
                 ChatMessage(kind: .system, text: error.localizedDescription),
                 to: conversationID,
@@ -2403,6 +2421,7 @@ public final class NativeAgentHost: ObservableObject {
         // plugin/MCP discovery order and across all provider transports.
         let tools = rawTools.sorted { $0.name < $1.name }
         var messages = context
+        var attachmentLedger = Self.latestAttachments(in: messages)
         saveModelContext(messages, in: conversationID)
         var restartContext: [AgentMessage]?
         var restartPlanMode: Bool?
@@ -2467,6 +2486,11 @@ public final class NativeAgentHost: ObservableObject {
                 )
                 if forcedCompaction { announceCompaction(compactionOutcome, in: conversationID) }
                 messages = compactionOutcome.messages
+                // Compaction may remove an old transcript segment, but it must
+                // not make an active attachment disappear from revision
+                // tracking. Merge the current canonical messages into the
+                // ledger instead of deriving it from only the compacted list.
+                Self.mergeLatestAttachments(messages, into: &attachmentLedger)
                 saveModelContext(messages, in: conversationID)
                 let requestStartedAt = Date()
                 let requestCacheKey = cacheKey(
@@ -2476,10 +2500,16 @@ public final class NativeAgentHost: ObservableObject {
                     tools: tools
                 )
                 let response: AgentResponse
+                let request = Self.requestMessages(
+                    messages,
+                    attachmentRevisionNotice: Self.attachmentRevisionNotice(
+                        for: attachmentLedger.values.sorted { Self.attachmentKey($0) < Self.attachmentKey($1) }
+                    )
+                )
                 do {
                     if let router {
                         response = try await router.complete(
-                            messages: messages,
+                            messages: request,
                             tools: tools,
                             cachePolicy: AgentCachePolicy(promptCacheKey: requestCacheKey),
                             model: modelOverride,
@@ -2496,7 +2526,7 @@ public final class NativeAgentHost: ObservableObject {
                         Task { await router.refreshAccountUsage() }
                     } else {
                         response = try await client.complete(
-                            messages: messages,
+                            messages: request,
                             tools: tools,
                             cachePolicy: AgentCachePolicy(promptCacheKey: requestCacheKey)
                         )
@@ -2512,6 +2542,11 @@ public final class NativeAgentHost: ObservableObject {
                     )
                     continue
                 }
+                // The provider call completed successfully. Only now is a
+                // snapshotted payload considered delivered; a failed request
+                // leaves deliveredHash unset so a retry still has a truthful
+                // source/revision state.
+                Self.markDelivered(&messages)
                 // Keep a completed provider response in the steer snapshot before
                 // observing cancellation. This preserves the output that arrived
                 // just as the higher-priority instruction was submitted.
@@ -2626,6 +2661,11 @@ public final class NativeAgentHost: ObservableObject {
                 }
 
                 toolSteps += 1
+                // The pre-turn snapshot is being captured beside the model request. Nothing
+                // may touch the workspace before it is complete (usually it long is).
+                if let turnID = activeTurnID {
+                    await memory.waitForTurnSnapshot(conversationID: conversationID, turnID: turnID)
+                }
                 // The model already decided these calls are independent by emitting them
                 // together; only the read-only ones can run at once, since writes carry
                 // approval prompts and ordered workspace side effects.
@@ -2675,11 +2715,19 @@ public final class NativeAgentHost: ObservableObject {
                     let repeats = (toolSignatures[signature] ?? 0) + 1
                     toolSignatures[signature] = repeats
 
-                    let result: String
+                    var result: String
+                    var resultAttachment: ChatAttachment?
                     if repeats > Self.maxIdenticalToolCalls {
                         result = AppCopy.text("agent.repeatedTool")
                     } else if planMode && Self.planWithholds(call.name) {
                         result = AppCopy.text("plan.toolBlocked")
+                    } else if call.name == Self.latestAttachmentName {
+                        let outcome = latestAttachmentResult(for: call, in: attachmentLedger)
+                        result = outcome.message
+                        resultAttachment = outcome.attachment
+                        if let resultAttachment {
+                            attachmentLedger[Self.attachmentKey(resultAttachment)] = resultAttachment
+                        }
                     } else if call.name == PlanStepsTool.name {
                         result = PlanStepsTool.execute(call)
                     } else if call.name == ExploreTool.name, let workspace {
@@ -2807,6 +2855,17 @@ public final class NativeAgentHost: ObservableObject {
                         }
                     } else if let cached = prefetched[call.id] {
                         result = cached
+                    } else if call.name == WorkspaceTools.generatedMediaName {
+                        if let workspace, remoteTarget == nil,
+                           await requestApprovalIfNeeded(for: call, conversationID: conversationID) {
+                            result = conversations.first(where: { $0.id == conversationID })
+                                .map { copyGeneratedMedia(call, conversation: $0, workspace: workspace) }
+                                ?? "Tool error: conversation not found."
+                        } else {
+                            result = remoteTarget == nil
+                                ? AppCopy.text("permission.rejected")
+                                : "Tool error: generated media can only be copied into a local workspace."
+                        }
                     } else if area == .chat {
                         if await requestApprovalIfNeeded(for: call, conversationID: conversationID) {
                             let roots = activeChatRoots
@@ -2914,7 +2973,8 @@ public final class NativeAgentHost: ObservableObject {
                         role: .tool,
                         content: result,
                         name: call.name,
-                        toolCallID: call.id
+                        toolCallID: call.id,
+                        attachments: resultAttachment.map { [$0] } ?? []
                     ))
                     saveModelContext(messages, in: conversationID)
                     try Task.checkCancellation()
@@ -3249,7 +3309,7 @@ public final class NativeAgentHost: ObservableObject {
 
     private func accept(_ prompt: PendingPrompt, in conversationID: String) -> AgentMessage {
         let turnID = UUID().uuidString
-        _ = memory.beginTurn(
+        memory.beginTurnInBackground(
             conversationID: conversationID,
             turnID: turnID,
             workspace: workspaceURL
@@ -3306,7 +3366,7 @@ public final class NativeAgentHost: ObservableObject {
             guard let workspace,
                   let data = call.arguments.data(using: .utf8),
                   let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let path = object["path"] as? String,
+                  let path = (object["path"] as? String) ?? (object["destination_path"] as? String),
                   let relative = Self.workspaceRelativePath(path, workspace: workspace) else {
                 activeTurnAttributionKnown = false
                 return
@@ -3315,6 +3375,24 @@ public final class NativeAgentHost: ObservableObject {
         case .sideEffect:
             activeTurnAttributionKnown = false
         }
+    }
+
+    private func copyGeneratedMedia(
+        _ call: AgentToolCall,
+        conversation: Conversation,
+        workspace: URL
+    ) -> String {
+        guard let sourcePath = Self.argument(call, key: "source_path"),
+              let destinationPath = Self.argument(call, key: "destination_path") else {
+            return "Tool error: source_path and destination_path are required."
+        }
+        let allowed = Set(conversation.messages.flatMap { $0.mediaItems }.map(\.path))
+        return WorkspaceTools.copyGeneratedMedia(
+            sourcePath: sourcePath,
+            destinationPath: destinationPath,
+            allowedSourcePaths: allowed,
+            workspace: workspace
+        )
     }
 
     static func workspaceRelativePath(_ path: String, workspace: URL) -> String? {
@@ -3327,34 +3405,38 @@ public final class NativeAgentHost: ObservableObject {
     private func finishActiveTurn(
         conversationID: String,
         workspace: URL?,
-        status: String = "completed"
+        status: String = "completed",
+        trackWorkspace: Bool = true
     ) -> FinishedTurn {
         guard let turnID = activeTurnID else { return FinishedTurn(turnID: nil, changedFiles: []) }
         activeTurnID = nil
         var uniqueTools: [String] = []
         for tool in activeUsedTools where !uniqueTools.contains(tool) { uniqueTools.append(tool) }
         completedTurnMetadata[turnID] = (skills: activeUsedSkills, tools: uniqueTools)
-        let tracking = memory.finishTurnResult(
-            conversationID: conversationID,
-            turnID: turnID,
-            workspace: workspace
-        )
+        let trackingWorkspace = trackWorkspace ? workspace : nil
+        let tracking = trackingWorkspace == nil
+            ? WorkspaceChangeResult(changedFiles: [], trackingStatus: "not_applicable", failureReason: nil)
+            : memory.finishTurnResult(
+                conversationID: conversationID,
+                turnID: turnID,
+                workspace: trackingWorkspace
+            )
         let summary = makeSummary(
             runID: activeRunID.uuidString,
             turnID: turnID,
             status: status,
             changedFiles: tracking.changedFiles,
-            trackingStatus: workspace == nil ? "not_applicable" : tracking.trackingStatus
+            trackingStatus: trackingWorkspace == nil ? "not_applicable" : tracking.trackingStatus
         )
         completedTurnSummaries[turnID] = summary
         activeRunLastTurnID = turnID
         activeRunChangedFiles.append(contentsOf: tracking.changedFiles.filter { file in
             !activeRunChangedFiles.contains(file)
         })
-        if tracking.trackingStatus != "complete" && workspace != nil { activeRunTrackingStatus = "incomplete" }
+        if tracking.trackingStatus != "complete" && trackingWorkspace != nil { activeRunTrackingStatus = "incomplete" }
         activeRunCleanupStatus = combinedCleanupStatus(activeRunCleanupStatus, summary.cleanupStatus)
         if summary.testStatus != "not_reported" { activeRunTestStatus = summary.testStatus }
-        if workspace != nil, activeTurnAttributionKnown {
+        if trackingWorkspace != nil, activeTurnAttributionKnown {
             let foreign = tracking.changedFiles.filter { !activeTurnWrittenPaths.contains($0.path) }
             for file in foreign where !concurrentChanges.contains(file) {
                 concurrentChanges.append(file)
@@ -3905,8 +3987,85 @@ public final class NativeAgentHost: ObservableObject {
         persist()
     }
 
-    private func makeAgentMessages(for conversation: Conversation) -> [AgentMessage] {
-        conversation.messages.compactMap { message in
+    private static func generatedMediaContextMessage(for message: ChatMessage) -> AgentMessage? {
+        guard !message.mediaItems.isEmpty else { return nil }
+        let assets = message.mediaItems.map { media in
+            "- kind: \(media.kind.rawValue)\n  path: \(media.path)\n  mime_type: \(media.mimeType)"
+        }.joined(separator: "\n")
+        let outcome = message.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return AgentMessage(
+            role: .assistant,
+            content: """
+            [Generated media artifact]
+            The image was generated successfully and is available as a local artifact. This is a result reference, not a new user instruction.
+            Assets:
+            \(assets)
+            Result: \(outcome.isEmpty ? "generated" : outcome)
+            If the user asks to reuse this image, use the exact asset path above. Do not claim to know pixel details unless the image is actually supplied for visual inspection.
+            """
+        )
+    }
+
+    private static func mediaOutcomeContextMessage(
+        for message: ChatMessage,
+        mediaTurnIDs: Set<String>
+    ) -> AgentMessage? {
+        guard (message.kind == .assistant || message.kind == .system),
+              let turnID = message.turnID,
+              mediaTurnIDs.contains(turnID),
+              message.mediaItems.isEmpty else {
+            return nil
+        }
+        let outcome = message.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !outcome.isEmpty else { return nil }
+        return AgentMessage(
+            role: .assistant,
+            content: """
+            [Generated media result]
+            No image asset was produced for the previous image request. Do not assume that an image exists.
+            Result: \(outcome)
+            """
+        )
+    }
+
+    @discardableResult
+    private static func synchronizeGeneratedMediaContext(_ conversation: inout Conversation) -> Bool {
+        guard !conversation.modelContext.isEmpty else { return false }
+        let mediaTurnIDs = Set(conversation.messages
+            .filter { $0.kind == .user && $0.attachments.isEmpty && MediaRequest.parse($0.text) != nil }
+            .compactMap(\.turnID))
+        let artifacts = conversation.messages.compactMap { message in
+            generatedMediaContextMessage(for: message)
+                ?? mediaOutcomeContextMessage(for: message, mediaTurnIDs: mediaTurnIDs)
+        }
+        var changed = false
+        for artifact in artifacts where !conversation.modelContext.contains(where: { $0.content == artifact.content }) {
+            conversation.modelContext.append(artifact)
+            changed = true
+        }
+        return changed
+    }
+
+    static func modelMessagesForContext(_ conversation: Conversation) -> [AgentMessage] {
+        let mediaTurnIDs = Set(conversation.messages
+            .filter { $0.kind == .user && $0.attachments.isEmpty && MediaRequest.parse($0.text) != nil }
+            .compactMap(\.turnID))
+        return conversation.messages.compactMap { message in
+            // Keep the command as a one-shot side request, but preserve the
+            // generated result as a compact artifact reference. The model must
+            // know that an image exists and where it can be reused without
+            // replaying the image-generation prompt or embedding raw bytes in
+            // every later request.
+            if let artifact = generatedMediaContextMessage(for: message) {
+                return artifact
+            }
+            if let outcome = mediaOutcomeContextMessage(for: message, mediaTurnIDs: mediaTurnIDs) {
+                return outcome
+            }
+            if (message.kind == .user && message.attachments.isEmpty && MediaRequest.parse(message.text) != nil)
+                || (message.turnID.map { mediaTurnIDs.contains($0) } ?? false) {
+                return nil
+            }
             switch message.kind {
             case .user:
                 return AgentMessage(role: .user, content: message.text, attachments: message.attachments)
@@ -3918,6 +4077,10 @@ public final class NativeAgentHost: ObservableObject {
                 return nil
             }
         }
+    }
+
+    private func makeAgentMessages(for conversation: Conversation) -> [AgentMessage] {
+        Self.modelMessagesForContext(conversation)
     }
 
     /// The tools handed to the model for this run. `systemPromptSections` renders
@@ -3941,7 +4104,7 @@ public final class NativeAgentHost: ObservableObject {
         let defs = workspaceTools + sandboxTools + exploreTools + SkillTools.definitions + [AskUserTool.definition]
             + [RememberTool.definition, InstallPluginTool.definition]
             + ((workspace != nil || area == .chat) ? [terminalDefinition, OtherChatsTool.definition] : [])
-            + [PlanStepsTool.definition]
+            + [PlanStepsTool.definition, Self.latestAttachmentDefinition]
             + BrowserTools.definitions
             + pluginTools.defs
             + mcpToolDefinitions()
@@ -3962,6 +4125,22 @@ public final class NativeAgentHost: ObservableObject {
     }
 
     private static let sandboxStatusName = "sandbox_status"
+    private static let latestAttachmentName = "get_latest_attachment"
+    private static let latestAttachmentDefinition = AgentToolDefinition(
+        name: latestAttachmentName,
+        description: "Read the latest immutable source revision for an attachment after a revision notice. This is read-only; call it only when the current bytes are needed.",
+        parameters: .object([
+            "type": .string("object"),
+            "properties": .object([
+                "attachment_id": .object([
+                    "type": .string("string"),
+                    "description": .string("The stable attachment_id from the revision notice."),
+                ]),
+            ]),
+            "required": .array([.string("attachment_id")]),
+            "additionalProperties": .bool(false),
+        ])
+    )
     private static let sandboxStatusDefinition = AgentToolDefinition(
         name: sandboxStatusName,
         description: "Report whether the current workspace is running inside a HerNess sandbox and its process boundaries.",
@@ -4231,11 +4410,11 @@ public final class NativeAgentHost: ObservableObject {
     nonisolated static func risk(_ toolName: String) -> ToolRisk {
         if toolName.hasPrefix("skill.") { return .readOnly }
         switch toolName {
-        case "write_file", "remove_file":
+        case "write_file", "remove_file", WorkspaceTools.generatedMediaName:
             return .workspaceMutation
         case "list_files", "read_file", "grep_files",
              ExploreTool.name, AskUserTool.name, PlanStepsTool.name, RememberTool.name,
-             OtherChatsTool.name, sandboxStatusName:
+             OtherChatsTool.name, sandboxStatusName, latestAttachmentName:
             return .readOnly
         default:
             // run_command, ios_simulator, terminal_session, plugin__*, mcp__* …
@@ -4714,6 +4893,8 @@ public final class NativeAgentHost: ObservableObject {
         switch call.name {
         case "write_file":
             return AppCopy.format("permission.writeReason", object["path"] as? String ?? ".")
+        case WorkspaceTools.generatedMediaName:
+            return "Allow this generated image to be copied into the workspace at \(object["destination_path"] as? String ?? "the requested path")?"
         case "run_command":
             let command = object["command"] as? String ?? ""
             return AppCopy.format("permission.commandReason", String(command.prefix(240)))
@@ -4896,6 +5077,7 @@ public final class NativeAgentHost: ObservableObject {
 
     private func recoverForContext(_ conversation: Conversation) -> Conversation {
         var recovered = Self.recover(conversation)
+        _ = Self.synchronizeGeneratedMediaContext(&recovered)
         if recovered.modelContext.isEmpty, !recovered.messages.isEmpty {
             recovered.modelContext = makeAgentContext(
                 for: recovered,
@@ -5020,6 +5202,210 @@ public final class NativeAgentHost: ObservableObject {
     }
 
     private static let skillReadHistoryMarker = "SKILL.md read; content is hidden from conversation history."
+
+    private var attachmentSnapshotDirectory: URL {
+        paths.runtime.appendingPathComponent("attachment-snapshots", isDirectory: true)
+    }
+
+    private func stabilizeAttachment(_ attachment: ChatAttachment) -> ChatAttachment {
+        attachment.snapshot(in: attachmentSnapshotDirectory)
+    }
+
+    private static func attachmentKey(_ attachment: ChatAttachment) -> String {
+        attachment.attachmentID ?? attachment.path
+    }
+
+    /// Returns the newest immutable revision known to this provider transcript.
+    /// A V2 tool result wins over the original V1 user message, while both
+    /// remain present in the durable history.
+    private static func latestAttachments(in messages: [AgentMessage]) -> [String: ChatAttachment] {
+        var result: [String: ChatAttachment] = [:]
+        for message in messages {
+            for attachment in message.attachments {
+                let key = attachmentKey(attachment)
+                guard let previous = result[key] else {
+                    result[key] = attachment
+                    continue
+                }
+                if attachment.revision > previous.revision
+                    || (attachment.revision == previous.revision && attachment.deliveredHash != nil && previous.deliveredHash == nil) {
+                    result[key] = attachment
+                }
+            }
+        }
+        return result
+    }
+
+    private static func mergeLatestAttachments(
+        _ messages: [AgentMessage],
+        into ledger: inout [String: ChatAttachment]
+    ) {
+        for (key, attachment) in latestAttachments(in: messages) {
+            guard let previous = ledger[key] else {
+                ledger[key] = attachment
+                continue
+            }
+            if attachment.revision > previous.revision
+                || (attachment.revision == previous.revision && attachment.deliveredHash != nil && previous.deliveredHash == nil) {
+                ledger[key] = attachment
+            }
+        }
+    }
+
+    private static func markDelivered(_ messages: inout [AgentMessage]) {
+        for index in messages.indices where !messages[index].attachments.isEmpty {
+            messages[index].attachments = messages[index].attachments.map { attachment in
+                guard let hash = attachment.contentHash,
+                      attachment.snapshotPath != nil,
+                      attachment.deliveredHash != hash else { return attachment }
+                return ChatAttachment(
+                    path: attachment.path,
+                    kind: attachment.kind,
+                    mimeType: attachment.mimeType,
+                    snapshotPath: attachment.snapshotPath,
+                    contentHash: attachment.contentHash,
+                    attachmentID: attachment.attachmentID,
+                    revision: attachment.revision,
+                    deliveredHash: hash
+                )
+            }
+        }
+    }
+
+    /// Provider-only text for a turn. It is deliberately not an AgentMessage:
+    /// storing it would make every later turn grow with repeated file notices
+    /// and would destroy the reusable historical prefix.
+    private static func attachmentRevisionNotice(for attachments: [ChatAttachment]) -> String? {
+        let notices = attachments.compactMap { attachment -> String? in
+            let observation = attachment.observeSource()
+            let status: String
+            switch observation.status {
+            case .current:
+                return nil
+            case .changed:
+                status = "changed"
+            case .missing:
+                status = "missing"
+            case .unreadable:
+                status = "unreadable"
+            }
+            let nextRevision = max(attachment.revision, 1) + 1
+            let detail: String
+            switch observation.status {
+            case .missing:
+                detail = "source_missing\nhistorical_revision_preserved\nlatest_revision_unavailable"
+            case .unreadable:
+                detail = "source_unreadable\nhistorical_revision_preserved\nlatest_revision_unavailable"
+            default:
+                detail = "The source file changed. The historical V1 bytes remain immutable and must not be treated as current."
+            }
+            return """
+            [Attachment revision notice]
+            attachment_id: \(attachment.id)
+            name: \(attachment.name)
+            revision: V\(nextRevision)
+            status: \(status)
+            \(detail)
+            If current content is needed, call get_latest_attachment with {"attachment_id":"\(attachment.id)"}. Do not infer missing or unreadable bytes.
+            """
+        }
+        guard !notices.isEmpty else { return nil }
+        return notices.sorted().joined(separator: "\n\n")
+    }
+
+    /// Adds the notice to a request copy only. Putting it on the latest user
+    /// turn keeps it after the stable policy/history prefix and also avoids the
+    /// `promptContextCaptured` folding step dropping an ephemeral message.
+    private static func requestMessages(
+        _ messages: [AgentMessage],
+        attachmentRevisionNotice: String?
+    ) -> [AgentMessage] {
+        guard let attachmentRevisionNotice,
+              !attachmentRevisionNotice.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let index = messages.lastIndex(where: { $0.role == .user }) else { return messages }
+        var result = messages
+        result[index].content = attachmentRevisionNotice + "\n\n" + result[index].content
+        return result
+    }
+
+    private func latestAttachmentResult(
+        for call: AgentToolCall,
+        in ledger: [String: ChatAttachment]
+    ) -> (message: String, attachment: ChatAttachment?) {
+        guard let requestedID = Self.argument(call, key: "attachment_id"),
+              let current = ledger[requestedID] else {
+            return (
+                "attachment_not_found\nhistorical_revision_preserved\nlatest_revision_unavailable",
+                nil
+            )
+        }
+
+        let observation = current.observeSource()
+        switch observation.status {
+        case .missing:
+            return (
+                "source_missing\nhistorical_revision_preserved\nlatest_revision_unavailable\nattachment_id: \(current.id)",
+                nil
+            )
+        case .unreadable:
+            return (
+                "source_unreadable\nhistorical_revision_preserved\nlatest_revision_unavailable\nattachment_id: \(current.id)",
+                nil
+            )
+        case .current:
+            if current.snapshotPath != nil,
+               current.contentHash == observation.currentHash,
+               observation.currentHash != nil {
+                return (
+                    "latest_revision_current\nattachment_id: \(current.id)\nrevision: V\(max(current.revision, 1))\ncontent_hash: \(current.contentHash!)",
+                    current
+                )
+            }
+            fallthrough
+        case .changed:
+            let revision = current.refreshedSnapshot(in: attachmentSnapshotDirectory)
+            guard revision.snapshotPath != nil,
+                  revision.contentHash != nil,
+                  let requestedHash = observation.currentHash,
+                  revision.contentHash == requestedHash else {
+                return (
+                    "source_unreadable\nhistorical_revision_preserved\nlatest_revision_unavailable\nattachment_id: \(current.id)",
+                    nil
+                )
+            }
+            let state = observation.status == .changed ? "latest_revision_created" : "latest_revision_current"
+            return (
+                "\(state)\nattachment_id: \(revision.id)\nrevision: V\(revision.revision)\ncontent_hash: \(revision.contentHash!)",
+                revision
+            )
+        }
+    }
+
+    @discardableResult
+    private func stabilizePersistedAttachments(in conversationIndex: Int) -> Bool {
+        guard conversations.indices.contains(conversationIndex) else { return false }
+        var changed = false
+        for messageIndex in conversations[conversationIndex].messages.indices {
+            let current = conversations[conversationIndex].messages[messageIndex].attachments
+            let stable = current.map(stabilizeAttachment)
+            if stable != current {
+                conversations[conversationIndex].messages[messageIndex].attachments = stable
+                changed = true
+            }
+        }
+
+        var context = conversations[conversationIndex].modelContext
+        for messageIndex in context.indices {
+            let current = context[messageIndex].attachments
+            let stable = current.map(stabilizeAttachment)
+            if stable != current {
+                context[messageIndex].attachments = stable
+                changed = true
+            }
+        }
+        if changed { conversations[conversationIndex].modelContext = context }
+        return changed
+    }
 
     private static func durableContext(_ messages: [AgentMessage]) -> [AgentMessage] {
         // Visible previews are sanitized separately. The provider transcript

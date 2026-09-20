@@ -1146,3 +1146,4 @@
 "slash.compactDetail" = "Shrnout tento chat a uvolnit místo v kontextu";
 "settings.compactTrigger" = "Automaticky zhustit kontext při";
 "settings.compactTrigger.hint" = "Podíl kontextového okna každého modelu. Vyšší hodnota drží cache promptu déle, protože ji zhuštění přepisuje.";
+"conversation.translate" = "Přeložit";

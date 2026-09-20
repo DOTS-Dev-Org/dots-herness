@@ -8,6 +8,32 @@ import PluginRuntime
 
 final class AgentBridgeTests: XCTestCase {
     @MainActor
+    func testMediaCommandsStayOutOfContextButGeneratedAssetRemainsAvailable() {
+        let mediaTurnID = UUID().uuidString
+        let conversation = Conversation(messages: [
+            ChatMessage(kind: .user, text: "hello", turnID: "chat-turn"),
+            ChatMessage(kind: .assistant, text: "hi", turnID: "chat-turn"),
+            ChatMessage(kind: .user, text: "/imagegen a red fox", turnID: mediaTurnID),
+            ChatMessage(
+                kind: .assistant,
+                text: "Image generated.",
+                media: ChatMedia(kind: .image, path: "/tmp/fox.png", mimeType: "image/png"),
+                turnID: mediaTurnID
+            ),
+        ])
+
+        let context = NativeAgentHost.modelMessagesForContext(conversation)
+
+        XCTAssertEqual(context.count, 3)
+        XCTAssertEqual(context[0].content, "hello")
+        XCTAssertEqual(context[1].content, "hi")
+        XCTAssertTrue(context[2].content.contains("Generated media artifact"))
+        XCTAssertTrue(context[2].content.contains("/tmp/fox.png"))
+        XCTAssertFalse(context.contains(where: { $0.content.contains("/imagegen") }))
+        XCTAssertEqual(conversation.messages.count, 4)
+    }
+
+    @MainActor
     func testFreshAppDoesNotInferCurrentDirectoryOrImportChats() {
         let model = AppModel(paths: temporaryPaths())
         XCTAssertTrue(model.isFirstLaunch)
@@ -349,26 +375,51 @@ final class AgentBridgeTests: XCTestCase {
     }
 
     @MainActor
-    func testProjectlessConversationsAreRecentAndPersistedSeparately() throws {
+    func testChatAndCodingStoresDoNotShareProjectlessConversations() throws {
         let paths = temporaryPaths()
         let workspace = paths.root.appendingPathComponent("project", isDirectory: true)
         try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
 
-        let store = ConversationStore(paths: paths)
-        store.save([
-            Conversation(id: "project-chat", title: "Project chat", blank: false, cwd: workspace.path),
-            Conversation(id: "free-chat", title: "Free chat", blank: false),
+        let codingStore = ConversationStore(
+            paths: paths,
+            fileName: AgentArea.coding.sessionFileName,
+            area: .coding
+        )
+        codingStore.save([
+            Conversation(id: "project-chat", title: "Project chat", blank: false, cwd: workspace.path, area: .coding)
+        ])
+        let chatStore = ConversationStore(
+            paths: paths,
+            fileName: AgentArea.chat.sessionFileName,
+            area: .chat
+        )
+        chatStore.save([
+            Conversation(id: "free-chat", title: "Free chat", blank: false, area: .chat)
         ])
 
-        XCTAssertEqual(store.load(workspacePath: workspace.path).map(\.id), ["project-chat"])
-        XCTAssertEqual(store.load(workspacePath: nil).map(\.id), ["free-chat"])
+        XCTAssertEqual(codingStore.load(workspacePath: workspace.path).map(\.id), ["project-chat"])
+        XCTAssertTrue(codingStore.load(workspacePath: nil).isEmpty)
+        XCTAssertEqual(chatStore.load(workspacePath: nil).map(\.id), ["free-chat"])
 
-        let bridge = AgentBridge(paths: paths, router: RouterController(baseURL: "http://127.0.0.1:1"))
-        bridge.start(workspacePath: workspace.path)
-        XCTAssertEqual(bridge.projectlessConversations.map(\.id), ["free-chat"])
-        bridge.setWorkspace("")
-        bridge.newConversation()
-        XCTAssertNil(bridge.selected?.cwd)
+        let codingBridge = AgentBridge(
+            paths: paths,
+            router: RouterController(baseURL: "http://127.0.0.1:1"),
+            area: .coding,
+            sessionFileName: AgentArea.coding.sessionFileName
+        )
+        codingBridge.start(workspacePath: workspace.path)
+        XCTAssertTrue(codingBridge.projectlessConversations.isEmpty)
+        let chatBridge = AgentBridge(
+            paths: paths,
+            router: RouterController(baseURL: "http://127.0.0.1:1"),
+            area: .chat,
+            sessionFileName: AgentArea.chat.sessionFileName,
+            chatContextStore: ChatContextStore(paths: paths)
+        )
+        chatBridge.start(workspacePath: "")
+        XCTAssertEqual(chatBridge.projectlessConversations.map(\.id), ["free-chat"])
+        chatBridge.newConversation()
+        XCTAssertNil(chatBridge.selected?.cwd)
 
         let model = AppModel(paths: paths)
         model.chatBridge.start(workspacePath: "")
@@ -386,23 +437,47 @@ final class AgentBridgeTests: XCTestCase {
         try FileManager.default.createDirectory(at: kept, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: removed, withIntermediateDirectories: true)
 
-        ConversationStore(paths: paths).save([
-            Conversation(id: "kept-chat", title: "Kept", blank: false, cwd: kept.path),
-            Conversation(id: "orphan-chat", title: "Orphan", blank: false, cwd: removed.path),
-            Conversation(id: "free-chat", title: "Free", blank: false),
+        let codingStore = ConversationStore(
+            paths: paths,
+            fileName: AgentArea.coding.sessionFileName,
+            area: .coding
+        )
+        codingStore.save([
+            Conversation(id: "kept-chat", title: "Kept", blank: false, cwd: kept.path, area: .coding),
+            Conversation(id: "orphan-chat", title: "Orphan", blank: false, cwd: removed.path, area: .coding),
         ])
+        let chatStore = ConversationStore(
+            paths: paths,
+            fileName: AgentArea.chat.sessionFileName,
+            area: .chat
+        )
+        chatStore.save([Conversation(id: "free-chat", title: "Free", blank: false, area: .chat)])
 
-        let bridge = AgentBridge(paths: paths, router: RouterController(baseURL: "http://127.0.0.1:1"))
+        let bridge = AgentBridge(
+            paths: paths,
+            router: RouterController(baseURL: "http://127.0.0.1:1"),
+            area: .coding,
+            sessionFileName: AgentArea.coding.sessionFileName
+        )
         bridge.start(workspacePath: kept.path)
 
         XCTAssertEqual(
             Set(bridge.conversations(outsideProjects: [kept.path]).map(\.id)),
-            ["orphan-chat", "free-chat"]
+            ["orphan-chat"]
         )
         XCTAssertEqual(
             Set(bridge.conversations(outsideProjects: [kept.path, removed.path]).map(\.id)),
-            ["free-chat"]
+            []
         )
+        let chatBridge = AgentBridge(
+            paths: paths,
+            router: RouterController(baseURL: "http://127.0.0.1:1"),
+            area: .chat,
+            sessionFileName: AgentArea.chat.sessionFileName,
+            chatContextStore: ChatContextStore(paths: paths)
+        )
+        chatBridge.start(workspacePath: "")
+        XCTAssertEqual(chatBridge.projectlessConversations.map(\.id), ["free-chat"])
     }
 
     @MainActor
@@ -442,27 +517,51 @@ final class AgentBridgeTests: XCTestCase {
         let workspace = paths.root.appendingPathComponent("project", isDirectory: true)
         try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
 
-        let store = ConversationStore(paths: paths)
-        store.save([
-            Conversation(id: "project-chat", title: "Project chat", blank: false, cwd: workspace.path),
-            Conversation(id: "free-chat", title: "Free chat", blank: false),
+        let codingStore = ConversationStore(
+            paths: paths,
+            fileName: AgentArea.coding.sessionFileName,
+            area: .coding
+        )
+        codingStore.save([
+            Conversation(id: "project-chat", title: "Project chat", blank: false, cwd: workspace.path, area: .coding)
         ])
+        let chatStore = ConversationStore(
+            paths: paths,
+            fileName: AgentArea.chat.sessionFileName,
+            area: .chat
+        )
+        chatStore.save([Conversation(id: "free-chat", title: "Free chat", blank: false, area: .chat)])
 
-        let bridge = AgentBridge(paths: paths, router: RouterController(baseURL: "http://127.0.0.1:1"))
+        let bridge = AgentBridge(
+            paths: paths,
+            router: RouterController(baseURL: "http://127.0.0.1:1"),
+            area: .coding,
+            sessionFileName: AgentArea.coding.sessionFileName
+        )
         bridge.start(workspacePath: workspace.path)
         bridge.togglePinned("project-chat")
         bridge.setArchived("project-chat", archived: true)
-        bridge.togglePinned("free-chat")
-        bridge.setArchived("free-chat", archived: true)
 
-        XCTAssertTrue(store.load(workspacePath: workspace.path).first?.pinned == true)
-        XCTAssertTrue(store.load(workspacePath: workspace.path).first?.archived == true)
-        XCTAssertTrue(store.load(workspacePath: nil).first?.pinned == true)
-        XCTAssertTrue(store.load(workspacePath: nil).first?.archived == true)
-        XCTAssertEqual(Set(bridge.archivedConversations.map(\.id)), ["project-chat", "free-chat"])
+        XCTAssertTrue(codingStore.load(workspacePath: workspace.path).first?.pinned == true)
+        XCTAssertTrue(codingStore.load(workspacePath: workspace.path).first?.archived == true)
+        XCTAssertEqual(Set(bridge.archivedConversations.map(\.id)), ["project-chat"])
 
-        bridge.setArchived("free-chat", archived: false)
-        XCTAssertFalse(store.load(workspacePath: nil).first?.archived == true)
+        let chatBridge = AgentBridge(
+            paths: paths,
+            router: RouterController(baseURL: "http://127.0.0.1:1"),
+            area: .chat,
+            sessionFileName: AgentArea.chat.sessionFileName,
+            chatContextStore: ChatContextStore(paths: paths)
+        )
+        chatBridge.start(workspacePath: "")
+        chatBridge.togglePinned("free-chat")
+        chatBridge.setArchived("free-chat", archived: true)
+        XCTAssertTrue(chatStore.load(workspacePath: nil).first?.pinned == true)
+        XCTAssertTrue(chatStore.load(workspacePath: nil).first?.archived == true)
+        XCTAssertEqual(Set(chatBridge.archivedConversations.map(\.id)), ["free-chat"])
+
+        chatBridge.setArchived("free-chat", archived: false)
+        XCTAssertFalse(chatStore.load(workspacePath: nil).first?.archived == true)
     }
 
     func testConversationStoreStartsEmpty() {
@@ -850,7 +949,7 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertEqual(object["role"] as? String, "assistant")
         let toolCalls = object["tool_calls"] as? [[String: Any]]
         XCTAssertEqual(toolCalls?.first?["id"] as? String, "call-1")
-        XCTAssertEqual(WorkspaceTools.definitions.map(\.name), ["list_files", "read_file", "write_file", "remove_file", "grep_files", "run_command", "ios_simulator"])
+        XCTAssertEqual(WorkspaceTools.definitions.map(\.name), ["list_files", "read_file", "write_file", "remove_file", "grep_files", "run_command", "copy_generated_media", "ios_simulator"])
     }
 
     func testGrepFilesMatchesLinesAndRespectsFilters() throws {

@@ -247,6 +247,87 @@ public final class WorkspaceMemory {
         }
     }
 
+    /// A capture running beside the model request. Waiters block or suspend until it is done.
+    private final class SnapshotJob: @unchecked Sendable {
+        private let condition = NSCondition()
+        private var done = false
+        private var continuations: [CheckedContinuation<Void, Never>] = []
+
+        func complete() {
+            condition.lock()
+            done = true
+            let waiting = continuations
+            continuations = []
+            condition.broadcast()
+            condition.unlock()
+            waiting.forEach { $0.resume() }
+        }
+
+        func waitBlocking() {
+            condition.lock()
+            while !done { condition.wait() }
+            condition.unlock()
+        }
+
+        func waitSuspending() async {
+            await withCheckedContinuation { continuation in
+                condition.lock()
+                if done {
+                    condition.unlock()
+                    continuation.resume()
+                } else {
+                    continuations.append(continuation)
+                    condition.unlock()
+                }
+            }
+        }
+    }
+
+    private var pendingSnapshots: [String: SnapshotJob] = [:]
+    private let pendingSnapshotsLock = NSLock()
+
+    private func snapshotJobKey(_ conversationID: String, _ turnID: String) -> String {
+        "\(conversationID)|\(turnID)"
+    }
+
+    /// Captures the pre-turn snapshot on a background queue, so the model request can go
+    /// out at once. Whatever changes the workspace must first `waitForTurnSnapshot`;
+    /// `finishTurn` waits by itself.
+    public func beginTurnInBackground(
+        conversationID: String,
+        turnID: String,
+        workspace: URL?
+    ) {
+        guard let workspace else { return }
+        let job = SnapshotJob()
+        pendingSnapshotsLock.lock()
+        pendingSnapshots[snapshotJobKey(conversationID, turnID)] = job
+        pendingSnapshotsLock.unlock()
+        let store = snapshotStore
+        DispatchQueue.global(qos: .userInitiated).async {
+            _ = store.begin(conversationID: conversationID, turnID: turnID, workspace: workspace)
+            job.complete()
+        }
+    }
+
+    private func pendingSnapshot(conversationID: String, turnID: String) -> SnapshotJob? {
+        pendingSnapshotsLock.lock()
+        defer { pendingSnapshotsLock.unlock() }
+        return pendingSnapshots[snapshotJobKey(conversationID, turnID)]
+    }
+
+    public func waitForTurnSnapshot(conversationID: String, turnID: String) async {
+        await pendingSnapshot(conversationID: conversationID, turnID: turnID)?.waitSuspending()
+    }
+
+    private func waitForPendingSnapshot(conversationID: String, turnID: String) {
+        let key = snapshotJobKey(conversationID, turnID)
+        pendingSnapshotsLock.lock()
+        let job = pendingSnapshots.removeValue(forKey: key)
+        pendingSnapshotsLock.unlock()
+        job?.waitBlocking()
+    }
+
     @discardableResult
     public func beginTurn(
         conversationID: String,
@@ -277,6 +358,7 @@ public final class WorkspaceMemory {
         guard let workspace else {
             return WorkspaceChangeResult(changedFiles: [], trackingStatus: "incomplete", failureReason: "Workspace snapshot was unavailable.")
         }
+        waitForPendingSnapshot(conversationID: conversationID, turnID: turnID)
         return snapshotStore.finishResult(
             conversationID: conversationID,
             turnID: turnID,

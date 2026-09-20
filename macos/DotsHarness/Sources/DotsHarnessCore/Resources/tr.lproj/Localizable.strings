@@ -851,6 +851,8 @@
 "media.unsupported" = "Bunu üretemiyorum. Seçili provider'ın bu yeteneği yok.";
 "media.unsupportedStatus" = "Seçili provider medya üretimini desteklemiyor.";
 "media.generated" = "%@ oluşturuldu.";
+"media.fallbackUsed" = "Seçili provider bu görseli üretemedi. Görsel %@/%@ üzerinden tek seferlik fallback isteğiyle üretildi; ana sohbet provider'ı ve modeli değiştirilmedi, bu nedenle prompt cache'i korunuyor.";
+"media.imageUnsupportedWithFallbackHint" = "Bu görseli %@ ile üretemiyorum. Görsel API'si/provider'ını fallback olarak yapılandırın. Yalnızca görsel üretmek için ana sohbet modelini değiştirmek provider prompt cache'ini bozabilir.";
 "media.fileMissing" = "Üretilen dosya artık kullanılamıyor.";
 "media.openAudio" = "Üretilen sesi aç";
 "media.save" = "Kaydet";
@@ -1146,3 +1148,4 @@
 "dock.openFile" = "Dosya aç";
 "dock.selectFile" = "Çalışma alanı ağacından bir dosya seçin";
 "dock.binaryFile" = "İkili veya okunamayan dosya";
+"conversation.translate" = "Çevir";

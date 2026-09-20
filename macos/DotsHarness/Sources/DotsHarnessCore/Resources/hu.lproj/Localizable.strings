@@ -1146,3 +1146,4 @@
 "slash.compactDetail" = "A csevegés összegzése a kontextushely felszabadításához";
 "settings.compactTrigger" = "Kontextus automatikus tömörítése itt:";
 "settings.compactTrigger.hint" = "Az egyes modellek kontextusablakának aránya. A magasabb érték tovább megőrzi a prompt-gyorsítótárat, mert a tömörítés újraírja azt.";
+"conversation.translate" = "Fordítás";

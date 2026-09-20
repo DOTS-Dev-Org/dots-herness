@@ -1146,3 +1146,4 @@
 "slash.compactDetail" = "Podsumuj ten czat, aby zwolnić miejsce w kontekście";
 "settings.compactTrigger" = "Automatycznie kompaktuj kontekst przy";
 "settings.compactTrigger.hint" = "Udział w oknie kontekstu każdego modelu. Wyższa wartość dłużej zachowuje pamięć podręczną promptu, bo kompaktowanie ją nadpisuje.";
+"conversation.translate" = "Przetłumacz";

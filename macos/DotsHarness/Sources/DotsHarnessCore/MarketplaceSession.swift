@@ -186,7 +186,8 @@ public final class MarketplaceSession: ObservableObject {
         guard (200..<300).contains(response.statusCode) else {
             throw MarketplaceSessionError.requestFailed(response.statusCode, String(decoding: data, as: UTF8.self))
         }
-        profile = try JSONDecoder().decode(MarketplaceUserProfile.self, from: data)
+        let fetched = try JSONDecoder().decode(MarketplaceUserProfile.self, from: data)
+        if profile != fetched { profile = fetched }
     }
 
     public func authorizedData(path: String, method: String = "GET", body: Data? = nil, contentType: String? = nil) async throws -> (Data, HTTPURLResponse) {

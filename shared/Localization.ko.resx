@@ -309,4 +309,11 @@
   <data name="modelPicker.effort.high" xml:space="preserve"><value>높음</value></data>
   <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>엑스트라 하이</value></data>
   <data name="modelPicker.effort.max" xml:space="preserve"><value>맥스</value></data>
+  <data name="conversation.copy" xml:space="preserve"><value>복사</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>편집</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>되감기</value></data>
+  <data name="conversation.speakResponse" xml:space="preserve"><value>응답 읽기</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>좋은 답변</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>나쁜 답변</value></data>
+  <data name="conversation.translate" xml:space="preserve"><value>번역</value></data>
 </root>

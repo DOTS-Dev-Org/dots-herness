@@ -18,7 +18,7 @@ public enum WorkspaceTools {
         ".git", ".mem", ".build", "build", "bin", "obj", "dist", "node_modules", "Pods", "DerivedData",
     ]
     private static let protectedNames: Set<String> = ["provider-state.json", "conversations.json", "state.sqlite", "state.db"]
-    public static let definitions: [AgentToolDefinition] = workspaceDefinitions + SimulatorTools.definitions
+    public static let definitions: [AgentToolDefinition] = workspaceDefinitions + [generatedMediaDefinition] + SimulatorTools.definitions
     public static let readOnlyDefinitions: [AgentToolDefinition] = workspaceDefinitions.filter {
         readOnlyNames.contains($0.name)
     }
@@ -34,6 +34,27 @@ public enum WorkspaceTools {
     }
 
     static let readOnlyNames: Set<String> = ["list_files", "read_file", "grep_files"]
+
+    static let generatedMediaName = "copy_generated_media"
+
+    static let generatedMediaDefinition = AgentToolDefinition(
+        name: generatedMediaName,
+        description: "Copy a generated image from the current conversation into the current coding workspace. Use only when the user asks to reuse the generated asset in the project.",
+        parameters: .object([
+            "type": .string("object"),
+            "properties": .object([
+                "source_path": .object([
+                    "type": .string("string"),
+                    "description": .string("Exact absolute path from the Generated media artifact context."),
+                ]),
+                "destination_path": .object([
+                    "type": .string("string"),
+                    "description": .string("Workspace-relative destination path, including the filename."),
+                ]),
+            ]),
+            "required": .array([.string("source_path"), .string("destination_path")]),
+        ])
+    )
 
     public static func isReadOnly(_ name: String) -> Bool { readOnlyNames.contains(name) }
 
@@ -59,6 +80,44 @@ public enum WorkspaceTools {
         guard let command, !command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         let pattern = #"(?i)(^|[\s;&|])(curl|wget|nc|ncat|netcat|telnet|scp|sftp|ssh)([\s;&|]|$)"#
         return command.range(of: pattern, options: .regularExpression) != nil
+    }
+
+    public static func copyGeneratedMedia(
+        sourcePath: String,
+        destinationPath: String,
+        allowedSourcePaths: Set<String>,
+        workspace: URL
+    ) -> String {
+        let source = URL(fileURLWithPath: sourcePath).standardizedFileURL.resolvingSymlinksInPath()
+        let allowed = allowedSourcePaths.map {
+            URL(fileURLWithPath: $0).standardizedFileURL.resolvingSymlinksInPath().path
+        }
+        guard allowed.contains(source.path), FileManager.default.fileExists(atPath: source.path) else {
+            return "Tool error: the generated media artifact is not available in this conversation."
+        }
+        guard !destinationPath.isEmpty, !destinationPath.hasPrefix("/") else {
+            return "Tool error: destination_path must be relative to the workspace."
+        }
+        let root = workspace.standardizedFileURL.resolvingSymlinksInPath()
+        let destination = URL(fileURLWithPath: destinationPath, relativeTo: root)
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
+        guard destination.path == root.path || destination.path.hasPrefix(root.path + "/") else {
+            return "Tool error: destination_path is outside the workspace."
+        }
+        guard !destination.path.hasPrefix(root.appendingPathComponent(".mem").path + "/"), destination.path != root.appendingPathComponent(".mem").path else {
+            return "Tool error: the memory directory is unavailable."
+        }
+        guard !FileManager.default.fileExists(atPath: destination.path) else {
+            return "Tool error: destination already exists: \(relativePath(destination, workspace: root))"
+        }
+        do {
+            try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try FileManager.default.copyItem(at: source, to: destination)
+            return "Copied generated media to \(relativePath(destination, workspace: root))."
+        } catch {
+            return "Tool error: could not copy generated media: \(error.localizedDescription)"
+        }
     }
 
     static let workspaceDefinitions: [AgentToolDefinition] = [

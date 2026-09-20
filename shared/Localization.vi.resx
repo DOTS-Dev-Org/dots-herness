@@ -309,4 +309,11 @@
   <data name="modelPicker.effort.high" xml:space="preserve"><value>Cao</value></data>
   <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>Cực cao</value></data>
   <data name="modelPicker.effort.max" xml:space="preserve"><value>Tối đa</value></data>
+  <data name="conversation.copy" xml:space="preserve"><value>Sao chép</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Chỉnh sửa</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Tua lại</value></data>
+  <data name="conversation.speakResponse" xml:space="preserve"><value>Nói phản hồi</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>Phản hồi tốt</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>Phản hồi không tốt</value></data>
+  <data name="conversation.translate" xml:space="preserve"><value>Dịch</value></data>
 </root>

@@ -309,4 +309,11 @@
   <data name="modelPicker.effort.high" xml:space="preserve"><value>高</value></data>
   <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>超高</value></data>
   <data name="modelPicker.effort.max" xml:space="preserve"><value>最大</value></data>
+  <data name="conversation.copy" xml:space="preserve"><value>复制</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>编辑</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>倒带</value></data>
+  <data name="conversation.speakResponse" xml:space="preserve"><value>朗读回复</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>优质回答</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>不佳的回答</value></data>
+  <data name="conversation.translate" xml:space="preserve"><value>翻译</value></data>
 </root>

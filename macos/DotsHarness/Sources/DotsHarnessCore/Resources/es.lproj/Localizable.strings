@@ -1126,3 +1126,4 @@
 "slash.compactDetail" = "Resume este chat para liberar espacio de contexto";
 "settings.compactTrigger" = "Compactar contexto automáticamente al llegar a";
 "settings.compactTrigger.hint" = "Porcentaje de la ventana de contexto de cada modelo. Un valor más alto conserva más tiempo la caché del prompt, porque la compactación la reescribe.";
+"conversation.translate" = "Traducir";

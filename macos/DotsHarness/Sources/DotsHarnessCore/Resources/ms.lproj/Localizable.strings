@@ -1146,3 +1146,4 @@
 "slash.compactDetail" = "Ringkaskan sembang ini untuk mengosongkan ruang konteks";
 "settings.compactTrigger" = "Padatkan konteks secara automatik pada";
 "settings.compactTrigger.hint" = "Peratusan tetingkap konteks setiap model. Nilai lebih tinggi mengekalkan cache prompt lebih lama, kerana pemadatan menulis semulanya.";
+"conversation.translate" = "Terjemah";

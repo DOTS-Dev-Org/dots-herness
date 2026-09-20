@@ -310,4 +310,11 @@
   <data name="modelPicker.effort.high" xml:space="preserve"><value>Високий</value></data>
   <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>Дуже високий</value></data>
   <data name="modelPicker.effort.max" xml:space="preserve"><value>Макс</value></data>
+  <data name="conversation.copy" xml:space="preserve"><value>Копія</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Редагувати</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Перемотати назад</value></data>
+  <data name="conversation.speakResponse" xml:space="preserve"><value>Озвучити відповідь</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>Хороша відповідь</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>Погана відповідь</value></data>
+  <data name="conversation.translate" xml:space="preserve"><value>Перекласти</value></data>
 </root>

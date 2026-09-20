@@ -384,6 +384,9 @@ public final class RouterController: ObservableObject {
             guard let adapter else {
                 continue
             }
+            // An image fallback is deliberately a one-shot side request. It
+            // receives only the image prompt and never enters chat routing,
+            // sticky-provider state, or the conversation prompt cache.
             let result = try await imageAttemptWithRefresh(
                 account: account,
                 adapter: adapter,
@@ -409,7 +412,7 @@ public final class RouterController: ObservableObject {
             }
         }
         throw ProviderImageGenerationError.unsupported(
-            "\(fallbackSource) does not support image generation. Enable an image fallback connection in Settings."
+            AppCopy.format("media.imageUnsupportedWithFallbackHint", fallbackSource)
         )
     }
 
@@ -596,6 +599,15 @@ public final class RouterController: ObservableObject {
         }
     }
 
+    /// One-shot side task (translation): the lightest connected model at its lowest
+    /// effort, whatever the user picked for the conversation. Leaves routing state alone.
+    public func completeCheapest(messages: [AgentMessage]) async throws -> AgentResponse {
+        let cheapest = routableModels.min { ModelRouter.tier(of: $0) < ModelRouter.tier(of: $1) }
+        guard let cheapest else { throw NativeAgentError(AppCopy.text("agent.configureEndpoint")) }
+        let lowest = cheapest.efforts.first ?? ""
+        return try await send(messages: messages, tools: [], cachePolicy: AgentCachePolicy(), model: cheapest.id, effortOverride: lowest)
+    }
+
     /// Like `complete`, but never records the routing decision as the conversation's
     /// own. Side runs - the exploration subagent - use it so their model choice does
     /// not overwrite what the picker shows for the main run.
@@ -680,7 +692,8 @@ public final class RouterController: ObservableObject {
         tools: [AgentToolDefinition],
         cachePolicy: AgentCachePolicy,
         model requestedModel: String?,
-        preferredAccountID: String? = nil
+        preferredAccountID: String? = nil,
+        effortOverride: String? = nil
     ) async throws -> AgentResponse {
         let routes = orderedRoutes(
             store.state.accounts,
@@ -695,7 +708,7 @@ public final class RouterController: ObservableObject {
             var refreshed = false
             while true {
                 do {
-                    let configuration = try configuration(for: account, model: requestedModel)
+                    let configuration = try configuration(for: account, model: requestedModel, effortOverride: effortOverride)
                     let routeKey = Self.routeCacheKey(cachePolicy.promptCacheKey, accountID: account.id, provider: account.provider, api: account.api)
                     let response = try await NativeAgentClient(configuration: configuration).complete(
                         messages: messages,
@@ -736,7 +749,8 @@ public final class RouterController: ObservableObject {
     private func configuration(
         for account: StoredProviderAccount,
         model: String? = nil,
-        loadCredentials: Bool = true
+        loadCredentials: Bool = true,
+        effortOverride: String? = nil
     ) throws -> AgentConfiguration {
         guard !account.baseURL.isEmpty, !account.model.isEmpty else { throw NativeAgentError("Provider endpoint is incomplete.") }
         let key = loadCredentials ? try store.credential(for: account) : nil
@@ -753,7 +767,7 @@ public final class RouterController: ObservableObject {
             sessionAccountID: account.sessionAccountID,
             specID: account.provider,
             authType: account.authType,
-            effort: effort(for: model?.isEmpty == false ? model! : effectiveModel(for: account)),
+            effort: effortOverride ?? effort(for: model?.isEmpty == false ? model! : effectiveModel(for: account)),
             contextWindow: contextWindow(for: model?.isEmpty == false ? model : effectiveModel(for: account)),
             supportsNativeCompaction: RouterCatalog.spec(for: account.provider)?.transport.quirks.supportsNativeCompaction ?? false,
             compactionPolicy: AgentContextCompactionPolicy.current()

@@ -1146,3 +1146,4 @@
 "slash.compactDetail" = "Rezumă acest chat pentru a elibera spațiu de context";
 "settings.compactTrigger" = "Compactează automat contextul la";
 "settings.compactTrigger.hint" = "Ponderea din fereastra de context a fiecărui model. O valoare mai mare păstrează mai mult cache-ul promptului, deoarece compactarea îl rescrie.";
+"conversation.translate" = "Traduceți";

@@ -4,6 +4,7 @@
 // Copyright (c) 2026 DeepSeek. MIT. See NOTICE.
 
 using HarnessPluginKit;
+using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 
 namespace DotsHarnessCore;
@@ -23,6 +24,14 @@ public enum ChatAttachmentKind
     Audio,
     Video,
     File,
+}
+
+public enum ChatAttachmentSourceStatus
+{
+    Current,
+    Changed,
+    Missing,
+    Unreadable,
 }
 
 public enum ChangedFileOperation
@@ -51,15 +60,135 @@ public sealed record WorkspaceRunSummary(
 
 public sealed class ChatAttachment
 {
+    /// Stable identity for the logical attachment, independent from a source
+    /// path that may be replaced or renamed by the user.
+    public string AttachmentId { get; set; } = Guid.NewGuid().ToString();
     public string FilePath { get; set; } = "";
+    /// Windows/Linux canonical source locator. FilePath remains the legacy
+    /// serialized field and the display fallback for old sessions.
+    public string? SourceLocator { get; set; }
     public ChatAttachmentKind Kind { get; set; }
     public string MimeType { get; set; } = "application/octet-stream";
+    /// Immutable provider payload. FilePath remains the user-visible source
+    /// path and is never used for an already-snapshotted history item.
+    public string? SnapshotPath { get; set; }
+    public string? ContentHash { get; set; }
+    public int Revision { get; set; }
+    public string? DeliveredHash { get; set; }
+    public ChatAttachmentSourceStatus SourceStatus { get; set; } = ChatAttachmentSourceStatus.Current;
+
+    public sealed record SourceObservation(ChatAttachmentSourceStatus Status, string? CurrentHash);
 
     [JsonIgnore]
     public string Name => Path.GetFileName(FilePath);
 
     [JsonIgnore]
     public bool IsImage => Kind == ChatAttachmentKind.Image;
+
+    [JsonIgnore]
+    public string ProviderFilePath => SnapshotPath is null
+        ? FilePath
+        : File.Exists(SnapshotPath) ? SnapshotPath : "";
+
+    private string EffectiveSourcePath => string.IsNullOrWhiteSpace(SourceLocator) ? FilePath : SourceLocator!;
+
+    /// Copies the bytes sent to the provider into a content-addressed store.
+    /// Updating the source file later therefore creates a new attachment
+    /// version instead of rewriting an already-cached prompt prefix. The copy
+    /// is retried when the source's size/timestamp changes while it is read.
+    public ChatAttachment Snapshot(string directory)
+    {
+        if (!string.IsNullOrWhiteSpace(SnapshotPath))
+        {
+            if (!string.IsNullOrWhiteSpace(AttachmentId)) return this;
+            AttachmentId = Guid.NewGuid().ToString();
+            return this;
+        }
+        if (!File.Exists(EffectiveSourcePath)) return this;
+        try
+        {
+            Directory.CreateDirectory(directory);
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                var before = SourceSignature.Read(EffectiveSourcePath);
+                var temporary = Path.Combine(directory, $".{Guid.NewGuid():N}.tmp");
+                try
+                {
+                    var result = CopyAndHash(EffectiveSourcePath, temporary);
+                    var after = SourceSignature.Read(EffectiveSourcePath);
+                    if (!before.Equals(after)) continue;
+                    var extension = Path.GetExtension(EffectiveSourcePath).ToLowerInvariant();
+                    var target = Path.Combine(directory, result.Hash + extension);
+                    if (!File.Exists(target)) File.Move(temporary, target);
+                    return new ChatAttachment
+                    {
+                        AttachmentId = string.IsNullOrWhiteSpace(AttachmentId) ? Guid.NewGuid().ToString() : AttachmentId,
+                        FilePath = Path.GetFullPath(string.IsNullOrWhiteSpace(FilePath) ? EffectiveSourcePath : FilePath),
+                        SourceLocator = Path.GetFullPath(EffectiveSourcePath),
+                        Kind = Kind,
+                        MimeType = MimeType,
+                        SnapshotPath = target,
+                        ContentHash = result.Hash,
+                        Revision = Math.Max(Revision, 1),
+                        DeliveredHash = DeliveredHash,
+                        SourceStatus = ChatAttachmentSourceStatus.Current,
+                    };
+                }
+                finally
+                {
+                    try { if (File.Exists(temporary)) File.Delete(temporary); } catch { }
+                }
+            }
+        }
+        catch
+        {
+        }
+        return this;
+    }
+
+    public ChatAttachment RefreshedSnapshot(string directory)
+    {
+        var source = new ChatAttachment
+        {
+            AttachmentId = AttachmentId,
+            FilePath = FilePath,
+            SourceLocator = EffectiveSourcePath,
+            Kind = Kind,
+            MimeType = MimeType,
+            Revision = Math.Max(Revision, 1) + 1,
+        };
+        return source.Snapshot(directory);
+    }
+
+    public SourceObservation ObserveSource()
+    {
+        var baseline = DeliveredHash ?? ContentHash;
+        if (string.IsNullOrWhiteSpace(baseline))
+        {
+            // Legacy path-only records have no historical bytes to revise.
+            // Do not turn a missing legacy source into a false revision notice.
+            SourceStatus = ChatAttachmentSourceStatus.Current;
+            return new(SourceStatus, null);
+        }
+        if (!File.Exists(EffectiveSourcePath))
+        {
+            SourceStatus = ChatAttachmentSourceStatus.Missing;
+            return new(SourceStatus, null);
+        }
+        try
+        {
+            var hash = StableHash(EffectiveSourcePath);
+            SourceStatus = string.Equals(hash, baseline, StringComparison.OrdinalIgnoreCase)
+                ? ChatAttachmentSourceStatus.Current
+                : ChatAttachmentSourceStatus.Changed;
+            return new(SourceStatus, hash);
+        }
+        catch
+        {
+            SourceStatus = ChatAttachmentSourceStatus.Unreadable;
+            return new(SourceStatus, null);
+        }
+    }
 
     public static bool TryCreate(string path, out ChatAttachment attachment)
     {
@@ -78,7 +207,9 @@ public sealed class ChatAttachment
             };
             attachment = new ChatAttachment
             {
+                AttachmentId = Guid.NewGuid().ToString(),
                 FilePath = fullPath,
+                SourceLocator = fullPath,
                 Kind = kind,
                 MimeType = extension switch
                 {
@@ -109,6 +240,49 @@ public sealed class ChatAttachment
         catch
         {
             return false;
+        }
+    }
+
+    private static (string Hash, long Bytes) CopyAndHash(string source, string destination)
+    {
+        using var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 1024 * 1024, FileOptions.SequentialScan);
+        using var output = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1024 * 1024, FileOptions.SequentialScan);
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var buffer = new byte[1024 * 1024];
+        long bytes = 0;
+        int read;
+        while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            hash.AppendData(buffer, 0, read);
+            output.Write(buffer, 0, read);
+            bytes += read;
+        }
+        return (Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant(), bytes);
+    }
+
+    private static string StableHash(string source)
+    {
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            var before = SourceSignature.Read(source);
+            using var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 1024 * 1024, FileOptions.SequentialScan);
+            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            var buffer = new byte[1024 * 1024];
+            int read;
+            while ((read = input.Read(buffer, 0, buffer.Length)) > 0) hash.AppendData(buffer, 0, read);
+            var value = Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
+            if (before.Equals(SourceSignature.Read(source))) return value;
+        }
+        throw new IOException("The attachment changed while it was being read.");
+    }
+
+    private readonly record struct SourceSignature(long Length, DateTime LastWriteTimeUtc)
+    {
+        public static SourceSignature Read(string path)
+        {
+            var info = new FileInfo(path);
+            if (!info.Exists) throw new FileNotFoundException("Attachment source is missing.", path);
+            return new(info.Length, info.LastWriteTimeUtc);
         }
     }
 }
@@ -210,6 +384,10 @@ public sealed class ChatMessage : PluginRuntime.ObservableObject
     private List<string> _usedSkills = [];
     private List<string> _usedTools = [];
     private WorkspaceRunSummary? _summary;
+    private string? _translation;
+    private bool _isTranslating;
+    private bool _isSpeaking;
+    private string? _feedback;
 
     public string Id { get => _id; set => SetProperty(ref _id, value); }
     public ChatKind Kind { get => _kind; set => SetProperty(ref _kind, value); }
@@ -233,6 +411,26 @@ public sealed class ChatMessage : PluginRuntime.ObservableObject
     public string? PlanError { get => _planError; set => SetProperty(ref _planError, value); }
     public List<ChatAttachment> Attachments { get; set; } = [];
     public ChatMedia? Media { get; set; }
+    /// "good", "bad" or null. Kept with the message; not sent anywhere.
+    public string? Feedback { get => _feedback; set => SetProperty(ref _feedback, value); }
+    [JsonIgnore]
+    public string? Translation
+    {
+        get => _translation;
+        set { if (SetProperty(ref _translation, value)) OnPropertyChanged(nameof(HasTranslation)); }
+    }
+    [JsonIgnore]
+    public bool HasTranslation => !string.IsNullOrEmpty(_translation);
+    [JsonIgnore]
+    public bool IsTranslating { get => _isTranslating; set => SetProperty(ref _isTranslating, value); }
+    [JsonIgnore]
+    public bool IsSpeaking
+    {
+        get => _isSpeaking;
+        set { if (SetProperty(ref _isSpeaking, value)) OnPropertyChanged(nameof(IsNotSpeaking)); }
+    }
+    [JsonIgnore]
+    public bool IsNotSpeaking => !_isSpeaking;
 }
 
 public enum ContinuationPauseReason

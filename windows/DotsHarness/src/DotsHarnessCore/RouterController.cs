@@ -407,6 +407,25 @@ public sealed class RouterController : ObservableObject, IDisposable
             string.IsNullOrWhiteSpace(model) ? SelectedModelID : model,
             ct,
             promptCacheKey);
+    /// One-shot translation with the lightest model of the preferred account at its
+    /// lowest effort, whatever the conversation uses. Leaves router state untouched.
+    public async Task<string> TranslateAsync(string text, string language, CancellationToken ct = default)
+    {
+        var model = CompactionModelID(null);
+        var effort = model is null ? "" : NativeEffortCatalog.Levels(model).FirstOrDefault() ?? "";
+        var response = await _router.CompleteAsync(
+            [
+                new NativeMessage("system", $"Translate the user's text into {language}. If it is already in {language}, translate it into English. Output only the translation, nothing else."),
+                new NativeMessage("user", text.Length > 8000 ? text[..8000] : text),
+            ],
+            [],
+            model,
+            ct,
+            null,
+            effort);
+        return response.Message.Content.Trim();
+    }
+
     public bool HasImageFallback => _imageRouter.HasFallback;
     public bool ImageGenerationCommandVisible => _imageRouter.CommandVisible(SelectedModelID);
     public Task<NativeImageGeneration> GenerateImageAsync(string prompt, CancellationToken ct = default) => _imageRouter.GenerateAsync(prompt, SelectedModelID, ct);

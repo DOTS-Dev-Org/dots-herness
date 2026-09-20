@@ -151,18 +151,24 @@ public final class NemotronRuntime: @unchecked Sendable {
         #else
         let device = "cpu"
         #endif
+        // A server left over from an earlier run that died without stopping it.
+        Self.reapOrphans(runtimeRoot: runtimeRoot)
+
         let process = Process()
-        process.executableURL = binaryURL
-        process.arguments = [
-            "serve",
-            "--asr-model", modelURL.path,
-            "--device", device,
-            "--no-ui",
-            "--host", "127.0.0.1",
-            "--port", String(port),
-            "--endpointing",
-            "--stop-history-eou-ms", "800",
-        ]
+        (process.executableURL, process.arguments) = Self.guardedLaunch(
+            executable: binaryURL,
+            arguments: [
+                "serve",
+                "--asr-model", modelURL.path,
+                "--device", device,
+                "--no-ui",
+                "--host", "127.0.0.1",
+                "--port", String(port),
+                "--endpointing",
+                "--stop-history-eou-ms", "800",
+            ],
+            parentPID: getpid()
+        )
         process.currentDirectoryURL = runtimeRoot
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
@@ -174,6 +180,61 @@ public final class NemotronRuntime: @unchecked Sendable {
     public func stop() {
         process?.terminate()
         process = nil
+    }
+
+    // MARK: - Orphan protection
+
+    /// A child does not die with its parent on macOS. When the app is force-quit, killed
+    /// or crashes, the speech server (a model held on the GPU) would run on for good, one
+    /// more per launch. The server is therefore started through a small supervisor that
+    /// watches the app's pid and stops the server as soon as the app is gone. Stopping
+    /// the supervisor (TERM) stops the server too.
+    static func guardedLaunch(executable: URL, arguments: [String], parentPID: Int32) -> (URL, [String]) {
+        let script = """
+        parent=$1; shift
+        "$@" &
+        child=$!
+        trap 'kill $child 2>/dev/null; exit 0' TERM INT HUP
+        while kill -0 "$parent" 2>/dev/null && kill -0 "$child" 2>/dev/null; do
+            sleep 1 &
+            wait $!
+        done
+        kill $child 2>/dev/null
+        wait $child 2>/dev/null
+        """
+        return (
+            URL(fileURLWithPath: "/bin/sh"),
+            ["-c", script, "dots-speech-guard", String(parentPID), executable.path] + arguments
+        )
+    }
+
+    /// Stops speech servers of this runtime whose app is gone (parent is launchd). Servers
+    /// started before the supervisor existed, or by a build without it, are handled here.
+    /// A server that still has a live parent (another running instance) is left alone.
+    @discardableResult
+    static func reapOrphans(runtimeRoot: URL) -> Int {
+        let list = Process()
+        let output = Pipe()
+        list.executableURL = URL(fileURLWithPath: "/bin/ps")
+        list.arguments = ["-axo", "pid=,ppid=,command="]
+        list.standardOutput = output
+        list.standardError = FileHandle.nullDevice
+        guard (try? list.run()) != nil else { return 0 }
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        list.waitUntilExit()
+
+        let marker = runtimeRoot.path + "/"
+        var reaped = 0
+        for line in String(decoding: data, as: UTF8.self).split(separator: "\n") {
+            let fields = line.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)
+            guard fields.count == 3,
+                  let pid = Int32(fields[0]),
+                  fields[1] == "1",
+                  fields[2].hasPrefix(marker),
+                  fields[2].contains(" serve ") else { continue }
+            if kill(pid, SIGTERM) == 0 { reaped += 1 }
+        }
+        return reaped
     }
 
     public func waitUntilReady(timeoutMs: Int = 60_000) async -> Bool {

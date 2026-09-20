@@ -1146,3 +1146,4 @@
 "slash.compactDetail" = "Ringkas chat ini untuk mengosongkan ruang konteks";
 "settings.compactTrigger" = "Padatkan konteks otomatis pada";
 "settings.compactTrigger.hint" = "Persentase jendela konteks tiap model. Nilai lebih tinggi menjaga cache prompt lebih lama, karena pemadatan menulis ulang cache tersebut.";
+"conversation.translate" = "Terjemahkan";

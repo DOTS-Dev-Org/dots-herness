@@ -194,7 +194,10 @@ public struct AgentMessage: Sendable, Equatable, Codable {
             "role": role.rawValue,
             "content": content,
         ]
-        if !attachments.isEmpty { object["content"] = openAIContent() }
+        // Chat Completions does not accept multimodal content on a `tool`
+        // message. `makeBody` emits the tool result first and a provider-only
+        // user message containing the attachment immediately after it.
+        if !attachments.isEmpty, role != .tool { object["content"] = openAIContent() }
         if let name { object["name"] = name }
         if let toolCallID { object["tool_call_id"] = toolCallID }
         if !toolCalls.isEmpty {
@@ -212,7 +215,7 @@ public struct AgentMessage: Sendable, Equatable, Codable {
         return object
     }
 
-    private func openAIContent() -> [[String: Any]] {
+    func openAIContent() -> [[String: Any]] {
         var blocks: [[String: Any]] = []
         if !content.isEmpty { blocks.append(["type": "text", "text": content]) }
         for attachment in attachments {
@@ -279,13 +282,17 @@ public struct AgentMessage: Sendable, Equatable, Codable {
 
     private func inlineImageData(_ attachment: ChatAttachment) -> Data? {
         guard attachment.kind == .image,
-              let data = try? Data(contentsOf: attachment.url),
+              let source = attachment.providerURL,
+              let data = try? Data(contentsOf: source),
               data.count <= 20 * 1024 * 1024 else { return nil }
         return data
     }
 
     private func attachmentDescription(_ attachment: ChatAttachment) -> String {
-        "Attached " + attachment.kind.rawValue + ": " + attachment.name + " (" + attachment.path + ")"
+        "unsupported_attachment_kind: " + attachment.kind.rawValue
+            + "; attachment_id: " + attachment.id
+            + "; name: " + attachment.name
+            + ". The host did not silently drop this attachment, but this provider route does not support its wire format."
     }
 }
 
@@ -694,7 +701,17 @@ public struct NativeAgentClient: Sendable {
         if configuration.api == RouterAPIKind.geminiCLI.rawValue {
             return makeGeminiBody(messages: messages, tools: tools)
         }
-        var body: [String: Any] = ["model": configuration.model, "messages": messages.map { $0.jsonObject() }, "temperature": 0.2]
+        var wireMessages: [[String: Any]] = []
+        for message in messages {
+            wireMessages.append(message.jsonObject())
+            if message.role == .tool, !message.attachments.isEmpty {
+                wireMessages.append([
+                    "role": "user",
+                    "content": message.openAIContent(),
+                ])
+            }
+        }
+        var body: [String: Any] = ["model": configuration.model, "messages": wireMessages, "temperature": 0.2]
         // OpenAI-compatible: `prompt_cache_key` routes repeat prefixes to the
         // same cache shard. Servers that don't implement the field ignore it;
         // `complete` retries without it for the few that reject it.
@@ -717,9 +734,12 @@ public struct NativeAgentClient: Sendable {
         }
         let converted = messages.filter { $0.role != .system }.map { message -> [String: Any] in
             if message.role == .tool {
+                let resultContent: Any = message.attachments.isEmpty
+                    ? message.content
+                    : message.anthropicContent()
                 return [
                     "role": "user",
-                    "content": [["type": "tool_result", "tool_use_id": message.toolCallID ?? "tool", "content": message.content]],
+                    "content": [["type": "tool_result", "tool_use_id": message.toolCallID ?? "tool", "content": resultContent]],
                 ]
             }
             var content: Any = [["type": "text", "text": message.content]]
@@ -948,6 +968,13 @@ public struct NativeAgentClient: Sendable {
                 input.append(contentsOf: message.providerItems.map { item in item.mapValues { $0.any } })
             } else if message.role == .tool {
                 input.append(["type": "function_call_output", "call_id": message.toolCallID ?? "tool", "output": message.content])
+                if !message.attachments.isEmpty {
+                    // The function output remains a normal text result. The
+                    // bytes are a separate provider-only user input, keeping
+                    // the canonical tool transcript and the Responses wire
+                    // contract both valid.
+                    input.append(["role": "user", "content": message.responsesContent()])
+                }
             } else if message.role == .assistant && !message.toolCalls.isEmpty {
                 if !message.content.isEmpty {
                     input.append(["role": "assistant", "content": [["type": "output_text", "text": message.content]]])
