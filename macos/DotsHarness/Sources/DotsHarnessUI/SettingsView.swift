@@ -971,7 +971,7 @@ private struct ConversationArchiveView: View {
 }
 
 private struct WorkspaceAccessView: View {
-    @ObservedObject var bridge: AgentBridge
+    let bridge: AgentBridge
     @State private var inviteName = ""
     @State private var invitePublicKey = ""
     @State private var inviteRole: MemoryRole = .contributor

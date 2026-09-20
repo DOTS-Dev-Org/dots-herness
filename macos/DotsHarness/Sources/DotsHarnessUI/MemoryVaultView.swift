@@ -8,7 +8,7 @@ import SwiftUI
 import DotsHarnessCore
 
 public struct MemoryVaultView: View {
-    @ObservedObject var bridge: AgentBridge
+    let bridge: AgentBridge
     @State private var selectedID: String?
     @State private var refreshTick = 0
 

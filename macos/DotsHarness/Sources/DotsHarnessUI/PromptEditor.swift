@@ -1,0 +1,367 @@
+// Copyright (c) 2026 DOTS
+// Composer prompt text view and slash-command palette.
+
+import AppKit
+import SwiftUI
+import UniformTypeIdentifiers
+import DotsHarnessCore
+import HarnessPluginKit
+
+struct PromptTextEditor: NSViewRepresentable {
+    @Binding var text: String
+    let isEnabled: Bool
+    let onSubmit: (PromptMode) -> Void
+    let onAcceptSlashCommand: () -> Bool
+    let onMoveSlashCommand: (Int) -> Bool
+    let followUpSuggestion: String?
+    let onGhostVisibilityChange: (Bool) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+
+        let editor = PromptNSTextView()
+        editor.delegate = context.coordinator
+        editor.onSubmit = onSubmit
+        editor.onAcceptSlashCommand = onAcceptSlashCommand
+        editor.onMoveSlashCommand = onMoveSlashCommand
+        editor.onGhostVisibilityChange = { [weak coordinator = context.coordinator] visible in
+            coordinator?.ghostVisibilityChanged(visible)
+        }
+        editor.onGhostAccepted = { [weak coordinator = context.coordinator] text in
+            coordinator?.ghostAccepted(text)
+        }
+        editor.string = text
+        editor.isEditable = isEnabled
+        editor.isRichText = false
+        editor.font = .systemFont(ofSize: 15)
+        editor.textContainerInset = NSSize(width: 5, height: 5)
+        editor.isVerticallyResizable = true
+        editor.isHorizontallyResizable = false
+        editor.autoresizingMask = [.width]
+        editor.textContainer?.widthTracksTextView = true
+        // Kill the default 5pt line-fragment padding so the caret sits flush
+        // with the placeholder's leading edge (9pt SwiftUI + 5pt inset = 14pt).
+        editor.textContainer?.lineFragmentPadding = 0
+        editor.drawsBackground = false
+
+        scrollView.documentView = editor
+        return scrollView
+    }
+
+    func updateNSView(_ nsView: NSScrollView, context: Context) {
+        guard let editor = nsView.documentView as? PromptNSTextView else { return }
+        context.coordinator.update(parent: self)
+        editor.onSubmit = onSubmit
+        editor.onAcceptSlashCommand = onAcceptSlashCommand
+        editor.onMoveSlashCommand = onMoveSlashCommand
+        editor.isEditable = isEnabled
+
+        if text.isEmpty {
+            if !editor.committedString.isEmpty {
+                editor.removeGhost()
+                editor.string = ""
+            }
+            if let followUpSuggestion, !editor.hasMarkedText() {
+                if editor.ghostText != followUpSuggestion {
+                    editor.removeGhost()
+                }
+                if editor.ghostRange == nil, !editor.ghostReinsertionSuppressed {
+                    editor.insertGhost(followUpSuggestion)
+                }
+            } else if followUpSuggestion == nil {
+                editor.removeGhost()
+            }
+        } else {
+            editor.removeGhost()
+            if editor.string != text {
+                editor.string = text
+            }
+        }
+        editor.setAccessibilityHelp(
+            editor.ghostRange == nil ? nil : AppCopy.text("composer.followUp.hint")
+        )
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        private var parent: PromptTextEditor
+
+        init(_ parent: PromptTextEditor) {
+            self.parent = parent
+        }
+
+        func update(parent: PromptTextEditor) {
+            self.parent = parent
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let editor = notification.object as? PromptNSTextView else { return }
+            let committedString = editor.committedString
+            parent.text = committedString
+            if !committedString.isEmpty {
+                editor.ghostReinsertionSuppressed = false
+            }
+            guard committedString.isEmpty,
+                  !editor.hasMarkedText(),
+                  !editor.ghostReinsertionSuppressed,
+                  let suggestion = parent.followUpSuggestion,
+                  editor.ghostRange == nil else { return }
+            editor.insertGhost(suggestion)
+        }
+
+        func ghostVisibilityChanged(_ visible: Bool) {
+            parent.onGhostVisibilityChange(visible)
+        }
+
+        func ghostAccepted(_ text: String) {
+            parent.text = text
+            parent.onGhostVisibilityChange(false)
+        }
+    }
+}
+
+final class PromptNSTextView: NSTextView {
+    var onSubmit: ((PromptMode) -> Void)?
+    var onAcceptSlashCommand: (() -> Bool)?
+    var onMoveSlashCommand: ((Int) -> Bool)?
+    var onGhostVisibilityChange: ((Bool) -> Void)?
+    var onGhostAccepted: ((String) -> Void)?
+    var ghostRange: NSRange?
+    var ghostText: String?
+    var ghostReinsertionSuppressed = false
+
+    var committedString: String {
+        guard let ghostRange,
+              NSMaxRange(ghostRange) <= (string as NSString).length else { return string }
+        return (string as NSString).replacingCharacters(in: ghostRange, with: "")
+    }
+
+    func insertGhost(_ text: String) {
+        guard ghostRange == nil,
+              !text.isEmpty,
+              committedString.isEmpty,
+              !hasMarkedText(),
+              let textStorage else { return }
+
+        let attributedText = NSAttributedString(
+            string: text,
+            attributes: [
+                .foregroundColor: NSColor.tertiaryLabelColor,
+                .font: font ?? NSFont.systemFont(ofSize: 15),
+            ]
+        )
+        textStorage.beginEditing()
+        textStorage.insert(attributedText, at: 0)
+        textStorage.endEditing()
+        ghostRange = NSRange(location: 0, length: attributedText.length)
+        ghostText = text
+        ghostReinsertionSuppressed = false
+        setSelectedRange(NSRange(location: 0, length: 0))
+        setAccessibilityHelp(AppCopy.text("composer.followUp.hint"))
+        onGhostVisibilityChange?(true)
+    }
+
+    func removeGhost(suppressReinsertion: Bool = false) {
+        ghostReinsertionSuppressed = suppressReinsertion
+        guard let range = ghostRange else { return }
+        ghostRange = nil
+        ghostText = nil
+        if let textStorage, NSMaxRange(range) <= textStorage.length {
+            textStorage.beginEditing()
+            textStorage.deleteCharacters(in: range)
+            textStorage.endEditing()
+        }
+        setAccessibilityHelp(nil)
+        onGhostVisibilityChange?(false)
+    }
+
+    func acceptGhost() -> Bool {
+        guard let range = ghostRange,
+              let textStorage,
+              NSMaxRange(range) <= textStorage.length else { return false }
+
+        textStorage.beginEditing()
+        textStorage.addAttribute(
+            .foregroundColor,
+            value: textColor ?? NSColor.labelColor,
+            range: range
+        )
+        textStorage.endEditing()
+        ghostRange = nil
+        ghostText = nil
+        ghostReinsertionSuppressed = false
+        let committedString = string
+        setSelectedRange(NSRange(location: (committedString as NSString).length, length: 0))
+        setAccessibilityHelp(nil)
+        onGhostVisibilityChange?(false)
+        onGhostAccepted?(committedString)
+        return true
+    }
+
+    override func keyDown(with event: NSEvent) {
+        let keyModifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let hasTextModifiers = keyModifiers.contains(.command)
+            || keyModifiers.contains(.control)
+            || keyModifiers.contains(.option)
+            || keyModifiers.contains(.shift)
+
+        switch event.keyCode {
+        case 48 where !hasTextModifiers:
+            if onAcceptSlashCommand?() == true { return }
+            if acceptGhost() { return }
+        case 126 where !hasTextModifiers:
+            if onMoveSlashCommand?(-1) == true { return }
+        case 125 where !hasTextModifiers:
+            if onMoveSlashCommand?(1) == true { return }
+        default:
+            break
+        }
+
+        if ghostRange != nil {
+            removeGhost(suppressReinsertion: true)
+        }
+
+        guard event.keyCode == 36 || event.keyCode == 76 else {
+            super.keyDown(with: event)
+            return
+        }
+
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if modifiers.contains(.command) || modifiers.contains(.control) {
+            onSubmit?(.steer)
+        } else if modifiers.contains(.shift) == false {
+            onSubmit?(.queue)
+        } else {
+            super.keyDown(with: event)
+        }
+    }
+}
+
+enum SlashCommandKind {
+    case setting
+    case media
+    case skill
+}
+
+struct SlashCommand: Identifiable {
+    var id: String
+    var title: String
+    var detail: String
+    var icon: String
+    var kind: SlashCommandKind
+    var command: String? = nil
+}
+
+struct SlashCommandPalette: View {
+    let settings: [SlashCommand]
+    let media: [SlashCommand]
+    let skills: [SlashCommand]
+    @Binding var highlightedID: String?
+    let onSelect: (SlashCommand) -> Void
+
+    private var commands: [SlashCommand] {
+        settings + media + skills
+    }
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 2) {
+                if !settings.isEmpty {
+                    sectionTitle(AppCopy.text("composer.settings"))
+                    ForEach(settings) { command in
+                        commandRow(command)
+                    }
+                }
+
+                if !media.isEmpty {
+                    sectionTitle(AppCopy.text("composer.generate"))
+                        .padding(.top, 7)
+                    ForEach(media) { command in
+                        commandRow(command)
+                    }
+                }
+
+                if !skills.isEmpty {
+                    sectionTitle(AppCopy.text("composer.skills"))
+                        .padding(.top, 7)
+                    ForEach(skills) { command in
+                        commandRow(command)
+                    }
+                }
+            }
+            .padding(8)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(maxHeight: 360)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+        }
+        .onAppear {
+            if !commands.contains(where: { $0.id == highlightedID }) {
+                highlightedID = commands.first?.id
+            }
+        }
+        .onChange(of: commands.map(\.id)) { _, ids in
+            if !ids.contains(where: { $0 == highlightedID }) {
+                highlightedID = ids.first
+            }
+        }
+    }
+
+    private func sectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+    }
+
+    private func commandRow(_ command: SlashCommand) -> some View {
+        Button {
+            onSelect(command)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: command.icon)
+                    .font(.system(size: 13, weight: .medium))
+                    .frame(width: 17)
+                    .foregroundStyle(.secondary)
+                Text(command.title)
+                    .lineLimit(1)
+                Spacer(minLength: 10)
+                Text(command.detail)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                if command.kind == .skill {
+                    Text(AppCopy.text("composer.personal"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .font(.callout)
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 8)
+            .frame(minHeight: 29)
+            .background(
+                highlightedID == command.id ? Color.primary.opacity(0.12) : .clear,
+                in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isInside in
+            if isInside { highlightedID = command.id }
+        }
+    }
+}
