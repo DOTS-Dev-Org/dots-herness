@@ -18,7 +18,9 @@ import {
   validateUsername,
 } from "../../lib/users";
 import { nowIso } from "../../db/client";
-import { loadWorkspaceUsage, getSpendTrend, parseSpendTrendGranularity, patchProviderUsageLimits, patchProviderSubscription, providerLogoPath } from "../../lib/usage";
+import { loadWorkspaceUsage, providerLogoPath } from "../../lib/usage";
+import { getSpendTrend, parseSpendTrendGranularity } from "../../lib/usage_spend";
+import { patchProviderUsageLimits, patchProviderSubscription } from "../../lib/usage_limits";
 import { computeSpendIncrements } from "../../lib/spend_trend";
 import { requireAccountRole } from "../../lib/team";
 import {

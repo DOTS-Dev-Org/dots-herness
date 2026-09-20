@@ -38,7 +38,8 @@ import {
   markProviderRefreshStale,
   syncProviderUsageFromKey,
 } from "../../lib/provider_fetch";
-import { patchProviderUsageLimits, recordSubscriptionHistory } from "../../lib/usage";
+import { patchProviderUsageLimits } from "../../lib/usage_limits";
+import { recordSubscriptionHistory } from "../../lib/usage_spend";
 import { canConnectProvider } from "../../lib/plan_limits";
 import { normalizeSyncInterval } from "../../lib/sync_interval";
 import {

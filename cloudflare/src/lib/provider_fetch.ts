@@ -523,7 +523,7 @@ export async function syncProviderUsageFromKey(
 
     if (result.plan_name) {
       const { db, nowIso } = await import("../db/client");
-      const { recordSubscriptionHistory } = await import("./usage");
+      const { recordSubscriptionHistory } = await import("./usage_spend");
       const now = nowIso();
       await db(env)
         .prepare(
