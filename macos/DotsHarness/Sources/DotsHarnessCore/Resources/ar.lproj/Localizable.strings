@@ -523,6 +523,8 @@
 "sidebar.unpinChat" = "إزالة تثبيت الدردشة";
 "sidebar.archiveChat" = "أرشفة الدردشة";
 "sidebar.unarchiveChat" = "إلغاء أرشفة الدردشة";
+"sidebar.unarchiveProject" = "إلغاء أرشفة المشروع";
+"sidebar.deleteProject" = "حذف المشروع";
 "sidebar.archived" = "مؤرشف";
 "sidebar.chatRunning" = "الدردشة جارية";
 "sidebar.chatCompleted" = "اكتملت الدردشة";

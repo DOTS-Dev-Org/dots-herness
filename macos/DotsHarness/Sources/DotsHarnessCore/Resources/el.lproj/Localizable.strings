@@ -523,6 +523,8 @@
 "sidebar.unpinChat" = "Ξεκαρφιτσώστε τη συνομιλία";
 "sidebar.archiveChat" = "Αρχειοθέτηση συνομιλίας";
 "sidebar.unarchiveChat" = "Κατάργηση αρχειοθέτησης συνομιλίας";
+"sidebar.unarchiveProject" = "Κατάργηση αρχειοθέτησης έργου";
+"sidebar.deleteProject" = "Διαγραφή έργου";
 "sidebar.archived" = "Αρχειοθετήθηκε";
 "sidebar.chatRunning" = "Συνομιλία σε εξέλιξη";
 "sidebar.chatCompleted" = "Η συνομιλία ολοκληρώθηκε";

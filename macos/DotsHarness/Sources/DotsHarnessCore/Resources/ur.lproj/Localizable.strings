@@ -523,6 +523,8 @@
 "sidebar.unpinChat" = "چیٹ کو ان پن کریں۔";
 "sidebar.archiveChat" = "آرکائیو چیٹ";
 "sidebar.unarchiveChat" = "چیٹ کو غیر محفوظ کریں۔";
+"sidebar.unarchiveProject" = "پروجیکٹ کو غیر محفوظ کریں";
+"sidebar.deleteProject" = "پروجیکٹ کو حذف کریں";
 "sidebar.archived" = "محفوظ شدہ";
 "sidebar.chatRunning" = "چیٹ جاری ہے۔";
 "sidebar.chatCompleted" = "چیٹ مکمل ہو گئی۔";

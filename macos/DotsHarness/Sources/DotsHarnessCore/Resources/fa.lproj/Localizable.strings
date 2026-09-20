@@ -523,6 +523,8 @@
 "sidebar.unpinChat" = "پین گپ را بردارید";
 "sidebar.archiveChat" = "آرشیو چت";
 "sidebar.unarchiveChat" = "چت را از حالت آرشیو خارج کنید";
+"sidebar.unarchiveProject" = "پروژه را از حالت آرشیو خارج کنید";
+"sidebar.deleteProject" = "حذف پروژه";
 "sidebar.archived" = "بایگانی شد";
 "sidebar.chatRunning" = "چت در حال انجام است";
 "sidebar.chatCompleted" = "چت تکمیل شد";

@@ -132,7 +132,7 @@ with this section, this section wins.
 
 - There is no `apply_patch`, no `shell`, and no sandbox or approval-policy parameters. Use only the
   tools listed in this request: `list_files`, `read_file`, `grep_files`, `write_file`, `remove_file`,
-  `run_command`, `update_plan`, `ask_user`, and the `skill.*` tools.
+  `run_command`, `update_plan`, `ask_user`, `explore`, and the `skill.*` tools.
 - Edit files by writing their complete new contents with `write_file`; there is no patch format.
 - `run_command` runs one shell command in the workspace. Escalation is handled by the host, which
   asks the user itself, so never request permissions in a tool call.

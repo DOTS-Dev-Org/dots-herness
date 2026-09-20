@@ -318,6 +318,15 @@ public final class ProviderRegistry: @unchecked Sendable {
             }
         }
         if loaded.isEmpty { loaded = Self.fallback }
+        // OAuth client credentials never ship in the repo: fill blanks from a local
+        // `oauth-clients.json` ({"<provider id>": {"clientID": "...", "clientSecret": "..."}}).
+        let clients = Self.loadClientCredentials()
+        for index in loaded.indices {
+            guard var oauth = loaded[index].oauth, let c = clients[loaded[index].id] else { continue }
+            if oauth.clientID.isEmpty, let id = c["clientID"] { oauth.clientID = id }
+            if oauth.clientSecret?.isEmpty ?? true { oauth.clientSecret = c["clientSecret"] }
+            loaded[index].oauth = oauth
+        }
         specs = loaded
         byID = Dictionary(loaded.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
     }
@@ -350,6 +359,12 @@ public final class ProviderRegistry: @unchecked Sendable {
         }
         FileHandle.standardError.write(Data("ProviderRegistry: providers.json not found in any bundle\n".utf8))
         return []
+    }
+
+    private static func loadClientCredentials() -> [String: [String: String]] {
+        let url = SupportPaths.default().root.appendingPathComponent("oauth-clients.json")
+        guard let data = try? Data(contentsOf: url) else { return [:] }
+        return (try? JSONDecoder().decode([String: [String: String]].self, from: data)) ?? [:]
     }
 
     private static func loadOverride() -> [ProviderSpec] {

@@ -523,6 +523,8 @@
 "sidebar.unpinChat" = "Відкріпити чат";
 "sidebar.archiveChat" = "Архівний чат";
 "sidebar.unarchiveChat" = "Розархівуйте чат";
+"sidebar.unarchiveProject" = "Розархівуйте проект";
+"sidebar.deleteProject" = "Видалити проект";
 "sidebar.archived" = "Архівовано";
 "sidebar.chatRunning" = "Триває чат";
 "sidebar.chatCompleted" = "Чат завершено";

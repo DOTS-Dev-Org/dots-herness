@@ -344,7 +344,8 @@ public sealed record NativeMessage(
     IReadOnlyList<NativeAttachment>? Attachments = null,
     IReadOnlyList<JsonObject>? ProviderItems = null,
     string? SystemKind = null,
-    bool PromptContextCaptured = false);
+    bool PromptContextCaptured = false,
+    string? Thinking = null);
 
 /// Captures host context on a user turn before it is sent or persisted. Shared
 /// by Windows and Linux, independently of the selected provider protocol.
@@ -936,7 +937,8 @@ public sealed class NativeProviderRouter
         var calls = new List<NativeToolCall>();
         foreach (var item in message["tool_calls"]?.AsArray() ?? new JsonArray()) calls.Add(new NativeToolCall(item?["id"]?.GetValue<string>() ?? Guid.NewGuid().ToString(), item?["function"]?["name"]?.GetValue<string>() ?? "tool", item?["function"]?["arguments"]?.GetValue<string>() ?? "{}"));
         var usage = node?["usage"] is JsonObject u ? ParseUsage(u) : null;
-        return new NativeResponse(new NativeMessage("assistant", message["content"]?.GetValue<string>() ?? "", ToolCalls: calls), usage);
+        var reasoning = message["reasoning_content"]?.GetValue<string>() ?? message["reasoning"]?.GetValue<string>();
+        return new NativeResponse(new NativeMessage("assistant", message["content"]?.GetValue<string>() ?? "", ToolCalls: calls, Thinking: reasoning), usage);
     }
 
     /// <summary>
@@ -1098,9 +1100,10 @@ public sealed class NativeProviderRouter
     {
         var content = node?["content"]?.AsArray() ?? throw new NativeProviderException("The provider returned no message.");
         var text = string.Join("", content.Where(x => x?["type"]?.GetValue<string>() == "text").Select(x => x?["text"]?.GetValue<string>() ?? ""));
+        var thinking = string.Join("\n\n", content.Where(x => x?["type"]?.GetValue<string>() == "thinking").Select(x => x?["thinking"]?.GetValue<string>() ?? ""));
         var calls = content.Where(x => x?["type"]?.GetValue<string>() == "tool_use").Select(x => new NativeToolCall(x?["id"]?.GetValue<string>() ?? Guid.NewGuid().ToString(), x?["name"]?.GetValue<string>() ?? "tool", (x?["input"] ?? new JsonObject()).ToJsonString())).ToList();
         var usage = node?["usage"] is JsonObject u ? ParseUsage(u, inputExcludesCache: true) : null;
-        return new NativeResponse(new NativeMessage("assistant", text, ToolCalls: calls), usage);
+        return new NativeResponse(new NativeMessage("assistant", text, ToolCalls: calls, Thinking: string.IsNullOrEmpty(thinking) ? null : thinking), usage);
     }
 
     private static NativeUsage? ParseUsage(JsonObject usage, bool inputExcludesCache = false)
@@ -1203,6 +1206,8 @@ public static class NativeEffortCatalog
     private static readonly string[] Gpt = ["none", "low", "medium", "high", "xhigh"];
     private static readonly string[] ClaudeXhigh = ["low", "medium", "high", "xhigh", "max"];
     private static readonly string[] ClaudeMax = ["low", "medium", "high", "max"];
+    private static readonly string[] StandardEffort = ["low", "medium", "high"];
+    private static readonly string[] TwoLevelEffort = ["low", "high"];
 
     private static readonly Dictionary<string, string[]> Table = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -1210,9 +1215,19 @@ public static class NativeEffortCatalog
         ["gpt-5.5"] = Gpt, ["gpt-5.4"] = Gpt, ["gpt-5.4-mini"] = Gpt,
         ["claude-sonnet-5"] = ClaudeXhigh, ["claude-opus-5"] = ClaudeXhigh, ["claude-opus-4-8"] = ClaudeXhigh,
         ["claude-fable-5"] = ClaudeXhigh, ["claude-opus-4-7"] = ClaudeXhigh,
-        ["claude-sonnet-4-6"] = ClaudeMax, ["claude-opus-4-6"] = ClaudeMax,
-        ["claude-opus-4-5-20251101"] = ["low", "medium", "high"],
+        ["claude-sonnet-4-6"] = ClaudeMax, ["claude-opus-4-6"] = ClaudeMax, ["claude-opus-4-6-thinking"] = ClaudeMax,
+        ["claude-opus-4-5-20251101"] = StandardEffort,
         ["grok-4.5"] = ["low", "medium", "high", "xhigh"],
+        ["gemini-3.8-pro"] = StandardEffort, ["gemini-3.8-flash"] = StandardEffort,
+        ["gemini-3.5-pro"] = StandardEffort, ["gemini-3.5-flash"] = StandardEffort,
+        ["gemini-3.1-pro"] = StandardEffort, ["gemini-3.1-pro-low"] = TwoLevelEffort,
+        ["gemini-3-pro-preview"] = StandardEffort, ["gemini-3-flash-preview"] = StandardEffort,
+        ["gemini-2.5-pro"] = StandardEffort, ["gemini-2.5-flash"] = StandardEffort,
+        ["gemini-pro-agent"] = TwoLevelEffort, ["gemini-3-flash-agent"] = StandardEffort, ["gemini-3-flash"] = StandardEffort,
+        ["gemini-3.6-flash-low"] = StandardEffort,
+        ["gpt-oss-120b"] = StandardEffort,
+        ["o1"] = StandardEffort, ["o3-mini"] = StandardEffort,
+        ["deepseek-reasoner"] = StandardEffort,
     };
 
     public static IReadOnlyList<string> Levels(string? model)
@@ -1220,6 +1235,20 @@ public static class NativeEffortCatalog
         if (string.IsNullOrEmpty(model)) return [];
         // Router ids may carry a provider prefix ("claude/claude-opus-5").
         var bare = model[(model.LastIndexOf('/') + 1)..];
-        return Table.TryGetValue(bare, out var levels) ? levels : [];
+        if (Table.TryGetValue(bare, out var levels)) return levels;
+
+        // Dynamic heuristic fallback for newly released or unlisted models:
+        var lower = bare.ToLowerInvariant();
+        if (lower.Contains("reasoner") || lower.Contains("thinking") || lower.StartsWith("o1") || lower.StartsWith("o3") || lower.StartsWith("o4") || lower.Contains("-r1") || lower.Contains("-r2"))
+            return StandardEffort;
+        if (lower.StartsWith("claude-") && !lower.Contains("haiku"))
+            return ClaudeMax;
+        if (lower.StartsWith("gemini-"))
+            return StandardEffort;
+        if (lower.StartsWith("gpt-5"))
+            return Gpt;
+        if (lower.StartsWith("grok-4"))
+            return ["low", "medium", "high", "xhigh"];
+        return [];
     }
 }

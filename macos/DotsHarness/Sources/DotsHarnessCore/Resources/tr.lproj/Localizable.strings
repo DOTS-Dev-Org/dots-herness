@@ -535,6 +535,8 @@
 "sidebar.unpinChat" = "Sabitlemeyi kaldır";
 "sidebar.archiveChat" = "Sohbeti arşivle";
 "sidebar.unarchiveChat" = "Arşivden çıkar";
+"sidebar.unarchiveProject" = "Projeyi arşivden çıkar";
+"sidebar.deleteProject" = "Projeyi sil";
 "sidebar.archived" = "Arşiv";
 "sidebar.chatRunning" = "Sohbet devam ediyor";
 "sidebar.chatCompleted" = "Sohbet tamamlandı";
@@ -905,6 +907,7 @@
 "conversation.skills" = "Beceriler";
 "conversation.tools" = "Araçlar";
 "conversation.used" = "Kullanılanlar";
+"conversation.thinking" = "Düşünme Süreci";
 "conversation.runSummary" = "Çalışma özeti";
 "conversation.filesSummary" = "Eklendi %d, değiştirildi %d, silindi %d";
 "conversation.fileAdded" = "Eklendi";

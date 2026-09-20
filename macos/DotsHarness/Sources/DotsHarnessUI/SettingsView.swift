@@ -29,7 +29,7 @@ public struct SettingsView: View {
     }
 
     enum Tab: String, CaseIterable, Identifiable {
-        case general, access, memory, archive, pet, providers, custom, local, share, mobile, skills, plugins, mcp, prompt, legal
+        case general, access, memory, archive, providers, custom, local, share, mobile, skills, plugins, mcp, prompt, legal
         var id: String { rawValue }
         var title: String {
             rawValue == "archive"
@@ -73,8 +73,7 @@ public struct SettingsView: View {
                 case .general: general
                 case .access: WorkspaceAccessView(bridge: model.bridge)
                 case .memory: MemoryVaultView(bridge: model.bridge)
-                case .archive: ConversationArchiveView(bridge: model.bridge)
-                case .pet: PetSettingsView(model: model)
+                case .archive: ConversationArchiveView(model: model)
                 case .providers: RouterProvidersView(router: model.router)
                 case .custom: CustomAPIView(router: model.router, local: model.local)
                 case .share: RouterShareView(router: model.router)
@@ -749,82 +748,209 @@ private struct SkillsSettingsView: View {
 }
 
 private struct ConversationArchiveView: View {
-    @ObservedObject var bridge: AgentBridge
-    @State private var pendingDeleteID: String?
+    @ObservedObject var model: AppModel
+    @State private var pendingDeleteConversationID: String?
+    @State private var pendingDeleteProjectID: String?
 
-    private var archivedConversations: [Conversation] {
-        bridge.archivedConversations.sorted {
+    // MARK: - Chat area data
+
+    private var archivedProjects: [ChatProject] {
+        model.chatProjects
+            .filter(\.archived)
+            .sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    private var archivedChatConversations: [Conversation] {
+        // Only standalone (unassigned) archived chat conversations.
+        // Conversations that belong to an archived project are shown
+        // under their project row, not listed separately here.
+        let archivedProjectIDs = Set(archivedProjects.map(\.id))
+        return model.chatBridge.archivedConversations
+            .filter { conv in
+                guard let pid = conv.chatProjectID else { return true }
+                return !archivedProjectIDs.contains(pid)
+            }
+            .sorted {
+                ($0.messages.map(\.createdAt).max() ?? .distantPast)
+                    > ($1.messages.map(\.createdAt).max() ?? .distantPast)
+            }
+    }
+
+    // MARK: - Coding area data
+
+    private var archivedCodingConversations: [Conversation] {
+        model.codingBridge.archivedConversations.sorted {
             ($0.messages.map(\.createdAt).max() ?? .distantPast)
                 > ($1.messages.map(\.createdAt).max() ?? .distantPast)
         }
     }
 
+    private var isChat: Bool { model.activeArea == .chat }
+
     var body: some View {
         Form {
-            Section(AppCopy.text("sidebar.archived")) {
-                if archivedConversations.isEmpty {
-                    Text(AppCopy.text("sidebar.noChats"))
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(archivedConversations) { conversation in
-                        HStack(spacing: 10) {
-                            statusIcon(conversation)
-
-                            Text(conversation.title)
-                                .lineLimit(1)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-
-                            if conversation.pinned {
-                                Image(systemName: "pin.fill")
-                                    .foregroundStyle(Color.accentColor)
-                                    .accessibilityLabel(AppCopy.text("sidebar.pinChat"))
-                            }
-
-                            Button {
-                                bridge.setArchived(conversation.id, archived: false)
-                            } label: {
-                                Image(systemName: "arrow.uturn.backward")
-                                    .frame(width: 24, height: 24)
-                            }
-                            .buttonStyle(.borderless)
-                            .help(AppCopy.text("sidebar.unarchiveChat"))
-                            .accessibilityLabel(AppCopy.text("sidebar.unarchiveChat"))
-
-                            Button {
-                                pendingDeleteID = conversation.id
-                            } label: {
-                                Image(systemName: "trash")
-                                    .frame(width: 24, height: 24)
-                            }
-                            .buttonStyle(.borderless)
-                            .foregroundStyle(.red)
-                            .help(AppCopy.text("sidebar.deleteChat"))
-                            .accessibilityLabel(AppCopy.text("sidebar.deleteChat"))
-                        }
-                        .padding(.vertical, 2)
-                    }
-                }
+            if isChat {
+                chatArchiveContent
+            } else {
+                conversationSection(
+                    conversations: archivedCodingConversations,
+                    bridge: model.codingBridge
+                )
             }
         }
         .formStyle(.grouped)
         .padding()
         .navigationTitle(AppCopy.text("sidebar.archived"))
+        // Conversation delete confirmation
         .confirmationDialog(
             AppCopy.text("sidebar.deleteChat"),
             isPresented: Binding(
-                get: { pendingDeleteID != nil },
-                set: { if !$0 { pendingDeleteID = nil } }
+                get: { pendingDeleteConversationID != nil },
+                set: { if !$0 { pendingDeleteConversationID = nil } }
             ),
             titleVisibility: .visible
         ) {
             Button(AppCopy.text("sidebar.deleteChat"), role: .destructive) {
-                if let id = pendingDeleteID {
-                    bridge.deleteConversation(id)
+                if let id = pendingDeleteConversationID {
+                    model.bridge.deleteConversation(id)
                 }
-                pendingDeleteID = nil
+                pendingDeleteConversationID = nil
             }
             Button(AppCopy.text("common.cancel"), role: .cancel) {
-                pendingDeleteID = nil
+                pendingDeleteConversationID = nil
+            }
+        }
+        // Project delete confirmation
+        .confirmationDialog(
+            AppCopy.text("sidebar.deleteProject"),
+            isPresented: Binding(
+                get: { pendingDeleteProjectID != nil },
+                set: { if !$0 { pendingDeleteProjectID = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button(AppCopy.text("sidebar.deleteProject"), role: .destructive) {
+                if let id = pendingDeleteProjectID {
+                    model.deleteChatProject(id)
+                }
+                pendingDeleteProjectID = nil
+            }
+            Button(AppCopy.text("common.cancel"), role: .cancel) {
+                pendingDeleteProjectID = nil
+            }
+        }
+    }
+
+    // MARK: - Chat archive content
+
+    @ViewBuilder
+    private var chatArchiveContent: some View {
+        Section(AppCopy.text("sidebar.projects")) {
+            if archivedProjects.isEmpty {
+                Text(AppCopy.text("sidebar.noChats"))
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(archivedProjects) { project in
+                    HStack(spacing: 10) {
+                        Image(systemName: "bubble.left.and.bubble.right")
+                            .foregroundStyle(.secondary)
+                            .frame(width: 16, height: 16)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(project.name)
+                                .lineLimit(1)
+                            let count = model.chatConversations(in: project.id).count
+                            if count > 0 {
+                                Text("\(count) chat\(count == 1 ? "" : "s")")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        if project.pinned {
+                            Image(systemName: "pin.fill")
+                                .foregroundStyle(Color.accentColor)
+                        }
+
+                        Button {
+                            model.setChatProjectArchived(project.id, archived: false)
+                        } label: {
+                            Image(systemName: "arrow.uturn.backward")
+                                .frame(width: 24, height: 24)
+                        }
+                        .buttonStyle(.borderless)
+                        .help(AppCopy.text("sidebar.unarchiveProject"))
+                        .accessibilityLabel(AppCopy.text("sidebar.unarchiveProject"))
+
+                        Button {
+                            pendingDeleteProjectID = project.id
+                        } label: {
+                            Image(systemName: "trash")
+                                .frame(width: 24, height: 24)
+                        }
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(.red)
+                        .help(AppCopy.text("sidebar.deleteProject"))
+                        .accessibilityLabel(AppCopy.text("sidebar.deleteProject"))
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+        }
+
+        conversationSection(
+            conversations: archivedChatConversations,
+            bridge: model.chatBridge
+        )
+    }
+
+    // MARK: - Shared conversation section
+
+    @ViewBuilder
+    private func conversationSection(conversations: [Conversation], bridge: AgentBridge) -> some View {
+        Section(AppCopy.text("sidebar.archived")) {
+            if conversations.isEmpty {
+                Text(AppCopy.text("sidebar.noChats"))
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(conversations) { conversation in
+                    HStack(spacing: 10) {
+                        statusIcon(conversation)
+
+                        Text(conversation.title)
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        if conversation.pinned {
+                            Image(systemName: "pin.fill")
+                                .foregroundStyle(Color.accentColor)
+                                .accessibilityLabel(AppCopy.text("sidebar.pinChat"))
+                        }
+
+                        Button {
+                            bridge.setArchived(conversation.id, archived: false)
+                        } label: {
+                            Image(systemName: "arrow.uturn.backward")
+                                .frame(width: 24, height: 24)
+                        }
+                        .buttonStyle(.borderless)
+                        .help(AppCopy.text("sidebar.unarchiveChat"))
+                        .accessibilityLabel(AppCopy.text("sidebar.unarchiveChat"))
+
+                        Button {
+                            pendingDeleteConversationID = conversation.id
+                        } label: {
+                            Image(systemName: "trash")
+                                .frame(width: 24, height: 24)
+                        }
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(.red)
+                        .help(AppCopy.text("sidebar.deleteChat"))
+                        .accessibilityLabel(AppCopy.text("sidebar.deleteChat"))
+                    }
+                    .padding(.vertical, 2)
+                }
             }
         }
     }

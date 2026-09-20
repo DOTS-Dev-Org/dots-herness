@@ -186,6 +186,11 @@ final class ProviderRegistryTests: XCTestCase {
         XCTAssertEqual(try efforts("claude", "claude-opus-5"), ["low", "medium", "high", "xhigh", "max"])
         XCTAssertFalse(try efforts("claude", "claude-sonnet-4-6").contains("xhigh"))
         XCTAssertFalse(try efforts("claude", "claude-opus-4-5-20251101").contains("max"))
+        XCTAssertEqual(try efforts("antigravity", "claude-sonnet-4-6"), ["low", "medium", "high", "max"])
+        XCTAssertEqual(try efforts("antigravity", "gemini-3-flash-agent"), ["low", "medium", "high"])
+        XCTAssertEqual(try efforts("antigravity", "gemini-pro-agent"), ["low", "high"])
+        XCTAssertEqual(try efforts("gemini-cli", "gemini-3.8-flash"), ["low", "medium", "high"])
+        XCTAssertEqual(try efforts("gemini-cli", "gemini-3.8-pro"), ["low", "medium", "high"])
         // Models that reject the parameter entirely advertise no levels.
         XCTAssertTrue(try efforts("claude", "claude-haiku-4-5").isEmpty)
         XCTAssertTrue(try efforts("claude", "claude-sonnet-4-5-20250929").isEmpty)
@@ -208,6 +213,8 @@ final class ProviderRegistryTests: XCTestCase {
         XCTAssertNil(try body(effort: "", api: "chatgpt")["reasoning"])
         XCTAssertEqual((try body(effort: "max", api: "anthropic")["output_config"] as? [String: String])?["effort"], "max")
         XCTAssertEqual((try body(effort: "high", api: "chatgpt")["reasoning"] as? [String: String])?["effort"], "high")
+        XCTAssertNil(try body(effort: "", api: "openai-chat")["reasoning_effort"])
+        XCTAssertEqual(try body(effort: "high", api: "openai-chat")["reasoning_effort"] as? String, "high")
     }
 
     func testAttachmentsRoundTripAndBecomeProviderContent() throws {
@@ -302,13 +309,14 @@ final class ProviderRegistryTests: XCTestCase {
         XCTAssertEqual(result.usage?.outputTokens, 4)
     }
 
-    /// Google's CLI client is confidential: without the secret every token call
-    /// fails with `invalid_client`.
-    func testGeminiCLISpecCarriesConfidentialClientAndDiscovery() throws {
+    /// Client credentials come from the local `oauth-clients.json`, never the
+    /// bundled providers.json (GitHub push protection + no secrets in the repo).
+    func testGeminiCLISpecDiscoveryAndNoBundledSecret() throws {
         let spec = try XCTUnwrap(ProviderRegistry.shared.spec("gemini-cli"))
         XCTAssertEqual(spec.transport.format, .geminiCLI)
         let oauth = try XCTUnwrap(spec.oauth)
-        XCTAssertFalse(try XCTUnwrap(oauth.clientSecret).isEmpty)
+        let bundled = try String(contentsOf: URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/DotsHarnessCore/Resources/providers.json"), encoding: .utf8)
+        XCTAssertFalse(bundled.contains("GOCSPX"))
         XCTAssertEqual(oauth.projectDiscoveryURL, "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist")
         XCTAssertEqual(oauth.extraAuthorizeParams["access_type"], "offline")
     }
@@ -322,5 +330,38 @@ final class ProviderRegistryTests: XCTestCase {
         XCTAssertNotEqual(zen.apiKey?.modelsURL, go.apiKey?.modelsURL)
         XCTAssertEqual(zen.category, .apiKey)
         XCTAssertEqual(go.category, .apiKey)
+    }
+
+    func testGeminiCLIResponseExtractsThoughtIntoThinking() throws {
+        let json = """
+        {"response":{"candidates":[{"content":{"parts":[
+          {"thought":true,"text":"Thinking step 1..."},
+          {"text":"The final answer"}
+        ]}}],"usageMetadata":{"promptTokenCount":10,"candidatesTokenCount":5}}}
+        """
+        let result = try NativeAgentClient.geminiResponse(from: try JSONCodec.parse(Data(json.utf8)))
+        XCTAssertEqual(result.message.thinking, "Thinking step 1...")
+        XCTAssertEqual(result.message.content, "The final answer")
+    }
+
+    func testAnthropicResponseExtractsThinkingBlocks() throws {
+        let json = """
+        {"type":"message","content":[
+          {"type":"thinking","thinking":"Thinking deeply..."},
+          {"type":"text","text":"Hello world"}
+        ]}
+        """
+        let result = try NativeAgentClient.response(from: try JSONCodec.parse(Data(json.utf8)))
+        XCTAssertEqual(result.message.thinking, "Thinking deeply...")
+        XCTAssertEqual(result.message.content, "Hello world")
+    }
+
+    func testOpenAIResponseExtractsReasoningContent() throws {
+        let json = """
+        {"choices":[{"message":{"role":"assistant","reasoning_content":"OpenAI thought process","content":"Final answer"}}]}
+        """
+        let result = try NativeAgentClient.response(from: try JSONCodec.parse(Data(json.utf8)))
+        XCTAssertEqual(result.message.thinking, "OpenAI thought process")
+        XCTAssertEqual(result.message.content, "Final answer")
     }
 }

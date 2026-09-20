@@ -174,6 +174,11 @@ public final class WorkspaceMemory {
     private let paths: SupportPaths
     private let fileManager: FileManager
     private let snapshotStore: WorkspaceSnapshotStore
+    /// Turns already known to have a complete snapshot. The chat asks for every message
+    /// on every redraw (each check reads and decodes a manifest from disk), and a
+    /// complete snapshot cannot turn incomplete again except through the calls below,
+    /// which clear this. Only positive answers are kept: an unfinished turn may complete.
+    private var completeSnapshotTurns = Set<String>()
     private var workspaceURL: URL?
     private var identity: StoredIdentity?
     private var privateKey: P256.Signing.PrivateKey?
@@ -285,11 +290,15 @@ public final class WorkspaceMemory {
         workspace: URL?
     ) -> Bool {
         guard let workspace else { return false }
-        return snapshotStore.hasCompleteSnapshot(
+        let key = "\(conversationID)|\(turnID)|\(workspace.standardizedFileURL.path)"
+        if completeSnapshotTurns.contains(key) { return true }
+        let complete = snapshotStore.hasCompleteSnapshot(
             conversationID: conversationID,
             turnID: turnID,
             workspace: workspace
         )
+        if complete { completeSnapshotTurns.insert(key) }
+        return complete
     }
 
     public func restoreTurns(
@@ -299,6 +308,7 @@ public final class WorkspaceMemory {
         abortOnConflict: Bool
     ) throws -> RewindResult {
         guard let workspace else { throw WorkspaceMemoryError.noWorkspace }
+        completeSnapshotTurns.removeAll()
         do {
             return try snapshotStore.restore(
                 conversationID: conversationID,
@@ -319,6 +329,7 @@ public final class WorkspaceMemory {
     }
 
     public func removeTurnSnapshots(conversationID: String) {
+        completeSnapshotTurns.removeAll()
         snapshotStore.removeConversation(conversationID)
     }
 
@@ -705,7 +716,13 @@ public final class WorkspaceMemory {
               loaded["rootAuthority"] is [String: Any] else { return }
         manifest = loaded
         try? ensureIdentity()
-        rebuildProjection()
+        if let stateData = try? Data(contentsOf: root.appendingPathComponent("state.json")),
+           let cachedState = try? JSONSerialization.jsonObject(with: stateData) as? [String: Any],
+           cachedState["schemaVersion"] as? Int == 1 {
+            state = cachedState
+        } else {
+            rebuildProjection()
+        }
         mapText = (try? String(contentsOf: root.appendingPathComponent("map.md"), encoding: .utf8)) ?? ""
     }
 

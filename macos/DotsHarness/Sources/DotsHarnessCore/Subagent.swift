@@ -26,6 +26,8 @@ public enum ExploreTool {
     /// third ask either, and each attempt is paid for in full.
     static let maxCondenseAttempts = 1
     static let maxReportedPaths = 40
+    /// Maximum concurrent explore subagents allowed in a single turn to protect UX, UI and quota.
+    public static let maxPerTurn = 3
 
     public static let definition = AgentToolDefinition(
         name: name,
@@ -37,8 +39,9 @@ public enum ExploreTool {
         code yourself afterwards. Do not use it for a file you already know the path of: read that \
         directly. State the question in full, including the naming conventions and paths worth \
         trying, since the subagent sees nothing of this conversation. For a broad investigation, \
-        split it into independent questions and call explore several times in the same turn: those \
-        subagents run in parallel and only their findings enter this conversation.
+        split it into independent questions and call explore several times in the same turn \
+        (maximum \(maxPerTurn) subagents per turn): those subagents run in parallel and only \
+        their findings enter this conversation.
         """,
         parameters: .object([
             "type": .string("object"),
@@ -265,7 +268,7 @@ public enum ExploreTool {
     ) -> Outcome {
         Outcome(
             answer: answer,
-            readPaths: Array(readPaths.prefix(maxReportedPaths)),
+            readPaths: readPaths,
             steps: steps,
             hitStepLimit: hitStepLimit,
             answered: answeredFully(answer) && !hitStepLimit,

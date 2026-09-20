@@ -523,6 +523,8 @@
 "sidebar.unpinChat" = "Odepnij czat";
 "sidebar.archiveChat" = "Archiwizuj czat";
 "sidebar.unarchiveChat" = "Przywróć czat";
+"sidebar.unarchiveProject" = "Przywróć projekt";
+"sidebar.deleteProject" = "Usuń projekt";
 "sidebar.archived" = "Zarchiwizowane";
 "sidebar.chatRunning" = "Czat w toku";
 "sidebar.chatCompleted" = "Czat zakończony";

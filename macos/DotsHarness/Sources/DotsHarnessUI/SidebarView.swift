@@ -31,17 +31,18 @@ struct SidebarView: View {
     @State private var hoveredSectionTitle: String?
     @State private var projectPreviewPath: String?
     @State private var showAllProjectChats = false
+    @ObservedObject private var startupGate = StartupGate.shared
 
     private let visibleConversationLimit = 7
 
     /// Sidebar-owned voice session. No `onTranscript` closure, so a finished
-    /// transcript is sent straight as a message (same as the floating pet).
-    @StateObject private var voiceInput: PetVoiceInput
+    /// transcript is sent straight as a message.
+    @StateObject private var voiceInput: LiveVoiceInput
 
     init(model: AppModel, logo: Image? = nil) {
         self.model = model
         self.logo = logo
-        _voiceInput = StateObject(wrappedValue: PetVoiceInput(model: model))
+        _voiceInput = StateObject(wrappedValue: LiveVoiceInput(model: model))
     }
 
     var body: some View {
@@ -63,14 +64,14 @@ struct SidebarView: View {
                             sectionHeader(
                                 title: AppCopy.text("sidebar.projects"),
                                 isExpanded: $isProjectsExpanded,
-                                showsStatusDot: model.conversations.contains {
+                                showsStatusDot: startupGate.isOpen && model.conversations.contains {
                                     $0.unread && !$0.running && !$0.blank && !$0.archived
                                 }
                             ) {
                                 projectsSectionActions
                             }
 
-                            if isProjectsExpanded {
+                            if isProjectsExpanded, startupGate.isOpen {
                                 projectsSection
                             }
 
@@ -82,7 +83,7 @@ struct SidebarView: View {
                                 EmptyView()
                             }
 
-                            if isRecentExpanded {
+                            if isRecentExpanded, startupGate.isOpen {
                                 recentSection
                             }
                         }
@@ -108,14 +109,9 @@ struct SidebarView: View {
 
                 AccountMenuPopover(
                     account: model.account,
-                    isPetVisible: model.isPetVisible,
                     onUsage: {
                         dismissAccountMenu()
                         model.presentUsage()
-                    },
-                    onTogglePet: {
-                        dismissAccountMenu()
-                        model.isPetVisible.toggle()
                     },
                     onSettings: {
                         dismissAccountMenu()
@@ -324,7 +320,7 @@ struct SidebarView: View {
             sectionHeader(
                 title: AppCopy.text("sidebar.projects"),
                 isExpanded: $isProjectsExpanded,
-                showsStatusDot: model.chatProjects.contains { project in
+                showsStatusDot: startupGate.isOpen && model.chatProjects.contains { project in
                     !project.archived && model.chatConversations(in: project.id).contains {
                         $0.unread && !$0.running && !$0.blank && !$0.archived
                     }
@@ -348,19 +344,21 @@ struct SidebarView: View {
                 .help(AppCopy.text("sidebar.addProject"))
             }
 
-            if isProjectsExpanded {
+            if isProjectsExpanded, startupGate.isOpen {
                 ForEach(model.chatProjects.filter { !$0.archived }) { project in
                     chatProjectRow(project)
                 }
             }
 
             // Chats without a project sit outside the projects, as plain chats.
-            VStack(alignment: .leading, spacing: 1) {
-                ForEach(sortedByActivity(filteredConversations(model.unassignedChatConversations))) { conversation in
-                    conversationRow(conversation, indented: false)
+            if startupGate.isOpen {
+                VStack(alignment: .leading, spacing: 1) {
+                    ForEach(sortedByActivity(filteredConversations(model.unassignedChatConversations))) { conversation in
+                        conversationRow(conversation, indented: false)
+                    }
                 }
+                .padding(.top, 8)
             }
-            .padding(.top, 8)
         }
     }
 
@@ -1267,9 +1265,7 @@ struct SidebarView: View {
 
 private struct AccountMenuPopover: View {
     let account: AccountIdentity
-    let isPetVisible: Bool
     let onUsage: () -> Void
-    let onTogglePet: () -> Void
     let onSettings: () -> Void
     let onSignOut: () -> Void
 
@@ -1304,12 +1300,6 @@ private struct AccountMenuPopover: View {
                     systemImage: "chart.bar.fill",
                     trailingSystemImage: "chevron.right",
                     action: onUsage
-                )
-                AccountMenuRow(
-                    title: isPetVisible ? AppCopy.text("pet.hide") : AppCopy.text("pet.show"),
-                    systemImage: isPetVisible ? "eye.slash" : "eye",
-                    shortcut: "⌥Space",
-                    action: onTogglePet
                 )
                 AccountMenuRow(
                     title: AppCopy.text("sidebar.settings"),

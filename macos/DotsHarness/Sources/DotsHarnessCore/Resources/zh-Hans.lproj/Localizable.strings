@@ -412,6 +412,8 @@
 "sidebar.unpinChat" = "取消置顶聊天";
 "sidebar.archiveChat" = "归档聊天";
 "sidebar.unarchiveChat" = "取消归档聊天";
+"sidebar.unarchiveProject" = "取消归档项目";
+"sidebar.deleteProject" = "删除项目";
 "sidebar.archived" = "已归档";
 "sidebar.chatRunning" = "聊天进行中";
 "sidebar.chatCompleted" = "聊天已完成";

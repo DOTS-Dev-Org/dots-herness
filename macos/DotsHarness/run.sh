@@ -203,6 +203,9 @@ SWIFT_BUILD=(
 if [[ -n "$ARCH" ]]; then
     SWIFT_BUILD+=(--arch "$ARCH")
 fi
+if [[ "$SWIFT_CONFIG" == "release" ]]; then
+    SWIFT_BUILD+=(-Xlinker -dead_strip)
+fi
 
 printf 'Native Swift macOS uygulamasi derleniyor...\n'
 "${SWIFT_BUILD[@]}"
@@ -245,6 +248,11 @@ for fw in "$BIN_DIR"/*.framework; do
         continue
     fi
     cp -R "$fw" "$APP_BUNDLE/Contents/MacOS/"
+    # Bundle icinde gereksiz C/C++ baslik ve modul tanimlarini temizle
+    dest_fw="$APP_BUNDLE/Contents/MacOS/$(basename "$fw")"
+    rm -rf "$dest_fw/Headers" "$dest_fw/Modules" \
+           "$dest_fw/Versions/Current/Headers" "$dest_fw/Versions/Current/Modules" \
+           "$dest_fw/Versions"/*/Headers "$dest_fw/Versions"/*/Modules 2>/dev/null || true
 done
 # Tembel yuklenen yardimci dylib'ler (libWhisperVoice.dylib); binary yaninda olmali.
 for dylib in "$BIN_DIR"/*.dylib; do
@@ -263,12 +271,35 @@ if [[ "$PRODUCT" == "$PROJECT_NAME" ]]; then
     ICON_KEYS=$'\n    <key>CFBundleIconFile</key>\n    <string>AppIcon</string>'
 fi
 
-# Release'de sembol tablosunu at: __LINKEDIT ~20 MB kuculur, daha az sayfa map'lenir.
+# Release'de gereksiz mimari dilimlerini ayikla ve sembol tablosunu temizle.
 if [[ "$SWIFT_CONFIG" == "release" ]]; then
-    strip -x "$APP_BUNDLE/Contents/MacOS/$PRODUCT" 2>/dev/null || true
+    TARGET_ARCH="${ARCH:-$(uname -m)}"
+
+    # Ana executable strip
+    strip -u -r "$APP_BUNDLE/Contents/MacOS/$PRODUCT" 2>/dev/null || strip -x "$APP_BUNDLE/Contents/MacOS/$PRODUCT" 2>/dev/null || true
+
     shopt -s nullglob
     for dylib in "$APP_BUNDLE/Contents/MacOS/"*.dylib; do
+        if lipo -info "$dylib" 2>/dev/null | grep -q 'Architectures in the fat file'; then
+            lipo -thin "$TARGET_ARCH" "$dylib" -output "${dylib}.thin" 2>/dev/null && mv "${dylib}.thin" "$dylib" || true
+        fi
         strip -x "$dylib" 2>/dev/null || true
+    done
+
+    for fw in "$APP_BUNDLE/Contents/MacOS/"*.framework; do
+        fw_name="$(basename "$fw" .framework)"
+        fw_binary="$fw/$fw_name"
+        if [[ -L "$fw_binary" ]]; then
+            real_binary="$(readlink -f "$fw_binary" 2>/dev/null || realpath "$fw_binary" 2>/dev/null || echo "$fw_binary")"
+        else
+            real_binary="$fw_binary"
+        fi
+        if [[ -f "$real_binary" ]]; then
+            if lipo -info "$real_binary" 2>/dev/null | grep -q 'Architectures in the fat file'; then
+                lipo -thin "$TARGET_ARCH" "$real_binary" -output "${real_binary}.thin" 2>/dev/null && mv "${real_binary}.thin" "$real_binary" || true
+            fi
+            strip -x "$real_binary" 2>/dev/null || true
+        fi
     done
     shopt -u nullglob
 fi
@@ -314,7 +345,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSMicrophoneUsageDescription</key>
-    <string>DOTS Pet, secili proje ve sohbette sesli etkilesim icin mikrofonu kullanir.</string>
+    <string>DOTS Harness, secili proje ve sohbette sesli etkilesim icin mikrofonu kullanir.</string>
     <key>NSAudioCaptureUsageDescription</key>
     <string>DotsHarness, simulator ve sistem sesini kaydetmek icin sistem ses cikisini yakalar.</string>
     <key>NSPrincipalClass</key>

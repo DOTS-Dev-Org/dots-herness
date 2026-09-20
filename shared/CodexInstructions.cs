@@ -145,9 +145,9 @@ with this section, this section wins.
 - There is no `apply_patch`, no `shell`, and no sandbox or approval-policy parameters. Use only the
   tools listed in this request. Depending on the mode, this C# harness provides
   `list_files`, `read_file`, `grep_files`, `write_file`, `remove_file`,
-  `run_command`, `ask_user`, `other_chats`, `remember`, and the `skill.*` tools.
+  `run_command`, `ask_user`, `other_chats`, `remember`, `explore`, and the `skill.*` tools.
   Plan mode omits `write_file`, `remove_file`, and `remember`.
-- This harness does not provide `update_plan`, `explore`, or `install_plugin`.
+- This harness does not provide `update_plan` or `install_plugin`.
 - Edit files by writing their complete new contents with `write_file`; there is no patch format.
 - `run_command` runs one shell command in the workspace. Escalation is handled by the host, which
   asks the user itself, so never request permissions in a tool call.

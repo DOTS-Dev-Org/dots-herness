@@ -538,6 +538,8 @@
 "sidebar.unpinChat" = "Unpin chat";
 "sidebar.archiveChat" = "Archive chat";
 "sidebar.unarchiveChat" = "Unarchive chat";
+"sidebar.unarchiveProject" = "Unarchive project";
+"sidebar.deleteProject" = "Delete project";
 "sidebar.archived" = "Archived";
 "sidebar.chatRunning" = "Chat in progress";
 "sidebar.chatCompleted" = "Chat completed";
@@ -915,6 +917,7 @@
 "conversation.skills" = "Skills";
 "conversation.tools" = "Tools";
 "conversation.used" = "Used";
+"conversation.thinking" = "Thinking Process";
 "conversation.runSummary" = "Run summary";
 "conversation.filesSummary" = "Added %d, modified %d, deleted %d";
 "conversation.fileAdded" = "Added";

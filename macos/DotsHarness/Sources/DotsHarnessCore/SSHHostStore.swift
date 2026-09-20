@@ -44,41 +44,63 @@ public final class SSHHostStore: ObservableObject {
     private let configFile: SSHConfigFile
     private let storeURL: URL
     private let vault = ProviderVault()
+    private var didLoad = false
 
     public init(configFile: SSHConfigFile = SSHConfigFile(), storeURL: URL? = nil) {
         self.configFile = configFile
         self.storeURL = storeURL ?? SupportPaths.default().root.appendingPathComponent("ssh-hosts.json")
-        loadRecords()
-        reload()
     }
 
     public var isAvailable: Bool { SSHRunner.isAvailable }
 
+    private func ensureLoaded() {
+        guard !didLoad else { return }
+        didLoad = true
+        loadRecords()
+        reload(save: false)
+    }
+
     public func host(alias: String) -> SSHHost? {
-        hosts.first { $0.alias == alias }
+        ensureLoaded()
+        return hosts.first { $0.alias == alias }
     }
 
     public func record(alias: String) -> Record {
-        records[alias] ?? Record(alias: alias)
+        ensureLoaded()
+        return records[alias] ?? Record(alias: alias)
     }
 
     /// `~/.ssh/config` is the source of truth for the list — the user may have
     /// edited it by hand or by another tool since we last looked.
     public func reload() {
+        if !didLoad {
+            didLoad = true
+            loadRecords()
+        }
+        reload(save: true)
+    }
+
+    private func reload(save: Bool) {
         let configured = configFile.hosts()
         hosts = configured
         let aliases = Set(configured.map(\.alias))
+        var changed = false
         for (alias, var record) in records where record.missing != !aliases.contains(alias) {
             record.missing = !aliases.contains(alias)
             records[alias] = record
+            changed = true
         }
         for host in configured where records[host.alias] == nil {
             records[host.alias] = Record(alias: host.alias, managedByApp: host.managedByApp)
+            changed = true
         }
-        saveRecords()
+        if save && changed {
+            saveRecords()
+        }
     }
 
     public func add(_ host: SSHHost, enrolled: Bool) throws {
+        ensureLoaded()
         try configFile.add(host)
         var record = record(alias: host.alias)
         record.managedByApp = true
@@ -90,6 +112,7 @@ public final class SSHHostStore: ObservableObject {
     }
 
     public func remove(alias: String) throws {
+        ensureLoaded()
         SSHRunner.closeMaster(alias: alias)
         try configFile.remove(alias: alias)
         records[alias] = nil
@@ -99,6 +122,7 @@ public final class SSHHostStore: ObservableObject {
     }
 
     public func rememberRemotePath(alias: String, path: String) {
+        ensureLoaded()
         var record = record(alias: alias)
         record.lastRemotePath = path
         record.recentRemotePaths = ([path] + record.recentRemotePaths.filter { $0 != path }).prefix(8).map { $0 }

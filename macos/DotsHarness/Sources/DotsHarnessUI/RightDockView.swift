@@ -94,7 +94,7 @@ struct RightDockView: View {
             Divider()
             content
         }
-        .frame(width: 520)
+        .frame(minWidth: 240, maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
@@ -105,7 +105,7 @@ struct RightDockView: View {
                     ForEach(state.tabs) { tab in tabButton(tab) }
                 }
             }
-            .fixedSize(horizontal: true, vertical: false)
+            .frame(maxWidth: .infinity)
 
             Button { isMenuPresented.toggle() } label: {
                 Image(systemName: "plus")
@@ -524,7 +524,7 @@ private struct ReviewBody: View {
                         .background(background(line))
                 }
             }
-            .frame(minWidth: 500, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(Color(nsColor: .textBackgroundColor))
     }

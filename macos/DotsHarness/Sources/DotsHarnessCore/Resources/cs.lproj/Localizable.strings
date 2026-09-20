@@ -523,6 +523,8 @@
 "sidebar.unpinChat" = "Odepnout chat";
 "sidebar.archiveChat" = "Archivovat chat";
 "sidebar.unarchiveChat" = "Zrušit archivaci chatu";
+"sidebar.unarchiveProject" = "Zrušit archivaci projektu";
+"sidebar.deleteProject" = "Smazat projekt";
 "sidebar.archived" = "Archivováno";
 "sidebar.chatRunning" = "Probíhá chat";
 "sidebar.chatCompleted" = "Chat dokončen";

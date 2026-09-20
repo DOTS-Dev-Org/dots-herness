@@ -523,6 +523,8 @@
 "sidebar.unpinChat" = "Bỏ ghim cuộc trò chuyện";
 "sidebar.archiveChat" = "Lưu trữ cuộc trò chuyện";
 "sidebar.unarchiveChat" = "Hủy lưu trữ cuộc trò chuyện";
+"sidebar.unarchiveProject" = "Hủy lưu trữ dự án";
+"sidebar.deleteProject" = "Xóa dự án";
 "sidebar.archived" = "Đã lưu trữ";
 "sidebar.chatRunning" = "Đang trò chuyện";
 "sidebar.chatCompleted" = "Trò chuyện đã hoàn tất";

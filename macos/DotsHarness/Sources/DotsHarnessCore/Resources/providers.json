@@ -328,23 +328,93 @@
     },
     "models": [
       {
+        "id": "gemini-3.8-pro",
+        "name": "Gemini 3.8 Pro",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "gemini-3.8-flash",
+        "name": "Gemini 3.8 Flash",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "light"
+      },
+      {
+        "id": "gemini-3.5-pro",
+        "name": "Gemini 3.5 Pro",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "gemini-3.5-flash",
+        "name": "Gemini 3.5 Flash",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "light"
+      },
+      {
+        "id": "gemini-3.1-pro",
+        "name": "Gemini 3.1 Pro",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "premium"
+      },
+      {
         "id": "gemini-3-pro-preview",
         "name": "Gemini 3 Pro Preview",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
         "tier": "premium"
       },
       {
         "id": "gemini-3-flash-preview",
         "name": "Gemini 3 Flash Preview",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
         "tier": "light"
       },
       {
         "id": "gemini-2.5-pro",
         "name": "Gemini 2.5 Pro",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
         "tier": "premium"
       },
       {
         "id": "gemini-2.5-flash",
         "name": "Gemini 2.5 Flash",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
         "tier": "light"
       }
     ]
@@ -382,34 +452,84 @@
     },
     "models": [
       {
+        "id": "gemini-3-flash-agent",
+        "name": "Gemini 3.6 Flash (High)",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "light"
+      },
+      {
+        "id": "gemini-3-flash",
+        "name": "Gemini 3.6 Flash (Medium)",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "light"
+      },
+      {
+        "id": "gemini-3.6-flash-low",
+        "name": "Gemini 3.6 Flash (Low)",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "light"
+      },
+      {
         "id": "gemini-pro-agent",
         "name": "Gemini 3.1 Pro (High)",
+        "efforts": [
+          "low",
+          "high"
+        ],
         "tier": "premium"
       },
       {
         "id": "gemini-3.1-pro-low",
         "name": "Gemini 3.1 Pro (Low)",
+        "efforts": [
+          "low",
+          "high"
+        ],
+        "tier": "standard"
+      },
+      {
+        "id": "claude-sonnet-4-6",
+        "name": "Claude Sonnet 4.6 (Thinking)",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "max"
+        ],
         "tier": "standard"
       },
       {
         "id": "claude-opus-4-6-thinking",
         "name": "Claude Opus 4.6 (Thinking)",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "max"
+        ],
         "tier": "premium"
       },
       {
-        "id": "claude-sonnet-4-6",
-        "name": "Claude Sonnet 4.6 (Thinking)",
+        "id": "gpt-oss-120b",
+        "name": "GPT-OSS 120B (Medium)",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
         "tier": "standard"
-      },
-      {
-        "id": "gemini-3-flash-agent",
-        "name": "Gemini 3.5 Flash (High)",
-        "tier": "light"
-      },
-      {
-        "id": "gemini-3-flash",
-        "name": "Gemini 3 Flash",
-        "tier": "light"
       }
     ]
   },
@@ -432,12 +552,95 @@
       {
         "id": "claude-sonnet-5",
         "name": "Claude Sonnet 5",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
         "tier": "standard"
       },
       {
         "id": "claude-opus-5",
         "fast": true,
         "name": "Claude Opus 5",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "claude-opus-4-8",
+        "fast": true,
+        "name": "Claude Opus 4.8",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "claude-opus-4-7",
+        "name": "Claude Opus 4.7",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "claude-opus-4-6",
+        "name": "Claude Opus 4.6",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "max"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "claude-sonnet-4-6",
+        "name": "Claude Sonnet 4.6",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "max"
+        ],
+        "tier": "standard"
+      },
+      {
+        "id": "claude-fable-5",
+        "name": "Claude Fable 5",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "claude-opus-4-5-20251101",
+        "name": "Claude Opus 4.5",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
         "tier": "premium"
       },
       {
@@ -553,7 +756,73 @@
     },
     "models": [
       {
+        "id": "gemini-3.8-pro",
+        "name": "Gemini 3.8 Pro",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "gemini-3.8-flash",
+        "name": "Gemini 3.8 Flash",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "light"
+      },
+      {
+        "id": "gemini-3.5-pro",
+        "name": "Gemini 3.5 Pro",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "gemini-3.5-flash",
+        "name": "Gemini 3.5 Flash",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "light"
+      },
+      {
+        "id": "gemini-3.1-pro",
+        "name": "Gemini 3.1 Pro",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "gemini-2.5-pro",
+        "name": "Gemini 2.5 Pro",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "premium"
+      },
+      {
         "id": "gemini-2.5-flash",
+        "name": "Gemini 2.5 Flash",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
         "tier": "light"
       }
     ]
@@ -577,6 +846,11 @@
       {
         "id": "deepseek-chat",
         "contextWindow": 128000
+      },
+      {
+        "id": "deepseek-reasoner",
+        "name": "DeepSeek Reasoner (R1)",
+        "contextWindow": 128000
       }
     ]
   },
@@ -597,7 +871,107 @@
     },
     "models": [
       {
-        "id": "gpt-4.1-mini"
+        "id": "gpt-5.6-terra",
+        "name": "GPT-5.6 Terra",
+        "efforts": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "gpt-5.6-sol",
+        "name": "GPT-5.6 Sol",
+        "efforts": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "gpt-5.6-luna",
+        "name": "GPT-5.6 Luna",
+        "efforts": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "standard"
+      },
+      {
+        "id": "gpt-5.4",
+        "name": "GPT-5.4",
+        "efforts": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh"
+        ],
+        "tier": "standard"
+      },
+      {
+        "id": "gpt-5.4-mini",
+        "name": "GPT-5.4 Mini",
+        "efforts": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh"
+        ],
+        "tier": "light"
+      },
+      {
+        "id": "gpt-4.1",
+        "name": "GPT-4.1",
+        "tier": "standard"
+      },
+      {
+        "id": "gpt-4.1-mini",
+        "name": "GPT-4.1 Mini",
+        "tier": "light"
+      },
+      {
+        "id": "o3",
+        "name": "o3",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "o3-mini",
+        "name": "o3-mini",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "light"
+      },
+      {
+        "id": "o1",
+        "name": "o1",
+        "efforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "tier": "premium"
       }
     ],
     "media": {
@@ -646,7 +1020,24 @@
     },
     "models": [
       {
-        "id": "qwen-plus"
+        "id": "qwen-max",
+        "name": "Qwen Max",
+        "tier": "premium"
+      },
+      {
+        "id": "qwen-plus",
+        "name": "Qwen Plus",
+        "tier": "standard"
+      },
+      {
+        "id": "qwen-turbo",
+        "name": "Qwen Turbo",
+        "tier": "light"
+      },
+      {
+        "id": "qwen-coder-plus",
+        "name": "Qwen Coder Plus",
+        "tier": "standard"
       }
     ]
   },
@@ -667,7 +1058,30 @@
     },
     "models": [
       {
-        "id": "grok-3-mini"
+        "id": "grok-4.5",
+        "name": "Grok 4.5",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "xhigh"
+        ],
+        "tier": "standard"
+      },
+      {
+        "id": "grok-4",
+        "name": "Grok 4",
+        "tier": "standard"
+      },
+      {
+        "id": "grok-3",
+        "name": "Grok 3",
+        "tier": "standard"
+      },
+      {
+        "id": "grok-3-mini",
+        "name": "Grok 3 Mini",
+        "tier": "light"
       }
     ]
   },
@@ -708,7 +1122,24 @@
     },
     "models": [
       {
-        "id": "moonshot-v1-8k"
+        "id": "kimi-k1.5",
+        "name": "Kimi k1.5",
+        "tier": "premium"
+      },
+      {
+        "id": "moonshot-v1-128k",
+        "name": "Moonshot v1 128k",
+        "tier": "standard"
+      },
+      {
+        "id": "moonshot-v1-32k",
+        "name": "Moonshot v1 32k",
+        "tier": "standard"
+      },
+      {
+        "id": "moonshot-v1-8k",
+        "name": "Moonshot v1 8k",
+        "tier": "light"
       }
     ]
   },
@@ -770,7 +1201,19 @@
     },
     "models": [
       {
-        "id": "mistral-small-latest"
+        "id": "codestral-latest",
+        "name": "Codestral",
+        "tier": "standard"
+      },
+      {
+        "id": "mistral-large-latest",
+        "name": "Mistral Large",
+        "tier": "premium"
+      },
+      {
+        "id": "mistral-small-latest",
+        "name": "Mistral Small",
+        "tier": "light"
       }
     ]
   },

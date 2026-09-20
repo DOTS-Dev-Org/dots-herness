@@ -159,6 +159,7 @@ public struct ChatMessage: Identifiable, Sendable, Equatable, Codable {
     public var id: String
     public var kind: Kind
     public var text: String
+    public var thinking: String?
     public var createdAt: Date
     public var streaming: Bool
     /// All media emitted by this message. The legacy media accessor below
@@ -184,6 +185,7 @@ public struct ChatMessage: Identifiable, Sendable, Equatable, Codable {
         id: String = UUID().uuidString,
         kind: Kind,
         text: String,
+        thinking: String? = nil,
         createdAt: Date = Date(),
         streaming: Bool = false,
         media: ChatMedia? = nil,
@@ -200,6 +202,7 @@ public struct ChatMessage: Identifiable, Sendable, Equatable, Codable {
         self.id = id
         self.kind = kind
         self.text = text
+        self.thinking = thinking
         self.createdAt = createdAt
         self.streaming = streaming
         self.mediaItems = mediaItems.isEmpty ? media.map { [$0] } ?? [] : mediaItems
@@ -214,7 +217,7 @@ public struct ChatMessage: Identifiable, Sendable, Equatable, Codable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, kind, text, createdAt, streaming, media, mediaItems, attachments, turnID, changedFiles, usedSkills, usedTools, summary, contextRootIDs
+        case id, kind, text, thinking, createdAt, streaming, media, mediaItems, attachments, turnID, changedFiles, usedSkills, usedTools, summary, contextRootIDs
     }
 
     public init(from decoder: Decoder) throws {
@@ -222,6 +225,7 @@ public struct ChatMessage: Identifiable, Sendable, Equatable, Codable {
         id = try container.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
         kind = try container.decodeIfPresent(Kind.self, forKey: .kind) ?? .system
         text = try container.decodeIfPresent(String.self, forKey: .text) ?? ""
+        thinking = try container.decodeIfPresent(String.self, forKey: .thinking)
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         streaming = try container.decodeIfPresent(Bool.self, forKey: .streaming) ?? false
         let decodedItems = try container.decodeIfPresent([ChatMedia].self, forKey: .mediaItems) ?? []
@@ -242,6 +246,7 @@ public struct ChatMessage: Identifiable, Sendable, Equatable, Codable {
         try container.encode(id, forKey: .id)
         try container.encode(kind, forKey: .kind)
         try container.encode(text, forKey: .text)
+        try container.encodeIfPresent(thinking, forKey: .thinking)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encode(streaming, forKey: .streaming)
         try container.encode(mediaItems, forKey: .mediaItems)

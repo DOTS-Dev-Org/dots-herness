@@ -9,6 +9,7 @@ import DotsHarnessCore
 public struct RootView: View {
     @ObservedObject var model: AppModel
     @ObservedObject private var navigationState: SidebarVisibilityState
+    @ObservedObject private var startupGate = StartupGate.shared
     private let logo: Image?
     @StateObject private var dock = RightDockState()
     @State private var preferredSidebarVisibility: NavigationSplitViewVisibility = .all
@@ -41,22 +42,19 @@ public struct RootView: View {
     private var gatedContent: some View {
         mainContent
         .background {
+            if startupGate.isOpen {
             ForEach(KeyboardShortcutAction.allCases.filter { $0 != .toggleSidebar && $0 != .pullRequests && $0 != .scheduled }) { action in
                 Button("") { model.isTasksPresented = false; dock.perform(action, model: model) }
                     .keyboardShortcut(model.shortcut(for: action).swiftUIShortcut)
                     .opacity(0)
                     .frame(width: 0, height: 0)
                     .allowsHitTesting(false)
+                }
             }
-        }
-        .background {
-            PetFloatingWindowHost(model: model)
-                .frame(width: 0, height: 0)
         }
         .sheet(isPresented: $model.isUsagePresented) {
             UsageSummaryView(model: model)
         }
-        .task { model.refreshVoiceModel() }
         .onChange(of: model.voiceProvider) { _, _ in model.refreshVoiceModel() }
     }
 
@@ -70,23 +68,11 @@ public struct RootView: View {
                 if model.isTasksPresented {
                     TasksView(model: model)
                 } else {
-                    HStack(spacing: 0) {
-                        ConversationView(
-                            model: model,
-                            isPanePickerVisible: .constant(false)
-                        )
-                        if dock.isVisible {
-                            Divider()
-                            RightDockView(model: model, state: dock)
-                        }
-                        if model.isSimulatorPresented {
-                            Divider()
-                            SimulatorPanelView(model: model)
-                        }
-                    }
+                    detailPanes
                 }
             }
             .toolbar(removing: .sidebarToggle)
+            .toolbarBackground(.hidden, for: .windowToolbar)
             .frame(width: proxy.size.width, height: proxy.size.height)
             .overlay(alignment: .top) {
                 SlotStack(slot: WellKnownSlot.overlay, registry: model.host.slots)
@@ -116,6 +102,35 @@ public struct RootView: View {
                     preferredSidebarVisibility = visibility
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var detailPanes: some View {
+        if startupGate.isOpen, (dock.isVisible || model.isSimulatorPresented) {
+            HSplitView {
+                ConversationView(
+                    model: model,
+                    isPanePickerVisible: .constant(false)
+                )
+                .frame(minWidth: 300, idealWidth: 620, maxWidth: .infinity)
+
+                if dock.isVisible {
+                    RightDockView(model: model, state: dock)
+                        .frame(minWidth: 240, idealWidth: 420, maxWidth: .infinity)
+                }
+
+                if model.isSimulatorPresented {
+                    SimulatorPanelView(model: model)
+                        .frame(minWidth: 280, idealWidth: 340, maxWidth: .infinity)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            ConversationView(
+                model: model,
+                isPanePickerVisible: .constant(false)
+            )
         }
     }
 

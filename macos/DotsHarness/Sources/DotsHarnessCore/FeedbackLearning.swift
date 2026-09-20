@@ -328,10 +328,28 @@ public final class FeedbackStore: @unchecked Sendable {
         return SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined().prefix(16).description
     }
 
+    private struct FileStamp: Equatable {
+        let modified: Date?
+        let size: Int?
+    }
+
+    /// The chat asks for the feedback of every message on every redraw; the file is
+    /// re-read only when it changed on disk.
+    private var loadCache: (stamp: FileStamp, records: [FeedbackRecord])?
+
     private func loadUnlocked() -> [FeedbackRecord] {
-        guard let url = workspaceURL.map({ $0.appendingPathComponent(".mem", isDirectory: true).appendingPathComponent("feedback.jsonl") }),
-              let data = try? Data(contentsOf: url),
-              let text = String(data: data, encoding: .utf8) else { return [] }
+        guard let url = workspaceURL.map({ $0.appendingPathComponent(".mem", isDirectory: true).appendingPathComponent("feedback.jsonl") }) else { return [] }
+        let attributes = try? fileManager.attributesOfItem(atPath: url.path)
+        let stamp = FileStamp(
+            modified: attributes?[.modificationDate] as? Date,
+            size: (attributes?[.size] as? NSNumber)?.intValue
+        )
+        if let loadCache, loadCache.stamp == stamp { return loadCache.records }
+        guard let data = try? Data(contentsOf: url),
+              let text = String(data: data, encoding: .utf8) else {
+            loadCache = nil
+            return []
+        }
         let decoder = makeDecoder()
         var latest: [String: FeedbackRecord] = [:]
         for line in text.split(whereSeparator: \.isNewline) {
@@ -339,7 +357,9 @@ public final class FeedbackStore: @unchecked Sendable {
                   let record = try? decoder.decode(FeedbackRecord.self, from: data) else { continue }
             latest[record.id] = record
         }
-        return latest.values.sorted { $0.timestamp < $1.timestamp }
+        let sorted = latest.values.sorted { $0.timestamp < $1.timestamp }
+        loadCache = (stamp, sorted)
+        return sorted
     }
 
     private func writeJSONLLines(_ records: [FeedbackRecord]) throws {

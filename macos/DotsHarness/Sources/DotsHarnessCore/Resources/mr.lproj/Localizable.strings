@@ -523,6 +523,8 @@
 "sidebar.unpinChat" = "चॅट अनपिन करा";
 "sidebar.archiveChat" = "गप्पा संग्रहित करा";
 "sidebar.unarchiveChat" = "गप्पा संग्रहित करा";
+"sidebar.unarchiveProject" = "प्रकल्प संग्रहमुक्त करा";
+"sidebar.deleteProject" = "प्रकल्प हटवा";
 "sidebar.archived" = "संग्रहित";
 "sidebar.chatRunning" = "गप्पा चालू आहेत";
 "sidebar.chatCompleted" = "गप्पा पूर्ण झाल्या";

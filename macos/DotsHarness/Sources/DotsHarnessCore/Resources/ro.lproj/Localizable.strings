@@ -523,6 +523,8 @@
 "sidebar.unpinChat" = "Anulează fixarea chatului";
 "sidebar.archiveChat" = "Arhivați chatul";
 "sidebar.unarchiveChat" = "Dezarhivați chatul";
+"sidebar.unarchiveProject" = "Dezarhivați proiectul";
+"sidebar.deleteProject" = "Șterge proiectul";
 "sidebar.archived" = "Arhivat";
 "sidebar.chatRunning" = "Chat în curs";
 "sidebar.chatCompleted" = "Chat finalizat";

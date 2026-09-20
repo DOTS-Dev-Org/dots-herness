@@ -1102,10 +1102,11 @@ public sealed class AgentBridge : ObservableObject
                                 ? await ExploreTool.RunAsync(call, explore, workspacePath, run.Token)
                                 : null;
                         var findings = outcome?.ToolResult ?? "Tool error: explore needs an open workspace.";
+                        var preview = outcome is null ? findings : outcome.Summary;
                         conversation.Messages.Add(new ChatMessage
                         {
                             Kind = ChatKind.Tool,
-                            Text = $"✓ {call.Name}\n{(outcome is null ? findings : outcome.Summary + (outcome.ReadPaths.Count == 0 ? "" : "\n" + string.Join("\n", outcome.ReadPaths)))}",
+                            Text = $"✓ {call.Name}\n{preview}",
                             TurnId = turnId,
                         });
                         messages.Add(new NativeMessage("tool", findings, call.Id));
@@ -1805,8 +1806,16 @@ public sealed class AgentBridge : ObservableObject
     {
         var outcomes = new Dictionary<string, ExploreTool.Outcome>(StringComparer.Ordinal);
         var explores = calls.Where(call => call.Name == ExploreTool.Name).ToList();
-        if (explores.Count < 2 || Area != AgentArea.Coding || workspacePath.Length == 0) return outcomes;
-        var done = await Task.WhenAll(explores.Select(async call =>
+        if (explores.Count == 0 || Area != AgentArea.Coding || workspacePath.Length == 0) return outcomes;
+        var allowed = explores.Take(ExploreTool.MaxPerTurn).ToList();
+        var excess = explores.Skip(ExploreTool.MaxPerTurn).ToList();
+        foreach (var call in excess)
+        {
+            outcomes[call.Id] = new ExploreTool.Outcome(
+                $"Tool error: maximum of {ExploreTool.MaxPerTurn} explore subagents per turn exceeded. Run remaining investigations in subsequent turns.",
+                [], 0, 0, false);
+        }
+        var done = await Task.WhenAll(allowed.Select(async call =>
             (call.Id, Outcome: await ExploreTool.RunAsync(call, complete, workspacePath, ct))));
         foreach (var (id, outcome) in done) outcomes.TryAdd(id, outcome);
         return outcomes;

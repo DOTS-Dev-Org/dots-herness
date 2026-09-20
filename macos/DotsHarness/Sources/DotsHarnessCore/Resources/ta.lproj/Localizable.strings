@@ -523,6 +523,8 @@
 "sidebar.unpinChat" = "அரட்டையை அகற்று";
 "sidebar.archiveChat" = "அரட்டையை காப்பகப்படுத்தவும்";
 "sidebar.unarchiveChat" = "அரட்டையை மீட்டெடுக்கவும்";
+"sidebar.unarchiveProject" = "திட்டத்தை காப்பகத்திலிருந்து மீட்டெடு";
+"sidebar.deleteProject" = "திட்டத்தை நீக்கு";
 "sidebar.archived" = "காப்பகப்படுத்தப்பட்டது";
 "sidebar.chatRunning" = "அரட்டை நடந்து கொண்டிருக்கிறது";
 "sidebar.chatCompleted" = "அரட்டை முடிந்தது";

@@ -523,6 +523,8 @@
 "sidebar.unpinChat" = "চ্যাট আনপিন করুন";
 "sidebar.archiveChat" = "আর্কাইভ চ্যাট";
 "sidebar.unarchiveChat" = "আর্কাইভ চ্যাট";
+"sidebar.unarchiveProject" = "প্রজেক্ট আর্কাইভমুক্ত করুন";
+"sidebar.deleteProject" = "প্রজেক্ট মুছুন";
 "sidebar.archived" = "সংরক্ষণাগারভুক্ত";
 "sidebar.chatRunning" = "চ্যাট চলছে";
 "sidebar.chatCompleted" = "চ্যাট সম্পন্ন হয়েছে";

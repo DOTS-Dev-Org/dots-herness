@@ -523,6 +523,8 @@
 "sidebar.unpinChat" = "A csevegés rögzítésének feloldása";
 "sidebar.archiveChat" = "Archív csevegés";
 "sidebar.unarchiveChat" = "A csevegés archiválásának megszüntetése";
+"sidebar.unarchiveProject" = "A projekt archiválásának megszüntetése";
+"sidebar.deleteProject" = "Projekt törlése";
 "sidebar.archived" = "Archivált";
 "sidebar.chatRunning" = "Csevegés folyamatban";
 "sidebar.chatCompleted" = "A csevegés befejeződött";

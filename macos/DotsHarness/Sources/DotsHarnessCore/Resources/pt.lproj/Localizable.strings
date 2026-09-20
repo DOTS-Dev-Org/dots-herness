@@ -412,6 +412,8 @@
 "sidebar.unpinChat" = "Desafixar chat";
 "sidebar.archiveChat" = "Arquivar chat";
 "sidebar.unarchiveChat" = "Desarquivar chat";
+"sidebar.unarchiveProject" = "Desarquivar projeto";
+"sidebar.deleteProject" = "Apagar projeto";
 "sidebar.archived" = "Arquivados";
 "sidebar.chatRunning" = "Chat em andamento";
 "sidebar.chatCompleted" = "Chat concluído";

@@ -188,11 +188,15 @@ public final class RouterController: ObservableObject {
             // the live listing returns.
             func model(id: String, name: String? = nil) -> RouterModel {
                 let spec = specModels.first { $0.id == id }
+                let efforts: [String] = {
+                    if let explicit = spec?.efforts, !explicit.isEmpty { return explicit }
+                    return RouterCatalog.inferredEfforts(for: id, provider: account.provider)
+                }()
                 return RouterModel(
                     id: id,
                     owner: owner,
                     contextWindow: spec?.contextWindow,
-                    efforts: spec?.efforts ?? [],
+                    efforts: efforts,
                     displayName: name ?? spec?.name,
                     provider: account.provider,
                     tier: spec?.tier,

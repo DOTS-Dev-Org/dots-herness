@@ -123,6 +123,7 @@ public struct AgentMessage: Sendable, Equatable, Codable {
 
     public var role: Role
     public var content: String
+    public var thinking: String?
     public var name: String?
     public var toolCallID: String?
     public var toolCalls: [AgentToolCall]
@@ -137,6 +138,7 @@ public struct AgentMessage: Sendable, Equatable, Codable {
     public init(
         role: Role,
         content: String,
+        thinking: String? = nil,
         name: String? = nil,
         toolCallID: String? = nil,
         toolCalls: [AgentToolCall] = [],
@@ -146,6 +148,7 @@ public struct AgentMessage: Sendable, Equatable, Codable {
     ) {
         self.role = role
         self.content = content
+        self.thinking = thinking
         self.name = name
         self.toolCallID = toolCallID
         self.toolCalls = toolCalls
@@ -155,13 +158,14 @@ public struct AgentMessage: Sendable, Equatable, Codable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case role, content, name, toolCallID, toolCalls, attachments, providerItems, systemKind, promptContextCaptured
+        case role, content, thinking, name, toolCallID, toolCalls, attachments, providerItems, systemKind, promptContextCaptured
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         role = try container.decodeIfPresent(Role.self, forKey: .role) ?? .user
         content = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
+        thinking = try container.decodeIfPresent(String.self, forKey: .thinking)
         name = try container.decodeIfPresent(String.self, forKey: .name)
         toolCallID = try container.decodeIfPresent(String.self, forKey: .toolCallID)
         toolCalls = try container.decodeIfPresent([AgentToolCall].self, forKey: .toolCalls) ?? []
@@ -175,6 +179,7 @@ public struct AgentMessage: Sendable, Equatable, Codable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(role, forKey: .role)
         try container.encode(content, forKey: .content)
+        try container.encodeIfPresent(thinking, forKey: .thinking)
         try container.encodeIfPresent(name, forKey: .name)
         try container.encodeIfPresent(toolCallID, forKey: .toolCallID)
         try container.encode(toolCalls, forKey: .toolCalls)
@@ -700,6 +705,9 @@ public struct NativeAgentClient: Sendable {
             body["tools"] = tools.map { $0.jsonObject() }
             body["tool_choice"] = "auto"
         }
+        if !configuration.effort.isEmpty {
+            body["reasoning_effort"] = configuration.effort
+        }
         return body
     }
 
@@ -717,8 +725,19 @@ public struct NativeAgentClient: Sendable {
             var content: Any = [["type": "text", "text": message.content]]
             if !message.attachments.isEmpty { content = message.anthropicContent() }
             if message.role == .assistant && !message.toolCalls.isEmpty {
-                content = ([message.content.isEmpty ? nil : ["type": "text", "text": message.content] as [String: Any]?].compactMap { $0 })
-                    + message.toolCalls.map { ["type": "tool_use", "id": $0.id, "name": $0.name, "input": Self.jsonObject(from: $0.arguments)] }
+                var blocks: [[String: Any]] = []
+                if !message.providerItems.isEmpty {
+                    blocks = message.providerItems.map { $0.mapValues { $0.any } }
+                } else {
+                    if let thinking = message.thinking, !thinking.isEmpty {
+                        blocks.append(["type": "thinking", "thinking": thinking, "signature": ""])
+                    }
+                    if !message.content.isEmpty {
+                        blocks.append(["type": "text", "text": message.content])
+                    }
+                    blocks.append(contentsOf: message.toolCalls.map { ["type": "tool_use", "id": $0.id, "name": $0.name, "input": Self.jsonObject(from: $0.arguments)] })
+                }
+                content = blocks
             }
             return ["role": message.role == .assistant ? "assistant" : "user", "content": content]
         }
@@ -750,7 +769,21 @@ public struct NativeAgentClient: Sendable {
         }
         ToolCloak.apply(to: &body, cloak: quirks?.cloakToolsOnOAuth == true && configuration.isOAuth)
         if !configuration.effort.isEmpty {
-            body["output_config"] = ["effort": configuration.effort]
+            if configuration.isOAuth {
+                body["output_config"] = ["effort": configuration.effort]
+            } else {
+                let budget: Int = {
+                    switch configuration.effort {
+                    case "max": return 32_000
+                    case "xhigh": return 24_000
+                    case "high": return 16_000
+                    case "medium": return 8_000
+                    case "low": return 2_048
+                    default: return 2_048
+                    }
+                }()
+                body["thinking"] = ["type": "enabled", "budget_tokens": budget]
+            }
         }
         if configuration.fast { body["speed"] = "fast" }
         Self.applyAnthropicCacheBreakpoints(to: &body, stableSystemBlockIndex: stableSystemIndex)
@@ -978,7 +1011,7 @@ public struct NativeAgentClient: Sendable {
         return body
     }
 
-    private static func response(from value: JSONValue) throws -> AgentResponse {
+    static func response(from value: JSONValue) throws -> AgentResponse {
         if value["output"] != nil {
             let blocks: [JSONValue]
             if case .array(let items) = value["output"] { blocks = items } else { blocks = [] }
@@ -1018,6 +1051,14 @@ public struct NativeAgentClient: Sendable {
                 let data = (try? JSONSerialization.data(withJSONObject: input)) ?? Data("{}".utf8)
                 toolCalls.append(AgentToolCall(id: block["id"]?.string ?? UUID().uuidString, name: name, arguments: String(data: data, encoding: .utf8) ?? "{}"))
             }
+            let thinkingBlocks = blocks.compactMap { block -> String? in
+                if block["type"]?.string == "thinking" {
+                    return block["thinking"]?.string
+                }
+                return nil
+            }
+            let thinking = thinkingBlocks.isEmpty ? nil : thinkingBlocks.joined(separator: "\n\n")
+            let providerItems = blocks.compactMap(\.object)
             let usage = value["usage"]?.object.map {
                 AgentUsage(
                     inputTokens: $0["input_tokens"]?.int ?? 0,
@@ -1028,7 +1069,13 @@ public struct NativeAgentClient: Sendable {
                 )
             }
             return AgentResponse(
-                message: AgentMessage(role: .assistant, content: blocks.textBlocks, toolCalls: toolCalls),
+                message: AgentMessage(
+                    role: .assistant,
+                    content: blocks.textBlocks,
+                    thinking: thinking,
+                    toolCalls: toolCalls,
+                    providerItems: providerItems
+                ),
                 usage: usage,
                 media: blocks.flatMap(Self.mediaPayloads)
             )
@@ -1039,6 +1086,8 @@ public struct NativeAgentClient: Sendable {
         }
 
         let content = messageObject["content"]?.textBlocks() ?? ""
+        let reasoning = messageObject["reasoning_content"]?.string
+            ?? messageObject["reasoning"]?.string
         var toolCalls: [AgentToolCall] = []
         if case .array(let items) = messageObject["tool_calls"] {
             toolCalls = items.compactMap { item in
@@ -1064,7 +1113,7 @@ public struct NativeAgentClient: Sendable {
             )
         }
         return AgentResponse(
-            message: AgentMessage(role: .assistant, content: content, toolCalls: toolCalls),
+            message: AgentMessage(role: .assistant, content: content, thinking: reasoning, toolCalls: toolCalls),
             usage: usage,
             media: Self.mediaPayloads(from: messageObject["content"] ?? .null)
         )
@@ -1083,6 +1132,7 @@ public struct NativeAgentClient: Sendable {
         }
         var finalResponse: JSONValue?
         var textAcc = ""
+        var thinkingAcc = ""
         var callOrder: [String] = []
         var calls: [String: (name: String, args: String)] = [:]
         var providerItems: [JSONObject] = []
@@ -1096,6 +1146,8 @@ public struct NativeAgentClient: Sendable {
             switch event["type"]?.string ?? "" {
             case "response.output_text.delta":
                 textAcc += event["delta"]?.string ?? ""
+            case "response.reasoning_text.delta":
+                thinkingAcc += event["delta"]?.string ?? ""
             case "response.completed", "response.incomplete":
                 finalResponse = event["response"]
             case "response.output_item.done":
@@ -1106,6 +1158,13 @@ public struct NativeAgentClient: Sendable {
                     let id = item["call_id"]?.string ?? item["id"]?.string ?? UUID().uuidString
                     if calls[id] == nil { callOrder.append(id) }
                     calls[id] = (item["name"]?.string ?? "", item["arguments"]?.string ?? "{}")
+                case "reasoning":
+                    if case .array(let blocks) = item["content"] {
+                        let contentThinking = blocks.compactMap { $0["text"]?.string }.joined()
+                        if !contentThinking.isEmpty && thinkingAcc.isEmpty {
+                            thinkingAcc = contentThinking
+                        }
+                    }
                 case "message" where textAcc.isEmpty:
                     // No text deltas arrived (some models emit the message whole).
                     if case .array(let blocks) = item["content"] {
@@ -1171,7 +1230,7 @@ public struct NativeAgentClient: Sendable {
         }
         let media = providerItems.flatMap { Self.mediaPayloads(from: .object($0)) }
         return AgentResponse(
-            message: AgentMessage(role: .assistant, content: textAcc, toolCalls: toolCalls, providerItems: providerItems),
+            message: AgentMessage(role: .assistant, content: textAcc, thinking: thinkingAcc.isEmpty ? nil : thinkingAcc, toolCalls: toolCalls, providerItems: providerItems),
             usage: usage,
             media: media,
             nativeCompactionApplied: providerItems.contains { $0["type"]?.string == "compaction" }
@@ -1246,7 +1305,19 @@ public struct NativeAgentClient: Sendable {
               case .array(let parts) = first["content"]?["parts"] else {
             throw NativeAgentError(AppCopy.text("agent.noMessage"))
         }
-        let text = parts.compactMap { $0["text"]?.string }.joined()
+        let thinkingParts = parts.compactMap { part -> String? in
+            if part["thought"]?.bool == true {
+                return part["text"]?.string
+            }
+            return nil
+        }
+        let thinking = thinkingParts.isEmpty ? nil : thinkingParts.joined(separator: "\n\n")
+        let text = parts.compactMap { part -> String? in
+            if part["thought"]?.bool == true {
+                return nil
+            }
+            return part["text"]?.string
+        }.joined()
         let calls = parts.compactMap { part -> AgentToolCall? in
             guard let call = part["functionCall"]?.object, let name = call["name"]?.string else { return nil }
             let arguments = call["args"]?.any ?? [:]
@@ -1261,7 +1332,7 @@ public struct NativeAgentClient: Sendable {
             )
         }
         return AgentResponse(
-            message: AgentMessage(role: .assistant, content: text, toolCalls: calls),
+            message: AgentMessage(role: .assistant, content: text, thinking: thinking, toolCalls: calls),
             usage: usage,
             media: parts.flatMap(Self.mediaPayloads)
         )

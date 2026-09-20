@@ -10,7 +10,7 @@ import HarnessPluginKit
 struct ChatComposer: View {
     @ObservedObject var model: AppModel
     @ObservedObject var skillSuggestions: SkillSuggestionMonitor
-    @StateObject private var voiceInput: PetVoiceInput
+    @StateObject private var voiceInput: LiveVoiceInput
 
     @State private var showAttachmentMenu = false
     @State private var showPermissionMenu = false
@@ -66,7 +66,7 @@ struct ChatComposer: View {
         self.model = model
         self.skillSuggestions = model.activeSkillSuggestions
         self._voiceInput = StateObject(
-            wrappedValue: PetVoiceInput(model: model) { text in
+            wrappedValue: LiveVoiceInput(model: model) { text in
                 let separator = model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : "\n"
                 model.draft += separator + text
             }

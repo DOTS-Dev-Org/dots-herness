@@ -412,6 +412,8 @@
 "sidebar.unpinChat" = "채팅 고정 해제";
 "sidebar.archiveChat" = "채팅 보관";
 "sidebar.unarchiveChat" = "채팅 보관 해제";
+"sidebar.unarchiveProject" = "프로젝트 보관 해제";
+"sidebar.deleteProject" = "프로젝트 삭제";
 "sidebar.archived" = "보관됨";
 "sidebar.chatRunning" = "채팅 진행 중";
 "sidebar.chatCompleted" = "채팅 완료";

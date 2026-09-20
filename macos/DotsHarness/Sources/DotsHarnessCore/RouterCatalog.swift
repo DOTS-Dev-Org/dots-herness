@@ -142,6 +142,34 @@ public enum RouterCatalog {
         }.joined(separator: " ")
     }
 
+    /// Dynamically infers effort levels for models not explicitly listed in `providers.json`,
+    /// so new reasoning models automatically receive effort controls without app updates.
+    public static func inferredEfforts(for modelID: String, provider: String = "") -> [String] {
+        let lower = modelID.lowercased()
+        let bare = lower.split(separator: "/").last.map(String.init) ?? lower
+        if bare.contains("reasoner") || bare.contains("thinking")
+            || bare.hasPrefix("o1") || bare.hasPrefix("o3") || bare.hasPrefix("o4")
+            || bare.contains("-r1") || bare.contains("-r2") {
+            return ["low", "medium", "high"]
+        }
+        if provider == "claude" || provider == "anthropic" || bare.hasPrefix("claude-") {
+            if bare.contains("haiku") { return [] }
+            if bare.contains("opus") || bare.contains("sonnet") || bare.contains("fable") {
+                return ["low", "medium", "high", "max"]
+            }
+        }
+        if provider == "gemini" || provider == "gemini-cli" || provider == "antigravity" || bare.hasPrefix("gemini-") {
+            return ["low", "medium", "high"]
+        }
+        if bare.hasPrefix("gpt-5") {
+            return ["none", "low", "medium", "high", "xhigh"]
+        }
+        if bare.hasPrefix("grok-4") {
+            return ["low", "medium", "high", "xhigh"]
+        }
+        return []
+    }
+
     public static func hint(for id: String) -> String {
         let key = "provider.\(id).hint"
         let localized = AppCopy.text(key)

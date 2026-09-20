@@ -1041,6 +1041,49 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertTrue(ExploreTool.answeredFully("Status: partial\nlater\nStatus: answered"), "the last line wins")
     }
 
+    @MainActor
+    func testExploreToolOfferedOnlyInCodingAreaWithWorkspace() throws {
+        let workspace = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: workspace) }
+
+        let codingHost = NativeAgentHost(paths: temporaryPaths(), endpoint: AgentEndpointController(), area: .coding)
+        codingHost.setWorkspace(workspace.path)
+        let codingTools = codingHost.agentTools(workspace: workspace).defs.map(\.name)
+        XCTAssertTrue(codingTools.contains("explore"), "explore tool must be available in coding area with open workspace")
+
+        let chatHost = NativeAgentHost(paths: temporaryPaths(), endpoint: AgentEndpointController(), area: .chat)
+        chatHost.setWorkspace(workspace.path)
+        let chatTools = chatHost.agentTools(workspace: workspace).defs.map(\.name)
+        XCTAssertFalse(chatTools.contains("explore"), "explore tool must not be exposed in chat area")
+
+        let noWorkspaceTools = codingHost.agentTools(workspace: nil).defs.map(\.name)
+        XCTAssertFalse(noWorkspaceTools.contains("explore"), "explore tool must not be offered without a workspace")
+    }
+
+    func testPrefetchExploreCapsToMaxPerTurnAndRejectsExcess() async {
+        let workspace = FileManager.default.temporaryDirectory
+        let calls = (1...5).map { index in
+            AgentToolCall(id: "call-\(index)", name: "explore", arguments: "{\"task\":\"find task \(index)\"}")
+        }
+        let complete: ExploreTool.Complete = { _, _ in
+            AgentResponse(message: AgentMessage(role: .assistant, content: "## Findings\n- result\n\nStatus: answered"))
+        }
+        let outcomes = await NativeAgentHost.prefetchExplore(calls, complete: complete, workspace: workspace)
+        XCTAssertEqual(outcomes.count, 5)
+        for index in 1...ExploreTool.maxPerTurn {
+            let outcome = outcomes["call-\(index)"]
+            XCTAssertNotNil(outcome)
+            XCTAssertTrue(outcome?.answered == true, "call-\(index) should have executed")
+        }
+        for index in (ExploreTool.maxPerTurn + 1)...5 {
+            let outcome = outcomes["call-\(index)"]
+            XCTAssertNotNil(outcome)
+            XCTAssertFalse(outcome?.answered == true)
+            XCTAssertTrue(outcome?.answer.contains("Tool error: maximum of 3 explore subagents per turn exceeded") == true)
+        }
+    }
+
     func testProviderLimitReadsWhenItWillServeAgain() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         func response(_ header: String, _ value: String) -> HTTPURLResponse? {

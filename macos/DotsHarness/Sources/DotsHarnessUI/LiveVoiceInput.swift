@@ -1,5 +1,5 @@
 // Copyright (c) 2026 DOTS
-// Live microphone input shared by the floating pet and composer.
+// Live microphone input controller for chat composer and voice interaction.
 
 import AVFoundation
 import SwiftUI
@@ -49,7 +49,6 @@ private final class AudioPCMChunker: @unchecked Sendable {
         pending.append(contentsOf: LocalVoiceTranscriber.resample(mono, from: rate))
         var chunks: [[Float]] = []
         while pending.count >= outputChunkSamples {
-            // ponytail: small callback buffers make removeFirst cheaper than a second ring-buffer type.
             chunks.append(Array(pending.prefix(outputChunkSamples)))
             pending.removeFirst(outputChunkSamples)
         }
@@ -81,7 +80,7 @@ private func installAudioTap(
     }
 }
 
-enum PetVoiceState: Equatable {
+public enum LiveVoiceState: Equatable {
     case idle
     case requesting
     case listening
@@ -89,7 +88,7 @@ enum PetVoiceState: Equatable {
     case sending
     case failed(String)
 
-    var icon: String {
+    public var icon: String {
         switch self {
         case .idle: return "mic"
         case .requesting: return "mic.badge.plus"
@@ -100,7 +99,7 @@ enum PetVoiceState: Equatable {
         }
     }
 
-    var tint: Color {
+    public var tint: Color {
         switch self {
         case .idle: return .secondary
         case .requesting, .listening: return .red
@@ -109,7 +108,7 @@ enum PetVoiceState: Equatable {
         }
     }
 
-    var isActive: Bool {
+    public var isActive: Bool {
         switch self {
         case .requesting, .listening, .transcribing, .sending: return true
         case .idle, .failed: return false
@@ -118,30 +117,37 @@ enum PetVoiceState: Equatable {
 }
 
 @MainActor
-final class PetVoiceInput: NSObject, ObservableObject {
-    @Published private(set) var state: PetVoiceState = .idle
-    @Published private(set) var transcript = ""
+public final class LiveVoiceInput: NSObject, ObservableObject {
+    @Published public private(set) var state: LiveVoiceState = .idle
+    @Published public private(set) var transcript = ""
 
     private let model: AppModel
     private let onTranscript: ((String) -> Void)?
-    private let audioEngine = AVAudioEngine()
+    private var audioEngine: AVAudioEngine?
     private let audioChunker = AudioPCMChunker()
     private var voiceSession: VoiceStreamingSession?
     private var sessionID = UUID()
     private var isTapInstalled = false
     private var errorResetTask: Task<Void, Never>?
 
-    init(model: AppModel, onTranscript: ((String) -> Void)? = nil) {
+    private func getAudioEngine() -> AVAudioEngine {
+        if let audioEngine { return audioEngine }
+        let engine = AVAudioEngine()
+        self.audioEngine = engine
+        return engine
+    }
+
+    public init(model: AppModel, onTranscript: ((String) -> Void)? = nil) {
         self.model = model
         self.onTranscript = onTranscript
         super.init()
     }
 
-    var isListening: Bool {
+    public var isListening: Bool {
         state == .requesting || state == .listening
     }
 
-    func toggle() {
+    public func toggle() {
         switch state {
         case .requesting, .listening:
             stopListening(sendTranscript: true)
@@ -152,14 +158,14 @@ final class PetVoiceInput: NSObject, ObservableObject {
         }
     }
 
-    func cancelListening() {
+    public func cancelListening() {
         guard isListening else { return }
         stopListening(sendTranscript: false)
     }
 
-    func startListening() {
+    public func startListening() {
         guard state != .sending, state != .transcribing else { return }
-        model.refreshVoiceModel()
+        model.ensureVoiceRuntimeReady()
         guard model.isVoiceReady else {
             model.requestVoiceInputSetup()
             return
@@ -237,7 +243,8 @@ final class PetVoiceInput: NSObject, ObservableObject {
     private func beginRecording(for currentSession: UUID, session: VoiceStreamingSession) {
         guard sessionID == currentSession else { return }
 
-        let inputNode = audioEngine.inputNode
+        let engine = getAudioEngine()
+        let inputNode = engine.inputNode
         let recordingFormat = inputNode.outputFormat(forBus: 0)
         guard recordingFormat.channelCount > 0, recordingFormat.sampleRate > 0 else {
             fail(AppCopy.text("voice.microphoneUnavailable"))
@@ -253,16 +260,16 @@ final class PetVoiceInput: NSObject, ObservableObject {
         installAudioTap(on: inputNode, format: recordingFormat, chunker: audioChunker, session: session)
         isTapInstalled = true
 
-        audioEngine.prepare()
+        engine.prepare()
         do {
-            try audioEngine.start()
+            try engine.start()
             state = .listening
         } catch {
             fail(AppCopy.format("voice.microphoneStartFailed", error.localizedDescription))
         }
     }
 
-    private func stopListening(sendTranscript: Bool) {
+    public func stopListening(sendTranscript: Bool) {
         guard isListening else { return }
 
         let currentSession = sessionID
@@ -311,9 +318,10 @@ final class PetVoiceInput: NSObject, ObservableObject {
     }
 
     private func stopAudioCapture() {
-        audioEngine.stop()
+        guard let engine = audioEngine else { return }
+        engine.stop()
         if isTapInstalled {
-            audioEngine.inputNode.removeTap(onBus: 0)
+            engine.inputNode.removeTap(onBus: 0)
             isTapInstalled = false
         }
     }

@@ -211,7 +211,6 @@ struct WorkspaceSnapshotStore {
 
     private func capture(workspace: URL, backupDirectory: URL?) throws -> [String: FileState] {
         let rootURL = workspace.standardizedFileURL
-        var result: [String: FileState] = [:]
         let keys: Set<URLResourceKey> = [
             .isDirectoryKey,
             .isRegularFileKey,
@@ -224,6 +223,11 @@ struct WorkspaceSnapshotStore {
             options: []
         ) else { throw WorkspaceSnapshotError.unavailable }
 
+        // Walk first (metadata only), then read files side by side. The read, hash and
+        // backup copy of one file never depend on another, and on a slow or cold disk
+        // (an external drive) most of the time is spent waiting: overlapping the files
+        // makes a snapshot cost far less than the sum of every file's wait.
+        var entries: [(url: URL, relative: String)] = []
         while let url = enumerator.nextObject() as? URL {
             let values = try url.resourceValues(forKeys: keys)
             let relative = try relativePath(for: url, workspace: rootURL)
@@ -237,24 +241,77 @@ struct WorkspaceSnapshotStore {
                 continue
             }
             guard values.isRegularFile == true else { continue }
-            let data = try Data(contentsOf: url)
-            let state = FileState(
-                hash: digest(data),
-                bytes: data.count,
-                permissions: posixPermissions(for: url)
-            )
-            result[relative] = state
-            if let backupDirectory {
-                let destination = backupDirectory.appendingPathComponent(relative)
-                try fileManager.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try data.write(to: destination, options: .atomic)
-                try? fileManager.setAttributes(
-                    [.posixPermissions: state.permissions],
-                    ofItemAtPath: destination.path
-                )
+            entries.append((url, relative))
+        }
+
+        let outcome = CaptureOutcome(count: entries.count)
+        DispatchQueue.concurrentPerform(iterations: entries.count) { index in
+            guard !outcome.hasFailed else { return }
+            let entry = entries[index]
+            do {
+                let data = try Data(contentsOf: entry.url)
+                let permissions = Self.posixPermissions(at: entry.url)
+                if let backupDirectory {
+                    let destination = backupDirectory.appendingPathComponent(entry.relative)
+                    try FileManager.default.createDirectory(
+                        at: destination.deletingLastPathComponent(),
+                        withIntermediateDirectories: true
+                    )
+                    try data.write(to: destination, options: .atomic)
+                    try? FileManager.default.setAttributes(
+                        [.posixPermissions: permissions],
+                        ofItemAtPath: destination.path
+                    )
+                }
+                outcome.set(FileState(hash: Self.digest(data), bytes: data.count, permissions: permissions), at: index)
+            } catch {
+                outcome.fail(error)
             }
         }
+        if let error = outcome.error { throw error }
+
+        var result: [String: FileState] = [:]
+        result.reserveCapacity(entries.count)
+        for (index, entry) in entries.enumerated() {
+            if let state = outcome.states[index] { result[entry.relative] = state }
+        }
         return result
+    }
+
+    /// Per-file results of a parallel capture; the first failure stops the rest.
+    private final class CaptureOutcome: @unchecked Sendable {
+        private let lock = NSLock()
+        private(set) var states: [FileState?]
+        private(set) var error: Error?
+
+        init(count: Int) { states = Array(repeating: nil, count: count) }
+
+        var hasFailed: Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            return error != nil
+        }
+
+        func set(_ state: FileState, at index: Int) {
+            lock.lock()
+            states[index] = state
+            lock.unlock()
+        }
+
+        func fail(_ failure: Error) {
+            lock.lock()
+            if error == nil { error = failure }
+            lock.unlock()
+        }
+    }
+
+    private static func posixPermissions(at url: URL) -> Int {
+        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
+        return (attributes?[.posixPermissions] as? NSNumber)?.intValue ?? 0
+    }
+
+    private static func digest(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
     private let ignoredWorkspaceDirectories: Set<String> = [

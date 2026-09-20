@@ -412,6 +412,8 @@
 "sidebar.unpinChat" = "Открепить чат";
 "sidebar.archiveChat" = "Архивировать чат";
 "sidebar.unarchiveChat" = "Разархивировать чат";
+"sidebar.unarchiveProject" = "Разархивировать проект";
+"sidebar.deleteProject" = "Удалить проект";
 "sidebar.archived" = "Архив";
 "sidebar.chatRunning" = "Чат выполняется";
 "sidebar.chatCompleted" = "Чат завершён";

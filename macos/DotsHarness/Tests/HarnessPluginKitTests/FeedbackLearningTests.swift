@@ -16,6 +16,32 @@ final class FeedbackLearningTests: XCTestCase {
         try? FileManager.default.removeItem(at: workspace)
     }
 
+    /// The chat asks for every message's feedback on each redraw, so reads are cached.
+    /// The cache must still follow the file: a write through another store (another
+    /// window) and a deletion have to show up in the next read of an existing store.
+    func testCachedReadsFollowChangesMadeOutsideTheStore() throws {
+        let reader = FeedbackStore(workspaceURL: workspace)
+        XCTAssertNil(reader.record(conversationID: "c", messageID: "m"))
+
+        let writer = FeedbackStore(workspaceURL: workspace)
+        try writer.upsert(FeedbackRecord(
+            conversationID: "c", messageID: "m", prompt: "p", response: "r",
+            feedbackType: .good, timestamp: Date(timeIntervalSince1970: 1)
+        ))
+        XCTAssertEqual(reader.record(conversationID: "c", messageID: "m")?.feedbackType, .good)
+        // Served from the cache while the file is unchanged.
+        XCTAssertEqual(reader.record(conversationID: "c", messageID: "m")?.response, "r")
+
+        try writer.upsert(FeedbackRecord(
+            conversationID: "c", messageID: "m", prompt: "p", response: "updated response",
+            feedbackType: .bad, timestamp: Date(timeIntervalSince1970: 2)
+        ))
+        XCTAssertEqual(reader.record(conversationID: "c", messageID: "m")?.feedbackType, .bad)
+
+        try FileManager.default.removeItem(at: workspace.appendingPathComponent(".mem/feedback.jsonl"))
+        XCTAssertNil(reader.record(conversationID: "c", messageID: "m"))
+    }
+
     func testJSONLUpsertReloadAndOneCurrentRecord() throws {
         let store = FeedbackStore(workspaceURL: workspace)
         let first = FeedbackRecord(

@@ -523,6 +523,8 @@
 "sidebar.unpinChat" = "Nyahsemat sembang";
 "sidebar.archiveChat" = "Arkibkan sembang";
 "sidebar.unarchiveChat" = "Nyahrkibkan sembang";
+"sidebar.unarchiveProject" = "Nyahrkibkan projek";
+"sidebar.deleteProject" = "Padamkan projek";
 "sidebar.archived" = "Diarkibkan";
 "sidebar.chatRunning" = "Sembang sedang berjalan";
 "sidebar.chatCompleted" = "Sembang selesai";

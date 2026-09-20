@@ -523,6 +523,8 @@
 "sidebar.unpinChat" = "చాట్‌ని అన్‌పిన్ చేయండి";
 "sidebar.archiveChat" = "ఆర్కైవ్ చాట్";
 "sidebar.unarchiveChat" = "ఆర్కైవ్ చాట్";
+"sidebar.unarchiveProject" = "ప్రాజెక్ట్ ఆర్కైవ్ తొలగించు";
+"sidebar.deleteProject" = "ప్రాజెక్ట్ తొలగించండి";
 "sidebar.archived" = "ఆర్కైవ్ చేయబడింది";
 "sidebar.chatRunning" = "చాట్ ప్రోగ్రెస్‌లో ఉంది";
 "sidebar.chatCompleted" = "చాట్ పూర్తయింది";

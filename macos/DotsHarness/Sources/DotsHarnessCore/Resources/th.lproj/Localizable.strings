@@ -523,6 +523,8 @@
 "sidebar.unpinChat" = "เลิกปักหมุดแชท";
 "sidebar.archiveChat" = "เก็บถาวรการแชท";
 "sidebar.unarchiveChat" = "ยกเลิกการเก็บแชท";
+"sidebar.unarchiveProject" = "ยกเลิกการเก็บโปรเจกต์";
+"sidebar.deleteProject" = "ลบโปรเจกต์";
 "sidebar.archived" = "เก็บถาวรแล้ว";
 "sidebar.chatRunning" = "กำลังสนทนาอยู่";
 "sidebar.chatCompleted" = "แชทเสร็จแล้ว";

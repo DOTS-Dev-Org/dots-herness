@@ -17,8 +17,8 @@ struct DotsHarnessApp: App {
     init() {
         // AsyncImage-based remote assets use a real disk cache.
         URLCache.shared = URLCache(
-            memoryCapacity: 8 << 20,
-            diskCapacity: 64 << 20,
+            memoryCapacity: 1 << 20,
+            diskCapacity: 16 << 20,
             directory: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)
                 .first?.appendingPathComponent("DotsHarnessAvatars")
         )
@@ -33,6 +33,7 @@ struct DotsHarnessApp: App {
                     minHeight: model.legalNeedsAcceptance ? 620 : 640
                 )
                 .onAppear {
+                    StartupGate.shared.openAfterFirstFrame()
                     appDelegate.model = model
                     model.requestNotificationAuthorization()
                     model.start()

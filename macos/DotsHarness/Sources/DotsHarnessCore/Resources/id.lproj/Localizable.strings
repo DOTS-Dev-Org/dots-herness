@@ -523,6 +523,8 @@
 "sidebar.unpinChat" = "Lepas sematan obrolan";
 "sidebar.archiveChat" = "Arsipkan obrolan";
 "sidebar.unarchiveChat" = "Batalkan pengarsipan obrolan";
+"sidebar.unarchiveProject" = "Batalkan pengarsipan proyek";
+"sidebar.deleteProject" = "Hapus proyek";
 "sidebar.archived" = "Diarsipkan";
 "sidebar.chatRunning" = "Obrolan sedang berlangsung";
 "sidebar.chatCompleted" = "Obrolan selesai";

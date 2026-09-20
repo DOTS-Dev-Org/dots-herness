@@ -412,6 +412,8 @@
 "sidebar.unpinChat" = "ピン留めを解除";
 "sidebar.archiveChat" = "チャットをアーカイブ";
 "sidebar.unarchiveChat" = "アーカイブから戻す";
+"sidebar.unarchiveProject" = "プロジェクトをアーカイブから戻す";
+"sidebar.deleteProject" = "プロジェクトを削除";
 "sidebar.archived" = "アーカイブ";
 "sidebar.chatRunning" = "チャット処理中";
 "sidebar.chatCompleted" = "チャット完了";

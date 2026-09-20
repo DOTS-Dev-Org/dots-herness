@@ -1016,10 +1016,16 @@ public final class NativeAgentHost: ObservableObject {
         if let feedbackStore, !feedbackStore.records().isEmpty {
             // Repair a gold projection left behind by an interrupted previous
             // write before the next request reads project memory.
-            try? feedbackStore.rebuildGoldExamples()
+            Task.detached(priority: .background) {
+                try? feedbackStore.rebuildGoldExamples()
+            }
         }
         // Once per workspace open, before the first turn - not per message.
-        if seedProjectRules { ProjectRules.seedIfMissing(workspace: url) }
+        if seedProjectRules {
+            Task.detached(priority: .background) {
+                ProjectRules.seedIfMissing(workspace: url)
+            }
+        }
         memory.setWorkspace(url)
         accessRevision += 1
         loadConversations(workspacePath: normalized)
@@ -2558,7 +2564,7 @@ public final class NativeAgentHost: ObservableObject {
                     let turn = finishActiveTurn(conversationID: conversationID, workspace: workspace)
                     if planMode {
                         append(
-                            ChatMessage(kind: .plan, text: text, mediaItems: mediaItems),
+                            ChatMessage(kind: .plan, text: text, thinking: response.message.thinking, mediaItems: mediaItems),
                             to: conversationID,
                             turnID: turn.turnID,
                             changedFiles: turn.changedFiles
@@ -2566,9 +2572,9 @@ public final class NativeAgentHost: ObservableObject {
                         if let planID = conversations.first(where: { $0.id == conversationID })?.messages.last?.id {
                             updateConversation(conversationID) { $0.pendingPlanMessageID = planID }
                         }
-                    } else if !text.isEmpty || !mediaItems.isEmpty {
+                    } else if !text.isEmpty || !mediaItems.isEmpty || !(response.message.thinking?.isEmpty ?? true) {
                         append(
-                            ChatMessage(kind: .assistant, text: text, mediaItems: mediaItems),
+                            ChatMessage(kind: .assistant, text: text, thinking: response.message.thinking, mediaItems: mediaItems),
                             to: conversationID,
                             turnID: turn.turnID,
                             changedFiles: turn.changedFiles
@@ -2644,6 +2650,14 @@ public final class NativeAgentHost: ObservableObject {
                     complete: exploreComplete,
                     workspace: workspace
                 )
+                if let thinking = response.message.thinking, !thinking.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    let preText = response.message.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                    append(
+                        ChatMessage(kind: .assistant, text: preText, thinking: thinking),
+                        to: conversationID,
+                        turnID: activeTurnID
+                    )
+                }
                 for call in response.message.toolCalls {
                     if !activeUsedTools.contains(call.name) { activeUsedTools.append(call.name) }
                     recordAttribution(call, workspace: workspace)
@@ -2693,7 +2707,6 @@ public final class NativeAgentHost: ObservableObject {
                                     outcome.readPaths.count,
                                     AppCopy.text(outcome.answered ? "explore.answered" : "explore.partialLabel")
                                 )
-                                    + (outcome.readPaths.isEmpty ? "" : "\n" + outcome.readPaths.joined(separator: "\n"))
                             ),
                             to: conversationID,
                             turnID: activeTurnID
@@ -3918,11 +3931,14 @@ public final class NativeAgentHost: ObservableObject {
         let sandboxTools: [AgentToolDefinition] = area == .coding && workspace != nil
             ? [Self.sandboxStatusDefinition]
             : []
+        let exploreTools: [AgentToolDefinition] = (area == .coding && workspace != nil)
+            ? [ExploreTool.definition]
+            : []
         let pluginTools = pluginToolDefinitions()
         let terminalDefinition = area == .chat
             ? WorkspaceTools.chatScoped(TerminalSessionTool.definition)
             : TerminalSessionTool.definition
-        let defs = workspaceTools + sandboxTools + SkillTools.definitions + [AskUserTool.definition]
+        let defs = workspaceTools + sandboxTools + exploreTools + SkillTools.definitions + [AskUserTool.definition]
             + [RememberTool.definition, InstallPluginTool.definition]
             + ((workspace != nil || area == .chat) ? [terminalDefinition, OtherChatsTool.definition] : [])
             + [PlanStepsTool.definition]
@@ -4723,7 +4739,6 @@ public final class NativeAgentHost: ObservableObject {
             if area == .chat, let selected {
                 activateChatContext(for: selected)
             }
-            persist()
             return
         }
         conversations = store.loadHeaders(workspacePath: workspacePath).map(Self.recoverListed)
@@ -4755,10 +4770,9 @@ public final class NativeAgentHost: ObservableObject {
         if area == .chat, let selected {
             activateChatContext(for: selected)
         }
-        persist()
     }
 
-    private static let stagedLoadThreshold = 2 << 20
+    private static let stagedLoadThreshold = 256 << 10
 
     /// Sync callers that read transcripts (rewind, edit, feedback) must never see a
     /// header: finish the load now instead of waiting for the background decode.
@@ -5023,25 +5037,40 @@ public final class NativeAgentHost: ObservableObject {
         }
     }
 
-    /// Runs the explore subagents of one assistant turn side by side.
-    private static func prefetchExplore(
+    /// Runs the explore subagents of one assistant turn side by side, bounded by maxPerTurn.
+    static func prefetchExplore(
         _ calls: [AgentToolCall],
         complete: @escaping ExploreTool.Complete,
         workspace: URL?
     ) async -> [String: ExploreTool.Outcome] {
         guard let workspace else { return [:] }
         let explores = calls.filter { $0.name == ExploreTool.name }
-        guard explores.count > 1 else { return [:] }
-        return await withTaskGroup(of: (String, ExploreTool.Outcome).self) { group in
-            for call in explores {
+        guard !explores.isEmpty else { return [:] }
+        let allowed = Array(explores.prefix(ExploreTool.maxPerTurn))
+        let excess = Array(explores.dropFirst(ExploreTool.maxPerTurn))
+        var outcomes: [String: ExploreTool.Outcome] = [:]
+        for call in excess {
+            outcomes[call.id] = ExploreTool.Outcome(
+                answer: "Tool error: maximum of \(ExploreTool.maxPerTurn) explore subagents per turn exceeded. Run remaining investigations in subsequent turns.",
+                readPaths: [], steps: 0, hitStepLimit: false, answered: false, searches: 0
+            )
+        }
+        if allowed.count == 1, let single = allowed.first {
+            outcomes[single.id] = await ExploreTool.run(single, complete: complete, workspace: workspace)
+            return outcomes
+        }
+        let parallelResults = await withTaskGroup(of: (String, ExploreTool.Outcome).self) { group in
+            for call in allowed {
                 group.addTask(priority: .userInitiated) {
                     (call.id, await ExploreTool.run(call, complete: complete, workspace: workspace))
                 }
             }
-            var outcomes: [String: ExploreTool.Outcome] = [:]
-            for await (id, outcome) in group { outcomes[id] = outcome }
-            return outcomes
+            var batch: [String: ExploreTool.Outcome] = [:]
+            for await (id, outcome) in group { batch[id] = outcome }
+            return batch
         }
+        for (id, outcome) in parallelResults { outcomes[id] = outcome }
+        return outcomes
     }
 
     /// Runs the read-only workspace calls of one assistant turn concurrently.

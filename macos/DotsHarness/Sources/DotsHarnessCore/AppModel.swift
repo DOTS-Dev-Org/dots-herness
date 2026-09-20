@@ -163,7 +163,16 @@ public final class AppModel: ObservableObject {
     public lazy var voice: LocalVoiceTranscriber = LocalVoiceTranscriber(paths: paths)
     public lazy var nemotron: NemotronRuntime = NemotronRuntime(paths: paths)
     public lazy var localSpeech: LocalPiperSpeechSynthesizer = LocalPiperSpeechSynthesizer(paths: paths)
-    public lazy var speech = LocalSpeechSynthesizer()
+    private var createdSpeech: LocalSpeechSynthesizer?
+    public var speech: LocalSpeechSynthesizer {
+        if let createdSpeech { return createdSpeech }
+        let instance = LocalSpeechSynthesizer()
+        createdSpeech = instance
+        return instance
+    }
+    public func isSpeaking(messageID: String) -> Bool {
+        createdSpeech?.activeMessageID == messageID
+    }
     public lazy var simulator = SimulatorController()
     public lazy var scheduler: TaskScheduler = TaskScheduler(
         store: TaskStore(paths: paths),
@@ -280,7 +289,15 @@ public final class AppModel: ObservableObject {
     @Published public private(set) var legalLoadFailed = false
     public private(set) lazy var legal = LegalService(settings: host.settings, cacheDirectory: paths.root)
 
-    public var bridge: AgentBridge { activeArea == .chat ? chatBridge : codingBridge }
+    public var bridge: AgentBridge {
+        if activeArea == .chat {
+            startChatBridgeIfNeeded()
+            return chatBridge
+        } else {
+            startCodingBridgeIfNeeded()
+            return codingBridge
+        }
+    }
     public var activeSkills: SkillCatalog { bridge.skills }
     public var activeSkillSuggestions: SkillSuggestionMonitor {
         bridge.skillSuggestions ?? skillSuggestions
@@ -810,7 +827,11 @@ public final class AppModel: ObservableObject {
         self.mcpRegistry = mcpRegistry
         self.chatBridge.mcpRegistry = mcpRegistry
         self.codingBridge.mcpRegistry = mcpRegistry
-        Task { await mcpRegistry.connectAll() }
+        // Connect MCP servers in background utility priority after the startup phase
+        Task.detached(priority: .utility) {
+            try? await Task.sleep(for: .seconds(4))
+            await mcpRegistry.connectAll()
+        }
 
         let appModelReference = AppModelReference()
         self.appModelReference = appModelReference
@@ -1064,16 +1085,38 @@ public final class AppModel: ObservableObject {
         "\(activeArea.rawValue):\(conversationID)"
     }
 
-    /// Loads what the first frame shows. Called while the window's content is being
-    /// built, so the UI draws once with real data instead of drawing an empty shell and
-    /// then laying everything out a second time when `start()` fills it in.
+    private var hasStartedChatBridge = false
+    private var hasStartedCodingBridge = false
+
+    /// Loads what the first frame shows for the active area only. Called while the window's
+    /// content is being built, so the UI draws once with real data while deferring the
+    /// inactive bridge until after the first frame has been committed to display.
     public func prepareForFirstFrame() {
         guard !hasPreparedFirstFrame else { return }
         hasPreparedFirstFrame = true
-        catalog.refresh()
+        if activeArea == .chat {
+            startChatBridgeIfNeeded()
+        } else {
+            startCodingBridgeIfNeeded()
+        }
+    }
+
+    public func startChatBridgeIfNeeded() {
+        guard !hasStartedChatBridge else { return }
+        hasStartedChatBridge = true
         chatBridge.start(workspacePath: "")
+    }
+
+    public func startCodingBridgeIfNeeded() {
+        guard !hasStartedCodingBridge else { return }
+        hasStartedCodingBridge = true
         codingBridge.start(workspacePath: sandboxRecoveryRequired ? "" : workspacePath)
         codingBridge.setSandboxPolicy(sandboxExecutionPolicy, branch: activeSandbox?.branch)
+    }
+
+    public func startDeferredBridgeIfNeeded() {
+        startChatBridgeIfNeeded()
+        startCodingBridgeIfNeeded()
     }
 
     public func start() {
@@ -1083,9 +1126,7 @@ public final class AppModel: ObservableObject {
             deferredVoiceKeyLoad = false
             loadVoiceAPIKeyInBackground()
         }
-        refreshVoiceModel()
-        refreshSpeechModel()
-        prewarmNemotron()
+        // Voice and speech runtimes are loaded purely on-demand when the user activates voice input
         // Show the gate immediately on a fresh install; loadLegal() refines it.
         let needsAcceptance = !legal.hasAnyAcceptance
         if legalNeedsAcceptance != needsAcceptance { legalNeedsAcceptance = needsAcceptance }
@@ -1099,23 +1140,20 @@ public final class AppModel: ObservableObject {
         Task { @MainActor [weak self] in
             await Task.yield()
             guard let self, !self.hasBootstrapped else { return }
+
+            self.startDeferredBridgeIfNeeded()
             self.restoreWorkLocation()
             self.remoteControl.start()
-            self.remount(refreshCatalog: false)
+            self.remount(refreshCatalog: true)
             self.hasBootstrapped = true
             self.objectWillChange.send()
 
-            // Router access is demand-driven. The bridge performs a single
-            // lightweight model discovery only when a workspace needs a
-            // connection; management endpoints are loaded from Settings.
-            Task { @MainActor [weak self] in
-                await self?.chatBridge.refreshConnection()
-                await self?.codingBridge.refreshConnection()
-            }
-
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                await self.marketplaceSession.restore()
+                async let chatRefreshed: () = self.chatBridge.refreshConnection()
+                async let codingRefreshed: () = self.codingBridge.refreshConnection()
+                async let marketRestored: () = self.marketplaceSession.restore()
+                _ = await (chatRefreshed, codingRefreshed, marketRestored)
                 self.syncAccountFromMarketplace()
             }
 
@@ -1152,6 +1190,11 @@ public final class AppModel: ObservableObject {
     }
 
     public func setActiveArea(_ area: AgentArea) {
+        if area == .chat {
+            startChatBridgeIfNeeded()
+        } else {
+            startCodingBridgeIfNeeded()
+        }
         guard activeArea != area else { return }
         cancelEditing()
         saveDraftState()
@@ -1406,11 +1449,13 @@ public final class AppModel: ObservableObject {
     }
 
     public var unassignedChatConversations: [Conversation] {
-        chatBridge.conversations.filter { $0.chatProjectID == nil }
+        startChatBridgeIfNeeded()
+        return chatBridge.conversations.filter { $0.chatProjectID == nil }
     }
 
     public func chatConversations(in projectID: String) -> [Conversation] {
-        chatBridge.conversations.filter { $0.chatProjectID == projectID }
+        startChatBridgeIfNeeded()
+        return chatBridge.conversations.filter { $0.chatProjectID == projectID }
     }
 
     @discardableResult
@@ -1696,6 +1741,12 @@ public final class AppModel: ObservableObject {
         }
         draft = draftsByConversation[draftKey(for: id)] ?? ""
         draftAttachments = draftAttachmentsByConversation[draftKey(for: id)] ?? []
+    }
+
+    public func ensureVoiceRuntimeReady() {
+        refreshVoiceModel()
+        refreshSpeechModel()
+        prewarmNemotron()
     }
 
     public func refreshVoiceModel() {
@@ -2260,7 +2311,7 @@ public final class AppModel: ObservableObject {
         speechRequestID = nil
         speechTask?.cancel()
         speechTask = nil
-        speech.stop()
+        createdSpeech?.stop()
         nemotron.stop()
     }
 
@@ -3260,20 +3311,20 @@ public final class AppModel: ObservableObject {
         persistSettings()
     }
 
-    public func showPet() {
-        isPetVisible = true
-    }
-
-    public func hidePet() {
-        isPetVisible = false
-    }
-
     /// When set, SettingsView selects this tab on next appearance, then clears it.
     @Published public var settingsInitialTab: String?
 
     public func presentSettings(tab: String? = nil) {
         settingsInitialTab = tab
         isSettingsPresented = true
+    }
+
+    public func showPet() {
+        isPetVisible = true
+    }
+
+    public func hidePet() {
+        isPetVisible = false
     }
 
     public func requestFeedbackForLatestResponse() {
@@ -3430,7 +3481,6 @@ public final class AppModel: ObservableObject {
     }
 
     public func signOut() {
-        isPetVisible = false
         setWorkspace("")
         account = .signedOut()
         Task { @MainActor [weak self] in

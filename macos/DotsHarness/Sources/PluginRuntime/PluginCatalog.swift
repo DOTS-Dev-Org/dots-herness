@@ -137,6 +137,14 @@ public final class PluginCatalog: ObservableObject {
         let manifest = plugin.manifest
         builtinManifests[manifest.id] = manifest
         builtins[manifest.id] = { plugin.initForCatalog() }
+        if !entries.contains(where: { $0.manifest.id == manifest.id }) {
+            entries.append(CatalogEntry(
+                manifest: manifest,
+                kind: .builtin,
+                trust: .system,
+                enabled: !disabled.contains(manifest.id)
+            ))
+        }
         if refresh {
             self.refresh()
         }

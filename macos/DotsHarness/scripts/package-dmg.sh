@@ -137,6 +137,7 @@ swift_release() {
     echo "    SwiftPM adımları: planlama → derleme → bağlama"
     swift build -c release \
         -Xswiftc -Osize \
+        -Xlinker -dead_strip \
         --package-path "$ROOT" \
         --product "$product" \
         --build-path "$BUILD_PATH"
@@ -250,7 +251,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>DOTS Pet, seçili proje ve sohbette sesli etkileşim için mikrofonu kullanır.</string>
+	<string>DOTS Harness, seçili proje ve sohbette sesli etkileşim için mikrofonu kullanır.</string>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>DotsHarness, simülatör ve sistem sesini kaydetmek için sistem ses çıkışını yakalar.</string>
 	<key>NSPrincipalClass</key>

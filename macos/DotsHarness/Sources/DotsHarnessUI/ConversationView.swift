@@ -11,10 +11,10 @@ import HarnessPluginKit
 
 struct ConversationView: View {
     @ObservedObject var model: AppModel
-    @ObservedObject private var speech: LocalSpeechSynthesizer
     @ObservedObject private var terminalManager: TerminalManager
     @Binding private var isPanePickerVisible: Bool
 
+    @State private var isContentLoaded = false
     @State private var isTerminalVisible = false
     @State private var isNewPaneMenuPresented = false
     @State private var isDropTargeted = false
@@ -22,7 +22,9 @@ struct ConversationView: View {
     @State private var expandedActivityIDs = Set<String>()
     @State private var expandedFileMessageIDs = Set<String>()
     @State private var expandedUsedMessageIDs = Set<String>()
+    @State private var expandedThinkingMessageIDs = Set<String>()
     @State private var hoveredMessageID: String?
+    @ObservedObject private var startupGate = StartupGate.shared
     /// Long chats render the newest page first; older pages load as the user
     /// scrolls up. UI only: the agent always reads the full conversation.
     /// nil = follow the newest page; set once the user pages back, so new
@@ -34,7 +36,6 @@ struct ConversationView: View {
 
     init(model: AppModel, isPanePickerVisible: Binding<Bool>) {
         self.model = model
-        self._speech = ObservedObject(wrappedValue: model.speech)
         self._terminalManager = ObservedObject(wrappedValue: model.terminalManager)
         self._isPanePickerVisible = isPanePickerVisible
     }
@@ -88,8 +89,22 @@ struct ConversationView: View {
 
     private var chatAndComposer: some View {
         VStack(spacing: 0) {
-            chatSurface
-            composer
+            if isContentLoaded {
+                chatSurface
+                composer
+            } else {
+                Color.clear
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .onAppear {
+                        DispatchQueue.main.async {
+                            isContentLoaded = true
+                        }
+                    }
+                    .task {
+                        await Task.yield()
+                        isContentLoaded = true
+                    }
+            }
         }
     }
 
@@ -107,8 +122,11 @@ struct ConversationView: View {
                        conversation.continuation == nil,
                        conversation.pendingPrompts.isEmpty {
                         emptyConversation
-                    } else {
+                    } else if startupGate.isOpen {
                         conversationBody(conversation)
+                    } else {
+                        // First frame: the transcript is built right after it is on screen.
+                        Color(nsColor: .windowBackgroundColor)
                     }
                 } else {
                     emptyConversation
@@ -486,6 +504,7 @@ struct ConversationView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                thinkingDisclosure(for: message)
                 PlanMarkdownView(text: message.text)
                     .textSelection(.enabled)
                 usedItemsDisclosure(for: message)
@@ -532,7 +551,8 @@ struct ConversationView: View {
         let isUser = message.kind == .user
         let isAssistant = message.kind == .assistant
         return HStack {
-            VStack(alignment: .leading, spacing: 7) {
+            if isUser { Spacer(minLength: 80) }
+            VStack(alignment: isUser ? .trailing : .leading, spacing: 7) {
                 if isAssistant {
                     HStack(spacing: 8) {
                         if message.streaming {
@@ -555,10 +575,12 @@ struct ConversationView: View {
                     }
                     .foregroundStyle(.secondary)
                 }
+                thinkingDisclosure(for: message)
                 if !message.text.isEmpty {
                     Text(message.text)
                         .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .multilineTextAlignment(isUser ? .trailing : .leading)
+                        .frame(maxWidth: isUser ? nil : .infinity, alignment: isUser ? .trailing : .leading)
                         .font(message.kind == .tool ? .callout.monospaced() : .body)
                 }
                 contextRootIndicators(for: message)
@@ -576,10 +598,11 @@ struct ConversationView: View {
                 messageActions(message, in: conversation)
             }
             .padding(.vertical, 4)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: isUser ? 600 : 760, alignment: isUser ? .trailing : .leading)
             .onHover { hovered in
                 hoveredMessageID = hovered ? message.id : nil
             }
+            if !isUser { Spacer(minLength: 80) }
         }
     }
 
@@ -591,7 +614,7 @@ struct ConversationView: View {
             let canRewind = message.kind == .user && bridge.canRewind(messageID: message.id, in: conversation.id)
             let hasText = !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             let hasOutput = hasText || !message.mediaItems.isEmpty
-            let speaking = speech.activeMessageID == message.id
+            let speaking = model.isSpeaking(messageID: message.id)
             let canFeedback = bridge.workspacePath?.isEmpty == false && message.kind != .user && hasOutput
             let feedback = canFeedback ? bridge.feedback(for: message.id, in: conversation.id) : nil
             HStack(spacing: 16) {
@@ -788,6 +811,45 @@ struct ConversationView: View {
             set: { expanded in
                 if expanded { expandedUsedMessageIDs.insert(id) }
                 else { expandedUsedMessageIDs.remove(id) }
+            }
+        )
+    }
+
+    @ViewBuilder
+    private func thinkingDisclosure(for message: ChatMessage) -> some View {
+        if let thinking = message.thinking, !thinking.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            DisclosureGroup(isExpanded: thinkingBinding(for: message.id)) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(thinking)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                }
+                .padding(.top, 4)
+            } label: {
+                Label(AppCopy.text("conversation.thinking"), systemImage: "brain.head.profile")
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityLabel(AppCopy.text("conversation.thinking"))
+            .padding(.bottom, 2)
+        }
+    }
+
+    private func thinkingBinding(for id: String) -> Binding<Bool> {
+        Binding(
+            get: { expandedThinkingMessageIDs.contains(id) },
+            set: { expanded in
+                if expanded { expandedThinkingMessageIDs.insert(id) }
+                else { expandedThinkingMessageIDs.remove(id) }
             }
         )
     }
@@ -1325,83 +1387,99 @@ struct ConversationView: View {
 
 }
 
-private struct PlanMarkdownView: View {
-    let text: String
+@MainActor
+private final class MarkdownCache {
+    static let shared = MarkdownCache()
+    private let cache = NSCache<NSString, ParsedPlanMarkdown>()
 
-    var body: some View {
+    final class ParsedPlanMarkdown {
+        struct Entry {
+            let line: String
+            let isCode: Bool
+            let attributed: AttributedString?
+            let numbered: (number: String, text: AttributedString)?
+            let checkState: (checked: Bool, text: AttributedString)?
+            let bulletText: AttributedString?
+            let heading: (level: Int, text: AttributedString)?
+        }
+        let entries: [Entry]
+        init(entries: [Entry]) {
+            self.entries = entries
+        }
+    }
+
+    private init() {
+        cache.countLimit = 200
+    }
+
+    func parsed(for text: String) -> ParsedPlanMarkdown {
+        let key = text as NSString
+        if let cached = cache.object(forKey: key) {
+            return cached
+        }
         let lines = text.components(separatedBy: .newlines)
-        let codeLines = codeLineIndices
-        return VStack(alignment: .leading, spacing: 4) {
-            ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
-                lineView(line, isCode: codeLines.contains(index))
+        var codeIndices = Set<Int>()
+        var inCodeBlock = false
+        for (index, line) in lines.enumerated() {
+            if line.trimmingCharacters(in: .whitespaces).hasPrefix("```") {
+                codeIndices.insert(index)
+                inCodeBlock.toggle()
+            } else if inCodeBlock {
+                codeIndices.insert(index)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
+        var entries: [ParsedPlanMarkdown.Entry] = []
+        for (index, line) in lines.enumerated() {
+            let isCode = codeIndices.contains(index)
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            var attributed: AttributedString?
+            var numbered: (number: String, text: AttributedString)?
+            var checkState: (checked: Bool, text: AttributedString)?
+            var bulletText: AttributedString?
+            var heading: (level: Int, text: AttributedString)?
 
-    @ViewBuilder
-    private func lineView(_ line: String, isCode: Bool) -> some View {
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
-        if isCode {
-            Text(line.isEmpty ? " " : line)
-                .font(.system(.callout, design: .monospaced))
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 2)
-                .background(Color.black.opacity(0.06), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-        } else if trimmed.hasPrefix("### ") {
-            Text(markdown(trimmed.dropFirst(4)))
-                .font(.callout.weight(.semibold))
-                .padding(.top, 3)
-        } else if trimmed.hasPrefix("## ") {
-            Text(markdown(trimmed.dropFirst(3)))
-                .font(.body.weight(.semibold))
-                .padding(.top, 5)
-        } else if trimmed.hasPrefix("# ") {
-            Text(markdown(trimmed.dropFirst(2)))
-                .font(.title3.weight(.bold))
-                .padding(.top, 4)
-        } else if trimmed.hasPrefix("- [ ] ") || trimmed.hasPrefix("- [x] ") || trimmed.hasPrefix("- [X] ") {
-            let checked = trimmed.dropFirst(3).first == "x" || trimmed.dropFirst(3).first == "X"
-            HStack(alignment: .top, spacing: 7) {
-                Image(systemName: checked ? "checkmark.square.fill" : "square")
-                    .foregroundStyle(checked ? Color.accentColor : .secondary)
-                Text(markdown(trimmed.dropFirst(6)))
+            if !isCode {
+                if trimmed.hasPrefix("### ") {
+                    heading = (3, parseMarkdown(trimmed.dropFirst(4)))
+                } else if trimmed.hasPrefix("## ") {
+                    heading = (2, parseMarkdown(trimmed.dropFirst(3)))
+                } else if trimmed.hasPrefix("# ") {
+                    heading = (1, parseMarkdown(trimmed.dropFirst(2)))
+                } else if trimmed.hasPrefix("- [ ] ") || trimmed.hasPrefix("- [x] ") || trimmed.hasPrefix("- [X] ") {
+                    let checked = trimmed.dropFirst(3).first == "x" || trimmed.dropFirst(3).first == "X"
+                    checkState = (checked, parseMarkdown(trimmed.dropFirst(6)))
+                } else if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") {
+                    bulletText = parseMarkdown(trimmed.dropFirst(2))
+                } else if let item = parseNumberedItem(trimmed) {
+                    numbered = (item.number, parseMarkdown(item.text))
+                } else if !trimmed.hasPrefix("```") && !line.isEmpty {
+                    attributed = parseMarkdown(line)
+                }
             }
-        } else if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") {
-            HStack(alignment: .top, spacing: 7) {
-                Text("•")
-                    .foregroundStyle(.secondary)
-                Text(markdown(trimmed.dropFirst(2)))
-            }
-        } else if let item = numberedItem(trimmed) {
-            HStack(alignment: .top, spacing: 7) {
-                Text(item.number)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                Text(markdown(item.text))
-            }
-        } else if trimmed.hasPrefix("```") {
-            Text(line)
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(.tertiary)
-        } else if line.isEmpty {
-            Text(" ")
-                .font(.caption)
-        } else {
-            Text(markdown(line))
+
+            entries.append(ParsedPlanMarkdown.Entry(
+                line: line,
+                isCode: isCode,
+                attributed: attributed,
+                numbered: numbered,
+                checkState: checkState,
+                bulletText: bulletText,
+                heading: heading
+            ))
         }
+        let result = ParsedPlanMarkdown(entries: entries)
+        cache.setObject(result, forKey: key)
+        return result
     }
 
-    private func markdown<S: StringProtocol>(_ line: S) -> AttributedString {
+    private func parseMarkdown<S: StringProtocol>(_ line: S) -> AttributedString {
         (try? AttributedString(
             markdown: String(line),
             options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
         )) ?? AttributedString(String(line))
     }
 
-    private func numberedItem(_ line: String) -> (number: String, text: String)? {
+    private func parseNumberedItem(_ line: String) -> (number: String, text: String)? {
         let characters = Array(line)
         var index = 0
         while index < characters.count, characters[index].isNumber { index += 1 }
@@ -1412,19 +1490,77 @@ private struct PlanMarkdownView: View {
             String(characters[(index + 2)...])
         )
     }
+}
 
-    private var codeLineIndices: Set<Int> {
-        var result = Set<Int>()
-        var inCodeBlock = false
-        for (index, line) in text.components(separatedBy: .newlines).enumerated() {
-            if line.trimmingCharacters(in: .whitespaces).hasPrefix("```") {
-                result.insert(index)
-                inCodeBlock.toggle()
-            } else if inCodeBlock {
-                result.insert(index)
+private struct PlanMarkdownView: View {
+    let text: String
+
+    var body: some View {
+        let parsed = MarkdownCache.shared.parsed(for: text)
+        return VStack(alignment: .leading, spacing: 4) {
+            ForEach(Array(parsed.entries.enumerated()), id: \.offset) { _, entry in
+                entryView(entry)
             }
         }
-        return result
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func entryView(_ entry: MarkdownCache.ParsedPlanMarkdown.Entry) -> some View {
+        if entry.isCode {
+            Text(entry.line.isEmpty ? " " : entry.line)
+                .font(.system(.callout, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                .background(Color.black.opacity(0.06), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+        } else if let heading = entry.heading {
+            switch heading.level {
+            case 1:
+                Text(heading.text)
+                    .font(.title3.weight(.bold))
+                    .padding(.top, 4)
+            case 2:
+                Text(heading.text)
+                    .font(.body.weight(.semibold))
+                    .padding(.top, 5)
+            default:
+                Text(heading.text)
+                    .font(.callout.weight(.semibold))
+                    .padding(.top, 3)
+            }
+        } else if let check = entry.checkState {
+            HStack(alignment: .top, spacing: 7) {
+                Image(systemName: check.checked ? "checkmark.square.fill" : "square")
+                    .foregroundStyle(check.checked ? Color.accentColor : .secondary)
+                Text(check.text)
+            }
+        } else if let bullet = entry.bulletText {
+            HStack(alignment: .top, spacing: 7) {
+                Text("•")
+                    .foregroundStyle(.secondary)
+                Text(bullet)
+            }
+        } else if let numbered = entry.numbered {
+            HStack(alignment: .top, spacing: 7) {
+                Text(numbered.number)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                Text(numbered.text)
+            }
+        } else if entry.line.trimmingCharacters(in: .whitespaces).hasPrefix("```") {
+            Text(entry.line)
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.tertiary)
+        } else if entry.line.isEmpty {
+            Text(" ")
+                .font(.caption)
+        } else if let attr = entry.attributed {
+            Text(attr)
+        } else {
+            Text(entry.line)
+        }
     }
 }
 

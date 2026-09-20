@@ -20,6 +20,8 @@ public static class ExploreTool
     private const int CondenseThreshold = 2_000;
     private const int CondenseTrigger = 3_500;
     private const int MaxReportedPaths = 40;
+    /// Maximum concurrent explore subagents allowed in a single turn to protect UX, UI and quota.
+    public const int MaxPerTurn = 3;
 
     public static NativeToolDefinition Definition { get; } = new(
         Name,
@@ -30,7 +32,7 @@ public static class ExploreTool
         + "use it for a file you already know the path of: read that directly. State the question in full, "
         + "including the naming conventions and paths worth trying, since the subagent sees nothing of this "
         + "conversation. For a broad investigation, split it into independent questions and call explore "
-        + "several times in the same turn: those subagents run in parallel and only their findings enter this "
+        + "several times in the same turn (maximum 3 subagents per turn): those subagents run in parallel and only their findings enter this "
         + "conversation.",
         new JsonObject
         {
@@ -185,7 +187,7 @@ public static class ExploreTool
     }
 
     private static Outcome Finish(string answer, List<string> readPaths, int steps, int searches, bool hitStepLimit) =>
-        new(answer, readPaths.Take(MaxReportedPaths).ToList(), steps, searches, hitStepLimit);
+        new(answer, readPaths, steps, searches, hitStepLimit);
 
     private static void Remember(string memoKey, string text)
     {
