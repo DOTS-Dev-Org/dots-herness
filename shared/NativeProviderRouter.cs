@@ -343,7 +343,9 @@ public sealed record NativeAttachment(
     string? AttachmentId = null,
     int Revision = 0,
     string? ContentHash = null,
-    string? DeliveredHash = null);
+    string? DeliveredHash = null,
+    string? SourceLocator = null,
+    ChatAttachmentSourceStatus SourceStatus = ChatAttachmentSourceStatus.Current);
 public sealed record NativeMessage(
     string Role,
     string Content,
@@ -869,6 +871,7 @@ public sealed class NativeProviderRouter
     }
 
     private const long MaxInlineImageBytes = 20L * 1024 * 1024;
+    private const long MaxInlineFileBytes = 50L * 1024 * 1024;
 
     private static JsonArray OpenAiContent(NativeMessage message)
     {
@@ -882,6 +885,18 @@ public sealed class NativeProviderRouter
                 {
                     ["type"] = "image_url",
                     ["image_url"] = new JsonObject { ["url"] = DataUrl(attachment, base64) },
+                });
+            }
+            else if (TryReadInlineFile(attachment, out var fileBase64))
+            {
+                blocks.Add(new JsonObject
+                {
+                    ["type"] = "file",
+                    ["file"] = new JsonObject
+                    {
+                        ["filename"] = attachment.Name,
+                        ["file_data"] = DataUrl(attachment, fileBase64),
+                    },
                 });
             }
             else
@@ -901,6 +916,15 @@ public sealed class NativeProviderRouter
             if (TryReadInlineImage(attachment, out var base64))
             {
                 blocks.Add(new JsonObject { ["type"] = "input_image", ["image_url"] = DataUrl(attachment, base64) });
+            }
+            else if (TryReadInlineFile(attachment, out var fileBase64))
+            {
+                blocks.Add(new JsonObject
+                {
+                    ["type"] = "input_file",
+                    ["filename"] = attachment.Name,
+                    ["file_data"] = DataUrl(attachment, fileBase64),
+                });
             }
             else
             {
@@ -926,6 +950,19 @@ public sealed class NativeProviderRouter
                         ["type"] = "base64",
                         ["media_type"] = attachment.MimeType,
                         ["data"] = base64,
+                    },
+                });
+            }
+            else if (IsPdf(attachment) && TryReadInlineFile(attachment, out var documentBase64))
+            {
+                blocks.Add(new JsonObject
+                {
+                    ["type"] = "document",
+                    ["source"] = new JsonObject
+                    {
+                        ["type"] = "base64",
+                        ["media_type"] = "application/pdf",
+                        ["data"] = documentBase64,
                     },
                 });
             }
@@ -955,11 +992,37 @@ public sealed class NativeProviderRouter
         }
     }
 
+    private static bool TryReadInlineFile(NativeAttachment attachment, out string base64)
+    {
+        base64 = "";
+        if (!string.Equals(attachment.Kind, "file", StringComparison.OrdinalIgnoreCase)) return false;
+        try
+        {
+            var info = new FileInfo(attachment.FilePath);
+            if (!info.Exists || info.Length > MaxInlineFileBytes) return false;
+            base64 = Convert.ToBase64String(File.ReadAllBytes(info.FullName));
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsPdf(NativeAttachment attachment) =>
+        string.Equals(attachment.MimeType, "application/pdf", StringComparison.OrdinalIgnoreCase)
+        || attachment.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
+
     private static string DataUrl(NativeAttachment attachment, string base64) =>
         $"data:{(string.IsNullOrWhiteSpace(attachment.MimeType) ? "application/octet-stream" : attachment.MimeType)};base64,{base64}";
 
-    private static string UnsupportedAttachmentNotice(NativeAttachment attachment) =>
-        $"unsupported_attachment_kind: {attachment.Kind}; attachment_id: {attachment.AttachmentId ?? attachment.Name}; name: {attachment.Name}. The host did not silently drop this attachment, but this provider route does not support its wire format.";
+    private static string UnsupportedAttachmentNotice(NativeAttachment attachment)
+    {
+        var id = attachment.AttachmentId ?? attachment.Name;
+        if (string.IsNullOrWhiteSpace(attachment.FilePath))
+            return $"source_missing: attachment_id {id}; historical_revision_preserved; latest_revision_unavailable";
+        return $"unsupported_attachment_kind: {attachment.Kind}; attachment_id: {id}; name: {attachment.Name}. The host did not silently drop this attachment, but this provider route does not support its wire format.";
+    }
 
     private static NativeResponse ParseOpenAi(JsonNode? node)
     {

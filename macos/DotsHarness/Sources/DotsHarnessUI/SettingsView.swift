@@ -406,6 +406,9 @@ public struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                ForEach(model.router.modelListIssues, id: \.self) { issue in
+                    Text(issue).font(.caption).foregroundStyle(.orange)
+                }
             }
             Section(AppCopy.text("settings.appearance")) {
                 LabeledContent(AppCopy.text("settings.language")) {

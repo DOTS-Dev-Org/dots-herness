@@ -1149,3 +1149,6 @@
 "dock.selectFile" = "Çalışma alanı ağacından bir dosya seçin";
 "dock.binaryFile" = "İkili veya okunamayan dosya";
 "conversation.translate" = "Çevir";
+"project.missing.title" = "Proje Klasörü Bulunamadı: %@";
+"project.missing.message" = "'%@' konumundaki proje klasörü taşınmış veya silinmiş olabilir. Lütfen yeni konumunu seçin veya projeyi kaldırın.";
+"project.missing.locate" = "Konumu Bul…";

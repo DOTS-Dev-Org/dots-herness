@@ -25,8 +25,21 @@ android { namespace = "com.dots.herness.mobile"; compileSdk = 36
         externalNativeBuild { cmake { arguments += "-DHERNESS_LIBGIT2_ROOT=${providers.gradleProperty("hernessLibgit2Root").orNull ?: ""}" } }
     }
     externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt") } }
-    buildTypes { release { signingConfig = signingConfigs.getByName("hernessRelease") } }
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("hernessRelease")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+        }
+    }
     buildFeatures { compose = true }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
 }
@@ -48,4 +61,5 @@ dependencies {
     // once the app is not in front.
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

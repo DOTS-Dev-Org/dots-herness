@@ -39,6 +39,7 @@ DMG_BACKGROUND="${DMG_BACKGROUND:-$ROOT/Resources/DMGBackgroundCompactV2.png}"
 DMG_FORMAT="${DMG_FORMAT:-ULMO}"
 STRIP_SYMBOLS="${STRIP_SYMBOLS:-true}"
 SKIP_BUILD="${SKIP_BUILD:-false}"
+SWIFT_OPTIMIZATION="${SWIFT_OPTIMIZATION:-O}"
 
 usage() {
     cat <<'EOF'
@@ -55,7 +56,7 @@ Seçenekler:
   -h, --help              Bu yardım metnini göster.
 
 Ortam değişkenleri:
-  VERSION, BUILD_NUMBER, BUNDLE_ID, BUILD_PATH, STRIP_SYMBOLS, SKIP_BUILD, DMG_FORMAT, DMG_BACKGROUND
+  VERSION, BUILD_NUMBER, BUNDLE_ID, BUILD_PATH, STRIP_SYMBOLS, SKIP_BUILD, SWIFT_OPTIMIZATION, DMG_FORMAT, DMG_BACKGROUND
 EOF
 }
 
@@ -98,6 +99,10 @@ case "$(printf '%s' "$SKIP_BUILD" | tr '[:upper:]' '[:lower:]')" in
     0|false|no) SKIP_BUILD=false ;;
     *) fail "Geçersiz SKIP_BUILD değeri: $SKIP_BUILD (true veya false kullanın)." ;;
 esac
+case "$SWIFT_OPTIMIZATION" in
+    O|Osize) ;;
+    *) fail "Geçersiz SWIFT_OPTIMIZATION değeri: $SWIFT_OPTIMIZATION (O veya Osize kullanın)." ;;
+esac
 if [[ "$STRIP_SYMBOLS" == true ]]; then
     command -v strip >/dev/null 2>&1 || fail "'strip' bulunamadı. Xcode Command Line Tools kurulu olmalı."
 fi
@@ -136,7 +141,7 @@ swift_release() {
     echo "==> Derleniyor: $product (release, yerel: $BUILD_PATH)"
     echo "    SwiftPM adımları: planlama → derleme → bağlama"
     swift build -c release \
-        -Xswiftc -Osize \
+        -Xswiftc "-$SWIFT_OPTIMIZATION" \
         -Xlinker -dead_strip \
         --package-path "$ROOT" \
         --product "$product" \

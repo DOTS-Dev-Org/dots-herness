@@ -8,7 +8,7 @@ cd "$NATIVE_DIR"
 PROJECT_NAME="DotsHarness"
 PACKAGE_FILE="$NATIVE_DIR/Package.swift"
 PRODUCT="${PRODUCT:-$PROJECT_NAME}"
-CONFIGURATION="${CONFIGURATION:-Debug}"
+CONFIGURATION="${CONFIGURATION:-Release}"
 BUILD_PATH="${BUILD_PATH:-$NATIVE_DIR/.build}"
 ARCH="${ARCH:-${SWIFT_ARCH:-}}"
 BUILD_ONLY=false
@@ -29,7 +29,7 @@ Kullanim:
   ./run.sh -- --help
 
 Secenekler:
-  -c, --configuration NAME  Swift yapilandirmasi (varsayilan: Debug).
+  -c, --configuration NAME  Swift yapilandirmasi (varsayilan: Release).
       --product NAME        SPM urun adi (varsayilan: DotsHarness).
       --arch NAME           Hedef mimari (arm64 veya x86_64).
       --build-path PATH     SPM derleme klasoru (varsayilan: .build).

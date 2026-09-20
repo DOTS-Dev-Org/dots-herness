@@ -245,7 +245,56 @@ final class ProviderRegistryTests: XCTestCase {
         let content = try XCTUnwrap((body["messages"] as? [[String: Any]])?.first?["content"] as? [[String: Any]])
         XCTAssertEqual(content.first?["type"] as? String, "text")
         XCTAssertTrue((content[1]["image_url"] as? [String: String])?["url"]?.hasPrefix("data:image/png;base64,") == true)
-        XCTAssertTrue((content[2]["text"] as? String)?.contains("Attached file: notes.txt") == true)
+        XCTAssertEqual(content[2]["type"] as? String, "file")
+        let fileBlock = try XCTUnwrap(content[2]["file"] as? [String: Any])
+        XCTAssertEqual(fileBlock["filename"] as? String, "notes.txt")
+        XCTAssertTrue((fileBlock["file_data"] as? String)?.hasPrefix("data:text/plain;base64,") == true)
+
+        let pdfURL = root.appendingPathComponent("brief.pdf")
+        try Data("%PDF-1.7\n".utf8).write(to: pdfURL)
+        let pdf = try XCTUnwrap(ChatAttachment(url: pdfURL))
+            .snapshot(in: root.appendingPathComponent("snapshots", isDirectory: true))
+
+        let responsesClient = NativeAgentClient(configuration: AgentConfiguration(
+            baseURL: "https://example.test/v1", model: "gpt-5", api: RouterAPIKind.chatGPT.rawValue
+        ))
+        let responsesBody = responsesClient.makeBody(
+            messages: [AgentMessage(role: .user, content: "Read", attachments: [pdf])],
+            tools: [],
+            cachePolicy: AgentCachePolicy()
+        )
+        let responsesInput = try XCTUnwrap(responsesBody["input"] as? [[String: Any]])
+        let responsesContent = try XCTUnwrap(responsesInput.first?["content"] as? [[String: Any]])
+        XCTAssertEqual(responsesContent[1]["type"] as? String, "input_file")
+
+        let anthropicClient = NativeAgentClient(configuration: AgentConfiguration(
+            baseURL: "https://example.test/v1", model: "claude-sonnet", api: RouterAPIKind.anthropic.rawValue
+        ))
+        let anthropicBody = anthropicClient.makeBody(
+            messages: [AgentMessage(role: .user, content: "Read", attachments: [pdf])],
+            tools: [],
+            cachePolicy: AgentCachePolicy()
+        )
+        let anthropicMessages = try XCTUnwrap(anthropicBody["messages"] as? [[String: Any]])
+        let anthropicContent = try XCTUnwrap(anthropicMessages.first?["content"] as? [[String: Any]])
+        XCTAssertEqual(anthropicContent[1]["type"] as? String, "document")
+
+        let inspectedBody = client.makeBody(
+            messages: [
+                AgentMessage(
+                    role: .tool,
+                    content: "[Generated media inspection]",
+                    toolCallID: "inspect-1",
+                    attachments: [image]
+                ),
+            ],
+            tools: [],
+            cachePolicy: AgentCachePolicy()
+        )
+        let inspectedMessages = try XCTUnwrap(inspectedBody["messages"] as? [[String: Any]])
+        let inspectedContent = try XCTUnwrap(inspectedMessages.last?["content"] as? [[String: Any]])
+        XCTAssertEqual(inspectedMessages.last?["role"] as? String, "user")
+        XCTAssertTrue((inspectedContent.last?["image_url"] as? [String: String])?["url"]?.hasPrefix("data:image/png;base64,") == true)
     }
 
     func testHistoricalAttachmentUsesSnapshotAfterSourceFileChanges() throws {

@@ -24,6 +24,11 @@ struct StoredMobileConversation: Identifiable, Equatable, Sendable {
     let updatedAt: Date
 }
 
+struct StoredMobileModelContext: Equatable, Sendable {
+    let conversationID: String
+    let content: String
+}
+
 /// The on-device state boundary. Credentials never cross this type: SQLite
 /// stores only a keychain reference such as `keychain:phone.provider`.
 @MainActor
@@ -138,6 +143,21 @@ final class MobileStateStore {
     func saveModelContext(conversationID: String?, content: String) {
         guard let conversationID else { return }
         try? execute("INSERT INTO model_context(conversation_id, content_json, updated_at) VALUES(?, ?, ?) ON CONFLICT(conversation_id) DO UPDATE SET content_json=excluded.content_json, updated_at=excluded.updated_at", [conversationID, MobileEventPayloadSanitizer.redact(content), now])
+    }
+
+    func latestModelContext() -> StoredMobileModelContext? {
+        guard let database else { return nil }
+        var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
+        guard sqlite3_prepare_v2(database, "SELECT conversation_id, content_json FROM model_context ORDER BY updated_at DESC LIMIT 1", -1, &statement, nil) == SQLITE_OK,
+              let statement,
+              sqlite3_step(statement) == SQLITE_ROW,
+              let conversation = sqlite3_column_text(statement, 0),
+              let content = sqlite3_column_text(statement, 1) else { return nil }
+        return StoredMobileModelContext(
+            conversationID: String(cString: conversation),
+            content: String(cString: content)
+        )
     }
 
     func saveSetting(key: String, value: String) {

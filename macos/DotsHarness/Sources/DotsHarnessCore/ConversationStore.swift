@@ -36,6 +36,9 @@ public struct ChatAttachment: Identifiable, Hashable, Sendable, Codable {
     /// decodable; new attachments always receive a UUID.
     public let attachmentID: String?
     public let path: String
+    /// Security-scoped locator for sandboxed file providers. Older records only
+    /// have `path`; new records retain both the display path and this bookmark.
+    public let bookmarkData: Data?
     public let kind: Kind
     public let mimeType: String
     /// Immutable provider payload for image attachments. `path` remains the
@@ -47,6 +50,9 @@ public struct ChatAttachment: Identifiable, Hashable, Sendable, Codable {
     /// attachments keep this equal to `contentHash`; a changed source does not
     /// mutate the historical object.
     public let deliveredHash: String?
+    /// Last observed source state. This is metadata only; it never changes the
+    /// immutable bytes referenced by `snapshotPath`.
+    public var sourceStatus: SourceStatus
 
     public var id: String { attachmentID ?? path }
     public var name: String { URL(fileURLWithPath: path).lastPathComponent }
@@ -65,6 +71,9 @@ public struct ChatAttachment: Identifiable, Hashable, Sendable, Codable {
         let type = UTType(filenameExtension: url.pathExtension)
         attachmentID = UUID().uuidString
         path = url.standardizedFileURL.path
+        let scoped = url.startAccessingSecurityScopedResource()
+        bookmarkData = try? url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil)
+        if scoped { url.stopAccessingSecurityScopedResource() }
         if type?.conforms(to: .image) == true {
             kind = .image
         } else if type?.conforms(to: .audio) == true {
@@ -79,54 +88,63 @@ public struct ChatAttachment: Identifiable, Hashable, Sendable, Codable {
         contentHash = nil
         revision = 0
         deliveredHash = nil
+        sourceStatus = .current
     }
 
     public init(
         path: String,
         kind: Kind,
         mimeType: String,
+        bookmarkData: Data? = nil,
         snapshotPath: String? = nil,
         contentHash: String? = nil,
         attachmentID: String? = UUID().uuidString,
         revision: Int = 0,
-        deliveredHash: String? = nil
+        deliveredHash: String? = nil,
+        sourceStatus: SourceStatus = .current
     ) {
         self.attachmentID = attachmentID
         self.path = path
+        self.bookmarkData = bookmarkData
         self.kind = kind
         self.mimeType = mimeType
         self.snapshotPath = snapshotPath
         self.contentHash = contentHash
         self.revision = revision
         self.deliveredHash = deliveredHash
+        self.sourceStatus = sourceStatus
     }
 
     private enum CodingKeys: String, CodingKey {
-        case attachmentID, path, kind, mimeType, snapshotPath, contentHash, revision, deliveredHash
+        case attachmentID, path, bookmarkData, kind, mimeType, snapshotPath, contentHash, revision, deliveredHash, sourceStatus
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         attachmentID = try container.decodeIfPresent(String.self, forKey: .attachmentID)
         path = try container.decode(String.self, forKey: .path)
+        bookmarkData = try container.decodeIfPresent(Data.self, forKey: .bookmarkData)
         kind = try container.decode(Kind.self, forKey: .kind)
         mimeType = try container.decode(String.self, forKey: .mimeType)
         snapshotPath = try container.decodeIfPresent(String.self, forKey: .snapshotPath)
         contentHash = try container.decodeIfPresent(String.self, forKey: .contentHash)
         revision = try container.decodeIfPresent(Int.self, forKey: .revision) ?? (contentHash == nil ? 0 : 1)
         deliveredHash = try container.decodeIfPresent(String.self, forKey: .deliveredHash) ?? contentHash
+        sourceStatus = try container.decodeIfPresent(SourceStatus.self, forKey: .sourceStatus) ?? .current
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encodeIfPresent(attachmentID, forKey: .attachmentID)
         try container.encode(path, forKey: .path)
+        try container.encodeIfPresent(bookmarkData, forKey: .bookmarkData)
         try container.encode(kind, forKey: .kind)
         try container.encode(mimeType, forKey: .mimeType)
         try container.encodeIfPresent(snapshotPath, forKey: .snapshotPath)
         try container.encodeIfPresent(contentHash, forKey: .contentHash)
         try container.encode(revision, forKey: .revision)
         try container.encodeIfPresent(deliveredHash, forKey: .deliveredHash)
+        try container.encode(sourceStatus, forKey: .sourceStatus)
     }
 
     /// Copies the bytes used by the provider into a content-addressed store.
@@ -145,22 +163,27 @@ public struct ChatAttachment: Identifiable, Hashable, Sendable, Codable {
                 path: path,
                 kind: kind,
                 mimeType: mimeType,
+                bookmarkData: bookmarkData,
                 snapshotPath: snapshotPath,
                 contentHash: contentHash,
                 attachmentID: UUID().uuidString,
                 revision: max(revision, 1),
-                deliveredHash: deliveredHash ?? contentHash
+                deliveredHash: deliveredHash ?? contentHash,
+                sourceStatus: sourceStatus
             )
         }
         let folder = directory.standardizedFileURL
         let temporary = folder.appendingPathComponent("." + UUID().uuidString + ".tmp")
+        let source = resolvedSourceURL
+        let scoped = source.startAccessingSecurityScopedResource()
+        defer { if scoped { source.stopAccessingSecurityScopedResource() } }
         do {
             try fileManager.createDirectory(at: folder, withIntermediateDirectories: true)
             var result: (hash: String, bytes: Int64)?
             for _ in 0..<3 {
-                let before = try Self.sourceSignature(url)
-                let attempt = try Self.copyAndHash(source: url, temporary: temporary, fileManager: fileManager)
-                let after = try Self.sourceSignature(url)
+                let before = try Self.sourceSignature(source)
+                let attempt = try Self.copyAndHash(source: source, temporary: temporary, fileManager: fileManager)
+                let after = try Self.sourceSignature(source)
                 if before == after {
                     result = attempt
                     break
@@ -169,7 +192,7 @@ public struct ChatAttachment: Identifiable, Hashable, Sendable, Codable {
             }
             guard let result else { throw SourceError.changedDuringRead }
             let hash = result.hash
-            let extensionName = url.pathExtension.isEmpty ? "bin" : url.pathExtension.lowercased()
+            let extensionName = source.pathExtension.isEmpty ? "bin" : source.pathExtension.lowercased()
             let destination = folder.appendingPathComponent(hash + "." + extensionName)
             if !fileManager.fileExists(atPath: destination.path) {
                 try fileManager.moveItem(at: temporary, to: destination)
@@ -180,11 +203,13 @@ public struct ChatAttachment: Identifiable, Hashable, Sendable, Codable {
                 path: path,
                 kind: kind,
                 mimeType: mimeType,
+                bookmarkData: bookmarkData,
                 snapshotPath: destination.path,
                 contentHash: hash,
                 attachmentID: attachmentID ?? UUID().uuidString,
                 revision: max(requestedRevision ?? max(revision, 1), 1),
-                deliveredHash: deliveredHash
+                deliveredHash: deliveredHash,
+                sourceStatus: .current
             )
         } catch {
             try? fileManager.removeItem(at: temporary)
@@ -199,8 +224,10 @@ public struct ChatAttachment: Identifiable, Hashable, Sendable, Codable {
             path: path,
             kind: kind,
             mimeType: mimeType,
+            bookmarkData: bookmarkData,
             attachmentID: attachmentID,
-            revision: max(revision, 1) + 1
+            revision: max(revision, 1) + 1,
+            sourceStatus: .current
         )
         return source.snapshot(in: directory, revision: source.revision, fileManager: fileManager)
     }
@@ -212,16 +239,22 @@ public struct ChatAttachment: Identifiable, Hashable, Sendable, Codable {
         // missing/unreadable legacy path must not be reported as a revision of
         // bytes we never captured.
         guard baseline != nil else {
-            guard fileManager.fileExists(atPath: path) else { return SourceObservation(status: .current) }
-            return (try? Self.hash(source: url)).map {
+            let source = resolvedSourceURL
+            let scoped = source.startAccessingSecurityScopedResource()
+            defer { if scoped { source.stopAccessingSecurityScopedResource() } }
+            guard fileManager.fileExists(atPath: source.path) else { return SourceObservation(status: .current) }
+            return (try? Self.hash(source: source)).map {
                 SourceObservation(status: .current, currentHash: $0)
             } ?? SourceObservation(status: .current)
         }
-        guard fileManager.fileExists(atPath: path) else {
+        let source = resolvedSourceURL
+        let scoped = source.startAccessingSecurityScopedResource()
+        defer { if scoped { source.stopAccessingSecurityScopedResource() } }
+        guard fileManager.fileExists(atPath: source.path) else {
             return SourceObservation(status: .missing)
         }
         do {
-            let hash = try Self.hash(source: url)
+            let hash = try Self.hash(source: source)
             return SourceObservation(status: baseline == hash ? .current : .changed, currentHash: hash)
         } catch {
             return SourceObservation(status: .unreadable)
@@ -231,17 +264,32 @@ public struct ChatAttachment: Identifiable, Hashable, Sendable, Codable {
     private static func hash(source: URL) throws -> String {
         for _ in 0..<3 {
             let before = try sourceSignature(source)
-            let handle = try FileHandle(forReadingFrom: source)
-            var hasher = SHA256()
-            defer { try? handle.close() }
-            while let chunk = try handle.read(upToCount: 1024 * 1024), !chunk.isEmpty {
-                hasher.update(data: chunk)
-            }
-            let hash = hasher.finalize().map { String(format: "%02x", $0) }.joined()
+            let hash = try hashOnce(source: source)
             let after = try sourceSignature(source)
             if before == after { return hash }
         }
         throw SourceError.changedDuringRead
+    }
+
+    private var resolvedSourceURL: URL {
+        guard let bookmarkData else { return url }
+        var stale = false
+        return (try? URL(
+            resolvingBookmarkData: bookmarkData,
+            options: [.withSecurityScope],
+            relativeTo: nil,
+            bookmarkDataIsStale: &stale
+        )) ?? url
+    }
+
+    private static func hashOnce(source: URL) throws -> String {
+        let handle = try FileHandle(forReadingFrom: source)
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        while let chunk = try handle.read(upToCount: 1024 * 1024), !chunk.isEmpty {
+            hasher.update(data: chunk)
+        }
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
     private static func copyAndHash(source: URL, temporary: URL, fileManager: FileManager) throws -> (hash: String, bytes: Int64) {

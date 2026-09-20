@@ -1,14 +1,14 @@
 // Copyright (c) 2026 DOTS
 // UI-facing compatibility facade for the native agent host.
 
-import Combine
 import Foundation
 import PluginRuntime
 
 @MainActor
-public final class AgentBridge: ObservableObject {
+/// The host is `@Observable`, so a view reading through this facade observes exactly the
+/// host properties it reads; the facade has no change notification of its own.
+public final class AgentBridge {
     private let host: NativeAgentHost
-    private var hostObservation: AnyCancellable?
 
     public var connection: AgentConnection? { host.connection }
     public var connectionResolved: Bool { host.connectionResolved }
@@ -129,7 +129,6 @@ public final class AgentBridge: ObservableObject {
             sessionFileName: sessionFileName,
             chatContextStore: chatContextStore
         )
-        observeHost()
     }
 
     public init(
@@ -158,7 +157,6 @@ public final class AgentBridge: ObservableObject {
             sessionFileName: sessionFileName,
             chatContextStore: chatContextStore
         )
-        observeHost()
     }
 
     public init(
@@ -189,7 +187,6 @@ public final class AgentBridge: ObservableObject {
             sessionFileName: sessionFileName,
             chatContextStore: chatContextStore
         )
-        observeHost()
     }
 
     public func start(workspacePath: String) { host.start(workspacePath: workspacePath) }
@@ -299,11 +296,5 @@ public final class AgentBridge: ObservableObject {
     public func revokeWorkspaceDevice(_ deviceID: String) throws { try host.revokeWorkspaceDevice(deviceID) }
     public func resolveWorkspaceDecision(_ eventID: String, accept: Bool) throws {
         try host.resolveWorkspaceDecision(eventID, accept: accept)
-    }
-
-    private func observeHost() {
-        hostObservation = host.objectWillChange.sink { [weak self] _ in
-            self?.objectWillChange.send()
-        }
     }
 }

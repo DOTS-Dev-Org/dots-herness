@@ -47,4 +47,13 @@ final class MobileStateStoreTests: XCTestCase {
         XCTAssertFalse(messages.contains("sk-proj-1234567890123456"))
         XCTAssertFalse(messages.contains("ghp_1234567890123456"))
     }
+
+    func testLatestModelContextReturnsPersistedConversationSnapshot() {
+        let store = MobileStateStore(url: databaseURL)
+        let conversationID = store.startRun(mode: "agent", planMode: false, prompt: "Attach V1")
+        store.saveModelContext(conversationID: conversationID, content: "{\"version\":2,\"messages\":[]}")
+
+        XCTAssertEqual(store.latestModelContext()?.conversationID, conversationID)
+        XCTAssertEqual(store.latestModelContext()?.content, "{\"version\":2,\"messages\":[]}")
+    }
 }

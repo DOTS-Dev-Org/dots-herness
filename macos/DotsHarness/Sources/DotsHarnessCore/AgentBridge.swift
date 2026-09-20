@@ -3,6 +3,7 @@
 
 import Foundation
 import HarnessPluginKit
+import Observation
 import PluginRuntime
 
 public struct AgentConnection: Sendable, Equatable {
@@ -143,17 +144,23 @@ enum AgentRunScope {
 
 /// Per-conversation run state: several conversations can run at once.
 @MainActor
+@Observable
 final class AgentRunState {
-    var isBusy: Bool = false
+    /// Called when `isBusy` flips, so the host's cross-run summaries (`anyRunBusy`, the
+    /// sidebar's running set) know to refresh.
+    @ObservationIgnored var onBusyChange: (() -> Void)?
+    var isBusy: Bool = false {
+        didSet { if oldValue != isBusy { onBusyChange?() } }
+    }
     var pendingApproval: PendingApproval? = nil
     var pendingVisionInstall: PendingVisionInstall? = nil
     var pendingQuestion: PendingQuestion? = nil
-    var approvalContinuation: CheckedContinuation<Bool, Never>? = nil
-    var visionInstallContinuation: CheckedContinuation<Bool, Never>? = nil
-    var questionContinuation: CheckedContinuation<[String]?, Never>? = nil
+    @ObservationIgnored var approvalContinuation: CheckedContinuation<Bool, Never>? = nil
+    @ObservationIgnored var visionInstallContinuation: CheckedContinuation<Bool, Never>? = nil
+    @ObservationIgnored var questionContinuation: CheckedContinuation<[String]?, Never>? = nil
     var askUserRounds: Int = 0
     var askedQuestionKeys: Set<String> = []
-    var activeTask: Task<Void, Never>? = nil
+    @ObservationIgnored var activeTask: Task<Void, Never>? = nil
     var activeConversationID: String? = nil
     var activeRunID: UUID = UUID()
     var activeTurnID: String? = nil
@@ -185,12 +192,26 @@ final class AgentRunState {
 }
 
 @MainActor
-public final class NativeAgentHost: ObservableObject {
-    private var runStates: [String: AgentRunState] = [:]
-    private let unboundRun = AgentRunState()
+@Observable
+public final class NativeAgentHost {
+    // Views observe this class per property (Observation), not as a whole: only what a view
+    // reads invalidates it. State that is not a tracked stored property (the run table, the
+    // stores behind the sidebar lists, workspace memory) announces changes through
+    // `changeTick` / `accessRevision`, which the getters over that state read.
+    @ObservationIgnored private var runStates: [String: AgentRunState] = [:]
+    @ObservationIgnored private let unboundRun = AgentRunState()
+    private(set) var runTick = 0
+    /// The sidebar lists come from the conversation store, not from tracked properties.
+    private(set) var listTick = 0
+
+    /// Tell readers of state held outside tracked properties that it changed.
+    private func touchRuns() { runTick &+= 1 }
+    private func touchLists() { listTick &+= 1 }
 
     /// Inside a run's task: that run. Anywhere else (UI): the selected conversation's.
     private var currentRun: AgentRunState {
+        // The run table is not tracked: a removed or replaced run must refresh its readers.
+        _ = runTick
         guard let id = AgentRunScope.conversationID ?? selectedID else { return unboundRun }
         return state(for: id)
     }
@@ -198,68 +219,69 @@ public final class NativeAgentHost: ObservableObject {
     private func state(for conversationID: String) -> AgentRunState {
         if let run = runStates[conversationID] { return run }
         let run = AgentRunState()
+        run.onBusyChange = { [weak self] in self?.touchRuns() }
         runStates[conversationID] = run
         return run
     }
 
     /// True while any conversation of this host is running, visible or not.
-    public var anyRunBusy: Bool { runStates.values.contains(where: \.isBusy) || unboundRun.isBusy }
+    public var anyRunBusy: Bool {
+        _ = runTick
+        return runStates.values.contains(where: \.isBusy) || unboundRun.isBusy
+    }
 
     /// Conversations with a run in flight, for per-row activity in the sidebar.
     public var runningConversationIDs: Set<String> {
-        Set(runStates.filter { $0.value.isBusy }.map(\.key))
+        _ = runTick
+        return Set(runStates.filter { $0.value.isBusy }.map(\.key))
     }
 
     public let area: AgentArea
-    @Published public private(set) var connection: AgentConnection?
+    public private(set) var connection: AgentConnection?
     /// False until the saved provider route is first resolved, so the UI does not
     /// flash "connect a provider" for users who already connected one.
-    @Published public private(set) var connectionResolved = false
-    @Published public private(set) var conversations: [Conversation] = []
-    @Published public var selectedID: String?
-    @Published public private(set) var status: String = AppCopy.text("agent.chooseWorkspace")
+    public private(set) var connectionResolved = false
+    public private(set) var conversations: [Conversation] = []
+    public var selectedID: String?
+    public private(set) var status: String = AppCopy.text("agent.chooseWorkspace")
     public private(set) var isBusy: Bool {
         get { currentRun.isBusy }
         set {
-            objectWillChange.send()
             currentRun.isBusy = newValue
         }
     }
-    @Published public private(set) var historyMutationBusy = false
-    @Published public private(set) var accessRevision = 0
-    @Published public private(set) var permissionMode: AgentPermissionMode
-    @Published public private(set) var browserBackendSetting: BrowserBackend?
+    public private(set) var historyMutationBusy = false
+    public private(set) var accessRevision = 0
+    public private(set) var permissionMode: AgentPermissionMode
+    public private(set) var browserBackendSetting: BrowserBackend?
     public private(set) var pendingApproval: PendingApproval? {
         get { currentRun.pendingApproval }
         set {
-            objectWillChange.send()
             currentRun.pendingApproval = newValue
         }
     }
     public private(set) var pendingVisionInstall: PendingVisionInstall? {
         get { currentRun.pendingVisionInstall }
         set {
-            objectWillChange.send()
             currentRun.pendingVisionInstall = newValue
         }
     }
     public private(set) var pendingQuestion: PendingQuestion? {
         get { currentRun.pendingQuestion }
         set {
-            objectWillChange.send()
             currentRun.pendingQuestion = newValue
         }
     }
-    @Published public private(set) var followUpSuggestion: String?
-    @Published public private(set) var followUpConversationID: String?
-    public var onAssistantResponse: ((AssistantResponseEvent) -> Void)?
-    public var onRunSummary: ((RunSummaryEvent) -> Void)?
+    public private(set) var followUpSuggestion: String?
+    public private(set) var followUpConversationID: String?
+    @ObservationIgnored public var onAssistantResponse: ((AssistantResponseEvent) -> Void)?
+    @ObservationIgnored public var onRunSummary: ((RunSummaryEvent) -> Void)?
     /// A run needs the user; fired so a chat running in the background can be noticed.
-    public var onAttentionNeeded: ((RunAttentionEvent) -> Void)?
-    public var onRemoteEvent: ((String, [String: String]) -> Void)?
+    @ObservationIgnored public var onAttentionNeeded: ((RunAttentionEvent) -> Void)?
+    @ObservationIgnored public var onRemoteEvent: ((String, [String: String]) -> Void)?
     /// Set by the app: called after `install_plugin` writes a plugin so the host
     /// re-mounts and the new plugin goes live without a restart. Nil in tests.
-    public var onPluginsChanged: (() -> Void)?
+    @ObservationIgnored public var onPluginsChanged: (() -> Void)?
 
     private let store: ConversationStore
     private let paths: SupportPaths
@@ -272,7 +294,7 @@ public final class NativeAgentHost: ObservableObject {
     private let pluginHost: PluginHost?
     private let browserSessions = BrowserSessionManager()
     private let chatContextStore: ChatContextStore?
-    private lazy var contextTelemetry = AgentContextTelemetryStore(paths: paths)
+    @ObservationIgnored private lazy var contextTelemetry = AgentContextTelemetryStore(paths: paths)
     /// Set by the app after construction; nil in headless/test contexts.
     public var mcpRegistry: MCPRegistry?
     /// Long-lived shells the agent opened, keyed by conversation id. A run can
@@ -372,13 +394,14 @@ public final class NativeAgentHost: ObservableObject {
         conversations.first { $0.id == selectedID }
     }
 
-    private var outsideProjectsCache: (revision: Int, known: Set<String>, result: [Conversation])?
-    private var contentTask: Task<Void, Never>?
-    private var loadGeneration = 0
+    @ObservationIgnored private var outsideProjectsCache: (revision: Int, known: Set<String>, result: [Conversation])?
+    @ObservationIgnored private var contentTask: Task<Void, Never>?
+    @ObservationIgnored private var loadGeneration = 0
 
     // Sidebar lists read headers only: titles and metadata, never every project's transcripts.
     public var projectlessConversations: [Conversation] {
-        store.loadHeaders(workspacePath: nil).map(Self.recoverListed)
+        _ = listTick
+        return store.loadHeaders(workspacePath: nil).map(Self.recoverListed)
     }
 
     /// Chats that no listed project owns: the ones that never had a workspace
@@ -387,11 +410,13 @@ public final class NativeAgentHost: ObservableObject {
     /// Chats stored for one project, read through the store's cache so the
     /// sidebar's project preview does not re-decode the file on every hover.
     public func conversations(inProject path: String) -> [Conversation] {
+        _ = listTick
         let wanted = ConversationStore.normalizedPath(path)
         return store.loadHeaders().filter { ConversationStore.normalizedPath($0.cwd) == wanted }
     }
 
     public func conversations(outsideProjects paths: [String]) -> [Conversation] {
+        _ = listTick
         let known = Set(paths.compactMap(ConversationStore.normalizedPath))
         let all = store.loadHeaders()
         let revision = store.revision
@@ -413,6 +438,7 @@ public final class NativeAgentHost: ObservableObject {
     }
 
     public var archivedConversations: [Conversation] {
+        _ = listTick
         let archived = conversations.filter(\.archived)
         guard workspaceURL != nil else { return archived }
         return archived + store.loadHeaders(workspacePath: nil)
@@ -430,14 +456,35 @@ public final class NativeAgentHost: ObservableObject {
     }
 
     public var workspacePath: String? { workspaceURL?.path }
-    public var workspaceAccess: WorkspaceAccessStatus { memory.accessStatus() }
-    public var memoryDevicePublicKey: String? { memory.actorPublicKey }
-    public var workspaceMembers: [[String: String]] { memory.memberSummaries() }
-    public var pendingWorkspaceDecisions: [[String: Any]] { memory.pendingDecisions() }
+    public var workspaceAccess: WorkspaceAccessStatus {
+        _ = accessRevision
+        return memory.accessStatus()
+    }
+    public var memoryDevicePublicKey: String? {
+        _ = accessRevision
+        return memory.actorPublicKey
+    }
+    public var workspaceMembers: [[String: String]] {
+        _ = accessRevision
+        return memory.memberSummaries()
+    }
+    public var pendingWorkspaceDecisions: [[String: Any]] {
+        _ = accessRevision
+        return memory.pendingDecisions()
+    }
     /// Obsidian-style `.mem` vault (notes + link graph) for the Memory settings view.
-    public var memoryVault: MemoryVault { memory.vault() }
-    public var memoryFolderURL: URL? { memory.memoryDirectory }
-    public var memoryReady: Bool { memory.accessStatus().memoryReady }
+    public var memoryVault: MemoryVault {
+        _ = accessRevision
+        return memory.vault()
+    }
+    public var memoryFolderURL: URL? {
+        _ = accessRevision
+        return memory.memoryDirectory
+    }
+    public var memoryReady: Bool {
+        _ = accessRevision
+        return memory.accessStatus().memoryReady
+    }
     // A busy agent can still accept a normal queued prompt or a steering prompt.
     public var isReady: Bool { connection != nil }
     public var canContinue: Bool { selected?.canContinue == true && !isBusy && !continuationQueued }
@@ -1040,6 +1087,7 @@ public final class NativeAgentHost: ObservableObject {
     }
 
     public func feedback(for messageID: String, in conversationID: String) -> FeedbackRecord? {
+        _ = listTick
         ensureContentLoaded()
         guard let feedbackStore,
               let conversation = conversations.first(where: { $0.id == conversationID }),
@@ -1091,6 +1139,7 @@ public final class NativeAgentHost: ObservableObject {
         )
 
         try feedbackStore.upsert(record)
+        touchLists()
         // Invalidate the previous evaluator only after the new raw record is
         // durable; a failed write must not discard a still-valid evaluation.
         cancelFeedbackEvaluation(for: record.id)
@@ -1218,6 +1267,12 @@ public final class NativeAgentHost: ObservableObject {
         clearFollowUpSuggestion()
         if let draft = conversations.first(where: Self.isEmptyDraft) {
             selectedID = draft.id
+            if area == .coding, let currentWorkspace = workspaceURL?.path, draft.cwd != currentWorkspace {
+                if let index = conversations.firstIndex(where: { $0.id == draft.id }) {
+                    conversations[index].cwd = currentWorkspace
+                    persist()
+                }
+            }
             return
         }
         let conversation = Conversation(
@@ -1276,7 +1331,7 @@ public final class NativeAgentHost: ObservableObject {
                 conversations[index].unread = false
                 changed = true
             }
-            if changed { persist(); objectWillChange.send() }
+            if changed { persist() }
             return
         }
 
@@ -1286,7 +1341,7 @@ public final class NativeAgentHost: ObservableObject {
             project[index].unread = false
             changed = true
         }
-        if changed { store.save(project); objectWillChange.send() }
+        if changed { store.save(project); touchLists() }
     }
 
     public func archiveAll(forWorkspace path: String) {
@@ -1297,7 +1352,7 @@ public final class NativeAgentHost: ObservableObject {
                 conversations[index].archived = true
                 changed = true
             }
-            if changed { persist(); objectWillChange.send() }
+            if changed { persist() }
             return
         }
 
@@ -1307,7 +1362,7 @@ public final class NativeAgentHost: ObservableObject {
             project[index].archived = true
             changed = true
         }
-        if changed { store.save(project); objectWillChange.send() }
+        if changed { store.save(project); touchLists() }
     }
 
     public func deleteConversation(_ id: String) {
@@ -1340,7 +1395,7 @@ public final class NativeAgentHost: ObservableObject {
             recordConversationLifecycle(conversation, state: .deleted)
         }
         memory.removeTurnSnapshots(conversationID: id)
-        objectWillChange.send()
+        touchLists()
     }
 
     public func canEdit(messageID: String, in conversationID: String) -> Bool {
@@ -1567,8 +1622,8 @@ public final class NativeAgentHost: ObservableObject {
             }
             runStates.removeValue(forKey: conversationID)
         }
+        touchRuns()
         persist()
-        objectWillChange.send()
     }
 
     private func notifyAttention(_ kind: RunAttentionEvent.Kind, in conversationID: String, detail: String) {
@@ -2821,7 +2876,6 @@ public final class NativeAgentHost: ObservableObject {
                            let descriptor = skillCatalog.descriptor(for: id),
                            (try? skillCatalog.read(id: descriptor.id)) != nil {
                             activeUsedSkills.append(contentsOf: activeUsedSkills.contains(descriptor.id) ? [] : [descriptor.id])
-                            objectWillChange.send()
                         }
                     } else if call.name == TerminalSessionTool.name {
                         let action = Self.argument(call, key: "action") ?? ""
@@ -2855,6 +2909,15 @@ public final class NativeAgentHost: ObservableObject {
                         }
                     } else if let cached = prefetched[call.id] {
                         result = cached
+                    } else if call.name == WorkspaceTools.generatedMediaInspectionName {
+                        if remoteTarget == nil {
+                            let outcome = conversations.first(where: { $0.id == conversationID })
+                                .map { inspectGeneratedMedia(call, conversation: $0) }
+                            result = outcome?.message ?? "Tool error: conversation not found."
+                            resultAttachment = outcome?.attachment
+                        } else {
+                            result = "Tool error: generated media is local to this host and cannot be inspected from a remote workspace."
+                        }
                     } else if call.name == WorkspaceTools.generatedMediaName {
                         if let workspace, remoteTarget == nil,
                            await requestApprovalIfNeeded(for: call, conversationID: conversationID) {
@@ -3377,6 +3440,40 @@ public final class NativeAgentHost: ObservableObject {
         }
     }
 
+    private func inspectGeneratedMedia(
+        _ call: AgentToolCall,
+        conversation: Conversation
+    ) -> (message: String, attachment: ChatAttachment?) {
+        guard let sourcePath = Self.argument(call, key: "source_path"), !sourcePath.isEmpty else {
+            return ("Tool error: source_path is required.", nil)
+        }
+        let requested = URL(fileURLWithPath: sourcePath).standardizedFileURL.resolvingSymlinksInPath().path
+        guard let media = conversation.messages
+            .flatMap(\.mediaItems)
+            .first(where: {
+                $0.kind == .image
+                    && URL(fileURLWithPath: $0.path).standardizedFileURL.resolvingSymlinksInPath().path == requested
+            }),
+              FileManager.default.fileExists(atPath: media.path) else {
+            return ("Tool error: the generated media artifact is not available in this conversation.", nil)
+        }
+        let instruction = Self.argument(call, key: "instruction")?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let inspectionInstruction = instruction.map { "instruction: " + $0 } ?? ""
+        let attachment = ChatAttachment(
+            path: media.path,
+            kind: .image,
+            mimeType: media.mimeType,
+            attachmentID: "generated-media-" + media.id
+        )
+        let content = [
+            "[Generated media inspection]",
+            "The generated image is attached to this tool result for visual inspection only; it has not been copied into the workspace. Use the exact source_path as the canonical asset path. If the selected provider cannot read image input, do not invent visual details and add a brief note.",
+            "source_path: " + media.path,
+            inspectionInstruction,
+        ].filter { !$0.isEmpty }.joined(separator: "\n")
+        return (content, attachment)
+    }
+
     private func copyGeneratedMedia(
         _ call: AgentToolCall,
         conversation: Conversation,
@@ -3386,7 +3483,12 @@ public final class NativeAgentHost: ObservableObject {
               let destinationPath = Self.argument(call, key: "destination_path") else {
             return "Tool error: source_path and destination_path are required."
         }
-        let allowed = Set(conversation.messages.flatMap { $0.mediaItems }.map(\.path))
+        let allowed = Set(
+            conversation.messages
+                .flatMap { $0.mediaItems }
+                .filter { $0.kind == .image }
+                .map(\.path)
+        )
         return WorkspaceTools.copyGeneratedMedia(
             sourcePath: sourcePath,
             destinationPath: destinationPath,
@@ -3626,11 +3728,13 @@ public final class NativeAgentHost: ObservableObject {
     }
 
     public func contextUsageEvents() -> [AgentContextUsageEvent] {
-        contextTelemetry.events()
+        _ = listTick
+        return contextTelemetry.events()
     }
 
     public func contextCacheSummary() -> AgentContextCacheSummary {
-        contextTelemetry.summary()
+        _ = listTick
+        return contextTelemetry.summary()
     }
 
     private func recordContextUsage(
@@ -3664,6 +3768,7 @@ public final class NativeAgentHost: ObservableObject {
             errorKind: errorKind
         )
         contextTelemetry.append(event)
+        touchLists()
     }
 
     private func compactIfNeeded(
@@ -3990,7 +4095,7 @@ public final class NativeAgentHost: ObservableObject {
     private static func generatedMediaContextMessage(for message: ChatMessage) -> AgentMessage? {
         guard !message.mediaItems.isEmpty else { return nil }
         let assets = message.mediaItems.map { media in
-            "- kind: \(media.kind.rawValue)\n  path: \(media.path)\n  mime_type: \(media.mimeType)"
+            "- kind: \(media.kind.rawValue)\n  path: \(media.path)"
         }.joined(separator: "\n")
         let outcome = message.text.trimmingCharacters(in: .whitespacesAndNewlines)
         return AgentMessage(
@@ -4001,7 +4106,7 @@ public final class NativeAgentHost: ObservableObject {
             Assets:
             \(assets)
             Result: \(outcome.isEmpty ? "generated" : outcome)
-            If the user asks to reuse this image, use the exact asset path above. Do not claim to know pixel details unless the image is actually supplied for visual inspection.
+            If the user asks to reuse this image in the project, call copy_generated_media with the exact source_path before editing project files. If visual details are needed, call inspect_generated_media with the exact source_path; do not claim to know pixel details unless that inspection succeeds.
             """
         )
     }
@@ -4414,7 +4519,8 @@ public final class NativeAgentHost: ObservableObject {
             return .workspaceMutation
         case "list_files", "read_file", "grep_files",
              ExploreTool.name, AskUserTool.name, PlanStepsTool.name, RememberTool.name,
-             OtherChatsTool.name, sandboxStatusName, latestAttachmentName:
+             OtherChatsTool.name, sandboxStatusName, latestAttachmentName,
+             WorkspaceTools.generatedMediaInspectionName:
             return .readOnly
         default:
             // run_command, ios_simulator, terminal_session, plugin__*, mcp__* …
@@ -4655,17 +4761,34 @@ public final class NativeAgentHost: ObservableObject {
         let userMessage = messages[userIndex]
         var seenImages = Set<String>()
         let images = messages
-            .filter { $0.role == .user }
             .flatMap(\.attachments)
             .filter { $0.kind == .image && seenImages.insert($0.path).inserted }
             .map { VisionImageInput(filePath: $0.path, name: $0.name, mimeType: $0.mimeType) }
         guard !images.isEmpty else { throw providerError }
+        let generatedInspectionPaths = Set(
+            messages
+                .filter { $0.role == .tool && $0.content.hasPrefix("[Generated media inspection]") }
+                .flatMap(\.attachments)
+                .filter { $0.kind == .image }
+                .map(\.path)
+        )
+        let generatedInspectionOnly = !generatedInspectionPaths.isEmpty
+            && images.allSatisfy { generatedInspectionPaths.contains($0.filePath) }
 
         var service = pluginHost?.getService(
             VisionFallbackDefaults.serviceName,
             as: VisionFallbackService.self
         )
         if service == nil || service?.state == .modelMissing || service?.state == .failed || service?.state == .unavailable {
+            if generatedInspectionOnly {
+                let updated = Self.generatedMediaInspectionNote(
+                    messages,
+                    userIndex: userIndex,
+                    paths: generatedInspectionPaths
+                )
+                saveModelContext(updated, in: conversationID)
+                return updated
+            }
             let allow = await requestVisionInstall(
                 conversationID: conversationID,
                 provider: configuration.provider,
@@ -4674,6 +4797,15 @@ public final class NativeAgentHost: ObservableObject {
                 reason: AppCopy.text("vision.installPrompt")
             )
             guard allow else {
+                if generatedInspectionOnly {
+                    let updated = Self.generatedMediaInspectionNote(
+                        messages,
+                        userIndex: userIndex,
+                        paths: generatedInspectionPaths
+                    )
+                    saveModelContext(updated, in: conversationID)
+                    return updated
+                }
                 throw NativeAgentError(AppCopy.text("vision.notEnabled"))
             }
             if service == nil, let installer = pluginHost?.getService(
@@ -4685,18 +4817,63 @@ public final class NativeAgentHost: ObservableObject {
         }
 
         guard let service else {
+            if generatedInspectionOnly {
+                let updated = Self.generatedMediaInspectionNote(
+                    messages,
+                    userIndex: userIndex,
+                    paths: generatedInspectionPaths
+                )
+                saveModelContext(updated, in: conversationID)
+                return updated
+            }
             throw NativeAgentError(AppCopy.text("vision.pluginMissing"))
         }
         if service.state != .ready {
-            try await service.prepare(progress: nil)
+            do {
+                try await service.prepare(progress: nil)
+            } catch {
+                if generatedInspectionOnly, !Task.isCancelled {
+                    let updated = Self.generatedMediaInspectionNote(
+                        messages,
+                        userIndex: userIndex,
+                        paths: generatedInspectionPaths
+                    )
+                    saveModelContext(updated, in: conversationID)
+                    return updated
+                }
+                throw error
+            }
         }
-        let visualContext = try await service.describe(
-            images: images,
-            instruction: "Describe only observable visual facts in the attached image. Do not guess. "
-                + "Return a concise description that another language model can use to answer the user's request. "
-                + userMessage.content
-        )
+        let visualContext: String
+        do {
+            visualContext = try await service.describe(
+                images: images,
+                instruction: "Describe only observable visual facts in the attached image. Do not guess. "
+                    + "Return a concise description that another language model can use to answer the user's request. "
+                    + userMessage.content
+            )
+        } catch {
+            if generatedInspectionOnly, !Task.isCancelled {
+                let updated = Self.generatedMediaInspectionNote(
+                    messages,
+                    userIndex: userIndex,
+                    paths: generatedInspectionPaths
+                )
+                saveModelContext(updated, in: conversationID)
+                return updated
+            }
+            throw error
+        }
         guard !visualContext.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            if generatedInspectionOnly {
+                let updated = Self.generatedMediaInspectionNote(
+                    messages,
+                    userIndex: userIndex,
+                    paths: generatedInspectionPaths
+                )
+                saveModelContext(updated, in: conversationID)
+                return updated
+            }
             throw NativeAgentError(AppCopy.text("vision.emptyDescription"))
         }
 
@@ -4704,6 +4881,24 @@ public final class NativeAgentHost: ObservableObject {
         for index in updated.indices { updated[index].attachments = [] }
         updated[userIndex].content = Self.localVisionContext(userMessage.content, visualContext)
         saveModelContext(updated, in: conversationID)
+        return updated
+    }
+
+    private static func generatedMediaInspectionNote(
+        _ messages: [AgentMessage],
+        userIndex: Int,
+        paths: Set<String>
+    ) -> [AgentMessage] {
+        var updated = messages
+        for index in updated.indices {
+            updated[index].attachments.removeAll { paths.contains($0.path) }
+        }
+        let assets = paths.sorted().map { "- path: " + $0 }.joined(separator: "\n")
+        let note = "[Generated media note]\n"
+            + "The selected provider or host could not read the generated image visually. "
+            + "Do not invent visual details. The file remains available as an asset at:\n"
+            + assets
+        updated[userIndex].content = note + "\n\n" + updated[userIndex].content
         return updated
     }
 
@@ -5062,6 +5257,7 @@ public final class NativeAgentHost: ObservableObject {
 
     private func persist() {
         store.save(conversations)
+        touchLists()
     }
 
     private func skillID(from call: AgentToolCall) -> String? {
@@ -5147,7 +5343,7 @@ public final class NativeAgentHost: ObservableObject {
         guard let index = projectless.firstIndex(where: { $0.id == id }) else { return }
         update(&projectless[index])
         store.save(projectless)
-        objectWillChange.send()
+        touchLists()
     }
 
     /// Fold in conversations written to the store by another host (e.g. a
@@ -5262,11 +5458,13 @@ public final class NativeAgentHost: ObservableObject {
                     path: attachment.path,
                     kind: attachment.kind,
                     mimeType: attachment.mimeType,
+                    bookmarkData: attachment.bookmarkData,
                     snapshotPath: attachment.snapshotPath,
                     contentHash: attachment.contentHash,
                     attachmentID: attachment.attachmentID,
                     revision: attachment.revision,
-                    deliveredHash: hash
+                    deliveredHash: hash,
+                    sourceStatus: attachment.sourceStatus
                 )
             }
         }
@@ -5470,7 +5668,10 @@ public final class NativeAgentHost: ObservableObject {
         planMode: Bool
     ) async -> [String: String] {
         guard workspace != nil || !contextRoots.isEmpty else { return [:] }
-        let readOnly = calls.filter { WorkspaceTools.isReadOnly($0.name) }
+        let readOnly = calls.filter {
+            WorkspaceTools.isReadOnly($0.name)
+                && $0.name != WorkspaceTools.generatedMediaInspectionName
+        }
         guard readOnly.count > 1 else { return [:] }
         _ = planMode // read-only calls are allowed in either mode
         return await withTaskGroup(of: (String, String).self) { group in

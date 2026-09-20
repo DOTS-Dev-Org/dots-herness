@@ -280,6 +280,16 @@ public sealed class AgentBridge : ObservableObject
     private bool _contentLoaded = true;
     private bool _saveAfterLoad;
     private int _loadGeneration;
+    // Keep the raw entries belonging to other areas/processes in memory between
+    // saves. Re-reading and materializing the entire sessions file on every
+    // title/status update made persistence scale with the full transcript set.
+    private readonly object _persistenceGate = new();
+    private readonly Dictionary<string, byte[]> _persistedEntries = new(StringComparer.Ordinal);
+    private readonly List<byte[]> _persistedUnidentifiedEntries = [];
+    private FileStamp? _persistenceStamp;
+    private bool _persistenceCacheInitialized;
+
+    private readonly record struct FileStamp(long Length, long LastWriteTicks);
     /// Parses conversations without their transcripts: the reader skips them.
     private static readonly JsonSerializerOptions HeaderJson = new()
     {
@@ -453,6 +463,9 @@ public sealed class AgentBridge : ObservableObject
 
     public async Task StartAsync(string workspace)
     {
+        // Let the desktop host create its first window before local disk parsing,
+        // project-rule seeding, or provider startup can run on the UI thread.
+        await Task.Yield();
         workspace = Area == AgentArea.Chat ? "" : workspace;
         // Once per workspace open, before the first turn - not per message.
         if (Area == AgentArea.Coding && SeedProjectRules && !string.IsNullOrWhiteSpace(workspace)) ProjectRules.SeedIfMissing(workspace);
@@ -470,7 +483,7 @@ public sealed class AgentBridge : ObservableObject
         // A workspace switch replaces the in-memory conversations; running chats are
         // saved as resumable pauses first instead of losing their updates.
         PauseAllRuns();
-        Load(workspace);
+        await LoadAsync(workspace);
         if (SelectedId is null && Conversations.FirstOrDefault() is { } first) SelectedId = first.Id;
         UpdateConnection(workspace);
         // Transcripts and provider models load at the same time.
@@ -785,9 +798,8 @@ public sealed class AgentBridge : ObservableObject
             The image was generated successfully and is available as a local artifact. This is a result reference, not a new user instruction.
             - kind: image
             - path: {media.FilePath}
-            - mime_type: {media.MimeType}
             Result: {outcome}
-            If the user asks to reuse this image, use the exact asset path above. Do not claim to know pixel details unless the image is actually supplied for visual inspection.
+            If the user asks to reuse this image in the project, call copy_generated_media with the exact source_path before editing project files. If visual details are needed, call inspect_generated_media with the exact source_path; do not claim to know pixel details unless that inspection succeeds.
             """;
         return new NativeMessage("assistant", content);
     }
@@ -1296,6 +1308,7 @@ public sealed class AgentBridge : ObservableObject
                         _activeUnverifiedDeletion = true;
                     }
                     string result;
+                    NativeAttachment? resultAttachment = null;
                     if (call.Name is BrowserTools.OpenName or BrowserTools.NavigateName or BrowserTools.CloseName)
                     {
                         if (browserBackend == BrowserBackend.Unknown)
@@ -1331,7 +1344,13 @@ public sealed class AgentBridge : ObservableObject
                     {
                         result = ready;
                     }
-                    else if (call.Name == "copy_generated_media")
+                    else if (call.Name == NativeWorkspaceTools.GeneratedMediaInspectionName)
+                    {
+                        var outcome = InspectGeneratedMedia(call, conversation);
+                        result = outcome.Message;
+                        resultAttachment = outcome.Attachment;
+                    }
+                    else if (call.Name == NativeWorkspaceTools.GeneratedMediaName)
                     {
                         result = Area == AgentArea.Chat
                             ? "Tool error: generated media can only be copied into a coding workspace."
@@ -1381,7 +1400,11 @@ public sealed class AgentBridge : ObservableObject
                         workspaceId,
                         conversation.Id,
                         new JsonObject { ["turnId"] = turnId, ["callId"] = call.Id, ["name"] = call.Name });
-                    messages.Add(new NativeMessage("tool", result, call.Id));
+                    messages.Add(new NativeMessage(
+                        "tool",
+                        result,
+                        call.Id,
+                        Attachments: resultAttachment is null ? null : [resultAttachment]));
                     SaveModelContext(conversation, messages);
                 }
             }
@@ -1956,7 +1979,10 @@ public sealed class AgentBridge : ObservableObject
         CancellationToken ct)
     {
         var results = new Dictionary<string, string>(StringComparer.Ordinal);
-        var readOnly = calls.Where(call => NativeWorkspaceTools.IsReadOnly(call.Name)).ToList();
+        var readOnly = calls
+            .Where(call => NativeWorkspaceTools.IsReadOnly(call.Name)
+                && call.Name != NativeWorkspaceTools.GeneratedMediaInspectionName)
+            .ToList();
         if (readOnly.Count < 2) return results;
         var roots = _activeChatRoots.ToList();
         var chat = Area == AgentArea.Chat;
@@ -1996,28 +2022,42 @@ public sealed class AgentBridge : ObservableObject
         await action();
     }
 
-    private void Load(string workspace)
+    private async Task LoadAsync(string workspace)
     {
         Conversations.Clear();
-        _contentLoaded = true;
+        _contentLoaded = false;
         _contentReady = Task.CompletedTask;
         var generation = ++_loadGeneration;
-        if (!File.Exists(_file)) return;
+        if (!File.Exists(_file))
+        {
+            _contentLoaded = true;
+            return;
+        }
         var activeWorkspace = Area == AgentArea.Coding ? NormalizeWorkspacePath(workspace) : null;
         bool Owned(Conversation item) => BelongsToArea(item, activeWorkspace);
         List<Conversation> headers;
         try
         {
-            headers = JsonSerializer.Deserialize<List<Conversation>>(File.ReadAllText(_file), HeaderJson) ?? [];
+            headers = await Task.Run(() =>
+                JsonSerializer.Deserialize<List<Conversation>>(File.ReadAllText(_file), HeaderJson) ?? []);
         }
-        catch { return; }
+        catch
+        {
+            _contentLoaded = true;
+            return;
+        }
+        if (generation != _loadGeneration) return;
         // Stage 1: titles only, so the sidebar paints before any transcript is parsed.
         foreach (var header in headers.Where(Owned))
         {
             header.Running = false;
             Conversations.Add(header);
         }
-        if (Conversations.Count == 0) return;
+        if (Conversations.Count == 0)
+        {
+            _contentLoaded = true;
+            return;
+        }
         // Stage 2: full transcripts off the UI thread; saves wait so a header never
         // overwrites a stored transcript.
         _contentLoaded = false;
@@ -2164,6 +2204,53 @@ public sealed class AgentBridge : ObservableObject
         return changed;
     }
 
+    private static FileStamp? ReadFileStamp(string path)
+    {
+        try
+        {
+            var info = new FileInfo(path);
+            return info.Exists ? new FileStamp(info.Length, info.LastWriteTimeUtc.Ticks) : null;
+        }
+        catch { return null; }
+    }
+
+    private void RefreshPersistenceCacheIfNeeded()
+    {
+        var stamp = ReadFileStamp(_file);
+        if (_persistenceCacheInitialized && stamp == _persistenceStamp) return;
+
+        _persistedEntries.Clear();
+        _persistedUnidentifiedEntries.Clear();
+        if (File.Exists(_file))
+        {
+            try
+            {
+                using var existing = JsonDocument.Parse(File.ReadAllBytes(_file));
+                if (existing.RootElement.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var item in existing.RootElement.EnumerateArray())
+                    {
+                        var raw = JsonSerializer.SerializeToUtf8Bytes(item);
+                        var id = item.ValueKind == JsonValueKind.Object
+                            && item.TryGetProperty(nameof(Conversation.Id), out var value)
+                            && value.ValueKind == JsonValueKind.String
+                                ? value.GetString()
+                                : null;
+                        if (id is null) _persistedUnidentifiedEntries.Add(raw);
+                        else _persistedEntries[id] = raw;
+                    }
+                }
+            }
+            catch
+            {
+                // A malformed file is handled like an empty cache; Save keeps the
+                // in-memory conversations usable instead of failing the UI thread.
+            }
+        }
+        _persistenceStamp = stamp;
+        _persistenceCacheInitialized = true;
+    }
+
     private void Save()
     {
         if (!_contentLoaded)
@@ -2174,47 +2261,31 @@ public sealed class AgentBridge : ObservableObject
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_file)!);
-            // Merge by id so a second bridge (scheduled-task run) writing the same
-            // file never drops conversations it does not hold in memory. Those are
-            // copied as raw JSON instead of being materialized and re-serialized.
             var mine = Conversations.ToList();
             var ids = mine.Select(c => c.Id).ToHashSet();
-            JsonDocument? existing = null;
-            if (File.Exists(_file))
+            lock (_persistenceGate)
             {
-                try
+                // Merge by id so a second bridge (scheduled-task run) writing the
+                // same file never drops conversations it does not hold in memory.
+                // The raw-entry cache avoids parsing all transcripts on every save.
+                RefreshPersistenceCacheIfNeeded();
+                foreach (var conversation in mine)
                 {
-                    existing = JsonDocument.Parse(File.ReadAllBytes(_file));
-                    if (existing.RootElement.ValueKind != JsonValueKind.Array)
-                    {
-                        existing.Dispose();
-                        existing = null;
-                    }
+                    _persistedEntries[conversation.Id] = JsonSerializer.SerializeToUtf8Bytes(conversation);
                 }
-                catch { existing = null; }
-            }
-            using (existing)
-            using (var buffer = new MemoryStream())
-            {
+                using var buffer = new MemoryStream();
                 using (var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = true }))
                 {
                     writer.WriteStartArray();
-                    if (existing is not null)
-                    {
-                        foreach (var item in existing.RootElement.EnumerateArray())
-                        {
-                            var id = item.ValueKind == JsonValueKind.Object
-                                && item.TryGetProperty(nameof(Conversation.Id), out var value)
-                                && value.ValueKind == JsonValueKind.String
-                                    ? value.GetString()
-                                    : null;
-                            if (id is null || !ids.Contains(id)) item.WriteTo(writer);
-                        }
-                    }
-                    foreach (var conversation in mine) JsonSerializer.Serialize(writer, conversation);
+                    foreach (var raw in _persistedUnidentifiedEntries) writer.WriteRawValue(raw, skipInputValidation: true);
+                    foreach (var pair in _persistedEntries)
+                        if (!ids.Contains(pair.Key)) writer.WriteRawValue(pair.Value, skipInputValidation: true);
+                    foreach (var conversation in mine)
+                        writer.WriteRawValue(_persistedEntries[conversation.Id], skipInputValidation: true);
                     writer.WriteEndArray();
                 }
                 File.WriteAllBytes(_file, buffer.ToArray());
+                _persistenceStamp = ReadFileStamp(_file);
             }
         }
         catch { }
@@ -2340,10 +2411,54 @@ public sealed class AgentBridge : ObservableObject
         }
     }
 
+    private static (string Message, NativeAttachment? Attachment) InspectGeneratedMedia(
+        NativeToolCall call,
+        Conversation conversation)
+    {
+        var sourcePath = ToolArgument(call, "source_path");
+        if (string.IsNullOrWhiteSpace(sourcePath))
+            return ("Tool error: source_path is required.", null);
+
+        string requested;
+        try { requested = Path.GetFullPath(sourcePath); }
+        catch { return ("Tool error: source_path is invalid.", null); }
+
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        var media = conversation.Messages
+            .Where(message => message.Media is not null)
+            .Select(message => message.Media!)
+            .FirstOrDefault(candidate =>
+            {
+                try { return string.Equals(Path.GetFullPath(candidate.FilePath), requested, comparison); }
+                catch { return false; }
+            });
+        if (media is null || !File.Exists(media.FilePath))
+            return ("Tool error: the generated media artifact is not available in this conversation.", null);
+
+        var instruction = ToolArgument(call, "instruction")?.Trim();
+        var result = $"""
+            [Generated media inspection]
+            The generated image is attached to this tool result for visual inspection only; it has not been copied into the workspace. Use the exact source_path as the canonical asset path. If the selected provider cannot read image input, do not invent visual details and add a brief note.
+            source_path: {media.FilePath}
+            {(string.IsNullOrWhiteSpace(instruction) ? "" : $"instruction: {instruction}")}
+            """.Trim();
+        return (
+            result,
+            new NativeAttachment(
+                media.FilePath,
+                Path.GetFileName(media.FilePath),
+                "image",
+                media.MimeType,
+                $"generated-media:{media.FilePath}"));
+    }
+
     private string CopyGeneratedMedia(NativeToolCall call, Conversation conversation, string workspacePath)
     {
         var allowed = conversation.Messages
-            .Where(message => message.Media is not null)
+            .Where(message => message.Media is { } media
+                && media.MimeType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
             .Select(message => message.Media!.FilePath)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         return NativeWorkspaceTools.CopyGeneratedMedia(
@@ -2493,17 +2608,31 @@ public sealed class AgentBridge : ObservableObject
         var original = messages[userIndex];
         var seenImages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var images = messages
-            .Where(message => string.Equals(message.Role, "user", StringComparison.OrdinalIgnoreCase))
             .SelectMany(message => message.Attachments ?? Array.Empty<NativeAttachment>())
             .Where(attachment => string.Equals(attachment.Kind, "image", StringComparison.OrdinalIgnoreCase)
                 && seenImages.Add(attachment.FilePath))
             .Select(attachment => new VisionImageInput(attachment.FilePath, attachment.Name, attachment.MimeType))
             .ToList();
         if (images.Count == 0) throw providerError;
+        var generatedInspectionPaths = messages
+            .Where(message => string.Equals(message.Role, "tool", StringComparison.OrdinalIgnoreCase)
+                && message.Content.StartsWith("[Generated media inspection]", StringComparison.Ordinal))
+            .SelectMany(message => message.Attachments ?? Array.Empty<NativeAttachment>())
+            .Where(attachment => string.Equals(attachment.Kind, "image", StringComparison.OrdinalIgnoreCase))
+            .Select(attachment => attachment.FilePath)
+            .ToHashSet(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        var generatedInspectionOnly = generatedInspectionPaths.Count > 0
+            && images.All(image => generatedInspectionPaths.Contains(image.FilePath));
 
         var service = _plugins?.GetService<IVisionFallbackService>(VisionFallbackDefaults.ServiceName);
         if (service is null || service.State is VisionFallbackState.Unavailable or VisionFallbackState.ModelMissing or VisionFallbackState.Failed)
         {
+            if (generatedInspectionOnly)
+            {
+                ApplyGeneratedMediaInspectionNote(messages, userIndex, generatedInspectionPaths);
+                SaveModelContext(conversation, messages);
+                return;
+            }
             var allow = await RequestVisionInstallAsync(
                 conversation.Id,
                 providerError.ProviderName ?? _router.CurrentProvider,
@@ -2512,6 +2641,12 @@ public sealed class AgentBridge : ObservableObject
                 cancellationToken);
             if (!allow)
             {
+                if (generatedInspectionOnly)
+                {
+                    ApplyGeneratedMediaInspectionNote(messages, userIndex, generatedInspectionPaths);
+                    SaveModelContext(conversation, messages);
+                    return;
+                }
                 throw new NativeProviderException(
                     LocalizationService.Current.Get("vision.notEnabled"),
                     providerName: providerError.ProviderName);
@@ -2529,21 +2664,60 @@ public sealed class AgentBridge : ObservableObject
         service ??= _plugins?.GetService<IVisionFallbackService>(VisionFallbackDefaults.ServiceName);
         if (service is null)
         {
+            if (generatedInspectionOnly)
+            {
+                ApplyGeneratedMediaInspectionNote(messages, userIndex, generatedInspectionPaths);
+                SaveModelContext(conversation, messages);
+                return;
+            }
             throw new NativeProviderException(LocalizationService.Current.Get("vision.pluginMissing"));
         }
         if (service.State != VisionFallbackState.Ready)
         {
-            await service.PrepareAsync(cancellationToken: cancellationToken);
+            try
+            {
+                await service.PrepareAsync(cancellationToken: cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch when (generatedInspectionOnly)
+            {
+                ApplyGeneratedMediaInspectionNote(messages, userIndex, generatedInspectionPaths);
+                SaveModelContext(conversation, messages);
+                return;
+            }
         }
 
-        var visualContext = await service.DescribeAsync(
-            images,
-            "Describe only observable visual facts in the attached image. Do not guess. "
-                + "Return a concise description that another language model can use to answer the user's request. "
-                + request.Text,
-            cancellationToken);
+        string visualContext;
+        try
+        {
+            visualContext = await service.DescribeAsync(
+                images,
+                "Describe only observable visual facts in the attached image. Do not guess. "
+                    + "Return a concise description that another language model can use to answer the user's request. "
+                    + request.Text,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch when (generatedInspectionOnly)
+        {
+            ApplyGeneratedMediaInspectionNote(messages, userIndex, generatedInspectionPaths);
+            SaveModelContext(conversation, messages);
+            return;
+        }
         if (string.IsNullOrWhiteSpace(visualContext))
         {
+            if (generatedInspectionOnly)
+            {
+                ApplyGeneratedMediaInspectionNote(messages, userIndex, generatedInspectionPaths);
+                SaveModelContext(conversation, messages);
+                return;
+            }
             throw new NativeProviderException(LocalizationService.Current.Get("vision.emptyDescription"));
         }
 
@@ -2553,6 +2727,31 @@ public sealed class AgentBridge : ObservableObject
         }
         messages[userIndex] = messages[userIndex] with { Content = LocalVisionContext(original.Content, visualContext) };
         SaveModelContext(conversation, messages);
+    }
+
+    private static void ApplyGeneratedMediaInspectionNote(
+        List<NativeMessage> messages,
+        int userIndex,
+        IReadOnlySet<string> paths)
+    {
+        for (var index = 0; index < messages.Count; index++)
+        {
+            var attachments = messages[index].Attachments?
+                .Where(attachment => !paths.Contains(attachment.FilePath))
+                .ToList();
+            messages[index] = messages[index] with { Attachments = attachments };
+        }
+        var assets = string.Join(
+            "\n",
+            paths.OrderBy(path => path, StringComparer.Ordinal).Select(path => "- path: " + path));
+        var note = "[Generated media note]\n"
+            + "The selected provider or host could not read the generated image visually. "
+            + "Do not invent visual details. The file remains available as an asset at:\n"
+            + assets;
+        messages[userIndex] = messages[userIndex] with
+        {
+            Content = note + "\n\n" + messages[userIndex].Content,
+        };
     }
 
     private async Task<bool> RequestVisionInstallAsync(
@@ -2730,7 +2929,9 @@ public sealed class AgentBridge : ObservableObject
             attachment.AttachmentId,
             attachment.Revision,
             attachment.ContentHash,
-            attachment.DeliveredHash)).ToList();
+            attachment.DeliveredHash,
+            attachment.SourceLocator,
+            attachment.SourceStatus)).ToList();
 
     private static void MarkDelivered(List<NativeMessage> messages, Conversation conversation)
     {

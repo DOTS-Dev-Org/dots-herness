@@ -263,7 +263,7 @@ struct ConversationView: View {
     @ViewBuilder
     private var emptyConversation: some View {
         WelcomeView(
-            projectName: workspaceName,
+            projectName: currentProjectName,
             showConnectHint: bridge.connectionResolved && bridge.connection == nil,
             showCards: model.draft.isEmpty,
             cards: welcomeCards,
@@ -273,8 +273,8 @@ struct ConversationView: View {
 
     private var welcomeCards: [WelcomeCard] {
         WelcomeCatalog.cards(
-            projectName: workspaceName,
-            stack: ProjectStackSniffer.detect(at: model.workspacePath)
+            projectName: currentProjectName,
+            stack: model.activeArea == .chat ? nil : ProjectStackSniffer.detect(at: model.selected?.cwd ?? model.workspacePath)
         )
     }
 
@@ -473,6 +473,23 @@ struct ConversationView: View {
         let path = model.activeArea == .chat ? model.terminalWorkspaceKey : model.workspacePath
         guard !path.isEmpty else { return AppCopy.text("conversation.workspace") }
         return URL(fileURLWithPath: path).lastPathComponent
+    }
+
+    private var currentProjectName: String {
+        if model.activeArea == .chat {
+            if let projectID = model.selected?.chatProjectID,
+               let chatProject = model.chatProjects.first(where: { $0.id == projectID }) {
+                return chatProject.name
+            }
+            if !model.terminalWorkspaceKey.isEmpty {
+                return URL(fileURLWithPath: model.terminalWorkspaceKey).lastPathComponent
+            }
+            return AppCopy.text("conversation.workspace")
+        } else {
+            let path = model.selected?.cwd ?? model.workspacePath
+            guard !path.isEmpty else { return AppCopy.text("conversation.workspace") }
+            return model.projectTitle(for: path)
+        }
     }
 
     private var terminalSessions: [TerminalSession] {

@@ -99,6 +99,7 @@ final class AgentBridgeTests: XCTestCase {
     func testToolRiskClassification() {
         XCTAssertEqual(NativeAgentHost.risk("read_file"), .readOnly)
         XCTAssertEqual(NativeAgentHost.risk("grep_files"), .readOnly)
+        XCTAssertEqual(NativeAgentHost.risk("inspect_generated_media"), .readOnly)
         XCTAssertEqual(NativeAgentHost.risk("skill.read"), .readOnly)
         XCTAssertEqual(NativeAgentHost.risk("run_command"), .sideEffect)
         XCTAssertEqual(NativeAgentHost.risk("ios_simulator"), .sideEffect)
@@ -949,7 +950,7 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertEqual(object["role"] as? String, "assistant")
         let toolCalls = object["tool_calls"] as? [[String: Any]]
         XCTAssertEqual(toolCalls?.first?["id"] as? String, "call-1")
-        XCTAssertEqual(WorkspaceTools.definitions.map(\.name), ["list_files", "read_file", "write_file", "remove_file", "grep_files", "run_command", "copy_generated_media", "ios_simulator"])
+        XCTAssertEqual(WorkspaceTools.definitions.map(\.name), ["list_files", "read_file", "write_file", "remove_file", "grep_files", "run_command", "copy_generated_media", "inspect_generated_media", "ios_simulator"])
     }
 
     func testGrepFilesMatchesLinesAndRespectsFilters() throws {
@@ -1248,6 +1249,38 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertFalse(memoryResult.contains(".mem"))
         XCTAssertFalse(memoryResult.contains("host-managed"))
         try? FileManager.default.removeItem(at: workspace)
+    }
+
+    func testGeneratedMediaCanBeCopiedIntoWorkspaceAndRejectsUnknownSource() throws {
+        let workspace = FileManager.default.temporaryDirectory
+            .appendingPathComponent("DotsHarnessMedia-\(UUID().uuidString)", isDirectory: true)
+        let support = workspace.appendingPathComponent("support", isDirectory: true)
+        let project = workspace.appendingPathComponent("project", isDirectory: true)
+        try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: project, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: workspace) }
+
+        let source = support.appendingPathComponent("generated.png")
+        let destination = project.appendingPathComponent("assets/background.png")
+        let bytes = Data([0x89, 0x50, 0x4E, 0x47, 0x01, 0x02, 0x03])
+        try bytes.write(to: source)
+
+        let copied = WorkspaceTools.copyGeneratedMedia(
+            sourcePath: source.path,
+            destinationPath: "assets/background.png",
+            allowedSourcePaths: [source.path],
+            workspace: project
+        )
+        XCTAssertTrue(copied.contains("assets/background.png"))
+        XCTAssertEqual(try Data(contentsOf: destination), bytes)
+
+        let rejected = WorkspaceTools.copyGeneratedMedia(
+            sourcePath: source.path,
+            destinationPath: "assets/second.png",
+            allowedSourcePaths: [],
+            workspace: project
+        )
+        XCTAssertTrue(rejected.contains("not available"))
     }
 
     func testSafeRemovalRequiresNoLiveReferenceAndProtectsState() throws {

@@ -975,14 +975,8 @@ public final class AppModel: ObservableObject {
         // Set before the workspace binds below, so a disabled setting never seeds.
         chatBridge.setSeedProjectRules(seedProjectRules)
         codingBridge.setSeedProjectRules(seedProjectRules)
-        chatBridge.objectWillChange
-            .receive(on: RunLoop.main)
-            .sink { [weak self] in self?.objectWillChange.send() }
-            .store(in: &cancellables)
-        codingBridge.objectWillChange
-            .receive(on: RunLoop.main)
-            .sink { [weak self] in self?.objectWillChange.send() }
-            .store(in: &cancellables)
+        // The bridges are @Observable: views read them per property, so their changes no
+        // longer need to be forwarded (and no longer redraw the whole window).
         chatEndpoint.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
@@ -1443,6 +1437,7 @@ public final class AppModel: ObservableObject {
         saveDraftState()
         bridge.newConversation()
         restoreDraftState()
+        objectWillChange.send()
     }
 
     public func newChatConversation(in projectID: String? = nil) {
@@ -1450,6 +1445,7 @@ public final class AppModel: ObservableObject {
         chatBridge.newConversation()
         chatBridge.setChatProject(projectID)
         restoreDraftState()
+        objectWillChange.send()
     }
 
     public var unassignedChatConversations: [Conversation] {
@@ -1528,10 +1524,12 @@ public final class AppModel: ObservableObject {
 
     public func newConversation(in projectPath: String) {
         setActiveArea(.coding)
-        guard let targetPath = Self.canonicalExistingWorkspacePath(projectPath),
-              projectPaths.contains(where: {
-                  Self.canonicalExistingWorkspacePath($0) == targetPath
-              }) else { return }
+        guard let targetPath = Self.canonicalExistingWorkspacePath(projectPath) else {
+            promptToRelocateProject(missingPath: projectPath) { [weak self] newPath in
+                self?.newConversation(in: newPath)
+            }
+            return
+        }
         let bridgeMatchesTarget = ConversationStore.normalizedPath(bridge.workspacePath)
             == ConversationStore.normalizedPath(targetPath)
         if workspacePath != targetPath || !bridgeMatchesTarget {
@@ -2533,9 +2531,68 @@ public final class AppModel: ObservableObject {
         }
     }
 
+    /// Prompts the user to locate a moved or missing project folder or remove it from the list.
+    public func promptToRelocateProject(missingPath: String, onRelocated: ((String) -> Void)? = nil) {
+        guard NSClassFromString("XCTest") == nil else { return }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        let projectName = projectTitle(for: missingPath)
+        let title = AppCopy.format("project.missing.title", projectName)
+        alert.messageText = title == "project.missing.title" ? "Proje Klasörü Bulunamadı: \(projectName)" : title
+        let msg = AppCopy.format("project.missing.message", missingPath)
+        alert.informativeText = msg == "project.missing.message"
+            ? "'\(missingPath)' konumundaki proje klasörü taşınmış veya silinmiş olabilir. Lütfen klasörün yeni konumunu seçin veya projeyi kaldırın."
+            : msg
+        let locateTitle = AppCopy.text("project.missing.locate")
+        alert.addButton(withTitle: locateTitle == "project.missing.locate" ? "Konumu Bul..." : locateTitle)
+        alert.addButton(withTitle: AppCopy.text("sidebar.removeProject"))
+        alert.addButton(withTitle: AppCopy.text("common.cancel"))
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            let panel = NSOpenPanel()
+            panel.canChooseFiles = false
+            panel.canChooseDirectories = true
+            panel.canCreateDirectories = true
+            panel.allowsMultipleSelection = false
+            panel.prompt = AppCopy.text("workspace.use")
+            panel.message = AppCopy.text("workspace.chooseMessage")
+            if panel.runModal() == .OK, let url = panel.url {
+                let newPath = url.path
+                if let idx = projectPaths.firstIndex(of: missingPath) {
+                    projectPaths[idx] = newPath
+                } else if !projectPaths.contains(newPath) {
+                    projectPaths.append(newPath)
+                }
+                if let meta = projectMetadata.removeValue(forKey: missingPath) {
+                    projectMetadata[newPath] = meta
+                }
+                if let sort = projectSortOrders.removeValue(forKey: missingPath) {
+                    projectSortOrders[newPath] = sort
+                }
+                if let manual = projectManualOrder.removeValue(forKey: missingPath) {
+                    projectManualOrder[newPath] = manual
+                }
+                persistProjectPaths()
+                persistProjectMetadata()
+                persistProjectSortOrders()
+                setWorkspace(newPath)
+                onRelocated?(newPath)
+            }
+        } else if response == .alertSecondButtonReturn {
+            removeProject(missingPath)
+        }
+    }
+
     /// Switches the active project to an already-added one.
     public func selectProject(_ path: String) {
-        setWorkspace(path)
+        guard let targetPath = Self.canonicalExistingWorkspacePath(path) else {
+            promptToRelocateProject(missingPath: path) { [weak self] newPath in
+                self?.selectProject(newPath)
+            }
+            return
+        }
+        setWorkspace(targetPath)
     }
 
     /// Removes a project from the sidebar list (and its sort preference). If it was

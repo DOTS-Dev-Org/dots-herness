@@ -202,6 +202,7 @@ final class MobileHarnessRuntime: ObservableObject {
                 return await self.latestAttachmentResult(input)
             },
         ])
+        restoreModelContext()
     }
 
     func register(_ specs: [AgentToolSpec]) {
@@ -534,8 +535,90 @@ final class MobileHarnessRuntime: ObservableObject {
 
     private func canonicalUserMessage(text: String, attachments: [MobileAttachment]) -> [String: Any] {
         var content: [[String: Any]] = [["type": "text", "text": text]]
-        content.append(contentsOf: attachments.map(\.canonicalBlock))
+        content.append(contentsOf: attachments.map { $0.canonicalBlock() })
         return ["role": "user", "content": content]
+    }
+
+    private func restoreModelContext() {
+        guard let stored = stateStore.latestModelContext(),
+              let data = stored.content.data(using: .utf8),
+              let snapshot = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let storedMessages = snapshot["messages"] as? [[String: Any]],
+              !storedMessages.isEmpty else { return }
+        conversationID = stored.conversationID
+        wire = storedMessages
+        if let policy = snapshot["policy"] as? String, !policy.isEmpty {
+            promptHistory = MobilePromptHistory(policy: policy)
+        }
+        contextSegment = (snapshot["context_segment"] as? NSNumber)?.intValue ?? 0
+        for message in storedMessages {
+            restoreAttachments(from: message["content"])
+        }
+        var normalizedLegacyAttachment = false
+        for (id, attachment) in attachments {
+            guard attachment.snapshotPath == nil else { continue }
+            let stable = attachment.stabilized(in: MobileAttachmentStore.snapshotDirectory)
+            guard stable.snapshotPath != nil else { continue }
+            attachments[id] = stable
+            normalizedLegacyAttachment = true
+        }
+        if normalizedLegacyAttachment {
+            for index in wire.indices {
+                wire[index]["content"] = replaceRestoredAttachments(in: wire[index]["content"])
+            }
+            persistModelContext()
+        }
+    }
+
+    private func restoreAttachments(from value: Any?) {
+        if let block = value as? [String: Any] {
+            if block["type"] as? String == "attachment", let attachment = MobileAttachment(canonicalBlock: block) {
+                mergeRestoredAttachment(attachment)
+            }
+            if block["type"] as? String == "tool_result" {
+                restoreAttachments(from: block["attachment"])
+            }
+            return
+        }
+        if let blocks = value as? [[String: Any]] {
+            blocks.forEach { restoreAttachments(from: $0) }
+        } else if let blocks = value as? [Any] {
+            blocks.forEach { restoreAttachments(from: $0) }
+        }
+    }
+
+    private func replaceRestoredAttachments(in value: Any?) -> Any? {
+        if var block = value as? [String: Any] {
+            if block["type"] as? String == "attachment",
+               let id = block["attachment_id"] as? String,
+               let attachment = attachments[id] {
+                return attachment.canonicalBlock()
+            }
+            if block["type"] as? String == "tool_result",
+               let attachment = block["attachment"] {
+                block["attachment"] = replaceRestoredAttachments(in: attachment)
+            }
+            return block
+        }
+        if let blocks = value as? [[String: Any]] {
+            return blocks.map { replaceRestoredAttachments(in: $0) as? [String: Any] ?? $0 }
+        }
+        if let blocks = value as? [Any] {
+            return blocks.map { replaceRestoredAttachments(in: $0) as Any }
+        }
+        return value
+    }
+
+    private func mergeRestoredAttachment(_ candidate: MobileAttachment) {
+        guard let existing = attachments[candidate.attachmentID] else {
+            attachments[candidate.attachmentID] = candidate
+            return
+        }
+        if candidate.revision > existing.revision ||
+            (existing.snapshotPath == nil && candidate.snapshotPath != nil) ||
+            (existing.deliveredHash == nil && candidate.deliveredHash != nil) {
+            attachments[candidate.attachmentID] = candidate
+        }
     }
 
     private func latestAttachmentResult(_ input: AgentInput) async -> String {
@@ -800,7 +883,7 @@ final class MobileHarnessRuntime: ObservableObject {
         guard let attachment = attachments[id], let data = attachment.providerData() else {
             return [
                 "type": format == "responses" ? "input_text" : "text",
-                "text": "source_missing: attachment_id (id); historical_revision_preserved; latest_revision_unavailable",
+                "text": "source_missing: attachment_id \(id); historical_revision_preserved; latest_revision_unavailable",
             ]
         }
         let base64 = data.base64EncodedString()
@@ -1124,7 +1207,12 @@ final class MobileHarnessRuntime: ObservableObject {
     }
 
     private func persistModelContext() {
-        let snapshot: [String: Any] = ["version": 1, "policy": promptHistory.policy ?? "", "messages": wire]
+        let snapshot: [String: Any] = [
+            "version": 2,
+            "policy": promptHistory.policy ?? "",
+            "context_segment": contextSegment,
+            "messages": wire,
+        ]
         guard let data = try? JSONSerialization.data(withJSONObject: snapshot, options: [.sortedKeys]),
               let text = String(data: data, encoding: .utf8) else { return }
         stateStore.saveModelContext(conversationID: conversationID, content: text)

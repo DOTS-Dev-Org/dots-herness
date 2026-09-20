@@ -8,7 +8,7 @@ cd "$NATIVE_DIR"
 PROJECT_NAME="DotsHarness"
 SOLUTION_FILE="${SOLUTION_FILE:-$NATIVE_DIR/DotsHarness.sln}"
 PROJECT_FILE="${PROJECT_FILE:-$NATIVE_DIR/src/DotsHarness/DotsHarness.csproj}"
-CONFIGURATION="${CONFIGURATION:-Debug}"
+CONFIGURATION="${CONFIGURATION:-Release}"
 FRAMEWORK="${FRAMEWORK:-net8.0-windows}"
 RUNTIME="${RUNTIME:-${DOTNET_RUNTIME:-}}"
 OUTPUT_PATH="${OUTPUT_PATH:-}"
@@ -30,7 +30,7 @@ Kullanim:
   ./run.sh -- --help
 
 Secenekler:
-  -c, --configuration NAME  .NET yapilandirmasi (varsayilan: Debug).
+  -c, --configuration NAME  .NET yapilandirmasi (varsayilan: Release).
       --framework TFM       Hedef cerceve (varsayilan: net8.0-windows).
       --runtime RID         Opsiyonel runtime kimligi (ornek: win-x64).
       --output PATH         Derleme cikti klasoru.

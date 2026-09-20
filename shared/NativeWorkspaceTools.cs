@@ -9,6 +9,8 @@ namespace DotsHarnessCore;
 
 public static class NativeWorkspaceTools
 {
+    public const string GeneratedMediaName = "copy_generated_media";
+    public const string GeneratedMediaInspectionName = "inspect_generated_media";
     private const string VerifiedRemovalMarker = "[cleanup:verified]";
     private const string PreservedRemovalMarker = "[cleanup:preserved]";
     private const string FailedRemovalMarker = "[cleanup:failed]";
@@ -43,9 +45,12 @@ public static class NativeWorkspaceTools
             ("path", "Relative directory to search. Defaults to the workspace root.", false),
             ("extensions", "Optional comma-separated file extensions to limit the search, e.g. cs,json.", false))),
         new("run_command", "Run a shell command with the workspace as its current directory.", Schema(("command", "Command to run in the workspace.", true))),
-        new("copy_generated_media", "Copy a generated image from the current conversation into the current coding workspace. Use only when the user asks to reuse the generated asset in the project.", Schema(
+        new(GeneratedMediaName, "Copy a generated image from the current conversation into the current coding workspace. Use this before editing project files that should reference the asset.", Schema(
             ("source_path", "Exact absolute path from the Generated media artifact context.", true),
             ("destination_path", "Workspace-relative destination path, including the filename.", true))),
+        new(GeneratedMediaInspectionName, "Inspect a generated image only when its visual content is needed. The normal conversation carries only the exact file path; this tool attaches that file to the next model request for visual inspection.", Schema(
+            ("source_path", "Exact absolute path from the Generated media artifact context.", true),
+            ("instruction", "Optional visual inspection question.", false))),
     ];
 
     /// What plan mode offers: everything except the two tools that change the
@@ -56,14 +61,17 @@ public static class NativeWorkspaceTools
     /// Chat has no implicit workspace. Every filesystem call must name the
     /// verified root that came from a user message.
     public static IReadOnlyList<NativeToolDefinition> ChatDefinitions { get; } =
-        Definitions.Where(tool => tool.Name != "copy_generated_media").Select(AddContextRootId).ToArray();
+        Definitions
+            .Where(tool => tool.Name != GeneratedMediaName)
+            .Select(tool => tool.Name == GeneratedMediaInspectionName ? tool : AddContextRootId(tool))
+            .ToArray();
 
     public static IReadOnlyList<NativeToolDefinition> ChatPlanDefinitions { get; } =
         ChatDefinitions.Where(tool => !IsWorkspaceMutation(tool.Name)).ToArray();
 
-    public static bool IsReadOnly(string name) => name is "list_files" or "read_file" or "grep_files";
+    public static bool IsReadOnly(string name) => name is "list_files" or "read_file" or "grep_files" or GeneratedMediaInspectionName;
 
-    public static bool IsWorkspaceMutation(string name) => name is "write_file" or "remove_file" or "copy_generated_media";
+    public static bool IsWorkspaceMutation(string name) => name is "write_file" or "remove_file" or GeneratedMediaName;
 
     public static bool IsVerifiedRemovalResult(string result) => result.StartsWith(VerifiedRemovalMarker, StringComparison.Ordinal);
     public static bool IsPreservedRemovalResult(string result) => result.StartsWith(PreservedRemovalMarker, StringComparison.Ordinal);

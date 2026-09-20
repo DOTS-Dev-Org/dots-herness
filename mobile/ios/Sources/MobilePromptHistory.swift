@@ -5,6 +5,10 @@ import Foundation
 struct MobilePromptHistory: Codable {
     private(set) var policy: String?
 
+    init(policy: String? = nil) {
+        self.policy = policy
+    }
+
     mutating func capture(prompt: String, policy currentPolicy: String, context: String) -> String {
         if policy == nil { policy = currentPolicy }
         var parts: [String] = []

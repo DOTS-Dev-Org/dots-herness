@@ -313,7 +313,7 @@ struct SidebarView: View {
                 title: AppCopy.text("sidebar.newChat"),
                 systemImage: "square.and.pencil",
                 trailingSystemImage: "plus.circle",
-                action: { model.newChatConversation() }
+                action: { model.newChatConversation(in: model.selected?.chatProjectID) }
             )
             .padding(.bottom, 10)
 
@@ -709,7 +709,10 @@ struct SidebarView: View {
             .foregroundStyle(.secondary)
             .help(AppCopy.text("sidebar.projectOptions"))
 
-            Button { model.newConversation(in: path) } label: {
+            Button {
+                expandedProjectPath = path
+                model.newConversation(in: path)
+            } label: {
                 Image(systemName: "square.and.pencil")
                     .font(.system(size: 13, weight: .medium))
                     .frame(width: 24, height: 24)

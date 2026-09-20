@@ -30,6 +30,11 @@ data class StoredMobileMessage(
     val createdAt: Long,
 )
 
+data class StoredMobileModelContext(
+    val conversationId: String,
+    val content: String,
+)
+
 /**
  * Device-local Harness state. API keys and OAuth tokens are deliberately not
  * accepted by this class; only a secure-storage reference is persisted.
@@ -179,6 +184,13 @@ class MobileStateStore(context: Context) {
             values("conversation_id" to conversationId, "content_json" to MobileEventPayloadSanitizer.redact(content), "updated_at" to System.currentTimeMillis()),
             SQLiteDatabase.CONFLICT_REPLACE,
         )
+    }
+
+    fun latestModelContext(): StoredMobileModelContext? = helper.readableDatabase.query(
+        "model_context", arrayOf("conversation_id", "content_json"),
+        null, null, null, null, "updated_at DESC", "1",
+    ).use { cursor ->
+        if (cursor.moveToFirst()) StoredMobileModelContext(cursor.getString(0), cursor.getString(1)) else null
     }
 
     fun saveSetting(key: String, value: String) {

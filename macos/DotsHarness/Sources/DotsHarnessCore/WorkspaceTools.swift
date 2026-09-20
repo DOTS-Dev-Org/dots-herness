@@ -18,7 +18,7 @@ public enum WorkspaceTools {
         ".git", ".mem", ".build", "build", "bin", "obj", "dist", "node_modules", "Pods", "DerivedData",
     ]
     private static let protectedNames: Set<String> = ["provider-state.json", "conversations.json", "state.sqlite", "state.db"]
-    public static let definitions: [AgentToolDefinition] = workspaceDefinitions + [generatedMediaDefinition] + SimulatorTools.definitions
+    public static let definitions: [AgentToolDefinition] = workspaceDefinitions + [generatedMediaDefinition, generatedMediaInspectionDefinition] + SimulatorTools.definitions
     public static let readOnlyDefinitions: [AgentToolDefinition] = workspaceDefinitions.filter {
         readOnlyNames.contains($0.name)
     }
@@ -27,15 +27,16 @@ public enum WorkspaceTools {
     /// projectless Chat run from accidentally inheriting the process cwd.
     public static let chatDefinitions: [AgentToolDefinition] = workspaceDefinitions.map {
         addingContextRootID(to: $0)
-    }
+    } + [generatedMediaInspectionDefinition]
 
     public static func chatScoped(_ definition: AgentToolDefinition) -> AgentToolDefinition {
         addingContextRootID(to: definition)
     }
 
-    static let readOnlyNames: Set<String> = ["list_files", "read_file", "grep_files"]
+    static let readOnlyNames: Set<String> = ["list_files", "read_file", "grep_files", generatedMediaInspectionName]
 
     static let generatedMediaName = "copy_generated_media"
+    static let generatedMediaInspectionName = "inspect_generated_media"
 
     static let generatedMediaDefinition = AgentToolDefinition(
         name: generatedMediaName,
@@ -53,6 +54,26 @@ public enum WorkspaceTools {
                 ]),
             ]),
             "required": .array([.string("source_path"), .string("destination_path")]),
+        ])
+    )
+
+    static let generatedMediaInspectionDefinition = AgentToolDefinition(
+        name: generatedMediaInspectionName,
+        description: "Inspect a generated image only when its visual content is needed. The normal conversation carries only the exact file path; this tool attaches that file to the next model request for visual inspection.",
+        parameters: .object([
+            "type": .string("object"),
+            "properties": .object([
+                "source_path": .object([
+                    "type": .string("string"),
+                    "description": .string("Exact absolute path from the Generated media artifact context."),
+                ]),
+                "instruction": .object([
+                    "type": .string("string"),
+                    "description": .string("Optional visual inspection question."),
+                ]),
+            ]),
+            "required": .array([.string("source_path")]),
+            "additionalProperties": .bool(false),
         ])
     )
 

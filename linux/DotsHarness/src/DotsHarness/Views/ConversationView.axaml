@@ -1,7 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:core="using:DotsHarnessCore"
              xmlns:views="using:DotsHarness.Views"
              x:Class="DotsHarness.Views.ConversationView"
+             x:DataType="core:AppModel"
              DragDrop.AllowDrop="True"
              DragDrop.DragOver="OnDragOver"
              DragDrop.DragLeave="OnDragLeave"
@@ -113,7 +115,7 @@
                         <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate>
+                        <DataTemplate x:DataType="core:ChatAttachment">
                             <Border Background="{DynamicResource PanelBackground}" CornerRadius="8" Padding="6" Margin="0,0,8,0">
                                 <StackPanel Orientation="Horizontal">
                                     <Image Width="48" Height="48" Stretch="UniformToFill"
@@ -231,7 +233,7 @@
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate>
+                        <DataTemplate x:DataType="core:ChatMessage">
                             <Border Margin="0,0,0,20" MaxWidth="760" HorizontalAlignment="{Binding Kind, Converter={x:Static views:KindAlignment.Instance}}">
                                 <StackPanel>
 <Grid>
@@ -257,7 +259,7 @@
                                                 <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
+                                                <DataTemplate x:DataType="core:ChatAttachment">
                                                     <Border Background="{DynamicResource PanelBackground}" CornerRadius="8" Padding="6" Margin="0,0,8,0">
                                                         <StackPanel Orientation="Horizontal">
                                                             <Image Width="64" Height="64" Stretch="UniformToFill"
@@ -280,7 +282,7 @@
                                                            Text="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.skills}"
                                                            Foreground="{DynamicResource TextSecondary}"/>
                                                 <ItemsControl ItemsSource="{Binding UsedSkills}">
-                                                    <ItemsControl.ItemTemplate><DataTemplate>
+                                                    <ItemsControl.ItemTemplate><DataTemplate x:CompileBindings="False">
                                                         <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis"
                                                                    Foreground="{DynamicResource TextPrimary}"/>
                                                     </DataTemplate></ItemsControl.ItemTemplate>
@@ -289,7 +291,7 @@
                                                            Text="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.tools}"
                                                            Foreground="{DynamicResource TextSecondary}"/>
                                                 <ItemsControl ItemsSource="{Binding UsedTools}">
-                                                    <ItemsControl.ItemTemplate><DataTemplate>
+                                                    <ItemsControl.ItemTemplate><DataTemplate x:CompileBindings="False">
                                                         <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis"
                                                                    Foreground="{DynamicResource TextPrimary}"/>
                                                     </DataTemplate></ItemsControl.ItemTemplate>
@@ -299,7 +301,7 @@
                                         <Expander Header="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.changedFiles}" IsExpanded="False" Margin="0,6,0,0"
                                                   IsVisible="{Binding ., Converter={x:Static views:MetadataVisibility.Instance}, ConverterParameter=files}">
                                             <ItemsControl ItemsSource="{Binding ChangedFiles}" Margin="8,6,0,0">
-                                                <ItemsControl.ItemTemplate><DataTemplate>
+                                                <ItemsControl.ItemTemplate><DataTemplate x:DataType="core:ChangedFile">
                                                     <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}" TextTrimming="CharacterEllipsis"
                                                                Foreground="{DynamicResource TextPrimary}"
                                                                AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"/>
@@ -333,7 +335,7 @@
                                                     <TextBlock Text="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.skills}" FontSize="11" FontWeight="SemiBold"
                                                                Foreground="{DynamicResource TextSecondary}"/>
                                                     <ItemsControl ItemsSource="{Binding UsedSkills}">
-                                                        <ItemsControl.ItemTemplate><DataTemplate>
+                                                        <ItemsControl.ItemTemplate><DataTemplate x:CompileBindings="False">
                                                             <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis"
                                                                        Foreground="{DynamicResource TextPrimary}"/>
                                                         </DataTemplate></ItemsControl.ItemTemplate>
@@ -341,7 +343,7 @@
                                                     <TextBlock Text="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.tools}" FontSize="11" FontWeight="SemiBold" Margin="0,6,0,0"
                                                                Foreground="{DynamicResource TextSecondary}"/>
                                                     <ItemsControl ItemsSource="{Binding UsedTools}">
-                                                        <ItemsControl.ItemTemplate><DataTemplate>
+                                                        <ItemsControl.ItemTemplate><DataTemplate x:CompileBindings="False">
                                                             <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis"
                                                                        Foreground="{DynamicResource TextPrimary}"/>
                                                         </DataTemplate></ItemsControl.ItemTemplate>
@@ -352,7 +354,7 @@
                                                   Header="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.changedFiles}"
                                                   IsVisible="{Binding ., Converter={x:Static views:MetadataVisibility.Instance}, ConverterParameter=files}">
                                                 <ItemsControl ItemsSource="{Binding ChangedFiles}" Margin="8,6,0,0">
-                                                    <ItemsControl.ItemTemplate><DataTemplate>
+                                                    <ItemsControl.ItemTemplate><DataTemplate x:DataType="core:ChangedFile">
                                                         <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}" TextTrimming="CharacterEllipsis"
                                                                    Foreground="{DynamicResource TextPrimary}"
                                                                    AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"/>
@@ -409,7 +411,7 @@
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate>
+                        <DataTemplate x:DataType="core:PendingPrompt">
                             <Border Margin="0,0,0,12" Padding="12" CornerRadius="12"
                                     Background="{DynamicResource BubbleUser}" Opacity="0.72">
                                 <StackPanel>
@@ -434,7 +436,7 @@
                                             <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
+                                            <DataTemplate x:DataType="core:ChatAttachment">
                                                 <Border Background="{DynamicResource PanelBackground}" CornerRadius="8" Padding="6" Margin="0,0,8,0">
                                                     <StackPanel Orientation="Horizontal">
                                                         <Image Width="64" Height="64" Stretch="UniformToFill"

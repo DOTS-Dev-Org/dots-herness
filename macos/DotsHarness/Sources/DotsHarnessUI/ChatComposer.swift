@@ -132,7 +132,7 @@ struct ChatComposer: View {
                     .padding(.bottom, 8)
             }
 
-            if model.activeArea != .chat { composerContext }
+            composerContext
 
             VStack(spacing: 0) {
                 if model.isEditingMessage {
@@ -197,75 +197,115 @@ struct ChatComposer: View {
                 showProjectMenu.toggle()
             } label: {
                 contextPill(
-                    icon: model.workspacePath.isEmpty ? "folder.badge.plus" : "folder",
-                    title: projectName
+                    icon: currentProjectIcon,
+                    title: currentProjectTitle
                 )
             }
             .buttonStyle(.plain)
             .popover(isPresented: $showProjectMenu, arrowEdge: .bottom) {
-                ProjectPickerPopover(
-                    workspacePath: model.workspacePath,
-                    onChoose: {
-                        showProjectMenu = false
-                        model.chooseWorkspace()
-                    },
-                    onClear: {
-                        showProjectMenu = false
-                        model.setWorkspace("")
-                    }
-                )
+                if model.activeArea == .chat {
+                    ChatProjectPickerPopover(
+                        projects: model.chatProjects,
+                        selectedID: model.selected?.chatProjectID,
+                        onSelect: { project in
+                            showProjectMenu = false
+                            if let selected = model.selected, !selected.blank {
+                                bridge.setChatProject(project.id)
+                            } else {
+                                model.newChatConversation(in: project.id)
+                            }
+                        },
+                        onCreate: { name in
+                            showProjectMenu = false
+                            let project = model.createChatProject(name: name)
+                            if let selected = model.selected, !selected.blank {
+                                bridge.setChatProject(project.id)
+                            } else {
+                                model.newChatConversation(in: project.id)
+                            }
+                        },
+                        onClear: {
+                            showProjectMenu = false
+                            if let selected = model.selected, !selected.blank {
+                                bridge.setChatProject(nil)
+                            } else {
+                                model.newChatConversation(in: nil)
+                            }
+                        }
+                    )
+                } else {
+                    ProjectPickerPopover(
+                        workspacePath: model.workspacePath,
+                        projects: model.projectPaths,
+                        projectTitle: { model.projectTitle(for: $0) },
+                        onSelect: { path in
+                            showProjectMenu = false
+                            model.selectProject(path)
+                        },
+                        onChoose: {
+                            showProjectMenu = false
+                            model.chooseWorkspace()
+                        },
+                        onClear: {
+                            showProjectMenu = false
+                            model.setWorkspace("")
+                        }
+                    )
+                }
             }
             .help(AppCopy.text("composer.projectPickerHelp"))
 
-            Button {
-                showWorkLocationMenu.toggle()
-            } label: {
-                contextPill(icon: workLocationIcon, title: workLocationTitle)
-            }
-            .buttonStyle(.plain)
-            .popover(isPresented: $showWorkLocationMenu, arrowEdge: .bottom) {
-                WorkLocationPopover(
-                    selection: model.workLocation,
-                    hosts: model.sshHosts,
-                    sshAvailable: SSHRunner.isAvailable,
-                    remotePath: model.remoteWorkspace?.remotePath
-                ) { setting in
-                    model.setWorkLocation(setting)
-                    showWorkLocationMenu = false
-                } onManageHosts: {
-                    showWorkLocationMenu = false
-                    model.presentSettings(tab: "general")
-                } onChooseFolder: {
-                    showWorkLocationMenu = false
-                    showRemoteFolderPicker = true
-                }
-            }
-            .help(AppCopy.text("workLocation.help"))
-            .sheet(isPresented: $showRemoteFolderPicker) {
-                RemoteFolderPickerView(model: model)
-            }
-
-            if gitSnapshot.isRepository {
+            if model.activeArea == .coding {
                 Button {
-                    showBranchMenu.toggle()
+                    showWorkLocationMenu.toggle()
                 } label: {
-                    contextPill(icon: "arrow.triangle.branch", title: gitBranchName)
+                    contextPill(icon: workLocationIcon, title: workLocationTitle)
                 }
                 .buttonStyle(.plain)
-                .disabled(bridge.isBusy)
-                .popover(isPresented: $showBranchMenu, arrowEdge: .bottom) {
-                    GitBranchPopover(
-                        snapshot: gitSnapshot,
-                        error: gitError,
-                        busy: gitBusy,
-                        onSelect: selectBranch,
-                        onSelectRemote: selectRemoteBranch,
-                        onCreate: createBranch,
-                        onFetch: fetchFromRemote,
-                        onPush: pushCurrentBranch
-                    )
+                .popover(isPresented: $showWorkLocationMenu, arrowEdge: .bottom) {
+                    WorkLocationPopover(
+                        selection: model.workLocation,
+                        hosts: model.sshHosts,
+                        sshAvailable: SSHRunner.isAvailable,
+                        remotePath: model.remoteWorkspace?.remotePath
+                    ) { setting in
+                        model.setWorkLocation(setting)
+                        showWorkLocationMenu = false
+                    } onManageHosts: {
+                        showWorkLocationMenu = false
+                        model.presentSettings(tab: "general")
+                    } onChooseFolder: {
+                        showWorkLocationMenu = false
+                        showRemoteFolderPicker = true
+                    }
                 }
-                .help(AppCopy.text("git.branchHelp"))
+                .help(AppCopy.text("workLocation.help"))
+                .sheet(isPresented: $showRemoteFolderPicker) {
+                    RemoteFolderPickerView(model: model)
+                }
+
+                if gitSnapshot.isRepository {
+                    Button {
+                        showBranchMenu.toggle()
+                    } label: {
+                        contextPill(icon: "arrow.triangle.branch", title: gitBranchName)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(bridge.isBusy)
+                    .popover(isPresented: $showBranchMenu, arrowEdge: .bottom) {
+                        GitBranchPopover(
+                            snapshot: gitSnapshot,
+                            error: gitError,
+                            busy: gitBusy,
+                            onSelect: selectBranch,
+                            onSelectRemote: selectRemoteBranch,
+                            onCreate: createBranch,
+                            onFetch: fetchFromRemote,
+                            onPush: pushCurrentBranch
+                        )
+                    }
+                    .help(AppCopy.text("git.branchHelp"))
+                }
             }
 
             Spacer(minLength: 0)
@@ -804,10 +844,30 @@ struct ChatComposer: View {
         URL(fileURLWithPath: model.workspacePath).lastPathComponent
     }
 
-    private var projectName: String {
-        model.workspacePath.isEmpty
-            ? AppCopy.text("composer.chooseProject")
-            : workspaceName
+    private var currentProjectTitle: String {
+        if model.activeArea == .chat {
+            if let projectID = model.selected?.chatProjectID,
+               let project = model.chatProjects.first(where: { $0.id == projectID }) {
+                return project.name
+            }
+            return AppCopy.text("composer.chooseProject")
+        } else {
+            let path = model.workspacePath
+            guard !path.isEmpty else { return AppCopy.text("composer.chooseProject") }
+            return model.projectTitle(for: path)
+        }
+    }
+
+    private var currentProjectIcon: String {
+        if model.activeArea == .chat {
+            if let projectID = model.selected?.chatProjectID,
+               let project = model.chatProjects.first(where: { $0.id == projectID }) {
+                return project.pinned ? "pin.fill" : "bubble.left.and.bubble.right"
+            }
+            return "folder.badge.plus"
+        } else {
+            return model.workspacePath.isEmpty ? "folder.badge.plus" : "folder"
+        }
     }
 
     private var gitBranchName: String {

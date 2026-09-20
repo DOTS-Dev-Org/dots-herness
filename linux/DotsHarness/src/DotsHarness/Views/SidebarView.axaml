@@ -1,7 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:core="using:DotsHarnessCore"
              xmlns:views="using:DotsHarness.Views"
              x:Class="DotsHarness.Views.SidebarView"
+             x:DataType="core:AppModel"
              Background="{DynamicResource ChromeBackground}">
     <DockPanel>
         <DockPanel DockPanel.Dock="Top" Margin="12,12,12,8">
@@ -26,7 +28,7 @@
             <ListBox x:Name="CodingProjectList" Height="86" BorderThickness="0" Background="Transparent"
                      SelectionChanged="OnCodingProjectSelected">
                 <ListBox.ItemTemplate>
-                    <DataTemplate>
+                    <DataTemplate x:CompileBindings="False">
                         <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis"
                                    Foreground="{DynamicResource TextPrimary}" Margin="4,3"/>
                     </DataTemplate>
@@ -45,7 +47,7 @@
             <ListBox x:Name="ChatProjectList" Height="86" BorderThickness="0" Background="Transparent"
                      SelectionChanged="OnChatProjectSelected">
                 <ListBox.ItemTemplate>
-                    <DataTemplate>
+                    <DataTemplate x:DataType="core:ChatProject">
                         <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"
                                    Foreground="{DynamicResource TextPrimary}" Margin="4,3"/>
                     </DataTemplate>
@@ -65,7 +67,7 @@
                  SelectionChanged="OnSelect"
                  Margin="4,0">
             <ListBox.ItemTemplate>
-                <DataTemplate>
+                <DataTemplate x:DataType="core:Conversation">
                     <DockPanel Margin="4,6">
                         <Ellipse Width="7" Height="7" Fill="#2ECC71" DockPanel.Dock="Right"
                                  VerticalAlignment="Center"

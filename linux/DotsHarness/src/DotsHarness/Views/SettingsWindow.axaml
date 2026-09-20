@@ -1,6 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="using:DotsHarnessCore"
         x:Class="DotsHarness.Views.SettingsWindow"
+        x:DataType="core:AppModel"
         Icon="avares://DotsHarness/Resources/DotsHarness.ico"
         Title="Settings"
         MinWidth="720" MinHeight="480"

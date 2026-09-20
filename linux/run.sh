@@ -7,7 +7,7 @@ cd "$NATIVE_DIR"
 
 PROJECT_NAME="DotsHarness"
 APP_ROOT="${APP_ROOT:-$NATIVE_DIR/DotsHarness}"
-CONFIGURATION="${CONFIGURATION:-Debug}"
+CONFIGURATION="${CONFIGURATION:-Release}"
 BUILD_PATH="${BUILD_PATH:-}"
 BUILD_ONLY=false
 PACKAGE=false
@@ -27,7 +27,7 @@ Kullanim:
   ./run.sh -- --help
 
 Secenekler:
-  -c, --configuration NAME  Derleme yapilandirmasi (varsayilan: Debug).
+  -c, --configuration NAME  Derleme yapilandirmasi (varsayilan: Release).
       --app-root PATH       Linux proje kokunu elle ver.
       --build-path PATH     Derleme cikti klasoru.
       --build-only          Derle, uygulamayi acma.
@@ -190,7 +190,7 @@ detect_kind() {
 
 KIND="$(detect_kind || true)"
 if [[ -z "$KIND" ]]; then
-    fail "Linux masaustu hedefi bulunamadi: $APP_ROOT. Bu depoda simdilik yalnizca macos/DotsHarness ve windows/DotsHarness var."
+        fail "Linux masaustu hedefi bulunamadi: $APP_ROOT."
 fi
 
 CMAKE_BUILD_TYPE="Debug"

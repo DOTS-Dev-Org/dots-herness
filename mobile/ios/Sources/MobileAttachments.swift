@@ -45,7 +45,11 @@ struct MobileAttachment: Identifiable, Codable, Equatable, Sendable {
                     ? .video
                     : .file
         let scoped = url.startAccessingSecurityScopedResource()
-        let bookmark = try? url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil)
+        // iOS does not expose the macOS `.withSecurityScope` bookmark option.
+        // The document picker URL itself carries the temporary security scope;
+        // retaining a normal bookmark keeps the locator recoverable across
+        // launches without using an unavailable macOS-only API.
+        let bookmark = try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
         if scoped { url.stopAccessingSecurityScopedResource() }
         self.init(
             attachmentID: UUID().uuidString,
@@ -93,7 +97,7 @@ struct MobileAttachment: Identifiable, Codable, Equatable, Sendable {
         var stale = false
         return (try? URL(
             resolvingBookmarkData: bookmarkData,
-            options: [.withSecurityScope],
+            options: [],
             relativeTo: nil,
             bookmarkDataIsStale: &stale
         )) ?? URL(fileURLWithPath: sourceLocator)
@@ -121,7 +125,10 @@ struct MobileAttachment: Identifiable, Codable, Equatable, Sendable {
     }
 
     func stabilized(in directory: URL, fileManager: FileManager = .default) -> MobileAttachment {
-        if let snapshotPath, fileManager.fileExists(atPath: snapshotPath) { return self }
+        // A recorded snapshot path is part of immutable history. If its bytes
+        // are missing, never replace V1 with whatever the source contains now;
+        // an explicit `refreshed` call is the only path allowed to create V2.
+        if snapshotPath != nil { return self }
         do {
             try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
             return try withSource { source in
@@ -191,11 +198,42 @@ struct MobileAttachment: Identifiable, Codable, Equatable, Sendable {
             "kind": kind.rawValue,
             "mime_type": mimeType,
             "revision": revision,
+            "source_locator": sourceLocator,
+            "source_status": sourceStatus.rawValue,
         ]
+        if let bookmarkData { block["bookmark_data"] = bookmarkData.base64EncodedString() }
         if let snapshotPath { block["snapshot_path"] = snapshotPath }
         if let contentHash { block["content_hash"] = contentHash }
         if let deliveredHash { block["delivered_hash"] = deliveredHash }
         return block
+    }
+
+    init?(canonicalBlock block: [String: Any]) {
+        guard block["type"] as? String == "attachment",
+              let attachmentID = block["attachment_id"] as? String,
+              !attachmentID.isEmpty else { return nil }
+        let snapshotPath = block["snapshot_path"] as? String
+        // Older mobile context records did not persist the source locator. If
+        // the immutable snapshot is all that remains, use it as a safe
+        // fallback; this preserves V1 without inventing a new revision.
+        guard let sourceLocator = (block["source_locator"] as? String).flatMap({ $0.isEmpty ? nil : $0 }) ?? snapshotPath else { return nil }
+        let kind = MobileAttachmentKind(rawValue: block["kind"] as? String ?? "file") ?? .file
+        let sourceStatus = MobileAttachmentSourceStatus(rawValue: block["source_status"] as? String ?? "current") ?? .current
+        let revision = (block["revision"] as? NSNumber)?.intValue ?? 1
+        let bookmarkData = (block["bookmark_data"] as? String).flatMap { Data(base64Encoded: $0) }
+        self.init(
+            attachmentID: attachmentID,
+            displayName: block["name"] as? String ?? "attachment",
+            kind: kind,
+            mimeType: block["mime_type"] as? String ?? "application/octet-stream",
+            sourceLocator: sourceLocator,
+            bookmarkData: bookmarkData,
+            snapshotPath: snapshotPath,
+            contentHash: block["content_hash"] as? String,
+            revision: max(revision, 1),
+            deliveredHash: block["delivered_hash"] as? String,
+            sourceStatus: sourceStatus
+        )
     }
 
     private struct Signature: Equatable {
@@ -216,7 +254,8 @@ struct MobileAttachment: Identifiable, Codable, Equatable, Sendable {
             while let chunk = try handle.read(upToCount: 1024 * 1024), !chunk.isEmpty { hasher.update(data: chunk) }
             try handle.close()
             let hash = hasher.finalize().map { String(format: "%02x", $0) }.joined()
-            if before == try signature(url) { return hash }
+            let after = try signature(url)
+            if before == after { return hash }
         }
         throw CocoaError(.fileReadCorruptFile)
     }

@@ -224,6 +224,14 @@ public struct AgentMessage: Sendable, Equatable, Codable {
                     "type": "image_url",
                     "image_url": ["url": "data:" + attachment.mimeType + ";base64," + data.base64EncodedString()],
                 ])
+            } else if let data = inlineFileData(attachment) {
+                blocks.append([
+                    "type": "file",
+                    "file": [
+                        "filename": attachment.name,
+                        "file_data": "data:" + attachment.mimeType + ";base64," + data.base64EncodedString(),
+                    ],
+                ])
             } else {
                 blocks.append(["type": "text", "text": attachmentDescription(attachment)])
             }
@@ -244,6 +252,15 @@ public struct AgentMessage: Sendable, Equatable, Codable {
                         "data": data.base64EncodedString(),
                     ],
                 ])
+            } else if isPDF(attachment), let data = inlineFileData(attachment) {
+                blocks.append([
+                    "type": "document",
+                    "source": [
+                        "type": "base64",
+                        "media_type": "application/pdf",
+                        "data": data.base64EncodedString(),
+                    ],
+                ])
             } else {
                 blocks.append(["type": "text", "text": attachmentDescription(attachment)])
             }
@@ -259,6 +276,12 @@ public struct AgentMessage: Sendable, Equatable, Codable {
                 blocks.append([
                     "type": "input_image",
                     "image_url": "data:" + attachment.mimeType + ";base64," + data.base64EncodedString(),
+                ])
+            } else if let data = inlineFileData(attachment) {
+                blocks.append([
+                    "type": "input_file",
+                    "filename": attachment.name,
+                    "file_data": "data:" + attachment.mimeType + ";base64," + data.base64EncodedString(),
                 ])
             } else {
                 blocks.append(["type": "input_text", "text": attachmentDescription(attachment)])
@@ -288,8 +311,25 @@ public struct AgentMessage: Sendable, Equatable, Codable {
         return data
     }
 
+    private func inlineFileData(_ attachment: ChatAttachment) -> Data? {
+        guard attachment.kind == .file,
+              let source = attachment.providerURL,
+              let data = try? Data(contentsOf: source),
+              data.count <= 50 * 1024 * 1024 else { return nil }
+        return data
+    }
+
+    private func isPDF(_ attachment: ChatAttachment) -> Bool {
+        attachment.mimeType.caseInsensitiveCompare("application/pdf") == .orderedSame
+            || attachment.name.lowercased().hasSuffix(".pdf")
+    }
+
     private func attachmentDescription(_ attachment: ChatAttachment) -> String {
-        "unsupported_attachment_kind: " + attachment.kind.rawValue
+        guard attachment.providerURL != nil else {
+            return "source_missing: attachment_id: " + attachment.id
+                + "; historical_revision_preserved; latest_revision_unavailable"
+        }
+        return "unsupported_attachment_kind: " + attachment.kind.rawValue
             + "; attachment_id: " + attachment.id
             + "; name: " + attachment.name
             + ". The host did not silently drop this attachment, but this provider route does not support its wire format."
@@ -888,12 +928,16 @@ public struct NativeAgentClient: Sendable {
         for message in messages where message.role != .system {
             switch message.role {
             case .tool:
+                var parts: [[String: Any]] = [["functionResponse": [
+                    "name": message.toolCallID ?? "tool",
+                    "response": ["result": message.content],
+                ]]]
+                if !message.attachments.isEmpty {
+                    parts.append(contentsOf: message.geminiParts())
+                }
                 contents.append([
                     "role": "user",
-                    "parts": [["functionResponse": [
-                        "name": message.toolCallID ?? "tool",
-                        "response": ["result": message.content],
-                    ]]],
+                    "parts": parts,
                 ])
             case .assistant:
                 var parts: [[String: Any]] = []

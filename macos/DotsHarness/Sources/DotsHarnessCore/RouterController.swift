@@ -53,6 +53,8 @@ public final class RouterController: ObservableObject {
     @Published public private(set) var lastFailover: String?
     @Published public var status: String = AppCopy.text("common.idle")
     @Published public var error: String?
+    /// Providers whose live `/models` listing failed on the last refresh (`Provider: reason`); their registry models are still shown.
+    @Published public var modelListIssues: [String] = []
     /// Live Claude subscription rate-limit usage. In-memory only, no persistence.
     @Published public var claudeUsage: ClaudeUsageState = .idle
     /// Per-account rate-limit picture keyed by account id. In-memory only.
@@ -84,7 +86,9 @@ public final class RouterController: ObservableObject {
     private var callbackListener: NWListener?
     private var callbackConnection: NWConnection?
     private var callbackPort = 1455
-    private var modelRefreshAttempted = false
+    private var lastModelRefresh: Date?
+    /// Live listings go stale as providers ship and retire models; re-fetch after this long.
+    private static let modelRefreshInterval: TimeInterval = 6 * 3600
     private var modelRefreshTask: Task<Void, Never>?
     /// Effort chosen by automatic routing for the in-flight request.
     private var autoEffortOverride: String?
@@ -141,8 +145,8 @@ public final class RouterController: ObservableObject {
             await inflight.value
             if !force { return }
         }
-        if !force, modelRefreshAttempted { return }
-        modelRefreshAttempted = true
+        if !force, let last = lastModelRefresh, Date().timeIntervalSince(last) < Self.modelRefreshInterval { return }
+        lastModelRefresh = Date()
         let task = Task { @MainActor [self] in await performModelRefresh() }
         modelRefreshTask = task
         await task.value
@@ -157,28 +161,28 @@ public final class RouterController: ObservableObject {
         // slowest provider, not the sum. Requests are built here so Keychain reads
         // stay on the main actor.
         var requests: [String: URLRequest] = [:]
-        for account in activeAccounts where account.api != RouterAPIKind.chatGPT.rawValue {
+        for account in activeAccounts where !registryOnlyModels(account) {
             guard let url = modelsURL(for: account) else { continue }
             var request = URLRequest(url: url, timeoutInterval: 8)
             authorize(&request, for: account)
             requests[account.id] = request
         }
-        let payloads: [String: Data] = await withTaskGroup(of: (String, Data?).self) { group in
+        let results: [String: Result<Data, Error>] = await withTaskGroup(of: (String, Result<Data, Error>).self) { group in
             for (id, request) in requests {
                 group.addTask {
-                    guard let (data, response) = try? await URLSession.shared.data(for: request),
-                          (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) == true else {
-                        return (id, nil)
-                    }
-                    return (id, data)
+                    do {
+                        let (data, response) = try await URLSession.shared.data(for: request)
+                        let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+                        guard (200..<300).contains(code) else { throw RouterTestError.http(code) }
+                        return (id, .success(data))
+                    } catch { return (id, .failure(error)) }
                 }
             }
-            var collected: [String: Data] = [:]
-            for await (id, data) in group {
-                if let data { collected[id] = data }
-            }
+            var collected: [String: Result<Data, Error>] = [:]
+            for await (id, result) in group { collected[id] = result }
             return collected
         }
+        var issues: [String] = []
 
         for account in activeAccounts {
             let owner = RouterCatalog.label(for: account.provider)
@@ -206,29 +210,39 @@ public final class RouterController: ObservableObject {
 
             // The Codex backend has no model listing (its `/models` 400s and the
             // ChatGPT web list carries different ids), so it stays registry-driven.
-            if account.api == RouterAPIKind.chatGPT.rawValue {
+            if registryOnlyModels(account) {
                 for spec in specModels { next.append(model(id: spec.id)) }
                 if specModels.isEmpty, !account.model.isEmpty { next.append(model(id: account.model)) }
                 continue
             }
 
             var live: [RouterModel] = []
-            if let data = payloads[account.id],
-               let payload = try? JSONCodec.parse(data),
-               case .array(let items) = payload["data"] {
-                live = items.compactMap { item in
-                    guard let id = item["id"]?.string, !id.isEmpty else { return nil }
-                    var discovered = model(id: id, name: item["display_name"]?.string)
-                    discovered.contextWindow = item["context_length"]?.int
-                        ?? item["contextWindow"]?.int
-                        ?? discovered.contextWindow
-                    return discovered
+            switch results[account.id] {
+            case .failure(let failure):
+                issues.append("\(owner): \(failure.localizedDescription)")
+            case .success(let data):
+                if let payload = try? JSONCodec.parse(data), case .array(let items) = payload["data"] {
+                    live = items.compactMap { item in
+                        // Gemini's OpenAI-compatible listing prefixes ids with `models/`.
+                        guard var id = item["id"]?.string, !id.isEmpty else { return nil }
+                        if id.hasPrefix("models/") { id.removeFirst("models/".count) }
+                        var discovered = model(id: id, name: item["display_name"]?.string)
+                        discovered.contextWindow = item["context_length"]?.int
+                            ?? item["contextWindow"]?.int
+                            ?? discovered.contextWindow
+                        return discovered
+                    }
+                } else {
+                    issues.append("\(owner): unrecognized model list")
                 }
+            case nil: break
             }
             next.append(contentsOf: live)
-            // Registry entries the listing omits (aliases such as `claude-haiku-4-5`)
-            // still route fine, so keep them as a floor rather than losing them.
-            for spec in specModels where !live.contains(where: { $0.id == spec.id }) {
+            // Registry entries the listing omits are a floor for when the listing is
+            // unavailable. Once it succeeds it is authoritative — retired models drop
+            // out — except on Anthropic, whose listing omits aliases like `claude-haiku-4-5`.
+            let listingIsAuthoritative = !live.isEmpty && account.api != RouterAPIKind.anthropic.rawValue
+            for spec in specModels where !listingIsAuthoritative && !live.contains(where: { $0.id == spec.id }) {
                 next.append(model(id: spec.id))
             }
             if live.isEmpty,
@@ -237,6 +251,7 @@ public final class RouterController: ObservableObject {
                 next.append(model(id: account.model))
             }
         }
+        modelListIssues = issues
         models = next.reduce(into: []) { result, model in
             if !result.contains(where: { $0.id == model.id }) { result.append(model) }
         }
@@ -1094,6 +1109,13 @@ public final class RouterController: ObservableObject {
     public func toggleImageFallback(_ connection: RouterConnection) async {
         do { try store.setImageFallback(connection.id, !connection.imageFallbackEnabled); await refresh() }
         catch { self.error = error.localizedDescription }
+    }
+
+    /// Backends with no OpenAI-style `/models` (ChatGPT Codex, Google Code Assist) stay
+    /// registry-driven; everything else lists live, keeping the registry as a floor.
+    private func registryOnlyModels(_ account: StoredProviderAccount) -> Bool {
+        (account.api == RouterAPIKind.chatGPT.rawValue && account.provider == "gpt")
+            || account.api == RouterAPIKind.geminiCLI.rawValue
     }
 
     /// Where to list this account's models. A provider may host the listing off

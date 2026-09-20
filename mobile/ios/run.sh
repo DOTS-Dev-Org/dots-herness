@@ -10,7 +10,7 @@ PROJECT_FILE="$IOS_DIR/${PROJECT_NAME}.xcodeproj"
 SPEC_FILE="$IOS_DIR/project.yml"
 SCHEME="${SCHEME:-$PROJECT_NAME}"
 BUNDLE_ID="${BUNDLE_ID:-com.dots.herness}"
-CONFIGURATION="${CONFIGURATION:-Debug}"
+CONFIGURATION="${CONFIGURATION:-Release}"
 BUILD_MODE="${BUILD_MODE:-simulator}"
 SIMULATOR_NAME="${SIMULATOR_NAME:-iPhone 17 Pro}"
 DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-$IOS_DIR/build/SimulatorDerivedData}"
@@ -29,7 +29,7 @@ Kullanim:
 
 Secenekler:
   -d, --device NAME_OR_UDID  Kullanilacak simulator adi veya UDID'si.
-  -c, --configuration NAME   Xcode yapilandirmasi (Debug veya Release).
+  -c, --configuration NAME   Xcode yapilandirmasi (varsayilan: Release; Debug ile degistirilebilir).
       --derived-data PATH    DerivedData klasoru.
       --build-mode MODE      simulator veya archive.
       --archive PATH         Archive cikti yolu; build-mode=archive yapar.

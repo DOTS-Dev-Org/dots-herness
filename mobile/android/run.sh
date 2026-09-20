@@ -8,7 +8,7 @@ cd "$ANDROID_DIR"
 GRADLE_WRAPPER="${GRADLE_WRAPPER:-$ANDROID_DIR/gradlew}"
 GRADLE_COMMAND="${GRADLE_COMMAND:-}"
 MODULE="${MODULE:-app}"
-BUILD_VARIANT="${BUILD_VARIANT:-${CONFIGURATION:-debug}}"
+BUILD_VARIANT="${BUILD_VARIANT:-${CONFIGURATION:-release}}"
 BUILD_TASK="${GRADLE_TASK:-}"
 REQUESTED_DEVICE="${ANDROID_DEVICE_SERIAL:-${ADB_SERIAL:-}}"
 ADB_PATH="${ADB_PATH:-${ANDROID_ADB:-}}"
@@ -35,7 +35,7 @@ Kullanim:
 
 Secenekler:
   -d, --device SERIAL       Kullanilacak adb cihaz/emulator seri numarasi.
-  -v, --variant NAME        Android build variant'i (varsayilan: debug).
+  -v, --variant NAME        Android build variant'i (varsayilan: release).
   -c, --configuration NAME  --variant ile ayni anlamdadir.
       --apk PATH            Kurulacak APK yolu.
       --clean-install       Once uygulamayi kaldir, sonra temiz kurulum yap.

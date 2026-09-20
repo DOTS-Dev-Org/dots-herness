@@ -99,6 +99,7 @@ class MobileHarnessRuntime(
                     .put("additionalProperties", false),
             ) { input -> latestAttachmentResult(input) },
         ))
+        restoreModelContext()
     }
 
     fun register(specs: List<AgentToolSpec>) { specs.forEach { tools[it.name] = it } }
@@ -393,6 +394,78 @@ class MobileHarnessRuntime(
         val content = JSONArray().put(JSONObject().put("type", "text").put("text", text))
         attachments.forEach { content.put(it.canonicalBlock()) }
         put("content", content)
+    }
+
+    private fun restoreModelContext() {
+        val stored = stateStore?.latestModelContext() ?: return
+        val snapshot = runCatching { JSONObject(stored.content) }.getOrNull() ?: return
+        val storedMessages = snapshot.optJSONArray("messages") ?: return
+        if (storedMessages.length() == 0) return
+        conversationId = stored.conversationId
+        wire.clear()
+        for (index in 0 until storedMessages.length()) {
+            storedMessages.optJSONObject(index)?.let { message ->
+                wire += JSONObject(message.toString())
+                restoreAttachments(message.opt("content"))
+            }
+        }
+        promptHistory = MobilePromptHistory(snapshot.optString("policy").takeIf { it.isNotEmpty() })
+        contextSegment = snapshot.optInt("context_segment", 0).coerceAtLeast(0)
+        var normalizedLegacyAttachment = false
+        appContext?.let { context ->
+            attachments.toMap().forEach { (id, attachment) ->
+                if (attachment.snapshotPath != null) return@forEach
+                val stable = attachment.stabilized(context)
+                if (stable.snapshotPath == null) return@forEach
+                attachments[id] = stable
+                normalizedLegacyAttachment = true
+            }
+        }
+        if (normalizedLegacyAttachment) {
+            for (index in 0 until wire.size) {
+                val message = wire[index]
+                message.opt("content")?.let { message.put("content", replaceRestoredAttachments(it)) }
+            }
+            persistModelContext()
+        }
+    }
+
+    private fun restoreAttachments(value: Any?) {
+        when (value) {
+            is JSONObject -> {
+                if (value.optString("type") == "attachment") {
+                    MobileAttachment.fromCanonicalBlock(value)?.let(::mergeRestoredAttachment)
+                }
+                if (value.optString("type") == "tool_result") restoreAttachments(value.opt("attachment"))
+            }
+            is JSONArray -> for (index in 0 until value.length()) restoreAttachments(value.opt(index))
+        }
+    }
+
+    private fun replaceRestoredAttachments(value: Any?): Any? = when (value) {
+        is JSONObject -> {
+            if (value.optString("type") == "attachment") {
+                val id = value.optString("attachment_id")
+                attachments[id]?.let { return it.canonicalBlock() }
+            }
+            if (value.optString("type") == "tool_result" && value.has("attachment")) {
+                value.put("attachment", replaceRestoredAttachments(value.opt("attachment")))
+            }
+            value
+        }
+        is JSONArray -> JSONArray().also { output ->
+            for (index in 0 until value.length()) output.put(replaceRestoredAttachments(value.opt(index)))
+        }
+        else -> value
+    }
+
+    private fun mergeRestoredAttachment(candidate: MobileAttachment) {
+        val existing = attachments[candidate.attachmentId]
+        if (existing == null || candidate.revision > existing.revision ||
+            (existing.snapshotPath == null && candidate.snapshotPath != null) ||
+            (existing.deliveredHash == null && candidate.deliveredHash != null)) {
+            attachments[candidate.attachmentId] = candidate
+        }
     }
 
     private suspend fun latestAttachmentResult(input: JSONObject): String {
@@ -904,7 +977,11 @@ class MobileHarnessRuntime(
     }
 
     private fun persistModelContext() {
-        val snapshot = JSONObject().put("version", 1).put("policy", promptHistory.policy.orEmpty()).put("messages", JSONArray(wire))
+        val snapshot = JSONObject()
+            .put("version", 2)
+            .put("policy", promptHistory.policy.orEmpty())
+            .put("context_segment", contextSegment)
+            .put("messages", JSONArray(wire))
         stateStore?.saveModelContext(conversationId, snapshot.toString())
     }
 

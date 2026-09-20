@@ -3,7 +3,7 @@
 [CmdletBinding()]
 param(
     [Alias('c')]
-    [string]$Configuration = $(if ($env:CONFIGURATION) { $env:CONFIGURATION } else { 'Debug' }),
+    [string]$Configuration = $(if ($env:CONFIGURATION) { $env:CONFIGURATION } else { 'Release' }),
 
     [string]$Framework = $(if ($env:FRAMEWORK) { $env:FRAMEWORK } else { 'net8.0-windows' }),
 
@@ -52,7 +52,7 @@ Kullanim:
   .\run.ps1 -- --help
 
 Secenekler:
-  -c, -Configuration NAME  .NET yapilandirmasi (varsayilan: Debug).
+  -c, -Configuration NAME  .NET yapilandirmasi (varsayilan: Release).
       -Framework TFM       Hedef cerceve (varsayilan: net8.0-windows).
       -Runtime RID         Opsiyonel runtime kimligi (ornek: win-x64).
       -Output PATH         Derleme cikti klasoru.

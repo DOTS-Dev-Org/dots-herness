@@ -142,7 +142,7 @@ public sealed class AgentBridgeTests
     public void PlanModeOnlyExposesReadOnlyWorkspaceTools()
     {
         Assert.Equal(
-            new[] { "list_files", "read_file", "grep_files", "run_command" },
+            new[] { "list_files", "read_file", "grep_files", "inspect_generated_media", "run_command" },
             NativeWorkspaceTools.PlanDefinitions.Select(tool => tool.Name));
         Assert.True(NativeWorkspaceTools.IsWorkspaceMutation("write_file"));
         Assert.True(NativeWorkspaceTools.IsWorkspaceMutation("remove_file"));
@@ -151,6 +151,7 @@ public sealed class AgentBridgeTests
         Assert.True(NativeWorkspaceTools.IsReadOnly("read_file"));
         Assert.False(NativeWorkspaceTools.IsReadOnly("write_file"));
         Assert.True(NativeWorkspaceTools.IsReadOnly("grep_files"));
+        Assert.True(NativeWorkspaceTools.IsReadOnly("inspect_generated_media"));
         Assert.False(NativeWorkspaceTools.IsReadOnly("run_command"));
     }
 

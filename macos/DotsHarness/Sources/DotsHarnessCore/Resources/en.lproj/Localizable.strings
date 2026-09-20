@@ -1165,3 +1165,6 @@
 "dock.selectFile" = "Select a file from the workspace tree";
 "dock.binaryFile" = "Binary or unreadable file";
 "conversation.translate" = "Translate";
+"project.missing.title" = "Project Folder Not Found: %@";
+"project.missing.message" = "The project folder at '%@' may have been moved or deleted. Please choose its new location or remove the project.";
+"project.missing.locate" = "Locate…";
