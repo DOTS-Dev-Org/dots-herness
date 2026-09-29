@@ -1277,7 +1277,16 @@ public sealed class NativeProviderGateway : IDisposable
         finally { context.Response.Close(); }
     }
 
-    public void Dispose() { Stop(); _listener.Close(); }
+    public void Dispose()
+    {
+        // Close alone releases the port. Stop() followed by Close() makes HttpListener rebind the port
+        // to remove its prefix, which throws "Address already in use" once anything else has taken it.
+        Running = false;
+        _stop?.Cancel();
+        try { _listener.Close(); }
+        catch (HttpListenerException) { }
+        catch (ObjectDisposedException) { }
+    }
 }
 
 /// Effort levels per model, low to high. Keep in sync with the "efforts" fields in

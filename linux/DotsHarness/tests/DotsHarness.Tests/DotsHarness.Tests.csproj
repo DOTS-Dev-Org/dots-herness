@@ -20,6 +20,7 @@
     <Compile Include="..\..\..\..\windows\DotsHarness\tests\DotsHarness.Tests\ScheduledTaskTests.cs" Link="ScheduledTaskTests.cs" />
     <Compile Include="..\..\..\..\shared\SkillCatalogTests.cs" Link="SkillCatalogTests.cs" />
     <Compile Include="..\..\..\..\shared\SSHRemoteTests.cs" Link="SSHRemoteTests.cs" />
+    <Compile Include="..\..\..\..\shared\TestPorts.cs" Link="TestPorts.cs" />
     <Compile Include="..\..\..\..\shared\FeedbackLearningTests.cs" Link="FeedbackLearningTests.cs" />
     <Compile Include="..\..\..\..\shared\ConversationRewindTests.cs" Link="ConversationRewindTests.cs" />
     <Compile Include="..\..\..\..\shared\WorkspaceSnapshotsTests.cs" Link="WorkspaceSnapshotsTests.cs" />

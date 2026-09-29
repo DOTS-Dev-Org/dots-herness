@@ -173,12 +173,7 @@ public sealed class FeedbackLearningTests : IDisposable
             {
                 ["choices"] = new JsonArray { new JsonObject { ["message"] = new JsonObject { ["role"] = "assistant", ["content"] = reply } } },
             }.ToJsonString());
-            using var listener = new TcpListener(IPAddress.Loopback, 0);
-            listener.Start();
-            var port = checked((ushort)((IPEndPoint)listener.LocalEndpoint).Port);
-            listener.Stop();
-            _gateway = new NativeProviderGateway(port, _ => Task.FromResult(new NativeGatewayResponse(200, body)));
-            _gateway.Start();
+            _gateway = TestPorts.Start(_ => Task.FromResult(new NativeGatewayResponse(200, body)));
         }
 
         public Uri Url => _gateway.Url;

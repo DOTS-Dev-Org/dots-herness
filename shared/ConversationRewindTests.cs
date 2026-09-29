@@ -139,8 +139,7 @@ public sealed class ConversationRewindTests : IDisposable
 
         public FakeProvider()
         {
-            _gateway = new NativeProviderGateway(FreePort(), HandleAsync);
-            _gateway.Start();
+            _gateway = TestPorts.Start(HandleAsync);
         }
 
         public Uri Url => _gateway.Url;
@@ -170,11 +169,5 @@ public sealed class ConversationRewindTests : IDisposable
 
         public void Dispose() => _gateway.Dispose();
 
-        private static ushort FreePort()
-        {
-            using var listener = new TcpListener(IPAddress.Loopback, 0);
-            listener.Start();
-            return checked((ushort)((IPEndPoint)listener.LocalEndpoint).Port);
-        }
     }
 }
