@@ -1018,6 +1018,7 @@
 "explore.readPaths" = "Files the subagent opened: %@";
 "explore.wrapUp" = "Stop searching. Answer the original question now from what you have already found, and say plainly what you could not determine.";
 "explore.summary" = "explore: %1$d steps, %2$d files read, %3$@";
+"delegate.summary" = "delegate: %1$d steps, %2$d files written, %3$@";
 "explore.condense" = "Your answer is too long for the caller. Rewrite it under %d characters, keeping every path:line reference and every finding; drop excerpts and repetition first, and say what you dropped.";
 "explore.resume" = "An earlier attempt at this same question was cut short. Continue from what it already found instead of searching again:\n%@";
 "explore.partial" = "Partial findings before the run stopped:\n%@";

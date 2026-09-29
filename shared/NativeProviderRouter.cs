@@ -870,11 +870,31 @@ public sealed class NativeProviderRouter
             body["system"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = system, ["cache_control"] = Ephemeral() });
         if (body["tools"] is JsonArray { Count: > 0 } tools && tools[^1] is JsonObject lastTool)
             lastTool["cache_control"] = Ephemeral();
-        if (body["messages"] is not JsonArray { Count: > 0 } messages || messages[^1] is not JsonObject last) return;
-        switch (last["content"])
+        if (body["messages"] is not JsonArray { Count: > 0 } messages) return;
+        // Anthropic allows four breakpoints. Mark the last message (write point)
+        // and the message right before the newest assistant turn, where the
+        // previous request wrote its cache, so long tool loops still hit.
+        var used = (body["system"] is JsonArray sys ? sys.OfType<JsonObject>().Count(b => b["cache_control"] is not null) : 0)
+            + (body["tools"] is JsonArray tl ? tl.OfType<JsonObject>().Count(b => b["cache_control"] is not null) : 0);
+        var targets = new List<int> { messages.Count - 1 };
+        for (var i = messages.Count - 1; i > 0; i--)
+        {
+            if (messages[i] is JsonObject m && m["role"]?.GetValue<string>() == "assistant")
+            {
+                if (i - 1 != messages.Count - 1) targets.Add(i - 1);
+                break;
+            }
+        }
+        foreach (var index in targets.Take(Math.Max(0, 4 - used)))
+            if (messages[index] is JsonObject message) MarkBreakpoint(message);
+    }
+
+    private static void MarkBreakpoint(JsonObject message)
+    {
+        switch (message["content"])
         {
             case JsonNodeValue value when value.TryGetValue<string>(out var text) && text.Length > 0:
-                last["content"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = text, ["cache_control"] = Ephemeral() });
+                message["content"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = text, ["cache_control"] = Ephemeral() });
                 break;
             case JsonArray { Count: > 0 } blocks when blocks[^1] is JsonObject lastBlock:
                 lastBlock["cache_control"] = Ephemeral();

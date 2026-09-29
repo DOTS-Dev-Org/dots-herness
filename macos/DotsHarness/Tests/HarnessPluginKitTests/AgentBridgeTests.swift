@@ -1051,14 +1051,18 @@ final class AgentBridgeTests: XCTestCase {
         codingHost.setWorkspace(workspace.path)
         let codingTools = codingHost.agentTools(workspace: workspace).defs.map(\.name)
         XCTAssertTrue(codingTools.contains("explore"), "explore tool must be available in coding area with open workspace")
+        XCTAssertTrue(codingTools.contains("delegate"), "delegate tool must be available in coding area with open workspace")
+        XCTAssertTrue(NativeAgentHost.planWithholds("delegate"), "a delegate writes, so plan mode withholds it")
 
         let chatHost = NativeAgentHost(paths: temporaryPaths(), endpoint: AgentEndpointController(), area: .chat)
         chatHost.setWorkspace(workspace.path)
         let chatTools = chatHost.agentTools(workspace: workspace).defs.map(\.name)
         XCTAssertFalse(chatTools.contains("explore"), "explore tool must not be exposed in chat area")
+        XCTAssertFalse(chatTools.contains("delegate"), "delegate tool must not be exposed in chat area")
 
         let noWorkspaceTools = codingHost.agentTools(workspace: nil).defs.map(\.name)
         XCTAssertFalse(noWorkspaceTools.contains("explore"), "explore tool must not be offered without a workspace")
+        XCTAssertFalse(noWorkspaceTools.contains("delegate"), "delegate tool must not be offered without a workspace")
     }
 
     func testPrefetchExploreCapsToMaxPerTurnAndRejectsExcess() async {
@@ -1668,6 +1672,34 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertEqual((lastContent?.last?["cache_control"] as? [String: String])?["type"], "ephemeral")
         // Anthropic has no `prompt_cache_key`; the key must not leak into the body.
         XCTAssertNil(body["prompt_cache_key"])
+    }
+
+    func testAnthropicKeepsPreviousWritePointAndNeverExceedsFourBreakpoints() throws {
+        let client = NativeAgentClient(configuration: AgentConfiguration(
+            baseURL: "https://example.test", model: "claude", apiKey: "k",
+            api: RouterAPIKind.anthropic.rawValue
+        ))
+        let body = client.makeBody(
+            messages: [
+                AgentMessage(role: .system, content: "core policy"),
+                AgentMessage(role: .user, content: "first"),
+                AgentMessage(role: .assistant, content: "answer"),
+                AgentMessage(role: .user, content: "second"),
+            ],
+            tools: [AgentToolDefinition(name: "read_file", description: "d", parameters: .object(["type": .string("object")]))],
+            cachePolicy: AgentCachePolicy()
+        )
+        let messages = try XCTUnwrap(body["messages"] as? [[String: Any]])
+        func marked(_ index: Int) -> Bool {
+            ((messages[index]["content"] as? [[String: Any]])?.last?["cache_control"]) != nil
+        }
+        XCTAssertTrue(marked(0), "previous request's write point")
+        XCTAssertFalse(marked(1))
+        XCTAssertTrue(marked(2), "new write point")
+        let total = (body["system"] as? [[String: Any]] ?? []).filter { $0["cache_control"] != nil }.count
+            + (body["tools"] as? [[String: Any]] ?? []).filter { $0["cache_control"] != nil }.count
+            + messages.indices.filter(marked).count
+        XCTAssertLessThanOrEqual(total, 4)
     }
 
     func testAnthropicUsageParsesCacheReadAndCreationTokens() async throws {

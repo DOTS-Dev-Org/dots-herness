@@ -26,11 +26,33 @@ final class ModelRouterTests: XCTestCase {
 
     // MARK: Role
 
-    func testOpeningTurnPlansOnThePremiumModel() throws {
+    func testOpeningTurnPlansOnTheStandardModelNeverPremium() throws {
         let decision = try XCTUnwrap(ModelRouter.decide(messages: [user("Add OAuth to the app")], available: all))
         XCTAssertEqual(decision.role, "planner")
-        XCTAssertEqual(decision.model, premium.id)
+        XCTAssertEqual(decision.model, standard.id, "automatic routing never spends the premium tier")
         XCTAssertEqual(decision.effort, "max", "a planner should use the deepest level the model allows")
+    }
+
+    func testSideRunGoesDownFromAnyParentAndNeverAboveIt() {
+        XCTAssertEqual(ModelRouter.sideRunModel(available: all, parent: premium.id)?.id, light.id)
+        XCTAssertEqual(ModelRouter.sideRunModel(available: all, parent: standard.id)?.id, light.id)
+        XCTAssertEqual(ModelRouter.sideRunModel(available: all, parent: light.id)?.id, light.id)
+        XCTAssertEqual(ModelRouter.sideRunModel(available: [premium, standard], parent: premium.id)?.id, standard.id)
+        XCTAssertEqual(ModelRouter.sideRunModel(available: [premium, standard], parent: standard.id)?.id, standard.id)
+        XCTAssertEqual(ModelRouter.sideRunModel(available: [premium], parent: premium.id)?.id, premium.id)
+    }
+
+    func testSideRunPrefersTheParentsProvider() {
+        let otherLight = RouterModel(id: "gpt-mini", owner: "OpenAI", displayName: "Mini", provider: "openai", tier: .light)
+        let openAIStandard = RouterModel(id: "gpt-5", owner: "OpenAI", displayName: "GPT", provider: "openai", tier: .standard)
+        XCTAssertEqual(
+            ModelRouter.sideRunModel(available: [otherLight, openAIStandard, standard, light], parent: standard.id)?.id,
+            light.id
+        )
+        XCTAssertEqual(
+            ModelRouter.sideRunModel(available: [otherLight, openAIStandard, standard, light], parent: openAIStandard.id)?.id,
+            otherLight.id
+        )
     }
 
     func testTurnAfterAToolResultIsWork() throws {
@@ -76,11 +98,11 @@ final class ModelRouterTests: XCTestCase {
         XCTAssertEqual(ModelRouter.effort(for: .worker, supported: [], mechanical: false), "")
     }
 
-    func testMidConversationDesignRequestGoesBackToPremium() throws {
+    func testMidConversationDesignRequestGoesBackToStandard() throws {
         let messages = [user("Add OAuth"), assistant(), user("review the token refresh design")]
         let decision = try XCTUnwrap(ModelRouter.decide(messages: messages, available: all))
         XCTAssertEqual(decision.role, "planner")
-        XCTAssertEqual(decision.model, premium.id)
+        XCTAssertEqual(decision.model, standard.id)
     }
 
     func testTurkishPlanningWordAlsoTriggersPlanning() throws {

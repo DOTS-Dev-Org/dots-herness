@@ -523,7 +523,8 @@ public final class RouterController: ObservableObject {
         tools: [AgentToolDefinition] = [],
         cachePolicy: AgentCachePolicy = AgentCachePolicy(),
         model: String? = nil,
-        preferredAccountID: String? = nil
+        preferredAccountID: String? = nil,
+        route: RunRoute? = nil
     ) async throws -> AgentResponse {
         let requestedModel = (model ?? selectedModelID).trimmingCharacters(in: .whitespacesAndNewlines)
         guard requestedModel == ModelRouter.autoModelID else {
@@ -545,7 +546,8 @@ public final class RouterController: ObservableObject {
             tools: tools,
             cachePolicy: cachePolicy,
             recordDecision: true,
-            preferredAccountID: preferredAccountID
+            preferredAccountID: preferredAccountID,
+            pin: route
         )
     }
 
@@ -557,16 +559,37 @@ public final class RouterController: ObservableObject {
         tools: [AgentToolDefinition],
         cachePolicy: AgentCachePolicy,
         recordDecision: Bool,
-        preferredAccountID: String? = nil
+        preferredAccountID: String? = nil,
+        pin: RunRoute? = nil
     ) async throws -> AgentResponse {
         var excluded: Set<String> = []
         var dropped: [String] = []
         while true {
-            guard let decision = ModelRouter.decide(
-                messages: messages,
-                available: routableModels,
-                excluding: excluded
-            ) else { throw NativeAgentError(AppCopy.text("agent.configureEndpoint")) }
+            let decision: ModelDecision
+            if let pinned = pin?.decision,
+               let provider = routableModels.first(where: { $0.id == pinned.model })?.provider,
+               !excluded.contains(provider) {
+                // One run keeps the model it started on: re-deciding per request
+                // flips tiers as the transcript grows, and every flip is a cold
+                // prompt cache.
+                decision = pinned
+            } else if let pin, let parent = pin.sideRunParent {
+                guard let model = ModelRouter.sideRunModel(
+                    available: routableModels,
+                    excluding: excluded,
+                    parent: parent
+                ) else { throw NativeAgentError(AppCopy.text("agent.configureEndpoint")) }
+                decision = ModelDecision(model: model.id, effort: "", role: ModelRole.worker.rawValue, reason: "")
+                pin.decision = decision
+            } else {
+                guard let decided = ModelRouter.decide(
+                    messages: messages,
+                    available: routableModels,
+                    excluding: excluded
+                ) else { throw NativeAgentError(AppCopy.text("agent.configureEndpoint")) }
+                decision = decided
+                pin?.decision = decided
+            }
             if recordDecision {
                 lastAutoDecision = decision
                 autoEffortOverride = decision.effort
@@ -578,7 +601,8 @@ public final class RouterController: ObservableObject {
                     tools: tools,
                     cachePolicy: cachePolicy,
                     model: decision.model,
-                    preferredAccountID: preferredAccountID
+                    preferredAccountID: pin?.accountID ?? preferredAccountID,
+                    pin: pin
                 )
                 if recordDecision {
                     let name = routableModels.first { $0.id == decision.model }?.displayName ?? decision.model
@@ -599,15 +623,22 @@ public final class RouterController: ObservableObject {
     /// Like `complete`, but never records the routing decision as the conversation's
     /// own. Side runs - the exploration subagent - use it so their model choice does
     /// not overwrite what the picker shows for the main run.
+    ///
+    /// `route` pins the model and account of the first step for the whole side
+    /// run, and `cachePolicy` carries a stable key, so every step of every
+    /// subagent reads the prefix the previous step wrote.
     public func completeWithFailover(
         messages: [AgentMessage],
-        tools: [AgentToolDefinition] = []
+        tools: [AgentToolDefinition] = [],
+        cachePolicy: AgentCachePolicy = AgentCachePolicy(),
+        route: RunRoute? = nil
     ) async throws -> AgentResponse {
         try await sendAcrossProviders(
             messages: messages,
             tools: tools,
-            cachePolicy: AgentCachePolicy(),
-            recordDecision: false
+            cachePolicy: cachePolicy,
+            recordDecision: false,
+            pin: route
         )
     }
 
@@ -680,7 +711,8 @@ public final class RouterController: ObservableObject {
         tools: [AgentToolDefinition],
         cachePolicy: AgentCachePolicy,
         model requestedModel: String?,
-        preferredAccountID: String? = nil
+        preferredAccountID: String? = nil,
+        pin: RunRoute? = nil
     ) async throws -> AgentResponse {
         let routes = orderedRoutes(
             store.state.accounts,
@@ -705,6 +737,7 @@ public final class RouterController: ObservableObject {
                     status = AppCopy.format("router.connected", configuration.provider)
                     lastServedAccountID = account.id
                     lastServedModelID = configuration.model
+                    pin?.accountID = account.id
                     try? store.setCooldown(account.id, until: nil)
                     return response
                 } catch is CancellationError {
@@ -1439,5 +1472,41 @@ public enum RouterTestError: Error, LocalizedError, Sendable {
     case message(String)
     public var errorDescription: String? {
         switch self { case .http(let code): return "Provider returned HTTP \(code)."; case .message(let message): return message }
+    }
+}
+
+/// Model and account a run settled on at its first request. Later requests of
+/// the same run reuse them so the provider's prompt cache stays warm; failover
+/// replaces them only when the provider reports a limit.
+///
+/// A main run in automatic mode decides once from its opening message. A side
+/// run (subagent) always takes the cheapest tier at or below its parent's, so
+/// the parent stays on the user's selection and only delegated work goes down.
+public final class RunRoute: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedDecision: ModelDecision?
+    private var storedAccountID: String?
+    /// The parent's model id (possibly empty) for a side run; nil for a main run.
+    let sideRunParent: String?
+
+    private init(accountID: String?, sideRunParent: String?) {
+        storedAccountID = accountID
+        self.sideRunParent = sideRunParent
+    }
+
+    public static func main() -> RunRoute { RunRoute(accountID: nil, sideRunParent: nil) }
+
+    public static func sideRun(parentModel: String?, accountID: String?) -> RunRoute {
+        RunRoute(accountID: accountID, sideRunParent: parentModel ?? "")
+    }
+
+    var decision: ModelDecision? {
+        get { lock.withLock { storedDecision } }
+        set { lock.withLock { storedDecision = newValue } }
+    }
+
+    var accountID: String? {
+        get { lock.withLock { storedAccountID } }
+        set { lock.withLock { storedAccountID = newValue } }
     }
 }
