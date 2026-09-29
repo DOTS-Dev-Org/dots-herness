@@ -97,6 +97,44 @@ final class ProjectRulesTests: XCTestCase {
         XCTAssertLessThan(text.utf8.count, ProjectRules.maxBytesPerFile + 200)
     }
 
+    func testReadsClaudeAndCodexSiblingFilesAndRulesDirectories() throws {
+        try write("CLAUDE.local.md", "my local tweak")
+        try write(".claude/CLAUDE.md", "nested claude rule")
+        try write("AGENTS.override.md", "codex override")
+        try write("GEMINI.md", "gemini rule")
+        try write(".github/copilot-instructions.md", "copilot rule")
+        try write(".claude/rules/testing.md", "always add tests")
+        try write(".claude/rules/notes.txt", "not a rules file")
+
+        let text = ProjectRules.text(workspace: workspace)
+
+        XCTAssertTrue(text.contains("# CLAUDE.local.md\nmy local tweak"))
+        XCTAssertTrue(text.contains("# .claude/CLAUDE.md\nnested claude rule"))
+        XCTAssertTrue(text.contains("# AGENTS.override.md\ncodex override"))
+        XCTAssertTrue(text.contains("# GEMINI.md\ngemini rule"))
+        XCTAssertTrue(text.contains("# .github/copilot-instructions.md\ncopilot rule"))
+        XCTAssertTrue(text.contains("# .claude/rules/testing.md\nalways add tests"))
+        XCTAssertFalse(text.contains("not a rules file"))
+    }
+
+    func testIdenticalNestedClaudeFileIsEmittedOnce() throws {
+        try write("CLAUDE.md", "use tabs")
+        try write(".claude/CLAUDE.md", "use tabs")
+
+        let text = ProjectRules.text(workspace: workspace)
+
+        XCTAssertEqual(text.components(separatedBy: "use tabs").count - 1, 1)
+    }
+
+    func testTruncationNeverDropsAFileThatCutsAMultiByteCharacter() throws {
+        // "ş" is two bytes; an odd prefix forces the byte limit to land mid-character.
+        try write("AGENTS.md", "a" + String(repeating: "ş", count: ProjectRules.maxBytesPerFile))
+
+        let text = ProjectRules.text(workspace: workspace)
+
+        XCTAssertTrue(text.hasSuffix("… truncated"))
+    }
+
     func testSymlinkEscapingTheWorkspaceIsIgnored() throws {
         let outside = workspace.deletingLastPathComponent()
             .appendingPathComponent("outside-\(UUID().uuidString).md")

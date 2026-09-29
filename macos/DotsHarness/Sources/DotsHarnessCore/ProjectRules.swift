@@ -1,6 +1,6 @@
 // Copyright (c) 2026 DOTS
 // Reads the rules files an agent-aware repository already ships - AGENTS.md,
-// CLAUDE.md, .cursor/rules - so HerNess honours the conventions a project has
+// CLAUDE.md, .claude/rules, .cursor/rules and their siblings - so HerNess honours the conventions a project has
 // already written down for other tools. The text is project context, never
 // policy: it is emitted under `trust="data"`.
 //
@@ -11,14 +11,23 @@ import Foundation
 public enum ProjectRules {
     /// Read in this order; the first entries carry the most weight because a
     /// repository that has both usually keeps AGENTS.md as the general file.
-    static let fileNames = ["AGENTS.md", "CLAUDE.md", ".cursorrules"]
-    static let cursorRulesDirectory = ".cursor/rules"
+    static let fileNames = [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "CLAUDE.local.md",
+        ".claude/CLAUDE.md",
+        "AGENTS.override.md",
+        "GEMINI.md",
+        ".github/copilot-instructions.md",
+        ".cursorrules",
+    ]
+    static let rulesDirectories = [".claude/rules", ".cursor/rules"]
 
     /// Per-file and total ceilings. A rules file is meant to be short; a repo
     /// that pastes a novel into AGENTS.md must not evict the conversation.
     static let maxBytesPerFile = 16_000
     static let maxTotalBytes = 32_000
-    static let maxCursorRuleFiles = 10
+    static let maxRuleFilesPerDirectory = 10
 
     /// The workspace's rules text, already labelled by source file. Empty when
     /// the project ships none.
@@ -39,7 +48,7 @@ public enum ProjectRules {
             blocks.append(block)
         }
 
-        for url in cursorRuleFiles(workspace: workspace) {
+        for url in ruleFiles(workspace: workspace) {
             let label = relativeLabel(url, workspace: workspace)
             guard let block = read(url, label: label, workspace: workspace) else { continue }
             guard total + block.utf8.count <= maxTotalBytes else { break }
@@ -109,17 +118,29 @@ public enum ProjectRules {
         (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
     }
 
-    private static func cursorRuleFiles(workspace: URL) -> [URL] {
-        let directory = workspace.appendingPathComponent(cursorRulesDirectory, isDirectory: true)
-        guard let entries = try? FileManager.default.contentsOfDirectory(
-            at: directory,
-            includingPropertiesForKeys: nil
-        ) else { return [] }
-        return entries
-            .filter { ["md", "mdc"].contains($0.pathExtension.lowercased()) }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
-            .prefix(maxCursorRuleFiles)
-            .map { $0 }
+    private static func ruleFiles(workspace: URL) -> [URL] {
+        rulesDirectories.flatMap { relative -> [URL] in
+            let directory = workspace.appendingPathComponent(relative, isDirectory: true)
+            guard let entries = try? FileManager.default.contentsOfDirectory(
+                at: directory,
+                includingPropertiesForKeys: nil
+            ) else { return [] }
+            return entries
+                .filter { ["md", "mdc"].contains($0.pathExtension.lowercased()) }
+                .sorted { $0.lastPathComponent < $1.lastPathComponent }
+                .prefix(maxRuleFilesPerDirectory)
+                .map { $0 }
+        }
+    }
+
+    /// Largest prefix of `data`, at most `limit` bytes, that does not end inside a
+    /// multi-byte character. Decoding a mid-character cut fails, which would drop
+    /// the whole file instead of truncating it.
+    private static func utf8Prefix(_ data: Data, limit: Int) -> Data {
+        guard data.count > limit else { return data }
+        var cut = limit
+        while cut > 0, data[data.startIndex + cut] & 0xC0 == 0x80 { cut -= 1 }
+        return data.prefix(cut)
     }
 
     private static func read(_ url: URL, label: String, workspace: URL) -> String? {
@@ -127,7 +148,7 @@ public enum ProjectRules {
         // outside the workspace is not this project's rules file.
         guard contains(workspace: workspace, url: url) else { return nil }
         guard let data = try? Data(contentsOf: url), !data.isEmpty else { return nil }
-        let limited = data.prefix(maxBytesPerFile)
+        let limited = utf8Prefix(data, limit: maxBytesPerFile)
         guard let raw = String(data: limited, encoding: .utf8) else { return nil }
         let body = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !body.isEmpty else { return nil }

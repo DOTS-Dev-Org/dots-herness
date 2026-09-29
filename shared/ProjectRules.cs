@@ -1,6 +1,6 @@
 // Copyright (c) 2026 DOTS
 // Reads the rules files an agent-aware repository already ships - AGENTS.md,
-// CLAUDE.md, .cursor/rules - so HerNess honours the conventions a project has
+// CLAUDE.md, .claude/rules, .cursor/rules and their siblings - so HerNess honours the conventions a project has
 // already written down for other tools. The text is project context, never
 // policy: it is emitted under trust="data".
 //
@@ -14,9 +14,19 @@ public static class ProjectRules
     /// Read in this order; the first entries carry the most weight because a
     /// repository that has both usually keeps AGENTS.md as the general file.
     /// </summary>
-    public static readonly string[] FileNames = ["AGENTS.md", "CLAUDE.md", ".cursorrules"];
+    public static readonly string[] FileNames =
+    [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "CLAUDE.local.md",
+        ".claude/CLAUDE.md",
+        "AGENTS.override.md",
+        "GEMINI.md",
+        ".github/copilot-instructions.md",
+        ".cursorrules",
+    ];
 
-    public const string CursorRulesDirectory = ".cursor/rules";
+    public static readonly string[] RulesDirectories = [".claude/rules", ".cursor/rules"];
 
     /// <summary>
     /// Per-file and total ceilings. A rules file is meant to be short; a repo
@@ -25,7 +35,7 @@ public static class ProjectRules
     public const int MaxBytesPerFile = 16_000;
 
     public const int MaxTotalBytes = 32_000;
-    public const int MaxCursorRuleFiles = 10;
+    public const int MaxRuleFilesPerDirectory = 10;
 
     /// <summary>
     /// The workspace's rules text, already labelled by source file. Empty when
@@ -45,12 +55,12 @@ public static class ProjectRules
             if (block is null) continue;
             // After sync AGENTS.md and CLAUDE.md hold the same text; emit it once.
             if (!bodies.Add(block[block.IndexOf('\n')..])) continue;
-            if (total + block.Length > MaxTotalBytes) return string.Join("\n\n", blocks);
+            if (total + block.Length > MaxTotalBytes) break;
             total += block.Length;
             blocks.Add(block);
         }
 
-        foreach (var path in CursorRuleFiles(workspace))
+        foreach (var path in RuleFiles(workspace))
         {
             var block = Read(path, RelativeLabel(path, workspace), workspace);
             if (block is null) continue;
@@ -134,15 +144,16 @@ public static class ProjectRules
         catch (UnauthorizedAccessException) { }
     }
 
-    private static IEnumerable<string> CursorRuleFiles(string workspace)
-    {
-        var directory = Path.Combine(workspace, ".cursor", "rules");
-        if (!Directory.Exists(directory)) return [];
-        return Directory.EnumerateFiles(directory)
-            .Where(path => Path.GetExtension(path) is ".md" or ".mdc")
-            .OrderBy(Path.GetFileName, StringComparer.Ordinal)
-            .Take(MaxCursorRuleFiles);
-    }
+    private static IEnumerable<string> RuleFiles(string workspace) =>
+        RulesDirectories.SelectMany(relative =>
+        {
+            var directory = Path.Combine(workspace, relative.Replace('/', Path.DirectorySeparatorChar));
+            if (!Directory.Exists(directory)) return [];
+            return Directory.EnumerateFiles(directory)
+                .Where(path => Path.GetExtension(path) is ".md" or ".mdc")
+                .OrderBy(Path.GetFileName, StringComparer.Ordinal)
+                .Take(MaxRuleFilesPerDirectory);
+        });
 
     private static string? Read(string path, string label, string workspace)
     {
@@ -155,11 +166,22 @@ public static class ProjectRules
         catch (UnauthorizedAccessException) { return null; }
         if (bytes.Length == 0) return null;
         var truncated = bytes.Length > MaxBytesPerFile;
-        var body = System.Text.Encoding.UTF8
-            .GetString(bytes, 0, Math.Min(bytes.Length, MaxBytesPerFile))
-            .Trim();
+        var length = truncated ? Utf8Boundary(bytes, MaxBytesPerFile) : bytes.Length;
+        var body = System.Text.Encoding.UTF8.GetString(bytes, 0, length).Trim();
         if (body.Length == 0) return null;
         return $"# {label}\n{body}" + (truncated ? "\n… truncated" : "");
+    }
+
+    /// <summary>
+    /// Largest cut point at or below <paramref name="limit"/> that does not split
+    /// a multi-byte character, so a truncated Turkish or CJK file never ends in a
+    /// replacement character.
+    /// </summary>
+    private static int Utf8Boundary(byte[] bytes, int limit)
+    {
+        var cut = limit;
+        while (cut > 0 && (bytes[cut] & 0xC0) == 0x80) cut--;
+        return cut;
     }
 
     private static bool Contains(string workspace, string path)

@@ -10,6 +10,8 @@ on:
       - "mobile/**"
       - "tools/sync_prompts.py"
       - "tools/check_localization.py"
+      - "AGENTS.md"
+      - "CLAUDE.md"
       - ".github/workflows/desktop-tests.yml"
   pull_request:
     paths:
@@ -20,6 +22,8 @@ on:
       - "mobile/**"
       - "tools/sync_prompts.py"
       - "tools/check_localization.py"
+      - "AGENTS.md"
+      - "CLAUDE.md"
       - ".github/workflows/desktop-tests.yml"
 
 permissions:
@@ -32,6 +36,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Every platform prompt literal matches shared/prompts
         run: python3 tools/sync_prompts.py --check
+      - name: AGENTS.md and CLAUDE.md are byte-identical
+        run: cmp AGENTS.md CLAUDE.md
       - name: Every desktop locale has the canonical key set
         run: python3 tools/check_localization.py --check
 

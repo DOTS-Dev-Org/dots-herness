@@ -1102,11 +1102,11 @@ public sealed class AgentBridge : ObservableObject
                                 ? await ExploreTool.RunAsync(call, explore, workspacePath, run.Token)
                                 : null;
                         var findings = outcome?.ToolResult ?? "Tool error: explore needs an open workspace.";
-                        var preview = outcome is null ? findings : outcome.Summary;
+                        var exploreSummary = outcome is null ? findings : outcome.Summary;
                         conversation.Messages.Add(new ChatMessage
                         {
                             Kind = ChatKind.Tool,
-                            Text = $"✓ {call.Name}\n{preview}",
+                            Text = $"✓ {call.Name}\n{exploreSummary}",
                             TurnId = turnId,
                         });
                         messages.Add(new NativeMessage("tool", findings, call.Id));

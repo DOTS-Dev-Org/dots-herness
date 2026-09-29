@@ -371,8 +371,18 @@ workspace kökünden okuyor:
 |---|---|
 | 1 | `AGENTS.md` |
 | 2 | `CLAUDE.md` |
-| 3 | `.cursorrules` |
-| 4 | `.cursor/rules/*.md`, `*.mdc` (ada göre sıralı, en fazla 10 dosya) |
+| 3 | `CLAUDE.local.md` |
+| 4 | `.claude/CLAUDE.md` |
+| 5 | `AGENTS.override.md` |
+| 6 | `GEMINI.md` |
+| 7 | `.github/copilot-instructions.md` |
+| 8 | `.cursorrules` |
+| 9 | `.claude/rules/*.md`, `*.mdc` (ada göre sıralı, dizin başına en fazla 10 dosya) |
+| 10 | `.cursor/rules/*.md`, `*.mdc` (aynı sınır) |
+
+Aynı gövdeye sahip dosyalar (ör. `CLAUDE.md` ile `.claude/CLAUDE.md`) prompta bir
+kez girer. Kesme UTF-8 karakter sınırında yapılır: çok baytlı bir karakteri
+ortadan bölmez (Swift'te bölmek dosyanın tamamını düşürürdü).
 
 Sınırlar: dosya başına 16 KB, toplam 32 KB; aşan içerik `… truncated` ile
 kesiliyor. Workspace dışına çıkan symlink `resolvingSymlinksInPath()` /
