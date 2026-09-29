@@ -141,6 +141,7 @@
                             </Style>
                         </ToggleButton.Styles>
                     </ToggleButton>
+                    <views:WorkLocationButton x:Name="WorkLocationPicker" Margin="8,0,0,0"/>
                 </StackPanel>
                 <Button x:Name="VoiceButton" DockPanel.Dock="Right" Content="Mic" Width="80" Height="36"
                         Margin="8,0,0,0" Click="OnVoice" ToolTip.Tip="Start voice input"/>

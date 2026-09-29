@@ -153,6 +153,30 @@ public sealed class AppModel : ObservableObject
         private set => SetProperty(ref _workspacePath, value);
     }
 
+    /// <summary>The user's SSH hosts (~/.ssh/config) for the work-location picker.</summary>
+    public SSHHostStore SshHosts { get; } = new();
+
+    private SSHTarget? _remoteTarget;
+
+    /// <summary>The remote host and folder the coding area works in, or null for this machine.</summary>
+    public SSHTarget? RemoteTarget
+    {
+        get => _remoteTarget;
+        private set
+        {
+            if (SetProperty(ref _remoteTarget, value))
+            {
+                OnPropertyChanged(nameof(WorkLocation));
+                OnPropertyChanged(nameof(TerminalRemoteTarget));
+            }
+        }
+    }
+
+    public WorkLocationSetting WorkLocation =>
+        RemoteTarget is { } target ? WorkLocationSetting.Remote(target.Alias) : WorkLocationSetting.Local;
+
+    public SSHTarget? TerminalRemoteTarget => ActiveArea == AgentArea.Coding ? RemoteTarget : null;
+
     public string? TerminalWorkspacePath => ActiveArea == AgentArea.Chat
         ? ChatBridge.ChatContextRoots.FirstOrDefault(root => root.Kind == ChatContextRootKind.Directory)?.Path
         : string.IsNullOrWhiteSpace(WorkspacePath) ? null : WorkspacePath;
@@ -452,7 +476,8 @@ public sealed class AppModel : ObservableObject
         // Gateway bind + host DNS lookup can stall; keep them off the UI thread.
         _ = Task.Run(RemoteControl.Start);
         _ = ChatBridge.StartAsync("");
-        _ = CodingBridge.StartAsync(WorkspacePath);
+        RestoreWorkLocation();
+        _ = CodingBridge.StartAsync(RemoteTarget?.Identity ?? WorkspacePath);
         Scheduler.RunsDueTasks = !IsBackgroundDaemonEnabled;
         Scheduler.Start();
     }
@@ -636,8 +661,8 @@ public sealed class AppModel : ObservableObject
 
     public void NewConversation()
     {
-        if (ActiveArea == AgentArea.Coding && string.IsNullOrWhiteSpace(WorkspacePath)) return;
-        _ = Bridge.NewConversationAsync(ActiveArea == AgentArea.Coding ? WorkspacePath : null);
+        if (ActiveArea == AgentArea.Coding && RemoteTarget is null && string.IsNullOrWhiteSpace(WorkspacePath)) return;
+        _ = Bridge.NewConversationAsync(ActiveArea == AgentArea.Coding ? RemoteTarget?.Identity ?? WorkspacePath : null);
     }
 
     public void NewChatConversation(string? projectId = null)
@@ -850,8 +875,57 @@ public sealed class AppModel : ObservableObject
         PersistSettings();
     }
 
+    /// <summary>
+    /// Switches the coding area to a folder on an SSH host. The host must come from
+    /// ~/.ssh/config; the folder is resolved on the host so the stored path is stable.
+    /// </summary>
+    public async Task SetRemoteWorkspaceAsync(string alias, string path)
+    {
+        var host = SshHosts.Host(alias) ?? throw new SSHException(SSHErrorKind.NotReachable, alias);
+        var resolved = await SSHRunner.ResolveDirectoryAsync(host.Alias, path)
+            ?? throw new SSHException(SSHErrorKind.PathMissing, path);
+        var target = new SSHTarget(host.Alias, resolved);
+        SetActiveArea(AgentArea.Coding);
+        CodingBridge.SetRemoteTarget(target);
+        RemoteTarget = target;
+        SshHosts.RememberRemotePath(host.Alias, resolved);
+        Host.Settings.Set("agent.workLocation", JsonValue.String(WorkLocation.StorageValue));
+        Host.Settings.Set("agent.remotePath", JsonValue.String(resolved));
+        PersistSettings();
+        await CodingBridge.StartAsync(target.Identity);
+    }
+
+    /// <summary>Back to this machine's workspace.</summary>
+    public void SetLocalWorkLocation()
+    {
+        if (RemoteTarget is { } previous) _ = SSHRunner.CloseMasterAsync(previous.Alias);
+        CodingBridge.SetRemoteTarget(null);
+        RemoteTarget = null;
+        Host.Settings.Set("agent.workLocation", JsonValue.String(WorkLocationSetting.Local.StorageValue));
+        Host.Settings.Set("agent.remotePath", JsonValue.String(""));
+        PersistSettings();
+        _ = CodingBridge.StartAsync(WorkspacePath);
+    }
+
+    private void RestoreWorkLocation()
+    {
+        var setting = WorkLocationSetting.Parse(Host.Settings.Get("agent.workLocation")?.AsString());
+        var path = Host.Settings.Get("agent.remotePath")?.AsString();
+        if (!setting.IsRemote || string.IsNullOrWhiteSpace(path) || SshHosts.Host(setting.RemoteAlias!) is null) return;
+        var target = new SSHTarget(setting.RemoteAlias!, path);
+        CodingBridge.SetRemoteTarget(target);
+        RemoteTarget = target;
+    }
+
     public void SetWorkspace(string value)
     {
+        // Choosing a local folder always leaves remote mode.
+        if (RemoteTarget is not null)
+        {
+            CodingBridge.SetRemoteTarget(null);
+            RemoteTarget = null;
+            Host.Settings.Set("agent.workLocation", JsonValue.String(WorkLocationSetting.Local.StorageValue));
+        }
         SetActiveArea(AgentArea.Coding);
         var normalized = NormalizeCodingWorkspace(value);
         WorkspacePath = normalized;

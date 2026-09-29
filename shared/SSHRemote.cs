@@ -7,6 +7,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using PluginRuntime;
 
@@ -61,18 +62,21 @@ public sealed class SSHException : Exception
         Detail = detail;
     }
 
-    private static string Describe(SSHErrorKind kind, string detail) => kind switch
+    private static string Describe(SSHErrorKind kind, string detail)
     {
-        SSHErrorKind.SshUnavailable => "ssh was not found on this computer.",
-        SSHErrorKind.NotReachable => $"{detail} could not be reached.",
-        SSHErrorKind.HostKeyChanged =>
-            $"The host key of {detail} has changed. Do not continue unless the server was reinstalled.",
-        SSHErrorKind.AuthFailed => $"{detail} refused the login.",
-        SSHErrorKind.PasswordAuthDisabled => "The server does not accept password logins.",
-        SSHErrorKind.PathMissing => $"The folder {detail} does not exist on the remote computer.",
-        SSHErrorKind.ConfigWriteFailed => $"{detail} could not be written to ~/.ssh/config.",
-        _ => detail,
-    };
+        var key = kind switch
+        {
+            SSHErrorKind.SshUnavailable => "ssh.error.unavailable",
+            SSHErrorKind.NotReachable => "ssh.error.notReachable",
+            SSHErrorKind.HostKeyChanged => "ssh.error.hostKeyChanged",
+            SSHErrorKind.AuthFailed => "ssh.error.authFailed",
+            SSHErrorKind.PasswordAuthDisabled => "ssh.error.passwordAuthDisabled",
+            SSHErrorKind.PathMissing => "ssh.error.pathMissing",
+            SSHErrorKind.ConfigWriteFailed => "ssh.error.configWriteFailed",
+            _ => "",
+        };
+        return key.Length == 0 ? detail : LocalizationService.Current.Get(key, detail);
+    }
 }
 
 /// <summary>The composer's work-location selection, persisted in app settings.</summary>
@@ -476,6 +480,12 @@ public static class SSHRunner
     /// <summary>/bin/sh, not zsh or bash: remote machines often lack them. The login flag keeps PATH.</summary>
     public static string RemoteCommand(string cwd, string command) =>
         $"cd -- {ShellQuote(cwd)} && exec /bin/sh -lc {ShellQuote(command)}";
+
+    /// <summary>Arguments for an interactive login shell in the target folder (terminal panel).</summary>
+    public static IReadOnlyList<string> InteractiveArguments(SSHTarget target) =>
+        LaunchPrefix(target.Alias, interactive: true)
+            .Append($"cd -- {ShellQuote(target.RemotePath)} && exec ${{SHELL:-/bin/sh}} -l")
+            .ToList();
 
     public static Task<Output> RunAsync(
         SSHTarget target,
@@ -973,5 +983,114 @@ public static class SSHEnrollment
         var path = SSHRunner.FindTool(tool) ?? throw new SSHException(SSHErrorKind.SshUnavailable);
         return await SSHRunner.SpawnAsync(arguments, TimeSpan.FromSeconds(30), null, CancellationToken.None, null, path)
             .ConfigureAwait(false);
+    }
+}
+
+/// <summary>
+/// Runs tool calls on a remote work location. Only <c>run_command</c> crosses the
+/// wire; every other workspace tool is refused rather than quietly falling back
+/// to the local disk, because writing to the wrong machine is the one failure
+/// this feature must not have.
+/// </summary>
+public static class RemoteWorkspaceTools
+{
+    private const int MaxOutput = 24_000;
+    private static readonly Regex MemPath = new(@"(?:^|[\s/])\.mem(?:[\s/]|$)", RegexOptions.Compiled);
+
+    /// <summary>The only workspace tool offered on a remote host (plan mode has none).</summary>
+    public static IReadOnlyList<NativeToolDefinition> Definitions(bool planMode) =>
+        planMode
+            ? Array.Empty<NativeToolDefinition>()
+            : NativeWorkspaceTools.Definitions.Where(t => t.Name == "run_command").ToList();
+
+    public static async Task<string> ExecuteAsync(NativeToolCall call, SSHTarget target, CancellationToken ct = default)
+    {
+        if (call.Name != "run_command")
+            return $"Tool error: {call.Name} is not available on remote host {target.Alias}. Use run_command instead.";
+        string? command;
+        try { command = System.Text.Json.Nodes.JsonNode.Parse(call.Arguments)?["command"]?.GetValue<string>(); }
+        catch (Exception e) when (e is JsonException or InvalidOperationException) { command = null; }
+        if (string.IsNullOrWhiteSpace(command)) return "Tool error: run_command needs a command.";
+        if (MemPath.IsMatch(command)) return "Tool error: that path is unavailable.";
+        try
+        {
+            var output = await SSHRunner.RunAsync(target, command, null, null, ct).ConfigureAwait(false);
+            if (output.TimedOut) return "Tool error: the command timed out.";
+            var text = output.Text.Length > MaxOutput ? output.Text[..MaxOutput] : output.Text;
+            // Told apart from an ordinary non-zero exit so the agent does not hunt a bug in code that never ran.
+            if (output.Status != 0 && SSHRunner.IsTransportFailure(text))
+                return $"The connection to {target.Alias} dropped. The command may not have run.\n{text}";
+            var suffix = output.Status == 0 ? "" : $"\nCommand exited with status {output.Status}.";
+            return text.Length == 0 ? "(no output)" + suffix : text + suffix;
+        }
+        catch (SSHException e) { return $"Tool error: {e.Message}"; }
+    }
+
+    public static string Guidance(SSHTarget target) => $"""
+
+        Remote execution over SSH
+        - This run works on the remote host {target.Alias}, in {target.RemotePath}.
+        - run_command executes there through a non-interactive `/bin/sh -lc`. There is no
+          TTY, so anything that prompts (`sudo` without NOPASSWD, an editor, a pager) fails
+          instead of waiting; avoid those.
+        - The local machine's files are not visible: list_files, read_file, write_file,
+          remove_file and grep_files are unavailable in this mode. Use shell commands
+          (`ls`, `sed -n`, `grep -rn`, a heredoc write) through run_command instead.
+        """;
+}
+
+/// <summary>
+/// The "Add a computer" sequence shared by the Avalonia and WPF shells: fetch the
+/// host key, let the user confirm its fingerprint, then trust it, install our key
+/// with the one-time password, write the ~/.ssh/config stanza and verify.
+/// </summary>
+public static class SSHEnrollmentFlow
+{
+    public sealed record Request(string Alias, string HostName, string User, int Port);
+
+    /// <summary>Step 1. Nothing is trusted yet; show <see cref="SSHEnrollment.HostKeyScan.Fingerprints"/> to the user.</summary>
+    public static Task<SSHEnrollment.HostKeyScan> ScanAsync(Request request)
+    {
+        Validate(request);
+        return SSHEnrollment.ScanHostKeyAsync(request.HostName, request.Port);
+    }
+
+    /// <summary>Step 2, only after the user confirmed the fingerprint. The password is used once and not kept.</summary>
+    public static async Task<SSHHost> CompleteAsync(
+        SSHHostStore store,
+        Request request,
+        SSHEnrollment.HostKeyScan scan,
+        string? password,
+        CancellationToken cancellationToken = default)
+    {
+        Validate(request);
+        SSHEnrollment.Trust(scan);
+        var publicKey = await SSHEnrollment.EnsureKeyPairAsync().ConfigureAwait(false);
+        var enrolled = false;
+        if (!string.IsNullOrEmpty(password))
+        {
+            await SSHEnrollment.InstallPublicKeyAsync(request.User, request.HostName, request.Port, password, publicKey)
+                .ConfigureAwait(false);
+            enrolled = true;
+        }
+        var host = new SSHHost(
+            request.Alias, request.HostName, request.User, request.Port,
+            SSHEnrollment.IdentityFileReference, ManagedByApp: true);
+        store.Add(host, enrolled);
+        await SSHRunner.ProbeAsync(host.Alias, cancellationToken).ConfigureAwait(false);
+        return host;
+    }
+
+    private static void Validate(Request request)
+    {
+        if (!SSHConfigStore.IsValidAlias(request.Alias))
+            throw new SSHException(SSHErrorKind.ConfigWriteFailed, request.Alias);
+        if (string.IsNullOrWhiteSpace(request.HostName)
+            || request.HostName.StartsWith('-')
+            || request.HostName.Any(char.IsWhiteSpace)
+            || request.Port is < 1 or > 65535
+            || request.User.StartsWith('-')
+            || request.User.Any(char.IsWhiteSpace))
+            throw new SSHException(SSHErrorKind.NotReachable, request.HostName);
     }
 }

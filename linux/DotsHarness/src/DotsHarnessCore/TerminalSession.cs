@@ -21,7 +21,18 @@ public sealed class TerminalSession : IDisposable
     private string _output = "";
     private bool _isRunning;
 
+    private readonly SSHTarget? _remoteTarget;
+
     public TerminalSession(string workingDirectory) => _workingDirectory = workingDirectory;
+
+    /// <summary>A terminal that runs an interactive login shell on a remote host over ssh.</summary>
+    public TerminalSession(SSHTarget remoteTarget)
+    {
+        _remoteTarget = remoteTarget;
+        _workingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    }
+
+    public SSHTarget? RemoteTarget => _remoteTarget;
 
     public event EventHandler? Changed;
 
@@ -39,37 +50,51 @@ public sealed class TerminalSession : IDisposable
     {
         Stop();
 
-        if (!Directory.Exists(_workingDirectory))
+        if (_remoteTarget is null && !Directory.Exists(_workingDirectory))
         {
             SetMessage($"Working directory does not exist: {_workingDirectory}");
             return;
         }
 
-        var shell = Environment.GetEnvironmentVariable("SHELL");
-        if (string.IsNullOrWhiteSpace(shell) || !File.Exists(shell)) shell = "/bin/bash";
+        string[] launchArguments;
+        string? shell;
+        if (_remoteTarget is not null)
+        {
+            shell = SSHRunner.ExecutablePath;
+            if (shell is null)
+            {
+                SetMessage("ssh was not found on this computer.");
+                return;
+            }
+            launchArguments = new[] { "ssh" }.Concat(SSHRunner.InteractiveArguments(_remoteTarget)).ToArray();
+        }
+        else
+        {
+            shell = Environment.GetEnvironmentVariable("SHELL");
+            if (string.IsNullOrWhiteSpace(shell) || !File.Exists(shell)) shell = "/bin/bash";
+            launchArguments = new[] { Path.GetFileName(shell), "-l", "-i" };
+        }
 
         var shellPointer = IntPtr.Zero;
-        var namePointer = IntPtr.Zero;
-        var loginPointer = IntPtr.Zero;
-        var interactivePointer = IntPtr.Zero;
         var argumentsPointer = IntPtr.Zero;
+        var argumentPointers = new List<IntPtr>();
         try
         {
             shellPointer = Marshal.StringToCoTaskMemUTF8(shell);
-            namePointer = Marshal.StringToCoTaskMemUTF8(Path.GetFileName(shell));
-            loginPointer = Marshal.StringToCoTaskMemUTF8("-l");
-            interactivePointer = Marshal.StringToCoTaskMemUTF8("-i");
-            argumentsPointer = Marshal.AllocHGlobal(IntPtr.Size * 4);
-            Marshal.WriteIntPtr(argumentsPointer, 0 * IntPtr.Size, namePointer);
-            Marshal.WriteIntPtr(argumentsPointer, 1 * IntPtr.Size, loginPointer);
-            Marshal.WriteIntPtr(argumentsPointer, 2 * IntPtr.Size, interactivePointer);
-            Marshal.WriteIntPtr(argumentsPointer, 3 * IntPtr.Size, IntPtr.Zero);
+            argumentsPointer = Marshal.AllocHGlobal(IntPtr.Size * (launchArguments.Length + 1));
+            for (var i = 0; i < launchArguments.Length; i++)
+            {
+                var pointer = Marshal.StringToCoTaskMemUTF8(launchArguments[i]);
+                argumentPointers.Add(pointer);
+                Marshal.WriteIntPtr(argumentsPointer, i * IntPtr.Size, pointer);
+            }
+            Marshal.WriteIntPtr(argumentsPointer, launchArguments.Length * IntPtr.Size, IntPtr.Zero);
 
             var size = new WinSize { Rows = 24, Columns = 120 };
             var childPid = forkpty(out var masterFd, IntPtr.Zero, IntPtr.Zero, ref size);
             if (childPid == 0)
             {
-                if (chdir(_workingDirectory) != 0) _exit(126);
+                if (_remoteTarget is null && chdir(_workingDirectory) != 0) _exit(126);
                 setenv("TERM", "xterm-256color", 1);
                 setenv("TERM_PROGRAM", "DotsHarness", 1);
                 setenv("COLORTERM", "truecolor", 1);
@@ -111,9 +136,7 @@ public sealed class TerminalSession : IDisposable
         finally
         {
             if (shellPointer != IntPtr.Zero) Marshal.FreeCoTaskMem(shellPointer);
-            if (namePointer != IntPtr.Zero) Marshal.FreeCoTaskMem(namePointer);
-            if (loginPointer != IntPtr.Zero) Marshal.FreeCoTaskMem(loginPointer);
-            if (interactivePointer != IntPtr.Zero) Marshal.FreeCoTaskMem(interactivePointer);
+            foreach (var pointer in argumentPointers) Marshal.FreeCoTaskMem(pointer);
             if (argumentsPointer != IntPtr.Zero) Marshal.FreeHGlobal(argumentsPointer);
         }
     }

@@ -288,6 +288,7 @@ public partial class ConversationView : UserControl
         BindVision();
         BindQuestion();
         BindTerminal();
+        WorkLocationPicker.Model = Model;
         if (switched && conversation is not null)
             Dispatcher.BeginInvoke(new Action(() => Scroller.ScrollToEnd()), System.Windows.Threading.DispatcherPriority.Background);
     }
@@ -323,8 +324,9 @@ public partial class ConversationView : UserControl
 
     private void BindTerminal()
     {
-        var workspace = Model?.TerminalWorkspacePath;
-        TerminalButton.IsEnabled = !string.IsNullOrWhiteSpace(workspace) && Directory.Exists(workspace);
+        var remote = Model?.TerminalRemoteTarget;
+        var workspace = remote?.Identity ?? Model?.TerminalWorkspacePath;
+        TerminalButton.IsEnabled = remote is not null || (!string.IsNullOrWhiteSpace(workspace) && Directory.Exists(workspace));
         if (_terminal is not null && !string.Equals(_terminalWorkspace, workspace, StringComparison.Ordinal))
         {
             StopTerminal();
@@ -345,11 +347,12 @@ public partial class ConversationView : UserControl
             return;
         }
 
-        var workspace = Model?.TerminalWorkspacePath;
-        if (string.IsNullOrWhiteSpace(workspace) || !Directory.Exists(workspace)) return;
+        var remote = Model?.TerminalRemoteTarget;
+        var workspace = remote?.Identity ?? Model?.TerminalWorkspacePath;
+        if (string.IsNullOrWhiteSpace(workspace) || (remote is null && !Directory.Exists(workspace))) return;
 
         _terminalWorkspace = workspace;
-        _terminal = new TerminalSession(workspace);
+        _terminal = remote is not null ? new TerminalSession(remote) : new TerminalSession(workspace);
         _terminal.Changed += OnTerminalChanged;
         TerminalPanel.Visibility = Visibility.Visible;
         _terminal.Start();

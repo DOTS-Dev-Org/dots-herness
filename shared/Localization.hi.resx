@@ -309,4 +309,33 @@
   <data name="modelPicker.effort.high" xml:space="preserve"><value>ऊँचा</value></data>
   <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>अतिरिक्त उच्च</value></data>
   <data name="modelPicker.effort.max" xml:space="preserve"><value>अधिकतम</value></data>
+  <data name="workLocation.title" xml:space="preserve"><value>Work in</value></data>
+  <data name="workLocation.local" xml:space="preserve"><value>This computer</value></data>
+  <data name="workLocation.remoteHosts" xml:space="preserve"><value>Remote computers</value></data>
+  <data name="workLocation.noHosts" xml:space="preserve"><value>No SSH hosts yet</value></data>
+  <data name="workLocation.addHost" xml:space="preserve"><value>Add a computer…</value></data>
+  <data name="workLocation.remoteFolderPath" xml:space="preserve"><value>Folder on the remote computer</value></data>
+  <data name="workLocation.remoteFolderUse" xml:space="preserve"><value>Use folder</value></data>
+  <data name="ssh.field.alias" xml:space="preserve"><value>Name</value></data>
+  <data name="ssh.field.host" xml:space="preserve"><value>Address</value></data>
+  <data name="ssh.field.user" xml:space="preserve"><value>Username</value></data>
+  <data name="ssh.field.port" xml:space="preserve"><value>Port</value></data>
+  <data name="ssh.field.password" xml:space="preserve"><value>Password (used once to install a key)</value></data>
+  <data name="ssh.connecting" xml:space="preserve"><value>Connecting to {0}…</value></data>
+  <data name="ssh.reachable" xml:space="preserve"><value>{0} is reachable.</value></data>
+  <data name="ssh.scanning" xml:space="preserve"><value>Fetching the host key…</value></data>
+  <data name="ssh.enrolling" xml:space="preserve"><value>Installing the key…</value></data>
+  <data name="ssh.enrolled" xml:space="preserve"><value>{0} is ready.</value></data>
+  <data name="ssh.fingerprintTitle" xml:space="preserve"><value>Is this the fingerprint of {0}?</value></data>
+  <data name="ssh.fingerprintMessage" xml:space="preserve"><value>Compare it with the server before trusting it. Continue only if it matches.</value></data>
+  <data name="ssh.trustAndConnect" xml:space="preserve"><value>Trust and connect</value></data>
+  <data name="ssh.retryHint" xml:space="preserve"><value>Check the address, the username and the password, then try again.</value></data>
+  <data name="ssh.disconnected" xml:space="preserve"><value>The connection to {0} dropped. The command may not have run.</value></data>
+  <data name="ssh.error.unavailable" xml:space="preserve"><value>ssh was not found on this computer.</value></data>
+  <data name="ssh.error.notReachable" xml:space="preserve"><value>{0} could not be reached.</value></data>
+  <data name="ssh.error.hostKeyChanged" xml:space="preserve"><value>The host key of {0} has changed. Do not continue unless the server was reinstalled.</value></data>
+  <data name="ssh.error.authFailed" xml:space="preserve"><value>{0} refused the login.</value></data>
+  <data name="ssh.error.passwordAuthDisabled" xml:space="preserve"><value>The server does not accept password logins.</value></data>
+  <data name="ssh.error.pathMissing" xml:space="preserve"><value>The folder {0} does not exist on the remote computer.</value></data>
+  <data name="ssh.error.configWriteFailed" xml:space="preserve"><value>{0} could not be written to ~/.ssh/config.</value></data>
 </root>

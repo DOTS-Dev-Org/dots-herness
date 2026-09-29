@@ -310,4 +310,33 @@
   <data name="modelPicker.effort.high" xml:space="preserve"><value>Yüksek</value></data>
   <data name="modelPicker.effort.xhigh" xml:space="preserve"><value>Çok Yüksek</value></data>
   <data name="modelPicker.effort.max" xml:space="preserve"><value>Maksimum</value></data>
+  <data name="workLocation.title" xml:space="preserve"><value>Çalışma yeri</value></data>
+  <data name="workLocation.local" xml:space="preserve"><value>Bu bilgisayar</value></data>
+  <data name="workLocation.remoteHosts" xml:space="preserve"><value>Uzak bilgisayarlar</value></data>
+  <data name="workLocation.noHosts" xml:space="preserve"><value>Henüz SSH sunucusu yok</value></data>
+  <data name="workLocation.addHost" xml:space="preserve"><value>Bilgisayar ekle…</value></data>
+  <data name="workLocation.remoteFolderPath" xml:space="preserve"><value>Uzak bilgisayardaki klasör</value></data>
+  <data name="workLocation.remoteFolderUse" xml:space="preserve"><value>Klasörü kullan</value></data>
+  <data name="ssh.field.alias" xml:space="preserve"><value>Ad</value></data>
+  <data name="ssh.field.host" xml:space="preserve"><value>Adres</value></data>
+  <data name="ssh.field.user" xml:space="preserve"><value>Kullanıcı adı</value></data>
+  <data name="ssh.field.port" xml:space="preserve"><value>Port</value></data>
+  <data name="ssh.field.password" xml:space="preserve"><value>Parola (anahtar kurmak için bir kez kullanılır)</value></data>
+  <data name="ssh.connecting" xml:space="preserve"><value>{0} bağlanılıyor…</value></data>
+  <data name="ssh.reachable" xml:space="preserve"><value>{0} erişilebilir.</value></data>
+  <data name="ssh.scanning" xml:space="preserve"><value>Sunucu anahtarı alınıyor…</value></data>
+  <data name="ssh.enrolling" xml:space="preserve"><value>Anahtar kuruluyor…</value></data>
+  <data name="ssh.enrolled" xml:space="preserve"><value>{0} hazır.</value></data>
+  <data name="ssh.fingerprintTitle" xml:space="preserve"><value>Bu, {0} sunucusunun parmak izi mi?</value></data>
+  <data name="ssh.fingerprintMessage" xml:space="preserve"><value>Güvenmeden önce sunucuyla karşılaştırın. Yalnızca eşleşiyorsa devam edin.</value></data>
+  <data name="ssh.trustAndConnect" xml:space="preserve"><value>Güven ve bağlan</value></data>
+  <data name="ssh.retryHint" xml:space="preserve"><value>Adresi, kullanıcı adını ve parolayı kontrol edip tekrar deneyin.</value></data>
+  <data name="ssh.disconnected" xml:space="preserve"><value>{0} bağlantısı koptu. Komut çalışmamış olabilir.</value></data>
+  <data name="ssh.error.unavailable" xml:space="preserve"><value>Bu bilgisayarda ssh bulunamadı.</value></data>
+  <data name="ssh.error.notReachable" xml:space="preserve"><value>{0} sunucusuna ulaşılamadı.</value></data>
+  <data name="ssh.error.hostKeyChanged" xml:space="preserve"><value>{0} sunucusunun anahtarı değişti. Sunucu yeniden kurulmadıysa devam etmeyin.</value></data>
+  <data name="ssh.error.authFailed" xml:space="preserve"><value>{0} girişi reddetti.</value></data>
+  <data name="ssh.error.passwordAuthDisabled" xml:space="preserve"><value>Sunucu parola ile girişi kabul etmiyor.</value></data>
+  <data name="ssh.error.pathMissing" xml:space="preserve"><value>{0} klasörü uzak bilgisayarda yok.</value></data>
+  <data name="ssh.error.configWriteFailed" xml:space="preserve"><value>{0} ~/.ssh/config dosyasına yazılamadı.</value></data>
 </root>

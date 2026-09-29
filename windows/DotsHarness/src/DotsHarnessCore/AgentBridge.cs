@@ -347,7 +347,13 @@ public sealed class AgentBridge : ObservableObject
     /// advertise a tool set the run loop does not actually offer.
     /// </summary>
     internal List<NativeToolDefinition> ToolsFor(bool planMode) =>
-        (Area == AgentArea.Chat
+        RemoteTarget is not null
+            ? RemoteWorkspaceTools.Definitions(planMode)
+                .Concat(SkillTools.Definitions)
+                .Append(AskUserTool.Definition)
+                .OrderBy(tool => tool.Name, StringComparer.Ordinal)
+                .ToList()
+            : (Area == AgentArea.Chat
             ? (planMode ? NativeWorkspaceTools.ChatPlanDefinitions : NativeWorkspaceTools.ChatDefinitions)
             : (planMode ? NativeWorkspaceTools.PlanDefinitions : NativeWorkspaceTools.Definitions))
             .Concat(SkillTools.Definitions)
@@ -384,6 +390,7 @@ public sealed class AgentBridge : ObservableObject
           - Read a file only once: its contents stay in this conversation.
           - Use the browser_* tools for web pages; never open a browser through run_command.
           """ + "\n" + otherChatGuidance + "\n"),
+        new("remote_execution", PromptTrust.Core, RemoteTarget is { } remoteTarget ? RemoteWorkspaceTools.Guidance(remoteTarget) : ""),
         new("runtime_context", PromptTrust.Core,
             $"- Current date: {DateTime.Now:yyyy-MM-dd}"),
         new("plan_mode", PromptTrust.Core, planMode
@@ -391,10 +398,10 @@ public sealed class AgentBridge : ObservableObject
             : ""),
         new("self_verification", PromptTrust.Core,
             SelfVerification && !planMode ? HerNessPrompt.SelfVerification : ""),
-        new("workspace_activity", PromptTrust.Data, Area == AgentArea.Chat ? "" : WorkspaceActivityText(workspacePath)),
-        new("project_context", PromptTrust.Data, Area == AgentArea.Chat ? ChatContextText() : ProjectRules.Text(workspacePath)),
-        new("backlog", PromptTrust.Data, Area == AgentArea.Chat ? "" : WorkspaceBacklog.Text(workspacePath)),
-        new("durable_facts", PromptTrust.Data, Area == AgentArea.Chat ? "" : WorkspaceFacts.Text(workspacePath)),
+        new("workspace_activity", PromptTrust.Data, Area == AgentArea.Chat || RemoteTarget is not null ? "" : WorkspaceActivityText(workspacePath)),
+        new("project_context", PromptTrust.Data, Area == AgentArea.Chat ? ChatContextText() : RemoteTarget is not null ? "" : ProjectRules.Text(workspacePath)),
+        new("backlog", PromptTrust.Data, Area == AgentArea.Chat || RemoteTarget is not null ? "" : WorkspaceBacklog.Text(workspacePath)),
+        new("durable_facts", PromptTrust.Data, Area == AgentArea.Chat || RemoteTarget is not null ? "" : WorkspaceFacts.Text(workspacePath)),
         new("plugin_guidance", PromptTrust.Untrusted, _additionalSystemPrompt),
         new("skill_metadata", PromptTrust.Untrusted, _skills.CompactPrompt()),
         };
@@ -427,12 +434,25 @@ public sealed class AgentBridge : ObservableObject
     /// </summary>
     public bool SeedProjectRules { get; set; } = true;
 
+    private SSHTarget? _remoteTarget;
+
+    /// <summary>The remote host and folder this run works in, or null for this machine.</summary>
+    public SSHTarget? RemoteTarget => Area == AgentArea.Coding ? _remoteTarget : null;
+
+    /// <summary>
+    /// Points the tool layer at a remote host, or back at this machine. Call before
+    /// <see cref="StartAsync"/>; the workspace passed there is then the target's identity.
+    /// </summary>
+    public void SetRemoteTarget(SSHTarget? target) => _remoteTarget = target;
+
     public async Task StartAsync(string workspace)
     {
-        workspace = Area == AgentArea.Chat ? "" : workspace;
-        // Once per workspace open, before the first turn - not per message.
-        if (Area == AgentArea.Coding && SeedProjectRules && !string.IsNullOrWhiteSpace(workspace)) ProjectRules.SeedIfMissing(workspace);
-        _skills.SetWorkspace(Area == AgentArea.Chat || string.IsNullOrWhiteSpace(workspace) ? null : workspace);
+        workspace = Area == AgentArea.Chat ? "" : RemoteTarget?.Identity ?? workspace;
+        var remote = RemoteTarget is not null;
+        // Once per workspace open, before the first turn - not per message. Never for a
+        // remote identity: it is not a local directory and must not be written to.
+        if (Area == AgentArea.Coding && !remote && SeedProjectRules && !string.IsNullOrWhiteSpace(workspace)) ProjectRules.SeedIfMissing(workspace);
+        _skills.SetWorkspace(Area == AgentArea.Chat || remote || string.IsNullOrWhiteSpace(workspace) ? null : workspace);
         lock (_sendQueueLock)
         {
             _queuePausedAfterStop = false;
@@ -1177,6 +1197,19 @@ public sealed class AgentBridge : ObservableObject
                     {
                         result = ready;
                     }
+                    else if (RemoteTarget is { } remoteTarget)
+                    {
+                        // Never falls through to the local disk: a remote workspace has no local path.
+                        result = await RemoteWorkspaceTools.ExecuteAsync(call, remoteTarget, run.Token);
+                        if (call.Name == "run_command" && IsTestCommand(ToolArgument(call, "command")))
+                        {
+                            _activeTestStatus = result.Contains("status 0", StringComparison.OrdinalIgnoreCase)
+                                ? "passed"
+                                : result.Contains("status", StringComparison.OrdinalIgnoreCase) || result.StartsWith("Tool error", StringComparison.OrdinalIgnoreCase)
+                                    ? "failed"
+                                    : "not_reported";
+                        }
+                    }
                     else
                     {
                         result = Area == AgentArea.Chat
@@ -1907,6 +1940,8 @@ public sealed class AgentBridge : ObservableObject
     private static string? NormalizeWorkspacePath(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
+        // A remote identity is not a filesystem path; GetFullPath would rebase it on the cwd.
+        if (value.StartsWith("ssh://", StringComparison.Ordinal)) return value.TrimEnd('/');
         try { return Path.GetFullPath(value); }
         catch { return null; }
     }

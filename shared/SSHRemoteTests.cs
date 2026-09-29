@@ -163,3 +163,48 @@ public sealed class RemoteWorkLocationTests
         Assert.Equal(WorkLocationSetting.Local, WorkLocationSetting.Parse("nonsense"));
     }
 }
+
+public sealed class RemoteWorkspaceToolsTests
+{
+    private static readonly SSHTarget Target = new("box", "/srv/app");
+
+    [Fact]
+    public async Task FileToolsAreRefusedAndNeverTouchTheLocalDisk()
+    {
+        var marker = Path.Combine(Environment.CurrentDirectory, $"remote-guard-{Guid.NewGuid():N}.txt");
+        var call = new NativeToolCall("1", "write_file", $$"""{"path":"{{marker.Replace("\\", "\\\\")}}","content":"x"}""");
+        var result = await RemoteWorkspaceTools.ExecuteAsync(call, Target);
+        Assert.False(File.Exists(marker));
+        Assert.StartsWith("Tool error", result);
+    }
+
+    [Fact]
+    public async Task MemDirectoryIsOffLimits()
+    {
+        var call = new NativeToolCall("1", "run_command", """{"command":"cat .mem/index.json"}""");
+        Assert.Contains("unavailable", await RemoteWorkspaceTools.ExecuteAsync(call, Target));
+    }
+
+    [Fact]
+    public async Task MissingCommandIsReported()
+    {
+        var call = new NativeToolCall("1", "run_command", "{}");
+        Assert.StartsWith("Tool error", await RemoteWorkspaceTools.ExecuteAsync(call, Target));
+    }
+
+    [Fact]
+    public void OnlyRunCommandIsOffered()
+    {
+        Assert.Equal(new[] { "run_command" }, RemoteWorkspaceTools.Definitions(planMode: false).Select(t => t.Name));
+        Assert.Empty(RemoteWorkspaceTools.Definitions(planMode: true));
+    }
+
+    [Fact]
+    public void InteractiveArgumentsChangeIntoTheFolderWithoutRelaxingChecks()
+    {
+        var arguments = SSHRunner.InteractiveArguments(Target);
+        Assert.Contains("-tt", arguments);
+        Assert.Contains("StrictHostKeyChecking=yes", arguments);
+        Assert.Equal("cd -- '/srv/app' && exec ${SHELL:-/bin/sh} -l", arguments[^1]);
+    }
+}

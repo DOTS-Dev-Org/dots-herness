@@ -155,6 +155,7 @@
                             </Style>
                         </ToggleButton.Style>
                     </ToggleButton>
+                    <views:WorkLocationButton x:Name="WorkLocationPicker" Margin="8,0,0,0"/>
                 </StackPanel>
                 <DockPanel>
                     <Button x:Name="VoiceButton" DockPanel.Dock="Right" Content="Mic" Width="80" Height="36"

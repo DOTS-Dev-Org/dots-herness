@@ -25,7 +25,20 @@ public sealed class TerminalSession : IDisposable
     private string _outputText = "";
     private bool _isRunning;
 
+    private readonly SSHTarget? _remoteTarget;
+
     public TerminalSession(string workingDirectory) => _workingDirectory = workingDirectory;
+
+    /// <summary>A terminal that runs an interactive login shell on a remote host over ssh.</summary>
+    public TerminalSession(SSHTarget remoteTarget)
+    {
+        _remoteTarget = remoteTarget;
+        _workingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    }
+
+    public SSHTarget? RemoteTarget => _remoteTarget;
+
+    private static string QuoteArgument(string value) => "\"" + value.Replace("\"", "\\\"") + "\"";
 
     public event EventHandler? Changed;
 
@@ -48,9 +61,14 @@ public sealed class TerminalSession : IDisposable
             _generation++;
         }
 
-        if (!Directory.Exists(_workingDirectory))
+        if (_remoteTarget is null && !Directory.Exists(_workingDirectory))
         {
             SetMessage($"Working directory does not exist: {_workingDirectory}");
+            return;
+        }
+        if (_remoteTarget is not null && !SSHRunner.IsAvailable)
+        {
+            SetMessage("ssh was not found on this computer.");
             return;
         }
 
@@ -178,9 +196,13 @@ public sealed class TerminalSession : IDisposable
                 },
                 lpAttributeList = attributeList,
             };
-            var shell = Environment.GetEnvironmentVariable("ComSpec")
-                ?? Path.Combine(Environment.SystemDirectory, "cmd.exe");
-            var commandLine = new StringBuilder($"\"{shell}\" /Q /K \"chcp 65001>nul & prompt $P$G\"");
+            var shell = _remoteTarget is not null
+                ? SSHRunner.ExecutablePath!
+                : Environment.GetEnvironmentVariable("ComSpec")
+                    ?? Path.Combine(Environment.SystemDirectory, "cmd.exe");
+            var commandLine = _remoteTarget is not null
+                ? new StringBuilder(QuoteArgument(shell) + " " + string.Join(" ", SSHRunner.InteractiveArguments(_remoteTarget).Select(QuoteArgument)))
+                : new StringBuilder($"\"{shell}\" /Q /K \"chcp 65001>nul & prompt $P$G\"");
             if (!CreateProcess(
                     shell,
                     commandLine,
