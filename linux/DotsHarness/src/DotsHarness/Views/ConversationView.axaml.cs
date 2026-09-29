@@ -870,6 +870,21 @@ public partial class ConversationView : UserControl
         e.Handled = true;
     }
 
+    private void OnGoodFeedback(object? sender, RoutedEventArgs e) => OpenFeedback(sender, FeedbackType.Good, e);
+
+    private void OnBadFeedback(object? sender, RoutedEventArgs e) => OpenFeedback(sender, FeedbackType.Bad, e);
+
+    private void OpenFeedback(object? sender, FeedbackType type, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ChatMessage message } && Model is { } model
+            && model.SelectedConversationId is { } conversationId
+            && TopLevel.GetTopLevel(this) is Window owner)
+        {
+            new FeedbackDialog(model, conversationId, message, type).ShowDialog(owner);
+        }
+        e.Handled = true;
+    }
+
     private void OnEditMessage(object? sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: ChatMessage message } && Model is { } model)
@@ -1063,6 +1078,16 @@ public sealed class UserMessageVisibility : IValueConverter
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         value is ChatMessage { Streaming: false, Kind: ChatKind.User }
         && (Application.Current as App)?.Model is { ActiveArea: AgentArea.Coding, RemoteTarget: null };
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+public sealed class AssistantFeedbackVisibility : IValueConverter
+{
+    public static readonly AssistantFeedbackVisibility Instance = new();
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is ChatMessage { Streaming: false, Kind: ChatKind.Assistant or ChatKind.Plan }
+        && (Application.Current as App)?.Model is { FeedbackAvailable: true };
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }

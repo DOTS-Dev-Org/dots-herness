@@ -365,4 +365,32 @@
   <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>Tidak dapat memulihkan {0}.</value></data>
   <data name="conversation.historyRewound" xml:space="preserve"><value>Perbualan diputarkan semula.</value></data>
   <data name="conversation.historyConflictStatus" xml:space="preserve"><value>Perbualan diulangi dengan konflik.</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>Jawapan tidak baik</value></data>
+  <data name="feedback.close" xml:space="preserve"><value>Tutup</value></data>
+  <data name="feedback.commentPlaceholder" xml:space="preserve"><value>Kongsi butiran (pilihan)</value></data>
+  <data name="feedback.conversationNotFound" xml:space="preserve"><value>Sembang ini tidak lagi tersedia.</value></data>
+  <data name="feedback.disclaimer" xml:space="preserve"><value>Maklum balas anda boleh digunakan untuk menambah baik HerNess secara setempat.</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>Jawapan baik</value></data>
+  <data name="feedback.messageNotFound" xml:space="preserve"><value>Jawapan ini tidak lagi tersedia.</value></data>
+  <data name="feedback.missingPrompt" xml:space="preserve"><value>Permintaan untuk respons ini tidak ditemui.</value></data>
+  <data name="feedback.missingResponse" xml:space="preserve"><value>Respons ini tiada kandungan untuk disemak.</value></data>
+  <data name="feedback.persistenceFailed" xml:space="preserve"><value>Maklum balas tidak dapat disimpan secara setempat.</value></data>
+  <data name="feedback.streamingMessage" xml:space="preserve"><value>Tunggu sehingga respons selesai sebelum menghantar maklum balas.</value></data>
+  <data name="feedback.submit" xml:space="preserve"><value>Hantar</value></data>
+  <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>Tidak mengikut arahan saya</value></data>
+  <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>Pantas dan cekap</value></data>
+  <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>Mengikut arahan saya</value></data>
+  <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>Salah atau tidak lengkap</value></data>
+  <data name="feedback.tag.lost_context" xml:space="preserve"><value>Kehilangan konteks</value></data>
+  <data name="feedback.tag.negative_other" xml:space="preserve"><value>Lain-lain</value></data>
+  <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>Di luar topik / di luar skop</value></data>
+  <data name="feedback.tag.output_quality" xml:space="preserve"><value>Kualiti kod / output yang baik</value></data>
+  <data name="feedback.tag.positive_other" xml:space="preserve"><value>Lain-lain</value></data>
+  <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>Isu keselamatan atau undang-undang</value></data>
+  <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>Perlahan atau bermasalah</value></data>
+  <data name="feedback.tag.task_completed" xml:space="preserve"><value>Menyelesaikan tugas saya</value></data>
+  <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>Autonomi yang berguna</value></data>
+  <data name="feedback.title" xml:space="preserve"><value>Kongsi maklum balas</value></data>
+  <data name="feedback.unavailable" xml:space="preserve"><value>Maklum balas hanya tersedia dalam sembang ruang kerja.</value></data>
+  <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Maklum balas hanya boleh dihantar untuk respons pembantu.</value></data>
 </root>

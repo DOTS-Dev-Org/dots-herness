@@ -43,6 +43,7 @@
     <Compile Include="..\..\..\..\shared\MessageTail.cs" Link="MessageTail.cs" />
     <Compile Include="..\..\..\..\shared\ExploreTool.cs" Link="ExploreTool.cs" />
     <Compile Include="..\..\..\..\shared\SSHRemote.cs" Link="SSHRemote.cs" />
+    <Compile Include="..\..\..\..\shared\FeedbackLearning.cs" Link="FeedbackLearning.cs" />
     <Compile Include="..\..\..\..\shared\WorkspaceSnapshots.cs" Link="WorkspaceSnapshots.cs" />
     <Compile Include="..\..\..\..\shared\KeyboardShortcuts.cs" Link="KeyboardShortcuts.cs" />
     <Compile Include="..\..\..\..\shared\MCP.cs" Link="MCP.cs" />

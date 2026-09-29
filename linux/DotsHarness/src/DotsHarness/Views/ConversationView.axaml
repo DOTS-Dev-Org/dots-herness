@@ -373,6 +373,16 @@
                                                 AutomationProperties.Name="Copy" ToolTip.Tip="Copy">
                                             <Path Data="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" Fill="{DynamicResource TextSecondary}" Stretch="Uniform" Width="15" Height="15"/>
                                         </Button>
+                                        <Button Tag="{Binding}" Click="OnGoodFeedback" Padding="4" Margin="4,0,0,0" Background="Transparent" BorderThickness="0"
+                                                IsVisible="{Binding ., Converter={x:Static views:AssistantFeedbackVisibility.Instance}}"
+                                                AutomationProperties.Name="Good response" ToolTip.Tip="Good response">
+                                            <TextBlock Text="👍" FontSize="13"/>
+                                        </Button>
+                                        <Button Tag="{Binding}" Click="OnBadFeedback" Padding="4" Margin="4,0,0,0" Background="Transparent" BorderThickness="0"
+                                                IsVisible="{Binding ., Converter={x:Static views:AssistantFeedbackVisibility.Instance}}"
+                                                AutomationProperties.Name="Bad response" ToolTip.Tip="Bad response">
+                                            <TextBlock Text="👎" FontSize="13"/>
+                                        </Button>
                                         <Button Tag="{Binding}" Click="OnEditMessage" Padding="4" Margin="4,0,0,0" Background="Transparent" BorderThickness="0"
                                                 IsVisible="{Binding ., Converter={x:Static views:UserMessageVisibility.Instance}}"
                                                 AutomationProperties.Name="Edit" ToolTip.Tip="Edit">

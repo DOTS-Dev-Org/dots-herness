@@ -366,4 +366,32 @@
   <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>{0} se nepodařilo obnovit.</value></data>
   <data name="conversation.historyRewound" xml:space="preserve"><value>Konverzace přetočena.</value></data>
   <data name="conversation.historyConflictStatus" xml:space="preserve"><value>Konverzace přetočená konflikty.</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>Špatná odpověď</value></data>
+  <data name="feedback.close" xml:space="preserve"><value>Zavřít</value></data>
+  <data name="feedback.commentPlaceholder" xml:space="preserve"><value>Sdílet podrobnosti (volitelné)</value></data>
+  <data name="feedback.conversationNotFound" xml:space="preserve"><value>Tento chat již není k dispozici.</value></data>
+  <data name="feedback.disclaimer" xml:space="preserve"><value>Vaše zpětná vazba může být použita k místnímu vylepšení HerNess.</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>Dobrá odpověď</value></data>
+  <data name="feedback.messageNotFound" xml:space="preserve"><value>Tato odpověď již není k dispozici.</value></data>
+  <data name="feedback.missingPrompt" xml:space="preserve"><value>Požadavek pro tuto odpověď nebyl nalezen.</value></data>
+  <data name="feedback.missingResponse" xml:space="preserve"><value>Tato odpověď nemá žádný obsah ke kontrole.</value></data>
+  <data name="feedback.persistenceFailed" xml:space="preserve"><value>Zpětnou vazbu se nepodařilo uložit lokálně.</value></data>
+  <data name="feedback.streamingMessage" xml:space="preserve"><value>Před odesláním zpětné vazby počkejte na dokončení odpovědi.</value></data>
+  <data name="feedback.submit" xml:space="preserve"><value>Odeslat</value></data>
+  <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>Nedodržel mé pokyny</value></data>
+  <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>Rychlé a efektivní</value></data>
+  <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>Dodržel mé pokyny</value></data>
+  <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>Nesprávné nebo neúplné</value></data>
+  <data name="feedback.tag.lost_context" xml:space="preserve"><value>Ztráta kontextu</value></data>
+  <data name="feedback.tag.negative_other" xml:space="preserve"><value>Jiné</value></data>
+  <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>Mimo téma / mimo rozsah</value></data>
+  <data name="feedback.tag.output_quality" xml:space="preserve"><value>Dobrá kvalita kódu / výstupu</value></data>
+  <data name="feedback.tag.positive_other" xml:space="preserve"><value>Jiné</value></data>
+  <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>Bezpečnostní nebo právní problém</value></data>
+  <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>Pomalé nebo chybové</value></data>
+  <data name="feedback.tag.task_completed" xml:space="preserve"><value>Vyřešil můj úkol</value></data>
+  <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>Užitečná autonomie</value></data>
+  <data name="feedback.title" xml:space="preserve"><value>Sdílet zpětnou vazbu</value></data>
+  <data name="feedback.unavailable" xml:space="preserve"><value>Zpětná vazba je dostupná pouze v chatech pracovního prostoru.</value></data>
+  <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Zpětnou vazbu lze odeslat pouze k odpovědím asistenta.</value></data>
 </root>

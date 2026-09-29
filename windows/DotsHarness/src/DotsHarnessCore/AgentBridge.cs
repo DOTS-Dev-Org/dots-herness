@@ -374,7 +374,7 @@ public sealed partial class AgentBridge : ObservableObject
     /// <see cref="EffectiveSystemPromptReport"/> renders them for the Settings
     /// view, so both always describe the same text.
     /// </summary>
-    internal List<PromptSection> SystemPromptSections(string workspacePath, bool planMode)
+    internal List<PromptSection> SystemPromptSections(string workspacePath, bool planMode, string? userPrompt = null)
     {
         var otherChatGuidance = Area == AgentArea.Chat
             ? "- Chat conversations keep their transcripts isolated; use the shared context ledger for project roots, notes, and change summaries."
@@ -405,6 +405,8 @@ public sealed partial class AgentBridge : ObservableObject
         new("project_context", PromptTrust.Data, Area == AgentArea.Chat ? ChatContextText() : RemoteTarget is not null ? "" : ProjectRules.Text(workspacePath)),
         new("backlog", PromptTrust.Data, Area == AgentArea.Chat || RemoteTarget is not null ? "" : WorkspaceBacklog.Text(workspacePath)),
         new("durable_facts", PromptTrust.Data, Area == AgentArea.Chat || RemoteTarget is not null ? "" : WorkspaceFacts.Text(workspacePath)),
+        // Rules and examples learned from the user's own ratings: information, never instructions.
+        new("feedback_memory", PromptTrust.Data, Area == AgentArea.Chat ? "" : FeedbackMemoryText(userPrompt)),
         new("plugin_guidance", PromptTrust.Untrusted, _additionalSystemPrompt),
         new("skill_metadata", PromptTrust.Untrusted, _skills.CompactPrompt()),
         };
@@ -459,6 +461,7 @@ public sealed partial class AgentBridge : ObservableObject
         // remote identity: it is not a local directory and must not be written to.
         if (Area == AgentArea.Coding && !remote && SeedProjectRules && !string.IsNullOrWhiteSpace(workspace)) ProjectRules.SeedIfMissing(workspace);
         _skills.SetWorkspace(Area == AgentArea.Chat || remote || string.IsNullOrWhiteSpace(workspace) ? null : workspace);
+        BindFeedbackStore(workspace);
         lock (_sendQueueLock)
         {
             _queuePausedAfterStop = false;
@@ -945,7 +948,7 @@ public sealed partial class AgentBridge : ObservableObject
                 return;
             }
             if (Area == AgentArea.Chat) ActivateChatContext(conversation);
-            var promptSections = SystemPromptSections(workspacePath, request.PlanMode);
+            var promptSections = SystemPromptSections(workspacePath, request.PlanMode, request.Text);
             var systemPrompt = PromptAssembly.Assemble(promptSections.Where(section => section.Tag == "core_policy"));
             var turnContext = PromptAssembly.Assemble(promptSections.Where(section => section.Tag != "core_policy"));
             var selection = _skills.ExplicitSelection(request.Text);

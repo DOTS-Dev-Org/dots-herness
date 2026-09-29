@@ -15,6 +15,9 @@ public sealed partial class AppModel
         private set => SetProperty(ref _editingMessageId, value);
     }
 
+    /// <summary>True when ratings can be saved: a coding chat in a local workspace.</summary>
+    public bool FeedbackAvailable => ActiveArea == AgentArea.Coding && CodingBridge.FeedbackAvailable;
+
     private static string Describe(ConversationMutationException error) => error.Kind switch
     {
         ConversationMutationKind.Busy => LocalizationService.Current.Get("conversation.historyBusy"),

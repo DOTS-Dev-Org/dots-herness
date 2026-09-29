@@ -867,6 +867,20 @@ public partial class ConversationView : UserControl
         e.Handled = true;
     }
 
+    private void OnGoodFeedback(object sender, RoutedEventArgs e) => OpenFeedback(sender, FeedbackType.Good, e);
+
+    private void OnBadFeedback(object sender, RoutedEventArgs e) => OpenFeedback(sender, FeedbackType.Bad, e);
+
+    private void OpenFeedback(object sender, FeedbackType type, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ChatMessage message } && Model is { } model
+            && model.SelectedConversationId is { } conversationId)
+        {
+            new FeedbackDialog(model, conversationId, message, type) { Owner = Window.GetWindow(this) }.ShowDialog();
+        }
+        e.Handled = true;
+    }
+
     private void OnEditMessage(object sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: ChatMessage message } && Model is { } model)
@@ -1051,6 +1065,16 @@ public sealed class UserMessageVisibility : IValueConverter
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
         value is ChatMessage { Streaming: false, Kind: ChatKind.User }
         && (Application.Current as App)?.Model is { ActiveArea: AgentArea.Coding, RemoteTarget: null }
+            ? Visibility.Visible : Visibility.Collapsed;
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class AssistantFeedbackVisibility : IValueConverter
+{
+    public static readonly AssistantFeedbackVisibility Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is ChatMessage { Streaming: false, Kind: ChatKind.Assistant or ChatKind.Plan }
+        && (Application.Current as App)?.Model is { FeedbackAvailable: true }
             ? Visibility.Visible : Visibility.Collapsed;
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }

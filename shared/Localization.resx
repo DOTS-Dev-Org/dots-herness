@@ -366,4 +366,32 @@
   <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>Could not restore {0}.</value></data>
   <data name="conversation.historyRewound" xml:space="preserve"><value>Conversation rewound.</value></data>
   <data name="conversation.historyConflictStatus" xml:space="preserve"><value>Conversation rewound with conflicts.</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>Bad response</value></data>
+  <data name="feedback.close" xml:space="preserve"><value>Close</value></data>
+  <data name="feedback.commentPlaceholder" xml:space="preserve"><value>Share details (optional)</value></data>
+  <data name="feedback.conversationNotFound" xml:space="preserve"><value>The chat is no longer available.</value></data>
+  <data name="feedback.disclaimer" xml:space="preserve"><value>Your feedback can be used to improve HerNess locally.</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>Good response</value></data>
+  <data name="feedback.messageNotFound" xml:space="preserve"><value>The response is no longer available.</value></data>
+  <data name="feedback.missingPrompt" xml:space="preserve"><value>The request for this response could not be found.</value></data>
+  <data name="feedback.missingResponse" xml:space="preserve"><value>This response has no content to review.</value></data>
+  <data name="feedback.persistenceFailed" xml:space="preserve"><value>Feedback could not be saved locally.</value></data>
+  <data name="feedback.streamingMessage" xml:space="preserve"><value>Wait for the response to finish before sending feedback.</value></data>
+  <data name="feedback.submit" xml:space="preserve"><value>Send</value></data>
+  <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>Didn't follow my instructions</value></data>
+  <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>Fast and efficient</value></data>
+  <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>Followed my instructions</value></data>
+  <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>Wrong or incomplete</value></data>
+  <data name="feedback.tag.lost_context" xml:space="preserve"><value>Lost context</value></data>
+  <data name="feedback.tag.negative_other" xml:space="preserve"><value>Other</value></data>
+  <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>Off-topic / out of scope</value></data>
+  <data name="feedback.tag.output_quality" xml:space="preserve"><value>Good code / output quality</value></data>
+  <data name="feedback.tag.positive_other" xml:space="preserve"><value>Other</value></data>
+  <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>Security or legal issue</value></data>
+  <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>Slow or buggy</value></data>
+  <data name="feedback.tag.task_completed" xml:space="preserve"><value>It solved my task</value></data>
+  <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>Useful autonomy</value></data>
+  <data name="feedback.title" xml:space="preserve"><value>Share feedback</value></data>
+  <data name="feedback.unavailable" xml:space="preserve"><value>Feedback is available only for workspace chats.</value></data>
+  <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Feedback can only be sent for assistant responses.</value></data>
 </root>

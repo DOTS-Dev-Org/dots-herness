@@ -45,6 +45,7 @@
     <Compile Include="..\..\..\..\shared\MessageTail.cs" Link="MessageTail.cs" />
     <Compile Include="..\..\..\..\shared\ExploreTool.cs" Link="ExploreTool.cs" />
     <Compile Include="..\..\..\..\shared\SSHRemote.cs" Link="SSHRemote.cs" />
+    <Compile Include="..\..\..\..\shared\FeedbackLearning.cs" Link="FeedbackLearning.cs" />
     <Compile Include="..\..\..\..\shared\WorkspaceSnapshots.cs" Link="WorkspaceSnapshots.cs" />
     <Compile Include="..\..\..\..\shared\KeyboardShortcuts.cs" Link="KeyboardShortcuts.cs" />
     <Compile Include="..\..\..\..\shared\MCP.cs" Link="MCP.cs" />
@@ -57,6 +58,7 @@
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\RouterController.cs" Link="RouterController.cs" />
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\AgentBridge.cs" Link="AgentBridge.cs" />
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\AgentBridge.Rewind.cs" Link="AgentBridge.Rewind.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\AgentBridge.Feedback.cs" Link="AgentBridge.Feedback.cs" />
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\CronExpression.cs" Link="CronExpression.cs" />
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\ScheduledTask.cs" Link="ScheduledTask.cs" />
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\HarnessScheduler.cs" Link="HarnessScheduler.cs" />

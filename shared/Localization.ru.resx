@@ -366,4 +366,32 @@
   <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>Не удалось восстановить {0}.</value></data>
   <data name="conversation.historyRewound" xml:space="preserve"><value>Разговор перемотался.</value></data>
   <data name="conversation.historyConflictStatus" xml:space="preserve"><value>Разговор завязался с конфликтами.</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>Плохой ответ</value></data>
+  <data name="feedback.close" xml:space="preserve"><value>Закрыть</value></data>
+  <data name="feedback.commentPlaceholder" xml:space="preserve"><value>Поделитесь подробностями (необязательно)</value></data>
+  <data name="feedback.conversationNotFound" xml:space="preserve"><value>Этот чат больше недоступен.</value></data>
+  <data name="feedback.disclaimer" xml:space="preserve"><value>Ваш отзыв может использоваться для локального улучшения HerNess.</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>Хороший ответ</value></data>
+  <data name="feedback.messageNotFound" xml:space="preserve"><value>Ответ больше недоступен.</value></data>
+  <data name="feedback.missingPrompt" xml:space="preserve"><value>Не удалось найти запрос для этого ответа.</value></data>
+  <data name="feedback.missingResponse" xml:space="preserve"><value>В этом ответе нет содержимого для проверки.</value></data>
+  <data name="feedback.persistenceFailed" xml:space="preserve"><value>Не удалось сохранить отзыв локально.</value></data>
+  <data name="feedback.streamingMessage" xml:space="preserve"><value>Дождитесь завершения ответа, прежде чем отправлять отзыв.</value></data>
+  <data name="feedback.submit" xml:space="preserve"><value>Отправить</value></data>
+  <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>Не выполнил мои инструкции</value></data>
+  <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>Быстро и эффективно</value></data>
+  <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>Выполнил мои инструкции</value></data>
+  <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>Неверно или неполно</value></data>
+  <data name="feedback.tag.lost_context" xml:space="preserve"><value>Потеря контекста</value></data>
+  <data name="feedback.tag.negative_other" xml:space="preserve"><value>Другое</value></data>
+  <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>Не по теме или вне области</value></data>
+  <data name="feedback.tag.output_quality" xml:space="preserve"><value>Хорошее качество кода или вывода</value></data>
+  <data name="feedback.tag.positive_other" xml:space="preserve"><value>Другое</value></data>
+  <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>Проблема безопасности или права</value></data>
+  <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>Медленно или с ошибками</value></data>
+  <data name="feedback.tag.task_completed" xml:space="preserve"><value>Решил мою задачу</value></data>
+  <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>Полезная автономность</value></data>
+  <data name="feedback.title" xml:space="preserve"><value>Поделиться отзывом</value></data>
+  <data name="feedback.unavailable" xml:space="preserve"><value>Отзывы доступны только в чатах рабочего пространства.</value></data>
+  <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Отзыв можно отправить только для ответов помощника.</value></data>
 </root>

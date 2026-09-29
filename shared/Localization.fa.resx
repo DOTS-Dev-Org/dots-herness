@@ -365,4 +365,32 @@
   <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>{0} بازیابی نشد.</value></data>
   <data name="conversation.historyRewound" xml:space="preserve"><value>مکالمه برگشت.</value></data>
   <data name="conversation.historyConflictStatus" xml:space="preserve"><value>مکالمه با درگیری برگشت.</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>پاسخ بد</value></data>
+  <data name="feedback.close" xml:space="preserve"><value>بستن</value></data>
+  <data name="feedback.commentPlaceholder" xml:space="preserve"><value>جزئیات را به اشتراک بگذارید (اختیاری)</value></data>
+  <data name="feedback.conversationNotFound" xml:space="preserve"><value>این گفت‌وگو دیگر در دسترس نیست.</value></data>
+  <data name="feedback.disclaimer" xml:space="preserve"><value>ممکن است از بازخورد شما برای بهبود محلی HerNess استفاده شود.</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>پاسخ خوب</value></data>
+  <data name="feedback.messageNotFound" xml:space="preserve"><value>این پاسخ دیگر در دسترس نیست.</value></data>
+  <data name="feedback.missingPrompt" xml:space="preserve"><value>درخواست مربوط به این پاسخ پیدا نشد.</value></data>
+  <data name="feedback.missingResponse" xml:space="preserve"><value>این پاسخ محتوایی برای بررسی ندارد.</value></data>
+  <data name="feedback.persistenceFailed" xml:space="preserve"><value>بازخورد به‌صورت محلی ذخیره نشد.</value></data>
+  <data name="feedback.streamingMessage" xml:space="preserve"><value>پیش از ارسال بازخورد، تا پایان پاسخ صبر کنید.</value></data>
+  <data name="feedback.submit" xml:space="preserve"><value>ارسال</value></data>
+  <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>دستورهای من را دنبال نکرد</value></data>
+  <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>سریع و کارآمد</value></data>
+  <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>دستورهای من را دنبال کرد</value></data>
+  <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>اشتباه یا ناقص</value></data>
+  <data name="feedback.tag.lost_context" xml:space="preserve"><value>از دست رفتن زمینه</value></data>
+  <data name="feedback.tag.negative_other" xml:space="preserve"><value>سایر</value></data>
+  <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>خارج از موضوع یا خارج از محدوده</value></data>
+  <data name="feedback.tag.output_quality" xml:space="preserve"><value>کیفیت خوب کد / خروجی</value></data>
+  <data name="feedback.tag.positive_other" xml:space="preserve"><value>سایر</value></data>
+  <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>مشکل امنیتی یا حقوقی</value></data>
+  <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>کند یا دارای باگ</value></data>
+  <data name="feedback.tag.task_completed" xml:space="preserve"><value>کارم را انجام داد</value></data>
+  <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>خودمختاری مفید</value></data>
+  <data name="feedback.title" xml:space="preserve"><value>بازخورد را به اشتراک بگذارید</value></data>
+  <data name="feedback.unavailable" xml:space="preserve"><value>بازخورد فقط در گپ‌وگوهای فضای کاری در دسترس است.</value></data>
+  <data name="feedback.unsupportedMessage" xml:space="preserve"><value>بازخورد فقط برای پاسخ‌های دستیار ارسال می‌شود.</value></data>
 </root>

@@ -365,4 +365,32 @@
   <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>{0} पुनर्संचयित करू शकलो नाही.</value></data>
   <data name="conversation.historyRewound" xml:space="preserve"><value>संभाषण रिवाउंड.</value></data>
   <data name="conversation.historyConflictStatus" xml:space="preserve"><value>संभाषण संघर्षाने पुन्हा सुरू होते.</value></data>
+  <data name="feedback.bad" xml:space="preserve"><value>खराब उत्तर</value></data>
+  <data name="feedback.close" xml:space="preserve"><value>बंद करा</value></data>
+  <data name="feedback.commentPlaceholder" xml:space="preserve"><value>तपशील शेअर करा (ऐच्छिक)</value></data>
+  <data name="feedback.conversationNotFound" xml:space="preserve"><value>हे चॅट आता उपलब्ध नाही.</value></data>
+  <data name="feedback.disclaimer" xml:space="preserve"><value>HerNess स्थानिक पातळीवर सुधारण्यासाठी तुमचा अभिप्राय वापरला जाऊ शकतो.</value></data>
+  <data name="feedback.good" xml:space="preserve"><value>चांगले उत्तर</value></data>
+  <data name="feedback.messageNotFound" xml:space="preserve"><value>हे उत्तर आता उपलब्ध नाही.</value></data>
+  <data name="feedback.missingPrompt" xml:space="preserve"><value>या उत्तराची विनंती सापडली नाही.</value></data>
+  <data name="feedback.missingResponse" xml:space="preserve"><value>या उत्तरामध्ये पुनरावलोकन करण्यासाठी मजकूर नाही.</value></data>
+  <data name="feedback.persistenceFailed" xml:space="preserve"><value>अभिप्राय स्थानिकरित्या जतन करता आला नाही.</value></data>
+  <data name="feedback.streamingMessage" xml:space="preserve"><value>अभिप्राय पाठवण्यापूर्वी उत्तर पूर्ण होईपर्यंत प्रतीक्षा करा.</value></data>
+  <data name="feedback.submit" xml:space="preserve"><value>सबमिट करा</value></data>
+  <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>माझ्या सूचनांचे पालन केले नाही</value></data>
+  <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>जलद आणि कार्यक्षम</value></data>
+  <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>माझ्या सूचनांचे पालन केले</value></data>
+  <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>चुकीचे किंवा अपूर्ण</value></data>
+  <data name="feedback.tag.lost_context" xml:space="preserve"><value>संदर्भ हरवला</value></data>
+  <data name="feedback.tag.negative_other" xml:space="preserve"><value>इतर</value></data>
+  <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>विषयाबाहेर / कक्षेबाहेर</value></data>
+  <data name="feedback.tag.output_quality" xml:space="preserve"><value>चांगली कोड / आउटपुट गुणवत्ता</value></data>
+  <data name="feedback.tag.positive_other" xml:space="preserve"><value>इतर</value></data>
+  <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>सुरक्षा किंवा कायदेशीर समस्या</value></data>
+  <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>मंद किंवा सदोष</value></data>
+  <data name="feedback.tag.task_completed" xml:space="preserve"><value>माझे काम पूर्ण केले</value></data>
+  <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>उपयुक्त स्वायत्तता</value></data>
+  <data name="feedback.title" xml:space="preserve"><value>अभिप्राय शेअर करा</value></data>
+  <data name="feedback.unavailable" xml:space="preserve"><value>अभिप्राय फक्त वर्कस्पेस चॅटमध्ये उपलब्ध आहे.</value></data>
+  <data name="feedback.unsupportedMessage" xml:space="preserve"><value>अभिप्राय फक्त असिस्टंटच्या उत्तरांसाठी पाठवता येतो.</value></data>
 </root>
