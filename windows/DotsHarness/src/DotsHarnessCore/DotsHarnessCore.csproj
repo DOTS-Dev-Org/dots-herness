@@ -42,6 +42,7 @@
     <Compile Include="..\..\..\..\shared\SessionAreaMigration.cs" Link="SessionAreaMigration.cs" />
     <Compile Include="..\..\..\..\shared\MessageTail.cs" Link="MessageTail.cs" />
     <Compile Include="..\..\..\..\shared\ExploreTool.cs" Link="ExploreTool.cs" />
+    <Compile Include="..\..\..\..\shared\SSHRemote.cs" Link="SSHRemote.cs" />
     <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
     <ProjectReference Include="..\PluginRuntime\PluginRuntime.csproj" />
     <PackageReference Include="Whisper.net" Version="1.9.1" />
