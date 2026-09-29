@@ -63,6 +63,27 @@ reload snapshots, and cover changing host context, retries and tool results.
   sibling reuses the model and account of the first step. Failover replaces
   them only when a provider reports a limit.
 
+## Delegated subagents (macOS)
+
+`delegate` hands a self-contained job (code, a document, a plugin action) to a
+side run on the cheapest tier, on its own `:delegate` cache key and `RunRoute`.
+Its limits:
+
+- Main agent only; a subagent has no `delegate`/`explore`, so runs never nest.
+  Coding area with an open workspace only; withheld in plan mode.
+- `paths` is required and normalized (no absolute, `~`, `..`, `.git`, `.mem`).
+  `write_file` outside them is refused and counted; the parent's tool result
+  lists the files the ledger saw written, not what the subagent claims.
+- At most 3 per turn. Delegates with overlapping paths (component-wise,
+  case-insensitive) run one after another; disjoint ones run in parallel.
+- `mode: full` adds `run_command` and plugin/MCP tools. Their effects cannot be
+  scoped, so a full delegate (or one claiming the whole workspace) runs alone.
+- Approvals and every mutation pass one `DelegateGate`: one prompt at a time,
+  no interleaved writes. Calls use the main run's approval, sandbox and change
+  tracking. `write_file` still refuses a file that changed since it was read.
+- Not covered: a symlink inside a scope that points elsewhere in the workspace,
+  and macOS only (Windows/Linux `shared/` have no subagents yet).
+
 ## Compaction (macOS)
 
 - The threshold is the host's, never the model's. The user sets a share of each

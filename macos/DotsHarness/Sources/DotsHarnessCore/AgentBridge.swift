@@ -2660,10 +2660,36 @@ public final class NativeAgentHost: ObservableObject {
                     }
                     return try await client.complete(messages: messages, tools: tools, cachePolicy: exploreCachePolicy)
                 }
+                let delegateRoute = RunRoute.sideRun(
+                    parentModel: router?.lastServedModelID ?? modelOverride ?? configuration.model,
+                    accountID: router?.lastServedAccountID
+                )
                 let exploreOutcomes = await Self.prefetchExplore(
                     response.message.toolCalls,
                     complete: exploreComplete,
                     workspace: workspace
+                )
+                // Delegates share one cache key and one pinned cheap model, like explore.
+                let delegateComplete: ExploreTool.Complete = { [router] messages, tools in
+                    let policy = AgentCachePolicy(promptCacheKey: requestCacheKey.map { $0 + ":delegate" })
+                    if let router {
+                        return try await router.completeWithFailover(
+                            messages: messages,
+                            tools: tools,
+                            cachePolicy: policy,
+                            route: delegateRoute
+                        )
+                    }
+                    return try await client.complete(messages: messages, tools: tools, cachePolicy: policy)
+                }
+                let delegateOutcomes = await prefetchDelegates(
+                    response.message.toolCalls,
+                    complete: delegateComplete,
+                    conversationID: conversationID,
+                    runID: runID,
+                    workspace: workspace,
+                    pluginNameMap: pluginNameMap,
+                    planMode: planMode
                 )
                 if let thinking = response.message.thinking, !thinking.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     let preText = response.message.content.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -2720,6 +2746,29 @@ public final class NativeAgentHost: ObservableObject {
                             to: conversationID,
                             turnID: activeTurnID
                         )
+                    } else if call.name == DelegateTool.name {
+                        if let ready = delegateOutcomes[call.id] {
+                            result = ready.toolResult
+                            if !ready.refused {
+                                append(
+                                    ChatMessage(
+                                        kind: .tool,
+                                        text: AppCopy.format(
+                                            "delegate.summary",
+                                            ready.steps,
+                                            ready.written.count,
+                                            AppCopy.text(ready.answered ? "explore.answered" : "explore.partialLabel")
+                                        )
+                                    ),
+                                    to: conversationID,
+                                    turnID: activeTurnID
+                                )
+                            }
+                        } else {
+                            result = remoteTarget != nil
+                                ? "Tool error: delegate is unavailable on a remote work location."
+                                : "Tool error: delegate needs an open workspace."
+                        }
                     } else if call.name == OtherChatsTool.name {
                         if area == .chat {
                             result = "Chat transcript isolation is active. Shared roots, notes, and change summaries are available in the Chat context ledger; another Chat transcript is not exposed."
@@ -3943,11 +3992,14 @@ public final class NativeAgentHost: ObservableObject {
         let exploreTools: [AgentToolDefinition] = (area == .coding && workspace != nil)
             ? [ExploreTool.definition]
             : []
+        let delegateTools: [AgentToolDefinition] = (area == .coding && workspace != nil)
+            ? [DelegateTool.definition]
+            : []
         let pluginTools = pluginToolDefinitions()
         let terminalDefinition = area == .chat
             ? WorkspaceTools.chatScoped(TerminalSessionTool.definition)
             : TerminalSessionTool.definition
-        let defs = workspaceTools + sandboxTools + exploreTools + SkillTools.definitions + [AskUserTool.definition]
+        let defs = workspaceTools + sandboxTools + exploreTools + delegateTools + SkillTools.definitions + [AskUserTool.definition]
             + [RememberTool.definition, InstallPluginTool.definition]
             + ((workspace != nil || area == .chat) ? [terminalDefinition, OtherChatsTool.definition] : [])
             + [PlanStepsTool.definition]
@@ -4050,13 +4102,21 @@ public final class NativeAgentHost: ObservableObject {
         - Use absolute paths when searching an additional folder:
         \(searchFolders.map { "  - \($0.path)" }.joined(separator: "\n"))
         """
+        let delegateGuidance = (area == .coding && workspace != nil) ? """
+
+        - For an independent piece of work on files you can name (a module, a document, a
+          plugin action), hand it to delegate with the exact `paths` it may modify. Give
+          parallel delegates disjoint paths; overlapping ones run one after another. It runs
+          on a cheaper model and sees nothing of this conversation, so write a complete task,
+          keep off its paths while it runs, and check the files its report lists.
+        """ : ""
         let platformGuidance = """
 
         Tool use on this platform
         - Search file contents with grep_files rather than a shell grep.
         - Read a file only once: its contents stay in this conversation.
         - When answering means sweeping many files and you only need the conclusion,
-          delegate that search to explore instead of reading them all here.
+          delegate that search to explore instead of reading them all here.\(delegateGuidance)
         - For work that takes several steps, keep the step list current with update_plan;
           skip it for straightforward tasks and never write a single-step plan.
         - Use the browser_* tools for web pages; never open a browser through run_command.
@@ -4240,7 +4300,9 @@ public final class NativeAgentHost: ObservableObject {
     nonisolated static func risk(_ toolName: String) -> ToolRisk {
         if toolName.hasPrefix("skill.") { return .readOnly }
         switch toolName {
-        case "write_file", "remove_file":
+        case "write_file", "remove_file", DelegateTool.name:
+            // A delegate writes through its own approved tool calls; classing it as a
+            // mutation withholds it in plan mode.
             return .workspaceMutation
         case "list_files", "read_file", "grep_files",
              ExploreTool.name, AskUserTool.name, PlanStepsTool.name, RememberTool.name,
@@ -5044,6 +5106,202 @@ public final class NativeAgentHost: ObservableObject {
             && conversation.messages[index].text.count > prefix.count {
             conversation.messages[index].text = prefix + skillReadHistoryMarker
         }
+    }
+
+    // MARK: - Delegated subagents
+
+    private func delegateToolDefinitions(mode: DelegateMode) -> [AgentToolDefinition] {
+        var defs = WorkspaceTools.readOnlyDefinitions
+            + WorkspaceTools.definitions.filter { $0.name == "write_file" }
+        if mode == .full {
+            defs += WorkspaceTools.definitions.filter { $0.name == "run_command" }
+            defs += pluginToolDefinitions().defs + mcpToolDefinitions()
+        }
+        // Tool order is part of the cached prefix.
+        return defs.sorted { $0.name < $1.name }
+    }
+
+    /// Runs the delegates of one assistant turn. Batches run one after another;
+    /// inside a batch the subagents run side by side, because their paths are
+    /// disjoint and none needs exclusive tools.
+    private func prefetchDelegates(
+        _ calls: [AgentToolCall],
+        complete: @escaping ExploreTool.Complete,
+        conversationID: String,
+        runID: UUID,
+        workspace: URL?,
+        pluginNameMap: [String: String],
+        planMode: Bool
+    ) async -> [String: DelegateTool.Outcome] {
+        let delegates = calls.filter { $0.name == DelegateTool.name }
+        // Plan mode, a remote location and a missing workspace are reported by the
+        // per-call branch, which finds no outcome.
+        guard !delegates.isEmpty, let workspace, remoteTarget == nil, !planMode else { return [:] }
+
+        var outcomes: [String: DelegateTool.Outcome] = [:]
+        var parsed: [(call: AgentToolCall, request: DelegateRequest)] = []
+        for call in delegates.prefix(DelegatePlanner.maxPerTurn) {
+            switch DelegateRequest.parse(call) {
+            case .success(let request): parsed.append((call, request))
+            case .failure(let error): outcomes[call.id] = .refused(error.message)
+            }
+        }
+        for call in delegates.dropFirst(DelegatePlanner.maxPerTurn) {
+            outcomes[call.id] = .refused(
+                "Tool error: maximum of \(DelegatePlanner.maxPerTurn) delegated subagents per turn exceeded. Delegate the rest in a later turn."
+            )
+        }
+
+        let gate = DelegateGate()
+        let batches = DelegatePlanner.batches(parsed.map(\.request))
+        for (batchIndex, batch) in batches.enumerated() {
+            let results = await withTaskGroup(of: (String, DelegateTool.Outcome).self) { group in
+                for index in batch {
+                    let item = parsed[index]
+                    group.addTask(priority: .userInitiated) { [self] in
+                        let ledger = DelegateLedger()
+                        let tools = await self.delegateToolDefinitions(mode: item.request.mode)
+                        var outcome = await DelegateTool.run(
+                            item.request,
+                            tools: tools,
+                            complete: complete,
+                            ledger: ledger,
+                            execute: { [self] call in
+                                await self.executeDelegateTool(
+                                    call,
+                                    request: item.request,
+                                    ledger: ledger,
+                                    gate: gate,
+                                    conversationID: conversationID,
+                                    runID: runID,
+                                    workspace: workspace,
+                                    pluginNameMap: pluginNameMap
+                                )
+                            }
+                        )
+                        if batchIndex > 0 {
+                            outcome.notes.append("This subagent started only after an earlier delegate finished, because their paths overlapped or one needed exclusive tools.")
+                        }
+                        return (item.call.id, outcome)
+                    }
+                }
+                var batchResults: [String: DelegateTool.Outcome] = [:]
+                for await (id, outcome) in group { batchResults[id] = outcome }
+                return batchResults
+            }
+            outcomes.merge(results) { _, new in new }
+        }
+        return outcomes
+    }
+
+    /// One tool call of one subagent. Reads run freely; a write must sit inside the
+    /// declared paths; commands and plugin/MCP tools exist only in `full` mode.
+    /// Anything that changes state waits for the gate, then goes through the same
+    /// approval and sandbox as a main-run call.
+    private func executeDelegateTool(
+        _ call: AgentToolCall,
+        request: DelegateRequest,
+        ledger: DelegateLedger,
+        gate: DelegateGate,
+        conversationID: String,
+        runID: UUID,
+        workspace: URL,
+        pluginNameMap: [String: String]
+    ) async -> String {
+        if WorkspaceTools.isReadOnly(call.name) {
+            let readRoots = searchFolders
+            return await Task.detached(priority: .userInitiated) {
+                WorkspaceTools.execute(call, workspace: workspace, readRoots: readRoots)
+            }.value
+        }
+        if call.name == "write_file" {
+            guard let path = Self.argument(call, key: "path"), request.scope.allows(path) else {
+                ledger.noteBlocked()
+                return "Tool error: write_file is outside this subagent's paths (\(request.scope.description)). Do not retry; list the file under Unresolved."
+            }
+        } else {
+            let isMCP = mcpRegistry?.isMCPTool(call.name) == true
+            guard request.mode == .full,
+                  call.name == "run_command" || pluginNameMap[call.name] != nil || isMCP else {
+                return "Tool error: \(call.name) is not available to a delegated subagent."
+            }
+        }
+
+        await gate.acquire()
+        let result = await performDelegateMutation(
+            call,
+            ledger: ledger,
+            conversationID: conversationID,
+            runID: runID,
+            workspace: workspace,
+            pluginNameMap: pluginNameMap
+        )
+        await gate.release()
+        return result
+    }
+
+    private func performDelegateMutation(
+        _ call: AgentToolCall,
+        ledger: DelegateLedger,
+        conversationID: String,
+        runID: UUID,
+        workspace: URL,
+        pluginNameMap: [String: String]
+    ) async -> String {
+        if let mcp = mcpRegistry, mcp.isMCPTool(call.name) {
+            let proceed: Bool
+            if mcp.shouldAutoRun(call.name) {
+                proceed = true
+            } else {
+                proceed = await requestApprovalIfNeeded(for: call, conversationID: conversationID)
+            }
+            return proceed
+                ? await runMCPTool(call.name, call: call, registry: mcp)
+                : AppCopy.text("permission.rejected")
+        }
+        guard await requestApprovalIfNeeded(for: call, conversationID: conversationID) else {
+            return AppCopy.text("permission.rejected")
+        }
+        if let realName = pluginNameMap[call.name] {
+            return await runPluginTool(realName, call: call)
+        }
+        if call.name == "run_command" && WorkspaceTools.mayDeleteFiles(Self.argument(call, key: "command")) {
+            activeUnverifiedDeletion = true
+        }
+        let beforeFile = memory.fileHash(for: call, workspace: workspace)
+        let beforeGit = memory.changedGitPaths(workspace: workspace)
+        let policy = (sandboxPolicy ?? SandboxExecutionPolicy(workspaceURL: workspace)).strictAgentPolicy()
+        let readRoots = searchFolders
+        let cancel = ToolCancel()
+        let work = Task.detached(priority: .userInitiated) {
+            WorkspaceTools.execute(
+                call,
+                workspace: workspace,
+                sandboxPolicy: policy,
+                readRoots: readRoots,
+                isCancelled: { cancel.isCancelled }
+            )
+        }
+        let result = await withTaskCancellationHandler {
+            await work.value
+        } onCancel: {
+            cancel.cancel()
+        }
+        memory.recordTool(
+            runID: runID,
+            call: call,
+            result: result,
+            beforeFile: beforeFile,
+            beforeGit: beforeGit,
+            workspace: workspace
+        )
+        if call.name == "write_file",
+           let before = beforeFile,
+           let after = memory.fileHash(for: call, workspace: workspace),
+           after.hash != before.hash {
+            ledger.noteWrite(after.path)
+        }
+        return result
     }
 
     /// Runs the explore subagents of one assistant turn side by side, bounded by maxPerTurn.

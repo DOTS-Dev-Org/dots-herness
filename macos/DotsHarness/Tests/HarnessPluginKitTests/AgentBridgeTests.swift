@@ -1051,14 +1051,18 @@ final class AgentBridgeTests: XCTestCase {
         codingHost.setWorkspace(workspace.path)
         let codingTools = codingHost.agentTools(workspace: workspace).defs.map(\.name)
         XCTAssertTrue(codingTools.contains("explore"), "explore tool must be available in coding area with open workspace")
+        XCTAssertTrue(codingTools.contains("delegate"), "delegate tool must be available in coding area with open workspace")
+        XCTAssertTrue(NativeAgentHost.planWithholds("delegate"), "a delegate writes, so plan mode withholds it")
 
         let chatHost = NativeAgentHost(paths: temporaryPaths(), endpoint: AgentEndpointController(), area: .chat)
         chatHost.setWorkspace(workspace.path)
         let chatTools = chatHost.agentTools(workspace: workspace).defs.map(\.name)
         XCTAssertFalse(chatTools.contains("explore"), "explore tool must not be exposed in chat area")
+        XCTAssertFalse(chatTools.contains("delegate"), "delegate tool must not be exposed in chat area")
 
         let noWorkspaceTools = codingHost.agentTools(workspace: nil).defs.map(\.name)
         XCTAssertFalse(noWorkspaceTools.contains("explore"), "explore tool must not be offered without a workspace")
+        XCTAssertFalse(noWorkspaceTools.contains("delegate"), "delegate tool must not be offered without a workspace")
     }
 
     func testPrefetchExploreCapsToMaxPerTurnAndRejectsExcess() async {
