@@ -355,4 +355,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>编辑</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>倒带</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>编辑最新消息</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>历史很忙碌。运行完成后重试。</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>只能编辑最新完成的用户消息。</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>历史记录更改不可用，因为此对话没有完整的工作区快照。</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>保留代理后更改的文件：{0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>无法恢复 {0}。</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>谈话倒带。</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>谈话又充满冲突。</value></data>
 </root>

@@ -355,4 +355,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>সম্পাদনা করুন</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>রিওয়াইন্ড</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>সর্বশেষ বার্তা সম্পাদনা করা হচ্ছে</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>ইতিহাস ব্যস্ত। রান শেষ হলে আবার চেষ্টা করুন।</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>শুধুমাত্র সর্বশেষ সম্পন্ন ব্যবহারকারী বার্তা সম্পাদনা করা যাবে.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>ইতিহাস পরিবর্তনগুলি অনুপলব্ধ কারণ এই কথোপকথনের কোনও সম্পূর্ণ ওয়ার্কস্পেস স্ন্যাপশট নেই৷</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>এজেন্ট রাখার পরে ফাইলগুলি পরিবর্তিত হয়েছে: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>{0} পুনরুদ্ধার করা যায়নি।</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>কথোপকথন rewound.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>কথোপকথন দ্বন্দ্বের সঙ্গে rewound.</value></data>
 </root>

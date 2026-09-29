@@ -355,4 +355,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>संपादित करा</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>रिवाइंड करा</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>नवीनतम संदेश संपादित करत आहे</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>इतिहास व्यस्त आहे. रन पूर्ण झाल्यावर पुन्हा प्रयत्न करा.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>केवळ नवीनतम पूर्ण केलेला वापरकर्ता संदेश संपादित केला जाऊ शकतो.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>इतिहासातील बदल अनुपलब्ध आहेत कारण या संभाषणात पूर्ण वर्कस्पेस स्नॅपशॉट नाही.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>एजंट ठेवल्यानंतर फायली बदलल्या: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>{0} पुनर्संचयित करू शकलो नाही.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>संभाषण रिवाउंड.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>संभाषण संघर्षाने पुन्हा सुरू होते.</value></data>
 </root>

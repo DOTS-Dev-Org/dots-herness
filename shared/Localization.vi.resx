@@ -355,4 +355,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Chỉnh sửa</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Tua lại</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>Chỉnh sửa tin nhắn mới nhất</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>Lịch sử đang bận rộn. Hãy thử lại khi quá trình chạy kết thúc.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>Chỉ có thể chỉnh sửa tin nhắn người dùng hoàn thành mới nhất.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>Các thay đổi trong lịch sử không khả dụng vì cuộc trò chuyện này không có ảnh chụp nhanh hoàn chỉnh về không gian làm việc.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>Các tập tin đã thay đổi sau khi tác nhân được lưu giữ: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>Không thể khôi phục {0}.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>Cuộc trò chuyện tua lại.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>Cuộc trò chuyện quay lại với những xung đột.</value></data>
 </root>

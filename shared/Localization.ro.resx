@@ -355,4 +355,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Editați</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Derulează înapoi</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>Editarea celui mai recent mesaj</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>Istoria este ocupată. Încercați din nou când rularea se termină.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>Numai cel mai recent mesaj completat al utilizatorului poate fi editat.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>Modificările istoricului nu sunt disponibile deoarece această conversație nu are un instantaneu complet al spațiului de lucru.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>Fișierele schimbate după ce agentul a fost păstrat: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>Nu s-a putut restabili {0}.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>Conversație derulată.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>Conversația derulată cu conflicte.</value></data>
 </root>

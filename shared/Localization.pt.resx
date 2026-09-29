@@ -356,4 +356,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Editar</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Retroceder</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>Editando a última mensagem</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>A história está ocupada. Tente novamente quando a execução terminar.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>Somente a última mensagem do usuário concluída pode ser editada.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>As alterações do histórico não estão disponíveis porque esta conversa não possui um instantâneo completo do espaço de trabalho.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>Arquivos alterados após a manutenção do agente: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>Não foi possível restaurar o {0}.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>Conversa retrocedida.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>Conversa rebobinada com conflitos.</value></data>
 </root>

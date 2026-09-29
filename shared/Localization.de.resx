@@ -356,4 +356,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Bearbeiten</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Zurückspulen</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>Letzte Nachricht wird bearbeitet</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>Die Geschichte ist beschäftigt. Versuchen Sie es erneut, wenn der Lauf beendet ist.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>Nur die letzte abgeschlossene Benutzernachricht kann bearbeitet werden.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>Verlaufsänderungen sind nicht verfügbar, da diese Konversation keinen vollständigen Arbeitsbereichs-Snapshot hat.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>Nach der Beibehaltung des Agenten geänderte Dateien: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>{0} konnte nicht wiederhergestellt werden.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>Das Gespräch wurde zurückgespult.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>Das Gespräch wurde mit Konflikten zurückgespult.</value></data>
 </root>

@@ -355,4 +355,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Επεξεργασία</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Πίσω</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>Επεξεργασία τελευταίου μηνύματος</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>Η ιστορία είναι απασχολημένη. Δοκιμάστε ξανά όταν τελειώσει η εκτέλεση.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>Μόνο το πιο πρόσφατο ολοκληρωμένο μήνυμα χρήστη μπορεί να επεξεργαστεί.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>Οι αλλαγές στο ιστορικό δεν είναι διαθέσιμες επειδή αυτή η συνομιλία δεν έχει πλήρες στιγμιότυπο χώρου εργασίας.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>Τα αρχεία άλλαξαν μετά τη διατήρηση του πράκτορα: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>Δεν ήταν δυνατή η επαναφορά του {0}.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>Επαναφορά συνομιλίας.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>Η συνομιλία επανήλθε με συγκρούσεις.</value></data>
 </root>

@@ -356,4 +356,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Bewerken</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Terugspoelen</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>Laatste bericht bewerken</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>De geschiedenis is druk. Probeer het opnieuw als de run is afgelopen.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>Alleen het laatst ingevulde gebruikersbericht kan worden bewerkt.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>Wijzigingen in de geschiedenis zijn niet beschikbaar omdat dit gesprek geen volledige momentopname van de werkruimte bevat.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>Bestanden gewijzigd nadat de agent werd behouden: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>Kan {0} niet herstellen.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>Gesprek teruggespoeld.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>Het gesprek werd teruggespoeld met conflicten.</value></data>
 </root>

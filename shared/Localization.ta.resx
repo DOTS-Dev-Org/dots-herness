@@ -355,4 +355,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>திருத்தவும்</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>ரீவைண்ட்</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>சமீபத்திய செய்தியைத் திருத்துகிறது</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>வரலாறு பிஸியாக உள்ளது. ரன் முடிந்ததும் மீண்டும் முயற்சிக்கவும்.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>சமீபத்திய பூர்த்தி செய்யப்பட்ட பயனர் செய்தியை மட்டுமே திருத்த முடியும்.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>இந்த உரையாடலில் முழுமையான பணியிட ஸ்னாப்ஷாட் இல்லாததால் வரலாறு மாற்றங்கள் கிடைக்கவில்லை.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>முகவர் வைக்கப்பட்ட பிறகு கோப்புகள் மாற்றப்பட்டன: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>{0} ஐ மீட்டெடுக்க முடியவில்லை.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>உரையாடல் மீண்டும்.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>உரையாடல் மோதல்களுடன் திரும்புகிறது.</value></data>
 </root>

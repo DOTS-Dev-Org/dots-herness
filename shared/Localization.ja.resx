@@ -356,4 +356,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>編集</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>巻き戻し</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>最新のメッセージを編集しています</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>歴史は忙しい。実行が終了したら、もう一度試してください。</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>編集できるのは、最後に完成したユーザー メッセージのみです。</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>この会話には完全なワークスペース スナップショットがないため、履歴の変更は利用できません。</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>エージェントの保存後に変更されたファイル: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>{0}を復元できませんでした。</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>会話が巻き戻されました。</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>会話は衝突して巻き戻されました。</value></data>
 </root>

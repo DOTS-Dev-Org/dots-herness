@@ -356,4 +356,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Edytuj</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Przewiń do tyłu</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>Edytowanie ostatniej wiadomości</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>Historia jest zajęta. Spróbuj ponownie po zakończeniu przebiegu.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>Można edytować tylko ostatnią ukończoną wiadomość użytkownika.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>Zmiany historii są niedostępne, ponieważ ta rozmowa nie zawiera pełnej migawki obszaru roboczego.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>Pliki zmienione po zachowaniu agenta: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>Nie można przywrócić {0}.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>Rozmowa została wznowiona.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>Rozmowa przewijana z konfliktami.</value></data>
 </root>

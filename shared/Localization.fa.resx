@@ -355,4 +355,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>ویرایش کنید</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>عقب</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>در حال ویرایش آخرین پیام</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>تاریخ مشغول است. وقتی اجرا به پایان رسید دوباره امتحان کنید.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>فقط آخرین پیام کاربر تکمیل شده قابل ویرایش است.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>تغییرات سابقه در دسترس نیست زیرا این مکالمه عکس فوری فضای کاری کاملی ندارد.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>فایل‌ها پس از نگهداری عامل تغییر کردند: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>{0} بازیابی نشد.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>مکالمه برگشت.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>مکالمه با درگیری برگشت.</value></data>
 </root>

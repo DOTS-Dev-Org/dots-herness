@@ -355,4 +355,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>ترمیم کریں۔</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>ریوائنڈ</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>تازہ ترین پیغام میں ترمیم کرنا</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>تاریخ مصروف ہے۔ رن ختم ہونے پر دوبارہ کوشش کریں۔</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>صرف تازہ ترین مکمل شدہ صارف پیغام میں ترمیم کی جا سکتی ہے۔</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>تاریخ کی تبدیلیاں دستیاب نہیں ہیں کیونکہ اس گفتگو میں کوئی مکمل ورک اسپیس سنیپ شاٹ نہیں ہے۔</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>ایجنٹ کے رکھنے کے بعد فائلیں تبدیل ہوگئیں: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>{0} کو بحال نہیں کیا جا سکا۔</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>بات چیت کا دوبارہ آغاز۔</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>بات چیت تنازعات کے ساتھ واپس آتی ہے۔</value></data>
 </root>

@@ -356,4 +356,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>تحرير</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>الترجيع</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>تحرير الرسالة الأخيرة</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>التاريخ مشغول. حاول مرة أخرى عند انتهاء التشغيل.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>يمكن تحرير آخر رسالة مستخدم مكتملة فقط.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>تغييرات السجل غير متاحة لأن هذه المحادثة لا تحتوي على لقطة كاملة لمساحة العمل.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>تم تغيير الملفات بعد الاحتفاظ بالعامل: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>تعذرت استعادة {0}.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>عادت المحادثة إلى سابق عهدها.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>عادت المحادثة إلى الصراعات.</value></data>
 </root>

@@ -355,4 +355,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Sunting</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Mundur</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>Mengedit pesan terbaru</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>Sejarah sedang sibuk. Coba lagi setelah proses selesai.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>Hanya pesan pengguna terakhir yang diselesaikan yang dapat diedit.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>Perubahan riwayat tidak tersedia karena percakapan ini tidak memiliki cuplikan ruang kerja yang lengkap.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>File diubah setelah agen disimpan: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>Tidak dapat memulihkan {0}.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>Percakapan diputar ulang.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>Percakapan diputar ulang dengan konflik.</value></data>
 </root>

@@ -47,7 +47,7 @@ public sealed record PendingVisionInstall(
     long ModelBytes,
     string Reason);
 
-public sealed class AgentBridge : ObservableObject
+public sealed partial class AgentBridge : ObservableObject
 {
     public AgentArea Area { get; }
     private readonly RouterController _router;
@@ -326,6 +326,7 @@ public sealed class AgentBridge : ObservableObject
     {
         Area = area;
         _router = router;
+        _snapshots = new WorkspaceSnapshotStore(paths);
         _file = Path.Combine(paths.Root, sessionFileName ?? "conversations.json");
         var effectiveSkills = area == AgentArea.Chat
             ? new SkillCatalog(paths)
@@ -896,6 +897,13 @@ public sealed class AgentBridge : ObservableObject
         var changeTracker = Area == AgentArea.Chat || string.IsNullOrWhiteSpace(workspacePath)
             ? null
             : WorkspaceChangeTracker.Start(workspacePath);
+        // A restorable copy of the tree from before the turn, so this turn can be rewound or edited.
+        // Never for chat, a remote host, or a folder that is not a local directory.
+        var snapshotStarted = Area == AgentArea.Coding
+            && RemoteTarget is null
+            && workspacePath.Length > 0
+            && Directory.Exists(workspacePath)
+            && _snapshots.Begin(conversation.Id, turnId, workspacePath);
         var browserScope = new BrowserScope(
             Area.WireValue(),
             conversation.Id,
@@ -1368,6 +1376,7 @@ public sealed class AgentBridge : ObservableObject
             }
             var tracking = changeTracker?.FinishResult()
                 ?? new WorkspaceChangeResult([], "incomplete", "Workspace snapshot was unavailable.");
+            if (snapshotStarted) _snapshots.FinishResult(conversation.Id, turnId, workspacePath);
             var changedFiles = tracking.ChangedFiles;
             if (_activeTurnAttributionKnown)
             {

@@ -356,4 +356,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Rewind</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>Editing latest message</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>History is busy. Try again when the run finishes.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>Only the latest completed user message can be edited.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>History changes are unavailable because this conversation has no complete workspace snapshot.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>Files changed after the agent were kept: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>Could not restore {0}.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>Conversation rewound.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>Conversation rewound with conflicts.</value></data>
 </root>

@@ -356,4 +356,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Zamanlanmış görev</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Tamamlandı</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Başarısız</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Düzenle</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Geri sar</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>Son mesaj düzenleniyor</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>Geçmiş meşgul. Çalışma tamamlandığında tekrar deneyin.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>Yalnızca tamamlanmış en son kullanıcı mesajı düzenlenebilir.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>Bu sohbette tamamlanmış çalışma alanı kaydı olmadığı için geçmiş değişiklikleri kullanılamıyor.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>Ajan sonrasında değiştirilen dosyalar korundu: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>{0} geri yüklenemedi.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>Sohbet geri sarıldı.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>Sohbet çakışmalarla geri sarıldı.</value></data>
 </root>

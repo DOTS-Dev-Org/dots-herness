@@ -355,4 +355,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>แก้ไข</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>กรอกลับ</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>แก้ไขข้อความล่าสุด</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>ประวัติศาสตร์ไม่ว่าง ลองอีกครั้งเมื่อการรันเสร็จสิ้น</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>เฉพาะข้อความผู้ใช้ที่เสร็จสมบูรณ์ล่าสุดเท่านั้นที่สามารถแก้ไขได้</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>การเปลี่ยนแปลงประวัติไม่สามารถทำได้เนื่องจากการสนทนานี้ไม่มีภาพรวมพื้นที่ทำงานที่สมบูรณ์</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>ไฟล์ที่เปลี่ยนแปลงหลังจากเก็บเอเจนต์: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>ไม่สามารถกู้คืน {0} ได้</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>บทสนทนาย้อนกลับ</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>บทสนทนาย้อนกลับมาพร้อมกับความขัดแย้ง</value></data>
 </root>

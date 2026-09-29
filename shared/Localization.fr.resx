@@ -355,4 +355,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Modifier</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Rembobiner</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>Modification du dernier message</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>L’histoire est chargée. Réessayez une fois l'exécution terminée.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>Seul le dernier message utilisateur complété peut être modifié.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>Les modifications de l'historique ne sont pas disponibles, car cette conversation ne dispose d'aucun instantané complet de l'espace de travail.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>Fichiers modifiés après conservation de l'agent : {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>Impossible de restaurer {0}.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>Conversation reprise.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>La conversation a repris avec des conflits.</value></data>
 </root>

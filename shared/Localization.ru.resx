@@ -356,4 +356,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Редактировать</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Перемотка назад</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>Редактирование последнего сообщения</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>История занята. Повторите попытку, когда прогон завершится.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>Редактировать можно только последнее завершенное сообщение пользователя.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>Изменения истории недоступны, поскольку у этого разговора нет полного снимка рабочей области.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>Файлы, измененные после сохранения агента: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>Не удалось восстановить {0}.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>Разговор перемотался.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>Разговор завязался с конфликтами.</value></data>
 </root>

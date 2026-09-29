@@ -355,4 +355,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>సవరించు</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>రివైండ్ చేయండి</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>తాజా సందేశాన్ని సవరిస్తోంది</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>చరిత్ర బిజీగా ఉంది. పరుగు పూర్తయినప్పుడు మళ్లీ ప్రయత్నించండి.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>తాజాగా పూర్తయిన వినియోగదారు సందేశాన్ని మాత్రమే సవరించగలరు.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>ఈ సంభాషణలో పూర్తి వర్క్‌స్పేస్ స్నాప్‌షాట్ లేనందున చరిత్ర మార్పులు అందుబాటులో లేవు.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>ఏజెంట్‌ని ఉంచిన తర్వాత ఫైల్‌లు మార్చబడ్డాయి: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>{0}ని పునరుద్ధరించడం సాధ్యపడలేదు.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>సంభాషణ రివైండ్.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>సంఘర్షణలతో సంభాషణ తిరిగి వస్తుంది.</value></data>
 </root>

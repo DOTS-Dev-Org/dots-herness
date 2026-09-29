@@ -355,4 +355,14 @@
   <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
   <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
   <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="conversation.edit" xml:space="preserve"><value>Szerkesztés</value></data>
+  <data name="conversation.rewind" xml:space="preserve"><value>Visszatekerés</value></data>
+  <data name="conversation.editingMessage" xml:space="preserve"><value>A legutóbbi üzenet szerkesztése</value></data>
+  <data name="conversation.historyBusy" xml:space="preserve"><value>A történelem mozgalmas. Próbálja újra, ha a futás véget ér.</value></data>
+  <data name="conversation.editOnlyLatest" xml:space="preserve"><value>Csak a legutóbb elkészült felhasználói üzenet szerkeszthető.</value></data>
+  <data name="conversation.historyUnavailable" xml:space="preserve"><value>Az előzmények módosításai nem érhetők el, mert ennek a beszélgetésnek nincs teljes munkaterület-pillanatképe.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>Az ügynök megtartása után megváltozott fájlok: {0}</value></data>
+  <data name="conversation.historyRestoreFailed" xml:space="preserve"><value>Nem sikerült visszaállítani az {0}-et.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>A beszélgetés visszatekerve.</value></data>
+  <data name="conversation.historyConflictStatus" xml:space="preserve"><value>A beszélgetés konfliktusokkal tornyosult.</value></data>
 </root>

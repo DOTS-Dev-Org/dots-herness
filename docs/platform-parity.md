@@ -67,3 +67,8 @@
 
 ## Desktop notifications
 - `DesktopNotificationService` macOS-only (UserNotifications). Linux `App.axaml.cs` (`notify-send`) ve Windows `App.xaml.cs` (`NotifyIcon` balonu) asistan yanıtı, çalışma özeti, dikkat isteği ve bağlantı değişimini zaten bildirir; zamanlanmış görev bildirimi `AppModel.ScheduledTaskFinished` olayı ile eklendi.
+
+## Conversation rewind & edit
+- macOS `WorkspaceSnapshotStore.swift` → `shared/WorkspaceSnapshots.cs` (`WorkspaceSnapshotStore`, `RewindResult`) + `shared/WorkspaceSnapshotsTests.cs`. Her coding turu öncesi ağaç (yok sayılan dizinler hariç) `<support>/rewind/<sohbet>/<tur>/before` altına kopyalanır, tur sonunda yeniden özetlenir. Geri yükleme yalnızca o turun değiştirdiği dosyaları geri koyar; kullanıcı sonradan değiştirdiyse çakışma sayılır (`abortOnConflict` ile hiçbir şeye dokunulmaz). Fark: ağaç `MaxFiles` (50 000) / `MaxBytes` (1 GiB) üstündeyse snapshot alınmaz ve o tur için geri sarma sessizce kapalı kalır (macOS sınırsız).
+- `AgentBridge.Rewind/CanRewind/CanEdit/EditLatestMessageAsync` (`AgentBridge.Rewind.cs`) macOS akışını izler: mesaj ve sonrası silinir, `ModelContext` sıfırlanır, çakışma transkripte sistem mesajı olarak yazılır. `AppModelHistory.cs` + mesaj satırındaki ✎ / ↶ düğmeleri (Avalonia + WPF; yalnızca coding alanı, uzak host değil). Testler: `shared/ConversationRewindTests.cs` (gerçek köprü + sahte sağlayıcı).
+- Kapsam dışı: macOS `WorkspaceMemory.recordConversationRewind` (bellek kasası) — bkz. Workspace memory.

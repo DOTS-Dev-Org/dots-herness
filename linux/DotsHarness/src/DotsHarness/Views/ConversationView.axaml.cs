@@ -850,7 +850,7 @@ public partial class ConversationView : UserControl
             catch (Exception error) { ShowVoiceError(error); return; }
         }
         model.Draft = DraftBox.Text ?? "";
-        model.Send(mode);
+        if (!model.TrySubmitEdit(model.Draft.Trim())) model.Send(mode);
         DraftBox.Text = "";
     }
 
@@ -867,6 +867,23 @@ public partial class ConversationView : UserControl
         {
             Model.Bridge.SteerPendingPrompt(conversationId, prompt.Id);
         }
+        e.Handled = true;
+    }
+
+    private void OnEditMessage(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ChatMessage message } && Model is { } model)
+        {
+            model.BeginEditMessage(message);
+            DraftBox.Text = model.Draft;
+            DraftBox.Focus();
+        }
+        e.Handled = true;
+    }
+
+    private void OnRewindMessage(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ChatMessage message }) Model?.RewindMessage(message.Id);
         e.Handled = true;
     }
 
@@ -1036,6 +1053,16 @@ public sealed class MessageActionsVisibility : IValueConverter
     public static readonly MessageActionsVisibility Instance = new();
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         value is ChatMessage { Streaming: false, Kind: ChatKind.User or ChatKind.Assistant or ChatKind.Plan };
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+public sealed class UserMessageVisibility : IValueConverter
+{
+    public static readonly UserMessageVisibility Instance = new();
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is ChatMessage { Streaming: false, Kind: ChatKind.User }
+        && (Application.Current as App)?.Model is { ActiveArea: AgentArea.Coding, RemoteTarget: null };
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }
