@@ -279,6 +279,9 @@ public sealed class Conversation : PluginRuntime.ObservableObject
     public DateTimeOffset? RunStartedAt { get => _runStartedAt; set => SetProperty(ref _runStartedAt, value); }
     public bool Blank { get => _blank; set => SetProperty(ref _blank, value); }
     public string? PendingPlanMessageId { get => _pendingPlanMessageId; set => SetProperty(ref _pendingPlanMessageId, value); }
+    /// <summary>Provider account and model that served the last turn; the next turn prefers them (prompt cache).</summary>
+    public string? StickyAccountId { get; set; }
+    public string? StickyModelId { get; set; }
     public string? Cwd { get; set; }
     public string? AgentPreset { get; set; }
     [JsonPropertyName("area")]

@@ -50,6 +50,8 @@ public sealed class NativeProviderAccount
     public string? RefreshCredentialId { get; set; }
     public int Priority { get; set; }
     public string? Error { get; set; }
+    /// <summary>Set after a rate/quota limit; the account is tried last until this passes.</summary>
+    public DateTimeOffset? CooldownUntil { get; set; }
 }
 
 public sealed class NativeCustomEndpoint
@@ -241,6 +243,13 @@ public sealed class NativeProviderStore
 
     public void SetActive(string id, bool active) { if (State.Accounts.FirstOrDefault(a => a.Id == id) is { } account) { account.Active = active; Save(); } }
     public void SetImageFallback(string id, bool enabled) { if (State.Accounts.FirstOrDefault(a => a.Id == id) is { } account) { account.ImageFallbackEnabled = enabled; Save(); } }
+    public void SetCooldown(string id, DateTimeOffset? until)
+    {
+        if (State.Accounts.FirstOrDefault(a => a.Id == id) is not { } account || account.CooldownUntil == until) return;
+        account.CooldownUntil = until;
+        Save();
+    }
+
     public void SetPriority(string id, int priority) { if (State.Accounts.FirstOrDefault(a => a.Id == id) is { } account) { account.Priority = priority; Save(); } }
     public void ReplaceCredential(NativeProviderAccount account, string value) => Secrets.Write(account.CredentialId, value);
     public void ReplaceRefreshCredential(NativeProviderAccount account, string value)
@@ -387,7 +396,12 @@ public sealed record NativeUsage(
         ? InputTokens + (CachedInputTokens ?? 0) + (CacheWriteTokens ?? 0)
         : Math.Max(InputTokens, (CachedInputTokens ?? 0) + (CacheMissTokens ?? 0) + (CacheWriteTokens ?? 0));
 }
-public sealed record NativeResponse(NativeMessage Message, NativeUsage? Usage);
+public sealed record NativeResponse(NativeMessage Message, NativeUsage? Usage)
+{
+    /// <summary>The account and model that actually served this turn (conversation affinity).</summary>
+    public string? ServedAccountId { get; init; }
+    public string? ServedModel { get; init; }
+}
 
 public enum NativeProviderLimitKind
 {
@@ -466,25 +480,24 @@ public sealed class NativeProviderRouter
         IReadOnlyList<NativeToolDefinition> tools,
         string? model = null,
         CancellationToken ct = default,
-        string? promptCacheKey = null)
+        string? promptCacheKey = null,
+        string? preferredAccountId = null)
     {
-        var routes = _store.State.Accounts
-            .Where(a => a.Active && (string.IsNullOrWhiteSpace(model) || CanServe(a, model)))
-            .OrderBy(a => a.Priority)
-            .ToList();
+        var routes = OrderedRoutes(_store.State.Accounts, model, preferredAccountId, AccountRemaining, DateTimeOffset.UtcNow);
         if (routes.Count == 0) throw new NativeProviderException("Connect a provider account before starting a chat.");
         var failures = new List<string>();
         NativeProviderException? limitFailure = null;
         foreach (var route in routes)
         {
             var refreshed = false;
-            try { return await SendAsync(route, messages, tools, string.IsNullOrWhiteSpace(model) ? null : model, promptCacheKey, ct); }
+            try { return Served(await SendAsync(route, messages, tools, string.IsNullOrWhiteSpace(model) ? null : model, promptCacheKey, ct), route, model); }
             catch (TaskCanceledException ex) when (!ct.IsCancellationRequested) { failures.Add($"{route.ProviderName}: {ex.Message}"); }
             catch (OperationCanceledException) { throw; }
             catch (NativeProviderException ex)
             {
                 if (ex.IsLimit)
                 {
+                    _store.SetCooldown(route.Id, DateTimeOffset.UtcNow + LimitCooldown);
                     limitFailure ??= ex;
                     failures.Add($"{route.ProviderName}: {ex.Message}");
                     continue;
@@ -500,13 +513,14 @@ public sealed class NativeProviderRouter
                     refreshed = true;
                     if (await _refresh(route, ct))
                     {
-                        try { return await SendAsync(route, messages, tools, string.IsNullOrWhiteSpace(model) ? null : model, promptCacheKey, ct); }
+                        try { return Served(await SendAsync(route, messages, tools, string.IsNullOrWhiteSpace(model) ? null : model, promptCacheKey, ct), route, model); }
                         catch (TaskCanceledException retry) when (!ct.IsCancellationRequested) { failures.Add($"{route.ProviderName}: {retry.Message}"); continue; }
                         catch (HttpRequestException retry) { failures.Add($"{route.ProviderName}: {retry.Message}"); continue; }
                         catch (NativeProviderException retry)
                         {
                             if (retry.IsLimit)
                             {
+                                _store.SetCooldown(route.Id, DateTimeOffset.UtcNow + LimitCooldown);
                                 limitFailure ??= retry;
                                 failures.Add($"{route.ProviderName}: {retry.Message}");
                                 continue;
@@ -538,6 +552,74 @@ public sealed class NativeProviderRouter
                 providerName: limitFailure.ProviderName);
         }
         throw new NativeProviderException(string.Join(Environment.NewLine, failures));
+    }
+
+    /// <summary>How long an account that hit a limit is tried last (the providers give no reset time here).</summary>
+    public static readonly TimeSpan LimitCooldown = TimeSpan.FromMinutes(15);
+
+    /// <summary>Remaining quota per account, 0..1; null when unknown. Set by the usage service.</summary>
+    public Func<string, double?>? AccountRemaining { get; set; }
+
+    private NativeResponse Served(NativeResponse response, NativeProviderAccount route, string? model)
+    {
+        // A success clears the cooldown a previous limit put on this account.
+        if (route.CooldownUntil is not null) _store.SetCooldown(route.Id, null);
+        return response with
+        {
+            ServedAccountId = route.Id,
+            ServedModel = string.IsNullOrWhiteSpace(model) ? route.Model : model,
+        };
+    }
+
+    /// <summary>
+    /// Active accounts that can serve <paramref name="model"/>, best first:
+    /// 1. a live <paramref name="preferred"/> account (conversation affinity) that is not
+    ///    cooling down comes first, so follow-up turns keep the provider's prompt cache;
+    /// 2. otherwise accounts not in cooldown, most remaining quota first (unknown usage sorts
+    ///    below known-healthy but above known-exhausted), <c>Priority</c> breaking ties;
+    /// 3. cooling-down accounts last, as a final fallback.
+    /// Pure and side-effect free so it is unit-testable without the network.
+    /// </summary>
+    public static List<NativeProviderAccount> OrderedRoutes(
+        IEnumerable<NativeProviderAccount> accounts,
+        string? model,
+        string? preferred,
+        Func<string, double?>? remaining,
+        DateTimeOffset now)
+    {
+        bool CoolingDown(NativeProviderAccount a) => a.CooldownUntil is { } until && until > now;
+        // Unknown usage -> 0 so it sorts between healthy (>0) and exhausted (-1).
+        double Rank(NativeProviderAccount a) => remaining?.Invoke(a.Id) is { } fraction ? (fraction <= 0 ? -1 : fraction) : 0;
+
+        var ranked = accounts
+            .Where(a => a.Active && (string.IsNullOrWhiteSpace(model) || CanServe(a, model)))
+            .OrderBy(CoolingDown)
+            .ThenByDescending(Rank)
+            .ThenBy(a => a.Priority)
+            .ThenBy(a => a.Id, StringComparer.Ordinal)
+            .ToList();
+
+        if (preferred is not null && ranked.FirstOrDefault(a => a.Id == preferred) is { } pinned && !CoolingDown(pinned))
+        {
+            ranked.Remove(pinned);
+            ranked.Insert(0, pinned);
+        }
+        return ranked;
+    }
+
+    /// <summary>
+    /// Validates a conversation's pinned account against the turn about to run. Returns
+    /// <paramref name="sticky"/> when the pin still holds, null when it must be dropped and the
+    /// account re-selected (model changed, account gone/inactive/cooling down, or it cannot serve it).
+    /// </summary>
+    public string? AffinityAccountId(string sticky, string? stickyModelId, string? targetModel, string autoModelId)
+    {
+        var resolved = (targetModel ?? "").Trim();
+        var isAuto = resolved.Length == 0 || resolved == autoModelId;
+        if (!string.IsNullOrEmpty(stickyModelId) && !isAuto && resolved != stickyModelId) return null;
+        if (_store.State.Accounts.FirstOrDefault(a => a.Id == sticky) is not { Active: true } account) return null;
+        if (account.CooldownUntil is { } until && until > DateTimeOffset.UtcNow) return null;
+        return CanServe(account, isAuto ? stickyModelId ?? "" : resolved) ? sticky : null;
     }
 
     private static bool HasImageAttachments(IEnumerable<NativeMessage> messages) =>

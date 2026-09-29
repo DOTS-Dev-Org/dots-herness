@@ -980,12 +980,24 @@ public sealed class AgentBridge : ObservableObject
                 NativeResponse response;
                 try
                 {
+                    // Keep the account that served the last turn while it still can: switching
+                    // accounts mid-conversation discards the provider's prompt cache.
+                    var preferred = conversation.StickyAccountId is { } sticky
+                        ? _router.AffinityAccountId(sticky, conversation.StickyModelId, request.Model)
+                        : null;
                     response = await _router.CompleteAsync(
                         messages,
                         tools,
                         request.Model,
                         run.Token,
-                        CacheKey(conversation, request.Model, request.PlanMode, tools));
+                        CacheKey(conversation, request.Model, request.PlanMode, tools),
+                        preferred);
+                    if (response.ServedAccountId is { } served
+                        && (conversation.StickyAccountId != served || conversation.StickyModelId != response.ServedModel))
+                    {
+                        conversation.StickyAccountId = served;
+                        conversation.StickyModelId = response.ServedModel;
+                    }
                 }
                 catch (NativeProviderException ex)
                     when (ex.IsImageInputUnsupported && !visionFallbackAttempted)

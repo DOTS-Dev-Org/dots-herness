@@ -265,13 +265,30 @@ public partial class SettingsView : UserControl
                 Foreground = TryBrush("TextSecondary"),
             });
         }
-        foreach (var group in router.Connections.GroupBy(connection => connection.Provider))
+        // Provider families are tried in this order (account priority): up/down rewrites it.
+        var groups = router.Connections.OrderBy(connection => connection.Priority)
+            .GroupBy(connection => connection.Provider).ToList();
+        for (var groupIndex = 0; groupIndex < groups.Count; groupIndex++)
         {
+            var group = groups[groupIndex];
             var provider = RouterCatalog.KindFor(group.Key);
+            var order = groups.Select(g => g.Key).ToList();
+            var position = groupIndex;
+            void Move(int delta)
+            {
+                var target = position + delta;
+                if (target < 0 || target >= order.Count) return;
+                (order[position], order[target]) = (order[target], order[position]);
+                router.ReorderProviders(order);
+                ShowProviders();
+            }
             panel.Children.Add(ProviderHeader(
                 RouterCatalog.LabelFor(group.Key),
                 provider?.LogoKey ?? "generic",
-                group.Count()));
+                group.Count(),
+                Move,
+                position > 0,
+                position < groups.Count - 1));
             foreach (var connection in group) panel.Children.Add(ConnectionCard(connection, router));
             if (provider is not null) panel.Children.Add(AddProviderButton(provider, picker, router));
         }
@@ -405,7 +422,7 @@ public partial class SettingsView : UserControl
         return card;
     }
 
-    private UIElement ProviderHeader(string name, string key, int count)
+    private UIElement ProviderHeader(string name, string key, int count, Action<int> move, bool canMoveUp, bool canMoveDown)
     {
         var row = new StackPanel
         {
@@ -422,6 +439,19 @@ public partial class SettingsView : UserControl
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(8, 0, 0, 0),
         });
+        Button Arrow(string glyph, bool enabled) => new()
+        {
+            Content = glyph,
+            Padding = new Thickness(6, 0, 6, 0),
+            Margin = new Thickness(6, 0, 0, 0),
+            IsEnabled = enabled,
+        };
+        var up = Arrow("↑", canMoveUp);
+        up.Click += (_, _) => move(-1);
+        var down = Arrow("↓", canMoveDown);
+        down.Click += (_, _) => move(1);
+        row.Children.Add(up);
+        row.Children.Add(down);
         return row;
     }
 

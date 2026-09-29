@@ -400,13 +400,44 @@ public sealed class RouterController : ObservableObject, IDisposable
         IReadOnlyList<NativeToolDefinition> tools,
         string? model = null,
         CancellationToken ct = default,
-        string? promptCacheKey = null) =>
+        string? promptCacheKey = null,
+        string? preferredAccountId = null) =>
         _router.CompleteAsync(
             messages,
             tools,
             string.IsNullOrWhiteSpace(model) ? SelectedModelID : model,
             ct,
-            promptCacheKey);
+            promptCacheKey,
+            preferredAccountId);
+
+    /// <summary>
+    /// The conversation's pinned account if it can still serve this turn, otherwise null
+    /// (model changed, account gone/inactive/cooling down) and the account is re-selected.
+    /// </summary>
+    public string? AffinityAccountId(string sticky, string? stickyModelId, string? targetModel) =>
+        _router.AffinityAccountId(sticky, stickyModelId, string.IsNullOrWhiteSpace(targetModel) ? SelectedModelID : targetModel, "auto");
+
+    /// <summary>
+    /// Rewrites every account's priority so provider families sort in
+    /// <paramref name="orderedProviderIds"/> order (<c>providerIndex * 100 + accountIndex</c>),
+    /// keeping each family's own account order. Providers left out keep their current relative
+    /// order after the listed ones.
+    /// </summary>
+    public void ReorderProviders(IReadOnlyList<string> orderedProviderIds)
+    {
+        var accounts = _store.State.Accounts;
+        var present = accounts.Select(a => a.Provider).Distinct(StringComparer.Ordinal).ToList();
+        var ordered = orderedProviderIds.Where(present.Contains)
+            .Concat(present.Where(p => !orderedProviderIds.Contains(p)))
+            .ToList();
+        for (var providerIndex = 0; providerIndex < ordered.Count; providerIndex++)
+        {
+            var family = accounts.Where(a => a.Provider == ordered[providerIndex]).OrderBy(a => a.Priority).ToList();
+            for (var accountIndex = 0; accountIndex < family.Count; accountIndex++)
+                _store.SetPriority(family[accountIndex].Id, providerIndex * 100 + accountIndex);
+        }
+        _ = RefreshAsync();
+    }
     public bool HasImageFallback => _imageRouter.HasFallback;
     public bool ImageGenerationCommandVisible => _imageRouter.CommandVisible(SelectedModelID);
     public Task<NativeImageGeneration> GenerateImageAsync(string prompt, CancellationToken ct = default) => _imageRouter.GenerateAsync(prompt, SelectedModelID, ct);
