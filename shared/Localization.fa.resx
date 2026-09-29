@@ -393,4 +393,49 @@
   <data name="feedback.title" xml:space="preserve"><value>بازخورد را به اشتراک بگذارید</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>بازخورد فقط در گپ‌وگوهای فضای کاری در دسترس است.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>بازخورد فقط برای پاسخ‌های دستیار ارسال می‌شود.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>قبول کنید</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>دعوت را بپذیر</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>ایجاد دعوت نامه امضا شده</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>بازیگر فعلی</value></data>
+  <data name="access.device" xml:space="preserve"><value>دستگاه</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>نام نمایشی</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>دستگاه را دعوت کنید</value></data>
+  <data name="access.members" xml:space="preserve"><value>اعضا</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>بازبینی حافظه</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>کلید عمومی دستگاه جدید</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>هیچ عضوی در دسترس نیست تا زمانی که اولین دستور این فضای کاری را مقداردهی اولیه کند.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>هیچ تصمیم معوقی برای پروژه وجود ندارد.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>مجاز نیست</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>تصمیمات در انتظار</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>کلید عمومی</value></data>
+  <data name="access.reject" xml:space="preserve"><value>رد کردن</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>لغو</value></data>
+  <data name="access.role" xml:space="preserve"><value>نقش</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>تایید کننده</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>مشارکت کننده</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>ناظر</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>مالک</value></data>
+  <data name="access.score" xml:space="preserve"><value>امتیاز</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>امتیاز: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>دعوت نامه امضا شده</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>ناشناس</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>اشاره های مرتبط</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>هیچ اشاره پیوندی وجود ندارد.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>حافظه پس از اولین درخواست در این فضای کاری شروع می شود.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>تازه کردن</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>گفتگوها</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>تصمیمات</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>شاخص</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>نقشه</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>ترجیحات</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>وظایف</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>یک یادداشت را برای مشاهده انتخاب کنید.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>طاق حافظه</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>دسترسی به فضای کاری</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>حافظه</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>دعوت فضای کاری نامعتبر است.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>مانیفست حافظه فضای کاری نامعتبر است.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>هیچ فضای کاری انتخاب نشده است.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>این دستگاه برای حافظه فضای کاری مجاز نیست.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>دعوتنامه متعلق به دستگاه دیگری است.</value></data>
 </root>

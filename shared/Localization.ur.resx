@@ -393,4 +393,49 @@
   <data name="feedback.title" xml:space="preserve"><value>رائے شیئر کریں</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>رائے صرف ورک اسپیس چیٹس میں دستیاب ہے۔</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>رائے صرف اسسٹنٹ کے جوابات کے لیے بھیجی جا سکتی ہے۔</value></data>
+  <data name="access.accept" xml:space="preserve"><value>قبول کریں۔</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>دعوت قبول کریں۔</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>دستخط شدہ دعوت نامہ بنائیں</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>موجودہ اداکار</value></data>
+  <data name="access.device" xml:space="preserve"><value>ڈیوائس</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>ڈسپلے کا نام</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>ڈیوائس کو مدعو کریں۔</value></data>
+  <data name="access.members" xml:space="preserve"><value>ممبران</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>یادداشت پر نظر ثانی</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>نیا آلہ عوامی کلید</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>کوئی ممبر دستیاب نہیں ہے جب تک کہ پہلا پرامپٹ اس ورک اسپیس کو شروع نہیں کرتا ہے۔</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>کوئی زیر التوا منصوبے کے فیصلے نہیں ہیں۔</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>مجاز نہیں۔</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>زیر التوا فیصلے</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>عوامی کلید</value></data>
+  <data name="access.reject" xml:space="preserve"><value>رد کرنا</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>منسوخ کریں۔</value></data>
+  <data name="access.role" xml:space="preserve"><value>کردار</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>منظور کرنے والا</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>تعاون کرنے والا</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>مبصر</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>مالک</value></data>
+  <data name="access.score" xml:space="preserve"><value>سکور</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>اسکور: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>دستخط شدہ دعوت نامہ</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>نامعلوم</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>منسلک ذکر</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>کوئی منسلک ذکر نہیں۔</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>اس ورک اسپیس میں پہلے پرامپٹ کے بعد میموری شروع ہوتی ہے۔</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>ریفریش کریں۔</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>بات چیت</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>فیصلے</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>انڈیکس</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>نقشہ</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>ترجیحات</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>کام</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>اسے دیکھنے کے لیے ایک نوٹ منتخب کریں۔</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>میموری والٹ</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>ورک اسپیس تک رسائی</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>یادداشت</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>ورک اسپیس کا دعوت نامہ غلط ہے۔</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>ورک اسپیس میموری مینی فیسٹ غلط ہے۔</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>کوئی ورک اسپیس منتخب نہیں ہے۔</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>یہ آلہ ورک اسپیس میموری کے لیے مجاز نہیں ہے۔</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>دعوت نامہ کسی اور ڈیوائس سے تعلق رکھتا ہے۔</value></data>
 </root>

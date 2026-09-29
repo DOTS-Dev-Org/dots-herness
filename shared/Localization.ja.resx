@@ -394,4 +394,49 @@
   <data name="feedback.title" xml:space="preserve"><value>フィードバックを共有</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>フィードバックはワークスペースのチャットでのみ利用できます。</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>フィードバックはアシスタントの回答に対してのみ送信できます。</value></data>
+  <data name="access.accept" xml:space="preserve"><value>承認</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>招待を承認</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>署名付き招待を作成</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>現在のアクター</value></data>
+  <data name="access.device" xml:space="preserve"><value>デバイス</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>表示名</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>デバイスを招待</value></data>
+  <data name="access.members" xml:space="preserve"><value>メンバー</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>メモリリビジョン</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>新しいデバイス公開鍵</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>最初のプロンプトでこのワークスペースが初期化されるまで、利用可能なメンバーはいません。</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>保留中のプロジェクト決定はありません。</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>未承認</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>保留中の決定</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>公開鍵</value></data>
+  <data name="access.reject" xml:space="preserve"><value>拒否</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>権限を取り消す</value></data>
+  <data name="access.role" xml:space="preserve"><value>ロール</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>承認者</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>貢献者</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>閲覧者</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>所有者</value></data>
+  <data name="access.score" xml:space="preserve"><value>スコア</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>スコア: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>署名付き招待</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>不明</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>リンクされた言及</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>リンクされた言及はありません。</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>メモリはこのワークスペースでの最初のプロンプト後に開始されます。</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>更新</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>会話</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>決定事項</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>インデックス</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>マップ</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>設定</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>タスク</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>表示するノートを選択してください。</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>メモリ保管庫</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>ワークスペースアクセス</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>メモリ</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>ワークスペースの招待が無効です。</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>ワークスペースメモリのマニフェストが無効です。</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>ワークスペースが選択されていません。</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>このデバイスはワークスペースメモリへのアクセスを許可されていません。</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>この招待は別のデバイス用です。</value></data>
 </root>

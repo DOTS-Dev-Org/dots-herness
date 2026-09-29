@@ -393,4 +393,49 @@
   <data name="feedback.title" xml:space="preserve"><value>แชร์ความคิดเห็น</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>ความคิดเห็นใช้ได้เฉพาะในการแชทของพื้นที่ทำงาน</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>ส่งความคิดเห็นได้เฉพาะคำตอบของผู้ช่วย</value></data>
+  <data name="access.accept" xml:space="preserve"><value>ยอมรับ</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>ยอมรับคำเชิญ</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>สร้างคำเชิญที่ลงนามแล้ว</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>นักแสดงปัจจุบัน</value></data>
+  <data name="access.device" xml:space="preserve"><value>อุปกรณ์</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>ชื่อที่แสดง</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>เชิญอุปกรณ์</value></data>
+  <data name="access.members" xml:space="preserve"><value>สมาชิก</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>การแก้ไขหน่วยความจำ</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>รหัสสาธารณะของอุปกรณ์ใหม่</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>ไม่มีสมาชิกที่พร้อมใช้งานจนกว่าพร้อมต์แรกจะเริ่มต้นพื้นที่ทำงานนี้</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>ไม่มีการตัดสินใจโครงการที่รอดำเนินการ</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>ไม่ได้รับอนุญาต</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>อยู่ระหว่างการตัดสินใจ</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>กุญแจสาธารณะ</value></data>
+  <data name="access.reject" xml:space="preserve"><value>ปฏิเสธ</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>เพิกถอน</value></data>
+  <data name="access.role" xml:space="preserve"><value>บทบาท</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>ผู้อนุมัติ</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>ผู้ร่วมให้ข้อมูล</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>ผู้สังเกตการณ์</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>เจ้าของ</value></data>
+  <data name="access.score" xml:space="preserve"><value>คะแนน</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>คะแนน: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>ลงนามคำเชิญ</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>ไม่ทราบ</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>การกล่าวถึงที่เชื่อมโยง</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>ไม่มีการกล่าวถึงที่เชื่อมโยง</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>หน่วยความจำเริ่มต้นหลังจากพร้อมต์แรกในเวิร์กสเปซนี้</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>รีเฟรช</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>บทสนทนา</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>การตัดสินใจ</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>ดัชนี</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>แผนที่</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>การตั้งค่า</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>งาน</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>เลือกบันทึกเพื่อดู</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>ห้องนิรภัย</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>การเข้าถึงพื้นที่ทำงาน</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>หน่วยความจำ</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>คำเชิญพื้นที่ทำงานไม่ถูกต้อง</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>รายการหน่วยความจำพื้นที่ทำงานไม่ถูกต้อง</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>ไม่ได้เลือกพื้นที่ทำงาน</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>อุปกรณ์นี้ไม่ได้รับอนุญาตสำหรับหน่วยความจำพื้นที่ทำงาน</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>คำเชิญเป็นของอุปกรณ์อื่น</value></data>
 </root>

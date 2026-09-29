@@ -394,4 +394,49 @@
   <data name="feedback.title" xml:space="preserve"><value>Feedback teilen</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Feedback ist nur in Arbeitsbereich-Chats verfügbar.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Feedback kann nur für Assistentenantworten gesendet werden.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Annehmen</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Einladung annehmen</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>Signierte Einladung erstellen</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Aktueller Akteur</value></data>
+  <data name="access.device" xml:space="preserve"><value>Gerät</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Anzeigename</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Gerät einladen</value></data>
+  <data name="access.members" xml:space="preserve"><value>Mitglieder</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Speicherrevision</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>Neuer öffentlicher Schlüssel des Geräts</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>Bis zur Initialisierung dieses Arbeitsbereichs durch die erste Eingabe sind keine Mitglieder verfügbar.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>Keine ausstehenden Projektentscheidungen.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Nicht autorisiert</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Ausstehende Entscheidungen</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Öffentlicher Schlüssel</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Ablehnen</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Zugriff entziehen</value></data>
+  <data name="access.role" xml:space="preserve"><value>Rolle</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Genehmiger</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Mitwirkender</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>Beobachter</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>Besitzer</value></data>
+  <data name="access.score" xml:space="preserve"><value>Punktzahl</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Punktzahl: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>Signierte Einladung</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>Unbekannt</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Verknüpfte Erwähnungen</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Keine verknüpften Erwähnungen.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Der Speicher beginnt nach der ersten Eingabe in diesem Arbeitsbereich.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Aktualisieren</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Unterhaltungen</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Entscheidungen</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Index</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Karte</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Einstellungen</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Aufgaben</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Wählen Sie eine Notiz zum Anzeigen aus.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Speichertresor</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Arbeitsbereichszugriff</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Speicher</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>Die Einladung für den Arbeitsbereich ist ungültig.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>Das Manifest des Arbeitsbereichsspeichers ist ungültig.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>Kein Arbeitsbereich ausgewählt.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>Dieses Gerät ist nicht für den Arbeitsbereichsspeicher autorisiert.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>Die Einladung gehört zu einem anderen Gerät.</value></data>
 </root>

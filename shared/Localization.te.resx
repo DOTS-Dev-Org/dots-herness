@@ -393,4 +393,49 @@
   <data name="feedback.title" xml:space="preserve"><value>ఫీడ్‌బ్యాక్‌ను పంచుకోండి</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>ఫీడ్‌బ్యాక్ వర్క్‌స్పేస్ చాట్‌లలో మాత్రమే అందుబాటులో ఉంటుంది.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>ఫీడ్‌బ్యాక్‌ను అసిస్టెంట్ సమాధానాలకు మాత్రమే పంపవచ్చు.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>అంగీకరించు</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>ఆహ్వానాన్ని అంగీకరించండి</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>సంతకం చేసిన ఆహ్వానాన్ని సృష్టించండి</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>ప్రస్తుత నటుడు</value></data>
+  <data name="access.device" xml:space="preserve"><value>పరికరం</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>ప్రదర్శన పేరు</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>పరికరాన్ని ఆహ్వానించండి</value></data>
+  <data name="access.members" xml:space="preserve"><value>సభ్యులు</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>మెమరీ పునర్విమర్శ</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>కొత్త పరికరం పబ్లిక్ కీ</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>మొదటి ప్రాంప్ట్ ఈ కార్యస్థలాన్ని ప్రారంభించే వరకు సభ్యులు ఎవరూ అందుబాటులో ఉండరు.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>పెండింగ్ ప్రాజెక్ట్ నిర్ణయాలు లేవు.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>అధికారం లేదు</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>పెండింగ్ నిర్ణయాలు</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>పబ్లిక్ కీ</value></data>
+  <data name="access.reject" xml:space="preserve"><value>తిరస్కరించు</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>ఉపసంహరించుకోండి</value></data>
+  <data name="access.role" xml:space="preserve"><value>పాత్ర</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>ఆమోదించేవాడు</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>కంట్రిబ్యూటర్</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>పరిశీలకుడు</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>యజమాని</value></data>
+  <data name="access.score" xml:space="preserve"><value>స్కోర్</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>స్కోర్: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>సంతకం చేసిన ఆహ్వానం</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>తెలియదు</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>లింక్ చేసిన ప్రస్తావనలు</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>లింక్ చేసిన ప్రస్తావనలు లేవు.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>ఈ వర్క్‌స్పేస్‌లో మొదటి ప్రాంప్ట్ తర్వాత మెమరీ ప్రారంభమవుతుంది.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>రిఫ్రెష్ చేయండి</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>సంభాషణలు</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>నిర్ణయాలు</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>సూచిక</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>మ్యాప్</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>ప్రాధాన్యతలు</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>పనులు</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>దాన్ని వీక్షించడానికి ఒక గమనికను ఎంచుకోండి.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>మెమరీ వాల్ట్</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>కార్యస్థల యాక్సెస్</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>జ్ఞాపకశక్తి</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>కార్యస్థల ఆహ్వానం చెల్లదు.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>వర్క్‌స్పేస్ మెమరీ మానిఫెస్ట్ చెల్లదు.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>కార్యస్థలం ఎంచుకోబడలేదు.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>ఈ పరికరం వర్క్‌స్పేస్ మెమరీకి అధికారం లేదు.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>ఆహ్వానం మరొక పరికరానికి చెందినది.</value></data>
 </root>

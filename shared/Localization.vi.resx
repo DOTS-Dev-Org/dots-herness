@@ -393,4 +393,49 @@
   <data name="feedback.title" xml:space="preserve"><value>Chia sẻ phản hồi</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Phản hồi chỉ khả dụng trong các cuộc trò chuyện của không gian làm việc.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Chỉ có thể gửi phản hồi cho câu trả lời của trợ lý.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Chấp nhận</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Chấp nhận lời mời</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>Tạo lời mời đã ký</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Diễn viên hiện tại</value></data>
+  <data name="access.device" xml:space="preserve"><value>Thiết bị</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Tên hiển thị</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Mời thiết bị</value></data>
+  <data name="access.members" xml:space="preserve"><value>Thành viên</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Sửa đổi bộ nhớ</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>Khóa công khai của thiết bị mới</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>Không có thành viên nào sẵn sàng cho đến khi lời nhắc đầu tiên khởi tạo không gian làm việc này.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>Không có quyết định dự án đang chờ xử lý.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Không được ủy quyền</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Quyết định đang chờ xử lý</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Khóa công khai</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Từ chối</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Thu hồi</value></data>
+  <data name="access.role" xml:space="preserve"><value>Vai trò</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Người phê duyệt</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Người đóng góp</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>Người quan sát</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>chủ sở hữu</value></data>
+  <data name="access.score" xml:space="preserve"><value>Điểm</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Điểm: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>Lời mời có chữ ký</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>Không xác định</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Đề cập được liên kết</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Không có đề cập liên kết.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Bộ nhớ bắt đầu sau lời nhắc đầu tiên trong không gian làm việc này.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Làm mới</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Cuộc trò chuyện</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Quyết định</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>chỉ mục</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Bản đồ</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Tùy chọn</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Nhiệm vụ</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Chọn một ghi chú để xem nó.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Kho ký ức</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Quyền truy cập không gian làm việc</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Bộ nhớ</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>Lời mời làm việc không hợp lệ.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>Tệp kê khai bộ nhớ không gian làm việc không hợp lệ.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>Không có không gian làm việc nào được chọn.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>Thiết bị này không được cấp phép cho bộ nhớ không gian làm việc.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>Lời mời thuộc về một thiết bị khác.</value></data>
 </root>

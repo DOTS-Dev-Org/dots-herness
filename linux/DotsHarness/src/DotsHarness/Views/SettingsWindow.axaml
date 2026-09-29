@@ -18,6 +18,7 @@
             <ListBoxItem Content="Custom API" Tag="custom"/>
             <ListBoxItem Content="Local models" Tag="local"/>
             <ListBoxItem x:Name="McpTab" Content="MCP" Tag="mcp"/>
+            <ListBoxItem x:Name="MemoryTab" Content="Memory" Tag="memory"/>
             <ListBoxItem x:Name="VoiceTab" Content="Voice input" Tag="voice"/>
             <ListBoxItem Content="Share" Tag="share"/>
             <ListBoxItem Content="Mobile control" Tag="mobile"/>

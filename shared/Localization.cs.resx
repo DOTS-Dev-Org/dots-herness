@@ -394,4 +394,49 @@
   <data name="feedback.title" xml:space="preserve"><value>Sdílet zpětnou vazbu</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Zpětná vazba je dostupná pouze v chatech pracovního prostoru.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Zpětnou vazbu lze odeslat pouze k odpovědím asistenta.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Přijmout</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Přijměte pozvání</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>Vytvořte podepsanou pozvánku</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Současný herec</value></data>
+  <data name="access.device" xml:space="preserve"><value>Zařízení</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Zobrazovaný název</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Pozvat zařízení</value></data>
+  <data name="access.members" xml:space="preserve"><value>členové</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Revize paměti</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>Nový veřejný klíč zařízení</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>Žádní členové nejsou k dispozici, dokud první výzva neinicializuje tento pracovní prostor.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>Žádná nevyřízená rozhodnutí o projektu.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Neoprávněný</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Čeká na rozhodnutí</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Veřejný klíč</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Odmítnout</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Odvolat</value></data>
+  <data name="access.role" xml:space="preserve"><value>Role</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Schvalovatel</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Přispěvatel</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>Pozorovatel</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>vlastník</value></data>
+  <data name="access.score" xml:space="preserve"><value>skóre</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Skóre: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>Podepsaná pozvánka</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>Neznámý</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Odkazované zmínky</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Žádné propojené zmínky.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Paměť se spustí po první výzvě v tomto pracovním prostoru.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Obnovit</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Konverzace</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Rozhodnutí</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Index</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Mapa</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Předvolby</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Úkoly</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Vyberte poznámku a zobrazte ji.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Paměťový trezor</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Přístup k pracovnímu prostoru</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Paměť</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>Pozvánka do pracovního prostoru je neplatná.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>Manifest paměti pracovního prostoru je neplatný.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>Není vybrán žádný pracovní prostor.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>Toto zařízení není autorizováno pro paměť pracovního prostoru.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>Pozvánka patří jinému zařízení.</value></data>
 </root>

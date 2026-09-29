@@ -393,4 +393,49 @@
   <data name="feedback.title" xml:space="preserve"><value>Κοινοποίηση σχολίων</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Τα σχόλια είναι διαθέσιμα μόνο σε συνομιλίες του χώρου εργασίας.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Τα σχόλια μπορούν να σταλούν μόνο για απαντήσεις του βοηθού.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Αποδοχή</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Αποδεχτείτε την πρόσκληση</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>Δημιουργία υπογεγραμμένης πρόσκλησης</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Ο σημερινός ηθοποιός</value></data>
+  <data name="access.device" xml:space="preserve"><value>Συσκευή</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Εμφανιζόμενο όνομα</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Συσκευή πρόσκλησης</value></data>
+  <data name="access.members" xml:space="preserve"><value>Μέλη</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Αναθεώρηση μνήμης</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>Δημόσιο κλειδί νέας συσκευής</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>Δεν υπάρχουν διαθέσιμα μέλη έως ότου η πρώτη προτροπή αρχικοποιήσει αυτόν τον χώρο εργασίας.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>Δεν υπάρχουν εκκρεμείς αποφάσεις για έργα.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Μη εξουσιοδοτημένο</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Εκκρεμείς αποφάσεις</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Δημόσιο κλειδί</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Απόρριψη</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Ανάκληση</value></data>
+  <data name="access.role" xml:space="preserve"><value>Ρόλος</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Εγκριτής</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Συντελεστής</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>Παρατηρητής</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>Ιδιοκτήτης</value></data>
+  <data name="access.score" xml:space="preserve"><value>Σκορ</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Βαθμολογία: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>Υπογεγραμμένη πρόσκληση</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>Άγνωστο</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Συνδεδεμένες αναφορές</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Δεν υπάρχουν συνδεδεμένες αναφορές.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Η μνήμη ξεκινά μετά την πρώτη ερώτηση σε αυτόν τον χώρο εργασίας.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Ανανέωση</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>συνομιλίες</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Αποφάσεις</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Ευρετήριο</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Χάρτης</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Προτιμήσεις</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Καθήκοντα</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Επιλέξτε μια σημείωση για να την προβάλετε.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Θησαυροφυλάκιο μνήμης</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Πρόσβαση στο χώρο εργασίας</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Μνήμη</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>Η πρόσκληση χώρου εργασίας δεν είναι έγκυρη.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>Η δήλωση μνήμης χώρου εργασίας δεν είναι έγκυρη.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>Δεν έχει επιλεγεί χώρος εργασίας.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>Αυτή η συσκευή δεν είναι εξουσιοδοτημένη για τη μνήμη του χώρου εργασίας.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>Η πρόσκληση ανήκει σε άλλη συσκευή.</value></data>
 </root>

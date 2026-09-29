@@ -394,4 +394,49 @@
   <data name="feedback.title" xml:space="preserve"><value>مشاركة الملاحظات</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>الملاحظات متاحة فقط في محادثات مساحة العمل.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>لا يمكن إرسال الملاحظات إلا لردود المساعد.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>قبول</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>قبول الدعوة</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>إنشاء دعوة موقعة</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>الممثل الحالي</value></data>
+  <data name="access.device" xml:space="preserve"><value>الجهاز</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>اسم العرض</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>دعوة الجهاز</value></data>
+  <data name="access.members" xml:space="preserve"><value>الأعضاء</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>مراجعة الذاكرة</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>المفتاح العام للجهاز الجديد</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>لا يتوفر أي أعضاء حتى يقوم الموجه الأول بتهيئة مساحة العمل هذه.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>لا توجد قرارات المشروع المعلقة.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>غير مصرح به</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>قرارات في انتظارها</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>المفتاح العام</value></data>
+  <data name="access.reject" xml:space="preserve"><value>رفض</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>إبطال</value></data>
+  <data name="access.role" xml:space="preserve"><value>الدور</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>الموافق</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>مساهم</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>المراقب</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>المالك</value></data>
+  <data name="access.score" xml:space="preserve"><value>النتيجة</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>النتيجة: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>دعوة موقعة</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>غير معروف</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>الإشارات المرتبطة</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>لا توجد إشارات مرتبطة.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>تبدأ الذاكرة بعد المطالبة الأولى في مساحة العمل هذه.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>تحديث</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>المحادثات</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>القرارات</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>الفهرس</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>خريطة</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>التفضيلات</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>المهام</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>حدد ملاحظة لمشاهدتها.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>قبو الذاكرة</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>الوصول إلى مساحة العمل</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>الذاكرة</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>دعوة مساحة العمل غير صالحة.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>بيان ذاكرة مساحة العمل غير صالح.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>لم يتم تحديد أي مساحة عمل.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>هذا الجهاز غير مصرح به لذاكرة مساحة العمل.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>تنتمي الدعوة إلى جهاز آخر.</value></data>
 </root>

@@ -109,6 +109,7 @@ public partial class SettingsView : UserControl
             case "custom": ShowCustom(); break;
             case "local": ShowLocal(); break;
             case "mcp": ShowMcp(); break;
+            case "memory": ShowMemory(); break;
             case "voice": ShowVoice(); break;
             case "share": ShowShare(); break;
             case "mobile": ShowMobile(); break;
@@ -629,6 +630,178 @@ public partial class SettingsView : UserControl
         if (router.Error is { } err) panel.Children.Add(ErrorText(err));
         _ = router.RefreshAsync();
         Body.Content = panel;
+    }
+
+
+    private string? _memoryNoteId;
+    private string? _memoryNotice;
+    private string _inviteName = "", _invitePublicKey = "", _inviteToken = "", _acceptToken = "";
+    private MemoryRole _inviteRole = MemoryRole.Contributor;
+    private int _inviteScore = 50;
+
+    private void ShowMemory()
+    {
+        var bridge = _model.CodingBridge;
+        var memory = bridge.Memory;
+        var access = memory.AccessStatus();
+        var panel = new StackPanel();
+        panel.Children.Add(Heading(_model.L("memory.vault.title")));
+
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
+        var refresh = new Button { Content = _model.L("memory.refresh"), Padding = new Thickness(10, 2, 10, 2) };
+        refresh.Click += (_, _) => { memory.Reload(); ShowMemory(); };
+        actions.Children.Add(refresh);
+        if (memory.MemoryDirectory is { } folder && Directory.Exists(folder))
+        {
+            var reveal = new Button { Content = _model.L("settings.revealFolder"), Padding = new Thickness(10, 2, 10, 2), Margin = new Thickness(8, 0, 0, 0) };
+            reveal.Click += (_, _) =>
+            {
+                try { Process.Start(new ProcessStartInfo { FileName = folder, UseShellExecute = true }); }
+                catch { /* no file manager available */ }
+            };
+            actions.Children.Add(reveal);
+        }
+        panel.Children.Add(actions);
+
+        var vault = memory.Vault();
+        if (!access.MemoryReady || vault.Notes.Count == 0)
+        {
+            panel.Children.Add(new TextBlock { Text = _model.L("memory.notInitialized"), Foreground = TryBrush("TextSecondary"), TextWrapping = TextWrapping.Wrap });
+        }
+        else
+        {
+            var note = vault.Notes.FirstOrDefault(n => n.Id == _memoryNoteId);
+            var list = new ListBox { MaxHeight = 220, Margin = new Thickness(0, 0, 0, 8) };
+            foreach (var entry in vault.Notes.Where(n => n.Resolved && n.Path.Length > 0))
+                list.Items.Add(new ListBoxItem { Content = $"{entry.Title}  ·  {entry.Kind}", Tag = entry.Id, IsSelected = entry.Id == _memoryNoteId });
+            list.SelectionChanged += (_, _) =>
+            {
+                if (list.SelectedItem is ListBoxItem { Tag: string id } && id != _memoryNoteId) { _memoryNoteId = id; ShowMemory(); }
+            };
+            panel.Children.Add(list);
+            if (note is null)
+            {
+                panel.Children.Add(new TextBlock { Text = _model.L("memory.selectNote"), Foreground = TryBrush("TextSecondary") });
+            }
+            else
+            {
+                panel.Children.Add(new TextBlock { Text = note.Title, FontWeight = FontWeights.SemiBold });
+                panel.Children.Add(new TextBox { Text = note.Body, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MaxHeight = 260, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, FontFamily = new FontFamily("Consolas"), FontSize = 12 });
+                Button LinkButton(string id)
+                {
+                    var target = vault.Notes.FirstOrDefault(n => n.Id == id);
+                    var button = new Button { Content = target?.Title ?? id, Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(0, 4, 6, 0), IsEnabled = target is { Path.Length: > 0 } };
+                    button.Click += (_, _) => { _memoryNoteId = id; ShowMemory(); };
+                    return button;
+                }
+                var links = new WrapPanel();
+                foreach (var link in note.LinkList) links.Children.Add(LinkButton(link));
+                panel.Children.Add(links);
+                panel.Children.Add(new TextBlock { Text = _model.L("memory.backlinks"), FontSize = 11, Margin = new Thickness(0, 8, 0, 0), Foreground = TryBrush("TextSecondary") });
+                if (note.BacklinkList.Count == 0) panel.Children.Add(new TextBlock { Text = _model.L("memory.noBacklinks"), FontSize = 11 });
+                var backlinks = new WrapPanel();
+                foreach (var link in note.BacklinkList) backlinks.Children.Add(LinkButton(link));
+                panel.Children.Add(backlinks);
+            }
+        }
+
+        // ---- access ----
+        panel.Children.Add(Heading(_model.L("settings.tab.access")));
+        panel.Children.Add(Readonly("access.currentActor", memory.Actor is { } actor ? $"{actor.DisplayName} ({actor.PersonId})" : _model.L("access.unknown")));
+        panel.Children.Add(Readonly("access.role", access.Role is { } role ? _model.L(role.TitleKey()) : _model.L("access.notAuthorized")));
+        panel.Children.Add(Readonly("access.score", access.Score.ToString()));
+        panel.Children.Add(Readonly("access.device", access.DeviceId));
+        panel.Children.Add(Readonly("access.publicKey", memory.ActorPublicKey ?? ""));
+        panel.Children.Add(Readonly("access.memoryRevision", access.Revision.ToString()));
+
+        panel.Children.Add(Heading(_model.L("access.members")));
+        var members = memory.MemberSummaries();
+        if (members.Count == 0) panel.Children.Add(new TextBlock { Text = _model.L("access.noMembers"), Foreground = TryBrush("TextSecondary"), TextWrapping = TextWrapping.Wrap });
+        foreach (var member in members)
+        {
+            var row = new DockPanel { Margin = new Thickness(0, 2, 0, 2), LastChildFill = true };
+            var revoked = member["revoked"] == "true";
+            if (access.Role == MemoryRole.Owner && !revoked && member["deviceId"] != access.DeviceId)
+            {
+                var revoke = new Button { Content = _model.L("access.revoke"), Padding = new Thickness(8, 2, 8, 2) };
+                DockPanel.SetDock(revoke, Dock.Right);
+                var device = member["deviceId"];
+                revoke.Click += (_, _) => RunMemoryAction(() => memory.Revoke(device));
+                row.Children.Add(revoke);
+            }
+            var roleText = MemoryRoles.Parse(member["role"]) is { } r ? _model.L(r.TitleKey()) : member["role"];
+            row.Children.Add(new TextBlock
+            {
+                Text = $"{member["displayName"]} · {roleText} · {_model.L("access.scoreValue", member["score"])}{(revoked ? " · revoked" : "")}",
+                TextWrapping = TextWrapping.Wrap,
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+            panel.Children.Add(row);
+        }
+
+        panel.Children.Add(Heading(_model.L("access.inviteDevice")));
+        panel.Children.Add(BoundField("access.displayName", _inviteName, v => _inviteName = v));
+        panel.Children.Add(BoundField("access.newDevicePublicKey", _invitePublicKey, v => _invitePublicKey = v));
+        var roleBox = new ComboBox { Margin = new Thickness(0, 0, 0, 8) };
+        foreach (var option in new[] { MemoryRole.Contributor, MemoryRole.Approver, MemoryRole.Observer, MemoryRole.Owner }) roleBox.Items.Add(option);
+        roleBox.SelectedItem = _inviteRole;
+        roleBox.SelectionChanged += (_, _) => { if (roleBox.SelectedItem is MemoryRole selected) _inviteRole = selected; };
+        panel.Children.Add(Label("access.role"));
+        panel.Children.Add(roleBox);
+        var invite = new Button
+        {
+            Content = _model.L("access.createInvitation"), Padding = new Thickness(12, 4, 12, 4),
+            IsEnabled = access.Role == MemoryRole.Owner,
+        };
+        invite.Click += (_, _) => RunMemoryAction(() =>
+        {
+            if (string.IsNullOrWhiteSpace(_inviteName) || string.IsNullOrWhiteSpace(_invitePublicKey)) return;
+            _inviteToken = memory.CreateInvite(_inviteName, _invitePublicKey.Trim(), _inviteRole, _inviteScore);
+        });
+        panel.Children.Add(invite);
+        if (_inviteToken.Length > 0)
+            panel.Children.Add(new TextBox { Text = _inviteToken, IsReadOnly = true, TextWrapping = TextWrapping.Wrap, FontFamily = new FontFamily("Consolas"), FontSize = 11, Margin = new Thickness(0, 6, 0, 0) });
+
+        panel.Children.Add(Heading(_model.L("access.acceptInvitation")));
+        panel.Children.Add(BoundField("access.signedInvitation", _acceptToken, v => _acceptToken = v));
+        var accept = new Button { Content = _model.L("access.accept"), Padding = new Thickness(12, 4, 12, 4) };
+        accept.Click += (_, _) => RunMemoryAction(() =>
+        {
+            if (string.IsNullOrWhiteSpace(_acceptToken)) return;
+            memory.AcceptInvite(_acceptToken);
+            _acceptToken = "";
+        });
+        panel.Children.Add(accept);
+
+        panel.Children.Add(Heading(_model.L("access.pendingDecisions")));
+        var pending = memory.PendingDecisions();
+        if (pending.Count == 0) panel.Children.Add(new TextBlock { Text = _model.L("access.noPendingDecisions"), Foreground = TryBrush("TextSecondary") });
+        foreach (var proposal in pending)
+        {
+            var eventId = proposal["eventId"]?.GetValue<string>() ?? "";
+            var summary = (proposal["payload"] as System.Text.Json.Nodes.JsonObject)?["summary"]?.GetValue<string>() ?? eventId;
+            var row = new StackPanel { Margin = new Thickness(0, 4, 0, 4) };
+            row.Children.Add(new TextBlock { Text = summary, TextWrapping = TextWrapping.Wrap });
+            var buttons = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+            var canResolve = (access.Role?.Rank() ?? 0) >= MemoryRole.Approver.Rank();
+            var acceptDecision = new Button { Content = _model.L("access.accept"), Padding = new Thickness(10, 2, 10, 2), IsEnabled = canResolve };
+            acceptDecision.Click += (_, _) => RunMemoryAction(() => memory.ResolveDecision(eventId, true));
+            var rejectDecision = new Button { Content = _model.L("access.reject"), Padding = new Thickness(10, 2, 10, 2), Margin = new Thickness(8, 0, 0, 0), IsEnabled = canResolve };
+            rejectDecision.Click += (_, _) => RunMemoryAction(() => memory.ResolveDecision(eventId, false));
+            buttons.Children.Add(acceptDecision);
+            buttons.Children.Add(rejectDecision);
+            row.Children.Add(buttons);
+            panel.Children.Add(row);
+        }
+        if (!string.IsNullOrEmpty(_memoryNotice)) panel.Children.Add(ErrorText(_memoryNotice));
+        Body.Content = panel;
+    }
+
+    private void RunMemoryAction(Action action)
+    {
+        try { action(); _memoryNotice = null; }
+        catch (WorkspaceMemoryException error) { _memoryNotice = error.Message; }
+        ShowMemory();
     }
 
     private MCPServerDraft? _mcpDraft;

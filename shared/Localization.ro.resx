@@ -393,4 +393,49 @@
   <data name="feedback.title" xml:space="preserve"><value>Distribuie feedback</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Feedbackul este disponibil doar în chat-urile spațiului de lucru.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Feedbackul poate fi trimis doar pentru răspunsurile asistentului.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Acceptați</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Acceptă invitația</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>Creați o invitație semnată</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Actual actor</value></data>
+  <data name="access.device" xml:space="preserve"><value>Dispozitiv</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Nume afișat</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Invitați dispozitivul</value></data>
+  <data name="access.members" xml:space="preserve"><value>Membrii</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Revizuirea memoriei</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>Cheie publică a dispozitivului nou</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>Niciun membru nu este disponibil până când primul prompt nu inițiază acest spațiu de lucru.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>Nu există decizii de proiect în așteptare.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Neautorizat</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Hotărâri în așteptare</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Cheie publică</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Respinge</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Revocați</value></data>
+  <data name="access.role" xml:space="preserve"><value>Rol</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Aprobator</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Colaborator</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>observator</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>Proprietar</value></data>
+  <data name="access.score" xml:space="preserve"><value>Scor</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Scor: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>Invitație semnată</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>Necunoscut</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Mențiuni legate</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Fără mențiuni legate.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Memoria începe după prima solicitare din acest spațiu de lucru.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Reîmprospătați</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Conversații</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Deciziile</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Index</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Harta</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Preferințe</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Sarcini</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Selectați o notă pentru a o vizualiza.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Seif cu memorie</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Acces la spațiul de lucru</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Memorie</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>Invitația la spațiul de lucru este nevalidă.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>Manifestul memoriei spațiului de lucru este nevalid.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>Nu este selectat niciun spațiu de lucru.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>Acest dispozitiv nu este autorizat pentru memoria spațiului de lucru.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>Invitația aparține altui dispozitiv.</value></data>
 </root>

@@ -394,4 +394,49 @@
   <data name="feedback.title" xml:space="preserve"><value>Поділитися відгуком</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Відгуки доступні лише в чатах робочої області.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Відгук можна надіслати лише для відповідей помічника.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>прийняти</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Прийняти запрошення</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>Створити підписане запрошення</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Актуальний актор</value></data>
+  <data name="access.device" xml:space="preserve"><value>пристрій</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Відображуване ім'я</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Пристрій запрошення</value></data>
+  <data name="access.members" xml:space="preserve"><value>Члени</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Ревізія пам'яті</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>Новий відкритий ключ пристрою</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>Жоден учасник не буде доступним, доки перша підказка не ініціалізує цю робочу область.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>Немає незавершених проектних рішень.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Не авторизовано</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Рішення в очікуванні</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Відкритий ключ</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Відхиляти</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Відкликати</value></data>
+  <data name="access.role" xml:space="preserve"><value>Роль</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Затверджувач</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Дописувач</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>Спостерігач</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>Власник</value></data>
+  <data name="access.score" xml:space="preserve"><value>Оцінка</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Оцінка: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>Підписане запрошення</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>Невідомий</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Пов’язані згадки</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Немає пов’язаних згадок.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Пам'ять починається після першого запиту в цій робочій області.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Оновити</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Розмови</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Рішення</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Індекс</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Карта</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Уподобання</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>завдання</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Виберіть нотатку, щоб переглянути її.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Сховище пам'яті</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Доступ до робочого простору</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Пам'ять</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>Запрошення в робочу область недійсне.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>Маніфест пам’яті робочої області недійсний.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>Робоча область не вибрана.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>Цей пристрій не авторизовано для пам’яті робочої області.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>Запрошення належить іншому пристрою.</value></data>
 </root>

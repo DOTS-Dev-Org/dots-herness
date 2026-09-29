@@ -393,4 +393,49 @@
   <data name="feedback.title" xml:space="preserve"><value>फ़ीडबैक साझा करें</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>फ़ीडबैक केवल वर्कस्पेस चैट में उपलब्ध है।</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>फ़ीडबैक केवल सहायक के उत्तरों के लिए भेजा जा सकता है।</value></data>
+  <data name="access.accept" xml:space="preserve"><value>स्वीकार करो</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>निमंत्रण स्वीकार करें</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>हस्ताक्षरित आमंत्रण बनाएँ</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>वर्तमान अभिनेता</value></data>
+  <data name="access.device" xml:space="preserve"><value>युक्ति</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>प्रदर्शन नाम</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>डिवाइस को आमंत्रित करें</value></data>
+  <data name="access.members" xml:space="preserve"><value>सदस्य</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>स्मृति पुनरीक्षण</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>नई डिवाइस सार्वजनिक कुंजी</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>जब तक पहला प्रॉम्प्ट इस कार्यक्षेत्र को प्रारंभ नहीं करता तब तक कोई भी सदस्य उपलब्ध नहीं होता है।</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>कोई लंबित परियोजना निर्णय नहीं.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>अधिकृत नहीं</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>लंबित निर्णय</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>सार्वजनिक कुंजी</value></data>
+  <data name="access.reject" xml:space="preserve"><value>अस्वीकार करें</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>निरस्त करें</value></data>
+  <data name="access.role" xml:space="preserve"><value>भूमिका</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>अनुमोदनकर्ता</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>योगदानकर्ता</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>प्रेक्षक</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>मालिक</value></data>
+  <data name="access.score" xml:space="preserve"><value>स्कोर</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>स्कोर: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>हस्ताक्षरित निमंत्रण</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>अज्ञात</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>जुड़े हुए उल्लेख</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>कोई जुड़ा हुआ उल्लेख नहीं.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>इस कार्यक्षेत्र में पहले प्रॉम्प्ट के बाद मेमोरी शुरू होती है।</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>ताज़ा करें</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>बातचीत</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>निर्णय</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>अनुक्रमणिका</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>मानचित्र</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>प्राथमिकताएँ</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>कार्य</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>किसी नोट को देखने के लिए उसका चयन करें.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>मेमोरी वॉल्ट</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>कार्यस्थल तक पहुंच</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>स्मृति</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>कार्यस्थान आमंत्रण अमान्य है.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>कार्यस्थान मेमोरी मेनिफ़ेस्ट अमान्य है.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>कोई कार्यक्षेत्र चयनित नहीं है.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>यह डिवाइस कार्यस्थान मेमोरी के लिए अधिकृत नहीं है.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>आमंत्रण किसी अन्य डिवाइस का है.</value></data>
 </root>

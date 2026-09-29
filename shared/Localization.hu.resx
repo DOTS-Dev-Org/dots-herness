@@ -393,4 +393,49 @@
   <data name="feedback.title" xml:space="preserve"><value>Visszajelzés megosztása</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>A visszajelzés csak a munkaterület csevegéseiben érhető el.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Visszajelzés csak az asszisztens válaszaihoz küldhető.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Elfogadás</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Meghívás elfogadása</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>Hozzon létre aláírt meghívót</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Jelenlegi színész</value></data>
+  <data name="access.device" xml:space="preserve"><value>Eszköz</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Megjelenítési név</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Eszköz meghívása</value></data>
+  <data name="access.members" xml:space="preserve"><value>tagok</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Memória revízió</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>Új eszköz nyilvános kulcsa</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>Egyetlen tag sem érhető el, amíg az első felszólítás inicializálja ezt a munkaterületet.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>Nincsenek függőben lévő projektdöntések.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Nem engedélyezett</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Függőben lévő döntések</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Nyilvános kulcs</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Elutasítás</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Visszavonás</value></data>
+  <data name="access.role" xml:space="preserve"><value>Szerep</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Jóváhagyó</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Közreműködő</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>Figyelő</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>Tulajdonos</value></data>
+  <data name="access.score" xml:space="preserve"><value>Pontszám</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Pontszám: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>Aláírt meghívó</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>Ismeretlen</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Kapcsolt említések</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Nincs linkelt említés.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>A memória az első felszólítás után indul el ezen a munkaterületen.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Frissítés</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Beszélgetések</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Döntések</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Index</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Térkép</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Preferences</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Feladatok</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Válassza ki a jegyzetet a megtekintéséhez.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Memória tároló</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Munkaterület hozzáférés</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Memória</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>A munkaterület-meghívás érvénytelen.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>A munkaterület memóriajegyzéke érvénytelen.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>Nincs kiválasztva munkaterület.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>Ez az eszköz nem engedélyezett a munkaterület memóriájában.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>A meghívó egy másik eszközhöz tartozik.</value></data>
 </root>

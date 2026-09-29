@@ -393,4 +393,49 @@
   <data name="feedback.title" xml:space="preserve"><value>Kongsi maklum balas</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Maklum balas hanya tersedia dalam sembang ruang kerja.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Maklum balas hanya boleh dihantar untuk respons pembantu.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Terima</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Terima jemputan</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>Buat jemputan yang ditandatangani</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Pelakon semasa</value></data>
+  <data name="access.device" xml:space="preserve"><value>Peranti</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Nama paparan</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Jemput peranti</value></data>
+  <data name="access.members" xml:space="preserve"><value>ahli</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Semakan ingatan</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>Kunci awam peranti baharu</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>Tiada ahli tersedia sehingga gesaan pertama memulakan ruang kerja ini.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>Tiada keputusan projek yang belum selesai.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Tidak dibenarkan</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Keputusan menunggu</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Kunci awam</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Tolak</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Batalkan</value></data>
+  <data name="access.role" xml:space="preserve"><value>Peranan</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Pelulus</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Penyumbang</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>Pemerhati</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>Pemilik</value></data>
+  <data name="access.score" xml:space="preserve"><value>skor</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Markah: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>Jemputan yang ditandatangani</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>Tidak diketahui</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Sebutan yang dipautkan</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Tiada sebutan berkaitan.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Memori bermula selepas gesaan pertama dalam ruang kerja ini.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Segarkan semula</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Perbualan</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Keputusan</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Indeks</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Peta</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Keutamaan</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Tugasan</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Pilih nota untuk melihatnya.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Bilik kebal memori</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Akses ruang kerja</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Ingatan</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>Jemputan ruang kerja tidak sah.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>Manifes memori ruang kerja tidak sah.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>Tiada ruang kerja dipilih.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>Peranti ini tidak dibenarkan untuk memori ruang kerja.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>Jemputan milik peranti lain.</value></data>
 </root>

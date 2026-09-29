@@ -394,4 +394,49 @@
   <data name="feedback.title" xml:space="preserve"><value>Udostępnij opinię</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Opinie są dostępne tylko na czatach obszaru roboczego.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Opinię można wysłać tylko dla odpowiedzi asystenta.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Zaakceptuj</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Zaakceptuj zaproszenie</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>Utwórz podpisane zaproszenie</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Obecny aktor</value></data>
+  <data name="access.device" xml:space="preserve"><value>Urządzenie</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Nazwa wyświetlana</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Zaproś urządzenie</value></data>
+  <data name="access.members" xml:space="preserve"><value>Członkowie</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Rewizja pamięci</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>Nowy klucz publiczny urządzenia</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>Żaden członek nie jest dostępny, dopóki pierwszy monit nie zainicjuje tego obszaru roboczego.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>Brak oczekujących decyzji dotyczących projektu.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Nieautoryzowany</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Oczekujące decyzje</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Klucz publiczny</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Odrzuć</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Odwołaj</value></data>
+  <data name="access.role" xml:space="preserve"><value>Rola</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Osoba zatwierdzająca</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Współautor</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>Obserwator</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>Właściciel</value></data>
+  <data name="access.score" xml:space="preserve"><value>Wynik</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Wynik: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>Podpisane zaproszenie</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>Nieznany</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Powiązane wzmianki</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Brak powiązanych wzmianek.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Pamięć rozpoczyna się po pierwszym monicie w tym obszarze roboczym.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Odśwież</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Rozmowy</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Decyzje</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Indeks</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Mapa</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Preferencje</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Zadania</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Wybierz notatkę, aby ją wyświetlić.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Skarbiec pamięci</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Dostęp do obszaru roboczego</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Pamięć</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>Zaproszenie do obszaru roboczego jest nieprawidłowe.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>Manifest pamięci obszaru roboczego jest nieprawidłowy.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>Nie wybrano żadnego obszaru roboczego.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>To urządzenie nie jest autoryzowane dla pamięci obszaru roboczego.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>Zaproszenie należy do innego urządzenia.</value></data>
 </root>

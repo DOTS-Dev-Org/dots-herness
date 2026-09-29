@@ -327,6 +327,7 @@ public sealed partial class AgentBridge : ObservableObject
         Area = area;
         _router = router;
         _snapshots = new WorkspaceSnapshotStore(paths);
+        Memory = new WorkspaceMemory(paths);
         _file = Path.Combine(paths.Root, sessionFileName ?? "conversations.json");
         var effectiveSkills = area == AgentArea.Chat
             ? new SkillCatalog(paths)
@@ -406,6 +407,8 @@ public sealed partial class AgentBridge : ObservableObject
         new("backlog", PromptTrust.Data, Area == AgentArea.Chat || RemoteTarget is not null ? "" : WorkspaceBacklog.Text(workspacePath)),
         new("durable_facts", PromptTrust.Data, Area == AgentArea.Chat || RemoteTarget is not null ? "" : WorkspaceFacts.Text(workspacePath)),
         // Rules and examples learned from the user's own ratings: information, never instructions.
+        // Verified project memory: map, accepted decisions, preferences, relevant task history (macOS parity).
+        new("project_memory", PromptTrust.Data, Area == AgentArea.Chat || RemoteTarget is not null ? "" : Memory.Snapshot(userPrompt ?? "").Text),
         new("feedback_memory", PromptTrust.Data, Area == AgentArea.Chat ? "" : FeedbackMemoryText(userPrompt)),
         new("plugin_guidance", PromptTrust.Untrusted, _additionalSystemPrompt),
         new("skill_metadata", PromptTrust.Untrusted, _skills.CompactPrompt()),
@@ -444,6 +447,9 @@ public sealed partial class AgentBridge : ObservableObject
 
     private SSHTarget? _remoteTarget;
 
+    /// <summary>The workspace's signed, event-sourced project memory (the `.mem` vault).</summary>
+    public WorkspaceMemory Memory { get; }
+
     /// <summary>The remote host and folder this run works in, or null for this machine.</summary>
     public SSHTarget? RemoteTarget => Area == AgentArea.Coding ? _remoteTarget : null;
 
@@ -462,6 +468,8 @@ public sealed partial class AgentBridge : ObservableObject
         if (Area == AgentArea.Coding && !remote && SeedProjectRules && !string.IsNullOrWhiteSpace(workspace)) ProjectRules.SeedIfMissing(workspace);
         _skills.SetWorkspace(Area == AgentArea.Chat || remote || string.IsNullOrWhiteSpace(workspace) ? null : workspace);
         BindFeedbackStore(workspace);
+        // Only a real local folder has a .mem vault to read or write.
+        Memory.SetWorkspace(Area == AgentArea.Coding && !remote && Directory.Exists(workspace) ? workspace : null);
         lock (_sendQueueLock)
         {
             _queuePausedAfterStop = false;
@@ -907,6 +915,16 @@ public sealed partial class AgentBridge : ObservableObject
             && workspacePath.Length > 0
             && Directory.Exists(workspacePath)
             && _snapshots.Begin(conversation.Id, turnId, workspacePath);
+        // Audit trail + verified memory for this run. Created lazily on the first accepted prompt.
+        var memoryActive = Area == AgentArea.Coding
+            && RemoteTarget is null
+            && workspacePath.Length > 0
+            && Directory.Exists(workspacePath);
+        var memoryRunId = _activeRunId;
+        if (memoryActive)
+        {
+            Memory.PrepareForPrompt(request.Text, memoryRunId, _router.CurrentProvider, request.Model ?? "");
+        }
         var browserScope = new BrowserScope(
             Area.WireValue(),
             conversation.Id,
@@ -1248,6 +1266,12 @@ public sealed partial class AgentBridge : ObservableObject
                     }
                     else
                     {
+                        var recordTool = memoryActive && Area == AgentArea.Coding;
+                        var beforeFile = recordTool ? Memory.FileHash(call.Name, call.Arguments, workspacePath) : null;
+                        // Shell commands can change files without saying so; compare git status around them.
+                        var beforeGit = recordTool && call.Name is "run_command" or "write_file" or "remove_file"
+                            ? Memory.ChangedGitPaths(workspacePath)
+                            : new HashSet<string>(StringComparer.Ordinal);
                         result = Area == AgentArea.Chat
                             ? await NativeWorkspaceTools.ExecuteAsync(
                                 call,
@@ -1259,6 +1283,8 @@ public sealed partial class AgentBridge : ObservableObject
                                 workspacePath,
                                 run.Token,
                                 AgentCommandSandboxMode.StrictNoDesktop);
+                        if (recordTool)
+                            Memory.RecordTool(memoryRunId, call.Name, call.Arguments, result, beforeFile, beforeGit, workspacePath);
                         if (call.Name == "remove_file")
                         {
                             if (NativeWorkspaceTools.IsVerifiedRemovalResult(result)) _activeVerifiedRemovals++;
@@ -1432,12 +1458,21 @@ public sealed partial class AgentBridge : ObservableObject
             {
                 finalMessage.ChangedFiles = changedFiles.ToList();
             }
-            WorkspaceBacklog.Record(
-                Area == AgentArea.Chat ? null : workspacePath,
-                _activeRunId,
-                request.Text,
-                conversation.Messages.LastOrDefault(message => message.TurnId == turnId && message.Kind is ChatKind.Assistant or ChatKind.Plan)?.Text,
-                runOutcome);
+            var finalReply = conversation.Messages.LastOrDefault(message => message.TurnId == turnId && message.Kind is ChatKind.Assistant or ChatKind.Plan)?.Text;
+            if (memoryActive)
+            {
+                // Writes the task note (and closes/opens backlog items) exactly as macOS does.
+                Memory.FinishTask(memoryRunId, runOutcome == "completed", finalReply ?? "");
+            }
+            else
+            {
+                WorkspaceBacklog.Record(
+                    Area == AgentArea.Chat ? null : workspacePath,
+                    _activeRunId,
+                    request.Text,
+                    finalReply,
+                    runOutcome);
+            }
             if (conversation.Messages.LastOrDefault(message => message.TurnId == turnId && message.Kind is ChatKind.Assistant or ChatKind.Plan or ChatKind.System) is { } metadataMessage)
             {
                 metadataMessage.UsedSkills = _activeUsedSkills.Distinct(StringComparer.OrdinalIgnoreCase).ToList();

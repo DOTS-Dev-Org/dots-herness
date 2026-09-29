@@ -394,4 +394,49 @@
   <data name="feedback.title" xml:space="preserve"><value>Feedback delen</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Feedback is alleen beschikbaar in werkruimtechats.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Feedback kan alleen voor antwoorden van de assistent worden verzonden.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Accepteren</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Uitnodiging accepteren</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>Ondertekende uitnodiging maken</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Huidige actor</value></data>
+  <data name="access.device" xml:space="preserve"><value>Apparaat</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Weergavenaam</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Apparaat uitnodigen</value></data>
+  <data name="access.members" xml:space="preserve"><value>Leden</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Geheugenrevisie</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>Nieuwe openbare sleutel van apparaat</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>Er zijn geen leden beschikbaar totdat de eerste prompt deze werkruimte initialiseert.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>Geen openstaande projectbeslissingen.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Niet geautoriseerd</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Openstaande beslissingen</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Openbare sleutel</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Afwijzen</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Intrekken</value></data>
+  <data name="access.role" xml:space="preserve"><value>Rol</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Goedkeurder</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Bijdrager</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>Waarnemer</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>Eigenaar</value></data>
+  <data name="access.score" xml:space="preserve"><value>Scoren</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Score: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>Ondertekende uitnodiging</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>Onbekend</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Gekoppelde vermeldingen</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Geen gekoppelde vermeldingen.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Het geheugen start na de eerste prompt in deze werkruimte.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Vernieuwen</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Gesprekken</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Beslissingen</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Indexering</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Kaart</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Voorkeuren</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Taken</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Selecteer een notitie om te bekijken.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Geheugenkluis</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Toegang tot werkruimte</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Geheugen</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>De werkruimte-uitnodiging is ongeldig.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>Het manifest van het werkruimtegeheugen is ongeldig.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>Geen werkruimte geselecteerd.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>Dit apparaat is niet geautoriseerd voor het werkruimtegeheugen.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>De uitnodiging hoort bij een ander apparaat.</value></data>
 </root>

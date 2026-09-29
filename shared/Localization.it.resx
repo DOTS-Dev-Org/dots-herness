@@ -394,4 +394,49 @@
   <data name="feedback.title" xml:space="preserve"><value>Condividi feedback</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Il feedback è disponibile solo nelle chat dell’area di lavoro.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Il feedback può essere inviato solo per le risposte dell’assistente.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Accetta</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Accetta invito</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>Crea invito firmato</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Attore corrente</value></data>
+  <data name="access.device" xml:space="preserve"><value>Dispositivo</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Nome visualizzato</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Invita dispositivo</value></data>
+  <data name="access.members" xml:space="preserve"><value>Membri</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Revisione della memoria</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>Nuova chiave pubblica del dispositivo</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>Non ci sono membri disponibili finché il primo prompt non inizializza quest’area di lavoro.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>Nessuna decisione di progetto in sospeso.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Non autorizzato</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Decisioni in sospeso</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Chiave pubblica</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Rifiuta</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Revoca</value></data>
+  <data name="access.role" xml:space="preserve"><value>Ruolo</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Approvatore</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Collaboratore</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>Osservatore</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>Proprietario</value></data>
+  <data name="access.score" xml:space="preserve"><value>Punteggio</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Punteggio: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>Invito firmato</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>Sconosciuto</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Menzioni collegate</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Nessuna menzione collegata.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>La memoria inizia dopo il primo prompt in questo spazio di lavoro.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Aggiorna</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Conversazioni</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Decisioni</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Indice</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Mappa</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Preferenze</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Attività</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Seleziona una nota per visualizzarla.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Cassaforte della memoria</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Accesso all’area di lavoro</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Memoria</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>L’invito dell’area di lavoro non è valido.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>Il manifest della memoria dell’area di lavoro non è valido.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>Nessuna area di lavoro selezionata.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>Questo dispositivo non è autorizzato per la memoria dell’area di lavoro.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>L’invito appartiene a un altro dispositivo.</value></data>
 </root>

@@ -393,4 +393,49 @@
   <data name="feedback.title" xml:space="preserve"><value>মতামত শেয়ার করুন</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>মতামত কেবল ওয়ার্কস্পেস চ্যাটে উপলভ্য।</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>মতামত কেবল সহকারীর উত্তরের জন্য পাঠানো যায়।</value></data>
+  <data name="access.accept" xml:space="preserve"><value>গ্রহণ করুন</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>আমন্ত্রণ গ্রহণ করুন</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>স্বাক্ষরিত আমন্ত্রণ তৈরি করুন</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>বর্তমান অভিনেতা</value></data>
+  <data name="access.device" xml:space="preserve"><value>ডিভাইস</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>প্রদর্শনের নাম</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>ডিভাইসকে আমন্ত্রণ জানান</value></data>
+  <data name="access.members" xml:space="preserve"><value>সদস্যরা</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>মেমরি রিভিশন</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>নতুন ডিভাইস পাবলিক কী</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>প্রথম প্রম্পট এই ওয়ার্কস্পেস আরম্ভ না হওয়া পর্যন্ত কোন সদস্য পাওয়া যায় না।</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>কোন মুলতুবি প্রকল্প সিদ্ধান্ত.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>অনুমোদিত নয়</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>মুলতুবি সিদ্ধান্ত</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>পাবলিক কী</value></data>
+  <data name="access.reject" xml:space="preserve"><value>প্রত্যাখ্যান করুন</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>প্রত্যাহার করুন</value></data>
+  <data name="access.role" xml:space="preserve"><value>ভূমিকা</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>অনুমোদনকারী</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>অবদানকারী</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>পর্যবেক্ষক</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>মালিক</value></data>
+  <data name="access.score" xml:space="preserve"><value>স্কোর</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>স্কোর: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>স্বাক্ষরিত আমন্ত্রণপত্র</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>অজানা</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>সংযুক্ত উল্লেখ</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>কোন লিঙ্ক উল্লেখ নেই.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>এই কর্মক্ষেত্রে প্রথম প্রম্পটের পরে মেমরি শুরু হয়।</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>রিফ্রেশ</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>কথোপকথন</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>সিদ্ধান্ত</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>সূচক</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>মানচিত্র</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>পছন্দসমূহ</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>কাজ</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>এটি দেখতে একটি নোট নির্বাচন করুন.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>মেমরি ভল্ট</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>ওয়ার্কস্পেস অ্যাক্সেস</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>স্মৃতি</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>কর্মক্ষেত্রের আমন্ত্রণটি অবৈধ৷</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>ওয়ার্কস্পেস মেমরি ম্যানিফেস্ট অবৈধ৷</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>কোন কর্মক্ষেত্র নির্বাচন করা হয় না.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>এই ডিভাইসটি ওয়ার্কস্পেস মেমরির জন্য অনুমোদিত নয়।</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>আমন্ত্রণটি অন্য ডিভাইসের।</value></data>
 </root>

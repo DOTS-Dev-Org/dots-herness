@@ -105,6 +105,7 @@ public sealed partial class AgentBridge
         try
         {
             var result = Restore(conversation, turns, abortOnConflict: false);
+            Memory.RecordConversationRewind(conversation.Id, conversation.Title, beforeMessageId, result.RestoredPaths, result.ConflictPaths);
             TruncateBefore(conversation, index);
             if (result.ConflictPaths.Count > 0)
             {
@@ -158,6 +159,7 @@ public sealed partial class AgentBridge
                     ConversationMutationKind.Conflict,
                     $"These files changed since that turn: {string.Join(", ", result.ConflictPaths)}",
                     result.ConflictPaths);
+            Memory.RecordConversationRewind(conversation.Id, conversation.Title, messageId, result.RestoredPaths, result.ConflictPaths);
             TruncateBefore(conversation, index);
             Save();
         }

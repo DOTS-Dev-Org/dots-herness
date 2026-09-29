@@ -394,4 +394,49 @@
   <data name="feedback.title" xml:space="preserve"><value>Share feedback</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Feedback is available only for workspace chats.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Feedback can only be sent for assistant responses.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Accept</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Accept invitation</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>Create signed invitation</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Current actor</value></data>
+  <data name="access.device" xml:space="preserve"><value>Device</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Display name</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Invite device</value></data>
+  <data name="access.members" xml:space="preserve"><value>Members</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Memory revision</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>New device public key</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>No members are available until the first prompt initializes this workspace.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>No pending project decisions.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Not authorized</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Pending decisions</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Public key</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Reject</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Revoke</value></data>
+  <data name="access.role" xml:space="preserve"><value>Role</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Approver</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Contributor</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>Observer</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>Owner</value></data>
+  <data name="access.score" xml:space="preserve"><value>Score</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Score: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>Signed invitation</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>Unknown</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Linked mentions</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>No linked mentions.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Memory starts after the first prompt in this workspace.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Conversations</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Decisions</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Index</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Map</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Preferences</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Tasks</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Select a note to view it.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Memory vault</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Workspace access</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Memory</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>The workspace invitation is invalid.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>The workspace memory manifest is invalid.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>No workspace is selected.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>This device is not authorized for the workspace memory.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>The invitation belongs to another device.</value></data>
 </root>

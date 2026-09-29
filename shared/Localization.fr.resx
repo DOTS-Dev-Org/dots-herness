@@ -393,4 +393,49 @@
   <data name="feedback.title" xml:space="preserve"><value>Partager des commentaires</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Les commentaires sont disponibles uniquement dans les conversations de l’espace de travail.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Les commentaires ne peuvent être envoyés que pour les réponses de l’assistant.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Accepter</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Accepter l’invitation</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>Créer une invitation signée</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Acteur actuel</value></data>
+  <data name="access.device" xml:space="preserve"><value>Appareil</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Nom d’affichage</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Inviter un appareil</value></data>
+  <data name="access.members" xml:space="preserve"><value>Membres</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Révision de la mémoire</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>Nouvelle clé publique de l’appareil</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>Aucun membre n’est disponible tant que la première invite n’a pas initialisé cet espace de travail.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>Aucune décision de projet en attente.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Non autorisé</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Décisions en attente</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Clé publique</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Refuser</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Révoquer</value></data>
+  <data name="access.role" xml:space="preserve"><value>Rôle</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Approbateur</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Contributeur</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>Observateur</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>Propriétaire</value></data>
+  <data name="access.score" xml:space="preserve"><value>Score</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Score : {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>Invitation signée</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>Inconnu</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Mentions liées</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Aucune mention liée.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>La mémoire démarre après la première invite dans cet espace de travail.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Actualiser</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Conversations</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Décisions</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Indice</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Carte</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Préférences</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Tâches</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Sélectionnez une note pour l'afficher.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Coffre de mémoire</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Accès à l’espace de travail</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Mémoire</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>L’invitation de l’espace de travail est invalide.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>Le manifeste de la mémoire de l’espace de travail est invalide.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>Aucun espace de travail n’est sélectionné.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>Cet appareil n’est pas autorisé à accéder à la mémoire de l’espace de travail.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>L’invitation appartient à un autre appareil.</value></data>
 </root>

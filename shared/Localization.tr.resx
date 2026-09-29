@@ -394,4 +394,49 @@
   <data name="feedback.title" xml:space="preserve"><value>Geri bildirim paylaş</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Geri bildirim yalnızca çalışma alanı sohbetlerinde kullanılabilir.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Geri bildirim yalnızca asistan yanıtları için gönderilebilir.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Kabul et</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Daveti kabul et</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>İmzalı davet oluştur</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Geçerli aktör</value></data>
+  <data name="access.device" xml:space="preserve"><value>Cihaz</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Görünen ad</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Cihaz davet et</value></data>
+  <data name="access.members" xml:space="preserve"><value>Üyeler</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Bellek sürümü</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>Yeni cihaz açık anahtarı</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>İlk talep bu çalışma alanını başlatana kadar kullanılabilir üye yok.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>Bekleyen proje kararı yok.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Yetkili değil</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Bekleyen kararlar</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Açık anahtar</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Reddet</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Yetkiyi kaldır</value></data>
+  <data name="access.role" xml:space="preserve"><value>Rol</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Onaylayıcı</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Katılımcı</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>Gözlemci</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>Sahip</value></data>
+  <data name="access.score" xml:space="preserve"><value>Puan</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Puan: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>İmzalı davet</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>Bilinmiyor</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Bağlantılı bahsetmeler</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Bağlantılı bahsetme yok.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Bellek, bu çalışma alanındaki ilk istekten sonra başlar.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Yenile</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Sohbetler</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Kararlar</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Dizin</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Harita</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Tercihler</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Görevler</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Görüntülemek için bir not seçin.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Bellek kasası</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Çalışma alanı erişimi</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Bellek</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>Çalışma alanı daveti geçersiz.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>Çalışma alanı belleği bildirimi geçersiz.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>Çalışma alanı seçilmedi.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>Bu cihaz çalışma alanı belleği için yetkilendirilmemiş.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>Davet başka bir cihaza ait.</value></data>
 </root>

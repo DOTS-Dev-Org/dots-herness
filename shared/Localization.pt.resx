@@ -394,4 +394,49 @@
   <data name="feedback.title" xml:space="preserve"><value>Partilhar feedback</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>O feedback só está disponível em conversas da área de trabalho.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>O feedback só pode ser enviado para respostas do assistente.</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Aceitar</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Aceitar convite</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>Criar convite assinado</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Ator atual</value></data>
+  <data name="access.device" xml:space="preserve"><value>Dispositivo</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Nome de exibição</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Convidar dispositivo</value></data>
+  <data name="access.members" xml:space="preserve"><value>Membros</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Revisão da memória</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>Nova chave pública do dispositivo</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>Nenhum membro está disponível até que o primeiro prompt inicialize este workspace.</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>Não há decisões de projeto pendentes.</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Não autorizado</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Decisões pendentes</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Chave pública</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Rejeitar</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Revogar</value></data>
+  <data name="access.role" xml:space="preserve"><value>Função</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Aprovador</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Colaborador</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>Observador</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>Proprietário</value></data>
+  <data name="access.score" xml:space="preserve"><value>Pontuação</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Pontuação: {0}</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>Convite assinado</value></data>
+  <data name="access.unknown" xml:space="preserve"><value>Desconhecido</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Menções vinculadas</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Nenhuma menção vinculada.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>A memória começa após o primeiro prompt neste espaço de trabalho.</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Atualizar</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Conversas</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Decisões</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Índice</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Mapa</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Preferências</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Tarefas</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Selecione uma nota para visualizá-la.</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Cofre de memória</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Acesso ao workspace</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Memória</value></data>
+  <data name="workspaceMemory.invalidInvitation" xml:space="preserve"><value>O convite do workspace é inválido.</value></data>
+  <data name="workspaceMemory.invalidManifest" xml:space="preserve"><value>O manifesto da memória do workspace é inválido.</value></data>
+  <data name="workspaceMemory.noWorkspace" xml:space="preserve"><value>Nenhum workspace selecionado.</value></data>
+  <data name="workspaceMemory.unauthorized" xml:space="preserve"><value>Este dispositivo não está autorizado para a memória do workspace.</value></data>
+  <data name="workspaceMemory.wrongDevice" xml:space="preserve"><value>O convite pertence a outro dispositivo.</value></data>
 </root>
