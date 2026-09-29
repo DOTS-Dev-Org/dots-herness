@@ -31,6 +31,7 @@ public partial class App : Application
         Model.CodingBridge.RunSummaryReceived += OnRunSummary;
         Model.ChatBridge.AttentionNeeded += OnAttentionNeeded;
         Model.CodingBridge.AttentionNeeded += OnAttentionNeeded;
+        Model.ScheduledTaskFinished += OnScheduledTaskFinished;
         Model.ChatRouter.ConnectionChanged += OnConnectionChanged;
         Model.CodingRouter.ConnectionChanged += OnConnectionChanged;
         ApplyAppearance(Model.Appearance);
@@ -136,6 +137,23 @@ public partial class App : Application
             _notificationIcon?.ShowBalloonTip(5000, Model.L("conversation.connectionChanged"), Preview(message), FormsToolTipIcon.Info);
         }
         catch (ObjectDisposedException) { }
+    }
+
+    private void OnScheduledTaskFinished(ScheduledTask task, TaskRunResult result)
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            try
+            {
+                var status = Model.L(result.Ok ? "tasks.notification.completed" : "tasks.notification.failed");
+                _notificationIcon?.ShowBalloonTip(
+                    5000,
+                    $"{Model.L("tasks.notification.title")}: {task.Name}",
+                    $"{status}: {Preview(result.Message)}",
+                    result.Ok ? FormsToolTipIcon.Info : FormsToolTipIcon.Error);
+            }
+            catch (ObjectDisposedException) { }
+        });
     }
 
     private static string Preview(string text)

@@ -7,7 +7,7 @@
         MinWidth="960" MinHeight="640"
         Width="1180" Height="760"
         Background="{DynamicResource WindowBackground}">
-    <Grid>
+    <Grid x:Name="Root">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="240" MinWidth="200"/>
             <ColumnDefinition Width="*"/>

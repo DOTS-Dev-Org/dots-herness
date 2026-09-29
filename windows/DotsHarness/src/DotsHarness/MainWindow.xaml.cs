@@ -31,7 +31,52 @@ public partial class MainWindow : Window
         InputBindings.Add(new KeyBinding(new RelayCommand(_ => ShowSettings()), Key.OemComma, ModifierKeys.Control));
         Closing += OnClosing;
         Loaded += OnLoaded;
+        model.Shortcuts.Changed += (_, _) => Dispatcher.BeginInvoke(ApplyShortcuts);
+        ApplyShortcuts();
         RefreshLocalization();
+    }
+
+    private readonly List<KeyBinding> _shortcutBindings = new();
+    private bool _sidebarHidden;
+
+    /// <summary>Rebuilds the window's key bindings from the user's shortcut settings.</summary>
+    private void ApplyShortcuts()
+    {
+        var model = ((App)Application.Current).Model;
+        foreach (var binding in _shortcutBindings) InputBindings.Remove(binding);
+        _shortcutBindings.Clear();
+        foreach (var action in KeyboardShortcutActions.All)
+        {
+            var shortcut = model.Shortcuts.ShortcutFor(action);
+            if (ShortcutKeyMap.ToKey(shortcut.Key) is not { } key) continue;
+            var modifiers = (shortcut.NeedsCtrl ? ModifierKeys.Control : ModifierKeys.None)
+                | (shortcut.NeedsAlt ? ModifierKeys.Alt : ModifierKeys.None)
+                | (shortcut.NeedsShift ? ModifierKeys.Shift : ModifierKeys.None);
+            var binding = new KeyBinding(new RelayCommand(_ => Run(action)), key, modifiers);
+            _shortcutBindings.Add(binding);
+            InputBindings.Add(binding);
+        }
+    }
+
+    private void Run(KeyboardShortcutAction action)
+    {
+        switch (action)
+        {
+            case KeyboardShortcutAction.ToggleSidebar:
+                _sidebarHidden = !_sidebarHidden;
+                Root.ColumnDefinitions[0].MinWidth = _sidebarHidden ? 0 : 200;
+                Root.ColumnDefinitions[0].Width = new GridLength(_sidebarHidden ? 0 : 240);
+                Sidebar.Visibility = _sidebarHidden ? Visibility.Collapsed : Visibility.Visible;
+                break;
+            case KeyboardShortcutAction.Terminal:
+                ShowConversation();
+                Conversation.ToggleTerminal();
+                break;
+            case KeyboardShortcutAction.Scheduled:
+                ShowSettings();
+                Settings.ShowTab("tasks");
+                break;
+        }
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)

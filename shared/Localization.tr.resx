@@ -350,4 +350,10 @@
   <data name="sandbox.preview" xml:space="preserve"><value>Çözümü önizle</value></data>
   <data name="sandbox.apply" xml:space="preserve"><value>Onayla ve birleştir</value></data>
   <data name="sandbox.cancel" xml:space="preserve"><value>Çözümü iptal et</value></data>
+  <data name="settings.shortcuts.title" xml:space="preserve"><value>Klavye kısayolları</value></data>
+  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Kenar çubuğunu aç/kapat</value></data>
+  <data name="sidebar.scheduled" xml:space="preserve"><value>Zamanlanmış görevler</value></data>
+  <data name="tasks.notification.title" xml:space="preserve"><value>Zamanlanmış görev</value></data>
+  <data name="tasks.notification.completed" xml:space="preserve"><value>Tamamlandı</value></data>
+  <data name="tasks.notification.failed" xml:space="preserve"><value>Başarısız</value></data>
 </root>

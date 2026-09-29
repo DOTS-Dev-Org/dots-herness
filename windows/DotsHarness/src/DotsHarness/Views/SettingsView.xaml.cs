@@ -8,6 +8,7 @@ using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -71,6 +72,13 @@ public partial class SettingsView : UserControl
     public event EventHandler? BackRequested;
 
     private void OnBack(object sender, RoutedEventArgs e) => BackRequested?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Selects a tab by its tag (for example "tasks").</summary>
+    public void ShowTab(string tag)
+    {
+        if (Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, tag)) is { } item)
+            Tabs.SelectedItem = item;
+    }
 
     private void OnTab(object sender, SelectionChangedEventArgs e)
     {
@@ -227,8 +235,68 @@ public partial class SettingsView : UserControl
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 12, 0, 12),
         });
+        panel.Children.Add(ShortcutsSection());
         panel.Children.Add(new SlotHost { Slot = WellKnownSlot.SettingsSections, Registry = _model.Host.Slots });
         Body.Content = panel;
+    }
+
+    private UIElement ShortcutsSection()
+    {
+        var section = new StackPanel();
+        section.Children.Add(Heading(_model.L("settings.shortcuts.title")));
+        var status = new TextBlock { FontSize = 11, Foreground = TryBrush("TextSecondary"), Margin = new Thickness(0, 4, 0, 0) };
+        foreach (var action in KeyboardShortcutActions.All)
+        {
+            var row = new DockPanel { Margin = new Thickness(0, 2, 0, 2), LastChildFill = false };
+            var capture = new TextBox
+            {
+                IsReadOnly = true,
+                Width = 170,
+                Text = _model.Shortcuts.ShortcutFor(action).DisplayValue,
+            };
+            var reset = new Button { Content = "↺", Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(8, 0, 0, 0) };
+            capture.PreviewKeyDown += (_, e) =>
+            {
+                e.Handled = true;
+                var key = e.Key == Key.System ? e.SystemKey : e.Key;
+                if (ShortcutKeyMap.ToCharacter(key) is not { } character) return;
+                var mask = UserKeyboardShortcut.MaskFor(
+                    Keyboard.Modifiers.HasFlag(ModifierKeys.Control),
+                    Keyboard.Modifiers.HasFlag(ModifierKeys.Alt),
+                    Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
+                if (UserKeyboardShortcut.TryCreate(character, mask) is not { } shortcut)
+                {
+                    status.Text = "Hold Ctrl or Alt together with a key.";
+                    return;
+                }
+                switch (_model.Shortcuts.Update(action, shortcut))
+                {
+                    case KeyboardShortcutUpdateResult.Conflict conflict:
+                        status.Text = $"{shortcut.DisplayValue} is already used by {_model.L(conflict.With.TitleKey())}.";
+                        break;
+                    default:
+                        capture.Text = shortcut.DisplayValue;
+                        status.Text = "";
+                        break;
+                }
+            };
+            reset.Click += (_, _) =>
+            {
+                if (_model.Shortcuts.Reset(action) is KeyboardShortcutUpdateResult.Conflict conflict)
+                    status.Text = $"The default is already used by {_model.L(conflict.With.TitleKey())}.";
+                else { capture.Text = _model.Shortcuts.ShortcutFor(action).DisplayValue; status.Text = ""; }
+            };
+            var title = new TextBlock { Text = _model.L(action.TitleKey()), VerticalAlignment = VerticalAlignment.Center };
+            DockPanel.SetDock(title, Dock.Left);
+            DockPanel.SetDock(reset, Dock.Right);
+            DockPanel.SetDock(capture, Dock.Right);
+            row.Children.Add(title);
+            row.Children.Add(reset);
+            row.Children.Add(capture);
+            section.Children.Add(row);
+        }
+        section.Children.Add(status);
+        return section;
     }
 
     private void ShowProviders()

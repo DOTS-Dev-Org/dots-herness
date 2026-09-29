@@ -30,6 +30,7 @@ public partial class App : Application
         Model.CodingBridge.RunSummaryReceived += OnRunSummary;
         Model.ChatBridge.AttentionNeeded += OnAttentionNeeded;
         Model.CodingBridge.AttentionNeeded += OnAttentionNeeded;
+        Model.ScheduledTaskFinished += OnScheduledTaskFinished;
         Model.ChatRouter.ConnectionChanged += OnConnectionChanged;
         Model.CodingRouter.ConnectionChanged += OnConnectionChanged;
         ApplyAppearance(Model.Appearance);
@@ -143,6 +144,19 @@ public partial class App : Application
             var start = new ProcessStartInfo("notify-send") { UseShellExecute = false, CreateNoWindow = true };
             start.ArgumentList.Add(Model.L("conversation.connectionChanged"));
             start.ArgumentList.Add(Preview(message));
+            Process.Start(start)?.Dispose();
+        }
+        catch { }
+    }
+
+    private void OnScheduledTaskFinished(ScheduledTask task, TaskRunResult result)
+    {
+        try
+        {
+            var status = Model.L(result.Ok ? "tasks.notification.completed" : "tasks.notification.failed");
+            var start = new ProcessStartInfo("notify-send") { UseShellExecute = false, CreateNoWindow = true };
+            start.ArgumentList.Add($"{Model.L("tasks.notification.title")}: {task.Name}");
+            start.ArgumentList.Add($"{status}: {Preview(result.Message)}");
             Process.Start(start)?.Dispose();
         }
         catch { }

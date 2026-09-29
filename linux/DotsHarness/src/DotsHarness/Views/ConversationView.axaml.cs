@@ -357,6 +357,9 @@ public partial class ConversationView : UserControl
         Dispatcher.UIThread.Post(() => TerminalBox.Focus(NavigationMethod.Unspecified, KeyModifiers.None));
     }
 
+    /// <summary>Opens the terminal panel, or closes it when it is already showing.</summary>
+    public void ToggleTerminal() => OnTerminal(this, new RoutedEventArgs());
+
     private void OnCloseTerminal(object? sender, RoutedEventArgs e) => StopTerminal();
 
     public void StopTerminal()

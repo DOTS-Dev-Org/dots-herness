@@ -349,4 +349,10 @@
   <data name="sandbox.preview" xml:space="preserve"><value>Preview resolution</value></data>
   <data name="sandbox.apply" xml:space="preserve"><value>Approve and merge</value></data>
   <data name="sandbox.cancel" xml:space="preserve"><value>Cancel resolution</value></data>
+  <data name="settings.shortcuts.title" xml:space="preserve"><value>Keyboard shortcuts</value></data>
+  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Toggle sidebar</value></data>
+  <data name="sidebar.scheduled" xml:space="preserve"><value>Scheduled tasks</value></data>
+  <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
+  <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
+  <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
 </root>

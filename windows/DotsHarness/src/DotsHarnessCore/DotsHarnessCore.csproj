@@ -43,6 +43,7 @@
     <Compile Include="..\..\..\..\shared\MessageTail.cs" Link="MessageTail.cs" />
     <Compile Include="..\..\..\..\shared\ExploreTool.cs" Link="ExploreTool.cs" />
     <Compile Include="..\..\..\..\shared\SSHRemote.cs" Link="SSHRemote.cs" />
+    <Compile Include="..\..\..\..\shared\KeyboardShortcuts.cs" Link="KeyboardShortcuts.cs" />
     <Compile Include="..\..\..\..\shared\MCP.cs" Link="MCP.cs" />
     <Compile Include="..\..\..\..\shared\SandboxWorkspace.cs" Link="SandboxWorkspace.cs" />
     <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />

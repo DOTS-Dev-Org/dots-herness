@@ -8,6 +8,7 @@ using System.IO;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
@@ -68,6 +69,13 @@ public partial class SettingsWindow : Window
             if (_observedModel is not null) _observedModel.PropertyChanged -= OnModel;
             _observedModel = null;
         };
+    }
+
+    /// <summary>Selects a tab by its tag (for example "tasks").</summary>
+    public void ShowTab(string tag)
+    {
+        if (Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, tag)) is { } item)
+            Tabs.SelectedItem = item;
     }
 
     private void OnTab(object? sender, SelectionChangedEventArgs e)
@@ -233,8 +241,65 @@ public partial class SettingsWindow : Window
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 12, 0, 12),
         });
+        panel.Children.Add(ShortcutsSection());
         panel.Children.Add(new SlotHost { Slot = WellKnownSlot.SettingsSections, Registry = Model.Host.Slots });
         Body.Content = panel;
+    }
+
+    private Control ShortcutsSection()
+    {
+        var section = new StackPanel();
+        section.Children.Add(Heading(Model.L("settings.shortcuts.title")));
+        var status = new TextBlock { FontSize = 11, Foreground = TryBrush("TextSecondary"), Margin = new Thickness(0, 4, 0, 0) };
+        foreach (var action in KeyboardShortcutActions.All)
+        {
+            var row = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
+            var reset = new Button { Content = "↺", Padding = new Thickness(8, 2), Margin = new Thickness(8, 0, 0, 0) };
+            DockPanel.SetDock(reset, Dock.Right);
+            var capture = new TextBox
+            {
+                IsReadOnly = true,
+                Width = 170,
+                Text = Model.Shortcuts.ShortcutFor(action).DisplayValue,
+            };
+            DockPanel.SetDock(capture, Dock.Right);
+            capture.KeyDown += (_, e) =>
+            {
+                e.Handled = true;
+                if (ShortcutKeyMap.ToCharacter(e.Key) is not { } character) return;
+                var mask = UserKeyboardShortcut.MaskFor(
+                    e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta),
+                    e.KeyModifiers.HasFlag(KeyModifiers.Alt),
+                    e.KeyModifiers.HasFlag(KeyModifiers.Shift));
+                if (UserKeyboardShortcut.TryCreate(character, mask) is not { } shortcut)
+                {
+                    status.Text = "Hold Ctrl or Alt together with a key.";
+                    return;
+                }
+                switch (Model.Shortcuts.Update(action, shortcut))
+                {
+                    case KeyboardShortcutUpdateResult.Conflict conflict:
+                        status.Text = $"{shortcut.DisplayValue} is already used by {Model.L(conflict.With.TitleKey())}.";
+                        break;
+                    default:
+                        capture.Text = shortcut.DisplayValue;
+                        status.Text = "";
+                        break;
+                }
+            };
+            reset.Click += (_, _) =>
+            {
+                if (Model.Shortcuts.Reset(action) is KeyboardShortcutUpdateResult.Conflict conflict)
+                    status.Text = $"The default is already used by {Model.L(conflict.With.TitleKey())}.";
+                else { capture.Text = Model.Shortcuts.ShortcutFor(action).DisplayValue; status.Text = ""; }
+            };
+            row.Children.Add(reset);
+            row.Children.Add(capture);
+            row.Children.Add(new TextBlock { Text = Model.L(action.TitleKey()), VerticalAlignment = VerticalAlignment.Center });
+            section.Children.Add(row);
+        }
+        section.Children.Add(status);
+        return section;
     }
 
     private void ShowProviders()

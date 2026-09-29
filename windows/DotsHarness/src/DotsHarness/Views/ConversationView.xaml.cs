@@ -376,6 +376,9 @@ public partial class ConversationView : UserControl
         TerminalPanel.Visibility = Visibility.Collapsed;
     }
 
+    /// <summary>Opens the terminal panel, or closes it when it is already showing.</summary>
+    public void ToggleTerminal() => OnTerminal(this, new RoutedEventArgs());
+
     private void OnTerminalInput(string input) => _terminal?.SendInput(input);
 
     private void OnTerminalChanged(object? sender, EventArgs e)

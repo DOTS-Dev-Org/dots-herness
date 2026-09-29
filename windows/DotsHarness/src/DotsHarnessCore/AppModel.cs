@@ -157,6 +157,17 @@ public sealed partial class AppModel : ObservableObject
     /// <summary>The user's SSH hosts (~/.ssh/config) for the work-location picker.</summary>
     public SSHHostStore SshHosts { get; } = new();
 
+    private KeyboardShortcutSettings? _shortcuts;
+
+    /// <summary>User-editable keyboard shortcuts, stored as <c>ui.keyboardShortcut.*</c> settings.</summary>
+    public KeyboardShortcutSettings Shortcuts => _shortcuts ??= new KeyboardShortcutSettings(
+        key => Host.Settings.Get(key)?.AsString(),
+        (key, value) =>
+        {
+            Host.Settings.Set(key, JsonValue.String(value));
+            PersistSettings();
+        });
+
     private SSHTarget? _remoteTarget;
 
     /// <summary>The remote host and folder the coding area works in, or null for this machine.</summary>
@@ -565,9 +576,13 @@ public sealed partial class AppModel : ObservableObject
             ? backend
             : null;
 
+    /// <summary>Raised after a scheduled task finishes, so the shell can notify the user.</summary>
+    public event Action<ScheduledTask, TaskRunResult>? ScheduledTaskFinished;
+
     private async Task<TaskRunResult> RunScheduledTaskAsync(ScheduledTask task, ScheduledTaskRunner runner)
     {
         var result = await runner.RunAsync(task).ConfigureAwait(false);
+        ScheduledTaskFinished?.Invoke(task, result);
         var workspace = ScheduledTaskRunner.NormalizeWorkspace(task.WorkspacePath);
         if (workspace is not null
             && ScheduledTaskRunner.NormalizeWorkspace(WorkspacePath) == workspace)
