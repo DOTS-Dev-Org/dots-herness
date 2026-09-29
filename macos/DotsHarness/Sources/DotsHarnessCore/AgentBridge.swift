@@ -2404,6 +2404,8 @@ public final class NativeAgentHost: ObservableObject {
         let tools = rawTools.sorted { $0.name < $1.name }
         var messages = context
         saveModelContext(messages, in: conversationID)
+        // In automatic mode the model is decided once per run, not per tool step.
+        let mainRoute = RunRoute.main()
         var restartContext: [AgentMessage]?
         var restartPlanMode: Bool?
         var restartApprovedPlanID: String?
@@ -2483,7 +2485,8 @@ public final class NativeAgentHost: ObservableObject {
                             tools: tools,
                             cachePolicy: AgentCachePolicy(promptCacheKey: requestCacheKey),
                             model: modelOverride,
-                            preferredAccountID: preferredAccountID(router, conversationID: conversationID, modelOverride: modelOverride)
+                            preferredAccountID: preferredAccountID(router, conversationID: conversationID, modelOverride: modelOverride),
+                            route: mainRoute
                         )
                         if let served = router.lastServedAccountID,
                            let index = conversations.firstIndex(where: { $0.id == conversationID }),
@@ -2642,7 +2645,10 @@ public final class NativeAgentHost: ObservableObject {
                 // Side runs share one stable cache key and one pinned model/account,
                 // so each subagent step and every sibling reads the same prefix.
                 let exploreCachePolicy = AgentCachePolicy(promptCacheKey: requestCacheKey.map { $0 + ":explore" })
-                let exploreRoute = SideRunRoute(accountID: router?.lastServedAccountID)
+                let exploreRoute = RunRoute.sideRun(
+                    parentModel: router?.lastServedModelID ?? modelOverride ?? configuration.model,
+                    accountID: router?.lastServedAccountID
+                )
                 let exploreComplete: ExploreTool.Complete = { [router] messages, tools in
                     if let router {
                         return try await router.completeWithFailover(

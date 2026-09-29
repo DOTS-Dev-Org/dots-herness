@@ -45,17 +45,23 @@ changes do not establish a 99% rate or repair missing usage counters.
 Regression tests compare request prefixes across provider adapters, capture and
 reload snapshots, and cover changing host context, retries and tool results.
 
-## Explore subagents (macOS)
+## Model choice and subagents (macOS)
 
-Only the main agent starts subagents (up to `maxPerTurn` in parallel); a
-subagent has read-only tools and cannot start another, and only its findings
-enter the main transcript, in tool-call order. Every subagent request of one
-parent turn uses the same `prompt_cache_key` (`<conversation key>:explore`) and
-one `SideRunRoute`: the model (worker role, decided once) and the account of
-the first step are reused for every later step and every sibling. Before this,
-side runs sent no cache key (a random session id on Responses routes) and the
-auto router flipped between planner and worker models as the transcript grew,
-so every step was cold.
+- The user's selected model is the parent and is never swapped. In automatic
+  mode the router never picks the premium tier (a planner runs on the best
+  standard model; premium is used only when nothing cheaper is connected) and
+  it decides once per run instead of per tool step, because a tier flip
+  between steps is a cold prompt cache.
+- Delegated work (`explore` today) runs on the cheapest tier connected, never
+  above the parent's tier, on the parent's provider when it offers one
+  (`ModelRouter.sideRunModel`).
+- Only the main agent starts subagents (up to `maxPerTurn` in parallel); a
+  subagent cannot start another, and only its findings enter the main
+  transcript, in tool-call order.
+- Every subagent request of one parent turn uses the same `prompt_cache_key`
+  (`<conversation key>:explore`) and one `RunRoute`, so each step and each
+  sibling reuses the model and account of the first step. Failover replaces
+  them only when a provider reports a limit.
 
 ## Compaction (macOS)
 

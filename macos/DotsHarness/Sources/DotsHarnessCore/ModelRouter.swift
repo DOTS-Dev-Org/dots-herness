@@ -93,13 +93,15 @@ public enum ModelRouter {
         messages: [AgentMessage],
         available: [RouterModel],
         excluding: Set<String> = [],
-        forcedRole: ModelRole? = nil,
         tierOf: (RouterModel) -> ModelTier = { tier(of: $0) }
     ) -> ModelDecision? {
         let available = available.filter { !excluding.contains($0.provider) }
         guard !available.isEmpty else { return nil }
-        let role = forcedRole ?? self.role(for: messages)
-        let target: ModelTier = role == .planner ? .premium : .light
+        let role = self.role(for: messages)
+        // Automatic routing never spends the premium tier: a planner runs on the
+        // best standard model. Premium stays a choice the user makes in the
+        // picker; it is only reached here when nothing cheaper is connected.
+        let target: ModelTier = role == .planner ? .standard : .light
         // A turn that only consumes a tool result is mechanical. Every other worker
         // turn still writes code, and stacking a light model with the lowest effort
         // downgrades it twice for no measured saving.
@@ -118,6 +120,28 @@ public enum ModelRouter {
             role: role.rawValue,
             reason: reason(role: role, model: candidate, effort: effort)
         )
+    }
+
+    /// The model a subagent runs on: the cheapest tier connected, never above
+    /// the parent's own tier, on the parent's provider when it offers one. The
+    /// parent keeps whatever the user selected; only delegated work goes down.
+    public static func sideRunModel(
+        available: [RouterModel],
+        excluding: Set<String> = [],
+        parent: String?,
+        tierOf: (RouterModel) -> ModelTier = { tier(of: $0) }
+    ) -> RouterModel? {
+        let pool = available.filter { !excluding.contains($0.provider) }
+        guard !pool.isEmpty else { return nil }
+        let parentModel = pool.first { $0.id == parent }
+        let ceiling = parentModel.map(tierOf) ?? .standard
+        let allowed = pool.filter { tierOf($0) <= ceiling }
+        let sameProvider = allowed.filter { $0.provider == parentModel?.provider }
+        for candidates in [sameProvider, allowed] where !candidates.isEmpty {
+            if let match = firstModel(atOrBelow: .light, in: candidates, tierOf: tierOf) { return match }
+            if let lowest = candidates.min(by: { tierOf($0) < tierOf($1) }) { return lowest }
+        }
+        return parentModel ?? pool.first
     }
 
     public static func tier(of model: RouterModel) -> ModelTier {

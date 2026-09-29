@@ -523,7 +523,8 @@ public final class RouterController: ObservableObject {
         tools: [AgentToolDefinition] = [],
         cachePolicy: AgentCachePolicy = AgentCachePolicy(),
         model: String? = nil,
-        preferredAccountID: String? = nil
+        preferredAccountID: String? = nil,
+        route: RunRoute? = nil
     ) async throws -> AgentResponse {
         let requestedModel = (model ?? selectedModelID).trimmingCharacters(in: .whitespacesAndNewlines)
         guard requestedModel == ModelRouter.autoModelID else {
@@ -545,7 +546,8 @@ public final class RouterController: ObservableObject {
             tools: tools,
             cachePolicy: cachePolicy,
             recordDecision: true,
-            preferredAccountID: preferredAccountID
+            preferredAccountID: preferredAccountID,
+            pin: route
         )
     }
 
@@ -558,28 +560,35 @@ public final class RouterController: ObservableObject {
         cachePolicy: AgentCachePolicy,
         recordDecision: Bool,
         preferredAccountID: String? = nil,
-        pin: SideRunRoute? = nil
+        pin: RunRoute? = nil
     ) async throws -> AgentResponse {
         var excluded: Set<String> = []
         var dropped: [String] = []
         while true {
             let decision: ModelDecision
-            if let pinned = pin?.model,
-               let provider = routableModels.first(where: { $0.id == pinned })?.provider,
+            if let pinned = pin?.decision,
+               let provider = routableModels.first(where: { $0.id == pinned.model })?.provider,
                !excluded.contains(provider) {
-                // A side run keeps one model for all of its steps: the auto
-                // router would otherwise flip between tiers as the transcript
-                // grows, and every flip is a cold prompt cache.
-                decision = ModelDecision(model: pinned, effort: "", role: ModelRole.worker.rawValue, reason: "")
+                // One run keeps the model it started on: re-deciding per request
+                // flips tiers as the transcript grows, and every flip is a cold
+                // prompt cache.
+                decision = pinned
+            } else if let pin, let parent = pin.sideRunParent {
+                guard let model = ModelRouter.sideRunModel(
+                    available: routableModels,
+                    excluding: excluded,
+                    parent: parent
+                ) else { throw NativeAgentError(AppCopy.text("agent.configureEndpoint")) }
+                decision = ModelDecision(model: model.id, effort: "", role: ModelRole.worker.rawValue, reason: "")
+                pin.decision = decision
             } else {
                 guard let decided = ModelRouter.decide(
                     messages: messages,
                     available: routableModels,
-                    excluding: excluded,
-                    forcedRole: pin == nil ? nil : .worker
+                    excluding: excluded
                 ) else { throw NativeAgentError(AppCopy.text("agent.configureEndpoint")) }
                 decision = decided
-                pin?.model = decided.model
+                pin?.decision = decided
             }
             if recordDecision {
                 lastAutoDecision = decision
@@ -622,7 +631,7 @@ public final class RouterController: ObservableObject {
         messages: [AgentMessage],
         tools: [AgentToolDefinition] = [],
         cachePolicy: AgentCachePolicy = AgentCachePolicy(),
-        route: SideRunRoute? = nil
+        route: RunRoute? = nil
     ) async throws -> AgentResponse {
         try await sendAcrossProviders(
             messages: messages,
@@ -703,7 +712,7 @@ public final class RouterController: ObservableObject {
         cachePolicy: AgentCachePolicy,
         model requestedModel: String?,
         preferredAccountID: String? = nil,
-        pin: SideRunRoute? = nil
+        pin: RunRoute? = nil
     ) async throws -> AgentResponse {
         let routes = orderedRoutes(
             store.state.accounts,
@@ -1466,19 +1475,34 @@ public enum RouterTestError: Error, LocalizedError, Sendable {
     }
 }
 
-/// Model and account a side run (explore subagents) settled on at its first
-/// request. Later requests reuse them so the provider's prompt cache stays
-/// warm; failover replaces them only when the provider reports a limit.
-public final class SideRunRoute: @unchecked Sendable {
+/// Model and account a run settled on at its first request. Later requests of
+/// the same run reuse them so the provider's prompt cache stays warm; failover
+/// replaces them only when the provider reports a limit.
+///
+/// A main run in automatic mode decides once from its opening message. A side
+/// run (subagent) always takes the cheapest tier at or below its parent's, so
+/// the parent stays on the user's selection and only delegated work goes down.
+public final class RunRoute: @unchecked Sendable {
     private let lock = NSLock()
-    private var storedModel: String?
+    private var storedDecision: ModelDecision?
     private var storedAccountID: String?
+    /// The parent's model id (possibly empty) for a side run; nil for a main run.
+    let sideRunParent: String?
 
-    public init(accountID: String? = nil) { storedAccountID = accountID }
+    private init(accountID: String?, sideRunParent: String?) {
+        storedAccountID = accountID
+        self.sideRunParent = sideRunParent
+    }
 
-    var model: String? {
-        get { lock.withLock { storedModel } }
-        set { lock.withLock { storedModel = newValue } }
+    public static func main() -> RunRoute { RunRoute(accountID: nil, sideRunParent: nil) }
+
+    public static func sideRun(parentModel: String?, accountID: String?) -> RunRoute {
+        RunRoute(accountID: accountID, sideRunParent: parentModel ?? "")
+    }
+
+    var decision: ModelDecision? {
+        get { lock.withLock { storedDecision } }
+        set { lock.withLock { storedDecision = newValue } }
     }
 
     var accountID: String? {
