@@ -60,6 +60,7 @@ public sealed partial class AppModel : ObservableObject
     public ObservableCollection<ChatProject> ChatProjects { get; } = new();
     public AgentBridge ChatBridge { get; }
     public AgentBridge CodingBridge { get; }
+    public MCPRegistry Mcp { get; private set; } = null!;
     public AgentBridge Bridge => ActiveArea == AgentArea.Chat ? ChatBridge : CodingBridge;
     public SkillCatalog ActiveSkills => Bridge.Skills;
     public SkillSuggestionMonitor ActiveSkillSuggestions => Bridge.SkillSuggestions ?? SkillSuggestions;
@@ -368,6 +369,10 @@ public sealed partial class AppModel : ObservableObject
         CodingBridge = new AgentBridge(
             CodingRouter, Paths, Skills, Host, RemoteEvents, SkillSuggestions,
             AgentArea.Coding, AgentArea.Coding.SessionFileName());
+        // Tokens go to the same platform vault as provider credentials, never to mcp-servers.json.
+        Mcp = new MCPRegistry(Paths, providerStore.Secrets);
+        ChatBridge.Mcp = Mcp;
+        CodingBridge.Mcp = Mcp;
         SelectedBrowserBackend = ParseBrowserBackend(settings.Get("agent.browserBackend")?.AsString());
         ChatBridge.SetBrowserBackend(SelectedBrowserBackend);
         CodingBridge.SetBrowserBackend(SelectedBrowserBackend);
@@ -478,6 +483,8 @@ public sealed partial class AppModel : ObservableObject
         _ = ChatBridge.StartAsync("");
         RestoreSandbox();
         RestoreWorkLocation();
+        // Servers can be slow or unreachable; connect off the UI thread and never block startup.
+        _ = Task.Run(Mcp.ConnectAllAsync);
         _ = CodingBridge.StartAsync(RemoteTarget?.Identity ?? WorkspacePath);
         Scheduler.RunsDueTasks = !IsBackgroundDaemonEnabled;
         Scheduler.Start();

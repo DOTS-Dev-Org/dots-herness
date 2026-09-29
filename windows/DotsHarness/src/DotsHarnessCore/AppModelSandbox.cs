@@ -140,6 +140,8 @@ public sealed partial class AppModel
     private void ActivateSandbox(SandboxWorkspace sandbox)
     {
         ActiveSandbox = sandbox;
+        // Local MCP servers must launch inside the same jail as run_command from now on.
+        _ = Mcp.SetSandboxWorkspaceAsync(sandbox.Path);
         try { AgentCommandSandbox.AdditionalWritableRoots = SandboxWorkspaces.AgentWritableRoots(sandbox); }
         catch (SandboxWorkspaceException) { AgentCommandSandbox.AdditionalWritableRoots = Array.Empty<string>(); }
     }
@@ -150,6 +152,7 @@ public sealed partial class AppModel
         SandboxConflict = null;
         SandboxResolutionPreview = null;
         AgentCommandSandbox.AdditionalWritableRoots = Array.Empty<string>();
+        _ = Mcp.SetSandboxWorkspaceAsync(null);
         ClearPersistedSandbox();
         var index = CodingProjects.ToList().FindIndex(p => string.Equals(p, sandbox.Path, StringComparison.OrdinalIgnoreCase));
         if (index >= 0) CodingProjects.RemoveAt(index);

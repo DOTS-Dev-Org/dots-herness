@@ -45,6 +45,7 @@
     <Compile Include="..\..\..\..\shared\MessageTail.cs" Link="MessageTail.cs" />
     <Compile Include="..\..\..\..\shared\ExploreTool.cs" Link="ExploreTool.cs" />
     <Compile Include="..\..\..\..\shared\SSHRemote.cs" Link="SSHRemote.cs" />
+    <Compile Include="..\..\..\..\shared\MCP.cs" Link="MCP.cs" />
     <Compile Include="..\..\..\..\shared\SandboxWorkspace.cs" Link="SandboxWorkspace.cs" />
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\DshJson.cs" Link="DshJson.cs" />
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\FileDownloader.cs" Link="FileDownloader.cs" />

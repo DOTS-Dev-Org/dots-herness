@@ -351,6 +351,7 @@ public sealed class AgentBridge : ObservableObject
             ? RemoteWorkspaceTools.Definitions(planMode)
                 .Concat(SkillTools.Definitions)
                 .Append(AskUserTool.Definition)
+                .Concat(planMode || Mcp is null ? Array.Empty<NativeToolDefinition>() : Mcp.ToolDefinitions())
                 .OrderBy(tool => tool.Name, StringComparer.Ordinal)
                 .ToList()
             : (Area == AgentArea.Chat
@@ -363,6 +364,7 @@ public sealed class AgentBridge : ObservableObject
             .Concat(Area == AgentArea.Coding ? new[] { ExploreTool.Definition } : Array.Empty<NativeToolDefinition>())
             .Concat(planMode ? Array.Empty<NativeToolDefinition>() : new[] { WorkspaceFacts.Definition })
             .Concat(planMode ? Array.Empty<NativeToolDefinition>() : BrowserTools.Definitions)
+            .Concat(planMode || Mcp is null ? Array.Empty<NativeToolDefinition>() : Mcp.ToolDefinitions())
             .OrderBy(tool => tool.Name, StringComparer.Ordinal)
             .ToList();
 
@@ -433,6 +435,9 @@ public sealed class AgentBridge : ObservableObject
     /// Create AGENTS.md/CLAUDE.md when a workspace ships neither. User setting.
     /// </summary>
     public bool SeedProjectRules { get; set; } = true;
+
+    /// <summary>MCP servers whose tools are offered to the model as <c>mcp__server__tool</c>.</summary>
+    public MCPRegistry? Mcp { get; set; }
 
     private SSHTarget? _remoteTarget;
 
@@ -1148,7 +1153,8 @@ public sealed class AgentBridge : ObservableObject
                     if (Area == AgentArea.Coding) RecordAttribution(call, workspacePath);
                     if (request.PlanMode
                         && (NativeWorkspaceTools.IsWorkspaceMutation(call.Name)
-                            || call.Name is BrowserTools.OpenName or BrowserTools.NavigateName or BrowserTools.CloseName))
+                            || call.Name is BrowserTools.OpenName or BrowserTools.NavigateName or BrowserTools.CloseName
+                            || Mcp?.IsMcpTool(call.Name) == true))
                     {
                         const string blocked = "This tool is unavailable in plan mode.";
                         conversation.Messages.Add(new ChatMessage { Kind = ChatKind.Tool, Text = $"✕ {call.Name}\n{blocked}", TurnId = turnId });
@@ -1159,9 +1165,12 @@ public sealed class AgentBridge : ObservableObject
                     var selectedRoot = Area == AgentArea.Chat
                         ? SelectedContextRoot(call)?.Path
                         : workspacePath;
+                    // An MCP tool skips the prompt only when its server opted in and it is advertised read-only.
+                    var isMcpTool = Mcp?.IsMcpTool(call.Name) == true;
                     if ((call.Name == "run_command"
                             || call.Name == "remove_file"
-                            || call.Name is BrowserTools.OpenName or BrowserTools.NavigateName or BrowserTools.CloseName)
+                            || call.Name is BrowserTools.OpenName or BrowserTools.NavigateName or BrowserTools.CloseName
+                            || (isMcpTool && !Mcp!.ShouldAutoRun(call.Name)))
                         && !await RequestApprovalAsync(call, conversation.Id, selectedRoot ?? workspacePath, run.Token))
                     {
                         messages.Add(new NativeMessage("tool", "The user rejected this command.", call.Id));
@@ -1208,6 +1217,10 @@ public sealed class AgentBridge : ObservableObject
                     else if (prefetched.TryGetValue(call.Id, out var ready))
                     {
                         result = ready;
+                    }
+                    else if (isMcpTool)
+                    {
+                        result = await RunMcpToolAsync(call, run.Token);
                     }
                     else if (RemoteTarget is { } remoteTarget)
                     {
@@ -2109,6 +2122,21 @@ public sealed class AgentBridge : ObservableObject
         finally { _questionAnswer = null; PendingQuestion = null; }
     }
 
+    private async Task<string> RunMcpToolAsync(NativeToolCall call, CancellationToken ct)
+    {
+        try
+        {
+            var arguments = string.IsNullOrWhiteSpace(call.Arguments) ? new JsonObject() : JsonNode.Parse(call.Arguments);
+            var text = await Mcp!.CallAsync(call.Name, arguments, ct);
+            return text.Length == 0 ? "(no output)" : text;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception error) when (error is MCPException or JsonException or HttpRequestException or TimeoutException or IOException)
+        {
+            return $"Tool error: {error.Message}";
+        }
+    }
+
     private async Task<bool> RequestApprovalAsync(NativeToolCall call, string conversationId, string workspace, CancellationToken ct)
     {
         if (NonInteractive) return AutoApproveCommands;
@@ -2119,7 +2147,9 @@ public sealed class AgentBridge : ObservableObject
             ? $"Remove one proven-unused workspace artifact in {workspace}?"
             : call.Name is BrowserTools.OpenName or BrowserTools.NavigateName or BrowserTools.CloseName
                 ? "Allow this run to control its owned browser page?"
-                : $"Run this command in {workspace}?";
+                : Mcp?.IsMcpTool(call.Name) == true
+                    ? $"Allow the MCP tool {call.Name}? It runs outside the workspace guard."
+                    : $"Run this command in {workspace}?";
         var approval = new PendingApproval(Guid.NewGuid().ToString(), conversationId, call.Id, call.Name, reason);
         PendingApproval = approval;
         RaiseAttention(conversationId, reason);

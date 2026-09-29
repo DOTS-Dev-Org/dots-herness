@@ -14,6 +14,7 @@
                      BorderThickness="0" Background="Transparent" Padding="8">
                 <ListBoxItem x:Name="GeneralTab" Content="General" Tag="general" IsSelected="True"/>
                 <ListBoxItem x:Name="ProvidersTab" Content="Providers" Tag="providers"/>
+                <ListBoxItem x:Name="McpTab" Content="MCP" Tag="mcp"/>
                 <ListBoxItem x:Name="CustomTab" Content="Custom API" Tag="custom"/>
                 <ListBoxItem x:Name="LocalTab" Content="Local models" Tag="local"/>
                 <ListBoxItem x:Name="VoiceTab" Content="Voice input" Tag="voice"/>

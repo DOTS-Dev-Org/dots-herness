@@ -98,6 +98,7 @@ public partial class SettingsWindow : Window
             case "providers": ShowProviders(); break;
             case "custom": ShowCustom(); break;
             case "local": ShowLocal(); break;
+            case "mcp": ShowMcp(); break;
             case "voice": ShowVoice(); break;
             case "share": ShowShare(); break;
             case "mobile": ShowMobile(); break;
@@ -569,6 +570,119 @@ public partial class SettingsWindow : Window
         }
         if (router.Error is { } err) panel.Children.Add(ErrorText(err));
         _ = router.RefreshAsync();
+        Body.Content = panel;
+    }
+
+    private MCPServerDraft? _mcpDraft;
+    private string? _mcpNotice;
+
+    private void ShowMcp()
+    {
+        var mcp = Model.Mcp;
+        var panel = new StackPanel();
+        panel.Children.Add(Heading("MCP servers"));
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Model Context Protocol servers add tools to the agent. Every call asks for approval unless the server opts in for read-only tools. Tokens are kept in the system vault, not in a file.",
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 8),
+        });
+
+        foreach (var config in mcp.Servers)
+        {
+            var card = new Border
+            {
+                BorderBrush = TryBrush("BorderSubtle"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(12),
+                Margin = new Thickness(0, 0, 0, 8),
+            };
+            var stack = new StackPanel();
+            var state = mcp.StateOf(config.Id);
+            var stateText = state switch
+            {
+                MCPServerState.Connected connected => $"connected · {connected.ToolCount} tools",
+                MCPServerState.Connecting => "connecting…",
+                MCPServerState.Failed failed => "failed: " + failed.Message,
+                _ => config.Enabled ? "not connected" : "disabled",
+            };
+            stack.Children.Add(new TextBlock { Text = config.Name, FontWeight = FontWeight.SemiBold });
+            stack.Children.Add(new TextBlock
+            {
+                Text = config.Transport == MCPTransportKind.Http ? config.Url : $"{config.Command} {string.Join(" ", config.Arguments)}",
+                FontSize = 11, FontFamily = new FontFamily("monospace"), Foreground = TryBrush("TextSecondary"), TextWrapping = TextWrapping.Wrap,
+            });
+            stack.Children.Add(new TextBlock { Text = stateText, FontSize = 11, TextWrapping = TextWrapping.Wrap, Foreground = TryBrush("TextSecondary") });
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
+            Button Action(string label, Func<Task> run, bool first = false)
+            {
+                var button = new Button { Content = label, Padding = new Thickness(10, 2), Margin = new Thickness(first ? 0 : 8, 0, 0, 0) };
+                button.Click += async (_, _) => { await run(); ShowMcp(); };
+                return button;
+            }
+            var id = config.Id;
+            row.Children.Add(Action("Connect", () => mcp.ConnectAsync(id), first: true));
+            row.Children.Add(Action("Test", async () =>
+            {
+                var (count, error) = await mcp.TestAsync(config);
+                _mcpNotice = error is null ? $"{config.Name}: {count} tools" : $"{config.Name}: {error}";
+            }));
+            row.Children.Add(Action("Edit", () => { _mcpDraft = MCPServerDraft.From(config); return Task.CompletedTask; }));
+            row.Children.Add(Action("Delete", () => { mcp.Remove(id); return Task.CompletedTask; }));
+            stack.Children.Add(row);
+            card.Child = stack;
+            panel.Children.Add(card);
+        }
+        if (mcp.Servers.Count == 0)
+            panel.Children.Add(new TextBlock { Text = Model.L("settings.noneYet"), Foreground = TryBrush("TextSecondary") });
+
+        var draft = _mcpDraft ??= new MCPServerDraft();
+        panel.Children.Add(Heading(mcp.Servers.Any(s => s.Id == draft.Id) ? "Edit server" : "Add a server"));
+        panel.Children.Add(BoundField("Name", draft.Name, v => draft.Name = v));
+        var transport = new ComboBox { Margin = new Thickness(0, 0, 0, 8) };
+        transport.Items.Add(MCPTransportKind.Http);
+        transport.Items.Add(MCPTransportKind.Stdio);
+        transport.SelectedItem = draft.Transport;
+        transport.SelectionChanged += (_, _) =>
+        {
+            if (transport.SelectedItem is MCPTransportKind kind && kind != draft.Transport) { draft.Transport = kind; ShowMcp(); }
+        };
+        panel.Children.Add(Label("Transport"));
+        panel.Children.Add(transport);
+        if (draft.Transport == MCPTransportKind.Http)
+        {
+            panel.Children.Add(BoundField("URL", draft.Url, v => draft.Url = v));
+            panel.Children.Add(BoundField("Bearer token (leave empty to keep the stored one)", "", v => draft.Token = v.Length == 0 ? null : v, password: true));
+        }
+        else
+        {
+            panel.Children.Add(BoundField("Command", draft.Command, v => draft.Command = v));
+            panel.Children.Add(BoundField("Arguments (one per line)", draft.ArgumentsText, v => draft.ArgumentsText = v));
+            panel.Children.Add(BoundField("Environment (KEY=VALUE per line)", draft.EnvironmentText, v => draft.EnvironmentText = v));
+        }
+        var enabled = new CheckBox { Content = "Connect at startup", IsChecked = draft.Enabled };
+        enabled.IsCheckedChanged += (_, _) => draft.Enabled = enabled.IsChecked == true;
+        var autoRun = new CheckBox { Content = "Skip approval for tools the server marks read-only", IsChecked = draft.AutoRunReadOnly };
+        autoRun.IsCheckedChanged += (_, _) => draft.AutoRunReadOnly = autoRun.IsChecked == true;
+        panel.Children.Add(enabled);
+        panel.Children.Add(autoRun);
+
+        var save = new Button { Content = "Save", Padding = new Thickness(12, 4), Margin = new Thickness(0, 8, 0, 0) };
+        save.Click += async (_, _) =>
+        {
+            if (draft.Validate() is { } problem) { _mcpNotice = problem; ShowMcp(); return; }
+            var config = draft.ToConfig();
+            mcp.Upsert(config, draft.Token);
+            _mcpDraft = null;
+            _mcpNotice = null;
+            if (config.Enabled) await mcp.ConnectAsync(config.Id);
+            ShowMcp();
+        };
+        panel.Children.Add(save);
+        if (!string.IsNullOrEmpty(_mcpNotice)) panel.Children.Add(ErrorText(_mcpNotice));
         Body.Content = panel;
     }
 

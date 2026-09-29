@@ -15,6 +15,7 @@
   <ItemGroup>
     <Compile Include="..\..\..\..\shared\SkillCatalogTests.cs" Link="SkillCatalogTests.cs" />
     <Compile Include="..\..\..\..\shared\SSHRemoteTests.cs" Link="SSHRemoteTests.cs" />
+    <Compile Include="..\..\..\..\shared\MCPTests.cs" Link="MCPTests.cs" />
     <Compile Include="..\..\..\..\shared\AccountRoutingTests.cs" Link="AccountRoutingTests.cs" />
     <Compile Include="..\..\..\..\shared\SandboxWorkspaceTests.cs" Link="SandboxWorkspaceTests.cs" />
     <Compile Include="..\..\..\..\shared\SkillSuggestionEngineTests.cs" Link="SkillSuggestionEngineTests.cs" />
