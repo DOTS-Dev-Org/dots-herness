@@ -339,4 +339,15 @@
   <data name="ssh.error.passwordAuthDisabled" xml:space="preserve"><value>The server does not accept password logins.</value></data>
   <data name="ssh.error.pathMissing" xml:space="preserve"><value>The folder {0} does not exist on the remote computer.</value></data>
   <data name="ssh.error.configWriteFailed" xml:space="preserve"><value>{0} could not be written to ~/.ssh/config.</value></data>
+  <data name="sandbox.title" xml:space="preserve"><value>Isolated worktree</value></data>
+  <data name="sandbox.start" xml:space="preserve"><value>New local worktree</value></data>
+  <data name="sandbox.namePlaceholder" xml:space="preserve"><value>Worktree name</value></data>
+  <data name="sandbox.active" xml:space="preserve"><value>Working in worktree {0}</value></data>
+  <data name="sandbox.merge" xml:space="preserve"><value>Merge and leave</value></data>
+  <data name="sandbox.discard" xml:space="preserve"><value>Discard</value></data>
+  <data name="sandbox.conflictTitle" xml:space="preserve"><value>Merge conflict in {0}</value></data>
+  <data name="sandbox.prepare" xml:space="preserve"><value>Resolve in worktree</value></data>
+  <data name="sandbox.preview" xml:space="preserve"><value>Preview resolution</value></data>
+  <data name="sandbox.apply" xml:space="preserve"><value>Approve and merge</value></data>
+  <data name="sandbox.cancel" xml:space="preserve"><value>Cancel resolution</value></data>
 </root>

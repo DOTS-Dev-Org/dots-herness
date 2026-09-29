@@ -15,6 +15,19 @@ public static class AgentCommandSandbox
         ? (FindBubblewrap() is null ? "Strict agent command sandbox requires bubblewrap (bwrap)." : null)
         : "Strict agent command sandbox is not available on this platform.";
 
+    private static IReadOnlyList<string> _additionalWritableRoots = Array.Empty<string>();
+
+    /// <summary>
+    /// Extra directories bound read-write next to the workspace. Set while a sandbox
+    /// worktree is active so git inside it can write the origin's shared .git metadata;
+    /// never the origin's working tree.
+    /// </summary>
+    public static IReadOnlyList<string> AdditionalWritableRoots
+    {
+        get => Volatile.Read(ref _additionalWritableRoots);
+        set => Volatile.Write(ref _additionalWritableRoots, value ?? Array.Empty<string>());
+    }
+
     public static bool TryConfigure(ProcessStartInfo info, string workspace, out string error)
     {
         error = "";
@@ -71,6 +84,13 @@ public static class AgentCommandSandbox
         info.ArgumentList.Add("--bind");
         info.ArgumentList.Add(root);
         info.ArgumentList.Add(root);
+        foreach (var extra in AdditionalWritableRoots.Select(Path.GetFullPath).Distinct(StringComparer.Ordinal))
+        {
+            if (!Directory.Exists(extra) || string.Equals(extra, root, StringComparison.Ordinal)) continue;
+            info.ArgumentList.Add("--bind");
+            info.ArgumentList.Add(extra);
+            info.ArgumentList.Add(extra);
+        }
         info.ArgumentList.Add("--proc");
         info.ArgumentList.Add("/proc");
         info.ArgumentList.Add("--dev");

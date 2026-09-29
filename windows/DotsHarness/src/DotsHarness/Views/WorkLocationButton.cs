@@ -51,14 +51,16 @@ public sealed class WorkLocationButton : Button
 
     private void OnModelChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(AppModel.WorkLocation) or nameof(AppModel.Language))
+        if (e.PropertyName is nameof(AppModel.WorkLocation) or nameof(AppModel.Language) or nameof(AppModel.ActiveSandbox))
             Dispatcher.BeginInvoke(Refresh);
     }
 
     private void Refresh()
     {
         var remote = _model?.RemoteTarget;
-        Content = "🖥 " + (remote is null ? L("workLocation.local") : remote.Alias);
+        Content = _model?.ActiveSandbox is { } sandbox
+            ? "🌿 " + sandbox.Name
+            : "🖥 " + (remote is null ? L("workLocation.local") : remote.Alias);
         ToolTip = L("workLocation.title");
     }
 
@@ -113,7 +115,78 @@ public sealed class WorkLocationButton : Button
         Add(folder, 8);
         Add(use);
         Add(status);
+        Add(BuildSandbox(), 10);
         Add(BuildAddHost(status), 10);
+        return panel;
+    }
+
+    private void Rebuild()
+    {
+        if (_popup.Child is Border border) border.Child = BuildMenu();
+    }
+
+    private UIElement BuildSandbox()
+    {
+        var panel = new StackPanel();
+        if (_model is null) return panel;
+        panel.Children.Add(new TextBlock { Text = L("sandbox.title"), FontSize = 11 });
+
+        Button Action(string key, Func<Task> run)
+        {
+            var button = new Button { Content = L(key), Margin = new Thickness(0, 4, 0, 0) };
+            button.Click += async (_, _) =>
+            {
+                await run();
+                Rebuild();
+            };
+            return button;
+        }
+
+        if (_model.ActiveSandbox is not { } sandbox)
+        {
+            var name = new TextBox { ToolTip = L("sandbox.namePlaceholder"), Margin = new Thickness(0, 4, 0, 0) };
+            panel.Children.Add(name);
+            panel.Children.Add(Action("sandbox.start", () => _model.EnterSandboxAsync(name.Text)));
+        }
+        else
+        {
+            panel.Children.Add(new TextBlock { Text = L("sandbox.active", sandbox.Name), FontSize = 11, Margin = new Thickness(0, 4, 0, 0) });
+            if (_model.SandboxConflict is { } conflict)
+            {
+                panel.Children.Add(new TextBlock
+                {
+                    Text = L("sandbox.conflictTitle", string.Join(", ", conflict.Files)),
+                    TextWrapping = TextWrapping.Wrap,
+                    FontSize = 11,
+                });
+                panel.Children.Add(Action("sandbox.prepare", _model.PrepareSandboxResolutionAsync));
+                panel.Children.Add(Action("sandbox.preview", _model.PreviewSandboxResolutionAsync));
+                if (_model.SandboxResolutionPreview is { } preview)
+                {
+                    panel.Children.Add(new TextBox
+                    {
+                        Text = (preview.UnresolvedFiles.Count > 0 ? "! " + string.Join(", ", preview.UnresolvedFiles) + "\n\n" : "") + preview.Diff,
+                        IsReadOnly = true,
+                        MaxHeight = 200,
+                        VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                        FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+                        FontSize = 11,
+                        Margin = new Thickness(0, 4, 0, 0),
+                    });
+                    var approve = Action("sandbox.apply", _model.ApplySandboxResolutionAsync);
+                    approve.IsEnabled = preview.UnresolvedFiles.Count == 0;
+                    panel.Children.Add(approve);
+                }
+                panel.Children.Add(Action("sandbox.cancel", _model.CancelSandboxResolutionAsync));
+            }
+            else
+            {
+                panel.Children.Add(Action("sandbox.merge", () => _model.ExitSandboxAsync(merge: true)));
+            }
+            panel.Children.Add(Action("sandbox.discard", () => _model.ExitSandboxAsync(merge: false)));
+        }
+        if (!string.IsNullOrEmpty(_model.SandboxNotice))
+            panel.Children.Add(new TextBlock { Text = _model.SandboxNotice, TextWrapping = TextWrapping.Wrap, FontSize = 11, Opacity = 0.8, Margin = new Thickness(0, 4, 0, 0) });
         return panel;
     }
 

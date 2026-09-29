@@ -10,7 +10,7 @@ using JsonValue = HarnessPluginKit.JsonValue;
 
 namespace DotsHarnessCore;
 
-public sealed class AppModel : ObservableObject
+public sealed partial class AppModel : ObservableObject
 {
     private const string VoiceCredentialID = "voice.api.key";
     public enum AppearanceKind
@@ -476,6 +476,7 @@ public sealed class AppModel : ObservableObject
         // Gateway bind + host DNS lookup can stall; keep them off the UI thread.
         _ = Task.Run(RemoteControl.Start);
         _ = ChatBridge.StartAsync("");
+        RestoreSandbox();
         RestoreWorkLocation();
         _ = CodingBridge.StartAsync(RemoteTarget?.Identity ?? WorkspacePath);
         Scheduler.RunsDueTasks = !IsBackgroundDaemonEnabled;
@@ -881,6 +882,11 @@ public sealed class AppModel : ObservableObject
     /// </summary>
     public async Task SetRemoteWorkspaceAsync(string alias, string path)
     {
+        if (ActiveSandbox is not null)
+        {
+            SandboxNotice = "Leave the active sandbox before working on a remote host.";
+            return;
+        }
         var host = SshHosts.Host(alias) ?? throw new SSHException(SSHErrorKind.NotReachable, alias);
         var resolved = await SSHRunner.ResolveDirectoryAsync(host.Alias, path)
             ?? throw new SSHException(SSHErrorKind.PathMissing, path);

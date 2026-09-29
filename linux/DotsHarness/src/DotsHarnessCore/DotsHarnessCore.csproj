@@ -45,6 +45,7 @@
     <Compile Include="..\..\..\..\shared\MessageTail.cs" Link="MessageTail.cs" />
     <Compile Include="..\..\..\..\shared\ExploreTool.cs" Link="ExploreTool.cs" />
     <Compile Include="..\..\..\..\shared\SSHRemote.cs" Link="SSHRemote.cs" />
+    <Compile Include="..\..\..\..\shared\SandboxWorkspace.cs" Link="SandboxWorkspace.cs" />
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\DshJson.cs" Link="DshJson.cs" />
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\FileDownloader.cs" Link="FileDownloader.cs" />
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\LocalModelCatalog.cs" Link="LocalModelCatalog.cs" />
@@ -58,6 +59,7 @@
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\ScheduledTaskRunner.cs" Link="ScheduledTaskRunner.cs" />
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\SchedulerService.cs" Link="SchedulerService.cs" />
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\AppModel.cs" Link="AppModel.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\AppModelSandbox.cs" Link="AppModelSandbox.cs" />
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\SessionProjector.cs" Link="SessionProjector.cs" />
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\NativeClipboard.cs" Link="NativeClipboard.cs" />
     <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
