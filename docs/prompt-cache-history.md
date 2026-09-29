@@ -45,6 +45,18 @@ changes do not establish a 99% rate or repair missing usage counters.
 Regression tests compare request prefixes across provider adapters, capture and
 reload snapshots, and cover changing host context, retries and tool results.
 
+## Explore subagents (macOS)
+
+Only the main agent starts subagents (up to `maxPerTurn` in parallel); a
+subagent has read-only tools and cannot start another, and only its findings
+enter the main transcript, in tool-call order. Every subagent request of one
+parent turn uses the same `prompt_cache_key` (`<conversation key>:explore`) and
+one `SideRunRoute`: the model (worker role, decided once) and the account of
+the first step are reused for every later step and every sibling. Before this,
+side runs sent no cache key (a random session id on Responses routes) and the
+auto router flipped between planner and worker models as the transcript grew,
+so every step was cold.
+
 ## Compaction (macOS)
 
 - The threshold is the host's, never the model's. The user sets a share of each

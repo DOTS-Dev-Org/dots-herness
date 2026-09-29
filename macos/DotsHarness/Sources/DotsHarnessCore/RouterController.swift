@@ -557,16 +557,30 @@ public final class RouterController: ObservableObject {
         tools: [AgentToolDefinition],
         cachePolicy: AgentCachePolicy,
         recordDecision: Bool,
-        preferredAccountID: String? = nil
+        preferredAccountID: String? = nil,
+        pin: SideRunRoute? = nil
     ) async throws -> AgentResponse {
         var excluded: Set<String> = []
         var dropped: [String] = []
         while true {
-            guard let decision = ModelRouter.decide(
-                messages: messages,
-                available: routableModels,
-                excluding: excluded
-            ) else { throw NativeAgentError(AppCopy.text("agent.configureEndpoint")) }
+            let decision: ModelDecision
+            if let pinned = pin?.model,
+               let provider = routableModels.first(where: { $0.id == pinned })?.provider,
+               !excluded.contains(provider) {
+                // A side run keeps one model for all of its steps: the auto
+                // router would otherwise flip between tiers as the transcript
+                // grows, and every flip is a cold prompt cache.
+                decision = ModelDecision(model: pinned, effort: "", role: ModelRole.worker.rawValue, reason: "")
+            } else {
+                guard let decided = ModelRouter.decide(
+                    messages: messages,
+                    available: routableModels,
+                    excluding: excluded,
+                    forcedRole: pin == nil ? nil : .worker
+                ) else { throw NativeAgentError(AppCopy.text("agent.configureEndpoint")) }
+                decision = decided
+                pin?.model = decided.model
+            }
             if recordDecision {
                 lastAutoDecision = decision
                 autoEffortOverride = decision.effort
@@ -578,7 +592,8 @@ public final class RouterController: ObservableObject {
                     tools: tools,
                     cachePolicy: cachePolicy,
                     model: decision.model,
-                    preferredAccountID: preferredAccountID
+                    preferredAccountID: pin?.accountID ?? preferredAccountID,
+                    pin: pin
                 )
                 if recordDecision {
                     let name = routableModels.first { $0.id == decision.model }?.displayName ?? decision.model
@@ -599,15 +614,22 @@ public final class RouterController: ObservableObject {
     /// Like `complete`, but never records the routing decision as the conversation's
     /// own. Side runs - the exploration subagent - use it so their model choice does
     /// not overwrite what the picker shows for the main run.
+    ///
+    /// `route` pins the model and account of the first step for the whole side
+    /// run, and `cachePolicy` carries a stable key, so every step of every
+    /// subagent reads the prefix the previous step wrote.
     public func completeWithFailover(
         messages: [AgentMessage],
-        tools: [AgentToolDefinition] = []
+        tools: [AgentToolDefinition] = [],
+        cachePolicy: AgentCachePolicy = AgentCachePolicy(),
+        route: SideRunRoute? = nil
     ) async throws -> AgentResponse {
         try await sendAcrossProviders(
             messages: messages,
             tools: tools,
-            cachePolicy: AgentCachePolicy(),
-            recordDecision: false
+            cachePolicy: cachePolicy,
+            recordDecision: false,
+            pin: route
         )
     }
 
@@ -680,7 +702,8 @@ public final class RouterController: ObservableObject {
         tools: [AgentToolDefinition],
         cachePolicy: AgentCachePolicy,
         model requestedModel: String?,
-        preferredAccountID: String? = nil
+        preferredAccountID: String? = nil,
+        pin: SideRunRoute? = nil
     ) async throws -> AgentResponse {
         let routes = orderedRoutes(
             store.state.accounts,
@@ -705,6 +728,7 @@ public final class RouterController: ObservableObject {
                     status = AppCopy.format("router.connected", configuration.provider)
                     lastServedAccountID = account.id
                     lastServedModelID = configuration.model
+                    pin?.accountID = account.id
                     try? store.setCooldown(account.id, until: nil)
                     return response
                 } catch is CancellationError {
@@ -1439,5 +1463,26 @@ public enum RouterTestError: Error, LocalizedError, Sendable {
     case message(String)
     public var errorDescription: String? {
         switch self { case .http(let code): return "Provider returned HTTP \(code)."; case .message(let message): return message }
+    }
+}
+
+/// Model and account a side run (explore subagents) settled on at its first
+/// request. Later requests reuse them so the provider's prompt cache stays
+/// warm; failover replaces them only when the provider reports a limit.
+public final class SideRunRoute: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedModel: String?
+    private var storedAccountID: String?
+
+    public init(accountID: String? = nil) { storedAccountID = accountID }
+
+    var model: String? {
+        get { lock.withLock { storedModel } }
+        set { lock.withLock { storedModel = newValue } }
+    }
+
+    var accountID: String? {
+        get { lock.withLock { storedAccountID } }
+        set { lock.withLock { storedAccountID = newValue } }
     }
 }

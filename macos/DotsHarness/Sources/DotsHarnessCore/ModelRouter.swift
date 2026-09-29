@@ -93,11 +93,12 @@ public enum ModelRouter {
         messages: [AgentMessage],
         available: [RouterModel],
         excluding: Set<String> = [],
+        forcedRole: ModelRole? = nil,
         tierOf: (RouterModel) -> ModelTier = { tier(of: $0) }
     ) -> ModelDecision? {
         let available = available.filter { !excluding.contains($0.provider) }
         guard !available.isEmpty else { return nil }
-        let role = self.role(for: messages)
+        let role = forcedRole ?? self.role(for: messages)
         let target: ModelTier = role == .planner ? .premium : .light
         // A turn that only consumes a tool result is mechanical. Every other worker
         // turn still writes code, and stacking a light model with the lowest effort

@@ -33,6 +33,17 @@ final class ModelRouterTests: XCTestCase {
         XCTAssertEqual(decision.effort, "max", "a planner should use the deepest level the model allows")
     }
 
+    func testForcedRoleKeepsSideRunOnOneModelFromTheFirstStep() throws {
+        let first = try XCTUnwrap(ModelRouter.decide(messages: [user("Find the login flow")], available: all, forcedRole: .worker))
+        let later = try XCTUnwrap(ModelRouter.decide(
+            messages: [user("Find the login flow"), assistant(), AgentMessage(role: .tool, content: "x", toolCallID: "1")],
+            available: all,
+            forcedRole: .worker
+        ))
+        XCTAssertEqual(first.role, "worker")
+        XCTAssertEqual(first.model, later.model, "a model flip between steps is a cold prompt cache")
+    }
+
     func testTurnAfterAToolResultIsWork() throws {
         let messages = [
             user("Add OAuth"), assistant(),

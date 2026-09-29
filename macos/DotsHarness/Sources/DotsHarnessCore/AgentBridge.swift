@@ -2639,11 +2639,20 @@ public final class NativeAgentHost: ObservableObject {
                 // Explore subagents asked for in one turn are independent side runs:
                 // they start together, each in its own context, and only their
                 // findings come back into this conversation.
+                // Side runs share one stable cache key and one pinned model/account,
+                // so each subagent step and every sibling reads the same prefix.
+                let exploreCachePolicy = AgentCachePolicy(promptCacheKey: requestCacheKey.map { $0 + ":explore" })
+                let exploreRoute = SideRunRoute(accountID: router?.lastServedAccountID)
                 let exploreComplete: ExploreTool.Complete = { [router] messages, tools in
                     if let router {
-                        return try await router.completeWithFailover(messages: messages, tools: tools)
+                        return try await router.completeWithFailover(
+                            messages: messages,
+                            tools: tools,
+                            cachePolicy: exploreCachePolicy,
+                            route: exploreRoute
+                        )
                     }
-                    return try await client.complete(messages: messages, tools: tools)
+                    return try await client.complete(messages: messages, tools: tools, cachePolicy: exploreCachePolicy)
                 }
                 let exploreOutcomes = await Self.prefetchExplore(
                     response.message.toolCalls,
@@ -2685,17 +2694,11 @@ public final class NativeAgentHost: ObservableObject {
                     } else if call.name == ExploreTool.name, let workspace {
                         // A side run pays the quota cost of a pause twice over, so it
                         // fails over between providers instead of stopping to ask.
-                        let complete: ExploreTool.Complete = { [router] messages, tools in
-                            if let router {
-                                return try await router.completeWithFailover(messages: messages, tools: tools)
-                            }
-                            return try await client.complete(messages: messages, tools: tools)
-                        }
                         let outcome: ExploreTool.Outcome
                         if let ready = exploreOutcomes[call.id] {
                             outcome = ready
                         } else {
-                            outcome = await ExploreTool.run(call, complete: complete, workspace: workspace)
+                            outcome = await ExploreTool.run(call, complete: exploreComplete, workspace: workspace)
                         }
                         result = outcome.toolResult
                         append(
