@@ -840,19 +840,41 @@ public struct NativeAgentClient: Sendable {
 
         if var messages = body["messages"] as? [[String: Any]], !messages.isEmpty {
             let last = messages.count - 1
-            var message = messages[last]
-            switch message["content"] {
-            case let text as String where !text.isEmpty:
-                message["content"] = [["type": "text", "text": text, "cache_control": ephemeral]]
-            case var blocks as [[String: Any]] where !blocks.isEmpty:
-                blocks[blocks.count - 1]["cache_control"] = ephemeral
-                message["content"] = blocks
-            default:
-                break
+            // Anthropic allows four breakpoints. The last message is the write
+            // point; the message right before the newest assistant turn is
+            // exactly where the previous request wrote its cache, so marking it
+            // again guarantees a hit even when a long tool loop pushes the
+            // last write beyond the 20-block lookback window.
+            var targets = [last]
+            if let assistant = messages.lastIndex(where: { ($0["role"] as? String) == "assistant" }),
+               assistant > 0, assistant - 1 != last {
+                targets.append(assistant - 1)
             }
-            messages[last] = message
+            let used = Self.breakpointCount(in: body)
+            for index in targets.prefix(max(0, 4 - used)) {
+                Self.markCacheBreakpoint(&messages[index])
+            }
             body["messages"] = messages
         }
+    }
+
+    private static func markCacheBreakpoint(_ message: inout [String: Any]) {
+        let ephemeral: [String: Any] = ["type": "ephemeral"]
+        switch message["content"] {
+        case let text as String where !text.isEmpty:
+            message["content"] = [["type": "text", "text": text, "cache_control": ephemeral]]
+        case var blocks as [[String: Any]] where !blocks.isEmpty:
+            blocks[blocks.count - 1]["cache_control"] = ephemeral
+            message["content"] = blocks
+        default:
+            break
+        }
+    }
+
+    private static func breakpointCount(in body: [String: Any]) -> Int {
+        let system = (body["system"] as? [[String: Any]] ?? []).filter { $0["cache_control"] != nil }.count
+        let tools = (body["tools"] as? [[String: Any]] ?? []).filter { $0["cache_control"] != nil }.count
+        return system + tools
     }
 
     /// Cloud Code Assist envelope: `{project, model, request}` where `request` is

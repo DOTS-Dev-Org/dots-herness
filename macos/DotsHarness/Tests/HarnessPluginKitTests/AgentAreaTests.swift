@@ -71,7 +71,7 @@ final class AgentAreaTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: legacyURL.path))
     }
 
-    func testCacheNamespaceSeparatesAreasAndContextRevisionsWithoutRawPaths() {
+    func testCacheNamespaceSeparatesAreasAndKeepsKeyAcrossContextRevisionsWithoutRawPaths() {
         let chat = AgentCacheNamespace.key(
             area: .chat,
             conversationID: "conversation",
@@ -103,7 +103,7 @@ final class AgentAreaTests: XCTestCase {
         )
 
         XCTAssertNotEqual(chat, coding)
-        XCTAssertNotEqual(chat, nextRevision)
+        XCTAssertEqual(chat, nextRevision)
         XCTAssertFalse(chat.contains("/tmp/"))
     }
 

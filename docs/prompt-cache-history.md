@@ -27,6 +27,14 @@ representation. OpenAI-compatible, Responses and Gemini routes consume the same
 captured desktop transcript; no provider-specific cache feature is required to
 preserve the prefix.
 
+Anthropic requests carry up to four `cache_control` breakpoints: last system
+block, last tool, the last message (new write point) and the message before
+the newest assistant turn (the previous request's write point, which keeps
+long tool loops inside the 20-block lookback). `prompt_cache_key` is derived
+from conversation, project, model, account, tools and compaction segment only;
+context revisions and attached roots no longer change it, because that context
+is appended to later user turns and the earlier prefix stays valid.
+
 Compaction, an explicit conversation edit/rewind, image compatibility fallback,
 or changing policy/tools/model/provider can start a new cache segment. Existing
 sessions created before snapshot capture may need a cold request during the

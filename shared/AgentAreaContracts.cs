@@ -315,6 +315,9 @@ public static class ChatPathParser
 
 public static class AgentCacheNamespace
 {
+    // contextRevision and rootIds are kept for compatibility but excluded: new
+    // context is appended to later user turns, so the earlier prefix is
+    // unchanged and a new key would strand it on a cold cache shard.
     public static string Create(
         AgentArea area,
         string conversationId,
@@ -332,8 +335,7 @@ public static class AgentCacheNamespace
     {
         var identity = string.Join('|',
             area.ToString().ToLowerInvariant(), conversationId, chatProjectId ?? "none", codingProjectId ?? "none",
-            model, planMode ? "plan" : "normal", contextRevision.ToString(),
-            string.Join(',', (rootIds ?? []).OrderBy(value => value, StringComparer.Ordinal)),
+            model, planMode ? "plan" : "normal",
             provider ?? "unknown-provider", api ?? "unknown-api", accountId ?? "unknown-account",
             toolFingerprint ?? "unknown-tools", contextSegment ?? "segment-0");
         var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity))).ToLowerInvariant();

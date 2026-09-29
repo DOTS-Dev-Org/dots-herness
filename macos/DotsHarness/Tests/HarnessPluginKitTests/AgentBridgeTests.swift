@@ -1670,6 +1670,34 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertNil(body["prompt_cache_key"])
     }
 
+    func testAnthropicKeepsPreviousWritePointAndNeverExceedsFourBreakpoints() throws {
+        let client = NativeAgentClient(configuration: AgentConfiguration(
+            baseURL: "https://example.test", model: "claude", apiKey: "k",
+            api: RouterAPIKind.anthropic.rawValue
+        ))
+        let body = client.makeBody(
+            messages: [
+                AgentMessage(role: .system, content: "core policy"),
+                AgentMessage(role: .user, content: "first"),
+                AgentMessage(role: .assistant, content: "answer"),
+                AgentMessage(role: .user, content: "second"),
+            ],
+            tools: [AgentToolDefinition(name: "read_file", description: "d", parameters: .object(["type": .string("object")]))],
+            cachePolicy: AgentCachePolicy()
+        )
+        let messages = try XCTUnwrap(body["messages"] as? [[String: Any]])
+        func marked(_ index: Int) -> Bool {
+            ((messages[index]["content"] as? [[String: Any]])?.last?["cache_control"]) != nil
+        }
+        XCTAssertTrue(marked(0), "previous request's write point")
+        XCTAssertFalse(marked(1))
+        XCTAssertTrue(marked(2), "new write point")
+        let total = (body["system"] as? [[String: Any]] ?? []).filter { $0["cache_control"] != nil }.count
+            + (body["tools"] as? [[String: Any]] ?? []).filter { $0["cache_control"] != nil }.count
+            + messages.indices.filter(marked).count
+        XCTAssertLessThanOrEqual(total, 4)
+    }
+
     func testAnthropicUsageParsesCacheReadAndCreationTokens() async throws {
         MockURLProtocol.response = Data("""
         {"type":"message","role":"assistant","content":[{"type":"text","text":"ok"}],"usage":{"input_tokens":12,"output_tokens":3,"cache_read_input_tokens":9,"cache_creation_input_tokens":4}}

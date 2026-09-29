@@ -326,6 +326,10 @@ public enum ChatPathParser {
 }
 
 public enum AgentCacheNamespace {
+    /// The key only routes requests to a warm cache shard. `contextRevision`
+    /// and `rootIDs` are accepted for compatibility but deliberately left out:
+    /// new context is appended to later user turns, so the earlier prefix is
+    /// unchanged and a new key would strand it on a cold shard.
     public static func key(
         area: AgentArea,
         conversationID: String,
@@ -348,8 +352,6 @@ public enum AgentCacheNamespace {
             codingProjectID ?? "none",
             model,
             planMode ? "plan" : "normal",
-            String(contextRevision),
-            rootIDs.sorted().joined(separator: ","),
             provider ?? "unknown-provider",
             api ?? "unknown-api",
             accountID ?? "unknown-account",
