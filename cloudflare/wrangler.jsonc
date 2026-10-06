@@ -4,6 +4,8 @@
   "compatibility_date": "2025-06-14",
   "compatibility_flags": ["nodejs_compat"],
   "placement": { "mode": "smart" },
+  // API_PUBLIC_URL lives on workers.dev; wrangler disables it when "routes" is set unless explicit.
+  "workers_dev": true,
   "routes": [
     { "pattern": "dots.net.tr/harness/*", "zone_name": "dots.net.tr" }
   ],
@@ -34,6 +36,8 @@
     "MARKETPLACE_MAX_UPLOAD_BYTES": "52428800",
     "MARKETPLACE_BUILD_DISPATCH_URL": "https://api.github.com/repos/DOTS-Dev-Org/dots-herness/actions/workflows/marketplace-build.yml/dispatches",
     "MARKETPLACE_BUILD_DISPATCH_REF": "main",
+    "TYPESAFE_API_URL": "https://api.typesafe.ai",
+    "TYPESAFE_MODEL": "jev-latest",
     "GOOGLE_CLIENT_ID": "1015533762406-cp3dlnadpqbaaslf6n1ubmnqa7vs620d.apps.googleusercontent.com",
     "GOOGLE_CLIENT_IDS": "1015533762406-cp3dlnadpqbaaslf6n1ubmnqa7vs620d.apps.googleusercontent.com,1015533762406-h472s29t9e2e2r1tequ0i8va2lku2f6b.apps.googleusercontent.com,1015533762406-8vqi2t55i92najqjtrssij91c87ki1ud.apps.googleusercontent.com",
     "GITHUB_CLIENT_ID": "Ov23li5HxAB1H0yGipnc",
