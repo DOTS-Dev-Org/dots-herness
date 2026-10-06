@@ -39,7 +39,12 @@ export async function signRefreshToken(env: Env, userId: string) {
 export async function verifyAccessToken(env: Env, token: string) {
   const { payload } = await jwtVerify(token, secret(env), {
     issuer: env.JWT_ISSUER || "dotsherness",
+    algorithms: ["HS256"],
   });
+  // Refresh tokens share the signing key and issuer. Without this check a
+  // 30-day refresh token works as a bearer access token and survives
+  // logout/password-change revocation, which only deletes the DB row.
+  if (payload.type === "refresh" || typeof payload.sub !== "string") throw new Error("invalid_token");
   return {
     userId: payload.sub as string,
     email: payload.email as string,
@@ -50,6 +55,7 @@ export async function verifyAccessToken(env: Env, token: string) {
 export async function verifyRefreshToken(env: Env, token: string) {
   const { payload } = await jwtVerify(token, secret(env), {
     issuer: env.JWT_ISSUER || "dotsherness",
+    algorithms: ["HS256"],
   });
   if (payload.type !== "refresh") throw new Error("invalid_token");
   return payload.sub as string;

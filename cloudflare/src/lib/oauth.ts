@@ -250,6 +250,7 @@ export async function exchangeGoogleCode(
       redirect_uri: redirectUri,
       grant_type: "authorization_code",
     }),
+    signal: AbortSignal.timeout(10_000),
   });
 
   const tokenData = (await tokenRes.json()) as { access_token?: string; error?: string };
@@ -259,6 +260,7 @@ export async function exchangeGoogleCode(
 
   const userRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
     headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    signal: AbortSignal.timeout(10_000),
   });
   const user = (await userRes.json()) as {
     sub?: string;
@@ -322,6 +324,7 @@ async function githubTokenExchange(
       "user-agent": "aiwatcher-oauth",
     },
     body,
+    signal: AbortSignal.timeout(10_000),
   });
 
   let tokenData: {
@@ -378,7 +381,10 @@ export async function exchangeGithubCode(
     accept: "application/vnd.github+json",
   };
 
-  const userRes = await fetch("https://api.github.com/user", { headers: ghHeaders });
+  const userRes = await fetch("https://api.github.com/user", {
+    headers: ghHeaders,
+    signal: AbortSignal.timeout(10_000),
+  });
   const user = (await userRes.json()) as {
     id?: number;
     email?: string | null;
@@ -393,7 +399,10 @@ export async function exchangeGithubCode(
   }
 
   let email = "";
-  const emailRes = await fetch("https://api.github.com/user/emails", { headers: ghHeaders });
+  const emailRes = await fetch("https://api.github.com/user/emails", {
+    headers: ghHeaders,
+    signal: AbortSignal.timeout(10_000),
+  });
   if (emailRes.ok) {
     const emails = (await emailRes.json()) as Array<{
       email: string;
@@ -401,11 +410,11 @@ export async function exchangeGithubCode(
       verified?: boolean;
     }>;
     if (Array.isArray(emails)) {
+      // Verified addresses only: an unverified one would let anyone claim a
+      // victim's email (email_verified = 1) before the victim registers.
       const primary =
         emails.find((e) => e.primary && e.verified) ||
-        emails.find((e) => e.verified) ||
-        emails.find((e) => e.primary) ||
-        emails[0];
+        emails.find((e) => e.verified);
       email = primary?.email || "";
     }
   } else {
@@ -413,9 +422,6 @@ export async function exchangeGithubCode(
     // keep only the status in Worker logs.
     console.error("github emails failed", emailRes.status);
   }
-
-  // Fallback: public profile email (may be null when private).
-  if (!email && user.email) email = user.email;
 
   // Last resort: GitHub always has a noreply address for the account.
   if (!email && user.id != null) {
@@ -513,14 +519,15 @@ export function isGoogleOAuthConfigured(env: Env): boolean {
 
 export async function verifyGoogleIdToken(env: Env, idToken: string): Promise<OAuthProfile | null> {
   const resp = await fetch(
-    `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`
+    `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
+    { signal: AbortSignal.timeout(10_000) }
   );
   if (!resp.ok) return null;
 
   const data = (await resp.json()) as Record<string, unknown>;
   const aud = String(data.aud || "");
   const allowed = allowedGoogleClientIds(env);
-  if (allowed.size > 0 && !allowed.has(aud)) return null;
+  if (!allowed.has(aud)) return null;
 
   const sub = String(data.sub || "").trim();
   const email = typeof data.email === "string" ? data.email : "";

@@ -597,12 +597,17 @@ function createRestApp(options: { publicOnly: boolean }) {
       if (q.order) {
         const [col, dir] = q.order.split(".");
         assertSafeId(col, "order col");
+        if (tbl.hiddenCols.includes(col)) {
+          throw new Error(`Cannot order by column '${col}'`);
+        }
         orderClause = `ORDER BY ${col} ${dir === "desc" ? "DESC" : "ASC"}`;
       }
 
       const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-      const limit = `LIMIT ${Math.min(Number(q.limit ?? 100), 1000)}`;
-      const offset = q.offset ? `OFFSET ${Number(q.offset)}` : "";
+      const limitNum = Number(q.limit ?? 100);
+      const offsetNum = Number(q.offset ?? 0);
+      const limit = `LIMIT ${Number.isFinite(limitNum) ? Math.min(Math.max(1, Math.floor(limitNum)), 1000) : 100}`;
+      const offset = q.offset ? `OFFSET ${Number.isFinite(offsetNum) ? Math.max(0, Math.floor(offsetNum)) : 0}` : "";
 
       const sql = `SELECT ${cols} FROM ${tbl.name} ${where} ${orderClause} ${limit} ${offset}`.trim();
       const result = await db(c.env).prepare(sql).bind(...params).all();
