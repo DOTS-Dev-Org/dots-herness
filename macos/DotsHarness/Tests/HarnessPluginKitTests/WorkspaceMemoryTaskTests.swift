@@ -29,6 +29,7 @@ final class WorkspaceMemoryTaskTests: XCTestCase {
             result: "ok",
             beforeFile: nil,
             beforeGit: [],
+            afterGit: [],
             workspace: workspace
         )
         memory.finishTask(runID: runID, success: true, finalText: "Did part one.\nBACKLOG: wire the logout route")
@@ -86,6 +87,7 @@ final class WorkspaceMemoryTaskTests: XCTestCase {
                 result: "ok",
                 beforeFile: nil,
                 beforeGit: [],
+                afterGit: [],
                 workspace: workspace
             )
         }

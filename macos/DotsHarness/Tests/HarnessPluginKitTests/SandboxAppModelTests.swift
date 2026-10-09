@@ -146,13 +146,13 @@ final class SandboxAppModelTests: XCTestCase {
         )
     }
 
-    func testNewChatWithoutProjectCreatesAProjectlessConversation() throws {
+    func testNewConversationWithoutProjectDoesNotCreateProjectlessConversation() throws {
         let model = AppModel(paths: temporaryPaths())
 
         model.newConversation()
 
         XCTAssertEqual(model.workspacePath, "")
-        XCTAssertNotNil(model.selectedConversationID)
+        XCTAssertNil(model.selectedConversationID)
         XCTAssertNil(model.selected?.cwd)
     }
 
@@ -171,6 +171,138 @@ final class SandboxAppModelTests: XCTestCase {
         XCTAssertEqual(model.workspacePath, "")
         XCTAssertNil(model.selectedConversationID)
         XCTAssertTrue(model.conversations.isEmpty)
+    }
+
+    func testProjectLocationRemovalDimsProjectAndPreventsAnotherConversation() async throws {
+        let paths = temporaryPaths()
+        let project = paths.root.appendingPathComponent("project", isDirectory: true)
+        try FileManager.default.createDirectory(at: project, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: paths.root) }
+
+        let model = AppModel(paths: paths)
+        model.setSeedProjectRules(false)
+        model.setWorkspace(project.path)
+        let registeredPath = model.workspacePath
+        XCTAssertTrue(model.activeProjectLocationAvailable)
+        model.refreshProjectLocationAvailability()
+        XCTAssertFalse(model.unavailableProjectPaths.contains(registeredPath))
+
+        model.newConversation()
+        let initialConversationCount = model.conversations.count
+        XCTAssertEqual(initialConversationCount, 1)
+
+        try FileManager.default.removeItem(at: project)
+        model.refreshProjectLocationAvailability()
+
+        XCTAssertFalse(model.activeProjectLocationAvailable)
+        XCTAssertTrue(model.unavailableProjectPaths.contains(registeredPath))
+        XCTAssertFalse(model.canSend)
+
+        model.send(text: "This must stay unsent")
+        model.draft = "This draft must stay unsent"
+        model.send()
+        await model.bridge.send(text: "The shared bridge must refuse this too")
+        XCTAssertEqual(model.draft, "This draft must stay unsent")
+        XCTAssertTrue(model.selected?.messages.allSatisfy { $0.kind != .user } ?? true)
+
+        model.newConversation()
+        XCTAssertEqual(model.conversations.count, initialConversationCount)
+        model.bridge.newConversation()
+        XCTAssertEqual(model.conversations.count, initialConversationCount)
+
+        try FileManager.default.createDirectory(at: project, withIntermediateDirectories: true)
+        model.refreshProjectLocationAvailability()
+        XCTAssertTrue(model.activeProjectLocationAvailable)
+        XCTAssertFalse(model.unavailableProjectPaths.contains(registeredPath))
+    }
+
+    func testMissingProjectRestoresItsConversationHistoryReadOnlyAfterRelaunch() async throws {
+        let paths = temporaryPaths()
+        let project = paths.root.appendingPathComponent("project", isDirectory: true)
+        try FileManager.default.createDirectory(at: project, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: paths.root) }
+
+        let firstLaunch = AppModel(paths: paths)
+        firstLaunch.setSeedProjectRules(false)
+        firstLaunch.setWorkspace(project.path)
+        let registeredProjectPath = firstLaunch.workspacePath
+        firstLaunch.newConversation()
+        let oldConversationID = try XCTUnwrap(firstLaunch.selectedConversationID)
+        ConversationStore(paths: paths).save([
+            Conversation(
+                id: oldConversationID,
+                title: "Earlier project conversation",
+                messages: [ChatMessage(kind: .user, text: "An earlier project message")],
+                blank: false,
+                cwd: registeredProjectPath
+            ),
+        ])
+
+        try FileManager.default.removeItem(at: project)
+        let relaunched = AppModel(paths: paths)
+        relaunched.prepareForFirstFrame()
+
+        XCTAssertEqual(relaunched.workspacePath, registeredProjectPath)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: project.path))
+        XCTAssertFalse(relaunched.activeProjectLocationAvailable)
+        XCTAssertFalse(relaunched.canSend)
+        XCTAssertTrue(relaunched.projectPaths.contains(registeredProjectPath))
+        XCTAssertTrue(relaunched.conversations.contains(where: { $0.id == oldConversationID }))
+        XCTAssertEqual(
+            relaunched.conversations.first(where: { $0.id == oldConversationID })?.messages.first?.text,
+            "An earlier project message"
+        )
+
+        relaunched.newConversation()
+        await relaunched.bridge.send(text: "Must remain blocked")
+        XCTAssertEqual(
+            relaunched.conversations.first(where: { $0.id == oldConversationID })?.messages.map(\.text),
+            ["An earlier project message"]
+        )
+    }
+
+    func testRelocatingMissingProjectActivatesNewPathWithoutDuplicateAndKeepsPreferences() throws {
+        let paths = temporaryPaths()
+        let oldProject = paths.root.appendingPathComponent("old-project", isDirectory: true)
+        let newProject = paths.root.appendingPathComponent("new-project", isDirectory: true)
+        try FileManager.default.createDirectory(at: oldProject, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: newProject, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: paths.root) }
+
+        let model = AppModel(paths: paths)
+        model.setWorkspace(oldProject.path)
+        let oldPath = model.workspacePath
+        model.saveProjectMetadata(for: oldPath, title: "Workspace", searchFolders: [])
+        model.setSortOrder(.manual, forProject: oldPath)
+        model.moveConversation("first", before: nil, inProject: oldPath, currentOrder: ["first", "second"])
+        model.setWorkspace(newProject.path)
+        let newPath = model.workspacePath
+        model.setWorkspace(oldPath)
+
+        try FileManager.default.removeItem(at: oldProject)
+        XCTAssertFalse(model.activeProjectLocationAvailable)
+
+        XCTAssertEqual(model.relocateProject(missingPath: oldPath, to: newPath), newPath)
+
+        XCTAssertEqual(model.workspacePath, newPath)
+        XCTAssertEqual(model.projectPaths.filter { $0 == newPath }.count, 1)
+        XCTAssertFalse(model.projectPaths.contains(oldPath))
+        XCTAssertEqual(model.projectTitle(for: newPath), "Workspace")
+        XCTAssertEqual(model.sortOrder(forProject: newPath), .manual)
+        XCTAssertEqual(model.projectManualOrder[newPath], ["second", "first"])
+        XCTAssertTrue(model.activeProjectLocationAvailable)
+        XCTAssertTrue(model.unavailableProjectPaths.isEmpty)
+
+        model.newConversation(in: newPath)
+        XCTAssertEqual(
+            ConversationStore.normalizedPath(model.selected?.cwd),
+            ConversationStore.normalizedPath(newPath)
+        )
+
+        let reloaded = AppModel(paths: paths)
+        XCTAssertEqual(reloaded.projectPaths.filter { $0 == newPath }.count, 1)
+        XCTAssertEqual(reloaded.projectTitle(for: newPath), "Workspace")
+        XCTAssertEqual(reloaded.projectManualOrder[newPath], ["second", "first"])
     }
 
     func testOtherProjectExpansionIsSessionOnlyAndSurvivesProjectSelection() throws {

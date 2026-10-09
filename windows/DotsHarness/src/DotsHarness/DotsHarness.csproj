@@ -15,7 +15,9 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\DotsHarness.ico" />
+    <Resource Include="Resources\ProviderMarks\*.png" />
     <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
     <PackageReference Include="QRCoder" Version="1.8.0" />
     <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
     <ProjectReference Include="..\PluginRuntime\PluginRuntime.csproj" />

@@ -17,6 +17,7 @@ public sealed class TerminalSession : IDisposable
 
     private readonly object _gate = new();
     private readonly string _workingDirectory;
+    private readonly SshTarget? _remoteTarget;
     private FileStream? _input;
     private FileStream? _output;
     private IntPtr _pseudoConsole;
@@ -25,7 +26,11 @@ public sealed class TerminalSession : IDisposable
     private string _outputText = "";
     private bool _isRunning;
 
-    public TerminalSession(string workingDirectory) => _workingDirectory = workingDirectory;
+    public TerminalSession(string workingDirectory, SshTarget? remoteTarget = null)
+    {
+        _workingDirectory = workingDirectory;
+        _remoteTarget = remoteTarget;
+    }
 
     public event EventHandler? Changed;
 
@@ -48,7 +53,7 @@ public sealed class TerminalSession : IDisposable
             _generation++;
         }
 
-        if (!Directory.Exists(_workingDirectory))
+        if (_remoteTarget is null && !Directory.Exists(_workingDirectory))
         {
             SetMessage($"Working directory does not exist: {_workingDirectory}");
             return;
@@ -180,16 +185,30 @@ public sealed class TerminalSession : IDisposable
             };
             var shell = Environment.GetEnvironmentVariable("ComSpec")
                 ?? Path.Combine(Environment.SystemDirectory, "cmd.exe");
-            var commandLine = new StringBuilder($"\"{shell}\" /Q /K \"chcp 65001>nul & prompt $P$G\"");
+            var executable = shell;
+            var processDirectory = _workingDirectory;
+            string commandLineText;
+            if (_remoteTarget is { } remote)
+            {
+                executable = RemoteSsh.FindSshExecutable()
+                    ?? throw new InvalidOperationException("OpenSSH was not found on PATH.");
+                commandLineText = QuoteWindowsArgument(executable) + " "
+                    + string.Join(" ", RemoteSsh.BuildTerminalArguments(remote).Select(QuoteWindowsArgument));
+                processDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                if (string.IsNullOrWhiteSpace(processDirectory) || !Directory.Exists(processDirectory))
+                    processDirectory = Environment.SystemDirectory;
+            }
+            else commandLineText = $"\"{shell}\" /Q /K \"chcp 65001>nul & prompt $P$G\"";
+            var commandLine = new StringBuilder(commandLineText);
             if (!CreateProcess(
-                    shell,
+                    executable,
                     commandLine,
                     IntPtr.Zero,
                     IntPtr.Zero,
                     false,
                     ExtendedStartupInfoPresent | CreateUnicodeEnvironment,
                     IntPtr.Zero,
-                    _workingDirectory,
+                    processDirectory,
                     ref startup,
                     out var processInformation))
             {
@@ -322,6 +341,27 @@ public sealed class TerminalSession : IDisposable
 
     private static void ThrowLastError(string operation) =>
         throw new Win32Exception(Marshal.GetLastWin32Error(), $"{operation} failed");
+
+    private static string QuoteWindowsArgument(string value)
+    {
+        if (value.Length > 0 && !value.Any(character => char.IsWhiteSpace(character) || character == '"')) return value;
+        var result = new StringBuilder("\"");
+        var backslashes = 0;
+        foreach (var character in value)
+        {
+            if (character == '\\') { backslashes++; continue; }
+            if (character == '"')
+            {
+                result.Append('\\', backslashes * 2 + 1).Append('"');
+                backslashes = 0;
+                continue;
+            }
+            result.Append('\\', backslashes).Append(character);
+            backslashes = 0;
+        }
+        result.Append('\\', backslashes * 2).Append('"');
+        return result.ToString();
+    }
 
     private void RaiseChanged() => Changed?.Invoke(this, EventArgs.Empty);
 

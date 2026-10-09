@@ -14,7 +14,7 @@ MAC_RESOURCES = ROOT / "macos" / "DotsHarness" / "Sources" / "DotsHarnessCore" /
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_localization import MAC_LOCALES, SHARED_LOCALES, read_resx, read_strings  # noqa: E402
-from translation_catalog import MAC_TRANSLATIONS  # noqa: E402
+from translation_catalog import MAC_TRANSLATIONS, SHARED_TRANSLATIONS  # noqa: E402
 
 STRINGS_ENTRY = re.compile(r'^(\s*)"((?:\\.|[^"\\])*)"\s*=\s*"((?:\\.|[^"\\])*)"\s*;\s*$')
 RESX_DATA = re.compile(
@@ -79,14 +79,15 @@ def update_resx(locale: str) -> int:
     path = SHARED / f"Localization.{locale}.resx"
     text = path.read_text(encoding="utf-8")
     existing = read_resx(path)
+    translations = {**MAC_TRANSLATIONS, **SHARED_TRANSLATIONS}
     changed = 0
 
     def replace(match: re.Match[str]) -> str:
         nonlocal changed
         key = match.group("key")
-        if key not in MAC_TRANSLATIONS:
+        if key not in translations:
             return match.group(0)
-        translated = resx_value(MAC_TRANSLATIONS[key][locale])
+        translated = resx_value(translations[key][locale])
         if translated == match.group("value"):
             return match.group(0)
         changed += 1
@@ -95,6 +96,25 @@ def update_resx(locale: str) -> int:
     updated = RESX_DATA.sub(replace, text)
     if set(existing) != set(read_resx(path)):
         raise ValueError(f"{path}: source changed while updating")
+    base = read_resx(SHARED / "Localization.resx")
+    mac_base = read_strings(MAC_RESOURCES / "en.lproj" / "Localizable.strings")
+    mac_values = read_strings(MAC_RESOURCES / f"{locale}.lproj" / "Localizable.strings")
+    missing = [key for key in base if key not in existing]
+    if missing:
+        additions: list[str] = []
+        for key in missing:
+            if key in translations:
+                raw_value = translations[key][locale]
+            elif mac_base.get(key) == base[key] and key in mac_values:
+                # Shared desktop shells can reuse an existing macOS value when
+                # both English sources are identical.
+                raw_value = mac_values[key]
+            else:
+                raise ValueError(f"{path}: no translation supplied for {key}")
+            value = resx_value(raw_value)
+            additions.append(f'  <data name="{key}" xml:space="preserve"><value>{value}</value></data>')
+        updated = updated.replace("</root>", "\n".join(additions) + "\n</root>")
+        changed += len(missing)
     if changed:
         path.write_text(updated, encoding="utf-8")
     return changed

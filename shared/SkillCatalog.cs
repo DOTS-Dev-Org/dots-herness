@@ -61,7 +61,14 @@ public sealed class SkillCatalog : ObservableObject
     private IReadOnlyList<SkillMarketplaceEntry> _marketplaceEntries = Array.Empty<SkillMarketplaceEntry>();
 
     private sealed record Parsed(string Id, string Name, string Description);
-    private sealed record State(List<string> Disabled);
+    private sealed record Known(string Path, string Name, string? Identity = null);
+    // Descriptor carries the id derived from the frontmatter or folder name; Refresh pins the final one.
+    // Identity is the skill folder's creation time, which survives a rename.
+    private sealed record Candidate(SkillDescriptor Descriptor, string? Identity);
+    private sealed record State(List<string> Disabled, Dictionary<string, Known>? Known = null);
+
+    // Last seen location of every skill id. See PinnedIds.
+    private Dictionary<string, Known> _known = new(StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyList<SkillDescriptor> Entries
     {
@@ -94,7 +101,7 @@ public sealed class SkillCatalog : ObservableObject
     public void SetWorkspace(string? workspace)
     {
         _workspace = RealDirectory(workspace);
-        if (_workspace is not null)
+        if (_workspace is not null && Directory.Exists(_workspace))
         {
             // Per-workspace project folder, vault style: skills/plugins/notes for this workspace.
             try
@@ -113,7 +120,7 @@ public sealed class SkillCatalog : ObservableObject
 
     public void Refresh()
     {
-        var candidates = new List<SkillDescriptor>();
+        var candidates = new List<Candidate>();
         var seenRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         if (_workspace is not null)
@@ -133,8 +140,75 @@ public sealed class SkillCatalog : ObservableObject
         AddRoot(Path.Combine(BundledRoot, "skills"), SkillSource.Bundled, candidates, seenRoots);
         AddRoot(Path.Combine(BundledRoot, "Resources", "skills"), SkillSource.Bundled, candidates, seenRoots);
 
-        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        Entries = candidates.Where(candidate => ids.Add(candidate.Id)).ToList();
+        var pins = PinnedIds(candidates);
+        // An id held by a renamed skill is not free for a newcomer that derives the same one.
+        var reserved = candidates
+            .Select((candidate, index) => (candidate.Descriptor.Id, Pin: pins[index]))
+            .Where(pair => pair.Pin is not null && !pair.Pin.Equals(pair.Id, StringComparison.OrdinalIgnoreCase))
+            .Select(pair => pair.Pin!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var taken = new HashSet<string>(reserved.Concat(_known.Keys).Concat(candidates.Select(candidate => candidate.Descriptor.Id)), StringComparer.OrdinalIgnoreCase);
+        var selected = new List<SkillDescriptor>();
+        var located = new Dictionary<string, Known>(StringComparer.OrdinalIgnoreCase);
+        for (var index = 0; index < candidates.Count; index++)
+        {
+            var derived = candidates[index].Descriptor;
+            var id = pins[index] ?? derived.Id;
+            if (pins[index] is null && reserved.Contains(id))
+            {
+                id = Enumerable.Range(2, int.MaxValue - 2).Select(suffix => $"{derived.Id}-{suffix}").First(free => !taken.Contains(free));
+                taken.Add(id);
+            }
+            if (!located.TryAdd(id, new Known(derived.Path, derived.Name, candidates[index].Identity))) continue;
+            selected.Add(derived with { Id = id, Enabled = !_disabled.Contains(id) });
+        }
+        Entries = selected;
+
+        // A deleted skill gives its id up; one that is merely out of sight (another
+        // workspace, a shadowed duplicate) keeps it.
+        // ponytail: an unmounted workspace volume counts as deleted, its renamed skills fall back to derived ids.
+        var remembered = new Dictionary<string, Known>(located, StringComparer.OrdinalIgnoreCase);
+        foreach (var pair in _known.Where(pair => File.Exists(pair.Value.Path))) remembered.TryAdd(pair.Key, pair.Value);
+        if (remembered.Count == _known.Count && remembered.All(pair => _known.TryGetValue(pair.Key, out var previous) && previous == pair.Value)) return;
+        _known = remembered;
+        SaveState();
+    }
+
+    // A skill keeps the id it was first seen under. A conversation captures that id and
+    // earlier messages are never rewritten (the prompt cache prefix survives), so renaming
+    // the folder, the display name or the frontmatter id must not change it.
+    private string?[] PinnedIds(IReadOnlyList<Candidate> candidates)
+    {
+        static string? Root(string skillFile) => Path.GetDirectoryName(Path.GetDirectoryName(skillFile));
+        // A creation time shared by two folders (a timestamp-preserving copy) identifies neither.
+        var unique = candidates.Where(candidate => candidate.Identity is not null)
+            .GroupBy(candidate => candidate.Identity!)
+            .Where(group => group.Count() == 1)
+            .Select(group => group.Key)
+            .ToHashSet();
+        // Strongest evidence first: the same folder on disk, the same SKILL.md path, then a
+        // display name under the same root (a rename that recreated the folder, e.g. via git).
+        // An ambiguous match is not a rename.
+        var evidence = new Func<Candidate, Known, bool>[]
+        {
+            (candidate, known) => candidate.Identity is not null && unique.Contains(candidate.Identity) && candidate.Identity == known.Identity,
+            (candidate, known) => candidate.Descriptor.Path == known.Path,
+            (candidate, known) => Root(candidate.Descriptor.Path) == Root(known.Path) && candidate.Descriptor.Name == known.Name,
+        };
+        var pins = new string?[candidates.Count];
+        var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var matches in evidence)
+        {
+            for (var index = 0; index < candidates.Count; index++)
+            {
+                if (pins[index] is not null) continue;
+                var hits = _known.Where(pair => !claimed.Contains(pair.Key) && matches(candidates[index], pair.Value)).Select(pair => pair.Key).ToList();
+                if (hits.Count != 1) continue;
+                pins[index] = hits[0];
+                claimed.Add(hits[0]);
+            }
+        }
+        return pins;
     }
 
     public SkillDescriptor? Descriptor(string id, bool includeDisabled = false)
@@ -240,7 +314,8 @@ public sealed class SkillCatalog : ObservableObject
 
     public string Create(string name, string description, string body, string? preferredId = null)
     {
-        if (_workspace is null) throw new InvalidOperationException("No workspace is open.");
+        if (_workspace is null || !Directory.Exists(_workspace))
+            throw new InvalidOperationException("The workspace folder is unavailable.");
         var id = NormalizeId(string.IsNullOrWhiteSpace(preferredId) ? name : preferredId);
         if (string.IsNullOrWhiteSpace(id)) throw new InvalidOperationException("A valid skill id could not be derived from the name.");
         if (Descriptor(id, includeDisabled: true) is not null) throw new InvalidOperationException($"A skill named '{id}' already exists.");
@@ -312,7 +387,7 @@ public sealed class SkillCatalog : ObservableObject
         return string.Join('-', builder.ToString().Split('-', StringSplitOptions.RemoveEmptyEntries));
     }
 
-    private void AddRoot(string root, SkillSource source, ICollection<SkillDescriptor> candidates, ISet<string> seenRoots)
+    private void AddRoot(string root, SkillSource source, ICollection<Candidate> candidates, ISet<string> seenRoots)
     {
         root = Path.GetFullPath(root);
         if (!seenRoots.Add(root) || !Directory.Exists(root) || HasSymlinkComponent(root)) return;
@@ -328,7 +403,9 @@ public sealed class SkillCatalog : ObservableObject
                 var parsed = Parse(ReadAndValidate(skillFile), Path.GetFileName(child));
                 var id = NormalizeId(parsed.Id);
                 if (string.IsNullOrEmpty(id)) continue;
-                candidates.Add(new SkillDescriptor(id, parsed.Name, parsed.Description, source, skillFile, Enabled: !_disabled.Contains(id)));
+                candidates.Add(new Candidate(
+                    new SkillDescriptor(id, parsed.Name, parsed.Description, source, skillFile),
+                    Directory.GetCreationTimeUtc(child).Ticks.ToString()));
             }
             catch { }
         }
@@ -389,7 +466,10 @@ public sealed class SkillCatalog : ObservableObject
         try
         {
             var path = Path.Combine(_paths.Root, "skills-state.json");
-            if (File.Exists(path)) _disabled.UnionWith(JsonSerializer.Deserialize<State>(File.ReadAllText(path))?.Disabled.Select(NormalizeId) ?? []);
+            if (!File.Exists(path)) return;
+            var state = JsonSerializer.Deserialize<State>(File.ReadAllText(path));
+            _disabled.UnionWith(state?.Disabled.Select(NormalizeId) ?? []);
+            _known = new(state?.Known ?? [], StringComparer.OrdinalIgnoreCase);
         }
         catch { }
     }
@@ -399,7 +479,7 @@ public sealed class SkillCatalog : ObservableObject
         try
         {
             Directory.CreateDirectory(_paths.Root);
-            File.WriteAllText(Path.Combine(_paths.Root, "skills-state.json"), JsonSerializer.Serialize(new State(_disabled.OrderBy(id => id).ToList())));
+            File.WriteAllText(Path.Combine(_paths.Root, "skills-state.json"), JsonSerializer.Serialize(new State(_disabled.OrderBy(id => id).ToList(), _known)));
         }
         catch { }
     }

@@ -34,6 +34,7 @@ struct WorkspaceSnapshotStore {
         var after: [String: FileState]?
         var changedFiles: [ChangedFile]
         var complete: Bool
+        var undone: Bool?
         /// When each `before` file was last modified, and when the capture started. Later
         /// captures skip reading a file whose modification time and size still match.
         var beforeModified: [String: Double]?
@@ -163,7 +164,13 @@ struct WorkspaceSnapshotStore {
                 backups: [:]
             )
             let after = try capture(workspace: workspace, backupDirectory: nil, trusted: trusted).states
-            let changedFiles = changedFiles(before: snapshot.before, after: after)
+            let changedFiles = changedFiles(
+                before: snapshot.before,
+                after: after,
+                conversationID: conversationID,
+                turnID: turnID,
+                workspace: workspace
+            )
             snapshot.after = after
             snapshot.changedFiles = changedFiles
             snapshot.complete = true
@@ -176,6 +183,15 @@ struct WorkspaceSnapshotStore {
 
     func finish(conversationID: String, turnID: String, workspace: URL) -> [ChangedFile] {
         finishResult(conversationID: conversationID, turnID: turnID, workspace: workspace).changedFiles
+    }
+
+    /// The file as it was before the turn ran; nil when the turn created it.
+    func beforeContent(conversationID: String, turnID: String, path: String) -> Data? {
+        let directory = snapshotDirectory(conversationID: conversationID, turnID: turnID)
+        guard let snapshot = try? read(from: manifestURL(in: directory)),
+              snapshot.before[path] != nil,
+              let url = backupURL(path: path, snapshot: snapshot) else { return nil }
+        return try? Data(contentsOf: url)
     }
 
     func hasCompleteSnapshot(
@@ -194,6 +210,24 @@ struct WorkspaceSnapshotStore {
             && beforeBackupsExist(for: snapshot)
     }
 
+    func hasUndoableSnapshot(
+        conversationID: String,
+        turnID: String,
+        workspace: URL
+    ) -> Bool {
+        guard let snapshot = try? read(from: manifestURL(in: snapshotDirectory(conversationID: conversationID, turnID: turnID))) else {
+            return false
+        }
+        return snapshot.conversationID == conversationID
+            && snapshot.turnID == turnID
+            && snapshot.complete
+            && snapshot.after != nil
+            && snapshot.undone != true
+            && !snapshot.changedFiles.isEmpty
+            && snapshot.workspacePath == workspace.standardizedFileURL.path
+            && beforeBackupsExist(for: snapshot)
+    }
+
     func restore(
         conversationID: String,
         turnIDs: [String],
@@ -201,7 +235,7 @@ struct WorkspaceSnapshotStore {
         abortOnConflict: Bool
     ) throws -> RewindResult {
         guard !turnIDs.isEmpty else { throw WorkspaceSnapshotError.unavailable }
-        let snapshots = try turnIDs.map { turnID in
+        var snapshots = try turnIDs.map { turnID in
             let snapshot = try read(from: manifestURL(in: snapshotDirectory(conversationID: conversationID, turnID: turnID)))
             guard snapshot.conversationID == conversationID, snapshot.turnID == turnID else {
                 throw WorkspaceSnapshotError.unavailable
@@ -222,7 +256,10 @@ struct WorkspaceSnapshotStore {
         let changedPaths = Set(first.before.keys).union(lastAfter.keys)
             .filter { first.before[$0] != lastAfter[$0] }
             .sorted()
-        guard !changedPaths.isEmpty else { return RewindResult() }
+        guard !changedPaths.isEmpty else {
+            markUndone(&snapshots, conversationID: conversationID)
+            return RewindResult()
+        }
 
         var observations: [String: Observation] = [:]
         var conflicts: [String] = []
@@ -276,7 +313,19 @@ struct WorkspaceSnapshotStore {
             }
             throw WorkspaceSnapshotError.restoreFailed(restored.last ?? "workspace")
         }
+        markUndone(&snapshots, conversationID: conversationID)
         return RewindResult(restoredPaths: restored, conflictPaths: conflicts)
+    }
+
+    private func markUndone(_ snapshots: inout [Snapshot], conversationID: String) {
+        for index in snapshots.indices {
+            snapshots[index].undone = true
+            let url = manifestURL(in: snapshotDirectory(
+                conversationID: conversationID,
+                turnID: snapshots[index].turnID
+            ))
+            try? write(snapshots[index], to: url)
+        }
     }
 
     private func indexURL(for workspacePath: String) -> URL {
@@ -406,6 +455,7 @@ struct WorkspaceSnapshotStore {
             }
         }
 
+        let liveSourceDirectories = liveSources
         let files = entries
         let outcome = CaptureOutcome(count: files.count)
         DispatchQueue.concurrentPerform(iterations: files.count) { index in
@@ -429,7 +479,7 @@ struct WorkspaceSnapshotStore {
                    known.permissions == facts.permissions {
                     if let destination {
                         if let reference = trusted.backups[entry.relative],
-                           liveSources.contains(reference.split(separator: "/").prefix(2).joined(separator: "/")) {
+                           liveSourceDirectories.contains(reference.split(separator: "/").prefix(2).joined(separator: "/")) {
                             outcome.set(known, modified: facts.modified, source: reference, at: index)
                             return
                         }
@@ -594,7 +644,10 @@ struct WorkspaceSnapshotStore {
 
     private func changedFiles(
         before: [String: FileState],
-        after: [String: FileState]
+        after: [String: FileState],
+        conversationID: String,
+        turnID: String,
+        workspace: URL
     ) -> [ChangedFile] {
         Set(before.keys).union(after.keys).compactMap { path in
             guard before[path] != after[path] else { return nil }
@@ -604,15 +657,127 @@ struct WorkspaceSnapshotStore {
             case (.some, nil): operation = .deleted
             default: operation = .modified
             }
-            return ChangedFile(path: path, operation: operation)
+            let old = before[path]
+            let new = after[path]
+            let oldBytes = old?.bytes ?? 0
+            let newBytes = new?.bytes ?? 0
+            guard oldBytes <= 16 * 1024 * 1024, newBytes <= 16 * 1024 * 1024 else {
+                return ChangedFile(path: path, operation: operation)
+            }
+            let beforeData = old == nil ? nil : beforeContent(
+                conversationID: conversationID,
+                turnID: turnID,
+                path: path
+            )
+            let afterData: Data?
+            if new == nil {
+                afterData = nil
+            } else {
+                let url = try? safeURL(path, workspace: workspace)
+                afterData = url.flatMap { try? Data(contentsOf: $0) }
+            }
+            guard (old == nil || beforeData.map(digest) == old?.hash),
+                  (new == nil || afterData.map(digest) == new?.hash) else {
+                return ChangedFile(path: path, operation: operation)
+            }
+            return measureChangedFile(path: path, operation: operation, before: beforeData, after: afterData)
         }.sorted { $0.path < $1.path }
     }
 
+    private func measureChangedFile(
+        path: String,
+        operation: ChangedFile.Operation,
+        before: Data?,
+        after: Data?
+    ) -> ChangedFile {
+        let (added, deleted) = lineChanges(before: before, after: after)
+        return ChangedFile(path: path, operation: operation, addedLines: added, deletedLines: deleted)
+    }
+
+    private func lineChanges(before: Data?, after: Data?) -> (Int, Int) {
+        func lines(_ data: Data?) -> [String]? {
+            guard let data, !data.isEmpty else { return [] }
+            if data.prefix(8_192).contains(0) { return nil }
+            guard let text = String(data: data, encoding: .utf8) else { return nil }
+            let normalized = text.replacingOccurrences(of: "\r\n", with: "\n")
+                .replacingOccurrences(of: "\r", with: "\n")
+            var result = normalized.components(separatedBy: "\n")
+            if result.last == "" { result.removeLast() }
+            return result
+        }
+        guard var oldLines = lines(before), var newLines = lines(after) else { return (-1, -1) }
+        var prefix = 0
+        while prefix < oldLines.count && prefix < newLines.count && oldLines[prefix] == newLines[prefix] { prefix += 1 }
+        var suffix = 0
+        while suffix < oldLines.count - prefix && suffix < newLines.count - prefix
+            && oldLines[oldLines.count - 1 - suffix] == newLines[newLines.count - 1 - suffix] { suffix += 1 }
+        oldLines = Array(oldLines[prefix..<(oldLines.count - suffix)])
+        newLines = Array(newLines[prefix..<(newLines.count - suffix)])
+        if oldLines.count + newLines.count > 4_096 { return (-1, -1) }
+        let maximum = oldLines.count + newLines.count
+        let offset = maximum
+        var frontier = Array(repeating: 0, count: maximum * 2 + 3)
+        frontier[offset + 1] = 0
+        var trace: [[Int]] = []
+        for distance in 0...maximum {
+            if distance > 256 { return (-1, -1) }
+            trace.append(frontier)
+            var diagonal = -distance
+            while diagonal <= distance {
+                let index = offset + diagonal
+                var x = diagonal == -distance || (diagonal != distance && frontier[index - 1] < frontier[index + 1])
+                    ? frontier[index + 1]
+                    : frontier[index - 1] + 1
+                var y = x - diagonal
+                while x < oldLines.count && y < newLines.count && oldLines[x] == newLines[y] { x += 1; y += 1 }
+                frontier[index] = x
+                if x >= oldLines.count && y >= newLines.count {
+                    return backtrackLineChanges(
+                        trace,
+                        distance: distance,
+                        oldCount: oldLines.count,
+                        newCount: newLines.count,
+                        offset: offset
+                    )
+                }
+                diagonal += 2
+            }
+        }
+        return (-1, -1)
+    }
+
+    private func backtrackLineChanges(
+        _ trace: [[Int]],
+        distance: Int,
+        oldCount: Int,
+        newCount: Int,
+        offset: Int
+    ) -> (Int, Int) {
+        var x = oldCount
+        var y = newCount
+        var added = 0
+        var deleted = 0
+        if distance > 0 {
+            for d in stride(from: distance, through: 1, by: -1) {
+                let previous = trace[d]
+                let diagonal = x - y
+                let previousDiagonal = diagonal == -d || (diagonal != d && previous[offset + diagonal - 1] < previous[offset + diagonal + 1])
+                    ? diagonal + 1
+                    : diagonal - 1
+                let previousX = previous[offset + previousDiagonal]
+                let previousY = previousX - previousDiagonal
+                while x > previousX && y > previousY { x -= 1; y -= 1 }
+                if x == previousX { added += 1; y -= 1 }
+                else { deleted += 1; x -= 1 }
+            }
+        }
+        while x > 0 && y > 0 { x -= 1; y -= 1 }
+        added += y
+        deleted += x
+        return (added, deleted)
+    }
+
     private func beforeBackupsExist(for snapshot: Snapshot) -> Bool {
-        let beforeDirectory = snapshotDirectory(
-            conversationID: snapshot.conversationID,
-            turnID: snapshot.turnID
-        ).appendingPathComponent("before", isDirectory: true)
         return snapshot.before.allSatisfy { path, state in
             guard let backup = backupURL(path: path, snapshot: snapshot) else { return false }
             var isDirectory = ObjCBool(false)

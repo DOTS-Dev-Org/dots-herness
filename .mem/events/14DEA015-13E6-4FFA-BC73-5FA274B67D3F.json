@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-09T00:03:08Z",
+  "eventId" : "14DEA015-13E6-4FFA-BC73-5FA274B67D3F",
+  "lamport" : 287,
+  "parents" : [
+    "108D7FD6-CF8D-40C6-81C1-D03678934AC0"
+  ],
+  "payload" : {
+    "commandSummary" : null,
+    "name" : "read_file",
+    "path" : "shared\/Localization.de.resx",
+    "resultBytes" : 393,
+    "resultStatus" : "completed",
+    "runId" : "73E53818-8EE9-4B48-8214-5C5AA442F32F"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "THSp2+\/7Z2GOINA0Y0wxD6t+DJSE9ZJD2HLhMHDXRI1G0slbjGBfYLg88x6A+t8Nmrvc5All8Ksd351GggMbhw=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

@@ -150,12 +150,36 @@ class LoopWorker(context: Context, parameters: WorkerParameters) : CoroutineWork
     override suspend fun doWork(): Result {
         val context = applicationContext
         val secure = SecureStore(context)
-        val root = { File(context.filesDir, "herness-workspace/files").apply { mkdirs() }.canonicalFile }
+        val chatGPT = ChatGPTOAuth(context)
+        chatGPT.refreshIfNeeded()
+        val stateStore = MobileStateStore(context)
+        val projectStore = MobileProjectStore(context)
+        val projectID = projectStore.selectedProjectId
+        val projectRoot = File(projectStore.selected.localRoot).canonicalFile
+        if (!projectRoot.isDirectory) return Result.success()
+        val storedProvider = stateStore.setting("herness.agent.provider")
+        val migrationProvider = storedProvider?.takeIf { MobileHarnessRuntime.definition(it)?.requiresApiKey == true } ?: "anthropic"
+        secure.migrateLegacyProviderKey(migrationProvider)
+        val root = { projectRoot }
         val scheduler = LoopScheduler(context) {
-            MobileAgent({ secure.read("phone.provider").orEmpty() }, { PHONE_AGENT_SYSTEM_PROMPT }, workspaceSnapshotProvider = { AgentTools.snapshot(root()) }).apply {
+            MobileAgent(
+                { "" },
+                { PHONE_AGENT_SYSTEM_PROMPT },
+                stateStore = stateStore,
+                workspaceSnapshotProvider = { AgentTools.snapshot(root()) },
+                providerApiKey = { provider -> secure.read("phone.provider.$provider").orEmpty() },
+                isProjectLocationAvailable = { projectRoot.isDirectory },
+                oauthToken = { chatGPT.accessToken },
+                sessionAccountId = { chatGPT.accountId },
+                oauthTokenForAccount = { account -> chatGPT.accessTokenFor(account) },
+                chatGPTAccountIDs = { chatGPT.accountIDs() },
+            ).apply {
+                selectProject(projectID)
+                register(WebTools.specs())
                 register(AgentTools.workspace(root))
+                learnedRules = { MobileLessons.rulesText(root()) }
                 register(AgentTools.runtime(LocalShell(root), root))
-                register(Plugins(root).reload())
+                replaceProjectTools(Plugins(root).reload())
             }
         }
         scheduler.runDue()

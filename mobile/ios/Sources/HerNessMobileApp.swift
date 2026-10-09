@@ -2,7 +2,9 @@ import SwiftUI
 
 @main
 struct HerNessMobileApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var localization = MobileLocalization()
+    @StateObject private var theme = MobileTheme()
     @StateObject private var client: RemoteControlClient
     @StateObject private var workspace: LocalWorkspaceStore
     @StateObject private var shell: LocalShell
@@ -12,12 +14,20 @@ struct HerNessMobileApp: App {
     @StateObject private var githubOAuth = GitHubOAuth()
     @StateObject private var chatGPTOAuth = ChatGPTOAuth()
     @StateObject private var agent = MobileAgent(
-        apiKey: { SecureStore().read("phone.provider") ?? "" },
+        apiKey: { "" },
         systemPrompt: { HerNessMobileApp.systemPrompt },
-        oauthToken: { SecureStore().read("oauth.openai.access") ?? "" },
-        sessionAccountID: { SecureStore().read("oauth.openai.account") ?? "" })
+        oauthToken: { ChatGPTOAuth.accessToken(for: ChatGPTOAuth.activeAccountID()) },
+        sessionAccountID: { ChatGPTOAuth.activeAccountID() },
+        providerAPIKey: { provider in
+            SecureStore().read(MobileAgent.credentialKey(for: provider)) ?? ""
+        },
+        oauthTokenForAccount: { ChatGPTOAuth.accessToken(for: $0) },
+        chatGPTAccountIDs: { ChatGPTOAuth.accountIDs() })
 
     init() {
+        let storedProvider = UserDefaults.standard.string(forKey: "herness.agent.provider") ?? "anthropic"
+        let migrationProvider = MobileAgent.definition(for: storedProvider)?.requiresAPIKey == true ? storedProvider : "anthropic"
+        SecureStore().migrateLegacyProviderKey(to: migrationProvider)
         let client = RemoteControlClient()
         _client = StateObject(wrappedValue: client)
         let workspace = LocalWorkspaceStore()
@@ -29,13 +39,25 @@ struct HerNessMobileApp: App {
         _loops = StateObject(wrappedValue: LoopScheduler {
             // A loop gets its own agent so a scheduled run never interleaves with
             // whatever the user is typing in the Agent tab.
-            let agent = MobileAgent(apiKey: { SecureStore().read("phone.provider") ?? "" }, systemPrompt: { Self.systemPrompt }, oauthToken: { SecureStore().read("oauth.openai.access") ?? "" }, sessionAccountID: { SecureStore().read("oauth.openai.account") ?? "" })
+            let agent = MobileAgent(
+                apiKey: { "" },
+                systemPrompt: { Self.systemPrompt },
+                oauthToken: { ChatGPTOAuth.accessToken(for: ChatGPTOAuth.activeAccountID()) },
+                sessionAccountID: { ChatGPTOAuth.activeAccountID() },
+                providerAPIKey: { provider in
+                    SecureStore().read(MobileAgent.credentialKey(for: provider)) ?? ""
+                },
+                oauthTokenForAccount: { ChatGPTOAuth.accessToken(for: $0) },
+                chatGPTAccountIDs: { ChatGPTOAuth.accountIDs() })
+            agent.setProjectLocationAvailabilityProvider { workspace.projectLocationAvailableNow }
+            agent.selectProject(workspace.selectedProjectID)
             agent.setWorkspaceSnapshotProvider { try workspace.agentFiles() }
+            agent.setLearnedRulesProvider { MobileLessons.rulesText(root: workspace.root) }
             let git = MobileGitClient(root: workspace.root, token: { SecureStore().read("oauth.github.access") ?? "" })
             agent.setGitClient(git)
             agent.register(AgentTools.workspace(workspace))
             agent.register(AgentTools.runtime(shell: shell, store: workspace, git: git, remote: client))
-            agent.register(plugins.reload())
+            agent.replaceProjectTools(plugins.reload())
             return agent
         })
     }
@@ -47,6 +69,7 @@ struct HerNessMobileApp: App {
             MobileRootView()
                 .environmentObject(client)
                 .environmentObject(localization)
+                .environmentObject(theme)
                 .environmentObject(workspace)
                 .environmentObject(agent)
                 .environmentObject(shell)
@@ -57,19 +80,28 @@ struct HerNessMobileApp: App {
                 .environmentObject(chatGPTOAuth)
                 .environment(\.locale, localization.locale)
                 .environment(\.layoutDirection, localization.isRTL ? .rightToLeft : .leftToRight)
+                .preferredColorScheme(theme.isDark ? .dark : .light)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .modifier(MobileWindowBehavior())
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .background { agent.pauseForLifecycleInterruption() }
+                    if phase == .active { agent.resumeRecoveredPlanIfNeeded() }
+                }
         .task {
             await chatGPTOAuth.refreshIfNeeded()
-            agent.start()
+            agent.setProjectLocationAvailabilityProvider { workspace.projectLocationAvailableNow }
+            agent.selectProject(workspace.selectedProjectID)
+            shell.resetForProject()
             agent.setWorkspaceSnapshotProvider { try workspace.agentFiles() }
+            agent.setLearnedRulesProvider { MobileLessons.rulesText(root: workspace.root) }
             let git = MobileGitClient(root: workspace.root, token: { SecureStore().read("oauth.github.access") ?? "" })
             agent.setGitClient(git)
             agent.register(AgentTools.workspace(workspace))
             agent.register(AgentTools.runtime(shell: shell, store: workspace, git: git, remote: client))
-                    agent.register(plugins.reload())
-                    agent.pluginPrompt = plugins.promptSections.joined(separator: "\n")
-                    await mcp.connectAll(into: agent)
+            agent.replaceProjectTools(plugins.reload())
+            agent.pluginPrompt = plugins.promptSections.joined(separator: "\n")
+            await mcp.connectAll(into: agent)
+            agent.start()
                     loops.requestNotificationPermission()
                     loops.startTicking()
                     loops.scheduleBackgroundRefresh()
@@ -79,6 +111,21 @@ struct HerNessMobileApp: App {
                     let git = MobileGitClient(root: workspace.root, token: { SecureStore().read("oauth.github.access") ?? "" })
                     agent.setGitClient(git)
                     agent.register(AgentTools.runtime(shell: shell, store: workspace, git: git, remote: client))
+                }
+                .onChange(of: workspace.selectedProjectID) { _, projectID in
+                    // Every project owns its transcript, model context and tool root.
+                    shell.resetForProject()
+                    agent.cancel()
+                    agent.selectProject(projectID)
+                    agent.setWorkspaceSnapshotProvider { try workspace.agentFiles() }
+                    agent.setLearnedRulesProvider { MobileLessons.rulesText(root: workspace.root) }
+                    let git = MobileGitClient(root: workspace.root, token: { SecureStore().read("oauth.github.access") ?? "" })
+                    agent.setGitClient(git)
+                    agent.register(AgentTools.workspace(workspace))
+                    agent.register(AgentTools.runtime(shell: shell, store: workspace, git: git, remote: client))
+                    agent.replaceProjectTools(plugins.reload())
+                    agent.pluginPrompt = plugins.promptSections.joined(separator: "\n")
+                    Task { await mcp.connectAll(into: agent) }
                 }
                 .onOpenURL { url in
                     if !githubOAuth.handleCallback(url) && !chatGPTOAuth.handleCallback(url) { client.consumePairURL(url) }

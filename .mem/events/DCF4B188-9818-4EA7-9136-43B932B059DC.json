@@ -1,0 +1,36 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-09-26T20:06:47Z",
+  "eventId" : "DCF4B188-9818-4EA7-9136-43B932B059DC",
+  "lamport" : 39,
+  "parents" : [
+    "DAF99591-EE2A-41A7-95B9-934F38AC1711"
+  ],
+  "payload" : {
+    "changedFiles" : [
+
+    ],
+    "promptHash" : "9fb3fe77d641839ad10cbc62278cd4690d84610e1691e72a2b83b21611aa08ac",
+    "promptSummary" : "Mac OS tarafında düzgün bir şekilde kod yazıyor mu? Proje içerisinde herhangi bir sorun var mı? Bunu kontrol et ve düzeltelim.",
+    "runId" : "AFCE3051-D965-4D6A-BB89-3FFB3CC48324",
+    "semanticStatus" : "pending",
+    "status" : "completed",
+    "toolCount" : 4
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "FEHnz+OGpEshqcTI1DIxEVu9NL\/LzS0So\/C3li+pQxmZWJcvJ0vdS7TI5GBci0kjF\/+mPRVmQR+Oz\/t1wL54GA=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "task.completed"
+}

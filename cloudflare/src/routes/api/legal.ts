@@ -95,6 +95,7 @@ legal.get(
     }
 
     const requestedVersion = c.req.query("version")?.trim() || LEGAL_DOCUMENT_VERSIONS.terms;
+    const pinnedVersion = Boolean(c.req.query("version")?.trim());
     const { results } = await db(c.env)
       .prepare(
         `SELECT app_slug, document_key, locale, version, body_markdown, sha256,
@@ -169,7 +170,16 @@ legal.get(
           source_locale: privacy.source_locale,
         },
       },
-    });
+    }, pinnedVersion ? {
+      // A published version never changes, so the whole corpus (two documents,
+      // their R2 reads and four SHA-256 passes) does not have to be re-derived
+      // on every launch. noStoreSensitiveResponses keeps its no-store default for
+      // unpinned and error responses, which is why this is conditional.
+      headers: {
+        "Cache-Control": "public, max-age=86400, immutable",
+        "CDN-Cache-Control": "public, max-age=86400, immutable",
+      },
+    } : undefined);
   },
 );
 

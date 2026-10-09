@@ -14,6 +14,7 @@ final class RightDockState: ObservableObject {
         case terminal(session: UUID, key: String)
         case files
         case browser
+        case plan
     }
 
     struct Tab: Identifiable, Equatable {
@@ -22,8 +23,24 @@ final class RightDockState: ObservableObject {
     }
 
     @Published var isVisible = false
+    /// Dock fills the whole detail area (conversation hidden).
+    @Published var isExpanded = false
     @Published var tabs: [Tab] = []
     @Published var selectedID: UUID?
+
+    init() {
+        NativeBrowserService.shared.onNavigateRequested = { [weak self] _ in
+            self?.showBrowser()
+        }
+    }
+
+    func showPlan() {
+        add(.plan, unique: true)
+    }
+
+    func showBrowser() {
+        add(.browser, unique: true)
+    }
 
     func perform(_ action: KeyboardShortcutAction, model: AppModel) {
         switch action {
@@ -31,7 +48,7 @@ final class RightDockState: ObservableObject {
         case .files: add(.files, unique: true)
         case .browser: add(.browser, unique: false)
         case .terminal: openTerminal(model: model)
-        case .sideChat: model.newConversation()
+        case .newConversation: model.newConversation()
         case .simulator:
             model.isTasksPresented = false
             model.isSimulatorPresented = true
@@ -58,9 +75,7 @@ final class RightDockState: ObservableObject {
         }
         guard let session = model.terminalManager.openSession(
             for: key,
-            executionPolicy: model.activeArea == .chat
-                ? model.chatTerminalExecutionPolicy
-                : (model.remoteWorkspace == nil ? model.sandboxExecutionPolicy : nil),
+            executionPolicy: model.remoteWorkspace == nil ? model.sandboxExecutionPolicy : nil,
             remoteTarget: model.remoteWorkspace
         ) else { return }
         add(.terminal(session: session.id, key: key), unique: false)
@@ -79,7 +94,7 @@ final class RightDockState: ObservableObject {
     }
 }
 
-private let dockActions: [KeyboardShortcutAction] = [.review, .terminal, .browser, .files, .sideChat, .simulator]
+private let dockActions: [KeyboardShortcutAction] = [.review, .terminal, .browser, .files, .newConversation, .simulator]
 
 // MARK: - Dock
 
@@ -116,6 +131,17 @@ struct RightDockView: View {
             .popover(isPresented: $isMenuPresented, arrowEdge: .bottom) { pickerList(inPopover: true) }
 
             Spacer(minLength: 0)
+
+            Button { state.isExpanded.toggle() } label: {
+                Image(systemName: state.isExpanded
+                    ? "arrow.down.right.and.arrow.up.left"
+                    : "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 12, weight: .medium))
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.plain)
+            .help(AppCopy.text(state.isExpanded ? "dock.collapse" : "dock.expand"))
+            .accessibilityLabel(AppCopy.text(state.isExpanded ? "dock.collapse" : "dock.expand"))
         }
         .padding(.horizontal, 10)
         .frame(height: 44)
@@ -151,6 +177,7 @@ struct RightDockView: View {
         case .terminal: return "terminal"
         case .files: return "folder"
         case .browser: return "globe"
+        case .plan: return "lightbulb"
         }
     }
 
@@ -160,6 +187,7 @@ struct RightDockView: View {
         case .terminal: return KeyboardShortcutAction.terminal.title
         case .files: return KeyboardShortcutAction.files.title
         case .browser: return KeyboardShortcutAction.browser.title
+        case .plan: return AppCopy.text("plan.title")
         }
     }
 
@@ -171,6 +199,7 @@ struct RightDockView: View {
             case .terminal(let id, let key): DockTerminalView(manager: model.terminalManager, key: key, id: id)
             case .files: DockFilesView(model: model).id(model.workspacePath)
             case .browser: DockBrowserView().id(tab.id)
+            case .plan: DockPlanView(model: model)
             }
         } else {
             VStack { Spacer(); pickerList(inPopover: false); Spacer() }
@@ -182,20 +211,81 @@ struct RightDockView: View {
     private func pickerList(inPopover: Bool) -> some View {
         VStack(spacing: 8) {
             ForEach(dockActions) { action in
-                if action != .files || model.activeArea == .coding {
-                    PaneChoiceRow(
-                        systemImage: action.systemImage,
-                        title: action.title,
-                        shortcut: model.shortcut(for: action).displayValue
-                    ) {
-                        isMenuPresented = false
-                        state.perform(action, model: model)
-                    }
+                PaneChoiceRow(
+                    systemImage: action.systemImage,
+                    title: action.title,
+                    shortcut: model.shortcut(for: action).displayValue
+                ) {
+                    isMenuPresented = false
+                    state.perform(action, model: model)
                 }
             }
         }
         .padding(inPopover ? 10 : 0)
         .frame(width: inPopover ? 300 : nil)
+    }
+}
+
+// MARK: - Plan
+
+private struct DockPlanView: View {
+    @ObservedObject var model: AppModel
+
+    private var conversation: Conversation? { model.selected }
+    private var plan: ChatMessage? {
+        guard let conversation else { return nil }
+        if let id = conversation.pendingPlanMessageID,
+           let pending = conversation.messages.first(where: { $0.id == id }) { return pending }
+        return conversation.messages.last { $0.kind == .plan }
+    }
+    private var isPending: Bool { plan != nil && conversation?.pendingPlanMessageID == plan?.id }
+    private var canApply: Bool {
+        conversation?.running == false && conversation?.continuation == nil && model.bridge.isReady
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if let plan {
+                ScrollView {
+                    PlanMarkdownView(text: plan.text)
+                        .textSelection(.enabled)
+                        .padding(16)
+                }
+                if isPending { actions }
+            } else {
+                Spacer()
+                Text(AppCopy.text("plan.empty")).foregroundStyle(.secondary)
+                Spacer()
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var actions: some View {
+        VStack(spacing: 8) {
+            Text(AppCopy.text("plan.proposed")).font(.callout.weight(.semibold))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            planButton(AppCopy.text("plan.reject")) { model.cancelPlan() }
+            planButton(AppCopy.text("plan.revise")) { model.revisePlan() }
+            planButton(AppCopy.text("plan.accept"), enabled: canApply) { model.applyPlan() }
+            Button { model.applyPlanAndAutoApprove() } label: {
+                Text(AppCopy.text("plan.acceptAuto")).frame(maxWidth: .infinity).padding(.vertical, 6)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.primary)
+            .disabled(!canApply)
+        }
+        .padding(14)
+        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(12)
+    }
+
+    private func planButton(_ title: String, enabled: Bool = true, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title).frame(maxWidth: .infinity).padding(.vertical, 6)
+        }
+        .buttonStyle(.bordered)
+        .disabled(!enabled)
     }
 }
 
@@ -243,10 +333,20 @@ private enum Git {
 
 private struct ReviewChange: Identifiable, Hashable {
     let path: String
-    let status: String   // M, A, D, ?
-    let added: Int?
-    let removed: Int?
+    let status: String   // M, A, D
+    let added: Int
+    let removed: Int
     var id: String { path }
+}
+
+private struct DiffRow: Identifiable {
+    enum Kind { case hunk, add, del, context }
+    let id: Int
+    let kind: Kind
+    let old: Int?
+    let new: Int?
+    let text: String
+    let hunk: Int
 }
 
 @MainActor
@@ -255,16 +355,21 @@ private final class ReviewModel: ObservableObject {
     @Published var branch = ""
     @Published var branches: [String] = []
     @Published var selected: String?
-    @Published var diffLines: [String] = []
+    @Published var rows: [DiffRow] = []
+    @Published var selectedHunk: Int?
+    @Published var why: AgentFileChange?
     @Published var error: String?
     @Published var busy = false
     @Published var notRepo = false
 
     let path: String
-    init(path: String) { self.path = path }
+    let app: AppModel
+    private var agent: [String: AgentFileChange] = [:]
+    private var diffs: [String: String] = [:]
+    init(path: String, app: AppModel) { self.path = path; self.app = app }
 
-    var added: Int { changes.compactMap(\.added).reduce(0, +) }
-    var removed: Int { changes.compactMap(\.removed).reduce(0, +) }
+    var added: Int { changes.map(\.added).reduce(0, +) }
+    var removed: Int { changes.map(\.removed).reduce(0, +) }
 
     func refresh() async {
         guard (await Git.run(["rev-parse", "--is-inside-work-tree"], at: path)).ok else {
@@ -278,47 +383,72 @@ private final class ReviewModel: ObservableObject {
         branches = (await Git.run(["for-each-ref", "--format=%(refname:short)", "refs/heads"], at: path))
             .out.split(separator: "\n").map(String.init)
 
-        var stats: [String: (Int?, Int?)] = [:]
-        for line in (await Git.run(["diff", "HEAD", "--no-renames", "--numstat"], at: path)).out.split(separator: "\n") {
-            let parts = line.split(separator: "\t", maxSplits: 2).map(String.init)
-            if parts.count == 3 { stats[parts[2]] = (Int(parts[0]), Int(parts[1])) }
-        }
+        // Only files the agent changed: the diff is its turn-start snapshot against the file now.
         var result: [ReviewChange] = []
-        for line in (await Git.run(["diff", "HEAD", "--no-renames", "--name-status"], at: path)).out.split(separator: "\n") {
-            let parts = line.split(separator: "\t", maxSplits: 1).map(String.init)
-            guard parts.count == 2 else { continue }
-            let s = stats[parts[1]]
-            result.append(ReviewChange(path: parts[1], status: String(parts[0].prefix(1)), added: s?.0, removed: s?.1))
+        agent = [:]
+        diffs = [:]
+        for change in app.agentChanges() {
+            let text = await diff(for: change)
+            guard !text.isEmpty else { continue }
+            let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+            let added = lines.filter { $0.hasPrefix("+") && !$0.hasPrefix("+++") }.count
+            let removed = lines.filter { $0.hasPrefix("-") && !$0.hasPrefix("---") }.count
+            let status = change.operation == .added ? "A" : change.operation == .deleted ? "D" : "M"
+            agent[change.path] = change
+            diffs[change.path] = text
+            result.append(ReviewChange(path: change.path, status: status, added: added, removed: removed))
         }
-        let known = Set(result.map(\.path))
-        for file in (await Git.run(["ls-files", "--others", "--exclude-standard"], at: path)).out.split(separator: "\n")
-        where !known.contains(String(file)) {
-            result.append(ReviewChange(path: String(file), status: "?", added: nil, removed: nil))
-        }
-        changes = result.sorted { $0.path < $1.path }
+        changes = result
         if let current = selected, !changes.contains(where: { $0.id == current }) { selected = nil }
-        await loadDiff()
+        loadDiff()
     }
 
-    func loadDiff() async {
-        guard let selected, let change = changes.first(where: { $0.id == selected }) else {
-            diffLines = []
+    /// `git diff --no-index` works on any two files, tracked or not; exit 1 just means "differs".
+    private func diff(for change: AgentFileChange) async -> String {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("dots-review-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let before = dir.appendingPathComponent("before")
+        let after = dir.appendingPathComponent("after")
+        try? (app.agentBeforeContent(change) ?? Data()).write(to: before)
+        let current = try? Data(contentsOf: URL(fileURLWithPath: path).appendingPathComponent(change.path))
+        try? (current ?? Data()).write(to: after)
+        return (await Git.run(["diff", "--no-index", "--no-color", "-U3", "--", before.path, after.path], at: path)).out
+    }
+
+    func loadDiff() {
+        selectedHunk = nil
+        guard let selected, let text = diffs[selected] else {
+            rows = []
+            why = nil
             return
         }
-        var text: String
-        if change.status == "?" {
-            let data = (try? Data(contentsOf: URL(fileURLWithPath: path).appendingPathComponent(selected))) ?? Data()
-            text = String(decoding: data.prefix(300_000), as: UTF8.self)
-                .split(separator: "\n", omittingEmptySubsequences: false).map { "+" + $0 }.joined(separator: "\n")
-        } else {
-            text = (await Git.run(["diff", "HEAD", "--no-renames", "--", selected], at: path)).out
+        why = agent[selected]
+        var out: [DiffRow] = []
+        var old = 0, new = 0, hunk = -1
+        for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
+            if line.hasPrefix("@@") {
+                let nums = line.split(separator: " ").dropFirst().prefix(2)
+                    .map { $0.dropFirst().split(separator: ",")[0] }.compactMap { Int($0) }
+                if nums.count == 2 { old = nums[0]; new = nums[1] }
+                hunk += 1
+                out.append(DiffRow(id: out.count, kind: .hunk, old: nil, new: nil, text: String(line), hunk: hunk))
+            } else if hunk >= 0, let mark = line.first {
+                let body = String(line.dropFirst())
+                switch mark {
+                case "+": out.append(DiffRow(id: out.count, kind: .add, old: nil, new: new, text: body, hunk: hunk)); new += 1
+                case "-": out.append(DiffRow(id: out.count, kind: .del, old: old, new: nil, text: body, hunk: hunk)); old += 1
+                case " ": out.append(DiffRow(id: out.count, kind: .context, old: old, new: new, text: body, hunk: hunk)); old += 1; new += 1
+                default: break
+                }
+            }
         }
-        diffLines = text.prefix(400_000).split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        rows = out
     }
 
-    func select(_ id: String) async {
+    func select(_ id: String) {
         selected = id
-        await loadDiff()
+        loadDiff()
     }
 
     func checkout(_ name: String) async {
@@ -356,7 +486,7 @@ private struct DockReviewView: View {
         if model.workspacePath.isEmpty || model.remoteWorkspace != nil {
             DockEmptyWorkspace(model: model)
         } else {
-            ReviewBody(model: model, review: ReviewModel(path: model.workspacePath))
+            ReviewBody(model: model, review: ReviewModel(path: model.workspacePath, app: model))
         }
     }
 }
@@ -408,6 +538,7 @@ private struct ReviewBody: View {
             }
         }
         .task { await review.refresh() }
+        .onChange(of: model.selected?.running) { _ in Task { await review.refresh() } }
     }
 
     private var header: some View {
@@ -482,7 +613,7 @@ private struct ReviewBody: View {
     private func changeRow(_ change: ReviewChange) -> some View {
         let url = URL(fileURLWithPath: change.path)
         let dir = url.deletingLastPathComponent().path
-        return Button { Task { await review.select(change.id) } } label: {
+        return Button { review.select(change.id) } label: {
             HStack(spacing: 8) {
                 Text(change.status)
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
@@ -493,8 +624,8 @@ private struct ReviewBody: View {
                     Text(dir).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head)
                 }
                 Spacer(minLength: 0)
-                if let a = change.added { Text("+\(a)").foregroundStyle(.green) }
-                if let r = change.removed { Text("-\(r)").foregroundStyle(.red) }
+                Text("+\(change.added)").foregroundStyle(.green)
+                Text("-\(change.removed)").foregroundStyle(.red)
             }
             .font(.system(size: 12))
             .padding(.horizontal, 12)
@@ -507,34 +638,78 @@ private struct ReviewBody: View {
 
     private func color(_ status: String) -> Color {
         switch status {
-        case "A", "?": return .green
+        case "A": return .green
         case "D": return .red
         default: return .orange
         }
     }
 
     private var diffView: some View {
-        ScrollView([.vertical, .horizontal]) {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(review.diffLines.enumerated()), id: \.offset) { _, line in
-                    Text(line.isEmpty ? " " : line)
-                        .font(.system(size: 12, design: .monospaced))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 8)
-                        .background(background(line))
+        VStack(spacing: 0) {
+            ScrollView([.vertical, .horizontal]) {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(review.rows) { row in diffRow(row) }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            if let why = review.why {
+                Divider()
+                whyPanel(why)
+            }
         }
         .background(Color(nsColor: .textBackgroundColor))
     }
 
-    private func background(_ line: String) -> Color {
-        if line.hasPrefix("+++") || line.hasPrefix("---") { return .clear }
-        if line.hasPrefix("+") { return Color.green.opacity(0.16) }
-        if line.hasPrefix("-") { return Color.red.opacity(0.16) }
-        if line.hasPrefix("@@") { return Color.blue.opacity(0.14) }
-        return .clear
+    private func diffRow(_ row: DiffRow) -> some View {
+        let picked = review.selectedHunk == row.hunk
+        return HStack(spacing: 0) {
+            Text(row.old.map(String.init) ?? "").frame(width: 38, alignment: .trailing)
+            Text(row.new.map(String.init) ?? "").frame(width: 38, alignment: .trailing)
+            Text(sign(row.kind)).frame(width: 18)
+            Text(row.text.isEmpty ? " " : row.text)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .font(.system(size: 12, design: .monospaced))
+        .foregroundStyle(row.kind == .hunk ? Color.blue : Color.primary)
+        .overlay(alignment: .leading) {
+            Rectangle().fill(Color.accentColor).frame(width: 2).opacity(picked ? 1 : 0)
+        }
+        .background(background(row.kind).overlay(picked ? Color.accentColor.opacity(0.08) : .clear))
+        .contentShape(Rectangle())
+        .onTapGesture { review.selectedHunk = row.hunk }
+    }
+
+    private func sign(_ kind: DiffRow.Kind) -> String {
+        switch kind {
+        case .add: return "+"
+        case .del: return "-"
+        default: return ""
+        }
+    }
+
+    private func background(_ kind: DiffRow.Kind) -> Color {
+        switch kind {
+        case .add: return Color.green.opacity(0.16)
+        case .del: return Color.red.opacity(0.16)
+        case .hunk: return Color.blue.opacity(0.14)
+        case .context: return .clear
+        }
+    }
+
+    private func whyPanel(_ why: AgentFileChange) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(AppCopy.text("dock.whyRequest")).font(.caption.bold()).foregroundStyle(.secondary)
+                Text(why.request).textSelection(.enabled)
+                Text(AppCopy.text("dock.whyAgent")).font(.caption.bold()).foregroundStyle(.secondary).padding(.top, 4)
+                Text(why.explanation).textSelection(.enabled)
+            }
+            .font(.system(size: 12))
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxHeight: 150)
     }
 }
 
@@ -704,29 +879,7 @@ private struct FileTreeRow: View {
     }
 }
 
-// MARK: - Browser
-
-@MainActor
-private final class BrowserModel: NSObject, ObservableObject, WKNavigationDelegate {
-    let webView = WKWebView()
-    @Published var address = ""
-
-    override init() {
-        super.init()
-        webView.navigationDelegate = self
-    }
-
-    func go() {
-        var text = address.trimmingCharacters(in: .whitespaces)
-        guard !text.isEmpty else { return }
-        if !text.contains("://") { text = "https://" + text }
-        if let url = URL(string: text) { webView.load(URLRequest(url: url)) }
-    }
-
-    nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        Task { @MainActor in address = webView.url?.absoluteString ?? address }
-    }
-}
+// MARK: - Native Live Browser (WebKit)
 
 private struct WebViewHost: NSViewRepresentable {
     let webView: WKWebView
@@ -735,22 +888,64 @@ private struct WebViewHost: NSViewRepresentable {
 }
 
 private struct DockBrowserView: View {
-    @StateObject private var browser = BrowserModel()
+    @ObservedObject private var service = NativeBrowserService.shared
+    @State private var inputAddress: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
-                Button { browser.webView.goBack() } label: { Image(systemName: "chevron.left") }
-                Button { browser.webView.goForward() } label: { Image(systemName: "chevron.right") }
-                Button { browser.webView.reload() } label: { Image(systemName: "arrow.clockwise") }
-                TextField("URL", text: $browser.address)
+                Button { service.goBack() } label: { Image(systemName: "chevron.left") }
+                    .disabled(!service.canGoBack)
+                Button { service.goForward() } label: { Image(systemName: "chevron.right") }
+                    .disabled(!service.canGoForward)
+                Button { service.reload() } label: { Image(systemName: "arrow.clockwise") }
+
+                TextField("URL", text: $inputAddress)
                     .textFieldStyle(.roundedBorder)
-                    .onSubmit { browser.go() }
+                    .onSubmit {
+                        Task { try? await service.navigate(to: inputAddress) }
+                    }
+
+                if service.isLoading {
+                    ProgressView().controlSize(.small)
+                }
+
+                if let currentURL = URL(string: service.currentURLString) {
+                    Button {
+                        NSWorkspace.shared.open(currentURL)
+                    } label: {
+                        Image(systemName: "safari")
+                    }
+                    .help("Open in Safari")
+                }
             }
             .buttonStyle(.plain)
             .padding(8)
+
+            if let activity = service.agentActivity {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.purple)
+                    Text(activity)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Spacer()
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(Color.purple.opacity(0.1))
+            }
+
             Divider()
-            WebViewHost(webView: browser.webView)
+            WebViewHost(webView: service.webView)
+        }
+        .onAppear {
+            inputAddress = service.currentURLString
+        }
+        .onChange(of: service.currentURLString) { _, newURL in
+            inputAddress = newURL
         }
     }
 }

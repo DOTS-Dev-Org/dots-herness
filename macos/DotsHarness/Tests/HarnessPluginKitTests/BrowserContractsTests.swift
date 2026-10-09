@@ -14,10 +14,10 @@ final class BrowserContractsTests: XCTestCase {
         XCTAssertEqual(BrowserCleanupStatus.pendingRecovery.rawValue, "PendingRecovery")
     }
 
-    func testBrowserScopeSeparatesAreaConversationAndRun() {
-        let first = BrowserScope(area: "chat", conversationID: "conversation", runID: "run-a")
-        let second = BrowserScope(area: "coding", conversationID: "conversation", runID: "run-a")
-        let third = BrowserScope(area: "chat", conversationID: "conversation", runID: "run-b")
+    func testBrowserScopeSeparatesProjectConversationAndRun() {
+        let first = BrowserScope(scope: "project-a", conversationID: "conversation", runID: "run-a")
+        let second = BrowserScope(scope: "project-b", conversationID: "conversation", runID: "run-a")
+        let third = BrowserScope(scope: "project-a", conversationID: "conversation", runID: "run-b")
         XCTAssertNotEqual(first.key, second.key)
         XCTAssertNotEqual(first.key, third.key)
     }
@@ -35,7 +35,7 @@ final class BrowserContractsTests: XCTestCase {
         )
         let result = await manager.execute(
             call,
-            scope: BrowserScope(area: "coding", conversationID: "c", runID: "r"),
+            scope: BrowserScope(scope: "project", conversationID: "c", runID: "r"),
             backend: .managed
         )
         XCTAssertTrue(result.contains("backend is selected by the host"), result)

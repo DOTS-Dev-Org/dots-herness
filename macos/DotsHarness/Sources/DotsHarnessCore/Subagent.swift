@@ -28,6 +28,10 @@ public enum ExploreTool {
     static let maxReportedPaths = 40
     /// Maximum concurrent explore subagents allowed in a single turn to protect UX, UI and quota.
     public static let maxPerTurn = 3
+    /// Subagent reads land in their own ledger scope, never the parent conversation's:
+    /// the parent's model never saw those file contents, so they must not authorize a
+    /// later `write_file` in the parent run.
+    static let ledgerScope = "explore-subagent"
 
     public static let definition = AgentToolDefinition(
         name: name,
@@ -36,8 +40,9 @@ public enum ExploreTool {
         findings. Use it when answering needs sweeping many files or directories and you want the \
         conclusion rather than the file contents - locating where something is defined, what calls \
         it, how a pattern is used across the project. It cannot edit anything, so verify and change \
-        code yourself afterwards. Do not use it for a file you already know the path of: read that \
-        directly. State the question in full, including the naming conventions and paths worth \
+        code yourself afterwards. Do not use it for a file you already know the path of, or when one \
+        grep_files call or reading fewer than three files answers the question: do that directly, \
+        since a subagent costs a whole extra run. State the question in full, including the naming conventions and paths worth \
         trying, since the subagent sees nothing of this conversation. For a broad investigation, \
         split it into independent questions and call explore several times in the same turn \
         (maximum \(maxPerTurn) subagents per turn): those subagents run in parallel and only \
@@ -203,7 +208,9 @@ public enum ExploreTool {
                 if toolCall.name == "grep_files" || toolCall.name == "list_files" { searches += 1 }
                 let result = WorkspaceTools.isReadOnly(toolCall.name)
                     ? await Task.detached(priority: .userInitiated) {
-                        WorkspaceTools.execute(toolCall, workspace: workspace)
+                        // A subagent's transcript never reaches the parent run, so its
+                        // reads must not authorize the parent's writes: separate scope.
+                        WorkspaceTools.execute(toolCall, workspace: workspace, conversationID: ExploreTool.ledgerScope)
                     }.value
                     : AppCopy.text("explore.toolBlocked")
                 messages.append(AgentMessage(

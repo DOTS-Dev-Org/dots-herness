@@ -1,0 +1,34 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-08T22:45:24Z",
+  "eventId" : "4E83CD2A-2003-4B2D-BC06-03F6C27018C7",
+  "lamport" : 229,
+  "parents" : [
+    "17E825C3-0372-4B66-85E1-2C586278BD68"
+  ],
+  "payload" : {
+    "memoryRevision" : 228,
+    "model" : "gpt-6-luna",
+    "promptHash" : "73210b52d85d74ca03faaf1767398d4d002e3868fc6c373593b77af163d2c672",
+    "promptSummary" : "Değişiklik neden yapmadın? Arayüz doğranmasını neden yapmadın? Değişikliği yap ve arayüzü doğrula.",
+    "provider" : "ChatGPT",
+    "runId" : "1E073E3A-A04F-48A5-A790-C307FB1A3517",
+    "startedAt" : "2026-10-08T22:45:24Z"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "s+rNTWhfpdgcdUSHQpDaeFE2dyn7fS558NF4QztetRGtsc4fdO4ncM9VtAqx6EKaMY4fJZNwZtmdKcSqJJtChA=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "task.started"
+}

@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-09T00:03:09Z",
+  "eventId" : "C8CBE83F-7F09-4FFB-A10A-F617F9E3BFC1",
+  "lamport" : 288,
+  "parents" : [
+    "14DEA015-13E6-4FFA-BC73-5FA274B67D3F"
+  ],
+  "payload" : {
+    "commandSummary" : "python3 - <<'PY' import subprocess from pathlib import Path import sys sys.path.insert(0, str(Path.cwd() \/ \"tools\")) from translation_catalog import NON_ENGLISH",
+    "name" : "run_command",
+    "path" : null,
+    "resultBytes" : 70,
+    "resultStatus" : "completed",
+    "runId" : "73E53818-8EE9-4B48-8214-5C5AA442F32F"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "a75wfpkNL\/VVZctHS6FPSy1ElincIlCL0sTwj2cdvbjiLl4NtJRqSamGal662d\/T7q2bm8uRMtHkEsU9xp4tFg=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

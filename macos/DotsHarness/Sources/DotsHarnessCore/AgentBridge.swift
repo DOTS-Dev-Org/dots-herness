@@ -57,10 +57,10 @@ public struct RunSummaryEvent: Sendable, Equatable {
     }
 }
 
-/// A run in some chat is blocked on the user (approval, question, download).
+/// A run in some chat is blocked on the user (approval, question, download, conflict).
 public struct RunAttentionEvent: Sendable, Equatable {
     public enum Kind: Sendable, Equatable {
-        case approval, question, visionInstall
+        case approval, question, visionInstall, conflict, contextCompaction
     }
 
     public let conversationID: String
@@ -137,7 +137,7 @@ public struct PendingVisionInstall: Sendable, Equatable, Identifiable {
 
 
 /// Which conversation's run the current task belongs to. Set for a run's whole task
-/// tree, so run code reads and writes its own state while other chats also run.
+/// tree, so run code reads and writes its own state while other conversations also run.
 enum AgentRunScope {
     @TaskLocal static var conversationID: String?
 }
@@ -155,9 +155,16 @@ final class AgentRunState {
     var pendingApproval: PendingApproval? = nil
     var pendingVisionInstall: PendingVisionInstall? = nil
     var pendingQuestion: PendingQuestion? = nil
+    var pendingConflict: PendingConflict? = nil
+    var pendingContextOverflow: PendingContextOverflow? = nil
+    /// Set while this run waits for a lease another chat holds, so the sidebar can
+    /// show that it is blocked rather than merely busy.
+    var waitingOnLease: WorkspaceLeaseHolder? = nil
     @ObservationIgnored var approvalContinuation: CheckedContinuation<Bool, Never>? = nil
     @ObservationIgnored var visionInstallContinuation: CheckedContinuation<Bool, Never>? = nil
+    @ObservationIgnored var contextOverflowContinuation: CheckedContinuation<Bool, Never>? = nil
     @ObservationIgnored var questionContinuation: CheckedContinuation<[String]?, Never>? = nil
+    @ObservationIgnored var conflictContinuation: CheckedContinuation<WorkspaceConflictChoice, Never>? = nil
     var askUserRounds: Int = 0
     var askedQuestionKeys: Set<String> = []
     @ObservationIgnored var activeTask: Task<Void, Never>? = nil
@@ -166,6 +173,9 @@ final class AgentRunState {
     var activeTurnID: String? = nil
     var activeContext: [AgentMessage] = []
     var queuePausedAfterStop: Bool = false
+    /// One prompt may be waiting for provider configuration; keep that claim
+    /// until it starts or is requeued so another submission cannot win the race.
+    var pendingPromptStartID: String? = nil
     var activeStopEventRecorded: Bool = false
     var continuationQueued: Bool = false
     var activeProvider: String = ""
@@ -173,6 +183,10 @@ final class AgentRunState {
     var activeStopEventID: String? = nil
     var activeUsedSkills: [String] = []
     var activeUsedTools: [String] = []
+    /// Newly processed input (excluding cache reads) plus output/reasoning for the live status line.
+    var activeRunTokens: Int = 0
+    /// True if any contribution to the live count used local estimates or lacked cache accounting.
+    var activeRunTokenCountIncludesEstimate: Bool = false
     var activeRunChangedFiles: [ChangedFile] = []
     var activeRunLastTurnID: String = ""
     var activeRunTrackingStatus: String = "complete"
@@ -185,10 +199,6 @@ final class AgentRunState {
     var activePreservedRemoval: Bool = false
     var activeUnverifiedDeletion: Bool = false
     var activeCleanupFailure: Bool = false
-    var activeChatRoots: [ChatContextRoot] = []
-    var activeChatRootsBound = false
-    var activeChatScopeID: String? = nil
-    var activeChatScopeIDBound = false
 }
 
 @MainActor
@@ -200,9 +210,43 @@ public final class NativeAgentHost {
     // `changeTick` / `accessRevision`, which the getters over that state read.
     @ObservationIgnored var runStates: [String: AgentRunState] = [:]
     @ObservationIgnored private let unboundRun = AgentRunState()
+    @ObservationIgnored var planIntentClassifierOverride: ((String) async -> Bool)?
     private(set) var runTick = 0
     /// The sidebar lists come from the conversation store, not from tracked properties.
     var listTick = 0
+    /// The reply a provider is still writing, per conversation. The finished
+    /// message replaces it: any `append` to the conversation clears it.
+    private(set) var liveReplies: [String: String] = [:]
+    /// The reasoning written before the first word of the reply, so a model
+    /// that thinks first does not leave the bubble empty. Gone once prose starts.
+    private(set) var liveThinking: [String: String] = [:]
+    @ObservationIgnored private var liveReplyBuffers: [String: (text: String, thinking: String, published: Date)] = [:]
+
+    func appendLiveReply(_ delta: NativeAgentClient.StreamDelta, in conversationID: String) {
+        var buffer = liveReplyBuffers[conversationID] ?? ("", "", .distantPast)
+        switch delta {
+        case .text(let text): buffer.text += text
+        case .thinking(let thinking): buffer.thinking += thinking
+        }
+        // ponytail: published at most 20 times a second so a long reply is not
+        // re-laid-out per token; the tail waits for the next delta or the final message.
+        if Date().timeIntervalSince(buffer.published) >= 0.05 {
+            if buffer.text.isEmpty {
+                liveThinking[conversationID] = buffer.thinking
+            } else {
+                liveReplies[conversationID] = buffer.text
+                if liveThinking[conversationID] != nil { liveThinking[conversationID] = nil }
+            }
+            buffer.published = Date()
+        }
+        liveReplyBuffers[conversationID] = buffer
+    }
+
+    func clearLiveReply(in conversationID: String) {
+        liveReplyBuffers[conversationID] = nil
+        if liveReplies[conversationID] != nil { liveReplies[conversationID] = nil }
+        if liveThinking[conversationID] != nil { liveThinking[conversationID] = nil }
+    }
 
     /// Tell readers of state held outside tracked properties that it changed.
     func touchRuns() { runTick &+= 1 }
@@ -236,13 +280,31 @@ public final class NativeAgentHost {
         return Set(runStates.filter { $0.value.isBusy }.map(\.key))
     }
 
-    public let area: AgentArea
     public private(set) var connection: AgentConnection?
     /// False until the saved provider route is first resolved, so the UI does not
     /// flash "connect a provider" for users who already connected one.
     public private(set) var connectionResolved = false
     public internal(set) var conversations: [Conversation] = []
-    public var selectedID: String?
+    public var selectedID: String? {
+        didSet {
+            guard selectedID != oldValue else { return }
+            if let selectedID {
+                UserDefaults.standard.set(selectedID, forKey: Self.lastSelectedKey(workspaceURL?.path))
+            }
+            onSelectedConversationChanged?(selectedID)
+        }
+    }
+
+    static func lastSelectedKey(_ workspacePath: String?) -> String {
+        "lastSelectedConversation." + (workspacePath.flatMap(ConversationStore.normalizedPath) ?? "none")
+    }
+
+    /// Last chat the user had open in this scope, else the first live one.
+    func initialSelection() -> String? {
+        let saved = UserDefaults.standard.string(forKey: Self.lastSelectedKey(workspaceURL?.path))
+        return conversations.first(where: { $0.id == saved && !$0.archived })?.id
+            ?? conversations.first(where: { !$0.archived })?.id
+    }
     public internal(set) var status: String = AppCopy.text("agent.chooseWorkspace")
     public internal(set) var isBusy: Bool {
         get { currentRun.isBusy }
@@ -254,30 +316,73 @@ public final class NativeAgentHost {
     public private(set) var accessRevision = 0
     public private(set) var permissionMode: AgentPermissionMode
     public private(set) var browserBackendSetting: BrowserBackend?
+    public private(set) var isComputerUseEnabled: Bool = false
     public internal(set) var pendingApproval: PendingApproval? {
         get { currentRun.pendingApproval }
         set {
             currentRun.pendingApproval = newValue
+            touchRuns()
         }
     }
     public internal(set) var pendingVisionInstall: PendingVisionInstall? {
         get { currentRun.pendingVisionInstall }
         set {
             currentRun.pendingVisionInstall = newValue
+            touchRuns()
         }
     }
     public internal(set) var pendingQuestion: PendingQuestion? {
         get { currentRun.pendingQuestion }
         set {
             currentRun.pendingQuestion = newValue
+            touchRuns()
         }
     }
+    /// Questions are global UI interruptions, so they stay visible when another
+    /// conversation is selected while a run is waiting for an answer.
+    public var pendingQuestions: [PendingQuestion] {
+        _ = runTick
+        var questions = runStates.values.compactMap(\.pendingQuestion)
+        if let question = unboundRun.pendingQuestion {
+            questions.append(question)
+        }
+        return questions.sorted { $0.conversationID < $1.conversationID }
+    }
+    public internal(set) var pendingConflict: PendingConflict? {
+        get { currentRun.pendingConflict }
+        set {
+            currentRun.pendingConflict = newValue
+            touchRuns()
+        }
+    }
+    public internal(set) var pendingContextOverflow: PendingContextOverflow? {
+        get { currentRun.pendingContextOverflow }
+        set {
+            currentRun.pendingContextOverflow = newValue
+            touchRuns()
+        }
+    }
+    /// The lease this run is blocked on, while it waits for another chat.
+    public internal(set) var waitingOnLease: WorkspaceLeaseHolder? {
+        get { currentRun.waitingOnLease }
+        set {
+            currentRun.waitingOnLease = newValue
+            touchRuns()
+        }
+    }
+    /// What a run does when another chat holds a write lease on the file it wants.
+    public internal(set) var workspaceConflictPolicy: WorkspaceConflictPolicy = .waitThenAsk
+    /// How long the `waitThenAsk` policy waits silently before it asks.
+    public internal(set) var conflictWaitSeconds: Int = WorkspaceConflictPolicy.defaultWaitSeconds
     public internal(set) var followUpSuggestion: String?
     public internal(set) var followUpConversationID: String?
     @ObservationIgnored public var onAssistantResponse: ((AssistantResponseEvent) -> Void)?
+    @ObservationIgnored var onSelectedConversationChanged: ((String?) -> Void)?
     @ObservationIgnored public var onRunSummary: ((RunSummaryEvent) -> Void)?
     /// A run needs the user; fired so a chat running in the background can be noticed.
     @ObservationIgnored public var onAttentionNeeded: ((RunAttentionEvent) -> Void)?
+    /// A plan was approved automatically, so the composer's plan mode should end like a manual approval.
+    @ObservationIgnored public var onPlanAutoApproved: (() -> Void)?
     @ObservationIgnored public var onRemoteEvent: ((String, [String: String]) -> Void)?
     /// Set by the app: called after `install_plugin` writes a plugin so the host
     /// re-mounts and the new plugin goes live without a restart. Nil in tests.
@@ -293,7 +398,6 @@ public final class NativeAgentHost {
     let skillSuggestionMonitor: SkillSuggestionMonitor?
     let pluginHost: PluginHost?
     let browserSessions = BrowserSessionManager()
-    let chatContextStore: ChatContextStore?
     @ObservationIgnored lazy var contextTelemetry = AgentContextTelemetryStore(paths: paths)
     /// Set by the app after construction; nil in headless/test contexts.
     public var mcpRegistry: MCPRegistry?
@@ -305,6 +409,9 @@ public final class NativeAgentHost {
     /// has explicitly enabled network access. Ordinary runs keep the approval gate.
     let automaticNetworkAccess: Bool
     var workspaceURL: URL?
+    /// The selected path even when the directory is missing. Nil means the
+    /// user explicitly selected the No project scope.
+    var requestedWorkspacePath: String?
     public private(set) var sandboxPolicy: SandboxExecutionPolicy?
     public private(set) var sandboxBranch: String?
     /// Set while the work location is another machine: tool calls run there
@@ -312,52 +419,14 @@ public final class NativeAgentHost {
     public private(set) var remoteTarget: SSHTarget?
     public private(set) var searchFolders: [URL] = []
     var additionalSystemPrompt = ""
-    /// Compatibility seam for older headless callers. The app's two runtimes
-    /// select behavior from `area`; this value is only a prompt-test override.
-    var assistantMode: AssistantMode
-    /// A run keeps the Chat roots it started with; switching the visible chat
-    /// must not re-root a background run's tools.
-    private var uiActiveChatRoots: [ChatContextRoot] = []
-    var activeChatRoots: [ChatContextRoot] {
-        get {
-            if let id = AgentRunScope.conversationID, let run = runStates[id], run.activeChatRootsBound { return run.activeChatRoots }
-            return uiActiveChatRoots
-        }
-        set {
-            if let id = AgentRunScope.conversationID {
-                let run = state(for: id)
-                run.activeChatRoots = newValue
-                run.activeChatRootsBound = true
-                if id == selectedID { uiActiveChatRoots = newValue }
-            } else {
-                uiActiveChatRoots = newValue
-            }
-        }
-    }
-    /// A run keeps the Chat roots it started with; switching the visible chat
-    /// must not re-root a background run's tools.
-    private var uiActiveChatScopeID: String? = nil
-    var activeChatScopeID: String? {
-        get {
-            if let id = AgentRunScope.conversationID, let run = runStates[id], run.activeChatScopeIDBound { return run.activeChatScopeID }
-            return uiActiveChatScopeID
-        }
-        set {
-            if let id = AgentRunScope.conversationID {
-                let run = state(for: id)
-                run.activeChatScopeID = newValue
-                run.activeChatScopeIDBound = true
-                if id == selectedID { uiActiveChatScopeID = newValue }
-            } else {
-                uiActiveChatScopeID = newValue
-            }
-        }
-    }
     /// On by default: the agent runs its own build/test/check after a change
     /// instead of reporting it unverified. The user turns it off in Settings.
     public var selfVerification = true
     /// Create AGENTS.md/CLAUDE.md when a workspace ships neither. User setting.
     public var seedProjectRules = true
+    /// Apply a generated plan immediately through the normal approved-plan path.
+    /// Tool-level approvals remain unchanged.
+    public var autoApprovePlans = false
     var approvalContinuation: CheckedContinuation<Bool, Never>? {
         get { currentRun.approvalContinuation }
         set {
@@ -370,10 +439,22 @@ public final class NativeAgentHost {
             currentRun.visionInstallContinuation = newValue
         }
     }
+    var contextOverflowContinuation: CheckedContinuation<Bool, Never>? {
+        get { currentRun.contextOverflowContinuation }
+        set {
+            currentRun.contextOverflowContinuation = newValue
+        }
+    }
     var questionContinuation: CheckedContinuation<[String]?, Never>? {
         get { currentRun.questionContinuation }
         set {
             currentRun.questionContinuation = newValue
+        }
+    }
+    var conflictContinuation: CheckedContinuation<WorkspaceConflictChoice, Never>? {
+        get { currentRun.conflictContinuation }
+        set {
+            currentRun.conflictContinuation = newValue
         }
     }
     /// Follow-up rounds are allowed; the budget and the asked set keep plan mode from looping.
@@ -399,16 +480,8 @@ public final class NativeAgentHost {
     @ObservationIgnored var loadGeneration = 0
 
     // Sidebar lists read headers only: titles and metadata, never every project's transcripts.
-    public var projectlessConversations: [Conversation] {
-        _ = listTick
-        return store.loadHeaders(workspacePath: nil).map(Self.recoverListed)
-    }
-
-    /// Chats that no listed project owns: the ones that never had a workspace
-    /// plus the ones whose project was removed from the sidebar without their
-    /// chats being deleted.
-    /// Chats stored for one project, read through the store's cache so the
-    /// sidebar's project preview does not re-decode the file on every hover.
+    /// Conversations without an active project, read through the store's cache so
+    /// the Recent preview does not re-decode every transcript.
     public func conversations(inProject path: String) -> [Conversation] {
         _ = listTick
         let wanted = ConversationStore.normalizedPath(path)
@@ -427,7 +500,9 @@ public final class NativeAgentHost {
         }
         let result = all
             .filter { conversation in
-                guard let cwd = ConversationStore.normalizedPath(conversation.cwd) else { return true }
+                guard let cwd = ConversationStore.normalizedPath(conversation.cwd) else {
+                    return conversation.projectless
+                }
                 return !known.contains(cwd)
             }
             // `recover` only, not `recoverForContext`: this list is drawn on every
@@ -439,11 +514,10 @@ public final class NativeAgentHost {
 
     public var archivedConversations: [Conversation] {
         _ = listTick
-        let archived = conversations.filter(\.archived)
-        guard workspaceURL != nil else { return archived }
-        return archived + store.loadHeaders(workspacePath: nil)
-            .filter(\.archived)
+        return store.loadHeaders()
+            .filter { $0.archived && !$0.blank }
             .map(Self.recoverListed)
+            .sorted { $0.activityDate > $1.activityDate }
     }
 
     /// Sidebar search also matches transcript text; headers carry none, so their
@@ -456,6 +530,10 @@ public final class NativeAgentHost {
     }
 
     public var workspacePath: String? { workspaceURL?.path }
+    public var isNoProjectScope: Bool {
+        guard requestedWorkspacePath == nil else { return false }
+        return selected?.projectless == true
+    }
     public var workspaceAccess: WorkspaceAccessStatus {
         _ = accessRevision
         return memory.accessStatus()
@@ -490,6 +568,10 @@ public final class NativeAgentHost {
     public var canContinue: Bool { selected?.canContinue == true && !isBusy && !continuationQueued }
     public var activeRunStartedAt: Date? { activeConversationID == selectedID ? selected?.runStartedAt : nil }
     public var activeUsedSkillIDs: [String] { activeUsedSkills }
+    public var activeRunTokenCount: Int { activeConversationID == selectedID ? activeRunTokens : 0 }
+    public var activeRunTokenCountIncludesEstimate: Bool {
+        activeConversationID == selectedID && currentRun.activeRunTokenCountIncludesEstimate
+    }
 
     public init(
         paths: SupportPaths,
@@ -499,25 +581,17 @@ public final class NativeAgentHost {
         nonInteractive: Bool = false,
         automaticNetworkAccess: Bool = false,
         pluginHost: PluginHost? = nil,
-        skillSuggestions: SkillSuggestionMonitor? = nil,
-        area: AgentArea = .coding,
-        sessionFileName: String = "sessions.json",
-        chatContextStore: ChatContextStore? = nil
+        skillSuggestions: SkillSuggestionMonitor? = nil
     ) {
-        self.area = area
-        self.assistantMode = area == .chat ? .chat : .coding
         self.paths = paths
-        self.store = ConversationStore(paths: paths, fileName: sessionFileName, area: area)
+        self.store = ConversationStore(paths: paths)
         self.memory = WorkspaceMemory(paths: paths)
         self.endpoint = endpoint
         self.router = nil
-        let effectiveSkills = area == .chat ? SkillCatalog(paths: paths) : (skills ?? SkillCatalog(paths: paths))
+        let effectiveSkills = skills ?? SkillCatalog(paths: paths)
         self.skillCatalog = effectiveSkills
-        self.skillSuggestionMonitor = area == .chat
-            ? SkillSuggestionMonitor(paths: paths, skills: effectiveSkills)
-            : skillSuggestions
+        self.skillSuggestionMonitor = skillSuggestions
         self.pluginHost = pluginHost
-        self.chatContextStore = chatContextStore ?? (area == .chat ? ChatContextStore(paths: paths) : nil)
         self.permissionMode = permissionMode
         self.browserBackendSetting = nil
         self.nonInteractive = nonInteractive
@@ -532,25 +606,17 @@ public final class NativeAgentHost {
         nonInteractive: Bool = false,
         automaticNetworkAccess: Bool = false,
         pluginHost: PluginHost? = nil,
-        skillSuggestions: SkillSuggestionMonitor? = nil,
-        area: AgentArea = .coding,
-        sessionFileName: String = "sessions.json",
-        chatContextStore: ChatContextStore? = nil
+        skillSuggestions: SkillSuggestionMonitor? = nil
     ) {
-        self.area = area
-        self.assistantMode = area == .chat ? .chat : .coding
         self.paths = paths
-        self.store = ConversationStore(paths: paths, fileName: sessionFileName, area: area)
+        self.store = ConversationStore(paths: paths)
         self.memory = WorkspaceMemory(paths: paths)
         self.endpoint = AgentEndpointController()
         self.router = router
-        let effectiveSkills = area == .chat ? SkillCatalog(paths: paths) : (skills ?? SkillCatalog(paths: paths))
+        let effectiveSkills = skills ?? SkillCatalog(paths: paths)
         self.skillCatalog = effectiveSkills
-        self.skillSuggestionMonitor = area == .chat
-            ? SkillSuggestionMonitor(paths: paths, skills: effectiveSkills)
-            : skillSuggestions
+        self.skillSuggestionMonitor = skillSuggestions
         self.pluginHost = pluginHost
-        self.chatContextStore = chatContextStore ?? (area == .chat ? ChatContextStore(paths: paths) : nil)
         self.permissionMode = permissionMode
         self.browserBackendSetting = nil
         self.nonInteractive = nonInteractive
@@ -566,25 +632,17 @@ public final class NativeAgentHost {
         nonInteractive: Bool = false,
         automaticNetworkAccess: Bool = false,
         pluginHost: PluginHost? = nil,
-        skillSuggestions: SkillSuggestionMonitor? = nil,
-        area: AgentArea = .coding,
-        sessionFileName: String = "sessions.json",
-        chatContextStore: ChatContextStore? = nil
+        skillSuggestions: SkillSuggestionMonitor? = nil
     ) {
-        self.area = area
-        self.assistantMode = area == .chat ? .chat : .coding
         self.paths = paths
-        self.store = ConversationStore(paths: paths, fileName: sessionFileName, area: area)
+        self.store = ConversationStore(paths: paths)
         self.memory = WorkspaceMemory(paths: paths)
         self.endpoint = endpoint
         self.router = router
-        let effectiveSkills = area == .chat ? SkillCatalog(paths: paths) : (skills ?? SkillCatalog(paths: paths))
+        let effectiveSkills = skills ?? SkillCatalog(paths: paths)
         self.skillCatalog = effectiveSkills
-        self.skillSuggestionMonitor = area == .chat
-            ? SkillSuggestionMonitor(paths: paths, skills: effectiveSkills)
-            : skillSuggestions
+        self.skillSuggestionMonitor = skillSuggestions
         self.pluginHost = pluginHost
-        self.chatContextStore = chatContextStore ?? (area == .chat ? ChatContextStore(paths: paths) : nil)
         self.permissionMode = permissionMode
         self.browserBackendSetting = nil
         self.nonInteractive = nonInteractive
@@ -599,7 +657,14 @@ public final class NativeAgentHost {
     }
     var followUpTask: Task<Void, Never>?
     var feedbackEvaluationTasks: [String: Task<Void, Never>] = [:]
+    var pendingPlanIntentTasks: [String: Task<Void, Never>] = [:]
     var feedbackEvaluationTokens: [String: UUID] = [:]
+    /// Answers already examined for an implicit lesson in this session.
+    var examinedSignals = Set<String>()
+    /// Conversation id to the file lessons already handed over in it.
+    var deliveredFileLessons: [String: Set<String>] = [:]
+    /// Conversation id to the gold examples it was first given; see `goldExamplesText`.
+    var pinnedGoldExamples: [String: String] = [:]
     var followUpGenerationID = UUID()
     /// Chats where the user asked for `/compact` while a run was active; the
     /// run loop honors it before its next model request.
@@ -672,6 +737,18 @@ public final class NativeAgentHost {
             currentRun.activeUsedSkills = newValue
         }
     }
+    var activeRunTokens: Int {
+        get { currentRun.activeRunTokens }
+        set {
+            currentRun.activeRunTokens = newValue
+        }
+    }
+    var activeRunTokenCountHasEstimate: Bool {
+        get { currentRun.activeRunTokenCountIncludesEstimate }
+        set {
+            currentRun.activeRunTokenCountIncludesEstimate = newValue
+        }
+    }
     var activeUsedTools: [String] {
         get { currentRun.activeUsedTools }
         set {
@@ -710,9 +787,9 @@ public final class NativeAgentHost {
             currentRun.activeRunTestStatus = newValue
         }
     }
-    // A runaway guard, not a working budget: token cost is bounded by tool-result
-    // size and compaction, so cutting a run short only wastes what it already spent.
-    static let maxToolSteps = 100
+    // Allow a coding task to inspect, edit, reread and verify several files.
+    // Repeated identical calls are still stopped independently.
+    static let maxToolSteps = 128
 
     struct ContextCompactionOutcome {
         let messages: [AgentMessage]
@@ -723,8 +800,15 @@ public final class NativeAgentHost {
 
     /// Identical call repeated this many times means the loop stopped making progress.
     static let maxIdenticalToolCalls = 3
+    /// Ceiling on concurrent read-only workspace calls in one turn: disk scans
+    /// compete with each other, so fanning out without a limit only adds latency.
+    static let maxConcurrentReads = 8
     /// Last provider-failover notice shown, so one switch is reported once.
     var lastFailoverNotice: String?
+    /// Conversations whose last turn moved to another account on the same model; shown above the composer.
+    var accountSwitchedConversations: Set<String> = []
+    /// Conversations whose history was just edited or rewound: the next turn starts cold on any account.
+    var historyRewrittenConversations: Set<String> = []
     var limitResumeTask: Task<Void, Never>?
     /// A reset further out than this is not worth holding a timer for; the user will
     /// have come back long before it fires.
@@ -787,21 +871,16 @@ public final class NativeAgentHost {
 
     public var skills: SkillCatalog { skillCatalog }
     public var skillSuggestions: SkillSuggestionMonitor? { skillSuggestionMonitor }
-    public var chatContextRoots: [ChatContextRoot] { activeChatRoots }
 
     public func start(workspacePath: String) {
-        setWorkspace(area == .chat ? "" : workspacePath)
-        if workspaceURL == nil {
-            status = area == .chat ? AppCopy.text("agent.configureEndpoint") : AppCopy.text("agent.chooseWorkspaceToStart")
+        setWorkspace(workspacePath)
+        if workspaceURL == nil, requestedWorkspacePath != nil {
+            status = AppCopy.text("agent.chooseWorkspaceToStart")
         }
     }
 
     public func updateSystemPrompt(_ prompt: String) {
         additionalSystemPrompt = prompt
-    }
-
-    public func setAssistantMode(_ mode: AssistantMode) {
-        assistantMode = mode
     }
 
     public func setSearchFolders(_ paths: [String]) {
@@ -821,6 +900,10 @@ public final class NativeAgentHost {
 
     public func setSeedProjectRules(_ enabled: Bool) {
         seedProjectRules = enabled
+    }
+
+    public func setAutoApprovePlans(_ enabled: Bool) {
+        autoApprovePlans = enabled
     }
 
     /// Points the tool layer at a remote host, or back at this machine.
@@ -890,20 +973,38 @@ public final class NativeAgentHost {
         browserBackendSetting = backend == .unknown ? nil : backend
     }
 
-    public func answerApproval(_ answer: String) {
-        finishApproval(answer == "allowed-once")
+    public func setComputerUseEnabled(_ enabled: Bool) {
+        isComputerUseEnabled = enabled
+    }
+
+    /// Answer outside a run task: `currentRun` would fall back to the selected
+    /// conversation, so an approval raised by a background run would be resolved
+    /// against the wrong run and dropped. Scope the answer to the owning run.
+    private func resolving(_ conversationID: String?, _ resolve: () -> Void) {
+        guard let conversationID else { return }
+        AgentRunScope.$conversationID.withValue(conversationID) { resolve() }
+    }
+
+    public func answerApproval(_ answer: String, in conversationID: String? = nil) {
+        resolving(conversationID ?? pendingApproval?.conversationID) { finishApproval(answer == "allowed-once") }
     }
 
     public func answerVisionInstall(_ allow: Bool) {
-        finishVisionInstall(allow)
+        resolving(pendingVisionInstall?.conversationID) { finishVisionInstall(allow) }
     }
 
-    public func answerQuestions(_ answers: [String]) {
-        finishQuestion(answers)
+    /// Declining is not a rejection of the message: the run stops here and the
+    /// transcript keeps the user's text for the next try.
+    public func answerContextCompaction(_ allow: Bool) {
+        resolving(pendingContextOverflow?.conversationID) { finishContextCompaction(allow) }
     }
 
-    public func cancelQuestions() {
-        finishQuestion(nil)
+    public func answerQuestions(_ answers: [String], in conversationID: String? = nil) {
+        resolving(conversationID ?? pendingQuestion?.conversationID) { finishQuestion(answers) }
+    }
+
+    public func cancelQuestions(in conversationID: String? = nil) {
+        resolving(conversationID ?? pendingQuestion?.conversationID) { finishQuestion(nil) }
     }
 
     func clearFollowUpSuggestion() {
@@ -960,6 +1061,15 @@ public final class NativeAgentHost {
         )
     }
 
+    /// Called when the user reaches for the composer: by the time they send,
+    /// the connection to the provider is already open.
+    func prewarmProvider() {
+        Task { [weak self] in
+            guard let baseURL = await self?.currentConfiguration(loadCredentials: false)?.baseURL else { return }
+            await NativeAgentClient.prewarm(baseURL: baseURL)
+        }
+    }
+
     func currentConfiguration(model: String? = nil, loadCredentials: Bool = true) async -> AgentConfiguration? {
         if let configuration = endpoint.configuration {
             return configuration
@@ -998,7 +1108,7 @@ public final class NativeAgentHost {
         pauseRunsForWorkspaceChange()
         if isBusy, let conversationID = activeConversationID {
             let scope = BrowserScope(
-                area: area.rawValue,
+                scope: "project",
                 conversationID: conversationID,
                 runID: activeRunID.uuidString
             )
@@ -1009,7 +1119,6 @@ public final class NativeAgentHost {
                 _ = await self?.browserSessions.closeRun(scope: scope)
             }
         }
-        let path = area == .chat ? "" : path
         sandboxPolicy = nil
         sandboxBranch = nil
         DeclarativeShell.activeSandbox = nil
@@ -1017,11 +1126,14 @@ public final class NativeAgentHost {
         clearFollowUpSuggestion()
         finishApproval(false)
         finishVisionInstall(false)
+        finishContextCompaction(false)
         activeTask?.cancel()
         activeTask = nil
         feedbackEvaluationTasks.values.forEach { $0.cancel() }
         feedbackEvaluationTasks.removeAll()
         feedbackEvaluationTokens.removeAll()
+        pinnedGoldExamples.removeAll()
+        deliveredFileLessons.removeAll()
         feedbackStore = nil
         activeConversationID = nil
         activeRunID = UUID()
@@ -1033,14 +1145,18 @@ public final class NativeAgentHost {
         activeStopEventID = nil
         activeUsedSkills = []
         activeUsedTools = []
-        activeChatRoots = []
-        activeChatScopeID = nil
         resetRunEvidence(workspaceAvailable: false)
         isBusy = false
         historyMutationBusy = false
         let normalized = ConversationStore.normalizedPath(path)
-        skillCatalog.setWorkspace(normalized)
-        skillSuggestionMonitor?.setWorkspace(normalized)
+        requestedWorkspacePath = normalized
+        let availableWorkspacePath = normalized.flatMap { candidate -> String? in
+            var isDirectory = ObjCBool(false)
+            return FileManager.default.fileExists(atPath: candidate, isDirectory: &isDirectory)
+                && isDirectory.boolValue ? candidate : nil
+        }
+        skillCatalog.setWorkspace(availableWorkspacePath)
+        skillSuggestionMonitor?.setWorkspace(availableWorkspacePath)
         guard let normalized else {
             searchFolders = []
             memory.setWorkspace(nil)
@@ -1055,8 +1171,10 @@ public final class NativeAgentHost {
             searchFolders = []
             memory.setWorkspace(nil)
             workspaceURL = nil
-            conversations = []
-            selectedID = nil
+            // The path still identifies the project whose history is stored
+            // locally. Keep those conversations readable while the folder is
+            // missing; all execution entry points require a real workspace.
+            loadConversations(workspacePath: normalized)
             connection = nil
             status = AppCopy.text("agent.workspaceMissing")
             return

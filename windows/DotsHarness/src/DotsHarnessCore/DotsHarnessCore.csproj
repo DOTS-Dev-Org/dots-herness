@@ -13,35 +13,62 @@
       <Link>%(Filename)%(Extension)</Link>
     </EmbeddedResource>
     <Compile Include="..\..\..\..\shared\NativeProviderRouter.cs" Link="NativeProviderRouter.cs" />
+    <Compile Include="..\..\..\..\shared\LocalRuntime.cs" Link="LocalRuntime.cs" />
+    <Compile Include="..\..\..\..\shared\LocalServers.cs" Link="LocalServers.cs" />
+    <Compile Include="..\..\..\..\shared\ComputerUseContracts.cs" Link="ComputerUseContracts.cs" />
+    <Compile Include="..\..\..\..\shared\ComputerUseService.cs" Link="ComputerUseService.cs" />
     <Compile Include="..\..\..\..\shared\VisionMarketplace.cs" Link="VisionMarketplace.cs" />
     <Compile Include="..\..\..\..\shared\NativeMarketplace.cs" Link="NativeMarketplace.cs" />
+    <Compile Include="..\..\..\..\shared\MarketplacePublishing.cs" Link="MarketplacePublishing.cs" />
     <Compile Include="..\..\..\..\shared\ContextCompaction.cs" Link="ContextCompaction.cs" />
+    <Compile Include="..\..\..\..\shared\ContextUsageComposition.cs" Link="ContextUsageComposition.cs" />
+    <Compile Include="..\..\..\..\shared\EconomyPolicy.cs" Link="EconomyPolicy.cs" />
     <Compile Include="..\..\..\..\shared\NativeProviderImage.cs" Link="NativeProviderImage.cs" />
     <Compile Include="..\..\..\..\shared\NativeWorkspaceTools.cs" Link="NativeWorkspaceTools.cs" />
+    <Compile Include="..\..\..\..\shared\AndroidEmulatorTools.cs" Link="AndroidEmulatorTools.cs" />
+    <Compile Include="..\..\..\..\shared\FollowUpSuggestions.cs" Link="FollowUpSuggestions.cs" />
+    <Compile Include="..\..\..\..\shared\WorkspaceWriteLeases.cs" Link="WorkspaceWriteLeases.cs" />
+    <Compile Include="..\..\..\..\shared\NativeWebTools.cs" Link="NativeWebTools.cs" />
+    <Compile Include="..\..\..\..\shared\NativeFileEdit.cs" Link="NativeFileEdit.cs" />
     <Compile Include="..\..\..\..\shared\BrowserContracts.cs" Link="BrowserContracts.cs" />
+    <Compile Include="..\..\..\..\shared\NativeBrowserService.cs" Link="NativeBrowserService.cs" />
+    <Compile Include="..\..\..\..\shared\NativeBrowserContracts.cs" Link="NativeBrowserContracts.cs" />
     <Compile Include="..\..\..\..\shared\AgentCommandSandbox.cs" Link="AgentCommandSandbox.cs" />
+    <Compile Include="..\..\..\..\shared\SandboxWorkspaces.cs" Link="SandboxWorkspaces.cs" />
     <Compile Include="..\..\..\..\shared\BrowserSessionManager.cs" Link="BrowserSessionManager.cs" />
     <Compile Include="..\..\..\..\shared\NativeMessagingInstaller.cs" Link="NativeMessagingInstaller.cs" />
     <Compile Include="..\..\..\..\shared\AskUserTool.cs" Link="AskUserTool.cs" />
-    <Compile Include="..\..\..\..\shared\OtherChatsTool.cs" Link="OtherChatsTool.cs" />
     <Compile Include="..\..\..\..\shared\HerNessPrompt.cs" Link="HerNessPrompt.cs" />
     <Compile Include="..\..\..\..\shared\CodexInstructions.cs" Link="CodexInstructions.cs" />
     <Compile Include="..\..\..\..\shared\ProjectRules.cs" Link="ProjectRules.cs" />
     <Compile Include="..\..\..\..\shared\WorkspaceBacklog.cs" Link="WorkspaceBacklog.cs" />
     <Compile Include="..\..\..\..\shared\WorkspaceFacts.cs" Link="WorkspaceFacts.cs" />
+    <Compile Include="..\..\..\..\shared\WorkspaceMemoryVault.cs" Link="WorkspaceMemoryVault.cs" />
+    <Compile Include="..\..\..\..\shared\WorkspaceAccessStore.cs" Link="WorkspaceAccessStore.cs" />
+    <Compile Include="..\..\..\..\shared\WorkspaceLessons.cs" Link="WorkspaceLessons.cs" />
+    <Compile Include="..\..\..\..\shared\FeedbackLearning.cs" Link="FeedbackLearning.cs" />
+    <Compile Include="..\..\..\..\shared\AgentBridge.Feedback.cs" Link="AgentBridge.Feedback.cs" />
     <Compile Include="..\..\..\..\shared\SkillCatalog.cs" Link="SkillCatalog.cs" />
     <Compile Include="..\..\..\..\shared\MemEventStore.cs" Link="MemEventStore.cs" />
     <Compile Include="..\..\..\..\shared\SkillSuggestionEngine.cs" Link="SkillSuggestionEngine.cs" />
     <Compile Include="..\..\..\..\shared\SkillSuggestionMonitor.cs" Link="SkillSuggestionMonitor.cs" />
     <Compile Include="..\..\..\..\shared\WorkspaceChangeTracker.cs" Link="WorkspaceChangeTracker.cs" />
+    <Compile Include="..\..\..\..\shared\WorkspaceVersionStore.cs" Link="WorkspaceVersionStore.cs" />
     <Compile Include="..\..\..\..\shared\RouterException.cs" Link="RouterException.cs" />
     <Compile Include="..\..\..\..\shared\CloudTunnel.cs" Link="CloudTunnel.cs" />
     <Compile Include="..\..\..\..\shared\RemoteControl.cs" Link="RemoteControl.cs" />
+    <Compile Include="..\..\..\..\shared\RemoteInteractiveShell.cs" Link="RemoteInteractiveShell.cs" />
+    <Compile Include="..\..\..\..\shared\RemoteSsh.cs" Link="RemoteSsh.cs" />
+    <Compile Include="..\..\..\..\shared\McpRegistry.cs" Link="McpRegistry.cs" />
     <Compile Include="..\..\..\..\shared\LegalConsent.cs" Link="LegalConsent.cs" />
-    <Compile Include="..\..\..\..\shared\AgentAreaContracts.cs" Link="AgentAreaContracts.cs" />
+    <Compile Include="..\..\..\..\shared\UpdateChecker.cs" Link="UpdateChecker.cs" />
+    <Compile Include="..\..\..\..\shared\ProjectSessionContracts.cs" Link="ProjectSessionContracts.cs" />
     <Compile Include="..\..\..\..\shared\SessionAreaMigration.cs" Link="SessionAreaMigration.cs" />
     <Compile Include="..\..\..\..\shared\MessageTail.cs" Link="MessageTail.cs" />
     <Compile Include="..\..\..\..\shared\ExploreTool.cs" Link="ExploreTool.cs" />
+    <Compile Include="..\..\..\..\shared\DelegateTool.cs" Link="DelegateTool.cs" />
+    <Compile Include="..\..\..\..\shared\PlanningIntent.cs" Link="PlanningIntent.cs" />
+    <Compile Include="..\..\..\..\shared\ResponseStyle.cs" Link="ResponseStyle.cs" />
     <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
     <ProjectReference Include="..\PluginRuntime\PluginRuntime.csproj" />
     <PackageReference Include="Whisper.net" Version="1.9.1" />

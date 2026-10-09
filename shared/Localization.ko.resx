@@ -7,10 +7,15 @@
   <data name="language.system" xml:space="preserve"><value>시스템 언어</value></data>
   <data name="settings.language" xml:space="preserve"><value>앱 언어</value></data>
   <data name="settings.general" xml:space="preserve"><value>일반</value></data>
-  <data name="settings.back" xml:space="preserve"><value>채팅으로 돌아가기</value></data>
+  <data name="settings.back" xml:space="preserve"><value>프로젝트로 돌아가기</value></data>
   <data name="settings.appearance" xml:space="preserve"><value>모양</value></data>
   <data name="settings.theme" xml:space="preserve"><value>테마</value></data>
   <data name="settings.confirmBeforeExit" xml:space="preserve"><value>닫기 전에 물어보세요</value></data>
+  <data name="settings.closeToTray" xml:space="preserve"><value>창을 닫아도 트레이에서 실행 유지</value></data>
+  <data name="settings.closeToTray.hint" xml:space="preserve"><value>창을 숨겨도 실행, 터미널, 예약 작업이 계속됩니다. 트레이 아이콘으로 다시 열 수 있습니다.</value></data>
+  <data name="tray.show" xml:space="preserve"><value>창 열기</value></data>
+  <data name="tray.quit" xml:space="preserve"><value>종료</value></data>
+  <data name="tray.noChats" xml:space="preserve"><value>현재 채팅 없음</value></data>
   <data name="settings.workspace" xml:space="preserve"><value>작업 공간</value></data>
   <data name="settings.folder" xml:space="preserve"><value>폴더</value></data>
   <data name="settings.chooseWorkspace" xml:space="preserve"><value>작업공간 선택</value></data>
@@ -154,7 +159,7 @@
   <data name="settings.tasks" xml:space="preserve"><value>작업</value></data>
   <data name="settings.systemPrompt" xml:space="preserve"><value>시스템 프롬프트</value></data>
   <data name="sidebar.chats" xml:space="preserve"><value>채팅</value></data>
-  <data name="sidebar.newChat" xml:space="preserve"><value>새 채팅</value></data>
+  <data name="sidebar.newChat" xml:space="preserve"><value>새 대화</value></data>
   <data name="sidebar.settings" xml:space="preserve"><value>설정</value></data>
   <data name="sidebar.userMenu" xml:space="preserve"><value>사용자 메뉴</value></data>
   <data name="conversation.model" xml:space="preserve"><value>모델</value></data>
@@ -293,6 +298,12 @@
   <data name="usage.resetsIn" xml:space="preserve"><value>{0} 후 재설정</value></data>
   <data name="usage.resetsOn" xml:space="preserve"><value>{0}에 재설정</value></data>
   <data name="usage.resetsAvailable" xml:space="preserve"><value>재설정 {0}회 남음</value></data>
+  <data name="usage.manageResets" xml:space="preserve"><value>Manage resets</value></data>
+  <data name="usage.useReset" xml:space="preserve"><value>Use reset</value></data>
+  <data name="usage.resetTitle" xml:space="preserve"><value>Use a Claude limit reset?</value></data>
+  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude's Usage page will open. Sign in to {0} and review the reset offered to that account. To use it, click Reset for free and confirm in Claude. Once used, a reset cannot be undone. Limits refresh when you return to HerNess.</value></data>
+  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Could not open Claude. Check that the account is still connected, then try again.</value></data>
+  <data name="usage.openClaude" xml:space="preserve"><value>Open Claude</value></data>
   <data name="usage.needLogin" xml:space="preserve"><value>한도를 보려면 Claude에 로그인하세요</value></data>
   <data name="usage.noLimitInfo" xml:space="preserve"><value>한도 정보 없음</value></data>
   <data name="usage.loadFailed" xml:space="preserve"><value>사용량을 불러오지 못했습니다</value></data>
@@ -316,4 +327,312 @@
   <data name="feedback.good" xml:space="preserve"><value>좋은 답변</value></data>
   <data name="feedback.bad" xml:space="preserve"><value>나쁜 답변</value></data>
   <data name="conversation.translate" xml:space="preserve"><value>번역</value></data>
+  <data name="queue.waitingForPlan" xml:space="preserve"><value>계획 승인 대기 중</value></data>
+  <data name="project.missing.title" xml:space="preserve"><value>프로젝트 폴더를 찾을 수 없음: {0}</value></data>
+  <data name="project.missing.message" xml:space="preserve"><value>'{0}'에 있는 프로젝트 폴더가 이동되었거나 삭제되었을 수 있습니다. 새 위치를 선택하거나 프로젝트를 제거하세요.</value></data>
+  <data name="project.missing.locate" xml:space="preserve"><value>위치 찾기…</value></data>
+  <data name="project.missing.readOnly" xml:space="preserve"><value>프로젝트 폴더를 사용할 수 없습니다. 이전 대화는 볼 수 있지만 새 위치를 선택할 때까지 새 대화를 만들거나 메시지를 보낼 수 없습니다.</value></data>
+  <data name="conversation.ranCommand" xml:space="preserve"><value>Ran 1 command</value></data>
+  <data name="conversation.ranCommands" xml:space="preserve"><value>Ran {0} commands</value></data>
+  <data name="conversation.runningTools" xml:space="preserve"><value>Running tools…</value></data>
+  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Thinking…</value></data>
+  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} tokens</value></data>
+  <data name="usage.context.window" xml:space="preserve"><value>Context window</value></data>
+  <data name="usage.planLimits" xml:space="preserve"><value>Plan usage limits</value></data>
+  <data name="composer.queue.one" xml:space="preserve"><value>1 message queued</value></data>
+  <data name="composer.queue.many" xml:space="preserve"><value>{0} messages queued</value></data>
+  <data name="composer.queue.edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Clear the message box to edit</value></data>
+  <data name="composer.queue.remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="git.createPR" xml:space="preserve"><value>Create PR</value></data>
+  <data name="git.hideBar" xml:space="preserve"><value>Hide</value></data>
+  <data name="composer.queue.next" xml:space="preserve"><value>Next: {0}</value></data>
+  <data name="sidebar.pinProject" xml:space="preserve"><value>프로젝트 고정</value></data>
+  <data name="sidebar.unpinProject" xml:space="preserve"><value>프로젝트 고정 해제</value></data>
+  <data name="sidebar.sortLastUpdate" xml:space="preserve"><value>최근 업데이트</value></data>
+  <data name="sidebar.sortPriority" xml:space="preserve"><value>우선순위</value></data>
+  <data name="settings.autoApprovePlans" xml:space="preserve"><value>플랜 자동 승인</value></data>
+  <data name="conversation.fullToolOutput" xml:space="preserve"><value>전체 도구 출력</value></data>
+  <data name="workspace.noProject" xml:space="preserve"><value>프로젝트 없음</value></data>
+  <data name="conversation.cancelPlan" xml:space="preserve"><value>플랜 취소</value></data>
+  <data name="conversation.cancelPlanHelp" xml:space="preserve"><value>이 플랜을 취소하고 대기 중인 메시지를 풀어 줍니다</value></data>
+  <data name="media.generated" xml:space="preserve"><value>이미지를 생성했습니다.</value></data>
+  <data name="media.fallbackUsed" xml:space="preserve"><value>선택한 공급자가 이 이미지를 생성하지 못했습니다. {0}/{1}을(를) 통한 일회성 대체 요청으로 생성했습니다. 기본 대화의 공급자와 모델은 바뀌지 않았으므로 프롬프트 캐시는 그대로 유지됩니다.</value></data>
+  <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>{0}(으)로는 이 이미지를 생성할 수 없습니다. 대체 수단으로 이미지 API 또는 공급자를 설정하세요. 이미지 생성만을 위해 기본 채팅 모델을 바꾸면 공급자의 프롬프트 캐시가 깨질 수 있습니다.</value></data>
+  <data name="feedback.close" xml:space="preserve"><value>닫기</value></data>
+  <data name="feedback.commentPlaceholder" xml:space="preserve"><value>세부정보 공유(선택사항)</value></data>
+  <data name="feedback.conversationNotFound" xml:space="preserve"><value>이 채팅은 더 이상 사용할 수 없습니다.</value></data>
+  <data name="feedback.disclaimer" xml:space="preserve"><value>피드백은 HerNess를 로컬에서 개선하는 데 사용될 수 있습니다.</value></data>
+  <data name="feedback.messageNotFound" xml:space="preserve"><value>이 응답은 더 이상 사용할 수 없습니다.</value></data>
+  <data name="feedback.missingPrompt" xml:space="preserve"><value>이 응답의 요청을 찾을 수 없습니다.</value></data>
+  <data name="feedback.missingResponse" xml:space="preserve"><value>이 응답에는 검토할 내용이 없습니다.</value></data>
+  <data name="feedback.persistenceFailed" xml:space="preserve"><value>피드백을 로컬에 저장하지 못했습니다.</value></data>
+  <data name="feedback.streamingMessage" xml:space="preserve"><value>피드백을 보내기 전에 응답이 완료될 때까지 기다리세요.</value></data>
+  <data name="feedback.submit" xml:space="preserve"><value>보내기</value></data>
+  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Apply it elsewhere</value></data>
+  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Broke an existing feature</value></data>
+  <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>내 지침을 따르지 않음</value></data>
+  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Didn't follow project style</value></data>
+  <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>빠르고 효율적임</value></data>
+  <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>내 지침을 따름</value></data>
+  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Ignored project architecture</value></data>
+  <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>잘못되었거나 불완전함</value></data>
+  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Keep the project style</value></data>
+  <data name="feedback.tag.lost_context" xml:space="preserve"><value>맥락 손실</value></data>
+  <data name="feedback.tag.negative_other" xml:space="preserve"><value>기타</value></data>
+  <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>주제에서 벗어남 / 범위 초과</value></data>
+  <data name="feedback.tag.output_quality" xml:space="preserve"><value>좋은 코드 / 출력 품질</value></data>
+  <data name="feedback.tag.positive_other" xml:space="preserve"><value>기타</value></data>
+  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Reuse this architecture</value></data>
+  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Reuse this token pattern</value></data>
+  <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>보안 또는 법적 문제</value></data>
+  <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>느리거나 버그가 있음</value></data>
+  <data name="feedback.tag.task_completed" xml:space="preserve"><value>내 작업을 해결함</value></data>
+  <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>유용한 자율성</value></data>
+  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Wrong theme or token</value></data>
+  <data name="feedback.title" xml:space="preserve"><value>피드백 공유</value></data>
+  <data name="feedback.unavailable" xml:space="preserve"><value>피드백은 워크스페이스 채팅에서만 사용할 수 있습니다.</value></data>
+  <data name="feedback.unsupportedMessage" xml:space="preserve"><value>피드백은 어시스턴트 응답에만 보낼 수 있습니다.</value></data>
+  <data name="router.priorityUp" xml:space="preserve"><value>우선순위 높임</value></data>
+  <data name="router.priorityDown" xml:space="preserve"><value>우선순위 낮춤</value></data>
+  <data name="conversation.cacheExpired.explanation" xml:space="preserve"><value>캐시의 예상 유효 시간이 지났습니다. 프롬프트 캐시는 제공업체 측의 임시 처리 상태이며, 채팅 기록은 그대로 저장되어 있습니다. 전체 기록으로 계속하면 해당 토큰이 다시 새 입력으로 계산될 수 있습니다. 제공업체에 캐시가 남아 있었는지는 다음 요청의 사용량 데이터로 확인할 수 있습니다.</value></data>
+  <data name="conversation.cacheExpired.infoTitle" xml:space="preserve"><value>이 알림이 표시되는 이유</value></data>
+  <data name="conversation.cacheExpired.notice" xml:space="preserve"><value>캐시가 만료되었을 수 있습니다. 계속하면 토큰 사용량과 비용이 늘어날 수 있습니다. 짧은 요약과 함께 새 채팅을 시작하세요.</value></data>
+  <data name="conversation.filesChangedCount" xml:space="preserve"><value>파일 {0}개 변경</value></data>
+  <data name="conversation.filesLess" xml:space="preserve"><value>파일 간략히 보기</value></data>
+  <data name="conversation.filesLineSummary" xml:space="preserve"><value>+{0} −{1}</value></data>
+  <data name="conversation.filesMore" xml:space="preserve"><value>파일 {0}개 더 보기</value></data>
+  <data name="conversation.filesReverted" xml:space="preserve"><value>파일 변경 사항을 되돌렸습니다.</value></data>
+  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>The saved file version is unavailable, so the workspace was left unchanged.</value></data>
+  <data name="conversation.undoChanges" xml:space="preserve"><value>실행 취소</value></data>
+  <data name="conversation.viewChanges" xml:space="preserve"><value>변경 사항 보기</value></data>
+  <data name="settings.archive" xml:space="preserve"><value>보관함</value></data>
+  <data name="archive.title" xml:space="preserve"><value>보관된 대화</value></data>
+  <data name="archive.empty" xml:space="preserve"><value>보관된 대화가 없습니다.</value></data>
+  <data name="archive.confirmDelete" xml:space="preserve"><value>이 대화를 영구적으로 삭제할까요?</value></data>
+  <data name="archive.deletePermanently" xml:space="preserve"><value>영구 삭제</value></data>
+  <data name="archive.cancel" xml:space="preserve"><value>취소</value></data>
+  <data name="archive.restore" xml:space="preserve"><value>보관 해제</value></data>
+  <data name="archive.delete" xml:space="preserve"><value>삭제</value></data>
+  <data name="archive.deleteFailed" xml:space="preserve"><value>대화를 삭제할 수 없습니다.</value></data>
+  <data name="archive.restoreFailed" xml:space="preserve"><value>대화를 복원할 수 없습니다.</value></data>
+  <data name="conversation.lineCountsUnavailable" xml:space="preserve"><value>줄 수를 확인할 수 없음</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>이 턴 이후 작업 공간 파일이 변경되었습니다({0}). 어떤 파일도 복원되지 않았습니다.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>대화와 작업 공간 변경 사항을 되돌렸습니다.</value></data>
+  <data name="sidebar.archiveChat" xml:space="preserve"><value>대화 보관</value></data>
+  <data name="sidebar.pinChat" xml:space="preserve"><value>채팅 고정</value></data>
+  <data name="sidebar.unpinChat" xml:space="preserve"><value>채팅 고정 해제</value></data>
+
+  <data name="workLocation.title" xml:space="preserve"><value>근무 장소</value></data>
+  <data name="workLocation.help" xml:space="preserve"><value>이 작업을 실행할 위치 선택</value></data>
+  <data name="workLocation.local" xml:space="preserve"><value>로컬</value></data>
+  <data name="workLocation.remoteHosts" xml:space="preserve"><value>원격 컴퓨터</value></data>
+  <data name="workLocation.noHosts" xml:space="preserve"><value>아직 SSH 호스트가 없음</value></data>
+  <data name="workLocation.chooseRemoteFolder" xml:space="preserve"><value>원격 폴더 선택…</value></data>
+  <data name="workLocation.remoteFolderPath" xml:space="preserve"><value>경로</value></data>
+  <data name="workLocation.remoteFolderList" xml:space="preserve"><value>목록</value></data>
+  <data name="workLocation.remoteFolderUp" xml:space="preserve"><value>상위 폴더</value></data>
+  <data name="workLocation.remoteFolderEmpty" xml:space="preserve"><value>여기에는 하위 폴더가 없습니다</value></data>
+  <data name="workLocation.remoteFolderUse" xml:space="preserve"><value>이 폴더 사용</value></data>
+  <data name="workLocation.connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="workLocation.addHost" xml:space="preserve"><value>컴퓨터 추가…</value></data>
+  <data name="workLocation.useLocal" xml:space="preserve"><value>Use this computer</value></data>
+  <data name="settings.sshAlias" xml:space="preserve"><value>별칭</value></data>
+  <data name="settings.sshHostName" xml:space="preserve"><value>호스트 또는 IP</value></data>
+  <data name="settings.sshUser" xml:space="preserve"><value>사용자 이름</value></data>
+  <data name="settings.sshPort" xml:space="preserve"><value>포트</value></data>
+  <data name="settings.sshRemove" xml:space="preserve"><value>제거</value></data>
+  <data name="ssh.busy" xml:space="preserve"><value>작업 위치를 바꾸기 전에 진행 중인 실행이 끝날 때까지 기다리세요.</value></data>
+  <data name="ssh.connecting" xml:space="preserve"><value>{0}에 연결 중…</value></data>
+  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Choose a remote folder before starting a task.</value></data>
+  <data name="ssh.scanning" xml:space="preserve"><value>호스트 키를 가져오는 중…</value></data>
+  <data name="ssh.fingerprintTitle" xml:space="preserve"><value>이것이 {0}의 지문입니까?</value></data>
+  <data name="ssh.fingerprintMessage" xml:space="preserve"><value>신뢰하기 전에 서버와 대조하세요. 일치할 때만 계속하세요.</value></data>
+  <data name="ssh.trustAndConnect" xml:space="preserve"><value>신뢰하고 연결</value></data>
+  <data name="ssh.error.unavailable" xml:space="preserve"><value>이 Mac에서 ssh를 찾을 수 없습니다.</value></data>
+  <data name="ssh.error.notReachable" xml:space="preserve"><value>{0}에 연결할 수 없습니다.</value></data>
+  <data name="conversation.choosePane" xml:space="preserve"><value>Choose a pane</value></data>
+  <data name="sidebar.toggle" xml:space="preserve"><value>Show or hide sidebar</value></data>
+  <data name="settings.mcpServers" xml:space="preserve"><value>MCP servers</value></data>
+  <data name="mcp.empty" xml:space="preserve"><value>No MCP servers configured.</value></data>
+  <data name="mcp.addServer" xml:space="preserve"><value>Add server</value></data>
+  <data name="mcp.name" xml:space="preserve"><value>Name</value></data>
+  <data name="mcp.transport" xml:space="preserve"><value>Transport</value></data>
+  <data name="mcp.http" xml:space="preserve"><value>HTTP</value></data>
+  <data name="mcp.stdio" xml:space="preserve"><value>stdio</value></data>
+  <data name="mcp.url" xml:space="preserve"><value>URL</value></data>
+  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (optional)</value></data>
+  <data name="mcp.executable" xml:space="preserve"><value>Executable path</value></data>
+  <data name="mcp.arguments" xml:space="preserve"><value>Arguments (space-separated)</value></data>
+  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Auto-run tools the server marks read-only</value></data>
+  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Server annotations are untrusted. Enabling this skips approval only for tools marked read-only and not destructive.</value></data>
+  <data name="mcp.test" xml:space="preserve"><value>Test</value></data>
+  <data name="mcp.add" xml:space="preserve"><value>Add</value></data>
+  <data name="mcp.reconnect" xml:space="preserve"><value>Reconnect</value></data>
+  <data name="mcp.remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="mcp.idle" xml:space="preserve"><value>Idle</value></data>
+  <data name="mcp.connecting" xml:space="preserve"><value>Connecting…</value></data>
+  <data name="mcp.connected" xml:space="preserve"><value>Connected · {0} tool(s)</value></data>
+  <data name="mcp.failed" xml:space="preserve"><value>Failed: {0}</value></data>
+  <data name="mcp.testing" xml:space="preserve"><value>Testing…</value></data>
+  <data name="mcp.testConnected" xml:space="preserve"><value>Connected. {0} tool(s) available.</value></data>
+  <data name="conversation.toolInput" xml:space="preserve"><value>Tool input</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Memory</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Memory vault</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="memory.reveal" xml:space="preserve"><value>Open .mem folder</value></data>
+  <data name="memory.refused" xml:space="preserve"><value>Not saved. The entry may contain a credential, exceed its limit, or the workspace may be unavailable.</value></data>
+  <data name="memory.noWorkspace" xml:space="preserve"><value>Select a local workspace to view its memory.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Memory starts after the first prompt in this workspace.</value></data>
+  <data name="memory.search" xml:space="preserve"><value>Search memory</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Select a note to view it.</value></data>
+  <data name="memory.save" xml:space="preserve"><value>Save</value></data>
+  <data name="memory.forget" xml:space="preserve"><value>Forget</value></data>
+  <data name="memory.ownRules" xml:space="preserve"><value>Your own rules</value></data>
+  <data name="memory.rulesHelp" xml:space="preserve"><value>These rules are added to every request in this project.</value></data>
+  <data name="memory.lessons" xml:space="preserve"><value>Learned lessons</value></data>
+  <data name="memory.learningStats" xml:space="preserve"><value>{0} turns logged; {1} were corrected or undone.</value></data>
+  <data name="memory.links" xml:space="preserve"><value>Links</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Linked mentions</value></data>
+  <data name="memory.userAuthored" xml:space="preserve"><value>user-authored</value></data>
+  <data name="memory.inferred" xml:space="preserve"><value>inferred</value></data>
+  <data name="memory.learnedCount" xml:space="preserve"><value>learned {0}×</value></data>
+  <data name="memory.usedCount" xml:space="preserve"><value>used {0}×</value></data>
+  <data name="memory.inactive" xml:space="preserve"><value>no longer applied</value></data>
+  <data name="memory.pin" xml:space="preserve"><value>Pin</value></data>
+  <data name="memory.edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="memory.cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Workspace access</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Current actor</value></data>
+  <data name="access.role" xml:space="preserve"><value>Role</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Not authorized</value></data>
+  <data name="access.score" xml:space="preserve"><value>Score</value></data>
+  <data name="access.device" xml:space="preserve"><value>Device</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Public key</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Memory revision</value></data>
+  <data name="access.members" xml:space="preserve"><value>Members</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>No members yet.</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Revoke</value></data>
+  <data name="access.revoked" xml:space="preserve"><value>revoked</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Invite device</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Display name</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>New device public key</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>Create signed invitation</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Accept invitation</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>Signed invitation</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Accept</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Reject</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Pending decisions</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>No pending project decisions.</value></data>
+  <data name="access.noWorkspace" xml:space="preserve"><value>Select a local workspace to manage access.</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Score: {0}</value></data>
+  <data name="access.initialize" xml:space="preserve"><value>Initialize workspace memory</value></data>
+  <data name="access.initializeHelp" xml:space="preserve"><value>Workspace access uses a signed memory log. Initializing creates the owner identity and event log in this project's .mem folder.</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>Owner</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Approver</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Contributor</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>Observer</value></data>
+  <data name="settings.sandbox" xml:space="preserve"><value>Sandbox</value></data>
+  <data name="settings.sandboxOff" xml:space="preserve"><value>Off — the agent works directly in your checkout.</value></data>
+  <data name="settings.sandboxOn" xml:space="preserve"><value>On — the agent works in a separate git worktree.</value></data>
+  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Recovery is required before sandbox operations can continue.</value></data>
+  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Retry recovery</value></data>
+  <data name="settings.sandboxName" xml:space="preserve"><value>Name</value></data>
+  <data name="settings.sandboxEnter" xml:space="preserve"><value>Start sandbox</value></data>
+  <data name="settings.sandboxMerge" xml:space="preserve"><value>Merge and exit</value></data>
+  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Discard and exit</value></data>
+  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Origin</value></data>
+  <data name="settings.sandboxBranch" xml:space="preserve"><value>Branch</value></data>
+  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Allow network for new processes</value></data>
+  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>This applies only to new commands. Existing terminal sessions keep their current policy.</value></data>
+  <data name="settings.sandboxOpen" xml:space="preserve"><value>Open sandbox</value></data>
+  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Open origin</value></data>
+  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Conflicts</value></data>
+  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Prepare resolution</value></data>
+  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Ask agent</value></data>
+  <data name="settings.sandboxPreview" xml:space="preserve"><value>Refresh preview</value></data>
+  <data name="settings.sandboxApprove" xml:space="preserve"><value>Approve and merge</value></data>
+  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Cancel resolution</value></data>
+  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Retry cleanup</value></data>
+  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Discard this sandbox? Its branch will be kept for recovery, but its worktree will be removed.</value></data>
+  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Approval requires a complete preview with no unresolved files.</value></data>
+  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Resolution preview</value></data>
+  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Unresolved files</value></data>
+  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>Origin HEAD</value></data>
+  <data name="settings.sandboxHead" xml:space="preserve"><value>Sandbox HEAD</value></data>
+  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Preview fingerprint</value></data>
+  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Sandbox cleanup is still pending; the origin was not changed again.</value></data>
+  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Saved sandboxes</value></data>
+  <data name="settings.sandboxRecover" xml:space="preserve"><value>Recover</value></data>
+  <data name="conversation.accountSwitched.notice" xml:space="preserve"><value>이 채팅이 같은 모델에서 다른 계정으로 전환되었습니다. 해당 계정에서는 캐시가 처음부터 시작되므로, 계속하면 토큰 사용량과 비용이 늘어날 수 있습니다.</value></data>
+  <data name="conversation.modelSwitched.notice" xml:space="preserve"><value>모델이 변경되었습니다. 캐시는 새 모델로 이어지지 않으며 전체 기록이 다시 처리되므로, 토큰 사용량과 비용이 늘어날 수 있습니다.</value></data>
+  <data name="conversation.contextFull.notice" xml:space="preserve"><value>컨텍스트 창이 거의 가득 찼습니다. 계속하면 토큰 사용량과 비용이 늘어날 수 있습니다. 짧은 요약과 함께 새 채팅을 시작하세요.</value></data>
+  <data name="context.overflowTitle" xml:space="preserve"><value>이 대화는 새 모델에 들어가지 않습니다</value></data>
+  <data name="context.overflowReason" xml:space="preserve"><value>{0}은(는) 계속하려면 약 {1} 토큰이 필요한데, 해당 모델에는 {2}만 남아 있습니다.</value></data>
+  <data name="context.overflowByModel" xml:space="preserve"><value>요약은 대화 기록을 아직 읽을 수 있는 연결된 모델 중 가장 작은 {0}이(가) 작성합니다.</value></data>
+  <data name="context.overflowLocally" xml:space="preserve"><value>연결된 어떤 모델도 대화 기록을 읽을 수 없어, 모델에 묻지 않고 대화를 줄입니다.</value></data>
+  <data name="context.overflowCompress" xml:space="preserve"><value>압축하고 계속</value></data>
+  <data name="context.overflowNotNow" xml:space="preserve"><value>나중에</value></data>
+  <data name="context.overflowDeclined" xml:space="preserve"><value>전송 중단: 대화가 새 모델에 들어가지 않습니다.</value></data>
+  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>When another chat is writing the same file</value></data>
+  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Wait before asking</value></data>
+  <data name="settings.conflictWaitValue" xml:space="preserve"><value>Wait {0} seconds</value></data>
+  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Wait, then ask</value></data>
+  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>A chat that wants a file another chat is writing waits quietly, and asks only if the wait goes on too long.</value></data>
+  <data name="conflict.policy.ask" xml:space="preserve"><value>Ask me</value></data>
+  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Ask as soon as two chats want the same file.</value></data>
+  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Always wait</value></data>
+  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Never ask: a write waits for the chat that holds the file.</value></data>
+  <data name="conflict.title" xml:space="preserve"><value>A file is busy: {0}</value></data>
+  <data name="conflict.wholeProject" xml:space="preserve"><value>Project command: {0}</value></data>
+  <data name="conflict.stillBusy" xml:space="preserve"><value>Write held back: another chat is still writing {0}.</value></data>
+  <data name="conflict.userSkipped" xml:space="preserve"><value>Write skipped: {0} was left with the other chat ({1}), as you asked.</value></data>
+  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Stopped {0} so this chat could write.</value></data>
+  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Stopped other chats so this chat could write.</value></data>
+  <data name="conflict.banner.title" xml:space="preserve"><value>Another chat is writing this file</value></data>
+  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · held by “{1}” for {2} seconds</value></data>
+  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Keep waiting</value></data>
+  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Stop {0}</value></data>
+  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Stop all other chats</value></data>
+  <data name="conflict.banner.skip" xml:space="preserve"><value>Skip this write</value></data>
+  <data name="conflict.waiting" xml:space="preserve"><value>Waiting for “{0}” to finish writing: {1}</value></data>
+  <data name="usage.context.button" xml:space="preserve"><value>사용량</value></data>
+  <data name="usage.context.tooltip" xml:space="preserve"><value>컨텍스트 및 토큰 사용량</value></data>
+  <data name="usage.context.latestRequest" xml:space="preserve"><value>최근 요청 · 컨텍스트 윈도우</value></data>
+  <data name="usage.context.input" xml:space="preserve"><value>보낸 입력</value></data>
+  <data name="usage.context.estimatedInput" xml:space="preserve"><value>예상 입력</value></data>
+  <data name="usage.context.output" xml:space="preserve"><value>출력</value></data>
+  <data name="usage.context.notReported" xml:space="preserve"><value>제공자가 보고하지 않음</value></data>
+  <data name="usage.context.estimatedBreakdown" xml:space="preserve"><value>예상 입력 분석</value></data>
+  <data name="usage.context.tokens" xml:space="preserve"><value>토큰</value></data>
+  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} tokens ({2})</value></data>
+  <data name="usage.context.notAvailable" xml:space="preserve"><value>Context usage is not available yet.</value></data>
+  <data name="usage.context.composition" xml:space="preserve"><value>Estimated input composition</value></data>
+  <data name="usage.context.estimatedRow" xml:space="preserve"><value>{0}: {1} ({2})</value></data>
+  <data name="usage.context.conversation" xml:space="preserve"><value>대화 메시지</value></data>
+  <data name="usage.context.systemPrompt" xml:space="preserve"><value>시스템 지침</value></data>
+  <data name="usage.context.toolDefinitions" xml:space="preserve"><value>도구 정의</value></data>
+  <data name="usage.context.mcpDefinitions" xml:space="preserve"><value>MCP 도구 정의</value></data>
+  <data name="usage.context.cacheHit" xml:space="preserve"><value>Measured cache hit</value></data>
+  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Verified prefix reuse: {0} · {1} / {2} tokens</value></data>
+  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Measurement coverage: {0} · {1} of {2} eligible requests</value></data>
+  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Cold: {0} · expired: {1} · changed: {2}</value></data>
+  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Cache writes: {0} tokens</value></data>
+  <data name="usage.context.freshInput" xml:space="preserve"><value>Fresh input: {0} tokens</value></data>
+  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Reuse not reported: {0} of {1} eligible requests</value></data>
+  <data name="usage.context.latency" xml:space="preserve"><value>Average request latency: {0}</value></data>
+  <data name="usage.context.prepare" xml:space="preserve"><value>Average request preparation: {0}</value></data>
+  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Largest cache loss: {0} ({1} tokens)</value></data>
+  <data name="settings.shortcuts" xml:space="preserve"><value>Keyboard shortcuts</value></data>
+  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Select a shortcut to change it. Press a key combination with at least one modifier.</value></data>
+  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Show or hide sidebar</value></data>
+  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Press keys…</value></data>
+  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Restore defaults</value></data>
+  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} is already assigned to {1}.</value></data>
+  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull requests</value></data>
+  <data name="conversation.review" xml:space="preserve"><value>Review</value></data>
+  <data name="conversation.files" xml:space="preserve"><value>Files</value></data>
+  <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
+  <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
+  <data name="conversation.processedTokensCount" xml:space="preserve"><value>토큰 {0}개</value></data>
 </root>

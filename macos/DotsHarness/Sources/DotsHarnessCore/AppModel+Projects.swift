@@ -15,7 +15,6 @@ extension AppModel {
     }
 
     func setWorkspace(_ value: String, allowSandboxTransition: Bool) {
-        setActiveArea(.coding)
         let normalized = Self.validWorkspacePath(value).map {
             SandboxProfile.canonicalURL(URL(fileURLWithPath: $0, isDirectory: true)).path
         } ?? ""
@@ -29,26 +28,32 @@ extension AppModel {
             sandboxNotice = "Recover the saved sandbox before changing workspaces."
             return
         }
+        commitNavigationDestination()
         cancelEditing()
         workspacePath = normalized
         if !normalized.isEmpty, !projectPaths.contains(normalized) {
             projectPaths.insert(normalized, at: 0)
+            // The unsectioned group only lists five projects and a new entry lands
+            // at the top, so reveal the group rather than push a visible project out.
+            showsAllOtherProjects = true
             persistProjectPaths()
         }
+        refreshProjectLocationAvailability()
         remoteControl.setWorkspacePath(normalized)
         host.settings.set("agent.workspace", normalized.isEmpty ? .null : .string(normalized))
         persistSettings()
-        codingBridge.setWorkspace(normalized)
-        codingBridge.setSandboxPolicy(
+        bridge.setWorkspace(normalized)
+        bridge.setSandboxPolicy(
             normalized == activeSandbox?.path ? sandboxExecutionPolicy : nil,
             branch: normalized == activeSandbox?.path ? activeSandbox?.branch : nil
         )
-        codingBridge.setSearchFolders(projectSearchFolders(for: normalized))
+        bridge.setSearchFolders(projectSearchFolders(for: normalized))
         skills.setWorkspace(normalized.isEmpty ? nil : normalized)
         skillSuggestions.setWorkspace(normalized.isEmpty ? nil : normalized)
         restoreDraftState()
         refreshAvailableSandboxes()
-        Task { await codingBridge.refreshConnection() }
+        commitNavigationDestination()
+        Task { await bridge.refreshConnection() }
     }
 
     /// Re-scans recent tool-call and prompt history for a repeated pattern worth
@@ -79,6 +84,25 @@ extension AppModel {
         showsAllOtherProjects = true
     }
 
+    /// Checks the saved local folder for a project without changing selection.
+    public func isProjectLocationAvailable(_ path: String) -> Bool {
+        Self.canonicalExistingWorkspacePath(path) != nil
+    }
+
+    /// Project paths still in settings but whose folders were deleted no longer
+    /// own an active connection. Their retained chats belong in Recent instead.
+    public var connectedProjectPaths: [String] {
+        projectPaths.filter(isProjectLocationAvailable)
+    }
+
+    /// Rechecks every project row after filesystem changes. The published set
+    /// only changes when a folder appears or disappears, avoiding redraw churn.
+    public func refreshProjectLocationAvailability() {
+        let unavailable = Set(projectPaths.filter { !isProjectLocationAvailable($0) })
+        guard unavailable != unavailableProjectPaths else { return }
+        unavailableProjectPaths = unavailable
+    }
+
     /// Opens a folder picker and adds the chosen folder as a new project, making it active.
     public func addProject() {
         let panel = NSOpenPanel()
@@ -103,13 +127,11 @@ extension AppModel {
         alert.alertStyle = .warning
         let projectName = projectTitle(for: missingPath)
         let title = AppCopy.format("project.missing.title", projectName)
-        alert.messageText = title == "project.missing.title" ? "Proje Klasörü Bulunamadı: \(projectName)" : title
+        alert.messageText = title
         let msg = AppCopy.format("project.missing.message", missingPath)
-        alert.informativeText = msg == "project.missing.message"
-            ? "'\(missingPath)' konumundaki proje klasörü taşınmış veya silinmiş olabilir. Lütfen klasörün yeni konumunu seçin veya projeyi kaldırın."
-            : msg
+        alert.informativeText = msg
         let locateTitle = AppCopy.text("project.missing.locate")
-        alert.addButton(withTitle: locateTitle == "project.missing.locate" ? "Konumu Bul..." : locateTitle)
+        alert.addButton(withTitle: locateTitle)
         alert.addButton(withTitle: AppCopy.text("sidebar.removeProject"))
         alert.addButton(withTitle: AppCopy.text("common.cancel"))
 
@@ -123,30 +145,57 @@ extension AppModel {
             panel.prompt = AppCopy.text("workspace.use")
             panel.message = AppCopy.text("workspace.chooseMessage")
             if panel.runModal() == .OK, let url = panel.url {
-                let newPath = url.path
-                if let idx = projectPaths.firstIndex(of: missingPath) {
-                    projectPaths[idx] = newPath
-                } else if !projectPaths.contains(newPath) {
-                    projectPaths.append(newPath)
-                }
-                if let meta = projectMetadata.removeValue(forKey: missingPath) {
-                    projectMetadata[newPath] = meta
-                }
-                if let sort = projectSortOrders.removeValue(forKey: missingPath) {
-                    projectSortOrders[newPath] = sort
-                }
-                if let manual = projectManualOrder.removeValue(forKey: missingPath) {
-                    projectManualOrder[newPath] = manual
-                }
-                persistProjectPaths()
-                persistProjectMetadata()
-                persistProjectSortOrders()
-                setWorkspace(newPath)
+                guard let newPath = relocateProject(missingPath: missingPath, to: url.path) else { return }
                 onRelocated?(newPath)
             }
         } else if response == .alertSecondButtonReturn {
             removeProject(missingPath)
         }
+    }
+
+    /// Reattaches a missing project row to a real directory and activates it.
+    /// Returns the canonical destination when the move is accepted.
+    func relocateProject(missingPath: String, to selectedPath: String) -> String? {
+        guard let newPath = Self.canonicalExistingWorkspacePath(selectedPath) else { return nil }
+        guard newPath != missingPath else {
+            setWorkspace(newPath)
+            return newPath
+        }
+
+        let destinationAlreadyListed = projectPaths.contains(newPath)
+        if destinationAlreadyListed {
+            projectPaths.removeAll { $0 == missingPath }
+        } else if let index = projectPaths.firstIndex(of: missingPath) {
+            projectPaths[index] = newPath
+        } else {
+            projectPaths.append(newPath)
+        }
+
+        if let metadata = projectMetadata.removeValue(forKey: missingPath), projectMetadata[newPath] == nil {
+            projectMetadata[newPath] = metadata
+        }
+        if let sort = projectSortOrders.removeValue(forKey: missingPath), projectSortOrders[newPath] == nil {
+            projectSortOrders[newPath] = sort
+        }
+        if let manual = projectManualOrder.removeValue(forKey: missingPath), projectManualOrder[newPath] == nil {
+            projectManualOrder[newPath] = manual
+        }
+        if expandedProjectPaths.remove(missingPath) != nil {
+            expandedProjectPaths.insert(newPath)
+        }
+
+        bridge.relocateProjectHistory(from: missingPath, to: newPath)
+        persistProjectPaths()
+        persistProjectMetadata()
+        persistProjectSortOrders()
+        host.settings.set("agent.projectManualOrder", .object(
+            projectManualOrder.mapValues { .array($0.map(JSONValue.string)) }
+        ))
+        persistSettings()
+        persistExpandedProjectPaths()
+        setWorkspace(newPath)
+        refreshProjectLocationAvailability()
+        return newPath
     }
 
     /// Switches the active project to an already-added one.
@@ -160,18 +209,30 @@ extension AppModel {
         setWorkspace(targetPath)
     }
 
+    public func selectNoProject() {
+        setWorkspace("")
+    }
+
     /// Removes a project from the sidebar list (and its sort preference). If it was
     /// active, the next remaining project (or none) becomes active.
     public func removeProject(_ path: String) {
-        guard let index = projectPaths.firstIndex(of: path) else { return }
-        projectPaths.remove(at: index)
+        let canonical = Self.canonicalExistingWorkspacePath(path) ?? (path as NSString).expandingTildeInPath
+        guard let index = projectPaths.firstIndex(where: { $0 == path || $0 == canonical }) else { return }
+        let removedPath = projectPaths.remove(at: index)
+        unavailableProjectPaths.remove(path)
+        unavailableProjectPaths.remove(removedPath)
         projectMetadata.removeValue(forKey: path)
+        projectMetadata.removeValue(forKey: removedPath)
         projectSortOrders.removeValue(forKey: path)
+        projectSortOrders.removeValue(forKey: removedPath)
         projectManualOrder.removeValue(forKey: path)
+        projectManualOrder.removeValue(forKey: removedPath)
+        let wasExpanded = expandedProjectPaths.remove(path) != nil || expandedProjectPaths.remove(removedPath) != nil
         persistProjectPaths()
         persistProjectMetadata()
         persistProjectSortOrders()
-        if workspacePath == path {
+        if wasExpanded { persistExpandedProjectPaths() }
+        if workspacePath == path || workspacePath == removedPath {
             setWorkspace(projectPaths.first ?? "")
         }
     }
@@ -193,14 +254,28 @@ extension AppModel {
         } ?? []
     }
 
-    /// `SandboxWorkspaces.isGitRepository` spawns a `git` process. The sidebar
-    /// asks once per project row while building menus, so the answer is cached
-    /// for the session rather than shelling out on every redraw.
+    /// Reads the cached result only. SwiftUI menu construction must not spawn
+    /// processes or mutate model state while the view graph is being updated.
     public func isGitProject(_ path: String) -> Bool {
-        if let cached = gitProjectCache[path] { return cached }
-        let value = SandboxWorkspaces.isGitRepository(URL(fileURLWithPath: path))
-        gitProjectCache[path] = value
-        return value
+        gitProjectCache[path] ?? false
+    }
+
+    /// Resolves Git membership after the project row appears, away from the
+    /// main actor so menu rendering never waits for a subprocess.
+    public func loadGitProjectStatusIfNeeded(_ path: String) {
+        guard gitProjectCache[path] == nil,
+              !gitProjectStatusInFlight.contains(path) else { return }
+        gitProjectStatusInFlight.insert(path)
+        let directory = URL(fileURLWithPath: path, isDirectory: true)
+
+        Task.detached(priority: .utility) { [weak self] in
+            let isGitProject = SandboxWorkspaces.isGitRepository(directory)
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                self.gitProjectStatusInFlight.remove(path)
+                self.gitProjectCache[path] = isGitProject
+            }
+        }
     }
 
     public func isProjectPinned(_ path: String) -> Bool {
@@ -309,6 +384,21 @@ extension AppModel {
         persistSettings()
     }
 
+    /// Opens or closes one project's chat sublist and remembers the choice so a
+    /// relaunch shows the same lists. No other project's state is touched.
+    public func setProjectChatsExpanded(_ expanded: Bool, for path: String) {
+        guard !path.isEmpty else { return }
+        let canonical = Self.canonicalExistingWorkspacePath(path) ?? (path as NSString).expandingTildeInPath
+        if expanded {
+            guard !expandedProjectPaths.contains(path), !expandedProjectPaths.contains(canonical) else { return }
+            expandedProjectPaths.insert(canonical)
+        } else {
+            let removed = expandedProjectPaths.remove(path) != nil || expandedProjectPaths.remove(canonical) != nil
+            guard removed else { return }
+        }
+        persistExpandedProjectPaths()
+    }
+
     /// Moves `id` to just before `targetID` in the given project's manual order
     /// (or to the end when `targetID` is nil). `currentOrder` seeds the array the
     /// first time a project is reordered, so unranked conversations keep their
@@ -364,6 +454,14 @@ extension AppModel {
     private func persistProjectSortOrders() {
         let object = projectSortOrders.mapValues { JSONValue.string($0.rawValue) }
         host.settings.set("agent.projectSortOrders", .object(object))
+        persistSettings()
+    }
+
+    private func persistExpandedProjectPaths() {
+        host.settings.set(
+            "agent.sidebarExpandedProjects",
+            .array(expandedProjectPaths.sorted().map(JSONValue.string))
+        )
         persistSettings()
     }
 }

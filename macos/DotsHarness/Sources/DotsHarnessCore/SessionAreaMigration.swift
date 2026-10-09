@@ -1,85 +1,80 @@
 // Copyright (c) 2026 DOTS
-// One-time split of the pre-area sessions file into independent Chat/Coding stores.
+// Migrate the historical Chat/Coding stores into one project session store.
 
 import Foundation
 import PluginRuntime
 
 public enum SessionAreaMigration {
-    private static let markerName = "area-session-migration-v1.json"
-    private static let repairMarkerName = "area-session-migration-v2.json"
+    private static let canonicalFileName = "sessions.json"
+    private static let completionMarkerName = "project-session-migration-v1.json"
+    private static let obsoleteFileNames = [
+        "coding-sessions.json",
+        "chat-sessions.json",
+        "conversations.json",
+        "chat-projects.json",
+        "area-session-migration-v1.json",
+        "area-session-migration-v2.json",
+    ]
 
-    /// Splits the legacy `sessions.json` without deleting or rewriting it, then
-    /// repairs area stores created by older builds that did not persist a strict
-    /// Chat/Coding ownership invariant.
+    /// Keeps workspace-bound and explicitly projectless conversations, chooses
+    /// the fullest duplicate, and removes the old Chat stores only after the
+    /// canonical file is readable. Legacy Chat-only records without a workspace
+    /// remain excluded unless they were created by the current No project flow.
     public static func run(paths: SupportPaths, fileManager: FileManager = .default) {
-        let marker = paths.root.appendingPathComponent(markerName)
-        if !fileManager.fileExists(atPath: marker.path) {
-            migrateLegacy(paths: paths, marker: marker, fileManager: fileManager)
-        }
-
-        let codingURL = paths.root.appendingPathComponent(AgentArea.coding.sessionFileName)
-        let chatURL = paths.root.appendingPathComponent(AgentArea.chat.sessionFileName)
-        let repairMarker = paths.root.appendingPathComponent(repairMarkerName)
-        guard !fileManager.fileExists(atPath: repairMarker.path) else { return }
-
-        let all = decode(codingURL) + decode(chatURL)
-        var selectedByID: [String: Conversation] = [:]
-        for conversation in all {
-            if let existing = selectedByID[conversation.id] {
-                if conversation.messages.count > existing.messages.count {
-                    selectedByID[conversation.id] = conversation
-                }
-            } else {
-                selectedByID[conversation.id] = conversation
-            }
-        }
-
-        var coding: [Conversation] = []
-        var chat: [Conversation] = []
-        for var conversation in selectedByID.values.sorted(by: { $0.id < $1.id }) {
-            let isCoding = ConversationStore.normalizedPath(conversation.cwd) != nil
-            conversation.area = isCoding ? .coding : .chat
-            if isCoding {
-                conversation.chatProjectID = nil
-                coding.append(conversation)
-            } else {
-                conversation.cwd = nil
-                chat.append(conversation)
-            }
-        }
-
-        write(coding, to: codingURL, fileManager: fileManager)
-        write(chat, to: chatURL, fileManager: fileManager)
-        writeMarker(repairMarker, fileManager: fileManager, imported: coding.count + chat.count, version: 2)
-    }
-
-    private static func migrateLegacy(paths: SupportPaths, marker: URL, fileManager: FileManager) {
-        let legacyURL = paths.root.appendingPathComponent("sessions.json")
-        guard let data = try? Data(contentsOf: legacyURL),
-              let legacy = try? JSONDecoder().decode([Conversation].self, from: data) else {
-            writeMarker(marker, fileManager: fileManager, imported: 0)
+        paths.ensure()
+        let root = paths.root
+        let canonicalURL = root.appendingPathComponent(canonicalFileName)
+        let markerURL = root.appendingPathComponent(completionMarkerName)
+        // This is a one-time migration. Re-decoding, re-encoding, and verifying
+        // the full session archive on every launch needlessly blocks the first frame.
+        if fileManager.fileExists(atPath: markerURL.path),
+           fileManager.fileExists(atPath: canonicalURL.path) {
             return
         }
+        let sourceURLs = ([canonicalURL] + obsoleteFileNames.map { root.appendingPathComponent($0) })
+            .reduce(into: [URL]()) { result, url in
+                if !result.contains(url) { result.append(url) }
+            }
 
-        let codingURL = paths.root.appendingPathComponent(AgentArea.coding.sessionFileName)
-        let chatURL = paths.root.appendingPathComponent(AgentArea.chat.sessionFileName)
-        let existingCoding = decode(codingURL)
-        let existingChat = decode(chatURL)
-        var existingIDs = Set((existingCoding + existingChat).map(\.id))
-
-        var coding = existingCoding
-        var chat = existingChat
-        for var conversation in legacy where existingIDs.insert(conversation.id).inserted {
-            let isCoding = ConversationStore.normalizedPath(conversation.cwd) != nil
-            conversation.area = isCoding ? .coding : .chat
-            if !isCoding { conversation.cwd = nil }
-            conversation.chatProjectID = nil
-            if isCoding { coding.append(conversation) } else { chat.append(conversation) }
+        var selected: [String: Conversation] = [:]
+        for url in sourceURLs {
+            for conversation in decode(url) {
+                guard let existing = selected[conversation.id] else {
+                    selected[conversation.id] = conversation
+                    continue
+                }
+                if conversation.messages.count > existing.messages.count
+                    || (conversation.messages.count == existing.messages.count
+                        && activity(of: conversation) > activity(of: existing)) {
+                    selected[conversation.id] = conversation
+                }
+            }
         }
 
-        write(coding, to: codingURL, fileManager: fileManager)
-        write(chat, to: chatURL, fileManager: fileManager)
-        writeMarker(marker, fileManager: fileManager, imported: coding.count + chat.count)
+        let projectConversations = selected.values
+            .filter { ConversationStore.normalizedPath($0.cwd) != nil || $0.projectless }
+            .sorted { $0.id < $1.id }
+
+        write(projectConversations, to: canonicalURL, fileManager: fileManager)
+        let verified = decode(canonicalURL)
+        guard verified.count == projectConversations.count,
+              Set(verified.map(\.id)).count == projectConversations.count,
+              Set(verified.map(\.id)) == Set(projectConversations.map(\.id)) else { return }
+
+        for name in obsoleteFileNames {
+            let url = root.appendingPathComponent(name)
+            if url != canonicalURL { try? fileManager.removeItem(at: url) }
+        }
+        try? fileManager.removeItem(at: root.appendingPathComponent("chat-context", isDirectory: true))
+        writeMarker(
+            at: markerURL,
+            count: projectConversations.count,
+            fileManager: fileManager
+        )
+    }
+
+    private static func activity(of conversation: Conversation) -> Date {
+        conversation.messages.map(\.createdAt).max() ?? .distantPast
     }
 
     private static func decode(_ url: URL) -> [Conversation] {
@@ -88,22 +83,30 @@ public enum SessionAreaMigration {
         return values
     }
 
-    private static func write(_ conversations: [Conversation], to url: URL, fileManager: FileManager) {
+    private static func write(
+        _ conversations: [Conversation],
+        to url: URL,
+        fileManager: FileManager
+    ) {
         guard let data = try? JSONEncoder().encode(conversations) else { return }
         try? fileManager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try? data.write(to: url, options: .atomic)
+        let temporary = url.appendingPathExtension("tmp")
+        try? data.write(to: temporary, options: .atomic)
+        try? fileManager.replaceItemAt(url, withItemAt: temporary)
+        if !fileManager.fileExists(atPath: url.path) {
+            try? fileManager.moveItem(at: temporary, to: url)
+        }
     }
 
-    private static func writeMarker(_ url: URL, fileManager: FileManager, imported: Int, version: Int = 1) {
+    private static func writeMarker(at url: URL, count: Int, fileManager: FileManager) {
         let payload: [String: Any] = [
-            "version": version,
+            "version": 1,
             "completedAt": ISO8601DateFormatter().string(from: Date()),
-            "conversationCount": imported,
-            "legacyFile": "sessions.json",
+            "conversationCount": count,
+            "canonicalFile": canonicalFileName,
         ]
         guard JSONSerialization.isValidJSONObject(payload),
               let data = try? JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted]) else { return }
-        try? fileManager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? data.write(to: url, options: .atomic)
     }
 }

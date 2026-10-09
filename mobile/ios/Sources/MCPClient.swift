@@ -149,6 +149,8 @@ final class MCPRegistry: ObservableObject {
     /// Connects to every server and hands the discovered tools to the agent,
     /// namespaced so two servers can expose the same tool name.
     func connectAll(into agent: MobileAgent) async {
+        agent.replaceMCPTools([])
+        var discovered: [AgentToolSpec] = []
         for server in servers {
             let client = MCPClient(server: server, token: server.usesToken ? (secure.read(server.tokenKey) ?? "") : "")
             do {
@@ -163,12 +165,13 @@ final class MCPRegistry: ObservableObject {
                         return try await client.callTool(tool.name, arguments: arguments)
                     }
                 }
-                agent.register(specs)
+                discovered.append(contentsOf: specs)
                 status[server.id] = "\(tools.count) tool(s)"
             } catch {
                 status[server.id] = error.localizedDescription
             }
         }
+        agent.replaceMCPTools(discovered)
     }
 
     static func toolName(server: MCPServer, tool: String) -> String {

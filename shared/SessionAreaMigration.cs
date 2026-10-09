@@ -1,94 +1,92 @@
 // Copyright (c) 2026 DOTS
-// One-time migration from the pre-area conversation stores.
+// Migrate the historical Chat/Coding stores into the single project session store.
 
 using System.Text.Json;
 using PluginRuntime;
 
 namespace DotsHarnessCore;
 
+/// <summary>
+/// Converts every historical conversation file into <c>sessions.json</c>.
+/// Projectless conversations and workspace-bound conversations are both kept;
+/// the migration is idempotent and removes the old area stores only after a
+/// verified write.
+/// </summary>
 public static class SessionAreaMigration
 {
-    private const string MarkerName = "area-session-migration-v1.json";
-    private const string RepairMarkerName = "area-session-migration-v2.json";
+    private const string CanonicalFileName = "sessions.json";
+    private const string CompletionMarkerName = "project-session-migration-v1.json";
+    private static readonly string[] ObsoleteFiles =
+    [
+        "coding-sessions.json",
+        "chat-sessions.json",
+        "conversations.json",
+        "chat-projects.json",
+        "area-session-migration-v1.json",
+        "area-session-migration-v2.json",
+    ];
 
     public static void Run(SupportPaths paths)
     {
         paths.Ensure();
-        var marker = Path.Combine(paths.Root, MarkerName);
-        var codingPath = Path.Combine(paths.Root, AgentArea.Coding.SessionFileName());
-        var chatPath = Path.Combine(paths.Root, AgentArea.Chat.SessionFileName());
-        if (!File.Exists(marker)) MigrateLegacy(paths, marker, codingPath, chatPath);
-
-        var repairMarker = Path.Combine(paths.Root, RepairMarkerName);
-        if (File.Exists(repairMarker)) return;
+        var root = paths.Root;
+        var canonicalPath = Path.Combine(root, CanonicalFileName);
+        var sources = new[] { canonicalPath }
+            .Concat(ObsoleteFiles.Select(name => Path.Combine(root, name)))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
 
         var selected = new Dictionary<string, Conversation>(StringComparer.Ordinal);
-        foreach (var conversation in Read(codingPath).Concat(Read(chatPath)))
+        foreach (var source in sources)
         {
-            if (!selected.TryGetValue(conversation.Id, out var existing)
-                || conversation.Messages.Count > existing.Messages.Count)
+            foreach (var conversation in Read(source))
             {
-                selected[conversation.Id] = conversation;
+                // The transcript with the most messages is the useful copy when
+                // an interrupted previous migration left duplicates behind.
+                if (!selected.TryGetValue(conversation.Id, out var existing)
+                    || conversation.Messages.Count > existing.Messages.Count
+                    || (conversation.Messages.Count == existing.Messages.Count
+                        && Activity(conversation) > Activity(existing)))
+                {
+                    selected[conversation.Id] = conversation;
+                }
             }
         }
 
-        var coding = new List<Conversation>();
-        var chat = new List<Conversation>();
-        foreach (var conversation in selected.Values.OrderBy(item => item.Id, StringComparer.Ordinal))
+        var projectConversations = selected.Values
+            .OrderBy(item => item.Id, StringComparer.Ordinal)
+            .ToList();
+
+        Write(canonicalPath, projectConversations);
+        var verified = Read(canonicalPath);
+        if (verified.Count != projectConversations.Count
+            || verified.Select(item => item.Id).ToHashSet(StringComparer.Ordinal).Count != projectConversations.Count
+            || !verified.Select(item => item.Id).ToHashSet(StringComparer.Ordinal)
+                .SetEquals(projectConversations.Select(item => item.Id)))
         {
-            var hasWorkspace = !string.IsNullOrWhiteSpace(conversation.Cwd);
-            conversation.Area = hasWorkspace ? AgentArea.Coding : AgentArea.Chat;
-            if (hasWorkspace)
-            {
-                conversation.ChatProjectId = null;
-                coding.Add(conversation);
-            }
-            else
-            {
-                conversation.Cwd = null;
-                chat.Add(conversation);
-            }
+            // Never remove a legacy file if the canonical write could not be
+            // read back successfully.
+            return;
         }
 
-        Write(codingPath, coding);
-        Write(chatPath, chat);
-        WriteMarker(repairMarker, coding.Count + chat.Count, version: 2);
+        foreach (var obsolete in ObsoleteFiles)
+        {
+            var file = Path.Combine(root, obsolete);
+            try { if (!string.Equals(file, canonicalPath, StringComparison.Ordinal)) File.Delete(file); }
+            catch { /* cleanup is best effort; the canonical store remains safe */ }
+        }
+
+        var contextDirectory = Path.Combine(root, "chat-context");
+        try { if (Directory.Exists(contextDirectory)) Directory.Delete(contextDirectory, recursive: true); }
+        catch { }
+
+        WriteMarker(Path.Combine(root, CompletionMarkerName), projectConversations.Count);
     }
 
-    private static void MigrateLegacy(SupportPaths paths, string marker, string codingPath, string chatPath)
-    {
-        var legacyFiles = new[]
-        {
-            Path.Combine(paths.Root, "sessions.json"),
-            Path.Combine(paths.Root, "conversations.json"),
-        };
-        var legacy = new List<Conversation>();
-        foreach (var file in legacyFiles)
-        {
-            if (!File.Exists(file)) continue;
-            try
-            {
-                legacy.AddRange(JsonSerializer.Deserialize<List<Conversation>>(File.ReadAllText(file)) ?? []);
-            }
-            catch { }
-        }
-
-        var coding = Read(codingPath);
-        var chat = Read(chatPath);
-        var existing = coding.Concat(chat).Select(item => item.Id).ToHashSet(StringComparer.Ordinal);
-        foreach (var conversation in legacy.Where(item => existing.Add(item.Id)))
-        {
-            var hasWorkspace = !string.IsNullOrWhiteSpace(conversation.Cwd);
-            conversation.Area = hasWorkspace ? AgentArea.Coding : AgentArea.Chat;
-            if (!hasWorkspace) conversation.Cwd = null;
-            conversation.ChatProjectId = null;
-            (hasWorkspace ? coding : chat).Add(conversation);
-        }
-
-        Write(codingPath, coding);
-        Write(chatPath, chat);
-        WriteMarker(marker, coding.Count + chat.Count, version: 1);
-    }
+    private static DateTimeOffset Activity(Conversation conversation) =>
+        conversation.Messages.Count == 0
+            ? DateTimeOffset.MinValue
+            : conversation.Messages.Max(message => message.CreatedAt);
 
     private static List<Conversation> Read(string path)
     {
@@ -106,12 +104,14 @@ public static class SessionAreaMigration
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, JsonSerializer.Serialize(conversations, new JsonSerializerOptions { WriteIndented = true }));
+            var temporary = path + ".tmp";
+            File.WriteAllText(temporary, JsonSerializer.Serialize(conversations, new JsonSerializerOptions { WriteIndented = true }));
+            File.Move(temporary, path, overwrite: true);
         }
         catch { }
     }
 
-    private static void WriteMarker(string path, int count, int version)
+    private static void WriteMarker(string path, int count)
     {
         try
         {
@@ -119,9 +119,10 @@ public static class SessionAreaMigration
                 path,
                 JsonSerializer.Serialize(new
                 {
-                    version,
+                    version = 1,
                     completedAt = DateTimeOffset.UtcNow,
                     conversationCount = count,
+                    canonicalFile = CanonicalFileName,
                 }, new JsonSerializerOptions { WriteIndented = true }));
         }
         catch { }

@@ -11,8 +11,8 @@ public enum PlanStepsTool {
         name: name,
         description: """
         Record or update the step list for the work in progress, so the user can follow it and you \
-        never re-derive what is already settled. Skip it for straightforward tasks - roughly the \
-        easiest quarter - and never write a single-step plan. Send the complete list on every call: \
+        never re-derive what is already settled. Use it only for complex work that \
+        needs a plan; never for simple work, and never write a single-step plan. Send the complete list on every call: \
         exactly one step may be in_progress, and steps already finished stay in the list as done. \
         Call it again right after finishing a step, not in a separate turn of its own.
         """,

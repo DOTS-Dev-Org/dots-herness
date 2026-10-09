@@ -51,6 +51,7 @@ async function telegramApi<T>(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(10_000),
   });
   return res.json() as Promise<{ ok: boolean; result?: T; description?: string }>;
 }
@@ -198,6 +199,7 @@ export async function handleTelegramWebhook(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text: welcomeText }),
+    signal: AbortSignal.timeout(10_000),
   }).catch(() => {});
 
   return true;

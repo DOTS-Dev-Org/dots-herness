@@ -16,7 +16,7 @@ final class RouterAPITests: XCTestCase {
             XCTAssertFalse(provider.name.contains("/") && provider.id == "gpt")
             XCTAssertFalse(provider.logoSymbol.isEmpty)
         }
-        XCTAssertEqual(RouterCatalog.kind(for: "gpt")?.name, "GPT")
+        XCTAssertEqual(RouterCatalog.kind(for: "gpt")?.name, "ChatGPT")
         XCTAssertEqual(RouterCatalog.kind(for: "openai")?.name, "OpenAI")
         XCTAssertEqual(RouterCatalog.kind(for: "gpt")?.kind, .oauthBrowser)
         XCTAssertEqual(RouterCatalog.kind(for: "gpt")?.api, .chatGPT)
@@ -32,7 +32,7 @@ final class RouterAPITests: XCTestCase {
         ])
         XCTAssertNotEqual(first.id, second.id)
         XCTAssertEqual(first.provider, "gpt")
-        XCTAssertEqual(RouterCatalog.label(for: first.provider), "GPT")
+        XCTAssertEqual(RouterCatalog.label(for: first.provider), "ChatGPT")
         XCTAssertEqual(RouterCatalog.label(for: "custom:endpoint"), "Custom API")
     }
 

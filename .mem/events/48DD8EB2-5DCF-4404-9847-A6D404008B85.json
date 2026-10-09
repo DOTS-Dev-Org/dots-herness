@@ -1,0 +1,34 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-08T21:33:53Z",
+  "eventId" : "48DD8EB2-5DCF-4404-9847-A6D404008B85",
+  "lamport" : 64,
+  "parents" : [
+    "E2924E9C-E63A-449B-8A29-E1B66F412D24"
+  ],
+  "payload" : {
+    "memoryRevision" : 63,
+    "model" : "gpt-6-luna",
+    "promptHash" : "cbc6a2bd70039cf2bb6d45970a9f48b4d3a24c16f0dc80a76ad8621e5b0a3ce8",
+    "promptSummary" : "MacOS, Windows ve Linux boyutlarımız ne kadar? Paket boyutları.",
+    "provider" : "ChatGPT",
+    "runId" : "0BD4562A-0972-4C1A-AFF0-3BEA70B4F18C",
+    "startedAt" : "2026-10-08T21:33:53Z"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "Z\/AGgPENk8VM3yajHQaaVLWlNeEqx5Ul1L4my9HQbj33c+3jZWShYyYUWmda8UwU0aKkNzCjoy3nfgcr5P8dow=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "task.started"
+}

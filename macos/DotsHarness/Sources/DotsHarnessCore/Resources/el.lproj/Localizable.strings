@@ -80,7 +80,6 @@
 "settings.title" = "Ρυθμίσεις";
 "settings.backToChats" = "Επιστροφή στις συνομιλίες";
 "settings.tab.general" = "Γενικά";
-"settings.tab.pet" = "Pet";
 "settings.tab.providers" = "Παρόχους";
 "settings.tab.custom" = "Προσαρμοσμένο API";
 "settings.tab.local" = "Τοπικά μοντέλα";
@@ -306,22 +305,22 @@
 "composer.add" = "Προσθήκη";
 "composer.stopListening" = "Σταματήστε να ακούτε και προσθέστε το κείμενο στο προσχέδιο";
 "composer.keyboardHelp" = "Enter: αποστολή · Shift+Enter: νέα γραμμή · ⌘/Ctrl+Enter: steer";
-"composer.followUp.hint" = "Πατήστε Tab για να αποδεχτείτε την πρόταση επόμενου μηνύματος";
+"composer.followUp.hint" = "Πατήστε Tab για να αποδεχτείτε την πρόταση μηνύματος παρακολούθησης";
 "composer.selectModel" = "Επιλέξτε μοντέλο";
 "composer.installedSkill" = "Εγκατεστημένη δεξιότητα";
 "composer.settings" = "Ρυθμίσεις";
 "composer.skills" = "Δεξιότητες";
 "composer.personal" = "Προσωπικά";
-"composer.projectPickerHelp" = "Επιλέξτε το έργο για αυτήν τη συνομιλία";
+"composer.projectPickerHelp" = "Επιλέξτε το έργο για αυτή τη συνομιλία";
 "composer.projectPickerTitle" = "Έργο";
 "composer.chooseProject" = "Επιλέξτε έργο";
 "composer.noProject" = "Δεν επιλέχθηκε έργο";
 "composer.dontWorkInProject" = "Μην εργάζεστε σε ένα έργο";
 "workLocation.title" = "Εργασία μέσα";
 "workLocation.help" = "Επιλέξτε πού εκτελείται αυτή η εργασία";
-"workLocation.local" = "Τοπικό";
+"workLocation.local" = "Τοπικά";
 "workLocation.localDetail" = "Εκτελέστε αυτήν την εργασία σε αυτόν τον υπολογιστή";
-"workLocation.localWorktree" = "Νέο τοπικό δέντρο εργασίας";
+"workLocation.localWorktree" = "Νέο τοπικό worktree";
 "workLocation.localWorktreeDetail" = "Χρησιμοποιήστε ένα μεμονωμένο ταμείο σε αυτόν τον υπολογιστή";
 "workLocation.remote" = "Άλλος υπολογιστής";
 "workLocation.remoteDetail" = "Εργασία μέσω SSH σε υπολογιστή στον οποίο συνδέεστε";
@@ -377,8 +376,8 @@
 "ssh.error.pathMissing" = "Ο φάκελος %@ δεν υπάρχει στον απομακρυσμένο υπολογιστή.";
 "ssh.error.configWriteFailed" = "Δεν ήταν δυνατή η εγγραφή του %@ στο ~/.ssh/config.";
 "tool.remoteUnavailable" = "Το %1$@ δεν είναι διαθέσιμο ενώ εργάζεστε στο %2$@. Χρησιμοποιήστε run_command με εντολές κελύφους.";
-"git.branchHelp" = "Επιλέξτε έναν κλάδο Git";
-"git.detached" = "Αποσπασμένο ΚΕΦΑΛΙ";
+"git.branchHelp" = "Επιλέξτε κλάδο Git";
+"git.detached" = "Αποσπασμένο HEAD";
 "git.search" = "Αναζήτηση υποκαταστημάτων";
 "git.branches" = "Υποκαταστήματα";
 "git.noBranches" = "Δεν βρέθηκαν υποκαταστήματα";
@@ -413,8 +412,6 @@
 "slash.model" = "Μοντέλο";
 "slash.plan" = "Λειτουργία σχεδίου";
 "slash.planDetail" = "Ενεργοποιήστε τη λειτουργία σχεδίου";
-"slash.mascot" = "Pet";
-"slash.mascotDetail" = "Ξυπνήστε ή κρύψτε το κατοικίδιο";
 "slash.pluginCreator" = "Δημιουργός προσθέτων";
 "slash.pluginCreatorDetail" = "Δημιουργία νέου πρόσθετου";
 "pluginCreator.template" = "Πρότυπο";
@@ -501,7 +498,6 @@
 "sidebar.hide" = "Απόκρυψη";
 "sidebar.show" = "Εμφάνιση";
 "sidebar.selectProject" = "Επιλέξτε έργο";
-"sidebar.continueWithoutProject" = "Συνεχίστε χωρίς έργο";
 "sidebar.projectOptions" = "Επιλογές έργου";
 "sidebar.editProject" = "Επεξεργασία έργου";
 "sidebar.addProject" = "Προσθήκη έργου";
@@ -533,28 +529,6 @@
 "sidebar.accountOptions" = "Επιλογές λογαριασμού";
 "sidebar.accountUsage" = "Λογαριασμός DOTS και χρήση";
 
-"pet.position.bottomTrailing" = "Κάτω δεξιά";
-"pet.position.bottomLeading" = "Κάτω αριστερά";
-"pet.position.topTrailing" = "Πάνω δεξιά";
-"pet.position.topLeading" = "Επάνω αριστερά";
-"pet.settings" = "Ρυθμίσεις για κατοικίδια";
-"pet.hide" = "Απόκρυψη κατοικίδιου";
-"pet.dragHint" = "DOTS Pet · Κρατήστε για να μετακινηθείτε";
-"pet.stopAndSend" = "Σταματήστε να ακούτε και στείλτε το στην επιλεγμένη συνομιλία";
-"pet.micOpening" = "Άνοιγμα μικροφώνου…";
-"pet.listening" = "Ακούγοντας…";
-"pet.transcribing" = "Το τοπικό φωνητικό μοντέλο μεταγράφει…";
-"pet.sending" = "Αποστολή στην επιλεγμένη συνομιλία…";
-"pet.visibility" = "Ορατότητα κατοικίδιων ζώων";
-"pet.show" = "Εμφάνιση κατοικίδιου";
-"pet.visibilityHint" = "Το κατοικίδιο επιπλέει στην οθόνη μόνο όταν αυτή η επιλογή είναι ενεργοποιημένη. Είναι απενεργοποιημένο κατά την πρώτη εκκίνηση.";
-"pet.appearance" = "Εμφάνιση";
-"pet.position" = "Θέση";
-"pet.size" = "Μέγεθος";
-"pet.sizeValue" = "%d px";
-"pet.avatar" = "Avatar";
-"pet.preview" = "Προεπισκόπηση";
-"pet.title" = "Pet";
 
 "usage.title" = "Χρήση";
 "usage.accountSummary" = "Σύνοψη λογαριασμού DOTS YAZILIM αυτής της περιόδου";
@@ -870,7 +844,6 @@
 "marketplace.install" = "Εγκατάσταση";
 "marketplace.search" = "Προσθήκες αναζήτησης";
 "marketplace.update" = "Ενημέρωση v%@ → v%@";
-"pet.avatarHint" = "Επιλέξτε ένα avatar για κατοικίδια.";
 "router.customEndpointHint" = "Προσαρμοσμένο τελικό σημείο API";
 "router.noKeyRequired" = "Δεν απαιτείται κλειδί. Συνδεθείτε στη διαδρομή μέσω αυτού του παρόχου.";
 "settings.addProviderCustom" = "Προσθέστε αυτόν τον πάροχο μέσω προσαρμοσμένου API.";
@@ -1104,9 +1077,6 @@
 "feedback.tag.negative_other" = "Άλλο";
 
 // Completed translations for keys added to the desktop catalog.
-"assistantMode.title" = "Λειτουργία βοηθού";
-"assistantMode.coding" = "Προγραμματισμός";
-"assistantMode.chat" = "Συνομιλία";
 "tasks.close" = "Κλείσιμο εργασιών";
 "tasks.back" = "Πίσω";
 "tasks.new" = "Νέα εργασία";
@@ -1147,3 +1117,213 @@
 "settings.compactTrigger" = "Αυτόματη συμπίεση πλαισίου στο";
 "settings.compactTrigger.hint" = "Ποσοστό του παραθύρου πλαισίου κάθε μοντέλου. Μεγαλύτερη τιμή διατηρεί περισσότερο την προσωρινή μνήμη του prompt, επειδή η συμπίεση την ξαναγράφει.";
 "conversation.translate" = "Μετάφραση";
+
+
+// Completed translations for keys added to the desktop catalog.
+"tray.section.running" = "Συνομιλίες σε εκτέλεση";
+"tray.section.waiting" = "Χρειάζεται προσοχή";
+"tray.write" = "Γράψτε μήνυμα";
+"tray.openUsage" = "Άνοιγμα οθόνης χρήσης";
+"tray.noChats" = "Καμία συνομιλία αυτή τη στιγμή";
+"tray.unread" = "Νέα απάντηση";
+
+// Write-lease conflict copy.
+"conflict.policy.waitThenAsk" = "Περίμενε, μετά ρώτα";
+"conflict.policy.waitThenAsk.detail" = "Περιμένει σιωπηλά την άλλη συνομιλία και ρωτά μόνο αν η αναμονή παρατείνεται.";
+"conflict.policy.ask" = "Ρώτα με";
+"conflict.policy.ask.detail" = "Ρωτά μόλις δύο συνομιλίες θελήσουν το ίδιο αρχείο.";
+"conflict.policy.waitOnly" = "Πάντα περίμενε";
+"conflict.policy.waitOnly.detail" = "Δεν ρωτά: κάθε εγγραφή περιμένει τη συνομιλία που κρατά το αρχείο.";
+"conflict.title" = "Η άλλη συνομιλία γράφει %@";
+"conflict.stillBusy" = "Η εγγραφή ανεστάλη: %@ το γράφει ακόμη άλλη συνομιλία.";
+"conflict.userSkipped" = "Ζητήθηκε παράλειψη: το %@ έμεινε στην άλλη συνομιλία (%@).";
+"conflict.stoppedHolder" = "Η συνομιλία «%@» σταμάτησε κατόπιν αιτήματός σας και η εγγραφή προχώρησε.";
+"conflict.stoppedOthers" = "Οι άλλες συνομιλίες του έργου σταμάτησαν κατόπιν αιτήματός σας και η εγγραφή προχώρησε.";
+"conflict.wholeProject" = "όλο το έργο (εντολή: %@)";
+"conflict.banner.title" = "Άλλη συνομιλία γράφει αυτό το αρχείο";
+"conflict.banner.body" = "%1$@ · το κρατά η «%2$@» εδώ και %3$d δευτ.";
+"conflict.banner.keepWaiting" = "Συνέχισε την αναμονή";
+"conflict.banner.stopHolder" = "Σταμάτα τη συνομιλία";
+"conflict.banner.stopAllOthers" = "Σταμάτα όλες τις άλλες συνομιλίες";
+"conflict.banner.skip" = "Παράλειψη της εγγραφής";
+"conflict.waiting" = "Αναμονή για την «%@» που γράφει: %@";
+"settings.workspaceConflictPolicy" = "Αν άλλη συνομιλία γράφει το ίδιο αρχείο";
+"settings.conflictWaitSeconds" = "Περίμενε πριν ρωτήσεις";
+"settings.conflictWaitValue" = "%d δευτερόλεπτα";
+
+
+"conversation.ranCommand" = "Ran 1 command";
+"conversation.ranCommands" = "Ran %d commands";
+"conversation.runningTools" = "Running tools…";
+"conversation.thinkingPhase" = "Thinking…";
+"conversation.tokensCount" = "%@ tokens";
+"usage.context.window" = "Παράθυρο περιβάλλοντος";
+"usage.planLimits" = "Όρια χρήσης του πλάνου";
+"ask.other" = "Other";
+"ask.next" = "Next";
+"ask.skipShort" = "Skip";
+"composer.queue.one" = "1 message queued";
+"composer.queue.many" = "%d messages queued";
+"composer.queue.edit" = "Edit";
+"composer.queue.editBlocked" = "Clear the message box to edit";
+"composer.queue.remove" = "Remove";
+"git.createPR" = "Δημιουργία PR";
+"git.hideBar" = "Απόκρυψη";
+"composer.queue.next" = "Next: %@";
+
+// Composer, git bar and usage popover.
+"usage.context.tooltip" = "Χρήση περιβάλλοντος και tokens";
+"usage.context.conversation" = "Μηνύματα συνομιλίας";
+"usage.context.toolDefinitions" = "Ορισμοί εργαλείων";
+"usage.context.mcpDefinitions" = "Ορισμοί εργαλείων MCP";
+"usage.context.systemPrompt" = "Οδηγίες συστήματος";
+"usage.context.cacheHit" = "Επιτυχίες προσωρινής μνήμης prompt";
+"usage.context.notReported" = "Δεν αναφέρθηκε από τον πάροχο";
+"usage.context.cacheWrite" = "%@ tokens γράφτηκαν στην προσωρινή μνήμη";
+
+// Local AI runtime and custom endpoint tuning.
+"custom.modelOptional" = "Όνομα μοντέλου (προαιρετικό)";
+"custom.contextOptional" = "Παράθυρο περιβάλλοντος σε tokens (προαιρετικό)";
+"custom.contextHint" = "Αφήστε και τα δύο κενά για ανάγνωση από τον διακομιστή. Ορίστε το περιβάλλον όταν ο διακομιστής δεν το αναφέρει (Ollama: ίδιο με OLLAMA_CONTEXT_LENGTH).";
+"custom.contextInvalid" = "Το παράθυρο περιβάλλοντος πρέπει να είναι θετικός αριθμός.";
+"custom.detected" = "Εκτελούνται σε αυτόν τον υπολογιστή";
+"custom.noModelAvailable" = "Το %@ δεν εμφανίζει μοντέλα. Εκκινήστε τον διακομιστή του ή ορίστε όνομα μοντέλου για το endpoint.";
+"local.extraArgs" = "Επιπλέον ορίσματα llama-server";
+"local.mlxExtraArgs" = "Επιπλέον ορίσματα διακομιστή mlx_lm";
+"local.gpuLayers" = "Επίπεδα GPU (auto, all ή αριθμός)";
+"local.hardware" = "Υλικό";
+"local.hardwareGPU" = "%@ · %@ μνήμη GPU · %@ RAM";
+"local.importGGUF" = "Προσθήκη αρχείου GGUF…";
+"local.installMLX" = "Εγκατάσταση MLX";
+"local.installingMLX" = "Εγκατάσταση MLX (Python + mlx-lm)…";
+"local.kvCache" = "Τύπος κρυφής μνήμης KV";
+"local.servingContext" = "%@ · %d tokens";
+"local.tooLarge" = "Πολύ μεγάλο";
+"local.tuning" = "Επιδόσεις";
+"local.tuningHint" = "Κενό ή auto: το runtime προσαρμόζει το μοντέλο στη μνήμη της GPU σας. Οι αλλαγές ισχύουν στην επόμενη εκκίνηση μοντέλου.";
+"local.contextSize" = "Μέγεθος περιβάλλοντος (tokens)";
+"local.threads" = "Νήματα CPU";
+"local.batchSize" = "Μέγεθος παρτίδας";
+"local.forget" = "Αφαίρεση από τη λίστα";
+"localModel.needsMemory" = "Χρειάζεται περίπου %d GB μνήμης GPU ή RAM.";
+"localRuntime.helperFailed" = "Το %@ απέτυχε (κωδικός εξόδου %d)";
+"localRuntime.mlxUnsupported" = "Το MLX απαιτεί Mac με Apple Silicon.";
+"local.flashAttention" = "Flash attention";
+"local.hardwareMemory" = "%@ RAM";
+
+// Translations completed for keys that had no localized text.
+"conversation.fullToolOutput" = "Πλήρης έξοδος εργαλείου";
+"sidebar.showSidebar" = "Εμφάνιση πλαϊνής στήλης";
+"sidebar.hideSidebar" = "Απόκρυψη πλαϊνής στήλης";
+"navigation.back" = "Πίσω";
+"navigation.forward" = "Εμπρός";
+"settings.autoApprovePlans" = "Αυτόματη έγκριση σχεδίων";
+"settings.autoApprovePlans.hint" = "Όταν είναι ενεργό, το σχέδιο που παράγεται εφαρμόζεται χωρίς αναμονή για ξεχωριστή έγκριση σχεδίου. Οι εγκρίσεις σε επίπεδο εργαλείου εξακολουθούν να ισχύουν.";
+"media.fallbackUsed" = "Ο επιλεγμένος πάροχος δεν μπόρεσε να δημιουργήσει αυτή την εικόνα. Δημιουργήθηκε με ένα εφάπαξ εφεδρικό αίτημα μέσω %@/%@· ο πάροχος και το μοντέλο της κύριας συνομιλίας δεν άλλαξαν, άρα η κρυφή μνήμη προτροπών παραμένει ανέπαφη.";
+"media.imageUnsupportedWithFallbackHint" = "Δεν μπορώ να δημιουργήσω αυτή την εικόνα με %@. Ρυθμίστε ένα API ή πάροχο εικόνων ως εφεδρική λύση. Η αλλαγή του κύριου μοντέλου συνομιλίας μόνο για δημιουργία εικόνας μπορεί να χαλάσει την κρυφή μνήμη προτροπών του παρόχου.";
+"conversation.generationResumed" = "Το μήνυμα συνεχίστηκε";
+"conversation.cancelPlan" = "Ακύρωση σχεδίου";
+"conversation.cancelPlanHelp" = "Ακύρωση αυτού του σχεδίου και αποδέσμευση των μηνυμάτων σε αναμονή";
+"conversation.thinking" = "Διαδικασία σκέψης";
+"usage.manageResets" = "Διαχείριση επαναφορών";
+"usage.useReset" = "Χρήση επαναφοράς";
+"usage.resetTitle" = "Χρήση επαναφοράς ορίου Claude;";
+"usage.openClaude" = "Συνέχεια στο Claude";
+"usage.resetConfirmation" = "Θα ανοίξει η σελίδα χρήσης του Claude. Συνδεθείτε στο %@ και ελέγξτε την επαναφορά που προσφέρεται σε αυτόν τον λογαριασμό. Για να τη χρησιμοποιήσετε, κάντε κλικ στο Δωρεάν επαναφορά και επιβεβαιώστε στο Claude. Μια επαναφορά που χρησιμοποιήθηκε δεν αναιρείται. Τα όρια θα ανανεωθούν όταν επιστρέψετε στο HerNess.";
+"usage.resetOpenFailed" = "Δεν ήταν δυνατό το άνοιγμα του Claude. Ελέγξτε ότι ο λογαριασμός είναι ακόμη συνδεδεμένος και δοκιμάστε ξανά.";
+"conversation.review" = "Έλεγχος";
+"dock.noWorkspace" = "Επιλέξτε πρώτα έναν φάκελο εργασίας.";
+"dock.branch" = "Κλάδος";
+"dock.refresh" = "Ανανέωση";
+"dock.commit" = "Commit";
+"dock.push" = "Push";
+"dock.fetch" = "Fetch";
+"dock.commitOrPush" = "Commit ή push";
+"dock.commitMessage" = "Μήνυμα commit";
+"dock.noChanges" = "Καμία αλλαγή από τον πράκτορα.";
+"dock.whyRequest" = "Το αίτημά σας";
+"dock.whyAgent" = "Εξήγηση του πράκτορα";
+"dock.notRepo" = "Αυτός ο φάκελος δεν είναι αποθετήριο git.";
+"dock.filterFiles" = "Φιλτράρισμα αρχείων…";
+"dock.openFile" = "Άνοιγμα αρχείου";
+"dock.selectFile" = "Επιλέξτε ένα αρχείο από το δέντρο του χώρου εργασίας";
+"dock.binaryFile" = "Δυαδικό ή μη αναγνώσιμο αρχείο";
+"project.missing.title" = "Δεν βρέθηκε ο φάκελος του έργου: %@";
+"project.missing.message" = "Ο φάκελος του έργου στη θέση '%@' μπορεί να μετακινήθηκε ή να διαγράφηκε. Επιλέξτε τη νέα του θέση ή αφαιρέστε το έργο.";
+"project.missing.locate" = "Εύρεση τοποθεσίας…";
+"project.missing.readOnly" = "Ο φάκελος του έργου δεν είναι διαθέσιμος. Μπορείτε να δείτε τις προηγούμενες συνομιλίες· η δημιουργία νέων συνομιλιών και η αποστολή μηνυμάτων είναι απενεργοποιημένες μέχρι να επιλέξετε νέα θέση.";
+"queue.waitingForPlan" = "Αναμονή έγκρισης σχεδίου";
+"settings.closeToTray" = "Να παραμένει σε λειτουργία στη γραμμή ειδοποιήσεων όταν κλείνει το παράθυρο";
+"settings.closeToTray.hint" = "Οι εκτελέσεις, τα τερματικά και οι προγραμματισμένες εργασίες συνεχίζουν όσο το παράθυρο είναι κρυφό· το εικονίδιο της γραμμής ειδοποιήσεων το επαναφέρει.";
+"tray.show" = "Άνοιγμα παραθύρου";
+"context.overflowTitle" = "Αυτή η συνομιλία δεν θα χωρέσει στο νέο μοντέλο";
+"context.overflowReason" = "Το %1$@ χρειάζεται περίπου %2$d tokens για να συνεχίσει και σε αυτό το μοντέλο είναι ελεύθερα μόνο %3$d.";
+"context.overflowByModel" = "Η σύνοψη θα γραφτεί από το %@, το μικρότερο συνδεδεμένο μοντέλο που μπορεί ακόμη να διαβάσει τη συνομιλία.";
+"context.overflowLocally" = "Κανένα συνδεδεμένο μοντέλο δεν μπορεί να διαβάσει τη συνομιλία, οπότε συντομεύεται χωρίς να ερωτηθεί κάποιο μοντέλο.";
+"context.overflowCompress" = "Συμπίεση και συνέχεια";
+"context.overflowNotNow" = "Όχι τώρα";
+"context.overflowDeclined" = "Η αποστολή σταμάτησε: η συνομιλία δεν χωρά στο νέο μοντέλο.";
+"usage.context.title" = "Χρήση";
+"usage.context.input" = "Είσοδος που στάλθηκε";
+"usage.context.estimatedInput" = "Εκτιμώμενη είσοδος";
+"usage.context.output" = "Έξοδος";
+"usage.context.latestRequest" = "Τελευταίο αίτημα · παράθυρο περιβάλλοντος";
+"usage.context.estimatedBreakdown" = "Εκτιμώμενη ανάλυση εισόδου";
+"usage.context.estimateNote" = "Τα σύνολα εισόδου/εξόδου του παρόχου εμφανίζονται όταν είναι διαθέσιμα. Διαφορετικά, τα σύνολα εισόδου και οι κατηγορίες εργαλείων/MCP είναι τοπικές εκτιμήσεις.";
+"usage.context.tokens" = "tokens";
+"usage.context.toolCalls" = "Κλήσεις εργαλείων";
+"usage.context.mcpCalls" = "Κλήσεις MCP";
+"usage.context.toolResults" = "Αποτελέσματα εργαλείων";
+"usage.context.mcpResults" = "Αποτελέσματα MCP";
+"plan.proposed" = "Το Claude πρότεινε ένα σχέδιο";
+"plan.reject" = "Απόρριψη";
+"plan.revise" = "Αναθεώρηση…";
+"plan.accept" = "Αποδοχή";
+"plan.acceptAuto" = "Αποδοχή και αυτόματη λειτουργία";
+"plan.open" = "Άνοιγμα σχεδίου";
+"plan.empty" = "Δεν υπάρχει ακόμη σχέδιο";
+"dock.expand" = "Ανάπτυξη";
+"dock.collapse" = "Σύμπτυξη";
+"usage.context.cacheReuse" = "Επαναχρησιμοποίηση cache σε αυτή τη συνομιλία";
+"usage.context.cacheFreshInput" = "New / outside-breakpoint input: %@ tokens";
+"usage.context.cacheCoverage" = "Κάλυψη μέτρησης: %@ · %@ / %@ αιτήματα";
+"usage.context.cacheLatency" = "Μέση καθυστέρηση αιτήματος: %@ ms";
+"usage.context.cacheLoss" = "Μεγαλύτερη απώλεια κρυφής μνήμης: %@ · %@ tokens";
+"tray.back" = "Συνομιλίες";
+
+"composer.cacheExpired.explanation" = "Η εκτιμώμενη διάρκεια ζωής της κρυφής μνήμης έχει παρέλθει. Η κρυφή μνήμη prompt είναι μια προσωρινή κατάσταση επεξεργασίας στην πλευρά του παρόχου· το ιστορικό της συνομιλίας σας παραμένει αποθηκευμένο. Αν συνεχίσετε με ολόκληρο το ιστορικό, αυτά τα tokens μπορεί να μετρηθούν ξανά ως νέα είσοδος. Μόνο τα δεδομένα χρήσης του επόμενου αιτήματος επιβεβαιώνουν αν ο πάροχος είχε ακόμη την κρυφή μνήμη.";
+"composer.accountSwitched.notice" = "Αυτή η συνομιλία πέρασε σε άλλον λογαριασμό με το ίδιο μοντέλο. Εκεί η κρυφή μνήμη ξεκινά από το μηδέν· η συνέχεια μπορεί να καταναλώσει περισσότερα tokens και να κοστίσει περισσότερο.";
+"composer.contextFull.notice" = "Το παράθυρο περιβάλλοντος έχει σχεδόν γεμίσει· η συνέχεια μπορεί να καταναλώσει περισσότερα tokens και να κοστίσει περισσότερο. Ξεκινήστε νέα συνομιλία με μια σύντομη περίληψη.";
+"composer.cacheExpired.infoTitle" = "Γιατί το βλέπω αυτό;";
+"composer.cacheExpired.notice" = "Η κρυφή μνήμη ίσως έχει λήξει· η συνέχεια μπορεί να καταναλώσει περισσότερα tokens και να κοστίσει περισσότερο. Ξεκινήστε νέα συνομιλία με μια σύντομη περίληψη.";
+"feedback.tag.apply_elsewhere" = "Apply it elsewhere";
+"feedback.tag.broke_existing_feature" = "Broke an existing feature";
+"feedback.tag.did_not_follow_project_style" = "Didn't follow project style";
+"feedback.tag.ignored_project_architecture" = "Ignored project architecture";
+"feedback.tag.keep_project_style" = "Keep the project style";
+"feedback.tag.reuse_architecture" = "Reuse this architecture";
+"feedback.tag.reuse_token_pattern" = "Reuse this token pattern";
+"feedback.tag.wrong_theme_or_token" = "Wrong theme or token";
+
+// Completed translations for keys added to the desktop catalog.
+"conversation.filesChangedCount" = "Άλλαξαν %d αρχεία";
+"conversation.filesLineSummary" = "+%d −%d";
+"conversation.lineCountsUnavailable" = "Ο αριθμός γραμμών δεν είναι διαθέσιμος";
+"conversation.filesMore" = "Εμφάνιση %d ακόμη αρχείων";
+"conversation.filesLess" = "Εμφάνιση λιγότερων αρχείων";
+"conversation.undoChanges" = "Αναίρεση";
+"conversation.viewChanges" = "Προβολή αλλαγών";
+"conversation.filesReverted" = "Οι αλλαγές στα αρχεία αναιρέθηκαν.";
+
+// Completed translations for keys added to the desktop catalog.
+"composer.modelSwitched.notice" = "Το μοντέλο άλλαξε. Η κρυφή μνήμη δεν μεταφέρεται στο νέο μοντέλο· ολόκληρο το ιστορικό υποβάλλεται ξανά σε επεξεργασία, κάτι που μπορεί να καταναλώσει περισσότερα tokens και να κοστίσει περισσότερο.";
+
+"archive.title" = "Αρχειοθετημένες συνομιλίες";
+"archive.empty" = "Δεν υπάρχουν αρχειοθετημένες συνομιλίες.";
+
+"conversation.plan" = "Σχέδιο";
+"conversation.system" = "Σύστημα";
+
+"archive.confirmDelete" = "Να διαγραφεί οριστικά αυτή η συνομιλία;";
+"archive.deletePermanently" = "Οριστική διαγραφή";
+"conversation.processedTokensCount" = "%@ tokens";

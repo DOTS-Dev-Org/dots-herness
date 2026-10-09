@@ -40,12 +40,15 @@ const database = process.env.HERNESS_LEGAL_DATABASE || "dotsherness-db";
 
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 const locales = manifest.languages.map((item) => item.code);
-const requiredLocales = ["tr", "en", ...locales.filter((locale) => locale !== "tr" && locale !== "en")];
+const onlyLocales = valueArg("--locales", "");
+const requiredLocales = onlyLocales
+  ? onlyLocales.split(",").filter(Boolean)
+  : ["tr", "en", ...locales.filter((locale) => locale !== "tr" && locale !== "en")];
 const documentNames = ["terms", "privacy-notice"];
 
 function usage(message) {
   if (message) console.error(`error: ${message}`);
-  console.error(`usage: node cloudflare/scripts/seed-legal-documents.mjs [--remote] [--source-dir=DIR] [--drafts-dir=DIR] [--version=VERSION]`);
+  console.error(`usage: node cloudflare/scripts/seed-legal-documents.mjs [--remote] [--locales=tr,en] [--source-dir=DIR] [--drafts-dir=DIR] [--version=VERSION]`);
   process.exit(2);
 }
 
@@ -122,7 +125,6 @@ async function collectDocuments() {
 
 function sqlFor(documents, createdAt) {
   const lines = [
-    "BEGIN TRANSACTION;",
     "INSERT INTO legal_documents (app_slug, document_key, locale, version, body_markdown, sha256, r2_key, translation_status, source_locale, created_at, published_at) VALUES",
   ];
   const rows = [];
@@ -137,13 +139,12 @@ function sqlFor(documents, createdAt) {
   }
   lines.push(rows.join(",\n"));
   lines.push("ON CONFLICT(app_slug, document_key, locale, version) DO UPDATE SET body_markdown=excluded.body_markdown, sha256=excluded.sha256, r2_key=excluded.r2_key, translation_status=excluded.translation_status, source_locale=excluded.source_locale, published_at=excluded.published_at;");
-  lines.push("COMMIT;");
   return lines.join("\n");
 }
 
 function validate(documents) {
   const count = requiredLocales.length * documentNames.length;
-  if (count !== 60) throw new Error(`expected 60 legal documents, got ${count}`);
+  if (!onlyLocales && count !== 60) throw new Error(`expected 60 legal documents, got ${count}`);
   for (const locale of requiredLocales) {
     for (const documentName of documentNames) {
       const item = documents[locale]?.[documentName];
@@ -163,7 +164,7 @@ async function main() {
   try {
     const sqlPath = join(temporaryDirectory, "legal-documents.sql");
     writeFileSync(sqlPath, sqlFor(documents, createdAt), "utf8");
-    console.log(`validated ${requiredLocales.length} locales × ${documentNames.length} documents = 60 records`);
+    console.log(`validated ${requiredLocales.length} locales × ${documentNames.length} documents = ${requiredLocales.length * documentNames.length} records`);
     console.log(`version: ${version}`);
     console.log(`source: ${sourceDir || sourceUrl}`);
     if (!args.has("--remote")) {

@@ -2,6 +2,7 @@
 // Native provider accounts, routing metadata, and the direct GPT login flow.
 
 import AppKit
+import Combine
 import CryptoKit
 import Foundation
 import HarnessPluginKit
@@ -41,11 +42,34 @@ public final class RouterController: ObservableObject {
     @Published public var keys: [RouterKey] = []
     @Published public var nodes: [RouterNode] = []
     @Published public var models: [RouterModel] = []
-    @Published public var selectedModelID: String = ""
+    /// The model the app routes with. Only `select(modelID:)` may change it, so the
+    /// value is always empty (nothing chosen yet), the auto sentinel, or an id a
+    /// catalog listed. Writing this directly would allow phantom models.
+    @Published public internal(set) var selectedModelID: String = ""
+    /// A model id that was chosen before any catalog knew it, kept only so it can be
+    /// restored once a listing brings it back. Never routed or displayed as chosen.
+    var pendingModelID: String?
+    var usagePolling: Task<Void, Never>?
+    /// Account id → earliest instant its usage may be polled again.
+    var usageBackoff: [String: Date] = [:]
     /// Reasoning effort for the selected model. Empty means "provider default".
     @Published public var selectedEffort: String = ""
     /// Fast response speed; only honoured when `supportsFast` for the model.
     @Published public var fastMode = false
+    /// Economy keeps the selected model/effort but trims optional output and
+    /// model-facing history deterministically.
+    @Published public var usageMode: AgentUsageMode = .standard
+    /// Persistent response prose preference. It is separate from Economy:
+    /// changing this changes prose guidance, not the stable cache prefix.
+    @Published public var responseStylePreference: AgentResponseStylePreference = .ultra
+    /// The model the exploration subagent runs on; empty picks one automatically.
+    @Published public var explorationModelID = ""
+    public static let explorationModelKey = "agent.explorationModel"
+    /// Whether the run may delegate. Delegation is opt-in because every side
+    /// run creates additional provider requests and context.
+    @Published public var subagentsPreference: Bool?
+    public static let subagentsKey = "agent.subagentsEnabled"
+    public var subagentsEnabled: Bool { subagentsPreference ?? false }
     /// What automatic routing picked for the last request, for the picker to show.
     @Published public internal(set) var lastAutoDecision: ModelDecision?
     /// Set when a request only succeeded after stepping past a provider that was out
@@ -73,12 +97,19 @@ public final class RouterController: ObservableObject {
     @Published public var customPrefix = "custom"
     @Published public var customBaseURL = "http://127.0.0.1:11434/v1"
     @Published public var customAPIKey = ""
+    /// Optional: the model to request when the server cannot list its models.
+    @Published public var customModel = ""
+    /// Optional context window in tokens; empty asks the server, then guesses.
+    @Published public var customContextWindow = ""
+    /// OpenAI-compatible servers already running on this machine.
+    @Published public var detectedServers: [LocalServerDiscovery.Server] = []
     @Published public var customKind: CustomAPIKind = .openai
     @Published public var customAPIType: CustomOpenAIAPIType = .chat
     @Published public var editingNodeID: String?
     public var onConnectionChanged: ((ConnectionTransition) -> Void)?
 
     public let store: NativeProviderStore
+    let modelCatalogCacheURL: URL
     public let imageAdapters: ProviderImageAdapterRegistry
     var gateway: ProviderGateway?
     let cloudTunnel: CloudTunnelProcess
@@ -90,7 +121,10 @@ public final class RouterController: ObservableObject {
     /// Live listings go stale as providers ship and retire models; re-fetch after this long.
     static let modelRefreshInterval: TimeInterval = 6 * 3600
     var modelRefreshTask: Task<Void, Never>?
-    /// Effort chosen by automatic routing for the in-flight request.
+    var claudeResetReturnObserver: AnyCancellable?
+    var pendingClaudeResetAccountID: String?
+    /// Effort resolved for the in-flight automatic route, including a supported
+    /// user override when one was selected.
     var autoEffortOverride: String?
 
     public init(
@@ -102,6 +136,7 @@ public final class RouterController: ObservableObject {
     ) {
         _ = baseURL
         store = providerStore ?? NativeProviderStore(paths: paths)
+        modelCatalogCacheURL = paths.root.appendingPathComponent("provider-models.json")
         self.imageAdapters = imageAdapters ?? ProviderImageAdapterRegistry()
         BuiltInProviderImageAdapters.register(on: self.imageAdapters)
         self.oauthSession = oauthSession
@@ -110,6 +145,7 @@ public final class RouterController: ObservableObject {
             await self?.gatewayResponse(request) ?? .json(["error": ["message": "Gateway is unavailable"]], status: 503)
         }
         refreshState()
+        observeClaudeResetReturn()
     }
 }
 

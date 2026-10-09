@@ -89,20 +89,29 @@ public enum ModelRouter {
     ///   - excluding: providers already known to be unavailable this request
     ///     (rate limited, out of credit). Routing steps around them instead of
     ///     failing, which is the whole point of having several accounts.
+    ///   - effortOverride: an optional user-selected effort to use when the chosen
+    ///     model supports it. Automatic model selection remains independent.
     public static func decide(
         messages: [AgentMessage],
         available: [RouterModel],
         excluding: Set<String> = [],
-        tierOf: (RouterModel) -> ModelTier = { tier(of: $0) }
+        tierOf: (RouterModel) -> ModelTier = { tier(of: $0) },
+        economy: Bool = false,
+        hasTools: Bool = false,
+        effortOverride: String? = nil
     ) -> ModelDecision? {
         let available = available.filter { !excluding.contains($0.provider) }
         guard !available.isEmpty else { return nil }
         let role = self.role(for: messages)
-        let target: ModelTier = role == .planner ? .premium : .light
+        let target: ModelTier = economy
+            ? (role == .planner ? .standard : .light)
+            : (role == .planner ? .premium : .light)
         // A turn that only consumes a tool result is mechanical. Every other worker
         // turn still writes code, and stacking a light model with the lowest effort
         // downgrades it twice for no measured saving.
-        let mechanical = messages.last?.role == .tool
+        let mechanical = economy
+            ? (!hasTools && messages.last?.role != .tool && role == .worker)
+            : messages.last?.role == .tool
 
         // Walk down from the target tier: a premium plan is better than no plan,
         // but if nothing premium is connected, the best standard model still runs.
@@ -110,7 +119,8 @@ public enum ModelRouter {
             ?? firstModel(atOrAbove: target, in: available, tierOf: tierOf)
         guard let candidate else { return nil }
 
-        let effort = self.effort(for: role, supported: candidate.efforts, mechanical: mechanical)
+        let effort = requestedEffort(effortOverride, supported: candidate.efforts)
+            ?? self.effort(for: role, supported: candidate.efforts, mechanical: mechanical, economy: economy)
         return ModelDecision(
             model: candidate.id,
             effort: effort,
@@ -146,7 +156,15 @@ public enum ModelRouter {
     /// offers, since that turn still has to get an edit right.
     /// `none` is only ever chosen when it is the sole option, since it disables
     /// reasoning entirely.
-    static func effort(for role: ModelRole, supported: [String], mechanical: Bool = true) -> String {
+    static func effort(for role: ModelRole, supported: [String], mechanical: Bool = true, economy: Bool = false) -> String {
+        if economy {
+            if mechanical {
+                if supported.contains("none") { return "none" }
+                if supported.contains("minimal") { return "minimal" }
+            }
+            if supported.contains("low") { return "low" }
+            return supported.first ?? ""
+        }
         let usable = supported.filter { $0 != "none" }
         guard !usable.isEmpty else { return "" }
         let order = ["low", "medium", "high", "xhigh", "max"]
@@ -154,6 +172,13 @@ public enum ModelRouter {
         if role == .planner { return ranked.last ?? "" }
         if mechanical { return ranked.first ?? "" }
         return ranked[min(1, ranked.count - 1)]
+    }
+
+    /// Applies a user's explicit effort only when the chosen provider model
+    /// accepts it. A nil result leaves automatic effort selection in charge.
+    static func requestedEffort(_ requested: String?, supported: [String]) -> String? {
+        guard let requested, !requested.isEmpty, supported.contains(requested) else { return nil }
+        return requested
     }
 
     // MARK: Helpers

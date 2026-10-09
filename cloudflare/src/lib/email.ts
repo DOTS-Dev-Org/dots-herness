@@ -478,6 +478,7 @@ export async function sendPaidOrderConfirmationEmail(
   try {
     archiveResponse = await fetch(archiveUrl, {
       headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+      signal: AbortSignal.timeout(10_000),
     });
   } catch {
     throw new Error("legal_archive_unreachable");

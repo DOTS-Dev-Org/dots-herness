@@ -13,12 +13,10 @@ data class MobileLanguage(
     val flag: String,
     val isRtl: Boolean,
 ) {
-    val shortCode: String get() = if (code == "system") "AUTO" else if (code == "zh-Hans") "ZH" else code.uppercase(Locale.ROOT)
+    val shortCode: String get() = if (code == "zh-Hans") "ZH" else code.uppercase(Locale.ROOT)
 }
 
 object MobileLanguages {
-    val system = MobileLanguage("system", "system", "System language", "🌐", false)
-
     // Keep this order identical to macOS AppLanguage and the shared JSON manifest.
     val supported = listOf(
         MobileLanguage("tr", "tr-TR", "Türkçe", "🇹🇷", false),
@@ -53,26 +51,40 @@ object MobileLanguages {
         MobileLanguage("hu", "hu-HU", "Magyar", "🇭🇺", false),
     )
 
-    val all: List<MobileLanguage> = listOf(system) + supported
+    val all: List<MobileLanguage> = supported
 
-    fun fromCode(code: String?): MobileLanguage = all.firstOrNull { it.code == code } ?: system
+    fun fromCode(code: String?): MobileLanguage = supported.firstOrNull { it.code == code } ?: fromDevice()
 
-    fun fromDevice(locales: LocaleList = LocaleList.getDefault()): MobileLanguage {
-        return fromDevice((0 until locales.size()).map { locales[it] })
+    fun fromDevice(): MobileLanguage {
+        return runCatching {
+            val list = LocaleList.getDefault()
+            if (list.isEmpty) fromDevice(listOf(Locale.getDefault()))
+            else fromDevice((0 until list.size()).map { list[it] })
+        }.getOrElse {
+            fromDevice(listOf(Locale.getDefault()))
+        }
+    }
+
+    fun fromDevice(locales: LocaleList): MobileLanguage {
+        return runCatching {
+            if (locales.isEmpty) fromDevice(listOf(Locale.getDefault()))
+            else fromDevice((0 until locales.size()).map { locales[it] })
+        }.getOrElse {
+            fromDevice(listOf(Locale.getDefault()))
+        }
     }
 
     fun fromDevice(locales: List<Locale>): MobileLanguage {
         for (locale in locales) {
             val language = locale.toLanguageTag().replace('_', '-').lowercase(Locale.ROOT)
-            if (language == "zh" || language.startsWith("zh-")) return fromCode("zh-Hans")
+            if (language == "zh" || language.startsWith("zh-")) return supported.first { it.code == "zh-Hans" }
             supported.firstOrNull { code -> language == code.code.lowercase(Locale.ROOT) || language.startsWith(code.code.lowercase(Locale.ROOT) + "-") }
                 ?.let { return it }
         }
-        return fromCode("en")
+        return supported.first { it.code == "en" }
     }
 
-    fun effective(selected: MobileLanguage, locales: LocaleList = LocaleList.getDefault()): MobileLanguage =
-        if (selected.code == system.code) fromDevice(locales) else selected
+    fun effective(selected: MobileLanguage, locales: LocaleList = LocaleList.getDefault()): MobileLanguage = selected
 }
 
 object MobileIntroNavigation {
@@ -81,7 +93,7 @@ object MobileIntroNavigation {
     fun primaryKey(page: Int, pageCount: Int): String = if (page == pageCount - 1) "intro_start" else "intro_continue"
 }
 
-fun SharedPreferences.mobileLanguage(): MobileLanguage = MobileLanguages.fromCode(getString(MOBILE_LANGUAGE_KEY, "system"))
+fun SharedPreferences.mobileLanguage(): MobileLanguage = MobileLanguages.fromCode(getString(MOBILE_LANGUAGE_KEY, null))
 
 fun SharedPreferences.setMobileLanguage(language: MobileLanguage) {
     edit().putString(MOBILE_LANGUAGE_KEY, language.code).apply()
@@ -93,7 +105,6 @@ fun SharedPreferences.setMobileLanguage(language: MobileLanguage) {
  * selected locale context.
  */
 fun Context.createMobileLocaleContext(language: MobileLanguage): Context {
-    if (language.code == "system") return this
     val configuration = Configuration(resources.configuration)
     configuration.setLocale(Locale.forLanguageTag(language.localeTag))
     configuration.setLayoutDirection(Locale.forLanguageTag(language.localeTag))

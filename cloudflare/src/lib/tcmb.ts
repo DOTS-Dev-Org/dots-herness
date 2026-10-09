@@ -32,7 +32,10 @@ function parseTcmbXml(xmlText: string) {
 
 async function fetchTcmbLive() {
   try {
-    const r = await fetch(TCMB_XML_URL, { cf: { cacheTtl: 1800 } } as RequestInit);
+    const r = await fetch(TCMB_XML_URL, {
+      cf: { cacheTtl: 1800 },
+      signal: AbortSignal.timeout(10_000),
+    } as RequestInit);
     if (!r.ok) return null;
     return parseTcmbXml(await r.text());
   } catch {

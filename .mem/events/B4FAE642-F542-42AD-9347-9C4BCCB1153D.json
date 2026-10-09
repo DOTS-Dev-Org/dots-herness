@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-09T13:49:19Z",
+  "eventId" : "B4FAE642-F542-42AD-9347-9C4BCCB1153D",
+  "lamport" : 295,
+  "parents" : [
+    "4D8E0276-B081-4B58-83E5-C1839700529E"
+  ],
+  "payload" : {
+    "commandSummary" : null,
+    "name" : "grep_files",
+    "path" : "macos\/DotsHarness\/Sources\/DotsHarnessUI",
+    "resultBytes" : 6020,
+    "resultStatus" : "completed",
+    "runId" : "9DE0859A-D8D7-4AD1-9466-0E1B951F54FF"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "DnLOOEExJa43xLVZilA2zojqh6TgvtmoFG8fs9Fv2tZzIGQtK50wxN+DBMoxeBEM08dMkgef+inrPXAHbZI2aQ=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

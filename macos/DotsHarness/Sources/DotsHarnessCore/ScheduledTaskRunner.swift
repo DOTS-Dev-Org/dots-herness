@@ -38,8 +38,11 @@ public struct ScheduledTaskRunner {
             return TaskScheduler.RunResult(ok: false, message: "Workspace not found: \(task.workspacePath)")
         }
 
+        // A task stores a model id, and providers retire models. Anything the
+        // catalog no longer knows is dropped so the run routes automatically
+        // instead of asking a provider for a model it does not serve.
         let models = [task.modelID, task.fallbackModelID]
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .map { router.usableModelID($0) }
             .filter { !$0.isEmpty }
         let attempts: [String?] = models.isEmpty ? [nil] : models.map(Optional.some)
         var lastResult = TaskScheduler.RunResult(ok: false, message: "No response")
@@ -74,8 +77,6 @@ public struct ScheduledTaskRunner {
                 permissionMode: .full,
                 nonInteractive: true,
                 automaticNetworkAccess: task.allowsNetwork,
-                area: .coding,
-                sessionFileName: AgentArea.coding.sessionFileName
             )
         } else {
             host = AgentBridge(
@@ -84,8 +85,6 @@ public struct ScheduledTaskRunner {
                 permissionMode: .full,
                 nonInteractive: true,
                 automaticNetworkAccess: task.allowsNetwork,
-                area: .coding,
-                sessionFileName: AgentArea.coding.sessionFileName
             )
         }
         host.updateSystemPrompt(systemPrompt())

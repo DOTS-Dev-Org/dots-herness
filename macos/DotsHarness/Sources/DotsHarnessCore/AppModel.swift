@@ -81,31 +81,6 @@ public struct ProjectMetadata: Codable, Sendable, Equatable {
     }
 }
 
-public enum AssistantMode: String, CaseIterable, Codable, Identifiable, Sendable {
-    case coding
-    case chat
-
-    public var id: String { rawValue }
-
-    public var systemImage: String {
-        switch self {
-        case .coding: return "chevron.left.forwardslash.chevron.right"
-        case .chat: return "bubble.left.and.bubble.right"
-        }
-    }
-
-    public var title: String { AppCopy.text("assistantMode.\(rawValue)") }
-
-    public var guidance: String {
-        switch self {
-        case .coding:
-            return "Coding-first mode is active. For coding requests, inspect, edit, and verify the workspace proactively. You can still answer general questions and have normal conversation when asked."
-        case .chat:
-            return "Chat-first mode is active. Be conversational and answer questions directly. Do not inspect or modify the workspace unless the user explicitly asks for coding or the request clearly requires it. If coding is requested, do it normally with the existing safety and verification rules."
-        }
-    }
-}
-
 @MainActor
 public final class AppModelReference {
     public weak var model: AppModel?
@@ -140,26 +115,23 @@ public final class AppModel: ObservableObject {
     public let skillSuggestions: SkillSuggestionMonitor
     public let host: PluginHost
     public let paths: SupportPaths
-    public let chatBridge: AgentBridge
-    public let codingBridge: AgentBridge
+    public let bridge: AgentBridge
     public let mcpRegistry: MCPRegistry
-    public let chatRouter: RouterController
-    public let codingRouter: RouterController
-    public let chatEndpoint: AgentEndpointController
-    public let codingEndpoint: AgentEndpointController
+    public let router: RouterController
+    public let endpoint: AgentEndpointController
     public let remoteEvents: RemoteEventHub
     public let remoteControl: RemoteControlHost
     public let terminalManager: TerminalManager
     public let navigationState: SidebarVisibilityState
-    let chatProjectStore: ChatProjectStore
     let desktopNotifications: DesktopNotificationService
+    public lazy var updateChecker = UpdateChecker()
     public lazy var marketplaceSession = MarketplaceSession()
     public lazy var marketplace: MarketplaceClient = {
         let raw = host.settings.get("marketplace.indexURL")?.string ?? MarketplaceClient.defaultIndex
         let url = URL(string: raw) ?? URL(string: MarketplaceClient.defaultIndex)!
         return MarketplaceClient(indexURL: url, catalog: catalog, session: marketplaceSession)
     }()
-    public lazy var local: LocalRuntimeController = LocalRuntimeController(paths: paths, router: codingRouter)
+    public lazy var local: LocalRuntimeController = LocalRuntimeController(paths: paths, router: router)
     public lazy var voice: LocalVoiceTranscriber = LocalVoiceTranscriber(paths: paths)
     public lazy var nemotron: NemotronRuntime = NemotronRuntime(paths: paths)
     public lazy var localSpeech: LocalPiperSpeechSynthesizer = LocalPiperSpeechSynthesizer(paths: paths)
@@ -209,16 +181,27 @@ public final class AppModel: ObservableObject {
     public var draftImages: [URL] { draftAttachments.filter { $0.kind == .image }.map(\.url) }
     /// Bumped to ask the composer to take keyboard focus. Only the change matters.
     @Published public var composerFocusRequestID = 0
+    /// Bumped to ask the UI to open the plan in the right dock.
+    @Published public var planPaneRequestID = 0
     @Published public var appearance: Appearance = .system
     @Published public var appLanguage: AppLanguage = .system
     @Published public internal(set) var permissionMode: AgentPermissionMode
     @Published public internal(set) var browserBackend: BrowserBackend?
+    @Published public internal(set) var isComputerUseEnabled: Bool
     @Published public internal(set) var fullAccessWarningDismissed: Bool
     @Published public var confirmBeforeExit = true
+    /// Closing the window keeps the app alive in the menu bar so runs continue.
+    @Published public var closeToTray = true
     /// Agent runs its own build/test/check after each change. Default on.
     @Published public var selfVerification = true
     /// Seed AGENTS.md and CLAUDE.md into a workspace that ships neither. Default on.
     @Published public var seedProjectRules = true
+    /// Apply generated plans without waiting for a separate plan approval. Default off.
+    @Published public var autoApprovePlans = false
+    /// What a run does when another chat of the same project is writing the file it wants.
+    @Published public var workspaceConflictPolicy: WorkspaceConflictPolicy = .waitThenAsk
+    /// How long "wait, then ask" holds a run before it asks the user.
+    @Published public var conflictWaitSeconds: Int = WorkspaceConflictPolicy.defaultWaitSeconds
     @Published public internal(set) var workspacePath: String
     /// User-editable shortcuts used by both the menu bar and in-app action rows.
     @Published public internal(set) var keyboardShortcuts: [KeyboardShortcutAction: UserKeyboardShortcut] =
@@ -226,6 +209,9 @@ public final class AppModel: ObservableObject {
     /// Every project the user has added to the sidebar, most-recent first.
     /// `workspacePath` is always the active entry (or empty if none added yet).
     @Published public internal(set) var projectPaths: [String] = []
+    /// Paths whose project folders have disappeared since they were added.
+    /// Refreshing this set keeps the sidebar and composer in sync with filesystem changes.
+    @Published public internal(set) var unavailableProjectPaths: Set<String> = []
     /// Session-only state for the unsectioned project group in the sidebar.
     /// Deliberately not persisted: a new app session starts with the compact
     /// five-project view again.
@@ -233,11 +219,13 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var projectMetadata: [String: ProjectMetadata] = [:]
     @Published public internal(set) var projectSections: [String] = []
     @Published public internal(set) var sidebarLayoutMode: SidebarLayoutMode = .groupedByProject
+    /// Projects whose chat sublist is open in the sidebar. Persisted so relaunching
+    /// shows exactly the lists the user left open or hidden.
+    @Published public internal(set) var expandedProjectPaths: Set<String> = []
     /// Conversation sort order per project path. Missing entries default to `.lastUpdate`.
     @Published public internal(set) var projectSortOrders: [String: ConversationSortOrder] = [:]
     /// Manual conversation order per project path, used when that project's sort order is `.manual`.
     @Published public internal(set) var projectManualOrder: [String: [String]] = [:]
-    @Published public internal(set) var chatProjects: [ChatProject] = []
     /// Non-nil while the agent is working in a sandbox worktree instead of the
     /// user's own checkout. `workspacePath` then points at the worktree.
     @Published public internal(set) var activeSandbox: SandboxWorkspace?
@@ -265,11 +253,18 @@ public final class AppModel: ObservableObject {
     @Published public var isUsagePresented = false
     /// Sidebar "Usage" dropdown expanded state. In-memory only.
     @Published public var isUsageExpanded = false
-    @Published public var isTasksPresented = false
+    @Published public var isTasksPresented = false {
+        didSet { commitNavigationDestination() }
+    }
     @Published public var isSimulatorPresented = false
+    /// Screens the toolbar's back/forward buttons walk. `navigationIndex` is the
+    /// one on display; -1 means nothing has been navigated to yet.
+    @Published public internal(set) var navigationEntries: [NavigationDestination] = []
+    @Published public internal(set) var navigationIndex = -1
+    /// Set while a history step is being replayed so the navigation it triggers
+    /// does not record itself and rewrite the list it came from.
+    var isApplyingNavigation = false
     @Published public var isPlanMode = false
-    @Published public internal(set) var assistantMode: AssistantMode = .coding
-    @Published public internal(set) var activeArea: AgentArea = .coding
     @Published public internal(set) var editingMessageID: String?
     @Published public internal(set) var historyError: String?
     @Published public var voiceProvider: VoiceInputProvider = .whisperTinyQ5
@@ -288,21 +283,12 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var legalLoadFailed = false
     public internal(set) lazy var legal = LegalService(settings: host.settings, cacheDirectory: paths.root)
 
-    public var bridge: AgentBridge {
-        if activeArea == .chat {
-            startChatBridgeIfNeeded()
-            return chatBridge
-        } else {
-            startCodingBridgeIfNeeded()
-            return codingBridge
-        }
-    }
+    /// Projects are the default scope; the same agent bridge also supports a
+    /// separate No project conversation scope.
     public var activeSkills: SkillCatalog { bridge.skills }
     public var activeSkillSuggestions: SkillSuggestionMonitor {
         bridge.skillSuggestions ?? skillSuggestions
     }
-    public var router: RouterController { activeArea == .chat ? chatRouter : codingRouter }
-    public var endpoint: AgentEndpointController { activeArea == .chat ? chatEndpoint : codingEndpoint }
     public var conversations: [Conversation] { bridge.conversations }
     public var selectedConversationID: String? {
         get { bridge.selectedID }
@@ -310,18 +296,15 @@ public final class AppModel: ObservableObject {
             guard let newValue else { return }
             if bridge.conversations.contains(where: { $0.id == newValue }) {
                 selectConversation(newValue)
-            } else if bridge.projectlessConversations.contains(where: { $0.id == newValue }) {
-                cancelEditing()
-                saveDraftState()
-                setActiveArea(.chat)
-                selectConversation(newValue)
             }
         }
     }
     public var selected: Conversation? { bridge.selected }
     public var statusLine: String { bridge.status }
+    /// The router owns the chosen model so no surface can hold a different one;
+    /// `endpoint.modelID` only mirrors it for the direct-endpoint path.
     public var selectedModelID: String {
-        get { endpoint.modelID }
+        get { router.selectedModelID }
         set { setModel(newValue) }
     }
     public var isFirstLaunch: Bool { workspacePath.isEmpty }
@@ -331,13 +314,20 @@ public final class AppModel: ObservableObject {
     }
     public var appLocale: Locale { AppCopy.locale }
     public var isRTL: Bool { AppCopy.effectiveLanguage.isRTL }
+    public var activeProjectLocationAvailable: Bool {
+        !workspacePath.isEmpty && Self.canonicalExistingWorkspacePath(workspacePath) != nil
+    }
+    public var isNoProjectScope: Bool {
+        workspacePath.isEmpty && selected?.projectless == true
+    }
     public var canSend: Bool {
         bridge.isReady
+            && (isNoProjectScope || activeProjectLocationAvailable)
             && !bridge.historyMutationBusy
             && !sandboxCleanupPending
             && !sandboxRecoveryRequired
             && (activeSandbox == nil || sandboxExecutionPolicy != nil)
-            && (!workLocation.isRemote || remoteWorkspace != nil)
+            && (isNoProjectScope || !workLocation.isRemote || remoteWorkspace != nil)
     }
 
     public var isEditingMessage: Bool { editingMessageID != nil }
@@ -408,9 +398,8 @@ public final class AppModel: ObservableObject {
         self.terminalManager = TerminalManager()
         self.navigationState = SidebarVisibilityState()
         self.desktopNotifications = DesktopNotificationService()
-        let chatProjectStore = ChatProjectStore(paths: paths)
-        self.chatProjectStore = chatProjectStore
-        self.chatProjects = chatProjectStore.load()
+        // Migrate before reading legacy Chat metadata. The canonical project
+        // session store is now the only source used by the active flow.
         SessionAreaMigration.run(paths: paths)
 
         let catalog = PluginCatalog(paths: paths)
@@ -440,12 +429,10 @@ public final class AppModel: ObservableObject {
         let storedBrowserBackend = settings.get("agent.browserBackend")?.string
             .flatMap(BrowserBackend.init(rawValue:))
             .flatMap { $0 == .unknown ? nil : $0 }
-        let storedAssistantMode = settings.get("ui.assistantMode")?.string
-            .flatMap(AssistantMode.init(rawValue:))
-        let storedArea = settings.get("ui.activeArea")?.string
-            .flatMap(AgentArea.init(rawValue:))
+        let storedComputerUseEnabled = settings.get("agent.computerUseEnabled")?.bool ?? false
         self.permissionMode = storedPermissionMode
         self.browserBackend = storedBrowserBackend
+        self.isComputerUseEnabled = storedComputerUseEnabled
         self.fullAccessWarningDismissed = settings.get("ui.fullAccessWarningDismissed")?.bool ?? false
         self.voiceIntroSeen = settings.get("ui.voiceIntroSeen")?.bool ?? false
         self.appLanguage = storedLanguage
@@ -474,60 +461,43 @@ public final class AppModel: ObservableObject {
         let legacyModel = settings.get("agent.model")?.string ?? ""
         let legacyEffort = settings.get("agent.effort")?.string ?? ""
         let providerStore = NativeProviderStore(paths: paths)
-        let chatRouter = RouterController(paths: paths, imageAdapters: host.imageAdapters, providerStore: providerStore)
-        chatRouter.selectedModelID = settings.get("agent.model.chat")?.string ?? legacyModel
-        chatRouter.selectedEffort = settings.get("agent.effort.chat")?.string ?? legacyEffort
-        chatRouter.fastMode = settings.get("agent.fast.chat")?.bool ?? false
-        let codingRouter = RouterController(paths: paths, imageAdapters: host.imageAdapters, providerStore: providerStore)
-        codingRouter.selectedModelID = settings.get("agent.model.coding")?.string ?? legacyModel
-        codingRouter.selectedEffort = settings.get("agent.effort.coding")?.string ?? legacyEffort
-        codingRouter.fastMode = settings.get("agent.fast.coding")?.bool ?? false
-        self.chatRouter = chatRouter
-        self.codingRouter = codingRouter
+        let router = RouterController(paths: paths, imageAdapters: host.imageAdapters, providerStore: providerStore)
+        // The unscoped keys are the current canonical preferences. Read them
+        // first so stale coding-scoped values cannot reset the latest choice.
+        router.select(modelID: settings.get("agent.model")?.string ?? settings.get("agent.model.coding")?.string ?? legacyModel)
+        router.selectedEffort = settings.get("agent.effort")?.string ?? settings.get("agent.effort.coding")?.string ?? legacyEffort
+        router.fastMode = settings.get("agent.fast.coding")?.bool ?? false
+        router.usageMode = AgentUsageMode(rawValue: settings.get("agent.usageMode")?.string
+            ?? settings.get("agent.usageMode.coding")?.string
+            ?? "") ?? .standard
+        router.responseStylePreference = Self.parseResponseStylePreference(
+            settings.get(AgentResponseStylePreference.settingsKey)?.string
+        )
+        router.explorationModelID = settings.get(RouterController.explorationModelKey)?.string ?? ""
+        router.subagentsPreference = settings.get(RouterController.subagentsKey)?.bool
+        self.router = router
 
-        let chatEndpoint = AgentEndpointController(
+        let endpoint = AgentEndpointController(
             baseURL: "",
-            modelID: settings.get("agent.model.chat")?.string ?? legacyModel,
+            modelID: router.selectedModelID,
             apiKey: ""
         )
-        let codingEndpoint = AgentEndpointController(
-            baseURL: "",
-            modelID: settings.get("agent.model.coding")?.string ?? legacyModel,
-            apiKey: ""
-        )
-        self.chatEndpoint = chatEndpoint
-        self.codingEndpoint = codingEndpoint
-        let chatBridge = AgentBridge(
+        self.endpoint = endpoint
+        let bridge = AgentBridge(
             paths: paths,
-            endpoint: chatEndpoint,
-            router: chatRouter,
+            endpoint: endpoint,
+            router: router,
             skills: skills,
             permissionMode: storedPermissionMode,
             pluginHost: host,
-            skillSuggestions: skillSuggestions,
-            area: .chat,
-            sessionFileName: AgentArea.chat.sessionFileName,
-            chatContextStore: ChatContextStore(paths: paths)
+            skillSuggestions: skillSuggestions
         )
-        let codingBridge = AgentBridge(
-            paths: paths,
-            endpoint: codingEndpoint,
-            router: codingRouter,
-            skills: skills,
-            permissionMode: storedPermissionMode,
-            pluginHost: host,
-            skillSuggestions: skillSuggestions,
-            area: .coding,
-            sessionFileName: AgentArea.coding.sessionFileName
-        )
-        self.chatBridge = chatBridge
-        self.codingBridge = codingBridge
-        chatBridge.setBrowserBackend(storedBrowserBackend)
-        codingBridge.setBrowserBackend(storedBrowserBackend)
+        self.bridge = bridge
+        bridge.setBrowserBackend(storedBrowserBackend)
+        bridge.setComputerUseEnabled(storedComputerUseEnabled)
         let mcpRegistry = MCPRegistry(paths: paths)
         self.mcpRegistry = mcpRegistry
-        self.chatBridge.mcpRegistry = mcpRegistry
-        self.codingBridge.mcpRegistry = mcpRegistry
+        self.bridge.mcpRegistry = mcpRegistry
         // Connect MCP servers in background utility priority after the startup phase
         Task.detached(priority: .utility) {
             try? await Task.sleep(for: .seconds(4))
@@ -544,19 +514,34 @@ public final class AppModel: ObservableObject {
         if let stored = settings.get("ui.confirmBeforeExit")?.bool {
             self.confirmBeforeExit = stored
         }
+        if let stored = settings.get("ui.closeToTray")?.bool {
+            self.closeToTray = stored
+        }
         if let stored = settings.get("agent.selfVerification")?.bool {
             self.selfVerification = stored
         }
         if let stored = settings.get("agent.seedProjectRules")?.bool {
             self.seedProjectRules = stored
         }
+        if let stored = settings.get("agent.autoApprovePlans")?.bool {
+            self.autoApprovePlans = stored
+        }
+        self.workspaceConflictPolicy = settings.get("agent.workspaceConflictPolicy")?.string
+            .flatMap(WorkspaceConflictPolicy.init(rawValue:)) ?? .waitThenAsk
+        self.conflictWaitSeconds = settings.get("agent.conflictWaitSeconds")?.int
+            ?? WorkspaceConflictPolicy.defaultWaitSeconds
         self.sandboxNetworkAccess = settings.get("agent.sandbox.networkAccess")?.bool ?? false
         let savedCleanupPending = settings.get("agent.sandbox.cleanupPending")?.bool ?? false
         let savedCleanupMerge = settings.get("agent.sandbox.cleanupMerge")?.bool ?? true
         let savedRecoveryRequired = settings.get("agent.sandbox.recoveryRequired")?.bool ?? false
 
         let storedWorkspace = settings.get("agent.workspace")?.string ?? ""
-        var initialWorkspace = Self.validWorkspacePath(storedWorkspace) ?? ""
+        let normalizedStoredWorkspace = ConversationStore.normalizedPath(storedWorkspace)
+            .flatMap { $0 == "/" ? nil : $0 } ?? ""
+        let projectIdentityPath = Self.canonicalExistingWorkspacePath(storedWorkspace) ?? normalizedStoredWorkspace
+        // Keep a missing project's identity on relaunch so its existing
+        // conversations can still be loaded and shown in read-only mode.
+        var initialWorkspace = projectIdentityPath
         var restoredSandbox: SandboxWorkspace?
         var restoreNotice: String?
         if let storedOrigin = settings.get("agent.sandbox.origin")?.string,
@@ -604,7 +589,6 @@ public final class AppModel: ObservableObject {
         }
         self.workspacePath = initialWorkspace
 
-        let projectIdentityPath = Self.validWorkspacePath(storedWorkspace) ?? ""
         var storedProjects = (settings.get("agent.projects")?.array?.compactMap(\.string))
             .flatMap { $0.isEmpty ? nil : $0 } ?? []
         if storedProjects.isEmpty, !projectIdentityPath.isEmpty {
@@ -614,15 +598,8 @@ public final class AppModel: ObservableObject {
             storedProjects.insert(projectIdentityPath, at: 0)
         }
         self.projectPaths = storedProjects
-        // An explicitly saved area is authoritative. Coding can be a useful
-        // empty state while a project is being chosen, so do not silently
-        // switch the user back to Chat just because the workspace is missing
-        // or was removed between launches.
-        let initialArea = storedArea
-            ?? storedAssistantMode.map { $0 == .chat ? AgentArea.chat : .coding }
-            ?? (storedProjects.isEmpty ? .chat : .coding)
-        self.activeArea = initialArea
-        self.assistantMode = initialArea == .chat ? .chat : .coding
+        // The old area settings are deliberately ignored. A fresh launch is
+        // always the project flow, including the empty "add a project" state.
         if let storedMetadata = settings.get("agent.projectMetadata")?.object {
             self.projectMetadata = storedMetadata.compactMapValues { value in
                 guard let object = value.object else { return nil }
@@ -652,6 +629,13 @@ public final class AppModel: ObservableObject {
                 value.array?.compactMap(\.string)
             }
         }
+        if let storedExpandedProjects = settings.get("agent.sidebarExpandedProjects")?.array {
+            self.expandedProjectPaths = Set(storedExpandedProjects.compactMap(\.string))
+        } else if !initialWorkspace.isEmpty {
+            // First launch after sublists became restorable: keep the previous
+            // behavior of showing the active project's chats.
+            self.expandedProjectPaths = [initialWorkspace]
+        }
 
         self.activeSandbox = restoredSandbox
         self.sandboxAgentWritableRoots = restoredSandbox.flatMap { try? SandboxWorkspaces.agentWritableRoots(for: $0) } ?? []
@@ -660,29 +644,43 @@ public final class AppModel: ObservableObject {
         self.sandboxConflict = restoredConflict
         self.sandboxCleanupPending = restoredSandbox != nil && savedCleanupPending
         self.sandboxCleanupMerge = savedCleanupMerge
-        skills.setWorkspace(initialWorkspace.isEmpty ? nil : initialWorkspace)
-        skillSuggestions.setWorkspace(initialWorkspace.isEmpty ? nil : initialWorkspace)
+        // Skill discovery creates the workspace's .dotsherness/skills folder.
+        // Do not hand it a stale saved path: that would recreate a project the
+        // user moved or removed while restoring it into read-only mode.
+        let availableInitialWorkspace = Self.validWorkspacePath(initialWorkspace)
+        skills.setWorkspace(availableInitialWorkspace)
+        skillSuggestions.setWorkspace(availableInitialWorkspace)
         let remoteEvents = RemoteEventHub(root: paths.root)
         self.remoteEvents = remoteEvents
         self.remoteControl = RemoteControlHost(
-            bridge: codingBridge,
+            bridge: bridge,
             paths: paths,
             events: remoteEvents,
             workspacePath: restoreNotice == nil ? initialWorkspace : ""
         )
+        self.remoteControl.setProjectsProvider { [weak self] in
+                guard let self else { return [] }
+                var result: [RemoteProjectDescriptor] = []
+                for path in self.projectPaths where FileManager.default.fileExists(atPath: path) {
+                    result.append(RemoteProjectDescriptor(
+                        id: RemoteControlHost.workspaceIDForProject(path),
+                        name: URL(fileURLWithPath: path).lastPathComponent,
+                        workspaceId: RemoteControlHost.workspaceIDForProject(path),
+                        workspacePath: path
+                    ))
+                }
+                return result
+        }
 
-        chatBridge.setSelfVerification(selfVerification)
-        codingBridge.setSelfVerification(selfVerification)
+        bridge.setSelfVerification(selfVerification)
         // Set before the workspace binds below, so a disabled setting never seeds.
-        chatBridge.setSeedProjectRules(seedProjectRules)
-        codingBridge.setSeedProjectRules(seedProjectRules)
+        bridge.setSeedProjectRules(seedProjectRules)
+        bridge.setAutoApprovePlans(autoApprovePlans)
+        bridge.setWorkspaceConflictPolicy(workspaceConflictPolicy)
+        bridge.setConflictWaitSeconds(conflictWaitSeconds)
         // The bridges are @Observable: views read them per property, so their changes no
         // longer need to be forwarded (and no longer redraw the whole window).
-        chatEndpoint.objectWillChange
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &cancellables)
-        codingEndpoint.objectWillChange
+        endpoint.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
@@ -691,6 +689,9 @@ public final class AppModel: ObservableObject {
         host.provideService("catalog", catalog)
         host.provideService("skills", skills)
         appModelReference.model = self
+        bridge.onSelectedConversationChanged = { [weak self] conversationID in
+            self?.applyConversationModelSelection(conversationID)
+        }
         host.provideService("vision.installer", VisionMarketplaceInstaller(model: self))
         registerHostDataTopics()
         migrateVoiceAPIKey(legacy: legacyVoiceAPIKey)
@@ -698,15 +699,10 @@ public final class AppModel: ObservableObject {
         let assistantResponse: (AssistantResponseEvent) -> Void = { [weak self] event in
             self?.desktopNotifications.showAssistantResponse(event)
         }
-        chatBridge.onAssistantResponse = assistantResponse
-        codingBridge.onAssistantResponse = assistantResponse
-        chatBridge.onRunSummary = { [weak self] event in
+        bridge.onAssistantResponse = assistantResponse
+        bridge.onRunSummary = { [weak self] event in
             self?.desktopNotifications.showRunSummary(event)
-            if self?.activeArea == .chat { self?.scanSkillSuggestions() }
-        }
-        codingBridge.onRunSummary = { [weak self] event in
-            self?.desktopNotifications.showRunSummary(event)
-            if self?.activeArea == .coding { self?.scanSkillSuggestions() }
+            self?.scanSkillSuggestions()
         }
         // Only chats the user cannot see right now: the visible one shows its own card.
         let attentionNeeded: (RunAttentionEvent) -> Void = { [weak self] event in
@@ -714,8 +710,8 @@ public final class AppModel: ObservableObject {
             let visible = NSApplication.shared.isActive && self.bridge.selectedID == event.conversationID
             if !visible { self.desktopNotifications.showAttention(event) }
         }
-        chatBridge.onAttentionNeeded = attentionNeeded
-        codingBridge.onAttentionNeeded = attentionNeeded
+        bridge.onAttentionNeeded = attentionNeeded
+        bridge.onPlanAutoApproved = { [weak self] in self?.endPlanMode() }
         let connectionChanged: (ConnectionTransition) -> Void = { [weak self, weak remoteControl] transition in
             self?.desktopNotifications.showConnectionChange(transition)
             remoteControl?.publish("connection.changed", [
@@ -728,18 +724,10 @@ public final class AppModel: ObservableObject {
                 "userDataPreserved": .bool(transition.userDataPreserved),
             ])
         }
-        chatRouter.onConnectionChanged = connectionChanged
-        codingRouter.onConnectionChanged = connectionChanged
-        chatBridge.onRemoteEvent = { [weak remoteControl] (kind: String, payload: [String: String]) in
+        router.onConnectionChanged = connectionChanged
+        bridge.onRemoteEvent = { [weak remoteControl] (kind: String, payload: [String: String]) in
             var payload = payload
-            payload["area"] = AgentArea.chat.rawValue
-            remoteControl?.publish(kind, payload.reduce(into: [String: RemoteJSONValue]()) { result, item in
-                result[item.key] = .string(item.value)
-            })
-        }
-        codingBridge.onRemoteEvent = { [weak remoteControl] (kind: String, payload: [String: String]) in
-            var payload = payload
-            payload["area"] = AgentArea.coding.rawValue
+            payload["scope"] = "project"
             remoteControl?.publish(kind, payload.reduce(into: [String: RemoteJSONValue]()) { result, item in
                 result[item.key] = .string(item.value)
             })
@@ -747,8 +735,13 @@ public final class AppModel: ObservableObject {
         let pluginsChanged: () -> Void = { [weak self] in
             self?.remount()
         }
-        chatBridge.onPluginsChanged = pluginsChanged
-        codingBridge.onPluginsChanged = pluginsChanged
+        bridge.onPluginsChanged = pluginsChanged
+    }
+
+    private static func parseResponseStylePreference(_ value: String?) -> AgentResponseStylePreference {
+        guard let value else { return .ultra }
+        if value == "standard" { return .balanced }
+        return AgentResponseStylePreference(rawValue: value) ?? .balanced
     }
 
     private var cancellables = Set<AnyCancellable>()
@@ -760,7 +753,6 @@ public final class AppModel: ObservableObject {
     // ponytail: keep unsent drafts in memory; persist only if restart recovery is required.
     var draftsByConversation: [String: String] = [:]
     var draftAttachmentsByConversation: [String: [ChatAttachment]] = [:]
-    var planModeByArea: [AgentArea: Bool] = [:]
     var draftBeforeEditing: String?
     var attachmentsBeforeEditing: [ChatAttachment]?
     var availableSandboxesRefreshTask: Task<Void, Never>?
@@ -777,11 +769,10 @@ public final class AppModel: ObservableObject {
     var speechRequestID: UUID?
 
     func draftKey(for conversationID: String) -> String {
-        "\(activeArea.rawValue):\(conversationID)"
+        "project:\(conversationID)"
     }
 
-    var hasStartedChatBridge = false
-    var hasStartedCodingBridge = false
+    var hasStartedBridge = false
 
     /// Only the plugin/session prompt sections. The scheduler feeds this back
     /// into `updateSystemPrompt`, so it must stay the additional text alone.
@@ -857,7 +848,9 @@ public final class AppModel: ObservableObject {
     /// on every access, since it shells out to git.
     var sandboxAgentWritableRoots: [URL] = []
     lazy var pluginInstaller = PluginInstaller(catalog: catalog)
-    var gitProjectCache: [String: Bool] = [:]
+    /// Git membership used by project menus. Repository checks run off the main actor.
+    @Published public internal(set) var gitProjectCache: [String: Bool] = [:]
+    var gitProjectStatusInFlight: Set<String> = []
     /// Gate for sending workspace/conversation content to an AI provider.
     public var aiTransferAllowed: Bool { legal.aiTransferAllowed }
     /// When set, SettingsView selects this tab on next appearance, then clears it.

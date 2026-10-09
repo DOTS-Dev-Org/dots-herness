@@ -32,9 +32,7 @@ public sealed class ScheduledTaskRunner
 
         var bridge = new AgentBridge(
             _router,
-            _paths,
-            area: AgentArea.Coding,
-            sessionFileName: AgentArea.Coding.SessionFileName())
+            _paths)
         {
             NonInteractive = true,
             AutoApproveCommands = task.AutoApproveCommands,

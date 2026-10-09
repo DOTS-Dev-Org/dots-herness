@@ -80,7 +80,6 @@
 "settings.title" = "Setări";
 "settings.backToChats" = "Înapoi la chat-uri";
 "settings.tab.general" = "general";
-"settings.tab.pet" = "Animal de companie";
 "settings.tab.providers" = "Furnizorii";
 "settings.tab.custom" = "API personalizat";
 "settings.tab.local" = "Modele locale";
@@ -306,22 +305,22 @@
 "composer.add" = "Adăugați";
 "composer.stopListening" = "Nu mai ascultați și adăugați textul în schiță";
 "composer.keyboardHelp" = "Enter: trimite · Shift+Enter: linie nouă · ⌘/Ctrl+Enter: direcționează";
-"composer.followUp.hint" = "Apasă Tab pentru a accepta sugestia de mesaj de continuare";
+"composer.followUp.hint" = "Apăsați Tab pentru a accepta sugestia de mesaj de urmărire";
 "composer.selectModel" = "Selectați modelul";
 "composer.installedSkill" = "Abilitatea instalată";
 "composer.settings" = "Setări";
 "composer.skills" = "Abilități";
 "composer.personal" = "Personal";
-"composer.projectPickerHelp" = "Alege proiectul pentru acest chat";
+"composer.projectPickerHelp" = "Alege proiectul pentru această conversație";
 "composer.projectPickerTitle" = "Proiect";
 "composer.chooseProject" = "Alege proiectul";
 "composer.noProject" = "Niciun proiect selectat";
 "composer.dontWorkInProject" = "Nu lucra într-un proiect";
 "workLocation.title" = "Lucrați în";
-"workLocation.help" = "Alegeți unde rulează această sarcină";
+"workLocation.help" = "Alege unde rulează această sarcină";
 "workLocation.local" = "Local";
 "workLocation.localDetail" = "Rulați această sarcină pe acest computer";
-"workLocation.localWorktree" = "Nou arbore de lucru local";
+"workLocation.localWorktree" = "Worktree local nou";
 "workLocation.localWorktreeDetail" = "Utilizați o casă izolată pe acest computer";
 "workLocation.remote" = "Alt calculator";
 "workLocation.remoteDetail" = "Lucrează prin SSH pe un calculator la care te conectezi";
@@ -377,8 +376,8 @@
 "ssh.error.pathMissing" = "Dosarul %@ nu există pe calculatorul la distanță.";
 "ssh.error.configWriteFailed" = "%@ nu a putut fi scris în ~/.ssh/config.";
 "tool.remoteUnavailable" = "%1$@ nu este disponibil în timpul lucrului pe %2$@. Folosește run_command cu comenzi de shell.";
-"git.branchHelp" = "Alegeți o ramură Git";
-"git.detached" = "CAP detașat";
+"git.branchHelp" = "Alege o ramură Git";
+"git.detached" = "HEAD detașat";
 "git.search" = "Caută ramuri";
 "git.branches" = "Ramuri";
 "git.noBranches" = "Nu s-au găsit ramuri";
@@ -413,8 +412,6 @@
 "slash.model" = "Model";
 "slash.plan" = "Modul plan";
 "slash.planDetail" = "Activați modul plan";
-"slash.mascot" = "Animal de companie";
-"slash.mascotDetail" = "Treziți sau ascundeți animalul de companie";
 "slash.pluginCreator" = "Creator de pluginuri";
 "slash.pluginCreatorDetail" = "Creează un plugin nou";
 "pluginCreator.template" = "Șablon";
@@ -501,7 +498,6 @@
 "sidebar.hide" = "Ascunde";
 "sidebar.show" = "Arată";
 "sidebar.selectProject" = "Alege proiectul";
-"sidebar.continueWithoutProject" = "Continuați fără proiect";
 "sidebar.projectOptions" = "Opțiuni de proiect";
 "sidebar.editProject" = "Editați proiectul";
 "sidebar.addProject" = "Adaugă proiect";
@@ -533,28 +529,6 @@
 "sidebar.accountOptions" = "Opțiuni de cont";
 "sidebar.accountUsage" = "Contul și utilizarea DOTS";
 
-"pet.position.bottomTrailing" = "dreapta jos";
-"pet.position.bottomLeading" = "Stânga jos";
-"pet.position.topTrailing" = "dreapta sus";
-"pet.position.topLeading" = "Sus stânga";
-"pet.settings" = "Setări pentru animale de companie";
-"pet.hide" = "Ascunde animalul de companie";
-"pet.dragHint" = "DOTS Pet · Țineți apăsat pentru a vă mișca";
-"pet.stopAndSend" = "Nu mai ascultați și trimiteți la chatul selectat";
-"pet.micOpening" = "Se deschide microfonul...";
-"pet.listening" = "Ascultând…";
-"pet.transcribing" = "Modelul vocal local se transcrie...";
-"pet.sending" = "Se trimite la chatul selectat...";
-"pet.visibility" = "Vizibilitatea animalelor de companie";
-"pet.show" = "Arată animalul de companie";
-"pet.visibilityHint" = "Animalul de companie plutește pe ecran numai când această opțiune este activată. Este oprit la prima lansare.";
-"pet.appearance" = "Aspectul";
-"pet.position" = "Poziție";
-"pet.size" = "Dimensiune";
-"pet.sizeValue" = "%d px";
-"pet.avatar" = "Avatar";
-"pet.preview" = "Previzualizare";
-"pet.title" = "Animal de companie";
 
 "usage.title" = "Utilizare";
 "usage.accountSummary" = "Rezumatul contului DOTS YAZILIM din această perioadă";
@@ -870,7 +844,6 @@
 "marketplace.install" = "Instalați";
 "marketplace.search" = "Căutați pluginuri";
 "marketplace.update" = "Actualizați v%@ → v%@";
-"pet.avatarHint" = "Alegeți un avatar pentru animale de companie.";
 "router.customEndpointHint" = "Punct final API personalizat";
 "router.noKeyRequired" = "Nu este necesară cheia. Conectați-vă pentru a ruta prin acest furnizor.";
 "settings.addProviderCustom" = "Adăugați acest furnizor prin API-ul personalizat.";
@@ -1104,9 +1077,6 @@
 "feedback.tag.negative_other" = "Altele";
 
 // Completed translations for keys added to the desktop catalog.
-"assistantMode.title" = "Mod asistent";
-"assistantMode.coding" = "Programare";
-"assistantMode.chat" = "Conversație";
 "tasks.close" = "Închide sarcinile";
 "tasks.back" = "Înapoi";
 "tasks.new" = "Sarcină nouă";
@@ -1147,3 +1117,213 @@
 "settings.compactTrigger" = "Compactează automat contextul la";
 "settings.compactTrigger.hint" = "Ponderea din fereastra de context a fiecărui model. O valoare mai mare păstrează mai mult cache-ul promptului, deoarece compactarea îl rescrie.";
 "conversation.translate" = "Traduceți";
+
+
+// Completed translations for keys added to the desktop catalog.
+"tray.section.running" = "Conversații în desfășurare";
+"tray.section.waiting" = "Necesită atenție";
+"tray.write" = "Scrie un mesaj";
+"tray.openUsage" = "Deschide ecranul de utilizare";
+"tray.noChats" = "Nicio conversație acum";
+"tray.unread" = "Răspuns nou";
+
+// Write-lease conflict copy.
+"conflict.policy.waitThenAsk" = "Așteaptă, apoi întreabă";
+"conflict.policy.waitThenAsk.detail" = "Așteaptă în liniște celălalt chat și întreabă doar dacă se prelungește.";
+"conflict.policy.ask" = "Întreabă-mă";
+"conflict.policy.ask.detail" = "Întreabă de îndată ce două chat-uri vor același fișier.";
+"conflict.policy.waitOnly" = "Așteaptă mereu";
+"conflict.policy.waitOnly.detail" = "Nu întreabă: fiecare scriere așteaptă chat-ul care deține fișierul.";
+"conflict.title" = "Alt chat scrie %@";
+"conflict.stillBusy" = "Scriere reținută: %@ încă e scris de alt chat.";
+"conflict.userSkipped" = "Scriere sărită: %@ a rămas la celălalt chat (%@), cum ai cerut.";
+"conflict.stoppedHolder" = "Chat-ul „%@” a fost oprit la cererea ta și scrierea a continuat.";
+"conflict.stoppedOthers" = "Celelalte chat-uri din acest proiect au fost oprite la cererea ta și scrierea a continuat.";
+"conflict.wholeProject" = "întregul proiect (comandă: %@)";
+"conflict.banner.title" = "Alt chat scrie acest fișier";
+"conflict.banner.body" = "%1$@ · deținut de „%2$@” de %3$d secunde";
+"conflict.banner.keepWaiting" = "Continuă să aștepți";
+"conflict.banner.stopHolder" = "Oprește acel chat";
+"conflict.banner.stopAllOthers" = "Oprește toate celelalte chat-uri";
+"conflict.banner.skip" = "Sari această scriere";
+"conflict.waiting" = "În așteptarea scrierii de către „%@”: %@";
+"settings.workspaceConflictPolicy" = "Dacă alt chat scrie același fișier";
+"settings.conflictWaitSeconds" = "Așteaptă înainte să întrebi";
+"settings.conflictWaitValue" = "%d secunde";
+
+
+"conversation.ranCommand" = "Ran 1 command";
+"conversation.ranCommands" = "Ran %d commands";
+"conversation.runningTools" = "Running tools…";
+"conversation.thinkingPhase" = "Thinking…";
+"conversation.tokensCount" = "%@ tokens";
+"usage.context.window" = "Fereastra de context";
+"usage.planLimits" = "Limitele de utilizare ale planului";
+"ask.other" = "Other";
+"ask.next" = "Next";
+"ask.skipShort" = "Skip";
+"composer.queue.one" = "1 message queued";
+"composer.queue.many" = "%d messages queued";
+"composer.queue.edit" = "Edit";
+"composer.queue.editBlocked" = "Clear the message box to edit";
+"composer.queue.remove" = "Remove";
+"git.createPR" = "Creează PR";
+"git.hideBar" = "Ascunde";
+"composer.queue.next" = "Next: %@";
+
+// Composer, git bar and usage popover.
+"usage.context.tooltip" = "Utilizare context și tokeni";
+"usage.context.conversation" = "Mesajele conversației";
+"usage.context.toolDefinitions" = "Definițiile instrumentelor";
+"usage.context.mcpDefinitions" = "Definițiile instrumentelor MCP";
+"usage.context.systemPrompt" = "Instrucțiuni de sistem";
+"usage.context.cacheHit" = "Accesări în cache-ul promptului";
+"usage.context.notReported" = "Nu a fost raportat de furnizor";
+"usage.context.cacheWrite" = "%@ tokeni scriși în cache";
+
+// Local AI runtime and custom endpoint tuning.
+"custom.modelOptional" = "Numele modelului (opțional)";
+"custom.contextOptional" = "Fereastra de context în tokeni (opțional)";
+"custom.contextHint" = "Lasă ambele goale pentru a le citi de pe server. Setează contextul când serverul nu îl raportează (Ollama: la fel ca OLLAMA_CONTEXT_LENGTH).";
+"custom.contextInvalid" = "Fereastra de context trebuie să fie un număr pozitiv.";
+"custom.detected" = "Rulează pe acest computer";
+"custom.noModelAvailable" = "%@ nu listează niciun model. Pornește serverul sau setează un nume de model pentru endpoint.";
+"local.extraArgs" = "Argumente llama-server suplimentare";
+"local.mlxExtraArgs" = "Argumente suplimentare pentru serverul mlx_lm";
+"local.gpuLayers" = "Straturi pe GPU (auto, all sau un număr)";
+"local.hardware" = "Hardware";
+"local.hardwareGPU" = "%@ · %@ memorie GPU · %@ RAM";
+"local.importGGUF" = "Adaugă un fișier GGUF…";
+"local.installMLX" = "Instalează MLX";
+"local.installingMLX" = "Se instalează MLX (Python + mlx-lm)…";
+"local.kvCache" = "Tip cache KV";
+"local.servingContext" = "%@ · %d tokeni";
+"local.tooLarge" = "Prea mare";
+"local.tuning" = "Performanță";
+"local.tuningHint" = "Gol sau auto lasă runtime-ul să potrivească modelul cu memoria GPU. Modificările se aplică la următoarea pornire a unui model.";
+"local.contextSize" = "Dimensiunea contextului (tokeni)";
+"local.threads" = "Fire CPU";
+"local.batchSize" = "Dimensiunea lotului";
+"local.forget" = "Elimină din listă";
+"localModel.needsMemory" = "Are nevoie de aproximativ %d GB de memorie GPU sau RAM.";
+"localRuntime.helperFailed" = "%@ a eșuat (cod de ieșire %d)";
+"localRuntime.mlxUnsupported" = "MLX necesită un Mac cu Apple Silicon.";
+"local.flashAttention" = "Flash attention";
+"local.hardwareMemory" = "%@ RAM";
+
+// Translations completed for keys that had no localized text.
+"conversation.fullToolOutput" = "Ieșirea completă a instrumentului";
+"sidebar.showSidebar" = "Afișează bara laterală";
+"sidebar.hideSidebar" = "Ascunde bara laterală";
+"navigation.back" = "Înapoi";
+"navigation.forward" = "Înainte";
+"settings.autoApprovePlans" = "Aprobă automat planurile";
+"settings.autoApprovePlans.hint" = "Când este activat, planul generat se aplică fără a aștepta o aprobare separată a planului. Aprobările la nivel de instrument rămân valabile.";
+"media.fallbackUsed" = "Furnizorul selectat nu a putut genera această imagine. A fost generată printr-o singură cerere de rezervă prin %@/%@; furnizorul și modelul conversației principale nu s-au schimbat, deci cache-ul de prompturi rămâne intact.";
+"media.imageUnsupportedWithFallbackHint" = "Nu pot genera această imagine cu %@. Configurează un API sau un furnizor de imagini ca rezervă. Schimbarea modelului principal de chat doar pentru generarea imaginii poate strica cache-ul de prompturi al furnizorului.";
+"conversation.generationResumed" = "Mesaj reluat";
+"conversation.cancelPlan" = "Anulează planul";
+"conversation.cancelPlanHelp" = "Anulează acest plan și eliberează mesajele din coadă";
+"conversation.thinking" = "Proces de gândire";
+"usage.manageResets" = "Gestionează resetările";
+"usage.useReset" = "Folosește resetarea";
+"usage.resetTitle" = "Folosești o resetare a limitei Claude?";
+"usage.openClaude" = "Continuă în Claude";
+"usage.resetConfirmation" = "Se va deschide pagina de utilizare Claude. Autentifică-te în %@ și verifică resetarea oferită acelui cont. Ca să o folosești, apasă Resetează gratuit și confirmă în Claude. Odată folosită, o resetare nu poate fi anulată. Limitele se vor reîmprospăta când revii în HerNess.";
+"usage.resetOpenFailed" = "Nu s-a putut deschide Claude. Verifică dacă contul este încă conectat, apoi încearcă din nou.";
+"conversation.review" = "Revizuiește";
+"dock.noWorkspace" = "Alege mai întâi un dosar de lucru.";
+"dock.branch" = "Ramură";
+"dock.refresh" = "Reîmprospătează";
+"dock.commit" = "Commit";
+"dock.push" = "Push";
+"dock.fetch" = "Fetch";
+"dock.commitOrPush" = "Commit sau push";
+"dock.commitMessage" = "Mesaj de commit";
+"dock.noChanges" = "Nicio modificare făcută de agent.";
+"dock.whyRequest" = "Cererea ta";
+"dock.whyAgent" = "Explicația agentului";
+"dock.notRepo" = "Acest dosar nu este un depozit git.";
+"dock.filterFiles" = "Filtrează fișierele…";
+"dock.openFile" = "Deschide fișierul";
+"dock.selectFile" = "Selectează un fișier din arborele spațiului de lucru";
+"dock.binaryFile" = "Fișier binar sau ilizibil";
+"project.missing.title" = "Dosarul proiectului nu a fost găsit: %@";
+"project.missing.message" = "Dosarul proiectului din „%@” este posibil să fi fost mutat sau șters. Alege noua lui locație sau elimină proiectul.";
+"project.missing.locate" = "Alege locația…";
+"project.missing.readOnly" = "Dosarul proiectului nu este disponibil. Poți vedea conversațiile anterioare; crearea unor conversații noi și trimiterea mesajelor sunt dezactivate până alegi o locație nouă.";
+"queue.waitingForPlan" = "Se așteaptă aprobarea planului";
+"settings.closeToTray" = "Continuă să ruleze în tava sistemului când fereastra este închisă";
+"settings.closeToTray.hint" = "Rulările, terminalele și sarcinile programate continuă cât timp fereastra este ascunsă; pictograma din tavă o readuce.";
+"tray.show" = "Deschide fereastra";
+"context.overflowTitle" = "Această conversație nu va încăpea în noul model";
+"context.overflowReason" = "%1$@ are nevoie de aproximativ %2$d tokeni pentru a continua, iar în acel model sunt liberi doar %3$d.";
+"context.overflowByModel" = "Rezumatul va fi scris de %@, cel mai mic model conectat care încă poate citi transcrierea.";
+"context.overflowLocally" = "Niciun model conectat nu poate citi transcrierea, așa că conversația este scurtată fără a întreba vreun model.";
+"context.overflowCompress" = "Comprimă și continuă";
+"context.overflowNotNow" = "Nu acum";
+"context.overflowDeclined" = "Trimitere oprită: conversația nu încape în noul model.";
+"usage.context.title" = "Utilizare";
+"usage.context.input" = "Intrare trimisă";
+"usage.context.estimatedInput" = "Intrare estimată";
+"usage.context.output" = "Ieșire";
+"usage.context.latestRequest" = "Ultima cerere · fereastra de context";
+"usage.context.estimatedBreakdown" = "Defalcare estimată a intrării";
+"usage.context.estimateNote" = "Totalurile de intrare/ieșire ale furnizorului sunt afișate când sunt disponibile. Altfel, totalurile de intrare și categoriile instrumente/MCP sunt estimări locale.";
+"usage.context.tokens" = "tokeni";
+"usage.context.toolCalls" = "Apeluri de instrumente";
+"usage.context.mcpCalls" = "Apeluri MCP";
+"usage.context.toolResults" = "Rezultate instrumente";
+"usage.context.mcpResults" = "Rezultate MCP";
+"plan.proposed" = "Claude a propus un plan";
+"plan.reject" = "Respinge";
+"plan.revise" = "Revizuiește…";
+"plan.accept" = "Acceptă";
+"plan.acceptAuto" = "Acceptă și mod automat";
+"plan.open" = "Deschide planul";
+"plan.empty" = "Încă nu există plan";
+"dock.expand" = "Extinde";
+"dock.collapse" = "Restrânge";
+"usage.context.cacheReuse" = "Reutilizarea cache-ului în această conversație";
+"usage.context.cacheFreshInput" = "New / outside-breakpoint input: %@ tokens";
+"usage.context.cacheCoverage" = "Acoperirea măsurării: %@ · %@ / %@ cereri";
+"usage.context.cacheLatency" = "Latența medie a cererilor: %@ ms";
+"usage.context.cacheLoss" = "Cea mai mare pierdere de cache: %@ · %@ tokeni";
+"tray.back" = "Conversații";
+
+"composer.cacheExpired.explanation" = "Durata estimată de viață a cache-ului a trecut. Cache-ul promptului este o stare temporară de procesare de partea furnizorului; istoricul chatului rămâne salvat. Continuarea cu întregul istoric poate face ca acei tokeni să fie contorizați din nou ca intrare nouă. Sunt necesare datele de utilizare ale următoarei cereri pentru a confirma dacă furnizorul mai avea cache-ul.";
+"composer.accountSwitched.notice" = "Acest chat a trecut pe alt cont, cu același model. Cache-ul pornește acolo de la zero; continuarea poate consuma mai mulți tokeni și poate costa mai mult.";
+"composer.contextFull.notice" = "Fereastra de context este aproape plină; continuarea poate consuma mai mulți tokeni și poate costa mai mult. Începe un chat nou cu un scurt rezumat.";
+"composer.cacheExpired.infoTitle" = "De ce văd acest mesaj?";
+"composer.cacheExpired.notice" = "Este posibil ca cache-ul să fi expirat; continuarea poate consuma mai mulți tokeni și poate costa mai mult. Începe un chat nou cu un scurt rezumat.";
+"feedback.tag.apply_elsewhere" = "Apply it elsewhere";
+"feedback.tag.broke_existing_feature" = "Broke an existing feature";
+"feedback.tag.did_not_follow_project_style" = "Didn't follow project style";
+"feedback.tag.ignored_project_architecture" = "Ignored project architecture";
+"feedback.tag.keep_project_style" = "Keep the project style";
+"feedback.tag.reuse_architecture" = "Reuse this architecture";
+"feedback.tag.reuse_token_pattern" = "Reuse this token pattern";
+"feedback.tag.wrong_theme_or_token" = "Wrong theme or token";
+
+// Completed translations for keys added to the desktop catalog.
+"conversation.filesChangedCount" = "%d fișiere modificate";
+"conversation.filesLineSummary" = "+%d −%d";
+"conversation.lineCountsUnavailable" = "Numărul de linii nu este disponibil";
+"conversation.filesMore" = "Afișează încă %d fișiere";
+"conversation.filesLess" = "Afișează mai puține fișiere";
+"conversation.undoChanges" = "Anulează";
+"conversation.viewChanges" = "Vezi modificările";
+"conversation.filesReverted" = "Modificările fișierelor au fost anulate.";
+
+// Completed translations for keys added to the desktop catalog.
+"composer.modelSwitched.notice" = "Modelul a fost schimbat. Cache-ul nu se transferă la noul model; întregul istoric este procesat din nou, ceea ce poate consuma mai mulți tokeni și poate costa mai mult.";
+
+"archive.title" = "Conversații arhivate";
+"archive.empty" = "Nu există conversații arhivate.";
+
+"conversation.plan" = "Planifică";
+"conversation.system" = "Sistem";
+
+"archive.confirmDelete" = "Ștergi definitiv această conversație?";
+"archive.deletePermanently" = "Șterge definitiv";
+"conversation.processedTokensCount" = "%@ tokeni";

@@ -12,6 +12,7 @@
     "legal:seed": "node scripts/seed-legal-documents.mjs",
     "legal:seed:remote": "node scripts/seed-legal-documents.mjs --remote",
     "legal:readback": "node scripts/readback-legal-documents.mjs",
+    "catalog:publish": "node scripts/publish-model-catalog.mjs",
     "typecheck": "tsc --noEmit",
     "build:types": "tsc -p tsconfig.build.json",
     "logs:slow-watch": "bash scripts/run-slow-log-watch.sh",

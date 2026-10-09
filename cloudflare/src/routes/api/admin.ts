@@ -15,6 +15,10 @@ import {
   sendLegalDataRequestResponseEmail,
   sendSubscriptionCancellationDecisionEmail,
 } from "../../lib/email";
+import {
+  MARKETPLACE_CATEGORIES,
+  MARKETPLACE_CATALOG_SCOPES,
+} from "../../lib/marketplace-moderation";
 
 const admin = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
@@ -39,6 +43,18 @@ const adminCancellationUpdateSchema = z.object({
 
 const adminUserStatusSchema = z.object({
   status: z.enum(["active", "inactive"]),
+});
+
+const marketplaceReviewSchema = z.object({
+  decision: z.enum(["approved", "rejected", "suspended"]),
+  category: z.enum(MARKETPLACE_CATEGORIES).optional(),
+  catalog_scope: z.enum(MARKETPLACE_CATALOG_SCOPES).optional(),
+  notes: z.string().trim().max(5_000).optional().nullable(),
+});
+
+const marketplaceReportUpdateSchema = z.object({
+  status: z.enum(["in_review", "resolved", "dismissed"]),
+  resolution_notes: z.string().trim().max(5_000).optional().nullable(),
 });
 
 admin.patch(
@@ -436,6 +452,189 @@ admin.get("/users/:email/keys", async (c) => {
 
   return c.json({ keys: results || [] });
 });
+
+admin.get("/marketplace/reviews", async (c) => {
+  const requestedStatus = c.req.query("status")?.trim();
+  const allowedStatuses = ["pending_ai", "pending_review", "approved", "rejected", "suspended"];
+  const status = requestedStatus && allowedStatuses.includes(requestedStatus) ? requestedStatus : null;
+  const where = status ? "WHERE r.moderation_status = ?" : "WHERE r.moderation_status IN ('pending_ai', 'pending_review', 'suspended')";
+  const args = status ? [status] : [];
+  const { results } = await db(c.env).prepare(
+    `SELECT r.id AS release_id, r.plugin_id, p.name, p.author, p.owner_user_id,
+            r.version, r.status, r.moderation_status, r.catalog_scope, r.category,
+            r.category_confidence, r.category_source, r.risk_level,
+            r.risk_flags_json, r.permission_manifest_json, r.moderation_scores_json,
+            r.moderation_reason, r.moderation_model, r.ai_reviewed_at,
+            r.reviewed_by, r.reviewed_at, r.review_notes, r.created_at,
+            r.source_object_key, r.source_sha256
+       FROM marketplace_releases r
+       JOIN marketplace_plugins p ON p.id = r.plugin_id
+       ${where}
+      ORDER BY CASE r.moderation_status WHEN 'suspended' THEN 0 WHEN 'pending_review' THEN 1 ELSE 2 END,
+               r.created_at ASC
+      LIMIT 200`,
+  ).bind(...args).all();
+
+  const reviews = [];
+  for (const row of results || []) {
+    const artifacts = await db(c.env)
+      .prepare("SELECT platform, architecture, build_status, build_error, sha256, size FROM marketplace_artifacts WHERE release_id = ? ORDER BY platform, architecture")
+      .bind(row.release_id)
+      .all();
+    const reports = await db(c.env)
+      .prepare("SELECT COUNT(*) AS n FROM marketplace_reports WHERE release_id = ? AND status IN ('pending', 'in_review')")
+      .bind(row.release_id)
+      .first<{ n: number }>();
+    reviews.push({
+      ...row,
+      risk_flags: (() => { try { return JSON.parse(String(row.risk_flags_json || "[]")); } catch { return []; } })(),
+      permissions: (() => { try { return JSON.parse(String(row.permission_manifest_json || "[]")); } catch { return []; } })(),
+      moderation_scores: (() => { try { return JSON.parse(String(row.moderation_scores_json || "{}")); } catch { return {}; } })(),
+      artifacts: artifacts.results || [],
+      open_reports: Number(reports?.n || 0),
+    });
+  }
+  return c.json({ reviews });
+});
+
+admin.patch(
+  "/marketplace/releases/:releaseId/review",
+  zValidator("json", marketplaceReviewSchema),
+  async (c) => {
+    const releaseID = c.req.param("releaseId");
+    const body = c.req.valid("json");
+    const current = await db(c.env).prepare(
+      `SELECT r.id, r.plugin_id, r.status, r.moderation_status, r.catalog_scope,
+              r.category, r.source_object_key, p.name
+         FROM marketplace_releases r
+         JOIN marketplace_plugins p ON p.id = r.plugin_id
+        WHERE r.id = ?`,
+    ).bind(releaseID).first<{
+      id: string;
+      plugin_id: string;
+      status: string;
+      moderation_status: string;
+      catalog_scope: string;
+      category: string;
+      source_object_key: string | null;
+      name: string;
+    }>();
+    if (!current) return c.json({ error: "marketplace_release_not_found" }, 404);
+
+    const readyArtifact = await db(c.env).prepare(
+      "SELECT 1 AS ready FROM marketplace_artifacts WHERE release_id = ? AND build_status = 'ready' AND object_key IS NOT NULL AND sha256 IS NOT NULL LIMIT 1",
+    ).bind(releaseID).first<{ ready: number }>();
+    const decisionStatus = body.decision;
+    const releaseStatus = decisionStatus === "approved"
+      ? (current.source_object_key && readyArtifact ? "published" : "draft")
+      : "unpublished";
+    const actor = c.get("user");
+    const reviewedAt = nowIso();
+    await db(c.env).batch([
+      db(c.env).prepare(
+        `UPDATE marketplace_releases
+            SET moderation_status = ?, catalog_scope = ?, category = ?,
+                category_source = CASE WHEN ? IS NULL THEN category_source ELSE 'admin' END,
+                status = ?, reviewed_by = ?, reviewed_at = ?, review_notes = ?
+          WHERE id = ?`,
+      ).bind(
+        decisionStatus,
+        body.catalog_scope || current.catalog_scope,
+        body.category || current.category,
+        body.category || null,
+        releaseStatus,
+        actor.id,
+        reviewedAt,
+        body.notes ?? null,
+        releaseID,
+      ),
+      db(c.env).prepare(
+        `UPDATE marketplace_plugins
+            SET verification_status = ?, unpublished_at = CASE WHEN ? = 'approved' THEN NULL ELSE unpublished_at END,
+                updated_at = ?
+          WHERE id = ?`,
+      ).bind(releaseStatus === "published" ? "verified" : "unverified", decisionStatus, reviewedAt, current.plugin_id),
+    ]);
+
+    await recordAudit(c.env, {
+      actorUserId: actor.id,
+      actorEmail: actor.email,
+      action: "admin.marketplace.review",
+      entityType: "marketplace_release",
+      entityId: releaseID,
+      metadata: {
+        pluginId: current.plugin_id,
+        decision: decisionStatus,
+        category: body.category || current.category,
+        catalogScope: body.catalog_scope || current.catalog_scope,
+        releaseStatus,
+      },
+      ip: clientIpFromRequest(c.req),
+      userAgent: c.req.header("User-Agent") ?? null,
+    });
+
+    return c.json({
+      ok: true,
+      release_id: releaseID,
+      status: releaseStatus,
+      moderation_status: decisionStatus,
+      category: body.category || current.category,
+      catalog_scope: body.catalog_scope || current.catalog_scope,
+    });
+  },
+);
+
+admin.get("/marketplace/reports", async (c) => {
+  const requestedStatus = c.req.query("status")?.trim();
+  const allowedStatuses = ["pending", "in_review", "resolved", "dismissed"];
+  const status = requestedStatus && allowedStatuses.includes(requestedStatus) ? requestedStatus : null;
+  const where = status ? "WHERE mr.status = ?" : "WHERE mr.status IN ('pending', 'in_review')";
+  const args = status ? [status] : [];
+  const { results } = await db(c.env).prepare(
+    `SELECT mr.id, mr.plugin_id, mr.release_id, mr.reporter_user_id,
+            mr.reason, mr.details, mr.status, mr.resolution_notes,
+            mr.resolved_by, mr.created_at, mr.resolved_at,
+            p.name AS plugin_name, r.version, r.moderation_status
+       FROM marketplace_reports mr
+       JOIN marketplace_plugins p ON p.id = mr.plugin_id
+       JOIN marketplace_releases r ON r.id = mr.release_id
+       ${where}
+      ORDER BY CASE mr.status WHEN 'pending' THEN 0 ELSE 1 END, mr.created_at ASC
+      LIMIT 200`,
+  ).bind(...args).all();
+  return c.json({ reports: results || [] });
+});
+
+admin.patch(
+  "/marketplace/reports/:reportId",
+  zValidator("json", marketplaceReportUpdateSchema),
+  async (c) => {
+    const reportID = c.req.param("reportId");
+    const body = c.req.valid("json");
+    const current = await db(c.env).prepare(
+      "SELECT id, plugin_id, release_id, status FROM marketplace_reports WHERE id = ?",
+    ).bind(reportID).first<{ id: string; plugin_id: string; release_id: string; status: string }>();
+    if (!current) return c.json({ error: "marketplace_report_not_found" }, 404);
+    const actor = c.get("user");
+    const resolved = ["resolved", "dismissed"].includes(body.status);
+    await db(c.env).prepare(
+      `UPDATE marketplace_reports
+          SET status = ?, resolution_notes = ?, resolved_by = ?, resolved_at = ?
+        WHERE id = ?`,
+    ).bind(body.status, body.resolution_notes ?? null, resolved ? actor.id : null, resolved ? nowIso() : null, reportID).run();
+    await recordAudit(c.env, {
+      actorUserId: actor.id,
+      actorEmail: actor.email,
+      action: "admin.marketplace.report",
+      entityType: "marketplace_report",
+      entityId: reportID,
+      metadata: { pluginId: current.plugin_id, releaseId: current.release_id, status: body.status },
+      ip: clientIpFromRequest(c.req),
+      userAgent: c.req.header("User-Agent") ?? null,
+    });
+    return c.json({ ok: true, report_id: reportID, status: body.status });
+  },
+);
 
 admin.get("/stats", async (c) => {
   const total = await db(c.env).prepare("SELECT COUNT(*) AS n FROM users").first<{ n: number }>();

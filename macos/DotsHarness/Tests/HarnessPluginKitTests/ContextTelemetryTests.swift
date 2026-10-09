@@ -69,4 +69,30 @@ final class ContextTelemetryTests: XCTestCase {
         XCTAssertFalse(raw.contains("prompt content"))
         XCTAssertFalse(raw.contains("tool arguments"))
     }
+
+    func testRetryUsageIsStoredSeparatelyFromTheSuccessfulAttempt() {
+        let event = AgentContextUsageEvent(
+            conversationID: "conversation",
+            provider: "OpenAI",
+            api: RouterAPIKind.openAICompatible.rawValue,
+            model: "test-model",
+            cacheKey: "stable-prefix",
+            requestKind: .main,
+            strategy: .none,
+            policyID: .baseline,
+            retryCount: 1,
+            retryUsage: AgentUsage(inputTokens: 80, outputTokens: 200, reasoningTokens: 120),
+            usage: AgentUsage(inputTokens: 100, outputTokens: 40),
+            contextTokensBefore: 1000,
+            contextTokensAfter: 900,
+            latencyMilliseconds: 10
+        )
+
+        XCTAssertEqual(event.retryCount, 1)
+        XCTAssertEqual(event.retryInputTokens, 80)
+        XCTAssertEqual(event.retryOutputTokens, 200)
+        XCTAssertEqual(event.retryReasoningTokens, 120)
+        XCTAssertEqual(event.inputTokens, 100)
+        XCTAssertEqual(event.outputTokens, 40)
+    }
 }

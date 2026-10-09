@@ -39,6 +39,25 @@ final class ClaudeUsageTests: XCTestCase {
         XCTAssertThrowsError(try ClaudeUsageService.parse(#"{}"#.data(using: .utf8)!))
     }
 
+    func testUnifiedRateLimitHeaders() {
+        let response = HTTPURLResponse(
+            url: URL(string: "https://api.anthropic.com/v1/messages")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: [
+                "anthropic-ratelimit-unified-5h-utilization": "0.35",
+                "anthropic-ratelimit-unified-5h-reset": "1791000000",
+                "anthropic-ratelimit-unified-7d-utilization": "0.23",
+            ]
+        )
+        let windows = ClaudeUsageService.windows(from: response)
+        XCTAssertEqual(windows.map(\.kind), [.fiveHour, .week])
+        XCTAssertEqual(windows[0].usedPercent ?? -1, 0.35, accuracy: 0.001)
+        XCTAssertEqual(windows[0].resetsAt, Date(timeIntervalSince1970: 1_791_000_000))
+        XCTAssertEqual(windows[1].usedPercent ?? -1, 0.23, accuracy: 0.001)
+        XCTAssertNil(windows[1].resetsAt)
+    }
+
     func testHeatLevelThresholds() {
         XCTAssertEqual(ClaudeUsageService.heatLevel(0.24), 0)
         XCTAssertEqual(ClaudeUsageService.heatLevel(0.25), 1)

@@ -80,7 +80,6 @@
 "settings.title" = "Cài đặt";
 "settings.backToChats" = "Quay lại cuộc trò chuyện";
 "settings.tab.general" = "Chung";
-"settings.tab.pet" = "Thú cưng";
 "settings.tab.providers" = "Nhà cung cấp";
 "settings.tab.custom" = "API tùy chỉnh";
 "settings.tab.local" = "Mô hình địa phương";
@@ -306,7 +305,7 @@
 "composer.add" = "Thêm";
 "composer.stopListening" = "Dừng nghe và thêm văn bản vào bản nháp";
 "composer.keyboardHelp" = "Enter: gửi · Shift+Enter: dòng mới · ⌘/Ctrl+Enter: lái";
-"composer.followUp.hint" = "Nhấn Tab để chấp nhận gợi ý tin nhắn tiếp theo";
+"composer.followUp.hint" = "Nhấn Tab để chấp nhận đề xuất tin nhắn tiếp theo";
 "composer.selectModel" = "Chọn mô hình";
 "composer.installedSkill" = "Kỹ năng đã cài đặt";
 "composer.settings" = "Cài đặt";
@@ -318,10 +317,10 @@
 "composer.noProject" = "Không có dự án nào được chọn";
 "composer.dontWorkInProject" = "Đừng làm việc trong một dự án";
 "workLocation.title" = "Làm việc tại";
-"workLocation.help" = "Chọn nơi tác vụ này chạy";
-"workLocation.local" = "Địa phương";
+"workLocation.help" = "Chọn nơi chạy tác vụ này";
+"workLocation.local" = "Cục bộ";
 "workLocation.localDetail" = "Chạy tác vụ này trên máy tính này";
-"workLocation.localWorktree" = "Cây làm việc cục bộ mới";
+"workLocation.localWorktree" = "Worktree cục bộ mới";
 "workLocation.localWorktreeDetail" = "Sử dụng thanh toán riêng biệt trên máy tính này";
 "workLocation.remote" = "Máy tính khác";
 "workLocation.remoteDetail" = "Làm việc qua SSH trên máy bạn kết nối tới";
@@ -377,8 +376,8 @@
 "ssh.error.pathMissing" = "Thư mục %@ không tồn tại trên máy từ xa.";
 "ssh.error.configWriteFailed" = "Không thể ghi %@ vào ~/.ssh/config.";
 "tool.remoteUnavailable" = "%1$@ không dùng được khi làm việc trên %2$@. Hãy dùng run_command với lệnh shell.";
-"git.branchHelp" = "Chọn một nhánh Git";
-"git.detached" = "ĐẦU tách rời";
+"git.branchHelp" = "Chọn nhánh Git";
+"git.detached" = "HEAD tách rời";
 "git.search" = "Tìm kiếm chi nhánh";
 "git.branches" = "Chi nhánh";
 "git.noBranches" = "Không tìm thấy chi nhánh nào";
@@ -413,8 +412,6 @@
 "slash.model" = "người mẫu";
 "slash.plan" = "Chế độ kế hoạch";
 "slash.planDetail" = "Bật chế độ kế hoạch";
-"slash.mascot" = "Thú cưng";
-"slash.mascotDetail" = "Đánh thức hoặc giấu thú cưng";
 "slash.pluginCreator" = "Trình tạo plugin";
 "slash.pluginCreatorDetail" = "Tạo plugin mới";
 "pluginCreator.template" = "Mẫu";
@@ -501,7 +498,6 @@
 "sidebar.hide" = "Ẩn";
 "sidebar.show" = "Hiển thị";
 "sidebar.selectProject" = "Chọn dự án";
-"sidebar.continueWithoutProject" = "Tiếp tục mà không có dự án";
 "sidebar.projectOptions" = "Tùy chọn dự án";
 "sidebar.editProject" = "Chỉnh sửa dự án";
 "sidebar.addProject" = "Thêm dự án";
@@ -528,33 +524,11 @@
 "sidebar.archived" = "Đã lưu trữ";
 "sidebar.chatRunning" = "Đang trò chuyện";
 "sidebar.chatCompleted" = "Trò chuyện đã hoàn tất";
-"sidebar.usage" = "Cách sử dụng";
+"sidebar.usage" = "Mức dùng";
 "sidebar.settings" = "Cài đặt";
 "sidebar.accountOptions" = "Tùy chọn tài khoản";
 "sidebar.accountUsage" = "Tài khoản DOTS và cách sử dụng";
 
-"pet.position.bottomTrailing" = "Dưới cùng bên phải";
-"pet.position.bottomLeading" = "Dưới cùng bên trái";
-"pet.position.topTrailing" = "Trên cùng bên phải";
-"pet.position.topLeading" = "Trên cùng bên trái";
-"pet.settings" = "Cài đặt thú cưng";
-"pet.hide" = "Giấu thú cưng";
-"pet.dragHint" = "DOTS Pet · Giữ để di chuyển";
-"pet.stopAndSend" = "Dừng nghe và gửi đến cuộc trò chuyện đã chọn";
-"pet.micOpening" = "Đang mở micrô…";
-"pet.listening" = "Đang nghe…";
-"pet.transcribing" = "Mẫu giọng nói địa phương đang phiên âm…";
-"pet.sending" = "Đang gửi tới cuộc trò chuyện đã chọn…";
-"pet.visibility" = "Tầm nhìn của thú cưng";
-"pet.show" = "Hiển thị thú cưng";
-"pet.visibilityHint" = "Thú cưng chỉ nổi trên màn hình khi tùy chọn này được bật. Nó tắt trong lần ra mắt đầu tiên.";
-"pet.appearance" = "Ngoại hình";
-"pet.position" = "Vị trí";
-"pet.size" = "Kích thước";
-"pet.sizeValue" = "%d pixel";
-"pet.avatar" = "Hình đại diện";
-"pet.preview" = "Xem trước";
-"pet.title" = "Thú cưng";
 
 "usage.title" = "Cách sử dụng";
 "usage.accountSummary" = "Tóm tắt tài khoản DOTS YAZILIM kỳ này";
@@ -870,7 +844,6 @@
 "marketplace.install" = "cài đặt";
 "marketplace.search" = "Tìm kiếm plugin";
 "marketplace.update" = "Cập nhật v%@ → v%@";
-"pet.avatarHint" = "Chọn một avatar thú cưng.";
 "router.customEndpointHint" = "Điểm cuối API tùy chỉnh";
 "router.noKeyRequired" = "Không cần chìa khóa. Kết nối để định tuyến thông qua nhà cung cấp này.";
 "settings.addProviderCustom" = "Thêm nhà cung cấp này thông qua API tùy chỉnh.";
@@ -1104,9 +1077,6 @@
 "feedback.tag.negative_other" = "Khác";
 
 // Completed translations for keys added to the desktop catalog.
-"assistantMode.title" = "Chế độ trợ lý";
-"assistantMode.coding" = "Lập trình";
-"assistantMode.chat" = "Trò chuyện";
 "tasks.close" = "Đóng tác vụ";
 "tasks.back" = "Quay lại";
 "tasks.new" = "Tác vụ mới";
@@ -1147,3 +1117,213 @@
 "settings.compactTrigger" = "Tự động nén ngữ cảnh ở mức";
 "settings.compactTrigger.hint" = "Tỷ lệ trên cửa sổ ngữ cảnh của từng mô hình. Giá trị cao hơn giữ bộ nhớ đệm prompt lâu hơn, vì việc nén sẽ ghi lại bộ nhớ đệm.";
 "conversation.translate" = "Dịch";
+
+
+// Completed translations for keys added to the desktop catalog.
+"tray.section.running" = "Cuộc trò chuyện đang chạy";
+"tray.section.waiting" = "Cần xử lý";
+"tray.write" = "Viết tin nhắn";
+"tray.openUsage" = "Mở màn hình sử dụng";
+"tray.noChats" = "Hiện không có cuộc trò chuyện nào";
+"tray.unread" = "Phản hồi mới";
+
+// Write-lease conflict copy.
+"conflict.policy.waitThenAsk" = "Chờ rồi hỏi";
+"conflict.policy.waitThenAsk.detail" = "Lặng lẽ chờ chat kia và chỉ hỏi nếu chờ quá lâu.";
+"conflict.policy.ask" = "Hỏi tôi";
+"conflict.policy.ask.detail" = "Hỏi ngay khi hai chat cùng muốn một tệp.";
+"conflict.policy.waitOnly" = "Luôn chờ";
+"conflict.policy.waitOnly.detail" = "Không hỏi: mỗi lần ghi sẽ chờ chat đang giữ tệp.";
+"conflict.title" = "Một chat khác đang viết %@";
+"conflict.stillBusy" = "Lần ghi bị giữ lại: %@ vẫn đang được một chat khác viết.";
+"conflict.userSkipped" = "Lần ghi bị bỏ qua: %@ vẫn ở chat khác (%@) như bạn yêu cầu.";
+"conflict.stoppedHolder" = "Đã dừng chat “%@” theo yêu cầu của bạn và lần ghi này đã thực hiện.";
+"conflict.stoppedOthers" = "Đã dừng các chat khác của dự án này theo yêu cầu và lần ghi này đã thực hiện.";
+"conflict.wholeProject" = "toàn bộ dự án (lệnh: %@)";
+"conflict.banner.title" = "Một chat khác đang viết tệp này";
+"conflict.banner.body" = "%1$@ · “%2$@” đã giữ %3$d giây";
+"conflict.banner.keepWaiting" = "Tiếp tục chờ";
+"conflict.banner.stopHolder" = "Dừng chat đó";
+"conflict.banner.stopAllOthers" = "Dừng tất cả chat khác";
+"conflict.banner.skip" = "Bỏ qua lần ghi này";
+"conflict.waiting" = "Đang chờ “%@” ghi: %@";
+"settings.workspaceConflictPolicy" = "Nếu một chat khác đang ghi cùng tệp";
+"settings.conflictWaitSeconds" = "Chờ trước khi hỏi";
+"settings.conflictWaitValue" = "%d giây";
+
+
+"conversation.ranCommand" = "Ran 1 command";
+"conversation.ranCommands" = "Ran %d commands";
+"conversation.runningTools" = "Running tools…";
+"conversation.thinkingPhase" = "Thinking…";
+"conversation.tokensCount" = "%@ tokens";
+"usage.context.window" = "Cửa sổ ngữ cảnh";
+"usage.planLimits" = "Giới hạn sử dụng của gói";
+"ask.other" = "Other";
+"ask.next" = "Next";
+"ask.skipShort" = "Skip";
+"composer.queue.one" = "1 message queued";
+"composer.queue.many" = "%d messages queued";
+"composer.queue.edit" = "Edit";
+"composer.queue.editBlocked" = "Clear the message box to edit";
+"composer.queue.remove" = "Remove";
+"git.createPR" = "Tạo PR";
+"git.hideBar" = "Ẩn";
+"composer.queue.next" = "Next: %@";
+
+// Composer, git bar and usage popover.
+"usage.context.tooltip" = "Mức dùng ngữ cảnh và token";
+"usage.context.conversation" = "Tin nhắn hội thoại";
+"usage.context.toolDefinitions" = "Định nghĩa công cụ";
+"usage.context.mcpDefinitions" = "Định nghĩa công cụ MCP";
+"usage.context.systemPrompt" = "Chỉ dẫn hệ thống";
+"usage.context.cacheHit" = "Lượt trúng bộ nhớ đệm prompt";
+"usage.context.notReported" = "Nhà cung cấp không báo cáo";
+"usage.context.cacheWrite" = "Đã ghi %@ token vào bộ nhớ đệm";
+
+// Local AI runtime and custom endpoint tuning.
+"custom.modelOptional" = "Tên mô hình (tùy chọn)";
+"custom.contextOptional" = "Cửa sổ ngữ cảnh tính bằng token (tùy chọn)";
+"custom.contextHint" = "Để trống cả hai để đọc từ máy chủ. Hãy nhập ngữ cảnh khi máy chủ không báo (Ollama: trùng với OLLAMA_CONTEXT_LENGTH).";
+"custom.contextInvalid" = "Cửa sổ ngữ cảnh phải là một số dương.";
+"custom.detected" = "Đang chạy trên máy tính này";
+"custom.noModelAvailable" = "%@ không liệt kê mô hình nào. Hãy khởi động máy chủ hoặc đặt tên mô hình cho endpoint.";
+"local.extraArgs" = "Tham số llama-server bổ sung";
+"local.mlxExtraArgs" = "Tham số máy chủ mlx_lm bổ sung";
+"local.gpuLayers" = "Số lớp trên GPU (auto, all hoặc một số)";
+"local.hardware" = "Phần cứng";
+"local.hardwareGPU" = "%@ · %@ bộ nhớ GPU · %@ RAM";
+"local.importGGUF" = "Thêm tệp GGUF…";
+"local.installMLX" = "Cài đặt MLX";
+"local.installingMLX" = "Đang cài đặt MLX (Python + mlx-lm)…";
+"local.kvCache" = "Kiểu bộ đệm KV";
+"local.servingContext" = "%@ · %d token";
+"local.tooLarge" = "Quá lớn";
+"local.tuning" = "Hiệu năng";
+"local.tuningHint" = "Để trống hoặc auto để runtime tự điều chỉnh mô hình theo bộ nhớ GPU của bạn. Thay đổi có hiệu lực ở lần khởi động mô hình tiếp theo.";
+"local.contextSize" = "Kích thước ngữ cảnh (token)";
+"local.threads" = "Luồng CPU";
+"local.batchSize" = "Kích thước lô";
+"local.forget" = "Xóa khỏi danh sách";
+"localModel.needsMemory" = "Cần khoảng %d GB bộ nhớ GPU hoặc RAM.";
+"localRuntime.helperFailed" = "%@ thất bại (mã thoát %d)";
+"localRuntime.mlxUnsupported" = "MLX cần máy Mac dùng Apple Silicon.";
+"local.flashAttention" = "Flash attention";
+"local.hardwareMemory" = "%@ RAM";
+
+// Translations completed for keys that had no localized text.
+"conversation.fullToolOutput" = "Toàn bộ đầu ra của công cụ";
+"sidebar.showSidebar" = "Hiện thanh bên";
+"sidebar.hideSidebar" = "Ẩn thanh bên";
+"navigation.back" = "Quay lại";
+"navigation.forward" = "Tiến";
+"settings.autoApprovePlans" = "Tự động phê duyệt kế hoạch";
+"settings.autoApprovePlans.hint" = "Khi bật, kế hoạch được tạo sẽ được áp dụng mà không chờ phê duyệt kế hoạch riêng. Các phê duyệt ở cấp công cụ vẫn có hiệu lực.";
+"media.fallbackUsed" = "Nhà cung cấp đã chọn không tạo được hình ảnh này. Hình ảnh được tạo bằng một yêu cầu dự phòng dùng một lần qua %@/%@; nhà cung cấp và mô hình của cuộc trò chuyện chính không đổi nên bộ đệm prompt vẫn nguyên vẹn.";
+"media.imageUnsupportedWithFallbackHint" = "Tôi không thể tạo hình ảnh này bằng %@. Hãy cấu hình một API hoặc nhà cung cấp hình ảnh làm dự phòng. Đổi mô hình trò chuyện chính chỉ để tạo ảnh có thể làm hỏng bộ đệm prompt của nhà cung cấp.";
+"conversation.generationResumed" = "Đã tiếp tục tin nhắn";
+"conversation.cancelPlan" = "Hủy kế hoạch";
+"conversation.cancelPlanHelp" = "Hủy kế hoạch này và giải phóng các tin nhắn đang chờ";
+"conversation.thinking" = "Quá trình suy nghĩ";
+"usage.manageResets" = "Quản lý lượt đặt lại";
+"usage.useReset" = "Dùng lượt đặt lại";
+"usage.resetTitle" = "Dùng lượt đặt lại giới hạn Claude?";
+"usage.openClaude" = "Tiếp tục trong Claude";
+"usage.resetConfirmation" = "Trang Mức sử dụng của Claude sẽ mở. Hãy đăng nhập vào %@ và xem lượt đặt lại dành cho tài khoản đó. Để dùng, nhấp Đặt lại miễn phí và xác nhận trong Claude. Lượt đặt lại đã dùng thì không thể hoàn tác. Giới hạn sẽ được làm mới khi bạn quay lại HerNess.";
+"usage.resetOpenFailed" = "Không mở được Claude. Hãy kiểm tra tài khoản còn kết nối rồi thử lại.";
+"conversation.review" = "Xem xét";
+"dock.noWorkspace" = "Hãy chọn thư mục làm việc trước.";
+"dock.branch" = "Nhánh";
+"dock.refresh" = "Làm mới";
+"dock.commit" = "Commit";
+"dock.push" = "Push";
+"dock.fetch" = "Fetch";
+"dock.commitOrPush" = "Commit hoặc push";
+"dock.commitMessage" = "Thông điệp commit";
+"dock.noChanges" = "Tác tử không thay đổi gì.";
+"dock.whyRequest" = "Yêu cầu của bạn";
+"dock.whyAgent" = "Giải thích của tác tử";
+"dock.notRepo" = "Thư mục này không phải kho git.";
+"dock.filterFiles" = "Lọc tệp…";
+"dock.openFile" = "Mở tệp";
+"dock.selectFile" = "Chọn một tệp từ cây không gian làm việc";
+"dock.binaryFile" = "Tệp nhị phân hoặc không đọc được";
+"project.missing.title" = "Không tìm thấy thư mục dự án: %@";
+"project.missing.message" = "Thư mục dự án tại '%@' có thể đã bị di chuyển hoặc xóa. Hãy chọn vị trí mới hoặc xóa dự án.";
+"project.missing.locate" = "Chọn vị trí…";
+"project.missing.readOnly" = "Thư mục dự án không khả dụng. Bạn vẫn có thể xem các cuộc trò chuyện trước; việc tạo cuộc trò chuyện mới và gửi tin nhắn bị tắt cho đến khi bạn chọn vị trí mới.";
+"queue.waitingForPlan" = "Đang chờ phê duyệt kế hoạch";
+"settings.closeToTray" = "Tiếp tục chạy trong khay hệ thống khi đóng cửa sổ";
+"settings.closeToTray.hint" = "Các lượt chạy, terminal và tác vụ theo lịch vẫn tiếp diễn khi cửa sổ bị ẩn; biểu tượng khay sẽ mở lại.";
+"tray.show" = "Mở cửa sổ";
+"context.overflowTitle" = "Cuộc trò chuyện này sẽ không vừa với mô hình mới";
+"context.overflowReason" = "%1$@ cần khoảng %2$d token để tiếp tục, mà mô hình đó chỉ còn trống %3$d.";
+"context.overflowByModel" = "Bản tóm tắt sẽ do %@ viết, mô hình đã kết nối nhỏ nhất còn đọc được bản ghi.";
+"context.overflowLocally" = "Không mô hình đã kết nối nào đọc được bản ghi, nên cuộc trò chuyện được rút gọn mà không hỏi mô hình nào.";
+"context.overflowCompress" = "Nén và tiếp tục";
+"context.overflowNotNow" = "Để sau";
+"context.overflowDeclined" = "Đã dừng gửi: cuộc trò chuyện không vừa với mô hình mới.";
+"usage.context.title" = "Mức sử dụng";
+"usage.context.input" = "Đầu vào đã gửi";
+"usage.context.estimatedInput" = "Đầu vào ước tính";
+"usage.context.output" = "Đầu ra";
+"usage.context.latestRequest" = "Yêu cầu gần nhất · cửa sổ ngữ cảnh";
+"usage.context.estimatedBreakdown" = "Phân tích đầu vào ước tính";
+"usage.context.estimateNote" = "Tổng đầu vào/đầu ra của nhà cung cấp được hiển thị khi có. Nếu không, tổng đầu vào và các hạng mục công cụ/MCP là ước tính cục bộ.";
+"usage.context.tokens" = "token";
+"usage.context.toolCalls" = "Lệnh gọi công cụ";
+"usage.context.mcpCalls" = "Lệnh gọi MCP";
+"usage.context.toolResults" = "Kết quả công cụ";
+"usage.context.mcpResults" = "Kết quả MCP";
+"plan.proposed" = "Claude đã đề xuất một kế hoạch";
+"plan.reject" = "Từ chối";
+"plan.revise" = "Chỉnh sửa…";
+"plan.accept" = "Chấp nhận";
+"plan.acceptAuto" = "Chấp nhận và chế độ tự động";
+"plan.open" = "Mở kế hoạch";
+"plan.empty" = "Chưa có kế hoạch";
+"dock.expand" = "Mở rộng";
+"dock.collapse" = "Thu gọn";
+"usage.context.cacheReuse" = "Tái sử dụng bộ nhớ đệm trong cuộc trò chuyện này";
+"usage.context.cacheFreshInput" = "New / outside-breakpoint input: %@ tokens";
+"usage.context.cacheCoverage" = "Độ phủ đo lường: %@ · %@ / %@ yêu cầu";
+"usage.context.cacheLatency" = "Độ trễ yêu cầu trung bình: %@ ms";
+"usage.context.cacheLoss" = "Mất bộ đệm lớn nhất: %@ · %@ token";
+"tray.back" = "Trò chuyện";
+
+"composer.cacheExpired.explanation" = "Thời gian tồn tại ước tính của bộ nhớ đệm đã hết. Bộ nhớ đệm prompt là trạng thái xử lý tạm thời phía nhà cung cấp; lịch sử trò chuyện của bạn vẫn được lưu. Tiếp tục với toàn bộ lịch sử có thể khiến các token đó bị tính lại như đầu vào mới. Cần dữ liệu sử dụng của yêu cầu tiếp theo để xác nhận nhà cung cấp còn bộ nhớ đệm hay không.";
+"composer.accountSwitched.notice" = "Cuộc trò chuyện này đã chuyển sang tài khoản khác trên cùng mô hình. Bộ nhớ đệm ở tài khoản đó bắt đầu lại từ đầu; tiếp tục có thể tốn thêm token và chi phí.";
+"composer.contextFull.notice" = "Cửa sổ ngữ cảnh sắp đầy; tiếp tục có thể tốn thêm token và chi phí. Hãy bắt đầu cuộc trò chuyện mới kèm bản tóm tắt ngắn.";
+"composer.cacheExpired.infoTitle" = "Vì sao tôi thấy thông báo này?";
+"composer.cacheExpired.notice" = "Bộ nhớ đệm có thể đã hết hạn; tiếp tục có thể tốn thêm token và chi phí. Hãy bắt đầu cuộc trò chuyện mới kèm bản tóm tắt ngắn.";
+"feedback.tag.apply_elsewhere" = "Apply it elsewhere";
+"feedback.tag.broke_existing_feature" = "Broke an existing feature";
+"feedback.tag.did_not_follow_project_style" = "Didn't follow project style";
+"feedback.tag.ignored_project_architecture" = "Ignored project architecture";
+"feedback.tag.keep_project_style" = "Keep the project style";
+"feedback.tag.reuse_architecture" = "Reuse this architecture";
+"feedback.tag.reuse_token_pattern" = "Reuse this token pattern";
+"feedback.tag.wrong_theme_or_token" = "Wrong theme or token";
+
+// Completed translations for keys added to the desktop catalog.
+"conversation.filesChangedCount" = "Đã thay đổi %d tệp";
+"conversation.filesLineSummary" = "+%d −%d";
+"conversation.lineCountsUnavailable" = "Không có số dòng";
+"conversation.filesMore" = "Hiện thêm %d tệp";
+"conversation.filesLess" = "Hiện ít tệp hơn";
+"conversation.undoChanges" = "Hoàn tác";
+"conversation.viewChanges" = "Xem thay đổi";
+"conversation.filesReverted" = "Các thay đổi đối với tệp đã được hoàn tác.";
+
+// Completed translations for keys added to the desktop catalog.
+"composer.modelSwitched.notice" = "Mô hình đã thay đổi. Bộ nhớ đệm không được chuyển sang mô hình mới; toàn bộ lịch sử được xử lý lại, nên có thể tốn thêm token và chi phí.";
+
+"archive.title" = "Cuộc trò chuyện đã lưu trữ";
+"archive.empty" = "Không có cuộc trò chuyện nào được lưu trữ.";
+
+"conversation.plan" = "Kế hoạch";
+"conversation.system" = "Hệ thống";
+
+"archive.confirmDelete" = "Xóa vĩnh viễn cuộc trò chuyện này?";
+"archive.deletePermanently" = "Xóa vĩnh viễn";
+"conversation.processedTokensCount" = "%@ token";

@@ -14,7 +14,6 @@ struct PromptTextEditor: NSViewRepresentable {
     let onAcceptSlashCommand: () -> Bool
     let onMoveSlashCommand: (Int) -> Bool
     let followUpSuggestion: String?
-    let onGhostVisibilityChange: (Bool) -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -32,11 +31,9 @@ struct PromptTextEditor: NSViewRepresentable {
         editor.onSubmit = onSubmit
         editor.onAcceptSlashCommand = onAcceptSlashCommand
         editor.onMoveSlashCommand = onMoveSlashCommand
-        editor.onGhostVisibilityChange = { [weak coordinator = context.coordinator] visible in
-            coordinator?.ghostVisibilityChanged(visible)
-        }
-        editor.onGhostAccepted = { [weak coordinator = context.coordinator] text in
-            coordinator?.ghostAccepted(text)
+        editor.followUpSuggestion = followUpSuggestion
+        editor.onSuggestionAccepted = { [weak coordinator = context.coordinator] text in
+            coordinator?.suggestionAccepted(text)
         }
         editor.string = text
         editor.isEditable = isEnabled
@@ -62,31 +59,14 @@ struct PromptTextEditor: NSViewRepresentable {
         editor.onSubmit = onSubmit
         editor.onAcceptSlashCommand = onAcceptSlashCommand
         editor.onMoveSlashCommand = onMoveSlashCommand
+        editor.followUpSuggestion = followUpSuggestion
         editor.isEditable = isEnabled
 
-        if text.isEmpty {
-            if !editor.committedString.isEmpty {
-                editor.removeGhost()
-                editor.string = ""
-            }
-            if let followUpSuggestion, !editor.hasMarkedText() {
-                if editor.ghostText != followUpSuggestion {
-                    editor.removeGhost()
-                }
-                if editor.ghostRange == nil, !editor.ghostReinsertionSuppressed {
-                    editor.insertGhost(followUpSuggestion)
-                }
-            } else if followUpSuggestion == nil {
-                editor.removeGhost()
-            }
-        } else {
-            editor.removeGhost()
-            if editor.string != text {
-                editor.string = text
-            }
+        if editor.string != text {
+            editor.string = text
         }
         editor.setAccessibilityHelp(
-            editor.ghostRange == nil ? nil : AppCopy.text("composer.followUp.hint")
+            text.isEmpty && followUpSuggestion != nil ? AppCopy.text("composer.followUp.hint") : nil
         )
     }
 
@@ -104,26 +84,11 @@ struct PromptTextEditor: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let editor = notification.object as? PromptNSTextView else { return }
-            let committedString = editor.committedString
-            parent.text = committedString
-            if !committedString.isEmpty {
-                editor.ghostReinsertionSuppressed = false
-            }
-            guard committedString.isEmpty,
-                  !editor.hasMarkedText(),
-                  !editor.ghostReinsertionSuppressed,
-                  let suggestion = parent.followUpSuggestion,
-                  editor.ghostRange == nil else { return }
-            editor.insertGhost(suggestion)
+            parent.text = editor.string
         }
 
-        func ghostVisibilityChanged(_ visible: Bool) {
-            parent.onGhostVisibilityChange(visible)
-        }
-
-        func ghostAccepted(_ text: String) {
+        func suggestionAccepted(_ text: String) {
             parent.text = text
-            parent.onGhostVisibilityChange(false)
         }
     }
 }
@@ -132,77 +97,33 @@ final class PromptNSTextView: NSTextView {
     var onSubmit: ((PromptMode) -> Void)?
     var onAcceptSlashCommand: (() -> Bool)?
     var onMoveSlashCommand: ((Int) -> Bool)?
-    var onGhostVisibilityChange: ((Bool) -> Void)?
-    var onGhostAccepted: ((String) -> Void)?
-    var ghostRange: NSRange?
-    var ghostText: String?
-    var ghostReinsertionSuppressed = false
+    var onSuggestionAccepted: ((String) -> Void)?
+    var followUpSuggestion: String?
 
-    var committedString: String {
-        guard let ghostRange,
-              NSMaxRange(ghostRange) <= (string as NSString).length else { return string }
-        return (string as NSString).replacingCharacters(in: ghostRange, with: "")
-    }
-
-    func insertGhost(_ text: String) {
-        guard ghostRange == nil,
-              !text.isEmpty,
-              committedString.isEmpty,
+    func acceptFollowUpSuggestion() -> Bool {
+        guard string.isEmpty,
               !hasMarkedText(),
-              let textStorage else { return }
+              let suggestion = followUpSuggestion,
+              !suggestion.isEmpty,
+              let textStorage else { return false }
 
-        let attributedText = NSAttributedString(
-            string: text,
+        let acceptedTextColor = NSColor.labelColor
+        let acceptedText = NSAttributedString(
+            string: suggestion,
             attributes: [
-                .foregroundColor: NSColor.tertiaryLabelColor,
+                .foregroundColor: acceptedTextColor,
                 .font: font ?? NSFont.systemFont(ofSize: 15),
             ]
         )
         textStorage.beginEditing()
-        textStorage.insert(attributedText, at: 0)
+        textStorage.setAttributedString(acceptedText)
         textStorage.endEditing()
-        ghostRange = NSRange(location: 0, length: attributedText.length)
-        ghostText = text
-        ghostReinsertionSuppressed = false
-        setSelectedRange(NSRange(location: 0, length: 0))
-        setAccessibilityHelp(AppCopy.text("composer.followUp.hint"))
-        onGhostVisibilityChange?(true)
-    }
-
-    func removeGhost(suppressReinsertion: Bool = false) {
-        ghostReinsertionSuppressed = suppressReinsertion
-        guard let range = ghostRange else { return }
-        ghostRange = nil
-        ghostText = nil
-        if let textStorage, NSMaxRange(range) <= textStorage.length {
-            textStorage.beginEditing()
-            textStorage.deleteCharacters(in: range)
-            textStorage.endEditing()
-        }
+        setSelectedRange(NSRange(location: (suggestion as NSString).length, length: 0))
+        var acceptedTypingAttributes = typingAttributes
+        acceptedTypingAttributes[.foregroundColor] = acceptedTextColor
+        typingAttributes = acceptedTypingAttributes
         setAccessibilityHelp(nil)
-        onGhostVisibilityChange?(false)
-    }
-
-    func acceptGhost() -> Bool {
-        guard let range = ghostRange,
-              let textStorage,
-              NSMaxRange(range) <= textStorage.length else { return false }
-
-        textStorage.beginEditing()
-        textStorage.addAttribute(
-            .foregroundColor,
-            value: textColor ?? NSColor.labelColor,
-            range: range
-        )
-        textStorage.endEditing()
-        ghostRange = nil
-        ghostText = nil
-        ghostReinsertionSuppressed = false
-        let committedString = string
-        setSelectedRange(NSRange(location: (committedString as NSString).length, length: 0))
-        setAccessibilityHelp(nil)
-        onGhostVisibilityChange?(false)
-        onGhostAccepted?(committedString)
+        onSuggestionAccepted?(suggestion)
         return true
     }
 
@@ -216,17 +137,13 @@ final class PromptNSTextView: NSTextView {
         switch event.keyCode {
         case 48 where !hasTextModifiers:
             if onAcceptSlashCommand?() == true { return }
-            if acceptGhost() { return }
+            if acceptFollowUpSuggestion() { return }
         case 126 where !hasTextModifiers:
             if onMoveSlashCommand?(-1) == true { return }
         case 125 where !hasTextModifiers:
             if onMoveSlashCommand?(1) == true { return }
         default:
             break
-        }
-
-        if ghostRange != nil {
-            removeGhost(suppressReinsertion: true)
         }
 
         guard event.keyCode == 36 || event.keyCode == 76 else {

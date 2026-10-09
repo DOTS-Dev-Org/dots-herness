@@ -71,6 +71,52 @@ final class ModelRouterTests: XCTestCase {
         XCTAssertEqual(decision.effort, "medium")
     }
 
+    func testEconomyMechanicalFollowUpUsesNoneBeforeLow() throws {
+        let messages = [user("Add OAuth"), assistant(), user("rename that helper")]
+        let decision = try XCTUnwrap(ModelRouter.decide(
+            messages: messages,
+            available: [standard],
+            economy: true,
+            hasTools: false
+        ))
+        XCTAssertEqual(decision.effort, "low", "Sonnet has no none/minimal level, so Economy uses low")
+
+        let gpt = RouterModel(
+            id: "gpt-6-astra",
+            efforts: ["none", "low", "medium", "high"],
+            provider: "gpt",
+            tier: .standard
+        )
+        let gptDecision = try XCTUnwrap(ModelRouter.decide(
+            messages: messages,
+            available: [gpt],
+            economy: true,
+            hasTools: false
+        ))
+        XCTAssertEqual(gptDecision.effort, "none")
+    }
+
+    func testEconomyToolContinuationStaysAtLowInsteadOfNone() throws {
+        let messages = [
+            user("Add OAuth"),
+            AgentMessage(role: .assistant, content: "", toolCalls: [AgentToolCall(id: "1", name: "read_file", arguments: "{}")]),
+            AgentMessage(role: .tool, content: "file contents", toolCallID: "1"),
+        ]
+        let gpt = RouterModel(
+            id: "gpt-6-astra",
+            efforts: ["none", "low", "medium", "high"],
+            provider: "gpt",
+            tier: .standard
+        )
+        let decision = try XCTUnwrap(ModelRouter.decide(
+            messages: messages,
+            available: [gpt],
+            economy: true,
+            hasTools: true
+        ))
+        XCTAssertEqual(decision.effort, "low")
+    }
+
     func testWorkerFallsBackToTheOnlyLevelAModelOffers() {
         XCTAssertEqual(ModelRouter.effort(for: .worker, supported: ["low"], mechanical: false), "low")
         XCTAssertEqual(ModelRouter.effort(for: .worker, supported: [], mechanical: false), "")
@@ -155,25 +201,31 @@ final class ModelRouterTests: XCTestCase {
 
     // MARK: Model picker presentation
 
-    func testModelDisplayNameRemovesProviderPrefix() {
+    /// Names stay recognisable: the family token is part of the model name, so
+    /// an id like `gpt-6-luna` must never collapse to "6 Luna".
+    func testModelDisplayNameKeepsTheModelNameIntact() {
         XCTAssertEqual(
             RouterCatalog.modelDisplayName(for: RouterModel(id: "claude-sonnet-5", provider: "claude")),
-            "Sonnet 5"
+            "Claude Sonnet 5"
         )
-        XCTAssertEqual(RouterCatalog.modelDisplayName(for: standard), "Sonnet 5")
-        XCTAssertEqual(RouterCatalog.modelDisplayName(for: premium), "Opus 5")
+        XCTAssertEqual(RouterCatalog.modelDisplayName(for: standard), "Claude Sonnet 5")
+        XCTAssertEqual(RouterCatalog.modelDisplayName(for: premium), "Claude Opus 5")
         XCTAssertEqual(
             RouterCatalog.modelDisplayName(for: RouterModel(
-                id: "gpt-5.6-terra", displayName: "GPT 5.6 Terra", provider: "gpt"
+                id: "gpt-5.6-terra", displayName: "GPT-5.6-Terra", provider: "gpt"
             )),
-            "5.6 Terra"
+            "GPT-5.6-Terra"
+        )
+        XCTAssertEqual(
+            RouterCatalog.modelDisplayName(for: RouterModel(id: "gpt-6-luna", provider: "gpt")),
+            "GPT 6 Luna"
         )
     }
 
     func testModelDisplayNameMakesUnknownIDsReadable() {
         XCTAssertEqual(
             RouterCatalog.modelDisplayName(for: RouterModel(id: "openai/gpt-4.1-mini", provider: "openrouter")),
-            "4.1 Mini"
+            "GPT 4.1 Mini"
         )
     }
 

@@ -29,7 +29,8 @@ public static class ExploreTool
         + "Use it when answering needs sweeping many files or directories and you want the conclusion rather "
         + "than the file contents - locating where something is defined, what calls it, how a pattern is used "
         + "across the project. It cannot edit anything, so verify and change code yourself afterwards. Do not "
-        + "use it for a file you already know the path of: read that directly. State the question in full, "
+        + "use it for a file you already know the path of, or when one grep_files call or reading fewer than "
+        + "three files answers the question: do that directly, since a subagent costs a whole extra run. State the question in full, "
         + "including the naming conventions and paths worth trying, since the subagent sees nothing of this "
         + "conversation. For a broad investigation, split it into independent questions and call explore "
         + "several times in the same turn (maximum 3 subagents per turn): those subagents run in parallel and only their findings enter this "
@@ -204,7 +205,7 @@ public static class ExploreTool
     /// Reads the subagent's own "Status:" line; missing or malformed counts as partial.
     public static bool AnsweredFully(string answer)
     {
-        foreach (var line in answer.Split('\n').Reverse())
+        foreach (var line in Enumerable.Reverse(answer.Split('\n')))
         {
             var trimmed = line.Trim().ToLowerInvariant();
             if (!trimmed.StartsWith("status:", StringComparison.Ordinal)) continue;

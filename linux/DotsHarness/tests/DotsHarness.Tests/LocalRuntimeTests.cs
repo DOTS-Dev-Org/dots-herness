@@ -17,7 +17,7 @@ public sealed class LocalRuntimeTests
         Assert.Contains("qwen25-05b-q4", ids);
         Assert.Contains("llama32-1b-q4", ids);
         Assert.Contains("dsr1-15b-q4", ids);
-        Assert.Single(LocalModelCatalog.Models.Where(m => m.Reasoning));
+        Assert.Equal(2, LocalModelCatalog.Models.Count(m => m.Reasoning));
         Assert.Contains("huggingface.co", LocalModelCatalog.Spec("dsr1-15b-q4")?.Url.AbsoluteUri ?? "");
     }
 
@@ -40,35 +40,119 @@ public sealed class LocalRuntimeTests
     }
 
     [Fact]
-    public void PicksUbuntuX64LlamaAsset()
+    public void LlamaBuildsArePinnedForEveryBackendOfThisPlatform()
     {
-        var json = JsonValue.Object(new Dictionary<string, JsonValue>
+        foreach (var windows in new[] { true, false })
+        foreach (var backend in Enum.GetValues<LocalBackend>())
         {
-            ["tag_name"] = JsonValue.String("b10488"),
-            ["assets"] = JsonValue.Array(
-                JsonValue.Object(new Dictionary<string, JsonValue>
-                {
-                    ["name"] = JsonValue.String("llama-b10488-bin-win-cpu-x64.zip"),
-                    ["size"] = JsonValue.Number(12_087_008),
-                    ["browser_download_url"] = JsonValue.String("https://example.com/win-cpu-x64"),
-                }),
-                JsonValue.Object(new Dictionary<string, JsonValue>
-                {
-                    ["name"] = JsonValue.String("llama-b10488-bin-macos-x64.tar.gz"),
-                    ["size"] = JsonValue.Number(8_000_000),
-                    ["browser_download_url"] = JsonValue.String("https://example.com/macos"),
-                }),
-                JsonValue.Object(new Dictionary<string, JsonValue>
-                {
-                    ["name"] = JsonValue.String("llama-b10488-bin-ubuntu-x64.tar.gz"),
-                    ["size"] = JsonValue.Number(14_200_000),
-                    ["browser_download_url"] = JsonValue.String("https://example.com/ubuntu-x64"),
-                })),
-        });
-        var asset = LocalRuntime.LinuxAsset(json, "x64");
-        Assert.Equal("b10488", asset.Tag);
-        Assert.Equal("https://example.com/ubuntu-x64", asset.Url.AbsoluteUri);
-        Assert.Equal(14_200_000, asset.Size);
+            if (LocalRuntime.Assets(backend, "x64", windows) is not { } assets) continue;
+            Assert.Contains(LocalRuntime.LlamaTag, assets.Main.Url.AbsoluteUri);
+            Assert.EndsWith(windows ? ".zip" : ".tar.gz", assets.Main.Name);
+            Assert.Equal(64, assets.Main.Sha256.Length);
+            // Only CUDA needs NVIDIA's runtime libraries shipped beside it.
+            Assert.Equal(backend is LocalBackend.Cuda13 or LocalBackend.Cuda12, assets.CudaRuntime is not null);
+        }
+        Assert.NotNull(LocalRuntime.Assets(LocalBackend.Cpu, "x64", windows: true));
+        Assert.NotNull(LocalRuntime.Assets(LocalBackend.Rocm, "x64", windows: false));
+        Assert.Null(LocalRuntime.Assets(LocalBackend.Rocm, "arm64", windows: false));
+    }
+
+    [Fact]
+    public void BackendCandidatesFollowTheGpuVendorAndEndAtCpu()
+    {
+        var nvidia = new[] { new LocalGpu("nvidia", "RTX 4070", 581) };
+        Assert.Equal(new[] { LocalBackend.Cuda13, LocalBackend.Cuda12, LocalBackend.Vulkan, LocalBackend.Cpu },
+            LocalHardware.Candidates(nvidia, "x64", windows: true));
+        // CUDA 13 needs driver 580+, so an older driver starts at CUDA 12.
+        var oldDriver = new[] { new LocalGpu("nvidia", "GTX 1080", 552) };
+        Assert.Equal(new[] { LocalBackend.Cuda12, LocalBackend.Vulkan, LocalBackend.Cpu },
+            LocalHardware.Candidates(oldDriver, "x64", windows: false));
+        var amd = new[] { new LocalGpu("amd", "RX 7900 XT") };
+        Assert.Equal(new[] { LocalBackend.Rocm, LocalBackend.Vulkan, LocalBackend.Cpu },
+            LocalHardware.Candidates(amd, "x64", windows: true));
+        var intel = new[] { new LocalGpu("intel", "Arc A770") };
+        Assert.Equal(new[] { LocalBackend.Vulkan, LocalBackend.Cpu }, LocalHardware.Candidates(intel, "x64", windows: false));
+        Assert.Equal(new[] { LocalBackend.Cpu }, LocalHardware.Candidates([], "x64", windows: true));
+        // No Vulkan or ROCm build exists for Windows on ARM.
+        Assert.Equal(new[] { LocalBackend.Cpu }, LocalHardware.Candidates(amd, "arm64", windows: true));
+    }
+
+    [Fact]
+    public void ParsesGpuAdaptersFromHelperOutput()
+    {
+        var smi = LocalHardware.ParseNvidiaSmi("NVIDIA GeForce RTX 4070, 581.29\r\nNVIDIA GeForce RTX 3060, 581.29\n").ToList();
+        Assert.Equal(2, smi.Count);
+        Assert.Equal(new LocalGpu("nvidia", "NVIDIA GeForce RTX 4070", 581), smi[0]);
+        Assert.Empty(LocalHardware.ParseNvidiaSmi("'nvidia-smi' is not recognized"));
+
+        var pnp = LocalHardware.ParsePnp("PCI\\VEN_1002&DEV_744C&SUBSYS_0E3B1002|AMD Radeon RX 7900 XT\r\nROOT\\BasicDisplay\\0000|Microsoft Basic Display Adapter\n").ToList();
+        Assert.Equal(new[] { new LocalGpu("amd", "AMD Radeon RX 7900 XT") }, pnp);
+        Assert.Equal("nvidia", LocalHardware.VendorFromId("0x10de\n"));
+        Assert.Equal("intel", LocalHardware.VendorFromId("8086"));
+    }
+
+    [Fact]
+    public void ParsesGpuDevicesAndSkipsCpuRenderers()
+    {
+        const string output = """
+            0.00.000.109 I srv  llama_server: initializing ...
+            Available devices:
+              CUDA0: NVIDIA GeForce RTX 4070 (12282 MiB, 11000 MiB free)
+              Vulkan1: llvmpipe (LLVM 17.0.6, 256 bits) (15950 MiB, 15950 MiB free)
+              BLAS: OpenBLAS (0 MiB, 0 MiB free)
+            """;
+        Assert.Equal(new[] { new LocalDevice("CUDA0", "NVIDIA GeForce RTX 4070", 12282) }, LocalRuntime.ParseDevices(output));
+        Assert.Empty(LocalRuntime.ParseDevices("Available devices:\n"));
+    }
+
+    [Fact]
+    public void LlamaArgumentsFollowUserTuning()
+    {
+        Assert.Equal(
+            new[] { "--model", "/m.gguf", "--host", "127.0.0.1", "--port", "1", "--ctx-size", "8192",
+                    "--alias", "m", "--jinja", "--parallel", "1", "--gpu-layers", "auto" },
+            LocalRuntime.LlamaArguments("/m.gguf", "m", 1, 8192, new LocalRuntimeSettings()));
+        var tuned = new LocalRuntimeSettings
+        {
+            GpuLayers = "20", Threads = 6, FlashAttention = "on", KvCacheType = "q8_0", ExtraArgs = "--mlock  --ubatch-size 256",
+        };
+        Assert.Equal(
+            new[] { "--gpu-layers", "20", "--threads", "6", "--flash-attn", "on",
+                    "--cache-type-k", "q8_0", "--cache-type-v", "q8_0", "--mlock", "--ubatch-size", "256" },
+            LocalRuntime.LlamaArguments("/m.gguf", "m", 1, 4096, tuned).TakeLast(13));
+    }
+
+    [Fact]
+    public void AutomaticContextRespectsModelAndMemory()
+    {
+        var small = LocalModelCatalog.Spec("qwen25-05b-q4")!;
+        var large = LocalModelCatalog.Spec("gpt-oss-20b-q4")!;
+        const long gib = 1_073_741_824;
+        Assert.Equal(8_192, LocalRuntime.AutomaticContext(small, 64 * gib));
+        Assert.Equal(16_384, LocalRuntime.AutomaticContext(large, 16 * gib));
+        Assert.Equal(32_768, LocalRuntime.AutomaticContext(large, 32 * gib));
+        Assert.Equal(4_096, LocalRuntime.RequestedContext(large, new LocalRuntimeSettings { ContextSize = 4_096 }, 32 * gib));
+    }
+
+    [Fact]
+    public void ProbeReadsLoadedContextPerModel()
+    {
+        var rows = System.Text.Json.Nodes.JsonNode.Parse("""
+            [{"id":"a","loaded_context_length":4096,"max_context_length":32768},{"id":"b","max_context_length":8192},{"id":"c"}]
+            """)!.AsArray();
+        var contexts = LocalServerProbe.Contexts(rows, "id", "loaded_context_length", "max_context_length");
+        Assert.Equal(2, contexts.Count);
+        Assert.Equal(4096, contexts["a"]);
+        Assert.Equal(8192, contexts["b"]);
+    }
+
+    [Fact]
+    public void PlaceholderModelIsRecognized()
+    {
+        Assert.True(NativeProviderAccount.IsPlaceholderModel("ollama/"));
+        Assert.False(NativeProviderAccount.IsPlaceholderModel("qwen3:8b"));
+        Assert.False(NativeProviderAccount.IsPlaceholderModel(""));
+        Assert.False(NativeProviderAccount.IsPlaceholderModel(null));
     }
 
     [Fact]

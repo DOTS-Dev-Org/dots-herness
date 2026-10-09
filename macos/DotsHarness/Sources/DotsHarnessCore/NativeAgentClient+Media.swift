@@ -93,6 +93,7 @@ extension NativeAgentClient {
 
     static func limitKind(from value: JSONValue, status: Int) -> String? {
         if status == 429 { return "rate" }
+        if status == 402 { return "balance" }
         let message = [
             value["error"]?["message"]?.string,
             value["error"]?["type"]?.string,
@@ -110,8 +111,8 @@ extension NativeAgentClient {
         if message.contains("rate limit") || message.contains("rate-limit") || message.contains("rate_limit") { return "rate" }
         if message.contains("quota") { return "quota" }
         if message.contains("credit") { return "credits" }
-        if message.contains("usage limit") || message.contains("usage-limit") || message.contains("usage_limit") || message.contains("provider limit") || message.contains("provider_limit") { return "usage" }
-        if message.contains("insufficient balance") || message.contains("insufficient_balance") || message.contains("insufficient funds") { return "balance" }
+        if message.contains("usage limit") || message.contains("usage-limit") || message.contains("usage_limit") || message.contains("provider limit") || message.contains("provider_limit") || message.contains("resource exhausted") || message.contains("too many requests") || message.contains("billing limit") || message.contains("billing_limit") { return "usage" }
+        if message.contains("insufficient balance") || message.contains("insufficient_balance") || message.contains("insufficient funds") || message.contains("insufficient_quota") { return "balance" }
         return nil
     }
 

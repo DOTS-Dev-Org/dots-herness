@@ -343,7 +343,7 @@ const appleVerifySchema = z.object({
   planId: z.string().min(1).optional(),
 }).merge(storePurchaseLegalSchema);
 
-billing.post("/apple/verify", zValidator("json", appleVerifySchema), async (c) => {
+billing.post("/apple/verify", rateLimit({ limit: 10, windowSeconds: 60, keyPrefix: "billing:apple-verify" }), zValidator("json", appleVerifySchema), async (c) => {
   const authUser = c.get("user");
   const body = c.req.valid("json");
   const { transactionId, originalTransactionId } = body;
@@ -413,7 +413,7 @@ const googleVerifySchema = z.object({
   planId: z.string().min(1).optional(),
 }).merge(storePurchaseLegalSchema);
 
-billing.post("/google/verify", zValidator("json", googleVerifySchema), async (c) => {
+billing.post("/google/verify", rateLimit({ limit: 10, windowSeconds: 60, keyPrefix: "billing:google-verify" }), zValidator("json", googleVerifySchema), async (c) => {
   const authUser = c.get("user");
   const body = c.req.valid("json");
   const { purchaseToken, productId } = body;

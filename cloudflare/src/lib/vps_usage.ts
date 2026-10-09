@@ -167,7 +167,31 @@ export async function putVpsSnapshot(
 /**
  * Cache-aside around a D1 read. On any cache trouble the loader still runs, so
  * the worst case is the query we would have made anyway.
+ *
+ * Each miss costs a real HTTPS round-trip to the VPS *and* a D1 query, so a
+ * request that reads the same key twice used to pay for it twice — batch
+ * endpoints hit that (`/provider/refresh-batch` resolves the user's connection
+ * list once per item). Entries are therefore memoised per request, keyed on the
+ * request's own `env` object, so nothing is ever shared across requests and the
+ * memo dies with the request.
+ *
+ * The memo stays honest because every writer invalidates through
+ * {@link vpsCacheBust}, which drops the matching local entries too: a write
+ * inside a request is followed by a bust, so the next reader in that same
+ * request re-queries D1 and sees the new row. Failed reads are not memoised —
+ * only settled values survive.
  */
+const requestCache = new WeakMap<Env, Map<string, Promise<unknown>>>();
+
+function requestCacheFor(env: Env): Map<string, Promise<unknown>> {
+  let byKey = requestCache.get(env);
+  if (!byKey) {
+    byKey = new Map();
+    requestCache.set(env, byKey);
+  }
+  return byKey;
+}
+
 export async function vpsCached<T>(
   env: Env,
   key: string,
@@ -175,6 +199,25 @@ export async function vpsCached<T>(
   loader: () => Promise<T>
 ): Promise<T> {
   if (!vpsConfigured(env)) return loader();
+
+  const byKey = requestCacheFor(env);
+  const memoised = byKey.get(key);
+  if (memoised) return (await memoised) as T;
+
+  const pending = readThroughVpsCache(env, key, ttlSecs, loader);
+  byKey.set(key, pending);
+  pending.catch(() => {
+    if (byKey.get(key) === pending) byKey.delete(key);
+  });
+  return (await pending) as T;
+}
+
+async function readThroughVpsCache<T>(
+  env: Env,
+  key: string,
+  ttlSecs: number,
+  loader: () => Promise<T>
+): Promise<T> {
   try {
     const res = await vpsFetch(env, `/cache?key=${encodeURIComponent(key)}`);
     if (res.ok) {
@@ -296,6 +339,17 @@ export async function vpsCacheBust(
   opts: { key?: string; prefix?: string }
 ): Promise<void> {
   if (!vpsConfigured(env)) return;
+
+  // This is also what keeps the per-request memo in {@link vpsCached} honest:
+  // a write in this request drops its own memoised reads, so the next reader
+  // re-queries instead of serving a value from before the write.
+  const byKey = requestCache.get(env);
+  if (byKey) {
+    for (const key of [...byKey.keys()]) {
+      if (opts.key ? key === opts.key : key.startsWith(opts.prefix ?? "")) byKey.delete(key);
+    }
+  }
+
   const q = opts.key
     ? `key=${encodeURIComponent(opts.key)}`
     : `prefix=${encodeURIComponent(opts.prefix ?? "")}`;

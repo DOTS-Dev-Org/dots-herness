@@ -2,14 +2,18 @@
 // JSON helpers shared by the native agent and provider clients.
 
 import Foundation
+import CoreFoundation
 import HarnessPluginKit
 
 public enum JSONCodec {
     public static func value(from any: Any?) -> JSONValue {
         guard let any, !(any is NSNull) else { return .null }
-        if let value = any as? Bool { return .bool(value) }
-        if let value = any as? Int { return .number(Double(value)) }
-        if let value = any as? Double { return .number(value) }
+        // NSNumber bridges numeric 0/1 to Bool too; distinguish JSON booleans
+        // by their CF type so reported zero counters stay numeric.
+        if let value = any as? NSNumber {
+            if CFGetTypeID(value) == CFBooleanGetTypeID() { return .bool(value.boolValue) }
+            return .number(value.doubleValue)
+        }
         if let value = any as? String { return .string(value) }
         if let value = any as? [Any] { return .array(value.map { self.value(from: $0) }) }
         if let value = any as? [String: Any] {

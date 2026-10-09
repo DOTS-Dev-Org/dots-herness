@@ -22,6 +22,14 @@ class MobileLocalizationTest {
         assertEquals("fa", MobileLanguages.fromCode("fa").code)
         assertTrue(MobileLanguages.fromCode("ur").isRtl)
         assertFalse(MobileLanguages.fromCode("tr").isRtl)
+        assertEquals("TR", MobileLanguages.fromCode("tr").shortCode)
+        assertEquals("ZH", MobileLanguages.fromCode("zh-Hans").shortCode)
+        assertEquals(30, MobileLanguages.all.size)
+        // Fallback for unknown code resolves to device/en, never system or AUTO
+        val fallback = MobileLanguages.fromCode("unknown")
+        assertTrue(MobileLanguages.supported.contains(fallback))
+        assertTrue(fallback.shortCode != "AUTO")
+
         assertTrue(MobileIntroNavigation.canSkip(0, 3))
         assertTrue(MobileIntroNavigation.canSkip(1, 3))
         assertFalse(MobileIntroNavigation.canSkip(2, 3))

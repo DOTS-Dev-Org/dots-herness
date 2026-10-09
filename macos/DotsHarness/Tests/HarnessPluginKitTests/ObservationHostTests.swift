@@ -60,14 +60,16 @@ final class ObservationHostTests: XCTestCase {
         }
     }
 
-    private func makeHost(steps: Int = 2, area: AgentArea = .coding, permission: AgentPermissionMode = .full) async -> NativeAgentHost {
+    private func makeHost(steps: Int = 2, permission: AgentPermissionMode = .full) async -> NativeAgentHost {
         ToolStepsURLProtocol.steps = steps
+        ToolStepsURLProtocol.scriptedCalls = []
+        ToolStepsURLProtocol.failsWithLimit = false
+        ToolStepsURLProtocol.externalFile = nil
         let host = NativeAgentHost(
             paths: paths,
-            endpoint: AgentEndpointController(baseURL: "http://obs.test", modelID: "m"),
-            area: area
+            endpoint: AgentEndpointController(baseURL: "http://obs.test", modelID: "m")
         )
-        host.start(workspacePath: area == .chat ? "" : workspace.path)
+        host.start(workspacePath: workspace.path)
         host.setPermissionMode(permission)
         await host.refreshConnection()
         host.newConversation()
@@ -75,6 +77,54 @@ final class ObservationHostTests: XCTestCase {
     }
 
     private func settle() async throws { try await Task.sleep(nanoseconds: 60_000_000) }
+
+    func testCodingRunReadsEditsAndRereadsPastEightToolRounds() async throws {
+        let host = await makeHost(steps: 14)
+        let original = (1...240).map { "line-\($0):" + String(repeating: "x", count: 60) }.joined(separator: "\n")
+        let file = workspace.appendingPathComponent("project.swift")
+        try original.write(to: file, atomically: true, encoding: .utf8)
+        ToolStepsURLProtocol.externalFile = workspace.appendingPathComponent("f0.txt")
+        ToolStepsURLProtocol.scriptedCalls = stride(from: 1, through: 240, by: 20).map { start in
+            ["name": "read_file", "arguments": "{\"path\":\"project.swift\",\"offset\":\(start),\"limit\":20}"]
+        } + [
+            ["name": "edit_file", "arguments": #"{"path":"project.swift","edits":[{"old_text":"line-180:","new_text":"fixed-180:"}]}"#],
+            ["name": "read_file", "arguments": #"{"path":"project.swift","offset":180,"limit":1}"#],
+        ]
+        await host.send(text: "read the project, change line-180 to fixed-180 and reread it", mode: .queue)
+        let conversation = try XCTUnwrap(host.selected)
+        XCTAssertEqual(conversation.messages.last(where: { $0.kind == .assistant })?.text, "done")
+        XCTAssertEqual(conversation.modelContext.filter { $0.role == .tool }.count, 14)
+        XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), original.replacingOccurrences(of: "line-180:", with: "fixed-180:"))
+        XCTAssertTrue(conversation.modelContext.last(where: { $0.role == .tool })?.content.hasPrefix("fixed-180:") == true)
+        XCTAssertEqual(conversation.messages.last(where: { $0.kind == .assistant })?.changedFiles.map(\.path), ["project.swift"])
+        XCTAssertTrue(host.concurrentChanges.contains { $0.path == "f0.txt" })
+        XCTAssertFalse(conversation.running)
+        XCTAssertFalse(conversation.messages.contains { $0.text == AppCopy.text("agent.toolStepLimit") })
+    }
+
+    func testProviderLimitPreservesAnOrdinaryTasksContinuation() async throws {
+        let host = await makeHost()
+        ToolStepsURLProtocol.failsWithLimit = true
+        await host.send(text: "inspect the project", mode: .queue)
+        XCTAssertEqual(host.selected?.continuation?.reason, .providerLimit)
+        XCTAssertTrue(host.canContinue)
+        XCTAssertFalse(host.isBusy)
+    }
+
+    func testToolRoundBoundaryPausesWithCompletedToolResults() async throws {
+        let host = await makeHost(steps: NativeAgentHost.maxToolSteps + 1)
+        await host.send(text: "inspect the project", mode: .queue)
+        let conversation = try XCTUnwrap(host.selected)
+        XCTAssertEqual(conversation.continuation?.reason, .toolStepLimit)
+        XCTAssertTrue(host.canContinue)
+        let calls = conversation.modelContext.flatMap(\.toolCalls)
+        let results = conversation.modelContext.filter { $0.role == .tool }
+        XCTAssertEqual(calls.count, NativeAgentHost.maxToolSteps)
+        XCTAssertEqual(Set(calls.map(\.id)), Set(results.compactMap(\.toolCallID)))
+        let restored = try JSONDecoder().decode(Conversation.self, from: JSONEncoder().encode(conversation))
+        XCTAssertEqual(restored.continuation?.reason, .toolStepLimit)
+        XCTAssertTrue(restored.canContinue)
+    }
 
     /// Everything the window shows about a run changes while it runs.
     func testRunNotifiesReadersOfRunState() async throws {
@@ -91,6 +141,61 @@ final class ObservationHostTests: XCTestCase {
         XCTAssertGreaterThan(running.fires, 0, "runningConversationIDs")
         XCTAssertGreaterThan(conversations.fires, 0, "conversations")
         XCTAssertGreaterThan(selected.fires, 0, "selected")
+    }
+
+    /// A clarification tool can pause a run without changing its busy state;
+    /// the global question presenter must still be invalidated for the waiting run.
+    func testPendingQuestionNotifiesReadersOfRunState() async throws {
+        let host = await makeHost()
+        let conversationID = try XCTUnwrap(host.selectedID)
+        let questionReader = Watch { _ = host.pendingQuestion }
+        let allQuestionReader = Watch { _ = host.pendingQuestions }
+        let pending = PendingQuestion(
+            conversationID: conversationID,
+            toolCallID: "ask-user",
+            questions: [AskUserQuestion(id: "q0", header: "Scope", prompt: "Which scope?", options: ["macOS"])]
+        )
+
+        AgentRunScope.$conversationID.withValue(conversationID) {
+            host.pendingQuestion = pending
+        }
+        try await settle()
+        XCTAssertGreaterThan(questionReader.fires, 0, "pendingQuestion")
+        XCTAssertGreaterThan(allQuestionReader.fires, 0, "pendingQuestions")
+        XCTAssertEqual(host.pendingQuestions, [pending])
+
+        AgentRunScope.$conversationID.withValue(conversationID) {
+            host.pendingQuestion = nil
+        }
+        XCTAssertTrue(host.pendingQuestions.isEmpty)
+    }
+
+    /// The clarification tool stays suspended until the matching conversation answers.
+    func testAskUserReturnsTheAnswerToItsRun() async throws {
+        let host = await makeHost()
+        let conversationID = try XCTUnwrap(host.selectedID)
+        let call = AgentToolCall(
+            id: "ask-user-flow",
+            name: AskUserTool.name,
+            arguments: #"{"questions":[{"header":"Target","question":"Which target?","options":["macOS","Windows"]}]}"#
+        )
+
+        let task = Task { @MainActor in
+            await AgentRunScope.$conversationID.withValue(conversationID) {
+                await host.askUser(call, conversationID: conversationID)
+            }
+        }
+        for _ in 0..<100 where host.pendingQuestion == nil {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let pending = try XCTUnwrap(host.pendingQuestion)
+        XCTAssertEqual(pending.conversationID, conversationID)
+        XCTAssertEqual(pending.questions.first?.prompt, "Which target?")
+
+        host.answerQuestions(["macOS"], in: conversationID)
+        let result = await task.value
+        XCTAssertTrue(result.contains("Q: Which target?\nA: macOS"))
+        XCTAssertNil(host.pendingQuestion)
     }
 
     /// What is not read is not woken: the composer's permission mode ignores a whole run.
@@ -146,33 +251,34 @@ final class ObservationHostTests: XCTestCase {
 
     /// The sidebar lists come from the store: every kind of edit reaches their readers.
     func testStoreBackedListsNotify() async throws {
-        let host = await makeHost(area: .chat)
-        let projectless = Watch { _ = host.projectlessConversations }
+        let host = await makeHost()
+        let workspacePath = workspace.path
+        let currentProject = Watch { _ = host.conversations(inProject: workspacePath) }
         let outside = Watch { _ = host.conversations(outsideProjects: []) }
         let archived = Watch { _ = host.archivedConversations }
         let id = try XCTUnwrap(host.selectedID)
 
         await host.send(text: "hello", mode: .queue)
         try await settle()
-        XCTAssertGreaterThan(projectless.fires, 0, "send")
+        XCTAssertGreaterThan(currentProject.fires, 0, "send")
         XCTAssertGreaterThan(outside.fires, 0, "send")
 
-        var fires = projectless.fires
+        var fires = currentProject.fires
         host.renameConversation(id, to: "renamed")
         try await settle()
-        XCTAssertGreaterThan(projectless.fires, fires, "rename")
-        XCTAssertEqual(host.projectlessConversations.first { $0.id == id }?.title, "renamed")
+        XCTAssertGreaterThan(currentProject.fires, fires, "rename")
+        XCTAssertEqual(host.conversations(inProject: workspacePath).first { $0.id == id }?.title, "renamed")
 
         fires = archived.fires
         host.setArchived(id, archived: true)
         try await settle()
         XCTAssertGreaterThan(archived.fires, fires, "archive")
 
-        fires = projectless.fires
+        fires = currentProject.fires
         host.deleteConversation(id)
         try await settle()
-        XCTAssertGreaterThan(projectless.fires, fires, "delete")
-        XCTAssertNil(host.projectlessConversations.first { $0.id == id })
+        XCTAssertGreaterThan(currentProject.fires, fires, "delete")
+        XCTAssertNil(host.conversations(inProject: workspacePath).first { $0.id == id })
     }
 
     /// Edits to another workspace's chats never touch a tracked property.
@@ -180,12 +286,11 @@ final class ObservationHostTests: XCTestCase {
         let host = await makeHost()
         let other = root.appendingPathComponent("other", isDirectory: true)
         try FileManager.default.createDirectory(at: other, withIntermediateDirectories: true)
-        let store = ConversationStore(paths: paths, area: .coding)
+        let store = ConversationStore(paths: paths)
         var chat = Conversation(
             id: "other-chat", title: "other", messages: [ChatMessage(kind: .user, text: "hi")],
             blank: false, cwd: other.path)
         chat.unread = true
-        chat.area = .coding
         store.save([chat])
 
         let inProject = Watch { _ = host.conversations(inProject: other.path) }
@@ -217,6 +322,9 @@ final class ObservationHostTests: XCTestCase {
 /// Answers each chat completion after a short delay: `steps` list_files calls, then text.
 private final class ToolStepsURLProtocol: URLProtocol {
     nonisolated(unsafe) static var steps = 2
+    nonisolated(unsafe) static var scriptedCalls: [[String: String]] = []
+    nonisolated(unsafe) static var failsWithLimit = false
+    nonisolated(unsafe) static var externalFile: URL?
 
     override class func canInit(with request: URLRequest) -> Bool { request.url?.host == "obs.test" }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -225,14 +333,23 @@ private final class ToolStepsURLProtocol: URLProtocol {
         let body = request.httpBody ?? request.httpBodyStream.map(Self.read) ?? Data()
         let messages = (try? JSONSerialization.jsonObject(with: body) as? [String: Any])?["messages"] as? [[String: Any]] ?? []
         let done = messages.filter { $0["role"] as? String == "tool" }.count
+        if done == 1, let file = Self.externalFile {
+            try? "changed by another writer".write(to: file, atomically: true, encoding: .utf8)
+        }
+        let function: [String: String] = done < Self.scriptedCalls.count
+            ? Self.scriptedCalls[done]
+            : ["name": "list_files", "arguments": "{\"path\":\".\",\"n\":\(done)}"]
         let message: [String: Any] = done < Self.steps
             ? ["role": "assistant", "content": "", "tool_calls": [[
                 "id": "call\(done)", "type": "function",
-                "function": ["name": "list_files", "arguments": "{\"path\":\".\",\"n\":\(done)}"],
+                "function": function,
             ]]]
             : ["role": "assistant", "content": "done"]
-        let data = (try? JSONSerialization.data(withJSONObject: ["choices": [["message": message]]])) ?? Data()
-        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+        let payload: [String: Any] = Self.failsWithLimit
+            ? ["error": ["message": "quota exceeded"]]
+            : ["choices": [["message": message]]]
+        let data = (try? JSONSerialization.data(withJSONObject: payload)) ?? Data()
+        let response = HTTPURLResponse(url: request.url!, statusCode: Self.failsWithLimit ? 429 : 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
         DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) { [weak self] in
             guard let self else { return }
             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)

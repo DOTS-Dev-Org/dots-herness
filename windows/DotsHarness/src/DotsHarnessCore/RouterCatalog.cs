@@ -16,29 +16,40 @@ public sealed record RouterProviderKind(
 
 public static class RouterCatalog
 {
+    /// <summary>Stable cross-platform key for a user's per-model context override.</summary>
+    public static string ModelContextOverrideKey(string provider, string model) =>
+        $"{provider.ToLowerInvariant()}\u001f{model}";
+
     public static readonly IReadOnlyList<RouterProviderKind> Providers = new[]
     {
-        new RouterProviderKind("gpt", "GPT", RouterAuthKind.OauthBrowser, "Sign in with ChatGPT", "https://chatgpt.com/backend-api/codex", "gpt-4.1-mini", NativeProviderProtocol.ChatGpt, "gpt"),
-        new RouterProviderKind("claude", "Claude", RouterAuthKind.ApiKey, "API key", "https://api.anthropic.com/v1", "claude-sonnet-4-20250514", NativeProviderProtocol.Anthropic, "claude"),
-        new RouterProviderKind("gemini", "Gemini", RouterAuthKind.ApiKey, "API key", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.5-flash", LogoKey: "gemini"),
+        new RouterProviderKind("gpt", "ChatGPT", RouterAuthKind.OauthBrowser, "Sign in with ChatGPT", "https://chatgpt.com/backend-api/codex", "gpt-6.1-sol", NativeProviderProtocol.ChatGpt, "openai"),
+        new RouterProviderKind("claude", "Anthropic", RouterAuthKind.OauthBrowser, "Sign in with Claude", "https://api.anthropic.com/v1", "claude-sonnet-5-5", NativeProviderProtocol.Anthropic, "anthropic"),
+        new RouterProviderKind("gemini", "Gemini", RouterAuthKind.ApiKey, "API key", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-3.8-pro", LogoKey: "gemini"),
         new RouterProviderKind("antigravity", "Antigravity", RouterAuthKind.ApiKey, "API key or Custom API", LogoKey: "antigravity"),
         new RouterProviderKind("iflow", "iFlow", RouterAuthKind.ApiKey, "API key or Custom API", LogoKey: "iflow"),
         new RouterProviderKind("github", "GitHub Copilot", RouterAuthKind.ApiKey, "API key or Custom API", LogoKey: "github"),
-        new RouterProviderKind("qwen", "Qwen", RouterAuthKind.ApiKey, "API key", "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-plus", LogoKey: "qwen"),
+        new RouterProviderKind("qwen", "Qwen", RouterAuthKind.ApiKey, "API key", "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-max", LogoKey: "qwen"),
         new RouterProviderKind("kiro", "Kiro", RouterAuthKind.ApiKey, "API key or Custom API", LogoKey: "kiro"),
-        new RouterProviderKind("grok", "Grok", RouterAuthKind.ApiKey, "API key", "https://api.x.ai/v1", "grok-3-mini", LogoKey: "grok"),
+        new RouterProviderKind("grok", "Grok", RouterAuthKind.ApiKey, "API key", "https://api.x.ai/v1", "grok-4.5", LogoKey: "grok"),
+        // Subscription login exposed by the macOS registry as Grok Build. This is
+        // separate from xAI's API-key endpoint and uses its Responses transport.
+        new RouterProviderKind("grok-cli", "Grok Build", RouterAuthKind.OauthDevice, "Sign in with your xAI subscription", "https://cli-chat-proxy.grok.com/v1", "grok-build", NativeProviderProtocol.OpenAiResponses, "grok"),
         new RouterProviderKind("openrouter", "OpenRouter", RouterAuthKind.ApiKey, "API key", "https://openrouter.ai/api/v1", "openai/gpt-4.1-mini", LogoKey: "openrouter"),
-        new RouterProviderKind("openai", "OpenAI", RouterAuthKind.ApiKey, "API key", "https://api.openai.com/v1", "gpt-4.1-mini", LogoKey: "openai"),
-        new RouterProviderKind("anthropic", "Anthropic", RouterAuthKind.ApiKey, "API key", "https://api.anthropic.com/v1", "claude-sonnet-4-20250514", NativeProviderProtocol.Anthropic, "anthropic"),
+        new RouterProviderKind("openai", "OpenAI", RouterAuthKind.ApiKey, "API key · Responses API", "https://api.openai.com/v1", "gpt-5.6-terra", NativeProviderProtocol.OpenAiResponses, "openai"),
+        new RouterProviderKind("anthropic", "Anthropic", RouterAuthKind.ApiKey, "API key", "https://api.anthropic.com/v1", "claude-sonnet-5", NativeProviderProtocol.Anthropic, "anthropic"),
         new RouterProviderKind("glm", "GLM", RouterAuthKind.ApiKey, "API key", LogoKey: "glm"),
         new RouterProviderKind("kimi", "Kimi", RouterAuthKind.ApiKey, "API key", LogoKey: "kimi"),
         new RouterProviderKind("minimax", "MiniMax", RouterAuthKind.ApiKey, "API key", LogoKey: "minimax"),
         new RouterProviderKind("deepseek", "DeepSeek", RouterAuthKind.ApiKey, "API key", "https://api.deepseek.com/v1", "deepseek-chat", LogoKey: "deepseek"),
+        new RouterProviderKind("deepinfra", "DeepInfra", RouterAuthKind.ApiKey, "API key", "https://api.deepinfra.com/v1/openai", "meta-llama/Meta-Llama-3.1-70B-Instruct", LogoKey: "deepinfra"),
         new RouterProviderKind("groq", "Groq", RouterAuthKind.ApiKey, "API key", "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile", LogoKey: "groq"),
-        new RouterProviderKind("xai", "xAI", RouterAuthKind.ApiKey, "API key", "https://api.x.ai/v1", "grok-3-mini", LogoKey: "xai"),
-        new RouterProviderKind("mistral", "Mistral", RouterAuthKind.ApiKey, "API key", "https://api.mistral.ai/v1", "mistral-small-latest", LogoKey: "mistral"),
+        new RouterProviderKind("xai", "SpaceXAI", RouterAuthKind.ApiKey, "API key", "https://api.x.ai/v1", "grok-3-mini", LogoKey: "spacexai"),
+        new RouterProviderKind("mistral", "Mistral", RouterAuthKind.ApiKey, "API key", "https://api.mistral.ai/v1", "codestral-latest", LogoKey: "mistral"),
         new RouterProviderKind("perplexity", "Perplexity", RouterAuthKind.ApiKey, "API key", "https://api.perplexity.ai", "sonar", LogoKey: "perplexity"),
         new RouterProviderKind("together", "Together AI", RouterAuthKind.ApiKey, "API key", "https://api.together.xyz/v1", "meta-llama/Llama-3.3-70B-Instruct-Turbo", LogoKey: "together"),
+        new RouterProviderKind("opencode", "OpenCode Zen", RouterAuthKind.ApiKey, "API key from opencode.ai", "https://opencode.ai/zen/v1", LogoKey: "opencode"),
+        new RouterProviderKind("opencode-go", "OpenCode Go", RouterAuthKind.ApiKey, "Go subscription key from opencode.ai", "https://opencode.ai/zen/go/v1", LogoKey: "opencode-go"),
+        new RouterProviderKind("zai", "GLM Coding (Z.ai)", RouterAuthKind.ApiKey, "Coding plan key from z.ai", "https://api.z.ai/api/coding/paas/v4", "glm-4.6", LogoKey: "zai"),
         new RouterProviderKind("fireworks", "Fireworks", RouterAuthKind.ApiKey, "API key", "https://api.fireworks.ai/inference/v1", "accounts/fireworks/models/llama-v3p1-70b-instruct", LogoKey: "fireworks"),
         new RouterProviderKind("cerebras", "Cerebras", RouterAuthKind.ApiKey, "API key", "https://api.cerebras.ai/v1", "llama-3.3-70b", LogoKey: "cerebras"),
         new RouterProviderKind("cohere", "Cohere", RouterAuthKind.ApiKey, "API key", LogoKey: "cohere"),
@@ -53,7 +64,28 @@ public static class RouterCatalog
     public static RouterProviderKind? KindFor(string id) => Providers.FirstOrDefault(p => p.Id == id);
     public static string LabelFor(string id) => id.StartsWith("custom:", StringComparison.Ordinal) ? "Custom API" : KindFor(id)?.Name ?? "Provider";
     public static string HintFor(RouterProviderKind kind) => string.IsNullOrWhiteSpace(kind.BaseUrl) ? "Custom API endpoint" : kind.Hint;
-    public static NativeProviderDescriptor Descriptor(RouterProviderKind kind) => new(kind.Id, kind.Name, kind.BaseUrl, kind.DefaultModel, kind.Protocol, kind.Kind == RouterAuthKind.OauthBrowser ? "browser" : "apiKey", kind.Hint, kind.LogoKey);
+
+    /// <summary>Official GPT-6 API context capacities. 272K is a long-context pricing threshold.</summary>
+    public static int? DocumentedContextWindow(string? provider, string? model)
+    {
+        if ((!string.Equals(provider, "gpt", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(provider, "openai", StringComparison.OrdinalIgnoreCase))
+            || string.IsNullOrWhiteSpace(model)) return null;
+        var bareModel = model.Trim().ToLowerInvariant();
+        var separator = bareModel.LastIndexOf('/');
+        if (separator >= 0) bareModel = bareModel[(separator + 1)..];
+        var documented = new[] { "gpt-6-astra", "gpt-6-sol", "gpt-6.1-sol", "gpt-6-luna" };
+        return documented.Any(id => bareModel == id || bareModel.StartsWith(id + "-", StringComparison.Ordinal))
+            ? 1_050_000
+            : null;
+    }
+
+    public static NativeProviderDescriptor Descriptor(RouterProviderKind kind) => new(kind.Id, kind.Name, kind.BaseUrl, kind.DefaultModel, kind.Protocol, kind.Kind switch
+    {
+        RouterAuthKind.OauthBrowser => "browser",
+        RouterAuthKind.OauthDevice => "device",
+        _ => "apiKey",
+    }, kind.Hint, kind.LogoKey);
 }
 
 public sealed class RouterConnection
@@ -91,6 +123,16 @@ public sealed class RouterConnection
         Priority = obj.TryGetValue("priority", out var priority) ? priority.AsInt() ?? 0 : 0;
         Error = obj.TryGetValue("lastError", out var error) ? error.AsString() : null;
     }
+}
+
+public sealed record ModelContextSetting(
+    string Provider,
+    string Model,
+    int? DetectedContextWindow,
+    int? OverrideContextWindow)
+{
+    public string Id => RouterCatalog.ModelContextOverrideKey(Provider, Model);
+    public string ProviderName => RouterCatalog.LabelFor(Provider);
 }
 
 public sealed class RouterTunnel

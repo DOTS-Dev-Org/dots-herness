@@ -9,8 +9,11 @@ import PluginRuntime
 /// Canned JSON-RPC endpoint: answers initialize / tools/list / tools/call.
 private final class StubMCPTransport: MCPRawTransport, @unchecked Sendable {
     var lastCallArguments: [String: Any]?
+    var fail = false
+    var emptyTools = false
 
     func send(_ request: Data, expectsResponse: Bool) async throws -> Data? {
+        if fail { throw MCPError.notConnected }
         let object = try JSONSerialization.jsonObject(with: request) as? [String: Any] ?? [:]
         let method = object["method"] as? String ?? ""
         let id = object["id"] as? Int ?? 0
@@ -21,7 +24,7 @@ private final class StubMCPTransport: MCPRawTransport, @unchecked Sendable {
         case "initialize":
             result = ["serverInfo": ["name": "stub"], "capabilities": ["tools": [:]]]
         case "tools/list":
-            result = ["tools": [
+            result = ["tools": emptyTools ? [] : [
                 ["name": "search", "description": "search docs",
                  "inputSchema": ["type": "object", "properties": ["q": ["type": "string"]]],
                  "annotations": ["readOnlyHint": true, "destructiveHint": false]],
@@ -86,9 +89,9 @@ final class MCPAndToolBridgeTests: XCTestCase {
     /// `sandbox-exec` wraps process launch — it cannot wrap an HTTP MCP
     /// server, which is just a network call the app makes on its own. The
     /// sandbox's network toggle is the only real stop for that, so it must
-    /// hide (and refuse) HTTP-transport tools, not only stdio ones.
+    /// refuse HTTP tools immediately while preserving their cached definitions.
     @MainActor
-    func testSandboxWithNetworkOffHidesAndRefusesHTTPMCPTools() async throws {
+    func testSandboxWithNetworkOffPreservesDefinitionsAndRefusesHTTPMCPTools() async throws {
         let store = FileManager.default.temporaryDirectory
             .appendingPathComponent("mcp-\(UUID().uuidString).json")
         let registry = MCPRegistry(storeURL: store)
@@ -104,7 +107,8 @@ final class MCPAndToolBridgeTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: workspace) }
         registry.setSandboxPolicy(SandboxExecutionPolicy(workspaceURL: workspace, networkAccess: false))
 
-        XCTAssertTrue(registry.toolDefinitions().isEmpty)
+        XCTAssertEqual(registry.toolDefinitions().map(\.name).sorted(), ["mcp__Docs_Server__search", "mcp__Docs_Server__wipe"])
+        XCTAssertFalse(registry.isAvailable("mcp__Docs_Server__search"))
         do {
             _ = try await registry.call("mcp__Docs_Server__search", arguments: .object(["q": .string("hi")]))
             XCTFail("expected the HTTP tool call to be refused")
@@ -115,6 +119,37 @@ final class MCPAndToolBridgeTests: XCTestCase {
         // Turning network back on restores it.
         registry.setSandboxPolicy(SandboxExecutionPolicy(workspaceURL: workspace, networkAccess: true))
         XCTAssertEqual(registry.toolDefinitions().map(\.name).sorted(), ["mcp__Docs_Server__search", "mcp__Docs_Server__wipe"])
+    }
+
+    @MainActor
+    func testLastAcceptedCatalogSurvivesFailureDisconnectAndRestartButNotAuthoritativeRemoval() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = folder.appendingPathComponent("mcp.json")
+        let registry = MCPRegistry(storeURL: store)
+        let stub = StubMCPTransport()
+        registry.transportOverride = { _ in stub }
+        let config = MCPServerConfig(name: "Docs Server")
+        registry.upsert(config)
+        await registry.connect(config.id)
+        let accepted = registry.toolDefinitions()
+        XCTAssertEqual(accepted.count, 2)
+        stub.fail = true
+        await registry.connect(config.id)
+        XCTAssertEqual(registry.toolDefinitions(), accepted)
+        XCTAssertFalse(registry.isAvailable(accepted[0].name))
+        await registry.disconnectAll()
+        XCTAssertEqual(registry.toolDefinitions(), accepted)
+        let restored = MCPRegistry(storeURL: store)
+        XCTAssertEqual(restored.toolDefinitions(), accepted)
+        XCTAssertFalse(restored.isAvailable(accepted[0].name))
+        stub.fail = false
+        stub.emptyTools = true
+        await registry.connect(config.id)
+        XCTAssertTrue(registry.toolDefinitions().isEmpty)
+        registry.remove(config.id)
+        XCTAssertTrue(registry.toolDefinitions().isEmpty)
     }
 
     func testMCPToolClassifiedAsSideEffect() {

@@ -160,13 +160,31 @@ public sealed class BrowserSessionManager
         NativeToolCall call,
         BrowserScope scope,
         BrowserBackend backend,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? workspace = null)
     {
         try
         {
             var input = JsonNode.Parse(call.Arguments)?.AsObject() ?? new JsonObject();
             if (input.ContainsKey("backend"))
                 return "Tool error: backend is selected by the host and cannot be supplied by the model.";
+
+            if (backend == BrowserBackend.Native)
+            {
+                var dest = input["path"]?.GetValue<string>() ?? "browser.png";
+                var navUrl = input["url"]?.GetValue<string>() ?? "";
+                return call.Name switch
+                {
+                    BrowserTools.OpenName or BrowserTools.NavigateName =>
+                        await NativeBrowserService.ExecuteAsync(new JsonObject { ["action"] = "navigate", ["url"] = navUrl }, workspace ?? "", ct).ConfigureAwait(false),
+                    BrowserTools.ScreenshotName =>
+                        await NativeBrowserService.ExecuteAsync(new JsonObject { ["action"] = "screenshot", ["path"] = dest }, workspace ?? "", ct).ConfigureAwait(false),
+                    BrowserTools.CloseName =>
+                        await NativeBrowserService.ExecuteAsync(new JsonObject { ["action"] = "navigate", ["url"] = "about:blank" }, workspace ?? "", ct).ConfigureAwait(false),
+                    _ => $"Tool error: unknown browser tool {call.Name}."
+                };
+            }
+
             return call.Name switch
             {
                 BrowserTools.OpenName => FormatPage(await OpenAsync(
@@ -182,6 +200,12 @@ public sealed class BrowserSessionManager
                 BrowserTools.CloseName => await CloseAndFormatAsync(
                     scope,
                     input["pageID"]?.GetValue<string>() ?? "",
+                    ct).ConfigureAwait(false),
+                BrowserTools.ScreenshotName => await ScreenshotAndFormatAsync(
+                    scope,
+                    input["pageID"]?.GetValue<string>() ?? "",
+                    input["path"]?.GetValue<string>() ?? "browser.png",
+                    workspace,
                     ct).ConfigureAwait(false),
                 _ => $"Tool error: unknown browser tool {call.Name}.",
             };
@@ -217,6 +241,60 @@ public sealed class BrowserSessionManager
 
     private static string FormatPage(BrowserPage page) =>
         $"Opened {page.Url}\npageID: {page.PageId}\nbackend: {page.Backend}";
+
+    private async Task<string> ScreenshotAndFormatAsync(
+        BrowserScope scope,
+        string pageId,
+        string path,
+        string? workspace,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(pageId)) return "Tool error: pageID is required.";
+        var bytes = await ScreenshotAsync(scope, pageId, ct).ConfigureAwait(false);
+        // The tool contract is "relative to workspace"; a run without one keeps
+        // the image inside its own browser data folder.
+        var baseDirectory = string.IsNullOrWhiteSpace(workspace) ? Path.Combine(_root, scope.RunId) : workspace;
+        var dest = Path.IsPathRooted(path) ? path : Path.Combine(baseDirectory, path);
+        Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+        await File.WriteAllBytesAsync(dest, bytes, ct).ConfigureAwait(false);
+        return $"Saved browser screenshot of page {pageId} to {path} ({bytes.Length} bytes).";
+    }
+
+    public async Task<byte[]> ScreenshotAsync(
+        BrowserScope scope,
+        string pageId,
+        CancellationToken ct = default)
+    {
+        var session = FindSession(scope, pageId);
+        string? base64 = null;
+        if (session.Pipe is { } pipe)
+        {
+            var attached = await pipe.SendAsync(
+                "Target.attachToTarget",
+                new { targetId = pageId, flatten = true },
+                sessionId: null,
+                ct).ConfigureAwait(false);
+            var sessionId = attached?["sessionId"]?.GetValue<string>()
+                ?? throw new InvalidOperationException("Chrome did not return a CDP target session.");
+            var capture = await pipe.SendAsync("Page.captureScreenshot", new { format = "png" }, sessionId, ct).ConfigureAwait(false);
+            base64 = capture?["data"]?.GetValue<string>();
+            lock (session) session.TargetSessions[pageId] = sessionId;
+        }
+        else
+        {
+            var target = await GetTargetAsync(session, pageId, ct).ConfigureAwait(false)
+                ?? throw new InvalidOperationException("The owned browser page no longer exists.");
+            var webSocketUrl = target["webSocketDebuggerUrl"]?.GetValue<string>()
+                ?? throw new InvalidOperationException("The owned browser page has no CDP websocket.");
+            var capture = await SendWebSocketCommandAsync(webSocketUrl, "Page.captureScreenshot", new { format = "png" }, ct).ConfigureAwait(false);
+            base64 = capture?["data"]?.GetValue<string>();
+        }
+
+        if (string.IsNullOrEmpty(base64))
+            throw new InvalidOperationException("Page.captureScreenshot returned no image data.");
+
+        return Convert.FromBase64String(base64);
+    }
 
     public async Task NavigateAsync(
         BrowserScope scope,

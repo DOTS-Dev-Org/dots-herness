@@ -14,9 +14,17 @@ public struct RootView: View {
     @StateObject private var dock = RightDockState()
     @State private var preferredSidebarVisibility: NavigationSplitViewVisibility = .all
     @State private var isSidebarCompact = false
-    @State private var isApplyingAutomaticSidebarVisibility = false
+    // Reserve a readable conversation width in addition to the widest sidebar.
+    private var sidebarAutoHideThreshold: CGFloat {
+        840 + (dock.isVisible ? 241 : 0) + (model.isSimulatorPresented ? 281 : 0)
+    }
 
-    private static let sidebarAutoHideThreshold: CGFloat = 640
+    private var splitVisibility: Binding<NavigationSplitViewVisibility> {
+        Binding(
+            get: { isSidebarCompact ? .detailOnly : navigationState.visibility },
+            set: { if !isSidebarCompact { navigationState.visibility = $0 } }
+        )
+    }
 
     public init(model: AppModel, logo: Image? = nil) {
         self.model = model
@@ -42,6 +50,13 @@ public struct RootView: View {
     private var gatedContent: some View {
         mainContent
         .background {
+            if isSidebarCompact, navigationState.visibility != .detailOnly {
+                Button("") { dismissCompactSidebar() }
+                    .keyboardShortcut(.escape, modifiers: [])
+                    .opacity(0)
+                    .frame(width: 0, height: 0)
+                    .accessibilityHidden(true)
+            }
             if startupGate.isOpen {
             ForEach(KeyboardShortcutAction.allCases.filter { $0 != .toggleSidebar && $0 != .pullRequests && $0 != .scheduled }) { action in
                 Button("") { model.isTasksPresented = false; dock.perform(action, model: model) }
@@ -56,14 +71,25 @@ public struct RootView: View {
             UsageSummaryView(model: model)
         }
         .onChange(of: model.voiceProvider) { _, _ in model.refreshVoiceModel() }
+        .onChange(of: model.selected?.pendingPlanMessageID) { _, id in
+            // Auto-approve applies the plan straight away, so only ask when it is manual.
+            if id != nil, !model.autoApprovePlans { dock.showPlan() }
+        }
+        .onChange(of: model.planPaneRequestID) { _, _ in dock.showPlan() }
     }
 
     @ViewBuilder
     private var mainContent: some View {
         GeometryReader { proxy in
-            NavigationSplitView(columnVisibility: $navigationState.visibility) {
-                SidebarView(model: model, logo: logo)
-                    .toolbar(removing: .sidebarToggle)
+            NavigationSplitView(columnVisibility: splitVisibility) {
+                Group {
+                    if !isSidebarCompact {
+                        SidebarView(model: model, logo: logo)
+                    } else {
+                        Color.clear
+                    }
+                }
+                .toolbar(removing: .sidebarToggle)
             } detail: {
                 if model.isTasksPresented {
                     TasksView(model: model)
@@ -73,19 +99,18 @@ public struct RootView: View {
             }
             .toolbar(removing: .sidebarToggle)
             .toolbarBackground(.hidden, for: .windowToolbar)
-            .frame(width: proxy.size.width, height: proxy.size.height)
+            .overlay(alignment: model.isRTL ? .trailing : .leading) {
+                if isSidebarCompact, navigationState.visibility != .detailOnly {
+                    compactSidebar(for: proxy.size.width)
+                }
+            }
             .overlay(alignment: .top) {
                 SlotStack(slot: WellKnownSlot.overlay, registry: model.host.slots)
             }
             .toolbar {
                 // Keep the sidebar toggle and assistant mode controls in one
                 // compact surface so they read as a single navigation group.
-                ToolbarItem(id: "navigation-controls", placement: .navigation) {
-                    NavigationControlCluster(
-                        model: model,
-                        navigationState: navigationState
-                    )
-                }
+                navigationToolbarItem
 
                 actionToolbarItems
             }
@@ -96,24 +121,52 @@ public struct RootView: View {
                 synchronizeSidebarVisibility(for: width)
             }
             .onChange(of: navigationState.visibility) { _, visibility in
-                if isApplyingAutomaticSidebarVisibility {
-                    isApplyingAutomaticSidebarVisibility = false
-                } else {
+                if !isSidebarCompact {
                     preferredSidebarVisibility = visibility
                 }
             }
+            .onChange(of: dock.isVisible) { _, _ in
+                synchronizeSidebarVisibility(for: proxy.size.width)
+            }
+            .onChange(of: model.isSimulatorPresented) { _, _ in
+                synchronizeSidebarVisibility(for: proxy.size.width)
+            }
+            .onChange(of: model.selectedConversationID) { _, _ in dismissCompactSidebar() }
+            .onChange(of: model.workspacePath) { _, _ in dismissCompactSidebar() }
+            .onChange(of: model.isTasksPresented) { _, _ in dismissCompactSidebar() }
         }
+    }
+
+    private func compactSidebar(for width: CGFloat) -> some View {
+        ZStack(alignment: model.isRTL ? .trailing : .leading) {
+            Color.black.opacity(0.18)
+                .contentShape(Rectangle())
+                .onTapGesture { dismissCompactSidebar() }
+                .accessibilityHidden(true)
+
+            SidebarView(model: model, logo: logo)
+                .frame(width: min(300, max(250, width - 48)))
+                .frame(maxHeight: .infinity)
+                .shadow(color: .black.opacity(0.2), radius: 12, x: model.isRTL ? -4 : 4)
+        }
+        .onExitCommand { dismissCompactSidebar() }
+    }
+
+    private func dismissCompactSidebar() {
+        if isSidebarCompact { navigationState.visibility = .detailOnly }
     }
 
     @ViewBuilder
     private var detailPanes: some View {
-        if startupGate.isOpen, (dock.isVisible || model.isSimulatorPresented) {
+        if dock.isVisible || model.isSimulatorPresented {
             HSplitView {
-                ConversationView(
-                    model: model,
-                    isPanePickerVisible: .constant(false)
-                )
-                .frame(minWidth: 300, idealWidth: 620, maxWidth: .infinity)
+                if !(dock.isVisible && dock.isExpanded) {
+                    ConversationView(
+                        model: model,
+                        isPanePickerVisible: .constant(false)
+                    )
+                    .frame(minWidth: 240, idealWidth: 620, maxWidth: .infinity)
+                }
 
                 if dock.isVisible {
                     RightDockView(model: model, state: dock)
@@ -131,6 +184,18 @@ public struct RootView: View {
                 model: model,
                 isPanePickerVisible: .constant(false)
             )
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var navigationToolbarItem: some ToolbarContent {
+        let item = ToolbarItem(id: "navigation-controls", placement: .navigation) {
+            NavigationControlCluster(model: model, navigationState: navigationState)
+        }
+        if #available(macOS 26.0, *) {
+            item.sharedBackgroundVisibility(.hidden)
+        } else {
+            item
         }
     }
 
@@ -180,30 +245,15 @@ public struct RootView: View {
         .help(AppCopy.text("conversation.choosePane"))
     }
 
-    private func applyAutomaticSidebarVisibility(_ visibility: NavigationSplitViewVisibility) {
-        guard navigationState.visibility != visibility else { return }
-        isApplyingAutomaticSidebarVisibility = true
-        navigationState.visibility = visibility
-    }
-
     private func synchronizeSidebarVisibility(for width: CGFloat) {
-        let compact = width < Self.sidebarAutoHideThreshold
-        if compact {
-            // A window can enter the compact state before NavigationSplitView
-            // has committed its initial column visibility. Do not let the
-            // compact-state flag short-circuit that first correction: otherwise
-            // the sidebar remains visible at the minimum window size and its
-            // contents are laid out outside the available column.
-            if !isSidebarCompact, navigationState.visibility != .detailOnly {
-                preferredSidebarVisibility = navigationState.visibility
-            }
+        let compact = width < sidebarAutoHideThreshold
+        if compact, !isSidebarCompact {
+            preferredSidebarVisibility = navigationState.visibility
             isSidebarCompact = true
-            if navigationState.visibility != .detailOnly {
-                applyAutomaticSidebarVisibility(.detailOnly)
-            }
-        } else if isSidebarCompact {
+            navigationState.visibility = .detailOnly
+        } else if !compact, isSidebarCompact {
             isSidebarCompact = false
-            applyAutomaticSidebarVisibility(preferredSidebarVisibility)
+            navigationState.visibility = preferredSidebarVisibility
         }
     }
 }
@@ -229,9 +279,9 @@ private struct SidebarToggleButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(isVisible ? AppCopy.text("sidebar.hide") : AppCopy.text("sidebar.show"))
-        .accessibilityLabel(isVisible ? AppCopy.text("sidebar.hide") : AppCopy.text("sidebar.show"))
-        .accessibilityValue(isVisible ? AppCopy.text("sidebar.show") : AppCopy.text("sidebar.hide"))
+        .help(isVisible ? AppCopy.text("sidebar.hideSidebar") : AppCopy.text("sidebar.showSidebar"))
+        .accessibilityLabel(isVisible ? AppCopy.text("sidebar.hideSidebar") : AppCopy.text("sidebar.showSidebar"))
+        .accessibilityValue(isVisible ? AppCopy.text("sidebar.showSidebar") : AppCopy.text("sidebar.hideSidebar"))
     }
 }
 
@@ -240,58 +290,47 @@ private struct NavigationControlCluster: View {
     @ObservedObject var navigationState: SidebarVisibilityState
 
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 6) {
             SidebarToggleButton(navigationState: navigationState)
 
-            Rectangle()
-                .fill(Color.primary.opacity(0.14))
-                .frame(width: 1, height: 19)
-                .accessibilityHidden(true)
+            NavigationStepButton(
+                systemImage: "arrow.left",
+                title: AppCopy.text("navigation.back"),
+                isEnabled: model.canNavigateBack
+            ) {
+                model.navigateBack()
+            }
 
-            AssistantModePicker(model: model)
+            NavigationStepButton(
+                systemImage: "arrow.right",
+                title: AppCopy.text("navigation.forward"),
+                isEnabled: model.canNavigateForward
+            ) {
+                model.navigateForward()
+            }
         }
-        .padding(3)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .stroke(Color.primary.opacity(0.14), lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.12), radius: 5, y: 2)
         .accessibilityElement(children: .contain)
     }
 }
 
-private struct AssistantModePicker: View {
-    @ObservedObject var model: AppModel
+private struct NavigationStepButton: View {
+    let systemImage: String
+    let title: String
+    let isEnabled: Bool
+    let action: () -> Void
 
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(AgentArea.allCases) { area in
-                let selected = model.activeArea == area
-                Button {
-                    withAnimation(.easeOut(duration: 0.16)) {
-                        model.setActiveArea(area)
-                    }
-                } label: {
-                    Image(systemName: area.systemImage)
-                        .font(.system(size: 14, weight: .semibold))
-                        .symbolRenderingMode(.hierarchical)
-                        .frame(width: 32, height: 26)
-                        .foregroundStyle(selected ? Color.primary : Color.secondary.opacity(0.82))
-                        .background(
-                            selected ? Color.primary.opacity(0.16) : .clear,
-                            in: RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        )
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(area.title)
-                .accessibilityAddTraits(selected ? .isSelected : [])
-            }
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 13, weight: .semibold))
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
         }
-        .frame(width: 64, height: 28)
-        .help(model.activeArea.title)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(AppCopy.text("assistantMode.title"))
+        .buttonStyle(.plain)
+        .foregroundStyle(Color.primary.opacity(isEnabled ? 0.9 : 0.28))
+        .disabled(!isEnabled)
+        .help(title)
+        .accessibilityLabel(title)
     }
 }
 

@@ -131,13 +131,18 @@ You are not running in the Codex CLI. The section above describes that harness; 
 with this section, this section wins.
 
 - There is no `apply_patch`, no `shell`, and no sandbox or approval-policy parameters. Use only the
-  tools listed in this request: `list_files`, `read_file`, `grep_files`, `write_file`, `remove_file`,
-  `run_command`, `update_plan`, `ask_user`, `explore`, and the `skill.*` tools.
-- Edit files by writing their complete new contents with `write_file`; there is no patch format.
+  tools listed in this request: `list_files`, `glob`, `read_file`, `grep_files`, `edit_file`,
+  `write_file`, `remove_file`, `run_command`, `update_plan`, `ask_user`, `explore`, and the `skill.*`
+  tools. Plan mode omits `edit_file`, `write_file`, `remove_file`, and `remember`.
+- Search for the relevant file or symbol first; do not read every file in a project. For existing
+  files, use `edit_file` for localized changes instead of reproducing the whole file with
+  `write_file`. Use `write_file` for new files or deliberate whole-file replacements. Read only
+  files needed for the task and prefer bounded `read_file` ranges; expand the read only when the
+  requested change or a safe exact-text edit requires it.
 - `run_command` runs one shell command in the workspace. Escalation is handled by the host, which
   asks the user itself, so never request permissions in a tool call.
 - The plan tool is `update_plan`; the guidance in the Plan tool section applies to it.
 - Search with `grep_files` rather than `rg` or `grep`: it is scoped to the workspace and bounds its
-  own output.
+  own output. Use `glob` for filenames rather than listing the whole project.
 """#
 }

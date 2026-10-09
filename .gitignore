@@ -23,10 +23,17 @@ mobile/android/app/.cxx/
 mobile/ios/build/
 
 # Android signing material and local Gradle properties must stay out of Git.
-mobile/android/keystore.properties
-mobile/android/gradle.properties
-mobile/android/*.jks
-mobile/android/*.keystore
+**/keystore.properties
+**/gradle.properties
+**/local.properties
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pem
+**/google-services.json
+**/.smoke-credentials.local
+**/d1_dump*.sql
 
 # Raw user feedback is local training data; derived project memory stays tracked.
 **/.mem/feedback.jsonl
+**/.mem/injections.jsonl

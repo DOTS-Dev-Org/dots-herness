@@ -8,11 +8,13 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <DockPanel Grid.Column="0" Background="{DynamicResource ChromeBackground}">
-            <Button x:Name="BackButton" DockPanel.Dock="Top" Content="← Back to chats" Click="OnBack"
+            <Button x:Name="BackButton" DockPanel.Dock="Top" Content="← Back to projects" Click="OnBack"
                     Margin="8,8,8,4" Padding="8,6" HorizontalContentAlignment="Left"/>
             <ListBox x:Name="Tabs" SelectionChanged="OnTab"
                      BorderThickness="0" Background="Transparent" Padding="8">
                 <ListBoxItem x:Name="GeneralTab" Content="General" Tag="general" IsSelected="True"/>
+                <ListBoxItem x:Name="ModelContextTab" Content="Context window" Tag="model-context"/>
+                <ListBoxItem x:Name="ArchiveTab" Content="Archived" Tag="archive"/>
                 <ListBoxItem x:Name="ProvidersTab" Content="Providers" Tag="providers"/>
                 <ListBoxItem x:Name="CustomTab" Content="Custom API" Tag="custom"/>
                 <ListBoxItem x:Name="LocalTab" Content="Local models" Tag="local"/>
@@ -22,6 +24,10 @@
                 <ListBoxItem x:Name="TasksTab" Content="Tasks" Tag="tasks"/>
                 <ListBoxItem x:Name="SkillsTab" Content="Skills" Tag="skills"/>
                 <ListBoxItem x:Name="PluginsTab" Content="Plugins" Tag="plugins"/>
+                <ListBoxItem x:Name="McpTab" Content="MCP servers" Tag="mcp"/>
+                <ListBoxItem x:Name="MemoryTab" Content="Memory" Tag="memory"/>
+                <ListBoxItem x:Name="AccessTab" Content="Workspace access" Tag="access"/>
+                <ListBoxItem x:Name="SandboxTab" Content="Sandbox" Tag="sandbox"/>
                 <ListBoxItem x:Name="PromptTab" Content="Prompt" Tag="prompt"/>
                 <ListBoxItem x:Name="LegalTab" Content="Legal" Tag="legal"/>
             </ListBox>

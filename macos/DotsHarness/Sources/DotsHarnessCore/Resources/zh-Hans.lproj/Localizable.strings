@@ -62,7 +62,6 @@
 "settings.title" = "设置";
 "settings.backToChats" = "返回聊天";
 "settings.tab.general" = "通用";
-"settings.tab.pet" = "宠物";
 "settings.tab.providers" = "提供商";
 "settings.tab.custom" = "自定义 API";
 "settings.tab.local" = "本地模型";
@@ -279,7 +278,7 @@
 "composer.add" = "添加";
 "composer.stopListening" = "停止听写并将文字添加到草稿";
 "composer.keyboardHelp" = "Enter：发送 · Shift+Enter：换行 · ⌘/Ctrl+Enter：中断";
-"composer.followUp.hint" = "按 Tab 接受后续消息建议";
+"composer.followUp.hint" = "按 Tab 键接受后续消息建议";
 "composer.selectModel" = "选择模型";
 "composer.installedSkill" = "已安装技能";
 "composer.settings" = "设置";
@@ -303,8 +302,6 @@
 "slash.model" = "模型";
 "slash.plan" = "计划模式";
 "slash.planDetail" = "开启计划模式";
-"slash.mascot" = "宠物";
-"slash.mascotDetail" = "唤醒或隐藏 Pet";
 "slash.pluginCreator" = "插件创建器";
 "slash.pluginCreatorDetail" = "创建新插件";
 "pluginCreator.template" = "模板";
@@ -390,7 +387,6 @@
 "sidebar.hide" = "隐藏";
 "sidebar.show" = "显示";
 "sidebar.selectProject" = "选择项目";
-"sidebar.continueWithoutProject" = "不使用项目继续";
 "sidebar.projectOptions" = "项目选项";
 "sidebar.editProject" = "编辑项目";
 "sidebar.addProject" = "添加项目";
@@ -417,32 +413,10 @@
 "sidebar.archived" = "已归档";
 "sidebar.chatRunning" = "聊天进行中";
 "sidebar.chatCompleted" = "聊天已完成";
-"sidebar.usage" = "使用量";
+"sidebar.usage" = "用量";
 "sidebar.settings" = "设置";
 "sidebar.accountOptions" = "账户选项";
 "sidebar.accountUsage" = "DOTS 账户和使用量";
-"pet.position.bottomTrailing" = "右下";
-"pet.position.bottomLeading" = "左下";
-"pet.position.topTrailing" = "右上";
-"pet.position.topLeading" = "左上";
-"pet.settings" = "Pet 设置";
-"pet.hide" = "隐藏 Pet";
-"pet.dragHint" = "DOTS Pet · 按住以移动";
-"pet.stopAndSend" = "停止听写并发送到选中的聊天";
-"pet.micOpening" = "正在打开麦克风…";
-"pet.listening" = "正在听…";
-"pet.transcribing" = "本地语音模型正在转写…";
-"pet.sending" = "正在发送到选中的聊天…";
-"pet.visibility" = "Pet 可见性";
-"pet.show" = "显示 Pet";
-"pet.visibilityHint" = "仅在启用此选项时，Pet 才会显示在屏幕上。首次启动时默认关闭。";
-"pet.appearance" = "外观";
-"pet.position" = "位置";
-"pet.size" = "大小";
-"pet.sizeValue" = "%d 像素";
-"pet.avatar" = "头像";
-"pet.preview" = "预览";
-"pet.title" = "宠物";
 "usage.title" = "使用量";
 "usage.accountSummary" = "本期 DOTS YAZILIM 账户摘要";
 "usage.period" = "本期";
@@ -716,16 +690,16 @@
 "speech.emptyOutput" = "本地语音引擎未返回任何音频";
 "speech.invalidAudio" = "本地语音引擎返回无效音频";
 "router.imageFallback" = "用作图像后备";
-"composer.projectPickerHelp" = "选择本次聊天的项目";
+"composer.projectPickerHelp" = "选择此对话的项目";
 "composer.projectPickerTitle" = "项目";
 "composer.chooseProject" = "选择项目";
 "composer.noProject" = "没有选择项目";
 "composer.dontWorkInProject" = "不要在项目中工作";
 "workLocation.title" = "工作于";
-"workLocation.help" = "选择此任务运行的位置";
+"workLocation.help" = "选择此任务的运行位置";
 "workLocation.local" = "本地";
 "workLocation.localDetail" = "在此计算机上运行此任务";
-"workLocation.localWorktree" = "新的本地工作树";
+"workLocation.localWorktree" = "新建本地工作树";
 "workLocation.localWorktreeDetail" = "在此计算机上使用隔离结账";
 "workLocation.remote" = "另一台电脑";
 "workLocation.remoteDetail" = "通过 SSH 在你连接的电脑上工作";
@@ -781,8 +755,8 @@
 "ssh.error.pathMissing" = "远程电脑上不存在文件夹 %@。";
 "ssh.error.configWriteFailed" = "无法将 %@ 写入 ~/.ssh/config。";
 "tool.remoteUnavailable" = "在 %2$@ 上工作时无法使用 %1$@。请改用 run_command 执行 shell 命令。";
-"git.branchHelp" = "选择一个 Git 分支";
-"git.detached" = "分离头";
+"git.branchHelp" = "选择 Git 分支";
+"git.detached" = "分离的 HEAD";
 "git.search" = "搜寻分行";
 "git.branches" = "分支机构";
 "git.noBranches" = "没有找到分支机构";
@@ -850,7 +824,6 @@
 "marketplace.install" = "安装";
 "marketplace.search" = "搜索插件";
 "marketplace.update" = "更新 v%@ → v%@";
-"pet.avatarHint" = "选择一个宠物头像。";
 "router.customEndpointHint" = "自定义API端点";
 "router.noKeyRequired" = "无需钥匙。通过此提供商连接到路由。";
 "settings.addProviderCustom" = "通过自定义 API 添加此提供程序。";
@@ -1084,9 +1057,6 @@
 "feedback.tag.negative_other" = "其他";
 
 // Completed translations for keys added to the desktop catalog.
-"assistantMode.title" = "助手模式";
-"assistantMode.coding" = "编程";
-"assistantMode.chat" = "聊天";
 "tasks.close" = "关闭任务";
 "tasks.back" = "返回";
 "tasks.new" = "新任务";
@@ -1127,3 +1097,213 @@
 "settings.compactTrigger" = "自动压缩上下文的阈值";
 "settings.compactTrigger.hint" = "占每个模型上下文窗口的比例。压缩会重写提示缓存，因此数值越高，缓存保留得越久。";
 "conversation.translate" = "翻译";
+
+
+// Completed translations for keys added to the desktop catalog.
+"tray.section.running" = "正在运行的对话";
+"tray.section.waiting" = "需要处理";
+"tray.write" = "撰写消息";
+"tray.openUsage" = "打开用量界面";
+"tray.noChats" = "当前没有对话";
+"tray.unread" = "新回复";
+
+// Write-lease conflict copy.
+"conflict.policy.waitThenAsk" = "先等待，再询问";
+"conflict.policy.waitThenAsk.detail" = "会先安静等待另一个会话，只有等待过久才会询问。";
+"conflict.policy.ask" = "询问我";
+"conflict.policy.ask.detail" = "当两个会话同时想要同一文件时立即询问。";
+"conflict.policy.waitOnly" = "始终等待";
+"conflict.policy.waitOnly.detail" = "不会询问：每次写入都等待持有该文件的会话。";
+"conflict.title" = "另一个会话正在写入 %@";
+"conflict.stillBusy" = "已暂缓写入：另一个会话仍在写入 %@。";
+"conflict.userSkipped" = "已按要求跳过写入：%@ 仍归另一个会话（%@）。";
+"conflict.stoppedHolder" = "已按您的请求停止会话“%@”，并完成此次写入。";
+"conflict.stoppedOthers" = "已按您的请求停止该项目的其他会话，并完成此次写入。";
+"conflict.wholeProject" = "整个项目（命令：%@）";
+"conflict.banner.title" = "另一个会话正在写入此文件";
+"conflict.banner.body" = "%1$@ · 由“%2$@”已持有 %3$d 秒";
+"conflict.banner.keepWaiting" = "继续等待";
+"conflict.banner.stopHolder" = "停止该会话";
+"conflict.banner.stopAllOthers" = "停止其他所有会话";
+"conflict.banner.skip" = "跳过此写入";
+"conflict.waiting" = "正在等待“%@”完成写入：%@";
+"settings.workspaceConflictPolicy" = "当另一个会话正在写入同一文件";
+"settings.conflictWaitSeconds" = "询问前先等待";
+"settings.conflictWaitValue" = "%d 秒";
+
+
+"conversation.ranCommand" = "Ran 1 command";
+"conversation.ranCommands" = "Ran %d commands";
+"conversation.runningTools" = "Running tools…";
+"conversation.thinkingPhase" = "Thinking…";
+"conversation.tokensCount" = "%@ tokens";
+"usage.context.window" = "上下文窗口";
+"usage.planLimits" = "套餐使用限额";
+"ask.other" = "Other";
+"ask.next" = "Next";
+"ask.skipShort" = "Skip";
+"composer.queue.one" = "1 message queued";
+"composer.queue.many" = "%d messages queued";
+"composer.queue.edit" = "Edit";
+"composer.queue.editBlocked" = "Clear the message box to edit";
+"composer.queue.remove" = "Remove";
+"git.createPR" = "创建 PR";
+"git.hideBar" = "隐藏";
+"composer.queue.next" = "Next: %@";
+
+// Composer, git bar and usage popover.
+"usage.context.tooltip" = "上下文和令牌用量";
+"usage.context.conversation" = "对话消息";
+"usage.context.toolDefinitions" = "工具定义";
+"usage.context.mcpDefinitions" = "MCP 工具定义";
+"usage.context.systemPrompt" = "系统指令";
+"usage.context.cacheHit" = "提示缓存命中";
+"usage.context.notReported" = "提供方未报告";
+"usage.context.cacheWrite" = "已向缓存写入 %@ 个令牌";
+
+// Local AI runtime and custom endpoint tuning.
+"custom.modelOptional" = "模型名称(可选)";
+"custom.contextOptional" = "上下文窗口(token 数,可选)";
+"custom.contextHint" = "两项留空则从服务器读取。服务器未报告时请填写上下文(Ollama:与 OLLAMA_CONTEXT_LENGTH 一致)。";
+"custom.contextInvalid" = "上下文窗口必须是正数。";
+"custom.detected" = "正在这台电脑上运行";
+"custom.noModelAvailable" = "%@ 未列出任何模型。请启动其服务器,或为该端点设置模型名称。";
+"local.extraArgs" = "额外的 llama-server 参数";
+"local.mlxExtraArgs" = "额外的 mlx_lm 服务器参数";
+"local.gpuLayers" = "GPU 层数(auto、all 或数字)";
+"local.hardware" = "硬件";
+"local.hardwareGPU" = "%@ · %@ 显存 · %@ 内存";
+"local.importGGUF" = "添加 GGUF 文件…";
+"local.installMLX" = "安装 MLX";
+"local.installingMLX" = "正在安装 MLX(Python + mlx-lm)…";
+"local.kvCache" = "KV 缓存类型";
+"local.servingContext" = "%@ · %d 个 token";
+"local.tooLarge" = "太大";
+"local.tuning" = "性能";
+"local.tuningHint" = "留空或填 auto 时,运行时会让模型适配你的显存。更改在下次启动模型时生效。";
+"local.contextSize" = "上下文大小(token)";
+"local.threads" = "CPU 线程数";
+"local.batchSize" = "批大小";
+"local.forget" = "从列表中移除";
+"localModel.needsMemory" = "需要约 %d GB 显存或内存。";
+"localRuntime.helperFailed" = "%@ 失败(退出码 %d)";
+"localRuntime.mlxUnsupported" = "MLX 需要搭载 Apple 芯片的 Mac。";
+"local.flashAttention" = "Flash attention";
+"local.hardwareMemory" = "%@ RAM";
+
+// Translations completed for keys that had no localized text.
+"conversation.fullToolOutput" = "完整工具输出";
+"sidebar.showSidebar" = "显示侧边栏";
+"sidebar.hideSidebar" = "隐藏侧边栏";
+"navigation.back" = "后退";
+"navigation.forward" = "前进";
+"settings.autoApprovePlans" = "自动批准计划";
+"settings.autoApprovePlans.hint" = "启用后,生成的计划将直接应用,无需等待单独的计划批准。工具级别的批准仍然有效。";
+"media.fallbackUsed" = "所选提供商无法生成此图像。已通过 %@/%@ 的一次性备用请求生成;主对话的提供商和模型未更改,因此其提示缓存保持完好。";
+"media.imageUnsupportedWithFallbackHint" = "我无法使用 %@ 生成此图像。请配置一个图像 API 或提供商作为备用。仅为生成图像而切换主聊天模型可能会破坏提供商的提示缓存。";
+"conversation.generationResumed" = "消息已恢复";
+"conversation.cancelPlan" = "取消计划";
+"conversation.cancelPlanHelp" = "取消此计划并释放排队的消息";
+"conversation.thinking" = "思考过程";
+"usage.manageResets" = "管理重置";
+"usage.useReset" = "使用重置";
+"usage.resetTitle" = "要使用 Claude 限额重置吗?";
+"usage.openClaude" = "在 Claude 中继续";
+"usage.resetConfirmation" = "将打开 Claude 的用量页面。请登录 %@ 并查看为该账户提供的重置。要使用它,请点击免费重置并在 Claude 中确认。重置一经使用便无法撤销。返回 HerNess 后限额会刷新。";
+"usage.resetOpenFailed" = "无法打开 Claude。请确认账户仍处于连接状态,然后重试。";
+"conversation.review" = "审阅";
+"dock.noWorkspace" = "请先选择工作文件夹。";
+"dock.branch" = "分支";
+"dock.refresh" = "刷新";
+"dock.commit" = "提交";
+"dock.push" = "推送";
+"dock.fetch" = "拉取";
+"dock.commitOrPush" = "提交或推送";
+"dock.commitMessage" = "提交信息";
+"dock.noChanges" = "智能体没有做出更改。";
+"dock.whyRequest" = "你的请求";
+"dock.whyAgent" = "智能体的说明";
+"dock.notRepo" = "此文件夹不是 git 仓库。";
+"dock.filterFiles" = "筛选文件…";
+"dock.openFile" = "打开文件";
+"dock.selectFile" = "从工作区树中选择文件";
+"dock.binaryFile" = "二进制或无法读取的文件";
+"project.missing.title" = "未找到项目文件夹：%@";
+"project.missing.message" = "位于“%@”的项目文件夹可能已被移动或删除。请选择其新位置或移除项目。";
+"project.missing.locate" = "查找位置…";
+"project.missing.readOnly" = "项目文件夹不可用。你仍可查看以前的对话；在选择新位置之前，无法创建新对话或发送消息。";
+"queue.waitingForPlan" = "正在等待计划批准";
+"settings.closeToTray" = "关闭窗口后继续在系统托盘中运行";
+"settings.closeToTray.hint" = "窗口隐藏期间，运行、终端和计划任务会继续；点击托盘图标即可返回。";
+"tray.show" = "打开窗口";
+"context.overflowTitle" = "此对话无法放入新模型";
+"context.overflowReason" = "%1$@ 需要约 %2$d 个 token 才能继续,而该模型中只剩 %3$d 个。";
+"context.overflowByModel" = "摘要将由 %@ 撰写,它是仍能读取对话记录的最小已连接模型。";
+"context.overflowLocally" = "没有任何已连接的模型能读取对话记录,因此将在不询问任何模型的情况下缩短对话。";
+"context.overflowCompress" = "压缩并继续";
+"context.overflowNotNow" = "暂不";
+"context.overflowDeclined" = "发送已停止:对话无法放入新模型。";
+"usage.context.title" = "用量";
+"usage.context.input" = "已发送的输入";
+"usage.context.estimatedInput" = "预估输入";
+"usage.context.output" = "输出";
+"usage.context.latestRequest" = "最近一次请求 · 上下文窗口";
+"usage.context.estimatedBreakdown" = "预估输入明细";
+"usage.context.estimateNote" = "提供商的输入/输出总量在可用时显示。否则,输入总量和工具/MCP 类别为本地估算。";
+"usage.context.tokens" = "token";
+"usage.context.toolCalls" = "工具调用";
+"usage.context.mcpCalls" = "MCP 调用";
+"usage.context.toolResults" = "工具结果";
+"usage.context.mcpResults" = "MCP 结果";
+"plan.proposed" = "Claude 提出了一个计划";
+"plan.reject" = "拒绝";
+"plan.revise" = "修改…";
+"plan.accept" = "接受";
+"plan.acceptAuto" = "接受并开启自动模式";
+"plan.open" = "打开计划";
+"plan.empty" = "暂无计划";
+"dock.expand" = "展开";
+"dock.collapse" = "折叠";
+"usage.context.cacheReuse" = "此对话中的缓存复用";
+"usage.context.cacheFreshInput" = "New / outside-breakpoint input: %@ tokens";
+"usage.context.cacheCoverage" = "测量覆盖率:%@ · %@ / %@ 次请求";
+"usage.context.cacheLatency" = "平均请求延迟:%@ 毫秒";
+"usage.context.cacheLoss" = "最大缓存损失:%@ · %@ 个 token";
+"tray.back" = "聊天";
+
+"composer.cacheExpired.explanation" = "缓存的预计有效期已过。提示缓存是提供商一侧的临时处理状态，你的聊天记录仍然保留。带着完整历史继续聊天，可能会让这些 token 重新按新输入计费。只有下一次请求的用量数据才能确认提供商是否仍命中缓存。";
+"composer.accountSwitched.notice" = "此聊天已在同一模型下切换到另一个账户。缓存在该账户上从头开始；继续聊天可能会消耗更多 token 并增加费用。";
+"composer.contextFull.notice" = "上下文窗口即将用尽；继续聊天可能会消耗更多 token 并增加费用。请附上简短摘要开始新聊天。";
+"composer.cacheExpired.infoTitle" = "为什么会看到此提示？";
+"composer.cacheExpired.notice" = "缓存可能已过期；继续聊天可能会消耗更多 token 并增加费用。请附上简短摘要开始新聊天。";
+"feedback.tag.apply_elsewhere" = "Apply it elsewhere";
+"feedback.tag.broke_existing_feature" = "Broke an existing feature";
+"feedback.tag.did_not_follow_project_style" = "Didn't follow project style";
+"feedback.tag.ignored_project_architecture" = "Ignored project architecture";
+"feedback.tag.keep_project_style" = "Keep the project style";
+"feedback.tag.reuse_architecture" = "Reuse this architecture";
+"feedback.tag.reuse_token_pattern" = "Reuse this token pattern";
+"feedback.tag.wrong_theme_or_token" = "Wrong theme or token";
+
+// Completed translations for keys added to the desktop catalog.
+"conversation.filesChangedCount" = "已更改 %d 个文件";
+"conversation.filesLineSummary" = "+%d −%d";
+"conversation.lineCountsUnavailable" = "无法获取行数";
+"conversation.filesMore" = "再显示 %d 个文件";
+"conversation.filesLess" = "收起部分文件";
+"conversation.undoChanges" = "撤销";
+"conversation.viewChanges" = "查看更改";
+"conversation.filesReverted" = "文件更改已撤销。";
+
+// Completed translations for keys added to the desktop catalog.
+"composer.modelSwitched.notice" = "模型已更改。缓存不会延续到新模型，全部历史将重新处理，这可能会消耗更多 token 并增加费用。";
+
+"archive.title" = "已归档的对话";
+"archive.empty" = "没有已归档的对话。";
+
+"conversation.plan" = "计划";
+"conversation.system" = "系统";
+
+"archive.confirmDelete" = "永久删除此对话？";
+"archive.deletePermanently" = "永久删除";
+"conversation.processedTokensCount" = "%@ 个 token";

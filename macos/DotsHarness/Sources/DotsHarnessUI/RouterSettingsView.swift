@@ -321,10 +321,10 @@ struct RouterProvidersView: View {
     }
 }
 
-private struct ProviderLogoView: View {
+struct ProviderLogoView: View {
     let name: String
     let providerID: String
-    @State private var imageData: Data?
+    var size: CGFloat = 28
 
     private var mark: String {
         let words = name.split(separator: " ")
@@ -332,84 +332,54 @@ private struct ProviderLogoView: View {
         return String(name.prefix(2)).uppercased()
     }
 
-    private var logoURL: URL? { ProviderLogoSource.url(for: providerID) }
+    private var logo: NSImage? {
+        guard let resource = ProviderLogoSource.mark(for: providerID),
+              let url = Bundle.module.url(forResource: resource, withExtension: "svg")
+                ?? Bundle.module.url(forResource: resource, withExtension: "png") else { return nil }
+        return NSImage(contentsOf: url)
+    }
 
     var body: some View {
         Group {
-            if let imageData, let image = NSImage(data: imageData) {
+            if let image = logo {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFit()
-                    .padding(4)
+                    .padding(size * 0.14)
             } else {
                 Text(mark)
-                    .font(.caption2.weight(.bold).monospaced())
+                    .font(.system(size: max(8, size * 0.4), weight: .bold, design: .monospaced))
                     .foregroundStyle(.black)
             }
         }
-        .frame(width: 28, height: 28)
-        .background(.white, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .frame(width: size, height: size)
+        .background(.white, in: RoundedRectangle(cornerRadius: size * 0.25, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
+            RoundedRectangle(cornerRadius: size * 0.25, style: .continuous)
                 .stroke(Color.black.opacity(0.12), lineWidth: 1)
         }
         .accessibilityHidden(true)
-        .task(id: logoURL) {
-            imageData = nil
-            guard let logoURL else { return }
-            do {
-                let (data, response) = try await URLSession.shared.data(from: logoURL)
-                guard (response as? HTTPURLResponse)?.statusCode == 200 else { return }
-                guard NSImage(data: data) != nil else { return }
-                imageData = data
-            } catch {
-                // Keep the readable initials fallback when the logo is offline.
-            }
-        }
     }
 }
 
-private enum ProviderLogoSource {
-    // Brand marks come from Iconify's SVG logo collections; initials are the
-    // offline fallback when a logo cannot be fetched.
-    private static let icons: [String: String] = [
-        "gpt": "logos:openai-icon",
-        "claude": "logos:claude-icon",
-        "anthropic": "logos:anthropic-icon",
-        "grok-cli": "logos:grok-icon",
-        "gemini-cli": "thesvg-color:gemini",
-        "antigravity": "thesvg-color:antigravity-google",
-        "opencode": "thesvg-color:opencode",
-        "opencode-go": "thesvg-color:opencode",
-        "nvidia": "logos:nvidia",
-        "zai": "thesvg-color:glm-v",
-        "gemini": "thesvg-color:gemini",
-        "deepseek": "logos:deepseek-icon",
-        "openai": "logos:openai-icon",
-        "openrouter": "thesvg-color:openrouter-light",
-        "qwen": "logos:qwen-icon",
-        "grok": "logos:grok-icon",
-        "glm": "thesvg-color:glm-v",
-        "kimi": "thesvg-color:kimi",
-        "minimax": "logos:minimax-icon",
-        "groq": "thesvg-color:groq",
-        "mistral": "logos:mistral-ai-icon",
-        "perplexity": "logos:perplexity-icon",
-        "together": "thesvg-color:togetherdotai",
-        "fireworks": "thesvg-color:fireworks",
-        "cerebras": "thesvg-color:cerebras",
-        "deepinfra": "thesvg-color:deepinfra",
+enum ProviderLogoSource {
+    private static let marks: [String: String] = [
+        "gpt": "OpenAIMark", "openai": "OpenAIMark",
+        "claude": "AnthropicMark", "anthropic": "AnthropicMark",
+        "grok-cli": "GrokMark", "grok": "GrokMark", "xai": "SpaceXAIMark",
+        "gemini-cli": "GeminiMark", "gemini": "GeminiMark",
+        "antigravity": "AntigravityMark", "opencode": "OpenCodeMark", "opencode-go": "OpenCodeMark",
+        "iflow": "IFlowMark", "github": "GitHubMark", "kiro": "KiroMark",
+        "nvidia": "NvidiaMark", "zai": "ZaiMark", "glm": "ZaiMark",
+        "deepseek": "DeepSeekMark", "openrouter": "OpenRouterMark", "qwen": "QwenMark",
+        "kimi": "KimiMark", "minimax": "MiniMaxMark", "groq": "GroqMark",
+        "mistral": "MistralMark", "perplexity": "PerplexityMark", "together": "TogetherAIMark",
+        "fireworks": "FireworksMark", "cerebras": "CerebrasMark", "deepinfra": "DeepInfraMark",
+        "cohere": "CohereMark", "siliconflow": "SiliconFlowMark", "nebius": "NebiusMark",
+        "chutes": "ChutesMark", "hyperbolic": "HyperbolicMark", "vertex": "GoogleCloudMark",
     ]
 
-    static func url(for providerID: String) -> URL? {
-        guard let icon = icons[providerID] else { return nil }
-        var components = URLComponents()
-        components.scheme = "https"
-        components.host = "api.iconify.design"
-        components.path = "/\(icon).svg"
-        components.queryItems = [URLQueryItem(name: "height", value: "48")]
-        return components.url
-    }
+    static func mark(for providerID: String) -> String? { marks[providerID] }
 }
 
 private struct ProviderPickerPopover: View {

@@ -17,8 +17,10 @@ DIST_DIR="${OUTPUT_PATH:-$ROOT/dist}"
 PUBLISH_DIR="$DIST_DIR/publish"
 ZIP_NAME="${APP_NAME}-${VERSION}-${RUNTIME}.zip"
 ZIP_PATH="$DIST_DIR/${ZIP_NAME}"
-SELF_CONTAINED=true
-READY_TO_RUN="${READY_TO_RUN:-true}"
+SELF_CONTAINED="${SELF_CONTAINED:-false}"
+# ReadyToRun duplicates IL with native code and makes the self-contained
+# package larger. Keep compact releases by default; opt in for startup speed.
+READY_TO_RUN="${READY_TO_RUN:-false}"
 OPEN_RESULT=true
 
 usage() {
@@ -36,20 +38,40 @@ Seçenekler:
       --runtime RID             Runtime kimliği (varsayılan: win-x64).
       --framework TFM           Hedef çerçeve (varsayılan: net8.0-windows).
   -c, --configuration NAME      Yapılandırma (varsayılan: Release).
-      --framework-dependent     Self-contained değil, paylaşılan runtime kullan.
-      --ready-to-run            ReadyToRun (varsayılan açık; kapatmak için READY_TO_RUN=false).
+      --framework-dependent     Paylaşılan runtime kullan (varsayılan).
+      --self-contained          .NET 8 Desktop Runtime'ını pakete dahil et (paket büyür).
+      --ready-to-run            ReadyToRun aç (varsayılan kapalı; READY_TO_RUN=true ile de açılabilir).
       --output PATH             dist klasörü.
   -h, --help                    Bu yardım metnini göster.
 
 Ortam değişkenleri:
   VERSION, RUNTIME, DOTNET_RUNTIME, FRAMEWORK, CONFIGURATION, OUTPUT_PATH,
-  READY_TO_RUN
+  READY_TO_RUN, SELF_CONTAINED
 EOF
 }
 
 fail() {
     printf 'Hata: %s\n' "$1" >&2
     exit 1
+}
+
+prune_foreign_runtime_assets() {
+    local publish_dir="$1"
+    local target_runtime="$2"
+    local runtimes_dir="$publish_dir/runtimes"
+    [[ -d "$runtimes_dir" ]] || return 0
+
+    local candidate runtime_id
+    for candidate in "$runtimes_dir"/*; do
+        [[ -d "$candidate" ]] || continue
+        runtime_id="${candidate##*/}"
+        [[ "$runtime_id" == "$target_runtime" ]] && continue
+        case "$runtime_id" in
+            android-*|browser-*|freebsd-*|ios-*|linux-*|macos-*|maccatalyst-*|osx-*|tvos-*|wasi-*|win-*|win10-*)
+                rm -rf -- "$candidate"
+                ;;
+        esac
+    done
 }
 
 require_windows() {
@@ -124,6 +146,10 @@ while [[ $# -gt 0 ]]; do
             SELF_CONTAINED=false
             shift
             ;;
+        --self-contained)
+            SELF_CONTAINED=true
+            shift
+            ;;
         --ready-to-run)
             READY_TO_RUN=true
             shift
@@ -159,6 +185,12 @@ case "$(printf '%s' "$READY_TO_RUN" | tr '[:upper:]' '[:lower:]')" in
     1|true|yes) READY_TO_RUN=true ;;
     0|false|no) READY_TO_RUN=false ;;
     *) fail "Geçersiz READY_TO_RUN değeri: $READY_TO_RUN (true veya false kullanın)." ;;
+esac
+
+case "$(printf '%s' "$SELF_CONTAINED" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes) SELF_CONTAINED=true ;;
+    0|false|no) SELF_CONTAINED=false ;;
+    *) fail "Geçersiz SELF_CONTAINED değeri: $SELF_CONTAINED (true veya false kullanın)." ;;
 esac
 
 if [[ "$DIST_DIR" != /* && "$DIST_DIR" != [A-Za-z]:* ]]; then
@@ -208,6 +240,27 @@ if [[ -f "$SCHEDULER_PROJECT" ]]; then
         --property:Version="$VERSION" \
         --nologo
     [[ -f "$PUBLISH_DIR/DotsHarnessScheduler.exe" ]] || fail "Zamanlayıcı yardımcı yayınlanamadı."
+fi
+
+echo "    Yalnızca $RUNTIME yerel varlıkları pakette tutuluyor"
+prune_foreign_runtime_assets "$PUBLISH_DIR" "$RUNTIME"
+
+if [[ "$SELF_CONTAINED" == true ]]; then
+    cat > "$PUBLISH_DIR/README.txt" <<EOF
+Dots Harness ${VERSION} for Windows (${RUNTIME})
+
+.NET 8 Desktop Runtime is included in this self-contained package.
+Run DotsHarness.exe.
+EOF
+else
+    cat > "$PUBLISH_DIR/README.txt" <<EOF
+Dots Harness ${VERSION} for Windows (${RUNTIME})
+
+Requires the .NET 8 Desktop Runtime. Install it from:
+https://dotnet.microsoft.com/download/dotnet/8.0
+
+Run DotsHarness.exe.
+EOF
 fi
 
 echo "==> Zip oluştur"

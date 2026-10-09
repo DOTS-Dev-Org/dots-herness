@@ -12,17 +12,25 @@ public sealed class CloudTunnelProcess : IDisposable
 {
     private const string Release = "2026.5.2";
     private readonly SupportPaths _paths;
+    private readonly string _runtime;
     private Process? _process;
     private TaskCompletionSource<string>? _url;
 
-    public CloudTunnelProcess(SupportPaths paths) => _paths = paths;
+    public CloudTunnelProcess(SupportPaths paths, string? runtimeSubdirectory = null)
+    {
+        _paths = paths;
+        _runtime = string.IsNullOrWhiteSpace(runtimeSubdirectory)
+            ? paths.Runtime
+            : Path.Combine(paths.Runtime, Path.GetFileName(runtimeSubdirectory));
+    }
 
     public async Task<string> StartAsync(int gatewayPort, Action<FileDownloader.Progress>? progress = null, CancellationToken ct = default)
     {
         Stop();
         _paths.Ensure();
+        Directory.CreateDirectory(_runtime);
         var asset = AssetForCurrentPlatform();
-        var binary = Path.Combine(_paths.Runtime, asset.FileName);
+        var binary = Path.Combine(_runtime, asset.FileName);
         await FileDownloader.DownloadAsync(asset.Url, binary, progress: progress, ct: ct, sha256: asset.Sha256);
         if (!OperatingSystem.IsWindows())
         {
@@ -35,7 +43,7 @@ public sealed class CloudTunnelProcess : IDisposable
             StartInfo = new ProcessStartInfo
             {
                 FileName = binary,
-                WorkingDirectory = _paths.Runtime,
+                WorkingDirectory = _runtime,
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,

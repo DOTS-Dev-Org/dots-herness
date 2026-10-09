@@ -4,6 +4,7 @@
 import Foundation
 
 public enum BrowserBackend: String, Codable, Sendable, Equatable {
+    case native = "Native"
     case managed = "Managed"
     case `extension` = "Extension"
     case unknown = "Unknown"
@@ -17,17 +18,17 @@ public enum BrowserCleanupStatus: String, Codable, Sendable, Equatable {
 }
 
 public struct BrowserScope: Codable, Sendable, Equatable, Hashable {
-    public let area: String
+    public let scope: String
     public let conversationID: String
     public let runID: String
 
-    public init(area: String, conversationID: String, runID: String) {
-        self.area = area
+    public init(scope: String, conversationID: String, runID: String) {
+        self.scope = scope
         self.conversationID = conversationID
         self.runID = runID
     }
 
-    public var key: String { "\(area):\(conversationID):\(runID)" }
+    public var key: String { "\(scope):\(conversationID):\(runID)" }
 }
 
 public struct BrowserPage: Codable, Sendable, Equatable {
@@ -73,6 +74,11 @@ public enum BrowserBackendPolicy {
         }
         let value = userText.lowercased()
         if containsAny(value,
+                       "native browser", "webkit", "in-app browser", "dock browser",
+                       "canlı tarayıcı", "canli tarayici", "dahili tarayıcı", "dahili tarayici", "yerel tarayıcı") {
+            return .native
+        }
+        if containsAny(value,
                        "mevcut chrome", "chrome profilimi", "chrome oturumumu", "oturum açılmış chrome",
                        "oturum acilmis chrome", "current chrome", "existing chrome", "logged-in chrome",
                        "logged in chrome", "use my chrome", "use existing chrome", "my chrome profile") {
@@ -92,6 +98,9 @@ public enum BrowserBackendPolicy {
             return .unknown
         }
         let value = answer.lowercased()
+        if containsAny(value, "native", "webkit", "dock", "dahili", "canlı", "canli", "in-app") {
+            return .native
+        }
         if containsAny(value, "extension", "mevcut chrome", "current chrome", "existing chrome", "chrome profile", "existing chrome profile")
             || containsToken(value, "2") {
             return .`extension`
@@ -118,6 +127,7 @@ public enum BrowserTools {
     public static let openName = "browser_open"
     public static let navigateName = "browser_navigate"
     public static let closeName = "browser_close"
+    public static let screenshotName = "browser_screenshot"
 
     public static let definitions: [AgentToolDefinition] = [
         AgentToolDefinition(
@@ -158,6 +168,22 @@ public enum BrowserTools {
                 "type": .string("object"),
                 "properties": .object([
                     "pageID": .object(["type": .string("string")]),
+                ]),
+                "required": .array([.string("pageID")]),
+                "additionalProperties": .bool(false),
+            ])
+        ),
+        AgentToolDefinition(
+            name: screenshotName,
+            description: "Capture a screenshot of an owned browser page as a PNG image. The pageID must come from browser_open.",
+            parameters: .object([
+                "type": .string("object"),
+                "properties": .object([
+                    "pageID": .object(["type": .string("string")]),
+                    "path": .object([
+                        "type": .string("string"),
+                        "description": .string("Screenshot destination relative to workspace. Defaults to browser.png."),
+                    ]),
                 ]),
                 "required": .array([.string("pageID")]),
                 "additionalProperties": .bool(false),

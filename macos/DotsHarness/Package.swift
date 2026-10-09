@@ -9,7 +9,6 @@ let package = Package(
     ],
     products: [
         .executable(name: "DotsHarness", targets: ["DotsHarness"]),
-        .executable(name: "DotsHarnessScheduler", targets: ["DotsHarnessScheduler"]),
         .executable(name: "dotsplugin", targets: ["DotsPluginTool"]),
         .library(name: "HarnessPluginKit", type: .dynamic, targets: ["HarnessPluginKit"]),
         .library(name: "FableThinkingPlugin", type: .dynamic, targets: ["FableThinkingPlugin"]),
@@ -53,6 +52,7 @@ let package = Package(
                 .linkedFramework("CoreVideo"),
                 .linkedFramework("Security"),
                 .linkedFramework("UserNotifications"),
+                .linkedFramework("WebKit"),
             ]
         ),
         .target(
@@ -87,14 +87,6 @@ let package = Package(
             name: "DotsPluginTool",
             dependencies: ["DotsHarnessCore"],
             path: "Sources/DotsPluginTool"
-        ),
-        .executableTarget(
-            name: "DotsHarnessScheduler",
-            dependencies: [
-                "DotsHarnessCore",
-                "FableThinkingPlugin",
-            ],
-            path: "Sources/DotsHarnessScheduler"
         ),
         .testTarget(
             name: "HarnessPluginKitTests",

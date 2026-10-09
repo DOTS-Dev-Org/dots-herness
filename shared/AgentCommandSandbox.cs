@@ -13,9 +13,17 @@ public static class AgentCommandSandbox
 
     public static string? AvailabilityError => OperatingSystem.IsLinux()
         ? (FindBubblewrap() is null ? "Strict agent command sandbox requires bubblewrap (bwrap)." : null)
-        : "Strict agent command sandbox is not available on this platform.";
+        : OperatingSystem.IsWindows()
+            ? "Windows process isolation is unavailable. Agent shell commands remain fail-closed and interactive terminals are disabled while a sandbox worktree is active."
+            : "Strict agent command sandbox is not available on this platform.";
 
-    public static bool TryConfigure(ProcessStartInfo info, string workspace, out string error)
+    public static bool TryConfigure(
+        ProcessStartInfo info,
+        string workspace,
+        out string error,
+        IReadOnlyList<string>? additionalWritableRoots = null,
+        bool networkAccess = false,
+        bool newSession = true)
     {
         error = "";
         if (!OperatingSystem.IsLinux())
@@ -35,8 +43,8 @@ public static class AgentCommandSandbox
         info.FileName = bwrap;
         info.ArgumentList.Clear();
         info.ArgumentList.Add("--die-with-parent");
-        info.ArgumentList.Add("--new-session");
-        info.ArgumentList.Add("--unshare-net");
+        if (newSession) info.ArgumentList.Add("--new-session");
+        if (!networkAccess) info.ArgumentList.Add("--unshare-net");
         info.ArgumentList.Add("--unshare-ipc");
         info.ArgumentList.Add("--unshare-uts");
         info.ArgumentList.Add("--unshare-pid");
@@ -68,9 +76,57 @@ public static class AgentCommandSandbox
         AddTmpfs("/tmp");
         AddTmpfs("/run");
         AddTmpfs("/root");
+        foreach (var directory in new[]
+        {
+            "/tmp/agent-home",
+            "/tmp/agent-home/config",
+            "/tmp/agent-home/cache",
+            "/tmp/agent-home/data",
+            "/tmp/agent-home/state",
+        })
+        {
+            info.ArgumentList.Add("--dir");
+            info.ArgumentList.Add(directory);
+        }
+        var createdHomeDirectories = new HashSet<string>(StringComparer.Ordinal);
+        void AddHiddenHomePath(string target)
+        {
+            if (string.IsNullOrWhiteSpace(home) || string.Equals(home, Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal)) return;
+            var fullTarget = Path.GetFullPath(target);
+            var homePrefix = home.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            if (!fullTarget.StartsWith(homePrefix, StringComparison.Ordinal)) return;
+            var relative = Path.GetRelativePath(home, fullTarget);
+            var current = home;
+            foreach (var segment in relative.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
+            {
+                current = Path.Combine(current, segment);
+                if (!createdHomeDirectories.Add(current)) continue;
+                info.ArgumentList.Add("--dir");
+                info.ArgumentList.Add(current);
+            }
+        }
+
+        AddHiddenHomePath(root);
         info.ArgumentList.Add("--bind");
         info.ArgumentList.Add(root);
         info.ArgumentList.Add(root);
+        if (Directory.Exists(Path.Combine(root, ".mem")))
+        {
+            info.ArgumentList.Add("--tmpfs");
+            info.ArgumentList.Add(Path.Combine(root, ".mem"));
+        }
+        foreach (var writableRoot in (additionalWritableRoots ?? Array.Empty<string>()).Select(Path.GetFullPath).Distinct(StringComparer.Ordinal))
+        {
+            if (!Directory.Exists(writableRoot)
+                || writableRoot == Path.DirectorySeparatorChar.ToString()
+                || string.Equals(writableRoot, root, StringComparison.Ordinal)
+                || writableRoot.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+                continue;
+            AddHiddenHomePath(writableRoot);
+            info.ArgumentList.Add("--bind");
+            info.ArgumentList.Add(writableRoot);
+            info.ArgumentList.Add(writableRoot);
+        }
         info.ArgumentList.Add("--proc");
         info.ArgumentList.Add("/proc");
         info.ArgumentList.Add("--dev");
@@ -88,6 +144,18 @@ public static class AgentCommandSandbox
         info.ArgumentList.Add("--setenv");
         info.ArgumentList.Add("XDG_CACHE_HOME");
         info.ArgumentList.Add("/tmp/agent-home/cache");
+        info.ArgumentList.Add("--setenv");
+        info.ArgumentList.Add("XDG_DATA_HOME");
+        info.ArgumentList.Add("/tmp/agent-home/data");
+        info.ArgumentList.Add("--setenv");
+        info.ArgumentList.Add("XDG_STATE_HOME");
+        info.ArgumentList.Add("/tmp/agent-home/state");
+        info.ArgumentList.Add("--setenv");
+        info.ArgumentList.Add("TERM");
+        info.ArgumentList.Add("xterm-256color");
+        info.ArgumentList.Add("--setenv");
+        info.ArgumentList.Add("COLORTERM");
+        info.ArgumentList.Add("truecolor");
         info.ArgumentList.Add("--chdir");
         info.ArgumentList.Add(root);
         info.ArgumentList.Add("/bin/sh");

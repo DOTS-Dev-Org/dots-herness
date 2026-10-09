@@ -1,0 +1,36 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-08T21:42:27Z",
+  "eventId" : "5D374795-6ED3-47DE-A051-AC9A77303AFF",
+  "lamport" : 117,
+  "parents" : [
+    "334B565A-45DD-44FF-A957-202E1303BE96"
+  ],
+  "payload" : {
+    "changedFiles" : [
+
+    ],
+    "promptHash" : "8e9f309f5ce6e10565ba8a4ddcb03016ff3b16700c48a2e10990701591c32f1f",
+    "promptSummary" : "Windows ve Linux için de release arşivlerini oluşturup gerçek paket boyutlarını ölçer misin?",
+    "runId" : "23527649-66C4-4E3D-9215-54EC072C5090",
+    "semanticStatus" : "pending",
+    "status" : "completed",
+    "toolCount" : 22
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "8ecDXNct9eHSKhhaOtNcUD2mWepxTEcKYVzkJQ3Nc+NdBR+ZJFFk7J5ahwt1QdRKhBhu2q4hPX2vsf6bn65lng=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "task.completed"
+}

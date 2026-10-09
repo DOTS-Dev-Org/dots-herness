@@ -3,6 +3,8 @@
 
 using System.Net;
 using System.Net.Http.Headers;
+using System.Collections.Concurrent;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -17,6 +19,50 @@ public enum NativeProviderProtocol
     OpenAiCompatible,
     Anthropic,
     ChatGpt,
+    OpenAiResponses,
+}
+
+/// <summary>Maps provider identities to bundled corporate marks shared by the desktop hosts.</summary>
+public static class ProviderMarkCatalog
+{
+    private static readonly IReadOnlyDictionary<string, string> Marks = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["gpt"] = "OpenAIMark", ["openai"] = "OpenAIMark",
+        ["claude"] = "AnthropicMark", ["anthropic"] = "AnthropicMark",
+        ["grok"] = "GrokMark", ["grok-cli"] = "GrokMark",
+        ["xai"] = "SpaceXAIMark", ["spacexai"] = "SpaceXAIMark",
+        ["gemini"] = "GeminiMark", ["gemini-cli"] = "GeminiMark",
+        ["antigravity"] = "AntigravityMark", ["opencode"] = "OpenCodeMark", ["opencode-go"] = "OpenCodeMark",
+        ["iflow"] = "IFlowMark", ["github"] = "GitHubMark", ["kiro"] = "KiroMark",
+        ["nvidia"] = "NvidiaMark", ["zai"] = "ZaiMark", ["glm"] = "ZaiMark",
+        ["deepseek"] = "DeepSeekMark", ["openrouter"] = "OpenRouterMark", ["qwen"] = "QwenMark",
+        ["kimi"] = "KimiMark", ["minimax"] = "MiniMaxMark", ["groq"] = "GroqMark",
+        ["mistral"] = "MistralMark", ["perplexity"] = "PerplexityMark", ["together"] = "TogetherAIMark",
+        ["fireworks"] = "FireworksMark", ["cerebras"] = "CerebrasMark", ["deepinfra"] = "DeepInfraMark",
+        ["cohere"] = "CohereMark", ["siliconflow"] = "SiliconFlowMark", ["nebius"] = "NebiusMark",
+        ["chutes"] = "ChutesMark", ["hyperbolic"] = "HyperbolicMark", ["vertex"] = "GoogleCloudMark",
+    };
+
+    public static string? ResourceNameFor(string? providerKey) =>
+        providerKey is not null && Marks.TryGetValue(providerKey, out var resource) ? resource : null;
+}
+
+/// <summary>Stable provider-specific request headers shared by model discovery and inference.</summary>
+public static class NativeProviderTransportHeaders
+{
+    public static void Apply(HttpRequestHeaders headers, string provider)
+    {
+        if (provider is "opencode" or "opencode-go")
+            headers.TryAddWithoutValidation("x-opencode-client", "desktop");
+        if (provider == "grok-cli")
+        {
+            headers.TryAddWithoutValidation("x-grok-client-identifier", "grok-shell");
+            headers.TryAddWithoutValidation("x-grok-client-version", "0.2.99");
+            var platform = OperatingSystem.IsWindows() ? "windows" : OperatingSystem.IsLinux() ? "linux" : "unknown";
+            var architecture = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant();
+            headers.TryAddWithoutValidation("User-Agent", $"grok-shell/0.2.99 ({platform}; {architecture})");
+        }
+    }
 }
 
 public sealed record NativeProviderDescriptor(
@@ -50,6 +96,15 @@ public sealed class NativeProviderAccount
     public string? RefreshCredentialId { get; set; }
     public int Priority { get; set; }
     public string? Error { get; set; }
+    // Context window the user (or the bundled local server) declared. Local
+    // servers rarely report one, so this beats every guess.
+    public int? ContextWindow { get; set; }
+
+    /// <summary>
+    /// A custom endpoint saved without a model name is stored as <c>prefix/</c>.
+    /// It names no model, so it must never reach a picker or a request.
+    /// </summary>
+    public static bool IsPlaceholderModel(string? model) => model is { Length: > 0 } && model.EndsWith('/');
 }
 
 public sealed class NativeCustomEndpoint
@@ -61,6 +116,9 @@ public sealed class NativeCustomEndpoint
     public NativeProviderProtocol Protocol { get; set; }
     public string ApiType { get; set; } = "chat";
     public string? CredentialId { get; set; }
+    // Model to request when the server's /models listing is unavailable.
+    public string? Model { get; set; }
+    public int? ContextWindow { get; set; }
 }
 
 public sealed class NativeProviderState
@@ -68,6 +126,8 @@ public sealed class NativeProviderState
     public List<NativeProviderAccount> Accounts { get; set; } = [];
     public List<NativeCustomEndpoint> Endpoints { get; set; } = [];
     public string? SelectedAccountId { get; set; }
+    /// <summary>Per-provider, per-model context sizes entered by the user.</summary>
+    public Dictionary<string, int> ModelContextWindowOverrides { get; set; } = new(StringComparer.Ordinal);
 }
 
 public sealed record ConnectionTransition(
@@ -109,7 +169,16 @@ public sealed class NativeProviderStore
         var raw = File.Exists(_file) ? File.ReadAllText(_file) : null;
         try { State = raw is null ? new() : JsonSerializer.Deserialize<NativeProviderState>(raw, JsonOptions) ?? new(); }
         catch { State = new(); }
+        var migratedOpenAiResponses = false;
+        foreach (var account in State.Accounts.Where(account =>
+                     string.Equals(account.Provider, "openai", StringComparison.OrdinalIgnoreCase)
+                     && account.Protocol == NativeProviderProtocol.OpenAiCompatible))
+        {
+            account.Protocol = NativeProviderProtocol.OpenAiResponses;
+            migratedOpenAiResponses = true;
+        }
         if (raw is not null) MigratePlaintextSecrets(raw);
+        if (migratedOpenAiResponses) Save();
     }
 
     public void Save() => File.WriteAllText(_file, JsonSerializer.Serialize(State, JsonOptions));
@@ -151,7 +220,7 @@ public sealed class NativeProviderStore
         return account;
     }
 
-    public NativeCustomEndpoint AddCustom(string name, string prefix, string baseUrl, NativeProviderProtocol protocol, string apiType, string? secret)
+    public NativeCustomEndpoint AddCustom(string name, string prefix, string baseUrl, NativeProviderProtocol protocol, string apiType, string? secret, string? model = null, int? contextWindow = null)
     {
         var normalized = NormalizeUrl(baseUrl);
         var id = Guid.NewGuid().ToString();
@@ -164,6 +233,8 @@ public sealed class NativeProviderStore
             Protocol = protocol,
             ApiType = apiType,
             CredentialId = string.IsNullOrWhiteSpace(secret) ? null : $"endpoint.{id}",
+            Model = string.IsNullOrWhiteSpace(model) ? null : model.Trim(),
+            ContextWindow = contextWindow is > 0 ? contextWindow : null,
         };
         if (endpoint.CredentialId is not null) Secrets.Write(endpoint.CredentialId, secret!);
         State.Endpoints.Add(endpoint);
@@ -171,7 +242,7 @@ public sealed class NativeProviderStore
         return endpoint;
     }
 
-    public void UpdateCustom(NativeCustomEndpoint endpoint, string name, string prefix, string baseUrl, NativeProviderProtocol protocol, string apiType, string? secret)
+    public void UpdateCustom(NativeCustomEndpoint endpoint, string name, string prefix, string baseUrl, NativeProviderProtocol protocol, string apiType, string? secret, string? model = null, int? contextWindow = null)
     {
         var index = State.Endpoints.FindIndex(item => item.Id == endpoint.Id);
         if (index < 0) throw new NativeProviderException("Custom endpoint not found.");
@@ -198,13 +269,17 @@ public sealed class NativeProviderStore
         {
             Id = current.Id, Name = trimmedName, Prefix = sanitized, BaseUrl = normalized,
             Protocol = protocol, ApiType = apiType, CredentialId = credentialId,
+            Model = string.IsNullOrWhiteSpace(model) ? null : model.Trim(),
+            ContextWindow = contextWindow is > 0 ? contextWindow : null,
         };
+        var updated = State.Endpoints[index];
         foreach (var account in State.Accounts.Where(account => account.Provider == $"custom:{current.Id}"))
         {
             account.Name = trimmedName;
             account.ProviderName = trimmedName;
-            account.Model = sanitized + "/";
-            account.Models = [account.Model];
+            account.Model = updated.Model ?? sanitized + "/";
+            account.Models = updated.Model is null ? [] : [updated.Model];
+            account.ContextWindow = updated.ContextWindow;
             account.BaseUrl = normalized;
             account.Protocol = protocol;
             if (secret is not null)
@@ -225,12 +300,13 @@ public sealed class NativeProviderStore
             Provider = $"custom:{endpoint.Id}",
             ProviderName = endpoint.Name,
             Name = endpoint.Name,
-            Model = endpoint.Prefix + "/",
+            Model = endpoint.Model ?? endpoint.Prefix + "/",
             BaseUrl = endpoint.BaseUrl,
             Protocol = endpoint.Protocol,
             AuthType = "custom",
             CredentialId = $"account.{id}",
-            Models = [endpoint.Prefix + "/"],
+            Models = endpoint.Model is null ? [] : [endpoint.Model],
+            ContextWindow = endpoint.ContextWindow,
         };
         if (!string.IsNullOrWhiteSpace(secret)) Secrets.Write(account.CredentialId, secret);
         State.Accounts.Add(account);
@@ -361,6 +437,65 @@ public sealed record NativeMessage(
 /// by Windows and Linux, independently of the selected provider protocol.
 public static class NativePromptHistory
 {
+    private static readonly System.Text.RegularExpressions.Regex Section = new(
+        @"\A<([a-z_]+)(?: trust=""[a-z]+"")?>\n[\s\S]*?\n</\1>",
+        System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static (List<(string Tag, string Block)> Sections, bool Complete) Sections(string text)
+    {
+        var sections = new List<(string Tag, string Block)>();
+        var rest = text;
+        while (Section.Match(rest) is { Success: true } match)
+        {
+            sections.Add((match.Groups[1].Value, match.Value));
+            rest = rest[match.Length..].TrimStart('\n');
+        }
+        return (sections, rest.Length == 0);
+    }
+
+    private static string ChangedSections(string context, IEnumerable<NativeMessage> history)
+    {
+        var current = Sections(context);
+        if (!current.Complete) return context;
+        var captured = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var user in history.Where(message => message.Role == "user" && message.PromptContextCaptured))
+            foreach (var section in Sections(user.Content).Sections) captured[section.Tag] = section.Block;
+        var live = current.Sections.Select(section => section.Tag).ToHashSet(StringComparer.Ordinal);
+        static string Retired(string tag) => $"<{tag}>\nNo longer applies.\n</{tag}>";
+        return string.Join("\n\n", current.Sections
+            .Where(section => !captured.TryGetValue(section.Tag, out var previous) || previous != section.Block)
+            .Select(section => section.Block)
+            .Concat(captured.Keys.Order(StringComparer.Ordinal)
+                .Where(tag => !live.Contains(tag) && captured[tag] != Retired(tag)).Select(Retired)));
+    }
+
+    /// An opaque Responses checkpoint replaces the earlier provider history.
+    public static List<NativeMessage> ResponsesReplay(IReadOnlyList<NativeMessage> messages)
+    {
+        var boundary = -1;
+        for (var index = 0; index < messages.Count; index++)
+            if (messages[index].ProviderItems?.Any(item => item["type"]?.GetValue<string>() == "compaction") == true)
+                boundary = index;
+        if (boundary < 0) return messages.ToList();
+        var checkpoint = messages[boundary];
+        var items = checkpoint.ProviderItems!.ToList();
+        var start = items.FindLastIndex(item => item["type"]?.GetValue<string>() == "compaction");
+        var retained = items.Skip(start).ToList();
+        var calls = retained.Where(item => item["type"]?.GetValue<string>() == "function_call")
+            .Select(item => item["call_id"]?.GetValue<string>()).ToHashSet();
+        checkpoint = checkpoint with
+        {
+            ProviderItems = retained,
+            ToolCalls = checkpoint.ToolCalls?.Where(call => calls.Contains(call.Id)).ToList(),
+            Content = string.Join("\n", retained.Where(item => item["type"]?.GetValue<string>() == "message")
+                .SelectMany(item => item["content"]?.AsArray() ?? [])
+                .Select(block => block?["text"]?.GetValue<string>()).OfType<string>()),
+            Thinking = null,
+        };
+        return messages.Take(boundary).Where(message => message.Role == "system" && !ContextCompaction.IsSummary(message))
+            .Concat([checkpoint]).Concat(messages.Skip(boundary + 1)).ToList();
+    }
+
     public static List<NativeMessage> Prepare(
         IReadOnlyList<NativeMessage> messages, string policy, string turnContext)
     {
@@ -370,13 +505,14 @@ public static class NativePromptHistory
         var system = new NativeMessage("system", policy, SystemKind: "promptStable");
         if (systemIndex >= 0) result[systemIndex] = system;
         else result.Insert(0, system);
-        var userIndex = result.FindLastIndex(message => message.Role == "user");
+        var userIndex = result.FindLastIndex(message => message.Role == "user" && message.SystemKind != "contextNotice");
         if (userIndex >= 0 && !result[userIndex].PromptContextCaptured)
         {
             var user = result[userIndex];
+            var changed = ChangedSections(turnContext, result.Take(userIndex));
             result[userIndex] = user with
             {
-                Content = string.IsNullOrEmpty(turnContext) ? user.Content : turnContext + "\n\n" + user.Content,
+                Content = string.IsNullOrEmpty(changed) ? user.Content : changed + "\n\n" + user.Content,
                 PromptContextCaptured = true,
             };
         }
@@ -391,13 +527,44 @@ public sealed record NativeUsage(
     int? CachedInputTokens = null,
     int? CacheWriteTokens = null,
     int? CacheMissTokens = null,
-    bool InputExcludesCache = false)
+    bool InputExcludesCache = false,
+    int? ReasoningTokens = null,
+    bool InputTokensReported = true,
+    int? ContextClearedInputTokens = null,
+    int? ContextClearedToolUses = null)
 {
+    public bool CacheAccountingAvailable => CachedInputTokens is not null || CacheWriteTokens is not null || CacheMissTokens is not null;
+    public double? CacheHitRate => InputTokensReported && CachedInputTokens is >= 0 && TotalInputTokens > 0
+        && CachedInputTokens <= TotalInputTokens ? (double)CachedInputTokens.Value / TotalInputTokens : null;
     public int TotalInputTokens => InputExcludesCache
         ? InputTokens + (CachedInputTokens ?? 0) + (CacheWriteTokens ?? 0)
         : Math.Max(InputTokens, (CachedInputTokens ?? 0) + (CacheMissTokens ?? 0) + (CacheWriteTokens ?? 0));
+    /// Input newly processed for the current response, excluding cache reads.
+    /// Cache writes remain included because the provider processes them now.
+    public int FreshInputTokens => !CacheAccountingAvailable
+        ? TotalInputTokens
+        : InputExcludesCache
+            ? Math.Max(0, InputTokens + (CacheWriteTokens ?? 0))
+            : CacheMissTokens is { } misses
+                ? Math.Max(0, misses + (CacheWriteTokens ?? 0))
+                : CachedInputTokens is { } cached
+                    ? Math.Max(0, TotalInputTokens - cached)
+                    : TotalInputTokens;
 }
-public sealed record NativeResponse(NativeMessage Message, NativeUsage? Usage);
+public sealed record NativeResponse(
+    NativeMessage Message,
+    NativeUsage? Usage,
+    string? IncompleteReason = null,
+    int RetryCount = 0,
+    NativeUsage? RetryUsage = null,
+    string? AccountId = null,
+    string? ResponseId = null,
+    NativeCacheDiagnostics? CacheDiagnostics = null,
+    NativeCacheReuseEvidence? CacheReuseEvidence = null,
+    int? EffectiveCacheTTLSeconds = null,
+    int? LatencyMilliseconds = null);
+
+public sealed record NativeCacheDiagnostics(string Type, string? Reason, int? MissedTokens, int? ReusableTokens);
 
 public enum NativeProviderLimitKind
 {
@@ -415,6 +582,10 @@ public sealed class NativeProviderException : Exception
     public bool IsLimit { get; }
     public NativeProviderLimitKind? LimitKind { get; }
     public string? ProviderName { get; }
+    public string? AccountId { get; }
+    /// When a rate-limited provider supplied a reset moment, this is the first
+    /// instant at which an automatic continuation may be attempted.
+    public DateTimeOffset? RetryAt { get; }
     public bool IsImageInputUnsupported { get; }
 
     public NativeProviderException(
@@ -424,12 +595,16 @@ public sealed class NativeProviderException : Exception
         bool isLimit = false,
         NativeProviderLimitKind? limitKind = null,
         string? providerName = null,
-        bool isImageInputUnsupported = false) : base(message)
+        bool isImageInputUnsupported = false,
+        DateTimeOffset? retryAt = null,
+        string? accountId = null) : base(message)
     {
         StatusCode = statusCode;
         IsLimit = isLimit || statusCode == 429;
         LimitKind = limitKind ?? (statusCode == 429 ? NativeProviderLimitKind.Rate : null);
         ProviderName = providerName;
+        AccountId = accountId;
+        RetryAt = retryAt;
         IsImageInputUnsupported = isImageInputUnsupported;
         Retryable = IsLimit ? false : retryable;
     }
@@ -441,18 +616,95 @@ public sealed class NativeProviderException : Exception
         IsLimit,
         LimitKind,
         ProviderName,
-        true);
+        true,
+        RetryAt,
+        AccountId);
+}
+
+internal static class ClaudeOAuthHeaders
+{
+    public const string Beta = "oauth-2025-04-20,claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14";
+    public const string UserAgent = "claude-cli/2.1.92 (external, sdk-cli)";
+    public const string AgentIdentity = "You are Claude Code, Anthropic's official CLI for Claude.";
+    private const string Dot = "-dot-";
+    private const string Suffix = "_cc";
+
+    public static void CloakTools(JsonObject body)
+    {
+        if (body["tools"] is not JsonArray tools || tools.Count == 0) return;
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var tool in tools.OfType<JsonObject>().ToArray())
+        {
+            if (tool["type"] is not null || tool["name"]?.GetValue<string>() is not { } name) continue;
+            names.Add(name);
+            tool["name"] = name.Replace(".", Dot, StringComparison.Ordinal) + Suffix;
+        }
+        if (!names.Contains("Read")) tools.Add(new JsonObject
+        {
+            ["name"] = "Read", ["description"] = "Read a file from the filesystem.",
+            ["input_schema"] = new JsonObject { ["type"] = "object", ["properties"] = new JsonObject { ["file_path"] = new JsonObject { ["type"] = "string" } }, ["required"] = new JsonArray("file_path") },
+        });
+        if (!names.Contains("Bash")) tools.Add(new JsonObject
+        {
+            ["name"] = "Bash", ["description"] = "Run a shell command.",
+            ["input_schema"] = new JsonObject { ["type"] = "object", ["properties"] = new JsonObject { ["command"] = new JsonObject { ["type"] = "string" } }, ["required"] = new JsonArray("command") },
+        });
+
+        foreach (var message in (body["messages"] as JsonArray ?? []).OfType<JsonObject>())
+        {
+            if (message["content"] is not JsonArray content) continue;
+            foreach (var block in content.OfType<JsonObject>())
+            {
+                if (block["type"]?.GetValue<string>() != "tool_use" || block["name"]?.GetValue<string>() is not { } name || !names.Contains(name)) continue;
+                block["name"] = name.Replace(".", Dot, StringComparison.Ordinal) + Suffix;
+            }
+        }
+    }
+
+    public static string RestoreToolName(string name) => name.EndsWith(Suffix, StringComparison.Ordinal)
+        ? name[..^Suffix.Length].Replace(Dot, ".", StringComparison.Ordinal)
+        : name;
 }
 
 public sealed class NativeProviderRouter
 {
+    public const string ChatGptCodexClientVersion = "0.155.0";
+
+    // An endpoint that rejects this optional routing hint should not incur a
+    // failed request on every later turn. This memory is process-local and
+    // contains no prompt or credential data.
+    private static readonly ConcurrentDictionary<string, byte> UnsupportedPromptCacheKeys = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, byte> UnsupportedNativeCompactionRoutes = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, byte> UnsupportedAnthropicContextEditingRoutes = new(StringComparer.Ordinal);
+
+    private static readonly ConcurrentDictionary<string, byte> UnsupportedCacheDiagnostics = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, byte> UnsupportedExtendedCacheTtls = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, byte> UnsupportedStaticBreakpoints = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, byte> UnsupportedImplicitRetention = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, byte> UnsupportedAnthropicDiagnostics = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, string> _cacheResponseIds = new(StringComparer.Ordinal);
+
     private readonly NativeProviderStore _store;
     private readonly HttpClient _http;
     private readonly Func<NativeProviderAccount, CancellationToken, Task<bool>>? _refresh;
+    /// <summary>Current in-memory remaining quota, supplied by the app-wide usage poll.</summary>
+    public Func<IReadOnlyDictionary<string, AccountUsageSnapshot>>? RefreshUsage { get; set; }
 
     /// Reasoning effort for requests. Empty = provider default; ignored for models
     /// that do not list the level in <see cref="NativeEffortCatalog"/>.
     public string Effort { get; set; } = "";
+    public string AnthropicCacheTTL { get; set; } = "1h";
+    /// Standard preserves the existing transport policy; Economy adds only
+    /// deterministic output/context reductions and keeps Effort unchanged.
+    public AgentUsageMode UsageMode { get; set; } = AgentUsageMode.Standard;
+    public int CompactionThresholdPercent { get; set; } = 90;
+    /// Persistent response prose preference. It is a dynamic request setting,
+    /// not part of the stable prompt-cache prefix.
+    public AgentResponseStylePreference ResponseStylePreference { get; set; } = AgentResponseStylePreference.Balanced;
+
+    public bool SupportsNativeCompaction(NativeProviderAccount? account) => account is not null
+        && (account.Protocol is NativeProviderProtocol.ChatGpt or NativeProviderProtocol.OpenAiResponses)
+        && !UnsupportedNativeCompactionRoutes.ContainsKey($"{account.Id}:{account.Protocol}");
 
     /// One connection pool for every provider call: the startup model discovery
     /// leaves a warm TLS connection that the first chat request reuses.
@@ -477,26 +729,73 @@ public sealed class NativeProviderRouter
         string? model = null,
         CancellationToken ct = default,
         string? promptCacheKey = null,
-        string? effortOverride = null)
+        string? effortOverride = null,
+        int? contextWindow = null,
+        bool nativeCompactionDisabled = false,
+        string? preferredAccountId = null,
+        bool allowAccountFailoverAfterLimit = false,
+        string? excludedAccountId = null,
+        string? cacheComparisonScope = null,
+        NativeCacheSession? cacheSession = null)
     {
-        var routes = _store.State.Accounts
+        var usageSnapshot = RefreshUsage?.Invoke();
+        double RemainingRank(NativeProviderAccount account)
+        {
+            if (usageSnapshot is null || !usageSnapshot.TryGetValue(account.Id, out var snapshot)
+                || snapshot.UsedFraction is not { } used) return 0;
+            var remaining = 1 - Math.Clamp(used, 0, 1);
+            return remaining <= 0 ? -1 : remaining;
+        }
+        var allCandidates = _store.State.Accounts
             .Where(a => a.Active && (string.IsNullOrWhiteSpace(model) || CanServe(a, model)))
-            .OrderBy(a => a.Priority)
+            .OrderByDescending(RemainingRank)
+            .ThenBy(a => a.Priority)
             .ToList();
-        if (routes.Count == 0) throw new NativeProviderException("Connect a provider account before starting a chat.");
+        var candidates = allCandidates.ToList();
+        if (!string.IsNullOrWhiteSpace(excludedAccountId))
+            candidates.RemoveAll(a => string.Equals(a.Id, excludedAccountId, StringComparison.Ordinal));
+        // If the limited account is the only one that can serve this model,
+        // preserve the retry path; there is no alternate account to switch to.
+        if (candidates.Count == 0 && allCandidates.Count > 0) candidates = allCandidates;
+        var preferred = candidates.FirstOrDefault(a => string.Equals(a.Id, preferredAccountId, StringComparison.Ordinal));
+        var selected = candidates.FirstOrDefault(a => string.Equals(a.Id, _store.State.SelectedAccountId, StringComparison.Ordinal));
+        List<NativeProviderAccount> routes;
+        if (preferred is not null && !allowAccountFailoverAfterLimit)
+        {
+            // A conversation stays on its account for every ordinary turn. The
+            // account-specific cache namespace is part of this continuity.
+            routes = [preferred];
+        }
+        else if (preferred is not null)
+        {
+            routes = [preferred, .. candidates.Where(a => !string.Equals(a.Id, preferred.Id, StringComparison.Ordinal))];
+        }
+        else
+        {
+            routes = selected is null
+                ? candidates
+                : [selected, .. candidates.Where(a => !string.Equals(a.Id, selected.Id, StringComparison.Ordinal))];
+        }
+        if (routes.Count == 0) throw new NativeProviderException("Connect a provider account before starting a conversation.");
         var failures = new List<string>();
         NativeProviderException? limitFailure = null;
+        string? limitAccountId = null;
         foreach (var route in routes)
         {
             var refreshed = false;
-            try { return await SendAsync(route, messages, tools, string.IsNullOrWhiteSpace(model) ? null : model, promptCacheKey, ct, effortOverride); }
-            catch (TaskCanceledException ex) when (!ct.IsCancellationRequested) { failures.Add($"{route.ProviderName}: {ex.Message}"); }
+            try { return await SendAsync(route, messages, tools, string.IsNullOrWhiteSpace(model) ? null : model, promptCacheKey, ct, effortOverride, contextWindow: contextWindow, nativeCompactionDisabled: nativeCompactionDisabled, cacheComparisonScope: cacheComparisonScope, cacheSession: cacheSession); }
+            catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+            {
+                if (limitFailure is null) throw new NativeProviderException($"{route.ProviderName}: {ex.Message}", retryable: true);
+                failures.Add($"{route.ProviderName}: {ex.Message}");
+            }
             catch (OperationCanceledException) { throw; }
             catch (NativeProviderException ex)
             {
                 if (ex.IsLimit)
                 {
-                    limitFailure ??= ex;
+                    if (limitFailure is null || (limitFailure.RetryAt is null && ex.RetryAt is not null)) limitFailure = ex;
+                    limitAccountId = route.Id;
                     failures.Add($"{route.ProviderName}: {ex.Message}");
                     continue;
                 }
@@ -506,19 +805,20 @@ public sealed class NativeProviderRouter
                     throw ex.MarkImageInputUnsupported();
                 }
                 failures.Add($"{route.ProviderName}: {ex.Message}");
-                if (ex.StatusCode == 401 && !refreshed && _refresh is not null)
+                if (ex.StatusCode is 401 or 403 && !refreshed && _refresh is not null)
                 {
                     refreshed = true;
                     if (await _refresh(route, ct))
                     {
-                        try { return await SendAsync(route, messages, tools, string.IsNullOrWhiteSpace(model) ? null : model, promptCacheKey, ct, effortOverride); }
+                        try { return await SendAsync(route, messages, tools, string.IsNullOrWhiteSpace(model) ? null : model, promptCacheKey, ct, effortOverride, contextWindow: contextWindow, nativeCompactionDisabled: nativeCompactionDisabled, cacheComparisonScope: cacheComparisonScope, cacheSession: cacheSession); }
                         catch (TaskCanceledException retry) when (!ct.IsCancellationRequested) { failures.Add($"{route.ProviderName}: {retry.Message}"); continue; }
                         catch (HttpRequestException retry) { failures.Add($"{route.ProviderName}: {retry.Message}"); continue; }
                         catch (NativeProviderException retry)
                         {
                             if (retry.IsLimit)
                             {
-                                limitFailure ??= retry;
+                                if (limitFailure is null || (limitFailure.RetryAt is null && retry.RetryAt is not null)) limitFailure = retry;
+                                limitAccountId = route.Id;
                                 failures.Add($"{route.ProviderName}: {retry.Message}");
                                 continue;
                             }
@@ -534,8 +834,13 @@ public sealed class NativeProviderRouter
                     }
                 }
                 if (!ex.Retryable) throw;
+                if (limitFailure is null) throw;
             }
-            catch (HttpRequestException ex) { failures.Add($"{route.ProviderName}: {ex.Message}"); }
+            catch (HttpRequestException ex)
+            {
+                if (limitFailure is null) throw new NativeProviderException($"{route.ProviderName}: {ex.Message}", retryable: true);
+                failures.Add($"{route.ProviderName}: {ex.Message}");
+            }
         }
         if (limitFailure is not null)
         {
@@ -546,7 +851,9 @@ public sealed class NativeProviderRouter
                 retryable: false,
                 isLimit: true,
                 limitKind: limitFailure.LimitKind,
-                providerName: limitFailure.ProviderName);
+                providerName: limitFailure.ProviderName,
+                retryAt: limitFailure.RetryAt,
+                accountId: limitAccountId);
         }
         throw new NativeProviderException(string.Join(Environment.NewLine, failures));
     }
@@ -562,27 +869,162 @@ public sealed class NativeProviderRouter
         string? model,
         string? promptCacheKey,
         CancellationToken ct,
-        string? effortOverride = null)
+        string? effortOverride = null,
+        bool expandedBudget = false,
+        int? contextWindow = null,
+        bool nativeCompactionDisabled = false,
+        string? cacheComparisonScope = null,
+        NativeCacheSession? cacheSession = null)
     {
+        var preparationStartedAt = DateTimeOffset.UtcNow;
         var key = _store.Secrets.Read(route.CredentialId);
-        if ((route.Protocol is NativeProviderProtocol.Anthropic or NativeProviderProtocol.ChatGpt) && string.IsNullOrEmpty(key)) throw new NativeProviderException("The provider credential is unavailable.");
-        var endpoint = Endpoint(route.BaseUrl, route.Protocol);
+        if ((route.Protocol is NativeProviderProtocol.Anthropic or NativeProviderProtocol.ChatGpt || route.AuthType == "oauth") && string.IsNullOrEmpty(key)) throw new NativeProviderException("The provider credential is unavailable.");
+        // No model was requested and the endpoint never named one: its server is
+        // down or lists nothing. Sending the prefix/ placeholder would only fail later.
+        if (NativeProviderAccount.IsPlaceholderModel(model ?? route.Model))
+            throw new NativeProviderException($"{route.Name} lists no models. Start its server or set a model name for the endpoint.");
+        var endpoint = Endpoint(route);
+        // Tool schemas are part of the provider prefix. Plugin discovery order
+        // is not, so canonicalize it before building the request body.
+        var orderedTools = AgentCacheNamespace.CanonicalTools(tools);
+        // Keep the durable transcript untouched; only the provider-facing view
+        // is reduced. This makes the Caveman-style reduction reversible locally.
+        var requestMessages = EconomyPolicy.NormalizeToolMessages(messages);
+        var effectiveEffort = effortOverride ?? Effort;
+        var responseStyle = ResponseStyleResolver.Resolve(
+            ResponseStylePreference,
+            requestMessages.LastOrDefault(message => message.Role == "user" && message.SystemKind != "contextNotice")?.Content);
+        // Standard mode also needs an output ceiling. Maximum reasoning without
+        // max_output_tokens can consume the remaining context in one response.
+        var budget = EconomyPolicy.Resolve(
+            route.Protocol,
+            model ?? route.Model,
+            effectiveEffort,
+            requestMessages,
+            orderedTools,
+            responseStyle);
+        if (expandedBudget && budget is not null)
+            budget = budget.Expand(model ?? route.Model, route.Protocol, ContextCompaction.DefaultContextWindow);
         var body = route.Protocol switch
         {
-            NativeProviderProtocol.Anthropic => AnthropicBody(route, messages, tools, model),
-            NativeProviderProtocol.ChatGpt => ResponsesBody(route, messages, tools, model),
-            _ => OpenAiBody(route, messages, tools, model),
+            NativeProviderProtocol.Anthropic => AnthropicBody(route, requestMessages, orderedTools, model, UnsupportedExtendedCacheTtls.ContainsKey(CacheCapabilityKey(route, model ?? route.Model)) ? "5m" : AnthropicCacheTTL),
+            NativeProviderProtocol.ChatGpt or NativeProviderProtocol.OpenAiResponses => ResponsesBody(route, requestMessages, orderedTools, model, route.Protocol,
+                SupportsStaticBreakpoint(route, model ?? route.Model)),
+            _ => OpenAiBody(route, requestMessages, orderedTools, model),
         };
-        var effectivePromptCacheKey = RouteCacheKey(promptCacheKey, route);
+        var contextEditingRouteKey = CacheCapabilityKey(route, model ?? route.Model);
+        if (route.Protocol == NativeProviderProtocol.Anthropic
+            && !UnsupportedAnthropicContextEditingRoutes.ContainsKey(contextEditingRouteKey))
+        {
+            var percent = UsageMode == AgentUsageMode.Economy ? 90 : Math.Clamp(CompactionThresholdPercent, 0, 100);
+            var window = contextWindow ?? route.ContextWindow ?? 200_000;
+            var triggerTokens = ContextCompaction.NativeThreshold(window, percent, UsageMode == AgentUsageMode.Economy);
+            body["context_management"] = new JsonObject
+            {
+                ["edits"] = new JsonArray(new JsonObject
+                {
+                    ["type"] = "clear_tool_uses_20250919",
+                    ["trigger"] = new JsonObject { ["type"] = "input_tokens", ["value"] = triggerTokens },
+                    ["keep"] = new JsonObject { ["type"] = "tool_uses", ["value"] = 3 },
+                    ["clear_at_least"] = new JsonObject
+                    {
+                        ["type"] = "input_tokens",
+                        ["value"] = Math.Max(1, Math.Min(8_192, triggerTokens / 4)),
+                    },
+                }),
+            };
+        }
+        var compactionRouteKey = $"{route.Id}:{route.Protocol}";
+        var nativeCompactionEnabled = !nativeCompactionDisabled
+            && SupportsNativeCompaction(route);
+        if (nativeCompactionEnabled)
+        {
+            var percent = UsageMode == AgentUsageMode.Economy ? 90 : Math.Clamp(CompactionThresholdPercent, 0, 100);
+            var window = contextWindow ?? (route.Protocol == NativeProviderProtocol.Anthropic ? 200_000 : 128_000);
+            body["context_management"] = new JsonArray(new JsonObject
+            {
+                ["type"] = "compaction",
+                ["compact_threshold"] = ContextCompaction.NativeThreshold(window, percent, UsageMode == AgentUsageMode.Economy),
+            });
+        }
+        var routeCacheKey = RouteCacheKey(promptCacheKey, route, model ?? route.Model);
+        var effectivePromptCacheKey = UnsupportedPromptCacheKeys.ContainsKey(PromptCacheCapabilityKey(route))
+            ? null
+            : routeCacheKey;
         ApplyPromptCacheKey(body, route.Protocol, effectivePromptCacheKey);
-        ApplyEffort(body, route.Protocol, model ?? route.Model, effortOverride ?? Effort);
+        ApplyEffort(body, route.Protocol, model ?? route.Model, effectiveEffort, budget);
+        // Verbosity is a cached request setting. It follows the saved mode,
+        // never one prompt's wording, so a short question keeps the prefix.
+        if (UsageMode != AgentUsageMode.Economy
+            && ResponseStylePreference is not (AgentResponseStylePreference.Concise or AgentResponseStylePreference.Ultra))
+            body.Remove("text");
+        var diagnosticsRoute = CacheCapabilityKey(route, model ?? route.Model);
+        var effectiveModel = model ?? route.Model;
+        if (SupportsPublicOpenAiCache(route, effectiveModel) && !UnsupportedImplicitRetention.ContainsKey(diagnosticsRoute))
+            body["prompt_cache_options"] = new JsonObject { ["mode"] = "implicit", ["ttl"] = "30m" };
+        var comparisonKey = cacheComparisonScope is null ? routeCacheKey
+            : route.BaseUrl + "|" + route.Id + "|" + route.Protocol + "|" + cacheComparisonScope;
+        var cacheDiagnosticsSupported = (route.Protocol is NativeProviderProtocol.ChatGpt or NativeProviderProtocol.OpenAiResponses)
+            && (effectiveModel.StartsWith("gpt-6", StringComparison.OrdinalIgnoreCase)
+                || System.Text.RegularExpressions.Regex.IsMatch(effectiveModel, @"^gpt-5\.[6-9](?:\D|$)", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            && !UnsupportedCacheDiagnostics.ContainsKey(diagnosticsRoute);
+        string? previousResponse = null;
+        if (comparisonKey is not null) _cacheResponseIds.TryGetValue(comparisonKey, out previousResponse);
+        if (previousResponse is null && cacheSession is not null)
+        {
+            var priorScope = AgentCacheNamespace.Fingerprint(route.BaseUrl.ToLowerInvariant() + "|" + route.Id
+                + "|" + route.Protocol + "|" + (cacheComparisonScope ?? promptCacheKey ?? "one-off"));
+            previousResponse = cacheSession.LastAcceptedResponseIDs.GetValueOrDefault(priorScope)
+                ?? cacheSession.Baselines.GetValueOrDefault(priorScope)?.ResponseId;
+        }
+        if (cacheDiagnosticsSupported && previousResponse is not null)
+        {
+            var options = body["prompt_cache_options"] as JsonObject ?? new JsonObject();
+            options["comparison_response_id"] = previousResponse;
+            if (body["prompt_cache_options"] is null) body["prompt_cache_options"] = options;
+        }
+        var scope = AgentCacheNamespace.Fingerprint(route.BaseUrl.ToLowerInvariant() + "|" + route.Id
+            + "|" + route.Protocol + "|" + (cacheComparisonScope ?? promptCacheKey ?? "one-off"));
+        NativeCacheBaseline? baseline = null;
+        if (cacheSession is not null) cacheSession.Baselines.TryGetValue(scope, out baseline);
+        if (route.Protocol == NativeProviderProtocol.Anthropic)
+        {
+            if (!UnsupportedAnthropicDiagnostics.ContainsKey(diagnosticsRoute))
+                body["diagnostics"] = new JsonObject { ["previous_message_id"] =
+                    cacheSession?.LastAcceptedResponseIDs.GetValueOrDefault(scope) ?? baseline?.ResponseId };
+            ApplyAnthropicCacheBreakpoints(body, UnsupportedExtendedCacheTtls.ContainsKey(CacheCapabilityKey(route, model ?? route.Model)) ? "5m" : AnthropicCacheTTL,
+                baseline?.Boundary, baseline?.StaticFingerprint, baseline?.MessageFingerprints);
+        }
+        var responsesBaseline = route.Protocol is NativeProviderProtocol.ChatGpt or NativeProviderProtocol.OpenAiResponses
+            && ReportsExactCacheBoundary(effectiveModel);
+        var cacheRequest = NativeCacheRequestEvidence.Capture(body, route.Protocol,
+            SupportsPublicOpenAiCache(route, effectiveModel) && body["prompt_cache_options"]?["mode"]?.GetValue<string>() == "implicit", responsesBaseline);
+        var effectiveTTL = route.Protocol == NativeProviderProtocol.Anthropic
+            ? (UnsupportedExtendedCacheTtls.ContainsKey(CacheCapabilityKey(route, model ?? route.Model)) || AnthropicCacheTTL == "5m" ? 300 : 3600)
+            : SupportsPublicOpenAiCache(route, effectiveModel) && body["prompt_cache_options"]?["mode"]?.GetValue<string>() == "implicit" ? 1800
+            : (int?)null;
+
         using var request = new HttpRequestMessage(HttpMethod.Post, endpoint) { Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json") };
         if (!string.IsNullOrEmpty(key))
         {
-            if (route.Protocol == NativeProviderProtocol.Anthropic) request.Headers.TryAddWithoutValidation("x-api-key", key);
+            if (route.Protocol == NativeProviderProtocol.Anthropic && route.AuthType == "claudeOAuth")
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
+            else if (route.Protocol == NativeProviderProtocol.Anthropic) request.Headers.TryAddWithoutValidation("x-api-key", key);
             else request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
         }
-        if (route.Protocol == NativeProviderProtocol.Anthropic) request.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
+        if (route.Protocol == NativeProviderProtocol.Anthropic)
+        {
+            request.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
+            if (body["context_management"]?["edits"] is JsonArray)
+                request.Headers.TryAddWithoutValidation("anthropic-beta", "context-management-2025-06-27");
+            if (route.AuthType == "claudeOAuth")
+            {
+                request.Headers.TryAddWithoutValidation("anthropic-beta", ClaudeOAuthHeaders.Beta);
+                request.Headers.TryAddWithoutValidation("anthropic-dangerous-direct-browser-access", "true");
+                request.Headers.TryAddWithoutValidation("user-agent", ClaudeOAuthHeaders.UserAgent);
+                request.Headers.TryAddWithoutValidation("x-app", "cli");
+            }
+        }
         if (route.Protocol == NativeProviderProtocol.ChatGpt)
         {
             if (string.IsNullOrWhiteSpace(route.SessionAccountId)) throw new NativeProviderException("The GPT session account is unavailable.");
@@ -591,10 +1033,16 @@ public sealed class NativeProviderRouter
             request.Headers.TryAddWithoutValidation("OAI-Product-Sku", "codex");
             request.Headers.TryAddWithoutValidation("OpenAI-Beta", "responses=v1");
             request.Headers.TryAddWithoutValidation("originator", "dots_harness");
+            request.Headers.TryAddWithoutValidation("User-Agent", $"codex_cli_rs/{ChatGptCodexClientVersion}");
             // The backend routes its prompt cache by session: reuse the
             // conversation's cache key so follow-up turns hit a warm shard.
-            request.Headers.TryAddWithoutValidation("session_id", string.IsNullOrWhiteSpace(effectivePromptCacheKey) ? Guid.NewGuid().ToString() : effectivePromptCacheKey);
+            // Session affinity remains useful even when the endpoint rejects the
+            // optional JSON prompt_cache_key field.
+            request.Headers.TryAddWithoutValidation("session_id", string.IsNullOrWhiteSpace(routeCacheKey) ? Guid.NewGuid().ToString() : routeCacheKey);
         }
+        NativeProviderTransportHeaders.Apply(request.Headers, route.Provider);
+        var prepareMilliseconds = (int)Math.Clamp((DateTimeOffset.UtcNow - preparationStartedAt).TotalMilliseconds, 0, int.MaxValue);
+        var requestStartedAt = DateTimeOffset.UtcNow;
         using var response = await _http.SendAsync(request, ct);
         var text = await response.Content.ReadAsStringAsync(ct);
         // A Codex success body is an SSE stream, not JSON. Error bodies stay JSON
@@ -608,10 +1056,81 @@ public sealed class NativeProviderRouter
             var status = (int)response.StatusCode;
             // A strict OpenAI-style server may reject the unknown field; resend
             // without it. Mirrors NativeAgentClient.complete on macOS.
+            if (status is 400 or 422 && SupportsStaticBreakpoint(route, effectiveModel)
+                && message.Contains("prompt_cache_breakpoint", StringComparison.OrdinalIgnoreCase))
+            {
+                UnsupportedStaticBreakpoints.TryAdd(diagnosticsRoute, 0);
+                return await SendAsync(route, messages, tools, model, promptCacheKey, ct, effortOverride,
+                    expandedBudget, contextWindow, nativeCompactionDisabled, cacheComparisonScope, cacheSession);
+            }
+            if (status is 400 or 422 && body["prompt_cache_options"]?["mode"] is not null
+                && (message.Contains("prompt_cache_options.mode", StringComparison.OrdinalIgnoreCase)
+                    || message.Contains("ttl", StringComparison.OrdinalIgnoreCase)
+                    || (message.Contains("prompt_cache_options", StringComparison.OrdinalIgnoreCase)
+                        && !message.Contains("comparison_response_id", StringComparison.OrdinalIgnoreCase))))
+            {
+                UnsupportedImplicitRetention.TryAdd(diagnosticsRoute, 0);
+                if (message.Contains("prompt_cache_options", StringComparison.OrdinalIgnoreCase)
+                    && !message.Contains("mode", StringComparison.OrdinalIgnoreCase)
+                    && !message.Contains("ttl", StringComparison.OrdinalIgnoreCase)) UnsupportedCacheDiagnostics.TryAdd(diagnosticsRoute, 0);
+                return await SendAsync(route, messages, tools, model, promptCacheKey, ct, effortOverride,
+                    expandedBudget, contextWindow, nativeCompactionDisabled, cacheComparisonScope, cacheSession);
+            }
+            if (status is 400 or 422 && route.Protocol == NativeProviderProtocol.Anthropic
+                && body["diagnostics"] is not null && message.Contains("diagnostics", StringComparison.OrdinalIgnoreCase))
+            {
+                UnsupportedAnthropicDiagnostics.TryAdd(diagnosticsRoute, 0);
+                return await SendAsync(route, messages, tools, model, promptCacheKey, ct, effortOverride,
+                    expandedBudget, contextWindow, nativeCompactionDisabled, cacheComparisonScope, cacheSession);
+            }
+            if (status is 400 or 422 && (body["prompt_cache_options"] as JsonObject)?["comparison_response_id"] is not null
+                && (message.Contains("prompt_cache_options", StringComparison.OrdinalIgnoreCase)
+                    || message.Contains("comparison_response_id", StringComparison.OrdinalIgnoreCase)))
+            {
+                UnsupportedCacheDiagnostics.TryAdd(diagnosticsRoute, 0);
+                return await SendAsync(route, messages, tools, model, promptCacheKey, ct, effortOverride, expandedBudget, contextWindow, nativeCompactionDisabled, cacheComparisonScope, cacheSession);
+            }
+            if (status is 400 or 422 && route.Protocol == NativeProviderProtocol.Anthropic
+                && !UnsupportedExtendedCacheTtls.ContainsKey(CacheCapabilityKey(route, model ?? route.Model))
+                && message.Contains("ttl", StringComparison.OrdinalIgnoreCase))
+            {
+                UnsupportedExtendedCacheTtls.TryAdd(CacheCapabilityKey(route, model ?? route.Model), 0);
+                return await SendAsync(route, messages, tools, model, promptCacheKey, ct, effortOverride, expandedBudget, contextWindow, nativeCompactionDisabled, cacheComparisonScope, cacheSession);
+            }
             if (status is 400 or 422
                 && body["prompt_cache_key"] is not null
                 && message.Contains("prompt_cache_key", StringComparison.OrdinalIgnoreCase))
-                return await SendAsync(route, messages, tools, model, null, ct);
+            {
+                UnsupportedPromptCacheKeys.TryAdd(PromptCacheCapabilityKey(route), 0);
+                return await SendAsync(route, messages, tools, model, promptCacheKey, ct, effortOverride, expandedBudget, contextWindow, nativeCompactionDisabled, cacheComparisonScope, cacheSession);
+            }
+            if (status is 400 or 422
+                && route.Protocol == NativeProviderProtocol.Anthropic
+                && body["context_management"]?["edits"] is JsonArray
+                && IsAnthropicContextEditingRejection(message))
+            {
+                UnsupportedAnthropicContextEditingRoutes.TryAdd(contextEditingRouteKey, 0);
+                return await SendAsync(route, messages, tools, model, promptCacheKey, ct, effortOverride,
+                    expandedBudget, contextWindow, nativeCompactionDisabled, cacheComparisonScope, cacheSession);
+            }
+            if (status is 400 or 422
+                && body["context_management"] is not null
+                && IsNativeCompactionRejection(message))
+            {
+                UnsupportedNativeCompactionRoutes.TryAdd(compactionRouteKey, 0);
+                return await SendAsync(
+                    route,
+                    messages,
+                    tools,
+                    model,
+                    promptCacheKey,
+                    ct,
+                    effortOverride,
+                    expandedBudget,
+                    contextWindow,
+                    nativeCompactionDisabled: true,
+                    cacheComparisonScope: cacheComparisonScope, cacheSession: cacheSession);
+            }
             var limitKind = DetectLimitKind(
                 string.Join(" ", new[]
                 {
@@ -628,15 +1147,103 @@ public sealed class NativeProviderRouter
                 status is 408 or 409 or 425 or >= 500,
                 limitKind is not null,
                 limitKind,
-                route.ProviderName);
+                route.ProviderName,
+                retryAt: RetryAt(response));
         }
-        return route.Protocol switch
+        var result = route.Protocol switch
         {
-            NativeProviderProtocol.Anthropic => ParseAnthropic(node),
+            NativeProviderProtocol.Anthropic => node is null ? ParseAnthropicStream(text) : ParseAnthropic(node),
             NativeProviderProtocol.ChatGpt => ParseResponsesStream(text, route.ProviderName),
+            NativeProviderProtocol.OpenAiResponses => ParseResponses(node),
             _ => ParseOpenAi(node),
         };
+        if (route.AuthType == "claudeOAuth" && result.Message.ToolCalls is { Count: > 0 } oauthCalls)
+            result = result with { Message = result.Message with { ToolCalls = oauthCalls.Select(call => call with { Name = ClaudeOAuthHeaders.RestoreToolName(call.Name) }).ToList() } };
+        var eventId = Guid.NewGuid().ToString();
+        var evidence = cacheRequest.Compare(baseline, result.Usage, requestStartedAt, effectiveTTL);
+        if (evidence.Classification == "cold" && cacheSession is { LastEpochReason: not "new_session" } && cacheSession.Baselines.Count == 0)
+            evidence = evidence with { Classification = "changed", Reason = cacheSession.LastEpochReason };
+        var latency = (int)Math.Clamp((DateTimeOffset.UtcNow - requestStartedAt).TotalMilliseconds, 0, int.MaxValue);
+        result = result with { CacheReuseEvidence = evidence, EffectiveCacheTTLSeconds = effectiveTTL,
+            LatencyMilliseconds = latency };
+        if (cacheSession is not null)
+        {
+            var usageScope = AgentCacheNamespace.Fingerprint(scope + "|" + effectiveModel);
+            var routeFingerprint = AgentCacheNamespace.Fingerprint(route.BaseUrl.ToLowerInvariant()
+                + "|" + route.Id + "|" + route.Protocol + "|" + effectiveModel);
+            cacheSession.AppendEvent(new NativeCacheUsageEvent(eventId, requestStartedAt, usageScope, result.Usage,
+                evidence, latency, PrepareMilliseconds: prepareMilliseconds, RouteFingerprint: routeFingerprint));
+            var accepted = cacheRequest.Accepted(eventId, requestStartedAt, result.Usage, effectiveTTL, result.ResponseId);
+            // A smaller extent cannot prove that the current terminal boundary was
+            // written. Keep the last proven checkpoint without refreshing its expiry.
+            var retainCheckpoint = baseline?.TerminalCacheTokens is > 0
+                && baseline.SettingsFingerprint == cacheRequest.SettingsFingerprint
+                && cacheRequest.Retains(baseline)
+                && baseline.EffectiveTTLSeconds is { } previousTTL
+                && (requestStartedAt - baseline.WrittenAt).TotalSeconds < previousTTL
+                && (accepted.TerminalCacheTokens is null || accepted.TerminalCacheTokens < baseline.TerminalCacheTokens);
+            if (!retainCheckpoint) cacheSession.Baselines[scope] = accepted;
+            if (result.ResponseId is not null) cacheSession.LastAcceptedResponseIDs[scope] = result.ResponseId;
+        }
+        // A soft style/economy ceiling may get one bounded correctness retry;
+        // a strict user limit is never expanded because it is an upper bound.
+        if ((UsageMode == AgentUsageMode.Economy || responseStyle.IsShort)
+            && string.Equals(result.IncompleteReason, "max_output_tokens", StringComparison.OrdinalIgnoreCase)
+            && !expandedBudget
+            && !responseStyle.IsHardLimit)
+        {
+            EconomyPolicy.RecordReasoning(route.Protocol, model ?? route.Model, effectiveEffort, result.Usage?.ReasoningTokens);
+            var retry = await SendAsync(
+                route,
+                messages,
+                tools,
+                model,
+                promptCacheKey,
+                ct,
+                effortOverride,
+                expandedBudget: true,
+                contextWindow: contextWindow,
+                nativeCompactionDisabled: nativeCompactionDisabled,
+                cacheComparisonScope: cacheComparisonScope, cacheSession: cacheSession);
+            return retry with { RetryCount = retry.RetryCount + 1, RetryUsage = result.Usage };
+        }
+        EconomyPolicy.RecordReasoning(route.Protocol, model ?? route.Model, effectiveEffort, result.Usage?.ReasoningTokens);
+        if (comparisonKey is not null && result.ResponseId is not null)
+        {
+            if (_cacheResponseIds.Count >= 2000) _cacheResponseIds.Clear();
+            _cacheResponseIds[comparisonKey] = result.ResponseId;
+        }
+        return result with { AccountId = route.Id };
     }
+
+    internal static bool SupportsPublicOpenAiCache(NativeProviderAccount route, string model) =>
+        route.Protocol == NativeProviderProtocol.OpenAiResponses
+        && Uri.TryCreate(route.BaseUrl, UriKind.Absolute, out var endpoint)
+        && endpoint.Host.Equals("api.openai.com", StringComparison.OrdinalIgnoreCase)
+        && ReportsExactCacheBoundary(model);
+
+    /// GPT-5.6+ reports the exact eligible boundary; older models round it.
+    private static bool ReportsExactCacheBoundary(string model) =>
+        model.StartsWith("gpt-6", StringComparison.OrdinalIgnoreCase)
+        || System.Text.RegularExpressions.Regex.IsMatch(model, @"^gpt-5\.(?:[6-9]|[1-9][0-9]+)(?:\D|$)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    internal static bool SupportsStaticBreakpoint(NativeProviderAccount route, string model) =>
+        SupportsPublicOpenAiCache(route, model)
+        && !UnsupportedStaticBreakpoints.ContainsKey(CacheCapabilityKey(route, model));
+
+    private static string CacheCapabilityKey(NativeProviderAccount route, string model) =>
+        route.BaseUrl + "|" + route.Protocol + "|" + route.Id + "|" + model;
+
+    private static bool IsNativeCompactionRejection(string message) =>
+        message.Contains("context_management", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("compact_threshold", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("compaction", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsAnthropicContextEditingRejection(string message) =>
+        message.Contains("context_management", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("context-management", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("clear_tool_uses", StringComparison.OrdinalIgnoreCase);
 
     private static bool CanServe(NativeProviderAccount account, string? model)
     {
@@ -650,41 +1257,143 @@ public sealed class NativeProviderRouter
         // OpenAI-compatible and Responses transports accept the stable cache
         // shard key. Anthropic uses cache_control breakpoints instead; adding
         // an unknown field there would make otherwise valid requests fail.
-        if (protocol is NativeProviderProtocol.OpenAiCompatible or NativeProviderProtocol.ChatGpt)
+        if (protocol is NativeProviderProtocol.OpenAiCompatible or NativeProviderProtocol.ChatGpt or NativeProviderProtocol.OpenAiResponses)
             body["prompt_cache_key"] = promptCacheKey;
     }
 
-    private static string? RouteCacheKey(string? baseKey, NativeProviderAccount route)
+    private static string? RouteCacheKey(string? baseKey, NativeProviderAccount route, string model)
     {
         if (string.IsNullOrWhiteSpace(baseKey)) return null;
-        var identity = $"{baseKey}|{route.Provider}|{route.Protocol}|{route.Id}|{route.Model}";
+        var identity = $"{baseKey}|{route.Provider}|{route.Protocol}|{route.Id}|{model}";
         var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity))).ToLowerInvariant();
         return $"{baseKey}:route-{digest[..24]}";
     }
 
+    private static string PromptCacheCapabilityKey(NativeProviderAccount route) =>
+        $"{route.Id}|{route.Protocol}|{route.BaseUrl.Trim().ToLowerInvariant()}";
+
     private static NativeProviderLimitKind? DetectLimitKind(string message, int status)
     {
         if (status == 429 || message.Contains("rate limit", StringComparison.OrdinalIgnoreCase) || message.Contains("rate-limit", StringComparison.OrdinalIgnoreCase) || message.Contains("rate_limit", StringComparison.OrdinalIgnoreCase)) return NativeProviderLimitKind.Rate;
+        if (status == 402) return NativeProviderLimitKind.Balance;
         if (message.Contains("quota", StringComparison.OrdinalIgnoreCase)) return NativeProviderLimitKind.Quota;
         if (message.Contains("credit", StringComparison.OrdinalIgnoreCase)) return NativeProviderLimitKind.Credits;
-        if (message.Contains("usage limit", StringComparison.OrdinalIgnoreCase) || message.Contains("usage-limit", StringComparison.OrdinalIgnoreCase) || message.Contains("usage_limit", StringComparison.OrdinalIgnoreCase) || message.Contains("provider limit", StringComparison.OrdinalIgnoreCase) || message.Contains("provider_limit", StringComparison.OrdinalIgnoreCase)) return NativeProviderLimitKind.Usage;
-        if (message.Contains("insufficient balance", StringComparison.OrdinalIgnoreCase) || message.Contains("insufficient_balance", StringComparison.OrdinalIgnoreCase) || message.Contains("insufficient funds", StringComparison.OrdinalIgnoreCase)) return NativeProviderLimitKind.Balance;
+        if (message.Contains("usage limit", StringComparison.OrdinalIgnoreCase) || message.Contains("usage-limit", StringComparison.OrdinalIgnoreCase) || message.Contains("usage_limit", StringComparison.OrdinalIgnoreCase) || message.Contains("provider limit", StringComparison.OrdinalIgnoreCase) || message.Contains("provider_limit", StringComparison.OrdinalIgnoreCase) || message.Contains("resource exhausted", StringComparison.OrdinalIgnoreCase) || message.Contains("too many requests", StringComparison.OrdinalIgnoreCase) || message.Contains("billing limit", StringComparison.OrdinalIgnoreCase) || message.Contains("billing_limit", StringComparison.OrdinalIgnoreCase)) return NativeProviderLimitKind.Usage;
+        if (message.Contains("insufficient balance", StringComparison.OrdinalIgnoreCase) || message.Contains("insufficient_balance", StringComparison.OrdinalIgnoreCase) || message.Contains("insufficient funds", StringComparison.OrdinalIgnoreCase) || message.Contains("insufficient_quota", StringComparison.OrdinalIgnoreCase)) return NativeProviderLimitKind.Balance;
         return null;
     }
 
-    private static Uri Endpoint(string baseUrl, NativeProviderProtocol protocol)
+    private static DateTimeOffset? RetryAt(HttpResponseMessage response, DateTimeOffset? now = null)
     {
-        var normalized = NativeProviderStore.NormalizeUrl(baseUrl).TrimEnd('/');
-        if (protocol == NativeProviderProtocol.ChatGpt) return new Uri(normalized + "/responses");
+        var current = now ?? DateTimeOffset.UtcNow;
+        if (response.Headers.RetryAfter?.Delta is { } delta && delta > TimeSpan.Zero)
+        {
+            return current.Add(delta);
+        }
+        if (response.Headers.RetryAfter?.Date is { } date && date > current)
+        {
+            return date;
+        }
+
+        var names = new[]
+        {
+            "retry-after",
+            "anthropic-ratelimit-unified-reset",
+            "x-ratelimit-reset-requests",
+            "x-ratelimit-reset-tokens",
+            "x-ratelimit-reset",
+        };
+        foreach (var name in names)
+        {
+            var raw = response.Headers.TryGetValues(name, out var values)
+                ? values.FirstOrDefault()
+                : response.Content.Headers.TryGetValues(name, out var contentValues)
+                    ? contentValues.FirstOrDefault()
+                    : null;
+            raw = raw?.Trim();
+            if (string.IsNullOrWhiteSpace(raw)) continue;
+            if (double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds))
+            {
+                var candidate = seconds > 10_000_000
+                    ? DateTimeOffset.FromUnixTimeSeconds((long)seconds)
+                    : current.AddSeconds(seconds);
+                if (candidate > current) return candidate;
+                continue;
+            }
+            if (DateTimeOffset.TryParse(
+                raw,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out var parsed)
+                && parsed > current)
+            {
+                return parsed;
+            }
+        }
+        return null;
+    }
+
+    private static Uri Endpoint(NativeProviderAccount route)
+    {
+        var normalized = NativeProviderStore.NormalizeUrl(route.BaseUrl).TrimEnd('/');
+        if (route.Protocol is NativeProviderProtocol.ChatGpt or NativeProviderProtocol.OpenAiResponses)
+        {
+            if (route.Protocol == NativeProviderProtocol.OpenAiResponses && new Uri(normalized).AbsolutePath == "/") normalized += "/v1";
+            return new Uri(normalized + "/responses");
+        }
         if (new Uri(normalized).AbsolutePath == "/") normalized += "/v1";
-        return new Uri(normalized + (protocol == NativeProviderProtocol.Anthropic ? "/messages" : "/chat/completions"));
+        var path = normalized + (route.Protocol == NativeProviderProtocol.Anthropic ? "/messages" : "/chat/completions");
+        if (route.Protocol == NativeProviderProtocol.Anthropic && route.AuthType == "claudeOAuth") path += "?beta=true";
+        return new Uri(path);
     }
 
     /// Mirrors NativeAgentClient.swift: Anthropic output_config + larger budget,
     /// Responses `reasoning`, Chat Completions `reasoning_effort`.
-    private static void ApplyEffort(JsonObject body, NativeProviderProtocol protocol, string model, string effort)
+    private static void ApplyEffort(
+        JsonObject body,
+        NativeProviderProtocol protocol,
+        string model,
+        string effort,
+        EconomyOutputBudget? economyBudget = null)
     {
-        if (string.IsNullOrEmpty(effort) || !NativeEffortCatalog.Levels(model).Contains(effort)) return;
+        var effortSupported = !string.IsNullOrEmpty(effort) && NativeEffortCatalog.Levels(model).Contains(effort);
+        if (economyBudget is not null)
+        {
+            switch (protocol)
+            {
+                case NativeProviderProtocol.Anthropic:
+                    body["max_tokens"] = economyBudget.MaxOutputTokens;
+                    if (effortSupported
+                        && EconomyPolicy.SupportsLegacyThinkingBudget(model)
+                        && economyBudget.ProviderReasoningBudgetTokens is { } reasoningBudget)
+                    {
+                        body["thinking"] = new JsonObject
+                        {
+                            ["type"] = "enabled",
+                            ["budget_tokens"] = reasoningBudget,
+                        };
+                    }
+                    else if (effortSupported && !EconomyPolicy.SupportsLegacyThinkingBudget(model))
+                    {
+                        // Adaptive-thinking models use effort/output_config;
+                        // legacy extended-thinking models use thinking only.
+                        body["output_config"] = new JsonObject { ["effort"] = effort };
+                    }
+                    break;
+                case NativeProviderProtocol.ChatGpt:
+                case NativeProviderProtocol.OpenAiResponses:
+                    body["max_output_tokens"] = economyBudget.MaxOutputTokens;
+                    body["text"] = new JsonObject { ["verbosity"] = "low" };
+                    if (effortSupported) body["reasoning"] = new JsonObject { ["effort"] = effort };
+                    break;
+                default:
+                    body["max_tokens"] = economyBudget.MaxOutputTokens;
+                    if (effortSupported) body["reasoning_effort"] = effort;
+                    break;
+            }
+            return;
+        }
+        if (!effortSupported) return;
         switch (protocol)
         {
             case NativeProviderProtocol.Anthropic:
@@ -692,6 +1401,7 @@ public sealed class NativeProviderRouter
                 body["max_tokens"] = effort switch { "max" => 32_000, "xhigh" => 24_000, "high" => 16_000, _ => 8_192 };
                 break;
             case NativeProviderProtocol.ChatGpt:
+            case NativeProviderProtocol.OpenAiResponses:
                 body["reasoning"] = new JsonObject { ["effort"] = effort };
                 break;
             default:
@@ -720,29 +1430,39 @@ public sealed class NativeProviderRouter
         return body;
     }
 
-    private static JsonObject ResponsesBody(NativeProviderAccount route, IReadOnlyList<NativeMessage> messages, IReadOnlyList<NativeToolDefinition> tools, string? model)
+    private static JsonObject ResponsesBody(
+        NativeProviderAccount route,
+        IReadOnlyList<NativeMessage> messages,
+        IReadOnlyList<NativeToolDefinition> tools,
+        string? model,
+        NativeProviderProtocol protocol,
+        bool staticBreakpoint = false)
     {
-        var system = messages
-            .Where(message => message.Role == "system")
-            .Select(message => message.Content)
-            .Where(content => !string.IsNullOrWhiteSpace(content))
-            .ToList();
+        messages = NativePromptHistory.ResponsesReplay(messages);
+        var systemMessages = messages.Where(message => message.Role == "system"
+            && !string.IsNullOrWhiteSpace(message.Content)).ToList();
+        var system = systemMessages.Select(message => message.Content).ToList();
+        var stableIndex = systemMessages.FindLastIndex(message => message.SystemKind == "promptStable");
+        if (stableIndex < 0 && systemMessages.Count > 0) stableIndex = 0;
         var input = new JsonArray();
-        // The Codex backend keeps `instructions` pinned to the Codex CLI prompt and
-        // rejects a body whose instructions do not look like it, so the harness
-        // prompt rides along as leading developer turns instead. Mirrors
-        // makeResponsesBody in macos/.../NativeAgentClient.swift.
-        foreach (var content in system)
+        // The Codex subscription backend validates its own instructions, so DOTS
+        // system content travels as developer input. The public Responses API
+        // accepts the system prompt through `instructions`.
+        if (protocol == NativeProviderProtocol.ChatGpt || staticBreakpoint)
         {
-            input.Add(new JsonObject
+            for (var systemIndex = 0; systemIndex < system.Count; systemIndex++)
             {
-                ["role"] = "developer",
-                ["content"] = new JsonArray(new JsonObject { ["type"] = "input_text", ["text"] = content }),
-            });
+                var block = new JsonObject { ["type"] = "input_text", ["text"] = system[systemIndex] };
+                if (staticBreakpoint && systemIndex == stableIndex)
+                    block["prompt_cache_breakpoint"] = new JsonObject { ["mode"] = "explicit" };
+                input.Add(new JsonObject { ["role"] = "developer", ["content"] = new JsonArray(block) });
+            }
         }
         foreach (var message in messages.Where(message => message.Role != "system"))
         {
-            if (message.ProviderItems is { Count: > 0 })
+            if (message.ProviderItems is { Count: > 0 }
+                && message.ProviderItems.All(item => Str(item["type"]) is "message" or "function_call"
+                    or "function_call_output" or "reasoning" or "compaction"))
             {
                 foreach (var item in message.ProviderItems) input.Add(item.DeepClone());
             }
@@ -773,13 +1493,17 @@ public sealed class NativeProviderRouter
         var body = new JsonObject
         {
             ["model"] = model ?? route.Model,
-            ["instructions"] = CodexInstructions.Default,
+            ["instructions"] = protocol == NativeProviderProtocol.ChatGpt
+                ? CodexInstructions.Default
+                : string.Join("\n\n", system),
             ["input"] = input,
             ["store"] = false,
-            // The ChatGPT/Codex backend only serves `/responses` as SSE; a
-            // non-streaming request is rejected with HTTP 400.
-            ["stream"] = true,
+            ["stream"] = protocol == NativeProviderProtocol.ChatGpt,
         };
+        if (staticBreakpoint)
+        {
+            body.Remove("instructions");
+        }
         if (tools.Count > 0) body["tools"] = new JsonArray(tools.Select(tool => new JsonObject { ["type"] = "function", ["name"] = tool.Name, ["description"] = tool.Description, ["parameters"] = tool.Parameters.DeepClone() }).ToArray());
         return body;
     }
@@ -795,15 +1519,25 @@ public sealed class NativeProviderRouter
         return node;
     }
 
-    private static JsonObject AnthropicBody(NativeProviderAccount route, IReadOnlyList<NativeMessage> messages, IReadOnlyList<NativeToolDefinition> tools, string? model)
+    private static JsonObject AnthropicBody(NativeProviderAccount route, IReadOnlyList<NativeMessage> messages, IReadOnlyList<NativeToolDefinition> tools, string? model, string ttl = "1h")
     {
         var converted = new JsonArray();
         foreach (var message in messages.Where(m => m.Role != "system")) converted.Add(AnthropicMessageNode(message));
         var body = new JsonObject { ["model"] = model ?? route.Model, ["max_tokens"] = 4096, ["messages"] = converted };
         var system = string.Join("\n\n", messages.Where(m => m.Role == "system").Select(m => m.Content).Where(content => !string.IsNullOrWhiteSpace(content)));
-        if (!string.IsNullOrEmpty(system)) body["system"] = system;
+        if (route.AuthType == "claudeOAuth")
+        {
+            var systemBlocks = new JsonArray
+            {
+                new JsonObject { ["type"] = "text", ["text"] = ClaudeOAuthHeaders.AgentIdentity },
+            };
+            if (!string.IsNullOrEmpty(system)) systemBlocks.Add(new JsonObject { ["type"] = "text", ["text"] = system });
+            body["system"] = systemBlocks;
+        }
+        else if (!string.IsNullOrEmpty(system)) body["system"] = system;
         if (tools.Count > 0) body["tools"] = new JsonArray(tools.Select(t => new JsonObject { ["name"] = t.Name, ["description"] = t.Description, ["input_schema"] = t.Parameters.DeepClone() }).ToArray());
-        ApplyAnthropicCacheBreakpoints(body);
+        if (route.AuthType == "claudeOAuth") ClaudeOAuthHeaders.CloakTools(body);
+        ApplyAnthropicCacheBreakpoints(body, ttl);
         return body;
     }
 
@@ -811,25 +1545,49 @@ public sealed class NativeProviderRouter
     /// `cache_control` breakpoint on the system prompt, the last tool and the
     /// last message, so each turn reads the previous turn's prefix from the
     /// prompt cache. Below the minimum cacheable length Anthropic ignores it.
-    internal static void ApplyAnthropicCacheBreakpoints(JsonObject body)
+    internal static void ApplyAnthropicCacheBreakpoints(JsonObject body, string ttl = "1h",
+        NativeCacheBoundary? previousBoundary = null, string? previousStaticFingerprint = null,
+        IReadOnlyList<string>? previousMessageFingerprints = null)
     {
+        var clean = NativeCacheRequestEvidence.WithoutMarkers(body)!.AsObject();
+        foreach (var key in new[] { "system", "tools", "messages" })
+            if (clean[key] is { } value) body[key] = value.DeepClone();
         if (body["system"] is JsonNodeValue systemValue && systemValue.TryGetValue<string>(out var system) && system.Length > 0)
-            body["system"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = system, ["cache_control"] = Ephemeral() });
+            body["system"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = system });
+        if (body["system"] is JsonArray { Count: > 0 } systemBlocks && systemBlocks[^1] is JsonObject lastSystem)
+            lastSystem["cache_control"] = Ephemeral(ttl);
         if (body["tools"] is JsonArray { Count: > 0 } tools && tools[^1] is JsonObject lastTool)
-            lastTool["cache_control"] = Ephemeral();
-        if (body["messages"] is not JsonArray { Count: > 0 } messages || messages[^1] is not JsonObject last) return;
-        switch (last["content"])
+            lastTool["cache_control"] = Ephemeral(ttl);
+        if (body["messages"] is not JsonArray { Count: > 0 } messages) return;
+        // Normalize content before computing the persisted wire fingerprints.
+        foreach (var node in messages)
         {
-            case JsonNodeValue value when value.TryGetValue<string>(out var text) && text.Length > 0:
-                last["content"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = text, ["cache_control"] = Ephemeral() });
-                break;
-            case JsonArray { Count: > 0 } blocks when blocks[^1] is JsonObject lastBlock:
-                lastBlock["cache_control"] = Ephemeral();
-                break;
+            if (node is JsonObject message && message["content"] is JsonNodeValue value
+                && value.TryGetValue<string>(out var text))
+                message["content"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = text });
+        }
+        var request = NativeCacheRequestEvidence.Capture(body, NativeProviderProtocol.Anthropic);
+        if (previousBoundary is { } old && previousMessageFingerprints is not null
+            && previousStaticFingerprint == request.StaticFingerprint
+            && previousMessageFingerprints.Count <= request.MessageFingerprints.Count
+            && previousMessageFingerprints.SequenceEqual(request.MessageFingerprints.Take(previousMessageFingerprints.Count)))
+            Mark(old);
+        if (messages[^1]?["content"] is JsonArray { Count: > 0 } tail)
+            Mark(new NativeCacheBoundary(messages.Count - 1, tail.Count - 1));
+
+        void Mark(NativeCacheBoundary location)
+        {
+            if (location.MessageIndex < 0 || location.MessageIndex >= messages.Count
+                || messages[location.MessageIndex]?["content"] is not JsonArray blocks
+                || location.BlockIndex < 0 || location.BlockIndex >= blocks.Count
+                || blocks[location.BlockIndex] is not JsonObject block) return;
+            // Thinking blocks may be cached only beneath a later eligible block.
+            if (Str(block["type"]) is "thinking" or "redacted_thinking") return;
+            block["cache_control"] = Ephemeral(ttl);
         }
     }
 
-    private static JsonObject Ephemeral() => new() { ["type"] = "ephemeral" };
+    private static JsonObject Ephemeral(string ttl) => new() { ["type"] = "ephemeral", ["ttl"] = ttl == "5m" ? "5m" : "1h" };
 
     private static JsonObject AnthropicMessageNode(NativeMessage message)
     {
@@ -850,6 +1608,10 @@ public sealed class NativeProviderRouter
             };
         }
 
+        if (message.Role == "assistant" && message.ProviderItems is { Count: > 0 }
+            && message.ProviderItems.All(item => Str(item["type"]) is "text" or "thinking" or "redacted_thinking" or "tool_use"))
+            return new JsonObject { ["role"] = "assistant",
+                ["content"] = new JsonArray(message.ProviderItems.Select(item => item.DeepClone()).ToArray()) };
         if (message.Role == "assistant" && message.ToolCalls is { Count: > 0 })
         {
             var blocks = new JsonArray();
@@ -1031,7 +1793,10 @@ public sealed class NativeProviderRouter
         foreach (var item in message["tool_calls"]?.AsArray() ?? new JsonArray()) calls.Add(new NativeToolCall(item?["id"]?.GetValue<string>() ?? Guid.NewGuid().ToString(), item?["function"]?["name"]?.GetValue<string>() ?? "tool", item?["function"]?["arguments"]?.GetValue<string>() ?? "{}"));
         var usage = node?["usage"] is JsonObject u ? ParseUsage(u) : null;
         var reasoning = message["reasoning_content"]?.GetValue<string>() ?? message["reasoning"]?.GetValue<string>();
-        return new NativeResponse(new NativeMessage("assistant", message["content"]?.GetValue<string>() ?? "", ToolCalls: calls, Thinking: reasoning), usage);
+        var incompleteReason = node?["choices"]?[0]?["finish_reason"]?.GetValue<string>() == "length"
+            ? "max_output_tokens"
+            : null;
+        return new NativeResponse(new NativeMessage("assistant", message["content"]?.GetValue<string>() ?? "", ToolCalls: calls, Thinking: reasoning), usage, incompleteReason);
     }
 
     /// <summary>
@@ -1127,12 +1892,46 @@ public sealed class NativeProviderRouter
             {
                 return ParseResponses(finalResponse);
             }
+            var incompleteReason = Str(finalResponse?["incomplete_details"]?["reason"]);
+            if (!string.IsNullOrWhiteSpace(incompleteReason))
+            {
+                return new NativeResponse(new NativeMessage("assistant", ""), usage, incompleteReason);
+            }
             throw new NativeProviderException("The provider returned no message.", providerName: providerName);
         }
 
+        var mergedProviderItems = finalResponse?["output"] is JsonArray terminalOutput
+            ? terminalOutput.OfType<JsonObject>().Select(item => item.DeepClone().AsObject()).ToList()
+            : new List<JsonObject>();
+        if (mergedProviderItems.Count == 0) mergedProviderItems.AddRange(providerItems.Select(item => item.DeepClone().AsObject()));
+        else
+        {
+            foreach (var item in providerItems)
+            {
+                if (!mergedProviderItems.Any(existing => SameResponsesOutputItem(existing, item)))
+                    mergedProviderItems.Add(item.DeepClone().AsObject());
+            }
+        }
+
         return new NativeResponse(
-            new NativeMessage("assistant", text.ToString(), ToolCalls: toolCalls, ProviderItems: providerItems),
-            usage);
+            new NativeMessage("assistant", text.ToString(), ToolCalls: toolCalls, ProviderItems: mergedProviderItems),
+            usage,
+            Str(finalResponse?["incomplete_details"]?["reason"]), ResponseId: Str(finalResponse?["id"]), CacheDiagnostics: ParseCacheDiagnostics(finalResponse));
+    }
+
+    private static bool SameResponsesOutputItem(JsonObject left, JsonObject right)
+    {
+        var leftId = Str(left["id"]);
+        if (!string.IsNullOrEmpty(leftId) && string.Equals(leftId, Str(right["id"]), StringComparison.Ordinal))
+            return true;
+        if (Str(left["type"]) == "function_call")
+        {
+            var leftCallId = Str(left["call_id"]);
+            if (!string.IsNullOrEmpty(leftCallId)
+                && string.Equals(leftCallId, Str(right["call_id"]), StringComparison.Ordinal))
+                return true;
+        }
+        return JsonNode.DeepEquals(left, right);
     }
 
     private static NativeProviderException StreamFailure(JsonNode evt, string? providerName)
@@ -1181,12 +1980,26 @@ public sealed class NativeProviderRouter
 
     private static NativeResponse ParseResponses(JsonNode? node)
     {
-        var output = node?["output"]?.AsArray() ?? throw new NativeProviderException("The provider returned no message.");
+        var output = node?["output"]?.AsArray();
+        if (output is null)
+        {
+            var incompleteReason = Str(node?["incomplete_details"]?["reason"]);
+            if (!string.IsNullOrWhiteSpace(incompleteReason))
+            {
+                var emptyResponseUsage = node?["usage"] is JsonObject emptyUsage ? ParseUsage(emptyUsage) : null;
+                return new NativeResponse(new NativeMessage("assistant", ""), emptyResponseUsage, incompleteReason,
+                    ResponseId: Str(node?["id"]), CacheDiagnostics: ParseCacheDiagnostics(node));
+            }
+            throw new NativeProviderException("The provider returned no message.");
+        }
         var text = string.Join("", output.Where(item => item?["type"]?.GetValue<string>() == "message").SelectMany(item => item?["content"]?.AsArray() ?? new JsonArray()).Where(item => item?["text"] is not null).Select(item => item?["text"]?.GetValue<string>() ?? ""));
         var calls = output.Where(item => item?["type"]?.GetValue<string>() == "function_call").Select(item => new NativeToolCall(item?["call_id"]?.GetValue<string>() ?? item?["id"]?.GetValue<string>() ?? Guid.NewGuid().ToString(), item?["name"]?.GetValue<string>() ?? "tool", item?["arguments"]?.GetValue<string>() ?? "{}")).ToList();
         var usage = node?["usage"] is JsonObject value ? ParseUsage(value) : null;
         var providerItems = output.OfType<JsonObject>().Select(item => item.DeepClone().AsObject()).ToList();
-        return new NativeResponse(new NativeMessage("assistant", text, ToolCalls: calls, ProviderItems: providerItems), usage);
+        return new NativeResponse(
+            new NativeMessage("assistant", text, ToolCalls: calls, ProviderItems: providerItems),
+            usage,
+            Str(node?["incomplete_details"]?["reason"]), ResponseId: Str(node?["id"]), CacheDiagnostics: ParseCacheDiagnostics(node));
     }
 
     private static NativeResponse ParseAnthropic(JsonNode? node)
@@ -1196,7 +2009,122 @@ public sealed class NativeProviderRouter
         var thinking = string.Join("\n\n", content.Where(x => x?["type"]?.GetValue<string>() == "thinking").Select(x => x?["thinking"]?.GetValue<string>() ?? ""));
         var calls = content.Where(x => x?["type"]?.GetValue<string>() == "tool_use").Select(x => new NativeToolCall(x?["id"]?.GetValue<string>() ?? Guid.NewGuid().ToString(), x?["name"]?.GetValue<string>() ?? "tool", (x?["input"] ?? new JsonObject()).ToJsonString())).ToList();
         var usage = node?["usage"] is JsonObject u ? ParseUsage(u, inputExcludesCache: true) : null;
-        return new NativeResponse(new NativeMessage("assistant", text, ToolCalls: calls, Thinking: string.IsNullOrEmpty(thinking) ? null : thinking), usage);
+        if (usage is not null)
+        {
+            var contextEditStats = ParseAnthropicContextEditStats(node);
+            usage = usage with
+            {
+                ContextClearedInputTokens = contextEditStats.clearedInputTokens,
+                ContextClearedToolUses = contextEditStats.clearedToolUses,
+            };
+        }
+        var incompleteReason = node?["stop_reason"]?.GetValue<string>() == "max_tokens"
+            ? "max_output_tokens"
+            : null;
+        return new NativeResponse(new NativeMessage("assistant", text, ToolCalls: calls,
+            Thinking: string.IsNullOrEmpty(thinking) ? null : thinking,
+            ProviderItems: content.OfType<JsonObject>().Select(item => item.DeepClone().AsObject()).ToList()),
+            usage, incompleteReason, ResponseId: Str(node?["id"]), CacheDiagnostics: ParseAnthropicDiagnostics(node));
+    }
+
+    internal static NativeCacheDiagnostics? ParseAnthropicDiagnostics(JsonNode? node)
+    {
+        if (node?["diagnostics"] is not JsonObject diagnostics) return null;
+        if (diagnostics["cache_miss_reason"] is not JsonObject reason)
+            return new NativeCacheDiagnostics("comparison_match", null, null, null);
+        var type = Str(reason["type"]) ?? "unavailable";
+        if (type is not ("model_changed" or "system_changed" or "tools_changed" or "messages_changed"
+            or "previous_message_not_found" or "unavailable")) type = "other";
+        return new NativeCacheDiagnostics("comparison_mismatch", type,
+            Int(reason["cache_missed_input_tokens"]), null);
+    }
+
+    private static (int? clearedInputTokens, int? clearedToolUses) ParseAnthropicContextEditStats(JsonNode? node)
+    {
+        if (node?["context_management"]?["applied_edits"] is not JsonArray edits) return (null, null);
+        var cleared = edits.OfType<JsonObject>()
+            .Where(edit => Str(edit["type"]) == "clear_tool_uses_20250919")
+            .ToArray();
+        if (cleared.Length == 0) return (null, null);
+
+        int? inputTokens = null;
+        int? toolUses = null;
+        foreach (var edit in cleared)
+        {
+            if (Int(edit["cleared_input_tokens"]) is { } tokens)
+                inputTokens = (inputTokens ?? 0) + Math.Max(0, tokens);
+            if (Int(edit["cleared_tool_uses"]) is { } uses)
+                toolUses = (toolUses ?? 0) + Math.Max(0, uses);
+        }
+        return (inputTokens, toolUses);
+    }
+
+    public static NativeResponse ParseAnthropicStream(string body)
+    {
+        JsonObject? message = null;
+        var blocks = new SortedDictionary<int, JsonObject>();
+        var inputs = new Dictionary<int, StringBuilder>();
+        foreach (var raw in body.Split('\n'))
+        {
+            var line = raw.Trim();
+            if (!line.StartsWith("data:", StringComparison.Ordinal)) continue;
+            JsonNode? evt;
+            try { evt = JsonNode.Parse(line[5..].Trim()); } catch (JsonException) { continue; }
+            if (evt is null) continue;
+            switch (Str(evt["type"]))
+            {
+                case "message_start":
+                    message = evt["message"]?.DeepClone().AsObject();
+                    break;
+                case "content_block_start" when evt["content_block"] is JsonObject block:
+                    blocks[Int(evt["index"]) ?? 0] = block.DeepClone().AsObject();
+                    break;
+                case "content_block_delta":
+                    var index = Int(evt["index"]) ?? 0;
+                    if (!blocks.TryGetValue(index, out var current)) break;
+                    var delta = evt["delta"];
+                    switch (Str(delta?["type"]))
+                    {
+                        case "text_delta": current["text"] = (Str(current["text"]) ?? "") + (Str(delta?["text"]) ?? ""); break;
+                        case "thinking_delta": current["thinking"] = (Str(current["thinking"]) ?? "") + (Str(delta?["thinking"]) ?? ""); break;
+                        case "signature_delta": current["signature"] = (Str(current["signature"]) ?? "") + (Str(delta?["signature"]) ?? ""); break;
+                        case "input_json_delta":
+                            if (!inputs.TryGetValue(index, out var input)) inputs[index] = input = new StringBuilder();
+                            input.Append(Str(delta?["partial_json"]) ?? ""); break;
+                    }
+                    break;
+                case "message_delta" when message is not null:
+                    if (evt["delta"] is JsonObject fields)
+                        foreach (var field in fields) message[field.Key] = field.Value?.DeepClone();
+                    if (evt["context_management"] is JsonObject contextManagement)
+                        message["context_management"] = contextManagement.DeepClone();
+                    if (evt["usage"] is JsonObject usage)
+                    {
+                        var totals = message["usage"] as JsonObject ?? new JsonObject();
+                        foreach (var field in usage) totals[field.Key] = field.Value?.DeepClone();
+                        if (message["usage"] is null) message["usage"] = totals;
+                    }
+                    break;
+                case "error": throw StreamFailure(evt, "Claude");
+            }
+        }
+        if (message is null) throw new NativeProviderException("The provider returned no message.");
+        foreach (var input in inputs) blocks[input.Key]["input"] = JsonNode.Parse(input.Value.ToString());
+        message["content"] = new JsonArray(blocks.Values.Select(value => value.DeepClone()).ToArray());
+        return ParseAnthropic(message);
+    }
+
+    private static NativeCacheDiagnostics? ParseCacheDiagnostics(JsonNode? node)
+    {
+        if (node?["prompt_cache_diagnostics"] is not JsonObject diagnostics) return null;
+        var type = Str(diagnostics["type"]) ?? "unavailable";
+        if (type is not ("cache_hit" or "cache_miss" or "unavailable" or "comparison_response_not_found")) type = "unavailable";
+        var reason = Str(diagnostics["reason"]);
+        if (reason is not null && reason is not ("model_changed" or "prompt_cache_key_changed" or "tools_changed"
+            or "instructions_changed" or "input_changed" or "reasoning_changed" or "reasoning_effort_changed"
+            or "service_tier_changed" or "cache_expired" or "cache_evicted" or "cache_not_found" or "settings_changed" or "prefix_mismatch"
+            or "text_format_changed" or "verbosity_changed" or "context_compacted")) reason = "other";
+        return new NativeCacheDiagnostics(type, reason, Int(diagnostics["cache_missed_tokens"]), Int(diagnostics["comparison_reusable_tokens"]));
     }
 
     private static NativeUsage? ParseUsage(JsonObject usage, bool inputExcludesCache = false)
@@ -1212,11 +2140,18 @@ public sealed class NativeProviderRouter
         var written = Int(
             usage["prompt_tokens_details"]?["cache_write_tokens"]
             ?? usage["input_tokens_details"]?["cache_write_tokens"]
+            ?? usage["cache_write_tokens"]
             ?? usage["cache_creation_input_tokens"]);
         var missed = Int(usage["prompt_cache_miss_tokens"]);
+        var reasoning = Int(
+            usage["output_tokens_details"]?["reasoning_tokens"]
+            ?? usage["completion_tokens_details"]?["reasoning_tokens"]
+            ?? usage["reasoning_tokens"]
+            ?? usage["thinking_tokens"]);
         if (input is null && output is null && cached is null && written is null && missed is null) return null;
         var normalizedInput = input ?? (cached ?? 0) + (missed ?? 0) + (written ?? 0);
-        return new NativeUsage(normalizedInput, output ?? 0, cached, written, missed, inputExcludesCache);
+        return new NativeUsage(normalizedInput, output ?? 0, cached, written, missed, inputExcludesCache, reasoning,
+            InputTokensReported: input is not null);
     }
 }
 
@@ -1304,10 +2239,12 @@ public static class NativeEffortCatalog
 
     private static readonly Dictionary<string, string[]> Table = new(StringComparer.OrdinalIgnoreCase)
     {
+        ["gpt-6.1-sol"] = GptMax,
         ["gpt-5.6-terra"] = GptMax, ["gpt-5.6-sol"] = GptMax, ["gpt-5.6-luna"] = GptMax,
         ["gpt-5.5"] = Gpt, ["gpt-5.4"] = Gpt, ["gpt-5.4-mini"] = Gpt,
+        ["claude-sonnet-5-5"] = ClaudeXhigh, ["claude-opus-5-5"] = ClaudeXhigh,
         ["claude-sonnet-5"] = ClaudeXhigh, ["claude-opus-5"] = ClaudeXhigh, ["claude-opus-4-8"] = ClaudeXhigh,
-        ["claude-fable-5"] = ClaudeXhigh, ["claude-opus-4-7"] = ClaudeXhigh,
+        ["claude-fable-5-1"] = ClaudeXhigh, ["claude-fable-5"] = ClaudeXhigh, ["claude-opus-4-7"] = ClaudeXhigh,
         ["claude-sonnet-4-6"] = ClaudeMax, ["claude-opus-4-6"] = ClaudeMax, ["claude-opus-4-6-thinking"] = ClaudeMax,
         ["claude-opus-4-5-20251101"] = StandardEffort,
         ["grok-4.5"] = ["low", "medium", "high", "xhigh"],

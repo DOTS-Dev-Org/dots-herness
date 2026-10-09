@@ -62,7 +62,6 @@
 "settings.title" = "Ajustes";
 "settings.backToChats" = "Volver a los chats";
 "settings.tab.general" = "generales";
-"settings.tab.pet" = "mascota";
 "settings.tab.providers" = "Proveedores";
 "settings.tab.custom" = "API personalizada";
 "settings.tab.local" = "Modelos locales";
@@ -279,7 +278,7 @@
 "composer.add" = "Añadir";
 "composer.stopListening" = "Dejar de escuchar y añadir el texto al borrador";
 "composer.keyboardHelp" = "Intro: enviar · Mayús+Intro: nueva línea · ⌘/Ctrl+Intro: interrumpir";
-"composer.followUp.hint" = "Pulsa Tab para aceptar la sugerencia de mensaje de seguimiento";
+"composer.followUp.hint" = "Presiona Tab para aceptar la sugerencia de mensaje de seguimiento";
 "composer.selectModel" = "Elegir modelo";
 "composer.installedSkill" = "Habilidad instalada";
 "composer.settings" = "Ajustes";
@@ -303,8 +302,6 @@
 "slash.model" = "Modelo";
 "slash.plan" = "Modo de planificación";
 "slash.planDetail" = "Activar el modo de planificación";
-"slash.mascot" = "mascota";
-"slash.mascotDetail" = "Despertar u ocultar el Pet";
 "slash.pluginCreator" = "Creador de complementos";
 "slash.pluginCreatorDetail" = "Crea un complemento nuevo";
 "pluginCreator.template" = "Plantilla";
@@ -390,7 +387,6 @@
 "sidebar.hide" = "Ocultar";
 "sidebar.show" = "Mostrar";
 "sidebar.selectProject" = "Elegir proyecto";
-"sidebar.continueWithoutProject" = "Continuar sin proyecto";
 "sidebar.projectOptions" = "Opciones del proyecto";
 "sidebar.editProject" = "Editar proyecto";
 "sidebar.addProject" = "Añadir proyecto";
@@ -421,28 +417,6 @@
 "sidebar.settings" = "Ajustes";
 "sidebar.accountOptions" = "Opciones de la cuenta";
 "sidebar.accountUsage" = "Cuenta y uso de DOTS";
-"pet.position.bottomTrailing" = "Abajo a la derecha";
-"pet.position.bottomLeading" = "Abajo a la izquierda";
-"pet.position.topTrailing" = "Arriba a la derecha";
-"pet.position.topLeading" = "Arriba a la izquierda";
-"pet.settings" = "Ajustes del Pet";
-"pet.hide" = "Ocultar Pet";
-"pet.dragHint" = "DOTS Pet · Mantén pulsado para mover";
-"pet.stopAndSend" = "Dejar de escuchar y enviar al chat seleccionado";
-"pet.micOpening" = "Abriendo micrófono…";
-"pet.listening" = "Escuchando…";
-"pet.transcribing" = "El modelo de voz local está transcribiendo…";
-"pet.sending" = "Enviando al chat seleccionado…";
-"pet.visibility" = "Visibilidad del Pet";
-"pet.show" = "Mostrar Pet";
-"pet.visibilityHint" = "El Pet flota en pantalla solo mientras esta opción está activada. Está desactivado en el primer inicio.";
-"pet.appearance" = "Apariencia";
-"pet.position" = "Posición";
-"pet.size" = "Tamaño";
-"pet.sizeValue" = "%d píxeles";
-"pet.avatar" = "avatar";
-"pet.preview" = "Vista previa";
-"pet.title" = "mascota";
 "usage.title" = "Uso";
 "usage.accountSummary" = "Resumen de la cuenta de DOTS YAZILIM para este periodo";
 "usage.period" = "Este periodo";
@@ -716,16 +690,16 @@
 "speech.emptyOutput" = "El motor de voz local no devolvió audio.";
 "speech.invalidAudio" = "El motor de voz local devolvió audio no válido";
 "router.imageFallback" = "Usar como respaldo de imagen";
-"composer.projectPickerHelp" = "Elige el proyecto para este chat";
+"composer.projectPickerHelp" = "Elegir el proyecto de esta conversación";
 "composer.projectPickerTitle" = "Proyecto";
 "composer.chooseProject" = "Elige proyecto";
 "composer.noProject" = "Ningún proyecto seleccionado";
 "composer.dontWorkInProject" = "No trabajes en un proyecto.";
 "workLocation.title" = "Trabajar en";
-"workLocation.help" = "Elija dónde se ejecuta esta tarea";
-"workLocation.local" = "locales";
+"workLocation.help" = "Elegir dónde se ejecuta esta tarea";
+"workLocation.local" = "Local";
 "workLocation.localDetail" = "Ejecute esta tarea en esta computadora";
-"workLocation.localWorktree" = "Nuevo árbol de trabajo local";
+"workLocation.localWorktree" = "Nuevo worktree local";
 "workLocation.localWorktreeDetail" = "Utilice una caja aislada en esta computadora";
 "workLocation.remote" = "Otro ordenador";
 "workLocation.remoteDetail" = "Trabajar por SSH en un ordenador al que te conectas";
@@ -781,8 +755,8 @@
 "ssh.error.pathMissing" = "La carpeta %@ no existe en el ordenador remoto.";
 "ssh.error.configWriteFailed" = "No se pudo escribir %@ en ~/.ssh/config.";
 "tool.remoteUnavailable" = "%1$@ no está disponible mientras se trabaja en %2$@. Usa run_command con comandos de shell.";
-"git.branchHelp" = "Elige una rama de Git";
-"git.detached" = "CABEZA independiente";
+"git.branchHelp" = "Elegir una rama de Git";
+"git.detached" = "HEAD desacoplado";
 "git.search" = "Buscar sucursales";
 "git.branches" = "Sucursales";
 "git.noBranches" = "No se encontraron sucursales";
@@ -850,7 +824,6 @@
 "marketplace.install" = "Instalar";
 "marketplace.search" = "Complementos de búsqueda";
 "marketplace.update" = "Actualizar v%@ → v%@";
-"pet.avatarHint" = "Elige un avatar de mascota.";
 "router.customEndpointHint" = "Punto final API personalizado";
 "router.noKeyRequired" = "No se requiere clave. Conéctese a la ruta a través de este proveedor.";
 "settings.addProviderCustom" = "Agregue este proveedor a través de API personalizada.";
@@ -1084,9 +1057,6 @@
 "feedback.tag.negative_other" = "Otro";
 
 // Completed translations for keys added to the desktop catalog.
-"assistantMode.title" = "Modo de asistente";
-"assistantMode.coding" = "Programación";
-"assistantMode.chat" = "Chat";
 "tasks.close" = "Cerrar tareas";
 "tasks.back" = "Atrás";
 "tasks.new" = "Nueva tarea";
@@ -1127,3 +1097,213 @@
 "settings.compactTrigger" = "Compactar contexto automáticamente al llegar a";
 "settings.compactTrigger.hint" = "Porcentaje de la ventana de contexto de cada modelo. Un valor más alto conserva más tiempo la caché del prompt, porque la compactación la reescribe.";
 "conversation.translate" = "Traducir";
+
+
+// Completed translations for keys added to the desktop catalog.
+"tray.section.running" = "Chats en ejecución";
+"tray.section.waiting" = "Requiere atención";
+"tray.write" = "Escribir un mensaje";
+"tray.openUsage" = "Abrir pantalla de uso";
+"tray.noChats" = "No hay chats ahora";
+"tray.unread" = "Respuesta nueva";
+
+// Write-lease conflict copy.
+"conflict.policy.waitThenAsk" = "Esperar y después preguntar";
+"conflict.policy.waitThenAsk.detail" = "Espera en silencio al otro chat y solo pregunta si la espera se alarga.";
+"conflict.policy.ask" = "Pregúntame";
+"conflict.policy.ask.detail" = "Pregunta en cuanto dos chats quieren el mismo archivo.";
+"conflict.policy.waitOnly" = "Esperar siempre";
+"conflict.policy.waitOnly.detail" = "No pregunta: cada escritura espera al chat que sostiene el archivo.";
+"conflict.title" = "%@ está siendo escrito por otro chat";
+"conflict.stillBusy" = "Escritura retenida: %@ lo escribe aún otro chat.";
+"conflict.userSkipped" = "Escritura omitida: %@ quedó con el otro chat (%@), como pediste.";
+"conflict.stoppedHolder" = "Se detuvo el chat “%@”, como pediste, y esta escritura se realizó.";
+"conflict.stoppedOthers" = "Se detuvieron, como pediste, los otros chats de este proyecto y esta escritura se realizó.";
+"conflict.wholeProject" = "todo el proyecto (comando: %@)";
+"conflict.banner.title" = "Otro chat está escribiendo este archivo";
+"conflict.banner.body" = "%1$@ · lo retiene «%2$@» desde hace %3$d s";
+"conflict.banner.keepWaiting" = "Seguir esperando";
+"conflict.banner.stopHolder" = "Detener ese chat";
+"conflict.banner.stopAllOthers" = "Detener todos los demás chats";
+"conflict.banner.skip" = "Omitir esta escritura";
+"conflict.waiting" = "Esperando a “%@” al escribir: %@";
+"settings.workspaceConflictPolicy" = "Si otro chat está escribiendo el mismo archivo";
+"settings.conflictWaitSeconds" = "Esperar antes de preguntar";
+"settings.conflictWaitValue" = "%d segundos";
+
+
+"conversation.ranCommand" = "Ran 1 command";
+"conversation.ranCommands" = "Ran %d commands";
+"conversation.runningTools" = "Running tools…";
+"conversation.thinkingPhase" = "Thinking…";
+"conversation.tokensCount" = "%@ tokens";
+"usage.context.window" = "Ventana de contexto";
+"usage.planLimits" = "Límites de uso del plan";
+"ask.other" = "Other";
+"ask.next" = "Next";
+"ask.skipShort" = "Skip";
+"composer.queue.one" = "1 message queued";
+"composer.queue.many" = "%d messages queued";
+"composer.queue.edit" = "Edit";
+"composer.queue.editBlocked" = "Clear the message box to edit";
+"composer.queue.remove" = "Remove";
+"git.createPR" = "Crear PR";
+"git.hideBar" = "Ocultar";
+"composer.queue.next" = "Next: %@";
+
+// Composer, git bar and usage popover.
+"usage.context.tooltip" = "Uso de contexto y tokens";
+"usage.context.conversation" = "Mensajes de la conversación";
+"usage.context.toolDefinitions" = "Definiciones de herramientas";
+"usage.context.mcpDefinitions" = "Definiciones de herramientas MCP";
+"usage.context.systemPrompt" = "Instrucciones del sistema";
+"usage.context.cacheHit" = "Aciertos de caché de prompt";
+"usage.context.notReported" = "No informado por el proveedor";
+"usage.context.cacheWrite" = "%@ tokens escritos en caché";
+
+// Local AI runtime and custom endpoint tuning.
+"custom.modelOptional" = "Nombre del modelo (opcional)";
+"custom.contextOptional" = "Ventana de contexto en tokens (opcional)";
+"custom.contextHint" = "Deja ambos vacíos para leerlos del servidor. Indica el contexto si el servidor no lo informa (Ollama: igual que OLLAMA_CONTEXT_LENGTH).";
+"custom.contextInvalid" = "La ventana de contexto debe ser un número positivo.";
+"custom.detected" = "En ejecución en este equipo";
+"custom.noModelAvailable" = "%@ no lista modelos. Inicia su servidor o indica un nombre de modelo para el endpoint.";
+"local.extraArgs" = "Argumentos adicionales de llama-server";
+"local.mlxExtraArgs" = "Argumentos adicionales del servidor mlx_lm";
+"local.gpuLayers" = "Capas en GPU (auto, all o un número)";
+"local.hardware" = "Hardware";
+"local.hardwareGPU" = "%@ · %@ de memoria GPU · %@ de RAM";
+"local.importGGUF" = "Añadir un archivo GGUF…";
+"local.installMLX" = "Instalar MLX";
+"local.installingMLX" = "Instalando MLX (Python + mlx-lm)…";
+"local.kvCache" = "Tipo de caché KV";
+"local.servingContext" = "%@ · %d tokens";
+"local.tooLarge" = "Demasiado grande";
+"local.tuning" = "Rendimiento";
+"local.tuningHint" = "Vacío o auto deja que el runtime ajuste el modelo a la memoria de tu GPU. Los cambios se aplican la próxima vez que se inicie un modelo.";
+"local.contextSize" = "Tamaño de contexto (tokens)";
+"local.threads" = "Hilos de CPU";
+"local.batchSize" = "Tamaño de lote";
+"local.forget" = "Quitar de la lista";
+"localModel.needsMemory" = "Necesita unos %d GB de memoria GPU o RAM.";
+"localRuntime.helperFailed" = "%@ falló (código de salida %d)";
+"localRuntime.mlxUnsupported" = "MLX requiere un Mac con Apple Silicon.";
+"local.flashAttention" = "Flash attention";
+"local.hardwareMemory" = "%@ RAM";
+
+// Translations completed for keys that had no localized text.
+"conversation.fullToolOutput" = "Salida completa de la herramienta";
+"sidebar.showSidebar" = "Mostrar barra lateral";
+"sidebar.hideSidebar" = "Ocultar barra lateral";
+"navigation.back" = "Atrás";
+"navigation.forward" = "Adelante";
+"settings.autoApprovePlans" = "Aprobar planes automáticamente";
+"settings.autoApprovePlans.hint" = "Si está activado, el plan generado se aplica sin esperar una aprobación de plan aparte. Las aprobaciones a nivel de herramienta siguen aplicándose.";
+"media.fallbackUsed" = "El proveedor seleccionado no pudo generar esta imagen. Se generó mediante una solicitud de respaldo única a través de %@/%@; el proveedor y el modelo de la conversación principal no cambiaron, así que su caché de prompts sigue intacta.";
+"media.imageUnsupportedWithFallbackHint" = "No puedo generar esta imagen con %@. Configura una API o un proveedor de imágenes como respaldo. Cambiar el modelo principal del chat solo para generar imágenes puede romper la caché de prompts del proveedor.";
+"conversation.generationResumed" = "Mensaje reanudado";
+"conversation.cancelPlan" = "Cancelar plan";
+"conversation.cancelPlanHelp" = "Cancelar este plan y liberar los mensajes en cola";
+"conversation.thinking" = "Proceso de razonamiento";
+"usage.manageResets" = "Gestionar restablecimientos";
+"usage.useReset" = "Usar restablecimiento";
+"usage.resetTitle" = "¿Usar un restablecimiento de límite de Claude?";
+"usage.openClaude" = "Continuar en Claude";
+"usage.resetConfirmation" = "Se abrirá la página de uso de Claude. Inicia sesión en %@ y revisa el restablecimiento ofrecido a esa cuenta. Para usarlo, haz clic en Restablecer gratis y confirma en Claude. Una vez usado, un restablecimiento no se puede deshacer. Los límites se actualizarán cuando vuelvas a HerNess.";
+"usage.resetOpenFailed" = "No se pudo abrir Claude. Comprueba que la cuenta siga conectada e inténtalo de nuevo.";
+"conversation.review" = "Revisar";
+"dock.noWorkspace" = "Primero elige una carpeta de trabajo.";
+"dock.branch" = "Rama";
+"dock.refresh" = "Actualizar";
+"dock.commit" = "Commit";
+"dock.push" = "Push";
+"dock.fetch" = "Fetch";
+"dock.commitOrPush" = "Commit o push";
+"dock.commitMessage" = "Mensaje del commit";
+"dock.noChanges" = "Sin cambios del agente.";
+"dock.whyRequest" = "Tu solicitud";
+"dock.whyAgent" = "Explicación del agente";
+"dock.notRepo" = "Esta carpeta no es un repositorio git.";
+"dock.filterFiles" = "Filtrar archivos…";
+"dock.openFile" = "Abrir archivo";
+"dock.selectFile" = "Selecciona un archivo del árbol del espacio de trabajo";
+"dock.binaryFile" = "Archivo binario o ilegible";
+"project.missing.title" = "No se encontró la carpeta del proyecto: %@";
+"project.missing.message" = "Es posible que la carpeta del proyecto en '%@' se haya movido o eliminado. Elige su nueva ubicación o elimina el proyecto.";
+"project.missing.locate" = "Buscar ubicación…";
+"project.missing.readOnly" = "La carpeta del proyecto no está disponible. Puedes ver las conversaciones anteriores; no se pueden crear conversaciones ni enviar mensajes hasta que elijas una nueva ubicación.";
+"queue.waitingForPlan" = "Esperando la aprobación del plan";
+"settings.closeToTray" = "Seguir en ejecución en la bandeja al cerrar la ventana";
+"settings.closeToTray.hint" = "Las ejecuciones, terminales y tareas programadas siguen activas mientras la ventana está oculta; el icono de la bandeja la recupera.";
+"tray.show" = "Abrir ventana";
+"context.overflowTitle" = "Esta conversación no cabe en el nuevo modelo";
+"context.overflowReason" = "%1$@ necesita unos %2$d tokens para continuar y solo hay %3$d libres en ese modelo.";
+"context.overflowByModel" = "El resumen lo escribirá %@, el modelo conectado más pequeño que aún puede leer la transcripción.";
+"context.overflowLocally" = "Ningún modelo conectado puede leer la transcripción, así que la conversación se acorta sin consultar a ningún modelo.";
+"context.overflowCompress" = "Comprimir y continuar";
+"context.overflowNotNow" = "Ahora no";
+"context.overflowDeclined" = "Envío detenido: la conversación no cabe en el nuevo modelo.";
+"usage.context.title" = "Uso";
+"usage.context.input" = "Entrada enviada";
+"usage.context.estimatedInput" = "Entrada estimada";
+"usage.context.output" = "Salida";
+"usage.context.latestRequest" = "Última solicitud · ventana de contexto";
+"usage.context.estimatedBreakdown" = "Desglose estimado de la entrada";
+"usage.context.estimateNote" = "Los totales de entrada/salida del proveedor se muestran cuando están disponibles. En caso contrario, los totales de entrada y las categorías de herramientas/MCP son estimaciones locales.";
+"usage.context.tokens" = "tokens";
+"usage.context.toolCalls" = "Llamadas a herramientas";
+"usage.context.mcpCalls" = "Llamadas MCP";
+"usage.context.toolResults" = "Resultados de herramientas";
+"usage.context.mcpResults" = "Resultados MCP";
+"plan.proposed" = "Claude propuso un plan";
+"plan.reject" = "Rechazar";
+"plan.revise" = "Revisar…";
+"plan.accept" = "Aceptar";
+"plan.acceptAuto" = "Aceptar y modo automático";
+"plan.open" = "Abrir plan";
+"plan.empty" = "Aún no hay plan";
+"dock.expand" = "Expandir";
+"dock.collapse" = "Contraer";
+"usage.context.cacheReuse" = "Reutilización de caché en este chat";
+"usage.context.cacheFreshInput" = "New / outside-breakpoint input: %@ tokens";
+"usage.context.cacheCoverage" = "Cobertura de medición: %@ · %@ / %@ solicitudes";
+"usage.context.cacheLatency" = "Latencia media de solicitud: %@ ms";
+"usage.context.cacheLoss" = "Mayor pérdida de caché: %@ · %@ tokens";
+"tray.back" = "Chats";
+
+"composer.cacheExpired.explanation" = "Ha pasado la duración estimada de la caché. La caché de prompts es un estado temporal de procesamiento del proveedor; tu historial de chat sigue guardado. Continuar con todo el historial puede hacer que esos tokens vuelvan a contar como entrada nueva. Hacen falta los datos de uso de la siguiente solicitud para confirmar si el proveedor aún tenía un acierto de caché.";
+"composer.accountSwitched.notice" = "Este chat ha pasado a otra cuenta con el mismo modelo. Allí la caché empieza desde cero; continuar puede consumir más tokens y costar más.";
+"composer.contextFull.notice" = "La ventana de contexto está casi llena; continuar puede consumir más tokens y costar más. Inicia un chat nuevo con un resumen breve.";
+"composer.cacheExpired.infoTitle" = "¿Por qué veo esto?";
+"composer.cacheExpired.notice" = "Es posible que la caché haya caducado; continuar puede consumir más tokens y costar más. Inicia un chat nuevo con un resumen breve.";
+"feedback.tag.apply_elsewhere" = "Apply it elsewhere";
+"feedback.tag.broke_existing_feature" = "Broke an existing feature";
+"feedback.tag.did_not_follow_project_style" = "Didn't follow project style";
+"feedback.tag.ignored_project_architecture" = "Ignored project architecture";
+"feedback.tag.keep_project_style" = "Keep the project style";
+"feedback.tag.reuse_architecture" = "Reuse this architecture";
+"feedback.tag.reuse_token_pattern" = "Reuse this token pattern";
+"feedback.tag.wrong_theme_or_token" = "Wrong theme or token";
+
+// Completed translations for keys added to the desktop catalog.
+"conversation.filesChangedCount" = "%d archivos modificados";
+"conversation.filesLineSummary" = "+%d −%d";
+"conversation.lineCountsUnavailable" = "Recuento de líneas no disponible";
+"conversation.filesMore" = "Mostrar %d archivos más";
+"conversation.filesLess" = "Mostrar menos archivos";
+"conversation.undoChanges" = "Deshacer";
+"conversation.viewChanges" = "Ver cambios";
+"conversation.filesReverted" = "Se deshicieron los cambios en los archivos.";
+
+// Completed translations for keys added to the desktop catalog.
+"composer.modelSwitched.notice" = "El modelo ha cambiado. La caché no se traslada al nuevo modelo; se vuelve a procesar todo el historial, lo que puede consumir más tokens y costar más.";
+
+"archive.title" = "Conversaciones archivadas";
+"archive.empty" = "No hay conversaciones archivadas.";
+
+"conversation.plan" = "Planificar";
+"conversation.system" = "Sistema";
+
+"archive.confirmDelete" = "¿Eliminar esta conversación de forma permanente?";
+"archive.deletePermanently" = "Eliminar permanentemente";
+"conversation.processedTokensCount" = "%@ tokens";

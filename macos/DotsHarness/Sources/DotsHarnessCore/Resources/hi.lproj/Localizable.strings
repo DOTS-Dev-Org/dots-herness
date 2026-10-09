@@ -80,7 +80,6 @@
 "settings.title" = "सेटिंग्स";
 "settings.backToChats" = "चैट पर वापस जाएँ";
 "settings.tab.general" = "सामान्य";
-"settings.tab.pet" = "पालतू";
 "settings.tab.providers" = "प्रदाता";
 "settings.tab.custom" = "कस्टम एपीआई";
 "settings.tab.local" = "स्थानीय मॉडल";
@@ -306,22 +305,22 @@
 "composer.add" = "जोड़ें";
 "composer.stopListening" = "सुनना बंद करें और टेक्स्ट को ड्राफ्ट में जोड़ें";
 "composer.keyboardHelp" = "एंटर करें: भेजें · Shift+Enter: नई लाइन · ⌘/Ctrl+Enter: स्टीयर करें";
-"composer.followUp.hint" = "फ़ॉलो-अप संदेश का सुझाव स्वीकार करने के लिए Tab दबाएँ";
+"composer.followUp.hint" = "फ़ॉलो-अप संदेश सुझाव स्वीकार करने के लिए Tab दबाएं";
 "composer.selectModel" = "मॉडल चुनें";
 "composer.installedSkill" = "स्थापित कौशल";
 "composer.settings" = "सेटिंग्स";
 "composer.skills" = "कौशल";
 "composer.personal" = "निजी";
-"composer.projectPickerHelp" = "इस चैट के लिए प्रोजेक्ट चुनें";
+"composer.projectPickerHelp" = "इस बातचीत के लिए प्रोजेक्ट चुनें";
 "composer.projectPickerTitle" = "प्रोजेक्ट";
 "composer.chooseProject" = "प्रोजेक्ट चुनें";
 "composer.noProject" = "कोई प्रोजेक्ट चयनित नहीं";
 "composer.dontWorkInProject" = "किसी प्रोजेक्ट में काम न करें";
 "workLocation.title" = "में काम करें";
-"workLocation.help" = "चुनें कि यह कार्य कहां चलता है";
-"workLocation.local" = "स्थानीय";
+"workLocation.help" = "चुनें कि यह कार्य कहाँ चले";
+"workLocation.local" = "लोकल";
 "workLocation.localDetail" = "इस कार्य को इस कंप्यूटर पर चलाएँ";
-"workLocation.localWorktree" = "नया स्थानीय वर्कट्री";
+"workLocation.localWorktree" = "नया लोकल वर्कट्री";
 "workLocation.localWorktreeDetail" = "इस कंप्यूटर पर एक पृथक चेकआउट का उपयोग करें";
 "workLocation.remote" = "दूसरा कंप्यूटर";
 "workLocation.remoteDetail" = "SSH से जुड़े किसी कंप्यूटर पर काम करें";
@@ -377,8 +376,8 @@
 "ssh.error.pathMissing" = "दूरस्थ कंप्यूटर पर फ़ोल्डर %@ नहीं है।";
 "ssh.error.configWriteFailed" = "%@ को ~/.ssh/config में नहीं लिखा जा सका।";
 "tool.remoteUnavailable" = "%2$@ पर काम करते समय %1$@ उपलब्ध नहीं है। इसके बदले run_command से शेल कमांड चलाएँ।";
-"git.branchHelp" = "एक Git शाखा चुनें";
-"git.detached" = "अलग सिर";
+"git.branchHelp" = "Git ब्रांच चुनें";
+"git.detached" = "डिटैच्ड HEAD";
 "git.search" = "शाखाएँ खोजें";
 "git.branches" = "शाखाएँ";
 "git.noBranches" = "कोई शाखा नहीं मिली";
@@ -413,8 +412,6 @@
 "slash.model" = "मॉडल";
 "slash.plan" = "योजना मोड";
 "slash.planDetail" = "योजना मोड चालू करें";
-"slash.mascot" = "पालतू";
-"slash.mascotDetail" = "पालतू जानवर को जगाओ या छिपाओ";
 "slash.pluginCreator" = "प्लगइन क्रिएटर";
 "slash.pluginCreatorDetail" = "नया प्लगइन बनाएँ";
 "pluginCreator.template" = "टेम्पलेट";
@@ -501,7 +498,6 @@
 "sidebar.hide" = "छिपाओ";
 "sidebar.show" = "दिखाओ";
 "sidebar.selectProject" = "प्रोजेक्ट चुनें";
-"sidebar.continueWithoutProject" = "किसी प्रोजेक्ट के बिना जारी रखें";
 "sidebar.projectOptions" = "प्रोजेक्ट विकल्प";
 "sidebar.editProject" = "प्रोजेक्ट संपादित करें";
 "sidebar.addProject" = "प्रोजेक्ट जोड़ें";
@@ -533,28 +529,6 @@
 "sidebar.accountOptions" = "खाता विकल्प";
 "sidebar.accountUsage" = "डॉट्स खाता और उपयोग";
 
-"pet.position.bottomTrailing" = "नीचे दाईं ओर";
-"pet.position.bottomLeading" = "नीचे बाएँ";
-"pet.position.topTrailing" = "शीर्ष दाईं ओर";
-"pet.position.topLeading" = "ऊपर बाएँ";
-"pet.settings" = "पालतू सेटिंग्स";
-"pet.hide" = "पालतू छिपाओ";
-"pet.dragHint" = "डॉट्स पेट · हिलने के लिए पकड़ें";
-"pet.stopAndSend" = "सुनना बंद करें और चयनित चैट पर भेजें";
-"pet.micOpening" = "माइक्रोफ़ोन खुल रहा है…";
-"pet.listening" = "सुन रहा हूँ...";
-"pet.transcribing" = "स्थानीय ध्वनि मॉडल प्रतिलेखन कर रहा है...";
-"pet.sending" = "चयनित चैट पर भेजा जा रहा है...";
-"pet.visibility" = "पालतू पशु दृश्यता";
-"pet.show" = "पालतू दिखाओ";
-"pet.visibilityHint" = "यह विकल्प सक्षम होने पर ही पालतू जानवर स्क्रीन पर तैरता है। यह पहले लॉन्च पर बंद है।";
-"pet.appearance" = "दिखावट";
-"pet.position" = "पद";
-"pet.size" = "आकार";
-"pet.sizeValue" = "%d पीएक्स";
-"pet.avatar" = "अवतार";
-"pet.preview" = "पूर्वावलोकन";
-"pet.title" = "पालतू";
 
 "usage.title" = "उपयोग";
 "usage.accountSummary" = "इस अवधि का डॉट्स याज़िलिम खाता सारांश";
@@ -870,7 +844,6 @@
 "marketplace.install" = "स्थापित करें";
 "marketplace.search" = "प्लगइन्स खोजें";
 "marketplace.update" = "अद्यतन v%@ → v%@";
-"pet.avatarHint" = "एक पालतू अवतार चुनें.";
 "router.customEndpointHint" = "कस्टम एपीआई समापन बिंदु";
 "router.noKeyRequired" = "किसी कुंजी की आवश्यकता नहीं. इस प्रदाता के माध्यम से रूट से कनेक्ट करें।";
 "settings.addProviderCustom" = "इस प्रदाता को कस्टम एपीआई के माध्यम से जोड़ें।";
@@ -1104,9 +1077,6 @@
 "feedback.tag.negative_other" = "अन्य";
 
 // Completed translations for keys added to the desktop catalog.
-"assistantMode.title" = "सहायक मोड";
-"assistantMode.coding" = "कोडिंग";
-"assistantMode.chat" = "चैट";
 "tasks.close" = "टास्क बंद करें";
 "tasks.back" = "वापस";
 "tasks.new" = "नया टास्क";
@@ -1147,3 +1117,213 @@
 "settings.compactTrigger" = "संदर्भ स्वतः संक्षिप्त करने की सीमा";
 "settings.compactTrigger.hint" = "प्रत्येक मॉडल की संदर्भ विंडो का अनुपात। संक्षेपण प्रॉम्प्ट कैश को दोबारा लिखता है, इसलिए ऊँचा मान कैश को अधिक समय तक बनाए रखता है।";
 "conversation.translate" = "अनुवाद करें";
+
+
+// Completed translations for keys added to the desktop catalog.
+"tray.section.running" = "चल रहे चैट";
+"tray.section.waiting" = "ध्यान देने की आवश्यकता";
+"tray.write" = "संदेश लिखें";
+"tray.openUsage" = "उपयोग स्क्रीन खोलें";
+"tray.noChats" = "अभी कोई चैट नहीं";
+"tray.unread" = "नया उत्तर";
+
+// Write-lease conflict copy.
+"conflict.policy.waitThenAsk" = "प्रतीक्षा करें, फिर पूछें";
+"conflict.policy.waitThenAsk.detail" = "दूसरे चैट का चुपचाप इंतज़ार करता है; देर होने पर ही पूछता है।";
+"conflict.policy.ask" = "मुझसे पूछें";
+"conflict.policy.ask.detail" = "जैसे ही दो चैट एक ही फ़ाइल चाहें, पूछता है।";
+"conflict.policy.waitOnly" = "हमेशा प्रतीक्षा करें";
+"conflict.policy.waitOnly.detail" = "कोई सवाल नहीं: हर लेखन उस चैट का इंतज़ार करता है जो फ़ाइल रखता है।";
+"conflict.title" = "दूसरा चैट %@ लिख रहा है";
+"conflict.stillBusy" = "राइटिंग रकी: %@ अभी दूसरा चैट लिख रहा है।";
+"conflict.userSkipped" = "राइटिंग छोड़ा: %@ आपके कहने पर दूसरे चैट (%@) में रहा।";
+"conflict.stoppedHolder" = "आपके कहने पर चैट “%@” रोका गया और यह राइटिंग हुई।";
+"conflict.stoppedOthers" = "आपके कहने पर इस प्रोजेक्ट के अन्य चैट रोके गए और यह राइटिंग हुई।";
+"conflict.wholeProject" = "पूरा प्रोजेक्ट (कमांड: %@)";
+"conflict.banner.title" = "दूसरा चैट यह फ़ाइल लिख रहा है";
+"conflict.banner.body" = "%1$@ · “%2$@” ने %3$d सेकंड से रखा है";
+"conflict.banner.keepWaiting" = "प्रतीक्षा जारी रखें";
+"conflict.banner.stopHolder" = "उस चैट को रोकें";
+"conflict.banner.stopAllOthers" = "अन्य सभी चैट रोकें";
+"conflict.banner.skip" = "यह राइटिंग छोड़ें";
+"conflict.waiting" = "“%@” के लिखने की प्रतीक्षा: %@";
+"settings.workspaceConflictPolicy" = "यदि दूसरा चैट वही फ़ाइल लिख रहा हो";
+"settings.conflictWaitSeconds" = "पूछने से पहले प्रतीक्षा";
+"settings.conflictWaitValue" = "%d सेकंड";
+
+
+"conversation.ranCommand" = "Ran 1 command";
+"conversation.ranCommands" = "Ran %d commands";
+"conversation.runningTools" = "Running tools…";
+"conversation.thinkingPhase" = "Thinking…";
+"conversation.tokensCount" = "%@ tokens";
+"usage.context.window" = "संदर्भ विंडो";
+"usage.planLimits" = "प्लान उपयोग सीमाएँ";
+"ask.other" = "Other";
+"ask.next" = "Next";
+"ask.skipShort" = "Skip";
+"composer.queue.one" = "1 message queued";
+"composer.queue.many" = "%d messages queued";
+"composer.queue.edit" = "Edit";
+"composer.queue.editBlocked" = "Clear the message box to edit";
+"composer.queue.remove" = "Remove";
+"git.createPR" = "PR बनाएँ";
+"git.hideBar" = "छिपाएँ";
+"composer.queue.next" = "Next: %@";
+
+// Composer, git bar and usage popover.
+"usage.context.tooltip" = "संदर्भ और टोकन उपयोग";
+"usage.context.conversation" = "चैट संदेश";
+"usage.context.toolDefinitions" = "टूल परिभाषाएँ";
+"usage.context.mcpDefinitions" = "MCP टूल परिभाषाएँ";
+"usage.context.systemPrompt" = "सिस्टम निर्देश";
+"usage.context.cacheHit" = "प्रॉम्प्ट कैश हिट";
+"usage.context.notReported" = "प्रदाता ने रिपोर्ट नहीं किया";
+"usage.context.cacheWrite" = "कैश में %@ टोकन लिखे गए";
+
+// Local AI runtime and custom endpoint tuning.
+"custom.modelOptional" = "मॉडल का नाम (वैकल्पिक)";
+"custom.contextOptional" = "टोकन में कॉन्टेक्स्ट विंडो (वैकल्पिक)";
+"custom.contextHint" = "सर्वर से पढ़ने के लिए दोनों खाली छोड़ें। सर्वर न बताए तो कॉन्टेक्स्ट दें (Ollama: OLLAMA_CONTEXT_LENGTH के बराबर)।";
+"custom.contextInvalid" = "कॉन्टेक्स्ट विंडो एक धनात्मक संख्या होनी चाहिए।";
+"custom.detected" = "इस कंप्यूटर पर चल रहे हैं";
+"custom.noModelAvailable" = "%@ कोई मॉडल नहीं दिखाता। इसका सर्वर शुरू करें या एंडपॉइंट के लिए मॉडल का नाम दें।";
+"local.extraArgs" = "अतिरिक्त llama-server आर्ग्युमेंट";
+"local.mlxExtraArgs" = "अतिरिक्त mlx_lm सर्वर आर्ग्युमेंट";
+"local.gpuLayers" = "GPU लेयर (auto, all या कोई संख्या)";
+"local.hardware" = "हार्डवेयर";
+"local.hardwareGPU" = "%@ · %@ GPU मेमोरी · %@ RAM";
+"local.importGGUF" = "GGUF फ़ाइल जोड़ें…";
+"local.installMLX" = "MLX इंस्टॉल करें";
+"local.installingMLX" = "MLX इंस्टॉल हो रहा है (Python + mlx-lm)…";
+"local.kvCache" = "KV कैश प्रकार";
+"local.servingContext" = "%@ · %d टोकन";
+"local.tooLarge" = "बहुत बड़ा";
+"local.tuning" = "परफ़ॉर्मेंस";
+"local.tuningHint" = "खाली या auto रखने पर रनटाइम मॉडल को आपकी GPU मेमोरी के अनुसार ढालता है। बदलाव अगली बार मॉडल शुरू होने पर लागू होते हैं।";
+"local.contextSize" = "कॉन्टेक्स्ट आकार (टोकन)";
+"local.threads" = "CPU थ्रेड";
+"local.batchSize" = "बैच आकार";
+"local.forget" = "सूची से हटाएँ";
+"localModel.needsMemory" = "लगभग %d GB GPU मेमोरी या RAM चाहिए।";
+"localRuntime.helperFailed" = "%@ विफल हुआ (एग्ज़िट कोड %d)";
+"localRuntime.mlxUnsupported" = "MLX के लिए Apple Silicon Mac चाहिए।";
+"local.flashAttention" = "Flash attention";
+"local.hardwareMemory" = "%@ RAM";
+
+// Translations completed for keys that had no localized text.
+"conversation.fullToolOutput" = "पूरा टूल आउटपुट";
+"sidebar.showSidebar" = "साइडबार दिखाएँ";
+"sidebar.hideSidebar" = "साइडबार छिपाएँ";
+"navigation.back" = "पीछे";
+"navigation.forward" = "आगे";
+"settings.autoApprovePlans" = "प्लान अपने-आप स्वीकृत करें";
+"settings.autoApprovePlans.hint" = "चालू होने पर, बना हुआ प्लान अलग प्लान स्वीकृति का इंतज़ार किए बिना लागू हो जाता है। टूल-स्तर की स्वीकृतियाँ फिर भी लागू रहती हैं।";
+"media.fallbackUsed" = "चुना गया प्रदाता यह इमेज नहीं बना सका। इसे %@/%@ के ज़रिए एक बार के फ़ॉलबैक अनुरोध से बनाया गया; मुख्य बातचीत का प्रदाता और मॉडल नहीं बदले, इसलिए उसका प्रॉम्प्ट कैश बरकरार है।";
+"media.imageUnsupportedWithFallbackHint" = "मैं %@ से यह इमेज नहीं बना सकता। फ़ॉलबैक के तौर पर कोई इमेज API या प्रदाता कॉन्फ़िगर करें। सिर्फ़ इमेज बनाने के लिए मुख्य चैट मॉडल बदलने से प्रदाता का प्रॉम्प्ट कैश टूट सकता है।";
+"conversation.generationResumed" = "संदेश फिर से शुरू हुआ";
+"conversation.cancelPlan" = "प्लान रद्द करें";
+"conversation.cancelPlanHelp" = "यह प्लान रद्द करें और कतार में लगे संदेश छोड़ें";
+"conversation.thinking" = "सोचने की प्रक्रिया";
+"usage.manageResets" = "रीसेट प्रबंधित करें";
+"usage.useReset" = "रीसेट इस्तेमाल करें";
+"usage.resetTitle" = "Claude लिमिट रीसेट इस्तेमाल करें?";
+"usage.openClaude" = "Claude में जारी रखें";
+"usage.resetConfirmation" = "Claude का उपयोग पेज खुलेगा। %@ में साइन इन करें और उस खाते को दिया गया रीसेट देखें। इस्तेमाल करने के लिए मुफ़्त में रीसेट करें पर क्लिक करें और Claude में पुष्टि करें। एक बार इस्तेमाल होने के बाद रीसेट वापस नहीं हो सकता। HerNess पर लौटने पर लिमिट ताज़ा हो जाएँगी।";
+"usage.resetOpenFailed" = "Claude नहीं खुल सका। जाँचें कि खाता अब भी जुड़ा है, फिर दोबारा कोशिश करें।";
+"conversation.review" = "समीक्षा";
+"dock.noWorkspace" = "पहले एक वर्कस्पेस फ़ोल्डर चुनें।";
+"dock.branch" = "ब्रांच";
+"dock.refresh" = "रीफ़्रेश";
+"dock.commit" = "Commit";
+"dock.push" = "Push";
+"dock.fetch" = "Fetch";
+"dock.commitOrPush" = "Commit या Push";
+"dock.commitMessage" = "Commit संदेश";
+"dock.noChanges" = "एजेंट ने कोई बदलाव नहीं किया।";
+"dock.whyRequest" = "आपका अनुरोध";
+"dock.whyAgent" = "एजेंट की व्याख्या";
+"dock.notRepo" = "यह फ़ोल्डर git रिपॉज़िटरी नहीं है।";
+"dock.filterFiles" = "फ़ाइलें फ़िल्टर करें…";
+"dock.openFile" = "फ़ाइल खोलें";
+"dock.selectFile" = "वर्कस्पेस ट्री से कोई फ़ाइल चुनें";
+"dock.binaryFile" = "बाइनरी या न पढ़ी जा सकने वाली फ़ाइल";
+"project.missing.title" = "प्रोजेक्ट फ़ोल्डर नहीं मिला: %@";
+"project.missing.message" = "'%@' पर मौजूद प्रोजेक्ट फ़ोल्डर स्थानांतरित या हटाया गया हो सकता है। उसका नया स्थान चुनें या प्रोजेक्ट हटाएँ।";
+"project.missing.locate" = "स्थान चुनें…";
+"project.missing.readOnly" = "प्रोजेक्ट फ़ोल्डर उपलब्ध नहीं है। आप पिछली बातचीत देख सकते हैं; नया स्थान चुनने तक नई बातचीत बनाना और संदेश भेजना बंद रहेगा।";
+"queue.waitingForPlan" = "प्लान स्वीकृति की प्रतीक्षा";
+"settings.closeToTray" = "विंडो बंद करने पर भी सिस्टम ट्रे में चलते रहें";
+"settings.closeToTray.hint" = "विंडो छिपी रहने पर भी रन, टर्मिनल और शेड्यूल किए कार्य चलते रहते हैं; ट्रे आइकन से वापस खुल जाते हैं।";
+"tray.show" = "विंडो खोलें";
+"context.overflowTitle" = "यह बातचीत नए मॉडल में नहीं समाएगी";
+"context.overflowReason" = "%1$@ को जारी रखने के लिए लगभग %2$d टोकन चाहिए, और उस मॉडल में सिर्फ़ %3$d खाली हैं।";
+"context.overflowByModel" = "सारांश %@ लिखेगा, जो सबसे छोटा जुड़ा हुआ मॉडल है जो अब भी ट्रांसक्रिप्ट पढ़ सकता है।";
+"context.overflowLocally" = "कोई भी जुड़ा हुआ मॉडल ट्रांसक्रिप्ट नहीं पढ़ सकता, इसलिए बातचीत किसी मॉडल से पूछे बिना छोटी की जाती है।";
+"context.overflowCompress" = "कंप्रेस करके जारी रखें";
+"context.overflowNotNow" = "अभी नहीं";
+"context.overflowDeclined" = "भेजना रुका: बातचीत नए मॉडल में नहीं समाती।";
+"usage.context.title" = "उपयोग";
+"usage.context.input" = "भेजा गया इनपुट";
+"usage.context.estimatedInput" = "अनुमानित इनपुट";
+"usage.context.output" = "आउटपुट";
+"usage.context.latestRequest" = "नवीनतम अनुरोध · कॉन्टेक्स्ट विंडो";
+"usage.context.estimatedBreakdown" = "अनुमानित इनपुट ब्योरा";
+"usage.context.estimateNote" = "प्रदाता के इनपुट/आउटपुट योग उपलब्ध होने पर दिखाए जाते हैं। अन्यथा इनपुट योग और टूल/MCP श्रेणियाँ स्थानीय अनुमान हैं।";
+"usage.context.tokens" = "टोकन";
+"usage.context.toolCalls" = "टूल कॉल";
+"usage.context.mcpCalls" = "MCP कॉल";
+"usage.context.toolResults" = "टूल परिणाम";
+"usage.context.mcpResults" = "MCP परिणाम";
+"plan.proposed" = "Claude ने एक प्लान सुझाया";
+"plan.reject" = "अस्वीकार करें";
+"plan.revise" = "संशोधित करें…";
+"plan.accept" = "स्वीकार करें";
+"plan.acceptAuto" = "स्वीकार करें और ऑटो मोड";
+"plan.open" = "प्लान खोलें";
+"plan.empty" = "अभी कोई प्लान नहीं";
+"dock.expand" = "फैलाएँ";
+"dock.collapse" = "समेटें";
+"usage.context.cacheReuse" = "इस चैट में कैश का पुनः उपयोग";
+"usage.context.cacheFreshInput" = "New / outside-breakpoint input: %@ tokens";
+"usage.context.cacheCoverage" = "मापन कवरेज: %@ · %@ / %@ अनुरोध";
+"usage.context.cacheLatency" = "औसत अनुरोध विलंबता: %@ ms";
+"usage.context.cacheLoss" = "सबसे बड़ी कैश हानि: %@ · %@ टोकन";
+"tray.back" = "चैट";
+
+"composer.cacheExpired.explanation" = "कैश की अनुमानित अवधि बीत चुकी है। प्रॉम्प्ट कैश प्रदाता की ओर की एक अस्थायी प्रोसेसिंग स्थिति है; आपका चैट इतिहास सुरक्षित रहता है। पूरे इतिहास के साथ जारी रखने पर वे टोकन फिर से नए इनपुट के रूप में गिने जा सकते हैं। प्रदाता के पास कैश अब भी था या नहीं, इसकी पुष्टि अगले अनुरोध के उपयोग डेटा से ही होती है।";
+"composer.accountSwitched.notice" = "यह चैट उसी मॉडल पर किसी दूसरे खाते में चली गई है। वहाँ कैश शून्य से शुरू होता है; जारी रखने पर अधिक टोकन खर्च हो सकते हैं और लागत बढ़ सकती है।";
+"composer.contextFull.notice" = "कॉन्टेक्स्ट विंडो लगभग भर चुकी है; जारी रखने पर अधिक टोकन खर्च हो सकते हैं और लागत बढ़ सकती है। संक्षिप्त सारांश के साथ नई चैट शुरू करें।";
+"composer.cacheExpired.infoTitle" = "मुझे यह क्यों दिख रहा है?";
+"composer.cacheExpired.notice" = "हो सकता है कि कैश की अवधि समाप्त हो गई हो; जारी रखने पर अधिक टोकन खर्च हो सकते हैं और लागत बढ़ सकती है। संक्षिप्त सारांश के साथ नई चैट शुरू करें।";
+"feedback.tag.apply_elsewhere" = "Apply it elsewhere";
+"feedback.tag.broke_existing_feature" = "Broke an existing feature";
+"feedback.tag.did_not_follow_project_style" = "Didn't follow project style";
+"feedback.tag.ignored_project_architecture" = "Ignored project architecture";
+"feedback.tag.keep_project_style" = "Keep the project style";
+"feedback.tag.reuse_architecture" = "Reuse this architecture";
+"feedback.tag.reuse_token_pattern" = "Reuse this token pattern";
+"feedback.tag.wrong_theme_or_token" = "Wrong theme or token";
+
+// Completed translations for keys added to the desktop catalog.
+"conversation.filesChangedCount" = "%d फ़ाइलें बदली गईं";
+"conversation.filesLineSummary" = "+%d −%d";
+"conversation.lineCountsUnavailable" = "पंक्तियों की संख्या उपलब्ध नहीं";
+"conversation.filesMore" = "%d और फ़ाइलें दिखाएँ";
+"conversation.filesLess" = "कम फ़ाइलें दिखाएँ";
+"conversation.undoChanges" = "पूर्ववत करें";
+"conversation.viewChanges" = "बदलाव देखें";
+"conversation.filesReverted" = "फ़ाइलों के बदलाव वापस कर दिए गए।";
+
+// Completed translations for keys added to the desktop catalog.
+"composer.modelSwitched.notice" = "मॉडल बदल गया है। कैश नए मॉडल में नहीं जाता; पूरा इतिहास फिर से प्रोसेस होता है, जिससे अधिक टोकन खर्च हो सकते हैं और लागत बढ़ सकती है।";
+
+"archive.title" = "संग्रहीत बातचीत";
+"archive.empty" = "कोई संग्रहीत बातचीत नहीं है।";
+
+"conversation.plan" = "योजना";
+"conversation.system" = "सिस्टम";
+
+"archive.confirmDelete" = "क्या इस बातचीत को स्थायी रूप से हटाना है?";
+"archive.deletePermanently" = "स्थायी रूप से हटाएँ";
+"conversation.processedTokensCount" = "%@ टोकन";

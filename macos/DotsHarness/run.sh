@@ -8,7 +8,7 @@ cd "$NATIVE_DIR"
 PROJECT_NAME="DotsHarness"
 PACKAGE_FILE="$NATIVE_DIR/Package.swift"
 PRODUCT="${PRODUCT:-$PROJECT_NAME}"
-CONFIGURATION="${CONFIGURATION:-Release}"
+CONFIGURATION="${CONFIGURATION:-Debug}"
 BUILD_PATH="${BUILD_PATH:-$NATIVE_DIR/.build}"
 ARCH="${ARCH:-${SWIFT_ARCH:-}}"
 BUILD_ONLY=false
@@ -29,7 +29,7 @@ Kullanim:
   ./run.sh -- --help
 
 Secenekler:
-  -c, --configuration NAME  Swift yapilandirmasi (varsayilan: Release).
+  -c, --configuration NAME  Swift yapilandirmasi (varsayilan: Debug; hizli artimli derleme).
       --product NAME        SPM urun adi (varsayilan: DotsHarness).
       --arch NAME           Hedef mimari (arm64 veya x86_64).
       --build-path PATH     SPM derleme klasoru (varsayilan: .build).
@@ -53,6 +53,27 @@ fail() {
 
 require_command() {
     command -v "$1" >/dev/null 2>&1 || fail "'$1' bulunamadi. Xcode Command Line Tools veya Swift toolchain kurulu olmali."
+}
+
+run_with_progress() {
+    local label="$1"
+    shift
+    local started_at=$SECONDS
+
+    "$@" &
+    local command_pid=$!
+    local next_report=30
+    while kill -0 "$command_pid" 2>/dev/null; do
+        sleep 1
+        if kill -0 "$command_pid" 2>/dev/null; then
+            local elapsed=$((SECONDS - started_at))
+            if (( elapsed >= next_report )); then
+                printf '%s devam ediyor (%s saniye).\n' "$label" "$elapsed"
+                next_report=$((next_report + 30))
+            fi
+        fi
+    done
+    wait "$command_pid"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -134,9 +155,9 @@ if [[ "$PACKAGE" == true ]]; then
     fi
 
     if ((${#EXTRA_ARGS[@]} > 0)); then
-        open -n "$APP_BUNDLE" --args "${EXTRA_ARGS[@]}" &
+        open -n "$APP_BUNDLE" --args "${EXTRA_ARGS[@]}"
     else
-        open -n "$APP_BUNDLE" &
+        open -n "$APP_BUNDLE"
     fi
     printf 'Hazir: %s\n' "$PRODUCT"
     exit 0
@@ -208,7 +229,7 @@ if [[ "$SWIFT_CONFIG" == "release" ]]; then
 fi
 
 printf 'Native Swift macOS uygulamasi derleniyor...\n'
-"${SWIFT_BUILD[@]}"
+run_with_progress 'Native Swift macOS derlemesi' "${SWIFT_BUILD[@]}"
 
 # WhisperVoice ana uygulamaya linklenmez (tembel dlopen); ayri urun.
 if [[ "$PRODUCT" == "DotsHarness" ]]; then
@@ -217,7 +238,7 @@ if [[ "$PRODUCT" == "DotsHarness" ]]; then
         [[ "${WHISPER_BUILD[$i]}" == "$PRODUCT" ]] && WHISPER_BUILD[$i]="WhisperVoice"
     done
     printf 'WhisperVoice yardimci dylib derleniyor...\n'
-    "${WHISPER_BUILD[@]}"
+    run_with_progress 'WhisperVoice derlemesi' "${WHISPER_BUILD[@]}"
 fi
 
 SHOW_BIN=("${SWIFT_BUILD[@]}" --show-bin-path)
@@ -337,7 +358,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
     <key>CFBundleShortVersionString</key>
     <string>0.1.0</string>
     <key>CFBundleVersion</key>
-    <string>0.1.0</string>
+    <string>1</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.developer-tools</string>
     <key>LSMinimumSystemVersion</key>
@@ -392,8 +413,8 @@ if [[ "$FOREGROUND" == "1" || "$FOREGROUND" == "true" || "$FOREGROUND" == "TRUE"
 fi
 
 if ((${#EXTRA_ARGS[@]} > 0)); then
-    open -n "$APP_BUNDLE" --args "${EXTRA_ARGS[@]}" &
+    open -n "$APP_BUNDLE" --args "${EXTRA_ARGS[@]}"
 else
-    open -n "$APP_BUNDLE" &
+    open -n "$APP_BUNDLE"
 fi
 printf 'Hazir: %s\n' "$PRODUCT"

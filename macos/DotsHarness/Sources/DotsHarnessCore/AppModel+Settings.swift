@@ -11,29 +11,53 @@ import HarnessPluginKit
 @MainActor
 extension AppModel {
     public func setModel(_ value: String) {
-        router.selectedModelID = value
-        endpoint.modelID = value
+        // The router decides whether the id is one a catalog knows; reading back
+        // what it accepted keeps the endpoint mirror and the setting in step.
+        let selected = router.select(modelID: value)
+        endpoint.modelID = selected
         endpoint.updateStatus()
-        host.settings.set("agent.model.\(activeArea.rawValue)", value.isEmpty ? .null : .string(value))
-        if activeArea == .coding {
-            host.settings.set("agent.model", value.isEmpty ? .null : .string(value))
+        let storedModel: JSONValue = selected.isEmpty ? .null : .string(selected)
+        host.settings.set("agent.model", storedModel)
+        // Keep the old coding-scoped key in sync during the settings migration.
+        host.settings.set("agent.model.coding", storedModel)
+        if let conversationID = bridge.selectedID {
+            bridge.setConversationModelPreference(selected.isEmpty ? nil : selected, for: conversationID)
         }
+        router.persistModelCatalog()
         // Levels are model-specific, so a level the new model rejects must not
-        // carry over — it would fail the next request with HTTP 400.
-        if !router.efforts(for: value).contains(router.selectedEffort) { setEffort("") }
-        if router.fastMode, !router.supportsFast(value) { setFast(false) }
+        // carry over — it would fail the next request with HTTP 400. Auto has no
+        // single model, so retain the user's effort preference for each route.
+        if !router.isAutoSelected, !router.efforts(for: selected).contains(router.selectedEffort) { setEffort("") }
+        if router.fastMode, !router.supportsFast(selected) { setFast(false) }
         persistSettings()
         Task { await bridge.refreshConnection() }
     }
 
-    /// Reasoning effort for the selected model. Empty means the provider default.
+    /// Switching chats restores that chat's explicit model, or the latest app
+    /// default when the chat has never had its own model choice.
+    func applyConversationModelSelection(_ conversationID: String?) {
+        let conversationPreference = conversationID.flatMap { id in
+            bridge.conversations.first(where: { $0.id == id })?.modelPreferenceID
+        }
+        let appDefault = host.settings.get("agent.model")?.string
+            ?? host.settings.get("agent.model.coding")?.string
+            ?? ""
+        let selected = router.select(modelID: conversationPreference ?? appDefault)
+        endpoint.modelID = selected
+        endpoint.updateStatus()
+        if router.pendingModelID != nil {
+            Task { await router.refreshModelsIfNeeded() }
+        }
+        Task { await bridge.refreshConnection() }
+    }
+
+    /// Reasoning effort preference. Empty means automatic/default effort selection.
     public func setEffort(_ value: String) {
         router.selectedEffort = value
         objectWillChange.send() // router is a nested ObservableObject; views watching only AppModel must refresh
-        host.settings.set("agent.effort.\(activeArea.rawValue)", value.isEmpty ? .null : .string(value))
-        if activeArea == .coding {
-            host.settings.set("agent.effort", value.isEmpty ? .null : .string(value))
-        }
+        let storedEffort: JSONValue = value.isEmpty ? .null : .string(value)
+        host.settings.set("agent.effort", storedEffort)
+        host.settings.set("agent.effort.coding", storedEffort)
         persistSettings()
     }
 
@@ -41,7 +65,43 @@ extension AppModel {
     public func setFast(_ value: Bool) {
         router.fastMode = value
         objectWillChange.send()
-        host.settings.set("agent.fast.\(activeArea.rawValue)", value ? .bool(true) : .null)
+        host.settings.set("agent.fast", value ? .bool(true) : .null)
+        persistSettings()
+    }
+
+    /// Response economy is persisted as one project-agent preference. Fast is
+    /// intentionally retained as a preference, but the transport ignores its
+    /// priority tier while Economy is active.
+    public func setUsageMode(_ value: AgentUsageMode) {
+        router.usageMode = value
+        objectWillChange.send()
+        host.settings.set("agent.usageMode", .string(value.rawValue))
+        persistSettings()
+    }
+
+    /// Response prose is a user setting, not a hidden skill or an inferred
+    /// rewrite of the current prompt. The next request receives this choice as
+    /// a dynamic style section and output-budget input.
+    public func setResponseStylePreference(_ value: AgentResponseStylePreference) {
+        router.responseStylePreference = value
+        objectWillChange.send()
+        host.settings.set(AgentResponseStylePreference.settingsKey, .string(value.rawValue))
+        persistSettings()
+    }
+
+    /// Empty returns the exploration subagent to the automatic choice.
+    public func setExplorationModel(_ id: String) {
+        router.explorationModelID = id
+        objectWillChange.send()
+        host.settings.set(RouterController.explorationModelKey, .string(id))
+        persistSettings()
+    }
+
+    /// An explicit choice outlives the usage mode's default in both directions.
+    public func setSubagentsEnabled(_ value: Bool) {
+        router.subagentsPreference = value
+        objectWillChange.send()
+        host.settings.set(RouterController.subagentsKey, .bool(value))
         persistSettings()
     }
 
@@ -79,8 +139,7 @@ extension AppModel {
 
     public func setPermissionMode(_ value: AgentPermissionMode) {
         permissionMode = value
-        chatBridge.setPermissionMode(value)
-        codingBridge.setPermissionMode(value)
+        bridge.setPermissionMode(value)
         host.settings.set("agent.permissionMode", .string(value.rawValue))
         persistSettings()
     }
@@ -88,13 +147,19 @@ extension AppModel {
     public func setBrowserBackend(_ value: BrowserBackend?) {
         let selected = value == .unknown ? nil : value
         browserBackend = selected
-        chatBridge.setBrowserBackend(selected)
-        codingBridge.setBrowserBackend(selected)
+        bridge.setBrowserBackend(selected)
         if let selected {
             host.settings.set("agent.browserBackend", .string(selected.rawValue))
         } else {
             host.settings.set("agent.browserBackend", .null)
         }
+        persistSettings()
+    }
+
+    public func setComputerUseEnabled(_ value: Bool) {
+        isComputerUseEnabled = value
+        bridge.setComputerUseEnabled(value)
+        host.settings.set("agent.computerUseEnabled", .bool(value))
         persistSettings()
     }
 
@@ -133,23 +198,49 @@ extension AppModel {
 
     public func setSelfVerification(_ value: Bool) {
         selfVerification = value
-        chatBridge.setSelfVerification(value)
-        codingBridge.setSelfVerification(value)
+        bridge.setSelfVerification(value)
         host.settings.set("agent.selfVerification", .bool(value))
         persistSettings()
     }
 
     public func setSeedProjectRules(_ value: Bool) {
         seedProjectRules = value
-        chatBridge.setSeedProjectRules(value)
-        codingBridge.setSeedProjectRules(value)
+        bridge.setSeedProjectRules(value)
         host.settings.set("agent.seedProjectRules", .bool(value))
+        persistSettings()
+    }
+
+    public func setAutoApprovePlans(_ value: Bool) {
+        autoApprovePlans = value
+        bridge.setAutoApprovePlans(value)
+        host.settings.set("agent.autoApprovePlans", .bool(value))
+        persistSettings()
+    }
+
+    public func setWorkspaceConflictPolicy(_ value: WorkspaceConflictPolicy) {
+        workspaceConflictPolicy = value
+        bridge.setWorkspaceConflictPolicy(value)
+        host.settings.set("agent.workspaceConflictPolicy", .string(value.rawValue))
+        persistSettings()
+    }
+
+    public func setConflictWaitSeconds(_ value: Int) {
+        let seconds = max(0, value)
+        conflictWaitSeconds = seconds
+        bridge.setConflictWaitSeconds(seconds)
+        host.settings.set("agent.conflictWaitSeconds", .number(Double(seconds)))
         persistSettings()
     }
 
     public func setConfirmBeforeExit(_ value: Bool) {
         confirmBeforeExit = value
         host.settings.set("ui.confirmBeforeExit", .bool(value))
+        persistSettings()
+    }
+
+    public func setCloseToTray(_ value: Bool) {
+        closeToTray = value
+        host.settings.set("ui.closeToTray", .bool(value))
         persistSettings()
     }
 
@@ -203,18 +294,20 @@ extension AppModel {
     /// `origin` remote.
     public func forgeURL(for path: String) -> URL? {
         guard !path.isEmpty else { return nil }
-        let process = Process()
-        let output = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        process.arguments = ["-C", path, "config", "--get", "remote.origin.url"]
-        process.standardOutput = output
-        process.standardError = Pipe()
-        guard (try? process.run()) != nil else { return nil }
-        process.waitUntilExit()
-        guard process.terminationStatus == 0,
-              var remote = String(data: output.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines),
-              !remote.isEmpty else { return nil }
+        // Read .git/config directly: spawning a Process + waitUntilExit inside a
+        // SwiftUI body re-enters the run loop and crashes the app.
+        guard let config = try? String(contentsOfFile: path + "/.git/config", encoding: .utf8) else { return nil }
+        var inOrigin = false
+        var found: String?
+        for raw in config.split(whereSeparator: \.isNewline) {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("[") { inOrigin = line.replacingOccurrences(of: " ", with: "") == "[remote\"origin\"]" }
+            else if inOrigin, line.hasPrefix("url"), let eq = line.firstIndex(of: "=") {
+                found = line[line.index(after: eq)...].trimmingCharacters(in: .whitespaces)
+                break
+            }
+        }
+        guard var remote = found, !remote.isEmpty else { return nil }
 
         if remote.hasSuffix(".git") { remote = String(remote.dropLast(4)) }
 

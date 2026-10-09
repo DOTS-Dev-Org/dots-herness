@@ -11,23 +11,60 @@ public sealed class TerminalSession : IDisposable
 {
     private const int Sighup = 1;
     private const int Sigterm = 15;
+    private const int TranscriptLimit = 200_000;
+    private const int TranscriptTrimTo = 180_000;
+
+    // A shell at 4 KB per read can produce dozens of chunks a second. Repainting
+    // the transcript for each one re-lays out up to 200 KB of text, so change
+    // events are coalesced to this interval instead.
+    private const int RefreshIntervalMs = 50;
+
+    private enum EscapeState
+    {
+        None,
+        AfterEscape,
+        ControlSequence,
+        OperatingString,
+        OperatingStringEscape,
+    }
 
     private readonly object _gate = new();
     private readonly string _workingDirectory;
+    private readonly SshTarget? _remoteTarget;
+    private readonly bool _sandboxed;
+    private readonly IReadOnlyList<string> _sandboxWritableRoots;
+    private readonly bool _sandboxNetworkAccess;
+    private readonly StringBuilder _transcript = new();
     private FileStream? _master;
     private CancellationTokenSource? _readCancellation;
     private int _childPid;
     private long _generation;
-    private string _output = "";
+    private int _lineStart;
+    private bool _pendingCarriageReturn;
+    private EscapeState _escape;
+    private string? _renderedOutput;
+    private bool _refreshScheduled;
     private bool _isRunning;
 
-    public TerminalSession(string workingDirectory) => _workingDirectory = workingDirectory;
+    public TerminalSession(
+        string workingDirectory,
+        SshTarget? remoteTarget = null,
+        bool sandboxed = false,
+        IReadOnlyList<string>? sandboxWritableRoots = null,
+        bool sandboxNetworkAccess = false)
+    {
+        _workingDirectory = workingDirectory;
+        _remoteTarget = remoteTarget;
+        _sandboxed = sandboxed && remoteTarget is null;
+        _sandboxWritableRoots = sandboxWritableRoots?.ToArray() ?? [];
+        _sandboxNetworkAccess = sandboxNetworkAccess;
+    }
 
     public event EventHandler? Changed;
 
     public string Output
     {
-        get { lock (_gate) return _output; }
+        get { lock (_gate) return _renderedOutput ??= RenderTranscript(); }
     }
 
     public bool IsRunning
@@ -39,7 +76,7 @@ public sealed class TerminalSession : IDisposable
     {
         Stop();
 
-        if (!Directory.Exists(_workingDirectory))
+        if (_remoteTarget is null && !Directory.Exists(_workingDirectory))
         {
             SetMessage($"Working directory does not exist: {_workingDirectory}");
             return;
@@ -48,32 +85,62 @@ public sealed class TerminalSession : IDisposable
         var shell = Environment.GetEnvironmentVariable("SHELL");
         if (string.IsNullOrWhiteSpace(shell) || !File.Exists(shell)) shell = "/bin/bash";
 
-        var shellPointer = IntPtr.Zero;
-        var namePointer = IntPtr.Zero;
-        var loginPointer = IntPtr.Zero;
-        var interactivePointer = IntPtr.Zero;
+        var executablePointer = IntPtr.Zero;
         var argumentsPointer = IntPtr.Zero;
+        var argumentStringPointers = new List<IntPtr>();
         try
         {
-            shellPointer = Marshal.StringToCoTaskMemUTF8(shell);
-            namePointer = Marshal.StringToCoTaskMemUTF8(Path.GetFileName(shell));
-            loginPointer = Marshal.StringToCoTaskMemUTF8("-l");
-            interactivePointer = Marshal.StringToCoTaskMemUTF8("-i");
-            argumentsPointer = Marshal.AllocHGlobal(IntPtr.Size * 4);
-            Marshal.WriteIntPtr(argumentsPointer, 0 * IntPtr.Size, namePointer);
-            Marshal.WriteIntPtr(argumentsPointer, 1 * IntPtr.Size, loginPointer);
-            Marshal.WriteIntPtr(argumentsPointer, 2 * IntPtr.Size, interactivePointer);
-            Marshal.WriteIntPtr(argumentsPointer, 3 * IntPtr.Size, IntPtr.Zero);
+            var isRemote = _remoteTarget is not null;
+            var executable = isRemote
+                ? RemoteSsh.FindSshExecutable() ?? throw new InvalidOperationException("OpenSSH was not found on PATH.")
+                : shell;
+            var arguments = isRemote
+                ? RemoteSsh.BuildTerminalArguments(_remoteTarget!).ToArray()
+                : new[] { "-l", "-i" };
+            if (_sandboxed)
+            {
+                var sandboxInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    WorkingDirectory = _workingDirectory,
+                    UseShellExecute = false,
+                };
+                if (!AgentCommandSandbox.TryConfigure(
+                        sandboxInfo,
+                        _workingDirectory,
+                        out var sandboxError,
+                        _sandboxWritableRoots,
+                        _sandboxNetworkAccess,
+                        newSession: false))
+                {
+                    SetMessage("Terminal unavailable: " + sandboxError);
+                    return;
+                }
+                sandboxInfo.ArgumentList.RemoveAt(sandboxInfo.ArgumentList.Count - 1); // -lc
+                sandboxInfo.ArgumentList.RemoveAt(sandboxInfo.ArgumentList.Count - 1); // /bin/sh
+                sandboxInfo.ArgumentList.Add(shell);
+                sandboxInfo.ArgumentList.Add("-l");
+                sandboxInfo.ArgumentList.Add("-i");
+                executable = sandboxInfo.FileName;
+                arguments = sandboxInfo.ArgumentList.ToArray();
+            }
+            executablePointer = Marshal.StringToCoTaskMemUTF8(executable);
+            var argumentPointers = new List<IntPtr> { Marshal.StringToCoTaskMemUTF8(Path.GetFileName(executable)) };
+            argumentStringPointers.AddRange(argumentPointers);
+            foreach (var argument in arguments) argumentStringPointers.Add(Marshal.StringToCoTaskMemUTF8(argument));
+            argumentsPointer = Marshal.AllocHGlobal(IntPtr.Size * (argumentStringPointers.Count + 1));
+            for (var index = 0; index < argumentStringPointers.Count; index++)
+                Marshal.WriteIntPtr(argumentsPointer, index * IntPtr.Size, argumentStringPointers[index]);
+            Marshal.WriteIntPtr(argumentsPointer, argumentStringPointers.Count * IntPtr.Size, IntPtr.Zero);
 
             var size = new WinSize { Rows = 24, Columns = 120 };
             var childPid = forkpty(out var masterFd, IntPtr.Zero, IntPtr.Zero, ref size);
             if (childPid == 0)
             {
-                if (chdir(_workingDirectory) != 0) _exit(126);
+                if (!isRemote && chdir(_workingDirectory) != 0) _exit(126);
                 setenv("TERM", "xterm-256color", 1);
                 setenv("TERM_PROGRAM", "DotsHarness", 1);
                 setenv("COLORTERM", "truecolor", 1);
-                _ = execv(shellPointer, argumentsPointer);
+                _ = execv(executablePointer, argumentsPointer);
                 _exit(127);
             }
 
@@ -95,7 +162,7 @@ public sealed class TerminalSession : IDisposable
                 _master = master;
                 _childPid = childPid;
                 _isRunning = true;
-                _output = "";
+                ResetTranscript();
                 generation = ++_generation;
                 cancellation = new CancellationTokenSource();
                 _readCancellation = cancellation;
@@ -110,10 +177,8 @@ public sealed class TerminalSession : IDisposable
         }
         finally
         {
-            if (shellPointer != IntPtr.Zero) Marshal.FreeCoTaskMem(shellPointer);
-            if (namePointer != IntPtr.Zero) Marshal.FreeCoTaskMem(namePointer);
-            if (loginPointer != IntPtr.Zero) Marshal.FreeCoTaskMem(loginPointer);
-            if (interactivePointer != IntPtr.Zero) Marshal.FreeCoTaskMem(interactivePointer);
+            if (executablePointer != IntPtr.Zero) Marshal.FreeCoTaskMem(executablePointer);
+            foreach (var pointer in argumentStringPointers) Marshal.FreeCoTaskMem(pointer);
             if (argumentsPointer != IntPtr.Zero) Marshal.FreeHGlobal(argumentsPointer);
         }
     }
@@ -207,6 +272,8 @@ public sealed class TerminalSession : IDisposable
             if (_generation != generation || _childPid != childPid) return;
             _childPid = 0;
             _isRunning = false;
+            FlushPendingCarriageReturn();
+            _renderedOutput = RenderTranscript();
             changed = true;
         }
         if (changed) RaiseChanged();
@@ -216,10 +283,22 @@ public sealed class TerminalSession : IDisposable
     {
         lock (_gate)
         {
-            _output = message + Environment.NewLine;
+            ResetTranscript();
+            _transcript.Append(message).Append(Environment.NewLine);
+            _lineStart = _transcript.Length;
             _isRunning = false;
+            _renderedOutput = _transcript.ToString();
         }
         RaiseChanged();
+    }
+
+    private void ResetTranscript()
+    {
+        _transcript.Clear();
+        _lineStart = 0;
+        _pendingCarriageReturn = false;
+        _escape = EscapeState.None;
+        _renderedOutput = null;
     }
 
     private void Append(string text, long generation)
@@ -228,73 +307,128 @@ public sealed class TerminalSession : IDisposable
         lock (_gate)
         {
             if (_generation != generation) return;
-            _output = TranscriptText(_output + RenderableText(text));
-            if (_output.Length > 200_000) _output = _output[^180_000..];
+            for (var index = 0; index < text.Length; index++) Feed(text[index]);
+            if (_transcript.Length > TranscriptLimit)
+            {
+                var removed = _transcript.Length - TranscriptTrimTo;
+                _transcript.Remove(0, removed);
+                _lineStart = _lineStart > removed ? _lineStart - removed : 0;
+            }
+            _renderedOutput = null;
         }
+        ScheduleRefresh();
+    }
+
+    // Consumes one raw character. The parser is resumable across read chunks:
+    // an escape sequence or a CRLF pair that straddles a chunk boundary used to
+    // be re-parsed from the whole transcript, which made every append linear in
+    // the transcript size — quadratic for a build that prints megabytes.
+    private void Feed(char value)
+    {
+        switch (_escape)
+        {
+            case EscapeState.None:
+                if (value == '\u001b') _escape = EscapeState.AfterEscape;
+                else if (value is '\r' or '\b' or '\t' or '\n' || value >= ' ') Render(value);
+                return;
+            case EscapeState.AfterEscape:
+                _escape = value switch
+                {
+                    '[' => EscapeState.ControlSequence,
+                    ']' => EscapeState.OperatingString,
+                    _ => EscapeState.None,
+                };
+                return;
+            case EscapeState.ControlSequence:
+                if (value >= '@' && value <= '~') _escape = EscapeState.None;
+                return;
+            case EscapeState.OperatingString:
+                if (value == '\a') _escape = EscapeState.None;
+                else if (value == '\u001b') _escape = EscapeState.OperatingStringEscape;
+                return;
+            case EscapeState.OperatingStringEscape:
+                _escape = value == '\\' ? EscapeState.None : EscapeState.OperatingString;
+                return;
+        }
+    }
+
+    private void Render(char value)
+    {
+        if (_pendingCarriageReturn)
+        {
+            _pendingCarriageReturn = false;
+            if (value == '\n') _transcript.Append('\r');
+            else _transcript.Length = _lineStart;
+        }
+
+        switch (value)
+        {
+            case '\r':
+                _pendingCarriageReturn = true;
+                return;
+            case '\n':
+                // Completed lines lose trailing blanks, except CRLF lines, whose
+                // terminator sits after the spaces.
+                if (_transcript.Length > _lineStart && _transcript[^1] != '\r')
+                {
+                    while (_transcript.Length > _lineStart && _transcript[^1] is ' ' or '\t') _transcript.Length--;
+                }
+                _transcript.Append('\n');
+                _lineStart = _transcript.Length;
+                return;
+            case '\b':
+                if (_transcript.Length == 0)
+                {
+                    _transcript.Append('\b');
+                    return;
+                }
+                var erased = _transcript[^1];
+                _transcript.Length--;
+                if (erased == '\n')
+                {
+                    var index = _transcript.Length - 1;
+                    while (index >= 0 && _transcript[index] != '\n') index--;
+                    _lineStart = index + 1;
+                }
+                return;
+            default:
+                _transcript.Append(value);
+                return;
+        }
+    }
+
+    private void FlushPendingCarriageReturn()
+    {
+        if (!_pendingCarriageReturn) return;
+        _pendingCarriageReturn = false;
+        _transcript.Length = _lineStart;
+    }
+
+    private string RenderTranscript()
+    {
+        var length = _transcript.Length;
+        while (length > _lineStart && _transcript[length - 1] is ' ' or '\t') length--;
+        return length == _transcript.Length ? _transcript.ToString() : _transcript.ToString(0, length);
+    }
+
+    private void ScheduleRefresh()
+    {
+        lock (_gate)
+        {
+            if (_refreshScheduled) return;
+            _refreshScheduled = true;
+        }
+        _ = RaiseRefreshAsync();
+    }
+
+    private async Task RaiseRefreshAsync()
+    {
+        await Task.Delay(RefreshIntervalMs).ConfigureAwait(false);
+        lock (_gate) _refreshScheduled = false;
         RaiseChanged();
     }
 
     private void RaiseChanged() => Changed?.Invoke(this, EventArgs.Empty);
-
-    private static string RenderableText(string text)
-    {
-        // ponytail: strip control sequences; add a full terminal emulator only for TUI fidelity.
-        var result = new StringBuilder(text.Length);
-        for (var index = 0; index < text.Length; index++)
-        {
-            var value = text[index];
-            if (value == '\u001b')
-            {
-                if (++index >= text.Length) break;
-                var control = text[index];
-                if (control == '[')
-                {
-                    while (++index < text.Length && !(text[index] >= '@' && text[index] <= '~')) { }
-                }
-                else if (control == ']')
-                {
-                    while (++index < text.Length)
-                    {
-                        if (text[index] == '\a') break;
-                        if (text[index] == '\u001b' && index + 1 < text.Length && text[index + 1] == '\\')
-                        {
-                            index++;
-                            break;
-                        }
-                    }
-                }
-                continue;
-            }
-
-            if (value is '\r' or '\b' or '\t' or '\n' || value >= ' ')
-                result.Append(value);
-        }
-        return result.ToString();
-    }
-
-    private static string TranscriptText(string raw)
-    {
-        var result = new StringBuilder(raw.Length);
-        for (var index = 0; index < raw.Length; index++)
-        {
-            switch (raw[index])
-            {
-                case '\r' when index + 1 >= raw.Length || raw[index + 1] != '\n':
-                    while (result.Length > 0 && result[result.Length - 1] != '\n') result.Length--;
-                    break;
-                case '\b' when result.Length > 0:
-                    result.Length--;
-                    break;
-                default:
-                    result.Append(raw[index]);
-                    break;
-            }
-        }
-
-        var lines = result.ToString().Split('\n');
-        for (var index = 0; index < lines.Length; index++) lines[index] = lines[index].TrimEnd(' ', '\t');
-        return string.Join('\n', lines);
-    }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct WinSize

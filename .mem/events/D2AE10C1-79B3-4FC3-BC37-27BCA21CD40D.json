@@ -1,0 +1,34 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-08T22:41:36Z",
+  "eventId" : "D2AE10C1-79B3-4FC3-BC37-27BCA21CD40D",
+  "lamport" : 207,
+  "parents" : [
+    "D80D38C3-E88C-4ABE-87E3-22F7523F926B"
+  ],
+  "payload" : {
+    "memoryRevision" : 206,
+    "model" : "gpt-6-luna",
+    "promptHash" : "9f9da5c65b1cd72b2ca3b3e5fcc602a86984bad0f1ae243d0fa77d6141387454",
+    "promptSummary" : "Soru kartındaki cevap alanının pencereye sığmasını ve yanıtların yarım görünmemesini sağla; ardından arayüzü doğrula.",
+    "provider" : "ChatGPT",
+    "runId" : "84FA6317-6227-410D-BA05-BBB5B29E8CAD",
+    "startedAt" : "2026-10-08T22:41:36Z"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "fTKWQ+EKIk2sAuf1vI8Xj8eH03Cm2AkbSe1p3YjM9\/F13c6rTnfYI9QvyvwRnzKNHDA7kEoatr4mUyKITz0Gaw=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "task.started"
+}

@@ -339,12 +339,34 @@ public struct ChangedFile: Identifiable, Hashable, Sendable, Codable, Equatable 
 
     public let path: String
     public let operation: Operation
+    public let addedLines: Int
+    public let deletedLines: Int
 
     public var id: String { "\(operation.rawValue):\(path)" }
 
-    public init(path: String, operation: Operation) {
+    public init(path: String, operation: Operation, addedLines: Int = -1, deletedLines: Int = -1) {
         self.path = path
         self.operation = operation
+        self.addedLines = addedLines
+        self.deletedLines = deletedLines
+    }
+
+    private enum CodingKeys: String, CodingKey { case path, operation, addedLines, deletedLines }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        path = try container.decode(String.self, forKey: .path)
+        operation = try container.decode(Operation.self, forKey: .operation)
+        addedLines = try container.decodeIfPresent(Int.self, forKey: .addedLines) ?? -1
+        deletedLines = try container.decodeIfPresent(Int.self, forKey: .deletedLines) ?? -1
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(path, forKey: .path)
+        try container.encode(operation, forKey: .operation)
+        try container.encode(addedLines, forKey: .addedLines)
+        try container.encode(deletedLines, forKey: .deletedLines)
     }
 }
 
@@ -360,6 +382,7 @@ public struct WorkspaceRunSummary: Hashable, Sendable, Codable, Equatable {
     public let deletedCount: Int
     public let testStatus: String
     public let browser: BrowserRunSummary?
+    public let undoAvailable: Bool?
 
     public init(
         runID: String,
@@ -372,7 +395,8 @@ public struct WorkspaceRunSummary: Hashable, Sendable, Codable, Equatable {
         modifiedCount: Int,
         deletedCount: Int,
         testStatus: String,
-        browser: BrowserRunSummary? = nil
+        browser: BrowserRunSummary? = nil,
+        undoAvailable: Bool? = nil
     ) {
         self.runID = runID
         self.turnID = turnID
@@ -385,6 +409,7 @@ public struct WorkspaceRunSummary: Hashable, Sendable, Codable, Equatable {
         self.deletedCount = deletedCount
         self.testStatus = testStatus
         self.browser = browser
+        self.undoAvailable = undoAvailable
     }
 }
 
@@ -442,6 +467,9 @@ public struct ChatMessage: Identifiable, Sendable, Equatable, Codable {
     public var id: String
     public var kind: Kind
     public var text: String
+    /// Complete tool result kept for the visible transcript. `text` may be a
+    /// short preview, while the provider receives a reversible reduced view.
+    public var rawToolOutput: String?
     public var thinking: String?
     public var createdAt: Date
     public var streaming: Bool
@@ -459,15 +487,14 @@ public struct ChatMessage: Identifiable, Sendable, Equatable, Codable {
     public var usedSkills: [String]
     public var usedTools: [String]
     public var summary: WorkspaceRunSummary?
-    /// Filesystem context roots explicitly discovered in the user's message.
-    /// The roots are references into the Chat project's durable ledger; the
-    /// message never grants access to an unverified path by itself.
-    public var contextRootIDs: [String]
+    /// UI-only event metadata. Activity rows stay out of the provider transcript.
+    public var activityCode: String?
 
     public init(
         id: String = UUID().uuidString,
         kind: Kind,
         text: String,
+        rawToolOutput: String? = nil,
         thinking: String? = nil,
         createdAt: Date = Date(),
         streaming: Bool = false,
@@ -480,11 +507,12 @@ public struct ChatMessage: Identifiable, Sendable, Equatable, Codable {
         usedSkills: [String] = [],
         usedTools: [String] = [],
         summary: WorkspaceRunSummary? = nil,
-        contextRootIDs: [String] = []
+        activityCode: String? = nil
     ) {
         self.id = id
         self.kind = kind
         self.text = text
+        self.rawToolOutput = rawToolOutput
         self.thinking = thinking
         self.createdAt = createdAt
         self.streaming = streaming
@@ -496,11 +524,11 @@ public struct ChatMessage: Identifiable, Sendable, Equatable, Codable {
         self.usedSkills = usedSkills
         self.usedTools = usedTools
         self.summary = summary
-        self.contextRootIDs = contextRootIDs
+        self.activityCode = activityCode
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, kind, text, thinking, createdAt, streaming, media, mediaItems, attachments, turnID, changedFiles, usedSkills, usedTools, summary, contextRootIDs
+        case id, kind, text, rawToolOutput, thinking, createdAt, streaming, media, mediaItems, attachments, turnID, changedFiles, usedSkills, usedTools, summary, activityCode
     }
 
     public init(from decoder: Decoder) throws {
@@ -508,6 +536,7 @@ public struct ChatMessage: Identifiable, Sendable, Equatable, Codable {
         id = try container.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
         kind = try container.decodeIfPresent(Kind.self, forKey: .kind) ?? .system
         text = try container.decodeIfPresent(String.self, forKey: .text) ?? ""
+        rawToolOutput = try container.decodeIfPresent(String.self, forKey: .rawToolOutput)
         thinking = try container.decodeIfPresent(String.self, forKey: .thinking)
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         streaming = try container.decodeIfPresent(Bool.self, forKey: .streaming) ?? false
@@ -521,7 +550,7 @@ public struct ChatMessage: Identifiable, Sendable, Equatable, Codable {
         usedSkills = try container.decodeIfPresent([String].self, forKey: .usedSkills) ?? []
         usedTools = try container.decodeIfPresent([String].self, forKey: .usedTools) ?? []
         summary = try container.decodeIfPresent(WorkspaceRunSummary.self, forKey: .summary)
-        contextRootIDs = try container.decodeIfPresent([String].self, forKey: .contextRootIDs) ?? []
+        activityCode = try container.decodeIfPresent(String.self, forKey: .activityCode)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -529,6 +558,7 @@ public struct ChatMessage: Identifiable, Sendable, Equatable, Codable {
         try container.encode(id, forKey: .id)
         try container.encode(kind, forKey: .kind)
         try container.encode(text, forKey: .text)
+        try container.encodeIfPresent(rawToolOutput, forKey: .rawToolOutput)
         try container.encodeIfPresent(thinking, forKey: .thinking)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encode(streaming, forKey: .streaming)
@@ -542,7 +572,7 @@ public struct ChatMessage: Identifiable, Sendable, Equatable, Codable {
         try container.encode(usedSkills, forKey: .usedSkills)
         try container.encode(usedTools, forKey: .usedTools)
         try container.encodeIfPresent(summary, forKey: .summary)
-        try container.encode(contextRootIDs, forKey: .contextRootIDs)
+        try container.encodeIfPresent(activityCode, forKey: .activityCode)
     }
 
     /// Compatibility accessor for the pre-multi-media message model.
@@ -552,7 +582,7 @@ public struct ChatMessage: Identifiable, Sendable, Equatable, Codable {
     }
 }
 
-public enum PromptMode: String, Sendable, Equatable {
+public enum PromptMode: String, Codable, Sendable, Equatable {
     case queue
     case steer
 }
@@ -586,10 +616,11 @@ public enum PlanApproval {
     }
 }
 
-public struct PendingPrompt: Identifiable, Sendable, Equatable {
-    public enum Placement: String, Sendable, Equatable {
+public struct PendingPrompt: Identifiable, Codable, Sendable, Equatable {
+    public enum Placement: String, Codable, Sendable, Equatable {
         case queued
         case steering
+        case waitingForPlan
     }
 
     public var id: String
@@ -597,9 +628,15 @@ public struct PendingPrompt: Identifiable, Sendable, Equatable {
     public var mode: PromptMode
     public var placement: Placement
     public var planMode: Bool
+    /// False while the classifier decides whether this accepted prompt owns the plan gate.
+    /// Optional for backward-compatible decoding; nil means resolved.
+    public var planIntentResolved: Bool?
     public var approvedPlanID: String?
+    /// Set only by an explicit user action on this queue item. It permits one
+    /// prompt to run while the plan gate remains active; it is never inferred
+    /// from a normal queue or steer mode.
+    public var bypassesPlanGate: Bool
     public var attachments: [ChatAttachment]
-    public var contextRootIDs: [String]
 
     public init(
         id: String = UUID().uuidString,
@@ -607,24 +644,43 @@ public struct PendingPrompt: Identifiable, Sendable, Equatable {
         mode: PromptMode,
         placement: Placement? = nil,
         planMode: Bool = false,
+        planIntentResolved: Bool = true,
         approvedPlanID: String? = nil,
-        attachments: [ChatAttachment] = [],
-        contextRootIDs: [String] = []
+        bypassesPlanGate: Bool = false,
+        attachments: [ChatAttachment] = []
     ) {
         self.id = id
         self.text = text
         self.mode = mode
         self.placement = placement ?? (mode == .steer ? .steering : .queued)
         self.planMode = planMode
+        self.planIntentResolved = planIntentResolved ? nil : false
         self.approvedPlanID = approvedPlanID
+        self.bypassesPlanGate = bypassesPlanGate
         self.attachments = attachments
-        self.contextRootIDs = contextRootIDs
     }
+
+    public var isPlanIntentResolved: Bool { planIntentResolved != false }
 }
 
 public enum ContinuationPauseReason: String, Sendable, Equatable, Codable {
     case providerLimit
+    case toolStepLimit
     case userStopped
+    /// The host stopped while a tool could still have had an external side effect.
+    case applicationClosed
+}
+
+public struct InFlightToolCall: Sendable, Equatable, Codable {
+    public var id: String
+    public var name: String
+    public var arguments: String
+
+    public init(id: String, name: String, arguments: String) {
+        self.id = id
+        self.name = name
+        self.arguments = arguments
+    }
 }
 
 public struct ContinuationState: Sendable, Equatable, Codable {
@@ -675,10 +731,11 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
     public var contextCompactionCount: Int
     public var lastContextInputTokens: Int
     public var contextWindow: Int
+    public var contextRouteIdentity: String
+    public var cacheEpoch: AgentConversationCacheEpoch?
     public var continuation: ContinuationState?
-    /// Prompts accepted by the composer but not yet folded into the durable transcript.
-    /// These are deliberately excluded from persistence; a restarted native loop must
-    /// never replay a prompt whose delivery outcome is unknown.
+    /// Accepted prompts that have not yet been sent to the provider. Persisting this
+    /// queue lets a restarted plan release the messages only after it completes.
     public var pendingPrompts: [PendingPrompt]
     public var running: Bool
     /// Live-only timestamp; deliberately excluded from persisted sessions.
@@ -688,8 +745,21 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
     public var blank: Bool
     /// A completed response the user has not opened yet.
     public var unread: Bool
+    /// The plan lifecycle owns this barrier from the first plan request until
+    /// execution completes or the user explicitly cancels the plan.
+    public var planGateActive: Bool
     public var pendingPlanMessageID: String?
+    /// Durable journal written before a tool is invoked. It remains until the
+    /// complete tool result is persisted, so a restart cannot blindly replay it.
+    public var inFlightToolCalls: [InFlightToolCall]
+    /// A restart with an in-flight tool requires reconciliation before any
+    /// continuation; approved plans may continue automatically, but the
+    /// journaled tool call is never replayed.
+    public var requiresToolOutcomeRecovery: Bool
     public var cwd: String?
+    /// True only for conversations explicitly created in the No project scope.
+    /// Legacy Chat records without a cwd stay excluded unless they carry this flag.
+    public var projectless: Bool
     public var agentPreset: String?
     /// Provider account id this conversation is pinned to, so follow-up turns hit
     /// the same account/API key and keep the provider's prompt cache warm.
@@ -697,11 +767,8 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
     /// Concrete model id served on the last turn. When the resolved target model
     /// no longer matches this, the account affinity is dropped and re-selected.
     public var stickyModelID: String?
-    /// Area ownership is persisted so Chat and Coding stores can be migrated
-    /// without inferring ownership from the currently selected UI state.
-    public var area: AgentArea
-    /// Optional logical Chat project. Coding conversations leave this nil.
-    public var chatProjectID: String?
+    /// Model explicitly selected for this conversation. Nil inherits the app default.
+    public var modelPreferenceID: String?
     /// False for a sidebar header decoded without its transcript (see
     /// `ConversationStore.loadHeaders`). Headers are never written over full records.
     public var contentLoaded = true
@@ -721,6 +788,7 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         header.headerActivityAt = activityDate
         header.messages = []
         header.modelContext = []
+        header.cacheEpoch = nil
         header.pendingPrompts = []
         header.runStartedAt = nil
         header.contentLoaded = false
@@ -733,19 +801,21 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         pinned = header.pinned
         archived = header.archived
         unread = header.unread
-        chatProjectID = header.chatProjectID
         agentPreset = header.agentPreset
+        modelPreferenceID = header.modelPreferenceID
     }
 
     public init(
         id: String = UUID().uuidString,
-        title: String = "New chat",
+        title: String = "New conversation",
         messages: [ChatMessage] = [],
         modelContext: [AgentMessage] = [],
         contextSummary: String = "",
         contextCompactionCount: Int = 0,
         lastContextInputTokens: Int = 0,
         contextWindow: Int = 0,
+        contextRouteIdentity: String = "",
+        cacheEpoch: AgentConversationCacheEpoch? = nil,
         continuation: ContinuationState? = nil,
         pendingPrompts: [PendingPrompt] = [],
         running: Bool = false,
@@ -754,13 +824,16 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         archived: Bool = false,
         blank: Bool = true,
         unread: Bool = false,
+        planGateActive: Bool = false,
         pendingPlanMessageID: String? = nil,
+        inFlightToolCalls: [InFlightToolCall] = [],
+        requiresToolOutcomeRecovery: Bool = false,
         cwd: String? = nil,
+        projectless: Bool = false,
         agentPreset: String? = nil,
         stickyAccountID: String? = nil,
         stickyModelID: String? = nil,
-        area: AgentArea = .coding,
-        chatProjectID: String? = nil
+        modelPreferenceID: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -770,6 +843,8 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         self.contextCompactionCount = contextCompactionCount
         self.lastContextInputTokens = lastContextInputTokens
         self.contextWindow = contextWindow
+        self.contextRouteIdentity = contextRouteIdentity
+        self.cacheEpoch = cacheEpoch
         self.continuation = continuation
         self.pendingPrompts = pendingPrompts
         self.running = running
@@ -778,21 +853,33 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         self.archived = archived
         self.blank = blank
         self.unread = unread
+        self.planGateActive = planGateActive || pendingPlanMessageID != nil
         self.pendingPlanMessageID = pendingPlanMessageID
+        self.inFlightToolCalls = inFlightToolCalls
+        self.requiresToolOutcomeRecovery = requiresToolOutcomeRecovery
         self.cwd = cwd
+        self.projectless = projectless
         self.agentPreset = agentPreset
         self.stickyAccountID = stickyAccountID
         self.stickyModelID = stickyModelID
-        self.area = area
-        self.chatProjectID = chatProjectID
+        self.modelPreferenceID = modelPreferenceID
     }
 
-    public var canContinue: Bool { !running && continuation != nil }
+    public var canContinue: Bool { !running && continuation != nil && !turnFinished }
+
+    /// The model already gave its final answer (no pending tool calls), so a
+    /// stop or shutdown that landed after it left nothing to continue. A paused
+    /// plan stays resumable even after a separate promoted request finishes.
+    public var turnFinished: Bool {
+        guard inFlightToolCalls.isEmpty, !planGateActive, pendingPlanMessageID == nil,
+              let last = modelContext.last(where: { $0.role != .system }) else { return false }
+        return last.role == .assistant && last.toolCalls.isEmpty
+    }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, messages, modelContext, contextSummary, contextCompactionCount, lastContextInputTokens, contextWindow
-        case continuation, running, pinned, archived, blank, unread, pendingPlanMessageID, cwd, agentPreset
-        case stickyAccountID, stickyModelID, area, chatProjectID, lastActivityAt
+        case id, title, messages, modelContext, contextSummary, contextCompactionCount, lastContextInputTokens, contextWindow, contextRouteIdentity
+        case continuation, pendingPrompts, running, pinned, archived, blank, unread, planGateActive, pendingPlanMessageID, cwd, projectless, agentPreset
+        case inFlightToolCalls, requiresToolOutcomeRecovery, stickyAccountID, stickyModelID, modelPreferenceID, lastActivityAt, cacheEpoch
     }
 
     private struct ActivityStamp: Decodable {
@@ -802,7 +889,7 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
-        title = try container.decodeIfPresent(String.self, forKey: .title) ?? "New chat"
+        title = try container.decodeIfPresent(String.self, forKey: .title) ?? "New conversation"
         if decoder.userInfo[ConversationStore.headersOnlyKey] as? Bool == true {
             // Sidebar header: skip the transcript and provider context entirely.
             messages = []
@@ -819,22 +906,30 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         contextCompactionCount = try container.decodeIfPresent(Int.self, forKey: .contextCompactionCount) ?? 0
         lastContextInputTokens = try container.decodeIfPresent(Int.self, forKey: .lastContextInputTokens) ?? 0
         contextWindow = try container.decodeIfPresent(Int.self, forKey: .contextWindow) ?? 0
+        contextRouteIdentity = try container.decodeIfPresent(String.self, forKey: .contextRouteIdentity) ?? ""
+        cacheEpoch = decoder.userInfo[ConversationStore.headersOnlyKey] as? Bool == true
+            ? nil : try container.decodeIfPresent(AgentConversationCacheEpoch.self, forKey: .cacheEpoch)
         continuation = try container.decodeIfPresent(ContinuationState.self, forKey: .continuation)
-        pendingPrompts = []
+        pendingPrompts = decoder.userInfo[ConversationStore.headersOnlyKey] as? Bool == true
+            ? []
+            : try container.decodeIfPresent([PendingPrompt].self, forKey: .pendingPrompts) ?? []
         running = try container.decodeIfPresent(Bool.self, forKey: .running) ?? false
         runStartedAt = nil
         pinned = try container.decodeIfPresent(Bool.self, forKey: .pinned) ?? false
         archived = try container.decodeIfPresent(Bool.self, forKey: .archived) ?? false
         blank = try container.decodeIfPresent(Bool.self, forKey: .blank) ?? true
         unread = try container.decodeIfPresent(Bool.self, forKey: .unread) ?? false
+        planGateActive = try container.decodeIfPresent(Bool.self, forKey: .planGateActive) ?? false
         pendingPlanMessageID = try container.decodeIfPresent(String.self, forKey: .pendingPlanMessageID)
+        planGateActive = planGateActive || pendingPlanMessageID != nil
+        inFlightToolCalls = try container.decodeIfPresent([InFlightToolCall].self, forKey: .inFlightToolCalls) ?? []
+        requiresToolOutcomeRecovery = try container.decodeIfPresent(Bool.self, forKey: .requiresToolOutcomeRecovery) ?? false
         cwd = try container.decodeIfPresent(String.self, forKey: .cwd)
+        projectless = try container.decodeIfPresent(Bool.self, forKey: .projectless) ?? false
         agentPreset = try container.decodeIfPresent(String.self, forKey: .agentPreset)
         stickyAccountID = try container.decodeIfPresent(String.self, forKey: .stickyAccountID)
         stickyModelID = try container.decodeIfPresent(String.self, forKey: .stickyModelID)
-        area = try container.decodeIfPresent(AgentArea.self, forKey: .area)
-            ?? (cwd == nil || cwd?.isEmpty == true ? .chat : .coding)
-        chatProjectID = try container.decodeIfPresent(String.self, forKey: .chatProjectID)
+        modelPreferenceID = try container.decodeIfPresent(String.self, forKey: .modelPreferenceID)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -847,19 +942,25 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         try container.encode(contextCompactionCount, forKey: .contextCompactionCount)
         try container.encode(lastContextInputTokens, forKey: .lastContextInputTokens)
         try container.encode(contextWindow, forKey: .contextWindow)
+        try container.encode(contextRouteIdentity, forKey: .contextRouteIdentity)
+        try container.encodeIfPresent(cacheEpoch, forKey: .cacheEpoch)
         try container.encodeIfPresent(continuation, forKey: .continuation)
+        try container.encode(pendingPrompts, forKey: .pendingPrompts)
         try container.encode(running, forKey: .running)
         try container.encode(pinned, forKey: .pinned)
         try container.encode(archived, forKey: .archived)
         try container.encode(blank, forKey: .blank)
         try container.encode(unread, forKey: .unread)
+        try container.encode(planGateActive, forKey: .planGateActive)
         try container.encodeIfPresent(pendingPlanMessageID, forKey: .pendingPlanMessageID)
+        try container.encode(inFlightToolCalls, forKey: .inFlightToolCalls)
+        try container.encode(requiresToolOutcomeRecovery, forKey: .requiresToolOutcomeRecovery)
         try container.encodeIfPresent(cwd, forKey: .cwd)
+        try container.encode(projectless, forKey: .projectless)
         try container.encodeIfPresent(agentPreset, forKey: .agentPreset)
         try container.encodeIfPresent(stickyAccountID, forKey: .stickyAccountID)
         try container.encodeIfPresent(stickyModelID, forKey: .stickyModelID)
-        try container.encode(area, forKey: .area)
-        try container.encodeIfPresent(chatProjectID, forKey: .chatProjectID)
+        try container.encodeIfPresent(modelPreferenceID, forKey: .modelPreferenceID)
         try container.encodeIfPresent(messages.map(\.createdAt).max(), forKey: .lastActivityAt)
     }
 
@@ -875,9 +976,6 @@ public final class ConversationStore: @unchecked Sendable {
 
     private let fileURL: URL
     private let fileManager: FileManager
-    /// When set, records stamped for another area are hidden: Chat and Coding
-    /// keep separate lists even if a stray record landed in the wrong file.
-    private let area: AgentArea?
     private let cacheLock = NSLock()
     private var cache: (stamp: FileStamp, conversations: [Conversation])?
     private var headerCache: (stamp: FileStamp, conversations: [Conversation])?
@@ -895,12 +993,10 @@ public final class ConversationStore: @unchecked Sendable {
     public init(
         paths: SupportPaths,
         fileManager: FileManager = .default,
-        fileName: String = "sessions.json",
-        area: AgentArea? = nil
+        fileName: String = "sessions.json"
     ) {
         self.fileURL = paths.root.appendingPathComponent(fileName)
         self.fileManager = fileManager
-        self.area = area
     }
 
     public func load(workspacePath: String?) -> [Conversation] {
@@ -925,7 +1021,7 @@ public final class ConversationStore: @unchecked Sendable {
               let all = try? JSONDecoder().decode([Conversation].self, from: data) else {
             return []
         }
-        let sorted = all.filter(belongsToConfiguredArea).sorted { $0.id < $1.id }
+        let sorted = all.filter(isSupportedConversation).sorted { $0.id < $1.id }
         cacheLock.lock()
         cache = (stamp, sorted)
         revisionValue += 1
@@ -957,7 +1053,7 @@ public final class ConversationStore: @unchecked Sendable {
               let all = try? decoder.decode([Conversation].self, from: data) else {
             return []
         }
-        let sorted = all.filter(belongsToConfiguredArea).sorted { $0.id < $1.id }
+        let sorted = all.filter(isSupportedConversation).sorted { $0.id < $1.id }
         cacheLock.lock()
         headerCache = (stamp, sorted)
         revisionValue += 1
@@ -992,7 +1088,7 @@ public final class ConversationStore: @unchecked Sendable {
     }
 
     /// The file as it stood after our last write (or last read), valid while its stamp matches.
-    private var rawCache: (stamp: FileStamp, entries: [RawEntry])?
+    private var rawCache: (stamp: FileStamp, entries: [RawEntry], filteredOutAny: Bool)?
     /// Last encoding of each conversation, reused while it compares equal.
     private var encodedCache: [String: (value: Conversation, data: Data)] = [:]
     private let writeLock = NSLock()
@@ -1006,49 +1102,62 @@ public final class ConversationStore: @unchecked Sendable {
 
     /// The stored conversations as raw entries; from memory when the file is unchanged since
     /// we last saw it, otherwise decoded from disk (another process may have written).
-    private func currentEntries(stamp: FileStamp) -> [RawEntry] {
+    private func currentEntries(stamp: FileStamp) -> (entries: [RawEntry], filteredOutAny: Bool) {
         cacheLock.lock()
         let cached = rawCache
         cacheLock.unlock()
-        if let cached, cached.stamp == stamp { return cached.entries }
-        guard let data = try? Data(contentsOf: fileURL) else { return [] }
+        if let cached, cached.stamp == stamp { return (cached.entries, cached.filteredOutAny) }
+        guard let data = try? Data(contentsOf: fileURL) else { return ([], false) }
         guard let decoded = try? JSONDecoder().decode([Conversation].self, from: data) else {
             // The save that follows rewrites the file from what is known now: keep the
             // unreadable original instead of silently dropping it.
             if !data.isEmpty {
                 try? data.write(to: fileURL.appendingPathExtension("corrupt"), options: .atomic)
             }
-            return []
+            return ([], false)
         }
-        return decoded.filter(belongsToConfiguredArea).compactMap { conversation in
+        let supported = decoded.filter(isSupportedConversation)
+        let filteredOutAny = supported.count != decoded.count
+        let entries = supported.compactMap { conversation in
             encodedData(for: conversation).map { RawEntry(id: conversation.id, data: $0) }
         }
+        return (entries, filteredOutAny)
     }
 
-    public func save(_ conversations: [Conversation]) {
+    @discardableResult
+    public func save(_ conversations: [Conversation]) -> Bool {
         writeLock.lock()
         defer { writeLock.unlock() }
 
         let stampBefore = fileStamp()
-        let existing = currentEntries(stamp: stampBefore)
+        let (existing, filteredOutAny) = currentEntries(stamp: stampBefore)
 
         // A header carries no transcript: keep the stored record, update its metadata.
         var incoming: [(conversation: Conversation, data: Data)] = []
-        for conversation in conversations where belongsToConfiguredArea(conversation) {
+        for conversation in conversations where isSupportedConversation(conversation) {
             if conversation.contentLoaded {
-                guard let data = encodedData(for: conversation) else { return }
+                guard let data = encodedData(for: conversation) else { return false }
                 incoming.append((conversation, data))
             } else {
                 guard let entry = existing.first(where: { $0.id == conversation.id }),
                       var full = try? JSONDecoder().decode(Conversation.self, from: entry.data) else { continue }
                 full.applyMetadata(from: conversation)
-                guard let data = encodedData(for: full) else { return }
+                guard let data = encodedData(for: full) else { return false }
                 incoming.append((full, data))
             }
         }
         let ids = Set(incoming.map { $0.conversation.id })
         let merged = existing.filter { !ids.contains($0.id) }
             + incoming.map { RawEntry(id: $0.conversation.id, data: $0.data) }
+
+        // A turn persists on every message append, and most of those writes carry
+        // conversations whose bytes did not change. The atomic rewrite — temp file,
+        // full payload, rename — is the whole cost, so compare first and leave the
+        // file (and the revision) alone when the result is what is already stored.
+        if !filteredOutAny, !merged.isEmpty, merged.count == existing.count,
+           zip(merged, existing).allSatisfy({ $0.id == $1.id && $0.data == $1.data }) {
+            return true
+        }
 
         var body = Data()
         body.reserveCapacity(merged.reduce(2) { $0 + $1.data.count + 1 })
@@ -1070,18 +1179,18 @@ public final class ConversationStore: @unchecked Sendable {
             headerCache = nil
             revisionValue += 1
             cacheLock.unlock()
-            return
+            return false
         }
 
         let stampAfter = fileStamp()
         cacheLock.lock()
-        rawCache = (stampAfter, merged)
+        rawCache = (stampAfter, merged, false)
         cache = nil
         // The header list follows the write instead of being decoded again on the next
         // sidebar redraw (which happens on every change while a run is in progress).
         if let headers = headerCache, headers.stamp == stampBefore {
             var byID = Dictionary(headers.conversations.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-            for (conversation, _) in incoming where belongsToConfiguredArea(conversation) {
+            for (conversation, _) in incoming where isSupportedConversation(conversation) {
                 byID[conversation.id] = conversation.headerCopy()
             }
             headerCache = (stampAfter, byID.values.sorted { $0.id < $1.id })
@@ -1090,6 +1199,7 @@ public final class ConversationStore: @unchecked Sendable {
         }
         revisionValue += 1
         cacheLock.unlock()
+        return true
     }
 
     public func delete(_ conversationID: String) {
@@ -1099,7 +1209,7 @@ public final class ConversationStore: @unchecked Sendable {
               var all = try? JSONDecoder().decode([Conversation].self, from: data) else {
             return
         }
-        all = all.filter(belongsToConfiguredArea)
+        all = all.filter(isSupportedConversation)
         all.removeAll { $0.id == conversationID }
         guard let data = try? JSONEncoder().encode(all) else { return }
         try? data.write(to: fileURL, options: .atomic)
@@ -1119,14 +1229,9 @@ public final class ConversationStore: @unchecked Sendable {
         return URL(fileURLWithPath: raw).standardizedFileURL.path
     }
 
-    /// An area store is authoritative only for records that satisfy both parts
-    /// of the persisted ownership contract. The cwd check repairs the older
-    /// records that were written with the default `area = coding` while being
-    /// projectless Chat conversations.
-    private func belongsToConfiguredArea(_ conversation: Conversation) -> Bool {
-        guard let area else { return true }
-        guard conversation.area == area else { return false }
-        let hasWorkspace = Self.normalizedPath(conversation.cwd) != nil
-        return area == .chat ? !hasWorkspace : hasWorkspace
+    /// Keep project sessions and conversations explicitly created in No project
+    /// mode. Legacy Chat records without a workspace are not silently re-imported.
+    private func isSupportedConversation(_ conversation: Conversation) -> Bool {
+        Self.normalizedPath(conversation.cwd) != nil || conversation.projectless
     }
 }

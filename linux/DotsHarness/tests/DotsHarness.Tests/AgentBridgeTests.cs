@@ -10,6 +10,8 @@ using Xunit;
 
 namespace DotsHarness.Tests;
 
+// Resets the process-wide read ledger, like the other classes of this collection.
+[Collection("ReadLedger")]
 public sealed class AgentBridgeTests
 {
     [Theory]
@@ -90,16 +92,22 @@ public sealed class AgentBridgeTests
     public void PlanModeOnlyExposesReadOnlyWorkspaceTools()
     {
         Assert.Equal(
-            new[] { "list_files", "read_file", "grep_files", "run_command" },
+            new[] { "list_files", "read_file", "grep_files", "run_command", "glob", "inspect_generated_media" },
             NativeWorkspaceTools.PlanDefinitions.Select(tool => tool.Name));
         Assert.True(NativeWorkspaceTools.IsWorkspaceMutation("write_file"));
+        Assert.True(NativeWorkspaceTools.IsWorkspaceMutation("edit_file"));
         Assert.True(NativeWorkspaceTools.IsWorkspaceMutation("remove_file"));
         Assert.False(NativeWorkspaceTools.IsWorkspaceMutation("run_command"));
         Assert.True(NativeWorkspaceTools.IsReadOnly("list_files"));
         Assert.True(NativeWorkspaceTools.IsReadOnly("read_file"));
         Assert.False(NativeWorkspaceTools.IsReadOnly("write_file"));
+        Assert.False(NativeWorkspaceTools.IsReadOnly("edit_file"));
         Assert.True(NativeWorkspaceTools.IsReadOnly("grep_files"));
+        Assert.True(NativeWorkspaceTools.IsReadOnly("glob"));
         Assert.False(NativeWorkspaceTools.IsReadOnly("run_command"));
+        // The web tools are read-only, so plan mode keeps them.
+        Assert.True(NativeWebTools.IsReadOnly("web_fetch"));
+        Assert.False(NativeWorkspaceTools.IsWorkspaceMutation("web_search"));
     }
 
     [Fact]
@@ -351,7 +359,7 @@ public sealed class AgentBridgeTests
     [Fact]
     public void FirstUserMessageBecomesConversationTitle()
     {
-        var conversation = new Conversation { Title = "New chat", Blank = true };
+        var conversation = new Conversation { Title = "New conversation", Blank = true };
         SessionProjector.Apply(new Dictionary<string, JsonValue>
         {
             ["type"] = JsonValue.String("user/message"),

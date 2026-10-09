@@ -42,7 +42,7 @@ public sealed class BrowserSecurityTests : IDisposable
     public async Task ModelCannotChooseBackendOrCloseAnotherScope()
     {
         var manager = new BrowserSessionManager(_root);
-        var scope = new BrowserScope("coding", "conversation", "run");
+        var scope = new BrowserScope("project", "conversation", "run");
         var call = new NativeToolCall(
             "call",
             BrowserTools.OpenName,
@@ -50,7 +50,7 @@ public sealed class BrowserSecurityTests : IDisposable
         var result = await manager.ExecuteAsync(call, scope, BrowserBackend.Managed);
         Assert.Contains("backend is selected by the host", result, StringComparison.Ordinal);
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            manager.ClosePageAsync(new BrowserScope("chat", "conversation", "other-run"), "foreign-page"));
+            manager.ClosePageAsync(new BrowserScope("project", "conversation", "other-run"), "foreign-page"));
     }
 
     public void Dispose()

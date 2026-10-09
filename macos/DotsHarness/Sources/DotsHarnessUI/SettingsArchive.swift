@@ -11,69 +11,43 @@ import PluginRuntime
 struct ConversationArchiveView: View {
     @ObservedObject var model: AppModel
     @State private var pendingDeleteConversationID: String?
-    @State private var pendingDeleteProjectID: String?
+    @State private var selectedTranscript: Conversation?
 
-    // MARK: - Chat area data
-
-    private var archivedProjects: [ChatProject] {
-        model.chatProjects
-            .filter(\.archived)
-            .sorted { $0.updatedAt > $1.updatedAt }
-    }
-
-    private var archivedChatConversations: [Conversation] {
-        // Only standalone (unassigned) archived chat conversations.
-        // Conversations that belong to an archived project are shown
-        // under their project row, not listed separately here.
-        let archivedProjectIDs = Set(archivedProjects.map(\.id))
-        return model.chatBridge.archivedConversations
-            .filter { conv in
-                guard let pid = conv.chatProjectID else { return true }
-                return !archivedProjectIDs.contains(pid)
-            }
-            .sorted {
-                ($0.messages.map(\.createdAt).max() ?? .distantPast)
-                    > ($1.messages.map(\.createdAt).max() ?? .distantPast)
-            }
-    }
-
-    // MARK: - Coding area data
-
-    private var archivedCodingConversations: [Conversation] {
-        model.codingBridge.archivedConversations.sorted {
-            ($0.messages.map(\.createdAt).max() ?? .distantPast)
-                > ($1.messages.map(\.createdAt).max() ?? .distantPast)
+    private var archivedConversations: [Conversation] {
+        model.bridge.archivedConversations.sorted {
+            $0.activityDate > $1.activityDate
         }
     }
-
-    private var isChat: Bool { model.activeArea == .chat }
 
     var body: some View {
-        Form {
-            if isChat {
-                chatArchiveContent
+        Group {
+            if let selectedTranscript {
+                transcriptView(selectedTranscript, bridge: model.bridge)
             } else {
-                conversationSection(
-                    conversations: archivedCodingConversations,
-                    bridge: model.codingBridge
-                )
+                Form {
+                    conversationSection(
+                        conversations: archivedConversations,
+                        bridge: model.bridge
+                    )
+                }
+                .formStyle(.grouped)
             }
         }
-        .formStyle(.grouped)
         .padding()
-        .navigationTitle(AppCopy.text("sidebar.archived"))
+        .navigationTitle(AppCopy.text("archive.title"))
         // Conversation delete confirmation
         .confirmationDialog(
-            AppCopy.text("sidebar.deleteChat"),
+            AppCopy.text("archive.confirmDelete"),
             isPresented: Binding(
                 get: { pendingDeleteConversationID != nil },
                 set: { if !$0 { pendingDeleteConversationID = nil } }
             ),
             titleVisibility: .visible
         ) {
-            Button(AppCopy.text("sidebar.deleteChat"), role: .destructive) {
+            Button(AppCopy.text("archive.deletePermanently"), role: .destructive) {
                 if let id = pendingDeleteConversationID {
                     model.bridge.deleteConversation(id)
+                    if selectedTranscript?.id == id { selectedTranscript = nil }
                 }
                 pendingDeleteConversationID = nil
             }
@@ -81,107 +55,42 @@ struct ConversationArchiveView: View {
                 pendingDeleteConversationID = nil
             }
         }
-        // Project delete confirmation
-        .confirmationDialog(
-            AppCopy.text("sidebar.deleteProject"),
-            isPresented: Binding(
-                get: { pendingDeleteProjectID != nil },
-                set: { if !$0 { pendingDeleteProjectID = nil } }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button(AppCopy.text("sidebar.deleteProject"), role: .destructive) {
-                if let id = pendingDeleteProjectID {
-                    model.deleteChatProject(id)
-                }
-                pendingDeleteProjectID = nil
-            }
-            Button(AppCopy.text("common.cancel"), role: .cancel) {
-                pendingDeleteProjectID = nil
-            }
-        }
-    }
-
-    // MARK: - Chat archive content
-
-    @ViewBuilder
-    private var chatArchiveContent: some View {
-        Section(AppCopy.text("sidebar.projects")) {
-            if archivedProjects.isEmpty {
-                Text(AppCopy.text("sidebar.noChats"))
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(archivedProjects) { project in
-                    HStack(spacing: 10) {
-                        Image(systemName: "bubble.left.and.bubble.right")
-                            .foregroundStyle(.secondary)
-                            .frame(width: 16, height: 16)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(project.name)
-                                .lineLimit(1)
-                            let count = model.chatConversations(in: project.id).count
-                            if count > 0 {
-                                Text("\(count) chat\(count == 1 ? "" : "s")")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                        if project.pinned {
-                            Image(systemName: "pin.fill")
-                                .foregroundStyle(Color.accentColor)
-                        }
-
-                        Button {
-                            model.setChatProjectArchived(project.id, archived: false)
-                        } label: {
-                            Image(systemName: "arrow.uturn.backward")
-                                .frame(width: 24, height: 24)
-                        }
-                        .buttonStyle(.borderless)
-                        .help(AppCopy.text("sidebar.unarchiveProject"))
-                        .accessibilityLabel(AppCopy.text("sidebar.unarchiveProject"))
-
-                        Button {
-                            pendingDeleteProjectID = project.id
-                        } label: {
-                            Image(systemName: "trash")
-                                .frame(width: 24, height: 24)
-                        }
-                        .buttonStyle(.borderless)
-                        .foregroundStyle(.red)
-                        .help(AppCopy.text("sidebar.deleteProject"))
-                        .accessibilityLabel(AppCopy.text("sidebar.deleteProject"))
-                    }
-                    .padding(.vertical, 2)
-                }
-            }
-        }
-
-        conversationSection(
-            conversations: archivedChatConversations,
-            bridge: model.chatBridge
-        )
     }
 
     // MARK: - Shared conversation section
 
     @ViewBuilder
     private func conversationSection(conversations: [Conversation], bridge: AgentBridge) -> some View {
-        Section(AppCopy.text("sidebar.archived")) {
+        Section(AppCopy.text("archive.title")) {
             if conversations.isEmpty {
-                Text(AppCopy.text("sidebar.noChats"))
+                Text(AppCopy.text("archive.empty"))
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(conversations) { conversation in
                     HStack(spacing: 10) {
                         statusIcon(conversation)
 
-                        Text(conversation.title)
-                            .lineLimit(1)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(conversation.title)
+                                .lineLimit(1)
+                            if let cwd = conversation.cwd, !cwd.isEmpty {
+                                Text(cwd)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .textSelection(.enabled)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Button {
+                            selectedTranscript = bridge.loadArchivedConversation(conversation.id)
+                        } label: {
+                            Label(AppCopy.text("common.view"), systemImage: "eye")
+                        }
+                        .buttonStyle(.borderless)
+                        .help(AppCopy.text("common.view"))
+                        .accessibilityLabel(AppCopy.text("common.view"))
 
                         if conversation.pinned {
                             Image(systemName: "pin.fill")
@@ -228,6 +137,113 @@ struct ConversationArchiveView: View {
                 .foregroundStyle(Color.blue)
                 .accessibilityLabel(AppCopy.text("sidebar.chatCompleted"))
         }
+    }
+
+    @ViewBuilder
+    private func transcriptView(_ conversation: Conversation, bridge: AgentBridge) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                Button {
+                    selectedTranscript = nil
+                } label: {
+                    Label(AppCopy.text("archive.title"), systemImage: "chevron.left")
+                }
+                .buttonStyle(.borderless)
+
+                Spacer()
+
+                Button {
+                    bridge.setArchived(conversation.id, archived: false)
+                    selectedTranscript = nil
+                } label: {
+                    Label(AppCopy.text("sidebar.unarchiveChat"), systemImage: "arrow.uturn.backward")
+                }
+                .buttonStyle(.borderless)
+
+                Button(role: .destructive) {
+                    pendingDeleteConversationID = conversation.id
+                } label: {
+                    Label(AppCopy.text("sidebar.deleteChat"), systemImage: "trash")
+                }
+                .buttonStyle(.borderless)
+            }
+
+            Text(conversation.title)
+                .font(.title2.weight(.semibold))
+                .lineLimit(2)
+
+            if let cwd = conversation.cwd, !cwd.isEmpty {
+                Text(cwd)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+
+            Divider()
+
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    ForEach(conversation.messages) { message in
+                        if message.kind == .tool {
+                            DisclosureGroup {
+                                Text(toolDetails(message))
+                                    .font(.callout.monospaced())
+                                    .textSelection(.enabled)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            } label: {
+                                Label(toolSummary(message.text), systemImage: "wrench.and.screwdriver")
+                                    .lineLimit(1)
+                            }
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                        } else {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(speakerLabel(message.kind))
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+
+                                Text(messageBody(message))
+                                    .textSelection(.enabled)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.secondary.opacity(0.18), in: RoundedRectangle(cornerRadius: 10))
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+        }
+    }
+
+    private func speakerLabel(_ kind: ChatMessage.Kind) -> String {
+        switch kind {
+        case .user: AppCopy.text("conversation.you")
+        case .assistant: AppCopy.text("conversation.assistant")
+        case .plan: AppCopy.text("conversation.plan")
+        case .tool: AppCopy.text("conversation.tool")
+        case .system: AppCopy.text("conversation.system")
+        }
+    }
+
+    private func messageBody(_ message: ChatMessage) -> String {
+        let body = ([message.text] + message.attachments.map(\.name))
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+        return body.isEmpty ? "—" : body
+    }
+
+    private func toolSummary(_ text: String) -> String {
+        let firstLine = text.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
+        let summary = String(firstLine.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120))
+        return summary.isEmpty ? AppCopy.text("conversation.tool") : summary
+    }
+
+    private func toolDetails(_ message: ChatMessage) -> String {
+        if let output = message.rawToolOutput, !output.isEmpty { return output }
+        return message.text
     }
 }
 

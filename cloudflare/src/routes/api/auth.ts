@@ -274,7 +274,10 @@ auth.post("/login", rateLimit({ limit: 10, windowSeconds: 60, keyPrefix: "auth:l
     .prepare("SELECT id, email, password_hash, role, status FROM users WHERE email = ?")
     .bind(normalizeEmail(email))
     .first<{ id: string; email: string; password_hash: string; role: string; status: string | null }>();
-  if (!row || row.status !== "active" || !(await verifyPassword(password, row.password_hash))) {
+  // ponytail: always run bcrypt to avoid timing-based user enumeration.
+  const hash = row?.password_hash ?? "$2b$10$DUMMYDUMMYDUMMYDUMMYDUMMYDUMMYDUMMYDUMMYDUMM1";
+  const ok = await verifyPassword(password, hash);
+  if (!row || row.status !== "active" || !ok) {
     return c.json({ error: "Invalid email or password" }, 401);
   }
   const tokens = await issueTokensWithCookies(c, row.id, row.email, row.role);
@@ -296,7 +299,7 @@ auth.post("/register", rateLimit({ limit: 5, windowSeconds: 3600, keyPrefix: "au
   surname: z.string().trim().max(120).optional(),
   username: z.string().min(3).max(32).optional(),
   email: z.string().email().max(320),
-  password: z.string().min(6).max(512),
+  password: z.string().min(8).max(512),
   invite_token: z.string().trim().min(1).max(128).optional(),
   terms_version: z.string().min(1).max(32),
   privacy_notice_version: z.string().min(1).max(32),
@@ -553,8 +556,8 @@ auth.post("/logout", rateLimit({ limit: 30, windowSeconds: 60, keyPrefix: "auth:
 
 auth.post("/set-password", rateLimit({ limit: 10, windowSeconds: 3600, keyPrefix: "auth:set-password" }), requireAuth, zValidator("json", z.object({
   current_password: z.string().max(512),
-  new_password: z.string().min(6).max(512).optional(),
-  password: z.string().min(6).max(512).optional(),
+  new_password: z.string().min(8).max(512).optional(),
+  password: z.string().min(8).max(512).optional(),
 }).refine(d => d.new_password || d.password, { message: "new password required" })), async (c) => {
   const user = c.get("user");
   const body = c.req.valid("json");
@@ -653,7 +656,7 @@ auth.post("/forgot-password", rateLimit({ limit: 5, windowSeconds: 3600, keyPref
 
 auth.post("/reset-password", rateLimit({ limit: 10, windowSeconds: 3600, keyPrefix: "auth:reset-password" }), zValidator("json", z.object({
   token: z.string().regex(/^[a-f0-9]{32}$/i, "Invalid reset token"),
-  password: z.string().min(6).max(512),
+  password: z.string().min(8).max(512),
 })), async (c) => {
   const { token, password } = c.req.valid("json");
   const tokenHash = await hashToken(token);

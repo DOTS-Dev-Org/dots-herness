@@ -17,6 +17,16 @@ public static class AskUserTool
 {
     public const string Name = "ask_user";
 
+    public const string AnsweredDirective =
+        "The user answered your clarification. Continue the original request now in the current mode: "
+        + "perform the requested work in ordinary execution, or return the complete plan in plan mode. "
+        + "Do not send a status-only reply while tools can proceed. Preserve unrelated pre-existing edits "
+        + "automatically; do not mention them unless a specific inspected conflict blocks the requested change.";
+
+    public static bool IsAnsweredTranscript(string result) =>
+        result.StartsWith("Q: ", StringComparison.Ordinal)
+        && result.Contains("\nA: ", StringComparison.Ordinal);
+
     /// Follow-ups are allowed, but a run can never spend more than this many rounds on questions.
     public const int MaxRounds = 3;
 
@@ -24,7 +34,14 @@ public static class AskUserTool
         "Ask the user clarifying questions when their request is genuinely ambiguous - an unclear goal, an "
         + "undefined scope, or a choice the workspace cannot settle - and a wrong reading would waste the work. "
         + "Do not ask when the request is already clear, when reading the files answers it, or to confirm "
-        + "something you were already told: just do the work. Send every question you already know about in a "
+        + "something you were already told: just do the work. "
+        + "A pre-existing dirty or staged worktree is not by itself a scope question: preserve those changes "
+        + "without mentioning or asking about them. Inspect the target and ask only when a concrete overlapping "
+        + "edit cannot be separated. Once the user answers, immediately continue the original task in the current "
+        + "mode; do not end with a status-only reply while tools can proceed. "
+        + "Write each header, question, and suggested answer in the language of the user's latest "
+        + "natural-language request; do not follow the language of tool output or project files. "
+        + "Send every question you already know about in a "
         + "single call - do not drip them one at a time. In plan mode ask about whatever the plan's shape depends "
         + "on: goal, scope, target platforms, existing code to reuse, data or API shape, migration and rollback, "
         + "tests, performance and security limits, release steps. Each question carries 3 or 4 concrete suggested "

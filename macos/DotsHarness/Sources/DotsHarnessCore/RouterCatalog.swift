@@ -75,6 +75,24 @@ public enum RouterCatalog {
 
     public static func spec(for id: String) -> ProviderSpec? { ProviderRegistry.shared.spec(id) }
 
+    /// Official GPT-6 API context capacities. Some subscription model catalogs
+    /// report 272K, which is a long-context pricing threshold, not the full window.
+    public static func documentedContextWindow(for modelID: String, provider: String) -> Int? {
+        guard ["gpt", "openai"].contains(provider.lowercased()) else { return nil }
+        let model = modelID.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            .split(separator: "/").last.map(String.init) ?? modelID.lowercased()
+        let documentedModels = ["gpt-6-astra", "gpt-6-sol", "gpt-6.1-sol", "gpt-6-luna"]
+        guard documentedModels.contains(where: { model == $0 || model.hasPrefix($0 + "-") }) else { return nil }
+        return 1_050_000
+    }
+
+    /// Stable key shared with the Windows and Linux provider stores. Provider
+    /// ids are normalized because they are case-insensitive; model ids retain
+    /// their provider-defined casing.
+    public static func modelContextOverrideKey(provider: String, model: String) -> String {
+        "\(provider.lowercased())\u{001F}\(model)"
+    }
+
     static func authKind(for category: ProviderSpec.Category) -> RouterAuthKind {
         switch category {
         case .oauth: return .oauthBrowser
@@ -116,23 +134,16 @@ public enum RouterCatalog {
         }
     }
 
+    /// Providers list models under their own heading, but dropping the family
+    /// token turns "gpt-6-luna" into "6 Luna", which is not a name anyone
+    /// recognises. So the declared name wins and ids are only made readable.
     public static func modelDisplayName(for model: RouterModel) -> String {
         let declared = model.displayName?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let hasDeclaredName = !(declared?.isEmpty ?? true)
-        let source = hasDeclaredName ? declared! : (model.id.split(separator: "/").last.map(String.init) ?? model.id)
-        let readable = hasDeclaredName ? source : source.replacingOccurrences(of: "-", with: " ")
-        let prefixes = [kind(for: model.provider)?.name, model.owner, "Claude", "GPT", "OpenAI", "Gemini", "Grok"]
-            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-            .sorted { $0.count > $1.count }
-        let withoutProvider = prefixes.first(where: { prefix in
-            readable.count > prefix.count
-                && readable.lowercased().hasPrefix(prefix.lowercased())
-                && readable.dropFirst(prefix.count).first == " "
-        }).map { String(readable.dropFirst($0.count)).trimmingCharacters(in: .whitespacesAndNewlines) } ?? readable
-        guard !withoutProvider.isEmpty else { return source }
-        guard !hasDeclaredName else { return withoutProvider }
-        return withoutProvider.split(separator: " ").map { word in
+        if let declared, !declared.isEmpty { return declared }
+        let source = model.id.split(separator: "/").last.map(String.init) ?? model.id
+        let words = source.replacingOccurrences(of: "-", with: " ").split(separator: " ")
+        guard !words.isEmpty else { return source }
+        return words.map { word in
             switch word.lowercased() {
             case "gpt": return "GPT"
             case "glm": return "GLM"
@@ -160,6 +171,9 @@ public enum RouterCatalog {
         }
         if provider == "gemini" || provider == "gemini-cli" || provider == "antigravity" || bare.hasPrefix("gemini-") {
             return ["low", "medium", "high"]
+        }
+        if bare.hasPrefix("gpt-6") {
+            return ["low", "medium", "high", "xhigh", "max"]
         }
         if bare.hasPrefix("gpt-5") {
             return ["none", "low", "medium", "high", "xhigh"]
@@ -305,7 +319,7 @@ public struct RouterNode: Identifiable, Sendable, Equatable {
     }
 }
 
-public struct RouterModel: Identifiable, Sendable, Equatable {
+public struct RouterModel: Identifiable, Codable, Sendable, Equatable {
     public var id: String
     public var owner: String
     public var contextWindow: Int?
@@ -321,6 +335,8 @@ public struct RouterModel: Identifiable, Sendable, Equatable {
     public var tier: ModelTier?
     /// Registry-declared fast (priority) mode support.
     public var fast = false
+    /// Registry-declared Anthropic legacy thinking budget support.
+    public var supportsLegacyThinkingBudget = false
 
     public init(
         id: String,
@@ -330,9 +346,11 @@ public struct RouterModel: Identifiable, Sendable, Equatable {
         displayName: String? = nil,
         provider: String = "",
         tier: ModelTier? = nil,
-        fast: Bool = false
+        fast: Bool = false,
+        supportsLegacyThinkingBudget: Bool = false
     ) {
         self.fast = fast
+        self.supportsLegacyThinkingBudget = supportsLegacyThinkingBudget
         self.id = id
         self.owner = owner
         self.contextWindow = contextWindow

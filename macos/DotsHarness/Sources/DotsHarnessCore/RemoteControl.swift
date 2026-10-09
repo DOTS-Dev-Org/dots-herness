@@ -2,6 +2,7 @@
 // Native remote-control gateway for the macOS host.
 
 import CryptoKit
+import Combine
 import Darwin
 import Foundation
 import Network
@@ -86,7 +87,7 @@ public struct RemotePairingDevice: Codable, Sendable, Equatable, Identifiable {
 
 public struct RemoteBootstrap: Codable, Sendable {
     public let protocolVersion: Int
-    public let area: AgentArea
+    public let scope: String
     public let workspaceId: String
     public let workspace: String
     public let revision: Int64
@@ -98,6 +99,45 @@ public struct RemoteBootstrap: Codable, Sendable {
     public let accessMode: RemoteAccessMode
     public let capabilities: [String]
     public let devices: [RemotePairingDevice]
+    public let projectID: String?
+}
+
+public struct RemoteProjectDescriptor: Codable, Sendable, Equatable, Identifiable {
+    public let id: String
+    public let name: String
+    public let workspaceId: String
+    public let branch: String?
+    let workspacePath: String
+
+    enum CodingKeys: String, CodingKey { case id, name, workspaceId, branch }
+
+    public init(id: String, name: String, workspaceId: String, branch: String? = nil, workspacePath: String) {
+        self.id = id
+        self.name = name
+        self.workspaceId = workspaceId
+        self.branch = branch
+        self.workspacePath = workspacePath
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(String.self, forKey: .id)
+        name = try values.decode(String.self, forKey: .name)
+        workspaceId = try values.decode(String.self, forKey: .workspaceId)
+        branch = try values.decodeIfPresent(String.self, forKey: .branch)
+        workspacePath = ""
+    }
+}
+
+private struct RemoteProjectsResponse: Codable, Sendable {
+    let protocolVersion: Int
+    let projectID: String?
+    let projects: [RemoteProjectDescriptor]
+}
+
+private struct RemoteProjectSelection: Codable, Sendable {
+    let projectID: String
+    let workspaceId: String
 }
 
 public struct RemoteWorkspaceFile: Codable, Sendable, Equatable, Identifiable {
@@ -392,6 +432,9 @@ private struct RemoteHTTPRequest {
 @MainActor
 public final class RemoteControlHost {
     public static let port: UInt16 = 18_768
+    /// Remote build/deploy commands run outside any chat, so their read/write
+    /// ledger gets its own scope instead of borrowing the selected conversation.
+    nonisolated static let ledgerScope = "remote-control"
     public let events: RemoteEventHub
     public private(set) var pairing: RemotePairingInfo?
     public private(set) var publicEndpoint: String?
@@ -404,24 +447,49 @@ public final class RemoteControlHost {
     private let paths: SupportPaths
     private let pairingStore: RemotePairingStore
     private let tunnel: CloudTunnelProcess
+    private let previewTunnel: CloudTunnelProcess
+    private var projectsProvider: (() -> [RemoteProjectDescriptor])?
+    private var selectedProjects: [String: String] = [:]
+    private var terminalSessions: [String: TerminalSession] = [:]
+    private var previewTunnelPort: Int?
+    private var previewTunnelURL: String?
     private var listener: NWListener?
     private var workspacePath: String
     private var revision: Int64 = 0
     private var access: RemoteAccessMode = .ask
     private var pending: [String: (command: RemoteCommand, deviceId: String)] = [:]
 
-    public init(bridge: AgentBridge, paths: SupportPaths, events: RemoteEventHub, workspacePath: String) {
+    public init(bridge: AgentBridge, paths: SupportPaths, events: RemoteEventHub, workspacePath: String, projectsProvider: (() -> [RemoteProjectDescriptor])? = nil) {
         self.bridge = bridge
         self.paths = paths
         self.events = events
         self.workspacePath = workspacePath
+        self.projectsProvider = projectsProvider
         self.pairingStore = RemotePairingStore(root: paths.root, workspaceId: Self.workspaceID(workspacePath))
         self.tunnel = CloudTunnelProcess(runtimeURL: paths.runtime)
+        self.previewTunnel = CloudTunnelProcess(runtimeURL: paths.runtime.appendingPathComponent("preview-tunnel", isDirectory: true))
     }
 
     public func setWorkspacePath(_ value: String) {
         workspacePath = value
         pairingStore.setWorkspaceId(Self.workspaceID(workspace))
+    }
+
+    public func setProjectsProvider(_ provider: (() -> [RemoteProjectDescriptor])?) {
+        projectsProvider = provider
+    }
+
+    private func projects() -> [RemoteProjectDescriptor] {
+        let supplied = (projectsProvider?() ?? []).filter { !$0.id.isEmpty && !$0.workspacePath.isEmpty }
+        if !supplied.isEmpty { return supplied }
+        let path = workspace
+        return [RemoteProjectDescriptor(id: "default", name: URL(fileURLWithPath: path).lastPathComponent, workspaceId: Self.workspaceID(path), workspacePath: path)]
+    }
+
+    private func selectedProject(for deviceID: String, requestedID: String? = nil) -> RemoteProjectDescriptor {
+        let all = projects()
+        let id = requestedID ?? selectedProjects[deviceID]
+        return all.first(where: { $0.id == id }) ?? all[0]
     }
 
     public func start() {
@@ -447,7 +515,16 @@ public final class RemoteControlHost {
         }
     }
 
-    public func stop() { listener?.cancel(); listener = nil; tunnel.stop() }
+    public func stop() {
+        listener?.cancel()
+        listener = nil
+        tunnel.stop()
+        previewTunnel.stop()
+        previewTunnelPort = nil
+        previewTunnelURL = nil
+        terminalSessions.values.forEach { $0.stop() }
+        terminalSessions.removeAll()
+    }
 
     public func beginPairing() -> RemotePairingInfo {
         let value = pairingStore.begin(endpoint: publicEndpoint ?? preferredEndpoint)
@@ -467,10 +544,9 @@ public final class RemoteControlHost {
 
     public func disableCloudTunnel() { tunnel.stop(); publicEndpoint = nil; _ = beginPairing() }
 
-    public func publish(_ kind: String, _ payload: [String: RemoteJSONValue] = [:]) {
-        var payload = payload
-        payload["area"] = .string(bridge.area.rawValue)
-        events.publish(kind, workspaceId: Self.workspaceID(workspace), sessionId: bridge.selected?.id, payload: payload)
+    public func publish(_ kind: String, _ payload: [String: RemoteJSONValue] = [:], workspaceOverride: String? = nil) {
+        let root = workspaceOverride.map { URL(fileURLWithPath: $0).standardizedFileURL.path } ?? workspace
+        events.publish(kind, workspaceId: Self.workspaceID(root), sessionId: bridge.selected?.id, payload: scopedPayload(payload, workspace: root))
     }
 
     private func receive(_ connection: NWConnection, buffer: Data) {
@@ -514,15 +590,38 @@ public final class RemoteControlHost {
             await send(RemoteHTTPResponse(status: 401, contentType: "application/json", body: Data(#"{"error":"A valid device token is required."}"#.utf8)), on: connection)
             return
         }
-        switch (request.method, request.path) {
+        if request.method == "GET", request.path == "/v2/control/projects" {
+            let all = projects()
+            await sendJSON(RemoteProjectsResponse(protocolVersion: 2, projectID: selectedProject(for: deviceId).id, projects: all), status: 200, on: connection)
+            return
+        }
+        if request.method == "POST", request.path == "/v2/control/projects/select" {
+            guard let body = try? JSONDecoder.remote.decode([String: String].self, from: request.body),
+                  let projectID = body["projectID"],
+                  let project = projects().first(where: { $0.id == projectID }) else {
+                await sendJSON(MessageResponse(error: "Project not found."), status: 404, on: connection)
+                return
+            }
+            selectedProjects[deviceId] = project.id
+            await sendJSON(RemoteProjectSelection(projectID: project.id, workspaceId: project.workspaceId), status: 200, on: connection)
+            publish(
+                "project.selected",
+                ["projectID": .string(project.id), "deviceId": .string(deviceId)],
+                workspaceOverride: project.workspacePath
+            )
+            return
+        }
+        let projectScoped = request.path.hasPrefix("/v2/control/")
+        let routePath = projectScoped ? "/v1/control/" + String(request.path.dropFirst("/v2/control/".count)) : request.path
+        switch (request.method, routePath) {
         case ("GET", "/v1/control/bootstrap"):
-            await sendJSON(bootstrap(), status: 200, on: connection)
+            await sendJSON(bootstrap(deviceID: deviceId, projectScoped: projectScoped), status: 200, on: connection)
         case ("GET", "/v1/control/events"):
-            await streamEvents(request, on: connection)
+            await streamEvents(request, deviceID: deviceId, projectScoped: projectScoped, on: connection)
         case ("GET", "/v1/control/file"):
-            await readFile(request, on: connection)
+            await readFile(request, deviceID: deviceId, projectScoped: projectScoped, on: connection)
         case ("GET", let path) where path.hasPrefix("/v1/control/files/"):
-            await readFile(request, on: connection)
+            await readFile(request, deviceID: deviceId, projectScoped: projectScoped, on: connection)
         case ("GET", "/v1/control/artifact"):
             await readArtifact(request, on: connection)
         case ("GET", let path) where path.hasPrefix("/v1/control/artifacts/"):
@@ -530,11 +629,13 @@ public final class RemoteControlHost {
         case ("GET", "/v1/control/artifacts"):
             await sendJSON(events.artifactList(), status: 200, on: connection)
         case ("POST", "/v1/control/snapshot/request"):
-            await sendJSON(snapshot(), status: 200, on: connection)
+            await sendJSON(await snapshot(deviceID: deviceId, projectScoped: projectScoped), status: 200, on: connection)
         case ("POST", "/v1/control/commands"):
-            let response = await dispatch(request, deviceId: deviceId)
+            let response = await dispatch(request, deviceId: deviceId, projectScoped: projectScoped)
             if let command = try? JSONDecoder.remote.decode(RemoteCommand.self, from: request.body) {
-                publish("audit.command", ["commandId": .string(command.id), "deviceId": .string(deviceId), "kind": .string(command.kind), "status": .string(response.status), "httpStatus": .number(Double(response.httpStatus))])
+                let requestedProjectID = command.projectID ?? command.payload["projectID"]?.string
+                let auditWorkspace = projectScoped ? selectedProject(for: deviceId, requestedID: requestedProjectID).workspacePath : nil
+                publish("audit.command", ["commandId": .string(command.id), "deviceId": .string(deviceId), "kind": .string(command.kind), "status": .string(response.status), "httpStatus": .number(Double(response.httpStatus))], workspaceOverride: auditWorkspace)
             }
             await sendJSON(response, status: response.httpStatus, on: connection)
         default:
@@ -542,8 +643,11 @@ public final class RemoteControlHost {
         }
     }
 
-    private func dispatch(_ request: RemoteHTTPRequest, deviceId: String) async -> CommandResponse {
-        guard let command = try? JSONDecoder.remote.decode(RemoteCommand.self, from: request.body), command.workspaceId == Self.workspaceID(workspace) else { return .failed(400, "Invalid command or workspace.") }
+    private func dispatch(_ request: RemoteHTTPRequest, deviceId: String, projectScoped: Bool) async -> CommandResponse {
+        guard let command = try? JSONDecoder.remote.decode(RemoteCommand.self, from: request.body) else { return .failed(400, "Invalid command or workspace.") }
+        let requestedProjectID = projectScoped ? (command.projectID ?? command.payload["projectID"]?.string) : nil
+        let targetWorkspace = projectScoped ? selectedProject(for: deviceId, requestedID: requestedProjectID).workspacePath : workspace
+        guard command.workspaceId == Self.workspaceID(targetWorkspace) else { return .failed(400, "Invalid command or workspace.") }
         if let expected = command.expectedRevision, expected != revision { return .failed(409, "The workspace revision changed. Current revision: \(revision).") }
         switch command.kind {
         case "prompt":
@@ -560,10 +664,16 @@ public final class RemoteControlHost {
             bridge.stopCurrentRun()
             return .accepted(command.id, "stopped")
         case "approval":
-            bridge.answerApproval(command.payload["answer"]?.string ?? "rejected")
+            bridge.answerApproval(
+                command.payload["answer"]?.string ?? "rejected",
+                in: command.payload["conversationId"]?.string
+            )
             return .accepted(command.id, "approval-forwarded")
         case "question":
-            bridge.answerQuestions(command.payload["answers"]?.strings ?? [command.payload["answer"]?.string ?? ""])
+            bridge.answerQuestions(
+                command.payload["answers"]?.strings ?? [command.payload["answer"]?.string ?? ""],
+                in: command.payload["conversationId"]?.string
+            )
             return .accepted(command.id, "answer-forwarded")
         case "permission":
             access = RemoteAccessMode(rawValue: command.payload["mode"]?.string?.replacingOccurrences(of: " ", with: "").lowercased() ?? "ask") ?? .ask
@@ -571,17 +681,44 @@ public final class RemoteControlHost {
             return .accepted(command.id, access.rawValue)
         case "approve":
             return await approve(command)
-        case "write_file", "run_command", "build", "deploy":
+        case "terminal_session":
+            let action = command.payload["action"]?.string?.lowercased() ?? "status"
+            if ["read", "status", "stop"].contains(action) {
+                return terminalSession(command, deviceId: deviceId, workspace: targetWorkspace)
+            }
             guard access != .ask else {
                 let approvalId = UUID().uuidString
                 pending[approvalId] = (command, deviceId)
-                publish("approval.required", ["approvalId": .string(approvalId), "commandId": .string(command.id), "kind": .string(command.kind), "summary": .string(commandSummary(command))])
+                publish("approval.required", ["approvalId": .string(approvalId), "commandId": .string(command.id), "kind": .string(command.kind), "summary": .string(commandSummary(command))], workspaceOverride: targetWorkspace)
                 return .pending(command.id, approvalId)
             }
-            return await executeSensitive(command)
+            return terminalSession(command, deviceId: deviceId, workspace: targetWorkspace)
+        case "preview_tunnel":
+            let action = command.payload["action"]?.string?.lowercased() ?? "status"
+            if ["stop", "status"].contains(action) {
+                return previewTunnelCommand(command, workspace: targetWorkspace)
+            }
+            guard access != .ask else {
+                let approvalId = UUID().uuidString
+                pending[approvalId] = (command, deviceId)
+                publish("approval.required", ["approvalId": .string(approvalId), "commandId": .string(command.id), "kind": .string(command.kind), "summary": .string(commandSummary(command))], workspaceOverride: targetWorkspace)
+                return .pending(command.id, approvalId)
+            }
+            return await startPreviewTunnel(command, workspace: targetWorkspace)
+        case "write_file", "run_command", "build", "deploy", "computer_use", "native_browser":
+            guard access != .ask else {
+                let approvalId = UUID().uuidString
+                pending[approvalId] = (command, deviceId)
+                publish("approval.required", ["approvalId": .string(approvalId), "commandId": .string(command.id), "kind": .string(command.kind), "summary": .string(commandSummary(command))], workspaceOverride: targetWorkspace)
+                return .pending(command.id, approvalId)
+            }
+            return await executeSensitive(command, workspace: targetWorkspace, deviceId: deviceId)
         case "revoke_device":
             let id = command.payload["deviceId"]?.string ?? ""
-            return pairingStore.revoke(id) ? .accepted(command.id, "revoked") : .failed(404, "Device not found.")
+            guard pairingStore.revoke(id) else { return .failed(404, "Device not found.") }
+            let keys = terminalSessions.keys.filter { $0.hasPrefix(id + ":") }
+            for key in keys { terminalSessions.removeValue(forKey: key)?.stop() }
+            return .accepted(command.id, "revoked")
         default:
             return .failed(400, "Unsupported control command.")
         }
@@ -590,28 +727,72 @@ public final class RemoteControlHost {
     private func approve(_ command: RemoteCommand) async -> CommandResponse {
         guard let approvalId = command.payload["approvalId"]?.string, let item = pending.removeValue(forKey: approvalId) else { return .failed(404, "Approval request not found.") }
         let answer = command.payload["answer"]?.string?.lowercased() ?? "rejected"
-        guard ["allow", "allowed-once", "approved", "full"].contains(answer) else { publish("approval.resolved", ["approvalId": .string(approvalId), "allowed": .bool(false)]); return .accepted(command.id, "rejected") }
+        let projectID = item.command.projectID ?? item.command.payload["projectID"]?.string
+        let targetWorkspace = selectedProject(for: item.deviceId, requestedID: projectID).workspacePath
+        guard ["allow", "allowed-once", "approved", "full"].contains(answer) else {
+            publish("approval.resolved", ["approvalId": .string(approvalId), "allowed": .bool(false)], workspaceOverride: targetWorkspace)
+            return .accepted(command.id, "rejected")
+        }
         if answer == "full" { access = .full }
-        let result = await executeSensitive(item.command)
-        publish("approval.resolved", ["approvalId": .string(approvalId), "allowed": .bool(true)])
+        let result = await executeSensitive(item.command, workspace: targetWorkspace, deviceId: item.deviceId)
+        publish("approval.resolved", ["approvalId": .string(approvalId), "allowed": .bool(true)], workspaceOverride: targetWorkspace)
         return result
     }
 
-    private func executeSensitive(_ command: RemoteCommand) async -> CommandResponse {
+    private func executeSensitive(_ command: RemoteCommand, workspace: String, deviceId: String) async -> CommandResponse {
         let workspaceURL = URL(fileURLWithPath: workspace, isDirectory: true)
         do {
             if command.kind == "write_file" {
                 let path = command.payload["path"]?.string ?? ""
                 let content = command.payload["content"]?.string ?? ""
                 let expected = command.payload["expectedSha256"]?.string
-                let result = try RemoteWorkspaceMac.write(content: content, path: path, workspace: workspaceURL, expectedSha256: expected)
+                let result = try await Task.detached(priority: .userInitiated) {
+                    try RemoteWorkspaceMac.write(content: content, path: path, workspace: workspaceURL, expectedSha256: expected)
+                }.value
                 if result.conflict { return .conflict(command.id, result) }
-                publish("file.changed", ["path": .string(path), "sha256": .string(result.sha256), "operation": .string("write")])
+                publish("file.changed", ["path": .string(path), "sha256": .string(result.sha256), "operation": .string("write")], workspaceOverride: workspace)
                 return .ok(command.id, result)
+            }
+            if command.kind == "computer_use" {
+                guard bridge.isComputerUseEnabled else {
+                    return .failed(403, "Computer Use is disabled on this desktop. Enable it in Settings → Computer Use.")
+                }
+                var arguments: [String: Any] = [:]
+                for (key, value) in command.payload {
+                    switch value {
+                    case .string(let text): arguments[key] = text
+                    case .number(let number): arguments[key] = number
+                    case .bool(let flag): arguments[key] = flag
+                    default: break
+                    }
+                }
+                let output = try await ComputerUseService.execute(arguments: arguments, workspace: workspaceURL)
+                publish("computeruse.action", ["commandId": .string(command.id), "action": .string(command.payload["action"]?.string ?? "")], workspaceOverride: workspace)
+                return .ok(command.id, output)
+            }
+            if command.kind == "terminal_session" {
+                return terminalSession(command, deviceId: deviceId, workspace: workspace)
+            }
+            if command.kind == "preview_tunnel" {
+                return await startPreviewTunnel(command, workspace: workspace)
+            }
+            if command.kind == "native_browser" {
+                var arguments: [String: Any] = [:]
+                for (key, value) in command.payload {
+                    switch value {
+                    case .string(let text): arguments[key] = text
+                    case .number(let number): arguments[key] = number
+                    case .bool(let flag): arguments[key] = flag
+                    default: break
+                    }
+                }
+                let output = try await NativeBrowserService.shared.execute(arguments: arguments, workspace: workspaceURL)
+                publish("browser.action", ["commandId": .string(command.id), "action": .string(command.payload["action"]?.string ?? "")], workspaceOverride: workspace)
+                return .ok(command.id, ["output": .string(output), "outputPreview": .string(String(output.prefix(700)))])
             }
             let shell = command.payload["command"]?.string?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             guard !shell.isEmpty else { return .failed(400, "Command text is required.") }
-            publish(command.kind == "deploy" ? "deploy.progress" : "build.started", ["commandId": .string(command.id), "kind": .string(command.kind), "phase": .string("started")])
+            publish(command.kind == "deploy" ? "deploy.progress" : "build.started", ["commandId": .string(command.id), "kind": .string(command.kind), "phase": .string("started")], workspaceOverride: workspace)
             let arguments: [String: RemoteJSONValue] = ["command": .string(shell)]
             let call = AgentToolCall(id: command.id, name: "run_command", arguments: try JSONEncoder.remote.encodeToString(arguments))
             let eventHub = events
@@ -619,60 +800,164 @@ public final class RemoteControlHost {
             let sessionId = bridge.selected?.id
             let commandId = command.id
             let commandKind = command.kind
-            let output = WorkspaceTools.execute(call, workspace: workspaceURL, sandboxPolicy: bridge.sandboxPolicy, onOutput: { chunk in
-                eventHub.publish("terminal.output", workspaceId: workspaceId, sessionId: sessionId, payload: [
-                    "commandId": .string(commandId),
-                    "kind": .string(commandKind),
-
-                ])
-            })
-            let artifact = events.publishText(command.kind == "deploy" ? "deploy.progress" : "build.output", workspaceId: Self.workspaceID(workspace), sessionId: bridge.selected?.id, text: output, payload: ["commandId": .string(command.id), "kind": .string(command.kind), "phase": .string("output")])
+            let terminalPayload = scopedPayload([
+                "commandId": .string(commandId),
+                "kind": .string(commandKind),
+            ], workspace: workspace)
+            let policy = bridge.sandboxPolicy
+            // A remote build or deploy is the longest-running thing this host can
+            // be asked to do, so it cannot hold the thread that draws the app.
+            let output = await Task.detached(priority: .userInitiated) {
+                WorkspaceTools.execute(
+                    call,
+                    workspace: workspaceURL,
+                    conversationID: Self.ledgerScope,
+                    sandboxPolicy: policy,
+                    onOutput: { chunk in
+                        eventHub.publish("terminal.output", workspaceId: workspaceId, sessionId: sessionId, payload: terminalPayload)
+                    }
+                )
+            }.value
+            let artifact = events.publishText(command.kind == "deploy" ? "deploy.progress" : "build.output", workspaceId: Self.workspaceID(workspace), sessionId: bridge.selected?.id, text: output, payload: scopedPayload(["commandId": .string(command.id), "kind": .string(command.kind), "phase": .string("output")], workspace: workspace))
             var outputArtifactId: String?
             if command.kind == "build", let artifactPath = command.payload["artifactPath"]?.string, !artifactPath.isEmpty {
-                let data = try RemoteWorkspaceMac.readArtifact(path: artifactPath, workspace: workspaceURL)
+                let data = try await Task.detached(priority: .userInitiated) {
+                    try RemoteWorkspaceMac.readArtifact(path: artifactPath, workspace: workspaceURL)
+                }.value
                 outputArtifactId = events.saveArtifact(kind: "build-artifact", data: data)
-                events.publish("artifact.ready", workspaceId: Self.workspaceID(workspace), sessionId: bridge.selected?.id, payload: ["path": .string(artifactPath), "bytes": .number(Double(data.count))], artifactId: outputArtifactId)
+                events.publish("artifact.ready", workspaceId: Self.workspaceID(workspace), sessionId: bridge.selected?.id, payload: scopedPayload(["path": .string(artifactPath), "bytes": .number(Double(data.count))], workspace: workspace), artifactId: outputArtifactId)
             }
             let bytes = output.utf8.count
             let deployFailed = command.kind == "deploy" && output.contains("Command exited with status ")
-            publish(command.kind == "deploy" ? (deployFailed ? "deploy.failed" : "deploy.completed") : "build.completed", ["commandId": .string(command.id), "kind": .string(command.kind), "bytes": .number(Double(bytes)), "artifactId": .string(artifact.artifactId ?? ""), "outputArtifactId": outputArtifactId.map(RemoteJSONValue.string) ?? .null, "truncated": .bool(bytes > 50 * 1024 * 1024)])
+            publish(command.kind == "deploy" ? (deployFailed ? "deploy.failed" : "deploy.completed") : "build.completed", ["commandId": .string(command.id), "kind": .string(command.kind), "bytes": .number(Double(bytes)), "artifactId": .string(artifact.artifactId ?? ""), "outputArtifactId": outputArtifactId.map(RemoteJSONValue.string) ?? .null, "truncated": .bool(bytes > 50 * 1024 * 1024)], workspaceOverride: workspace)
             return .ok(command.id, ["outputPreview": String(output.prefix(700)), "artifactId": artifact.artifactId ?? "", "outputArtifactId": outputArtifactId ?? ""])
         } catch {
-            publish("build.failed", ["commandId": .string(command.id), "message": .string(error.localizedDescription)])
+            publish("build.failed", ["commandId": .string(command.id), "message": .string(error.localizedDescription)], workspaceOverride: workspace)
             return .failed(400, error.localizedDescription)
         }
     }
 
-    private func bootstrap() -> RemoteBootstrap {
-        let selected = bridge.selected
-        return RemoteBootstrap(protocolVersion: 1, area: bridge.area, workspaceId: Self.workspaceID(workspace), workspace: workspace, revision: revision, conversationId: selected?.id, provider: bridge.connection?.provider, model: bridge.connection?.model, status: bridge.status, isBusy: bridge.isBusy, accessMode: access, capabilities: ["events", "prompt", "continue", "stop", "approval", "files", "snapshot", "artifacts", "write", "terminal", "build", "deploy"], devices: pairingStore.list())
+    private func terminalSession(_ command: RemoteCommand, deviceId: String, workspace: String) -> CommandResponse {
+        let action = command.payload["action"]?.string?.lowercased() ?? "status"
+        let key = deviceId + ":" + Self.workspaceID(workspace)
+        if action == "start" {
+            if terminalSessions[key]?.isRunning != true {
+                let policy = bridge.sandboxPolicy.flatMap { $0.workspaceURL.standardizedFileURL.path == URL(fileURLWithPath: workspace).standardizedFileURL.path ? $0 : nil }
+                let session = TerminalSession(workspacePath: workspace, sandboxPolicy: policy)
+                session.start()
+                terminalSessions[key] = session
+                publish("terminal.session.started", ["sessionId": .string(session.id.uuidString)], workspaceOverride: workspace)
+            }
+        }
+        guard let session = terminalSessions[key] else {
+            if action == "stop" { return .accepted(command.id, "stopped") }
+            return .ok(command.id, ["running": .bool(false), "output": .string(""), "sessionId": .string("")])
+        }
+        switch action {
+        case "read", "status": break
+        case "send":
+            let input = command.payload["input"]?.string ?? ""
+            guard !input.isEmpty else { return .failed(400, "Terminal input is required.") }
+            session.sendInput(input)
+        case "stop":
+            session.stop()
+            terminalSessions.removeValue(forKey: key)
+            publish("terminal.session.stopped", ["sessionId": .string(session.id.uuidString)], workspaceOverride: workspace)
+            return .accepted(command.id, "stopped")
+        case "start": break
+        default: return .failed(400, "Unsupported terminal session action.")
+        }
+        return .ok(command.id, [
+            "sessionId": .string(session.id.uuidString),
+            "running": .bool(session.isRunning),
+            "output": .string(String(session.output.suffix(40_000))),
+        ])
     }
 
-    private func snapshot() -> RemoteWorkspaceSnapshot {
+    private func previewTunnelCommand(_ command: RemoteCommand, workspace: String) -> CommandResponse {
+        let action = command.payload["action"]?.string?.lowercased() ?? "status"
+        if action == "stop" {
+            previewTunnel.stop()
+            previewTunnelPort = nil
+            previewTunnelURL = nil
+            publish("preview.tunnel.stopped", workspaceOverride: workspace)
+            return .accepted(command.id, "stopped")
+        }
+        return .ok(command.id, [
+            "running": .bool(previewTunnelPort != nil),
+            "port": previewTunnelPort.map { .number(Double($0)) } ?? .null,
+            "url": previewTunnelURL.map(RemoteJSONValue.string) ?? .null,
+        ])
+    }
+
+    private func startPreviewTunnel(_ command: RemoteCommand, workspace: String) async -> CommandResponse {
+        let port = command.payload["port"]?.int ?? 0
+        guard (1...65_535).contains(port) else { return .failed(400, "Enter a development server port between 1 and 65535.") }
+        do {
+            var request = URLRequest(url: URL(string: "http://127.0.0.1:\(port)")!, timeoutInterval: 2)
+            request.httpMethod = "HEAD"
+            _ = try await URLSession.shared.data(for: request)
+            let url = try await previewTunnel.start(gatewayPort: port)
+            previewTunnelPort = port
+            previewTunnelURL = url
+            publish("preview.tunnel.ready", ["url": .string(url), "port": .number(Double(port))], workspaceOverride: workspace)
+            return .ok(command.id, ["url": .string(url), "port": .number(Double(port)), "public": .bool(true)])
+        } catch {
+            previewTunnelPort = nil
+            previewTunnelURL = nil
+            return .failed(400, error.localizedDescription)
+        }
+    }
+
+    private func bootstrap(deviceID: String, projectScoped: Bool) -> RemoteBootstrap {
+        let selected = bridge.selected
+        let project = projectScoped ? selectedProject(for: deviceID) : nil
+        let path = project?.workspacePath ?? workspace
+        return RemoteBootstrap(protocolVersion: projectScoped ? 2 : 1, scope: "project", workspaceId: Self.workspaceID(path), workspace: path, revision: revision, conversationId: selected?.id, provider: bridge.connection?.provider, model: bridge.connection?.model, status: bridge.status, isBusy: bridge.isBusy, accessMode: access, capabilities: ["events", "prompt", "continue", "stop", "approval", "files", "snapshot", "artifacts", "write", "terminal", "terminal_sessions", "preview_tunnel", "native_browser", "build", "deploy"], devices: pairingStore.list(), projectID: project?.id)
+    }
+
+    private func snapshot(deviceID: String, projectScoped: Bool) async -> RemoteWorkspaceSnapshot {
+        let path = projectScoped ? selectedProject(for: deviceID).workspacePath : workspace
         revision += 1
-        let result = RemoteWorkspaceMac.snapshot(workspace: workspace, workspaceId: Self.workspaceID(workspace), revision: revision)
-        publish("snapshot.ready", ["revision": .number(Double(revision)), "files": .number(Double(result.files.count)), "excluded": .number(Double(result.excluded.count))])
+        let workspaceId = Self.workspaceID(path)
+        let snapshotRevision = revision
+        let result = await Task.detached(priority: .userInitiated) {
+            RemoteWorkspaceMac.snapshot(workspace: path, workspaceId: workspaceId, revision: snapshotRevision)
+        }.value
+        publish("snapshot.ready", ["revision": .number(Double(revision)), "files": .number(Double(result.files.count)), "excluded": .number(Double(result.excluded.count))], workspaceOverride: path)
         return result
     }
 
-    private func readFile(_ request: RemoteHTTPRequest, on connection: NWConnection) async {
+    private func readFile(_ request: RemoteHTTPRequest, deviceID: String, projectScoped: Bool, on connection: NWConnection) async {
         let path = Self.query(request.target, "path").isEmpty && request.path.hasPrefix("/v1/control/files/") ? String(request.path.dropFirst("/v1/control/files/".count).removingPercentEncoding ?? "") : Self.query(request.target, "path")
-        do { await send(RemoteHTTPResponse(status: 200, contentType: "application/octet-stream", body: try RemoteWorkspaceMac.read(path: path, workspace: URL(fileURLWithPath: workspace))), on: connection) }
+        let root = projectScoped ? selectedProject(for: deviceID).workspacePath : workspace
+        // A 50 MB transfer limit is far too much to read on the thread that draws
+        // the app, so the disk work stays off the main actor.
+        do {
+            let workspaceURL = URL(fileURLWithPath: root)
+            let body = try await Task.detached(priority: .userInitiated) {
+                try RemoteWorkspaceMac.read(path: path, workspace: workspaceURL)
+            }.value
+            await send(RemoteHTTPResponse(status: 200, contentType: "application/octet-stream", body: body), on: connection)
+        }
         catch { await sendJSON(MessageResponse(error: error.localizedDescription), status: 400, on: connection) }
     }
 
     private func readArtifact(_ request: RemoteHTTPRequest, on connection: NWConnection) async {
         let id = Self.query(request.target, "id").isEmpty && request.path.hasPrefix("/v1/control/artifacts/") ? String(request.path.dropFirst("/v1/control/artifacts/".count).removingPercentEncoding ?? "") : Self.query(request.target, "id")
-        guard let url = events.artifactURL(id), let data = try? Data(contentsOf: url) else { await sendJSON(MessageResponse(error: "Artifact not found."), status: 404, on: connection); return }
+        guard let url = events.artifactURL(id) else { await sendJSON(MessageResponse(error: "Artifact not found."), status: 404, on: connection); return }
+        let body = await Task.detached(priority: .userInitiated) { try? Data(contentsOf: url) }.value
+        guard let data = body else { await sendJSON(MessageResponse(error: "Artifact not found."), status: 404, on: connection); return }
         await send(RemoteHTTPResponse(status: 200, contentType: "application/octet-stream", body: data), on: connection)
     }
 
-    private func streamEvents(_ request: RemoteHTTPRequest, on connection: NWConnection) async {
+    private func streamEvents(_ request: RemoteHTTPRequest, deviceID: String, projectScoped: Bool, on connection: NWConnection) async {
         let after = Int64(Self.query(request.target, "after")) ?? Int64(request.headers["last-event-id"] ?? "0") ?? 0
         let header = "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-cache\r\nConnection: keep-alive\r\nX-Accel-Buffering: no\r\n\r\n"
         do {
             try await sendData(Data(header.utf8), on: connection)
-            for await event in events.stream(after: after, workspaceId: Self.workspaceID(workspace)) {
+            let root = projectScoped ? selectedProject(for: deviceID).workspacePath : workspace
+            for await event in events.stream(after: after, workspaceId: Self.workspaceID(root)) {
                 let data = try JSONEncoder.remote.encode(event)
                 try await sendData(Data("id: \(event.sequence)\nevent: \(event.kind)\ndata: ".utf8) + data + Data("\n\n".utf8), on: connection)
             }
@@ -683,18 +968,35 @@ public final class RemoteControlHost {
     private func send(_ response: RemoteHTTPResponse, on connection: NWConnection) async { let reason = [200: "OK", 202: "Accepted", 400: "Bad Request", 401: "Unauthorized", 404: "Not Found", 409: "Conflict", 500: "Error"][response.status] ?? "Error"; let header = "HTTP/1.1 \(response.status) \(reason)\r\nContent-Type: \(response.contentType)\r\nContent-Length: \(response.body.count)\r\nConnection: close\r\n\r\n"; try? await sendData(Data(header.utf8) + response.body, on: connection); connection.cancel() }
     private func sendData(_ data: Data, on connection: NWConnection) async throws { try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in connection.send(content: data, completion: .contentProcessed { error in if let error { continuation.resume(throwing: error) } else { continuation.resume() } }) } }
 
-    private func commandSummary(_ command: RemoteCommand) -> String { command.kind == "write_file" ? "Write \(command.payload["path"]?.string ?? ".")" : command.payload["command"]?.string ?? command.kind }
+    private func commandSummary(_ command: RemoteCommand) -> String {
+        switch command.kind {
+        case "write_file": return "Write \(command.payload["path"]?.string ?? ".")"
+        case "terminal_session": return command.payload["action"]?.string == "start" ? "Start a mobile terminal session" : "Send input to the mobile terminal"
+        case "preview_tunnel": return "Expose local development port \(command.payload["port"]?.int ?? 0)"
+        case "native_browser": return "Native browser action: \(command.payload["action"]?.string ?? "")"
+        default: return command.payload["command"]?.string ?? command.kind
+        }
+    }
+    private func scopedPayload(_ payload: [String: RemoteJSONValue], workspace: String) -> [String: RemoteJSONValue] {
+        var payload = payload
+        payload["scope"] = .string("project")
+        if let projectID = projects().first(where: { URL(fileURLWithPath: $0.workspacePath).standardizedFileURL.path == URL(fileURLWithPath: workspace).standardizedFileURL.path })?.id {
+            payload["projectID"] = .string(projectID)
+        }
+        return payload
+    }
     private var workspace: String { let value = workspacePath.isEmpty ? FileManager.default.currentDirectoryPath : workspacePath; return URL(fileURLWithPath: value).standardizedFileURL.path }
 
     private static nonisolated func requestComplete(_ data: Data) -> Bool { guard let marker = data.range(of: Data([13, 10, 13, 10])) else { return false }; let headers = String(decoding: data[..<marker.lowerBound], as: UTF8.self); let length = headers.split(separator: "\r\n").compactMap { line -> Int? in let parts = line.split(separator: ":", maxSplits: 1); return parts.count == 2 && parts[0].lowercased() == "content-length" ? Int(parts[1].trimmingCharacters(in: .whitespaces)) : nil }.first ?? 0; return data.count - marker.upperBound >= length }
     private static func parse(_ data: Data) -> RemoteHTTPRequest? { guard let marker = data.range(of: Data([13, 10, 13, 10])) else { return nil }; let lines = String(decoding: data[..<marker.lowerBound], as: UTF8.self).split(separator: "\r\n", omittingEmptySubsequences: false); let first = lines.first?.split(separator: " ", maxSplits: 2).map(String.init) ?? []; guard first.count == 3 else { return nil }; var headers: [String: String] = [:]; for line in lines.dropFirst() { let parts = line.split(separator: ":", maxSplits: 1); if parts.count == 2 { headers[parts[0].lowercased()] = parts[1].trimmingCharacters(in: .whitespaces) } }; let body = Data(data[marker.upperBound...]); let path = first[1].split(separator: "?", maxSplits: 1).first.map(String.init) ?? first[1]; return RemoteHTTPRequest(method: first[0].uppercased(), target: first[1], path: path, headers: headers, body: body) }
     private static func query(_ target: String, _ key: String) -> String { guard let components = URLComponents(string: target), let item = components.queryItems?.first(where: { $0.name == key }) else { return "" }; return item.value ?? "" }
-    private static func workspaceID(_ value: String) -> String { SHA256.hash(data: Data(URL(fileURLWithPath: value).standardizedFileURL.path.utf8)).map { String(format: "%02x", $0) }.joined().prefix(24).description }
+    public nonisolated static func workspaceIDForProject(_ value: String) -> String { SHA256.hash(data: Data(URL(fileURLWithPath: value).standardizedFileURL.path.utf8)).map { String(format: "%02x", $0) }.joined().prefix(24).description }
+    private static func workspaceID(_ value: String) -> String { workspaceIDForProject(value) }
     private static func preferredHost() -> String { var addresses: UnsafeMutablePointer<ifaddrs>?; guard getifaddrs(&addresses) == 0 else { return "127.0.0.1" }; defer { freeifaddrs(addresses) }; var current = addresses; while let item = current { if item.pointee.ifa_addr.pointee.sa_family == UInt8(AF_INET), let name = String(validatingCString: item.pointee.ifa_name), name != "lo0" { var buffer = [CChar](repeating: 0, count: Int(NI_MAXHOST)); getnameinfo(item.pointee.ifa_addr, socklen_t(item.pointee.ifa_addr.pointee.sa_len), &buffer, socklen_t(buffer.count), nil, 0, NI_NUMERICHOST); let bytes = buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }; let value = String(decoding: bytes, as: UTF8.self); if value != "127.0.0.1" { return value } }; current = item.pointee.ifa_next }; return "127.0.0.1" }
 }
 
 private struct PairRequest: Codable { let code: String; let deviceName: String? }
-public struct RemoteCommand: Codable, Sendable { let id: String; let workspaceId: String; let sessionId: String?; let kind: String; let expectedRevision: Int64?; let payload: [String: RemoteJSONValue] }
+public struct RemoteCommand: Codable, Sendable { let id: String; let workspaceId: String; let sessionId: String?; let kind: String; let expectedRevision: Int64?; let payload: [String: RemoteJSONValue]; let projectID: String? }
 private struct MessageResponse: Codable { let error: String }
 private struct CommandResponse: Codable {
     let commandId: String
@@ -705,7 +1007,16 @@ private struct CommandResponse: Codable {
     let error: String?
     static func accepted(_ id: String, _ status: String) -> Self { .init(commandId: id, status: status, httpStatus: 202, approvalId: nil, result: nil, error: nil) }
     static func pending(_ id: String, _ approval: String) -> Self { .init(commandId: id, status: "approval-required", httpStatus: 202, approvalId: approval, result: nil, error: nil) }
-    static func ok(_ id: String, _ value: Any) -> Self { .init(commandId: id, status: "completed", httpStatus: 200, approvalId: nil, result: .string(String(describing: value)), error: nil) }
+    static func ok(_ id: String, _ value: [String: RemoteJSONValue]) -> Self {
+        .init(commandId: id, status: "completed", httpStatus: 200, approvalId: nil, result: .object(value), error: nil)
+    }
+    static func ok(_ id: String, _ value: Any) -> Self {
+        let result: RemoteJSONValue
+        if let value = value as? RemoteJSONValue { result = value }
+        else if let value = value as? [String: RemoteJSONValue] { result = .object(value) }
+        else { result = .string(String(describing: value)) }
+        return .init(commandId: id, status: "completed", httpStatus: 200, approvalId: nil, result: result, error: nil)
+    }
     static func conflict(_ id: String, _ value: RemoteFileWriteResult) -> Self { .init(commandId: id, status: "conflict", httpStatus: 409, approvalId: nil, result: .object(["path": .string(value.path), "currentSha256": .string(value.currentSha256 ?? "")]), error: nil) }
     static func failed(_ status: Int, _ message: String) -> Self { .init(commandId: "", status: "failed", httpStatus: status, approvalId: nil, result: nil, error: message) }
 }

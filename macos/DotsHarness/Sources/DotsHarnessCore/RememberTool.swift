@@ -20,18 +20,24 @@ public enum RememberTool {
         public let kind: String
         public let key: String
         public let text: String
+        public var scope = "project"
     }
+
+    /// Scope of a fact that follows the user into every project.
+    public static let userScope = "user"
 
     public static let definition = AgentToolDefinition(
         name: name,
         description: """
         Record something that must outlive this conversation. Call it when the user states a lasting \
         preference ("always use tabs", "never touch the linux folder", "reply in Turkish"), settles a \
-        project decision ("we ship SQLite, not Postgres"), or answers what this project is for and what it \
-        must not do. One call per fact. Do not record anything that only matters to the current request, \
-        anything the repository already states in its own files, or a fact you inferred rather than were \
-        told - only record what the user actually decided. A preference and a project fact each need a \
-        short stable key so a later one on the same subject replaces it instead of piling up.
+        project decision ("we ship SQLite, not Postgres"), answers what this project is for and what it \
+        must not do, or when work you just finished changed the project for good (kind "project": a \
+        framework or dependency adopted or replaced, an architecture or convention introduced). One \
+        call per fact. Do not record anything that only matters to the current request, anything the \
+        repository or the memory sections already state, or a guess - record what the user decided or \
+        what the finished work made true. Give a short stable key so a later fact on the same subject \
+        replaces it instead of piling up.
         """,
         parameters: .object([
             "type": .string("object"),
@@ -44,6 +50,14 @@ public enum RememberTool {
                             + "project: a standing fact about the project itself - its goal, a hard constraint, what is out of scope."
                     ),
                 ]),
+                "scope": .object([
+                    "type": .string("string"),
+                    "enum": .array([.string("project"), .string("user")]),
+                    "description": .string(
+                        "project (default): holds in this repository. user: describes the user in every project "
+                            + "- their language, preferred stack, working style - and needs a key."
+                    ),
+                ]),
                 "key": .object([
                     "type": .string("string"),
                     "description": .string(
@@ -52,7 +66,10 @@ public enum RememberTool {
                 ]),
                 "text": .object([
                     "type": .string("string"),
-                    "description": .string("The fact itself, one sentence, written so it stands alone months later."),
+                    "description": .string(
+                        "The fact itself, one sentence, written so it stands alone months later. The project keys "
+                            + "\"architecture\", \"conventions\" and \"design-system\" may run to 1,200 characters."
+                    ),
                 ]),
             ]),
             "required": .array([.string("kind"), .string("text")]),
@@ -70,8 +87,9 @@ public enum RememberTool {
         var key = (object["key"] as? String ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
-        if kind != .decision && key.isEmpty { key = "note" }
-        return Entry(kind: kind.rawValue, key: key, text: text)
+        let scope = (object["scope"] as? String ?? "").lowercased() == userScope ? userScope : "project"
+        if (kind != .decision || scope == userScope) && key.isEmpty { key = "note" }
+        return Entry(kind: kind.rawValue, key: key, text: text, scope: scope)
     }
 
     public static let secretNotice = """
@@ -107,6 +125,7 @@ public enum RememberTool {
     }
 
     public static func confirmation(_ entry: Entry) -> String {
+        if entry.scope == userScope { return "Recorded for every project, \(entry.key): \(entry.text)" }
         switch entry.kind {
         case Kind.preference.rawValue: return "Recorded preference \(entry.key): \(entry.text)"
         case Kind.project.rawValue: return "Recorded project brief \(entry.key): \(entry.text)"

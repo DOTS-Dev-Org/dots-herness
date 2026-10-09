@@ -4,21 +4,13 @@
 import SwiftUI
 import DotsHarnessCore
 
-/// Renders `router.claudeUsage` and polls it every 60s while on screen.
-/// No persistence; SwiftUI cancels the `.task` on disappear.
+/// Renders `router.claudeUsage`, which the router's app-wide poll keeps current.
 struct ClaudeUsagePanel: View {
     @ObservedObject var router: RouterController
 
     var body: some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
-            .task {
-                while !Task.isCancelled {
-                    await router.refreshClaudeUsage()
-                    await router.refreshAccountUsage()
-                    try? await Task.sleep(for: .seconds(60))
-                }
-            }
     }
 
     @ViewBuilder
@@ -38,10 +30,10 @@ struct ClaudeUsagePanel: View {
         case .loaded(let usage):
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(usage.windows, id: \.kind) { UsageWindowRow(window: $0) }
-                if let count = usage.resetsAvailable {
-                    Text(AppCopy.format("usage.resetsAvailable", count))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                if let connection = router.connections.first(where: {
+                    $0.active && $0.provider == "claude" && $0.authType == "oauth"
+                }) {
+                    ClaudeResetButton(connection: connection, resetsAvailable: usage.resetsAvailable, router: router)
                 }
             }
         }

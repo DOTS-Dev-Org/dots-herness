@@ -18,12 +18,12 @@ BUNDLE_ID="${BUNDLE_ID:-com.dots.dotsharness}"
 EXECUTABLE="DotsHarness"
 SCHEDULER_EXECUTABLE="DotsHarnessScheduler"
 VERSION="${VERSION:-0.1.0}"
-BUILD_NUMBER="${BUILD_NUMBER:-$VERSION}"
+BUILD_NUMBER="${BUILD_NUMBER:-1}"
 OPEN_RESULT=true
 
 # Yerel disk: harici volume'da binlerce küçük dosya yazmak dakikalar sürer
 BUILD_PATH="${BUILD_PATH:-$HOME/Library/Caches/dots-harness-spm}"
-DIST_DIR="$ROOT/dist"
+DIST_DIR="${OUTPUT_PATH:-$ROOT/dist}"
 STAGING="$DIST_DIR/dmg-staging"
 APP_BUNDLE="$DIST_DIR/${APP_NAME}.app"
 DMG_NAME="${APP_NAME}-${VERSION}"
@@ -39,7 +39,7 @@ DMG_BACKGROUND="${DMG_BACKGROUND:-$ROOT/Resources/DMGBackgroundCompactV2.png}"
 DMG_FORMAT="${DMG_FORMAT:-ULMO}"
 STRIP_SYMBOLS="${STRIP_SYMBOLS:-true}"
 SKIP_BUILD="${SKIP_BUILD:-false}"
-SWIFT_OPTIMIZATION="${SWIFT_OPTIMIZATION:-O}"
+SWIFT_OPTIMIZATION="${SWIFT_OPTIMIZATION:-Osize}"
 
 usage() {
     cat <<'EOF'
@@ -56,7 +56,8 @@ Seçenekler:
   -h, --help              Bu yardım metnini göster.
 
 Ortam değişkenleri:
-  VERSION, BUILD_NUMBER, BUNDLE_ID, BUILD_PATH, STRIP_SYMBOLS, SKIP_BUILD, SWIFT_OPTIMIZATION, DMG_FORMAT, DMG_BACKGROUND
+  VERSION, BUILD_NUMBER, BUNDLE_ID, BUILD_PATH, OUTPUT_PATH, STRIP_SYMBOLS, SKIP_BUILD,
+  SWIFT_OPTIMIZATION (varsayılan: Osize; O performans optimizasyonu), DMG_FORMAT, DMG_BACKGROUND
 EOF
 }
 
@@ -156,13 +157,10 @@ if [[ "$SKIP_BUILD" == true ]]; then
 else
     echo "==> Release build"
     swift_release "$EXECUTABLE"
-    swift_release "$SCHEDULER_EXECUTABLE"
 fi
 
 EXEC_BIN="$(resolve_bin "$EXECUTABLE")"
 echo "    $EXECUTABLE → $EXEC_BIN"
-SCHEDULER_BIN="$(resolve_bin "$SCHEDULER_EXECUTABLE")"
-echo "    $SCHEDULER_EXECUTABLE → $SCHEDULER_BIN"
 
 echo "==> .app bundle"
 rm -rf "$STAGING" "$APP_BUNDLE" "$DMG_PATH"
@@ -174,16 +172,26 @@ echo "    Uygulama binary'si kopyalanıyor"
 cp "$EXEC_BIN" "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE"
 chmod +x "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE"
 
-echo "    Zamanlayıcı yardımcı binary'si kopyalanıyor (arka plan görevleri)"
-cp "$SCHEDULER_BIN" "$APP_BUNDLE/Contents/MacOS/$SCHEDULER_EXECUTABLE"
-chmod +x "$APP_BUNDLE/Contents/MacOS/$SCHEDULER_EXECUTABLE"
+# Zamanlayıcı ayrı binary değil: aynı executable'a sembolik link; main.swift
+# argv[0] adına bakıp headless daemon modunda açar (~30 MB tasarruf).
+ln -s "$EXECUTABLE" "$APP_BUNDLE/Contents/MacOS/$SCHEDULER_EXECUTABLE"
 
 if [[ "$STRIP_SYMBOLS" == true ]]; then
     echo "    Üretim sembolleri temizleniyor (STRIP_SYMBOLS=true)"
-    # Swift metadata'sı korunur; yalnızca debug/yerel linker sembolleri çıkarılır.
-    # Kod imzası bundan sonra atılacağı için imza geçersizleşmez.
-    strip -Sx "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE"
-    strip -Sx "$APP_BUNDLE/Contents/MacOS/$SCHEDULER_EXECUTABLE"
+    # Swift runtime metadata'sı korunur; -T yalnızca Swift mangled sembollerini
+    # Mach-O sembol tablosundan çıkarır. Geçici çıktı kullanmak, -T desteklenmeyen
+    # Xcode araç zincirlerinde orijinal binary'yi sağlam bırakır.
+    BINARY_PATH="$APP_BUNDLE/Contents/MacOS/$EXECUTABLE"
+    STRIPPED_BINARY="$BINARY_PATH.stripped"
+    if strip -SxT -o "$STRIPPED_BINARY" "$BINARY_PATH"; then
+        chmod +x "$STRIPPED_BINARY"
+        mv "$STRIPPED_BINARY" "$BINARY_PATH"
+        echo "    Swift sembolleri de kaldırıldı"
+    else
+        rm -f "$STRIPPED_BINARY"
+        echo "    Bu Xcode strip sürümü -T desteklemiyor; temel temizleme uygulanıyor"
+        strip -Sx "$BINARY_PATH"
+    fi
 fi
 
 # SPM resource bundle (Bundle.module).
@@ -194,9 +202,9 @@ fi
 shopt -s nullglob
 echo "    SPM resource bundle'ları aranıyor ve kopyalanıyor"
 for bundle in \
-    "$BUILD_PATH/arm64-apple-macosx/release/"*_DotsHarness.bundle \
-    "$BUILD_PATH/release/"*_DotsHarness.bundle \
-    "$BUILD_PATH/x86_64-apple-macosx/release/"*_DotsHarness.bundle
+    "$BUILD_PATH/arm64-apple-macosx/release/"*.bundle \
+    "$BUILD_PATH/release/"*.bundle \
+    "$BUILD_PATH/x86_64-apple-macosx/release/"*.bundle
 do
     name="$(basename "$bundle")"
     dest="$APP_BUNDLE/Contents/Resources/$name"

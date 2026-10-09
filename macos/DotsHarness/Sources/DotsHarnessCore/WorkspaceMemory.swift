@@ -174,6 +174,8 @@ public final class WorkspaceMemory {
     let paths: SupportPaths
     let fileManager: FileManager
     let snapshotStore: WorkspaceSnapshotStore
+    /// What is known about the user across every project; see `UserProfile`.
+    public let profile: UserProfile
     /// Turns already known to have a complete snapshot. The chat asks for every message
     /// on every redraw (each check reads and decodes a manifest from disk), and a
     /// complete snapshot cannot turn incomplete again except through the calls below,
@@ -187,11 +189,14 @@ public final class WorkspaceMemory {
     var events: [[String: Any]] = []
     var tasks: [String: TaskRecord] = [:]
     var mapText = ""
+    /// Technologies this project is built with, as last read from its manifests.
+    public internal(set) var stack: [String] = []
 
     public init(paths: SupportPaths, fileManager: FileManager = .default) {
         self.paths = paths
         self.fileManager = fileManager
         self.snapshotStore = WorkspaceSnapshotStore(paths: paths, fileManager: fileManager)
+        self.profile = UserProfile(root: paths.root)
         self.state = Self.emptyState()
     }
 

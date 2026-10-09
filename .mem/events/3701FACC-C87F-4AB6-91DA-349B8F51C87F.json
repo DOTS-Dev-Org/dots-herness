@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-08T23:58:20Z",
+  "eventId" : "3701FACC-C87F-4AB6-91DA-349B8F51C87F",
+  "lamport" : 255,
+  "parents" : [
+    "B83EA38C-92A7-4AA5-AC7F-68FBDB5B920B"
+  ],
+  "payload" : {
+    "commandSummary" : "swift test --filter 'ContextTelemetryTests|PromptCacheImprovementTests'",
+    "name" : "run_command",
+    "path" : null,
+    "resultBytes" : 489,
+    "resultStatus" : "failed",
+    "runId" : "73E53818-8EE9-4B48-8214-5C5AA442F32F"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "E3ZoHBUONKjCYCMje9Ql28Q9o+0ZvpLOTerUGTOdrrdifyWhhv+UUNU1qZ6mM0ji+8GPDk1HyjSjh5zd0mUesg=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

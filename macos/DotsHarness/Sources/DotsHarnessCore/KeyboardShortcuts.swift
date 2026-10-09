@@ -14,7 +14,7 @@ public enum KeyboardShortcutAction: String, CaseIterable, Codable, Hashable, Ide
     case terminal
     case browser
     case files
-    case sideChat
+    case newConversation
     case simulator
 
     public var id: String { rawValue }
@@ -31,8 +31,8 @@ public enum KeyboardShortcutAction: String, CaseIterable, Codable, Hashable, Ide
             return AppCopy.text("sidebar.scheduled")
         case .review:
             return AppCopy.text("conversation.review")
-        case .sideChat:
-            return AppCopy.text("conversation.sideChat")
+        case .newConversation:
+            return AppCopy.text("conversation.newChat")
         case .simulator:
             return AppCopy.text("simulator.title")
         case .files:
@@ -51,7 +51,7 @@ public enum KeyboardShortcutAction: String, CaseIterable, Codable, Hashable, Ide
         case .scheduled: return "clock"
         case .files: return "folder"
         case .review: return "plusminus.circle"
-        case .sideChat: return "plus.bubble"
+        case .newConversation: return "plus.bubble"
         case .simulator: return "iphone.gen3"
         case .browser: return "globe"
         case .terminal: return "terminal"
@@ -77,7 +77,7 @@ public enum KeyboardShortcutAction: String, CaseIterable, Codable, Hashable, Ide
                 key: "g",
                 modifierMask: UserKeyboardShortcut.control | UserKeyboardShortcut.shift
             )!
-        case .sideChat:
+        case .newConversation:
             return UserKeyboardShortcut(
                 key: "s",
                 modifierMask: UserKeyboardShortcut.option | UserKeyboardShortcut.command

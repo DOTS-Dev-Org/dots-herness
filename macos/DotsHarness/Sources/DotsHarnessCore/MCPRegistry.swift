@@ -32,7 +32,7 @@ public final class MCPRegistry: ObservableObject {
     /// exposed tool name -> routing info
     private var routes: [String: Route] = [:]
 
-    private struct Route {
+    private struct Route: Codable {
         var serverID: String
         var toolName: String
         var transport: MCPTransportKind
@@ -53,6 +53,7 @@ public final class MCPRegistry: ObservableObject {
     public init(storeURL: URL) {
         self.storeURL = storeURL
         load()
+        loadCatalog()
     }
 
     public convenience init(paths: SupportPaths) {
@@ -79,6 +80,7 @@ public final class MCPRegistry: ObservableObject {
             Task { await client.disconnect() }
         }
         routes = routes.filter { $0.value.serverID != serverID }
+        persistCatalog()
         persist()
     }
 
@@ -135,15 +137,23 @@ public final class MCPRegistry: ObservableObject {
             states[serverID] = .connected(toolCount: tools.count)
         } catch {
             states[serverID] = .failed(String(describing: error))
-            routes = routes.filter { $0.value.serverID != serverID }
+            // A failed connection is not an authoritative empty tools/list.
+            // Keep the last accepted definitions, but deny execution.
+            if let old = clients.removeValue(forKey: serverID) { await old.disconnect() }
         }
     }
 
     public func disconnectAll() async {
-        for client in clients.values { await client.disconnect() }
+        // Each client is its own actor, and closing a stdio transport waits on the
+        // server process — so shutting them down one by one made a reload pay for
+        // every server in turn.
+        let closing = Array(clients.values)
         clients.removeAll()
-        routes.removeAll()
+        // Definitions survive a temporary disconnect; clients do not.
         for id in states.keys { states[id] = .idle }
+        await withTaskGroup(of: Void.self) { group in
+            for client in closing { group.addTask { await client.disconnect() } }
+        }
     }
 
     /// Connect once, report tool count or the failure reason, then drop it.
@@ -176,13 +186,14 @@ public final class MCPRegistry: ObservableObject {
                 description: tool.description
             )
         }
+        persistCatalog()
     }
 
     // MARK: Agent integration
 
     public func toolDefinitions() -> [AgentToolDefinition] {
         routes
-            .filter { !(networkBlocked && $0.value.transport == .http) }
+            .filter { route in servers.contains { $0.id == route.value.serverID } }
             .map { name, route in
                 AgentToolDefinition(name: name, description: route.description, parameters: route.schema)
             }
@@ -191,11 +202,28 @@ public final class MCPRegistry: ObservableObject {
 
     public func isMCPTool(_ name: String) -> Bool { routes[name] != nil }
 
+    public func isAvailable(_ name: String) -> Bool {
+        guard let route = routes[name],
+              let config = servers.first(where: { $0.id == route.serverID }), config.enabled,
+              clients[route.serverID] != nil,
+              case .connected = states[route.serverID],
+              !(networkBlocked && route.transport == .http) else { return false }
+        return true
+    }
+
+    func bindingIdentity(_ name: String) -> String? {
+        guard let route = routes[name], let config = servers.first(where: { $0.id == route.serverID }) else { return nil }
+        // A fingerprint detects real rebinding without persisting endpoint secrets.
+        return AgentCacheTrace.fingerprint([route.serverID, route.toolName, config.transport.rawValue,
+            config.url, config.command, config.arguments.joined(separator: "\u{0}")].joined(separator: "\u{0}"))
+    }
+
     /// A tool may skip the approval prompt only when its server opted in AND the
     /// server advertised the tool as read-only AND it is not flagged destructive.
     public func shouldAutoRun(_ name: String) -> Bool {
-        guard let route = routes[name] else { return false }
-        return route.autoRunReadOnly && route.readOnlyHint && !route.destructiveHint
+        guard isAvailable(name), let route = routes[name],
+              let config = servers.first(where: { $0.id == route.serverID }) else { return false }
+        return config.autoRunReadOnly && route.readOnlyHint && !route.destructiveHint
     }
 
     public func call(_ name: String, arguments: JSONValue) async throws -> String {
@@ -206,11 +234,25 @@ public final class MCPRegistry: ObservableObject {
         guard !(networkBlocked && route.transport == .http) else {
             throw MCPError.transport("Sandbox network access is off; HTTP MCP tools are unavailable.")
         }
-        guard let client = clients[route.serverID] else { throw MCPError.notConnected }
+        guard isAvailable(name), let client = clients[route.serverID] else { throw MCPError.notConnected }
         return try await client.callTool(route.toolName, arguments: arguments)
     }
 
     // MARK: Persistence
+
+    private var catalogURL: URL { storeURL.deletingPathExtension().appendingPathExtension("catalog.json") }
+
+    private func loadCatalog() {
+        guard let data = try? Data(contentsOf: catalogURL),
+              let saved = try? JSONDecoder().decode([String: Route].self, from: data) else { return }
+        routes = saved.filter { entry in servers.contains { $0.id == entry.value.serverID } }
+    }
+
+    private func persistCatalog() {
+        guard let data = try? JSONEncoder().encode(routes) else { return }
+        try? FileManager.default.createDirectory(at: catalogURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? data.write(to: catalogURL, options: .atomic)
+    }
 
     private func load() {
         guard let data = try? Data(contentsOf: storeURL),

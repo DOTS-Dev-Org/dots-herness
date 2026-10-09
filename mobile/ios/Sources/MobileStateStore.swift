@@ -20,17 +20,20 @@ struct StoredMobileMessage: Identifiable, Equatable, Sendable {
 
 struct StoredMobileConversation: Identifiable, Equatable, Sendable {
     let id: String
+    let projectID: String
     let status: String
     let updatedAt: Date
+    let title: String
 }
 
 struct StoredMobileModelContext: Equatable, Sendable {
     let conversationID: String
+    let projectID: String
     let content: String
 }
 
 /// The on-device state boundary. Credentials never cross this type: SQLite
-/// stores only a keychain reference such as `keychain:phone.provider`.
+/// stores only a keychain reference such as `keychain:phone.provider.anthropic`.
 @MainActor
 final class MobileStateStore {
     nonisolated(unsafe) private var database: OpaquePointer?
@@ -59,12 +62,12 @@ final class MobileStateStore {
         if let database { sqlite3_close(database) }
     }
 
-    func startRun(mode: String, planMode: Bool, prompt: String) -> String {
+    func startRun(mode: String, planMode: Bool, prompt: String, projectID: String = "local-default") -> String {
         let conversationID = UUID().uuidString
         let actionID = UUID().uuidString
         do {
             try transaction {
-                try execute("INSERT INTO conversations(id, status, mode, plan_mode, created_at, updated_at) VALUES(?, 'running', ?, ?, ?, ?)", [conversationID, mode, planMode ? "1" : "0", now, now])
+                try execute("INSERT INTO conversations(id, project_id, status, mode, plan_mode, created_at, updated_at) VALUES(?, ?, 'running', ?, ?, ?, ?)", [conversationID, projectID, mode, planMode ? "1" : "0", now, now])
                 try execute("INSERT INTO pending_actions(id, conversation_id, kind, payload_json, status, created_at, updated_at) VALUES(?, ?, 'run', '{}', 'running', ?, ?)", [actionID, conversationID, now, now])
                 try execute("INSERT INTO messages(id, conversation_id, role, content, created_at) VALUES(?, ?, 'user', ?, ?)", [UUID().uuidString, conversationID, MobileEventPayloadSanitizer.redact(prompt), now])
             }
@@ -72,6 +75,80 @@ final class MobileStateStore {
             // Runtime continues in memory if persistence is unavailable.
         }
         return conversationID
+    }
+
+    /// Creates a durable conversation before the first prompt is classified or
+    /// sent. The initial snapshot lets a queued-only conversation be discovered
+    /// after a force quit, even though no provider run has started yet.
+    func reserveConversation(projectID: String = "local-default") -> String {
+        let conversationID = UUID().uuidString
+        do {
+            try transaction {
+                try execute("INSERT INTO conversations(id, project_id, status, mode, plan_mode, created_at, updated_at) VALUES(?, ?, 'queued', 'agent', 0, ?, ?)", [conversationID, projectID, now, now])
+                try execute("INSERT INTO model_context(conversation_id, project_id, content_json, updated_at) VALUES(?, ?, ?, ?)", [conversationID, projectID, "{\"version\":3,\"messages\":[]}", now])
+            }
+        } catch { }
+        return conversationID
+    }
+
+    /// Accepts the first prompt and creates its conversation in one durable
+    /// transaction. A force-quit can leave neither an empty conversation nor a
+    /// visible-but-unrecorded prompt behind.
+    func reserveConversation(
+        projectID: String = "local-default",
+        queuedPrompt: (id: String, payload: String),
+        snapshot: String
+    ) -> String? {
+        let conversationID = UUID().uuidString
+        let timestamp = now
+        do {
+            try transaction {
+                try execute("INSERT INTO conversations(id, project_id, status, mode, plan_mode, created_at, updated_at) VALUES(?, ?, 'queued', 'agent', 0, ?, ?)", [conversationID, projectID, timestamp, timestamp])
+                try execute("INSERT INTO model_context(conversation_id, project_id, content_json, updated_at) VALUES(?, ?, ?, ?)", [conversationID, projectID, MobileEventPayloadSanitizer.redact(snapshot), timestamp])
+                try execute("INSERT INTO queued_prompts(id, conversation_id, position, payload_json, created_at) VALUES(?, ?, 0, ?, ?)", [queuedPrompt.id, conversationID, MobileEventPayloadSanitizer.redact(queuedPrompt.payload), timestamp])
+            }
+            return conversationID
+        } catch {
+            return nil
+        }
+    }
+
+    /// Claims a queued prompt and records its user message atomically. A crash
+    /// can therefore leave it either queued or in the transcript, never both.
+    @discardableResult
+    func beginReservedRun(
+        conversationID: String,
+        mode: String,
+        planMode: Bool,
+        prompt: String,
+        consumedPromptID: String? = nil,
+        projectID: String = "local-default",
+        snapshot: String? = nil,
+        queuedPrompts: [(id: String, payload: String)]? = nil
+    ) -> Bool {
+        let timestamp = now
+        do {
+            try transaction {
+                try execute("UPDATE conversations SET status = 'running', mode = ?, plan_mode = ?, updated_at = ? WHERE id = ?", [mode, planMode ? "1" : "0", timestamp, conversationID])
+                try execute("INSERT INTO pending_actions(id, conversation_id, kind, payload_json, status, created_at, updated_at) VALUES(?, ?, 'run', '{}', 'running', ?, ?)", [UUID().uuidString, conversationID, timestamp, timestamp])
+                try execute("INSERT INTO messages(id, conversation_id, role, content, created_at) VALUES(?, ?, 'user', ?, ?)", [UUID().uuidString, conversationID, MobileEventPayloadSanitizer.redact(prompt), timestamp])
+                if let consumedPromptID {
+                    try execute("DELETE FROM queued_prompts WHERE id = ? AND conversation_id = ?", [consumedPromptID, conversationID])
+                }
+                if let snapshot {
+                    try execute("INSERT INTO model_context(conversation_id, project_id, content_json, updated_at) VALUES(?, ?, ?, ?) ON CONFLICT(conversation_id) DO UPDATE SET project_id=excluded.project_id, content_json=excluded.content_json, updated_at=excluded.updated_at", [conversationID, projectID, MobileEventPayloadSanitizer.redact(snapshot), timestamp])
+                }
+                if let queuedPrompts {
+                    try execute("DELETE FROM queued_prompts WHERE conversation_id = ?", [conversationID])
+                    for (position, queued) in queuedPrompts.enumerated() {
+                        try execute("INSERT INTO queued_prompts(id, conversation_id, position, payload_json, created_at) VALUES(?, ?, ?, ?, ?)", [queued.id, conversationID, String(position), MobileEventPayloadSanitizer.redact(queued.payload), timestamp])
+                    }
+                }
+            }
+            return true
+        } catch {
+            return false
+        }
     }
 
     func appendMessage(conversationID: String?, role: String, content: String, toolName: String? = nil) {
@@ -84,13 +161,13 @@ final class MobileStateStore {
         } catch { }
     }
 
-    func appendEvent(conversationID: String?, kind: String, payload: [String: String]) -> MobileRuntimeEvent {
+    func appendEvent(conversationID: String?, projectID: String = "local-default", kind: String, payload: [String: String]) -> MobileRuntimeEvent {
         let safePayload = MobileEventPayloadSanitizer.sanitize(payload)
         let event = MobileRuntimeEvent(id: UUID().uuidString, conversationID: conversationID, kind: kind, payload: safePayload, createdAt: Date())
         let data = (try? JSONEncoder().encode(safePayload)) ?? Data("{}".utf8)
         do {
             try transaction {
-                try execute("INSERT INTO events(id, conversation_id, kind, payload_json, created_at) VALUES(?, ?, ?, ?, ?)", [event.id, conversationID ?? "", kind, String(decoding: data, as: UTF8.self), String(event.createdAt.timeIntervalSince1970)])
+                try execute("INSERT INTO events(id, conversation_id, project_id, kind, payload_json, created_at) VALUES(?, ?, ?, ?, ?, ?)", [event.id, conversationID ?? "", projectID, kind, String(decoding: data, as: UTF8.self), String(event.createdAt.timeIntervalSince1970)])
             }
         } catch { }
         return event
@@ -122,8 +199,10 @@ final class MobileStateStore {
 
     func saveProvider(provider: String, model: String, credentialReference: String) {
         let safeReference = credentialReference.hasPrefix("keychain:") ? credentialReference : "[redacted]"
+        let accountID = "phone.\(provider)"
         do {
-            try execute("INSERT INTO provider_accounts(id, provider, model, credential_ref, created_at) VALUES('phone', ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET provider=excluded.provider, model=excluded.model, credential_ref=excluded.credential_ref", [provider, model, safeReference, now])
+            try execute("INSERT INTO provider_accounts(id, provider, model, credential_ref, created_at) VALUES(?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET provider=excluded.provider, model=excluded.model, credential_ref=excluded.credential_ref", [accountID, provider, model, safeReference, now])
+            try execute("DELETE FROM provider_accounts WHERE id = 'phone'")
         } catch { }
     }
 
@@ -140,22 +219,78 @@ final class MobileStateStore {
         ])
     }
 
-    func saveModelContext(conversationID: String?, content: String) {
-        guard let conversationID else { return }
-        try? execute("INSERT INTO model_context(conversation_id, content_json, updated_at) VALUES(?, ?, ?) ON CONFLICT(conversation_id) DO UPDATE SET content_json=excluded.content_json, updated_at=excluded.updated_at", [conversationID, MobileEventPayloadSanitizer.redact(content), now])
+    @discardableResult
+    func saveModelContext(
+        conversationID: String?,
+        projectID: String = "local-default",
+        content: String,
+        queuedPrompts: [(id: String, payload: String)]? = nil
+    ) -> Bool {
+        guard let conversationID else { return false }
+        do {
+            try transaction {
+                try execute("INSERT INTO model_context(conversation_id, project_id, content_json, updated_at) VALUES(?, ?, ?, ?) ON CONFLICT(conversation_id) DO UPDATE SET project_id=excluded.project_id, content_json=excluded.content_json, updated_at=excluded.updated_at", [conversationID, projectID, MobileEventPayloadSanitizer.redact(content), now])
+                if let queuedPrompts {
+                    try execute("DELETE FROM queued_prompts WHERE conversation_id = ?", [conversationID])
+                    for (position, prompt) in queuedPrompts.enumerated() {
+                        try execute("INSERT INTO queued_prompts(id, conversation_id, position, payload_json, created_at) VALUES(?, ?, ?, ?, ?)", [prompt.id, conversationID, String(position), MobileEventPayloadSanitizer.redact(prompt.payload), now])
+                    }
+                }
+                try execute("UPDATE conversations SET updated_at = ? WHERE id = ?", [now, conversationID])
+            }
+            return true
+        } catch {
+            return false
+        }
     }
 
-    func latestModelContext() -> StoredMobileModelContext? {
+    func queuedPromptPayloads(conversationID: String) -> [(id: String, payload: String)] {
+        guard let database else { return [] }
+        var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
+        guard sqlite3_prepare_v2(database, "SELECT id, payload_json FROM queued_prompts WHERE conversation_id = ? ORDER BY position ASC", -1, &statement, nil) == SQLITE_OK,
+              let statement,
+              sqlite3_bind_text(statement, 1, conversationID, -1, transient) == SQLITE_OK else { return [] }
+        var result: [(id: String, payload: String)] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            guard let id = sqlite3_column_text(statement, 0), let payload = sqlite3_column_text(statement, 1) else { continue }
+            result.append((String(cString: id), String(cString: payload)))
+        }
+        return result
+    }
+
+    func latestModelContext(projectID: String = "local-default") -> StoredMobileModelContext? {
         guard let database else { return nil }
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
-        guard sqlite3_prepare_v2(database, "SELECT conversation_id, content_json FROM model_context ORDER BY updated_at DESC LIMIT 1", -1, &statement, nil) == SQLITE_OK,
+        guard sqlite3_prepare_v2(database, "SELECT conversation_id, project_id, content_json FROM model_context WHERE project_id = ? ORDER BY updated_at DESC LIMIT 1", -1, &statement, nil) == SQLITE_OK,
               let statement,
+              sqlite3_bind_text(statement, 1, projectID, -1, transient) == SQLITE_OK,
               sqlite3_step(statement) == SQLITE_ROW,
               let conversation = sqlite3_column_text(statement, 0),
-              let content = sqlite3_column_text(statement, 1) else { return nil }
+              let project = sqlite3_column_text(statement, 1),
+              let content = sqlite3_column_text(statement, 2) else { return nil }
         return StoredMobileModelContext(
             conversationID: String(cString: conversation),
+            projectID: String(cString: project),
+            content: String(cString: content)
+        )
+    }
+
+    func modelContext(conversationID: String) -> StoredMobileModelContext? {
+        guard let database else { return nil }
+        var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
+        guard sqlite3_prepare_v2(database, "SELECT conversation_id, project_id, content_json FROM model_context WHERE conversation_id = ? LIMIT 1", -1, &statement, nil) == SQLITE_OK,
+              let statement,
+              sqlite3_bind_text(statement, 1, conversationID, -1, transient) == SQLITE_OK,
+              sqlite3_step(statement) == SQLITE_ROW,
+              let conversation = sqlite3_column_text(statement, 0),
+              let project = sqlite3_column_text(statement, 1),
+              let content = sqlite3_column_text(statement, 2) else { return nil }
+        return StoredMobileModelContext(
+            conversationID: String(cString: conversation),
+            projectID: String(cString: project),
             content: String(cString: content)
         )
     }
@@ -175,13 +310,14 @@ final class MobileStateStore {
         return String(cString: value)
     }
 
-    func recentEvents(limit: Int = 500) -> [MobileRuntimeEvent] {
+    func recentEvents(projectID: String = "local-default", limit: Int = 500) -> [MobileRuntimeEvent] {
         guard let database else { return [] }
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
-        guard sqlite3_prepare_v2(database, "SELECT id, conversation_id, kind, payload_json, created_at FROM events ORDER BY rowid DESC LIMIT ?", -1, &statement, nil) == SQLITE_OK,
+        guard sqlite3_prepare_v2(database, "SELECT id, conversation_id, kind, payload_json, created_at FROM events WHERE project_id = ? ORDER BY rowid DESC LIMIT ?", -1, &statement, nil) == SQLITE_OK,
               let statement else { return [] }
-        sqlite3_bind_int(statement, 1, Int32(max(1, min(limit, 2_000))))
+        sqlite3_bind_text(statement, 1, projectID, -1, transient)
+        sqlite3_bind_int(statement, 2, Int32(max(1, min(limit, 2_000))))
         var result: [MobileRuntimeEvent] = []
         while sqlite3_step(statement) == SQLITE_ROW {
             let payloadData = sqlite3_column_text(statement, 3).map { Data(String(cString: $0).utf8) } ?? Data("{}".utf8)
@@ -216,23 +352,26 @@ final class MobileStateStore {
         return result
     }
 
-    /// Every chat except the caller's own, newest first. The transcript itself is
+    /// Every project conversation except the caller's own, newest first. The transcript itself is
     /// read separately with `messages`, so a listing stays cheap.
-    func otherConversations(excluding conversationID: String?, limit: Int = 20) -> [StoredMobileConversation] {
+    func otherConversations(excluding conversationID: String?, projectID: String = "local-default", limit: Int = 20) -> [StoredMobileConversation] {
         guard let database else { return [] }
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
-        guard sqlite3_prepare_v2(database, "SELECT id, status, updated_at FROM conversations ORDER BY updated_at DESC LIMIT ?", -1, &statement, nil) == SQLITE_OK,
+        guard sqlite3_prepare_v2(database, "SELECT id, project_id, status, updated_at, COALESCE((SELECT content FROM messages WHERE conversation_id = conversations.id AND role = 'user' ORDER BY rowid ASC LIMIT 1), '') FROM conversations WHERE project_id = ? ORDER BY updated_at DESC LIMIT ?", -1, &statement, nil) == SQLITE_OK,
               let statement else { return [] }
-        sqlite3_bind_int(statement, 1, Int32(max(1, min(limit, 100))))
+        sqlite3_bind_text(statement, 1, projectID, -1, transient)
+        sqlite3_bind_int(statement, 2, Int32(max(1, min(limit, 100))))
         var result: [StoredMobileConversation] = []
         while sqlite3_step(statement) == SQLITE_ROW {
             let id = String(cString: sqlite3_column_text(statement, 0))
             if id == conversationID { continue }
             result.append(StoredMobileConversation(
                 id: id,
-                status: String(cString: sqlite3_column_text(statement, 1)),
-                updatedAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 2))))
+                projectID: String(cString: sqlite3_column_text(statement, 1)),
+                status: String(cString: sqlite3_column_text(statement, 2)),
+                updatedAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 3)),
+                title: sqlite3_column_text(statement, 4).map { String(cString: $0) } ?? ""))
         }
         return result
     }
@@ -266,11 +405,15 @@ final class MobileStateStore {
             try execute("CREATE TABLE IF NOT EXISTS provider_accounts(id TEXT PRIMARY KEY, provider TEXT NOT NULL, model TEXT, credential_ref TEXT, created_at REAL NOT NULL)")
             try execute("CREATE TABLE IF NOT EXISTS oauth_accounts(id TEXT PRIMARY KEY, provider TEXT NOT NULL, account_ref TEXT, created_at REAL NOT NULL, updated_at REAL NOT NULL)")
             try execute("CREATE TABLE IF NOT EXISTS repositories(id TEXT PRIMARY KEY, provider TEXT, owner TEXT, name TEXT, branch TEXT, local_path TEXT, base_commit TEXT, created_at REAL NOT NULL, updated_at REAL NOT NULL)")
-            try execute("CREATE TABLE IF NOT EXISTS conversations(id TEXT PRIMARY KEY, status TEXT NOT NULL, mode TEXT NOT NULL, plan_mode INTEGER NOT NULL DEFAULT 0, created_at REAL NOT NULL, updated_at REAL NOT NULL)")
+            try execute("CREATE TABLE IF NOT EXISTS conversations(id TEXT PRIMARY KEY, project_id TEXT NOT NULL DEFAULT 'local-default', status TEXT NOT NULL, mode TEXT NOT NULL, plan_mode INTEGER NOT NULL DEFAULT 0, created_at REAL NOT NULL, updated_at REAL NOT NULL)")
             try execute("CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, tool_name TEXT, created_at REAL NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
-            try execute("CREATE TABLE IF NOT EXISTS model_context(conversation_id TEXT PRIMARY KEY, content_json TEXT NOT NULL, updated_at REAL NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
+            try execute("CREATE TABLE IF NOT EXISTS model_context(conversation_id TEXT PRIMARY KEY, project_id TEXT NOT NULL DEFAULT 'local-default', content_json TEXT NOT NULL, updated_at REAL NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
+            try execute("CREATE TABLE IF NOT EXISTS queued_prompts(id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, position INTEGER NOT NULL, payload_json TEXT NOT NULL, created_at REAL NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
             try execute("CREATE TABLE IF NOT EXISTS pending_actions(id TEXT PRIMARY KEY, conversation_id TEXT, kind TEXT NOT NULL, payload_json TEXT NOT NULL, status TEXT NOT NULL, created_at REAL NOT NULL, updated_at REAL NOT NULL)")
-            try execute("CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY, conversation_id TEXT, kind TEXT NOT NULL, payload_json TEXT NOT NULL, created_at REAL NOT NULL)")
+            try execute("CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY, conversation_id TEXT, project_id TEXT NOT NULL DEFAULT 'local-default', kind TEXT NOT NULL, payload_json TEXT NOT NULL, created_at REAL NOT NULL)")
+            try addColumnIfMissing(table: "conversations", column: "project_id", definition: "TEXT NOT NULL DEFAULT 'local-default'")
+            try addColumnIfMissing(table: "model_context", column: "project_id", definition: "TEXT NOT NULL DEFAULT 'local-default'")
+            try addColumnIfMissing(table: "events", column: "project_id", definition: "TEXT NOT NULL DEFAULT 'local-default'")
             try execute("COMMIT")
         } catch {
             try? execute("ROLLBACK")
@@ -302,6 +445,18 @@ final class MobileStateStore {
         // PRAGMA assignments such as journal_mode return their resulting value
         // as one row; writes still return SQLITE_DONE.
         guard result == SQLITE_DONE || result == SQLITE_ROW else { throw StateStoreError.message(errorMessage) }
+    }
+
+    private func addColumnIfMissing(table: String, column: String, definition: String) throws {
+        guard let database else { throw StateStoreError.unavailable }
+        var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
+        guard sqlite3_prepare_v2(database, "PRAGMA table_info(\(table))", -1, &statement, nil) == SQLITE_OK,
+              let statement else { throw StateStoreError.message(errorMessage) }
+        while sqlite3_step(statement) == SQLITE_ROW {
+            if let value = sqlite3_column_text(statement, 1), String(cString: value) == column { return }
+        }
+        try execute("ALTER TABLE \(table) ADD COLUMN \(column) \(definition)")
     }
 
     private var errorMessage: String {

@@ -1,6 +1,7 @@
 // Copyright (c) 2026 DOTS
 // Provider-backed image, video, and speech generation.
 
+import CryptoKit
 import Foundation
 import PluginRuntime
 
@@ -346,14 +347,36 @@ public enum MediaGenerationClient {
         try save(data, kind: kind, mimeType: kind.mimeType, paths: paths)
     }
 
+    static let maxSavedBytes = 200 * 1024 * 1024
+
+    /// Fixed `generated-media` directory only; the name is the SHA-256 of the bytes
+    /// (no collisions, identical content dedupes) and, for images, the extension
+    /// comes from magic bytes rather than the provider's Content-Type.
     static func save(_ data: Data, kind: MediaKind, mimeType: String, paths: SupportPaths) throws -> ChatMedia {
+        guard !data.isEmpty, data.count <= maxSavedBytes else { throw NativeAgentError(AppCopy.text("media.invalidOutput")) }
+        var ext = kind.fileExtension
+        var mime = mimeType
+        if kind == .image {
+            guard let sniffed = sniffImage(data) else { throw NativeAgentError(AppCopy.text("media.invalidOutput")) }
+            (ext, mime) = sniffed
+        }
         let directory = paths.root.appendingPathComponent("generated-media", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        guard !data.isEmpty else { throw NativeAgentError(AppCopy.text("media.invalidOutput")) }
-        let url = directory
-            .appendingPathComponent("\(UUID().uuidString).\(kind.fileExtension)")
-        try data.write(to: url, options: .atomic)
-        return ChatMedia(kind: kind, path: url.path, mimeType: mimeType)
+        let name = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        let url = directory.appendingPathComponent("\(name).\(ext)")
+        if !FileManager.default.fileExists(atPath: url.path) {
+            try data.write(to: url, options: .atomic)
+        }
+        return ChatMedia(kind: kind, path: url.path, mimeType: mime)
+    }
+
+    private static func sniffImage(_ d: Data) -> (String, String)? {
+        let b = [UInt8](d.prefix(12))
+        if b.starts(with: [0x89, 0x50, 0x4E, 0x47]) { return ("png", "image/png") }
+        if b.starts(with: [0xFF, 0xD8, 0xFF]) { return ("jpg", "image/jpeg") }
+        if b.starts(with: [0x47, 0x49, 0x46, 0x38]) { return ("gif", "image/gif") }
+        if b.count >= 12, b.starts(with: [0x52, 0x49, 0x46, 0x46]), Array(b[8..<12]) == [0x57, 0x45, 0x42, 0x50] { return ("webp", "image/webp") }
+        return nil
     }
 
     public static func materialize(

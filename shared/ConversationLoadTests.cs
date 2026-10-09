@@ -38,14 +38,13 @@ public sealed class ConversationLoadTests : IDisposable
             Title = id,
             Blank = false,
             Cwd = cwd,
-            Area = AgentArea.Coding,
             Messages =
             {
                 new ChatMessage { Kind = ChatKind.User, Text = id + " question" },
                 new ChatMessage { Kind = ChatKind.Assistant, Text = id + " answer" },
             },
         };
-        var file = Path.Combine(_root, "conversations.json");
+        var file = Path.Combine(_root, "sessions.json");
         File.WriteAllText(file, JsonSerializer.Serialize(new[] { Chat("a", mine), Chat("b", other) }));
 
         using var router = new RouterController(paths);

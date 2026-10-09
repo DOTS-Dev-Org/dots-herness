@@ -1,16 +1,35 @@
 {
-  "fingerprint" : "c333f15f7fd00089ded39a32793e3318b22867d6c6479c0da8fde8e165c3096a",
+  "fingerprint" : "8bd32bab09f4e019332fd99962bc30ccc569fce43d2f994f2e20c568940c3ca7",
   "manifests" : [
     "README.md"
   ],
-  "schemaVersion" : 1,
+  "rootFingerprint" : "AGENTS.md:f\nCLAUDE.md:f\nLICENSE:f\nREADME.md:f\nVERSION:f\nbrowser-extension:d\ncloudflare:d\ndocs:d\nios:d\nlinux:d\nmacos:d\nmobile:d\nnative:d\nshared:d\ntools:d\nwindows:d",
+  "schemaVersion" : 3,
+  "technologies" : [
+    ".NET",
+    "Android",
+    "Cloudflare Workers",
+    "Hono",
+    "Swift",
+    "TypeScript"
+  ],
   "topLevel" : [
+    "AGENTS.md",
+    "CLAUDE.md",
     "LICENSE",
     "README.md",
+    "VERSION",
+    "browser-extension\/",
+    "cloudflare\/",
+    "docs\/",
+    "ios\/",
     "linux\/",
     "macos\/",
+    "mobile\/",
+    "native\/",
     "shared\/",
+    "tools\/",
     "windows\/"
   ],
-  "updatedAt" : "2026-08-28T00:04:15Z"
+  "updatedAt" : "2026-10-08T20:11:56Z"
 }

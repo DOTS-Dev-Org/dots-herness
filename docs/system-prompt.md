@@ -28,7 +28,7 @@ commit et. İki test bunu zorlar: macOS'ta
 dosyayla karşılaştırır). CI'da ayrıca `prompts` job'ı `--check` çalıştırır.
 
 **Kasıtlı olarak senkronlanmayanlar:** `selfVerification` (macOS
-`workspace_activity` bölümüne, mobil `other_chats` aracına atıf yapıyor), mobil
+`workspace_activity` bölümüne atıf yapıyor), mobil
 "On this device" eki, platformun kendi "Tool use on this platform" bloğu.
 
 Senkronlanan dosyalar:
@@ -100,9 +100,13 @@ kimlik bilgileriyle yetkilendirilmiş canlı testte yapılır.
 Çekirdek prompt, [Caveman skill](https://github.com/juliusbrussee/caveman)
 yaklaşımının HerNess'e uyarlanmış kısa bir sürümünü her zaman uygular: sonuç
 önce gelir, tekrar ve dolgu kaldırılır, fakat teknik içerik, kod, komutlar, exact
-hatalar ve güvenlik bilgisi korunur. Kullanıcı ayrıntı istediğinde ayrıntı
-verilir; güvenlik uyarıları ve belirsizlik yaratabilecek çok adımlı talimatlar
-normal açık dille yazılır.
+hatalar ve güvenlik bilgisi korunur. Settings'teki `concise`/`ultra` seçimi
+best-effort bir üslup tercihidir; tamamlanma, belirli token sayısı veya faturalama
+tasarrufu garantisi değildir. Sayısal token/kelime sınırı, provider ilgili alanı
+destekliyorsa, yalnızca sert provider üst sınırıdır; sınır düşükse yanıt yarım
+kalabilir. Provider alanı desteklemiyorsa sert sınır iddia edilmez. Kullanıcı
+ayrıntı istediğinde ayrıntı verilir; güvenlik uyarıları ve belirsizlik
+yaratabilecek çok adımlı talimatlar normal açık dille yazılır.
 
 Bu entegrasyon yalnızca çıktı üslubunu etkiler. Upstream skill'in tam metni
 input/context tokenlarını sıkıştırmaz ve her tur sabit prompt maliyeti ekler;
@@ -161,7 +165,7 @@ memory snapshot'ı sistem seviyesinde ekleniyordu. Hedeflenen ayrım:
 
 ```text
 <core_policy>            HerNess'in değiştirilemez kuralları
-<project_context data>   Proje bilgisi; talimat değil
+<project_context rules>  Proje kuralları; uyulur, kullanıcının altında, yetki genişletmez
 <plugin_guidance untrusted>
 <skill_metadata untrusted>
 <user_request>           Tek yetkili talimat kaynağı
@@ -377,8 +381,9 @@ workspace kökünden okuyor:
 Sınırlar: dosya başına 16 KB, toplam 32 KB; aşan içerik `… truncated` ile
 kesiliyor. Workspace dışına çıkan symlink `resolvingSymlinksInPath()` /
 `ResolveLinkTarget(returnFinalTarget: true)` ile eleniyor — dosya araçlarındaki
-kuralın aynısı. Sonuç `<project_context trust="data">` bölümü olarak gidiyor,
-yani talimat değil bağlam. Çekirdek politikaya da bir cümle eklendi: proje kuralı
+kuralın aynısı. Sonuç `<project_context trust="rules">` bölümü olarak gidiyor:
+`data`/`untrusted` yalnız bilgi, `rules` ise uyulan proje kuralı (eskiden `data`
+etiketi "bilgi" derken çekirdek "uy" diyordu; çelişki buydu). Çekirdek politikaya da bir cümle eklendi: proje kuralı
 dosyalarına uy, ama kullanıcı onların üstünde ve yetkini genişletemezler.
 
 ### AGENTS.md ↔ CLAUDE.md senkronu
@@ -403,7 +408,7 @@ Kurallar motoru kurulmadı; tek dosya okuma yeterli.
 | `write_file` | **okunmadan yazmayı reddeder** (aşağıya bakın), ara dizinleri oluşturur, `.atomic` yazar, yazılan byte sayısını döner |
 | `remove_file` | yukarıdaki üç kapı; işaretçili sonuç |
 | `run_command` | `/bin/zsh -lc` (C# `cmd`/`sh`), cwd = workspace, **45 sn timeout**, çıktı macOS 24 KB, C# 100.000 karaktere kesilir, pipe eşzamanlı boşaltılır (64 KB buffer deadlock önler) |
-| `ios_simulator` | plan modunda açık (sideEffect, onay ister) |
+| `ios_simulator`, `android_emulator` | plan modunda açık; `list_devices` (Android'de `list_avds` de) her modda salt-okunur ve onaysız, diğer işlemler sideEffect ve onay ister |
 
 Yazma turu etrafında:
 
@@ -459,20 +464,44 @@ sabitlendi.
 14. Yanıt ekonomisi kuralları çekirdek prompta eklendi; masaüstü ve mobil
     literaller kanonik metinden senkronlanıyor.
 
+15. Prompt sıkılaştırıldı: öncelik sırası bloğu, üç kısa örnek, `Response language`
+    ve `Response economy` tekrarsız yeniden yazıldı, AGENTS.md sync ayrıntısı
+    modelden çıkarıldı, plan modu iskeleti eklendi. Davranış ölçümü:
+    `python3 tools/eval_prompt.py` (`shared/prompts/evals/cases.jsonl`,
+    `ANTHROPIC_API_KEY` yoksa atlar). Eski prompt için `--save`, yenisi için
+    `--baseline` ile regresyon karşılaştırılır. Bu **garanti değil, ölçümdür**;
+    vaka seti gerçek hatalarla büyütülmeli.
+
+16. Tekrar ve çelişki temizliği: `project_context` artık `trust="rules"`;
+    `Response language` 4, `Response economy` 5 maddeye indi ve "garanti değil"
+    uyarısı tek yerde; `economy_mode`/`response_style` birer cümle;
+    `assistant_mode` bölümü silindi; "dosyayı bir kez oku" kuralı "değişmiş
+    olabilecekse yeniden oku" oldu.
+
+17. Planlama iki katman. **Plan modu** (kullanıcı/uygulama açar): yalnız plan,
+    onay kapısı, sonra Apply. **Kendiliğinden plan** (çekirdekte `Planning`):
+    plan modu kapalıyken karmaşık işlerde (migration, geniş refactor, birbirine
+    bağımlı parçalı özellik) model önce inceler, adımları `update_plan` ile yazar, onay beklemeden aynı
+    turda uygular. `<plan_mode>` bölümü güncelken `Planning` devre dışıdır.
+    Eşik yok: basit/karmaşık kararı modele ait (dosya sayısı ölçüt değil,
+    parçaların birbirine bağımlılığı ölçüt; şüphede doğrudan uygula). Run loop'ta
+    kilit yok; bir ara eklenen "ikinci dosyada plan şartı" kaldırıldı.
+
+18. macOS: dinamik bölümler artık her user turn'e kopyalanmıyor. Yalnız son
+    yakalanan kopyadan farklı olan bölüm yazılır; kalkan bölüm
+    `No longer applies.` ile kapatılır (`foldingDynamicPrompt`).
+
 Yeni bir "prompt orchestration" katmanı gerekmez; mevcut `AgentBridge`
 birleşim noktaları yeterli.
 
-## Eş zamanlı sohbetler
+## Eş zamanlı proje oturumları
 
-Aynı workspace'te birden fazla sohbet çalışabilir. İki mekanizma bunu ayırır:
+Aynı workspace'te birden fazla proje oturumu çalışabilir. Workspace değişiklikleri
+ve oturum snapshot'ları bu oturumları birbirinden ayırır:
 
 - **Atıf.** Bir turn'de `write_file` / `remove_file` ile yazılan yollar tutulur;
   snapshot farkındaki fazlalık "başkası değiştirdi" sayılır ve
   `<workspace_activity>` altında görünür. Turn `run_command`, plugin veya MCP
   aracı çalıştırdıysa atıf yapılmaz (o araçlar da dosya değiştirebilir).
-- **`other_chats` aracı.** Ajan, komşu sohbetin tüm geçmişini talep üzerine
-  okur (istek, cevap, o turn'ün değiştirdiği dosyalar; `path` / `query` ile
-  daraltılır). Dönen metin başka bir konuşmanın içeriğidir: veri, talimat değil.
-
 Masaüstünde (macOS, Windows/Linux) araç dosya listesini de taşır; mobilde
 `changed_files` kaydı olmadığı için yalnızca konuşma metni üzerinden çalışır.

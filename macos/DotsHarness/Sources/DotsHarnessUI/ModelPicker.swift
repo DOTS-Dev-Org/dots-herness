@@ -9,26 +9,35 @@ import HarnessPluginKit
 
 struct ModelPickerPopover: View {
     @ObservedObject var model: AppModel
+    @ObservedObject private var router: RouterController
     @State private var collapsedProviders: Set<String> = []
     /// Card shows only the selected model; tapping its title swaps in the model list.
     @State private var showingModels = false
 
-    private var modelGroups: [RouterModelGroup] {
-        RouterCatalog.modelGroups(for: model.router.models)
+    init(model: AppModel) {
+        self.model = model
+        self.router = model.router
     }
 
-    /// Levels the selected model actually accepts. Empty means the provider
-    /// rejects the effort parameter for it, so the slider is disabled.
+    private var modelGroups: [RouterModelGroup] {
+        RouterCatalog.modelGroups(for: router.models)
+    }
+
+    /// Levels the selected model accepts. Auto combines supported levels across
+    /// routable models; its empty first stop leaves effort selection adaptive.
     private var effortLevels: [String] {
-        // Auto owns the effort decision, so the manual control stands down.
-        model.router.isAutoSelected ? [] : model.router.efforts(for: model.selectedModelID)
+        if router.isAutoSelected {
+            let options = router.automaticEffortOptions
+            return options.isEmpty ? [] : [""] + options
+        }
+        return router.efforts(for: model.selectedModelID)
     }
 
     private var supportsFast: Bool {
-        !model.router.isAutoSelected && model.router.supportsFast(model.selectedModelID)
+        !router.isAutoSelected && router.supportsFast(model.selectedModelID)
     }
 
-    private var isFast: Bool { supportsFast && model.router.fastMode }
+    private var isFast: Bool { supportsFast && router.fastMode }
 
     var body: some View {
         Group {
@@ -37,6 +46,9 @@ struct ModelPickerPopover: View {
         .padding(8)
         .frame(width: 225)
         .animation(.easeInOut(duration: 0.15), value: showingModels)
+        .task {
+            await router.refreshModelsIfNeeded()
+        }
     }
 
     // MARK: Effort card
@@ -44,7 +56,10 @@ struct ModelPickerPopover: View {
     private var effortCard: some View {
         let stops = effortLevels
         let enabled = !stops.isEmpty
-        let index = stops.firstIndex(of: model.router.effectiveEffort(for: model.selectedModelID)) ?? 0
+        let selectedEffort = router.isAutoSelected
+            ? router.selectedEffort
+            : router.effectiveEffort(for: model.selectedModelID)
+        let index = stops.firstIndex(of: selectedEffort) ?? 0
         return VStack(spacing: 8) {
             HStack {
                 if supportsFast {
@@ -73,10 +88,12 @@ struct ModelPickerPopover: View {
                         }
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(isUltra ? Color.purple : (enabled ? Color.accentColor : .secondary))
-                        Text(selectedModelName)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                        if let selectedModelName {
+                            Text(selectedModelName)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
                     }
                     .contentShape(Rectangle())
                 }
@@ -85,7 +102,7 @@ struct ModelPickerPopover: View {
                 Spacer()
 
                 Button {
-                    model.setEffort("low")
+                    model.setEffort(router.isAutoSelected ? "" : "low")
                     model.setFast(false)
                 } label: {
                     Image(systemName: "arrow.counterclockwise")
@@ -101,6 +118,17 @@ struct ModelPickerPopover: View {
             EffortSlider(count: max(stops.count, 1), index: index, ultra: isUltra) { model.setEffort(stops[$0]) }
                 .disabled(!enabled)
                 .opacity(enabled ? 1 : 0.45)
+
+            Picker(AppCopy.language == .tr ? "Bağlam ekonomisi" : "Context economy", selection: Binding(
+                get: { router.usageMode },
+                set: { model.setUsageMode($0) }
+            )) {
+                ForEach(AgentUsageMode.allCases, id: \.self) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .controlSize(.small)
         }
         .padding(8)
         .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.05)))
@@ -109,21 +137,26 @@ struct ModelPickerPopover: View {
 
     /// Top "max" level gets the Codex-style starry purple track.
     private var isUltra: Bool {
-        model.router.effectiveEffort(for: model.selectedModelID) == "max" && effortLevels.last == "max"
+        let selected = router.isAutoSelected
+            ? router.selectedEffort
+            : router.effectiveEffort(for: model.selectedModelID)
+        return selected == "max" && effortLevels.last == "max"
     }
 
     private var effortTitle: String {
-        if model.router.isAutoSelected { return AppCopy.text("modelPicker.auto") }
+        if router.isAutoSelected, router.selectedEffort.isEmpty {
+            return AppCopy.text("modelPicker.effort.default")
+        }
         if effortLevels.isEmpty { return AppCopy.text("modelPicker.effortUnsupported") }
-        return Self.effortLabel(model.router.effectiveEffort(for: model.selectedModelID))
+        let selected = router.isAutoSelected
+            ? router.selectedEffort
+            : router.effectiveEffort(for: model.selectedModelID)
+        return Self.effortLabel(selected)
     }
 
-    private var selectedModelName: String {
-        if model.router.isAutoSelected { return AppCopy.text("modelPicker.auto") }
-        guard !model.selectedModelID.isEmpty else { return AppCopy.text("modelPicker.selectModel") }
-        let item = model.router.models.first(where: { $0.id == model.selectedModelID })
-            ?? RouterModel(id: model.selectedModelID)
-        return RouterCatalog.modelDisplayName(for: item)
+    private var selectedModelName: String? {
+        guard !router.isAutoSelected else { return nil }
+        return router.modelLabel(forID: model.selectedModelID)
     }
 
     static func effortLabel(_ level: String) -> String {
@@ -158,7 +191,7 @@ struct ModelPickerPopover: View {
                         pickerRow(
                             title: AppCopy.text("modelPicker.auto"),
                             subtitle: AppCopy.text("modelPicker.autoHint"),
-                            selected: model.router.isAutoSelected
+                            selected: router.isAutoSelected
                         ) { model.setModel(ModelRouter.autoModelID); showingModels = false }
 
                         ForEach(modelGroups) { group in
@@ -167,7 +200,7 @@ struct ModelPickerPopover: View {
                                 ForEach(group.models) { item in
                                     pickerRow(
                                         title: RouterCatalog.modelDisplayName(for: item),
-                                        selected: !model.router.isAutoSelected && item.id == model.selectedModelID
+                                        selected: !router.isAutoSelected && item.id == model.selectedModelID
                                     ) { model.setModel(item.id); showingModels = false }
                                 }
                             }
@@ -186,7 +219,9 @@ struct ModelPickerPopover: View {
             if collapsed { collapsedProviders.remove(group.provider) } else { collapsedProviders.insert(group.provider) }
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: group.logoSymbol).frame(width: 14)
+                providerLogo(for: group)
+                    .frame(width: 14, height: 14)
+                    .accessibilityHidden(true)
                 Text(group.name)
                 Spacer()
                 Image(systemName: "chevron.down")
@@ -202,6 +237,53 @@ struct ModelPickerPopover: View {
         }
         .buttonStyle(.plain)
     }
+
+    @ViewBuilder
+    private func providerLogo(for group: RouterModelGroup) -> some View {
+        let resource = Self.providerMarkResources[group.provider]
+        if let resource,
+           let url = Bundle.module.url(forResource: resource, withExtension: "svg")
+                ?? Bundle.module.url(forResource: resource, withExtension: "png"),
+           let image = NSImage(contentsOf: url) {
+            if Self.adaptiveMonochromeMarks.contains(resource) {
+                Image(nsImage: image)
+                    .resizable()
+                    .renderingMode(.template)
+                    .foregroundStyle(.primary)
+                    .scaledToFit()
+            } else {
+                Image(nsImage: image)
+                    .resizable()
+                    .renderingMode(.original)
+                    .scaledToFit()
+                    .padding(1)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 3, style: .continuous))
+            }
+        } else {
+            Image(systemName: group.logoSymbol)
+        }
+    }
+
+    private static let adaptiveMonochromeMarks: Set<String> = ["OpenAIMark", "AnthropicMark", "OpenRouterMark"]
+
+    /// Provider IDs share marks only when they belong to the same company.
+    /// Claude uses Anthropic's corporate A mark rather than Claude's starburst.
+    private static let providerMarkResources: [String: String] = [
+        "gpt": "OpenAIMark", "openai": "OpenAIMark",
+        "claude": "AnthropicMark", "anthropic": "AnthropicMark",
+        "grok-cli": "GrokMark", "grok": "GrokMark", "xai": "SpaceXAIMark",
+        "gemini-cli": "GeminiMark", "gemini": "GeminiMark",
+        "antigravity": "AntigravityMark",
+        "opencode": "OpenCodeMark", "opencode-go": "OpenCodeMark",
+        "iflow": "IFlowMark", "github": "GitHubMark", "kiro": "KiroMark",
+        "nvidia": "NvidiaMark", "zai": "ZaiMark", "glm": "ZaiMark",
+        "deepseek": "DeepSeekMark", "openrouter": "OpenRouterMark", "qwen": "QwenMark",
+        "kimi": "KimiMark", "minimax": "MiniMaxMark", "groq": "GroqMark",
+        "mistral": "MistralMark", "perplexity": "PerplexityMark", "together": "TogetherAIMark",
+        "fireworks": "FireworksMark", "cerebras": "CerebrasMark", "deepinfra": "DeepInfraMark",
+        "cohere": "CohereMark", "siliconflow": "SiliconFlowMark", "nebius": "NebiusMark",
+        "chutes": "ChutesMark", "hyperbolic": "HyperbolicMark", "vertex": "GoogleCloudMark"
+    ]
 
     private func pickerRow(
         title: String,

@@ -91,22 +91,19 @@ extension WorkspaceMemory {
         }
     }
 
-    private func pendingSnapshot(conversationID: String, turnID: String) -> SnapshotJob? {
-        pendingSnapshotsLock.lock()
-        defer { pendingSnapshotsLock.unlock() }
-        return pendingSnapshots[snapshotJobKey(conversationID, turnID)]
+    public func waitForTurnSnapshot(conversationID: String, turnID: String) async {
+        await takePendingSnapshot(conversationID: conversationID, turnID: turnID)?.waitSuspending()
     }
 
-    public func waitForTurnSnapshot(conversationID: String, turnID: String) async {
-        await pendingSnapshot(conversationID: conversationID, turnID: turnID)?.waitSuspending()
+    private func takePendingSnapshot(conversationID: String, turnID: String) -> SnapshotJob? {
+        pendingSnapshotsLock.lock()
+        let job = pendingSnapshots.removeValue(forKey: snapshotJobKey(conversationID, turnID))
+        pendingSnapshotsLock.unlock()
+        return job
     }
 
     private func waitForPendingSnapshot(conversationID: String, turnID: String) {
-        let key = snapshotJobKey(conversationID, turnID)
-        pendingSnapshotsLock.lock()
-        let job = pendingSnapshots.removeValue(forKey: key)
-        pendingSnapshotsLock.unlock()
-        job?.waitBlocking()
+        takePendingSnapshot(conversationID: conversationID, turnID: turnID)?.waitBlocking()
     }
 
     @discardableResult
@@ -147,6 +144,28 @@ extension WorkspaceMemory {
         )
     }
 
+    /// Same result without freezing the UI: the pre-turn capture is awaited by
+    /// suspending, and the after-capture walks and hashes the whole tree on a
+    /// worker thread instead of on the main actor.
+    func finishTurnResultAsync(
+        conversationID: String,
+        turnID: String,
+        workspace: URL?
+    ) async -> WorkspaceChangeResult {
+        guard let workspace else {
+            return WorkspaceChangeResult(changedFiles: [], trackingStatus: "incomplete", failureReason: "Workspace snapshot was unavailable.")
+        }
+        await waitForTurnSnapshot(conversationID: conversationID, turnID: turnID)
+        let store = snapshotStore
+        return await Task.detached(priority: .userInitiated) {
+            store.finishResult(
+                conversationID: conversationID,
+                turnID: turnID,
+                workspace: workspace
+            )
+        }.value
+    }
+
     public func hasCompleteTurnSnapshot(
         conversationID: String,
         turnID: String,
@@ -162,6 +181,18 @@ extension WorkspaceMemory {
         )
         if complete { completeSnapshotTurns.insert(key) }
         return complete
+    }
+
+    public func hasUndoableTurnSnapshot(
+        conversationID: String,
+        turnID: String,
+        workspace: URL
+    ) -> Bool {
+        snapshotStore.hasUndoableSnapshot(
+            conversationID: conversationID,
+            turnID: turnID,
+            workspace: workspace
+        )
     }
 
     public func restoreTurns(
@@ -196,28 +227,47 @@ extension WorkspaceMemory {
         snapshotStore.removeConversation(conversationID)
     }
 
-    public func snapshot(for prompt: String) -> MemorySnapshot {
-        guard manifest != nil else { return MemorySnapshot(text: "", revision: 0) }
+    /// Project facts that move only when the project does. Nothing here depends on
+    /// the prompt or counts events, so a conversation captures it once and again
+    /// only after a real change.
+    public func projectText() -> String {
+        guard manifest != nil else { return "" }
         let decisions = markdownList(state["acceptedDecisions"] as? [[String: Any]] ?? [])
         let proposals = markdownList(state["pendingProposals"] as? [[String: Any]] ?? [], prefix: "Proposal")
-        let preferences = preferencesText()
-        let defaults = markdownDictionary(state["projectDefaults"] as? [String: Any] ?? [:])
-        let tasksText = relevantTasks(for: prompt)
-        let conversationStates = conversationLifecycleText()
+        let defaults = markdownDictionary(projectDefaults)
+        let elsewhere = markdownDictionary(foreignFacts("decision", knownKeys: []))
         let backlog = backlogText()
-        let body = [
+        return [
             "Private project context. It is verified by the native host.",
             "Current user instructions are authoritative over this context.",
-            "Revision: \(revision)",
             "\n## Project map\n\(mapText)",
             "\n## Accepted project decisions\n\(decisions.isEmpty ? "None" : decisions)",
-            "\n## Current actor preferences\n\(preferences.isEmpty ? "None" : preferences)",
             "\n## Project defaults\n\(defaults.isEmpty ? "None" : defaults)",
-            "\n## Relevant task history\n\(tasksText.isEmpty ? "None" : tasksText)",
-            "\n## Conversation lifecycle\n\(conversationStates.isEmpty ? "None" : conversationStates)",
+            elsewhere.isEmpty ? "" : "\n## Decisions recorded on another device\n\(elsewhere)",
             backlog.isEmpty ? "" : "\n## Unfinished work (backlog)\n\(backlog)\n\nIf the current request continues one of these, resume it. When you finish a reply that leaves work open, end with a line `BACKLOG: <what is left>` and ask the user whether to continue. When an item above is done, write `BACKLOG-DONE: <task id>`.",
             proposals.isEmpty ? "" : "\n## Unauthoritative proposals\n\(proposals)",
         ].filter { !$0.isEmpty }.joined(separator: "\n")
+    }
+
+    /// What depends on the prompt. Kept apart from `projectText` so that its churn
+    /// re-captures only this. Which chats were archived or deleted is not here: that
+    /// list grew without bound and moved with every such action; the vault shows it.
+    public func historyText(for prompt: String) -> String {
+        guard manifest != nil else { return "" }
+        let tasksText = relevantTasks(for: prompt)
+        return tasksText.isEmpty ? "" : "## Relevant task history\n\(tasksText)"
+    }
+
+    /// Everything the vault knows, in one text. The prompt sends the parts as
+    /// separate sections; see `AgentBridge.systemPromptSections`.
+    public func snapshot(for prompt: String) -> MemorySnapshot {
+        guard manifest != nil else { return MemorySnapshot(text: "", revision: 0) }
+        let preferences = preferencesText()
+        let body = [
+            projectText(),
+            preferences.isEmpty ? "" : "## Current actor preferences\n\(preferences)",
+            historyText(for: prompt),
+        ].filter { !$0.isEmpty }.joined(separator: "\n\n")
         return MemorySnapshot(text: trimSnapshot(body), revision: revision)
     }
 }

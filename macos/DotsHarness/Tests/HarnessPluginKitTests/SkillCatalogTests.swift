@@ -75,6 +75,51 @@ final class SkillCatalogTests: XCTestCase {
         XCTAssertFalse(prompt.contains("Never execute files from a skill directory"))
     }
 
+    func testSkillKeepsItsIDAcrossRenamesUntilItIsDeleted() throws {
+        let paths = temporaryPaths()
+        let workspace = paths.root.appendingPathComponent("project", isDirectory: true)
+        let skills = workspace.appendingPathComponent("skills", isDirectory: true)
+        try writeSkill(at: skills.appendingPathComponent("demo"), name: "Demo", description: "A demo skill", body: "demo body")
+        let catalog = SkillCatalog(paths: paths, workspaceURL: workspace)
+        catalog.setEnabled("demo", false)
+
+        // Folder and display name change in one step; an unrelated new skill gets its own id.
+        try FileManager.default.moveItem(at: skills.appendingPathComponent("demo"), to: skills.appendingPathComponent("demo-v2"))
+        try "---\nname: Renamed\ndescription: A demo skill\n---\ndemo body\n"
+            .write(to: skills.appendingPathComponent("demo-v2/SKILL.md"), atomically: true, encoding: .utf8)
+        try writeSkill(at: skills.appendingPathComponent("other"), name: "Other", description: "Unrelated", body: "other body")
+        catalog.refresh()
+        XCTAssertEqual(catalog.entries.filter { $0.source == .workspace }.map(\.id), ["demo", "other"])
+        XCTAssertNil(catalog.descriptor(for: "demo-v2"))
+        // Still disabled under the same id.
+        XCTAssertNil(catalog.descriptor(for: "demo"))
+        XCTAssertEqual(catalog.descriptor(for: "demo", includeDisabled: true)?.name, "Renamed")
+        catalog.setEnabled("demo", true)
+        let call = AgentToolCall(id: "1", name: "skill.read", arguments: "{\"id\":\"demo\"}")
+        XCTAssertTrue(SkillTools.execute(call, catalog: catalog).contains("demo body"))
+        XCTAssertEqual(catalog.explicitSelection(in: "/demo run it")?.descriptor.name, "Renamed")
+
+        // Frontmatter id changed in place; survives a relaunch.
+        try "---\nid: demo-v3\nname: Renamed\ndescription: A demo skill\n---\ndemo body\n"
+            .write(to: skills.appendingPathComponent("demo-v2/SKILL.md"), atomically: true, encoding: .utf8)
+        let relaunched = SkillCatalog(paths: paths, workspaceURL: workspace)
+        XCTAssertEqual(relaunched.descriptor(for: "demo")?.name, "Renamed")
+        XCTAssertNil(relaunched.descriptor(for: "demo-v3"))
+
+        // A new skill in the old folder does not take the id over.
+        try writeSkill(at: skills.appendingPathComponent("demo"), name: "Fresh", description: "New owner", body: "fresh body")
+        relaunched.refresh()
+        XCTAssertTrue(try relaunched.read(id: "demo").contains("demo body"))
+        XCTAssertTrue(try relaunched.read(id: "demo-2").contains("fresh body"))
+
+        // Deleted: the id resolves to nothing, and nobody inherits it.
+        try FileManager.default.removeItem(at: skills.appendingPathComponent("demo-v2"))
+        relaunched.refresh()
+        XCTAssertNil(relaunched.descriptor(for: "demo", includeDisabled: true))
+        XCTAssertThrowsError(try relaunched.read(id: "demo"))
+        XCTAssertEqual(SkillCatalog(paths: paths, workspaceURL: workspace).descriptor(for: "demo-2")?.name, "Fresh")
+    }
+
     private func writeSkill(at directory: URL, name: String, description: String, body: String) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try "---\nname: \(name)\ndescription: \(description)\n---\n\(body)\n".write(

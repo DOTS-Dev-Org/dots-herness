@@ -22,6 +22,15 @@ final class LocalShell: ObservableObject {
 
     init(store: LocalWorkspaceStore) { self.store = store }
 
+    /// A terminal session belongs to the selected project. Do not carry a
+    /// working directory, exported variables, or visible output into another
+    /// project's runtime.
+    func resetForProject() {
+        directory = ""
+        variables = [:]
+        lines = []
+    }
+
     static let commands = ["cd", "pwd", "ls", "cat", "head", "tail", "echo", "mkdir", "rm", "mv", "cp",
                            "touch", "wc", "grep", "find", "sed", "sort", "uniq", "sha256", "tree",
                            "env", "export", "sqlite", "clear", "help"]

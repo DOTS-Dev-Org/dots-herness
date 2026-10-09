@@ -33,9 +33,27 @@ public struct AgentConfiguration: Sendable, Equatable {
     /// Only enabled by a provider registry entry that explicitly supports the
     /// public Responses compaction contract.
     public var supportsNativeCompaction: Bool = false
+    /// Defers provider-side compaction on the first request after a route
+    /// change. Admission checks still protect the new model's usable budget.
+    public var disableNativeCompactionForRequest = false
     /// Runtime compaction policy. Native Responses compaction and local fallback
     /// use the same threshold so a route switch does not change the safety budget.
     public var compactionPolicy: AgentContextCompactionPolicy = .baseline
+    /// Standard preserves the existing response/context policy. Economy applies
+    /// deterministic output and context reductions without changing a selected
+    /// model or effort level.
+    public var usageMode: AgentUsageMode = .standard
+    /// User-selected response prose preference. This is dynamic per request and
+    /// is intentionally excluded from the stable prompt-cache identity.
+    public var responseStylePreference: AgentResponseStylePreference = .balanced
+    /// Capability catalog bit for legacy Anthropic extended thinking. Adaptive
+    /// thinking models must not receive `thinking.budget_tokens`.
+    public var supportsLegacyThinkingBudget: Bool = false
+    public var anthropicCacheTTL: AgentPromptCacheTTL = .oneHour
+    /// Optional endpoint-specific retention contract verified by the caller.
+    /// Public OpenAI GPT-5.6+ uses its documented 30m contract automatically;
+    /// subscription gateways must not inherit it from a model name alone.
+    public var verifiedPromptCacheTTLSeconds: Int?
 
     public init(
         baseURL: String,
@@ -51,12 +69,18 @@ public struct AgentConfiguration: Sendable, Equatable {
         effort: String = "",
         contextWindow: Int = AgentContextCompaction.defaultContextWindow,
         supportsNativeCompaction: Bool = false,
-        compactionPolicy: AgentContextCompactionPolicy = .baseline
+        compactionPolicy: AgentContextCompactionPolicy = .baseline,
+        usageMode: AgentUsageMode = .standard,
+        responseStylePreference: AgentResponseStylePreference = .balanced,
+        supportsLegacyThinkingBudget: Bool = false
     ) {
         self.effort = effort
         self.contextWindow = contextWindow
         self.supportsNativeCompaction = supportsNativeCompaction
         self.compactionPolicy = compactionPolicy
+        self.usageMode = usageMode
+        self.responseStylePreference = responseStylePreference
+        self.supportsLegacyThinkingBudget = supportsLegacyThinkingBudget
         self.baseURL = baseURL
         self.model = model
         self.apiKey = apiKey
@@ -99,9 +123,19 @@ public struct AgentCacheCapabilities: Sendable, Equatable {
 
 public struct AgentCachePolicy: Sendable, Equatable {
     public var promptCacheKey: String?
+    public var comparisonResponseID: String?
+    /// Local comparison identity, stable when the cache prefix/key changes.
+    public var comparisonScope: String?
+    /// Last successful, route-scoped cache boundary. This contains hashes and
+    /// counts only; callers may persist it with the conversation's cache epoch.
+    public var priorBoundary: AgentPromptCacheBoundary?
 
-    public init(promptCacheKey: String? = nil) {
+    public init(promptCacheKey: String? = nil, comparisonResponseID: String? = nil, comparisonScope: String? = nil,
+                priorBoundary: AgentPromptCacheBoundary? = nil) {
         self.promptCacheKey = promptCacheKey
+        self.comparisonResponseID = comparisonResponseID
+        self.comparisonScope = comparisonScope
+        self.priorBoundary = priorBoundary
     }
 }
 
@@ -385,19 +419,70 @@ public struct AgentResponse: Sendable, Equatable {
     /// True when a native-compaction request was rejected and the client retried
     /// the same request without the optional native feature.
     public var nativeCompactionFallback: Bool
+    /// Provider reported that the output ceiling ended the response. Soft
+    /// economy/style turns may use one bounded same-route retry; strict turns
+    /// surface the incomplete response immediately.
+    public var incompleteReason: String?
+    /// Exact output budget used by the transport when Economy or a short style
+    /// preference was active.
+    /// Kept on the response so privacy-safe telemetry can distinguish the user's
+    /// selected effort from the effective output cap.
+    public var effectiveOutputBudget: AgentOutputBudget?
+    /// Number of output-limit retries used for this response. Strict turns keep
+    /// this at zero; soft turns may use one bounded correctness retry.
+    public var retryCount: Int
+    /// Usage reported by the output-limit attempt that preceded a bounded
+    /// retry. It is kept separate from the successful attempt for telemetry.
+    public var retryUsage: AgentUsage?
+    /// Concrete route that answered this request. Kept on the response so
+    /// concurrent conversations cannot read a router-wide last-served account.
+    public var servedAccountID: String?
+    public var servedModelID: String?
+    /// Account-specific prompt-cache namespace used by the completed request.
+    public var servedCacheKey: String?
+    public var providerResponseID: String?
+    public var cacheDiagnostics: AgentProviderCacheDiagnostics?
+    public var effectiveCacheTTLSeconds: Int?
+    public var cacheReuseEvidence: AgentCacheReuseEvidence?
+    public var proposedCacheBoundary: AgentPromptCacheBoundary?
+    /// Request start to the first SSE output delta. Nil when the endpoint
+    /// answered with a plain JSON body, where no first-token time exists.
+    public var firstTokenMilliseconds: Int?
 
     public init(
         message: AgentMessage,
         usage: AgentUsage? = nil,
         media: [MediaPayload] = [],
         nativeCompactionApplied: Bool = false,
-        nativeCompactionFallback: Bool = false
+        nativeCompactionFallback: Bool = false,
+        incompleteReason: String? = nil,
+        effectiveOutputBudget: AgentOutputBudget? = nil,
+        retryCount: Int = 0,
+        retryUsage: AgentUsage? = nil,
+        servedAccountID: String? = nil,
+        servedModelID: String? = nil,
+        servedCacheKey: String? = nil,
+        providerResponseID: String? = nil,
+        cacheDiagnostics: AgentProviderCacheDiagnostics? = nil,
+        cacheReuseEvidence: AgentCacheReuseEvidence? = nil,
+        proposedCacheBoundary: AgentPromptCacheBoundary? = nil
     ) {
         self.message = message
         self.usage = usage
         self.media = media
         self.nativeCompactionApplied = nativeCompactionApplied
         self.nativeCompactionFallback = nativeCompactionFallback
+        self.incompleteReason = incompleteReason
+        self.effectiveOutputBudget = effectiveOutputBudget
+        self.retryCount = max(0, retryCount)
+        self.retryUsage = retryUsage
+        self.servedAccountID = servedAccountID
+        self.servedModelID = servedModelID
+        self.servedCacheKey = servedCacheKey
+        self.providerResponseID = providerResponseID
+        self.cacheDiagnostics = cacheDiagnostics
+        self.cacheReuseEvidence = cacheReuseEvidence
+        self.proposedCacheBoundary = proposedCacheBoundary
     }
 }
 
@@ -410,19 +495,31 @@ public struct AgentUsage: Sendable, Equatable, Codable {
     /// Keep it optional: absence means the provider did not expose a complete
     /// hit/miss accounting, not that the miss count was zero.
     public var cacheMissTokens: Int?
+    /// Reasoning tokens are included in the provider output budget but are not
+    /// necessarily exposed by every transport.
+    public var reasoningTokens: Int?
+    /// Anthropic reports how much prior context a server-side edit removed.
+    public var contextClearedInputTokens: Int?
+    public var contextClearedToolUses: Int?
 
     public init(
         inputTokens: Int,
         outputTokens: Int,
         cachedTokens: Int? = nil,
         cacheWriteTokens: Int? = nil,
-        cacheMissTokens: Int? = nil
+        cacheMissTokens: Int? = nil,
+        reasoningTokens: Int? = nil,
+        contextClearedInputTokens: Int? = nil,
+        contextClearedToolUses: Int? = nil
     ) {
         self.inputTokens = inputTokens
         self.outputTokens = outputTokens
         self.cachedTokens = cachedTokens
         self.cacheWriteTokens = cacheWriteTokens
         self.cacheMissTokens = cacheMissTokens
+        self.reasoningTokens = reasoningTokens
+        self.contextClearedInputTokens = contextClearedInputTokens
+        self.contextClearedToolUses = contextClearedToolUses
     }
 }
 

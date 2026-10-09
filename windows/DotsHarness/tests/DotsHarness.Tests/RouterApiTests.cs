@@ -13,6 +13,70 @@ namespace DotsHarness.Tests;
 
 public sealed class RouterApiTests
 {
+    [Fact]
+    public void CacheAccountingIncludesWritesAndDistinguishesUnknownFromZero()
+    {
+        Assert.Equal(7834d / 8605, new NativeUsage(2, 0, 7834, 769, InputExcludesCache: true).CacheHitRate);
+        Assert.Equal(0, new NativeUsage(100, 0, 0).CacheHitRate);
+        Assert.Null(new NativeUsage(100, 0).CacheHitRate);
+    }
+
+    [Fact]
+    public void CacheDiagnosticsAreReadFromResponsesStream()
+    {
+        const string stream = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"OK\"}\n\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_next\",\"output\":[],\"prompt_cache_diagnostics\":{\"type\":\"cache_miss\",\"reason\":\"tools_changed\"}}}\n\n";
+        var response = NativeProviderRouter.ParseResponsesStream(stream);
+        Assert.Equal("resp_next", response.ResponseId);
+        Assert.Equal("tools_changed", response.CacheDiagnostics?.Reason);
+    }
+
+    [Fact]
+    public async Task CacheComparisonsSurviveKeyAndModelChangesAndIsolateAccounts()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"DotsHarnessCacheComparison-{Guid.NewGuid()}");
+        try
+        {
+            var store = new NativeProviderStore(root, new MemoryProviderSecretStore());
+            var first = new NativeProviderAccount {
+                Provider = "cache-test", BaseUrl = "https://example.test/v1", Model = "gpt-6-luna",
+                Models = ["gpt-6-luna", "gpt-6-astra"], Protocol = NativeProviderProtocol.OpenAiResponses,
+            };
+            var other = new NativeProviderAccount {
+                Provider = first.Provider, BaseUrl = first.BaseUrl, Model = first.Model,
+                Models = first.Models, Protocol = first.Protocol,
+            };
+            store.State.Accounts.AddRange([first, other]);
+            var handler = new CacheComparisonHandler();
+            var router = new NativeProviderRouter(store, http: new HttpClient(handler));
+            NativeMessage[] messages = [new("user", "one")];
+            await router.CompleteAsync(messages, [], first.Model, promptCacheKey: "old-tools",
+                preferredAccountId: first.Id, cacheComparisonScope: "conversation");
+            await router.CompleteAsync(messages, [], first.Model, promptCacheKey: "new-tools",
+                preferredAccountId: first.Id, cacheComparisonScope: "conversation");
+            await router.CompleteAsync(messages, [], "gpt-6-astra", promptCacheKey: "new-model",
+                preferredAccountId: first.Id, cacheComparisonScope: "conversation");
+            await router.CompleteAsync(messages, [], first.Model, promptCacheKey: "other-account",
+                preferredAccountId: other.Id, cacheComparisonScope: "conversation");
+            Assert.Equal(4, handler.Bodies.Count);
+            Assert.Null(handler.Bodies[0]["prompt_cache_options"]);
+            Assert.Equal("resp_next", handler.Bodies[1]["prompt_cache_options"]?["comparison_response_id"]?.GetValue<string>());
+            Assert.Equal("resp_next", handler.Bodies[2]["prompt_cache_options"]?["comparison_response_id"]?.GetValue<string>());
+            Assert.Null(handler.Bodies[3]["prompt_cache_options"]);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }
+    }
+
+    private sealed class CacheComparisonHandler : HttpMessageHandler
+    {
+        public System.Collections.Generic.List<JsonNode> Bodies { get; } = [];
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, System.Threading.CancellationToken ct)
+        {
+            Bodies.Add(JsonNode.Parse(await request.Content!.ReadAsStringAsync(ct))!);
+            return new HttpResponseMessage(HttpStatusCode.OK) {
+                Content = new StringContent("""{"id":"resp_next","output":[{"type":"message","content":[{"type":"output_text","text":"OK"}]}],"usage":{"input_tokens":100,"output_tokens":1,"input_tokens_details":{"cached_tokens":80}}}"""),
+            };
+        }
+    }
     [Theory]
     [InlineData(NativeProviderProtocol.OpenAiCompatible)]
     [InlineData(NativeProviderProtocol.ChatGpt)]
@@ -126,7 +190,7 @@ public sealed class RouterApiTests
         var api = new NativeProviderAccount { Provider = "openai", AuthType = "apiKey", Name = "OpenAI API" };
 
         Assert.NotEqual(consumer.Provider, api.Provider);
-        Assert.Equal("GPT", RouterCatalog.LabelFor(consumer.Provider));
+        Assert.Equal("ChatGPT", RouterCatalog.LabelFor(consumer.Provider));
         Assert.Equal("OpenAI", RouterCatalog.LabelFor(api.Provider));
         Assert.Equal("account-1", consumer.SessionAccountId);
     }
@@ -312,6 +376,7 @@ public sealed class RouterApiTests
             {
                 Assert.Null(body["prompt_cache_key"]);
                 Assert.Equal("ephemeral", body["messages"]![0]!["content"]![0]!["cache_control"]!["type"]!.GetValue<string>());
+                Assert.Equal("1h", body["messages"]![0]!["content"]![0]!["cache_control"]!["ttl"]!.GetValue<string>());
             }
             else
             {
@@ -321,6 +386,49 @@ public sealed class RouterApiTests
                 Assert.StartsWith(cacheKey + ":route-", wire, StringComparison.Ordinal);
                 Assert.Matches("^[A-Za-z0-9:_-]+$", wire);
             }
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ProviderCacheShardUsesTheResolvedModelNotTheAccountDefault()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"DotsHarnessCacheModelTests-{Guid.NewGuid()}");
+        try
+        {
+            var secrets = new MemoryProviderSecretStore();
+            var store = new NativeProviderStore(root, secrets);
+            var account = new NativeProviderAccount
+            {
+                Provider = "cache-model-test",
+                ProviderName = "Cache model test",
+                Name = "Cache model test",
+                Model = "model-a",
+                Models = ["model-a", "model-b"],
+                BaseUrl = "https://openai.example/v1",
+                Protocol = NativeProviderProtocol.OpenAiCompatible,
+                CredentialId = "cache-model-test",
+            };
+            store.State.Accounts.Add(account);
+            secrets.Write(account.CredentialId, "test-secret");
+
+            var handler = new LanguagePolicyRecordingHandler(NativeProviderProtocol.OpenAiCompatible);
+            var router = new NativeProviderRouter(store, http: new HttpClient(handler));
+            var messages = new[] { new NativeMessage("user", "hello") };
+            const string baseKey = "herness:unified-v2:conversation";
+
+            await router.CompleteAsync(messages, [], "model-a", promptCacheKey: baseKey);
+            var modelAKey = JsonNode.Parse(handler.Body)!["prompt_cache_key"]!.GetValue<string>();
+            await router.CompleteAsync(messages, [], "model-b", promptCacheKey: baseKey);
+            var modelBKey = JsonNode.Parse(handler.Body)!["prompt_cache_key"]!.GetValue<string>();
+            await router.CompleteAsync(messages, [], "model-a", promptCacheKey: baseKey);
+            var repeatedModelAKey = JsonNode.Parse(handler.Body)!["prompt_cache_key"]!.GetValue<string>();
+
+            Assert.NotEqual(modelAKey, modelBKey);
+            Assert.Equal(modelAKey, repeatedModelAKey);
         }
         finally
         {

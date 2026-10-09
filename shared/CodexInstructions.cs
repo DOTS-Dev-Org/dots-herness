@@ -5,9 +5,8 @@
 //
 // `CodexBody` is kept identical to
 // macos/DotsHarness/Sources/DotsHarnessCore/CodexInstructions.swift. The overrides
-// deliberately differ: this C# harness has no `update_plan`, `explore`, or
-// `install_plugin` tool, while `grep_files`, `other_chats`, and `remember`
-// are native C# tools.
+// deliberately differ: this C# harness has no `update_plan` or `install_plugin`
+// tool, while `grep_files`, `other_chats`, and `remember` are native C# tools.
 
 namespace DotsHarnessCore;
 
@@ -144,16 +143,20 @@ with this section, this section wins.
 
 - There is no `apply_patch`, no `shell`, and no sandbox or approval-policy parameters. Use only the
   tools listed in this request. Depending on the mode, this C# harness provides
-  `list_files`, `read_file`, `grep_files`, `write_file`, `remove_file`,
+  `list_files`, `glob`, `read_file`, `grep_files`, `edit_file`, `write_file`, `remove_file`,
   `run_command`, `ask_user`, `other_chats`, `remember`, `explore`, and the `skill.*` tools.
-  Plan mode omits `write_file`, `remove_file`, and `remember`.
+  Plan mode omits `edit_file`, `write_file`, `remove_file`, and `remember`.
 - This harness does not provide `update_plan` or `install_plugin`.
-- Edit files by writing their complete new contents with `write_file`; there is no patch format.
+- Search for the relevant file or symbol first; do not read every file in a project. For existing
+  files, use `edit_file` for localized changes instead of reproducing the whole file with
+  `write_file`. Use `write_file` for new files or deliberate whole-file replacements. Read only
+  files needed for the task and prefer bounded `read_file` ranges; expand the read only when the
+  requested change or a safe exact-text edit requires it.
 - `run_command` runs one shell command in the workspace. Escalation is handled by the host, which
   asks the user itself, so never request permissions in a tool call.
 - There is no plan tool here: ignore the Plan tool section above.
-- Search file contents with `grep_files`; use `run_command` for shell commands that are
-  actually needed.
+- Search file contents with `grep_files` and filenames with `glob`; use `run_command` for shell
+  commands that are actually needed.
 """;
 
     public const string Default = CodexBody + "\n\n" + HarnessOverrides;

@@ -58,6 +58,7 @@ async function getGoogleAccessToken(env: Env): Promise<string | null> {
         grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
         assertion,
       }),
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
       console.warn(`FCM OAuth token request failed: HTTP ${res.status}`);
@@ -129,6 +130,7 @@ export async function sendFcmMessage(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ message }),
+        signal: AbortSignal.timeout(10_000),
       }
     );
 
@@ -178,6 +180,7 @@ export async function importApnsTokenToFcm(
         sandbox,
         apns_tokens: [apnsToken],
       }),
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
       console.warn(`APNs->FCM import failed: HTTP ${res.status}`);

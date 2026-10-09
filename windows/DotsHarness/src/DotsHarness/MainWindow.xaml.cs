@@ -1,3 +1,4 @@
+using System.Diagnostics;
 // Copyright (c) 2026 DOTS
 // Plugin composition model derived from DeepSeek Harness.
 // Copyright (c) 2026 DeepSeek. MIT. See NOTICE.
@@ -20,9 +21,11 @@ public partial class MainWindow : Window
         InitializeComponent();
         var model = ((App)Application.Current).Model;
         DataContext = model;
+        Activated += (_, _) => { _ = model.Router.RefreshClaudeUsageAfterActivationAsync(); };
         Sidebar.DataContext = model;
         Conversation.DataContext = model;
         Settings.DataContext = model;
+        RightDock.DataContext = model;
         model.PropertyChanged += OnModel;
         Settings.BackRequested += (_, _) => ShowConversation();
         OverlayHost.Slot = WellKnownSlot.Overlay;
@@ -30,6 +33,9 @@ public partial class MainWindow : Window
         CommandBindings.Add(new CommandBinding(ApplicationCommands.New, (_, _) => model.NewConversation()));
         InputBindings.Add(new KeyBinding(new RelayCommand(_ => ShowSettings()), Key.OemComma, ModifierKeys.Control));
         Closing += OnClosing;
+        // ShutdownMode is explicit now, so a window that really did close has to
+        // end the process itself.
+        Closed += (_, _) => ((App)Application.Current).ExitApplication();
         Loaded += OnLoaded;
         RefreshLocalization();
     }
@@ -43,27 +49,55 @@ public partial class MainWindow : Window
             var dialog = new LegalDialog(model, gate: true) { Owner = this };
             if (dialog.ShowDialog() != true) Application.Current.Shutdown();
         }
+        await PromptForUpdateAsync();
+    }
+
+    private async Task PromptForUpdateAsync()
+    {
+        var update = await CrossPlatformUpdateChecker.CheckOnStartupAsync("windows");
+        if (update is null) return;
+        var msg = $"Yeni sürüm: {update.LatestVersion}\n\n{update.ReleaseNotes}\n\nİndirme sayfası açılsın mı?";
+        if (MessageBox.Show(this, msg, "Güncelleme", update.Mandatory ? MessageBoxButton.OK : MessageBoxButton.YesNo) is MessageBoxResult.Yes or MessageBoxResult.OK
+            && Uri.TryCreate(update.DownloadUrl, UriKind.Absolute, out var url) && url.Scheme == Uri.UriSchemeHttps)
+            Process.Start(new ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true });
+        if (update.Mandatory) Application.Current.Shutdown();
     }
 
     private void OnModel(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(AppModel.Language) or nameof(AppModel.IsRightToLeft))
             Dispatcher.Invoke(RefreshLocalization);
+        else if (e.PropertyName is nameof(AppModel.SelectedConversationId) or nameof(AppModel.WorkspacePath))
+            Dispatcher.BeginInvoke(DismissCompactSidebar);
+        if (e.PropertyName is nameof(AppModel.WorkspacePath)
+            or nameof(AppModel.TerminalWorkspacePath)
+            or nameof(AppModel.IsRemoteWorkLocation)
+            or nameof(AppModel.WorkLocationLabel))
+            Dispatcher.Invoke(RightDock.RefreshLocalization);
+        if (e.PropertyName is nameof(AppModel.ActiveSandbox) or nameof(AppModel.SandboxNetworkAccess))
+            Dispatcher.BeginInvoke(RightDock.RefreshSandboxPolicy);
     }
 
     private void RefreshLocalization()
     {
         var model = ((App)Application.Current).Model;
         Title = model.L("app.title");
+        WindowTitle.Text = model.L("app.title");
+        TasksButton.Content = model.L("settings.tasks");
+        PaneButton.Content = model.L("conversation.choosePane");
+        SidebarToggle.ToolTip = model.L("sidebar.toggle");
+        PaneButton.ToolTip = model.L("conversation.choosePane");
         FlowDirection = model.IsRightToLeft ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
         Sidebar.RefreshLocalization();
         Settings.RefreshLocalization();
+        RightDock.RefreshLocalization();
     }
 
-    public void ShowSettings()
+    public void ShowSettings(string? tab = null)
     {
         Conversation.Visibility = Visibility.Collapsed;
         Settings.Visibility = Visibility.Visible;
+        if (tab is not null) Settings.SelectTab(tab);
     }
 
     private void ShowConversation()
@@ -72,15 +106,210 @@ public partial class MainWindow : Window
         Conversation.Visibility = Visibility.Visible;
     }
 
+    private bool _sidebarVisible = true;
+    private bool _compactLayout;
+    private bool _compactSidebarOpen;
+    private bool _rightDockVisible;
+    private double _sidebarWidth = 280;
+    private double _rightDockWidth = 360;
+
+    private void OnWindowSizeChanged(object sender, SizeChangedEventArgs e) => UpdateResponsiveLayout();
+
+    private void UpdateResponsiveLayout()
+    {
+        var threshold = 840 + (_rightDockVisible ? 241 : 0);
+        var compact = DesktopGrid.ActualWidth > 0 && DesktopGrid.ActualWidth < threshold;
+        if (_compactLayout == compact)
+        {
+            if (compact) ApplyCompactSidebar();
+            return;
+        }
+
+        _compactLayout = compact;
+        if (compact)
+        {
+            if (SidebarColumn.ActualWidth > 1) _sidebarWidth = SidebarColumn.ActualWidth;
+            SidebarColumn.MinWidth = 0;
+            SidebarColumn.Width = new GridLength(0);
+            SidebarSplitterColumn.Width = new GridLength(0);
+            SidebarSplitter.Visibility = Visibility.Collapsed;
+            Grid.SetColumnSpan(Sidebar, 3);
+            Sidebar.HorizontalAlignment = HorizontalAlignment.Left;
+            Sidebar.Width = Math.Min(300, Math.Max(250, DesktopGrid.ActualWidth - 48));
+            Panel.SetZIndex(Sidebar, 11);
+        }
+        else
+        {
+            _compactSidebarOpen = false;
+            CompactScrim.Visibility = Visibility.Collapsed;
+            Grid.SetColumnSpan(Sidebar, 1);
+            Sidebar.ClearValue(WidthProperty);
+            Sidebar.HorizontalAlignment = HorizontalAlignment.Stretch;
+            Panel.SetZIndex(Sidebar, 0);
+            Sidebar.Visibility = _sidebarVisible ? Visibility.Visible : Visibility.Collapsed;
+            SidebarSplitter.Visibility = _sidebarVisible ? Visibility.Visible : Visibility.Collapsed;
+            SidebarSplitterColumn.Width = new GridLength(_sidebarVisible ? 5 : 0);
+            SidebarColumn.MinWidth = _sidebarVisible ? 250 : 0;
+            SidebarColumn.Width = new GridLength(_sidebarVisible ? _sidebarWidth : 0);
+        }
+        ApplyCompactSidebar();
+    }
+
+    private void ApplyCompactSidebar()
+    {
+        if (!_compactLayout) return;
+        CompactScrim.Visibility = _compactSidebarOpen ? Visibility.Visible : Visibility.Collapsed;
+        Sidebar.Visibility = _compactSidebarOpen ? Visibility.Visible : Visibility.Collapsed;
+        Sidebar.HorizontalAlignment = ((App)Application.Current).Model.IsRightToLeft
+            ? HorizontalAlignment.Right
+            : HorizontalAlignment.Left;
+        Sidebar.Width = Math.Min(300, Math.Max(250, DesktopGrid.ActualWidth - 48));
+    }
+
+    private void OnDismissCompactSidebar(object sender, RoutedEventArgs e)
+    {
+        DismissCompactSidebar();
+    }
+
+    private void DismissCompactSidebar()
+    {
+        _compactSidebarOpen = false;
+        ApplyCompactSidebar();
+    }
+
+    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        var key = (e.Key == Key.System ? e.SystemKey : e.Key).ToString();
+        var modifiers = ShortcutModifierMask(Keyboard.Modifiers);
+        if (Settings.HandleShortcutKey(key, modifiers))
+        {
+            e.Handled = true;
+            return;
+        }
+        var model = ((App)Application.Current).Model;
+        if (model.TryGetShortcutAction(key, modifiers, out var action))
+        {
+            DispatchShortcut(action);
+            e.Handled = true;
+            return;
+        }
+        if (e.Key != Key.Escape || !_compactLayout || !_compactSidebarOpen) return;
+        DismissCompactSidebar();
+        e.Handled = true;
+    }
+
+    private static byte ShortcutModifierMask(ModifierKeys modifiers)
+    {
+        byte mask = 0;
+        if (modifiers.HasFlag(ModifierKeys.Control)) mask |= UserKeyboardShortcut.Control;
+        if (modifiers.HasFlag(ModifierKeys.Alt)) mask |= UserKeyboardShortcut.Alt;
+        if (modifiers.HasFlag(ModifierKeys.Shift)) mask |= UserKeyboardShortcut.Shift;
+        if (modifiers.HasFlag(ModifierKeys.Windows)) mask |= UserKeyboardShortcut.Super;
+        return mask;
+    }
+
+    public void DispatchShortcut(KeyboardShortcutAction action)
+    {
+        var model = ((App)Application.Current).Model;
+        switch (action)
+        {
+            case KeyboardShortcutAction.ToggleSidebar:
+                OnToggleSidebar(this, new RoutedEventArgs());
+                break;
+            case KeyboardShortcutAction.PullRequests:
+                if (model.ActiveProjectLocationAvailable) _ = model.OpenPullRequestsAsync();
+                break;
+            case KeyboardShortcutAction.Scheduled:
+                ShowSettings("tasks");
+                break;
+            case KeyboardShortcutAction.Review:
+                ShowConversation();
+                ShowDockTab("review");
+                break;
+            case KeyboardShortcutAction.Terminal:
+                ShowConversation();
+                ShowDockTab("terminal");
+                break;
+            case KeyboardShortcutAction.Browser:
+                ShowConversation();
+                ShowDockTab("browser");
+                break;
+            case KeyboardShortcutAction.Files:
+                ShowConversation();
+                ShowDockTab("files");
+                break;
+            case KeyboardShortcutAction.NewConversation:
+                ShowConversation();
+                model.NewConversation();
+                break;
+        }
+    }
+
+    private void ShowDockTab(string tab)
+    {
+        if (!_rightDockVisible) OnPanePicker(this, new RoutedEventArgs());
+        RightDock.SelectTab(tab);
+    }
+
+    private void OnToggleSidebar(object sender, RoutedEventArgs e)
+    {
+        if (_compactLayout)
+        {
+            _compactSidebarOpen = !_compactSidebarOpen;
+            ApplyCompactSidebar();
+            return;
+        }
+        if (_sidebarVisible && SidebarColumn.ActualWidth > 1) _sidebarWidth = SidebarColumn.ActualWidth;
+        _sidebarVisible = !_sidebarVisible;
+        Sidebar.Visibility = _sidebarVisible ? Visibility.Visible : Visibility.Collapsed;
+        SidebarSplitter.Visibility = _sidebarVisible ? Visibility.Visible : Visibility.Collapsed;
+        SidebarSplitterColumn.Width = new GridLength(_sidebarVisible ? 5 : 0);
+        SidebarColumn.MinWidth = _sidebarVisible ? 250 : 0;
+        SidebarColumn.Width = _sidebarVisible ? new GridLength(_sidebarWidth) : new GridLength(0);
+        SidebarToggle.Content = _sidebarVisible ? "☰" : "☷";
+    }
+
+    private void OnPanePicker(object sender, RoutedEventArgs e)
+    {
+        if (_rightDockVisible && RightDockColumn.ActualWidth > 1) _rightDockWidth = RightDockColumn.ActualWidth;
+        _rightDockVisible = !_rightDockVisible;
+        RightDock.Visibility = _rightDockVisible ? Visibility.Visible : Visibility.Collapsed;
+        DockSplitter.Visibility = _rightDockVisible ? Visibility.Visible : Visibility.Collapsed;
+        DockSplitterColumn.Width = _rightDockVisible ? new GridLength(5) : new GridLength(0);
+        RightDockColumn.MinWidth = _rightDockVisible ? 240 : 0;
+        RightDockColumn.Width = _rightDockVisible ? new GridLength(_rightDockWidth) : new GridLength(0);
+        UpdateResponsiveLayout();
+    }
+
+    private void OnTasks(object sender, RoutedEventArgs e) => ShowSettings("tasks");
+
+    public void ShowBrowserPanel(string? url = null)
+    {
+        if (!_rightDockVisible) OnPanePicker(this, new RoutedEventArgs());
+        if (url is null) RightDock.SelectTab("browser");
+        else RightDock.OpenBrowser(url);
+    }
+
     private bool _allowClose;
 
     private void OnClosing(object? sender, CancelEventArgs e)
     {
-        var model = ((App)Application.Current).Model;
-        if (_allowClose || !model.ConfirmBeforeExit)
+        var app = (App)Application.Current;
+        var model = app.Model;
+        if (app.IsExiting || _allowClose)
         {
+            StopInteractiveSessions();
+            return;
+        }
+
+        // The tray keeps this process alive, so the close button only hides the
+        // window: runs, terminals and scheduled tasks carry on behind it.
+        if (model.CloseToTray)
+        {
+            e.Cancel = true;
             Conversation.StopVoiceInput();
-            Conversation.StopTerminal();
+            Hide();
+            app.NotifyHidden();
             return;
         }
 
@@ -93,8 +322,14 @@ public partial class MainWindow : Window
 
         if (dialog.Remember) model.SetConfirmBeforeExit(false);
         _allowClose = true;
+        StopInteractiveSessions();
+    }
+
+    private void StopInteractiveSessions()
+    {
         Conversation.StopVoiceInput();
         Conversation.StopTerminal();
+        RightDock.StopTerminal();
     }
 }
 

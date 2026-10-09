@@ -1,10 +1,8 @@
 import Foundation
 import SwiftUI
 
-/// The mobile language list mirrors macOS AppLanguage.  `system` is a
-/// selection mode; the other 30 entries are concrete resource locales.
+/// The mobile language list mirrors macOS AppLanguage. 30 concrete resource locales.
 enum MobileLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
-    case system
     case tr, en, de, es, fr, it, ja, ko, nl, pt, ru
     case zhHans = "zh-Hans"
     case ar, bn, hi, id, vi, ur, mr, te, ta, fa, pl, uk, th, ms, ro, el, cs, hu
@@ -12,12 +10,11 @@ enum MobileLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
     var id: String { rawValue }
 
     static var supported: [MobileLanguage] {
-        allCases.filter { $0 != .system }
+        allCases
     }
 
     var localeIdentifier: String {
         switch self {
-        case .system: return MobileLanguage.from(preferredIdentifier: Locale.preferredLanguages.first ?? "en").localeIdentifier
         case .tr: return "tr-TR"
         case .en: return "en-US"
         case .de: return "de-DE"
@@ -53,7 +50,6 @@ enum MobileLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
 
     var nativeName: String {
         switch self {
-        case .system: return "System language"
         case .tr: return "Türkçe"
         case .en: return "English"
         case .de: return "Deutsch"
@@ -89,7 +85,6 @@ enum MobileLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
 
     var flagEmoji: String {
         switch self {
-        case .system: return "🌐"
         case .tr: return "🇹🇷"
         case .en: return "🇺🇸"
         case .de: return "🇩🇪"
@@ -123,14 +118,12 @@ enum MobileLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
     var isRTL: Bool {
         switch self {
         case .ar, .ur, .fa: return true
-        case .system: return MobileLanguage.from(preferredIdentifier: Locale.preferredLanguages.first ?? "en").isRTL
         default: return false
         }
     }
 
     var shortCode: String {
         switch self {
-        case .system: return "AUTO"
         case .zhHans: return "ZH"
         default: return rawValue.uppercased()
         }
@@ -146,7 +139,9 @@ enum MobileLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
     }
 
     static func stored(_ rawValue: String?) -> MobileLanguage {
-        guard let rawValue, let value = MobileLanguage(rawValue: rawValue) else { return .system }
+        guard let rawValue, let value = MobileLanguage(rawValue: rawValue) else {
+            return from(preferredIdentifier: Locale.preferredLanguages.first ?? "en")
+        }
         return value
     }
 }
@@ -167,9 +162,7 @@ final class MobileLocalization: ObservableObject {
     }
 
     var effective: MobileLanguage {
-        selected == .system
-            ? MobileLanguage.from(preferredIdentifier: Locale.preferredLanguages.first ?? "en")
-            : selected
+        selected
     }
 
     var locale: Locale { Locale(identifier: effective.localeIdentifier) }
@@ -185,6 +178,32 @@ final class MobileLocalization: ObservableObject {
 
     func format(_ key: String, _ arguments: CVarArg...) -> String {
         MobileCopy.format(key, language: effective, locale: locale, arguments: arguments)
+    }
+}
+
+@MainActor
+final class MobileTheme: ObservableObject {
+    static let storageKey = "mobile.theme.dark"
+
+    @Published var isDark: Bool {
+        didSet { defaults.set(isDark, forKey: Self.storageKey) }
+    }
+
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        if defaults.object(forKey: Self.storageKey) != nil {
+            self.isDark = defaults.bool(forKey: Self.storageKey)
+        } else {
+            self.isDark = true
+        }
+    }
+
+    func toggle() {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            isDark.toggle()
+        }
     }
 }
 
@@ -221,54 +240,177 @@ enum MobileIntroNavigation {
 
 struct MobileLanguagePicker: View {
     @EnvironmentObject private var localization: MobileLocalization
+    var isDropdownOpen: Binding<Bool>?
+    var darkAppearance: Bool = false
+
+    @State private var internalOpen = false
+
+    private var openBinding: Binding<Bool> {
+        isDropdownOpen ?? $internalOpen
+    }
+
+    var body: some View {
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                openBinding.wrappedValue.toggle()
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Text(localization.selected.flagEmoji)
+                    .font(.system(size: 15))
+                Text(localization.selected.shortCode)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                Image(systemName: openBinding.wrappedValue ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle((darkAppearance ? Color.white : Color(red: 0.12, green: 0.12, blue: 0.14)).opacity(0.75))
+            }
+            .foregroundStyle(darkAppearance ? Color.white : Color(red: 0.12, green: 0.12, blue: 0.14))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(localization.text("intro.languageAccessibility"))
+    }
+}
+
+struct CustomLanguageDropdown: View {
+    @EnvironmentObject private var localization: MobileLocalization
+    @Binding var isPresented: Bool
+    var darkAppearance: Bool = false
+
+    var body: some View {
+        if isPresented {
+            ZStack(alignment: .topLeading) {
+                Color.black.opacity(0.001)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                            isPresented = false
+                        }
+                    }
+
+                VStack(alignment: .leading, spacing: 0) {
+                    ScrollView {
+                        LazyVStack(spacing: 2) {
+                            ForEach(MobileLanguage.supported) { language in
+                                Button {
+                                    localization.set(language)
+                                    withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                                        isPresented = false
+                                    }
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        Text(language.flagEmoji)
+                                            .font(.system(size: 16))
+                                        Text(language.nativeName)
+                                            .font(.system(size: 13, weight: localization.selected == language ? .bold : .medium, design: .rounded))
+                                            .foregroundStyle(darkAppearance ? Color.white : Color.primary)
+                                        Spacer()
+                                        if localization.selected == language {
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 11, weight: .bold))
+                                                .foregroundStyle(Color.blue)
+                                        }
+                                    }
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 7)
+                                    .background(
+                                        localization.selected == language
+                                            ? (darkAppearance ? Color.white.opacity(0.12) : Color.black.opacity(0.06))
+                                            : Color.clear
+                                    )
+                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 4)
+                    }
+                    .frame(maxHeight: 220)
+                }
+                .frame(width: 188)
+                .background(
+                    darkAppearance
+                        ? Color(red: 0.13, green: 0.13, blue: 0.15).opacity(0.96)
+                        : Color.white.opacity(0.98)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(darkAppearance ? Color.white.opacity(0.14) : Color.black.opacity(0.08), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(darkAppearance ? 0.45 : 0.18), radius: 18, x: 0, y: 8)
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .scale(scale: 0.95, anchor: .topLeading)),
+                    removal: .opacity.combined(with: .scale(scale: 0.95, anchor: .topLeading))
+                ))
+            }
+        }
+    }
+}
+
+struct SettingsLanguageMenu: View {
+    @EnvironmentObject private var localization: MobileLocalization
     @State private var isPresented = false
-    var darkAppearance = false
+    var darkAppearance: Bool
 
     var body: some View {
         Button {
             isPresented = true
         } label: {
-            Label(localization.selected.shortCode, systemImage: "globe")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .labelStyle(.titleAndIcon)
-                .foregroundStyle(darkAppearance ? .white : .primary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background((darkAppearance ? Color.white.opacity(0.16) : Color.primary.opacity(0.08)))
-                .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(localization.text("intro.languageAccessibility"))
-        .sheet(isPresented: $isPresented) {
-            NavigationStack {
-                List {
-                    languageRow(.system)
-                    ForEach(MobileLanguage.supported) { languageRow($0) }
-                }
-                .navigationTitle(localization.text("intro.language"))
-                .navigationBarTitleDisplayMode(.inline)
+            HStack(spacing: 5) {
+                Image(systemName: "globe")
+                    .font(.system(size: 14, weight: .semibold))
+                Text(localization.selected.shortCode)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 10, weight: .bold))
             }
-            .presentationDetents([.medium, .large])
-        }
-    }
-
-    @ViewBuilder
-    private func languageRow(_ language: MobileLanguage) -> some View {
-        Button {
-            localization.set(language)
-            isPresented = false
-        } label: {
-            HStack(spacing: 12) {
-                Text(language.flagEmoji)
-                Text(language == .system ? localization.text("intro.languageSystem") : language.nativeName)
-                Spacer()
-                if localization.selected == language {
-                    Image(systemName: "checkmark")
-                        .foregroundStyle(.tint)
-                }
-            }
+            .foregroundStyle(darkAppearance ? Color.white : Color.primary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(localization.text("intro.languageAccessibility"))
+        .popover(isPresented: $isPresented, arrowEdge: .bottom) {
+            ScrollView {
+                LazyVStack(spacing: 2) {
+                    ForEach(MobileLanguage.supported) { language in
+                        let selected = localization.selected == language
+                        Button {
+                            localization.set(language)
+                            isPresented = false
+                        } label: {
+                            HStack(spacing: 8) {
+                                Text(language.flagEmoji)
+                                    .font(.system(size: 16))
+                                Text(language.nativeName)
+                                    .font(.system(size: 13, weight: selected ? .bold : .medium, design: .rounded))
+                                    .foregroundStyle(darkAppearance ? Color.white : Color.primary)
+                                Spacer(minLength: 0)
+                                if selected {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundStyle(Color.blue)
+                                }
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(selected ? (darkAppearance ? Color.white.opacity(0.12) : Color.black.opacity(0.06)) : Color.clear)
+                            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(4)
+            }
+            .frame(width: 188, height: 220)
+            .presentationCompactAdaptation(.popover)
+        }
     }
 }

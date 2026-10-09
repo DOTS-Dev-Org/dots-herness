@@ -10,6 +10,7 @@ import { createOpenApiRoutes } from "./openapi";
 import mobileGithubOAuth from "./routes/mobile/github-oauth";
 import { qrRoutes } from "./routes/api/auth";
 import { marketplacePublic } from "./routes/api/marketplace";
+import { versionRoutes } from "./routes/api/version";
 import { harnessHelp } from "./routes/harness-help";
 import { db } from "./db/client";
 import { getAccessTokenFromCookie } from "./lib/auth-cookies";
@@ -22,6 +23,7 @@ import {
   purgeOldAuditEvents,
   purgeExpiredTransientState,
 } from "./lib/retention";
+import { syncClaudeCatalog } from "./lib/model_catalog";
 
 function assetCacheControl(key: string): string {
   // User/provider uploads keep stable keys and may be replaced; keep their
@@ -34,6 +36,10 @@ function assetCacheControl(key: string): string {
   // retry may replace the object before the registry row is refreshed.
   if (key.startsWith("marketplace/")) {
     return "public, max-age=60, s-maxage=60";
+  }
+  // The model catalog is how a new model reaches installed apps.
+  if (key.startsWith("catalog/")) {
+    return "public, max-age=300, s-maxage=300";
   }
   return "public, max-age=86400, s-maxage=86400";
 }
@@ -67,7 +73,10 @@ async function marketplaceSourceAccess(c: AppContext, key: string): Promise<Mark
   try {
     const claims = await verifyAccessToken(c.env, token);
     const user = await getActiveAuthUser(c.env, claims.userId);
-    return user?.id === owner.owner_user_id ? "private" : "denied";
+    if (user && (user.id === owner.owner_user_id || ["admin", "superadmin"].includes(user.role))) {
+      return "private";
+    }
+    return "denied";
   } catch {
     return "denied";
   }
@@ -88,10 +97,16 @@ async function serveAsset(c: AppContext) {
   return new Response(obj.body, { headers });
 }
 
-async function noStoreSensitiveResponses(c: { req: { path: string }; header: (name: string, value: string) => void }, next: () => Promise<void>) {
+async function noStoreSensitiveResponses(c: { req: { path: string; method: string; url: string }; res: { ok: boolean }; header: (name: string, value: string) => void }, next: () => Promise<void>) {
   await next();
   const path = c.req.path;
   if (path.startsWith("/api/") || path.startsWith("/aitrack/") || path.startsWith("/auth/")) {
+    // One exception: a pinned legal-document set is content-addressed by
+    // (locale, version) and a published version never changes, so re-reading
+    // both documents plus re-hashing them per app launch is pure waste. Callers
+    // that omit `version` still get the no-store default, because the same URL
+    // then starts resolving to new text at the next deploy.
+    if (c.req.method === "GET" && path === "/api/legal/documents" && c.res.ok && c.req.url.includes("version=")) return;
     c.header("Cache-Control", "no-store, max-age=0");
     c.header("Pragma", "no-cache");
   }
@@ -112,6 +127,8 @@ const app = new Hono<{ Bindings: Env; Variables: AppVariables }>()
   .route("/aitrack", aitrackApp)
   .route("/harness", harnessHelp)
   .route("/harness", marketplacePublic)
+  .route("/harness", versionRoutes)
+  .route("/api/version", versionRoutes)
   .route("/", createOpenApiRoutes())
   .get("/assets/*", (c) => serveAsset(c));
 
@@ -125,6 +142,7 @@ export default {
     // ponytail: skeleton cron only runs auth/security retention. Billing and
     // subscription-cleanup jobs from aiwatcher_web were dropped with their tables.
     const now = new Date();
+    if (now.getUTCMinutes() === 0) ctx.waitUntil(syncClaudeCatalog(env));
     if (now.getUTCHours() === 3 && now.getUTCMinutes() === 0) {
       ctx.waitUntil(purgeStaleQrSessions(env));
       ctx.waitUntil(purgeExpiredRefreshTokens(env));

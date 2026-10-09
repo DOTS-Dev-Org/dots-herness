@@ -80,7 +80,6 @@
 "settings.title" = "அமைப்புகள்";
 "settings.backToChats" = "அரட்டைகளுக்குத் திரும்பு";
 "settings.tab.general" = "பொது";
-"settings.tab.pet" = "செல்லப்பிராணி";
 "settings.tab.providers" = "வழங்குபவர்கள்";
 "settings.tab.custom" = "தனிப்பயன் API";
 "settings.tab.local" = "உள்ளூர் மாதிரிகள்";
@@ -306,22 +305,22 @@
 "composer.add" = "சேர்";
 "composer.stopListening" = "கேட்பதை நிறுத்திவிட்டு வரைவில் உரையைச் சேர்க்கவும்";
 "composer.keyboardHelp" = "உள்ளிடவும்: அனுப்பு · Shift+Enter: புதிய வரி · ⌘/Ctrl+Enter: திசைமாற்றி";
-"composer.followUp.hint" = "தொடர்ச்சிச் செய்திப் பரிந்துரையை ஏற்க Tab ஐ அழுத்தவும்";
+"composer.followUp.hint" = "பின்தொடர்தல் செய்திப் பரிந்துரையை ஏற்க Tab-ஐ அழுத்தவும்";
 "composer.selectModel" = "மாதிரியைத் தேர்ந்தெடுக்கவும்";
 "composer.installedSkill" = "நிறுவப்பட்ட திறன்";
 "composer.settings" = "அமைப்புகள்";
 "composer.skills" = "திறன்கள்";
 "composer.personal" = "தனிப்பட்ட";
-"composer.projectPickerHelp" = "இந்த அரட்டைக்கான திட்டத்தைத் தேர்ந்தெடுக்கவும்";
+"composer.projectPickerHelp" = "இந்த உரையாடலுக்கான திட்டத்தைத் தேர்ந்தெடுக்கவும்";
 "composer.projectPickerTitle" = "திட்டம்";
 "composer.chooseProject" = "திட்டத்தை தேர்வு செய்யவும்";
 "composer.noProject" = "திட்டம் எதுவும் தேர்ந்தெடுக்கப்படவில்லை";
 "composer.dontWorkInProject" = "திட்டத்தில் வேலை செய்ய வேண்டாம்";
 "workLocation.title" = "வேலை";
-"workLocation.help" = "இந்த பணி எங்கு இயங்குகிறது என்பதை தேர்வு செய்யவும்";
+"workLocation.help" = "இந்தப் பணி எங்கு இயங்க வேண்டும் என்பதைத் தேர்ந்தெடுக்கவும்";
 "workLocation.local" = "உள்ளூர்";
 "workLocation.localDetail" = "இந்தக் கணினியில் இந்தப் பணியை இயக்கவும்";
-"workLocation.localWorktree" = "புதிய உள்ளூர் வேலை மரம்";
+"workLocation.localWorktree" = "புதிய உள்ளூர் வொர்க்ட்ரீ";
 "workLocation.localWorktreeDetail" = "இந்தக் கணினியில் தனிமைப்படுத்தப்பட்ட செக் அவுட்டைப் பயன்படுத்தவும்";
 "workLocation.remote" = "மற்றொரு கணினி";
 "workLocation.remoteDetail" = "SSH வழியாக இணைக்கும் கணினியில் வேலை செய்யவும்";
@@ -378,7 +377,7 @@
 "ssh.error.configWriteFailed" = "%@ ஐ ~/.ssh/config இல் எழுத முடியவில்லை.";
 "tool.remoteUnavailable" = "%2$@ இல் வேலை செய்யும்போது %1$@ கிடைக்காது. மாறாக run_command மூலம் ஷெல் கட்டளைகளைப் பயன்படுத்துங்கள்.";
 "git.branchHelp" = "Git கிளையைத் தேர்ந்தெடுக்கவும்";
-"git.detached" = "பிரிக்கப்பட்ட தலை";
+"git.detached" = "துண்டிக்கப்பட்ட HEAD";
 "git.search" = "கிளைகளைத் தேடுங்கள்";
 "git.branches" = "கிளைகள்";
 "git.noBranches" = "கிளைகள் இல்லை";
@@ -413,8 +412,6 @@
 "slash.model" = "மாதிரி";
 "slash.plan" = "திட்ட முறை";
 "slash.planDetail" = "திட்ட பயன்முறையை இயக்கவும்";
-"slash.mascot" = "செல்லப்பிராணி";
-"slash.mascotDetail" = "செல்லப்பிராணியை எழுப்பவும் அல்லது மறைக்கவும்";
 "slash.pluginCreator" = "செருகுநிரல் உருவாக்கி";
 "slash.pluginCreatorDetail" = "புதிய செருகுநிரலை உருவாக்கு";
 "pluginCreator.template" = "வார்ப்புரு";
@@ -501,7 +498,6 @@
 "sidebar.hide" = "மறை";
 "sidebar.show" = "காட்டு";
 "sidebar.selectProject" = "திட்டத்தை தேர்வு செய்யவும்";
-"sidebar.continueWithoutProject" = "திட்டம் இல்லாமல் தொடரவும்";
 "sidebar.projectOptions" = "திட்ட விருப்பங்கள்";
 "sidebar.editProject" = "திட்டத்தை திருத்து";
 "sidebar.addProject" = "திட்டத்தைச் சேர்";
@@ -533,28 +529,6 @@
 "sidebar.accountOptions" = "கணக்கு விருப்பங்கள்";
 "sidebar.accountUsage" = "DOTS கணக்கு மற்றும் பயன்பாடு";
 
-"pet.position.bottomTrailing" = "கீழ் வலது";
-"pet.position.bottomLeading" = "கீழே இடது";
-"pet.position.topTrailing" = "மேல் வலது";
-"pet.position.topLeading" = "மேல் இடது";
-"pet.settings" = "செல்லப்பிராணி அமைப்புகள்";
-"pet.hide" = "செல்லப்பிராணியை மறை";
-"pet.dragHint" = "DOTS Pet · நகர்த்த பிடி";
-"pet.stopAndSend" = "கேட்பதை நிறுத்திவிட்டு, தேர்ந்தெடுத்த அரட்டைக்கு அனுப்பவும்";
-"pet.micOpening" = "மைக்ரோஃபோனைத் திறக்கிறது…";
-"pet.listening" = "கேட்கிறது…";
-"pet.transcribing" = "உள்ளூர் குரல் மாதிரி படியெடுக்கிறது…";
-"pet.sending" = "தேர்ந்தெடுத்த அரட்டைக்கு அனுப்புகிறது…";
-"pet.visibility" = "செல்லப்பிராணிகளின் பார்வை";
-"pet.show" = "செல்லப்பிராணியைக் காட்டு";
-"pet.visibilityHint" = "இந்த விருப்பம் இயக்கப்பட்டிருக்கும் போது மட்டுமே செல்லப்பிராணி திரையில் மிதக்கும். இது முதல் வெளியீட்டில் முடக்கப்பட்டுள்ளது.";
-"pet.appearance" = "தோற்றம்";
-"pet.position" = "பதவி";
-"pet.size" = "அளவு";
-"pet.sizeValue" = "%d px";
-"pet.avatar" = "அவதாரம்";
-"pet.preview" = "முன்னோட்டம்";
-"pet.title" = "செல்லப்பிராணி";
 
 "usage.title" = "பயன்பாடு";
 "usage.accountSummary" = "இந்த காலகட்டத்தின் DOTS YAZILIM கணக்கு சுருக்கம்";
@@ -870,7 +844,6 @@
 "marketplace.install" = "நிறுவவும்";
 "marketplace.search" = "செருகுநிரல்களைத் தேடுங்கள்";
 "marketplace.update" = "v%@ → v%@ஐப் புதுப்பிக்கவும்";
-"pet.avatarHint" = "செல்லப்பிராணியின் அவதாரத்தைத் தேர்ந்தெடுக்கவும்.";
 "router.customEndpointHint" = "தனிப்பயன் API இறுதிப்புள்ளி";
 "router.noKeyRequired" = "சாவி தேவையில்லை. இந்த வழங்குநரின் வழியுடன் இணைக்கவும்.";
 "settings.addProviderCustom" = "தனிப்பயன் API மூலம் இந்த வழங்குநரைச் சேர்க்கவும்.";
@@ -1104,9 +1077,6 @@
 "feedback.tag.negative_other" = "மற்றவை";
 
 // Completed translations for keys added to the desktop catalog.
-"assistantMode.title" = "உதவி பயன்முறை";
-"assistantMode.coding" = "குறியீட்டாக்கம்";
-"assistantMode.chat" = "அரட்டை";
 "tasks.close" = "பணிகளை மூடு";
 "tasks.back" = "பின்செல்";
 "tasks.new" = "புதிய பணி";
@@ -1147,3 +1117,213 @@
 "settings.compactTrigger" = "சூழலைத் தானாகச் சுருக்கும் வரம்பு";
 "settings.compactTrigger.hint" = "ஒவ்வொரு மாடலின் சூழல் சாளரத்தின் விகிதம். சுருக்கம் ப்ராம்ப்ட் கேச்சை மீண்டும் எழுதுவதால், அதிக மதிப்பு கேச்சை நீண்ட நேரம் வைத்திருக்கும்.";
 "conversation.translate" = "மொழிபெயர்";
+
+
+// Completed translations for keys added to the desktop catalog.
+"tray.section.running" = "இயங்கும் அரட்டைகள்";
+"tray.section.waiting" = "கவனம் தேவை";
+"tray.write" = "செய்தி எழுது";
+"tray.openUsage" = "பயனத் திரையைத் திற";
+"tray.noChats" = "தற்போது அரட்டைகள் இல்லை";
+"tray.unread" = "புதிய பதில்";
+
+// Write-lease conflict copy.
+"conflict.policy.waitThenAsk" = "காத்திரு, பின் கேள்";
+"conflict.policy.waitThenAsk.detail" = "மற்றொரு உரைக்காக அமைதியாகக் காத்திருக்கும்; நீடித்தால் மட்டுமே கேட்கும்.";
+"conflict.policy.ask" = "என்னிடம் கேள்";
+"conflict.policy.ask.detail" = "இரு உரைகள் ஒரே கோப்பை விரும்பியவுடன் கேட்கும்.";
+"conflict.policy.waitOnly" = "எப்போதும் காத்திரு";
+"conflict.policy.waitOnly.detail" = "கேட்காது: ஒவ்வொரு எழுத்தும் கோப்பை வைத்துள்ள உரைக்காகக் காத்திருக்கும்.";
+"conflict.title" = "மற்றொரு உரை %@ எழுதுகிறது";
+"conflict.stillBusy" = "எழுத்து தாங்கப்படுகிறது: %@ ஐ மற்றொரு உரை இன்னும் எழுதுகிறது.";
+"conflict.userSkipped" = "எழுத்து தவிர்க்கப்பட்டது: %@ கேட்டபடி மற்றொரு உரையிடம் (%@) இருந்தது.";
+"conflict.stoppedHolder" = "நீங்கள் கேட்டபடி உரை “%@” நிறுத்தப்பட்டது, இந்த எழுத்து செய்யப்பட்டது.";
+"conflict.stoppedOthers" = "நீங்கள் கேட்டபடி இந்தத் திட்டத்தின் மற்ற உரைகள் நிறுத்தப்பட்டன, இந்த எழுத்து செய்யப்பட்டது.";
+"conflict.wholeProject" = "முழு திட்டமும் (கட்டளை: %@)";
+"conflict.banner.title" = "மற்றொரு உரை இந்தக் கோப்பை எழுதுகிறது";
+"conflict.banner.body" = "%1$@ · “%2$@” %3$d வினாடிகளாக வைத்துள்ளது";
+"conflict.banner.keepWaiting" = "தொடர்ந்து காத்திரு";
+"conflict.banner.stopHolder" = "அந்த உரையை நிறுத்து";
+"conflict.banner.stopAllOthers" = "மற்ற அனைத்து உரைகளையும் நிறுத்து";
+"conflict.banner.skip" = "இந்த எழுத்தைத் தவிர்";
+"conflict.waiting" = "“%@” எழுதுவதற்காகக் காத்திருப்பு: %@";
+"settings.workspaceConflictPolicy" = "மற்றொரு உரை அதே கோப்பை எழுதினால்";
+"settings.conflictWaitSeconds" = "கேட்கும் முன் காத்திரு";
+"settings.conflictWaitValue" = "%d வினாடிகள்";
+
+
+"conversation.ranCommand" = "Ran 1 command";
+"conversation.ranCommands" = "Ran %d commands";
+"conversation.runningTools" = "Running tools…";
+"conversation.thinkingPhase" = "Thinking…";
+"conversation.tokensCount" = "%@ tokens";
+"usage.context.window" = "சூழல் சாளரம்";
+"usage.planLimits" = "திட்டப் பயன்பாட்டு வரம்புகள்";
+"ask.other" = "Other";
+"ask.next" = "Next";
+"ask.skipShort" = "Skip";
+"composer.queue.one" = "1 message queued";
+"composer.queue.many" = "%d messages queued";
+"composer.queue.edit" = "Edit";
+"composer.queue.editBlocked" = "Clear the message box to edit";
+"composer.queue.remove" = "Remove";
+"git.createPR" = "PR உருவாக்கு";
+"git.hideBar" = "மறை";
+"composer.queue.next" = "Next: %@";
+
+// Composer, git bar and usage popover.
+"usage.context.tooltip" = "சூழல் மற்றும் டோக்கன் பயன்பாடு";
+"usage.context.conversation" = "உரையாடல் செய்திகள்";
+"usage.context.toolDefinitions" = "கருவி வரையறைகள்";
+"usage.context.mcpDefinitions" = "MCP கருவி வரையறைகள்";
+"usage.context.systemPrompt" = "கணினி வழிமுறைகள்";
+"usage.context.cacheHit" = "ப்ராம்ப்ட் கேஷ் ஹிட்கள்";
+"usage.context.notReported" = "வழங்குநர் தெரிவிக்கவில்லை";
+"usage.context.cacheWrite" = "கேஷில் %@ டோக்கன்கள் எழுதப்பட்டன";
+
+// Local AI runtime and custom endpoint tuning.
+"custom.modelOptional" = "மாடல் பெயர் (விருப்பத்தேர்வு)";
+"custom.contextOptional" = "டோக்கன்களில் சூழல் சாளரம் (விருப்பத்தேர்வு)";
+"custom.contextHint" = "சேவையகத்திலிருந்து படிக்க இரண்டையும் காலியாக விடுங்கள். சேவையகம் தெரிவிக்காவிட்டால் சூழலை உள்ளிடுங்கள் (Ollama: OLLAMA_CONTEXT_LENGTH உடன் பொருந்த வேண்டும்).";
+"custom.contextInvalid" = "சூழல் சாளரம் நேர்மறை எண்ணாக இருக்க வேண்டும்.";
+"custom.detected" = "இந்தக் கணினியில் இயங்குபவை";
+"custom.noModelAvailable" = "%@ எந்த மாடலையும் பட்டியலிடவில்லை. அதன் சேவையகத்தைத் தொடங்குங்கள் அல்லது எண்ட்பாயிண்டுக்கு மாடல் பெயரை அமைக்கவும்.";
+"local.extraArgs" = "கூடுதல் llama-server அளவுருக்கள்";
+"local.mlxExtraArgs" = "கூடுதல் mlx_lm சேவையக அளவுருக்கள்";
+"local.gpuLayers" = "GPU அடுக்குகள் (auto, all அல்லது ஓர் எண்)";
+"local.hardware" = "வன்பொருள்";
+"local.hardwareGPU" = "%@ · %@ GPU நினைவகம் · %@ RAM";
+"local.importGGUF" = "GGUF கோப்பைச் சேர்…";
+"local.installMLX" = "MLX நிறுவு";
+"local.installingMLX" = "MLX நிறுவப்படுகிறது (Python + mlx-lm)…";
+"local.kvCache" = "KV கேச் வகை";
+"local.servingContext" = "%@ · %d டோக்கன்கள்";
+"local.tooLarge" = "மிகப் பெரியது";
+"local.tuning" = "செயல்திறன்";
+"local.tuningHint" = "காலியாகவோ auto ஆகவோ விட்டால் ரன்டைம் மாடலை உங்கள் GPU நினைவகத்துக்கு ஏற்ப அமைக்கும். மாற்றங்கள் அடுத்த முறை மாடல் தொடங்கும்போது செயல்படும்.";
+"local.contextSize" = "சூழல் அளவு (டோக்கன்கள்)";
+"local.threads" = "CPU த்ரெட்கள்";
+"local.batchSize" = "பேட்ச் அளவு";
+"local.forget" = "பட்டியலிலிருந்து நீக்கு";
+"localModel.needsMemory" = "சுமார் %d GB GPU நினைவகம் அல்லது RAM தேவை.";
+"localRuntime.helperFailed" = "%@ தோல்வியடைந்தது (வெளியேறு குறியீடு %d)";
+"localRuntime.mlxUnsupported" = "MLX க்கு Apple Silicon Mac தேவை.";
+"local.flashAttention" = "Flash attention";
+"local.hardwareMemory" = "%@ RAM";
+
+// Translations completed for keys that had no localized text.
+"conversation.fullToolOutput" = "முழு கருவி வெளியீடு";
+"sidebar.showSidebar" = "பக்கப்பட்டியைக் காட்டு";
+"sidebar.hideSidebar" = "பக்கப்பட்டியை மறை";
+"navigation.back" = "பின்";
+"navigation.forward" = "முன்";
+"settings.autoApprovePlans" = "திட்டங்களைத் தானாக அங்கீகரி";
+"settings.autoApprovePlans.hint" = "இயக்கப்பட்டால், உருவாக்கப்பட்ட திட்டம் தனி அங்கீகாரத்துக்குக் காத்திராமல் செயல்படுத்தப்படும். கருவி நிலை அங்கீகாரங்கள் தொடர்ந்து பொருந்தும்.";
+"media.fallbackUsed" = "தேர்ந்தெடுத்த வழங்குநரால் இந்தப் படத்தை உருவாக்க முடியவில்லை. இது %@/%@ வழியாக ஒருமுறை மாற்று கோரிக்கையால் உருவாக்கப்பட்டது; முதன்மை உரையாடலின் வழங்குநரும் மாடலும் மாறவில்லை, எனவே அதன் ப்ராம்ப்ட் கேச் அப்படியே உள்ளது.";
+"media.imageUnsupportedWithFallbackHint" = "%@ மூலம் இந்தப் படத்தை என்னால் உருவாக்க முடியாது. மாற்றாக ஒரு பட API அல்லது வழங்குநரை அமைக்கவும். படத்துக்காக மட்டும் முதன்மை அரட்டை மாடலை மாற்றினால் வழங்குநரின் ப்ராம்ப்ட் கேச் உடையலாம்.";
+"conversation.generationResumed" = "செய்தி மீண்டும் தொடங்கியது";
+"conversation.cancelPlan" = "திட்டத்தை ரத்து செய்";
+"conversation.cancelPlanHelp" = "இந்தத் திட்டத்தை ரத்து செய்து வரிசையிலுள்ள செய்திகளை விடுவி";
+"conversation.thinking" = "சிந்தனைச் செயல்முறை";
+"usage.manageResets" = "மீட்டமைப்புகளை நிர்வகி";
+"usage.useReset" = "மீட்டமைப்பைப் பயன்படுத்து";
+"usage.resetTitle" = "Claude வரம்பு மீட்டமைப்பைப் பயன்படுத்தவா?";
+"usage.openClaude" = "Claude இல் தொடர்";
+"usage.resetConfirmation" = "Claude பயன்பாட்டுப் பக்கம் திறக்கும். %@ இல் உள்நுழைந்து அந்தக் கணக்குக்கு வழங்கப்பட்ட மீட்டமைப்பைப் பாருங்கள். பயன்படுத்த, இலவசமாக மீட்டமை என்பதைக் கிளிக் செய்து Claude இல் உறுதிப்படுத்துங்கள். ஒருமுறை பயன்படுத்திய மீட்டமைப்பைத் திரும்பப் பெற முடியாது. HerNess க்குத் திரும்பும்போது வரம்புகள் புதுப்பிக்கப்படும்.";
+"usage.resetOpenFailed" = "Claude ஐத் திறக்க முடியவில்லை. கணக்கு இன்னும் இணைக்கப்பட்டுள்ளதா எனப் பார்த்து மீண்டும் முயலவும்.";
+"conversation.review" = "மதிப்பாய்வு";
+"dock.noWorkspace" = "முதலில் ஒரு பணியிடக் கோப்புறையைத் தேர்ந்தெடுக்கவும்.";
+"dock.branch" = "கிளை";
+"dock.refresh" = "புதுப்பி";
+"dock.commit" = "Commit";
+"dock.push" = "Push";
+"dock.fetch" = "Fetch";
+"dock.commitOrPush" = "Commit அல்லது Push";
+"dock.commitMessage" = "Commit செய்தி";
+"dock.noChanges" = "முகவர் எந்த மாற்றமும் செய்யவில்லை.";
+"dock.whyRequest" = "உங்கள் கோரிக்கை";
+"dock.whyAgent" = "முகவரின் விளக்கம்";
+"dock.notRepo" = "இந்தக் கோப்புறை git களஞ்சியம் அல்ல.";
+"dock.filterFiles" = "கோப்புகளை வடிகட்டு…";
+"dock.openFile" = "கோப்பைத் திற";
+"dock.selectFile" = "பணியிட மரத்திலிருந்து ஒரு கோப்பைத் தேர்ந்தெடுக்கவும்";
+"dock.binaryFile" = "பைனரி அல்லது படிக்க முடியாத கோப்பு";
+"project.missing.title" = "திட்டக் கோப்புறை கிடைக்கவில்லை: %@";
+"project.missing.message" = "'%@' இல் உள்ள திட்டக் கோப்புறை நகர்த்தப்பட்டிருக்கலாம் அல்லது நீக்கப்பட்டிருக்கலாம். அதன் புதிய இடத்தைத் தேர்ந்தெடுக்கவும் அல்லது திட்டத்தை அகற்றவும்.";
+"project.missing.locate" = "இடத்தைக் கண்டறி…";
+"project.missing.readOnly" = "திட்டக் கோப்புறை கிடைக்கவில்லை. முந்தைய உரையாடல்களைப் பார்க்கலாம்; புதிய இடத்தைத் தேர்ந்தெடுக்கும் வரை புதிய உரையாடல்களையும் செய்திகளையும் அனுப்ப முடியாது.";
+"queue.waitingForPlan" = "திட்ட அங்கீகாரத்துக்காகக் காத்திருக்கிறது";
+"settings.closeToTray" = "சாளரத்தை மூடும்போது ட்ரேயில் இயங்குவதை தொடரவும்";
+"settings.closeToTray.hint" = "சாளரம் மறைந்திருக்கும்போது இயக்கங்கள், டெர்மினல்கள், திட்டமிட்ட பணிகள் தொடரும்; ட்ரே ஐகான் அதை திரும்பத் தரும்.";
+"tray.show" = "சாளரத்தைத் திற";
+"context.overflowTitle" = "இந்த உரையாடல் புதிய மாடலில் பொருந்தாது";
+"context.overflowReason" = "தொடர %1$@ க்கு சுமார் %2$d டோக்கன்கள் தேவை, அந்த மாடலில் %3$d மட்டுமே காலியாக உள்ளன.";
+"context.overflowByModel" = "சுருக்கத்தை %@ எழுதும்; டிரான்ஸ்கிரிப்டை இன்னும் படிக்கக்கூடிய மிகச் சிறிய இணைக்கப்பட்ட மாடல் அது.";
+"context.overflowLocally" = "இணைக்கப்பட்ட எந்த மாடலாலும் டிரான்ஸ்கிரிப்டைப் படிக்க முடியவில்லை, எனவே எந்த மாடலையும் கேட்காமல் உரையாடல் சுருக்கப்படுகிறது.";
+"context.overflowCompress" = "சுருக்கித் தொடர்";
+"context.overflowNotNow" = "இப்போது வேண்டாம்";
+"context.overflowDeclined" = "அனுப்புதல் நிறுத்தப்பட்டது: உரையாடல் புதிய மாடலில் பொருந்தவில்லை.";
+"usage.context.title" = "பயன்பாடு";
+"usage.context.input" = "அனுப்பிய உள்ளீடு";
+"usage.context.estimatedInput" = "மதிப்பிடப்பட்ட உள்ளீடு";
+"usage.context.output" = "வெளியீடு";
+"usage.context.latestRequest" = "சமீபத்திய கோரிக்கை · சூழல் சாளரம்";
+"usage.context.estimatedBreakdown" = "மதிப்பிடப்பட்ட உள்ளீட்டுப் பிரிப்பு";
+"usage.context.estimateNote" = "வழங்குநரின் உள்ளீடு/வெளியீடு மொத்தங்கள் கிடைக்கும்போது காட்டப்படும். இல்லையெனில் உள்ளீட்டு மொத்தங்களும் கருவி/MCP வகைகளும் உள்ளூர் மதிப்பீடுகள்.";
+"usage.context.tokens" = "டோக்கன்கள்";
+"usage.context.toolCalls" = "கருவி அழைப்புகள்";
+"usage.context.mcpCalls" = "MCP அழைப்புகள்";
+"usage.context.toolResults" = "கருவி முடிவுகள்";
+"usage.context.mcpResults" = "MCP முடிவுகள்";
+"plan.proposed" = "Claude ஒரு திட்டத்தை முன்மொழிந்தது";
+"plan.reject" = "நிராகரி";
+"plan.revise" = "திருத்து…";
+"plan.accept" = "ஏற்று";
+"plan.acceptAuto" = "ஏற்று, தானியங்கு முறை";
+"plan.open" = "திட்டத்தைத் திற";
+"plan.empty" = "இன்னும் திட்டம் இல்லை";
+"dock.expand" = "விரி";
+"dock.collapse" = "சுருக்கு";
+"usage.context.cacheReuse" = "இந்த உரையாடலில் கேச் மறுபயன்பாடு";
+"usage.context.cacheFreshInput" = "New / outside-breakpoint input: %@ tokens";
+"usage.context.cacheCoverage" = "அளவீட்டு உள்ளடக்கம்: %@ · %@ / %@ கோரிக்கைகள்";
+"usage.context.cacheLatency" = "சராசரி கோரிக்கை தாமதம்: %@ ms";
+"usage.context.cacheLoss" = "மிகப்பெரிய கேச் இழப்பு: %@ · %@ டோக்கன்கள்";
+"tray.back" = "அரட்டைகள்";
+
+"composer.cacheExpired.explanation" = "கேச்சின் மதிப்பிடப்பட்ட ஆயுட்காலம் முடிந்துவிட்டது. ப்ராம்ப்ட் கேச் என்பது வழங்குநர் பக்கத்திலுள்ள தற்காலிகச் செயலாக்க நிலை; உங்கள் அரட்டை வரலாறு சேமிக்கப்பட்டே இருக்கும். முழு வரலாற்றுடன் தொடர்ந்தால், அந்த டோக்கன்கள் மீண்டும் புதிய உள்ளீடாகக் கணக்கிடப்படலாம். வழங்குநரிடம் கேச் இன்னும் இருந்ததா என்பதை அடுத்த கோரிக்கையின் பயன்பாட்டுத் தரவிலிருந்தே உறுதிப்படுத்த முடியும்.";
+"composer.accountSwitched.notice" = "இந்த அரட்டை அதே மாடலில் வேறொரு கணக்கிற்கு மாறியுள்ளது. அங்கே கேச் தொடக்கத்திலிருந்து ஆரம்பிக்கும்; தொடர்ந்தால் அதிக டோக்கன்கள் செலவாகி, கட்டணம் கூடலாம்.";
+"composer.contextFull.notice" = "சூழல் சாளரம் கிட்டத்தட்ட நிரம்பிவிட்டது; தொடர்ந்தால் அதிக டோக்கன்கள் செலவாகி, கட்டணம் கூடலாம். சுருக்கமான சுருக்கத்துடன் புதிய அரட்டையைத் தொடங்குங்கள்.";
+"composer.cacheExpired.infoTitle" = "இது எனக்கு ஏன் தெரிகிறது?";
+"composer.cacheExpired.notice" = "கேச் காலாவதியாகியிருக்கலாம்; தொடர்ந்தால் அதிக டோக்கன்கள் செலவாகி, கட்டணம் கூடலாம். சுருக்கமான சுருக்கத்துடன் புதிய அரட்டையைத் தொடங்குங்கள்.";
+"feedback.tag.apply_elsewhere" = "Apply it elsewhere";
+"feedback.tag.broke_existing_feature" = "Broke an existing feature";
+"feedback.tag.did_not_follow_project_style" = "Didn't follow project style";
+"feedback.tag.ignored_project_architecture" = "Ignored project architecture";
+"feedback.tag.keep_project_style" = "Keep the project style";
+"feedback.tag.reuse_architecture" = "Reuse this architecture";
+"feedback.tag.reuse_token_pattern" = "Reuse this token pattern";
+"feedback.tag.wrong_theme_or_token" = "Wrong theme or token";
+
+// Completed translations for keys added to the desktop catalog.
+"conversation.filesChangedCount" = "%d கோப்புகள் மாற்றப்பட்டன";
+"conversation.filesLineSummary" = "+%d −%d";
+"conversation.lineCountsUnavailable" = "வரி எண்ணிக்கை கிடைக்கவில்லை";
+"conversation.filesMore" = "மேலும் %d கோப்புகளைக் காட்டு";
+"conversation.filesLess" = "குறைவான கோப்புகளைக் காட்டு";
+"conversation.undoChanges" = "செயல்தவிர்";
+"conversation.viewChanges" = "மாற்றங்களைக் காண்";
+"conversation.filesReverted" = "கோப்பு மாற்றங்கள் செயல்தவிர்க்கப்பட்டன.";
+
+// Completed translations for keys added to the desktop catalog.
+"composer.modelSwitched.notice" = "மாடல் மாற்றப்பட்டது. கேச் புதிய மாடலுக்குச் செல்லாது; முழு வரலாறும் மீண்டும் செயலாக்கப்படும், இதனால் அதிக டோக்கன்கள் செலவாகி, கட்டணம் கூடலாம்.";
+
+"archive.title" = "காப்பகப்படுத்தப்பட்ட உரையாடல்கள்";
+"archive.empty" = "காப்பகப்படுத்தப்பட்ட உரையாடல்கள் இல்லை.";
+
+"conversation.plan" = "திட்டம்";
+"conversation.system" = "அமைப்பு";
+
+"archive.confirmDelete" = "இந்த உரையாடலை நிரந்தரமாக நீக்கவா?";
+"archive.deletePermanently" = "நிரந்தரமாக நீக்கு";
+"conversation.processedTokensCount" = "%@ டோக்கன்கள்";

@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-08T21:58:09Z",
+  "eventId" : "C9789D7C-1417-4CE0-94E3-ACFD65AB878C",
+  "lamport" : 178,
+  "parents" : [
+    "C676ECFB-4542-4963-89E7-FBCA047F78A5"
+  ],
+  "payload" : {
+    "commandSummary" : null,
+    "name" : "list_files",
+    "path" : "linux\/DotsHarness\/src",
+    "resultBytes" : 132,
+    "resultStatus" : "completed",
+    "runId" : "AB740D5E-6F50-44B5-9FB7-C8F7B98A7F39"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "iPoSxK+tUlXP0WcsLsd3lw2z8ls1xcHTiIrhnisNIvzJsoI4sL8h90MTeaWewO2ZwSKFheGtQBxDv3xt08il6A=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

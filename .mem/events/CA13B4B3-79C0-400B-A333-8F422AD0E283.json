@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-09T00:03:26Z",
+  "eventId" : "CA13B4B3-79C0-400B-A333-8F422AD0E283",
+  "lamport" : 289,
+  "parents" : [
+    "C8CBE83F-7F09-4FFB-A10A-F617F9E3BFC1"
+  ],
+  "payload" : {
+    "commandSummary" : "python3 tools\/check_localization.py --check && echo final-localization-check-complete",
+    "name" : "run_command",
+    "path" : null,
+    "resultBytes" : 55,
+    "resultStatus" : "completed",
+    "runId" : "73E53818-8EE9-4B48-8214-5C5AA442F32F"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "uwHmgO+XVV1BXVZHe7RNrk7tqDWjYFeStqIiLNAmfVp\/sRSFrVU7QUfVJwkHfFCW40njlqKzAxOOrl1BzqA7oQ=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

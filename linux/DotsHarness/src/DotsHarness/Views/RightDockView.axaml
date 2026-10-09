@@ -1,0 +1,91 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:DotsHarness.Views"
+             x:Class="DotsHarness.Views.RightDockView"
+             Background="{DynamicResource WindowBackground}"
+             Unloaded="OnUnloaded">
+    <Grid RowDefinitions="44,*">
+        <Border Grid.Row="0" Background="{DynamicResource ChromeBackground}"
+                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1">
+            <DockPanel Margin="8,0">
+                <Button x:Name="RefreshButton" DockPanel.Dock="Right" Content="↻" Width="30" Height="28"
+                        Padding="0" Margin="6,8,0,8" Click="OnRefresh" ToolTip.Tip="Refresh panel"/>
+                <TextBlock x:Name="WorkspaceLabel" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource TextSecondary}"/>
+            </DockPanel>
+        </Border>
+
+        <TabControl x:Name="Tabs" Grid.Row="1" SelectionChanged="OnTabChanged">
+            <TabItem x:Name="ReviewTab" Header="Review" Tag="review">
+                <Grid Margin="8" RowDefinitions="34,*,5,*">
+                    <DockPanel Grid.Row="0">
+                        <TextBlock x:Name="BranchText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource TextPrimary}"/>
+                        <TextBlock x:Name="ReviewCount" DockPanel.Dock="Right" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextSecondary}"/>
+                    </DockPanel>
+                    <ListBox x:Name="ReviewList" Grid.Row="1" SelectionChanged="OnReviewSelectionChanged"
+                             Background="Transparent" BorderThickness="0"/>
+                    <GridSplitter Grid.Row="2" Height="5" HorizontalAlignment="Stretch"
+                                  Background="{DynamicResource BorderSubtle}"
+                                  ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" ShowsPreview="False"/>
+                    <TextBox x:Name="ReviewDiff" Grid.Row="3" IsReadOnly="True" AcceptsReturn="True"
+                             TextWrapping="NoWrap" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             FontFamily="monospace" Background="{DynamicResource PanelBackground}"
+                             Foreground="{DynamicResource TextPrimary}" BorderThickness="0"/>
+                </Grid>
+            </TabItem>
+
+            <TabItem x:Name="TerminalTab" Header="Terminal" Tag="terminal">
+                <Grid Margin="8" RowDefinitions="34,*">
+                    <DockPanel Grid.Row="0">
+                        <Button x:Name="RestartTerminalButton" DockPanel.Dock="Right" Content="Restart"
+                                Padding="10,3" Click="OnRestartTerminal"/>
+                        <TextBlock x:Name="TerminalStatus" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextSecondary}"/>
+                    </DockPanel>
+                    <views:TerminalTextBox x:Name="TerminalBox" Grid.Row="1" IsReadOnly="True"
+                                           Background="{DynamicResource PanelBackground}"
+                                           Foreground="{DynamicResource TextPrimary}" BorderThickness="0"
+                                           FontFamily="monospace" FontSize="12"
+                                           ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+                </Grid>
+            </TabItem>
+
+            <TabItem x:Name="FilesTab" Header="Files" Tag="files">
+                <Grid Margin="8" RowDefinitions="34,*">
+                    <TextBox x:Name="FilesFilter" Grid.Row="0" TextChanged="OnFilesFilterChanged"
+                             Padding="8,4" Watermark="Filter files"/>
+                    <Grid Grid.Row="1" Margin="0,6,0,0" ColumnDefinitions="220,5,*">
+                        <ListBox x:Name="FilesList" Grid.Column="0" SelectionChanged="OnFileSelectionChanged"
+                                 Background="Transparent" BorderThickness="0"/>
+                        <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
+                                      Background="{DynamicResource BorderSubtle}"
+                                      ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" ShowsPreview="False"/>
+                        <TextBox x:Name="FilePreview" Grid.Column="2" IsReadOnly="True" AcceptsReturn="True"
+                                 TextWrapping="NoWrap" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 FontFamily="monospace" Background="{DynamicResource PanelBackground}"
+                                 Foreground="{DynamicResource TextPrimary}" BorderThickness="0"/>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <TabItem x:Name="BrowserTab" Header="Browser" Tag="browser">
+                <Grid Margin="8" RowDefinitions="34,*,24">
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+                        <Button Grid.Column="0" x:Name="BrowserBackButton" Content="‹" ToolTip.Tip="Back" Padding="9,3" Margin="0,0,4,0" Click="OnBrowserBack"/>
+                        <Button Grid.Column="1" x:Name="BrowserForwardButton" Content="›" ToolTip.Tip="Forward" Padding="9,3" Margin="0,0,4,0" Click="OnBrowserForward"/>
+                        <Button Grid.Column="2" x:Name="BrowserReloadButton" Content="↻" ToolTip.Tip="Reload" Padding="9,3" Margin="0,0,4,0" Click="OnBrowserReload"/>
+                        <TextBox Grid.Column="3" x:Name="BrowserAddress" VerticalContentAlignment="Center" MinWidth="80"
+                                 KeyDown="OnBrowserKeyDown" Watermark="URL"/>
+                        <Button Grid.Column="4" x:Name="OpenBrowserButton" Content="Go" Padding="10,3" Margin="4,0" Click="OnOpenBrowser"/>
+                        <Button Grid.Column="5" x:Name="BrowserExternalButton" Content="↗" ToolTip.Tip="Open externally" Padding="9,3" Margin="4,0,0,0" Click="OnOpenBrowserExternally"/>
+                    </Grid>
+                    <Grid x:Name="BrowserHost" Grid.Row="1" Margin="0,6,0,0"/>
+                    <TextBlock x:Name="BrowserStatus" Grid.Row="2" Margin="2,4,0,0" TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"/>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

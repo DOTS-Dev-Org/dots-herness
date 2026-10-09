@@ -15,10 +15,7 @@ public final class AgentBridge {
     public func contentMatches(_ conversation: Conversation, query: String) -> Bool {
         host.contentMatches(conversation, query: query)
     }
-    public var area: AgentArea { host.area }
-    public var chatContextRoots: [ChatContextRoot] { host.chatContextRoots }
     public var conversations: [Conversation] { host.conversations }
-    public var projectlessConversations: [Conversation] { host.projectlessConversations }
     public func conversations(inProject path: String) -> [Conversation] {
         host.conversations(inProject: path)
     }
@@ -26,9 +23,14 @@ public final class AgentBridge {
         host.conversations(outsideProjects: paths)
     }
     public var archivedConversations: [Conversation] { host.archivedConversations }
+    public func loadArchivedConversation(_ id: String) -> Conversation? { host.loadArchivedConversation(id) }
     public var selectedID: String? {
         get { host.selectedID }
         set { host.selectedID = newValue }
+    }
+    var onSelectedConversationChanged: ((String?) -> Void)? {
+        get { host.onSelectedConversationChanged }
+        set { host.onSelectedConversationChanged = newValue }
     }
     public var status: String { host.status }
     public var isBusy: Bool { host.isBusy }
@@ -63,8 +65,19 @@ public final class AgentBridge {
     public var memoryVault: MemoryVault { host.memoryVault }
     public var memoryFolderURL: URL? { host.memoryFolderURL }
     public var memoryReady: Bool { host.memoryReady }
+    public var lessons: [Lesson] { host.lessons }
+    public var manualRules: String { host.manualRules }
+    public var learningStats: (turns: Int, corrected: Int, uses: [(record: String, count: Int)]) { host.learningStats }
+    @discardableResult
+    public func editMemory(_ edit: MemoryEdit) -> Bool { host.editMemory(edit) }
+    func beforeContent(conversationID: String, turnID: String, path: String) -> Data? {
+        host.memory.snapshotStore.beforeContent(conversationID: conversationID, turnID: turnID, path: path)
+    }
     public func contextUsageEvents() -> [AgentContextUsageEvent] {
         host.contextUsageEvents()
+    }
+    public func accountSwitched(in conversationID: String?) -> Bool {
+        conversationID.map(host.accountSwitchedConversations.contains) ?? false
     }
     public var isReady: Bool { host.isReady }
     public var historyMutationBusy: Bool { host.historyMutationBusy }
@@ -72,13 +85,25 @@ public final class AgentBridge {
     public var browserBackendSetting: BrowserBackend? { host.browserBackendSetting }
     public var pendingApproval: PendingApproval? { host.pendingApproval }
     public var pendingVisionInstall: PendingVisionInstall? { host.pendingVisionInstall }
+    public var pendingContextOverflow: PendingContextOverflow? { host.pendingContextOverflow }
     public var pendingQuestion: PendingQuestion? { host.pendingQuestion }
+    public var pendingQuestions: [PendingQuestion] { host.pendingQuestions }
+    public var pendingConflict: PendingConflict? { host.pendingConflict }
+    /// The other chat this run is waiting for, while it waits.
+    public var waitingOnLease: WorkspaceLeaseHolder? { host.waitingOnLease }
+    public var workspaceConflictPolicy: WorkspaceConflictPolicy { host.workspaceConflictPolicy }
+    public var conflictWaitSeconds: Int { host.conflictWaitSeconds }
     public var followUpSuggestion: String? { host.followUpSuggestion }
     public var followUpConversationID: String? { host.followUpConversationID }
     public var skills: SkillCatalog { host.skills }
     public var skillSuggestions: SkillSuggestionMonitor? { host.skillSuggestions }
     public var activeRunStartedAt: Date? { host.activeRunStartedAt }
     public var activeUsedSkillIDs: [String] { host.activeUsedSkillIDs }
+    public func liveReply(for conversationID: String) -> String? { host.liveReplies[conversationID] }
+    public func liveThinking(for conversationID: String) -> String? { host.liveThinking[conversationID] }
+    public func prewarmProvider() { host.prewarmProvider() }
+    public var activeRunTokenCount: Int { host.activeRunTokenCount }
+    public var activeRunTokenCountIncludesEstimate: Bool { host.activeRunTokenCountIncludesEstimate }
     public var onAssistantResponse: ((AssistantResponseEvent) -> Void)? {
         get { host.onAssistantResponse }
         set { host.onAssistantResponse = newValue }
@@ -87,11 +112,37 @@ public final class AgentBridge {
         get { host.onRunSummary }
         set { host.onRunSummary = newValue }
     }
+    public var onPlanAutoApproved: (() -> Void)? {
+        get { host.onPlanAutoApproved }
+        set { host.onPlanAutoApproved = newValue }
+    }
+    public func classifyPlanIntent(_ text: String) async -> Bool { await host.classifyPlanIntent(text) }
+    @discardableResult
+    public func submitPrompt(
+        text: String,
+        attachments: [ChatAttachment],
+        mode: PromptMode,
+        planMode: Bool,
+        needsPlanIntentResolution: Bool,
+        approvedPlanID: String? = nil,
+        onPlanModeResolved: (() -> Void)? = nil
+    ) -> Bool {
+        host.submitPrompt(
+            text: text,
+            attachments: attachments,
+            mode: mode,
+            planMode: planMode,
+            needsPlanIntentResolution: needsPlanIntentResolution,
+            approvedPlanID: approvedPlanID,
+            onPlanModeResolved: onPlanModeResolved
+        )
+    }
+    public func resolvePendingPlanIntents() { host.resolvePendingPlanIntents() }
     public var onAttentionNeeded: ((RunAttentionEvent) -> Void)? {
         get { host.onAttentionNeeded }
         set { host.onAttentionNeeded = newValue }
     }
-    /// Any chat of this area running, including ones in the background.
+    /// Any project conversation running, including ones in the background.
     public var anyRunBusy: Bool { host.anyRunBusy }
     public var runningConversationIDs: Set<String> { host.runningConversationIDs }
     public var onRemoteEvent: ((String, [String: String]) -> Void)? {
@@ -111,10 +162,7 @@ public final class AgentBridge {
         nonInteractive: Bool = false,
         automaticNetworkAccess: Bool = false,
         pluginHost: PluginHost? = nil,
-        skillSuggestions: SkillSuggestionMonitor? = nil,
-        area: AgentArea = .coding,
-        sessionFileName: String = "sessions.json",
-        chatContextStore: ChatContextStore? = nil
+        skillSuggestions: SkillSuggestionMonitor? = nil
     ) {
         host = NativeAgentHost(
             paths: paths,
@@ -124,10 +172,7 @@ public final class AgentBridge {
             nonInteractive: nonInteractive,
             automaticNetworkAccess: automaticNetworkAccess,
             pluginHost: pluginHost,
-            skillSuggestions: skillSuggestions,
-            area: area,
-            sessionFileName: sessionFileName,
-            chatContextStore: chatContextStore
+            skillSuggestions: skillSuggestions
         )
     }
 
@@ -139,10 +184,7 @@ public final class AgentBridge {
         nonInteractive: Bool = false,
         automaticNetworkAccess: Bool = false,
         pluginHost: PluginHost? = nil,
-        skillSuggestions: SkillSuggestionMonitor? = nil,
-        area: AgentArea = .coding,
-        sessionFileName: String = "sessions.json",
-        chatContextStore: ChatContextStore? = nil
+        skillSuggestions: SkillSuggestionMonitor? = nil
     ) {
         host = NativeAgentHost(
             paths: paths,
@@ -152,10 +194,7 @@ public final class AgentBridge {
             nonInteractive: nonInteractive,
             automaticNetworkAccess: automaticNetworkAccess,
             pluginHost: pluginHost,
-            skillSuggestions: skillSuggestions,
-            area: area,
-            sessionFileName: sessionFileName,
-            chatContextStore: chatContextStore
+            skillSuggestions: skillSuggestions
         )
     }
 
@@ -168,10 +207,7 @@ public final class AgentBridge {
         nonInteractive: Bool = false,
         automaticNetworkAccess: Bool = false,
         pluginHost: PluginHost? = nil,
-        skillSuggestions: SkillSuggestionMonitor? = nil,
-        area: AgentArea = .coding,
-        sessionFileName: String = "sessions.json",
-        chatContextStore: ChatContextStore? = nil
+        skillSuggestions: SkillSuggestionMonitor? = nil
     ) {
         host = NativeAgentHost(
             paths: paths,
@@ -182,21 +218,18 @@ public final class AgentBridge {
             nonInteractive: nonInteractive,
             automaticNetworkAccess: automaticNetworkAccess,
             pluginHost: pluginHost,
-            skillSuggestions: skillSuggestions,
-            area: area,
-            sessionFileName: sessionFileName,
-            chatContextStore: chatContextStore
+            skillSuggestions: skillSuggestions
         )
     }
 
     public func start(workspacePath: String) { host.start(workspacePath: workspacePath) }
     public func updateSystemPrompt(_ prompt: String) { host.updateSystemPrompt(prompt) }
-    public func setAssistantMode(_ mode: AssistantMode) { host.setAssistantMode(mode) }
     public func effectiveSystemPromptReport(planMode: Bool = false) -> String {
         host.effectiveSystemPromptReport(planMode: planMode)
     }
     public func setSelfVerification(_ enabled: Bool) { host.setSelfVerification(enabled) }
     public func setSeedProjectRules(_ enabled: Bool) { host.setSeedProjectRules(enabled) }
+    public func setAutoApprovePlans(_ enabled: Bool) { host.setAutoApprovePlans(enabled) }
     public func setSandboxPolicy(_ policy: SandboxExecutionPolicy?, branch: String? = nil) {
         host.setSandboxPolicy(policy, branch: branch)
     }
@@ -204,6 +237,8 @@ public final class AgentBridge {
     public func setRemoteTarget(_ target: SSHTarget?) { host.setRemoteTarget(target) }
     public func setPermissionMode(_ mode: AgentPermissionMode) { host.setPermissionMode(mode) }
     public func setBrowserBackend(_ backend: BrowserBackend?) { host.setBrowserBackend(backend) }
+    public var isComputerUseEnabled: Bool { host.isComputerUseEnabled }
+    public func setComputerUseEnabled(_ enabled: Bool) { host.setComputerUseEnabled(enabled) }
     public func stopAllAgentTerminals() { host.stopAllAgentTerminals() }
     public func stopAgentTerminals(for workspacePath: String) { host.stopAgentTerminals(for: workspacePath) }
     /// MCP servers whose tools are offered to the agent loop.
@@ -211,18 +246,26 @@ public final class AgentBridge {
         get { host.mcpRegistry }
         set { host.mcpRegistry = newValue }
     }
-    public func answerApproval(_ answer: String) { host.answerApproval(answer) }
+    public func answerApproval(_ answer: String, in conversationID: String? = nil) { host.answerApproval(answer, in: conversationID) }
     public func answerVisionInstall(_ allow: Bool) { host.answerVisionInstall(allow) }
-    public func answerQuestions(_ answers: [String]) { host.answerQuestions(answers) }
-    public func cancelQuestions() { host.cancelQuestions() }
+    public func answerContextCompaction(_ allow: Bool) { host.answerContextCompaction(allow) }
+    public func answerQuestions(_ answers: [String], in conversationID: String? = nil) { host.answerQuestions(answers, in: conversationID) }
+    public func cancelQuestions(in conversationID: String? = nil) { host.cancelQuestions(in: conversationID) }
+    public func answerConflict(_ choice: WorkspaceConflictChoice) { host.answerConflict(choice) }
+    public func setWorkspaceConflictPolicy(_ policy: WorkspaceConflictPolicy) { host.setWorkspaceConflictPolicy(policy) }
+    public func setConflictWaitSeconds(_ seconds: Int) { host.setConflictWaitSeconds(seconds) }
     public func refreshConnection() async { await host.refreshConnection() }
+    public func resumeRecoveredPlanIfNeeded() async { await host.resumeRecoveredPlanIfNeeded() }
     public func setWorkspace(_ path: String) { host.setWorkspace(path) }
     public func setSearchFolders(_ paths: [String]) { host.setSearchFolders(paths) }
     public func select(_ id: String) { host.select(id) }
+    public func openRecentConversation(_ id: String) { host.openRecentConversation(id) }
     public func newConversation() { host.newConversation() }
-    public func setChatProject(_ projectID: String?) { host.setChatProject(projectID) }
-    public func setChatProject(_ projectID: String?, for conversationID: String) {
-        host.setChatProject(projectID, for: conversationID)
+    func setConversationModelPreference(_ modelID: String?, for id: String) {
+        host.updateConversation(id) { $0.modelPreferenceID = modelID }
+    }
+    public func relocateProjectHistory(from oldPath: String, to newPath: String) {
+        host.relocateProjectHistory(from: oldPath, to: newPath)
     }
     public func renameConversation(_ id: String, to title: String) { host.renameConversation(id, to: title) }
     public func togglePinned(_ id: String) { host.togglePinned(id) }
@@ -236,6 +279,12 @@ public final class AgentBridge {
     }
     public func canRewind(messageID: String, in conversationID: String) -> Bool {
         host.canRewind(messageID: messageID, in: conversationID)
+    }
+    public func canUndoTurn(messageID: String, in conversationID: String) -> Bool {
+        host.canUndoTurn(messageID: messageID, in: conversationID)
+    }
+    public func undoTurn(conversationID: String, messageID: String) throws -> RewindResult {
+        try host.undoTurn(conversationID: conversationID, messageID: messageID)
     }
     public func rewind(conversationID: String, beforeMessageID messageID: String) throws -> RewindResult {
         try host.rewind(conversationID: conversationID, beforeMessageID: messageID)
@@ -254,6 +303,7 @@ public final class AgentBridge {
         )
     }
     public func stopCurrentRun() { host.stopCurrentRun() }
+    public func pauseAllRunsForShutdown() async { await host.pauseAllRunsForShutdown() }
     public func closeBrowserSessions() async { await host.closeBrowserSessions() }
     public func continueCurrentRun(text: String? = nil, attachments: [ChatAttachment] = []) async {
         await host.continueCurrentRun(text: text, attachments: attachments)
@@ -261,9 +311,14 @@ public final class AgentBridge {
     public func movePendingPrompt(_ promptID: String, relativeTo targetID: String?, in conversationID: String) {
         host.movePendingPrompt(promptID, relativeTo: targetID, in: conversationID)
     }
+    @discardableResult
+    public func removeQueuedPrompt(_ promptID: String, in conversationID: String) -> PendingPrompt? {
+        host.removeQueuedPrompt(promptID, in: conversationID)
+    }
     public func steerPendingPrompt(_ promptID: String, in conversationID: String) {
         host.steerPendingPrompt(promptID, in: conversationID)
     }
+    public func cancelPlan() async { await host.cancelPlan() }
     public func send(
         text: String,
         attachments: [ChatAttachment] = [],

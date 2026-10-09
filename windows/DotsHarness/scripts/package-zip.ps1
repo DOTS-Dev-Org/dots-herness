@@ -22,6 +22,8 @@ param(
 
     [switch]$FrameworkDependent,
 
+    [switch]$SelfContained,
+
     [switch]$ReadyToRun,
 
     [Alias('h')]
@@ -52,8 +54,9 @@ Seçenekler:
   -Framework TFM          Hedef çerçeve (varsayılan: net8.0-windows).
   -Configuration NAME     Yapılandırma (varsayılan: Release).
   -Output PATH            dist klasörü.
-  -FrameworkDependent     Self-contained değil, paylaşılan runtime kullan.
-  -ReadyToRun             ReadyToRun (varsayılan açık; kapatmak için READY_TO_RUN=false).
+  -FrameworkDependent     Paylaşılan runtime kullan (varsayılan).
+  -SelfContained          .NET 8 Desktop Runtime'ını pakete dahil et (paket büyür).
+  -ReadyToRun             ReadyToRun aç (varsayılan kapalı; READY_TO_RUN=true ile de açılabilir).
   -NoOpen                 Zip'i Explorer'da açma.
   -h, -Help               Bu yardım metnini göster.
 
@@ -107,8 +110,12 @@ if ($Output -and -not [System.IO.Path]::IsPathRooted($Output)) {
 $PublishDir = Join-Path $DistDir 'publish'
 $ZipName = "$AppName-$Version-$Runtime.zip"
 $ZipPath = Join-Path $DistDir $ZipName
-$SelfContained = -not $FrameworkDependent
-$UseReadyToRun = $ReadyToRun.IsPresent -or $env:READY_TO_RUN -notin @('0', 'false', 'FALSE', 'no', 'NO')
+if ($FrameworkDependent -and $SelfContained) {
+    Fail '-FrameworkDependent ve -SelfContained birlikte kullanılamaz.'
+}
+$UseSelfContained = $SelfContained.IsPresent -and -not $FrameworkDependent.IsPresent
+$ReadyToRunEnv = if ($env:READY_TO_RUN) { $env:READY_TO_RUN.ToLowerInvariant() } else { '' }
+$UseReadyToRun = $ReadyToRun.IsPresent -or $ReadyToRunEnv -in @('1', 'true', 'yes')
 $ReadyToRunValue = if ($UseReadyToRun) { 'true' } else { 'false' }
 
 Write-Output '==> Release publish'
@@ -116,7 +123,7 @@ Write-Output "    Ürün: $AppName"
 Write-Output "    Sürüm: $Version"
 Write-Output "    Yapılandırma: $Configuration"
 Write-Output "    Runtime: $Runtime"
-Write-Output "    Self-contained: $SelfContained"
+Write-Output "    Self-contained: $UseSelfContained"
 Write-Output "    ReadyToRun: $ReadyToRunValue"
 
 if (Test-Path -LiteralPath $DistDir) {
@@ -131,7 +138,7 @@ $publishArgs = @(
     '-r', $Runtime,
     '-f', $Framework,
     '-o', $PublishDir,
-    '--self-contained', $(if ($SelfContained) { 'true' } else { 'false' }),
+    '--self-contained', $(if ($UseSelfContained) { 'true' } else { 'false' }),
     "-p:PublishReadyToRun=$ReadyToRunValue",
     '-p:DebugType=None',
     '-p:DebugSymbols=false',
@@ -148,6 +155,33 @@ if ($LASTEXITCODE -ne 0) {
 $appPath = Join-Path $PublishDir "$AppName.exe"
 if (-not (Test-Path -LiteralPath $appPath)) {
     Fail "Yayınlanan uygulama bulunamadı: $appPath"
+}
+
+# Whisper.net.Runtime copies native libraries for every RID into each publish.
+# Only this Windows architecture can be loaded by the current process.
+$RuntimesDir = Join-Path $PublishDir 'runtimes'
+if (Test-Path -LiteralPath $RuntimesDir) {
+    Get-ChildItem -LiteralPath $RuntimesDir -Directory |
+        Where-Object { $_.Name -ne $Runtime -and $_.Name -match '^(android-|browser-|freebsd-|ios-|linux-|macos-|maccatalyst-|osx-|tvos-|wasi-|win-|win10-)' } |
+        Remove-Item -Recurse -Force
+}
+
+if ($UseSelfContained) {
+    @"
+Dots Harness $Version for Windows ($Runtime)
+
+.NET 8 Desktop Runtime is included in this self-contained package.
+Run DotsHarness.exe.
+"@ | Set-Content -LiteralPath (Join-Path $PublishDir 'README.txt') -Encoding UTF8
+} else {
+    @"
+Dots Harness $Version for Windows ($Runtime)
+
+Requires the .NET 8 Desktop Runtime. Install it from:
+https://dotnet.microsoft.com/download/dotnet/8.0
+
+Run DotsHarness.exe.
+"@ | Set-Content -LiteralPath (Join-Path $PublishDir 'README.txt') -Encoding UTF8
 }
 
 Write-Output '==> Zip oluştur'

@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-09-29T20:13:00Z",
+  "eventId" : "F1279CD6-97D7-4AF8-AD12-CCCBA41A2770",
+  "lamport" : 44,
+  "parents" : [
+    "6A1F399C-48E8-406B-ACA9-A5E8FFF52B1A"
+  ],
+  "payload" : {
+    "commandSummary" : null,
+    "name" : "read_file",
+    "path" : "README.md",
+    "resultBytes" : 14,
+    "resultStatus" : "completed",
+    "runId" : "590A84D5-20A6-4A07-91EB-0192D698FF9B"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "E64A76HTTjhCHUVgoZIQmcRkzCJ3zanm4OX2QqlInZZwkSqh6CB5zxoE9a3QR6orvwJZKMwlaj+NPEF+PfVg4Q=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

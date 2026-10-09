@@ -2,6 +2,21 @@ import XCTest
 @testable import DotsHarnessCore
 
 final class ContextCompactionTests: XCTestCase {
+    func testEconomyPolicyUsesNinetyPercentAndReservesLargeDynamicOutput() {
+        let budget = AgentContextCompaction.budget(
+            contextWindow: 32_768,
+            reservedOutputTokens: 20_000,
+            toolDefinitionTokens: 1_000,
+            policy: .economy
+        )
+
+        XCTAssertEqual(budget.policy.triggerRatio, 0.90, accuracy: 0.0001)
+        XCTAssertEqual(budget.triggerTokens, Int(Double(budget.usableInputTokens) * 0.90))
+        XCTAssertGreaterThan(budget.reservedOutputTokens, 16_384)
+        XCTAssertTrue(budget.fits(budget.usableInputTokens))
+        XCTAssertFalse(budget.fits(budget.usableInputTokens, incomingTokens: 1))
+    }
+
     func testSelectionKeepsFiveRecentTurnsAndStableSystem() {
         var messages = [AgentMessage(role: .system, content: "workspace rules")]
         for index in 1...7 {
@@ -51,6 +66,9 @@ final class ContextCompactionTests: XCTestCase {
         let summary = AgentContextCompaction.fallbackSummary(previousSummary: nil, archiveText: "test evidence")
 
         XCTAssertTrue(AgentContextCompaction.isValidSummary(summary))
+        let omitted = AgentContextCompaction.fallbackSummary(previousSummary: nil, archiveText: "evidence [… compacted …] tail")
+        XCTAssertTrue(omitted.localizedCaseInsensitiveContains("atlandı"))
+        XCTAssertTrue(AgentContextCompaction.summarySystemPrompt.localizedCaseInsensitiveContains("eksik ayrıntıları varsayma"))
         let composed = AgentContextCompactionSelection(
             stableSystem: [AgentMessage(role: .system, content: "rules")],
             archivedMessages: [],
@@ -63,9 +81,29 @@ final class ContextCompactionTests: XCTestCase {
         XCTAssertEqual(composed.last?.content, "recent")
     }
 
-    func testCompactionPoliciesExposeTheCacheAwareThresholds() {
-        XCTAssertEqual(AgentContextCompactionPolicy.baseline.triggerRatio, 0.75)
-        XCTAssertEqual(AgentContextCompactionPolicy.baseline.targetRatio, 0.40)
+    func testOversizedArchiveKeepsNewestEvidenceAndMarksOmittedMiddle() {
+        var messages: [AgentMessage] = []
+        for index in 0..<20 {
+            messages.append(AgentMessage(role: .user, content: String(repeating: "u", count: 5_900) + "USER_\(String(format: "%02d", index))"))
+            messages.append(AgentMessage(role: .assistant, content: String(repeating: "x", count: 5_900) + "ARCHIVE_TAIL_\(String(format: "%02d", index))"))
+        }
+
+        let selection = AgentContextCompaction.select(
+            messages,
+            previousSummary: nil,
+            budget: AgentContextCompaction.budget(contextWindow: 32_768)
+        )
+
+        XCTAssertEqual(selection?.recentGroupCount, 5)
+        XCTAssertTrue(selection?.archiveText.contains("[… compacted …]") == true)
+        XCTAssertTrue(selection?.archiveText.contains("ARCHIVE_TAIL_14") == true)
+        XCTAssertFalse(selection?.archiveText.contains("ARCHIVE_TAIL_15") == true)
+        XCTAssertLessThanOrEqual(selection?.archiveText.utf8.count ?? .max, 48_000)
+    }
+
+    func testCompactionPoliciesUseNinetyPercentDefaultAndIgnoreLegacyOverrides() {
+        XCTAssertEqual(AgentContextCompactionPolicy.baseline.triggerRatio, 0.90)
+        XCTAssertEqual(AgentContextCompactionPolicy.baseline.targetRatio, 0.65)
         XCTAssertEqual(AgentContextCompactionPolicy.cacheAware.triggerRatio, 0.80)
         XCTAssertEqual(AgentContextCompactionPolicy.cacheAware.targetRatio, 0.55)
         XCTAssertEqual(AgentContextCompactionPolicy.highRetention.triggerRatio, 0.85)
@@ -79,32 +117,35 @@ final class ContextCompactionTests: XCTestCase {
             forKey: AgentContextCompactionPolicy.userDefaultsKey
         )
 
-        XCTAssertEqual(
-            AgentContextCompactionPolicy.current(defaults: defaults).id,
-            AgentContextCompactionPolicy.ID.cacheAware
-        )
+        let migrated = AgentContextCompactionPolicy.current(defaults: defaults)
+        XCTAssertEqual(migrated.id, .custom)
+        XCTAssertEqual(migrated.triggerRatio, 0.90, accuracy: 0.0001)
     }
 
-    func testUserThresholdScalesWithEachModelsContextWindow() throws {
+    func testUserThresholdAndReplayBudgetBoundEachModelsContextWindow() throws {
         let suiteName = "ContextCompactionTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
-        XCTAssertEqual(AgentContextCompactionPolicy.current(defaults: defaults), .cacheAware)
+        XCTAssertEqual(AgentContextCompactionPolicy.current(defaults: defaults).triggerRatio, 0.90, accuracy: 0.0001)
 
         defaults.set(70.0, forKey: AgentContextCompactionPolicy.triggerPercentKey)
         let percent = AgentContextCompactionPolicy.current(defaults: defaults)
         XCTAssertEqual(percent.id, .custom)
-        XCTAssertEqual(percent.triggerTokens(window: 250_000), 175_000)
-        XCTAssertEqual(percent.triggerTokens(window: 1_000_000), 700_000)
+        XCTAssertEqual(percent.triggerTokens(window: 250_000), 32_768)
+        XCTAssertEqual(percent.triggerTokens(window: 1_000_000), 32_768)
 
+        // The old ignored key cannot override the new replay budget.
         defaults.set(300_000, forKey: AgentContextCompactionPolicy.maxTokensKey)
-        let capped = AgentContextCompactionPolicy.current(defaults: defaults)
-        XCTAssertEqual(capped.triggerTokens(window: 250_000), 175_000)
-        XCTAssertEqual(capped.triggerTokens(window: 1_000_000), 300_000)
-        let budget = AgentContextCompaction.budget(contextWindow: 1_000_000, policy: capped)
-        XCTAssertLessThanOrEqual(budget.triggerTokens, 300_000)
-        XCTAssertLessThan(budget.targetTokens, budget.triggerTokens)
+        let withoutLegacyCap = AgentContextCompactionPolicy.current(defaults: defaults)
+        XCTAssertEqual(withoutLegacyCap.triggerTokens(window: 1_000_000), 32_768)
+        XCTAssertEqual(withoutLegacyCap.maxTokens, 32_768)
+
+        defaults.set(800_000, forKey: AgentContextCompactionPolicy.replayBudgetKey)
+        XCTAssertEqual(AgentContextCompactionPolicy.current(defaults: defaults).triggerTokens(window: 1_000_000), 700_000)
+
+        defaults.set(0, forKey: AgentContextCompactionPolicy.triggerPercentKey)
+        XCTAssertEqual(AgentContextCompactionPolicy.current(defaults: defaults).triggerTokens(window: 1_000), 1)
     }
 
     func testForkInstructionProducesAValidSummaryShape() {

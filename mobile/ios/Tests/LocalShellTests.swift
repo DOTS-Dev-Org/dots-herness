@@ -8,12 +8,46 @@ final class LocalShellTests: XCTestCase {
 
     override func setUp() async throws {
         store = LocalWorkspaceStore()
+        // These tests exercise shell behavior, so seed an available workspace
+        // explicitly instead of depending on a path persisted by an earlier
+        // simulator installation.
+        try FileManager.default.createDirectory(at: store.root, withIntermediateDirectories: true)
+        store.refreshSelectedProjectAvailability()
         shell = LocalShell(store: store)
         try store.write(relativePath: "notes/todo.txt", data: Data("alpha\nbeta\ngamma\n".utf8))
     }
 
     override func tearDown() async throws {
         try? FileManager.default.removeItem(at: store.root.appendingPathComponent("notes"))
+    }
+
+    func testPagedProjectFileCanBeEditedAndReread() async throws {
+        ReadLedger.shared.reset()
+        let original = (1...240).map { "line-\($0):" + String(repeating: "x", count: 1_000) }.joined(separator: "\n")
+        try store.write(relativePath: "notes/project.swift", data: Data(original.utf8))
+        let file = try store.resolve("notes/project.swift")
+        for start in stride(from: 1, through: 240, by: 20) {
+            _ = try AgentTools.readFile(at: file, offset: start, limit: 20)
+            if start == 1 { XCTAssertEqual(ReadLedger.shared.state(for: file, data: Data(original.utf8)), .unread) }
+        }
+        XCTAssertEqual(ReadLedger.shared.state(for: file, data: Data(original.utf8)), .fresh)
+        let result = await FileEditTools.edit(path: "notes/project.swift", edits: [["old_text": "line-180:", "new_text": "fixed-180:"]]) { _ in file }
+        XCTAssertTrue(result.hasPrefix("Edited"), result)
+        XCTAssertTrue(try AgentTools.readFile(at: file, offset: 180, limit: 1).hasPrefix("fixed-180:"))
+        XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), original.replacingOccurrences(of: "line-180:", with: "fixed-180:"))
+    }
+
+    func testPagesFromDifferentVersionsDoNotCombine() throws {
+        ReadLedger.shared.reset()
+        try store.write(relativePath: "notes/pages.txt", data: Data("one\ntwo\nthree\nfour".utf8))
+        let file = try store.resolve("notes/pages.txt")
+        _ = try AgentTools.readFile(at: file, limit: 2)
+        let changed = Data("changed\ntwo\nthree\nfour".utf8)
+        try changed.write(to: file)
+        _ = try AgentTools.readFile(at: file, offset: 3)
+        XCTAssertEqual(ReadLedger.shared.state(for: file, data: changed), .unread)
+        _ = try AgentTools.readFile(at: file, limit: 2)
+        XCTAssertEqual(ReadLedger.shared.state(for: file, data: changed), .fresh)
     }
 
     func testPipelineAndRedirection() throws {

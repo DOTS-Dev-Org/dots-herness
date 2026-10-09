@@ -1,8 +1,9 @@
 # D1 schema reference — dotsherness-db
 
 `0000_initial_schema.sql` contains the flattened identity/auth core of
-`aiwatcher_web`; Marketplace tables are added by `0001_marketplace.sql` and
-the immutable per-release license by `0002_marketplace_release_license.sql`.
+`aiwatcher_web`; Marketplace tables are added by `0001_marketplace.sql`, the
+immutable per-release license by `0002_marketplace_release_license.sql`, and
+the AI moderation/community boundary by `0004_marketplace_moderation.sql`.
 Domain tables (AI provider tracking, usage windows, billing history, store
 entitlements) were intentionally left out.
 
@@ -27,8 +28,9 @@ entitlements) were intentionally left out.
 | `provider_oauth_sessions`, `browser_scrape_sessions`, `usage_fetch_throttles` | short-lived transient state |
 | `system_settings`, `landing_stats` | site config / public counters |
 | `marketplace_plugins` | global native plugin identity, owner, visibility and verification status |
-| `marketplace_releases` | immutable SemVer releases, IR/manifest metadata, source hash and license |
+| `marketplace_releases` | immutable SemVer releases, IR/manifest metadata, source hash, license, AI classification and review state |
 | `marketplace_artifacts` | per-platform/architecture R2 object, hash, signature and build status |
+| `marketplace_reports` | user abuse reports and admin resolution/takedown state |
 
 ## Apply
 

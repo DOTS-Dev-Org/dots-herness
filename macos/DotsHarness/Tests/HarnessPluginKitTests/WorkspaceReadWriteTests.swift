@@ -24,7 +24,7 @@ final class WorkspaceReadWriteTests: XCTestCase {
         WorkspaceTools.execute(
             AgentToolCall(id: "r", name: "read_file", arguments: arguments),
             workspace: workspace
-        )
+        , conversationID: "test")
     }
 
     private func write(_ path: String, _ content: String) -> String {
@@ -32,7 +32,42 @@ final class WorkspaceReadWriteTests: XCTestCase {
         return WorkspaceTools.execute(
             AgentToolCall(id: "w", name: "write_file", arguments: String(data: data, encoding: .utf8)!),
             workspace: workspace
-        )
+        , conversationID: "test")
+    }
+
+    func testPagedProjectFileCanBeEditedAndReread() throws {
+        let original = (1...240).map { "line-\($0):" + String(repeating: "x", count: 1_000) }.joined(separator: "\n")
+        let file = workspace.appendingPathComponent("project.swift")
+        try original.write(to: file, atomically: true, encoding: .utf8)
+        for start in stride(from: 1, through: 240, by: 20) {
+            let args = "{\"path\":\"project.swift\",\"offset\":\(start),\"limit\":20}"
+            let page = read(args)
+            XCTAssertEqual(EconomyToolOutputPolicy.normalize(page, toolName: "read_file", arguments: args), page)
+            if start == 1 { XCTAssertTrue(write("project.swift", "blind overwrite").lowercased().contains("read")) }
+        }
+        let args = #"{"path":"project.swift","edits":[{"old_text":"line-180:","new_text":"fixed-180:"}]}"#
+        let result = WorkspaceTools.execute(AgentToolCall(id: "edit", name: "edit_file", arguments: args), workspace: workspace, conversationID: "test")
+        XCTAssertTrue(result.hasPrefix("Edited"), result)
+        XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), original.replacingOccurrences(of: "line-180:", with: "fixed-180:"))
+        XCTAssertTrue(read(#"{"path":"project.swift","offset":180,"limit":1}"#).hasPrefix("fixed-180:"))
+    }
+
+    func testNarrowReadDoesNotEraseAnEarlierCompleteRead() throws {
+        try "one\ntwo\nthree".write(to: workspace.appendingPathComponent("a.txt"), atomically: true, encoding: .utf8)
+        _ = read(#"{"path":"a.txt"}"#)
+        _ = read(#"{"path":"a.txt","offset":2,"limit":1}"#)
+        XCTAssertTrue(write("a.txt", "updated").contains("a.txt"))
+    }
+
+    func testPagesFromDifferentVersionsCannotAuthorizeAnEdit() throws {
+        let file = workspace.appendingPathComponent("a.txt")
+        try "one\ntwo\nthree\nfour".write(to: file, atomically: true, encoding: .utf8)
+        _ = read(#"{"path":"a.txt","limit":2}"#)
+        try "changed\ntwo\nthree\nfour".write(to: file, atomically: true, encoding: .utf8)
+        _ = read(#"{"path":"a.txt","offset":3}"#)
+        XCTAssertTrue(write("a.txt", "blind overwrite").lowercased().contains("read"))
+        _ = read(#"{"path":"a.txt","limit":2}"#)
+        XCTAssertTrue(write("a.txt", "updated").contains("a.txt"))
     }
 
     func testOffsetAndLimitPageThroughAFile() throws {
@@ -98,14 +133,14 @@ final class WorkspaceReadWriteTests: XCTestCase {
 
         let list = WorkspaceTools.execute(
             AgentToolCall(id: "list", name: "list_files", arguments: "{\"path\":\"\(extra.path)\"}"),
-            workspace: workspace,
+            workspace: workspace, conversationID: "test",
             readRoots: [extra]
         )
         XCTAssertTrue(list.contains("notes.txt"))
 
         let contents = WorkspaceTools.execute(
             AgentToolCall(id: "read", name: "read_file", arguments: "{\"path\":\"\(file.path)\"}"),
-            workspace: workspace,
+            workspace: workspace, conversationID: "test",
             readRoots: [extra]
         )
         XCTAssertEqual(contents, "extra root")
@@ -116,7 +151,7 @@ final class WorkspaceReadWriteTests: XCTestCase {
                 name: "write_file",
                 arguments: "{\"path\":\"\(file.path)\",\"content\":\"changed\"}"
             ),
-            workspace: workspace,
+            workspace: workspace, conversationID: "test",
             readRoots: [extra]
         )
         XCTAssertTrue(write.lowercased().contains("outside"))

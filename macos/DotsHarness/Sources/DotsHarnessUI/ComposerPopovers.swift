@@ -79,9 +79,13 @@ struct ProjectPickerPopover: View {
             Divider().padding(.vertical, 5)
 
             projectAction(icon: "plus", title: AppCopy.text("composer.chooseProject"), action: onChoose)
-            projectAction(icon: "xmark", title: AppCopy.text("composer.dontWorkInProject"), action: onClear)
-                .disabled(workspacePath.isEmpty)
-                .opacity(workspacePath.isEmpty ? 0.45 : 1)
+            projectAction(
+                icon: "bubble.left.and.bubble.right",
+                title: AppCopy.text("composer.dontWorkInProject"),
+                action: onClear
+            )
+            .disabled(workspacePath.isEmpty)
+            .opacity(workspacePath.isEmpty ? 0.45 : 1)
         }
         .padding(8)
         .frame(width: 360)
@@ -114,135 +118,6 @@ struct ProjectPickerPopover: View {
         .padding(.vertical, 7)
         .background(isSelected ? Color.primary.opacity(0.11) : Color.clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
         .contentShape(Rectangle())
-    }
-
-    private func projectAction(icon: String, title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: icon)
-                    .font(.system(size: 13, weight: .medium))
-                    .frame(width: 17)
-                    .foregroundStyle(.secondary)
-                Text(title)
-                    .font(.callout)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 9)
-            .frame(height: 30)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-struct ChatProjectPickerPopover: View {
-    let projects: [ChatProject]
-    let selectedID: String?
-    let onSelect: (ChatProject) -> Void
-    let onCreate: (String) -> Void
-    let onClear: () -> Void
-
-    @State private var isCreating: Bool = false
-    @State private var newProjectName: String = ""
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(AppCopy.text("composer.projectPickerTitle"))
-                .font(.headline)
-                .padding(.horizontal, 9)
-                .padding(.top, 7)
-                .padding(.bottom, 5)
-
-            let activeProjects = projects.filter { !$0.archived }
-            if activeProjects.isEmpty {
-                Text(AppCopy.text("composer.noProject"))
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 7)
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(activeProjects) { project in
-                            let isSelected = project.id == selectedID
-                            Button {
-                                onSelect(project)
-                            } label: {
-                                HStack(spacing: 10) {
-                                    Image(systemName: project.pinned ? "pin.fill" : "bubble.left.and.bubble.right")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .frame(width: 17)
-                                        .foregroundStyle(project.pinned ? Color.accentColor : .secondary)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(project.name)
-                                            .font(.callout.weight(.medium))
-                                            .lineLimit(1)
-                                        if !project.description.isEmpty {
-                                            Text(project.description)
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                                .lineLimit(1)
-                                        }
-                                    }
-                                    Spacer(minLength: 8)
-                                    if isSelected {
-                                        Image(systemName: "checkmark")
-                                            .font(.caption.weight(.bold))
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                                .padding(.horizontal, 9)
-                                .padding(.vertical, 7)
-                                .background(isSelected ? Color.primary.opacity(0.11) : Color.clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-                .frame(maxHeight: 220)
-            }
-
-            Divider().padding(.vertical, 5)
-
-            if isCreating {
-                HStack(spacing: 6) {
-                    TextField(AppCopy.text("sidebar.projectTitle"), text: $newProjectName)
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit {
-                            submitNewProject()
-                        }
-                    Button(AppCopy.text("common.save")) {
-                        submitNewProject()
-                    }
-                    .disabled(newProjectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    Button(AppCopy.text("common.cancel")) {
-                        isCreating = false
-                        newProjectName = ""
-                    }
-                }
-                .padding(.horizontal, 9)
-                .padding(.vertical, 4)
-            } else {
-                projectAction(icon: "plus", title: AppCopy.text("sidebar.addProject")) {
-                    isCreating = true
-                }
-            }
-
-            projectAction(icon: "xmark", title: AppCopy.text("composer.dontWorkInProject"), action: onClear)
-                .disabled(selectedID == nil)
-                .opacity(selectedID == nil ? 0.45 : 1)
-        }
-        .padding(8)
-        .frame(width: 320)
-    }
-
-    private func submitNewProject() {
-        let trimmed = newProjectName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        onCreate(trimmed)
-        newProjectName = ""
-        isCreating = false
     }
 
     private func projectAction(icon: String, title: String, action: @escaping () -> Void) -> some View {

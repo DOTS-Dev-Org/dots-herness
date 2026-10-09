@@ -12,7 +12,7 @@ final class LocalRuntimeTests: XCTestCase {
         XCTAssertTrue(ids.contains("qwen25-05b-q4"))
         XCTAssertTrue(ids.contains("llama32-1b-q4"))
         XCTAssertTrue(ids.contains("dsr1-15b-q4"))
-        XCTAssertEqual(LocalModelCatalog.models.filter(\.reasoning).count, 1)
+        XCTAssertEqual(LocalModelCatalog.models.filter(\.reasoning).count, 2)
         XCTAssertTrue(LocalModelCatalog.spec(id: "dsr1-15b-q4")?.url.absoluteString.contains("huggingface.co") == true)
     }
 
@@ -30,31 +30,172 @@ final class LocalRuntimeTests: XCTestCase {
         XCTAssertEqual(node.apiType, "chat")
     }
 
-    func testPicksMacOSArm64LlamaAsset() throws {
-        let json = JSONValue.object([
-            "tag_name": .string("b10488"),
-            "assets": .array([
-                .object([
-                    "name": .string("llama-b10488-bin-ubuntu-x64.tar.gz"),
-                    "size": .number(1),
-                    "browser_download_url": .string("https://example.com/ubuntu"),
-                ]),
-                .object([
-                    "name": .string("llama-b10488-bin-macos-arm64.tar.gz"),
-                    "size": .number(11_087_008),
-                    "browser_download_url": .string("https://example.com/macos-arm64"),
-                ]),
-                .object([
-                    "name": .string("llama-b10488-bin-macos-x64.tar.gz"),
-                    "size": .number(11_392_805),
-                    "browser_download_url": .string("https://example.com/macos-x64"),
-                ]),
-            ]),
+    func testLlamaRuntimeIsPinnedPerArchitecture() {
+        let arm = LocalRuntime.llamaAsset(arch: "arm64")
+        let intel = LocalRuntime.llamaAsset(arch: "x64")
+        XCTAssertTrue(arm.url.absoluteString.hasSuffix("/\(LocalRuntime.llamaTag)/llama-\(LocalRuntime.llamaTag)-bin-macos-arm64.tar.gz"))
+        XCTAssertEqual(arm.sha256.count, 64)
+        XCTAssertEqual(intel.sha256.count, 64)
+        XCTAssertNotEqual(arm.sha256, intel.sha256)
+    }
+
+    func testMLXLockPinsEveryPackageByHash() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let lock = try String(contentsOf: root.appendingPathComponent("Sources/DotsHarnessCore/Resources/mlx-requirements.txt"), encoding: .utf8)
+        let packages = lock.split(separator: "\n").filter { !$0.hasPrefix(" ") && $0.contains("==") }
+        XCTAssertTrue(packages.contains { $0.hasPrefix("mlx-lm==\(LocalRuntime.mlxVersion)") })
+        // A package line is followed by at least one hash line, so hashes can never be fewer.
+        XCTAssertGreaterThanOrEqual(lock.components(separatedBy: "--hash=sha256:").count - 1, packages.count)
+        XCTAssertGreaterThan(packages.count, 10)
+    }
+
+    func testParsesGPUDevicesAndSkipsCPUAccelerators() {
+        let output = """
+        0.00.000.109 I srv  llama_server: initializing ...
+        Available devices:
+          MTL0: Apple M3 Pro (13639 MiB, 13639 MiB free)
+          BLAS: Accelerate (0 MiB, 0 MiB free)
+        """
+        XCTAssertEqual(LocalRuntime.parseDevices(output), [LocalDevice(id: "MTL0", name: "Apple M3 Pro", memoryMiB: 13639)])
+        XCTAssertTrue(LocalRuntime.parseDevices("Available devices:\n").isEmpty)
+    }
+
+    func testLlamaArgumentsFollowUserTuning() {
+        let defaults = LocalRuntime.llamaArguments(modelPath: "/m.gguf", alias: "m", port: 1, context: 8192, settings: LocalRuntimeSettings())
+        XCTAssertEqual(defaults, ["--model", "/m.gguf", "--host", "127.0.0.1", "--port", "1", "--ctx-size", "8192",
+                                  "--alias", "m", "--jinja", "--parallel", "1", "--gpu-layers", "auto"])
+        var tuned = LocalRuntimeSettings()
+        tuned.gpuLayers = "20"
+        tuned.threads = 6
+        tuned.flashAttention = "on"
+        tuned.kvCacheType = "q8_0"
+        tuned.extraArgs = "--mlock  --ubatch-size 256"
+        let arguments = LocalRuntime.llamaArguments(modelPath: "/m.gguf", alias: "m", port: 1, context: 4096, settings: tuned)
+        XCTAssertEqual(Array(arguments.suffix(13)), ["--gpu-layers", "20", "--threads", "6", "--flash-attn", "on",
+                                                     "--cache-type-k", "q8_0", "--cache-type-v", "q8_0",
+                                                     "--mlock", "--ubatch-size", "256"])
+    }
+
+    func testAutomaticContextRespectsModelAndMemory() {
+        let small = LocalModelCatalog.spec(id: "qwen25-05b-q4")!
+        let large = LocalModelCatalog.spec(id: "gpt-oss-20b-q4")!
+        let gib: UInt64 = 1_073_741_824
+        XCTAssertEqual(LocalRuntime.automaticContext(for: small, memoryBytes: 64 * gib), 8_192)
+        XCTAssertEqual(LocalRuntime.automaticContext(for: large, memoryBytes: 16 * gib), 16_384)
+        XCTAssertEqual(LocalRuntime.automaticContext(for: large, memoryBytes: 32 * gib), 32_768)
+    }
+
+    func testSettingsDecodeToleratesMissingKeys() throws {
+        let settings = try JSONDecoder().decode(LocalRuntimeSettings.self, from: Data(#"{"contextSize":4096}"#.utf8))
+        XCTAssertEqual(settings.contextSize, 4096)
+        XCTAssertEqual(settings.gpuLayers, "auto")
+        XCTAssertTrue(settings.importedModels.isEmpty)
+    }
+
+    @MainActor
+    func testCustomEndpointCarriesDeclaredModelAndContext() throws {
+        let paths = Self.temporaryPaths()
+        defer { try? FileManager.default.removeItem(at: paths.root) }
+        let store = NativeProviderStore(paths: paths)
+        let bare = try store.addCustom(name: "Ollama", prefix: "ollama", baseURL: "http://127.0.0.1:11434/v1", api: "openai", apiType: "chat", secret: "")
+        let bareAccount = try store.addCustomAccount(endpoint: bare, secret: "")
+        XCTAssertTrue(bareAccount.hasPlaceholderModel)
+        XCTAssertNil(bareAccount.contextWindow)
+
+        let declared = try store.addCustom(name: "Box", prefix: "box", baseURL: "http://127.0.0.1:1234/v1", api: "openai", apiType: "chat",
+                                           secret: "", model: "qwen3:8b", contextWindow: 8192)
+        let account = try store.addCustomAccount(endpoint: declared, secret: "")
+        XCTAssertEqual(account.model, "qwen3:8b")
+        XCTAssertFalse(account.hasPlaceholderModel)
+        XCTAssertEqual(account.contextWindow, 8192)
+
+        try store.updateCustom(endpoint: declared, name: "Box", prefix: "box", baseURL: declared.baseURL, api: "openai", apiType: "chat",
+                               secret: nil, model: "qwen3:14b", contextWindow: 16_384)
+        let reloaded = NativeProviderStore(paths: paths).state.accounts.first { $0.id == account.id }
+        XCTAssertEqual(reloaded?.model, "qwen3:14b")
+        XCTAssertEqual(reloaded?.contextWindow, 16_384)
+    }
+
+    func testProbeReadsLoadedContextPerModel() {
+        let rows: [[String: Any]] = [
+            ["id": "a", "loaded_context_length": 4096, "max_context_length": 32_768],
+            ["id": "b", "max_context_length": 8192],
+            ["id": "c"],
+        ]
+        XCTAssertEqual(LocalServerProbe.contexts(rows, id: "id", keys: ["loaded_context_length", "max_context_length"]), ["a": 4096, "b": 8192])
+    }
+
+    /// Downloads the pinned runtime and the smallest model, then serves it.
+    ///   DOTS_LIVE_LOCAL=1 swift test --filter testLiveLlamaServesSmallestModel
+    func testLiveLlamaServesSmallestModel() async throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["DOTS_LIVE_LOCAL"] == "1", "Set DOTS_LIVE_LOCAL=1 to download and serve a model.")
+        let paths = Self.livePaths()
+        let runtime = LocalRuntime(paths: paths, port: 18_799)
+        defer { runtime.stop() }
+        try await runtime.ensureRuntime()
+        let devices = await runtime.devices()
+        print("devices:", devices)
+        let spec = LocalModelCatalog.spec(id: "qwen25-05b-q4")!
+        try await runtime.downloadModel(spec)
+        _ = try runtime.start(model: spec)
+        let ready = await runtime.waitUntilReady()
+        XCTAssertTrue(ready, runtime.logTail())
+        let context = await runtime.servedContext()
+        XCTAssertEqual(context, 8192)
+        let reply = try await Self.chat(port: 18_799, model: spec.id)
+        print("reply:", reply)
+        XCTAssertFalse(reply.isEmpty)
+    }
+
+    ///   DOTS_LIVE_LOCAL=1 swift test --filter testLiveMLXServesSmallestModel
+    func testLiveMLXServesSmallestModel() async throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["DOTS_LIVE_LOCAL"] == "1" && LocalRuntime.mlxSupported, "Set DOTS_LIVE_LOCAL=1 on Apple Silicon.")
+        let paths = Self.livePaths()
+        let runtime = LocalRuntime(paths: paths, port: 18_798)
+        defer { runtime.stop() }
+        try await runtime.ensureMLX()
+        let spec = LocalModelCatalog.spec(id: "mlx-qwen25-05b-4bit")!
+        try await runtime.downloadModel(spec)
+        XCTAssertTrue(runtime.isInstalled(spec))
+        _ = try runtime.start(model: spec)
+        let ready = await runtime.waitUntilReady()
+        XCTAssertTrue(ready, runtime.logTail())
+        let reply = try await Self.chat(port: 18_798, model: LocalRuntime.mlxModelID)
+        print("reply:", reply)
+        XCTAssertFalse(reply.isEmpty)
+    }
+
+    private static func chat(port: Int, model: String) async throws -> String {
+        var request = URLRequest(url: URL(string: "http://127.0.0.1:\(port)/v1/chat/completions")!, timeoutInterval: 120)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "model": model, "max_tokens": 16,
+            "messages": [["role": "user", "content": "Say hi in one word."]],
         ])
-        let asset = try LocalRuntime.macAsset(from: json, arch: "arm64")
-        XCTAssertEqual(asset.tag, "b10488")
-        XCTAssertEqual(asset.url.absoluteString, "https://example.com/macos-arm64")
-        XCTAssertEqual(asset.size, 11_087_008)
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let message = (object?["choices"] as? [[String: Any]])?.first?["message"] as? [String: Any]
+        return message?["content"] as? String ?? ""
+    }
+
+    private static func paths(root: URL) -> SupportPaths {
+        let paths = SupportPaths(
+            root: root, plugins: root.appendingPathComponent("plugins"), presets: root.appendingPathComponent("presets"),
+            settings: root.appendingPathComponent("settings"), hostPatch: root.appendingPathComponent("patch"),
+            trust: root.appendingPathComponent("trust"), models: root.appendingPathComponent("models"), runtime: root.appendingPathComponent("runtime")
+        )
+        paths.ensure()
+        return paths
+    }
+
+    private static func temporaryPaths() -> SupportPaths {
+        paths(root: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+    }
+
+    /// Kept between runs so the live tests do not download gigabytes twice.
+    private static func livePaths() -> SupportPaths {
+        paths(root: FileManager.default.temporaryDirectory.appendingPathComponent("dots-live-local"))
     }
 
     func testDownloaderSkipsCompleteFile() async throws {

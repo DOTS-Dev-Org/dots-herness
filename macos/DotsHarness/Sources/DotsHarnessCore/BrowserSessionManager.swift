@@ -115,8 +115,33 @@ public final class BrowserSessionManager {
     public func execute(
         _ call: AgentToolCall,
         scope: BrowserScope,
-        backend: BrowserBackend
+        backend: BrowserBackend,
+        workspace: URL? = nil
     ) async -> String {
+        if backend == .native {
+            do {
+                guard let data = call.arguments.data(using: .utf8),
+                      let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                    return "Tool error: invalid browser arguments."
+                }
+                switch call.name {
+                case BrowserTools.openName, BrowserTools.navigateName:
+                    let url = object["url"] as? String ?? ""
+                    let msg = try await NativeBrowserService.shared.navigate(to: url)
+                    return "Opened in native in-app browser (Right Dock):\npageID: native-dock\n\(msg)"
+                case BrowserTools.screenshotName:
+                    let path = object["path"] as? String ?? "browser.png"
+                    let (_, savedPath) = try await NativeBrowserService.shared.takeSnapshot(path: path, workspace: workspace)
+                    return "Captured native in-app browser screenshot to \(savedPath)."
+                case BrowserTools.closeName:
+                    return "Native in-app browser remains open in Right Dock."
+                default:
+                    return "Tool error: unknown browser tool \(call.name)."
+                }
+            } catch {
+                return "Native browser error: \(error.localizedDescription)"
+            }
+        }
         do {
             guard let data = call.arguments.data(using: .utf8),
                   let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
@@ -135,6 +160,10 @@ public final class BrowserSessionManager {
                 let url = object["url"] as? String ?? ""
                 try await navigate(scope: scope, pageID: pageID, url: url)
                 return "Navigated page \(pageID) to \(url)."
+            case BrowserTools.screenshotName:
+                let pageID = object["pageID"] as? String ?? ""
+                let path = object["path"] as? String ?? "browser.png"
+                return try await screenshot(scope: scope, pageID: pageID, path: path, workspace: workspace)
             case BrowserTools.closeName:
                 let pageID = object["pageID"] as? String ?? ""
                 try await closePage(scope: scope, pageID: pageID)
@@ -213,6 +242,65 @@ public final class BrowserSessionManager {
             method: "Page.navigate",
             parameters: ["url": url]
         )
+    }
+
+    public func screenshot(
+        scope: BrowserScope,
+        pageID: String,
+        path: String,
+        workspace: URL?
+    ) async throws -> String {
+        guard !pageID.isEmpty else { throw BrowserSessionError.missingPageID }
+        let session = try ownedSession(scope: scope, pageID: pageID)
+        let base64: String
+        if let pipe = session.pipe {
+            let attached = try await pipe.send(
+                method: "Target.attachToTarget",
+                parametersJSON: try JSONSerialization.data(withJSONObject: ["targetId": pageID, "flatten": true])
+            )
+            guard let sessionID = attached?["sessionId"] as? String else {
+                throw BrowserSessionError.pageUnavailable
+            }
+            let capture = try await pipe.send(
+                method: "Page.captureScreenshot",
+                parametersJSON: try JSONSerialization.data(withJSONObject: ["format": "png"]),
+                sessionID: sessionID
+            )
+            guard let dataStr = capture?["data"] as? String else {
+                throw BrowserSessionError.pipe("Page.captureScreenshot returned no data.")
+            }
+            base64 = dataStr
+            session.targetSessions[pageID] = sessionID
+        } else {
+            guard let target = try await target(session: session, pageID: pageID),
+                  let websocket = target["webSocketDebuggerUrl"] as? String,
+                  let websocketURL = URL(string: websocket) else {
+                throw BrowserSessionError.pageUnavailable
+            }
+            let capture = try await sendWebSocketCommand(
+                websocketURL: websocketURL,
+                method: "Page.captureScreenshot",
+                parameters: ["format": "png"]
+            )
+            guard let dataStr = capture?["data"] as? String else {
+                throw BrowserSessionError.pipe("Page.captureScreenshot returned no data.")
+            }
+            base64 = dataStr
+        }
+
+        guard let data = Data(base64Encoded: base64) else {
+            throw BrowserSessionError.pipe("Failed to decode base64 screenshot data.")
+        }
+
+        let destination: URL
+        if let workspace {
+            destination = workspace.appendingPathComponent(path).standardizedFileURL
+        } else {
+            destination = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(path).standardizedFileURL
+        }
+        try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try data.write(to: destination, options: .atomic)
+        return "Saved browser screenshot of page \(pageID) to \(path) (\(data.count) bytes)."
     }
 
     public func closePage(scope: BrowserScope, pageID: String) async throws {
@@ -613,7 +701,7 @@ public final class BrowserSessionManager {
     ) throws {
         var object: [String: Any] = [
             "scope": [
-                "area": scope.area,
+                "scope": scope.scope,
                 "conversationID": scope.conversationID,
                 "runID": scope.runID,
             ],

@@ -633,12 +633,12 @@ aitrack.post("/billing/callback", rateLimit({ limit: 120, windowSeconds: 60, key
   }
 
   const form = await c.req.formData().catch(() => null);
-  if (!form) return new Response("bad request", { status: 400 });
+  if (!form) return new Response("callback_failed", { status: 400 });
   const merchantOid = form.get("merchant_oid") as string;
   const status = form.get("status") as string;
   const totalAmount = form.get("total_amount") as string;
   const hash = form.get("hash") as string;
-  if (!merchantOid) return new Response("missing merchant_oid", { status: 400 });
+  if (!merchantOid) return new Response("callback_failed", { status: 400 });
 
   const merchantSalt = c.env.PAYTR_MERCHANT_SALT || "";
   const merchantKey = c.env.PAYTR_MERCHANT_KEY || "";
@@ -652,10 +652,10 @@ aitrack.post("/billing/callback", rateLimit({ limit: 120, windowSeconds: 60, key
   const bytes = new Uint8Array(sig);
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
   const expected = btoa(bin);
-  if (!timingSafeEqual(expected, hash || "")) return new Response("hash mismatch", { status: 400 });
+  if (!timingSafeEqual(expected, hash || "")) return new Response("callback_failed", { status: 400 });
 
   const existing = await getOrder(c.env, merchantOid);
-  if (!existing) return new Response("order_not_found", { status: 404 });
+  if (!existing) return new Response("callback_failed", { status: 400 });
 
   const orderRow = existing as {
     id?: string | null;
@@ -687,7 +687,7 @@ aitrack.post("/billing/callback", rateLimit({ limit: 120, windowSeconds: 60, key
   const expectedAmount = String(orderRow.amount_minor ?? "");
   const paidAmount = String(totalAmount ?? "").trim();
   if (status === "success" && expectedAmount && paidAmount !== expectedAmount) {
-    return new Response("amount mismatch", { status: 400 });
+    return new Response("callback_failed", { status: 400 });
   }
 
   const finalStatus = status === "success" ? "completed" : "failed";

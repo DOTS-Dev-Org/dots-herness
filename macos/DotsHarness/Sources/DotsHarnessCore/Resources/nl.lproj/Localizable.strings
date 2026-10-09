@@ -62,7 +62,6 @@
 "settings.title" = "Instellingen";
 "settings.backToChats" = "Terug naar chats";
 "settings.tab.general" = "Algemeen";
-"settings.tab.pet" = "Huisdier";
 "settings.tab.providers" = "Aanbieders";
 "settings.tab.custom" = "Aangepaste API";
 "settings.tab.local" = "Lokale modellen";
@@ -279,7 +278,7 @@
 "composer.add" = "Toevoegen";
 "composer.stopListening" = "Luisteren stoppen en tekst aan concept toevoegen";
 "composer.keyboardHelp" = "Enter: verzenden · Shift+Enter: nieuwe regel · ⌘/Ctrl+Enter: onderbreken";
-"composer.followUp.hint" = "Druk op Tab om de suggestie voor het vervolbericht te accepteren";
+"composer.followUp.hint" = "Druk op Tab om de suggestie voor het opvolgingsbericht te accepteren";
 "composer.selectModel" = "Model kiezen";
 "composer.installedSkill" = "Geïnstalleerde vaardigheid";
 "composer.settings" = "Instellingen";
@@ -303,8 +302,6 @@
 "slash.model" = "Model";
 "slash.plan" = "Planmodus";
 "slash.planDetail" = "Planmodus inschakelen";
-"slash.mascot" = "Huisdier";
-"slash.mascotDetail" = "De Pet wekken of verbergen";
 "slash.pluginCreator" = "Pluginmaker";
 "slash.pluginCreatorDetail" = "Maak een nieuwe plugin";
 "pluginCreator.template" = "Sjabloon";
@@ -390,7 +387,6 @@
 "sidebar.hide" = "Verbergen";
 "sidebar.show" = "Tonen";
 "sidebar.selectProject" = "Project kiezen";
-"sidebar.continueWithoutProject" = "Doorgaan zonder project";
 "sidebar.projectOptions" = "Projectopties";
 "sidebar.editProject" = "Project bewerken";
 "sidebar.addProject" = "Project toevoegen";
@@ -421,28 +417,6 @@
 "sidebar.settings" = "Instellingen";
 "sidebar.accountOptions" = "Accountopties";
 "sidebar.accountUsage" = "DOTS-account en gebruik";
-"pet.position.bottomTrailing" = "Rechtsonder";
-"pet.position.bottomLeading" = "Linksonder";
-"pet.position.topTrailing" = "Rechtsboven";
-"pet.position.topLeading" = "Linksboven";
-"pet.settings" = "Pet-instellingen";
-"pet.hide" = "Pet verbergen";
-"pet.dragHint" = "DOTS Pet · Houd vast om te verplaatsen";
-"pet.stopAndSend" = "Luisteren stoppen en naar de geselecteerde chat sturen";
-"pet.micOpening" = "Microfoon openen…";
-"pet.listening" = "Luistert…";
-"pet.transcribing" = "Lokaal spraakmodel transcribeert…";
-"pet.sending" = "Naar de geselecteerde chat verzenden…";
-"pet.visibility" = "Pet-zichtbaarheid";
-"pet.show" = "Pet tonen";
-"pet.visibilityHint" = "De Pet zweeft alleen op het scherm wanneer deze optie is ingeschakeld. Bij de eerste start staat hij uit.";
-"pet.appearance" = "Weergave";
-"pet.position" = "Positie";
-"pet.size" = "Grootte";
-"pet.sizeValue" = "%d px";
-"pet.avatar" = "Avatar";
-"pet.preview" = "Voorvertoning";
-"pet.title" = "Huisdier";
 "usage.title" = "Gebruik";
 "usage.accountSummary" = "Overzicht van het DOTS YAZILIM-account voor deze periode";
 "usage.period" = "Deze periode";
@@ -716,7 +690,7 @@
 "speech.emptyOutput" = "De lokale spraakengine retourneerde geen audio";
 "speech.invalidAudio" = "De lokale spraakengine heeft ongeldige audio geretourneerd";
 "router.imageFallback" = "Gebruik als fallback voor afbeeldingen";
-"composer.projectPickerHelp" = "Kies het project voor deze chat";
+"composer.projectPickerHelp" = "Kies het project voor dit gesprek";
 "composer.projectPickerTitle" = "Project";
 "composer.chooseProject" = "Kies project";
 "composer.noProject" = "Geen project geselecteerd";
@@ -725,7 +699,7 @@
 "workLocation.help" = "Kies waar deze taak wordt uitgevoerd";
 "workLocation.local" = "Lokaal";
 "workLocation.localDetail" = "Voer deze taak uit op deze computer";
-"workLocation.localWorktree" = "Nieuwe lokale werkboom";
+"workLocation.localWorktree" = "Nieuwe lokale worktree";
 "workLocation.localWorktreeDetail" = "Gebruik een geïsoleerde kassa op deze computer";
 "workLocation.remote" = "Een andere computer";
 "workLocation.remoteDetail" = "Werk via SSH op een computer waarmee je verbindt";
@@ -782,7 +756,7 @@
 "ssh.error.configWriteFailed" = "%@ kon niet naar ~/.ssh/config worden geschreven.";
 "tool.remoteUnavailable" = "%1$@ is niet beschikbaar tijdens werk op %2$@. Gebruik run_command met shell-opdrachten.";
 "git.branchHelp" = "Kies een Git-branch";
-"git.detached" = "Vrijstaand HOOFD";
+"git.detached" = "Losgekoppelde HEAD";
 "git.search" = "Zoek takken";
 "git.branches" = "Takken";
 "git.noBranches" = "Geen takken gevonden";
@@ -850,7 +824,6 @@
 "marketplace.install" = "Installeren";
 "marketplace.search" = "Zoek plug-ins";
 "marketplace.update" = "Update v%@ → v%@";
-"pet.avatarHint" = "Kies een huisdieravatar.";
 "router.customEndpointHint" = "Aangepast API-eindpunt";
 "router.noKeyRequired" = "Geen sleutel nodig. Maak verbinding met de route via deze provider.";
 "settings.addProviderCustom" = "Voeg deze provider toe via de aangepaste API.";
@@ -1084,9 +1057,6 @@
 "feedback.tag.negative_other" = "Overig";
 
 // Completed translations for keys added to the desktop catalog.
-"assistantMode.title" = "Assistentmodus";
-"assistantMode.coding" = "Coderen";
-"assistantMode.chat" = "Chat";
 "tasks.close" = "Taken sluiten";
 "tasks.back" = "Terug";
 "tasks.new" = "Nieuwe taak";
@@ -1127,3 +1097,213 @@
 "settings.compactTrigger" = "Context automatisch comprimeren bij";
 "settings.compactTrigger.hint" = "Aandeel van het contextvenster van elk model. Een hogere waarde houdt de promptcache langer intact, omdat comprimeren die herschrijft.";
 "conversation.translate" = "Vertalen";
+
+
+// Completed translations for keys added to the desktop catalog.
+"tray.section.running" = "Actieve chats";
+"tray.section.waiting" = "Vereist aandacht";
+"tray.write" = "Bericht schrijven";
+"tray.openUsage" = "Gebruiksscherm openen";
+"tray.noChats" = "Op dit moment geen chats";
+"tray.unread" = "Nieuw antwoord";
+
+// Write-lease conflict copy.
+"conflict.policy.waitThenAsk" = "Wachten, dan vragen";
+"conflict.policy.waitThenAsk.detail" = "Wacht stil op de andere chat en vraagt alleen als het te lang duurt.";
+"conflict.policy.ask" = "Vraag mij";
+"conflict.policy.ask.detail" = "Vraagt zodra twee chats hetzelfde bestand willen.";
+"conflict.policy.waitOnly" = "Altijd wachten";
+"conflict.policy.waitOnly.detail" = "Vraagt niet: elke schrijfbewering wacht op de chat die het bestand houdt.";
+"conflict.title" = "%@ wordt door een andere chat geschreven";
+"conflict.stillBusy" = "Schrijven uitgesteld: %@ wordt nog door een andere chat geschreven.";
+"conflict.userSkipped" = "Schrijven overgeslagen: %@ bleef bij de andere chat (%@), zoals gevraagd.";
+"conflict.stoppedHolder" = "De chat “%@” werd op verzoek gestopt en deze schrijfbewering ging door.";
+"conflict.stoppedOthers" = "De andere chats van dit project werden op verzoek gestopt en deze schrijfbewering ging door.";
+"conflict.wholeProject" = "het hele project (opdracht: %@)";
+"conflict.banner.title" = "Een andere chat schrijft aan dit bestand";
+"conflict.banner.body" = "%1$@ · vastgehouden door “%2$@” gedurende %3$d seconden";
+"conflict.banner.keepWaiting" = "Blijven wachten";
+"conflict.banner.stopHolder" = "Stop die chat";
+"conflict.banner.stopAllOthers" = "Alle andere chats stoppen";
+"conflict.banner.skip" = "Deze schrijfbewering overslaan";
+"conflict.waiting" = "Wacht op “%@” die schrijft: %@";
+"settings.workspaceConflictPolicy" = "Als een andere chat hetzelfde bestand schrijft";
+"settings.conflictWaitSeconds" = "Wachten voordat je vraagt";
+"settings.conflictWaitValue" = "%d seconden";
+
+
+"conversation.ranCommand" = "Ran 1 command";
+"conversation.ranCommands" = "Ran %d commands";
+"conversation.runningTools" = "Running tools…";
+"conversation.thinkingPhase" = "Thinking…";
+"conversation.tokensCount" = "%@ tokens";
+"usage.context.window" = "Contextvenster";
+"usage.planLimits" = "Gebruikslimieten van het abonnement";
+"ask.other" = "Other";
+"ask.next" = "Next";
+"ask.skipShort" = "Skip";
+"composer.queue.one" = "1 message queued";
+"composer.queue.many" = "%d messages queued";
+"composer.queue.edit" = "Edit";
+"composer.queue.editBlocked" = "Clear the message box to edit";
+"composer.queue.remove" = "Remove";
+"git.createPR" = "PR maken";
+"git.hideBar" = "Verbergen";
+"composer.queue.next" = "Next: %@";
+
+// Composer, git bar and usage popover.
+"usage.context.tooltip" = "Context- en tokengebruik";
+"usage.context.conversation" = "Gespreksberichten";
+"usage.context.toolDefinitions" = "Tooldefinities";
+"usage.context.mcpDefinitions" = "MCP-tooldefinities";
+"usage.context.systemPrompt" = "Systeeminstructies";
+"usage.context.cacheHit" = "Prompt-cachehits";
+"usage.context.notReported" = "Niet gemeld door provider";
+"usage.context.cacheWrite" = "%@ tokens naar cache geschreven";
+
+// Local AI runtime and custom endpoint tuning.
+"custom.modelOptional" = "Modelnaam (optioneel)";
+"custom.contextOptional" = "Contextvenster in tokens (optioneel)";
+"custom.contextHint" = "Laat beide leeg om ze van de server te lezen. Stel de context in als de server die niet meldt (Ollama: gelijk aan OLLAMA_CONTEXT_LENGTH).";
+"custom.contextInvalid" = "Het contextvenster moet een positief getal zijn.";
+"custom.detected" = "Actief op deze computer";
+"custom.noModelAvailable" = "%@ toont geen modellen. Start de server of stel een modelnaam in voor het endpoint.";
+"local.extraArgs" = "Extra llama-server-argumenten";
+"local.mlxExtraArgs" = "Extra mlx_lm-serverargumenten";
+"local.gpuLayers" = "GPU-lagen (auto, all of een getal)";
+"local.hardware" = "Hardware";
+"local.hardwareGPU" = "%@ · %@ GPU-geheugen · %@ RAM";
+"local.importGGUF" = "GGUF-bestand toevoegen…";
+"local.installMLX" = "MLX installeren";
+"local.installingMLX" = "MLX installeren (Python + mlx-lm)…";
+"local.kvCache" = "Type KV-cache";
+"local.servingContext" = "%@ · %d tokens";
+"local.tooLarge" = "Te groot";
+"local.tuning" = "Prestaties";
+"local.tuningHint" = "Leeg of auto: de runtime past het model aan je GPU-geheugen aan. Wijzigingen gelden bij de volgende modelstart.";
+"local.contextSize" = "Contextgrootte (tokens)";
+"local.threads" = "CPU-threads";
+"local.batchSize" = "Batchgrootte";
+"local.forget" = "Uit lijst verwijderen";
+"localModel.needsMemory" = "Heeft ongeveer %d GB GPU-geheugen of RAM nodig.";
+"localRuntime.helperFailed" = "%@ mislukt (afsluitcode %d)";
+"localRuntime.mlxUnsupported" = "MLX vereist een Mac met Apple Silicon.";
+"local.flashAttention" = "Flash attention";
+"local.hardwareMemory" = "%@ RAM";
+
+// Translations completed for keys that had no localized text.
+"conversation.fullToolOutput" = "Volledige tool-uitvoer";
+"sidebar.showSidebar" = "Zijbalk tonen";
+"sidebar.hideSidebar" = "Zijbalk verbergen";
+"navigation.back" = "Terug";
+"navigation.forward" = "Vooruit";
+"settings.autoApprovePlans" = "Plannen automatisch goedkeuren";
+"settings.autoApprovePlans.hint" = "Indien ingeschakeld wordt een gegenereerd plan toegepast zonder op een aparte plangoedkeuring te wachten. Goedkeuringen op toolniveau blijven gelden.";
+"media.fallbackUsed" = "De gekozen provider kon deze afbeelding niet genereren. Ze is gemaakt via een eenmalig fallback-verzoek via %@/%@; provider en model van het hoofdgesprek zijn niet gewijzigd, dus de promptcache blijft intact.";
+"media.imageUnsupportedWithFallbackHint" = "Ik kan deze afbeelding niet genereren met %@. Stel een afbeeldings-API of -provider in als fallback. Het hoofdmodel alleen voor afbeeldingen wisselen kan de promptcache van de provider breken.";
+"conversation.generationResumed" = "Bericht hervat";
+"conversation.cancelPlan" = "Plan annuleren";
+"conversation.cancelPlanHelp" = "Dit plan annuleren en wachtende berichten vrijgeven";
+"conversation.thinking" = "Denkproces";
+"usage.manageResets" = "Resets beheren";
+"usage.useReset" = "Reset gebruiken";
+"usage.resetTitle" = "Een Claude-limietreset gebruiken?";
+"usage.openClaude" = "Doorgaan in Claude";
+"usage.resetConfirmation" = "De gebruikspagina van Claude wordt geopend. Meld je aan bij %@ en bekijk de reset die voor dat account wordt aangeboden. Klik op Gratis resetten en bevestig in Claude om hem te gebruiken. Een gebruikte reset kan niet ongedaan worden gemaakt. De limieten worden vernieuwd wanneer je terugkeert naar HerNess.";
+"usage.resetOpenFailed" = "Claude kon niet worden geopend. Controleer of het account nog verbonden is en probeer het opnieuw.";
+"conversation.review" = "Beoordelen";
+"dock.noWorkspace" = "Kies eerst een werkmap.";
+"dock.branch" = "Branch";
+"dock.refresh" = "Vernieuwen";
+"dock.commit" = "Commit";
+"dock.push" = "Push";
+"dock.fetch" = "Fetch";
+"dock.commitOrPush" = "Commit of push";
+"dock.commitMessage" = "Commitbericht";
+"dock.noChanges" = "Geen wijzigingen door de agent.";
+"dock.whyRequest" = "Jouw verzoek";
+"dock.whyAgent" = "Uitleg van de agent";
+"dock.notRepo" = "Deze map is geen git-repository.";
+"dock.filterFiles" = "Bestanden filteren…";
+"dock.openFile" = "Bestand openen";
+"dock.selectFile" = "Selecteer een bestand in de werkruimteboom";
+"dock.binaryFile" = "Binair of onleesbaar bestand";
+"project.missing.title" = "Projectmap niet gevonden: %@";
+"project.missing.message" = "De projectmap op '%@' is mogelijk verplaatst of verwijderd. Kies de nieuwe locatie of verwijder het project.";
+"project.missing.locate" = "Locatie zoeken…";
+"project.missing.readOnly" = "De projectmap is niet beschikbaar. Je kunt eerdere gesprekken bekijken; nieuwe gesprekken maken en berichten verzenden is uitgeschakeld totdat je een nieuwe locatie kiest.";
+"queue.waitingForPlan" = "Wacht op plangoedkeuring";
+"settings.closeToTray" = "Na het sluiten van het venster in het systeemvak blijven draaien";
+"settings.closeToTray.hint" = "Runs, terminals en geplande taken gaan door zolang het venster verborgen is; het pictogram in het systeemvak haalt het terug.";
+"tray.show" = "Venster openen";
+"context.overflowTitle" = "Dit gesprek past niet in het nieuwe model";
+"context.overflowReason" = "%1$@ heeft ongeveer %2$d tokens nodig om door te gaan, en in dat model zijn er maar %3$d vrij.";
+"context.overflowByModel" = "De samenvatting wordt geschreven door %@, het kleinste verbonden model dat het transcript nog kan lezen.";
+"context.overflowLocally" = "Geen enkel verbonden model kan het transcript lezen, dus het gesprek wordt ingekort zonder een model te raadplegen.";
+"context.overflowCompress" = "Comprimeren en doorgaan";
+"context.overflowNotNow" = "Niet nu";
+"context.overflowDeclined" = "Verzenden gestopt: het gesprek past niet in het nieuwe model.";
+"usage.context.title" = "Gebruik";
+"usage.context.input" = "Verzonden invoer";
+"usage.context.estimatedInput" = "Geschatte invoer";
+"usage.context.output" = "Uitvoer";
+"usage.context.latestRequest" = "Laatste verzoek · contextvenster";
+"usage.context.estimatedBreakdown" = "Geschatte uitsplitsing van invoer";
+"usage.context.estimateNote" = "Invoer-/uitvoertotalen van de provider worden getoond wanneer beschikbaar. Anders zijn invoertotalen en tool-/MCP-categorieën lokale schattingen.";
+"usage.context.tokens" = "tokens";
+"usage.context.toolCalls" = "Tool-aanroepen";
+"usage.context.mcpCalls" = "MCP-aanroepen";
+"usage.context.toolResults" = "Toolresultaten";
+"usage.context.mcpResults" = "MCP-resultaten";
+"plan.proposed" = "Claude heeft een plan voorgesteld";
+"plan.reject" = "Afwijzen";
+"plan.revise" = "Herzien…";
+"plan.accept" = "Accepteren";
+"plan.acceptAuto" = "Accepteren en automodus";
+"plan.open" = "Plan openen";
+"plan.empty" = "Nog geen plan";
+"dock.expand" = "Uitvouwen";
+"dock.collapse" = "Samenvouwen";
+"usage.context.cacheReuse" = "Cachehergebruik in deze chat";
+"usage.context.cacheFreshInput" = "New / outside-breakpoint input: %@ tokens";
+"usage.context.cacheCoverage" = "Meetdekking: %@ · %@ / %@ verzoeken";
+"usage.context.cacheLatency" = "Gemiddelde verzoeklatentie: %@ ms";
+"usage.context.cacheLoss" = "Grootste cacheverlies: %@ · %@ tokens";
+"tray.back" = "Chats";
+
+"composer.cacheExpired.explanation" = "De geschatte levensduur van de cache is verstreken. De promptcache is een tijdelijke verwerkingsstatus bij de provider; je chatgeschiedenis blijft bewaard. Als je doorgaat met de volledige geschiedenis, kunnen die tokens opnieuw als nieuwe invoer tellen. Pas de gebruiksgegevens van het volgende verzoek laten zien of de provider nog een cachetreffer had.";
+"composer.accountSwitched.notice" = "Deze chat is met hetzelfde model overgegaan naar een ander account. De cache begint daar opnieuw; doorgaan kan meer tokens gebruiken en meer kosten.";
+"composer.contextFull.notice" = "Het contextvenster is bijna vol; doorgaan kan meer tokens gebruiken en meer kosten. Start een nieuwe chat met een korte samenvatting.";
+"composer.cacheExpired.infoTitle" = "Waarom zie ik dit?";
+"composer.cacheExpired.notice" = "De cache is mogelijk verlopen; doorgaan kan meer tokens gebruiken en meer kosten. Start een nieuwe chat met een korte samenvatting.";
+"feedback.tag.apply_elsewhere" = "Apply it elsewhere";
+"feedback.tag.broke_existing_feature" = "Broke an existing feature";
+"feedback.tag.did_not_follow_project_style" = "Didn't follow project style";
+"feedback.tag.ignored_project_architecture" = "Ignored project architecture";
+"feedback.tag.keep_project_style" = "Keep the project style";
+"feedback.tag.reuse_architecture" = "Reuse this architecture";
+"feedback.tag.reuse_token_pattern" = "Reuse this token pattern";
+"feedback.tag.wrong_theme_or_token" = "Wrong theme or token";
+
+// Completed translations for keys added to the desktop catalog.
+"conversation.filesChangedCount" = "%d bestanden gewijzigd";
+"conversation.filesLineSummary" = "+%d −%d";
+"conversation.lineCountsUnavailable" = "Regelaantallen niet beschikbaar";
+"conversation.filesMore" = "Nog %d bestanden tonen";
+"conversation.filesLess" = "Minder bestanden tonen";
+"conversation.undoChanges" = "Ongedaan maken";
+"conversation.viewChanges" = "Wijzigingen bekijken";
+"conversation.filesReverted" = "Bestandswijzigingen zijn ongedaan gemaakt.";
+
+// Completed translations for keys added to the desktop catalog.
+"composer.modelSwitched.notice" = "Het model is gewijzigd. De cache gaat niet mee naar het nieuwe model; de volledige geschiedenis wordt opnieuw verwerkt, wat meer tokens kan gebruiken en meer kan kosten.";
+
+"archive.title" = "Gearchiveerde gesprekken";
+"archive.empty" = "Geen gearchiveerde gesprekken.";
+
+"conversation.plan" = "Plannen";
+"conversation.system" = "Systeem";
+
+"archive.confirmDelete" = "Dit gesprek permanent verwijderen?";
+"archive.deletePermanently" = "Permanent verwijderen";
+"conversation.processedTokensCount" = "%@ tokens";

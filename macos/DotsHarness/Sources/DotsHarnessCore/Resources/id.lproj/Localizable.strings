@@ -80,7 +80,6 @@
 "settings.title" = "Pengaturan";
 "settings.backToChats" = "Kembali ke obrolan";
 "settings.tab.general" = "Umum";
-"settings.tab.pet" = "Hewan peliharaan";
 "settings.tab.providers" = "Penyedia";
 "settings.tab.custom" = "API khusus";
 "settings.tab.local" = "Model lokal";
@@ -306,22 +305,22 @@
 "composer.add" = "Tambahkan";
 "composer.stopListening" = "Berhenti mendengarkan dan tambahkan teks ke draf";
 "composer.keyboardHelp" = "Enter: kirim · Shift+Enter: baris baru · ⌘/Ctrl+Enter: mengarahkan";
-"composer.followUp.hint" = "Tekan Tab untuk menerima saran pesan lanjutan";
+"composer.followUp.hint" = "Tekan Tab untuk menerima saran pesan tindak lanjut";
 "composer.selectModel" = "Pilih modelnya";
 "composer.installedSkill" = "Keterampilan terpasang";
 "composer.settings" = "Pengaturan";
 "composer.skills" = "Keterampilan";
 "composer.personal" = "Pribadi";
-"composer.projectPickerHelp" = "Pilih proyek untuk obrolan ini";
+"composer.projectPickerHelp" = "Pilih proyek untuk percakapan ini";
 "composer.projectPickerTitle" = "Proyek";
 "composer.chooseProject" = "Pilih proyek";
 "composer.noProject" = "Tidak ada proyek yang dipilih";
 "composer.dontWorkInProject" = "Jangan bekerja dalam sebuah proyek";
 "workLocation.title" = "Bekerja di";
-"workLocation.help" = "Pilih di mana tugas ini dijalankan";
+"workLocation.help" = "Pilih tempat tugas ini berjalan";
 "workLocation.local" = "Lokal";
 "workLocation.localDetail" = "Jalankan tugas ini di komputer ini";
-"workLocation.localWorktree" = "Pohon kerja lokal baru";
+"workLocation.localWorktree" = "Worktree lokal baru";
 "workLocation.localWorktreeDetail" = "Gunakan pembayaran terisolasi di komputer ini";
 "workLocation.remote" = "Komputer lain";
 "workLocation.remoteDetail" = "Bekerja lewat SSH di komputer yang Anda sambungkan";
@@ -378,7 +377,7 @@
 "ssh.error.configWriteFailed" = "%@ tidak dapat ditulis ke ~/.ssh/config.";
 "tool.remoteUnavailable" = "%1$@ tidak tersedia saat bekerja di %2$@. Gunakan run_command dengan perintah shell.";
 "git.branchHelp" = "Pilih cabang Git";
-"git.detached" = "KEPALA terpisah";
+"git.detached" = "HEAD terlepas";
 "git.search" = "Cari cabang";
 "git.branches" = "Cabang";
 "git.noBranches" = "Tidak ada cabang yang ditemukan";
@@ -413,8 +412,6 @@
 "slash.model" = "Model";
 "slash.plan" = "Modus rencana";
 "slash.planDetail" = "Aktifkan mode rencana";
-"slash.mascot" = "Hewan peliharaan";
-"slash.mascotDetail" = "Bangunkan atau sembunyikan hewan peliharaan";
 "slash.pluginCreator" = "Pembuat plugin";
 "slash.pluginCreatorDetail" = "Buat plugin baru";
 "pluginCreator.template" = "Template";
@@ -501,7 +498,6 @@
 "sidebar.hide" = "Sembunyikan";
 "sidebar.show" = "Tunjukkan";
 "sidebar.selectProject" = "Pilih proyek";
-"sidebar.continueWithoutProject" = "Lanjutkan tanpa proyek";
 "sidebar.projectOptions" = "Opsi proyek";
 "sidebar.editProject" = "Sunting proyek";
 "sidebar.addProject" = "Tambah proyek";
@@ -533,28 +529,6 @@
 "sidebar.accountOptions" = "Opsi akun";
 "sidebar.accountUsage" = "Akun dan penggunaan DOTS";
 
-"pet.position.bottomTrailing" = "Kanan bawah";
-"pet.position.bottomLeading" = "Kiri bawah";
-"pet.position.topTrailing" = "Kanan atas";
-"pet.position.topLeading" = "Kiri atas";
-"pet.settings" = "Pengaturan hewan peliharaan";
-"pet.hide" = "Sembunyikan hewan peliharaan";
-"pet.dragHint" = "DOTS Pet · Tahan untuk bergerak";
-"pet.stopAndSend" = "Berhenti mendengarkan dan kirim ke obrolan yang dipilih";
-"pet.micOpening" = "Membuka mikrofon…";
-"pet.listening" = "Mendengarkan…";
-"pet.transcribing" = "Model suara lokal sedang menyalin…";
-"pet.sending" = "Mengirim ke obrolan yang dipilih…";
-"pet.visibility" = "Visibilitas hewan peliharaan";
-"pet.show" = "Tunjukkan hewan peliharaan";
-"pet.visibilityHint" = "Hewan peliharaan hanya mengapung di layar saat opsi ini diaktifkan. Ini tidak aktif pada peluncuran pertama.";
-"pet.appearance" = "Penampilan";
-"pet.position" = "Posisi";
-"pet.size" = "Ukuran";
-"pet.sizeValue" = "%d piksel";
-"pet.avatar" = "Avatar";
-"pet.preview" = "Pratinjau";
-"pet.title" = "Hewan peliharaan";
 
 "usage.title" = "Penggunaan";
 "usage.accountSummary" = "Rangkuman akun DOTS YAZILIM periode ini";
@@ -870,7 +844,6 @@
 "marketplace.install" = "Instal";
 "marketplace.search" = "Cari plugin";
 "marketplace.update" = "Perbarui v%@ → v%@";
-"pet.avatarHint" = "Pilih avatar hewan peliharaan.";
 "router.customEndpointHint" = "Titik akhir API khusus";
 "router.noKeyRequired" = "Tidak diperlukan kunci. Hubungkan ke rute melalui penyedia ini.";
 "settings.addProviderCustom" = "Tambahkan penyedia ini melalui API Kustom.";
@@ -1104,9 +1077,6 @@
 "feedback.tag.negative_other" = "Lainnya";
 
 // Completed translations for keys added to the desktop catalog.
-"assistantMode.title" = "Mode asisten";
-"assistantMode.coding" = "Pemrograman";
-"assistantMode.chat" = "Chat";
 "tasks.close" = "Tutup tugas";
 "tasks.back" = "Kembali";
 "tasks.new" = "Tugas baru";
@@ -1147,3 +1117,213 @@
 "settings.compactTrigger" = "Padatkan konteks otomatis pada";
 "settings.compactTrigger.hint" = "Persentase jendela konteks tiap model. Nilai lebih tinggi menjaga cache prompt lebih lama, karena pemadatan menulis ulang cache tersebut.";
 "conversation.translate" = "Terjemahkan";
+
+
+// Completed translations for keys added to the desktop catalog.
+"tray.section.running" = "Chat berjalan";
+"tray.section.waiting" = "Perlu perhatian";
+"tray.write" = "Tulis pesan";
+"tray.openUsage" = "Buka layar penggunaan";
+"tray.noChats" = "Tidak ada chat saat ini";
+"tray.unread" = "Balasan baru";
+
+// Write-lease conflict copy.
+"conflict.policy.waitThenAsk" = "Tunggu, lalu tanya";
+"conflict.policy.waitThenAsk.detail" = "Menunggu chat lain dengan tenang dan hanya bertanya jika terlalu lama.";
+"conflict.policy.ask" = "Tanya saya";
+"conflict.policy.ask.detail" = "Langsung bertanya saat dua chat menginginkan file yang sama.";
+"conflict.policy.waitOnly" = "Selalu tunggu";
+"conflict.policy.waitOnly.detail" = "Tidak bertanya: setiap tulisan menunggu chat yang memegang file.";
+"conflict.title" = "Chat lain sedang menulis %@";
+"conflict.stillBusy" = "Tulisan ditahan: %@ masih ditulis chat lain.";
+"conflict.userSkipped" = "Tulisan dilewati: %@ tetap pada chat lain (%@) seperti diminta.";
+"conflict.stoppedHolder" = "Chat “%@” dihentikan sesuai permintaan dan tulisan ini dijalankan.";
+"conflict.stoppedOthers" = "Chat lain proyek ini dihentikan sesuai permintaan dan tulisan ini dijalankan.";
+"conflict.wholeProject" = "seluruh proyek (perintah: %@)";
+"conflict.banner.title" = "Chat lain sedang menulis file ini";
+"conflict.banner.body" = "%1$@ · ditahan “%2$@” selama %3$d detik";
+"conflict.banner.keepWaiting" = "Terus menunggu";
+"conflict.banner.stopHolder" = "Hentikan chat itu";
+"conflict.banner.stopAllOthers" = "Hentikan semua chat lain";
+"conflict.banner.skip" = "Lewati tulisan ini";
+"conflict.waiting" = "Menunggu “%@” menulis: %@";
+"settings.workspaceConflictPolicy" = "Jika chat lain menulis file yang sama";
+"settings.conflictWaitSeconds" = "Tunggu sebelum bertanya";
+"settings.conflictWaitValue" = "%d detik";
+
+
+"conversation.ranCommand" = "Ran 1 command";
+"conversation.ranCommands" = "Ran %d commands";
+"conversation.runningTools" = "Running tools…";
+"conversation.thinkingPhase" = "Thinking…";
+"conversation.tokensCount" = "%@ tokens";
+"usage.context.window" = "Jendela konteks";
+"usage.planLimits" = "Batas penggunaan paket";
+"ask.other" = "Other";
+"ask.next" = "Next";
+"ask.skipShort" = "Skip";
+"composer.queue.one" = "1 message queued";
+"composer.queue.many" = "%d messages queued";
+"composer.queue.edit" = "Edit";
+"composer.queue.editBlocked" = "Clear the message box to edit";
+"composer.queue.remove" = "Remove";
+"git.createPR" = "Buat PR";
+"git.hideBar" = "Sembunyikan";
+"composer.queue.next" = "Next: %@";
+
+// Composer, git bar and usage popover.
+"usage.context.tooltip" = "Penggunaan konteks dan token";
+"usage.context.conversation" = "Pesan percakapan";
+"usage.context.toolDefinitions" = "Definisi alat";
+"usage.context.mcpDefinitions" = "Definisi alat MCP";
+"usage.context.systemPrompt" = "Instruksi sistem";
+"usage.context.cacheHit" = "Cache hit prompt";
+"usage.context.notReported" = "Tidak dilaporkan oleh penyedia";
+"usage.context.cacheWrite" = "%@ token ditulis ke cache";
+
+// Local AI runtime and custom endpoint tuning.
+"custom.modelOptional" = "Nama model (opsional)";
+"custom.contextOptional" = "Jendela konteks dalam token (opsional)";
+"custom.contextHint" = "Kosongkan keduanya untuk membacanya dari server. Isi konteks jika server tidak melaporkannya (Ollama: sama dengan OLLAMA_CONTEXT_LENGTH).";
+"custom.contextInvalid" = "Jendela konteks harus berupa angka positif.";
+"custom.detected" = "Berjalan di komputer ini";
+"custom.noModelAvailable" = "%@ tidak menampilkan model. Jalankan servernya atau isi nama model untuk endpoint.";
+"local.extraArgs" = "Argumen llama-server tambahan";
+"local.mlxExtraArgs" = "Argumen server mlx_lm tambahan";
+"local.gpuLayers" = "Lapisan GPU (auto, all, atau angka)";
+"local.hardware" = "Perangkat keras";
+"local.hardwareGPU" = "%@ · memori GPU %@ · RAM %@";
+"local.importGGUF" = "Tambahkan file GGUF…";
+"local.installMLX" = "Instal MLX";
+"local.installingMLX" = "Menginstal MLX (Python + mlx-lm)…";
+"local.kvCache" = "Jenis cache KV";
+"local.servingContext" = "%@ · %d token";
+"local.tooLarge" = "Terlalu besar";
+"local.tuning" = "Performa";
+"local.tuningHint" = "Kosong atau auto membuat runtime menyesuaikan model dengan memori GPU Anda. Perubahan berlaku saat model dijalankan berikutnya.";
+"local.contextSize" = "Ukuran konteks (token)";
+"local.threads" = "Thread CPU";
+"local.batchSize" = "Ukuran batch";
+"local.forget" = "Hapus dari daftar";
+"localModel.needsMemory" = "Perlu sekitar %d GB memori GPU atau RAM.";
+"localRuntime.helperFailed" = "%@ gagal (kode keluar %d)";
+"localRuntime.mlxUnsupported" = "MLX memerlukan Mac Apple Silicon.";
+"local.flashAttention" = "Flash attention";
+"local.hardwareMemory" = "%@ RAM";
+
+// Translations completed for keys that had no localized text.
+"conversation.fullToolOutput" = "Keluaran alat lengkap";
+"sidebar.showSidebar" = "Tampilkan bilah sisi";
+"sidebar.hideSidebar" = "Sembunyikan bilah sisi";
+"navigation.back" = "Kembali";
+"navigation.forward" = "Maju";
+"settings.autoApprovePlans" = "Setujui rencana secara otomatis";
+"settings.autoApprovePlans.hint" = "Jika aktif, rencana yang dibuat diterapkan tanpa menunggu persetujuan rencana terpisah. Persetujuan tingkat alat tetap berlaku.";
+"media.fallbackUsed" = "Penyedia yang dipilih tidak dapat membuat gambar ini. Gambar dibuat melalui satu permintaan cadangan lewat %@/%@; penyedia dan model percakapan utama tidak berubah, jadi cache prompt-nya tetap utuh.";
+"media.imageUnsupportedWithFallbackHint" = "Saya tidak dapat membuat gambar ini dengan %@. Atur API atau penyedia gambar sebagai cadangan. Mengganti model obrolan utama hanya untuk membuat gambar dapat merusak cache prompt penyedia.";
+"conversation.generationResumed" = "Pesan dilanjutkan";
+"conversation.cancelPlan" = "Batalkan rencana";
+"conversation.cancelPlanHelp" = "Batalkan rencana ini dan lepaskan pesan dalam antrean";
+"conversation.thinking" = "Proses Berpikir";
+"usage.manageResets" = "Kelola reset";
+"usage.useReset" = "Gunakan reset";
+"usage.resetTitle" = "Gunakan reset batas Claude?";
+"usage.openClaude" = "Lanjutkan di Claude";
+"usage.resetConfirmation" = "Halaman Penggunaan Claude akan terbuka. Masuk ke %@ dan tinjau reset yang ditawarkan untuk akun itu. Untuk menggunakannya, klik Reset gratis dan konfirmasi di Claude. Setelah digunakan, reset tidak dapat dibatalkan. Batas akan diperbarui saat Anda kembali ke HerNess.";
+"usage.resetOpenFailed" = "Tidak dapat membuka Claude. Periksa apakah akun masih terhubung, lalu coba lagi.";
+"conversation.review" = "Tinjau";
+"dock.noWorkspace" = "Pilih folder ruang kerja terlebih dahulu.";
+"dock.branch" = "Branch";
+"dock.refresh" = "Segarkan";
+"dock.commit" = "Commit";
+"dock.push" = "Push";
+"dock.fetch" = "Fetch";
+"dock.commitOrPush" = "Commit atau push";
+"dock.commitMessage" = "Pesan commit";
+"dock.noChanges" = "Tidak ada perubahan dari agen.";
+"dock.whyRequest" = "Permintaan Anda";
+"dock.whyAgent" = "Penjelasan agen";
+"dock.notRepo" = "Folder ini bukan repositori git.";
+"dock.filterFiles" = "Filter file…";
+"dock.openFile" = "Buka file";
+"dock.selectFile" = "Pilih file dari pohon ruang kerja";
+"dock.binaryFile" = "File biner atau tidak dapat dibaca";
+"project.missing.title" = "Folder proyek tidak ditemukan: %@";
+"project.missing.message" = "Folder proyek di '%@' mungkin telah dipindahkan atau dihapus. Pilih lokasi barunya atau hapus proyek.";
+"project.missing.locate" = "Cari Lokasi…";
+"project.missing.readOnly" = "Folder proyek tidak tersedia. Anda masih dapat melihat percakapan sebelumnya; membuat percakapan baru dan mengirim pesan dinonaktifkan sampai Anda memilih lokasi baru.";
+"queue.waitingForPlan" = "Menunggu persetujuan rencana";
+"settings.closeToTray" = "Tetap berjalan di baki sistem saat jendela ditutup";
+"settings.closeToTray.hint" = "Run, terminal, dan tugas terjadwal tetap berjalan saat jendela tersembunyi; ikon baki mengembalikannya.";
+"tray.show" = "Buka jendela";
+"context.overflowTitle" = "Percakapan ini tidak akan muat di model baru";
+"context.overflowReason" = "%1$@ membutuhkan sekitar %2$d token untuk melanjutkan, dan hanya %3$d yang tersisa di model itu.";
+"context.overflowByModel" = "Ringkasan akan ditulis oleh %@, model terhubung terkecil yang masih dapat membaca transkrip.";
+"context.overflowLocally" = "Tidak ada model terhubung yang dapat membaca transkrip, jadi percakapan dipersingkat tanpa bertanya ke model mana pun.";
+"context.overflowCompress" = "Kompres dan lanjutkan";
+"context.overflowNotNow" = "Jangan sekarang";
+"context.overflowDeclined" = "Pengiriman dihentikan: percakapan tidak muat di model baru.";
+"usage.context.title" = "Penggunaan";
+"usage.context.input" = "Input terkirim";
+"usage.context.estimatedInput" = "Perkiraan input";
+"usage.context.output" = "Output";
+"usage.context.latestRequest" = "Permintaan terbaru · jendela konteks";
+"usage.context.estimatedBreakdown" = "Perkiraan rincian input";
+"usage.context.estimateNote" = "Total input/output penyedia ditampilkan jika tersedia. Jika tidak, total input dan kategori alat/MCP adalah perkiraan lokal.";
+"usage.context.tokens" = "token";
+"usage.context.toolCalls" = "Panggilan alat";
+"usage.context.mcpCalls" = "Panggilan MCP";
+"usage.context.toolResults" = "Hasil alat";
+"usage.context.mcpResults" = "Hasil MCP";
+"plan.proposed" = "Claude mengusulkan sebuah rencana";
+"plan.reject" = "Tolak";
+"plan.revise" = "Revisi…";
+"plan.accept" = "Terima";
+"plan.acceptAuto" = "Terima dan mode otomatis";
+"plan.open" = "Buka rencana";
+"plan.empty" = "Belum ada rencana";
+"dock.expand" = "Perluas";
+"dock.collapse" = "Ciutkan";
+"usage.context.cacheReuse" = "Penggunaan ulang cache di chat ini";
+"usage.context.cacheFreshInput" = "New / outside-breakpoint input: %@ tokens";
+"usage.context.cacheCoverage" = "Cakupan pengukuran: %@ · %@ / %@ permintaan";
+"usage.context.cacheLatency" = "Latensi permintaan rata-rata: %@ md";
+"usage.context.cacheLoss" = "Kehilangan cache terbesar: %@ · %@ token";
+"tray.back" = "Obrolan";
+
+"composer.cacheExpired.explanation" = "Perkiraan masa berlaku cache telah lewat. Cache prompt adalah status pemrosesan sementara di sisi penyedia; riwayat chat Anda tetap tersimpan. Melanjutkan dengan seluruh riwayat dapat membuat token tersebut dihitung lagi sebagai input baru. Data penggunaan dari permintaan berikutnya diperlukan untuk memastikan apakah penyedia masih memiliki cache.";
+"composer.accountSwitched.notice" = "Chat ini berpindah ke akun lain pada model yang sama. Cache di akun itu dimulai dari awal; melanjutkan dapat memakai lebih banyak token dan biaya.";
+"composer.contextFull.notice" = "Jendela konteks hampir penuh; melanjutkan dapat memakai lebih banyak token dan biaya. Mulai chat baru dengan ringkasan singkat.";
+"composer.cacheExpired.infoTitle" = "Mengapa saya melihat ini?";
+"composer.cacheExpired.notice" = "Cache mungkin sudah kedaluwarsa; melanjutkan dapat memakai lebih banyak token dan biaya. Mulai chat baru dengan ringkasan singkat.";
+"feedback.tag.apply_elsewhere" = "Apply it elsewhere";
+"feedback.tag.broke_existing_feature" = "Broke an existing feature";
+"feedback.tag.did_not_follow_project_style" = "Didn't follow project style";
+"feedback.tag.ignored_project_architecture" = "Ignored project architecture";
+"feedback.tag.keep_project_style" = "Keep the project style";
+"feedback.tag.reuse_architecture" = "Reuse this architecture";
+"feedback.tag.reuse_token_pattern" = "Reuse this token pattern";
+"feedback.tag.wrong_theme_or_token" = "Wrong theme or token";
+
+// Completed translations for keys added to the desktop catalog.
+"conversation.filesChangedCount" = "%d file diubah";
+"conversation.filesLineSummary" = "+%d −%d";
+"conversation.lineCountsUnavailable" = "Jumlah baris tidak tersedia";
+"conversation.filesMore" = "Tampilkan %d file lainnya";
+"conversation.filesLess" = "Tampilkan lebih sedikit file";
+"conversation.undoChanges" = "Urungkan";
+"conversation.viewChanges" = "Lihat perubahan";
+"conversation.filesReverted" = "Perubahan file telah dibatalkan.";
+
+// Completed translations for keys added to the desktop catalog.
+"composer.modelSwitched.notice" = "Model telah diganti. Cache tidak terbawa ke model baru; seluruh riwayat diproses ulang, sehingga dapat memakai lebih banyak token dan biaya.";
+
+"archive.title" = "Percakapan yang diarsipkan";
+"archive.empty" = "Tidak ada percakapan yang diarsipkan.";
+
+"conversation.plan" = "Rencana";
+"conversation.system" = "Sistem";
+
+"archive.confirmDelete" = "Hapus percakapan ini secara permanen?";
+"archive.deletePermanently" = "Hapus permanen";
+"conversation.processedTokensCount" = "%@ token";

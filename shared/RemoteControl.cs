@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using System.Threading.Channels;
 using PluginRuntime;
 
@@ -38,7 +39,8 @@ public sealed record RemoteControlCommand(
     string? SessionId,
     string Kind,
     long? ExpectedRevision,
-    JsonObject Payload);
+    JsonObject Payload,
+    string? ProjectID = null);
 
 public sealed record RemotePairingInfo(
     string Endpoint,
@@ -72,7 +74,7 @@ public sealed record RemoteWorkspaceSnapshot(
 
 public sealed record RemoteBootstrap(
     int ProtocolVersion,
-    AgentArea Area,
+    string Scope,
     string WorkspaceId,
     string Workspace,
     long Revision,
@@ -83,7 +85,26 @@ public sealed record RemoteBootstrap(
     bool IsBusy,
     RemoteAccessMode AccessMode,
     IReadOnlyList<string> Capabilities,
-    IReadOnlyList<RemotePairingDevice> Devices);
+    IReadOnlyList<RemotePairingDevice> Devices,
+    string? ProjectID = null);
+
+/// A project exposed to a paired device. WorkspacePath is intentionally never
+/// serialized: mobile clients need a stable identity and display name, not a
+/// host filesystem path.
+public sealed record RemoteProjectDescriptor(
+    string Id,
+    string Name,
+    string WorkspaceId,
+    string? Branch = null)
+{
+    [JsonIgnore]
+    public string WorkspacePath { get; init; } = "";
+}
+
+public sealed record RemoteProjectsResponse(
+    int ProtocolVersion,
+    string? ProjectID,
+    IReadOnlyList<RemoteProjectDescriptor> Projects);
 
 public sealed record RemotePairingDevice(
     string Id,
@@ -488,13 +509,18 @@ public sealed class RemoteControlHost : IDisposable
     private readonly RemotePairingStore _pairing;
     private readonly RemoteControlGateway _gateway;
     private readonly CloudTunnelProcess _tunnel;
+    private readonly CloudTunnelProcess _previewTunnel;
+    private readonly Func<IReadOnlyList<RemoteProjectDescriptor>>? _projectsProvider;
     private readonly ConcurrentDictionary<string, PendingCommand> _pending = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, byte> _commands = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, string> _selectedProjects = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, RemoteInteractiveShell> _terminalSessions = new(StringComparer.Ordinal);
+    private int? _previewTunnelPort;
     private RemoteAccessMode _accessMode = RemoteAccessMode.Ask;
     private long _revision;
     private RemotePairingInfo? _pairingInfo;
 
-    private sealed record PendingCommand(string Id, string Kind, JsonObject Payload, DateTimeOffset CreatedAt);
+    private sealed record PendingCommand(string Id, string Kind, JsonObject Payload, string Workspace, string DeviceId, DateTimeOffset CreatedAt);
 
     public RemoteControlEventHub Events => _events;
     public RemoteAccessMode AccessMode => _accessMode;
@@ -508,16 +534,19 @@ public sealed class RemoteControlHost : IDisposable
         AgentBridge bridge,
         SupportPaths paths,
         RemoteControlEventHub events,
-        Func<string> workspaceProvider)
+        Func<string> workspaceProvider,
+        Func<IReadOnlyList<RemoteProjectDescriptor>>? projectsProvider = null)
     {
         _bridge = bridge;
         _paths = paths;
         _events = events;
         _workspaceProvider = workspaceProvider;
+        _projectsProvider = projectsProvider;
         var workspace = NormalizeWorkspace();
         _pairing = new RemotePairingStore(paths.Root, WorkspaceId(workspace), new PlatformProviderSecrets(paths.Root));
         _gateway = new RemoteControlGateway(DefaultPort, HandleAsync);
         _tunnel = new CloudTunnelProcess(paths);
+        _previewTunnel = new CloudTunnelProcess(paths, "preview-tunnel");
     }
 
     public void Start()
@@ -533,7 +562,15 @@ public sealed class RemoteControlHost : IDisposable
         }
     }
 
-    public void Stop() { _tunnel.Stop(); _gateway.Stop(); }
+    public void Stop()
+    {
+        _tunnel.Stop();
+        _previewTunnel.Stop();
+        _previewTunnelPort = null;
+        foreach (var session in _terminalSessions.Values) session.Dispose();
+        _terminalSessions.Clear();
+        _gateway.Stop();
+    }
 
     public RemotePairingInfo BeginPairing(string endpoint)
     {
@@ -571,6 +608,39 @@ public sealed class RemoteControlHost : IDisposable
         Publish("access.changed", new JsonObject { ["mode"] = mode.ToString().ToLowerInvariant() });
     }
 
+    private IReadOnlyList<RemoteProjectDescriptor> Projects()
+    {
+        var supplied = _projectsProvider?.Invoke() ?? [];
+        var result = supplied
+            .Where(item => !string.IsNullOrWhiteSpace(item.Id) && !string.IsNullOrWhiteSpace(item.WorkspacePath))
+            .Select(item => item with { WorkspacePath = NormalizeWorkspace(item.WorkspacePath) })
+            .GroupBy(item => item.Id, StringComparer.Ordinal)
+            .Select(group => group.First())
+            .ToArray();
+        if (result.Length > 0) return result;
+
+        var workspace = NormalizeWorkspace();
+        return [new RemoteProjectDescriptor("default", Path.GetFileName(workspace), WorkspaceId(workspace)) { WorkspacePath = workspace }];
+    }
+
+    private string SelectedProjectID(string deviceId)
+    {
+        var projects = Projects();
+        return _selectedProjects.TryGetValue(deviceId, out var selected)
+            && projects.Any(item => item.Id == selected)
+            ? selected
+            : projects[0].Id;
+    }
+
+    private RemoteProjectDescriptor SelectedProject(string deviceId, string? requestedID = null)
+    {
+        var projects = Projects();
+        var id = requestedID ?? SelectedProjectID(deviceId);
+        return projects.FirstOrDefault(item => item.Id == id) ?? projects[0];
+    }
+
+    private string ProjectWorkspace(string deviceId, string? requestedID = null) => SelectedProject(deviceId, requestedID).WorkspacePath;
+
     private async Task HandleAsync(RemoteHttpRequest request, Stream stream, CancellationToken cancellationToken)
     {
         if (request.Path == "/v1/control/pair/complete" && request.Method == "POST")
@@ -585,44 +655,89 @@ public sealed class RemoteControlHost : IDisposable
             return;
         }
 
-        if (request.Method == "GET" && request.Path == "/v1/control/bootstrap")
+        if (request.Method == "GET" && request.Path == "/v2/control/projects")
         {
-            await WriteJsonAsync(stream, 200, Bootstrap(), cancellationToken);
+            await WriteJsonAsync(stream, 200, new RemoteProjectsResponse(2, SelectedProjectID(deviceId), Projects()), cancellationToken);
             return;
         }
-        if (request.Method == "GET" && request.Path == "/v1/control/events")
+        if (request.Method == "POST" && request.Path == "/v2/control/projects/select")
         {
-            await StreamEventsAsync(request, stream, cancellationToken);
+            await HandleProjectSelectionAsync(request, stream, deviceId, cancellationToken);
             return;
         }
-        if (request.Method == "GET" && (request.Path == "/v1/control/file" || request.Path.StartsWith("/v1/control/files/", StringComparison.Ordinal)))
+
+        var projectScoped = request.Path.StartsWith("/v2/control/", StringComparison.Ordinal);
+        var routePath = projectScoped
+            ? "/v1/control/" + request.Path["/v2/control/".Length..]
+            : request.Path;
+
+        if (request.Method == "GET" && routePath == "/v1/control/bootstrap")
         {
-            await HandleFileReadAsync(request, stream, cancellationToken);
+            await WriteJsonAsync(stream, 200, Bootstrap(deviceId, projectScoped), cancellationToken);
             return;
         }
-        if (request.Method == "GET" && (request.Path == "/v1/control/artifact" || request.Path.StartsWith("/v1/control/artifacts/", StringComparison.Ordinal)))
+        if (request.Method == "GET" && routePath == "/v1/control/events")
+        {
+            await StreamEventsAsync(request, stream, deviceId, projectScoped, cancellationToken);
+            return;
+        }
+        if (request.Method == "GET" && (routePath == "/v1/control/file" || routePath.StartsWith("/v1/control/files/", StringComparison.Ordinal)))
+        {
+            await HandleFileReadAsync(request, stream, deviceId, projectScoped, cancellationToken);
+            return;
+        }
+        if (request.Method == "GET" && (routePath == "/v1/control/artifact" || routePath.StartsWith("/v1/control/artifacts/", StringComparison.Ordinal)))
         {
             await HandleArtifactAsync(request, stream, cancellationToken);
             return;
         }
-        if (request.Method == "GET" && request.Path == "/v1/control/artifacts")
+        if (request.Method == "GET" && routePath == "/v1/control/artifacts")
         {
             await WriteJsonAsync(stream, 200, _events.Artifacts.List(), cancellationToken);
             return;
         }
-        if (request.Method == "POST" && request.Path == "/v1/control/snapshot/request")
+        if (request.Method == "POST" && routePath == "/v1/control/snapshot/request")
         {
-            await WriteJsonAsync(stream, 200, Snapshot(), cancellationToken);
+            await WriteJsonAsync(stream, 200, Snapshot(deviceId, projectScoped), cancellationToken);
             return;
         }
-        if (request.Method == "POST" && request.Path == "/v1/control/commands")
+        if (request.Method == "POST" && routePath == "/v1/control/commands")
         {
-            var response = await DispatchAsync(request, deviceId, cancellationToken);
+            var response = await DispatchAsync(request, deviceId, projectScoped, cancellationToken);
             await WriteJsonAsync(stream, response.HttpStatus, response, cancellationToken);
             return;
         }
 
         await WriteJsonAsync(stream, 404, new { error = "Control route not found." }, cancellationToken);
+    }
+
+    private async Task HandleProjectSelectionAsync(RemoteHttpRequest request, Stream stream, string deviceId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var input = JsonNode.Parse(request.Body)?.AsObject() ?? new JsonObject();
+            var projectID = input["projectID"]?.GetValue<string>()?.Trim() ?? "";
+            var project = Projects().FirstOrDefault(item => item.Id == projectID);
+            if (project is null)
+            {
+                await WriteJsonAsync(stream, 404, new { error = "Project not found." }, cancellationToken);
+                return;
+            }
+            _selectedProjects[deviceId] = project.Id;
+            await WriteJsonAsync(stream, 200, new
+            {
+                protocolVersion = 2,
+                projectID = project.Id,
+                workspaceId = project.WorkspaceId,
+                name = project.Name,
+                branch = project.Branch,
+            }, cancellationToken);
+            Publish("project.selected", new JsonObject { ["projectID"] = project.Id, ["deviceId"] = deviceId }, workspaceOverride: project.WorkspacePath);
+        }
+        catch (Exception ex)
+        {
+            await WriteJsonAsync(stream, 400, new { error = ex.Message }, cancellationToken);
+        }
     }
 
     private async Task HandlePairingAsync(RemoteHttpRequest request, Stream stream, CancellationToken cancellationToken)
@@ -645,19 +760,26 @@ public sealed class RemoteControlHost : IDisposable
         }
     }
 
-    private async Task<RemoteCommandResponse> DispatchAsync(RemoteHttpRequest request, string deviceId, CancellationToken cancellationToken)
+    private async Task<RemoteCommandResponse> DispatchAsync(RemoteHttpRequest request, string deviceId, bool projectScoped, CancellationToken cancellationToken)
     {
         RemoteControlCommand command;
+        string workspace;
         try
         {
             var root = JsonNode.Parse(request.Body)?.AsObject() ?? throw new InvalidOperationException("Command body is required.");
+            var payload = root["payload"]?.AsObject() ?? new JsonObject();
+            var requestedProjectID = projectScoped
+                ? root["projectID"]?.GetValue<string>() ?? payload["projectID"]?.GetValue<string>()
+                : null;
+            workspace = projectScoped ? ProjectWorkspace(deviceId, requestedProjectID) : CurrentWorkspace();
             command = new RemoteControlCommand(
                 root["id"]?.GetValue<string>() ?? Guid.NewGuid().ToString("N"),
-                root["workspaceId"]?.GetValue<string>() ?? WorkspaceId(CurrentWorkspace()),
+                root["workspaceId"]?.GetValue<string>() ?? WorkspaceId(workspace),
                 root["sessionId"]?.GetValue<string>(),
                 root["kind"]?.GetValue<string>() ?? "",
                 root["expectedRevision"]?.GetValue<long>(),
-                root["payload"]?.AsObject() ?? new JsonObject());
+                payload,
+                root["projectID"]?.GetValue<string>() ?? payload["projectID"]?.GetValue<string>());
         }
         catch (Exception ex)
         {
@@ -665,16 +787,16 @@ public sealed class RemoteControlHost : IDisposable
         }
 
         if (!_commands.TryAdd(command.Id, 0)) return RemoteCommandResponse.Accepted(command.Id, "duplicate");
-        if (!string.Equals(command.WorkspaceId, WorkspaceId(CurrentWorkspace()), StringComparison.Ordinal))
+        if (!string.Equals(command.WorkspaceId, WorkspaceId(workspace), StringComparison.Ordinal))
         {
             var response = RemoteCommandResponse.Failed(409, "The workspace is no longer mounted.");
-            Audit(command, deviceId, response);
+            Audit(command, deviceId, response, workspace);
             return response;
         }
         if (command.ExpectedRevision is { } expected && expected != Interlocked.Read(ref _revision))
         {
             var response = RemoteCommandResponse.Failed(409, $"The workspace revision changed. Current revision: {Interlocked.Read(ref _revision)}.");
-            Audit(command, deviceId, response);
+            Audit(command, deviceId, response, workspace);
             return response;
         }
 
@@ -682,38 +804,45 @@ public sealed class RemoteControlHost : IDisposable
         {
             var response = command.Kind switch
             {
-                "prompt" => await PromptAsync(command),
+                "prompt" => await PromptAsync(command, workspace),
                 "continue" => await ContinueAsync(command),
                 "stop" or "cancel" => await StopAsync(command),
                 "approval" => await ApprovalAsync(command),
                 "question" => await QuestionAsync(command),
-                "permission" => Permission(command),
-                "write_file" => await SensitiveAsync(command, deviceId, cancellationToken),
-                "run_command" or "build" or "deploy" => await SensitiveAsync(command, deviceId, cancellationToken),
+            "permission" => Permission(command, workspace),
+                "write_file" => await SensitiveAsync(command, deviceId, workspace, cancellationToken),
+                "run_command" or "build" or "deploy" or "computer_use" => await SensitiveAsync(command, deviceId, workspace, cancellationToken),
+                "terminal_session" => IsSafeTerminalAction(command)
+                    ? TerminalSessionCommand(command, deviceId, workspace)
+                    : await SensitiveAsync(command, deviceId, workspace, cancellationToken),
+                "preview_tunnel" => IsSafeTunnelAction(command)
+                    ? PreviewTunnelCommand(command, workspace)
+                    : await SensitiveAsync(command, deviceId, workspace, cancellationToken),
+                "native_browser" => await SensitiveAsync(command, deviceId, workspace, cancellationToken),
                 "approve" => await ResolvePendingAsync(command, deviceId, cancellationToken),
                 "revoke_device" => Revoke(command),
                 _ => RemoteCommandResponse.Failed(400, $"Unknown command: {command.Kind}"),
             };
-            Audit(command, deviceId, response);
+            Audit(command, deviceId, response, workspace);
             return response;
         }
         catch (Exception ex)
         {
-            Publish("command.failed", new JsonObject { ["commandId"] = command.Id, ["message"] = ex.Message });
+            Publish("command.failed", new JsonObject { ["commandId"] = command.Id, ["message"] = ex.Message }, workspaceOverride: workspace);
             var response = RemoteCommandResponse.Failed(500, ex.Message);
-            Audit(command, deviceId, response);
+            Audit(command, deviceId, response, workspace);
             return response;
         }
     }
 
-    private async Task<RemoteCommandResponse> PromptAsync(RemoteControlCommand command)
+    private async Task<RemoteCommandResponse> PromptAsync(RemoteControlCommand command, string workspace)
     {
         var text = command.Payload["text"]?.GetValue<string>()?.Trim() ?? "";
         if (text.Length == 0) return RemoteCommandResponse.Failed(400, "Prompt text is required.");
         var mode = Enum.TryParse<PromptMode>(command.Payload["mode"]?.GetValue<string>(), true, out var parsed) ? parsed : PromptMode.Queue;
         var plan = command.Payload["planMode"]?.GetValue<bool>() ?? false;
         _ = _bridge.SendAsync(text, mode, plan);
-        Publish("command.accepted", new JsonObject { ["commandId"] = command.Id, ["kind"] = command.Kind });
+        Publish("command.accepted", new JsonObject { ["commandId"] = command.Id, ["kind"] = command.Kind }, workspaceOverride: workspace);
         await Task.CompletedTask;
         return RemoteCommandResponse.Accepted(command.Id, "queued");
     }
@@ -732,7 +861,9 @@ public sealed class RemoteControlHost : IDisposable
 
     private async Task<RemoteCommandResponse> ApprovalAsync(RemoteControlCommand command)
     {
-        await _bridge.AnswerApprovalAsync(command.Payload["answer"]?.GetValue<string>() ?? "rejected");
+        await _bridge.AnswerApprovalAsync(
+            command.Payload["answer"]?.GetValue<string>() ?? "rejected",
+            command.SessionId);
         return RemoteCommandResponse.Accepted(command.Id, "approval-forwarded");
     }
 
@@ -741,11 +872,11 @@ public sealed class RemoteControlHost : IDisposable
         string[] answers = command.Payload["answers"] is JsonArray list
             ? list.Select(item => item?.GetValue<string>() ?? string.Empty).ToArray()
             : [command.Payload["answer"]?.GetValue<string>() ?? string.Empty];
-        await _bridge.AnswerQuestionAsync(answers);
+        await _bridge.AnswerQuestionAsync(answers, command.SessionId);
         return RemoteCommandResponse.Accepted(command.Id, "answer-forwarded");
     }
 
-    private RemoteCommandResponse Permission(RemoteControlCommand command)
+    private RemoteCommandResponse Permission(RemoteControlCommand command, string workspace)
     {
         var value = command.Payload["mode"]?.GetValue<string>()?.Replace(" ", "", StringComparison.Ordinal).ToLowerInvariant();
         var mode = value switch
@@ -754,16 +885,17 @@ public sealed class RemoteControlHost : IDisposable
             "full" or "fullaccess" => RemoteAccessMode.Full,
             _ => RemoteAccessMode.Ask,
         };
-        SetAccessMode(mode);
+        _accessMode = mode;
+        Publish("access.changed", new JsonObject { ["mode"] = mode.ToString().ToLowerInvariant() }, workspaceOverride: workspace);
         return RemoteCommandResponse.Accepted(command.Id, mode.ToString().ToLowerInvariant());
     }
 
-    private async Task<RemoteCommandResponse> SensitiveAsync(RemoteControlCommand command, string deviceId, CancellationToken cancellationToken)
+    private async Task<RemoteCommandResponse> SensitiveAsync(RemoteControlCommand command, string deviceId, string workspace, CancellationToken cancellationToken)
     {
         if (_accessMode == RemoteAccessMode.Ask)
         {
             var approvalId = Guid.NewGuid().ToString("N");
-            _pending[approvalId] = new PendingCommand(command.Id, command.Kind, command.Payload.DeepClone().AsObject(), DateTimeOffset.UtcNow);
+            _pending[approvalId] = new PendingCommand(command.Id, command.Kind, command.Payload.DeepClone().AsObject(), workspace, deviceId, DateTimeOffset.UtcNow);
             Publish("approval.required", new JsonObject
             {
                 ["approvalId"] = approvalId,
@@ -771,10 +903,10 @@ public sealed class RemoteControlHost : IDisposable
                 ["deviceId"] = deviceId,
                 ["kind"] = command.Kind,
                 ["summary"] = Summary(command),
-            });
+            }, workspaceOverride: workspace);
             return RemoteCommandResponse.Pending(command.Id, approvalId);
         }
-        return await ExecuteSensitiveAsync(command.Id, command.Kind, command.Payload, cancellationToken);
+        return await ExecuteSensitiveAsync(command.Id, command.Kind, command.Payload, workspace, deviceId, cancellationToken);
     }
 
     private async Task<RemoteCommandResponse> ResolvePendingAsync(RemoteControlCommand command, string deviceId, CancellationToken cancellationToken)
@@ -784,18 +916,22 @@ public sealed class RemoteControlHost : IDisposable
         var answer = command.Payload["answer"]?.GetValue<string>()?.ToLowerInvariant() ?? "rejected";
         if (answer is not ("allowed-once" or "allow" or "approved" or "full"))
         {
-            Publish("approval.resolved", new JsonObject { ["approvalId"] = approvalId, ["allowed"] = false, ["deviceId"] = deviceId });
+            Publish("approval.resolved", new JsonObject { ["approvalId"] = approvalId, ["allowed"] = false, ["deviceId"] = pending.DeviceId }, workspaceOverride: pending.Workspace);
             return RemoteCommandResponse.Accepted(command.Id, "rejected");
         }
-        if (answer == "full") SetAccessMode(RemoteAccessMode.Full);
-        var result = await ExecuteSensitiveAsync(pending.Id, pending.Kind, pending.Payload, cancellationToken);
-        Publish("approval.resolved", new JsonObject { ["approvalId"] = approvalId, ["allowed"] = true, ["deviceId"] = deviceId });
+        if (answer == "full")
+        {
+            _accessMode = RemoteAccessMode.Full;
+            Publish("access.changed", new JsonObject { ["mode"] = "full" }, workspaceOverride: pending.Workspace);
+        }
+        var result = await ExecuteSensitiveAsync(pending.Id, pending.Kind, pending.Payload, pending.Workspace, pending.DeviceId, cancellationToken);
+        Publish("approval.resolved", new JsonObject { ["approvalId"] = approvalId, ["allowed"] = true, ["deviceId"] = pending.DeviceId }, workspaceOverride: pending.Workspace);
         return result;
     }
 
-    private async Task<RemoteCommandResponse> ExecuteSensitiveAsync(string commandId, string kind, JsonObject payload, CancellationToken cancellationToken)
+    private async Task<RemoteCommandResponse> ExecuteSensitiveAsync(string commandId, string kind, JsonObject payload, string? workspaceOverride, string deviceId, CancellationToken cancellationToken)
     {
-        var workspace = CurrentWorkspace();
+        var workspace = string.IsNullOrWhiteSpace(workspaceOverride) ? CurrentWorkspace() : NormalizeWorkspace(workspaceOverride);
         if (kind == "write_file")
         {
             var path = payload["path"]?.GetValue<string>() ?? "";
@@ -803,57 +939,183 @@ public sealed class RemoteControlHost : IDisposable
             var expected = payload["expectedSha256"]?.GetValue<string>();
             var write = RemoteWorkspace.WriteText(workspace, path, content, expected);
             if (write.Conflict) return RemoteCommandResponse.Conflict(commandId, write);
-            Publish("file.changed", new JsonObject { ["path"] = write.Path, ["sha256"] = write.Sha256, ["operation"] = "write", ["commandId"] = commandId });
+            Publish("file.changed", new JsonObject { ["path"] = write.Path, ["sha256"] = write.Sha256, ["operation"] = "write", ["commandId"] = commandId }, workspaceOverride: workspace);
             return RemoteCommandResponse.Ok(commandId, write);
+        }
+
+        if (kind == "computer_use")
+        {
+            if (!_bridge.IsComputerUseEnabled)
+                return RemoteCommandResponse.Failed(403, "Computer Use is disabled in Settings.");
+            var arguments = new JsonObject();
+            foreach (var (key, value) in payload)
+            {
+                if (key == "projectID" || value is null) continue;
+                arguments[key] = value.DeepClone();
+            }
+            var action = arguments["action"]?.GetValue<string>() ?? "";
+            var text = await ComputerUseService.ExecuteAsync(arguments, workspace, cancellationToken);
+            Publish("computeruse.action", new JsonObject { ["commandId"] = commandId, ["action"] = action }, workspaceOverride: workspace);
+            return RemoteCommandResponse.Ok(commandId, new { output = text, outputPreview = text.Length <= 700 ? text : text[..700] + "…" });
+        }
+
+        if (kind == "terminal_session") return TerminalSessionCommand(commandId, payload, deviceId, workspace);
+
+        if (kind == "preview_tunnel") return await PreviewTunnelCommandAsync(commandId, payload, workspace, cancellationToken);
+
+        if (kind == "native_browser")
+        {
+            if (!NativeBrowserService.IsAvailable)
+                return RemoteCommandResponse.Failed(503, "The desktop native browser is not open. Open the Live Browser panel and retry.");
+            var text = await NativeBrowserService.ExecuteAsync(payload, workspace, cancellationToken);
+            Publish("browser.action", new JsonObject { ["commandId"] = commandId, ["action"] = payload["action"]?.GetValue<string>() ?? "" }, workspaceOverride: workspace);
+            return RemoteCommandResponse.Ok(commandId, new { output = text, outputPreview = text.Length <= 700 ? text : text[..700] + "…" });
         }
 
         var shellCommand = payload["command"]?.GetValue<string>()?.Trim() ?? "";
         if (shellCommand.Length == 0) return RemoteCommandResponse.Failed(400, "Command text is required.");
-        Publish(kind == "deploy" ? "deploy.progress" : "build.started", new JsonObject { ["commandId"] = commandId, ["kind"] = kind, ["phase"] = "started" });
+        Publish(kind == "deploy" ? "deploy.progress" : "build.started", new JsonObject { ["commandId"] = commandId, ["kind"] = kind, ["phase"] = "started" }, workspaceOverride: workspace);
         var output = await NativeWorkspaceTools.ExecuteCommandStreamingAsync(
             shellCommand,
             workspace,
             line => _events.Publish(
-                "terminal.output",
+            "terminal.output",
                 WorkspaceId(workspace),
                 _bridge.Selected?.Id,
-                new JsonObject { ["commandId"] = commandId, ["kind"] = kind }),
+                ScopedPayload(new JsonObject { ["commandId"] = commandId, ["kind"] = kind }, workspace)),
             cancellationToken);
         var outputEvent = _events.PublishText(
             kind == "deploy" ? "deploy.progress" : "build.output",
             WorkspaceId(workspace),
             _bridge.Selected?.Id,
             output,
-            new JsonObject { ["commandId"] = commandId, ["kind"] = kind, ["phase"] = "output" });
+            ScopedPayload(new JsonObject { ["commandId"] = commandId, ["kind"] = kind, ["phase"] = "output" }, workspace));
         var artifactId = outputEvent.ArtifactId!;
         string? outputArtifactId = null;
         if (kind == "build" && payload["artifactPath"]?.GetValue<string>() is { Length: > 0 } artifactPath)
         {
             var artifactBytes = RemoteWorkspace.ReadArtifact(workspace, artifactPath);
             outputArtifactId = _events.Artifacts.Save("build-artifact", artifactBytes);
-            Publish("artifact.ready", new JsonObject { ["path"] = artifactPath, ["bytes"] = artifactBytes.LongLength }, outputArtifactId);
+            Publish("artifact.ready", new JsonObject { ["path"] = artifactPath, ["bytes"] = artifactBytes.LongLength }, outputArtifactId, workspace);
         }
         var bytes = Encoding.UTF8.GetByteCount(output);
         var deployFailed = kind == "deploy" && output.Contains("Command exited with status ", StringComparison.Ordinal);
-        Publish(kind == "deploy" ? (deployFailed ? "deploy.failed" : "deploy.completed") : "build.completed", new JsonObject { ["commandId"] = commandId, ["kind"] = kind, ["bytes"] = bytes, ["artifactId"] = artifactId, ["outputArtifactId"] = outputArtifactId, ["truncated"] = bytes > RemoteArtifactStore.MaximumArtifactBytes }, artifactId);
+        Publish(kind == "deploy" ? (deployFailed ? "deploy.failed" : "deploy.completed") : "build.completed", new JsonObject { ["commandId"] = commandId, ["kind"] = kind, ["bytes"] = bytes, ["artifactId"] = artifactId, ["outputArtifactId"] = outputArtifactId, ["truncated"] = bytes > RemoteArtifactStore.MaximumArtifactBytes }, artifactId, workspace);
         return RemoteCommandResponse.Ok(commandId, new { outputPreview = output.Length <= 700 ? output : output[..700] + "…", artifactId, outputArtifactId });
     }
 
     private RemoteCommandResponse Revoke(RemoteControlCommand command)
     {
         var id = command.Payload["deviceId"]?.GetValue<string>() ?? "";
-        return _pairing.Revoke(id)
-            ? RemoteCommandResponse.Accepted(command.Id, "revoked")
-            : RemoteCommandResponse.Failed(404, "Device not found.");
+        if (!_pairing.Revoke(id)) return RemoteCommandResponse.Failed(404, "Device not found.");
+        foreach (var key in _terminalSessions.Keys.Where(key => key.StartsWith(id + ":", StringComparison.Ordinal)))
+            if (_terminalSessions.TryRemove(key, out var session)) session.Dispose();
+        return RemoteCommandResponse.Accepted(command.Id, "revoked");
     }
 
-    private RemoteBootstrap Bootstrap()
+    private static bool IsSafeTerminalAction(RemoteControlCommand command) =>
+        command.Payload["action"]?.GetValue<string>()?.ToLowerInvariant() is "read" or "status" or "stop";
+
+    private static bool IsSafeTunnelAction(RemoteControlCommand command) =>
+        command.Payload["action"]?.GetValue<string>()?.ToLowerInvariant() is "stop" or "status";
+
+    private RemoteCommandResponse TerminalSessionCommand(RemoteControlCommand command, string deviceId, string workspace) =>
+        TerminalSessionCommand(command.Id, command.Payload, deviceId, workspace);
+
+    private RemoteCommandResponse TerminalSessionCommand(string commandId, JsonObject payload, string deviceId, string workspace)
     {
-        var workspace = CurrentWorkspace();
+        var action = payload["action"]?.GetValue<string>()?.Trim().ToLowerInvariant() ?? "status";
+        var key = deviceId + ":" + WorkspaceId(workspace);
+        if (action == "start")
+        {
+            if (!_terminalSessions.TryGetValue(key, out var session) || !session.IsRunning)
+            {
+                if (session is not null) session.Dispose();
+                session = RemoteInteractiveShell.Start(workspace);
+                _terminalSessions[key] = session;
+                Publish("terminal.session.started", new JsonObject { ["sessionId"] = session.Id }, workspaceOverride: workspace);
+            }
+            return TerminalResult(commandId, session);
+        }
+        if (!_terminalSessions.TryGetValue(key, out var current))
+        {
+            return action == "stop"
+                ? RemoteCommandResponse.Accepted(commandId, "stopped")
+                : RemoteCommandResponse.Ok(commandId, new { running = false, output = "", sessionId = "" });
+        }
+        if (action == "send")
+        {
+            var input = payload["input"]?.GetValue<string>() ?? "";
+            if (input.Length == 0) return RemoteCommandResponse.Failed(400, "Terminal input is required.");
+            current.Send(input);
+        }
+        else if (action == "stop")
+        {
+            current.Dispose();
+            _terminalSessions.TryRemove(key, out _);
+            Publish("terminal.session.stopped", new JsonObject { ["sessionId"] = current.Id }, workspaceOverride: workspace);
+            return RemoteCommandResponse.Accepted(commandId, "stopped");
+        }
+        else if (action is not ("read" or "status"))
+        {
+            return RemoteCommandResponse.Failed(400, "Unsupported terminal session action.");
+        }
+        return TerminalResult(commandId, current);
+    }
+
+    private static RemoteCommandResponse TerminalResult(string commandId, RemoteInteractiveShell session) =>
+        RemoteCommandResponse.Ok(commandId, new { sessionId = session.Id, running = session.IsRunning, output = session.ReadOutput() });
+
+    private RemoteCommandResponse PreviewTunnelCommand(RemoteControlCommand command, string workspace)
+    {
+        var action = command.Payload["action"]?.GetValue<string>()?.Trim().ToLowerInvariant();
+        if (action == "stop")
+        {
+            _previewTunnel.Stop();
+            _previewTunnelPort = null;
+            Publish("preview.tunnel.stopped", new JsonObject(), workspaceOverride: workspace);
+            return RemoteCommandResponse.Accepted(command.Id, "stopped");
+        }
+        return RemoteCommandResponse.Ok(command.Id, new { running = _previewTunnelPort.HasValue, port = _previewTunnelPort });
+    }
+
+    private async Task<RemoteCommandResponse> PreviewTunnelCommandAsync(string commandId, JsonObject payload, string workspace, CancellationToken cancellationToken)
+    {
+        var action = payload["action"]?.GetValue<string>()?.Trim().ToLowerInvariant() ?? "start";
+        if (action == "stop")
+        {
+            _previewTunnel.Stop();
+            _previewTunnelPort = null;
+            Publish("preview.tunnel.stopped", new JsonObject(), workspaceOverride: workspace);
+            return RemoteCommandResponse.Accepted(commandId, "stopped");
+        }
+        if (action != "start") return RemoteCommandResponse.Failed(400, "Unsupported preview tunnel action.");
+        var port = payload["port"]?.GetValue<int>() ?? 0;
+        if (port is < 1024 or > 65535) return RemoteCommandResponse.Failed(400, "Enter a development server port between 1024 and 65535.");
+        try
+        {
+            using (var probe = new TcpClient())
+            {
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeout.CancelAfter(TimeSpan.FromSeconds(2));
+                await probe.ConnectAsync(IPAddress.Loopback, port, timeout.Token);
+            }
+            var endpoint = await _previewTunnel.StartAsync(port, ct: cancellationToken);
+            _previewTunnelPort = port;
+            Publish("preview.tunnel.ready", new JsonObject { ["url"] = endpoint, ["port"] = port }, workspaceOverride: workspace);
+            return RemoteCommandResponse.Ok(commandId, new { url = endpoint, port, publicUrl = true });
+        }
+        catch (Exception ex) { return RemoteCommandResponse.Failed(400, ex.Message); }
+    }
+
+    private RemoteBootstrap Bootstrap(string deviceId, bool projectScoped)
+    {
+        var project = projectScoped ? SelectedProject(deviceId) : null;
+        var workspace = project?.WorkspacePath ?? CurrentWorkspace();
         var selected = _bridge.Selected;
         return new RemoteBootstrap(
             ProtocolVersion,
-            _bridge.Area,
+            "project",
             WorkspaceId(workspace),
             workspace,
             Interlocked.Read(ref _revision),
@@ -863,19 +1125,20 @@ public sealed class RemoteControlHost : IDisposable
             _bridge.Status,
             selected?.Running == true,
             _accessMode,
-            ["events", "prompt", "continue", "stop", "approval", "question", "files", "snapshot", "artifacts", "write", "terminal", "build", "deploy"],
-            _pairing.Devices());
+            ["events", "prompt", "continue", "stop", "approval", "question", "files", "snapshot", "artifacts", "write", "terminal", "terminal_sessions", "preview_tunnel", "native_browser", "build", "deploy"],
+            _pairing.Devices(),
+            project?.Id);
     }
 
-    private RemoteWorkspaceSnapshot Snapshot()
+    private RemoteWorkspaceSnapshot Snapshot(string deviceId, bool projectScoped)
     {
-        var workspace = CurrentWorkspace();
+        var workspace = projectScoped ? ProjectWorkspace(deviceId) : CurrentWorkspace();
         var snapshot = RemoteWorkspace.CreateSnapshot(workspace, WorkspaceId(workspace), Interlocked.Increment(ref _revision));
-        Publish("snapshot.ready", new JsonObject { ["revision"] = snapshot.Revision, ["files"] = snapshot.Files.Count, ["excluded"] = snapshot.Excluded.Count });
+        Publish("snapshot.ready", new JsonObject { ["revision"] = snapshot.Revision, ["files"] = snapshot.Files.Count, ["excluded"] = snapshot.Excluded.Count }, workspaceOverride: workspace);
         return snapshot;
     }
 
-    private async Task HandleFileReadAsync(RemoteHttpRequest request, Stream stream, CancellationToken cancellationToken)
+    private async Task HandleFileReadAsync(RemoteHttpRequest request, Stream stream, string deviceId, bool projectScoped, CancellationToken cancellationToken)
     {
         var path = Query(request.Target, "path");
         if (string.IsNullOrWhiteSpace(path) && request.Path.StartsWith("/v1/control/files/", StringComparison.Ordinal))
@@ -884,7 +1147,8 @@ public sealed class RemoteControlHost : IDisposable
         }
         try
         {
-            var bytes = RemoteWorkspace.Read(CurrentWorkspace(), path);
+            var workspace = projectScoped ? ProjectWorkspace(deviceId) : CurrentWorkspace();
+            var bytes = RemoteWorkspace.Read(workspace, path);
             await WriteBytesAsync(stream, 200, bytes, "application/octet-stream", cancellationToken);
         }
         catch (Exception ex) { await WriteJsonAsync(stream, 400, new { error = ex.Message }, cancellationToken); }
@@ -905,11 +1169,11 @@ public sealed class RemoteControlHost : IDisposable
         await WriteBytesAsync(stream, 200, await File.ReadAllBytesAsync(path, cancellationToken), "application/octet-stream", cancellationToken);
     }
 
-    private async Task StreamEventsAsync(RemoteHttpRequest request, Stream stream, CancellationToken cancellationToken)
+    private async Task StreamEventsAsync(RemoteHttpRequest request, Stream stream, string deviceId, bool projectScoped, CancellationToken cancellationToken)
     {
         var after = long.TryParse(Query(request.Target, "after"), out var querySequence) ? querySequence : 0;
         if (request.Headers.TryGetValue("last-event-id", out var last) && long.TryParse(last, out var headerSequence)) after = Math.Max(after, headerSequence);
-        var workspaceId = WorkspaceId(CurrentWorkspace());
+        var workspaceId = WorkspaceId(projectScoped ? ProjectWorkspace(deviceId) : CurrentWorkspace());
         await WriteAsciiAsync(stream, "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-cache\r\nConnection: keep-alive\r\nX-Accel-Buffering: no\r\n\r\n", cancellationToken);
         await foreach (var item in _events.StreamAsync(after, workspaceId, cancellationToken))
         {
@@ -919,20 +1183,34 @@ public sealed class RemoteControlHost : IDisposable
         }
     }
 
-    private void Publish(string kind, JsonObject payload, string? artifactId = null)
+    private void Publish(string kind, JsonObject payload, string? artifactId = null, string? workspaceOverride = null)
     {
-        payload["area"] = _bridge.Area.WireValue();
-        _events.Publish(kind, WorkspaceId(CurrentWorkspace()), _bridge.Selected?.Id, payload, artifactId);
+        var workspace = string.IsNullOrWhiteSpace(workspaceOverride) ? CurrentWorkspace() : NormalizeWorkspace(workspaceOverride);
+        _events.Publish(kind, WorkspaceId(workspace), _bridge.Selected?.Id, ScopedPayload(payload, workspace), artifactId);
     }
 
-    private void Audit(RemoteControlCommand command, string deviceId, RemoteCommandResponse response) => Publish("audit.command", new JsonObject
+    private void Audit(RemoteControlCommand command, string deviceId, RemoteCommandResponse response, string? workspace = null)
     {
-        ["commandId"] = command.Id,
-        ["deviceId"] = deviceId,
-        ["kind"] = command.Kind,
-        ["status"] = response.Status,
-        ["httpStatus"] = response.HttpStatus,
-    });
+        var payload = new JsonObject
+        {
+            ["commandId"] = command.Id,
+            ["deviceId"] = deviceId,
+            ["kind"] = command.Kind,
+            ["status"] = response.Status,
+            ["httpStatus"] = response.HttpStatus,
+        };
+        if (!string.IsNullOrWhiteSpace(command.ProjectID)) payload["projectID"] = command.ProjectID;
+        Publish("audit.command", payload, workspaceOverride: workspace);
+    }
+
+    private JsonObject ScopedPayload(JsonObject payload, string workspace)
+    {
+        payload["scope"] = "project";
+        var project = Projects().FirstOrDefault(item =>
+            string.Equals(NormalizeWorkspace(item.WorkspacePath), workspace, StringComparison.Ordinal));
+        if (project is not null) payload["projectID"] = project.Id;
+        return payload;
+    }
 
     private string CurrentWorkspace()
     {
@@ -956,7 +1234,14 @@ public sealed class RemoteControlHost : IDisposable
         catch { return "127.0.0.1"; }
     }
     private static string WorkspaceId(string workspace) => RemoteControlIdentity.WorkspaceId(workspace);
-    private static string Summary(RemoteControlCommand command) => command.Kind == "write_file" ? $"Write {command.Payload["path"]?.GetValue<string>()}" : command.Payload["command"]?.GetValue<string>() ?? command.Kind;
+    private static string Summary(RemoteControlCommand command) => command.Kind switch
+    {
+        "write_file" => $"Write {command.Payload["path"]?.GetValue<string>()}",
+        "terminal_session" => command.Payload["action"]?.GetValue<string>() == "start" ? "Start a mobile terminal session" : "Send input to the mobile terminal",
+        "preview_tunnel" => $"Expose local development port {command.Payload["port"]?.GetValue<int>()}",
+        "native_browser" => $"Native browser action: {command.Payload["action"]?.GetValue<string>()}",
+        _ => command.Payload["command"]?.GetValue<string>() ?? command.Kind,
+    };
     private static string Query(string target, string key)
     {
         var query = target.IndexOf('?') is var index && index >= 0 ? target[(index + 1)..] : "";
@@ -989,6 +1274,9 @@ public sealed class RemoteControlHost : IDisposable
     public void Dispose()
     {
         _tunnel.Dispose();
+        _previewTunnel.Dispose();
+        foreach (var session in _terminalSessions.Values) session.Dispose();
+        _terminalSessions.Clear();
         _gateway.Dispose();
         _events.Dispose();
     }
@@ -1011,8 +1299,13 @@ public sealed record RemoteCommandResponse(
 
 public static class RemoteControlIdentity
 {
-    public static string WorkspaceId(string workspace) =>
-        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(workspace)))).ToLowerInvariant()[..24];
+    public static string WorkspaceId(string workspace)
+    {
+        var identity = string.IsNullOrWhiteSpace(workspace)
+            ? "herness:no-project"
+            : Path.GetFullPath(workspace);
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity))).ToLowerInvariant()[..24];
+    }
 }
 
 public static class RemoteWorkspace

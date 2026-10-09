@@ -80,7 +80,6 @@
 "settings.title" = "Nastavení";
 "settings.backToChats" = "Zpět k chatům";
 "settings.tab.general" = "Obecné";
-"settings.tab.pet" = "Domácí mazlíček";
 "settings.tab.providers" = "Poskytovatelé";
 "settings.tab.custom" = "Vlastní API";
 "settings.tab.local" = "Místní modely";
@@ -306,22 +305,22 @@
 "composer.add" = "Přidat";
 "composer.stopListening" = "Přestaňte poslouchat a přidejte text do konceptu";
 "composer.keyboardHelp" = "Enter: odeslat · Shift+Enter: nový řádek · ⌘/Ctrl+Enter: řídit";
-"composer.followUp.hint" = "Stisknutím Tab přijmete návrh následné zprávy";
+"composer.followUp.hint" = "Stisknutím klávesy Tab přijmete návrh navazující zprávy";
 "composer.selectModel" = "Vyberte model";
 "composer.installedSkill" = "Instalovaná dovednost";
 "composer.settings" = "Nastavení";
 "composer.skills" = "Dovednosti";
 "composer.personal" = "Osobní";
-"composer.projectPickerHelp" = "Vyberte projekt pro tento chat";
+"composer.projectPickerHelp" = "Vyberte projekt pro tuto konverzaci";
 "composer.projectPickerTitle" = "Projekt";
 "composer.chooseProject" = "Vyberte projekt";
 "composer.noProject" = "Není vybrán žádný projekt";
 "composer.dontWorkInProject" = "Nepracujte v projektu";
 "workLocation.title" = "Pracujte v";
-"workLocation.help" = "Vyberte, kde se tato úloha spustí";
-"workLocation.local" = "Místní";
+"workLocation.help" = "Vyberte, kde se tento úkol spustí";
+"workLocation.local" = "Místně";
 "workLocation.localDetail" = "Spusťte tuto úlohu na tomto počítači";
-"workLocation.localWorktree" = "Nový místní pracovní strom";
+"workLocation.localWorktree" = "Nový lokální worktree";
 "workLocation.localWorktreeDetail" = "Použijte izolovanou pokladnu na tomto počítači";
 "workLocation.remote" = "Jiný počítač";
 "workLocation.remoteDetail" = "Pracovat přes SSH na počítači, ke kterému se připojíte";
@@ -378,7 +377,7 @@
 "ssh.error.configWriteFailed" = "%@ se nepodařilo zapsat do ~/.ssh/config.";
 "tool.remoteUnavailable" = "%1$@ není při práci na %2$@ k dispozici. Použijte run_command s příkazy shellu.";
 "git.branchHelp" = "Vyberte větev Git";
-"git.detached" = "Oddělená HLAVA";
+"git.detached" = "Odpojený HEAD";
 "git.search" = "Hledat větve";
 "git.branches" = "Větve";
 "git.noBranches" = "Nebyly nalezeny žádné větve";
@@ -413,8 +412,6 @@
 "slash.model" = "Model";
 "slash.plan" = "Režim plánu";
 "slash.planDetail" = "Zapněte režim plánu";
-"slash.mascot" = "Domácí mazlíček";
-"slash.mascotDetail" = "Vzbudit nebo schovat mazlíčka";
 "slash.pluginCreator" = "Tvorba zásuvných modulů";
 "slash.pluginCreatorDetail" = "Vytvořit nový zásuvný modul";
 "pluginCreator.template" = "Šablona";
@@ -501,7 +498,6 @@
 "sidebar.hide" = "Skrýt";
 "sidebar.show" = "Zobrazit";
 "sidebar.selectProject" = "Vyberte projekt";
-"sidebar.continueWithoutProject" = "Pokračujte bez projektu";
 "sidebar.projectOptions" = "Možnosti projektu";
 "sidebar.editProject" = "Upravit projekt";
 "sidebar.addProject" = "Přidat projekt";
@@ -533,28 +529,6 @@
 "sidebar.accountOptions" = "Možnosti účtu";
 "sidebar.accountUsage" = "Účet DOTS a použití";
 
-"pet.position.bottomTrailing" = "Vpravo dole";
-"pet.position.bottomLeading" = "Vlevo dole";
-"pet.position.topTrailing" = "Vpravo nahoře";
-"pet.position.topLeading" = "Vlevo nahoře";
-"pet.settings" = "Nastavení mazlíčků";
-"pet.hide" = "Skrýt mazlíčka";
-"pet.dragHint" = "DOTS Pet · Podržte pro pohyb";
-"pet.stopAndSend" = "Přestaňte poslouchat a odešlete do vybraného chatu";
-"pet.micOpening" = "Otevírání mikrofonu…";
-"pet.listening" = "Poslouchám…";
-"pet.transcribing" = "Místní hlasový model se přepisuje…";
-"pet.sending" = "Odesílání do vybraného chatu…";
-"pet.visibility" = "Viditelnost domácích mazlíčků";
-"pet.show" = "Zobrazit mazlíčka";
-"pet.visibilityHint" = "Zvířátko se vznáší na obrazovce, pouze pokud je tato možnost povolena. Při prvním spuštění je vypnutý.";
-"pet.appearance" = "Vzhled";
-"pet.position" = "Pozice";
-"pet.size" = "Velikost";
-"pet.sizeValue" = "%d px";
-"pet.avatar" = "Avatar";
-"pet.preview" = "Náhled";
-"pet.title" = "Domácí mazlíček";
 
 "usage.title" = "Využití";
 "usage.accountSummary" = "Souhrn účtu DOTS YAZILIM za toto období";
@@ -870,7 +844,6 @@
 "marketplace.install" = "Instalovat";
 "marketplace.search" = "Hledat pluginy";
 "marketplace.update" = "Aktualizujte v%@ → v%@";
-"pet.avatarHint" = "Vyberte si avatara domácího mazlíčka.";
 "router.customEndpointHint" = "Vlastní koncový bod API";
 "router.noKeyRequired" = "Není potřeba žádný klíč. Připojte se k trase přes tohoto poskytovatele.";
 "settings.addProviderCustom" = "Přidejte tohoto poskytovatele prostřednictvím vlastního rozhraní API.";
@@ -1104,9 +1077,6 @@
 "feedback.tag.negative_other" = "Jiné";
 
 // Completed translations for keys added to the desktop catalog.
-"assistantMode.title" = "Režim asistenta";
-"assistantMode.coding" = "Programování";
-"assistantMode.chat" = "Chat";
 "tasks.close" = "Zavřít úkoly";
 "tasks.back" = "Zpět";
 "tasks.new" = "Nový úkol";
@@ -1147,3 +1117,213 @@
 "settings.compactTrigger" = "Automaticky zhustit kontext při";
 "settings.compactTrigger.hint" = "Podíl kontextového okna každého modelu. Vyšší hodnota drží cache promptu déle, protože ji zhuštění přepisuje.";
 "conversation.translate" = "Přeložit";
+
+
+// Completed translations for keys added to the desktop catalog.
+"tray.section.running" = "Probíhající chaty";
+"tray.section.waiting" = "Vyžaduje pozornost";
+"tray.write" = "Napsat zprávu";
+"tray.openUsage" = "Otevřít obrazovku využití";
+"tray.noChats" = "Žádné chaty";
+"tray.unread" = "Nová odpověď";
+
+// Write-lease conflict copy.
+"conflict.policy.waitThenAsk" = "Čekat, pak se zeptat";
+"conflict.policy.waitThenAsk.detail" = "Tiše čeká na jiný chat a ptá se až když čekání trvá dlouho.";
+"conflict.policy.ask" = "Zeptej se";
+"conflict.policy.ask.detail" = "Okamžitě se zeptá, když dva chaty chtějí stejný soubor.";
+"conflict.policy.waitOnly" = "Vždy čekat";
+"conflict.policy.waitOnly.detail" = "Neptá: každý zápis čeká na chat, který soubor drží.";
+"conflict.title" = "Jiný chat zapisuje %@";
+"conflict.stillBusy" = "Zápis pozdržen: %@ stále zapisuje jiný chat.";
+"conflict.userSkipped" = "Zápis přeskočen: %@ zůstal jinému chatu (%@), jak jste žádal.";
+"conflict.stoppedHolder" = "Na vaši žádost byl chat „%@“ zastaven a zápis proběhl.";
+"conflict.stoppedOthers" = "Na vaši žádost byly zastaveny jiné chaty tohoto projektu a zápis proběhl.";
+"conflict.wholeProject" = "celý projekt (příkaz: %@)";
+"conflict.banner.title" = "Jiný chat zapisuje tento soubor";
+"conflict.banner.body" = "%1$@ · drží „%2$@“ již %3$d sekund";
+"conflict.banner.keepWaiting" = "Pokračovat v čekání";
+"conflict.banner.stopHolder" = "Zastavit tento chat";
+"conflict.banner.stopAllOthers" = "Zastavit všechny ostatní chaty";
+"conflict.banner.skip" = "Přeskočit tento zápis";
+"conflict.waiting" = "Čekání na zápis chatu „%@“: %@";
+"settings.workspaceConflictPolicy" = "Pokud jiný chat zapisuje stejný soubor";
+"settings.conflictWaitSeconds" = "Čekat před dotazem";
+"settings.conflictWaitValue" = "%d sekund";
+
+
+"conversation.ranCommand" = "Ran 1 command";
+"conversation.ranCommands" = "Ran %d commands";
+"conversation.runningTools" = "Running tools…";
+"conversation.thinkingPhase" = "Thinking…";
+"conversation.tokensCount" = "%@ tokens";
+"usage.context.window" = "Kontextové okno";
+"usage.planLimits" = "Limity využití tarifu";
+"ask.other" = "Other";
+"ask.next" = "Next";
+"ask.skipShort" = "Skip";
+"composer.queue.one" = "1 message queued";
+"composer.queue.many" = "%d messages queued";
+"composer.queue.edit" = "Edit";
+"composer.queue.editBlocked" = "Clear the message box to edit";
+"composer.queue.remove" = "Remove";
+"git.createPR" = "Vytvořit PR";
+"git.hideBar" = "Skrýt";
+"composer.queue.next" = "Next: %@";
+
+// Composer, git bar and usage popover.
+"usage.context.tooltip" = "Využití kontextu a tokenů";
+"usage.context.conversation" = "Zprávy konverzace";
+"usage.context.toolDefinitions" = "Definice nástrojů";
+"usage.context.mcpDefinitions" = "Definice nástrojů MCP";
+"usage.context.systemPrompt" = "Systémové instrukce";
+"usage.context.cacheHit" = "Zásahy mezipaměti promptů";
+"usage.context.notReported" = "Poskytovatel nehlásí";
+"usage.context.cacheWrite" = "%@ tokenů zapsáno do mezipaměti";
+
+// Local AI runtime and custom endpoint tuning.
+"custom.modelOptional" = "Název modelu (volitelné)";
+"custom.contextOptional" = "Kontextové okno v tokenech (volitelné)";
+"custom.contextHint" = "Obě pole nechte prázdná, aby se načetla ze serveru. Kontext zadejte, pokud ho server nehlásí (Ollama: stejné jako OLLAMA_CONTEXT_LENGTH).";
+"custom.contextInvalid" = "Kontextové okno musí být kladné číslo.";
+"custom.detected" = "Běží na tomto počítači";
+"custom.noModelAvailable" = "%@ nevypisuje žádné modely. Spusťte jeho server nebo zadejte název modelu pro endpoint.";
+"local.extraArgs" = "Další argumenty llama-server";
+"local.mlxExtraArgs" = "Další argumenty serveru mlx_lm";
+"local.gpuLayers" = "Vrstvy na GPU (auto, all nebo číslo)";
+"local.hardware" = "Hardware";
+"local.hardwareGPU" = "%@ · %@ paměti GPU · %@ RAM";
+"local.importGGUF" = "Přidat soubor GGUF…";
+"local.installMLX" = "Nainstalovat MLX";
+"local.installingMLX" = "Instaluje se MLX (Python + mlx-lm)…";
+"local.kvCache" = "Typ KV cache";
+"local.servingContext" = "%@ · %d tokenů";
+"local.tooLarge" = "Příliš velký";
+"local.tuning" = "Výkon";
+"local.tuningHint" = "Prázdné nebo auto: runtime přizpůsobí model paměti vaší GPU. Změny se projeví při příštím spuštění modelu.";
+"local.contextSize" = "Velikost kontextu (tokeny)";
+"local.threads" = "Vlákna CPU";
+"local.batchSize" = "Velikost dávky";
+"local.forget" = "Odebrat ze seznamu";
+"localModel.needsMemory" = "Potřebuje asi %d GB paměti GPU nebo RAM.";
+"localRuntime.helperFailed" = "%@ selhalo (návratový kód %d)";
+"localRuntime.mlxUnsupported" = "MLX vyžaduje Mac s Apple Silicon.";
+"local.flashAttention" = "Flash attention";
+"local.hardwareMemory" = "%@ RAM";
+
+// Translations completed for keys that had no localized text.
+"conversation.fullToolOutput" = "Úplný výstup nástroje";
+"sidebar.showSidebar" = "Zobrazit postranní panel";
+"sidebar.hideSidebar" = "Skrýt postranní panel";
+"navigation.back" = "Zpět";
+"navigation.forward" = "Vpřed";
+"settings.autoApprovePlans" = "Automaticky schvalovat plány";
+"settings.autoApprovePlans.hint" = "Je-li zapnuto, vygenerovaný plán se použije bez čekání na samostatné schválení plánu. Schvalování na úrovni nástrojů platí dál.";
+"media.fallbackUsed" = "Vybraný poskytovatel tento obrázek vygenerovat nedokázal. Byl vygenerován jednorázovým záložním požadavkem přes %@/%@; poskytovatel a model hlavní konverzace se nezměnily, takže mezipaměť promptů zůstává nedotčená.";
+"media.imageUnsupportedWithFallbackHint" = "Tento obrázek nemohu vygenerovat pomocí %@. Nastavte jako zálohu API nebo poskytovatele obrázků. Přepnutí hlavního modelu chatu jen kvůli obrázku může rozbít mezipaměť promptů poskytovatele.";
+"conversation.generationResumed" = "Zpráva obnovena";
+"conversation.cancelPlan" = "Zrušit plán";
+"conversation.cancelPlanHelp" = "Zrušit tento plán a uvolnit zprávy ve frontě";
+"conversation.thinking" = "Myšlenkový proces";
+"usage.manageResets" = "Spravovat resety";
+"usage.useReset" = "Použít reset";
+"usage.resetTitle" = "Použít reset limitu Claude?";
+"usage.openClaude" = "Pokračovat v Claude";
+"usage.resetConfirmation" = "Otevře se stránka využití Claude. Přihlaste se k %@ a zkontrolujte reset nabízený tomuto účtu. Chcete-li ho použít, klikněte na Resetovat zdarma a potvrďte v Claude. Použitý reset nelze vrátit. Limity se obnoví, až se vrátíte do HerNess.";
+"usage.resetOpenFailed" = "Claude se nepodařilo otevřít. Zkontrolujte, zda je účet stále připojen, a zkuste to znovu.";
+"conversation.review" = "Zkontrolovat";
+"dock.noWorkspace" = "Nejprve vyberte pracovní složku.";
+"dock.branch" = "Větev";
+"dock.refresh" = "Obnovit";
+"dock.commit" = "Commit";
+"dock.push" = "Push";
+"dock.fetch" = "Fetch";
+"dock.commitOrPush" = "Commit nebo push";
+"dock.commitMessage" = "Zpráva commitu";
+"dock.noChanges" = "Agent neprovedl žádné změny.";
+"dock.whyRequest" = "Váš požadavek";
+"dock.whyAgent" = "Vysvětlení agenta";
+"dock.notRepo" = "Tato složka není git repozitář.";
+"dock.filterFiles" = "Filtrovat soubory…";
+"dock.openFile" = "Otevřít soubor";
+"dock.selectFile" = "Vyberte soubor ze stromu pracovního prostoru";
+"dock.binaryFile" = "Binární nebo nečitelný soubor";
+"project.missing.title" = "Složka projektu nebyla nalezena: %@";
+"project.missing.message" = "Složka projektu v umístění '%@' mohla být přesunuta nebo odstraněna. Vyberte její nové umístění nebo projekt odeberte.";
+"project.missing.locate" = "Najít umístění…";
+"project.missing.readOnly" = "Složka projektu není dostupná. Předchozí konverzace můžete zobrazit; vytváření nových konverzací a odesílání zpráv je vypnuté, dokud nevyberete nové umístění.";
+"queue.waitingForPlan" = "Čeká se na schválení plánu";
+"settings.closeToTray" = "Po zavření okna pokračovat v běhu v oznamovací oblasti";
+"settings.closeToTray.hint" = "Běhy, terminály a naplánované úlohy pokračují, dokud je okno skryté; ikona v oznamovací oblasti je obnoví.";
+"tray.show" = "Otevřít okno";
+"context.overflowTitle" = "Tato konverzace se do nového modelu nevejde";
+"context.overflowReason" = "%1$@ potřebuje k pokračování asi %2$d tokenů a v tomto modelu je volných jen %3$d.";
+"context.overflowByModel" = "Shrnutí napíše %@, nejmenší připojený model, který ještě dokáže přepis přečíst.";
+"context.overflowLocally" = "Žádný připojený model nedokáže přepis přečíst, takže se konverzace zkrátí bez dotazu na jakýkoli model.";
+"context.overflowCompress" = "Zkomprimovat a pokračovat";
+"context.overflowNotNow" = "Teď ne";
+"context.overflowDeclined" = "Odesílání zastaveno: konverzace se do nového modelu nevejde.";
+"usage.context.title" = "Využití";
+"usage.context.input" = "Odeslaný vstup";
+"usage.context.estimatedInput" = "Odhadovaný vstup";
+"usage.context.output" = "Výstup";
+"usage.context.latestRequest" = "Poslední požadavek · kontextové okno";
+"usage.context.estimatedBreakdown" = "Odhadovaný rozpis vstupu";
+"usage.context.estimateNote" = "Součty vstupu/výstupu od poskytovatele se zobrazují, jsou-li k dispozici. Jinak jsou součty vstupu a kategorie nástrojů/MCP místní odhady.";
+"usage.context.tokens" = "tokenů";
+"usage.context.toolCalls" = "Volání nástrojů";
+"usage.context.mcpCalls" = "Volání MCP";
+"usage.context.toolResults" = "Výsledky nástrojů";
+"usage.context.mcpResults" = "Výsledky MCP";
+"plan.proposed" = "Claude navrhl plán";
+"plan.reject" = "Odmítnout";
+"plan.revise" = "Upravit…";
+"plan.accept" = "Přijmout";
+"plan.acceptAuto" = "Přijmout a automatický režim";
+"plan.open" = "Otevřít plán";
+"plan.empty" = "Zatím žádný plán";
+"dock.expand" = "Rozbalit";
+"dock.collapse" = "Sbalit";
+"usage.context.cacheReuse" = "Opětovné využití mezipaměti v tomto chatu";
+"usage.context.cacheFreshInput" = "New / outside-breakpoint input: %@ tokens";
+"usage.context.cacheCoverage" = "Pokrytí měření: %@ · %@ / %@ požadavků";
+"usage.context.cacheLatency" = "Průměrná latence požadavku: %@ ms";
+"usage.context.cacheLoss" = "Největší ztráta mezipaměti: %@ · %@ tokenů";
+"tray.back" = "Chaty";
+
+"composer.cacheExpired.explanation" = "Odhadovaná životnost mezipaměti uplynula. Mezipaměť promptů je dočasný stav zpracování na straně poskytovatele; historie chatu zůstává uložená. Pokud budete pokračovat s celou historií, mohou se tyto tokeny znovu počítat jako nový vstup. Teprve údaje o využití z dalšího požadavku potvrdí, zda poskytovatel mezipaměť ještě měl.";
+"composer.accountSwitched.notice" = "Tento chat přešel na jiný účet se stejným modelem. Mezipaměť tam začíná od nuly; pokračování může spotřebovat více tokenů a stát více.";
+"composer.contextFull.notice" = "Kontextové okno je téměř plné; pokračování může spotřebovat více tokenů a stát více. Začněte nový chat s krátkým shrnutím.";
+"composer.cacheExpired.infoTitle" = "Proč se mi to zobrazuje?";
+"composer.cacheExpired.notice" = "Mezipaměť možná vypršela; pokračování může spotřebovat více tokenů a stát více. Začněte nový chat s krátkým shrnutím.";
+"feedback.tag.apply_elsewhere" = "Apply it elsewhere";
+"feedback.tag.broke_existing_feature" = "Broke an existing feature";
+"feedback.tag.did_not_follow_project_style" = "Didn't follow project style";
+"feedback.tag.ignored_project_architecture" = "Ignored project architecture";
+"feedback.tag.keep_project_style" = "Keep the project style";
+"feedback.tag.reuse_architecture" = "Reuse this architecture";
+"feedback.tag.reuse_token_pattern" = "Reuse this token pattern";
+"feedback.tag.wrong_theme_or_token" = "Wrong theme or token";
+
+// Completed translations for keys added to the desktop catalog.
+"conversation.filesChangedCount" = "Změněno souborů: %d";
+"conversation.filesLineSummary" = "+%d −%d";
+"conversation.lineCountsUnavailable" = "Počet řádků není k dispozici";
+"conversation.filesMore" = "Zobrazit dalších %d souborů";
+"conversation.filesLess" = "Zobrazit méně souborů";
+"conversation.undoChanges" = "Vrátit zpět";
+"conversation.viewChanges" = "Zobrazit změny";
+"conversation.filesReverted" = "Změny souborů byly vráceny zpět.";
+
+// Completed translations for keys added to the desktop catalog.
+"composer.modelSwitched.notice" = "Model byl změněn. Mezipaměť se na nový model nepřenáší; celá historie se zpracuje znovu, což může spotřebovat více tokenů a stát více.";
+
+"archive.title" = "Archivované konverzace";
+"archive.empty" = "Žádné archivované konverzace.";
+
+"conversation.plan" = "Plán";
+"conversation.system" = "Systém";
+
+"archive.confirmDelete" = "Smazat tuto konverzaci trvale?";
+"archive.deletePermanently" = "Trvale smazat";
+"conversation.processedTokensCount" = "%@ tokenů";

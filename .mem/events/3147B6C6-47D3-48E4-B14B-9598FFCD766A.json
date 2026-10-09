@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-08T21:56:35Z",
+  "eventId" : "3147B6C6-47D3-48E4-B14B-9598FFCD766A",
+  "lamport" : 166,
+  "parents" : [
+    "055CE523-07E7-4645-963A-2A1397598721"
+  ],
+  "payload" : {
+    "commandSummary" : null,
+    "name" : "read_file",
+    "path" : "macos\/DotsHarness\/Package.swift",
+    "resultBytes" : 2979,
+    "resultStatus" : "completed",
+    "runId" : "49582FA8-F7D2-401E-B7D7-76ED5586C03E"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "W5UzVvfaOzj3SpE6GzMuGCCbvi413OH9nBlsMYsiMToqxUv07PwxWzOfw+dDDUXiOJyhoBiK1yE52FfyvBwTVw=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

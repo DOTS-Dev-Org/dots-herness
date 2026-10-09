@@ -95,8 +95,10 @@ public sealed class HerNessPromptTests
         var core = HerNessPrompt.Core("scope line", "tool line");
 
         Assert.Contains("Response economy", core);
-        Assert.Contains("code blocks, commands, file paths, identifiers, API names", core);
-        Assert.Contains("exact errors, and negative qualifiers unchanged", core);
+        Assert.Contains("shortens prose only, never required work", core);
+        Assert.Contains("exact errors, negative qualifiers, tests, and evidence stay complete", core);
+        Assert.Contains("never claim completion", core);
+        Assert.DoesNotContain("billing guarantee", core);
         Assert.Contains("security warnings, irreversible confirmations", core);
         Assert.Contains("generated code, comments, commits, docs, PR text", core);
     }
@@ -109,14 +111,11 @@ public sealed class HerNessPromptTests
 
         Assert.Contains("Response language", normalized);
         Assert.Contains("latest human-authored user request", normalized);
-        Assert.Contains("natural-language portion of the response only", normalized);
-        Assert.Contains("current conversation", normalized);
-        Assert.Contains("another conversation", normalized);
-        Assert.Contains("remembered preference, project memory", normalized);
+        Assert.Contains("in this conversation only", normalized);
+        Assert.Contains("memory text", normalized);
         Assert.Contains("application's interface language", normalized);
-        Assert.Contains("Ignore code blocks, inline code, file paths, identifiers, URLs, quoted source", normalized);
         Assert.Contains("explicitly asks for a response in a named language", normalized);
-        Assert.Contains("Re-evaluate the language on the next user turn", normalized);
+        Assert.Contains("for that response only", normalized);
         Assert.Contains("last reliable response language", normalized);
         Assert.Contains("answer in English", normalized);
 
@@ -135,7 +134,7 @@ public sealed class HerNessPromptTests
 
         Assert.Contains(grepTool, prompt);
         Assert.DoesNotContain("There is no " + grepTool, prompt, StringComparison.Ordinal);
-        Assert.Contains("other_chats", prompt);
+        Assert.DoesNotContain("other_chats", prompt, StringComparison.Ordinal);
         Assert.Contains("remember", prompt);
         Assert.Contains("update_plan", prompt);
         Assert.Contains("explore", prompt);

@@ -9,6 +9,7 @@ namespace DotsHarnessCore;
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum BrowserBackend
 {
+    Native,
     Managed,
     Extension,
     Unknown,
@@ -24,11 +25,11 @@ public enum BrowserCleanupStatus
 }
 
 public readonly record struct BrowserScope(
-    [property: JsonPropertyName("area")] string Area,
+    [property: JsonPropertyName("scope")] string Scope,
     [property: JsonPropertyName("conversationID")] string ConversationId,
     [property: JsonPropertyName("runID")] string RunId)
 {
-    public string Key => $"{Area}:{ConversationId}:{RunId}";
+    public string Key => $"{Scope}:{ConversationId}:{RunId}";
 }
 
 public sealed record BrowserPage(
@@ -62,6 +63,11 @@ public static class BrowserBackendPolicy
         var value = userText.Trim().ToLowerInvariant();
 
         if (ContainsAny(value,
+                "native browser", "webkit", "webview2", "in-app browser", "dock browser",
+                "canlı tarayıcı", "canli tarayici", "dahili tarayıcı", "dahili tarayici", "yerel tarayıcı"))
+            return BrowserBackend.Native;
+
+        if (ContainsAny(value,
                 "mevcut chrome", "chrome profilimi", "chrome oturumumu", "oturum açılmış chrome",
                 "oturum acilmis chrome", "current chrome", "existing chrome", "logged-in chrome",
                 "logged in chrome", "use my chrome", "use existing chrome", "my chrome profile"))
@@ -80,6 +86,8 @@ public static class BrowserBackendPolicy
     {
         if (string.IsNullOrWhiteSpace(answer)) return BrowserBackend.Unknown;
         var value = answer.Trim().ToLowerInvariant();
+        if (ContainsAny(value, "native", "webkit", "webview2", "dock", "dahili", "canlı", "canli", "in-app"))
+            return BrowserBackend.Native;
         if (ContainsAny(value, "extension", "mevcut chrome", "current chrome", "existing chrome", "chrome profile", "existing chrome profile")
             || ContainsToken(value, "2"))
             return BrowserBackend.Extension;
@@ -103,6 +111,7 @@ public static class BrowserTools
     public const string OpenName = "browser_open";
     public const string NavigateName = "browser_navigate";
     public const string CloseName = "browser_close";
+    public const string ScreenshotName = "browser_screenshot";
 
     public static IReadOnlyList<NativeToolDefinition> Definitions { get; } =
     [
@@ -139,6 +148,19 @@ public static class BrowserTools
                 ["properties"] = new JsonObject
                 {
                     ["pageID"] = new JsonObject { ["type"] = "string" },
+                },
+                ["required"] = new JsonArray("pageID"),
+                ["additionalProperties"] = false,
+            }),
+        new(ScreenshotName,
+            "Capture a screenshot of an owned browser page as a PNG image. The pageID must come from browser_open.",
+            new JsonObject
+            {
+                ["type"] = "object",
+                ["properties"] = new JsonObject
+                {
+                    ["pageID"] = new JsonObject { ["type"] = "string" },
+                    ["path"] = new JsonObject { ["type"] = "string", ["description"] = "Screenshot destination relative to workspace. Defaults to browser.png." },
                 },
                 ["required"] = new JsonArray("pageID"),
                 ["additionalProperties"] = false,

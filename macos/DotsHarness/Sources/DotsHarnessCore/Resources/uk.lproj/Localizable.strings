@@ -80,7 +80,6 @@
 "settings.title" = "Налаштування";
 "settings.backToChats" = "Назад до чатів";
 "settings.tab.general" = "Загальні";
-"settings.tab.pet" = "Домашня тварина";
 "settings.tab.providers" = "Провайдери";
 "settings.tab.custom" = "Спеціальний API";
 "settings.tab.local" = "Локальні моделі";
@@ -312,16 +311,16 @@
 "composer.settings" = "Налаштування";
 "composer.skills" = "Навички";
 "composer.personal" = "Особисті";
-"composer.projectPickerHelp" = "Виберіть проект для цього чату";
+"composer.projectPickerHelp" = "Виберіть проєкт для цієї розмови";
 "composer.projectPickerTitle" = "Проект";
 "composer.chooseProject" = "Виберіть проект";
 "composer.noProject" = "Жоден проект не вибрано";
 "composer.dontWorkInProject" = "Не працюйте в проекті";
 "workLocation.title" = "Робота в";
-"workLocation.help" = "Виберіть місце виконання цього завдання";
-"workLocation.local" = "Місцевий";
+"workLocation.help" = "Виберіть, де виконувати це завдання";
+"workLocation.local" = "Локально";
 "workLocation.localDetail" = "Запустіть це завдання на цьому комп’ютері";
-"workLocation.localWorktree" = "Нове локальне робоче дерево";
+"workLocation.localWorktree" = "Новий локальний worktree";
 "workLocation.localWorktreeDetail" = "Використовуйте ізольовану касу на цьому комп’ютері";
 "workLocation.remote" = "Інший комп’ютер";
 "workLocation.remoteDetail" = "Працювати через SSH на комп’ютері, до якого ви під’єднуєтесь";
@@ -378,7 +377,7 @@
 "ssh.error.configWriteFailed" = "Не вдалося записати %@ у ~/.ssh/config.";
 "tool.remoteUnavailable" = "%1$@ недоступний під час роботи на %2$@. Використовуйте run_command з командами оболонки.";
 "git.branchHelp" = "Виберіть гілку Git";
-"git.detached" = "Відокремлена ГОЛОВА";
+"git.detached" = "Відокремлений HEAD";
 "git.search" = "Пошук гілок";
 "git.branches" = "Відділення";
 "git.noBranches" = "Відгалужень не знайдено";
@@ -413,8 +412,6 @@
 "slash.model" = "Модель";
 "slash.plan" = "Плановий режим";
 "slash.planDetail" = "Увімкніть режим планування";
-"slash.mascot" = "Домашня тварина";
-"slash.mascotDetail" = "Розбудіть або сховайте вихованця";
 "slash.pluginCreator" = "Створювач плагінів";
 "slash.pluginCreatorDetail" = "Створити новий плагін";
 "pluginCreator.template" = "Шаблон";
@@ -501,7 +498,6 @@
 "sidebar.hide" = "Сховати";
 "sidebar.show" = "Показати";
 "sidebar.selectProject" = "Виберіть проект";
-"sidebar.continueWithoutProject" = "Продовжити без проекту";
 "sidebar.projectOptions" = "Варіанти проекту";
 "sidebar.editProject" = "Редагувати проект";
 "sidebar.addProject" = "Додати проект";
@@ -533,28 +529,6 @@
 "sidebar.accountOptions" = "Параметри облікового запису";
 "sidebar.accountUsage" = "Обліковий запис DOTS і використання";
 
-"pet.position.bottomTrailing" = "Праворуч внизу";
-"pet.position.bottomLeading" = "Внизу зліва";
-"pet.position.topTrailing" = "Вгорі справа";
-"pet.position.topLeading" = "Вгорі ліворуч";
-"pet.settings" = "Налаштування домашніх тварин";
-"pet.hide" = "Сховати домашнього улюбленця";
-"pet.dragHint" = "DOTS Pet · Утримуйте, щоб рухатися";
-"pet.stopAndSend" = "Припиніть слухати та відправте у вибраний чат";
-"pet.micOpening" = "Відкриття мікрофона…";
-"pet.listening" = "слухаю...";
-"pet.transcribing" = "Зразок місцевого голосу транскрибує…";
-"pet.sending" = "Надсилання до вибраного чату…";
-"pet.visibility" = "Видимість домашніх тварин";
-"pet.show" = "Показати вихованця";
-"pet.visibilityHint" = "Тварина плаває на екрані, лише якщо ця опція ввімкнена. Він вимкнений під час першого запуску.";
-"pet.appearance" = "Зовнішній вигляд";
-"pet.position" = "Позиція";
-"pet.size" = "Розмір";
-"pet.sizeValue" = "%d пікс";
-"pet.avatar" = "Аватар";
-"pet.preview" = "Попередній перегляд";
-"pet.title" = "Домашня тварина";
 
 "usage.title" = "Використання";
 "usage.accountSummary" = "Підсумок облікового запису DOTS YAZILIM за цей період";
@@ -870,7 +844,6 @@
 "marketplace.install" = "встановити";
 "marketplace.search" = "Плагіни пошуку";
 "marketplace.update" = "Оновити v%@ → v%@";
-"pet.avatarHint" = "Виберіть аватар домашнього улюбленця.";
 "router.customEndpointHint" = "Кінцева точка спеціального API";
 "router.noKeyRequired" = "Ключ не потрібен. Підключіться до маршруту через цього провайдера.";
 "settings.addProviderCustom" = "Додайте цього провайдера через Custom API.";
@@ -1104,9 +1077,6 @@
 "feedback.tag.negative_other" = "Інше";
 
 // Completed translations for keys added to the desktop catalog.
-"assistantMode.title" = "Режим помічника";
-"assistantMode.coding" = "Програмування";
-"assistantMode.chat" = "Чат";
 "tasks.close" = "Закрити завдання";
 "tasks.back" = "Назад";
 "tasks.new" = "Нове завдання";
@@ -1147,3 +1117,213 @@
 "settings.compactTrigger" = "Автостиснення контексту при";
 "settings.compactTrigger.hint" = "Частка контекстного вікна кожної моделі. Вище значення довше зберігає кеш промпта, адже стиснення його переписує.";
 "conversation.translate" = "Перекласти";
+
+
+// Completed translations for keys added to the desktop catalog.
+"tray.section.running" = "Розмови, що виконуються";
+"tray.section.waiting" = "Потребує уваги";
+"tray.write" = "Написати повідомлення";
+"tray.openUsage" = "Відкрити екран використання";
+"tray.noChats" = "Зараз немає розмов";
+"tray.unread" = "Нова відповідь";
+
+// Write-lease conflict copy.
+"conflict.policy.waitThenAsk" = "Почекати, потім запитати";
+"conflict.policy.waitThenAsk.detail" = "Мовчки чекає на інший чат і питає, лише якщо очікування затягується.";
+"conflict.policy.ask" = "Запитайте мене";
+"conflict.policy.ask.detail" = "Питає щойно два чати захочють той самий файл.";
+"conflict.policy.waitOnly" = "Завжди чекати";
+"conflict.policy.waitOnly.detail" = "Не питає: кожен запис чекає на чат, що тримає файл.";
+"conflict.title" = "Інший чат пише %@";
+"conflict.stillBusy" = "Запис призупинено: %@ досі пише інший чат.";
+"conflict.userSkipped" = "Запис пропущено: %@ лишився в іншого чата (%@), як ви просили.";
+"conflict.stoppedHolder" = "За вашим проханням зупинено чат «%@», і цей запис виконано.";
+"conflict.stoppedOthers" = "За вашим проханням зупинено інші чати цього проєкту, і цей запис виконано.";
+"conflict.wholeProject" = "весь проєкт (команда: %@)";
+"conflict.banner.title" = "Інший чат пише цей файл";
+"conflict.banner.body" = "%1$@ · утримується чатом «%2$@» уже %3$d с";
+"conflict.banner.keepWaiting" = "Продовжувати чекати";
+"conflict.banner.stopHolder" = "Зупинити цей чат";
+"conflict.banner.stopAllOthers" = "Зупинити всі інші чати";
+"conflict.banner.skip" = "Пропустити цей запис";
+"conflict.waiting" = "Очікування запису чатом «%@»: %@";
+"settings.workspaceConflictPolicy" = "Якщо інший чат пише той самий файл";
+"settings.conflictWaitSeconds" = "Чекати перед запитанням";
+"settings.conflictWaitValue" = "%d секунд";
+
+
+"conversation.ranCommand" = "Ran 1 command";
+"conversation.ranCommands" = "Ran %d commands";
+"conversation.runningTools" = "Running tools…";
+"conversation.thinkingPhase" = "Thinking…";
+"conversation.tokensCount" = "%@ tokens";
+"usage.context.window" = "Контекстне вікно";
+"usage.planLimits" = "Ліміти використання тарифу";
+"ask.other" = "Other";
+"ask.next" = "Next";
+"ask.skipShort" = "Skip";
+"composer.queue.one" = "1 message queued";
+"composer.queue.many" = "%d messages queued";
+"composer.queue.edit" = "Edit";
+"composer.queue.editBlocked" = "Clear the message box to edit";
+"composer.queue.remove" = "Remove";
+"git.createPR" = "Створити PR";
+"git.hideBar" = "Приховати";
+"composer.queue.next" = "Next: %@";
+
+// Composer, git bar and usage popover.
+"usage.context.tooltip" = "Використання контексту й токенів";
+"usage.context.conversation" = "Повідомлення чату";
+"usage.context.toolDefinitions" = "Визначення інструментів";
+"usage.context.mcpDefinitions" = "Визначення інструментів MCP";
+"usage.context.systemPrompt" = "Системні інструкції";
+"usage.context.cacheHit" = "Влучання в кеш промпта";
+"usage.context.notReported" = "Постачальник не повідомив";
+"usage.context.cacheWrite" = "%@ токенів записано в кеш";
+
+// Local AI runtime and custom endpoint tuning.
+"custom.modelOptional" = "Назва моделі (необов'язково)";
+"custom.contextOptional" = "Вікно контексту в токенах (необов'язково)";
+"custom.contextHint" = "Залиште обидва поля порожніми, щоб прочитати їх із сервера. Вкажіть контекст, якщо сервер його не повідомляє (Ollama: як OLLAMA_CONTEXT_LENGTH).";
+"custom.contextInvalid" = "Вікно контексту має бути додатним числом.";
+"custom.detected" = "Запущено на цьому комп'ютері";
+"custom.noModelAvailable" = "%@ не показує моделей. Запустіть сервер або вкажіть назву моделі для кінцевої точки.";
+"local.extraArgs" = "Додаткові аргументи llama-server";
+"local.mlxExtraArgs" = "Додаткові аргументи сервера mlx_lm";
+"local.gpuLayers" = "Шари на GPU (auto, all або число)";
+"local.hardware" = "Обладнання";
+"local.hardwareGPU" = "%@ · %@ пам'яті GPU · %@ ОЗП";
+"local.importGGUF" = "Додати файл GGUF…";
+"local.installMLX" = "Установити MLX";
+"local.installingMLX" = "Установлення MLX (Python + mlx-lm)…";
+"local.kvCache" = "Тип KV-кешу";
+"local.servingContext" = "%@ · %d токенів";
+"local.tooLarge" = "Завелика";
+"local.tuning" = "Продуктивність";
+"local.tuningHint" = "Порожньо або auto: середовище виконання саме підлаштує модель під пам'ять GPU. Зміни діють під час наступного запуску моделі.";
+"local.contextSize" = "Розмір контексту (токени)";
+"local.threads" = "Потоки CPU";
+"local.batchSize" = "Розмір пакета";
+"local.forget" = "Прибрати зі списку";
+"localModel.needsMemory" = "Потрібно близько %d ГБ пам'яті GPU або ОЗП.";
+"localRuntime.helperFailed" = "Збій %@ (код виходу %d)";
+"localRuntime.mlxUnsupported" = "Для MLX потрібен Mac з Apple Silicon.";
+"local.flashAttention" = "Flash attention";
+"local.hardwareMemory" = "%@ RAM";
+
+// Translations completed for keys that had no localized text.
+"conversation.fullToolOutput" = "Повний вивід інструмента";
+"sidebar.showSidebar" = "Показати бічну панель";
+"sidebar.hideSidebar" = "Сховати бічну панель";
+"navigation.back" = "Назад";
+"navigation.forward" = "Вперед";
+"settings.autoApprovePlans" = "Автоматично схвалювати плани";
+"settings.autoApprovePlans.hint" = "Якщо ввімкнено, створений план застосовується без очікування окремого схвалення. Схвалення на рівні інструментів і далі діють.";
+"media.fallbackUsed" = "Вибраний провайдер не зміг створити це зображення. Його створено одноразовим резервним запитом через %@/%@; провайдер і модель основної розмови не змінювалися, тож кеш промптів залишився цілим.";
+"media.imageUnsupportedWithFallbackHint" = "Не можу створити це зображення за допомогою %@. Налаштуйте API або провайдера зображень як резервний варіант. Перемикання основної моделі чату лише заради зображення може зламати кеш промптів провайдера.";
+"conversation.generationResumed" = "Повідомлення відновлено";
+"conversation.cancelPlan" = "Скасувати план";
+"conversation.cancelPlanHelp" = "Скасувати цей план і звільнити повідомлення з черги";
+"conversation.thinking" = "Процес мислення";
+"usage.manageResets" = "Керувати скиданнями";
+"usage.useReset" = "Використати скидання";
+"usage.resetTitle" = "Використати скидання ліміту Claude?";
+"usage.openClaude" = "Продовжити в Claude";
+"usage.resetConfirmation" = "Відкриється сторінка використання Claude. Увійдіть у %@ і перегляньте скидання, запропоноване цьому обліковому запису. Щоб скористатися ним, натисніть «Скинути безкоштовно» і підтвердьте в Claude. Використане скидання не можна скасувати. Ліміти оновляться, коли ви повернетеся до HerNess.";
+"usage.resetOpenFailed" = "Не вдалося відкрити Claude. Перевірте, чи обліковий запис досі підключено, і спробуйте ще раз.";
+"conversation.review" = "Переглянути";
+"dock.noWorkspace" = "Спершу виберіть робочу теку.";
+"dock.branch" = "Гілка";
+"dock.refresh" = "Оновити";
+"dock.commit" = "Commit";
+"dock.push" = "Push";
+"dock.fetch" = "Fetch";
+"dock.commitOrPush" = "Commit або push";
+"dock.commitMessage" = "Повідомлення коміту";
+"dock.noChanges" = "Агент нічого не змінив.";
+"dock.whyRequest" = "Ваш запит";
+"dock.whyAgent" = "Пояснення агента";
+"dock.notRepo" = "Ця тека не є git-репозиторієм.";
+"dock.filterFiles" = "Фільтр файлів…";
+"dock.openFile" = "Відкрити файл";
+"dock.selectFile" = "Виберіть файл у дереві робочого простору";
+"dock.binaryFile" = "Двійковий або нечитабельний файл";
+"project.missing.title" = "Папку проєкту не знайдено: %@";
+"project.missing.message" = "Папку проєкту в «%@» могли перемістити або видалити. Виберіть її нове розташування або видаліть проєкт.";
+"project.missing.locate" = "Знайти розташування…";
+"project.missing.readOnly" = "Папка проєкту недоступна. Ви можете переглядати попередні розмови; створення нових розмов і надсилання повідомлень вимкнено, доки не виберете нове розташування.";
+"queue.waitingForPlan" = "Очікування схвалення плану";
+"settings.closeToTray" = "Продовжувати роботу в системному лотку після закриття вікна";
+"settings.closeToTray.hint" = "Виконання, термінали та заплановані завдання продовжують працювати, поки вікно приховане; значок у лотку поверне його.";
+"tray.show" = "Відкрити вікно";
+"context.overflowTitle" = "Ця розмова не поміститься в нову модель";
+"context.overflowReason" = "%1$@ потребує близько %2$d токенів для продовження, а в цій моделі вільно лише %3$d.";
+"context.overflowByModel" = "Підсумок напише %@ — найменша підключена модель, яка ще може прочитати стенограму.";
+"context.overflowLocally" = "Жодна підключена модель не може прочитати стенограму, тому розмову скорочено без звернення до моделі.";
+"context.overflowCompress" = "Стиснути й продовжити";
+"context.overflowNotNow" = "Не зараз";
+"context.overflowDeclined" = "Надсилання зупинено: розмова не поміщається в нову модель.";
+"usage.context.title" = "Використання";
+"usage.context.input" = "Надісланий ввід";
+"usage.context.estimatedInput" = "Оцінка вводу";
+"usage.context.output" = "Вивід";
+"usage.context.latestRequest" = "Останній запит · вікно контексту";
+"usage.context.estimatedBreakdown" = "Оцінний розподіл вводу";
+"usage.context.estimateNote" = "Підсумки вводу/виводу провайдера показуються, коли вони доступні. Інакше підсумки вводу та категорії інструментів/MCP є локальними оцінками.";
+"usage.context.tokens" = "токенів";
+"usage.context.toolCalls" = "Виклики інструментів";
+"usage.context.mcpCalls" = "Виклики MCP";
+"usage.context.toolResults" = "Результати інструментів";
+"usage.context.mcpResults" = "Результати MCP";
+"plan.proposed" = "Claude запропонував план";
+"plan.reject" = "Відхилити";
+"plan.revise" = "Доопрацювати…";
+"plan.accept" = "Прийняти";
+"plan.acceptAuto" = "Прийняти й авторежим";
+"plan.open" = "Відкрити план";
+"plan.empty" = "Плану ще немає";
+"dock.expand" = "Розгорнути";
+"dock.collapse" = "Згорнути";
+"usage.context.cacheReuse" = "Повторне використання кешу в цьому чаті";
+"usage.context.cacheFreshInput" = "New / outside-breakpoint input: %@ tokens";
+"usage.context.cacheCoverage" = "Покриття вимірювань: %@ · %@ / %@ запитів";
+"usage.context.cacheLatency" = "Середня затримка запиту: %@ мс";
+"usage.context.cacheLoss" = "Найбільша втрата кешу: %@ · %@ токенів";
+"tray.back" = "Чати";
+
+"composer.cacheExpired.explanation" = "Розрахунковий час життя кешу минув. Кеш промптів — це тимчасовий стан обробки на боці провайдера; історія чату залишається збереженою. Якщо продовжити з повною історією, ці токени можуть знову рахуватися як нове введення. Підтвердити, чи зберігся кеш у провайдера, можна лише за даними про використання наступного запиту.";
+"composer.accountSwitched.notice" = "Цей чат перейшов на інший обліковий запис із тією самою моделлю. Кеш там починається з нуля; продовження може потребувати більше токенів і коштувати дорожче.";
+"composer.contextFull.notice" = "Контекстне вікно майже заповнене; продовження може потребувати більше токенів і коштувати дорожче. Почніть новий чат із коротким підсумком.";
+"composer.cacheExpired.infoTitle" = "Чому я це бачу?";
+"composer.cacheExpired.notice" = "Можливо, термін дії кешу минув; продовження може потребувати більше токенів і коштувати дорожче. Почніть новий чат із коротким підсумком.";
+"feedback.tag.apply_elsewhere" = "Apply it elsewhere";
+"feedback.tag.broke_existing_feature" = "Broke an existing feature";
+"feedback.tag.did_not_follow_project_style" = "Didn't follow project style";
+"feedback.tag.ignored_project_architecture" = "Ignored project architecture";
+"feedback.tag.keep_project_style" = "Keep the project style";
+"feedback.tag.reuse_architecture" = "Reuse this architecture";
+"feedback.tag.reuse_token_pattern" = "Reuse this token pattern";
+"feedback.tag.wrong_theme_or_token" = "Wrong theme or token";
+
+// Completed translations for keys added to the desktop catalog.
+"conversation.filesChangedCount" = "Змінено файлів: %d";
+"conversation.filesLineSummary" = "+%d −%d";
+"conversation.lineCountsUnavailable" = "Кількість рядків недоступна";
+"conversation.filesMore" = "Показати ще %d файлів";
+"conversation.filesLess" = "Показати менше файлів";
+"conversation.undoChanges" = "Скасувати";
+"conversation.viewChanges" = "Переглянути зміни";
+"conversation.filesReverted" = "Зміни у файлах скасовано.";
+
+// Completed translations for keys added to the desktop catalog.
+"composer.modelSwitched.notice" = "Модель змінено. Кеш не переноситься на нову модель; уся історія обробляється заново, що може потребувати більше токенів і коштувати дорожче.";
+
+"archive.title" = "Архівовані розмови";
+"archive.empty" = "В архіві немає розмов.";
+
+"conversation.plan" = "План";
+"conversation.system" = "система";
+
+"archive.confirmDelete" = "Видалити цю розмову назавжди?";
+"archive.deletePermanently" = "Видалити назавжди";
+"conversation.processedTokensCount" = "%@ токенів";

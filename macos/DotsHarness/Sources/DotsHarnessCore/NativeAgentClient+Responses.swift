@@ -6,6 +6,44 @@ import HarnessPluginKit
 import PluginRuntime
 
 extension NativeAgentClient {
+    static func mergeResponsesOutputItems(
+        streamed: [JSONObject],
+        terminalOutput: JSONValue?
+    ) -> [JSONObject] {
+        guard case .array(let output) = terminalOutput else { return streamed }
+        var merged = output.compactMap(\.object)
+        guard !merged.isEmpty else { return streamed }
+        // The terminal output array is the provider's canonical order. Some
+        // gateways omit stream items there, so retain any streamed items that
+        // are missing after the terminal items (including compaction checkpoints).
+        for item in streamed where !merged.contains(where: { sameResponsesOutputItem($0, item) }) {
+            merged.append(item)
+        }
+        return merged
+    }
+
+    private static func sameResponsesOutputItem(_ lhs: JSONObject, _ rhs: JSONObject) -> Bool {
+        if let leftID = lhs["id"]?.string, !leftID.isEmpty, leftID == rhs["id"]?.string { return true }
+        if lhs["type"]?.string == "function_call",
+           let leftCallID = lhs["call_id"]?.string, !leftCallID.isEmpty,
+           leftCallID == rhs["call_id"]?.string { return true }
+        return lhs == rhs
+    }
+
+    private static func anthropicContextEditStats(
+        _ contextManagement: JSONValue?
+    ) -> (clearedInputTokens: Int?, clearedToolUses: Int?) {
+        guard case .array(let edits) = contextManagement?["applied_edits"] else { return (nil, nil) }
+        let cleared = edits.filter { $0["type"]?.string == "clear_tool_uses_20250919" }
+        guard !cleared.isEmpty else { return (nil, nil) }
+        let tokens = cleared.compactMap { $0["cleared_input_tokens"]?.int }
+        let toolUses = cleared.compactMap { $0["cleared_tool_uses"]?.int }
+        return (
+            tokens.isEmpty ? nil : tokens.reduce(0, +),
+            toolUses.isEmpty ? nil : toolUses.reduce(0, +)
+        )
+    }
+
     static func response(from value: JSONValue) throws -> AgentResponse {
         if value["output"] != nil {
             let blocks: [JSONValue]
@@ -25,7 +63,11 @@ extension NativeAgentClient {
                     outputTokens: $0["output_tokens"]?.int ?? 0,
                     cachedTokens: $0["input_tokens_details"]?["cached_tokens"]?.int,
                     cacheWriteTokens: $0["input_tokens_details"]?["cache_write_tokens"]?.int,
-                    cacheMissTokens: $0["prompt_cache_miss_tokens"]?.int
+                    cacheMissTokens: $0["prompt_cache_miss_tokens"]?.int,
+                    reasoningTokens: $0["output_tokens_details"]?["reasoning_tokens"]?.int
+                        ?? $0["completion_tokens_details"]?["reasoning_tokens"]?.int
+                        ?? $0["reasoning_tokens"]?.int
+                        ?? $0["thinking_tokens"]?.int
                 )
             }
             let media = blocks.flatMap(Self.mediaPayloads)
@@ -33,7 +75,10 @@ extension NativeAgentClient {
                 message: AgentMessage(role: .assistant, content: text, toolCalls: calls, providerItems: providerItems),
                 usage: usage,
                 media: media,
-                nativeCompactionApplied: blocks.contains { $0["type"]?.string == "compaction" }
+                nativeCompactionApplied: blocks.contains { $0["type"]?.string == "compaction" },
+                incompleteReason: value["incomplete_details"]?["reason"]?.string,
+                providerResponseID: value["id"]?.string,
+                cacheDiagnostics: AgentProviderCacheDiagnostics(value: value["prompt_cache_diagnostics"])
             )
         }
         if value["type"]?.string == "message" || value["content"] != nil && value["choices"] == nil {
@@ -54,13 +99,20 @@ extension NativeAgentClient {
             }
             let thinking = thinkingBlocks.isEmpty ? nil : thinkingBlocks.joined(separator: "\n\n")
             let providerItems = blocks.compactMap(\.object)
+            let contextEditStats = anthropicContextEditStats(value["context_management"])
             let usage = value["usage"]?.object.map {
                 AgentUsage(
                     inputTokens: $0["input_tokens"]?.int ?? 0,
                     outputTokens: $0["output_tokens"]?.int ?? 0,
                     cachedTokens: $0["cache_read_input_tokens"]?.int,
                     cacheWriteTokens: $0["cache_creation_input_tokens"]?.int,
-                    cacheMissTokens: $0["prompt_cache_miss_tokens"]?.int
+                    cacheMissTokens: $0["prompt_cache_miss_tokens"]?.int,
+                    reasoningTokens: $0["output_tokens_details"]?["reasoning_tokens"]?.int
+                        ?? $0["completion_tokens_details"]?["reasoning_tokens"]?.int
+                        ?? $0["reasoning_tokens"]?.int
+                        ?? $0["thinking_tokens"]?.int,
+                    contextClearedInputTokens: contextEditStats.clearedInputTokens,
+                    contextClearedToolUses: contextEditStats.clearedToolUses
                 )
             }
             return AgentResponse(
@@ -72,7 +124,10 @@ extension NativeAgentClient {
                     providerItems: providerItems
                 ),
                 usage: usage,
-                media: blocks.flatMap(Self.mediaPayloads)
+                media: blocks.flatMap(Self.mediaPayloads),
+                incompleteReason: value["stop_reason"]?.string == "max_tokens" ? "max_output_tokens" : nil,
+                providerResponseID: value["id"]?.string,
+                cacheDiagnostics: AgentProviderCacheDiagnostics(anthropicValue: value["diagnostics"])
             )
         }
         guard let choice = value["choices"]?.firstObject,
@@ -104,13 +159,18 @@ extension NativeAgentClient {
                 cachedTokens: $0["prompt_tokens_details"]?["cached_tokens"]?.int
                     ?? $0["prompt_cache_hit_tokens"]?.int,
                 cacheWriteTokens: $0["prompt_tokens_details"]?["cache_write_tokens"]?.int,
-                cacheMissTokens: $0["prompt_cache_miss_tokens"]?.int
+                cacheMissTokens: $0["prompt_cache_miss_tokens"]?.int,
+                reasoningTokens: $0["output_tokens_details"]?["reasoning_tokens"]?.int
+                    ?? $0["completion_tokens_details"]?["reasoning_tokens"]?.int
+                    ?? $0["reasoning_tokens"]?.int
+                    ?? $0["thinking_tokens"]?.int
             )
         }
         return AgentResponse(
             message: AgentMessage(role: .assistant, content: content, thinking: reasoning, toolCalls: toolCalls),
             usage: usage,
-            media: Self.mediaPayloads(from: messageObject["content"] ?? .null)
+            media: Self.mediaPayloads(from: messageObject["content"] ?? .null),
+            incompleteReason: choice["finish_reason"]?.string == "length" ? "max_output_tokens" : nil
         )
     }
 
@@ -188,17 +248,10 @@ extension NativeAgentClient {
             }
         }
 
-        // Some Responses servers include the opaque compaction item only in
-        // response.completed.output. Preserve it even when text deltas already
-        // made the stream non-empty, so the fallback below is not skipped.
-        if let finalResponse,
-           case .array(let output) = finalResponse["output"] {
-            for item in output where item["type"]?.string == "compaction" {
-                guard let object = item.object,
-                      !providerItems.contains(where: { $0 == object }) else { continue }
-                providerItems.append(object)
-            }
-        }
+        providerItems = mergeResponsesOutputItems(
+            streamed: providerItems,
+            terminalOutput: finalResponse?["output"]
+        )
 
         let toolCalls = callOrder.compactMap { id in
             calls[id].map { AgentToolCall(id: id, name: $0.name, arguments: $0.args) }
@@ -211,7 +264,11 @@ extension NativeAgentClient {
                 cachedTokens: $0["input_tokens_details"]?["cached_tokens"]?.int
                     ?? $0["prompt_cache_hit_tokens"]?.int,
                 cacheWriteTokens: $0["input_tokens_details"]?["cache_write_tokens"]?.int,
-                cacheMissTokens: $0["prompt_cache_miss_tokens"]?.int
+                cacheMissTokens: $0["prompt_cache_miss_tokens"]?.int,
+                reasoningTokens: $0["output_tokens_details"]?["reasoning_tokens"]?.int
+                    ?? $0["completion_tokens_details"]?["reasoning_tokens"]?.int
+                    ?? $0["reasoning_tokens"]?.int
+                    ?? $0["thinking_tokens"]?.int
             )
         }
 
@@ -221,6 +278,13 @@ extension NativeAgentClient {
             if let finalResponse, case .array(let output) = finalResponse["output"], !output.isEmpty {
                 return try response(from: finalResponse)
             }
+            if let reason = finalResponse?["incomplete_details"]?["reason"]?.string {
+                return AgentResponse(
+                    message: AgentMessage(role: .assistant, content: ""),
+                    usage: usage,
+                    incompleteReason: reason
+                )
+            }
             throw NativeAgentError(AppCopy.text("agent.noMessage"))
         }
         let media = providerItems.flatMap { Self.mediaPayloads(from: .object($0)) }
@@ -228,7 +292,10 @@ extension NativeAgentClient {
             message: AgentMessage(role: .assistant, content: textAcc, thinking: thinkingAcc.isEmpty ? nil : thinkingAcc, toolCalls: toolCalls, providerItems: providerItems),
             usage: usage,
             media: media,
-            nativeCompactionApplied: providerItems.contains { $0["type"]?.string == "compaction" }
+            nativeCompactionApplied: providerItems.contains { $0["type"]?.string == "compaction" },
+            incompleteReason: finalResponse?["incomplete_details"]?["reason"]?.string,
+            providerResponseID: finalResponse?["id"]?.string,
+            cacheDiagnostics: AgentProviderCacheDiagnostics(value: finalResponse?["prompt_cache_diagnostics"])
         )
     }
 

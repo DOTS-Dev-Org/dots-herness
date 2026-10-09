@@ -7,28 +7,65 @@ import Observation
 import PluginRuntime
 
 extension NativeAgentHost {
+    /// Loads one archived transcript only when the user opens it from Archive.
+    public func loadArchivedConversation(_ id: String) -> Conversation? {
+        guard let conversation = store.loadAll().first(where: { $0.id == id && $0.archived && !$0.blank }) else {
+            return nil
+        }
+        return Self.recover(conversation)
+    }
+
+    /// Loads retained history without restoring its removed project's workspace.
+    /// The original conversation record and its project path remain unchanged.
+    public func openRecentConversation(_ id: String) {
+        guard workspaceURL == nil,
+              let conversation = store.loadAll().first(where: { $0.id == id }) else { return }
+        loadGeneration += 1
+        contentTask?.cancel()
+        contentTask = nil
+        conversations = [Self.recover(conversation)]
+        selectedID = nil
+        clearFollowUpSuggestion()
+        select(id)
+    }
+
     /// Staged: titles show at once from headers; transcripts decode off the main
     /// thread and replace the headers when ready. Sends wait for that (see `send`).
     func loadConversations(workspacePath: String?) {
         loadGeneration += 1
         let generation = loadGeneration
         contentTask = nil
+        guard let workspacePath else {
+            let stored = store.load(workspacePath: nil)
+            conversations = stored.map(recoverForContext)
+            if conversations != stored { persist() }
+            selectedID = initialSelection()
+            return
+        }
+        guard ConversationStore.normalizedPath(workspacePath) != nil else {
+            conversations = []
+            selectedID = nil
+            return
+        }
         // A small history decodes in a few milliseconds: load it whole, no header stage.
         guard store.fileSize > Self.stagedLoadThreshold else {
-            conversations = store.load(workspacePath: workspacePath).map(recoverForContext)
-            selectedID = conversations.first(where: { !$0.archived })?.id
-            if area == .chat, let selected {
-                activateChatContext(for: selected)
-            }
+            let stored = store.load(workspacePath: workspacePath)
+            let recovered = stored.map(recoverForContext)
+            conversations = recovered
+            if recovered != stored { store.save(recovered) }
+            selectedID = initialSelection()
             return
         }
         conversations = store.loadHeaders(workspacePath: workspacePath).map(Self.recoverListed)
-        selectedID = conversations.first(where: { !$0.archived })?.id
+        selectedID = initialSelection()
         let store = self.store
+        // Started here, not inside the main-actor task: that task only gets the main
+        // thread once the first frame is out, and the decode should be done by then.
+        let decode = Task.detached(priority: .userInitiated) {
+            store.load(workspacePath: workspacePath)
+        }
         contentTask = Task { @MainActor [weak self] in
-            let full = await Task.detached(priority: .userInitiated) {
-                store.load(workspacePath: workspacePath)
-            }.value
+            let full = await decode.value
             guard let self, self.loadGeneration == generation else { return }
             self.hydrateConversations(full)
         }
@@ -45,11 +82,11 @@ extension NativeAgentHost {
             loaded.applyMetadata(from: current)
             return loaded
         }
+        let recovered = conversations
+        let stored = full.filter { current in conversations.contains(where: { $0.id == current.id }) }
+        if recovered != stored { persist() }
         if let selectedID, !conversations.contains(where: { $0.id == selectedID }) {
-            self.selectedID = conversations.first(where: { !$0.archived })?.id
-        }
-        if area == .chat, let selected {
-            activateChatContext(for: selected)
+            self.selectedID = initialSelection()
         }
     }
 
@@ -61,7 +98,7 @@ extension NativeAgentHost {
         guard conversations.contains(where: { !$0.contentLoaded }) else { return }
         loadGeneration += 1
         contentTask = nil
-        hydrateConversations(store.load(workspacePath: area == .chat ? nil : workspaceURL?.path))
+        hydrateConversations(store.load(workspacePath: workspaceURL?.path))
     }
 
     /// Resolves once the current workspace's transcripts are in memory.
@@ -73,96 +110,33 @@ extension NativeAgentHost {
         for configuration: AgentConfiguration,
         planMode: Bool = false,
         model: String? = nil,
-        tools: [AgentToolDefinition] = []
+        tools: [AgentToolDefinition] = [],
+        router: RouterController? = nil
     ) -> String? {
-        let conversation = activeConversationID.flatMap { id in conversations.first(where: { $0.id == id }) }
-            ?? selected
-        let ledger = area == .chat ? chatLedger(for: conversation) : ChatContextLedger()
+        let stablePromptRevision = AgentCacheNamespace.promptContextRevision(
+            systemPromptSections(workspace: workspaceURL, planMode: false, prompt: "")
+        )
         return AgentCacheNamespace.key(
-            area: area,
-            conversationID: conversation?.id ?? "none",
-            chatProjectID: conversation?.chatProjectID,
-            // A Chat cache namespace must not carry the Coding project's
-            // identity, even though both bridges share the memory service.
-            codingProjectID: area == .coding ? memory.projectID : nil,
+            projectID: memory.projectID,
             model: model ?? configuration.model,
-            // Plan mode keeps the same tool list and cache namespace.
+            // Plan guidance is turn-dynamic and the tool list is canonicalized
+            // separately; keep the reusable stable prefix on the same namespace.
             planMode: false,
-            contextRevision: ledger.revision,
-            rootIDs: ledger.roots.map(\.id),
+            contextRevision: stablePromptRevision,
             provider: configuration.provider,
             api: configuration.api,
-            accountID: configuration.accountID ?? configuration.sessionAccountID,
-            toolFingerprint: AgentCacheNamespace.toolFingerprint(tools),
-            contextSegment: "compaction-\(conversation?.contextCompactionCount ?? 0)"
+            // RouterController scopes the wire cache key to the account that
+            // actually serves the request, including after quota continuation.
+            accountID: router == nil ? (configuration.accountID ?? configuration.sessionAccountID) : nil,
+            toolFingerprint: AgentCacheNamespace.toolFingerprint(tools)
         )
-    }
-
-    func chatScopeID(for conversation: Conversation?) -> String {
-        guard let conversation else { return "conversation-unknown" }
-        if let project = conversation.chatProjectID, !project.isEmpty {
-            return "project-\(project)"
-        }
-        return "conversation-\(conversation.id)"
-    }
-
-    func chatLedger(for conversation: Conversation?) -> ChatContextLedger {
-        guard area == .chat, let chatContextStore else { return ChatContextLedger() }
-        return chatContextStore.load(scopeID: chatScopeID(for: conversation))
-    }
-
-    func activateChatContext(for conversation: Conversation) {
-        guard area == .chat else { return }
-        activeChatScopeID = chatScopeID(for: conversation)
-        activeChatRoots = chatLedger(for: conversation).roots
     }
 
     @discardableResult
-    func attachChatRoots(
-        from text: String,
-        conversationID: String,
-        messageID: String
-    ) -> [ChatContextRoot] {
-        guard area == .chat, let chatContextStore,
-              let conversation = conversations.first(where: { $0.id == conversationID }) else { return [] }
-        let scopeID = chatScopeID(for: conversation)
-        var ledger = chatContextStore.load(scopeID: scopeID)
-        let incoming = ChatPathParser.roots(
-            from: text,
-            knownRoots: ledger.roots,
-            sourceMessageID: messageID
-        )
-        let attached = ledger.attach(roots: incoming, to: messageID)
-        chatContextStore.save(ledger, scopeID: scopeID)
-        activeChatScopeID = scopeID
-        activeChatRoots = ledger.roots
-        return attached
-    }
-
-    func chatContextText(for conversation: Conversation?) -> String {
-        guard area == .chat else { return "" }
-        let ledger = chatLedger(for: conversation)
-        let roots = ledger.roots.map { root in
-            "- [\(root.id)] \(root.path) (\(root.kind.rawValue))"
-        }
-        var sections = ["""
-
-        Chat context ledger (revision \(ledger.revision))
-        - These are verified roots explicitly supplied by the user in this Chat project or conversation.
-        - They persist across messages; do not discard an older root when a new root is added.
-        - Use the matching contextRootID on every filesystem or terminal tool call.
-        - If there is no root, ask the user for a file or folder path. Never use Environment.currentDirectory or another hidden cwd.
-        - If a write could target more than one root, read first and ask a short clarification question before mutating.
-        """]
-        if !roots.isEmpty { sections.append("Known context roots:\n" + roots.joined(separator: "\n")) }
-        if !ledger.projectNotes.isEmpty { sections.append("Project notes:\n" + ledger.projectNotes.map { "- \($0)" }.joined(separator: "\n")) }
-        if !ledger.changeSummaries.isEmpty { sections.append("Recent change summaries:\n" + ledger.changeSummaries.suffix(20).map { "- \($0)" }.joined(separator: "\n")) }
-        return sections.joined(separator: "\n")
-    }
-
-    func persist() {
-        store.save(conversations)
+    func persist() -> Bool {
+        guard store.save(conversations) else { return false }
         touchLists()
+        return true
     }
 
     func skillID(from call: AgentToolCall) -> String? {
@@ -173,7 +147,6 @@ extension NativeAgentHost {
 
     func conversation(for id: String) -> Conversation? {
         conversations.first(where: { $0.id == id })
-            ?? store.load(workspacePath: nil).first(where: { $0.id == id }).map(recoverForContext)
     }
 
     func recoverForContext(_ conversation: Conversation) -> Conversation {
@@ -182,7 +155,7 @@ extension NativeAgentHost {
         if recovered.modelContext.isEmpty, !recovered.messages.isEmpty {
             recovered.modelContext = makeAgentContext(
                 for: recovered,
-                workspace: area == .chat ? nil : workspaceURL
+                workspace: workspaceURL
             )
         }
         return recovered
@@ -190,13 +163,43 @@ extension NativeAgentHost {
 
     func clearPendingPlan(_ planID: String, in conversationID: String) {
         guard conversations.first(where: { $0.id == conversationID })?.pendingPlanMessageID == planID else { return }
-        updateConversation(conversationID) { $0.pendingPlanMessageID = nil }
+        updateConversation(conversationID) {
+            $0.pendingPlanMessageID = nil
+            $0.planGateActive = false
+        }
+    }
+
+    func journalToolBatch(_ calls: [AgentToolCall], in conversationID: String) {
+        guard !calls.isEmpty,
+              let index = conversations.firstIndex(where: { $0.id == conversationID }) else { return }
+        conversations[index].inFlightToolCalls = calls.map {
+            InFlightToolCall(id: $0.id, name: $0.name, arguments: $0.arguments)
+        }
+        conversations[index].requiresToolOutcomeRecovery = false
+        persist()
+    }
+
+    func finishJournaledTools(in conversationID: String) {
+        guard let index = conversations.firstIndex(where: { $0.id == conversationID }) else { return }
+        conversations[index].inFlightToolCalls = []
+        persist()
+    }
+
+    func acknowledgeToolOutcomeRecovery(in conversationID: String) {
+        guard let index = conversations.firstIndex(where: { $0.id == conversationID }) else { return }
+        guard conversations[index].requiresToolOutcomeRecovery else { return }
+        conversations[index].requiresToolOutcomeRecovery = false
+        conversations[index].inFlightToolCalls = []
+        persist()
     }
 
     func invalidatePendingPlan(in conversationID: String?) {
         guard let conversationID,
               conversations.first(where: { $0.id == conversationID })?.pendingPlanMessageID != nil else { return }
-        updateConversation(conversationID) { $0.pendingPlanMessageID = nil }
+        updateConversation(conversationID) {
+            $0.pendingPlanMessageID = nil
+            $0.planGateActive = false
+        }
     }
 
     func turnIDs(in messages: [ChatMessage], from index: Int) -> [String]? {
@@ -244,11 +247,6 @@ extension NativeAgentHost {
             return
         }
 
-        var projectless = store.load(workspacePath: nil)
-        guard let index = projectless.firstIndex(where: { $0.id == id }) else { return }
-        update(&projectless[index])
-        store.save(projectless)
-        touchLists()
     }
 
     /// Fold in conversations written to the store by another host (e.g. a
@@ -265,7 +263,7 @@ extension NativeAgentHost {
     }
 
     static func isEmptyDraft(_ conversation: Conversation) -> Bool {
-        conversation.messages.isEmpty && (conversation.blank || conversation.title == "New chat")
+        conversation.messages.isEmpty && (conversation.blank || conversation.title == "New conversation" || conversation.title == "New chat")
     }
 
     /// `recover` derives title/blank from the transcript, which a header lacks.
@@ -278,11 +276,35 @@ extension NativeAgentHost {
 
     static func recover(_ conversation: Conversation) -> Conversation {
         var recovered = conversation
+        let wasRunning = recovered.running
         recovered.running = false
         sanitizeVisibleSkillPreviews(&recovered)
         if let planID = recovered.pendingPlanMessageID,
            !recovered.messages.contains(where: { $0.id == planID && $0.kind == .plan }) {
             recovered.pendingPlanMessageID = nil
+        }
+        recovered.planGateActive = recovered.planGateActive || recovered.pendingPlanMessageID != nil
+        if wasRunning || !recovered.inFlightToolCalls.isEmpty {
+            recovered.requiresToolOutcomeRecovery = true
+            let completedToolIDs = Set(
+                recovered.modelContext
+                    .filter { $0.role == .tool }
+                    .compactMap(\.toolCallID)
+            )
+            for call in recovered.inFlightToolCalls where !completedToolIDs.contains(call.id) {
+                recovered.modelContext.append(AgentMessage(
+                    role: .tool,
+                    content: "The application closed before the result of this tool call was durably known. The tool may have completed or may not have run. Reconcile the current state before invoking the same mutation again.",
+                    name: call.name,
+                    toolCallID: call.id
+                ))
+            }
+            if recovered.continuation?.reason != .applicationClosed, !recovered.turnFinished {
+                recovered.continuation = ContinuationState(
+                    reason: .applicationClosed,
+                    message: "The application closed while this plan was active. Recovery will continue automatically when possible; tool results are not assumed and no tool call will be replayed."
+                )
+            }
         }
         if let firstUserMessage = recovered.messages.first(where: { $0.kind == .user }) {
             let titleText = firstUserMessage.text.isEmpty
@@ -290,7 +312,8 @@ extension NativeAgentHost {
                 : firstUserMessage.text
             recovered.title = Self.title(for: titleText)
             recovered.blank = false
-        } else if recovered.messages.isEmpty, recovered.title == "New chat" {
+        } else if recovered.messages.isEmpty,
+                  recovered.title == "New conversation" || recovered.title == "New chat" {
             recovered.blank = true
         }
         return recovered
@@ -375,9 +398,8 @@ extension NativeAgentHost {
         }
     }
 
-    /// Provider-only text for a turn. It is deliberately not an AgentMessage:
-    /// storing it would make every later turn grow with repeated file notices
-    /// and would destroy the reusable historical prefix.
+    /// A revision notice is appended once to the durable transcript when its
+    /// observation fingerprint changes; it never rewrites an earlier turn.
     static func attachmentRevisionNotice(for attachments: [ChatAttachment]) -> String? {
         let notices = attachments.compactMap { attachment -> String? in
             let observation = attachment.observeSource()
@@ -416,18 +438,18 @@ extension NativeAgentHost {
         return notices.sorted().joined(separator: "\n\n")
     }
 
-    /// Adds the notice to a request copy only. Putting it on the latest user
-    /// turn keeps it after the stable policy/history prefix and also avoids the
-    /// `promptContextCaptured` folding step dropping an ephemeral message.
+    /// Legacy callers append a notice after complete tool groups. The run loop
+    /// deduplicates and persists these notices through its cache epoch.
     static func requestMessages(
         _ messages: [AgentMessage],
         attachmentRevisionNotice: String?
     ) -> [AgentMessage] {
         guard let attachmentRevisionNotice,
-              !attachmentRevisionNotice.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              let index = messages.lastIndex(where: { $0.role == .user }) else { return messages }
+              !attachmentRevisionNotice.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return messages }
         var result = messages
-        result[index].content = attachmentRevisionNotice + "\n\n" + result[index].content
+        var notice = AgentMessage(role: .user, content: attachmentRevisionNotice)
+        notice.promptContextCaptured = true
+        result.append(notice)
         return result
     }
 
@@ -526,41 +548,54 @@ extension NativeAgentHost {
         }
     }
 
-    /// Runs the explore subagents of one assistant turn side by side, bounded by maxPerTurn.
+    /// Starts the explore subagents of one assistant turn together, bounded by
+    /// maxPerTurn, and hands back their tasks instead of their results.
+    ///
+    /// Awaiting the whole batch before the tool loop began made every other call
+    /// in the turn — a write, a search, a command — wait behind the slowest
+    /// subagent. The caller joins each task when it reaches that call, and must
+    /// cancel whatever it never reaches: these are unstructured tasks, so a
+    /// cancelled run does not propagate into them on its own.
+    static func startExplore(
+        _ calls: [AgentToolCall],
+        complete: @escaping ExploreTool.Complete,
+        workspace: URL?
+    ) -> [String: Task<ExploreTool.Outcome, Never>] {
+        guard let workspace else { return [:] }
+        let explores = calls.filter { $0.name == ExploreTool.name }
+        guard !explores.isEmpty else { return [:] }
+        var pending: [String: Task<ExploreTool.Outcome, Never>] = [:]
+        for call in explores.dropFirst(ExploreTool.maxPerTurn) {
+            let answer = "Tool error: maximum of \(ExploreTool.maxPerTurn) explore subagents per turn exceeded. Run remaining investigations in subsequent turns."
+            pending[call.id] = Task {
+                ExploreTool.Outcome(
+                    answer: answer,
+                    readPaths: [], steps: 0, hitStepLimit: false, answered: false, searches: 0
+                )
+            }
+        }
+        for call in explores.prefix(ExploreTool.maxPerTurn) {
+            pending[call.id] = Task(priority: .userInitiated) {
+                await ExploreTool.run(call, complete: complete, workspace: workspace)
+            }
+        }
+        return pending
+    }
+
+    /// Runs explore subagents side by side, bounded by maxPerTurn, and collects outcomes.
     static func prefetchExplore(
         _ calls: [AgentToolCall],
         complete: @escaping ExploreTool.Complete,
         workspace: URL?
     ) async -> [String: ExploreTool.Outcome] {
-        guard let workspace else { return [:] }
-        let explores = calls.filter { $0.name == ExploreTool.name }
-        guard !explores.isEmpty else { return [:] }
-        let allowed = Array(explores.prefix(ExploreTool.maxPerTurn))
-        let excess = Array(explores.dropFirst(ExploreTool.maxPerTurn))
+        let tasks = startExplore(calls, complete: complete, workspace: workspace)
         var outcomes: [String: ExploreTool.Outcome] = [:]
-        for call in excess {
-            outcomes[call.id] = ExploreTool.Outcome(
-                answer: "Tool error: maximum of \(ExploreTool.maxPerTurn) explore subagents per turn exceeded. Run remaining investigations in subsequent turns.",
-                readPaths: [], steps: 0, hitStepLimit: false, answered: false, searches: 0
-            )
+        for (id, task) in tasks {
+            outcomes[id] = await task.value
         }
-        if allowed.count == 1, let single = allowed.first {
-            outcomes[single.id] = await ExploreTool.run(single, complete: complete, workspace: workspace)
-            return outcomes
-        }
-        let parallelResults = await withTaskGroup(of: (String, ExploreTool.Outcome).self) { group in
-            for call in allowed {
-                group.addTask(priority: .userInitiated) {
-                    (call.id, await ExploreTool.run(call, complete: complete, workspace: workspace))
-                }
-            }
-            var batch: [String: ExploreTool.Outcome] = [:]
-            for await (id, outcome) in group { batch[id] = outcome }
-            return batch
-        }
-        for (id, outcome) in parallelResults { outcomes[id] = outcome }
         return outcomes
     }
+
 
     /// Runs the read-only workspace calls of one assistant turn concurrently.
     /// Returns results by call id; anything not returned falls through to the
@@ -568,11 +603,18 @@ extension NativeAgentHost {
     static func prefetchReadOnly(
         _ calls: [AgentToolCall],
         workspace: URL?,
+        conversationID: String,
         readRoots: [URL],
-        contextRoots: [ChatContextRoot],
         planMode: Bool
     ) async -> [String: String] {
-        guard workspace != nil || !contextRoots.isEmpty else { return [:] }
+        guard workspace != nil else { return [:] }
+        // Prefetching answers every read before the loop reaches the batch's other
+        // calls, so a batch that can change the workspace must not use it: reading
+        // a path the same turn writes would return the old content and be recorded
+        // to the model as fact. `explore` only reads, so it can share the prefetch.
+        guard calls.allSatisfy({ WorkspaceTools.isReadOnly($0.name) || $0.name == ExploreTool.name }) else {
+            return [:]
+        }
         let readOnly = calls.filter {
             WorkspaceTools.isReadOnly($0.name)
                 && $0.name != WorkspaceTools.generatedMediaInspectionName
@@ -580,17 +622,24 @@ extension NativeAgentHost {
         guard readOnly.count > 1 else { return [:] }
         _ = planMode // read-only calls are allowed in either mode
         return await withTaskGroup(of: (String, String).self) { group in
-            for call in readOnly {
+            var pending = readOnly.makeIterator()
+            var started = 0
+            while started < Self.maxConcurrentReads, let call = pending.next() {
                 group.addTask(priority: .userInitiated) {
-                    if !contextRoots.isEmpty {
-                        return (call.id, WorkspaceTools.execute(call, contextRoots: contextRoots))
-                    }
                     guard let workspace else { return (call.id, "") }
-                    return (call.id, WorkspaceTools.execute(call, workspace: workspace, readRoots: readRoots))
+                    return (call.id, WorkspaceTools.execute(call, workspace: workspace, conversationID: conversationID, readRoots: readRoots))
                 }
+                started += 1
             }
             var results: [String: String] = [:]
-            for await (id, result) in group { results[id] = result }
+            while let (id, result) = await group.next() {
+                results[id] = result
+                guard let call = pending.next() else { continue }
+                group.addTask(priority: .userInitiated) {
+                    guard let workspace else { return (call.id, "") }
+                    return (call.id, WorkspaceTools.execute(call, workspace: workspace, conversationID: conversationID, readRoots: readRoots))
+                }
+            }
             return results
         }
     }

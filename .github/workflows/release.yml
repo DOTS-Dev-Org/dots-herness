@@ -1,0 +1,120 @@
+name: Release and Packaging
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  verify-version:
+    name: Verify tag matches VERSION
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: test "${GITHUB_REF_NAME#v}" = "$(tr -d '[:space:]' < VERSION)" || { echo "Tag ${GITHUB_REF_NAME} != VERSION file"; exit 1; }
+
+  build-macos:
+    name: Build macOS DMG
+    needs: verify-version
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version tag
+        id: version
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          VERSION_RAW="${TAG_NAME#v}"
+          echo "tag=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION_RAW}" >> $GITHUB_OUTPUT
+          echo "Releasing version ${VERSION_RAW}"
+
+      - name: Build and Package DMG
+        run: |
+          VERSION="${{ steps.version.outputs.version }}" ./macos/DotsHarness/scripts/package-dmg.sh --no-open
+
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DotsHarness-${{ steps.version.outputs.version }}-macos
+          path: macos/DotsHarness/dist/*.dmg
+
+  build-linux:
+    name: Build Linux tar.xz
+    needs: verify-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Package
+        run: VERSION="${GITHUB_REF_NAME#v}" ./linux/DotsHarness/scripts/package-tar.sh --no-open --runtime linux-x64 --framework-dependent
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: linux/DotsHarness/dist/*.tar.xz
+
+  build-windows:
+    name: Build Windows zip
+    needs: verify-version
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Package
+        shell: bash
+        run: VERSION="${GITHUB_REF_NAME#v}" ./windows/DotsHarness/scripts/package-zip.sh --no-open --runtime win-x64 --framework-dependent
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: windows/DotsHarness/dist/*.zip
+
+  release:
+    name: Publish GitHub Release
+    needs: [build-macos, build-linux, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-artifacts
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            dist-artifacts/*.dmg
+            dist-artifacts/*.tar.xz
+            dist-artifacts/*.zip
+
+  deploy-worker:
+    name: Deploy version API (Cloudflare Worker)
+    needs: [release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Deploy
+        working-directory: cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npm ci
+          npx wrangler deploy --config wrangler.jsonc

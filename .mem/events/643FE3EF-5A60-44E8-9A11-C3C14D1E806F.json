@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-08T22:45:13Z",
+  "eventId" : "643FE3EF-5A60-44E8-9A11-C3C14D1E806F",
+  "lamport" : 220,
+  "parents" : [
+    "6526CD49-E364-41D3-BB54-43F4AAB33862"
+  ],
+  "payload" : {
+    "commandSummary" : "GIT_CONFIG_GLOBAL=\/dev\/null git -c core.fsmonitor=false status --short -- macos\/DotsHarness\/Sources\/DotsHarnessUI\/ConversationView.swift macos\/DotsHarness\/Sourc",
+    "name" : "run_command",
+    "path" : null,
+    "resultBytes" : 525,
+    "resultStatus" : "completed",
+    "runId" : "E66F67E5-49B0-47BF-9E7D-819262BB04BA"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "b1vR7LQKDD3Mo96vALjD6prA3RUD1xFGITCMqhT3hzanPMwMqwqUmEAv6R\/DmYnDh5bXMwIoFCrkXz2IVg\/yPg=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

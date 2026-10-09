@@ -1,0 +1,335 @@
+{
+  "measurement": "Saved provider usage counters; no new provider requests",
+  "totals": {
+    "requests": 162,
+    "input_reported_requests": 162,
+    "cache_reported_requests": 152,
+    "input_tokens": 9482338,
+    "cached_input_tokens": 8682091,
+    "cache_write_tokens": 82616,
+    "fresh_input_tokens_on_cache_reported_requests": 699196,
+    "output_tokens": 135196,
+    "reasoning_tokens": 97548,
+    "reasoning_reported_requests": 143,
+    "retries": 0,
+    "peak_input_tokens": 162920,
+    "raw_cache_share": null,
+    "strategies": {
+      "none": 154,
+      "deterministic": 8
+    }
+  },
+  "efforts": {
+    "unreported": 4,
+    "low": 19,
+    "max": 139
+  },
+  "routes": [
+    {
+      "provider": "Anthropic",
+      "model": "claude-sonnet-5-5",
+      "api": "anthropic",
+      "requests": 10,
+      "input_reported_requests": 10,
+      "cache_reported_requests": 10,
+      "input_tokens": 157034,
+      "cached_input_tokens": 104273,
+      "cache_write_tokens": 52729,
+      "fresh_input_tokens_on_cache_reported_requests": 52761,
+      "output_tokens": 2611,
+      "reasoning_tokens": 0,
+      "reasoning_reported_requests": 0,
+      "retries": 0,
+      "peak_input_tokens": 16343,
+      "raw_cache_share": 0.6640154361475858,
+      "strategies": {
+        "none": 10
+      }
+    },
+    {
+      "provider": "ChatGPT",
+      "model": "gpt-5.6-luna",
+      "api": "chatgpt",
+      "requests": 7,
+      "input_reported_requests": 7,
+      "cache_reported_requests": 4,
+      "input_tokens": 82906,
+      "cached_input_tokens": 43008,
+      "cache_write_tokens": 0,
+      "fresh_input_tokens_on_cache_reported_requests": 6813,
+      "output_tokens": 1915,
+      "reasoning_tokens": 177,
+      "reasoning_reported_requests": 5,
+      "retries": 0,
+      "peak_input_tokens": 14726,
+      "raw_cache_share": null,
+      "strategies": {
+        "none": 7
+      }
+    },
+    {
+      "provider": "ChatGPT",
+      "model": "gpt-6-luna",
+      "api": "chatgpt",
+      "requests": 141,
+      "input_reported_requests": 141,
+      "cache_reported_requests": 137,
+      "input_tokens": 9204669,
+      "cached_input_tokens": 8526976,
+      "cache_write_tokens": 0,
+      "fresh_input_tokens_on_cache_reported_requests": 638851,
+      "output_tokens": 130602,
+      "reasoning_tokens": 97371,
+      "reasoning_reported_requests": 138,
+      "retries": 0,
+      "peak_input_tokens": 162920,
+      "raw_cache_share": null,
+      "strategies": {
+        "none": 133,
+        "deterministic": 8
+      }
+    },
+    {
+      "provider": "Claude",
+      "model": "claude-sonnet-5",
+      "api": "anthropic",
+      "requests": 4,
+      "input_reported_requests": 4,
+      "cache_reported_requests": 1,
+      "input_tokens": 37729,
+      "cached_input_tokens": 7834,
+      "cache_write_tokens": 29887,
+      "fresh_input_tokens_on_cache_reported_requests": 771,
+      "output_tokens": 68,
+      "reasoning_tokens": 0,
+      "reasoning_reported_requests": 0,
+      "retries": 0,
+      "peak_input_tokens": 11489,
+      "raw_cache_share": null,
+      "strategies": {
+        "none": 4
+      }
+    }
+  ],
+  "largest_chats": [
+    {
+      "rank": 1,
+      "requests": 44,
+      "input_reported_requests": 44,
+      "cache_reported_requests": 44,
+      "input_tokens": 4311678,
+      "cached_input_tokens": 4124160,
+      "cache_write_tokens": 0,
+      "fresh_input_tokens_on_cache_reported_requests": 187518,
+      "output_tokens": 35803,
+      "reasoning_tokens": 26006,
+      "reasoning_reported_requests": 44,
+      "retries": 0,
+      "peak_input_tokens": 162920,
+      "raw_cache_share": 0.9565092755071227,
+      "strategies": {
+        "none": 44
+      },
+      "current_retained_context": {
+        "messages": 143,
+        "body_utf8_bytes_by_role": {
+          "system": 13237,
+          "user": 11424,
+          "assistant": 1311,
+          "tool": 493381
+        },
+        "tool_result_utf8_bytes_by_tool": {
+          "grep_files": 73262,
+          "glob": 2329,
+          "read_file": 384257,
+          "run_command": 32513,
+          "update_plan": 812,
+          "edit_file": 208
+        },
+        "exact_duplicate_tool_result_utf8_bytes": {
+          "grep_files": 52,
+          "edit_file": 104,
+          "run_command": 610
+        },
+        "provider_item_json_bytes_by_type": {
+          "reasoning": 280104,
+          "function_call": 47443,
+          "message": 1757
+        },
+        "note": "Current retained context only. JSON bytes of encrypted reasoning are not provider token counts."
+      }
+    },
+    {
+      "rank": 2,
+      "requests": 52,
+      "input_reported_requests": 52,
+      "cache_reported_requests": 52,
+      "input_tokens": 4138604,
+      "cached_input_tokens": 3956224,
+      "cache_write_tokens": 0,
+      "fresh_input_tokens_on_cache_reported_requests": 182380,
+      "output_tokens": 69500,
+      "reasoning_tokens": 54865,
+      "reasoning_reported_requests": 52,
+      "retries": 0,
+      "peak_input_tokens": 149523,
+      "raw_cache_share": 0.9559320002590246,
+      "strategies": {
+        "none": 52
+      },
+      "current_retained_context": {
+        "messages": 47,
+        "body_utf8_bytes_by_role": {
+          "system": 11184,
+          "user": 572,
+          "assistant": 0,
+          "tool": 63275
+        },
+        "tool_result_utf8_bytes_by_tool": {
+          "update_plan": 187,
+          "explore": 490,
+          "run_command": 17903,
+          "list_files": 2042,
+          "grep_files": 10376,
+          "read_file": 31929,
+          "glob": 49,
+          "ask_user": 299
+        },
+        "exact_duplicate_tool_result_utf8_bytes": {
+          "list_files": 190,
+          "grep_files": 26
+        },
+        "provider_item_json_bytes_by_type": {
+          "reasoning": 170076,
+          "function_call": 18118
+        },
+        "note": "Current retained context only. JSON bytes of encrypted reasoning are not provider token counts."
+      }
+    },
+    {
+      "rank": 3,
+      "requests": 21,
+      "input_reported_requests": 21,
+      "cache_reported_requests": 21,
+      "input_tokens": 352664,
+      "cached_input_tokens": 235008,
+      "cache_write_tokens": 0,
+      "fresh_input_tokens_on_cache_reported_requests": 117656,
+      "output_tokens": 10973,
+      "reasoning_tokens": 7219,
+      "reasoning_reported_requests": 21,
+      "retries": 0,
+      "peak_input_tokens": 24971,
+      "raw_cache_share": 0.6663793299004152,
+      "strategies": {
+        "none": 17,
+        "deterministic": 4
+      },
+      "current_retained_context": {
+        "messages": 15,
+        "body_utf8_bytes_by_role": {
+          "system": 11004,
+          "user": 10501,
+          "assistant": 358,
+          "tool": 13490
+        },
+        "tool_result_utf8_bytes_by_tool": {
+          "list_files": 128,
+          "glob": 322,
+          "read_file": 13040
+        },
+        "exact_duplicate_tool_result_utf8_bytes": {
+          "glob": 62
+        },
+        "provider_item_json_bytes_by_type": {
+          "reasoning": 8180,
+          "function_call": 2101,
+          "message": 579
+        },
+        "note": "Current retained context only. JSON bytes of encrypted reasoning are not provider token counts."
+      }
+    },
+    {
+      "rank": 4,
+      "requests": 17,
+      "input_reported_requests": 17,
+      "cache_reported_requests": 17,
+      "input_tokens": 319274,
+      "cached_input_tokens": 175232,
+      "cache_write_tokens": 0,
+      "fresh_input_tokens_on_cache_reported_requests": 144042,
+      "output_tokens": 11041,
+      "reasoning_tokens": 7174,
+      "reasoning_reported_requests": 17,
+      "retries": 0,
+      "peak_input_tokens": 26677,
+      "raw_cache_share": 0.5488451925305536,
+      "strategies": {
+        "none": 13,
+        "deterministic": 4
+      },
+      "current_retained_context": {
+        "messages": 23,
+        "body_utf8_bytes_by_role": {
+          "system": 11004,
+          "user": 3372,
+          "assistant": 507,
+          "tool": 38889
+        },
+        "tool_result_utf8_bytes_by_tool": {
+          "run_command": 16434,
+          "read_file": 16763,
+          "grep_files": 1157,
+          "glob": 4535
+        },
+        "exact_duplicate_tool_result_utf8_bytes": {
+          "read_file": 305
+        },
+        "provider_item_json_bytes_by_type": {
+          "reasoning": 31544,
+          "function_call": 5702,
+          "message": 728
+        },
+        "note": "Current retained context only. JSON bytes of encrypted reasoning are not provider token counts."
+      }
+    },
+    {
+      "rank": 5,
+      "requests": 4,
+      "input_reported_requests": 4,
+      "cache_reported_requests": 4,
+      "input_tokens": 63029,
+      "cached_input_tokens": 56409,
+      "cache_write_tokens": 6610,
+      "fresh_input_tokens_on_cache_reported_requests": 6620,
+      "output_tokens": 570,
+      "reasoning_tokens": 0,
+      "reasoning_reported_requests": 0,
+      "retries": 0,
+      "peak_input_tokens": 16092,
+      "raw_cache_share": 0.8949689825318504,
+      "strategies": {
+        "none": 4
+      },
+      "current_retained_context": {
+        "messages": 9,
+        "body_utf8_bytes_by_role": {
+          "system": 10541,
+          "user": 7913,
+          "assistant": 319,
+          "tool": 228
+        },
+        "tool_result_utf8_bytes_by_tool": {
+          "list_files": 23,
+          "run_command": 205
+        },
+        "exact_duplicate_tool_result_utf8_bytes": {},
+        "provider_item_json_bytes_by_type": {
+          "tool_use": 889,
+          "text": 384
+        },
+        "note": "Current retained context only. JSON bytes of encrypted reasoning are not provider token counts."
+      }
+    }
+  ]
+}

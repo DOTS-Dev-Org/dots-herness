@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-08T22:34:57Z",
+  "eventId" : "AA397537-0029-427C-BA19-6FD53D19883C",
+  "lamport" : 189,
+  "parents" : [
+    "F80F695D-27D9-4B3A-8C5C-9A98042ED508"
+  ],
+  "payload" : {
+    "commandSummary" : null,
+    "name" : "list_files",
+    "path" : "shared",
+    "resultBytes" : 2444,
+    "resultStatus" : "completed",
+    "runId" : "03AAC503-E932-48C0-850F-204AE36FC355"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "abHCUSuuZryKBaN9WbVeOKEwJs5RHleUMXRasltkAhle0sS\/95BQe9zJy1C5uiXAMWNYvWXmprFfnSisQN60Pw=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

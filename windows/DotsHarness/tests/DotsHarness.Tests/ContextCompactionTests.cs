@@ -6,13 +6,40 @@ namespace DotsHarness.Tests;
 public sealed class ContextCompactionTests
 {
     [Fact]
-    public void BudgetTriggersAtSeventyFivePercentAndTargetsFortyPercent()
+    public void DefaultBudgetTriggersAtNinetyPercentAndTargetsSixtyFivePercent()
     {
         var budget = ContextCompaction.Budget(32_768, reservedOutputTokens: 4_096, toolDefinitionTokens: 1_000);
 
-        Assert.Equal((int)(budget.UsableInputTokens * .75), budget.TriggerTokens);
-        Assert.Equal((int)(budget.UsableInputTokens * .40), budget.TargetTokens);
+        Assert.Equal((int)(budget.UsableInputTokens * .90), budget.TriggerTokens);
+        Assert.Equal((int)(budget.UsableInputTokens * .65), budget.TargetTokens);
         Assert.True(budget.UsableInputTokens < budget.ContextWindow);
+    }
+
+    [Fact]
+    public void EconomyThresholdIsFixedAndUserThresholdAcceptsZero()
+    {
+        var economy = ContextCompaction.Budget(32_768, economy: true, triggerPercent: 20);
+        Assert.Equal(0.90, economy.TriggerRatio);
+
+        var immediate = ContextCompaction.Budget(32_768, triggerPercent: 0);
+        Assert.Equal(0, immediate.TriggerRatio);
+        Assert.Equal(1, immediate.TriggerTokens);
+    }
+
+    [Fact]
+    public void EconomyBudgetUsesNinetyPercentAndReservesLargeDynamicOutput()
+    {
+        var budget = ContextCompaction.Budget(
+            32_768,
+            reservedOutputTokens: 20_000,
+            toolDefinitionTokens: 1_000,
+            economy: true);
+
+        Assert.Equal(0.90, budget.TriggerRatio);
+        Assert.Equal((int)(budget.UsableInputTokens * .90), budget.TriggerTokens);
+        Assert.True(budget.ReservedOutputTokens > 16_384);
+        Assert.True(budget.Fits(budget.UsableInputTokens));
+        Assert.False(budget.Fits(budget.UsableInputTokens, incomingTokens: 1));
     }
 
     [Fact]
@@ -65,6 +92,29 @@ public sealed class ContextCompactionTests
         var summary = ContextCompaction.FallbackSummary(null, "test evidence");
 
         Assert.True(ContextCompaction.IsValidSummary(summary));
+        var omitted = ContextCompaction.FallbackSummary(null, "evidence [… compacted …] tail");
+        Assert.Contains("atlandı", omitted, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("eksik ayrıntıları varsayma", ContextCompaction.SummarySystemPrompt, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void OversizedArchiveKeepsNewestEvidenceAndMarksOmittedMiddle()
+    {
+        var messages = new List<NativeMessage>();
+        for (var index = 0; index < 20; index++)
+        {
+            messages.Add(new NativeMessage("user", new string('u', 5_900) + $"USER_{index:D2}"));
+            messages.Add(new NativeMessage("assistant", new string('x', 5_900) + $"ARCHIVE_TAIL_{index:D2}"));
+        }
+
+        var selection = ContextCompaction.Select(messages, null, ContextCompaction.Budget(32_768));
+
+        Assert.NotNull(selection);
+        Assert.Equal(5, selection!.RecentGroupCount);
+        Assert.Contains("[… compacted …]", selection.ArchiveText);
+        Assert.Contains("ARCHIVE_TAIL_14", selection.ArchiveText);
+        Assert.DoesNotContain("ARCHIVE_TAIL_15", selection.ArchiveText);
+        Assert.InRange(selection.ArchiveText.Length, 1, 48_000);
     }
 
     [Fact]

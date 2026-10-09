@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-08T21:38:19Z",
+  "eventId" : "41159EA6-58C0-4DD1-A58F-6096A65D9CCB",
+  "lamport" : 107,
+  "parents" : [
+    "D7367667-CA01-4961-BADB-D6B62706863A"
+  ],
+  "payload" : {
+    "commandSummary" : "find windows\/DotsHarness\/dist -maxdepth 3 -type f -print; ls -ld windows\/DotsHarness\/src\/DotsHarness\/obj\/dotnet-home windows\/DotsHarness\/src\/DotsHarness\/obj\/.nu",
+    "name" : "run_command",
+    "path" : null,
+    "resultBytes" : 640,
+    "resultStatus" : "completed",
+    "runId" : "23527649-66C4-4E3D-9215-54EC072C5090"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "+GPF259Zbv88LB3tcuQF+mBzP6+BZtbXwru7Ulvz2Rvzk5e3G5tEy\/sQ0VGT2Rhb4mw3k4aF3WKFHCTKh+XEOg=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

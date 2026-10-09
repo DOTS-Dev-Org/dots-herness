@@ -8,6 +8,7 @@ public sealed class LinuxMicrophoneCapture : IDisposable
     private Process? _process;
     private CancellationTokenSource? _cancel;
     private Task? _reader;
+    private Task? _stderrDrain;
 
     public event Action<ReadOnlyMemory<byte>>? DataAvailable;
     public bool IsRunning => _process is { HasExited: false };
@@ -34,6 +35,10 @@ public sealed class LinuxMicrophoneCapture : IDisposable
         _process = process;
         _cancel = new CancellationTokenSource();
         _reader = Task.Run(() => ReadLoopAsync(process, _cancel.Token));
+        // Capture utilities log device problems on stderr. Nothing read that
+        // pipe, so once its buffer filled the child blocked in write() and the
+        // microphone went silent with no error anywhere.
+        _stderrDrain = Task.Run(() => DrainStandardErrorAsync(process, _cancel.Token));
     }
 
     public void Stop()
@@ -42,6 +47,7 @@ public sealed class LinuxMicrophoneCapture : IDisposable
         _process = null;
         _cancel?.Cancel();
         _cancel = null;
+        _stderrDrain = null;
         if (process is null) return;
         try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { }
         try { process.Dispose(); } catch { }
@@ -65,6 +71,21 @@ public sealed class LinuxMicrophoneCapture : IDisposable
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch (ObjectDisposedException) { }
+    }
+
+    private static async Task DrainStandardErrorAsync(Process process, CancellationToken ct)
+    {
+        var discard = new char[1_024];
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                if (await process.StandardError.ReadAsync(discard.AsMemory(), ct).ConfigureAwait(false) <= 0) break;
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) { }
     }
 
     private static string? FindOnPath(string name)

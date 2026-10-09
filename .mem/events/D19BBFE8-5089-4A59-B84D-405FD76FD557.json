@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-08T21:36:50Z",
+  "eventId" : "D19BBFE8-5089-4A59-B84D-405FD76FD557",
+  "lamport" : 98,
+  "parents" : [
+    "F845891C-0561-482E-92AB-1AE47FE36725"
+  ],
+  "payload" : {
+    "commandSummary" : null,
+    "name" : "read_file",
+    "path" : "VERSION",
+    "resultBytes" : 6,
+    "resultStatus" : "completed",
+    "runId" : "23527649-66C4-4E3D-9215-54EC072C5090"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "McmZ0M55eidNWPG1cC3Q2fe0Zd8nkhU7mygw0ibmJEicBeOdd74vPtLvxVRt9D+4ErZFFhFzFRgNd11j0\/zDsQ=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

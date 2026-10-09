@@ -6,40 +6,59 @@ import Foundation
 import PluginRuntime
 
 extension WorkspaceMemory {
-    public func fileHash(for call: AgentToolCall, workspace: URL) -> (path: String, hash: String?, bytes: Int)? {
+    /// Reads and hashes the file a `write_file` call is about to replace. Both
+    /// sides of that read leave the main actor: a multi-megabyte file would
+    /// otherwise stall the UI for the duration of the hash.
+    public func fileHash(for call: AgentToolCall, workspace: URL) async -> (path: String, hash: String?, bytes: Int)? {
         guard call.name == "write_file",
               let arguments = parseArguments(call),
               let rawPath = arguments["path"] as? String,
               let file = safeWorkspaceURL(rawPath, workspace: workspace) else { return nil }
-        let data = try? Data(contentsOf: file)
+        let data = await Task.detached(priority: .userInitiated) { try? Data(contentsOf: file) }.value
         return (safePath(rawPath), data.map { digest($0) }, data?.count ?? 0)
     }
 
-    public func changedGitPaths(workspace: URL) -> Set<String> {
+    /// `git status` spawns a child process and waits for it, which on a large
+    /// working tree is hundreds of milliseconds of blocked main actor. The
+    /// process runs detached; path normalisation stays here.
+    public func changedGitPaths(workspace: URL) async -> Set<String> {
+        let lines = await Task.detached(priority: .userInitiated) { Self.gitStatusLines(workspace: workspace) }.value
+        return Set(lines.compactMap { line in
+            guard line.count > 3 else { return nil }
+            return safePath(String(line.dropFirst(3)))
+        })
+    }
+
+    nonisolated private static func gitStatusLines(workspace: URL) -> [String] {
         let process = Process()
         let output = Pipe()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = ["git", "status", "--porcelain", "--untracked-files=all"]
         process.currentDirectoryURL = workspace
         process.standardOutput = output
-        process.standardError = Pipe()
+        // This helper only records paths; diagnostics were discarded before too.
+        // Avoid leaving a second pipe unread if git reports a large error.
+        process.standardError = FileHandle.nullDevice
         do { try process.run() } catch { return [] }
+        // Drain stdout before waiting. If git writes more than the pipe buffer,
+        // waiting first leaves git blocked on its write while this task waits for git.
+        let data = output.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
         guard process.terminationStatus == 0,
-              let text = String(data: output.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) else { return [] }
-        return Set(text.split(whereSeparator: \.isNewline).compactMap { line in
-            let value = String(line)
-            guard value.count > 3 else { return nil }
-            return safePath(String(value.dropFirst(3)))
-        })
+              let text = String(data: data, encoding: .utf8) else { return [] }
+        return text.split(whereSeparator: \.isNewline).map(String.init)
     }
 
+    /// `beforeGit`/`afterGit` are captured by the run loop around the tool, off
+    /// the main actor, and only for tools that can touch files: this used to run
+    /// a second `git status` here for every call, including reads and searches.
     public func recordTool(
         runID: UUID,
         call: AgentToolCall,
         result: String,
         beforeFile: (path: String, hash: String?, bytes: Int)?,
         beforeGit: Set<String>,
+        afterGit: Set<String>,
         workspace: URL
     ) {
         guard var task = tasks[runID.uuidString] else { return }
@@ -72,7 +91,6 @@ extension WorkspaceMemory {
             task.changedFiles.append(change)
         }
 
-        let afterGit = changedGitPaths(workspace: workspace)
         for path in afterGit.subtracting(beforeGit) {
             let change: [String: Any] = [
                 "runId": runID.uuidString,
@@ -117,8 +135,17 @@ extension WorkspaceMemory {
             _ = try? writeEvent(type: "task.\(status)", scope: "task", payload: payload)
             writeTaskNote(task, status: status, finalText: finalText, openItems: open)
         }
+        // Work that touched a manifest may have changed what the project is built
+        // with: read the stack again instead of waiting to be told.
+        if task.changedFiles.contains(where: {
+            Self.isStackManifest(URL(fileURLWithPath: $0["path"] as? String ?? "").lastPathComponent)
+        }) {
+            try? updateMapIfNeeded(deep: true)
+        }
         let language = explicitLanguage(in: task.promptSummary)
         let decision = explicitDecision(in: task.promptSummary)
+        // The reply language describes the user, not this repository.
+        if let language { try? profile.setPreference(key: "language", value: language) }
         Task { @MainActor [weak self] in
             guard let self else { return }
             if let language, let identity = self.identity {

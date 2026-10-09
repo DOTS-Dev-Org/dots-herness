@@ -16,6 +16,8 @@
         <ListBox x:Name="Tabs" Grid.Column="0" SelectionChanged="OnTab"
                  BorderThickness="0" Background="{DynamicResource ChromeBackground}" Padding="8">
             <ListBoxItem Content="General" Tag="general" IsSelected="True"/>
+            <ListBoxItem Content="Context window" Tag="model-context"/>
+            <ListBoxItem x:Name="ArchiveTab" Content="Archived" Tag="archive"/>
             <ListBoxItem Content="Providers" Tag="providers"/>
             <ListBoxItem Content="Custom API" Tag="custom"/>
             <ListBoxItem Content="Local models" Tag="local"/>
@@ -25,6 +27,10 @@
             <ListBoxItem Content="Tasks" Tag="tasks"/>
             <ListBoxItem x:Name="SkillsTab" Content="Skills" Tag="skills"/>
             <ListBoxItem Content="Plugins" Tag="plugins"/>
+            <ListBoxItem x:Name="McpTab" Content="MCP servers" Tag="mcp"/>
+            <ListBoxItem x:Name="MemoryTab" Content="Memory" Tag="memory"/>
+            <ListBoxItem x:Name="AccessTab" Content="Workspace access" Tag="access"/>
+            <ListBoxItem x:Name="SandboxTab" Content="Sandbox" Tag="sandbox"/>
             <ListBoxItem Content="Prompt" Tag="prompt"/>
             <ListBoxItem Content="Legal" Tag="legal"/>
         </ListBox>

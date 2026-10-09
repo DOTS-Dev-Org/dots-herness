@@ -14,26 +14,15 @@ public enum WorkspaceTools {
         "kt", "kts", "m", "mm", "php", "plist", "props", "py", "resx", "rs", "swift", "targets", "toml",
         "ts", "tsx", "xml", "xaml", "yaml", "yml",
     ]
-    private static let ignoredScanDirectories: Set<String> = [
+    static let ignoredScanDirectories: Set<String> = [
         ".git", ".mem", ".build", "build", "bin", "obj", "dist", "node_modules", "Pods", "DerivedData",
     ]
     private static let protectedNames: Set<String> = ["provider-state.json", "conversations.json", "state.sqlite", "state.db"]
-    public static let definitions: [AgentToolDefinition] = workspaceDefinitions + [generatedMediaDefinition, generatedMediaInspectionDefinition] + SimulatorTools.definitions
-    public static let readOnlyDefinitions: [AgentToolDefinition] = workspaceDefinitions.filter {
+    public static let definitions: [AgentToolDefinition] = workspaceDefinitions + FileEditTools.definitions + [generatedMediaDefinition, generatedMediaInspectionDefinition] + SimulatorTools.definitions + AndroidEmulatorTools.definitions
+    public static let readOnlyDefinitions: [AgentToolDefinition] = (workspaceDefinitions + FileEditTools.definitions).filter {
         readOnlyNames.contains($0.name)
     }
-    /// Chat exposes the same filesystem primitives, but every call must name
-    /// the user-provided context root it is operating on. This prevents a
-    /// projectless Chat run from accidentally inheriting the process cwd.
-    public static let chatDefinitions: [AgentToolDefinition] = workspaceDefinitions.map {
-        addingContextRootID(to: $0)
-    } + [generatedMediaInspectionDefinition]
-
-    public static func chatScoped(_ definition: AgentToolDefinition) -> AgentToolDefinition {
-        addingContextRootID(to: definition)
-    }
-
-    static let readOnlyNames: Set<String> = ["list_files", "read_file", "grep_files", generatedMediaInspectionName]
+    static let readOnlyNames: Set<String> = ["list_files", "read_file", "grep_files", FileEditTools.globName, generatedMediaInspectionName]
 
     static let generatedMediaName = "copy_generated_media"
     static let generatedMediaInspectionName = "inspect_generated_media"
@@ -158,8 +147,9 @@ public enum WorkspaceTools {
         AgentToolDefinition(
             name: "read_file",
             description: """
-            Read a UTF-8 text file inside the current workspace. Long files come back \
-            truncated with the line to continue from; pass offset to read the rest.
+            Read a UTF-8 text file inside the current workspace. Prefer a narrow \
+            offset/limit range for relevant sections; long files are truncated with \
+            a continuation line. Read the full file only when the requested operation requires it.
             """,
             parameters: .object([
                 "type": .string("object"),
@@ -295,83 +285,10 @@ public enum WorkspaceTools {
         }
     }
 
-    /// Executes a Chat filesystem call against one of the roots discovered in
-    /// the user's messages. Reads may inspect another known root when the model
-    /// explicitly selects it in `contextRootID`; writes and commands stay in
-    /// the selected root. A file root is intentionally read/write-only: a
-    /// terminal needs a directory root so it cannot silently widen scope to a
-    /// neighbouring file.
-    public static func execute(
-        _ call: AgentToolCall,
-        contextRoots: [ChatContextRoot],
-        isCancelled: @Sendable () -> Bool = { false },
-        onOutput: (@Sendable (String) -> Void)? = nil
-    ) -> String {
-        guard !contextRoots.isEmpty else {
-            return "Tool error: a user-provided file or folder path is required before using filesystem tools."
-        }
-        guard let data = call.arguments.data(using: .utf8),
-              var object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return AppCopy.format("tool.invalidArguments", call.name)
-        }
-        guard let rootID = object["contextRootID"] as? String, !rootID.isEmpty else {
-            return "Tool error: choose a contextRootID from the known user-provided roots before using \(call.name)."
-        }
-        guard let root = contextRoots.first(where: { $0.id == rootID }) else {
-            return "Tool error: unknown contextRootID \(rootID). Ask the user for the path again if the context is no longer available."
-        }
-
-        let rootURL = URL(fileURLWithPath: root.path).standardizedFileURL.resolvingSymlinksInPath()
-        if root.kind == .file,
-           ["list_files", "grep_files", "run_command", "ios_simulator", "remove_file"].contains(call.name) {
-            return "Tool error: \(call.name) requires a directory context root; select a user-provided folder root."
-        }
-
-        let requestedPath = object["path"] as? String
-        if root.kind == .file {
-            let requestedURL: URL
-            if let requestedPath, !requestedPath.isEmpty {
-                requestedURL = requestedPath.hasPrefix("/")
-                    ? URL(fileURLWithPath: requestedPath).standardizedFileURL.resolvingSymlinksInPath()
-                    : rootURL.deletingLastPathComponent()
-                        .appendingPathComponent(requestedPath)
-                        .standardizedFileURL
-                        .resolvingSymlinksInPath()
-            } else {
-                requestedURL = rootURL
-            }
-            guard requestedURL.path == rootURL.path else {
-                return AppCopy.format("tool.pathOutside", requestedPath ?? "")
-            }
-            object["path"] = rootURL.lastPathComponent
-        } else if let requestedPath,
-                  !requestedPath.isEmpty,
-                  !isContained(requestedPath, in: rootURL, allowFileRoot: false) {
-            return AppCopy.format("tool.pathOutside", requestedPath)
-        }
-
-        let workspace: URL
-        if root.kind == .directory {
-            workspace = rootURL
-        } else {
-            workspace = rootURL.deletingLastPathComponent()
-        }
-        let readRoots = contextRoots.map { URL(fileURLWithPath: $0.path).standardizedFileURL.resolvingSymlinksInPath() }
-        return execute(
-            call,
-            workspace: workspace,
-            sandboxPolicy: root.kind == .directory
-                ? SandboxExecutionPolicy(workspaceURL: rootURL, networkAccess: true).strictAgentPolicy()
-                : nil,
-            readRoots: readRoots,
-            isCancelled: isCancelled,
-            onOutput: onOutput
-        )
-    }
-
     public static func execute(
         _ call: AgentToolCall,
         workspace: URL,
+        conversationID: String,
         sandboxPolicy: SandboxExecutionPolicy? = nil,
         readRoots: [URL] = [],
         isCancelled: @Sendable () -> Bool = { false },
@@ -394,6 +311,7 @@ public enum WorkspaceTools {
                     offset: object["offset"] as? Int,
                     limit: object["limit"] as? Int,
                     workspace: workspace,
+                    conversationID: conversationID,
                     readRoots: readRoots
                 )
             case "write_file":
@@ -401,7 +319,7 @@ public enum WorkspaceTools {
                       let content = object["content"] as? String else {
                     return AppCopy.text("tool.missingPathOrContent")
                 }
-                return try writeFile(at: path, content: content, workspace: workspace)
+                return try writeFile(at: path, content: content, workspace: workspace, conversationID: conversationID)
             case "remove_file":
                 guard let path = object["path"] as? String,
                       let reason = object["reason"] as? String,
@@ -418,6 +336,15 @@ public enum WorkspaceTools {
                     workspace: workspace,
                     readRoots: readRoots
                 )
+            case FileEditTools.editName:
+                guard let path = object["path"] as? String else { return AppCopy.text("tool.missingPath") }
+                guard let edits = object["edits"] as? [[String: Any]] else {
+                    return "Tool error: edits must be an array of {old_text, new_text} objects."
+                }
+                return FileEditTools.edit(path: path, edits: edits, workspace: workspace, conversationID: conversationID)
+            case FileEditTools.globName:
+                guard let pattern = object["pattern"] as? String else { return AppCopy.text("tool.missingPattern") }
+                return FileEditTools.glob(pattern: pattern, path: object["path"] as? String ?? ".", workspace: workspace)
             case "run_command":
                 guard let command = object["command"] as? String else { return AppCopy.text("tool.missingCommand") }
                 return try run(
@@ -429,32 +356,14 @@ public enum WorkspaceTools {
                 )
             case "ios_simulator":
                 return SimulatorTools.execute(object, workspace: workspace)
+            case AndroidEmulatorTools.toolName:
+                return AndroidEmulatorTools.execute(object, workspace: workspace)
             default:
                 return AppCopy.format("tool.unknown", call.name)
             }
         } catch {
             return AppCopy.format("tool.error", error.localizedDescription)
         }
-    }
-
-    private static func addingContextRootID(to definition: AgentToolDefinition) -> AgentToolDefinition {
-        guard case .object(var parameters) = definition.parameters else { return definition }
-        var properties = parameters["properties"]?.object ?? [:]
-        properties["contextRootID"] = .object([
-            "type": .string("string"),
-            "description": .string("Required id of the user-provided file or folder root to use for this call."),
-        ])
-        parameters["properties"] = .object(properties)
-        var required = parameters["required"]?.array ?? []
-        if !required.contains(.string("contextRootID")) {
-            required.append(.string("contextRootID"))
-        }
-        parameters["required"] = .array(required)
-        return AgentToolDefinition(
-            name: definition.name,
-            description: definition.description + " In Chat, always include the contextRootID for the user-provided root.",
-            parameters: .object(parameters)
-        )
     }
 
     private static func isContained(_ path: String, in root: URL, allowFileRoot: Bool) -> Bool {
@@ -545,7 +454,7 @@ public enum WorkspaceTools {
     /// Reads whole lines, never a partial one, and stops at `readMaxBytes`. A cut
     /// answer names the line to continue from, so a long file stays reachable
     /// without falling back to a shell command.
-    private static func readFile(at path: String, offset: Int?, limit: Int?, workspace: URL, readRoots: [URL]) throws -> String {
+    private static func readFile(at path: String, offset: Int?, limit: Int?, workspace: URL, conversationID: String, readRoots: [URL]) throws -> String {
         let file = try resolveRead(path, workspace: workspace, readRoots: readRoots)
         let data = try Data(contentsOf: file)
         guard let text = String(data: data, encoding: .utf8) else {
@@ -570,20 +479,20 @@ public enum WorkspaceTools {
             line += 1
         }
         let body = emitted.joined(separator: "\n")
-        let complete = start == 1 && line > lines.count
-        // Only a complete read authorizes a later full rewrite of the file.
-        if complete { ReadLedger.shared.record(file, data: data) } else { ReadLedger.shared.forget(file) }
+        // Pages from the same on-disk version together authorize a complete read.
+        ReadLedger.shared.recordLines(file, data: data, lines: start..<line,
+                                      totalLines: lines.count, conversationID: conversationID)
         return line > end
             ? body
             : body + "\n\n" + AppCopy.format("tool.truncatedAt", line)
     }
 
-    private static func writeFile(at path: String, content: String, workspace: URL) throws -> String {
+    private static func writeFile(at path: String, content: String, workspace: URL, conversationID: String) throws -> String {
         let file = try resolve(path, workspace: workspace)
         // write_file replaces the whole file, so an unread or externally changed
         // file would lose whatever the model never saw. Refuse instead.
         if let current = try? Data(contentsOf: file) {
-            switch ReadLedger.shared.state(for: file, data: current) {
+            switch ReadLedger.shared.state(for: file, data: current, conversationID: conversationID) {
             case .unread: return AppCopy.format("tool.writeNeedsRead", path)
             case .stale: return AppCopy.format("tool.writeStale", path)
             case .fresh: break
@@ -595,7 +504,7 @@ public enum WorkspaceTools {
         )
         let data = Data(content.utf8)
         try data.write(to: file, options: .atomic)
-        ReadLedger.shared.record(file, data: data)
+        ReadLedger.shared.record(file, data: data, conversationID: conversationID)
         return AppCopy.format("tool.wrote", relativePath(file, workspace: workspace), content.utf8.count)
     }
 
@@ -672,7 +581,8 @@ public enum WorkspaceTools {
         workspace: URL,
         sandboxPolicy: SandboxExecutionPolicy? = nil,
         isCancelled: @Sendable () -> Bool = { false },
-        onOutput: (@Sendable (String) -> Void)? = nil
+        onOutput: (@Sendable (String) -> Void)? = nil,
+        onExit: ((Int32) -> Void)? = nil
     ) throws -> String {
         if command.range(of: #"(?:^|[\s/])\.mem(?:[\s/]|$)"#, options: .regularExpression) != nil {
             throw NativeAgentError(AppCopy.text("tool.pathUnavailable"))
@@ -752,6 +662,7 @@ public enum WorkspaceTools {
         process.waitUntilExit()
         reader.readabilityHandler = nil
 
+        onExit?(process.terminationStatus)
         let data = sink.drain()
         let text = String(data: data.prefix(24_000), encoding: .utf8) ?? AppCopy.text("tool.binaryOutput")
         let suffix = process.terminationStatus == 0
@@ -760,11 +671,57 @@ public enum WorkspaceTools {
         return text.isEmpty ? AppCopy.text("tool.noOutput") + suffix : text + suffix
     }
 
+    /// Runs a verification command and says whether it exited zero. The exit
+    /// status is taken from the process, never parsed out of the localized text;
+    /// a timeout, a cancel or a command that could not start all count as failed.
+    static func runCheck(
+        command: String,
+        workspace: URL,
+        sandboxPolicy: SandboxExecutionPolicy? = nil,
+        isCancelled: @Sendable () -> Bool = { false }
+    ) -> (output: String, passed: Bool) {
+        var status: Int32?
+        do {
+            let output = try run(
+                command: command, workspace: workspace, sandboxPolicy: sandboxPolicy,
+                isCancelled: isCancelled, onExit: { status = $0 }
+            )
+            return (output, status == 0)
+        } catch {
+            return (AppCopy.format("tool.error", error.localizedDescription), false)
+        }
+    }
+
     private static func awaitRunLoop() throws {
         RunLoop.current.run(until: Date().addingTimeInterval(0.05))
     }
 
-    private static func resolve(_ path: String, workspace: URL) throws -> URL {
+    /// The path a write lease is keyed by. It resolves exactly like the write
+    /// itself, so a lease and the file it protects can never disagree.
+    static func canonicalLeasePath(_ path: String, workspace: URL) -> String {
+        URL(fileURLWithPath: path.isEmpty ? "." : path, relativeTo: workspace)
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
+            .path
+    }
+
+    /// Drops a file from a conversation's read ledger, for the case where the whole
+    /// file was read but the answer handed to the model was shortened afterwards:
+    /// a read the model never saw in full must not authorize a rewrite.
+    static func forgetRead(
+        _ call: AgentToolCall,
+        workspace: URL,
+        conversationID: String,
+        readRoots: [URL]
+    ) {
+        guard let data = call.arguments.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let path = object["path"] as? String,
+              let file = try? resolveRead(path, workspace: workspace, readRoots: readRoots) else { return }
+        ReadLedger.shared.forget(file, conversationID: conversationID)
+    }
+
+    static func resolve(_ path: String, workspace: URL) throws -> URL {
         let relative = path.isEmpty ? "." : path
         // resolvingSymlinksInPath() is required: standardizedFileURL only normalizes
         // syntax, so a symlink placed inside the workspace would slip past the prefix
@@ -801,7 +758,7 @@ public enum WorkspaceTools {
         return url
     }
 
-    private static func relativePath(_ url: URL, workspace: URL) -> String {
+    static func relativePath(_ url: URL, workspace: URL) -> String {
         let root = workspace.standardizedFileURL.path
         let path = url.standardizedFileURL.path
         let prefix = root.hasSuffix("/") ? root : root + "/"
@@ -844,51 +801,98 @@ public final class ToolCancel: @unchecked Sendable {
     }
 }
 
-// ponytail: global ledger (512 cap) — cross-conversation reuse can allow blind write without re-read; per-conversation ledger if that matters.
-/// Remembers the content hash of every file the agent has fully read, so
-/// `write_file` can tell an informed rewrite from a blind one. Session-scoped and
-/// bounded; forgetting an entry only costs one extra read.
+/// Remembers the content hash of every file a conversation has fully read, so
+/// `write_file` can tell an informed rewrite from a blind one. Scoped per
+/// conversation: what one chat read says nothing about what another chat has
+/// written since, so a shared ledger would let a second conversation rewrite a
+/// file it never saw. Bounded per conversation; forgetting an entry only costs one
+/// extra read.
 final class ReadLedger: @unchecked Sendable {
     enum State { case fresh, stale, unread }
 
     static let shared = ReadLedger()
     private let lock = NSLock()
-    private var hashes: [String: String] = [:]
-    private var order: [String] = []
+    private var scopes: [String: Scope] = [:]
     private let capacity = 512
 
-    func record(_ file: URL, data: Data) {
-        let key = file.path
+    private struct Scope {
+        var hashes: [String: String] = [:]
+        var pages: [String: PageRead] = [:]
+        var order: [String] = []
+    }
+
+    private struct PageRead {
+        let hash: String
+        var lines = IndexSet()
+    }
+
+    func recordLines(_ file: URL, data: Data, lines: Range<Int>, totalLines: Int, conversationID: String) {
+        guard !lines.isEmpty else { return }
         let hash = Self.hash(data)
         lock.lock(); defer { lock.unlock() }
-        if hashes[key] == nil { order.append(key) }
-        hashes[key] = hash
-        while order.count > capacity, let oldest = order.first {
-            order.removeFirst()
-            hashes[oldest] = nil
+        var scope = scopes[conversationID, default: Scope()]
+        if scope.hashes[file.path] == hash { return }
+        if !scope.order.contains(file.path) { scope.order.append(file.path) }
+        scope.hashes[file.path] = nil
+        var page = scope.pages[file.path].flatMap { $0.hash == hash ? $0 : nil } ?? PageRead(hash: hash)
+        page.lines.insert(integersIn: lines)
+        if page.lines.contains(integersIn: 1..<(totalLines + 1)) {
+            scope.hashes[file.path] = hash
+            scope.pages[file.path] = nil
+        } else {
+            scope.pages[file.path] = page
         }
+        while scope.order.count > capacity, let oldest = scope.order.first {
+            scope.order.removeFirst()
+            scope.hashes[oldest] = nil
+            scope.pages[oldest] = nil
+        }
+        scopes[conversationID] = scope
     }
 
-    func forget(_ file: URL) {
-        let key = file.path
+    func record(_ file: URL, data: Data, conversationID: String) {
+        let hash = Self.hash(data)
         lock.lock(); defer { lock.unlock() }
-        if hashes.removeValue(forKey: key) != nil { order.removeAll { $0 == key } }
+        var scope = scopes[conversationID, default: Scope()]
+        if !scope.order.contains(file.path) { scope.order.append(file.path) }
+        scope.hashes[file.path] = hash
+        scope.pages[file.path] = nil
+        while scope.order.count > capacity, let oldest = scope.order.first {
+            scope.order.removeFirst()
+            scope.hashes[oldest] = nil
+            scope.pages[oldest] = nil
+        }
+        scopes[conversationID] = scope
     }
 
-    func state(for file: URL, data: Data) -> State {
-        let key = file.path
+    func forget(_ file: URL, conversationID: String) {
+        lock.lock(); defer { lock.unlock() }
+        guard var scope = scopes[conversationID] else { return }
+        scope.hashes.removeValue(forKey: file.path)
+        scope.pages.removeValue(forKey: file.path)
+        scope.order.removeAll { $0 == file.path }
+        scopes[conversationID] = scope
+    }
+
+    func state(for file: URL, data: Data, conversationID: String) -> State {
         lock.lock()
-        let known = hashes[key]
+        let known = scopes[conversationID]?.hashes[file.path]
         lock.unlock()
         guard let known else { return .unread }
         return known == Self.hash(data) ? .fresh : .stale
     }
 
+    /// A closed conversation can never write again, so its reads must stop
+    /// authorizing rewrites anywhere.
+    func forgetConversation(_ conversationID: String) {
+        lock.lock(); defer { lock.unlock() }
+        scopes[conversationID] = nil
+    }
+
     /// Test seam: a fresh ledger per test keeps the shared one out of it.
     func reset() {
         lock.lock(); defer { lock.unlock() }
-        hashes.removeAll()
-        order.removeAll()
+        scopes.removeAll()
     }
 
     private static func hash(_ data: Data) -> String {

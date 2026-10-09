@@ -76,19 +76,14 @@ final class HerNessPromptTests: XCTestCase {
     }
 
     @MainActor
-    func testAssistantModeChangesPromptPriority() {
+    func testProjectPromptKeepsConversationAndWorkspaceInOneFlow() {
         let host = NativeAgentHost(paths: temporaryPaths(), endpoint: AgentEndpointController())
         let workspace = URL(fileURLWithPath: NSTemporaryDirectory())
 
-        host.setAssistantMode(.chat)
-        let chatPrompt = HerNessPrompt.assemble(host.systemPromptSections(workspace: workspace))
-        XCTAssertTrue(chatPrompt.contains("Chat-first mode is active"))
-        XCTAssertTrue(chatPrompt.contains("Do not inspect or modify the workspace unless the user explicitly asks"))
-
-        host.setAssistantMode(.coding)
-        let codingPrompt = HerNessPrompt.assemble(host.systemPromptSections(workspace: workspace))
-        XCTAssertTrue(codingPrompt.contains("Coding-first mode is active"))
-        XCTAssertFalse(codingPrompt.contains("Chat-first mode is active"))
+        let prompt = HerNessPrompt.assemble(host.systemPromptSections(workspace: workspace))
+        XCTAssertFalse(prompt.contains("Chat-first mode is active"))
+        XCTAssertFalse(prompt.contains("Coding-first mode is active"))
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("workspace"))
     }
 
     @MainActor
@@ -164,15 +159,42 @@ final class HerNessPromptTests: XCTestCase {
         XCTAssertTrue(core.contains("tool line"))
         XCTAssertTrue(core.contains("tagged with a trust level"))
         XCTAssertFalse(core.contains("Clarification"))
+        // Rules files are followed, data is not: the two never share a trust level.
+        XCTAssertTrue(core.contains("trust=\"rules\""))
+        XCTAssertTrue(core.contains("trust=\"data\""))
+    }
+
+    func testCorePlansComplexWorkWithoutTheApprovalGate() {
+        let core = HerNessPrompt.core(scope: "scope line", toolGuidance: "tool line")
+        let normalized = core.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        XCTAssertTrue(normalized.contains("Simple work is done directly, with no plan"))
+        XCTAssertTrue(normalized.contains("Complex work gets a plan first"))
+        // The model judges complexity; the prompt sets no file-count threshold.
+        XCTAssertTrue(normalized.contains("How many files change is not the test"))
+        XCTAssertTrue(normalized.contains("When in doubt, do the work directly"))
+        XCTAssertTrue(normalized.contains("a plan you chose to write needs no approval"))
+        XCTAssertTrue(normalized.contains("While a <plan_mode> section is current it replaces this section"))
+    }
+
+    func testCoreUsesQuestionToolForMissingTaskDetailsButAnswersInformationDirectly() {
+        let core = HerNessPrompt.core(scope: "scope line", toolGuidance: "tool line")
+        let normalized = core.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("Direct informational questions"))
+        XCTAssertTrue(normalized.contains("call ask_user"))
+        XCTAssertTrue(normalized.contains("Do not stop with a question in plain chat text"))
     }
 
     func testCoreIncludesCompactResponseEconomyWithoutDroppingTechnicalContent() {
         let core = HerNessPrompt.core(scope: "scope line", toolGuidance: "tool line")
         XCTAssertTrue(core.contains("Response economy"))
-        XCTAssertTrue(core.contains("code blocks, commands, file paths, identifiers, API names"))
-        XCTAssertTrue(core.contains("exact errors, and negative qualifiers unchanged"))
+        XCTAssertTrue(core.contains("shortens prose only, never required work"))
+        XCTAssertTrue(core.contains("exact errors, negative qualifiers, tests, and evidence stay complete"))
+        XCTAssertTrue(core.contains("never claim completion"))
         XCTAssertTrue(core.contains("security warnings, irreversible confirmations"))
         XCTAssertTrue(core.contains("generated code, comments, commits, docs, PR text"))
+        // Said once: the per-turn style sections no longer restate the disclaimer.
+        XCTAssertFalse(core.contains("billing guarantee"))
     }
 
     func testCoreIncludesPerConversationResponseLanguageContractAndPriority() {
@@ -181,14 +203,11 @@ final class HerNessPromptTests: XCTestCase {
 
         XCTAssertTrue(normalized.contains("Response language"))
         XCTAssertTrue(normalized.contains("latest human-authored user request"))
-        XCTAssertTrue(normalized.contains("natural-language portion of the response only"))
-        XCTAssertTrue(normalized.contains("current conversation"))
-        XCTAssertTrue(normalized.contains("another conversation"))
-        XCTAssertTrue(normalized.contains("remembered preference, project memory"))
+        XCTAssertTrue(normalized.contains("in this conversation only"))
+        XCTAssertTrue(normalized.contains("memory text"))
         XCTAssertTrue(normalized.contains("application's interface language"))
-        XCTAssertTrue(normalized.contains("Ignore code blocks, inline code, file paths, identifiers, URLs, quoted source"))
         XCTAssertTrue(normalized.contains("explicitly asks for a response in a named language"))
-        XCTAssertTrue(normalized.contains("Re-evaluate the language on the next user turn"))
+        XCTAssertTrue(normalized.contains("for that response only"))
         XCTAssertTrue(normalized.contains("last reliable response language"))
         XCTAssertTrue(normalized.contains("answer in English"))
 
@@ -217,7 +236,7 @@ final class HerNessPromptTests: XCTestCase {
     }
 
     @MainActor
-    func testWorkspaceActivityListsOtherChatsRecentFilesOnly() throws {
+    func testWorkspaceActivityListsRecentFilesFromProjectConversationsOnly() throws {
         let paths = temporaryPaths()
         let workspace = FileManager.default.temporaryDirectory
             .appendingPathComponent("DotsHarnessWorkspace-\(UUID().uuidString)", isDirectory: true)

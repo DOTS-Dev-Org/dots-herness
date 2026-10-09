@@ -12,7 +12,7 @@ SCHEME="${SCHEME:-$PROJECT_NAME}"
 BUNDLE_ID="${BUNDLE_ID:-com.dots.herness}"
 CONFIGURATION="${CONFIGURATION:-Release}"
 BUILD_MODE="${BUILD_MODE:-simulator}"
-SIMULATOR_NAME="${SIMULATOR_NAME:-iPhone 17 Pro}"
+SIMULATOR_NAME="${SIMULATOR_NAME-}"
 DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-$IOS_DIR/build/SimulatorDerivedData}"
 ARCHIVE_PATH="${ARCHIVE_PATH:-$IOS_DIR/build/archives/${PROJECT_NAME}.xcarchive}"
 BUILD_ONLY=false
@@ -26,6 +26,10 @@ Kullanim:
   ./run.sh --device "iPhone 17 Pro"
   ./run.sh --build-only
   BUILD_MODE=archive ./run.sh
+
+Varsayilan davranis:
+  -d/--device verilmezse acik olan ilk iOS simulatoru kullanir.
+  Hic simulator acik degilse ilk kullanilabilir iOS simulatorunu baslatir.
 
 Secenekler:
   -d, --device NAME_OR_UDID  Kullanilacak simulator adi veya UDID'si.
@@ -123,15 +127,26 @@ fi
 
 [[ -d "$PROJECT_FILE" ]] || fail "Xcode projesi bulunamadi: $PROJECT_FILE"
 
-DEVICE_UDID=""
-if [[ "$BUILD_MODE" == simulator && "$BUILD_ONLY" != true ]]; then
-    DEVICE_UDID="$(xcrun simctl list devices available | awk -v target="$SIMULATOR_NAME" '
+find_simulator_record() {
+    local target="$1"
+    local booted_only="$2"
+
+    xcrun simctl list devices available | awk -v target="$target" -v booted_only="$booted_only" '
         /^-- iOS / { in_ios = 1; next }
         /^-- / { in_ios = 0 }
         !in_ios { next }
         {
             line = $0
             sub(/^[[:space:]]+/, "", line)
+
+            status = ""
+            if (line ~ /[[:space:]]\(Booted\)[[:space:]]*$/) {
+                status = "Booted"
+            } else if (line ~ /[[:space:]]\(Shutdown\)[[:space:]]*$/) {
+                status = "Shutdown"
+            } else {
+                next
+            }
 
             device = line
             sub(/[[:space:]]+\((Booted|Shutdown)\)[[:space:]]*$/, "", device)
@@ -143,13 +158,77 @@ if [[ "$BUILD_MODE" == simulator && "$BUILD_ONLY" != true ]]; then
             name = device
             sub(/[[:space:]]+\([[:xdigit:]-]{36}\)$/, "", name)
 
-            if (udid ~ /^[[:xdigit:]-]{36}$/ && (name == target || udid == target)) {
-                print udid
+            if (udid !~ /^[[:xdigit:]-]{36}$/) {
+                next
+            }
+
+            if (target != "" && (name == target || udid == target)) {
+                print name "\t" udid
+                exit
+            }
+
+            if (target == "" && (booted_only != "true" || status == "Booted")) {
+                print name "\t" udid
                 exit
             }
         }
-    ')"
-    [[ -n "$DEVICE_UDID" ]] || fail "Simulator bulunamadi: $SIMULATOR_NAME"
+    '
+}
+
+list_booted_records() {
+    xcrun simctl list devices booted | awk '
+        /^-- iOS / { in_ios = 1; next }
+        /^-- / { in_ios = 0 }
+        in_ios && /\(Booted\)[[:space:]]*$/ {
+            line = $0
+            sub(/^[[:space:]]+/, "", line)
+            sub(/[[:space:]]+\(Booted\)[[:space:]]*$/, "", line)
+            udid = line
+            sub(/^.*\(/, "", udid)
+            sub(/\).*/, "", udid)
+            name = line
+            sub(/[[:space:]]+\([[:xdigit:]-]{36}\)$/, "", name)
+            print name "\t" udid
+        }
+    '
+}
+
+DEVICE_UDID=""
+if [[ "$BUILD_MODE" == simulator && "$BUILD_ONLY" != true ]]; then
+    DEVICE_RECORD=""
+    if [[ -n "$SIMULATOR_NAME" ]]; then
+        DEVICE_RECORD="$(find_simulator_record "$SIMULATOR_NAME" false)"
+        [[ -n "$DEVICE_RECORD" ]] || fail "Simulator bulunamadi: $SIMULATOR_NAME"
+    else
+        BOOTED=()
+        while IFS= read -r record; do
+            [[ -n "$record" ]] && BOOTED+=("$record")
+        done < <(list_booted_records)
+
+        if [[ ${#BOOTED[@]} -gt 1 && -r /dev/tty ]]; then
+            printf 'Acik simulatorler:\n' >&2
+            for i in "${!BOOTED[@]}"; do
+                printf '  %d) %s\n' "$((i + 1))" "${BOOTED[$i]%%$'\t'*}" >&2
+            done
+            while true; do
+                printf 'Seciminiz [1-%d]: ' "${#BOOTED[@]}" >&2
+                read -r choice </dev/tty || fail "Secim okunamadi."
+                if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#BOOTED[@]} )); then
+                    DEVICE_RECORD="${BOOTED[$((choice - 1))]}"
+                    break
+                fi
+                printf 'Gecersiz secim.\n' >&2
+            done
+        elif [[ ${#BOOTED[@]} -ge 1 ]]; then
+            DEVICE_RECORD="${BOOTED[0]}"
+        fi
+        if [[ -z "$DEVICE_RECORD" ]]; then
+            DEVICE_RECORD="$(find_simulator_record "" false)"
+        fi
+        [[ -n "$DEVICE_RECORD" ]] || fail "Kullanilabilir bir iOS simulator bulunamadi."
+    fi
+
+    IFS=$'\t' read -r SIMULATOR_NAME DEVICE_UDID <<< "$DEVICE_RECORD"
     printf 'Simulator baslatiliyor: %s (%s)\n' "$SIMULATOR_NAME" "$DEVICE_UDID"
     xcrun simctl bootstatus "$DEVICE_UDID" -b
 fi

@@ -62,6 +62,7 @@ public struct MarketplaceTarget: Codable, Sendable, Equatable, Hashable, Identif
 
 public struct MarketplaceEntry: Codable, Sendable, Identifiable, Equatable {
     public var id: String
+    public var releaseID: String
     public var name: String
     public var version: String
     public var description: String
@@ -78,14 +79,22 @@ public struct MarketplaceEntry: Codable, Sendable, Identifiable, Equatable {
     public var signature: PluginSignature?
     public var artifacts: [MarketplaceArtifact]
     public var screenshots: [String]
+    public var catalogScope: String
+    public var category: String
+    public var categoryConfidence: Double
+    public var riskLevel: String
+    public var permissions: [String]
+    public var moderationStatus: String
 
     enum CodingKeys: String, CodingKey {
-        case id, name, version, description, author, tier, homepage, license, verificationStatus, sourceVisibility, sourceURL, downloadURL, sha256, signature, artifacts, screenshots
+        case id, releaseID, name, version, description, author, tier, homepage, license, verificationStatus, sourceVisibility, sourceURL, downloadURL, sha256, signature, artifacts, screenshots
+        case catalogScope, category, categoryConfidence, riskLevel, permissions, moderationStatus
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(String.self, forKey: .id)
+        releaseID = try c.decodeIfPresent(String.self, forKey: .releaseID) ?? id
         name = try c.decodeIfPresent(String.self, forKey: .name) ?? id
         version = try c.decodeIfPresent(String.self, forKey: .version) ?? "0.0.0"
         description = try c.decodeIfPresent(String.self, forKey: .description) ?? ""
@@ -101,6 +110,12 @@ public struct MarketplaceEntry: Codable, Sendable, Identifiable, Equatable {
         signature = try c.decodeIfPresent(PluginSignature.self, forKey: .signature)
         artifacts = try c.decodeIfPresent([MarketplaceArtifact].self, forKey: .artifacts) ?? []
         screenshots = try c.decodeIfPresent([String].self, forKey: .screenshots) ?? []
+        catalogScope = try c.decodeIfPresent(String.self, forKey: .catalogScope) ?? "community"
+        category = try c.decodeIfPresent(String.self, forKey: .category) ?? "other"
+        categoryConfidence = try c.decodeIfPresent(Double.self, forKey: .categoryConfidence) ?? 0
+        riskLevel = try c.decodeIfPresent(String.self, forKey: .riskLevel) ?? "unknown"
+        permissions = try c.decodeIfPresent([String].self, forKey: .permissions) ?? []
+        moderationStatus = try c.decodeIfPresent(String.self, forKey: .moderationStatus) ?? "pending_review"
     }
 
     public var currentArtifact: MarketplaceArtifact? {
@@ -163,6 +178,19 @@ public struct MarketplaceOwnedRelease: Codable, Sendable, Identifiable, Equatabl
     public var status: String
     public var createdAt: String
     public var artifacts: [MarketplaceOwnedArtifact]
+    public var moderationStatus: String
+    public var catalogScope: String
+    public var category: String
+    public var categoryConfidence: Double
+    public var categorySource: String
+    public var riskLevel: String
+    public var riskFlags: [String]
+    public var permissions: [String]
+    public var moderationScores: [String: Double]
+    public var moderationReason: String
+    public var moderationModel: String?
+    public var reviewedAt: String?
+    public var reviewNotes: String?
 
     private enum CodingKeys: String, CodingKey {
         case id
@@ -170,6 +198,18 @@ public struct MarketplaceOwnedRelease: Codable, Sendable, Identifiable, Equatabl
         case version, license, status
         case createdAt = "created_at"
         case artifacts
+        case moderationStatus = "moderation_status"
+        case catalogScope = "catalog_scope"
+        case category, categoryConfidence = "category_confidence"
+        case categorySource = "category_source"
+        case riskLevel = "risk_level"
+        case riskFlags = "risk_flags"
+        case permissions
+        case moderationScores = "moderation_scores"
+        case moderationReason = "moderation_reason"
+        case moderationModel = "moderation_model"
+        case reviewedAt = "reviewed_at"
+        case reviewNotes = "review_notes"
     }
 
     public init(from decoder: Decoder) throws {
@@ -181,6 +221,19 @@ public struct MarketplaceOwnedRelease: Codable, Sendable, Identifiable, Equatabl
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? "published"
         createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
         artifacts = try c.decodeIfPresent([MarketplaceOwnedArtifact].self, forKey: .artifacts) ?? []
+        moderationStatus = try c.decodeIfPresent(String.self, forKey: .moderationStatus) ?? "pending_review"
+        catalogScope = try c.decodeIfPresent(String.self, forKey: .catalogScope) ?? "community"
+        category = try c.decodeIfPresent(String.self, forKey: .category) ?? "other"
+        categoryConfidence = try c.decodeIfPresent(Double.self, forKey: .categoryConfidence) ?? 0
+        categorySource = try c.decodeIfPresent(String.self, forKey: .categorySource) ?? "pending"
+        riskLevel = try c.decodeIfPresent(String.self, forKey: .riskLevel) ?? "unknown"
+        riskFlags = try c.decodeIfPresent([String].self, forKey: .riskFlags) ?? []
+        permissions = try c.decodeIfPresent([String].self, forKey: .permissions) ?? []
+        moderationScores = try c.decodeIfPresent([String: Double].self, forKey: .moderationScores) ?? [:]
+        moderationReason = try c.decodeIfPresent(String.self, forKey: .moderationReason) ?? ""
+        moderationModel = try c.decodeIfPresent(String.self, forKey: .moderationModel)
+        reviewedAt = try c.decodeIfPresent(String.self, forKey: .reviewedAt)
+        reviewNotes = try c.decodeIfPresent(String.self, forKey: .reviewNotes)
     }
 }
 
@@ -222,21 +275,30 @@ public enum MarketplaceStatus: Sendable, Equatable {
 @MainActor
 public final class MarketplaceClient: ObservableObject {
     public static let defaultIndex = "https://dots.net.tr/harness/registry.json"
+    public static let defaultCommunityIndex = "https://dots.net.tr/harness/community-registry.json"
 
     @Published public private(set) var entries: [MarketplaceEntry] = []
+    @Published public private(set) var communityEntries: [MarketplaceEntry] = []
     @Published public private(set) var isLoading = false
     @Published public private(set) var lastError: String?
     @Published public private(set) var busyIDs: Set<String> = []
     @Published public private(set) var ownedPlugins: [MarketplaceOwnedPlugin] = []
 
     public var indexURL: URL
+    public var communityIndexURL: URL
     public let session: MarketplaceSession
     public let forks: MarketplaceForkStore
     private let catalog: PluginCatalog
     private let installer: PluginInstaller
 
-    public init(indexURL: URL, catalog: PluginCatalog, session: MarketplaceSession = MarketplaceSession()) {
+    public init(
+        indexURL: URL,
+        catalog: PluginCatalog,
+        session: MarketplaceSession = MarketplaceSession(),
+        communityIndexURL: URL = URL(string: MarketplaceClient.defaultCommunityIndex)!
+    ) {
         self.indexURL = indexURL
+        self.communityIndexURL = communityIndexURL
         self.catalog = catalog
         self.session = session
         self.forks = MarketplaceForkStore(catalog: catalog)
@@ -248,10 +310,21 @@ public final class MarketplaceClient: ObservableObject {
         catalog.paths.runtime.appendingPathComponent("marketplace.json")
     }
 
+    private var communityCacheURL: URL {
+        catalog.paths.runtime.appendingPathComponent("marketplace-community.json")
+    }
+
     public func loadCached() {
-        guard let data = try? Data(contentsOf: cacheURL),
-              let index = try? JSONDecoder().decode(MarketplaceIndex.self, from: data) else { return }
-        entries = index.plugins
+        if let data = try? Data(contentsOf: cacheURL),
+           let index = try? JSONDecoder().decode(MarketplaceIndex.self, from: data),
+           index.version >= 3 {
+            entries = index.plugins
+        }
+        if let data = try? Data(contentsOf: communityCacheURL),
+           let index = try? JSONDecoder().decode(MarketplaceIndex.self, from: data),
+           index.version >= 3 {
+            communityEntries = index.plugins
+        }
     }
 
     public func refresh() async {
@@ -259,30 +332,46 @@ public final class MarketplaceClient: ObservableObject {
         lastError = nil
         defer { isLoading = false }
         do {
-            guard indexURL.scheme?.lowercased() == "https" else {
-                throw PluginError.package("Marketplace registry must use HTTPS")
-            }
-            var request = URLRequest(url: indexURL, timeoutInterval: 30)
-            request.setValue("DotsHarness", forHTTPHeaderField: "User-Agent")
-            let (data, response) = try await URLSession.shared.data(for: request)
-            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-            guard (200..<300).contains(status) else {
-                lastError = "registry HTTP \(status)"
-                return
-            }
-            let index = try JSONDecoder().decode(MarketplaceIndex.self, from: data)
+            let (data, index) = try await fetchIndex(at: indexURL)
             entries = index.plugins
-            for entry in entries {
-                forks.markUpstreamVersion(entry.version, for: entry.id)
-            }
-            try? FileManager.default.createDirectory(
-                at: cacheURL.deletingLastPathComponent(),
-                withIntermediateDirectories: true
-            )
-            try? data.write(to: cacheURL, options: .atomic)
+            for entry in entries { forks.markUpstreamVersion(entry.version, for: entry.id) }
+            persist(data, at: cacheURL)
         } catch {
             lastError = error.localizedDescription
         }
+        do {
+            let (data, index) = try await fetchIndex(at: communityIndexURL)
+            communityEntries = index.plugins
+            persist(data, at: communityCacheURL)
+        } catch {
+            if lastError == nil { lastError = "Community registry: \(error.localizedDescription)" }
+        }
+    }
+
+    private func fetchIndex(at url: URL) async throws -> (Data, MarketplaceIndex) {
+        guard url.scheme?.lowercased() == "https" else {
+            throw PluginError.package("Marketplace registry must use HTTPS")
+        }
+        var request = URLRequest(url: url, timeoutInterval: 30)
+        request.setValue("DotsHarness", forHTTPHeaderField: "User-Agent")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200..<300).contains(status) else {
+            throw PluginError.package("registry HTTP \(status)")
+        }
+        let index = try JSONDecoder().decode(MarketplaceIndex.self, from: data)
+        guard index.version >= 3 else {
+            throw PluginError.package("Marketplace registry is missing moderation metadata")
+        }
+        return (data, index)
+    }
+
+    private func persist(_ data: Data, at url: URL) {
+        try? FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try? data.write(to: url, options: .atomic)
     }
 
     public func status(_ entry: MarketplaceEntry) -> MarketplaceStatus {
@@ -312,9 +401,34 @@ public final class MarketplaceClient: ObservableObject {
         }
     }
 
+    public func report(
+        _ entry: MarketplaceEntry,
+        reason: String,
+        details: String = ""
+    ) async throws {
+        let body: [String: Any] = [
+            "release_id": entry.releaseID,
+            "reason": reason,
+            "details": details,
+        ]
+        let data = try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
+        let (responseData, response) = try await session.authorizedData(
+            path: "api/marketplace/plugins/\(entry.id)/reports",
+            method: "POST",
+            body: data,
+            contentType: "application/json"
+        )
+        guard (200..<300).contains(response.statusCode) else {
+            throw MarketplaceSessionError.requestFailed(response.statusCode, String(decoding: responseData, as: UTF8.self))
+        }
+    }
+
     /// Downloads, verifies, unpacks, and refreshes a signed native package.
     /// MarketplaceView asks for explicit user consent before reaching this path.
     public func install(_ entry: MarketplaceEntry) async throws {
+        guard entry.moderationStatus == "approved" else {
+            throw PluginError.package("plugin is not approved for Marketplace installation")
+        }
         guard let artifact = entry.currentArtifact,
               artifact.status == "ready",
               let downloadURL = artifact.downloadURL,

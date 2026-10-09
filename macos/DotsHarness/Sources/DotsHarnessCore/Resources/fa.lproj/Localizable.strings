@@ -80,7 +80,6 @@
 "settings.title" = "تنظیمات";
 "settings.backToChats" = "بازگشت به چت ها";
 "settings.tab.general" = "عمومی";
-"settings.tab.pet" = "حیوان خانگی";
 "settings.tab.providers" = "ارائه دهندگان";
 "settings.tab.custom" = "API سفارشی";
 "settings.tab.local" = "مدل های محلی";
@@ -306,22 +305,22 @@
 "composer.add" = "اضافه کنید";
 "composer.stopListening" = "گوش دادن را متوقف کنید و متن را به پیش نویس اضافه کنید";
 "composer.keyboardHelp" = "وارد کنید: ارسال · Shift+Enter: خط جدید · ⌘/Ctrl+Enter: هدایت";
-"composer.followUp.hint" = "برای پذیرفتن پیشنهاد پیام پیگیری، Tab را فشار دهید";
+"composer.followUp.hint" = "برای پذیرش پیشنهاد پیام پیگیری، کلید Tab را فشار دهید";
 "composer.selectModel" = "مدل را انتخاب کنید";
 "composer.installedSkill" = "مهارت نصب شده";
 "composer.settings" = "تنظیمات";
 "composer.skills" = "مهارت ها";
 "composer.personal" = "شخصی";
-"composer.projectPickerHelp" = "پروژه را برای این گفتگو انتخاب کنید";
+"composer.projectPickerHelp" = "انتخاب پروژه برای این گفتگو";
 "composer.projectPickerTitle" = "پروژه";
 "composer.chooseProject" = "پروژه را انتخاب کنید";
 "composer.noProject" = "هیچ پروژه ای انتخاب نشده است";
 "composer.dontWorkInProject" = "در یک پروژه کار نکنید";
 "workLocation.title" = "کار در";
-"workLocation.help" = "محل اجرا این کار را انتخاب کنید";
+"workLocation.help" = "انتخاب محل اجرای این کار";
 "workLocation.local" = "محلی";
 "workLocation.localDetail" = "این کار را روی این کامپیوتر اجرا کنید";
-"workLocation.localWorktree" = "درخت کاری محلی جدید";
+"workLocation.localWorktree" = "ورک‌ترِی محلی جدید";
 "workLocation.localWorktreeDetail" = "از یک تسویه حساب مجزا در این رایانه استفاده کنید";
 "workLocation.remote" = "رایانه‌ای دیگر";
 "workLocation.remoteDetail" = "کار روی رایانه‌ای که با SSH به آن وصل می‌شوید";
@@ -377,8 +376,8 @@
 "ssh.error.pathMissing" = "پوشهٔ %@ روی رایانهٔ دور وجود ندارد.";
 "ssh.error.configWriteFailed" = "نوشتن %@ در ~/.ssh/config ممکن نشد.";
 "tool.remoteUnavailable" = "‏%1$@ هنگام کار روی %2$@ در دسترس نیست. به‌جای آن از run_command با فرمان‌های پوسته استفاده کنید.";
-"git.branchHelp" = "یک شاخه Git را انتخاب کنید";
-"git.detached" = "سر جدا شده";
+"git.branchHelp" = "انتخاب شاخهٔ Git";
+"git.detached" = "HEAD جداشده";
 "git.search" = "جستجو در شعب";
 "git.branches" = "شاخه ها";
 "git.noBranches" = "هیچ شاخه ای پیدا نشد";
@@ -413,8 +412,6 @@
 "slash.model" = "مدل";
 "slash.plan" = "حالت برنامه ریزی";
 "slash.planDetail" = "حالت طرح را روشن کنید";
-"slash.mascot" = "حیوان خانگی";
-"slash.mascotDetail" = "حیوان خانگی را بیدار یا پنهان کنید";
 "slash.pluginCreator" = "سازنده افزونه";
 "slash.pluginCreatorDetail" = "ساخت افزونه جدید";
 "pluginCreator.template" = "قالب";
@@ -501,7 +498,6 @@
 "sidebar.hide" = "پنهان کردن";
 "sidebar.show" = "نمایش دهید";
 "sidebar.selectProject" = "پروژه را انتخاب کنید";
-"sidebar.continueWithoutProject" = "بدون پروژه ادامه دهید";
 "sidebar.projectOptions" = "گزینه های پروژه";
 "sidebar.editProject" = "ویرایش پروژه";
 "sidebar.addProject" = "افزودن پروژه";
@@ -528,33 +524,11 @@
 "sidebar.archived" = "بایگانی شد";
 "sidebar.chatRunning" = "چت در حال انجام است";
 "sidebar.chatCompleted" = "چت تکمیل شد";
-"sidebar.usage" = "استفاده";
+"sidebar.usage" = "مصرف";
 "sidebar.settings" = "تنظیمات";
 "sidebar.accountOptions" = "گزینه های حساب";
 "sidebar.accountUsage" = "حساب DOTS و استفاده";
 
-"pet.position.bottomTrailing" = "پایین سمت راست";
-"pet.position.bottomLeading" = "پایین سمت چپ";
-"pet.position.topTrailing" = "بالا سمت راست";
-"pet.position.topLeading" = "بالا سمت چپ";
-"pet.settings" = "تنظیمات حیوان خانگی";
-"pet.hide" = "حیوان خانگی را پنهان کنید";
-"pet.dragHint" = "DOTS Pet · نگه دارید تا حرکت کنید";
-"pet.stopAndSend" = "گوش دادن را متوقف کنید و به گپ انتخابی ارسال کنید";
-"pet.micOpening" = "در حال باز کردن میکروفون…";
-"pet.listening" = "گوش دادن…";
-"pet.transcribing" = "مدل صدای محلی در حال رونویسی…";
-"pet.sending" = "در حال ارسال به گپ انتخابی…";
-"pet.visibility" = "دید حیوان خانگی";
-"pet.show" = "نشان دادن حیوان خانگی";
-"pet.visibilityHint" = "حیوان خانگی فقط زمانی روی صفحه شناور می شود که این گزینه فعال باشد. در اولین راه اندازی خاموش است.";
-"pet.appearance" = "ظاهر";
-"pet.position" = "موقعیت";
-"pet.size" = "اندازه";
-"pet.sizeValue" = "%d پیکسل";
-"pet.avatar" = "آواتار";
-"pet.preview" = "پیش نمایش";
-"pet.title" = "حیوان خانگی";
 
 "usage.title" = "استفاده";
 "usage.accountSummary" = "خلاصه حساب DOTS YAZILIM این دوره";
@@ -870,7 +844,6 @@
 "marketplace.install" = "نصب کنید";
 "marketplace.search" = "جستجو در افزونه ها";
 "marketplace.update" = "v%@ → v%@ را به روز کنید";
-"pet.avatarHint" = "آواتار حیوان خانگی را انتخاب کنید.";
 "router.customEndpointHint" = "نقطه پایانی API سفارشی";
 "router.noKeyRequired" = "کلید لازم نیست از طریق این ارائه دهنده به مسیر متصل شوید.";
 "settings.addProviderCustom" = "این ارائه دهنده را از طریق Custom API اضافه کنید.";
@@ -1104,9 +1077,6 @@
 "feedback.tag.negative_other" = "سایر";
 
 // Completed translations for keys added to the desktop catalog.
-"assistantMode.title" = "حالت دستیار";
-"assistantMode.coding" = "کدنویسی";
-"assistantMode.chat" = "گفت‌وگو";
 "tasks.close" = "بستن کارها";
 "tasks.back" = "بازگشت";
 "tasks.new" = "کار جدید";
@@ -1147,3 +1117,213 @@
 "settings.compactTrigger" = "آستانه فشرده‌سازی خودکار زمینه";
 "settings.compactTrigger.hint" = "سهمی از پنجرهٔ زمینهٔ هر مدل. مقدار بالاتر کش پرامپت را بیشتر نگه می‌دارد، چون فشرده‌سازی آن را بازنویسی می‌کند.";
 "conversation.translate" = "ترجمه";
+
+
+// Completed translations for keys added to the desktop catalog.
+"tray.section.running" = "گفت‌وگوهای در حال اجرا";
+"tray.section.waiting" = "نیازمند توجه";
+"tray.write" = "نوشتن پیام";
+"tray.openUsage" = "باز کردن صفحهٔ مصرف";
+"tray.noChats" = "در حال حاضر گفت‌وگویی نیست";
+"tray.unread" = "پاسخ جدید";
+
+// Write-lease conflict copy.
+"conflict.policy.waitThenAsk" = "صبر کنید، سپس بپرسید";
+"conflict.policy.waitThenAsk.detail" = "برای چت دیگر ساکت صبر می‌کند و فقط اگر انتظار طولانی شد می‌پرسد.";
+"conflict.policy.ask" = "از من بپرسید";
+"conflict.policy.ask.detail" = "به محض اینکه دو چت یک فایل را بخواهند می‌پرسد.";
+"conflict.policy.waitOnly" = "همیشه صبر کنید";
+"conflict.policy.waitOnly.detail" = "نمی‌پرسد: هر نوشتن منتظر چتی می‌ماند که فایل را در دست دارد.";
+"conflict.title" = "چت دیگری در حال نوشتن %@ است";
+"conflict.stillBusy" = "نوشتن متوقف شد: %@ هنوز توسط چت دیگری در حال نوشتن است.";
+"conflict.userSkipped" = "نوشتن رد شد: %@ طبق درخواست شما نزد چت دیگر (%@) ماند.";
+"conflict.stoppedHolder" = "طبق درخواست شما چت «%@» متوقف شد و این نوشتن انجام شد.";
+"conflict.stoppedOthers" = "طبق درخواست شما چت‌های دیگر این پروژه متوقف شدند و این نوشتن انجام شد.";
+"conflict.wholeProject" = "کل پروژه (دستور: %@)";
+"conflict.banner.title" = "چت دیگری این فایل را می‌نویسد";
+"conflict.banner.body" = "%1$@ · «%2$@» از %3$d ثانیه در دست دارد";
+"conflict.banner.keepWaiting" = "به صبر ادامه دهید";
+"conflict.banner.stopHolder" = "آن چت را متوقف کنید";
+"conflict.banner.stopAllOthers" = "همه چت‌های دیگر را متوقف کنید";
+"conflict.banner.skip" = "این نوشتن را رد کنید";
+"conflict.waiting" = "در انتظار نوشتن «%@»: %@";
+"settings.workspaceConflictPolicy" = "اگر چت دیگری همان فایل را می‌نویسد";
+"settings.conflictWaitSeconds" = "پرسیدن قبل صبر کنید";
+"settings.conflictWaitValue" = "%d ثانیه";
+
+
+"conversation.ranCommand" = "Ran 1 command";
+"conversation.ranCommands" = "Ran %d commands";
+"conversation.runningTools" = "Running tools…";
+"conversation.thinkingPhase" = "Thinking…";
+"conversation.tokensCount" = "%@ tokens";
+"usage.context.window" = "پنجرهٔ زمینه";
+"usage.planLimits" = "محدودیت‌های مصرف طرح";
+"ask.other" = "Other";
+"ask.next" = "Next";
+"ask.skipShort" = "Skip";
+"composer.queue.one" = "1 message queued";
+"composer.queue.many" = "%d messages queued";
+"composer.queue.edit" = "Edit";
+"composer.queue.editBlocked" = "Clear the message box to edit";
+"composer.queue.remove" = "Remove";
+"git.createPR" = "ایجاد PR";
+"git.hideBar" = "پنهان کردن";
+"composer.queue.next" = "Next: %@";
+
+// Composer, git bar and usage popover.
+"usage.context.tooltip" = "مصرف زمینه و توکن";
+"usage.context.conversation" = "پیام‌های گفتگو";
+"usage.context.toolDefinitions" = "تعریف ابزارها";
+"usage.context.mcpDefinitions" = "تعریف ابزارهای MCP";
+"usage.context.systemPrompt" = "دستورالعمل‌های سیستم";
+"usage.context.cacheHit" = "برخوردهای کش پرامپت";
+"usage.context.notReported" = "ارائه‌دهنده گزارش نکرده است";
+"usage.context.cacheWrite" = "%@ توکن در کش نوشته شد";
+
+// Local AI runtime and custom endpoint tuning.
+"custom.modelOptional" = "نام مدل (اختیاری)";
+"custom.contextOptional" = "پنجرهٔ زمینه بر حسب توکن (اختیاری)";
+"custom.contextHint" = "برای خواندن از سرور هر دو را خالی بگذارید. اگر سرور اعلام نمی‌کند، زمینه را وارد کنید (Ollama: برابر با OLLAMA_CONTEXT_LENGTH).";
+"custom.contextInvalid" = "پنجرهٔ زمینه باید عددی مثبت باشد.";
+"custom.detected" = "در حال اجرا روی این رایانه";
+"custom.noModelAvailable" = "%@ هیچ مدلی فهرست نمی‌کند. سرور آن را اجرا کنید یا برای نقطهٔ پایانی نام مدل تعیین کنید.";
+"local.extraArgs" = "آرگومان‌های اضافی llama-server";
+"local.mlxExtraArgs" = "آرگومان‌های اضافی سرور mlx_lm";
+"local.gpuLayers" = "لایه‌های GPU (auto، all یا یک عدد)";
+"local.hardware" = "سخت‌افزار";
+"local.hardwareGPU" = "%@ · %@ حافظهٔ GPU · %@ RAM";
+"local.importGGUF" = "افزودن فایل GGUF…";
+"local.installMLX" = "نصب MLX";
+"local.installingMLX" = "در حال نصب MLX (Python + mlx-lm)…";
+"local.kvCache" = "نوع کش KV";
+"local.servingContext" = "%@ · %d توکن";
+"local.tooLarge" = "خیلی بزرگ";
+"local.tuning" = "کارایی";
+"local.tuningHint" = "اگر خالی یا auto باشد، ران‌تایم مدل را با حافظهٔ GPU شما تنظیم می‌کند. تغییرات در اجرای بعدی مدل اعمال می‌شوند.";
+"local.contextSize" = "اندازهٔ زمینه (توکن)";
+"local.threads" = "رشته‌های CPU";
+"local.batchSize" = "اندازهٔ دسته";
+"local.forget" = "حذف از فهرست";
+"localModel.needsMemory" = "حدود %d گیگابایت حافظهٔ GPU یا RAM لازم دارد.";
+"localRuntime.helperFailed" = "%@ ناموفق بود (کد خروج %d)";
+"localRuntime.mlxUnsupported" = "MLX به Mac با Apple Silicon نیاز دارد.";
+"local.flashAttention" = "Flash attention";
+"local.hardwareMemory" = "%@ RAM";
+
+// Translations completed for keys that had no localized text.
+"conversation.fullToolOutput" = "خروجی کامل ابزار";
+"sidebar.showSidebar" = "نمایش نوار کناری";
+"sidebar.hideSidebar" = "پنهان کردن نوار کناری";
+"navigation.back" = "عقب";
+"navigation.forward" = "جلو";
+"settings.autoApprovePlans" = "تأیید خودکار طرح‌ها";
+"settings.autoApprovePlans.hint" = "اگر فعال باشد، طرح تولیدشده بدون انتظار برای تأیید جداگانهٔ طرح اعمال می‌شود. تأییدهای سطح ابزار همچنان برقرارند.";
+"media.fallbackUsed" = "ارائه‌دهندهٔ انتخاب‌شده نتوانست این تصویر را بسازد. تصویر با یک درخواست پشتیبان یک‌باره از طریق %@/%@ ساخته شد؛ ارائه‌دهنده و مدل گفت‌وگوی اصلی تغییر نکرده‌اند، پس کش پرامپت آن دست‌نخورده می‌ماند.";
+"media.imageUnsupportedWithFallbackHint" = "نمی‌توانم این تصویر را با %@ بسازم. یک API یا ارائه‌دهندهٔ تصویر را به‌عنوان پشتیبان تنظیم کنید. عوض کردن مدل اصلی گفت‌وگو فقط برای ساخت تصویر می‌تواند کش پرامپت ارائه‌دهنده را از بین ببرد.";
+"conversation.generationResumed" = "پیام ازسرگرفته شد";
+"conversation.cancelPlan" = "لغو طرح";
+"conversation.cancelPlanHelp" = "لغو این طرح و آزاد کردن پیام‌های در صف";
+"conversation.thinking" = "فرایند تفکر";
+"usage.manageResets" = "مدیریت بازنشانی‌ها";
+"usage.useReset" = "استفاده از بازنشانی";
+"usage.resetTitle" = "از بازنشانی محدودیت Claude استفاده شود؟";
+"usage.openClaude" = "ادامه در Claude";
+"usage.resetConfirmation" = "صفحهٔ مصرف Claude باز می‌شود. وارد %@ شوید و بازنشانی پیشنهادشده به آن حساب را بررسی کنید. برای استفاده، روی بازنشانی رایگان کلیک و در Claude تأیید کنید. بازنشانیِ استفاده‌شده قابل بازگشت نیست. با برگشتن به HerNess محدودیت‌ها به‌روز می‌شوند.";
+"usage.resetOpenFailed" = "Claude باز نشد. بررسی کنید حساب هنوز متصل باشد و دوباره تلاش کنید.";
+"conversation.review" = "بازبینی";
+"dock.noWorkspace" = "ابتدا یک پوشهٔ کاری انتخاب کنید.";
+"dock.branch" = "شاخه";
+"dock.refresh" = "تازه‌سازی";
+"dock.commit" = "Commit";
+"dock.push" = "Push";
+"dock.fetch" = "Fetch";
+"dock.commitOrPush" = "Commit یا Push";
+"dock.commitMessage" = "پیام commit";
+"dock.noChanges" = "عامل تغییری ایجاد نکرده است.";
+"dock.whyRequest" = "درخواست شما";
+"dock.whyAgent" = "توضیح عامل";
+"dock.notRepo" = "این پوشه مخزن git نیست.";
+"dock.filterFiles" = "فیلتر فایل‌ها…";
+"dock.openFile" = "باز کردن فایل";
+"dock.selectFile" = "یک فایل از درخت فضای کاری انتخاب کنید";
+"dock.binaryFile" = "فایل باینری یا غیرقابل‌خواندن";
+"project.missing.title" = "پوشهٔ پروژه پیدا نشد: %@";
+"project.missing.message" = "پوشهٔ پروژه در «%@» ممکن است جابه‌جا یا حذف شده باشد. مکان جدید آن را انتخاب کنید یا پروژه را بردارید.";
+"project.missing.locate" = "انتخاب مکان…";
+"project.missing.readOnly" = "پوشهٔ پروژه در دسترس نیست. می‌توانید گفت‌وگوهای قبلی را ببینید؛ تا زمانی که مکان جدیدی انتخاب کنید، ساخت گفت‌وگوی تازه و ارسال پیام غیرفعال است.";
+"queue.waitingForPlan" = "در انتظار تأیید طرح";
+"settings.closeToTray" = "هنگام بستن پنجره، در سینی سیستم به کار ادامه دهد";
+"settings.closeToTray.hint" = "اجراها، ترمینال‌ها و وظایف زمان‌بندی‌شده تا پنهان بودن پنجره ادامه دارند؛ نماد سینی آن را بازمی‌گرداند.";
+"tray.show" = "باز کردن پنجره";
+"context.overflowTitle" = "این گفت‌وگو در مدل جدید جا نمی‌شود";
+"context.overflowReason" = "%1$@ برای ادامه به حدود %2$d توکن نیاز دارد و فقط %3$d توکن در آن مدل آزاد است.";
+"context.overflowByModel" = "خلاصه را %@ می‌نویسد؛ کوچک‌ترین مدل متصلی که هنوز می‌تواند متن گفت‌وگو را بخواند.";
+"context.overflowLocally" = "هیچ مدل متصلی نمی‌تواند متن گفت‌وگو را بخواند، پس گفت‌وگو بدون پرسیدن از هیچ مدلی کوتاه می‌شود.";
+"context.overflowCompress" = "فشرده‌سازی و ادامه";
+"context.overflowNotNow" = "الان نه";
+"context.overflowDeclined" = "ارسال متوقف شد: گفت‌وگو در مدل جدید جا نمی‌شود.";
+"usage.context.title" = "مصرف";
+"usage.context.input" = "ورودی ارسال‌شده";
+"usage.context.estimatedInput" = "ورودی تخمینی";
+"usage.context.output" = "خروجی";
+"usage.context.latestRequest" = "آخرین درخواست · پنجرهٔ زمینه";
+"usage.context.estimatedBreakdown" = "تفکیک تخمینی ورودی";
+"usage.context.estimateNote" = "مجموع ورودی/خروجی ارائه‌دهنده در صورت موجود بودن نمایش داده می‌شود. در غیر این صورت مجموع ورودی و دسته‌های ابزار/MCP تخمین محلی هستند.";
+"usage.context.tokens" = "توکن";
+"usage.context.toolCalls" = "فراخوانی‌های ابزار";
+"usage.context.mcpCalls" = "فراخوانی‌های MCP";
+"usage.context.toolResults" = "نتایج ابزار";
+"usage.context.mcpResults" = "نتایج MCP";
+"plan.proposed" = "Claude یک طرح پیشنهاد کرد";
+"plan.reject" = "رد";
+"plan.revise" = "بازنگری…";
+"plan.accept" = "پذیرفتن";
+"plan.acceptAuto" = "پذیرفتن و حالت خودکار";
+"plan.open" = "باز کردن طرح";
+"plan.empty" = "هنوز طرحی نیست";
+"dock.expand" = "باز کردن";
+"dock.collapse" = "جمع کردن";
+"usage.context.cacheReuse" = "استفادهٔ مجدد از حافظهٔ نهان در این گفتگو";
+"usage.context.cacheFreshInput" = "New / outside-breakpoint input: %@ tokens";
+"usage.context.cacheCoverage" = "پوشش اندازه‌گیری: %@ · %@ / %@ درخواست";
+"usage.context.cacheLatency" = "میانگین تأخیر درخواست: %@ میلی‌ثانیه";
+"usage.context.cacheLoss" = "بیشترین افت کش: %@ · %@ توکن";
+"tray.back" = "گفت‌وگوها";
+
+"composer.cacheExpired.explanation" = "مدت تخمینی اعتبار کش گذشته است. کش پرامپت یک وضعیت پردازشی موقت در سمت ارائه‌دهنده است؛ تاریخچهٔ چت شما ذخیره می‌ماند. ادامه دادن با کل تاریخچه می‌تواند باعث شود آن توکن‌ها دوباره به‌عنوان ورودی تازه حساب شوند. فقط داده‌های مصرف درخواست بعدی نشان می‌دهد که ارائه‌دهنده هنوز کش را داشته است یا نه.";
+"composer.accountSwitched.notice" = "این چت روی همان مدل به حساب دیگری منتقل شد. کش در آن حساب از صفر شروع می‌شود؛ ادامه دادن می‌تواند توکن بیشتری مصرف کند و هزینه را بالا ببرد.";
+"composer.contextFull.notice" = "پنجرهٔ زمینه تقریباً پر شده است؛ ادامه دادن می‌تواند توکن بیشتری مصرف کند و هزینه را بالا ببرد. با یک خلاصهٔ کوتاه چت جدیدی شروع کنید.";
+"composer.cacheExpired.infoTitle" = "چرا این را می‌بینم؟";
+"composer.cacheExpired.notice" = "ممکن است کش منقضی شده باشد؛ ادامه دادن می‌تواند توکن بیشتری مصرف کند و هزینه را بالا ببرد. با یک خلاصهٔ کوتاه چت جدیدی شروع کنید.";
+"feedback.tag.apply_elsewhere" = "Apply it elsewhere";
+"feedback.tag.broke_existing_feature" = "Broke an existing feature";
+"feedback.tag.did_not_follow_project_style" = "Didn't follow project style";
+"feedback.tag.ignored_project_architecture" = "Ignored project architecture";
+"feedback.tag.keep_project_style" = "Keep the project style";
+"feedback.tag.reuse_architecture" = "Reuse this architecture";
+"feedback.tag.reuse_token_pattern" = "Reuse this token pattern";
+"feedback.tag.wrong_theme_or_token" = "Wrong theme or token";
+
+// Completed translations for keys added to the desktop catalog.
+"conversation.filesChangedCount" = "%d فایل تغییر کرد";
+"conversation.filesLineSummary" = "+%d −%d";
+"conversation.lineCountsUnavailable" = "تعداد خطوط در دسترس نیست";
+"conversation.filesMore" = "نمایش %d فایل دیگر";
+"conversation.filesLess" = "نمایش فایل‌های کمتر";
+"conversation.undoChanges" = "واگردانی";
+"conversation.viewChanges" = "مشاهده تغییرات";
+"conversation.filesReverted" = "تغییرات فایل‌ها لغو شد.";
+
+// Completed translations for keys added to the desktop catalog.
+"composer.modelSwitched.notice" = "مدل تغییر کرد. کش به مدل جدید منتقل نمی‌شود؛ کل تاریخچه دوباره پردازش می‌شود و این می‌تواند توکن بیشتری مصرف کند و هزینه را بالا ببرد.";
+
+"archive.title" = "گفتگوهای بایگانی‌شده";
+"archive.empty" = "گفتگوی بایگانی‌شده‌ای وجود ندارد.";
+
+"conversation.plan" = "برنامه ریزی کنید";
+"conversation.system" = "سیستم";
+
+"archive.confirmDelete" = "این گفتگو برای همیشه حذف شود؟";
+"archive.deletePermanently" = "حذف دائمی";
+"conversation.processedTokensCount" = "%@ توکن";

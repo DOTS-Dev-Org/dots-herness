@@ -123,18 +123,21 @@ class McpRegistry(private val storage: File, private val secure: SecureStore) {
 
     /** Connects to every server and hands the discovered tools to the agent, namespaced by server. */
     suspend fun connectAll(agent: MobileAgent) {
+        agent.replaceMcpTools(emptyList())
+        val discovered = mutableListOf<AgentToolSpec>()
         servers.forEach { server ->
             val client = McpClient(server.copy(token = secure.read("mcp.${server.id}").orEmpty()))
             try {
                 val tools = client.listTools()
-                agent.register(tools.map { (name, description, schema) ->
+                discovered += tools.map { (name, description, schema) ->
                     AgentToolSpec(toolName(server, name), description, schema) { input -> client.callTool(name, input) }
-                })
+                }
                 status = status + (server.id to "${tools.size} tool(s)")
             } catch (t: Throwable) {
                 status = status + (server.id to (t.message ?: "Connection failed."))
             }
         }
+        agent.replaceMcpTools(discovered)
     }
 
     private fun toolName(server: McpServer, tool: String) =

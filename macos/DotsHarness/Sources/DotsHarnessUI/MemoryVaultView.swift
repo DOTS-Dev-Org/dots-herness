@@ -1,7 +1,8 @@
 // Copyright (c) 2026 DOTS
-// Read-only Obsidian-style browser for the workspace `.mem` vault:
-// note list, rendered note with clickable [[wikilinks]], backlinks, and a
-// force-directed link graph. Notes are host-generated from event-backed state.
+// Obsidian-style browser for the workspace `.mem` vault: searchable note list,
+// rendered note with clickable [[wikilinks]], backlinks, and a force-directed
+// link graph. Task, decision and map notes are host-generated and read-only;
+// project entries, the user's own rules and the learned lessons are edited here.
 
 import AppKit
 import SwiftUI
@@ -11,6 +12,13 @@ public struct MemoryVaultView: View {
     let bridge: AgentBridge
     @State private var selectedID: String?
     @State private var refreshTick = 0
+    @State private var search = ""
+    /// Text being edited, and the note or lesson it belongs to.
+    @State private var draft = ""
+    @State private var draftID: String?
+    @State private var lessonDraft = ""
+    @State private var editingLesson: String?
+    @State private var refused = false
 
     public init(bridge: AgentBridge) {
         self.bridge = bridge
@@ -62,8 +70,14 @@ public struct MemoryVaultView: View {
     // MARK: - Note list
 
     private func noteList(_ vault: MemoryVault) -> some View {
-        let groups = Dictionary(grouping: vault.notes, by: \.kind)
-        let sectionOrder = ["map", "index", "preference", "task", "conversation", "decision", "file", "missing", "note"]
+        let needle = search.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: nil)
+        let shown = needle.isEmpty ? vault.notes : vault.notes.filter { note in
+            (note.title + "\n" + note.body + "\n" + note.tags.joined(separator: " "))
+                .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: nil)
+                .contains(needle)
+        }
+        let groups = Dictionary(grouping: shown, by: \.kind)
+        let sectionOrder = ["map", "index", "profile", "project", "rule", "preference", "task", "conversation", "decision", "file", "missing", "note"]
         return List(selection: $selectedID) {
             ForEach(sectionOrder.filter { groups[$0] != nil }, id: \.self) { kind in
                 Section(sectionTitle(kind)) {
@@ -82,6 +96,11 @@ public struct MemoryVaultView: View {
                 }
             }
         }
+        .searchable(text: $search, placement: .sidebar, prompt: tr("Hafızada ara", "Search memory"))
+    }
+
+    private func tr(_ turkish: String, _ english: String) -> String {
+        AppCopy.language == .tr ? turkish : english
     }
 
     private func sectionTitle(_ kind: String) -> String {
@@ -92,6 +111,8 @@ public struct MemoryVaultView: View {
         case "decision": return AppCopy.text("memory.section.decisions")
         case "conversation": return AppCopy.text("memory.section.conversations")
         case "preference": return AppCopy.text("memory.section.preferences")
+        case "project": return tr("Proje bilgisi", "Project knowledge")
+        case "rule": return tr("Kurallar ve dersler", "Rules and lessons")
         default: return kind.capitalized
         }
     }
@@ -108,8 +129,22 @@ public struct MemoryVaultView: View {
                         Text(note.path).font(.caption.monospaced()).foregroundStyle(.secondary)
                     }
                     Divider()
-                    rendered(note.body)
-                        .textSelection(.enabled)
+                    if note.kind == "project" {
+                        projectEditor(note)
+                    } else if note.id == "learned_rules" {
+                        rulesEditor()
+                    } else {
+                        rendered(note.body)
+                            .textSelection(.enabled)
+                    }
+                    if refused {
+                        Text(tr(
+                            "Kaydedilmedi: metin bir kimlik bilgisine benziyor. Hafıza modele gönderilir ve depoyla birlikte commit edilir.",
+                            "Not saved: that looks like a credential. Memory is sent to the model and committed with the repository."
+                        ))
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                    }
                     if !note.backlinks.isEmpty {
                         Divider()
                         Text(AppCopy.text("memory.backlinks")).font(.headline)
@@ -128,6 +163,125 @@ public struct MemoryVaultView: View {
                 systemImage: "doc.text"
             )
         }
+    }
+
+    // MARK: - Editing
+
+    private func save(_ edit: MemoryEdit) {
+        refused = !bridge.editMemory(edit)
+        if !refused { refreshTick += 1 }
+    }
+
+    private func editor(_ id: String, initial: String, minHeight: CGFloat) -> some View {
+        TextEditor(text: $draft)
+            .font(.body.monospaced())
+            .frame(minHeight: minHeight)
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(.quaternary))
+            .task(id: id) {
+                draft = initial
+                draftID = id
+                refused = false
+            }
+    }
+
+    /// One project entry: the brief the user gave, or what was learned from the
+    /// code. Saving records it again under the same key; forgetting takes it out
+    /// of the prompt, and for a knowledge entry lets the agent learn it afresh.
+    private func projectEditor(_ note: MemoryNote) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            editor(note.id, initial: note.body, minHeight: 160)
+            HStack {
+                Button(tr("Kaydet", "Save")) { save(.setProject(key: note.title, value: draft)) }
+                    .disabled(draftID != note.id || draft == note.body)
+                Button(tr("Unut", "Forget"), role: .destructive) {
+                    save(.forgetProject(key: note.title))
+                    selectedID = nil
+                }
+                Spacer()
+                Text("\(draft.count) / \(ProjectKnowledge.limit(forKey: note.title))")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(draft.count > ProjectKnowledge.limit(forKey: note.title) ? .red : .secondary)
+            }
+        }
+    }
+
+    /// The user's own rules, then every lesson with where it came from.
+    private func rulesEditor() -> some View {
+        let manual = bridge.manualRules
+        let stats = bridge.learningStats
+        return VStack(alignment: .leading, spacing: 12) {
+            Text(tr("Kendi kurallarınız", "Your own rules")).font(.headline)
+            Text(tr(
+                "Buraya yazdığınız her şey bu projedeki her isteğe eklenir.",
+                "Everything written here is added to every request in this project."
+            ))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            editor("learned_rules", initial: manual, minHeight: 100)
+            Button(tr("Kaydet", "Save")) { save(.setManualRules(draft)) }
+                .disabled(draftID != "learned_rules" || draft == manual)
+
+            Divider()
+            Text(tr("Öğrenilen dersler", "Learned lessons")).font(.headline)
+            if bridge.lessons.isEmpty {
+                Text(tr("Henüz ders yok.", "No lessons yet.")).foregroundStyle(.secondary)
+            }
+            ForEach(bridge.lessons, id: \.id) { lesson in
+                lessonRow(lesson, uses: stats.uses.first { lesson.cited.hasPrefix("[" + $0.record + " ") }?.count ?? 0)
+            }
+
+            Divider()
+            Text(tr("Öğrenme günlüğü", "Learning log")).font(.headline)
+            Text(stats.turns == 0
+                ? tr("Henüz kayıtlı tur yok.", "No turns logged yet.")
+                : tr(
+                    "\(stats.turns) tur kaydedildi; \(stats.corrected) tanesi düzeltildi veya geri alındı (%\(stats.corrected * 100 / stats.turns)).",
+                    "\(stats.turns) turns logged; \(stats.corrected) were corrected or undone (\(stats.corrected * 100 / stats.turns)%)."
+                ))
+                .font(.callout)
+        }
+    }
+
+    private func lessonRow(_ lesson: Lesson, uses: Int) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if editingLesson == lesson.id {
+                TextField("", text: $lessonDraft, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+            } else {
+                Text(lesson.line).textSelection(.enabled)
+            }
+            HStack(spacing: 10) {
+                Text([
+                    lesson.isExplicit ? tr("kullanıcı", "user") : tr("çıkarım", "inferred"),
+                    tr("\(lesson.hits) kez öğrenildi", "learned \(lesson.hits)×"),
+                    tr("\(uses) kez kullanıldı", "used \(uses)×"),
+                    lesson.isActive() ? "" : tr("artık uygulanmıyor", "no longer applied"),
+                    lesson.paths.joined(separator: ", "),
+                ].filter { !$0.isEmpty }.joined(separator: " · "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if editingLesson == lesson.id {
+                    Button(tr("Kaydet", "Save")) {
+                        save(.editLesson(id: lesson.id, rule: lessonDraft))
+                        editingLesson = nil
+                    }
+                    Button(tr("Vazgeç", "Cancel")) { editingLesson = nil }
+                } else {
+                    if !lesson.isExplicit {
+                        Button(tr("Sabitle", "Pin")) { save(.pinLesson(id: lesson.id)) }
+                    }
+                    Button(tr("Düzenle", "Edit")) {
+                        lessonDraft = lesson.rule
+                        editingLesson = lesson.id
+                    }
+                    Button(tr("Unut", "Forget"), role: .destructive) { save(.forgetLesson(id: lesson.id)) }
+                }
+            }
+            .controlSize(.small)
+        }
+        .padding(8)
+        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 6))
     }
 
     /// Renders markdown, turning `[[id]]` into a tappable link that selects the
@@ -224,7 +378,8 @@ private struct GraphView: View {
         case "conversation": return .teal
         case "index": return .orange
         case "map": return .purple
-        case "preference": return .pink
+        case "preference", "profile": return .pink
+        case "rule": return .red
         case "file": return .gray
         default: return .secondary
         }

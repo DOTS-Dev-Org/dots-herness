@@ -164,7 +164,7 @@ public sealed class WorkspaceChangeTracker
     private static string Relative(string root, string path) =>
         Path.GetRelativePath(root, path).Replace(Path.DirectorySeparatorChar, '/');
 
-    private static bool IsIgnored(string path)
+    internal static bool IsIgnored(string path)
     {
         var name = Path.GetFileName(path);
         return name.Equals(".git", StringComparison.OrdinalIgnoreCase)
@@ -176,7 +176,9 @@ public sealed class WorkspaceChangeTracker
             || name.Equals("dist", StringComparison.OrdinalIgnoreCase)
             || name.Equals("node_modules", StringComparison.OrdinalIgnoreCase)
             || name.Equals("Pods", StringComparison.OrdinalIgnoreCase)
-            || name.Equals("DerivedData", StringComparison.OrdinalIgnoreCase);
+            || name.Equals("DerivedData", StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith(".dots-harness-backup-", StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith(".dots-harness-restore-", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsSymlink(string path)

@@ -238,9 +238,13 @@ public struct ProviderSpec: Codable, Sendable, Identifiable, Equatable {
         public var contextWindow: Int?
         /// Model offers a faster (priority) response mode.
         public var fast = false
+        /// Older Anthropic extended-thinking models accept
+        /// `thinking.budget_tokens`; adaptive-thinking models reject it.
+        public var supportsLegacyThinkingBudget = false
 
-        public init(id: String, name: String? = nil, efforts: [String] = [], tier: ModelTier? = nil, contextWindow: Int? = nil, fast: Bool = false) {
+        public init(id: String, name: String? = nil, efforts: [String] = [], tier: ModelTier? = nil, contextWindow: Int? = nil, fast: Bool = false, supportsLegacyThinkingBudget: Bool = false) {
             self.fast = fast
+            self.supportsLegacyThinkingBudget = supportsLegacyThinkingBudget
             self.id = id
             self.name = name
             self.efforts = efforts
@@ -248,7 +252,7 @@ public struct ProviderSpec: Codable, Sendable, Identifiable, Equatable {
             self.contextWindow = contextWindow
         }
 
-        enum CodingKeys: String, CodingKey { case id, name, efforts, tier, contextWindow, fast }
+        enum CodingKeys: String, CodingKey { case id, name, efforts, tier, contextWindow, fast, supportsLegacyThinkingBudget }
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             id = try c.decode(String.self, forKey: .id)
@@ -257,6 +261,7 @@ public struct ProviderSpec: Codable, Sendable, Identifiable, Equatable {
             tier = try c.decodeIfPresent(ModelTier.self, forKey: .tier)
             contextWindow = try c.decodeIfPresent(Int.self, forKey: .contextWindow)
             fast = try c.decodeIfPresent(Bool.self, forKey: .fast) ?? false
+            supportsLegacyThinkingBudget = try c.decodeIfPresent(Bool.self, forKey: .supportsLegacyThinkingBudget) ?? false
         }
     }
 
@@ -305,11 +310,35 @@ public struct ProviderSpec: Codable, Sendable, Identifiable, Equatable {
 public final class ProviderRegistry: @unchecked Sendable {
     public static let shared = ProviderRegistry()
 
-    public private(set) var specs: [ProviderSpec]
-    private let byID: [String: ProviderSpec]
+    /// Published by `cloudflare/scripts/publish-model-catalog.mjs`.
+    public static let remoteCatalogURL = URL(string: "https://dotsherness-unified-backend.dotsherness-unified-backend.workers.dev/assets/catalog/models.json")!
+
+    /// A remote catalog entry carries model lists and the client user-agent only.
+    /// Endpoints, OAuth and credential headers stay bundled, so a tampered
+    /// catalog can never redirect a token.
+    struct RemoteCatalogEntry: Decodable {
+        var id: String
+        var models: [ProviderSpec.ModelSpec]?
+        var userAgent: String?
+    }
+
+    private let lock = NSLock()
+    private var loadedSpecs: [ProviderSpec]
+    private var byID: [String: ProviderSpec]
+    public var specs: [ProviderSpec] { lock.withLock { loadedSpecs } }
 
     private init() {
+        loadedSpecs = Self.load()
+        byID = Dictionary(loadedSpecs.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
+    }
+
+    /// Bundled registry, then the cached remote catalog, then the user's override.
+    private static func load() -> [ProviderSpec] {
         var loaded = Self.loadBundled()
+        if let data = try? Data(contentsOf: remoteCacheURL),
+           let entries = try? JSONDecoder().decode([RemoteCatalogEntry].self, from: data) {
+            applyRemote(entries, to: &loaded)
+        }
         for override in Self.loadOverride() {
             if let index = loaded.firstIndex(where: { $0.id == override.id }) {
                 loaded[index] = override
@@ -317,12 +346,40 @@ public final class ProviderRegistry: @unchecked Sendable {
                 loaded.append(override)
             }
         }
-        if loaded.isEmpty { loaded = Self.fallback }
-        specs = loaded
-        byID = Dictionary(loaded.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
+        return loaded.isEmpty ? Self.fallback : loaded
     }
 
-    public func spec(_ id: String) -> ProviderSpec? { byID[id] }
+    static func applyRemote(_ entries: [RemoteCatalogEntry], to specs: inout [ProviderSpec]) {
+        for entry in entries {
+            guard let index = specs.firstIndex(where: { $0.id == entry.id }) else { continue }
+            if let models = entry.models, !models.isEmpty { specs[index].models = models }
+            if let userAgent = entry.userAgent, !userAgent.isEmpty,
+               specs[index].transport.extraHeaders["user-agent"] != nil {
+                specs[index].transport.extraHeaders["user-agent"] = userAgent
+            }
+        }
+    }
+
+    /// Fetches the remote catalog so new models reach installed apps without a
+    /// release. Any failure keeps the cached or bundled registry.
+    @discardableResult
+    public func refreshRemote(session: URLSession = .shared) async -> Bool {
+        let request = URLRequest(url: Self.remoteCatalogURL, timeoutInterval: 5)
+        guard let (data, response) = try? await session.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              (try? JSONDecoder().decode([RemoteCatalogEntry].self, from: data)) != nil else { return false }
+        let url = Self.remoteCacheURL
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        guard (try? data.write(to: url, options: .atomic)) != nil else { return false }
+        let loaded = Self.load()
+        lock.withLock {
+            loadedSpecs = loaded
+            byID = Dictionary(loaded.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
+        }
+        return true
+    }
+
+    public func spec(_ id: String) -> ProviderSpec? { lock.withLock { byID[id] } }
 
     private static func decode(_ data: Data) -> [ProviderSpec] {
         do {
@@ -350,6 +407,10 @@ public final class ProviderRegistry: @unchecked Sendable {
         }
         FileHandle.standardError.write(Data("ProviderRegistry: providers.json not found in any bundle\n".utf8))
         return []
+    }
+
+    private static var remoteCacheURL: URL {
+        SupportPaths.default().root.appendingPathComponent("providers.remote.json")
     }
 
     private static func loadOverride() -> [ProviderSpec] {

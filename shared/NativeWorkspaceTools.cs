@@ -20,7 +20,8 @@ public static class NativeWorkspaceTools
         ".json", ".kts", ".kt", ".m", ".mm", ".php", ".plist", ".props", ".py", ".resx", ".rs", ".swift",
         ".targets", ".toml", ".ts", ".tsx", ".xml", ".xaml", ".yaml", ".yml",
     };
-    private static readonly HashSet<string> IgnoredScanDirectories = new(StringComparer.OrdinalIgnoreCase)
+    // Shared with the glob walk in NativeFileEdit, which has to skip the same trees.
+    internal static readonly HashSet<string> IgnoredScanDirectories = new(StringComparer.OrdinalIgnoreCase)
     {
         ".git", ".mem", ".build", "build", "bin", "obj", "dist", "node_modules", "Pods", "DerivedData",
     };
@@ -31,7 +32,7 @@ public static class NativeWorkspaceTools
     public static IReadOnlyList<NativeToolDefinition> Definitions { get; } =
     [
         new("list_files", "List files and directories inside the current workspace.", Schema(("path", "Relative path. Use . for the workspace root.", false))),
-        new("read_file", "Read a UTF-8 text file inside the current workspace. Long files come back truncated with the line to continue from; pass offset to read the rest.", Schema(
+        new("read_file", "Read a UTF-8 text file inside the current workspace. Prefer a narrow offset/limit range for relevant sections; long files are truncated with a continuation line. Read the full file only when the requested operation requires it.", Schema(
             ("path", "Relative path to the file.", true),
             ("offset", "First line to read, 1-based. Defaults to the start of the file.", false),
             ("limit", "How many lines to read. Defaults to as many as fit.", false))),
@@ -45,6 +46,7 @@ public static class NativeWorkspaceTools
             ("path", "Relative directory to search. Defaults to the workspace root.", false),
             ("extensions", "Optional comma-separated file extensions to limit the search, e.g. cs,json.", false))),
         new("run_command", "Run a shell command with the workspace as its current directory.", Schema(("command", "Command to run in the workspace.", true))),
+        .. NativeFileEdit.Definitions,
         new(GeneratedMediaName, "Copy a generated image from the current conversation into the current coding workspace. Use this before editing project files that should reference the asset.", Schema(
             ("source_path", "Exact absolute path from the Generated media artifact context.", true),
             ("destination_path", "Workspace-relative destination path, including the filename.", true))),
@@ -53,25 +55,16 @@ public static class NativeWorkspaceTools
             ("instruction", "Optional visual inspection question.", false))),
     ];
 
-    /// What plan mode offers: everything except the two tools that change the
+    /// What plan mode offers: everything except the tools that change the
     /// workspace. Plan mode gathers evidence - it may run a check - it never applies.
     public static IReadOnlyList<NativeToolDefinition> PlanDefinitions { get; } =
         Definitions.Where(tool => !IsWorkspaceMutation(tool.Name)).ToArray();
 
-    /// Chat has no implicit workspace. Every filesystem call must name the
-    /// verified root that came from a user message.
-    public static IReadOnlyList<NativeToolDefinition> ChatDefinitions { get; } =
-        Definitions
-            .Where(tool => tool.Name != GeneratedMediaName)
-            .Select(tool => tool.Name == GeneratedMediaInspectionName ? tool : AddContextRootId(tool))
-            .ToArray();
+    public static bool IsReadOnly(string name) =>
+        name is "list_files" or "read_file" or "grep_files" or NativeFileEdit.GlobName or GeneratedMediaInspectionName;
 
-    public static IReadOnlyList<NativeToolDefinition> ChatPlanDefinitions { get; } =
-        ChatDefinitions.Where(tool => !IsWorkspaceMutation(tool.Name)).ToArray();
-
-    public static bool IsReadOnly(string name) => name is "list_files" or "read_file" or "grep_files" or GeneratedMediaInspectionName;
-
-    public static bool IsWorkspaceMutation(string name) => name is "write_file" or "remove_file" or GeneratedMediaName;
+    public static bool IsWorkspaceMutation(string name) =>
+        name is "write_file" or NativeFileEdit.EditName or "remove_file" or GeneratedMediaName;
 
     public static bool IsVerifiedRemovalResult(string result) => result.StartsWith(VerifiedRemovalMarker, StringComparison.Ordinal);
     public static bool IsPreservedRemovalResult(string result) => result.StartsWith(PreservedRemovalMarker, StringComparison.Ordinal);
@@ -90,7 +83,9 @@ public static class NativeWorkspaceTools
         NativeToolCall call,
         string workspace,
         CancellationToken ct = default,
-        AgentCommandSandboxMode commandSandbox = AgentCommandSandboxMode.Legacy)
+        AgentCommandSandboxMode commandSandbox = AgentCommandSandboxMode.Legacy,
+        IReadOnlyList<string>? additionalWritableRoots = null,
+        bool networkAccess = false)
     {
         try
         {
@@ -109,12 +104,15 @@ public static class NativeWorkspaceTools
                     input["extensions"]?.GetValue<string>(),
                     workspace),
                 "write_file" => WriteFile(input["path"]?.GetValue<string>(), input["content"]?.GetValue<string>(), workspace),
+                NativeFileEdit.EditName or NativeFileEdit.GlobName => NativeFileEdit.Execute(call, workspace),
                 "remove_file" => RemoveFile(input["path"]?.GetValue<string>(), input["reason"]?.GetValue<string>(), input["referenceTerms"]?.GetValue<string>(), workspace),
                 "run_command" => await RunCommandAsync(
                     input["command"]?.GetValue<string>(),
                     workspace,
                     ct,
-                    commandSandbox: commandSandbox),
+                    commandSandbox: commandSandbox,
+                    additionalWritableRoots: additionalWritableRoots,
+                    networkAccess: networkAccess),
                 _ => $"Unknown tool: {call.Name}",
             };
         }
@@ -122,66 +120,15 @@ public static class NativeWorkspaceTools
         catch (Exception ex) { return $"Tool error: {ex.Message}"; }
     }
 
-    public static async Task<string> ExecuteAsync(
-        NativeToolCall call,
-        IReadOnlyList<ChatContextRoot> contextRoots,
-        CancellationToken ct = default,
-        AgentCommandSandboxMode commandSandbox = AgentCommandSandboxMode.Legacy)
-    {
-        if (contextRoots.Count == 0)
-            return "Tool error: a user-provided file or folder path is required before using filesystem tools.";
-
-        JsonObject input;
-        try { input = JsonNode.Parse(call.Arguments)?.AsObject() ?? new JsonObject(); }
-        catch { return $"Tool error: invalid arguments for {call.Name}."; }
-
-        var rootId = input["contextRootID"]?.GetValue<string>();
-        var root = contextRoots.FirstOrDefault(item => string.Equals(item.Id, rootId, StringComparison.Ordinal));
-        if (root is null)
-            return "Tool error: choose a valid contextRootID from the user's known context roots.";
-
-        if (root.Kind == ChatContextRootKind.File
-            && call.Name is not ("read_file" or "write_file"))
-            return $"Tool error: {call.Name} requires a directory context root.";
-
-        if (call.Name == "run_command"
-            && !IsChatCommandScoped(input["command"]?.GetValue<string>()))
-            return "Tool error: this command may leave the selected context root. Use a relative command without cd, absolute paths, or parent traversal.";
-
-        var rootPath = Path.GetFullPath(root.Path);
-        var requested = input["path"]?.GetValue<string>();
-        if (root.Kind == ChatContextRootKind.File)
-        {
-            var requestedFull = string.IsNullOrWhiteSpace(requested)
-                ? rootPath
-                : Path.GetFullPath(Path.IsPathRooted(requested)
-                    ? requested
-                    : Path.Combine(Path.GetDirectoryName(rootPath)!, requested));
-            if (!SamePath(requestedFull, rootPath))
-                return $"Tool error: path is outside the selected context root: {requested}.";
-            input["path"] = Path.GetFileName(rootPath);
-            rootPath = Path.GetDirectoryName(rootPath)!;
-        }
-        else if (!string.IsNullOrWhiteSpace(requested))
-        {
-            var requestedFull = Path.GetFullPath(Path.IsPathRooted(requested)
-                ? requested
-                : Path.Combine(rootPath, requested));
-            if (!IsContained(requestedFull, rootPath))
-                return $"Tool error: path is outside the selected context root: {requested}.";
-        }
-
-        var rewritten = new NativeToolCall(call.Id, call.Name, input.ToJsonString());
-        return await ExecuteAsync(rewritten, rootPath, ct, commandSandbox);
-    }
-
     public static Task<string> ExecuteCommandStreamingAsync(
         string? command,
         string workspace,
         Action<string>? onOutput = null,
         CancellationToken ct = default,
-        AgentCommandSandboxMode commandSandbox = AgentCommandSandboxMode.Legacy) =>
-        RunCommandAsync(command, workspace, ct, onOutput, commandSandbox);
+        AgentCommandSandboxMode commandSandbox = AgentCommandSandboxMode.Legacy,
+        IReadOnlyList<string>? additionalWritableRoots = null,
+        bool networkAccess = false) =>
+        RunCommandAsync(command, workspace, ct, onOutput, commandSandbox, additionalWritableRoots, networkAccess);
 
     public static string CopyGeneratedMedia(
         string? sourcePath,
@@ -258,9 +205,7 @@ public static class NativeWorkspaceTools
             line++;
         }
         var body = string.Join('\n', emitted);
-        // Only a complete read authorizes a later full rewrite of the file.
-        if (start == 1 && line > lines.Length) ReadLedger.Record(file, bytes);
-        else ReadLedger.Forget(file);
+        ReadLedger.RecordLines(file, bytes, start, line, lines.Length);
         return line > end ? body : body + $"\n\n[truncated] Continue with offset: {line}";
     }
 
@@ -495,7 +440,9 @@ public static class NativeWorkspaceTools
         string workspace,
         CancellationToken ct,
         Action<string>? onOutput = null,
-        AgentCommandSandboxMode commandSandbox = AgentCommandSandboxMode.Legacy)
+        AgentCommandSandboxMode commandSandbox = AgentCommandSandboxMode.Legacy,
+        IReadOnlyList<string>? additionalWritableRoots = null,
+        bool networkAccess = false)
     {
         if (string.IsNullOrWhiteSpace(command)) return "A command is required.";
         var info = new ProcessStartInfo
@@ -508,7 +455,7 @@ public static class NativeWorkspaceTools
         };
         if (commandSandbox == AgentCommandSandboxMode.StrictNoDesktop)
         {
-            if (!AgentCommandSandbox.TryConfigure(info, workspace, out var error))
+            if (!AgentCommandSandbox.TryConfigure(info, workspace, out var error, additionalWritableRoots, networkAccess))
                 return $"Tool error: {error}";
             info.ArgumentList.Add(command);
         }
@@ -547,6 +494,16 @@ public static class NativeWorkspaceTools
         return string.IsNullOrEmpty(text) ? $"Command exited with status {process.ExitCode}." : text + (process.ExitCode == 0 ? "" : $"\nCommand exited with status {process.ExitCode}.");
     }
 
+    /// Whether a run_command result reports exit status 0.
+    // ponytail: read from RunCommandAsync's fixed English wording; return the exit
+    // code from there instead if that wording is ever localized.
+    public static bool CommandSucceeded(string result) =>
+        !result.StartsWith("Tool error:", StringComparison.Ordinal)
+        && !result.StartsWith("Command timed out", StringComparison.Ordinal)
+        && result != "A command is required."
+        && (result.EndsWith("Command exited with status 0.", StringComparison.Ordinal)
+            || !System.Text.RegularExpressions.Regex.IsMatch(result, @"Command exited with status -?\d+\.$"));
+
     private static async Task ReadLinesAsync(StreamReader reader, StringBuilder target, Action<string>? onOutput, CancellationToken ct)
     {
         while (await reader.ReadLineAsync(ct) is { } line)
@@ -556,7 +513,7 @@ public static class NativeWorkspaceTools
         }
     }
 
-    private static string Resolve(string? path, string workspace)
+    internal static string Resolve(string? path, string workspace)
     {
         var root = RealPath(Path.GetFullPath(workspace));
         var full = RealPath(Path.GetFullPath(Path.Combine(root, string.IsNullOrWhiteSpace(path) ? "." : path)));
@@ -596,7 +553,7 @@ public static class NativeWorkspaceTools
         return result;
     }
 
-    private static bool IsSymlink(string path)
+    internal static bool IsSymlink(string path)
     {
         try
         {
@@ -622,56 +579,6 @@ public static class NativeWorkspaceTools
         return schema;
     }
 
-    private static NativeToolDefinition AddContextRootId(NativeToolDefinition definition)
-    {
-        var parameters = definition.Parameters.DeepClone() as JsonObject ?? new JsonObject { ["type"] = "object" };
-        var properties = parameters["properties"] as JsonObject ?? new JsonObject();
-        properties["contextRootID"] = new JsonObject
-        {
-            ["type"] = "string",
-            ["description"] = "Required id of the file or folder root explicitly supplied by the user.",
-        };
-        parameters["properties"] = properties;
-        var required = parameters["required"] as JsonArray ?? new JsonArray();
-        if (!required.Any(item => string.Equals(item?.GetValue<string>(), "contextRootID", StringComparison.Ordinal)))
-            required.Add("contextRootID");
-        parameters["required"] = required;
-        return new NativeToolDefinition(
-            definition.Name,
-            definition.Description + " In Chat, always include contextRootID.",
-            parameters);
-    }
-
-    private static bool SamePath(string left, string right) =>
-        string.Equals(
-            Path.GetFullPath(left).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
-            Path.GetFullPath(right).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
-            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
-
-    private static bool IsContained(string path, string root)
-    {
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        var normalizedRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var normalizedPath = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        return normalizedPath.Equals(normalizedRoot, comparison)
-            || normalizedPath.StartsWith(normalizedRoot + Path.DirectorySeparatorChar, comparison)
-            || normalizedPath.StartsWith(normalizedRoot + Path.AltDirectorySeparatorChar, comparison);
-    }
-
-    private static bool IsChatCommandScoped(string? command)
-    {
-        if (string.IsNullOrWhiteSpace(command) || command.Contains('\0')) return false;
-        if (command.Contains("..", StringComparison.Ordinal)) return false;
-        if (System.Text.RegularExpressions.Regex.IsMatch(
-                command,
-                @"(?i)(^|[\s;&|()])(?:cd|pushd|popd|set-location|set-locationpath)(?:[\s;&|()]|$)"))
-            return false;
-        // Commands such as /bin/sh -c 'cat /etc/passwd', C:\... and UNC paths
-        // can escape the selected root even when the process starts inside it.
-        return !System.Text.RegularExpressions.Regex.IsMatch(
-            command,
-            @"(?:^|[\s'""=])(?:/|[A-Za-z]:[\\/]|\\\\|~(?:[\\/]|$))");
-    }
 }
 
 public enum ReadState { Fresh, Stale, Unread }
@@ -687,26 +594,90 @@ public static class ReadLedger
     private const int Capacity = 512;
     private static readonly object Gate = new();
     private static readonly Dictionary<string, string> Hashes = new(StringComparer.Ordinal);
+    private sealed record PageRead(string Hash, List<(int Start, int End)> Ranges);
+    private static readonly Dictionary<string, PageRead> Pages = new(StringComparer.Ordinal);
     private static readonly Queue<string> Order = new();
+    private static readonly AsyncLocal<string?> ScopeSlot = new();
 
-    public static void Record(string file, byte[] content)
+    /// <summary>
+    /// Separates a subagent's reads from the conversation's. A file the subagent read
+    /// is not one the conversation saw, and the other way round, so neither may count
+    /// as the other's permission to rewrite it. Flows with the async call that set it.
+    /// </summary>
+    public static string? Scope
     {
+        get => ScopeSlot.Value;
+        set => ScopeSlot.Value = value;
+    }
+
+    private static string Key(string file) => Scope is { } scope ? scope + "\n" + file : file;
+
+    public static void RecordLines(string file, byte[] content, int start, int end, int totalLines)
+    {
+        if (end <= start) return;
+        file = Key(file);
         var hash = Hash(content);
         lock (Gate)
         {
-            if (!Hashes.ContainsKey(file)) Order.Enqueue(file);
+            if (Hashes.TryGetValue(file, out var known) && known == hash) return;
+            if (!Hashes.ContainsKey(file) && !Pages.ContainsKey(file)) Order.Enqueue(file);
+            Hashes.Remove(file);
+            var ranges = Pages.TryGetValue(file, out var page) && page.Hash == hash
+                ? page.Ranges : new List<(int Start, int End)>();
+            ranges.Add((start, end));
+            var merged = new List<(int Start, int End)>();
+            foreach (var range in ranges.OrderBy(range => range.Start))
+            {
+                if (merged.Count > 0 && range.Start <= merged[^1].End)
+                    merged[^1] = (merged[^1].Start, Math.Max(merged[^1].End, range.End));
+                else merged.Add(range);
+            }
+            if (merged.Count == 1 && merged[0].Start == 1 && merged[0].End > totalLines)
+            {
+                Hashes[file] = hash;
+                Pages.Remove(file);
+            }
+            else Pages[file] = new PageRead(hash, merged);
+            while (Order.Count > Capacity)
+            {
+                var oldest = Order.Dequeue();
+                Hashes.Remove(oldest);
+                Pages.Remove(oldest);
+            }
+        }
+    }
+
+    public static void Record(string file, byte[] content)
+    {
+        file = Key(file);
+        var hash = Hash(content);
+        lock (Gate)
+        {
+            if (!Hashes.ContainsKey(file) && !Pages.ContainsKey(file)) Order.Enqueue(file);
             Hashes[file] = hash;
-            while (Order.Count > Capacity) Hashes.Remove(Order.Dequeue());
+            Pages.Remove(file);
+            while (Order.Count > Capacity)
+            {
+                var oldest = Order.Dequeue();
+                Hashes.Remove(oldest);
+                Pages.Remove(oldest);
+            }
         }
     }
 
     public static void Forget(string file)
     {
-        lock (Gate) Hashes.Remove(file);
+        file = Key(file);
+        lock (Gate)
+        {
+            Hashes.Remove(file);
+            Pages.Remove(file);
+        }
     }
 
     public static ReadState StateOf(string file, byte[] content)
     {
+        file = Key(file);
         string? known;
         lock (Gate) Hashes.TryGetValue(file, out known);
         if (known is null) return ReadState.Unread;
@@ -719,6 +690,7 @@ public static class ReadLedger
         lock (Gate)
         {
             Hashes.Clear();
+            Pages.Clear();
             Order.Clear();
         }
     }

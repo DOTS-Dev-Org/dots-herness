@@ -37,6 +37,7 @@ async function sendViaResend(env: Env, message: OutboundEmailMessage): Promise<S
       text: message.text,
       ...(message.replyTo ? { reply_to: message.replyTo } : {}),
     }),
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
@@ -87,8 +88,9 @@ class SmtpLineReader {
 }
 
 function encodeMimeHeader(value: string): string {
-  if (/^[\x20-\x7E]*$/.test(value)) return value;
-  const bytes = new TextEncoder().encode(value);
+  const sanitized = value.replace(/[\r\n]+/g, " ").slice(0, 1000);
+  if (/^[\x20-\x7E]*$/.test(sanitized)) return sanitized;
+  const bytes = new TextEncoder().encode(sanitized);
   const b64 = btoa(String.fromCharCode(...bytes));
   return `=?UTF-8?B?${b64}?=`;
 }
@@ -101,23 +103,30 @@ function dotStuff(value: string): string {
     .join("\r\n");
 }
 
+function sanitizeEmail(value: string): string {
+  return value.replace(/[\r\n]+/g, "").replace(/[<>]/g, "").trim().slice(0, 320);
+}
+
 function composeMimeMessage(env: Env, message: OutboundEmailMessage): { mime: string; messageId: string } {
   const boundary = `aiwatcher-boundary-${crypto.randomUUID()}`;
-  const fromEmail =
-    (env.SMTP_FROM_EMAIL || env.SMTP_USERNAME || "").trim() || "herness@dots.net.tr";
+  const fromEmail = sanitizeEmail(
+    (env.SMTP_FROM_EMAIL || env.SMTP_USERNAME || "").trim() || "herness@dots.net.tr"
+  );
+  const toEmail = sanitizeEmail(message.to);
+  const replyTo = message.replyTo ? sanitizeEmail(message.replyTo) : "";
   const fromName = (env.SMTP_FROM_NAME || "AI Watcher").trim();
   const messageId = `<${crypto.randomUUID()}@dots.net.tr>`;
   const headers = [
     `From: ${encodeMimeHeader(fromName)} <${fromEmail}>`,
-    `To: <${message.to}>`,
+    `To: <${toEmail}>`,
     `Subject: ${encodeMimeHeader(message.subject)}`,
     `Date: ${new Date().toUTCString()}`,
     `Message-ID: ${messageId}`,
     "MIME-Version: 1.0",
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
   ];
-  if (message.replyTo) {
-    headers.push(`Reply-To: <${message.replyTo}>`);
+  if (replyTo) {
+    headers.push(`Reply-To: <${replyTo}>`);
   }
 
   const mime = [
@@ -201,11 +210,12 @@ export async function sendSmtpEmail(env: Env, message: OutboundEmailMessage): Pr
       throw new Error("SMTP server does not advertise AUTH LOGIN/PLAIN");
     }
 
-    const fromEmail =
-      (env.SMTP_FROM_EMAIL || username || "").trim() || "herness@dots.net.tr";
+    const fromEmail = sanitizeEmail(
+      (env.SMTP_FROM_EMAIL || username || "").trim() || "herness@dots.net.tr"
+    );
     await writeLine(writer, encoder, `MAIL FROM:<${fromEmail}>`);
     await expectCode(lineReader, 250, "mail from");
-    await writeLine(writer, encoder, `RCPT TO:<${message.to}>`);
+    await writeLine(writer, encoder, `RCPT TO:<${sanitizeEmail(message.to)}>`);
     await expectCode(lineReader, 250, "rcpt to");
     await writeLine(writer, encoder, "DATA");
     await expectCode(lineReader, 354, "data");

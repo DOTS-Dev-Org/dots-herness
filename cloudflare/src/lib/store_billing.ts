@@ -138,6 +138,7 @@ async function fetchAppleTransaction(env: Env, transactionId: string): Promise<R
     try {
       response = await fetch(`${host}/inApps/v1/transactions/${encodedId}`, {
         headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(10_000),
       });
     } catch {
       throw new StoreVerificationError("apple_verification_unavailable", 502);
@@ -240,6 +241,7 @@ async function googleAccessToken(env: Env): Promise<string> {
         grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
         assertion,
       }),
+      signal: AbortSignal.timeout(10_000),
     });
   } catch {
     throw new StoreVerificationError("google_verification_unavailable", 502);
@@ -262,7 +264,10 @@ export async function verifyGooglePurchase(
   const url = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${encodeURIComponent(env.GOOGLE_PLAY_PACKAGE_NAME!)}/purchases/subscriptionsv2/tokens/${encodeURIComponent(input.purchaseToken)}`;
   let response: Response;
   try {
-    response = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    response = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(10_000),
+    });
   } catch {
     throw new StoreVerificationError("google_verification_unavailable", 502);
   }

@@ -1,6 +1,8 @@
 package com.dots.herness.mobile
 
 import android.content.Context
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,18 +10,28 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,10 +39,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -75,7 +90,9 @@ class LegalModel(context: Context) {
     private var lang: String = "en"
 
     fun setLanguage(language: String) {
+        if (lang == language) return
         lang = language
+        loadFailed = false
     }
 
     val webLang: String get() = lang
@@ -246,53 +263,133 @@ private fun ConsentChecks(legal: LegalModel) {
 }
 
 @Composable
-private fun LegalAgreementContent(documents: LegalDocuments, legal: LegalModel) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(stringResource(R.string.legal_terms_tab), style = MaterialTheme.typography.titleMedium)
-        Text(documents.terms, style = MaterialTheme.typography.bodySmall)
-        Text(stringResource(R.string.legal_consent_heading), style = MaterialTheme.typography.titleMedium)
-        ConsentChecks(legal)
-        HorizontalDivider()
-        Text(stringResource(R.string.legal_privacy_tab), style = MaterialTheme.typography.titleMedium)
-        Text(documents.privacy, style = MaterialTheme.typography.bodySmall)
+private fun LegalGateDocumentRow(
+    title: String,
+    accepted: Boolean,
+    onAcceptedChange: (Boolean) -> Unit,
+    onOpen: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 4.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onOpen, modifier = Modifier.weight(1f)) {
+                Text(title)
+            }
+            Checkbox(checked = accepted, onCheckedChange = onAcceptedChange)
+        }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LegalGate(legal: LegalModel) {
-    val scroll = rememberScrollState()
+fun LegalGate(
+    legal: LegalModel,
+    selectedLanguage: MobileLanguage,
+    onLanguageChange: (MobileLanguage) -> Unit,
+    isDarkTheme: Boolean,
+    onThemeToggle: () -> Unit,
+) {
     var reloading by remember { mutableStateOf(false) }
-    val documents = legal.documents
+    var termsAccepted by remember { mutableStateOf(false) }
+    var privacyAccepted by remember { mutableStateOf(false) }
+    var documentToShow by remember { mutableStateOf<Boolean?>(null) }
+    val documents = legal.documents?.takeIf { it.locale == selectedLanguage.code }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     Column(
-        Modifier.fillMaxSize().padding(16.dp),
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(
-            Modifier.weight(1f).verticalScroll(scroll),
+            Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(stringResource(R.string.legal_gate_heading), style = MaterialTheme.typography.headlineSmall)
-            Text(stringResource(R.string.legal_gate_intro), style = MaterialTheme.typography.bodyMedium)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                if (selectedLanguage.isRtl) {
+                    Spacer(Modifier.weight(1f))
+                    LegalThemeToggleButton(isDarkTheme, onThemeToggle)
+                    CustomLanguagePicker(selectedLanguage, onLanguageChange, darkAppearance = isDarkTheme)
+                } else {
+                    CustomLanguagePicker(selectedLanguage, onLanguageChange, darkAppearance = isDarkTheme)
+                    Spacer(Modifier.weight(1f))
+                    LegalThemeToggleButton(isDarkTheme, onThemeToggle)
+                }
+            }
+            Text(stringResource(R.string.legal_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.legal_gate_heading), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.legal_gate_intro), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (documents != null) {
-                LegalAgreementContent(documents, legal)
-            } else {
+                Text(stringResource(R.string.legal_accept_required), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                LegalGateDocumentRow(
+                    title = stringResource(R.string.legal_terms_tab),
+                    accepted = termsAccepted,
+                    onAcceptedChange = { termsAccepted = it },
+                    onOpen = { documentToShow = true },
+                )
+                LegalGateDocumentRow(
+                    title = stringResource(R.string.legal_privacy_tab),
+                    accepted = privacyAccepted,
+                    onAcceptedChange = { privacyAccepted = it },
+                    onOpen = { documentToShow = false },
+                )
+            } else if (legal.loadFailed) {
                 Text(stringResource(R.string.legal_load_error), style = MaterialTheme.typography.bodyMedium)
                 Button(onClick = { reloading = true }, enabled = !reloading) {
                     Text(stringResource(R.string.legal_retry))
                 }
+            } else {
+                androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
             }
         }
         if (documents != null) {
-            Text(
-                stringResource(R.string.legal_accept_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Button(onClick = { legal.accept() }, modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = { legal.accept() },
+                enabled = termsAccepted && privacyAccepted,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+            ) {
                 Text(stringResource(R.string.legal_accept))
             }
         }
     }
+    if (documentToShow != null && documents != null) {
+        ModalBottomSheet(
+            onDismissRequest = { documentToShow = null },
+            sheetState = sheetState,
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    stringResource(if (documentToShow == true) R.string.legal_terms_tab else R.string.legal_privacy_tab),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                LegalDocumentPanel(documents, initialTerms = documentToShow == true)
+            }
+        }
+    }
     if (reloading) LaunchedEffect(Unit) { legal.load(); reloading = false }
+}
+
+@Composable
+private fun LegalThemeToggleButton(isDarkTheme: Boolean, onThemeToggle: () -> Unit) {
+    Button(
+        onClick = onThemeToggle,
+        modifier = Modifier.size(36.dp),
+        shape = RoundedCornerShape(18.dp),
+        contentPadding = PaddingValues(0.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isDarkTheme) Color.White.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.08f),
+            contentColor = if (isDarkTheme) Color.White else Color(0xFF1C1B1F),
+        ),
+    ) {
+        Text(if (isDarkTheme) "☀️" else "🌙", fontSize = 15.sp)
+    }
 }
 
 @Composable

@@ -2,10 +2,14 @@
 // Plugin composition model derived from DeepSeek Harness.
 // Copyright (c) 2026 DeepSeek. MIT. See NOTICE.
 
+using System.ComponentModel;
 using System.Windows;
 using DotsHarnessCore;
 using DrawingSystemIcons = System.Drawing.SystemIcons;
+using FormsContextMenuStrip = System.Windows.Forms.ContextMenuStrip;
 using FormsNotifyIcon = System.Windows.Forms.NotifyIcon;
+using FormsToolStripSeparator = System.Windows.Forms.ToolStripSeparator;
+using FormsToolStripMenuItem = System.Windows.Forms.ToolStripMenuItem;
 using FormsToolTipIcon = System.Windows.Forms.ToolTipIcon;
 
 namespace DotsHarness;
@@ -13,45 +17,173 @@ namespace DotsHarness;
 public partial class App : Application
 {
     private FormsNotifyIcon? _notificationIcon;
+    private FormsToolStripMenuItem? _trayShowItem;
+    private FormsToolStripMenuItem? _trayQuitItem;
+    private Views.TrayPanel? _trayPanel;
+    private CancellationTokenSource? _oauthCallbackCancellation;
+    private bool _hideHintShown;
+    private bool _exiting;
 
     public AppModel Model { get; } = new();
+
+    /// <summary>True once the user really asked to leave, as opposed to just closing the window.</summary>
+    public bool IsExiting => _exiting;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        var marketplaceCallback = MarketplaceOAuthCallback(e.Args);
+        if (marketplaceCallback is not null
+            && MarketplaceOAuthProtocol.TryForwardCallbackAsync(marketplaceCallback).GetAwaiter().GetResult())
+        {
+            _exiting = true;
+            Shutdown();
+            return;
+        }
+        // The window is no longer the process lifetime: agent runs, terminals and
+        // the scheduler live here, so closing the window must not end them.
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
         _notificationIcon = new FormsNotifyIcon
         {
             Icon = ApplicationIcon(),
             Text = Model.L("app.title"),
             Visible = true,
         };
-        Model.ChatBridge.AssistantResponseReceived += OnAssistantResponse;
-        Model.CodingBridge.AssistantResponseReceived += OnAssistantResponse;
-        Model.ChatBridge.RunSummaryReceived += OnRunSummary;
-        Model.CodingBridge.RunSummaryReceived += OnRunSummary;
-        Model.ChatBridge.AttentionNeeded += OnAttentionNeeded;
-        Model.CodingBridge.AttentionNeeded += OnAttentionNeeded;
-        Model.ChatRouter.ConnectionChanged += OnConnectionChanged;
-        Model.CodingRouter.ConnectionChanged += OnConnectionChanged;
+        var menu = new FormsContextMenuStrip();
+        _trayShowItem = new FormsToolStripMenuItem(Model.L("tray.show"), null, (_, _) => ShowMainWindow());
+        _trayQuitItem = new FormsToolStripMenuItem(Model.L("tray.quit"), null, (_, _) => RequestExit());
+        menu.Items.Add(_trayShowItem);
+        menu.Items.Add(new FormsToolStripSeparator());
+        menu.Items.Add(_trayQuitItem);
+        _notificationIcon.ContextMenuStrip = menu;
+        // Left click opens the panel; the context menu stays on right click.
+        _notificationIcon.MouseClick += (_, click) =>
+        {
+            if (click.Button == System.Windows.Forms.MouseButtons.Left) ToggleTrayPanel();
+        };
+        Model.PropertyChanged += OnModelPropertyChanged;
+        Model.Bridge.AssistantResponseReceived += OnAssistantResponse;
+        Model.Bridge.RunSummaryReceived += OnRunSummary;
+        Model.Bridge.AttentionNeeded += OnAttentionNeeded;
+        Model.Router.ConnectionChanged += OnConnectionChanged;
+        _oauthCallbackCancellation = new CancellationTokenSource();
+        _ = Task.Run(() => MarketplaceOAuthProtocol.ListenForCallbacksAsync(
+            HandleForwardedMarketplaceOAuthAsync, _oauthCallbackCancellation.Token));
         ApplyAppearance(Model.Appearance);
         Model.Start();
+        if (marketplaceCallback is { } callback)
+            _ = CompleteMarketplaceOAuthAsync(callback);
+    }
+
+    private static Uri? MarketplaceOAuthCallback(IEnumerable<string> arguments) => arguments
+        .Select(value => Uri.TryCreate(value, UriKind.Absolute, out var uri) ? uri : null)
+        .FirstOrDefault(uri => uri is { Scheme: "herness", Host: "oauth", AbsolutePath: "/desktop" });
+
+    private async Task CompleteMarketplaceOAuthAsync(Uri callback)
+    {
+        ShowMainWindow();
+        await Model.MarketplaceSession.HandleOAuthCallbackAsync(callback);
+        if (Model.MarketplaceSession.IsSignedIn)
+        {
+            try { await Model.Marketplace.RefreshOwnedPluginsAsync(); } catch { }
+        }
+        var message = Model.MarketplaceSession.IsSignedIn
+            ? $"Signed in to HerNess as {Model.MarketplaceSession.Profile?.Email}. You can publish plugins from Settings → Plugins."
+            : Model.MarketplaceSession.LastError ?? "HerNess sign-in did not complete.";
+        MessageBox.Show(MainWindow, message, "HerNess Marketplace", MessageBoxButton.OK,
+            Model.MarketplaceSession.IsSignedIn ? MessageBoxImage.Information : MessageBoxImage.Error);
+    }
+
+    private Task HandleForwardedMarketplaceOAuthAsync(Uri callback) =>
+        Dispatcher.InvokeAsync(async () => await CompleteMarketplaceOAuthAsync(callback)).Task.Unwrap();
+
+    private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(AppModel.Language)) return;
+        Dispatcher.Invoke(() =>
+        {
+            if (_notificationIcon is not null) _notificationIcon.Text = Model.L("app.title");
+            if (_trayShowItem is not null) _trayShowItem.Text = Model.L("tray.show");
+            if (_trayQuitItem is not null) _trayQuitItem.Text = Model.L("tray.quit");
+        });
+    }
+
+    private void ToggleTrayPanel()
+    {
+        // The legal gate lives in the window; nothing is usable before it.
+        if (Model.LegalNeedsAcceptance)
+        {
+            ShowMainWindow();
+            return;
+        }
+        (_trayPanel ??= new Views.TrayPanel(Model)).Toggle();
+    }
+
+    public void ShowMainWindow()
+    {
+        if (MainWindow is not { } window) return;
+        if (!window.IsVisible) window.Show();
+        if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
+        window.Activate();
+        // A hidden-then-shown window does not always come forward on its own.
+        window.Topmost = true;
+        window.Topmost = false;
+    }
+
+    /// <summary>Explains where the window went the first time it is hidden.</summary>
+    public void NotifyHidden()
+    {
+        if (_hideHintShown) return;
+        _hideHintShown = true;
+        try
+        {
+            _notificationIcon?.ShowBalloonTip(
+                5000, Model.L("app.title"), Model.L("settings.closeToTray.hint"), FormsToolTipIcon.Info);
+        }
+        catch (ObjectDisposedException) { }
+    }
+
+    public void ExitApplication()
+    {
+        if (_exiting) return;
+        _exiting = true;
+        Shutdown();
+    }
+
+    /// <summary>
+    /// Quit request from the tray. Hiding is reversible, quitting is not, so the
+    /// exit confirmation belongs here rather than on the close button.
+    /// </summary>
+    public void RequestExit()
+    {
+        if (_exiting) return;
+        if (!Model.ConfirmBeforeExit)
+        {
+            ExitApplication();
+            return;
+        }
+        // The tray works while the window is hidden, and the confirmation dialog
+        // centers on its owner, so bring the window back first.
+        ShowMainWindow();
+        var dialog = new CloseConfirmationDialog(Model, MainWindow?.Icon) { Owner = MainWindow };
+        if (dialog.ShowDialog() != true) return;
+        if (dialog.Remember) Model.SetConfirmBeforeExit(false);
+        ExitApplication();
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
-        Model.ChatBridge.AssistantResponseReceived -= OnAssistantResponse;
-        Model.CodingBridge.AssistantResponseReceived -= OnAssistantResponse;
-        Model.ChatBridge.RunSummaryReceived -= OnRunSummary;
-        Model.CodingBridge.RunSummaryReceived -= OnRunSummary;
-        Model.ChatBridge.AttentionNeeded -= OnAttentionNeeded;
-        Model.CodingBridge.AttentionNeeded -= OnAttentionNeeded;
-        Model.ChatRouter.ConnectionChanged -= OnConnectionChanged;
-        Model.CodingRouter.ConnectionChanged -= OnConnectionChanged;
+        _oauthCallbackCancellation?.Cancel();
+        _oauthCallbackCancellation?.Dispose();
+        Model.PropertyChanged -= OnModelPropertyChanged;
+        Model.Bridge.AssistantResponseReceived -= OnAssistantResponse;
+        Model.Bridge.RunSummaryReceived -= OnRunSummary;
+        Model.Bridge.AttentionNeeded -= OnAttentionNeeded;
+        Model.Router.ConnectionChanged -= OnConnectionChanged;
         _notificationIcon?.Dispose();
-        Model.ChatBridge.Stop();
-        Model.CodingBridge.Stop();
-        Model.ChatBridge.CloseBrowserSessions();
-        Model.CodingBridge.CloseBrowserSessions();
+        Model.Bridge.Stop();
+        Model.McpRegistry.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        Model.Bridge.CloseBrowserSessions();
         Model.Local.Stop();
         base.OnExit(e);
     }

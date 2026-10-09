@@ -92,101 +92,121 @@ extension WorkspaceMemory {
     }
 
     func writeDecisionNotes() {
-        guard let root = memoryDirectory else { return }
-        let decisions = state["acceptedDecisions"] as? [[String: Any]] ?? []
-        try? fileManager.createDirectory(at: root.appendingPathComponent("decisions"), withIntermediateDirectories: true)
-        for decision in decisions {
-            guard let eventID = decision["eventId"] as? String else { continue }
-            let payload = decision["payload"] as? [String: Any] ?? [:]
-            let summary = payload["summary"] as? String ?? payload["value"] as? String ?? "Accepted project decision"
-            let supersedes = (decision["supersedes"] as? [String] ?? []).map { "decision-\($0)" }
-            let runID = decisionRunID(decision)
-            let taskLink = runID.map { "task-\($0)" }
-            let links = ["index"] + supersedes + (taskLink.map { [$0] } ?? [])
-            let front = frontmatter([
-                "id": "decision-\(eventID)",
-                "type": "decision",
-                "title": quoted(summary, limit: 120),
-                "status": "accepted",
-                "revision": String(decision["lamport"] as? Int ?? 0),
-                "actor": (decision["actor"] as? [String: Any])?["personId"] as? String ?? "unknown",
-            ], tags: ["decision", "accepted"], links: links)
-            let related = supersedes.isEmpty ? "" : "\n## Supersedes\n\n" + supersedes.map { "- [[\($0)]]" }.joined(separator: "\n") + "\n"
-            let origin = taskLink.map { "\n## Origin\n\n- [[\($0)]]\n" } ?? ""
-            let note = [
-                front,
-                "# Decision: \(eventID)",
-                "",
-                "Back to [[index]]",
-                "",
-                "- Status: accepted",
-                "- Actor: \((decision["actor"] as? [String: Any])?["personId"] as? String ?? "unknown")",
-                "- Revision: \(decision["lamport"] as? Int ?? 0)",
-                "",
-                "## Summary",
-                "",
-                sanitize(summary, limit: 600),
-                related,
-                origin,
-            ].joined(separator: "\n")
-            try? note.write(to: root.appendingPathComponent("decisions").appendingPathComponent("\(eventID).md"), atomically: true, encoding: .utf8)
+        for decision in state["acceptedDecisions"] as? [[String: Any]] ?? [] {
+            writeDecisionNote(decision)
         }
         writeIndexNote()
     }
 
-    func writeConversationNotes() {
-        guard let root = memoryDirectory else { return }
-        let directory = root.appendingPathComponent("conversations", isDirectory: true)
+    /// One accepted decision note. Writing the whole set per event rewrote every
+    /// decision file for a single append, so the append path calls this for the
+    /// decision it just folded in.
+    func writeDecisionNote(_ decision: [String: Any]) {
+        guard let root = memoryDirectory,
+              let eventID = decision["eventId"] as? String else { return }
+        let payload = decision["payload"] as? [String: Any] ?? [:]
+        let summary = payload["summary"] as? String ?? payload["value"] as? String ?? "Accepted project decision"
+        let supersedes = (decision["supersedes"] as? [String] ?? []).map { "decision-\($0)" }
+        let runID = decisionRunID(decision)
+        let taskLink = runID.map { "task-\($0)" }
+        let links = ["index"] + supersedes + (taskLink.map { [$0] } ?? [])
+        let front = frontmatter([
+            "id": "decision-\(eventID)",
+            "type": "decision",
+            "title": quoted(summary, limit: 120),
+            "status": "accepted",
+            "revision": String(decision["lamport"] as? Int ?? 0),
+            "actor": (decision["actor"] as? [String: Any])?["personId"] as? String ?? "unknown",
+        ], tags: ["decision", "accepted"], links: links)
+        let related = supersedes.isEmpty ? "" : "\n## Supersedes\n\n" + supersedes.map { "- [[\($0)]]" }.joined(separator: "\n") + "\n"
+        let origin = taskLink.map { "\n## Origin\n\n- [[\($0)]]\n" } ?? ""
+        let note = [
+            front,
+            "# Decision: \(eventID)",
+            "",
+            "Back to [[index]]",
+            "",
+            "- Status: accepted",
+            "- Actor: \((decision["actor"] as? [String: Any])?["personId"] as? String ?? "unknown")",
+            "- Revision: \(decision["lamport"] as? Int ?? 0)",
+            "",
+            "## Summary",
+            "",
+            sanitize(summary, limit: 600),
+            related,
+            origin,
+        ].joined(separator: "\n")
+        let directory = root.appendingPathComponent("decisions", isDirectory: true)
         try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        try? note.write(to: directory.appendingPathComponent("\(eventID).md"), atomically: true, encoding: .utf8)
+    }
+
+    func writeConversationNotes() {
+        guard memoryDirectory != nil else { return }
         let conversations = state["conversationStates"] as? [String: Any] ?? [:]
         for conversationID in conversations.keys.sorted() {
             guard let record = conversations[conversationID] as? [String: Any] else { continue }
-            let title = sanitize(record["title"] as? String ?? conversationID, limit: 120)
-            let lifecycle = record["state"] as? String ?? "unknown"
-            let updated = record["updatedAt"] as? String ?? ""
-            let noteID = conversationNoteID(conversationID)
-            let meaning: String
-            switch lifecycle {
-            case ConversationLifecycleState.archived.rawValue:
-                meaning = "The chat is hidden from active conversations. Its task result is unchanged."
-            case ConversationLifecycleState.restored.rawValue:
-                meaning = "The chat was returned to active conversations. Its task result is unchanged."
-            case ConversationLifecycleState.deleted.rawValue:
-                meaning = "The chat was deleted. This memory record is retained as an audit trail."
-            default:
-                meaning = "The chat lifecycle was updated."
-            }
-            let front = frontmatter([
-                "id": noteID,
-                "type": "conversation",
-                "title": quoted(title, limit: 120),
-                "state": lifecycle,
-                "updated": updated,
-                "revision": String(record["revision"] as? Int ?? 0),
-                "actor": identity?.personID ?? "unknown",
-            ], tags: ["conversation", lifecycle], links: ["index"])
-            let note = [
-                front,
-                "# Conversation: \(title)",
-                "",
-                "Back to [[index]]",
-                "",
-                "- Lifecycle: \(lifecycle.capitalized)",
-                "- Updated: \(updated)",
-                "- Conversation ID: `\(sanitize(conversationID, limit: 120))`",
-                "",
-                "## What this means",
-                "",
-                meaning,
-                "",
-                "Task success or failure is recorded separately in the related task note.",
-            ].joined(separator: "\n")
-            try? note.write(
-                to: directory.appendingPathComponent("\(noteID).md"),
-                atomically: true,
-                encoding: .utf8
-            )
+            writeConversationNote(conversationID: conversationID, record: record)
         }
+    }
+
+    func writeConversationNote(conversationID: String, record: [String: Any]) {
+        guard let root = memoryDirectory else { return }
+        let directory = root.appendingPathComponent("conversations", isDirectory: true)
+        try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        let title = sanitize(record["title"] as? String ?? conversationID, limit: 120)
+        let lifecycle = record["state"] as? String ?? "unknown"
+        let updated = record["updatedAt"] as? String ?? ""
+        let noteID = conversationNoteID(conversationID)
+        let meaning: String
+        switch lifecycle {
+        case ConversationLifecycleState.archived.rawValue:
+            meaning = "The chat is hidden from active conversations. Its task result is unchanged."
+        case ConversationLifecycleState.restored.rawValue:
+            meaning = "The chat was returned to active conversations. Its task result is unchanged."
+        case ConversationLifecycleState.deleted.rawValue:
+            meaning = "The chat was deleted. This memory record is retained as an audit trail."
+        default:
+            meaning = "The chat lifecycle was updated."
+        }
+        let front = frontmatter([
+            "id": noteID,
+            "type": "conversation",
+            "title": quoted(title, limit: 120),
+            "state": lifecycle,
+            "updated": updated,
+            "revision": String(record["revision"] as? Int ?? 0),
+            "actor": identity?.personID ?? "unknown",
+        ], tags: ["conversation", lifecycle], links: ["index"])
+        let note = [
+            front,
+            "# Conversation: \(title)",
+            "",
+            "Back to [[index]]",
+            "",
+            "- Lifecycle: \(lifecycle.capitalized)",
+            "- Updated: \(updated)",
+            "- Conversation ID: `\(sanitize(conversationID, limit: 120))`",
+            "",
+            "## What this means",
+            "",
+            meaning,
+            "",
+            "Task success or failure is recorded separately in the related task note.",
+        ].joined(separator: "\n")
+        try? note.write(
+            to: directory.appendingPathComponent("\(noteID).md"),
+            atomically: true,
+            encoding: .utf8
+        )
+    }
+
+    /// Refreshes just the conversation a lifecycle event touched.
+    func writeConversationNote(for event: [String: Any]) {
+        guard let conversationID = (event["payload"] as? [String: Any])?["conversationId"] as? String,
+              let record = (state["conversationStates"] as? [String: Any])?[conversationID] as? [String: Any]
+        else { return }
+        writeConversationNote(conversationID: conversationID, record: record)
     }
 
     private func conversationNoteID(_ conversationID: String) -> String {
@@ -247,33 +267,45 @@ extension WorkspaceMemory {
         }.prefix(5).joined(separator: "\n")
     }
 
+    /// Up to three earlier tasks, best term overlap first and newest first among
+    /// equals; with no overlap, the three newest. Each is one compact entry - the
+    /// request, the files and the outcome - not the whole note: this text is
+    /// captured again whenever the selection changes.
     func relevantTasks(for prompt: String) -> String {
-        guard let root = memoryDirectory,
-              let files = try? fileManager.contentsOfDirectory(at: root.appendingPathComponent("tasks"), includingPropertiesForKeys: nil) else { return "" }
-        let terms = prompt.split { $0 == "/" || $0 == " " || $0 == "\n" }.filter { $0.count > 2 }.map(String.init)
-        let notes = files.filter { $0.pathExtension == "md" }.compactMap { url -> String? in
-            guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
-            return terms.contains(where: { text.localizedCaseInsensitiveContains($0) }) ? text : nil
+        let terms = FeedbackStore.tokens(prompt)
+        let scored = taskNoteURLs().compactMap { url -> (score: Int, completed: String, entry: String)? in
+            guard let note = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+            let lines = note.split(whereSeparator: \.isNewline).map(String.init)
+            func field(_ name: String) -> String {
+                lines.first { $0.hasPrefix("\(name):") }
+                    .map { String($0.dropFirst(name.count + 1)).trimmingCharacters(in: CharacterSet(charactersIn: " \"")) } ?? ""
+            }
+            func section(_ title: String) -> [String] {
+                guard let start = lines.firstIndex(of: "## \(title)") else { return [] }
+                return Array(lines[(start + 1)...].prefix { !$0.hasPrefix("## ") })
+            }
+            let files = section("Changed files")
+                .compactMap { $0.firstMatch(of: #/\[\[file:(.+?)\]\]/#).map { String($0.1) } }
+            let result = sanitize(section("Result").joined(separator: " "), limit: 300)
+            let completed = field("completed")
+            var entry = "- \(completed.prefix(10)) [\(field("status"))] \(field("title"))"
+            if !files.isEmpty { entry += "\n  Files: \(files.prefix(8).joined(separator: ", "))" }
+            if !result.isEmpty { entry += "\n  Result: \(result)" }
+            let score = terms.intersection(FeedbackStore.tokens(note)).count
+            return (score, completed, entry)
         }
-        if !notes.isEmpty { return notes.prefix(3).joined(separator: "\n\n") }
-        return files.sorted { $0.lastPathComponent > $1.lastPathComponent }.prefix(3).compactMap { try? String(contentsOf: $0, encoding: .utf8) }.joined(separator: "\n\n")
+        let matched = scored.filter { $0.score > 0 }
+        return (matched.isEmpty ? scored : matched)
+            .sorted { $0.score != $1.score ? $0.score > $1.score : $0.completed > $1.completed }
+            .prefix(3)
+            .map(\.entry)
+            .joined(separator: "\n")
     }
 
-    func conversationLifecycleText() -> String {
-        let conversations = state["conversationStates"] as? [String: Any] ?? [:]
-        return conversations.keys.sorted().compactMap { conversationID in
-            guard let record = conversations[conversationID] as? [String: Any] else { return nil }
-            let title = sanitize(record["title"] as? String ?? conversationID, limit: 120)
-            let lifecycle = record["state"] as? String ?? "unknown"
-            return "- `\(title)` — \(lifecycle)"
-        }.joined(separator: "\n")
-    }
-
-    func preferencesText() -> String {
-        guard let identity,
-              let all = state["activePreferences"] as? [String: Any],
-              let preferences = all[identity.personID] as? [String: Any] else { return "" }
-        return markdownDictionary(preferences)
+    public func preferencesText() -> String {
+        let own = identity.flatMap { (state["activePreferences"] as? [String: Any])?[$0.personID] as? [String: Any] } ?? [:]
+        // What another client recorded in the facts file counts too.
+        return markdownDictionary(own.merging(foreignFacts("preference", knownKeys: Set(own.keys))) { own, _ in own })
     }
 
     func markdownList(_ list: [[String: Any]], prefix: String = "Decision") -> String {
@@ -308,7 +340,7 @@ extension WorkspaceMemory {
 
     func markdownDictionary(_ dictionary: [String: Any]) -> String {
         dictionary.keys.sorted().map { key in
-            "- `\(key)`: \(sanitize(String(describing: dictionary[key] ?? ""), limit: 240))"
+            "- `\(key)`: \(sanitize(String(describing: dictionary[key] ?? ""), limit: ProjectKnowledge.limit(forKey: key)))"
         }.joined(separator: "\n")
     }
 
@@ -319,14 +351,14 @@ extension WorkspaceMemory {
     }
 
     func explicitLanguage(in text: String) -> String? {
+        // Needles are written already folded: the text loses its diacritics below,
+        // so "türkçe" or "konuş" could never match it.
         let lower = text.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "en_US_POSIX")).lowercased()
-        let explicit = lower.contains("artık") || lower.contains("bundan sonra") || lower.contains("from now")
-            || lower.contains("i want") || lower.contains("istiyorum") || lower.contains("tercih")
-            || lower.contains("cevap ver") || lower.contains("konuş") || lower.contains("output")
-        if explicit,
-           lower.contains("ingilizce") || lower.contains("english") { return "English" }
-        if explicit,
-           lower.contains("türkçe") || lower.contains("turkish") { return "Turkish" }
+        let markers = ["artık", "artik", "bundan sonra", "from now", "i want", "istiyorum", "tercih",
+                       "cevap ver", "yanit ver", "konus", "always", "her zaman", "output"]
+        guard markers.contains(where: { lower.contains($0) }) else { return nil }
+        if lower.contains("ingilizce") || lower.contains("english") { return "English" }
+        if lower.contains("turkce") || lower.contains("turkish") { return "Turkish" }
         return nil
     }
 

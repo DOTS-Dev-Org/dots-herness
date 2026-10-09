@@ -8,10 +8,46 @@
   <data name="language.system" xml:space="preserve"><value>Sistem dili</value></data>
   <data name="settings.language" xml:space="preserve"><value>Uygulama dili</value></data>
   <data name="settings.general" xml:space="preserve"><value>Genel</value></data>
-  <data name="settings.back" xml:space="preserve"><value>Sohbetlere geri dön</value></data>
+  <data name="settings.shortcuts" xml:space="preserve"><value>Klavye kısayolları</value></data>
+  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Değiştirmek istediğiniz kısayolu seçin. En az bir değiştirici tuş içeren bir kombinasyona basın.</value></data>
+  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Kenar çubuğunu göster veya gizle</value></data>
+  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Tuşlara basın…</value></data>
+  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Varsayılanları geri yükle</value></data>
+  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} zaten {1} için atanmış.</value></data>
+  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull request'ler</value></data>
+  <data name="conversation.review" xml:space="preserve"><value>İnceleme</value></data>
+  <data name="conversation.files" xml:space="preserve"><value>Dosyalar</value></data>
+  <data name="conversation.browser" xml:space="preserve"><value>Tarayıcı</value></data>
+  <data name="conversation.newChat" xml:space="preserve"><value>Yeni konuşma</value></data>
+  <data name="settings.archive" xml:space="preserve"><value>Arşiv</value></data>
+  <data name="sidebar.archiveChat" xml:space="preserve"><value>Konuşmayı arşivle</value></data>
+  <data name="sidebar.pinChat" xml:space="preserve"><value>Konuşmayı sabitle</value></data>
+  <data name="sidebar.unpinChat" xml:space="preserve"><value>Konuşmanın sabitlemesini kaldır</value></data>
+  <data name="archive.title" xml:space="preserve"><value>Arşivlenmiş konuşmalar</value></data>
+  <data name="archive.empty" xml:space="preserve"><value>Arşivlenmiş konuşma yok.</value></data>
+  <data name="archive.confirmDelete" xml:space="preserve"><value>Bu konuşma kalıcı olarak silinsin mi?</value></data>
+  <data name="archive.deletePermanently" xml:space="preserve"><value>Kalıcı sil</value></data>
+  <data name="archive.cancel" xml:space="preserve"><value>İptal</value></data>
+  <data name="archive.restore" xml:space="preserve"><value>Arşivden çıkar</value></data>
+  <data name="archive.delete" xml:space="preserve"><value>Sil</value></data>
+  <data name="archive.deleteFailed" xml:space="preserve"><value>Konuşma silinemedi.</value></data>
+  <data name="archive.restoreFailed" xml:space="preserve"><value>Konuşma geri yüklenemedi.</value></data>
+  <data name="settings.back" xml:space="preserve"><value>Projelere dön</value></data>
+  <data name="conversation.choosePane" xml:space="preserve"><value>Bölme seç</value></data>
+  <data name="sidebar.toggle" xml:space="preserve"><value>Kenar çubuğunu göster veya gizle</value></data>
   <data name="settings.appearance" xml:space="preserve"><value>Görünüm</value></data>
   <data name="settings.theme" xml:space="preserve"><value>Tema</value></data>
   <data name="settings.confirmBeforeExit" xml:space="preserve"><value>Kapatmadan önce sor</value></data>
+  <data name="settings.closeToTray" xml:space="preserve"><value>Pencereyi kapatınca tepside çalışmaya devam et</value></data>
+  <data name="settings.closeToTray.hint" xml:space="preserve"><value>Pencere gizliyken çalıştırmalar, terminaller ve zamanlanmış görevler devam eder; tepsi simgesi geri getirir.</value></data>
+  <data name="tray.show" xml:space="preserve"><value>Pencereyi aç</value></data>
+  <data name="tray.quit" xml:space="preserve"><value>Çık</value></data>
+  <data name="tray.noChats" xml:space="preserve"><value>Şu anda sohbet yok</value></data>
+  <data name="sidebar.pinProject" xml:space="preserve"><value>Projeyi sabitle</value></data>
+  <data name="sidebar.unpinProject" xml:space="preserve"><value>Projenin sabitlemesini kaldır</value></data>
+  <data name="sidebar.sortLastUpdate" xml:space="preserve"><value>Son güncelleme</value></data>
+  <data name="sidebar.sortPriority" xml:space="preserve"><value>Öncelik</value></data>
+  <data name="settings.autoApprovePlans" xml:space="preserve"><value>Planları otomatik onayla</value></data>
   <data name="settings.seedProjectRules" xml:space="preserve"><value>AGENTS.md ve CLAUDE.md oluştur</value></data>
   <data name="settings.selfVerification" xml:space="preserve"><value>Değişiklikleri otomatik doğrula</value></data>
   <data name="settings.workspace" xml:space="preserve"><value>Çalışma alanı</value></data>
@@ -51,6 +87,14 @@
   <data name="settings.apiKeyOptional" xml:space="preserve"><value>API anahtarı (yerel için isteğe bağlı)</value></data>
   <data name="settings.api" xml:space="preserve"><value>API'si</value></data>
   <data name="settings.saveChanges" xml:space="preserve"><value>Değişiklikleri kaydet</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>Model için bağlam boyutunu token cinsinden girin. Otomatik değer, varsa modelin bildirdiği veya belgelenmiş boyutu, ardından hesap için tanımlanan değeri kullanır.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>Modellerde ara</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>Otomatik değer: {0} token</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>Sağlayıcı bağlam boyutunu bildirmiyor.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>Henüz model yok. Bir sağlayıcı bağlayın veya model listesini yenileyin.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>Kaydedildi.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>Otomatik</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>Pozitif bir tam token sayısı girin.</value></data>
   <data name="settings.addCustomApi" xml:space="preserve"><value>Özel API ekle</value></data>
   <data name="settings.cancelEdit" xml:space="preserve"><value>Düzenlemeyi iptal et</value></data>
   <data name="settings.customProviders" xml:space="preserve"><value>Özel sağlayıcılar</value></data>
@@ -106,7 +150,7 @@
   <data name="settings.runNow" xml:space="preserve"><value>Şimdi koş</value></data>
   <data name="settings.noPrompt" xml:space="preserve"><value>Hiçbir bilgi istemi bölümü monte edilmedi.</value></data>
   <data name="conversation.title" xml:space="preserve"><value>Nokta Demeti</value></data>
-  <data name="conversation.emptyNoProvider" xml:space="preserve"><value>Sohbete başlamak için bir sağlayıcı hesabı bağlayın.</value></data>
+  <data name="conversation.emptyNoProvider" xml:space="preserve"><value>Konuşmaya başlamak için bir sağlayıcı hesabı bağlayın.</value></data>
   <data name="conversation.emptySidebar" xml:space="preserve"><value>Kenar çubuğundan bir konuşma başlatın.</value></data>
   <data name="conversation.allow" xml:space="preserve"><value>{0}'e izin verilsin mi?</value></data>
   <data name="vision.title" xml:space="preserve"><value>Görsel yedekleme</value></data>
@@ -174,9 +218,15 @@
   <data name="conversation.system" xml:space="preserve"><value>Sistem</value></data>
   <data name="conversation.dropFiles" xml:space="preserve"><value>Dosyaları buraya bırakın</value></data>
   <data name="conversation.send" xml:space="preserve"><value>Gönder</value></data>
+  <data name="conversation.cacheExpired.notice" xml:space="preserve"><value>Önbellek süresi dolmuş olabilir; devam etmek token kullanımını ve maliyeti artırabilir. Kısa özetle yeni sohbet açın.</value></data>
+  <data name="conversation.cacheExpired.infoTitle" xml:space="preserve"><value>Bu uyarı neden görünüyor?</value></data>
+  <data name="conversation.cacheExpired.explanation" xml:space="preserve"><value>Önbelleğin tahmini süresi doldu. Prompt cache, sağlayıcının geçici işlem belleğidir; sohbet geçmişiniz silinmez. Tüm geçmişi yeniden göndermek tokenları tekrar işletebilir ve maliyeti artırabilir. Gerçek cache isabeti ancak sonraki isteğin kullanım verisinden anlaşılır.</value></data>
+  <data name="workspace.noProject" xml:space="preserve"><value>Projesiz devam et</value></data>
   <data name="conversation.planMode" xml:space="preserve"><value>Plan modu</value></data>
   <data name="conversation.applyPlan" xml:space="preserve"><value>Planı uygula</value></data>
   <data name="conversation.applyPlanHelp" xml:space="preserve"><value>Bu planı çalışma alanına uygulayın</value></data>
+  <data name="conversation.cancelPlan" xml:space="preserve"><value>Planı iptal et</value></data>
+  <data name="conversation.cancelPlanHelp" xml:space="preserve"><value>Bu planı iptal et ve kuyruktaki mesajları serbest bırak</value></data>
   <data name="conversation.steer" xml:space="preserve"><value>Yönlendir</value></data>
   <data name="conversation.steerHelp" xml:space="preserve"><value>Sıraya alınmış mesajı yönlendir</value></data>
   <data name="conversation.terminal" xml:space="preserve"><value>terminali</value></data>
@@ -202,8 +252,8 @@
   <data name="settings.share" xml:space="preserve"><value>Paylaş</value></data>
   <data name="settings.tasks" xml:space="preserve"><value>Görevler</value></data>
   <data name="settings.systemPrompt" xml:space="preserve"><value>Sistem istemi</value></data>
-  <data name="sidebar.chats" xml:space="preserve"><value>Sohbetler</value></data>
-  <data name="sidebar.newChat" xml:space="preserve"><value>Yeni sohbet</value></data>
+  <data name="sidebar.chats" xml:space="preserve"><value>Konuşmalar</value></data>
+  <data name="sidebar.newChat" xml:space="preserve"><value>Yeni konuşma</value></data>
   <data name="sidebar.settings" xml:space="preserve"><value>Ayarlar</value></data>
   <data name="sidebar.userMenu" xml:space="preserve"><value>Kullanıcı menüsü</value></data>
   <data name="conversation.model" xml:space="preserve"><value>Modeli</value></data>
@@ -222,7 +272,7 @@
   <data name="settings.appearanceSystem" xml:space="preserve"><value>Sistem</value></data>
   <data name="settings.appearanceLight" xml:space="preserve"><value>Açık</value></data>
   <data name="settings.appearanceDark" xml:space="preserve"><value>Koyu</value></data>
-  <data name="status.connectProviderChat" xml:space="preserve"><value>Sohbete başlamadan önce bir sağlayıcıya bağlanın.</value></data>
+  <data name="status.connectProviderChat" xml:space="preserve"><value>Konuşma başlatmadan önce bir sağlayıcıya bağlanın.</value></data>
   <data name="status.connectProviderPlan" xml:space="preserve"><value>Bir planı uygulamadan önce bir sağlayıcıya bağlanın.</value></data>
   <data name="status.emptyResponse" xml:space="preserve"><value>Sağlayıcı boş bir yanıt verdi.</value></data>
   <data name="status.toolLimit" xml:space="preserve"><value>Takım adımı sınırına ulaşıldı.</value></data>
@@ -231,6 +281,18 @@
   <data name="status.toolInterrupted" xml:space="preserve"><value>Takım çağrısı tamamlanmadan kesildi.</value></data>
   <data name="status.contextCompacting" xml:space="preserve"><value>Bağlam otomatik olarak sıkıştırılıyor…</value></data>
   <data name="status.contextCompacted" xml:space="preserve"><value>Bağlam sıkıştırıldı.</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>Bağlam otomatik olarak sıkıştırıldı</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>Dosyaları okudu</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>Dosyaları düzenledi</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>Komutları çalıştırdı</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>Web'de arama yaptı</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>Dosyaları okuyor…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>Dosyaları düzenliyor…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>Komut çalıştırıyor…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>Web'de arıyor…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>Bir araç kullandı</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>Araç çalıştırıyor…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>Araç başarısız oldu: {0}</value></data>
   <data name="status.pressContinue" xml:space="preserve"><value>Bu mesajı devam ettirmek için Devam'a basın.</value></data>
   <data name="media.generated" xml:space="preserve"><value>Görsel oluşturuldu.</value></data>
   <data name="media.fallbackUsed" xml:space="preserve"><value>Seçili provider bu görseli üretemedi. Görsel {0}/{1} üzerinden tek seferlik fallback isteğiyle üretildi; ana sohbet provider'ı ve modeli değiştirilmedi, bu nedenle prompt cache'i korunuyor.</value></data>
@@ -250,6 +312,17 @@
   <data name="conversation.cleanupFailed" xml:space="preserve"><value>Temizlik tamamlanamadı.</value></data>
   <data name="conversation.cleanupNotApplicable" xml:space="preserve"><value>Temizlik istenmedi.</value></data>
   <data name="conversation.cleanupTrackingIncomplete" xml:space="preserve"><value>Çalışma alanı değişiklikleri tamamen doğrulanamadı.</value></data>
+  <data name="conversation.undoChanges" xml:space="preserve"><value>Geri al</value></data>
+  <data name="conversation.viewChanges" xml:space="preserve"><value>Değişiklikleri görüntüle</value></data>
+  <data name="conversation.filesChangedCount" xml:space="preserve"><value>{0} dosya değişti</value></data>
+  <data name="conversation.filesLineSummary" xml:space="preserve"><value>+{0} −{1}</value></data>
+  <data name="conversation.lineCountsUnavailable" xml:space="preserve"><value>Satır sayıları kullanılamıyor</value></data>
+  <data name="conversation.filesMore" xml:space="preserve"><value>{0} dosya daha göster</value></data>
+  <data name="conversation.filesLess" xml:space="preserve"><value>Daha az dosya göster</value></data>
+  <data name="conversation.filesReverted" xml:space="preserve"><value>Dosya değişiklikleri geri alındı.</value></data>
+  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>Kaydedilen dosya sürümü kullanılamıyor; çalışma alanı değiştirilmedi.</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>Bu turdan sonra çalışma alanındaki dosyalar değişti ({0}); hiçbir dosya geri yüklenmedi.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>Konuşma ve çalışma alanındaki değişiklikler geri alındı.</value></data>
   <data name="conversation.connectionChanged" xml:space="preserve"><value>Bağlantı değiştirildi</value></data>
   <data name="conversation.connectionSummary" xml:space="preserve"><value>Bağlantı değiştirildi: {0} → {1}</value></data>
   <data name="conversation.connectionAdded" xml:space="preserve"><value>Bağlantı eklendi: {0}. Mevcut bağlantılar ve kullanıcı verileri korundu; uzak verilere dokunulmadı.</value></data>
@@ -297,6 +370,12 @@
   <data name="usage.resetsIn" xml:space="preserve"><value>{0} içinde yenilenir</value></data>
   <data name="usage.resetsOn" xml:space="preserve"><value>{0} yenilenir</value></data>
   <data name="usage.resetsAvailable" xml:space="preserve"><value>{0} yenileme hakkı</value></data>
+  <data name="usage.manageResets" xml:space="preserve"><value>Manage resets</value></data>
+  <data name="usage.useReset" xml:space="preserve"><value>Use reset</value></data>
+  <data name="usage.resetTitle" xml:space="preserve"><value>Use a Claude limit reset?</value></data>
+  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude's Usage page will open. Sign in to {0} and review the reset offered to that account. To use it, click Reset for free and confirm in Claude. Once used, a reset cannot be undone. Limits refresh when you return to HerNess.</value></data>
+  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Could not open Claude. Check that the account is still connected, then try again.</value></data>
+  <data name="usage.openClaude" xml:space="preserve"><value>Open Claude</value></data>
   <data name="usage.needLogin" xml:space="preserve"><value>Limitleri görmek için Claude ile giriş yapın</value></data>
   <data name="usage.noLimitInfo" xml:space="preserve"><value>Limit bilgisi yok</value></data>
   <data name="usage.loadFailed" xml:space="preserve"><value>Kullanım yüklenemedi</value></data>
@@ -320,4 +399,260 @@
   <data name="feedback.good" xml:space="preserve"><value>İyi yanıt</value></data>
   <data name="feedback.bad" xml:space="preserve"><value>Kötü yanıt</value></data>
   <data name="conversation.translate" xml:space="preserve"><value>Çevir</value></data>
+  <data name="queue.waitingForPlan" xml:space="preserve"><value>Plan onayı bekleniyor</value></data>
+  <data name="project.missing.title" xml:space="preserve"><value>Proje Klasörü Bulunamadı: {0}</value></data>
+  <data name="project.missing.message" xml:space="preserve"><value>'{0}' konumundaki proje klasörü taşınmış veya silinmiş olabilir. Lütfen yeni konumunu seçin veya projeyi kaldırın.</value></data>
+  <data name="project.missing.locate" xml:space="preserve"><value>Konumu Bul…</value></data>
+  <data name="project.missing.readOnly" xml:space="preserve"><value>Proje klasörü kullanılamıyor. Yeni konumunu seçene kadar önceki sohbetleri görebilirsin; yeni sohbet ve mesaj gönderimi kapalıdır.</value></data>
+  <data name="conversation.ranCommand" xml:space="preserve"><value>1 komut çalıştırıldı</value></data>
+  <data name="conversation.ranCommands" xml:space="preserve"><value>{0} komut çalıştırıldı</value></data>
+  <data name="conversation.runningTools" xml:space="preserve"><value>Araçlar çalışıyor…</value></data>
+  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Düşünüyor…</value></data>
+  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} token</value></data>
+  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} token</value></data>
+  <data name="usage.context.window" xml:space="preserve"><value>Bağlam penceresi</value></data>
+  <data name="usage.planLimits" xml:space="preserve"><value>Plan kullanım limitleri</value></data>
+  <data name="composer.queue.one" xml:space="preserve"><value>1 mesaj kuyrukta</value></data>
+  <data name="composer.queue.many" xml:space="preserve"><value>{0} mesaj kuyrukta</value></data>
+  <data name="composer.queue.edit" xml:space="preserve"><value>Düzenle</value></data>
+  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Düzenlemek için mesaj kutusunu boşalt</value></data>
+  <data name="composer.queue.remove" xml:space="preserve"><value>Kaldır</value></data>
+  <data name="git.createPR" xml:space="preserve"><value>PR oluştur</value></data>
+  <data name="git.hideBar" xml:space="preserve"><value>Gizle</value></data>
+  <data name="composer.queue.next" xml:space="preserve"><value>Sıradaki: {0}</value></data>
+  <data name="conversation.fullToolOutput" xml:space="preserve"><value>Tam araç çıktısı</value></data>
+  <data name="feedback.close" xml:space="preserve"><value>Kapat</value></data>
+  <data name="feedback.commentPlaceholder" xml:space="preserve"><value>Ayrıntıları paylaşın (isteğe bağlı)</value></data>
+  <data name="feedback.conversationNotFound" xml:space="preserve"><value>Bu sohbet artık kullanılamıyor.</value></data>
+  <data name="feedback.disclaimer" xml:space="preserve"><value>Geri bildiriminiz HerNess'i yerel olarak geliştirmek için kullanılabilir.</value></data>
+  <data name="feedback.messageNotFound" xml:space="preserve"><value>Yanıt artık kullanılamıyor.</value></data>
+  <data name="feedback.missingPrompt" xml:space="preserve"><value>Bu yanıtın isteği bulunamadı.</value></data>
+  <data name="feedback.missingResponse" xml:space="preserve"><value>Bu yanıtın incelenecek içeriği yok.</value></data>
+  <data name="feedback.persistenceFailed" xml:space="preserve"><value>Geri bildirim yerel olarak kaydedilemedi.</value></data>
+  <data name="feedback.streamingMessage" xml:space="preserve"><value>Geri bildirim göndermeden önce yanıtın tamamlanmasını bekleyin.</value></data>
+  <data name="feedback.submit" xml:space="preserve"><value>Gönder</value></data>
+  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Diğer yerlerde de uygula</value></data>
+  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Mevcut özelliği bozdu</value></data>
+  <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>Talimatlarıma uymadı</value></data>
+  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Proje stiline uymadı</value></data>
+  <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>Hızlı ve verimli</value></data>
+  <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>Talimatlarımı izledi</value></data>
+  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Proje mimarisini yok saydı</value></data>
+  <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>Yanlış veya eksik</value></data>
+  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Proje stilini koru</value></data>
+  <data name="feedback.tag.lost_context" xml:space="preserve"><value>Bağlam kaybı</value></data>
+  <data name="feedback.tag.negative_other" xml:space="preserve"><value>Diğer</value></data>
+  <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>Konudan sapmış / kapsam dışı</value></data>
+  <data name="feedback.tag.output_quality" xml:space="preserve"><value>İyi kod / çıktı kalitesi</value></data>
+  <data name="feedback.tag.positive_other" xml:space="preserve"><value>Diğer</value></data>
+  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Bu mimariyi tekrar kullan</value></data>
+  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Bu token kullanımını tekrar et</value></data>
+  <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>Güvenlik veya hukuki sorun</value></data>
+  <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>Yavaş veya hatalı</value></data>
+  <data name="feedback.tag.task_completed" xml:space="preserve"><value>İşimi halletti</value></data>
+  <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>Faydalı özerklik</value></data>
+  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Yanlış tema veya token</value></data>
+  <data name="feedback.title" xml:space="preserve"><value>Geri bildirim paylaş</value></data>
+  <data name="feedback.unavailable" xml:space="preserve"><value>Geri bildirim yalnızca çalışma alanı sohbetlerinde kullanılabilir.</value></data>
+  <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Geri bildirim yalnızca asistan yanıtları için gönderilebilir.</value></data>
+  <data name="router.priorityUp" xml:space="preserve"><value>Öncelik yükseltildi</value></data>
+  <data name="router.priorityDown" xml:space="preserve"><value>Öncelik düşürüldü</value></data>
+  <data name="workLocation.title" xml:space="preserve"><value>Çalışma yeri</value></data>
+  <data name="workLocation.help" xml:space="preserve"><value>Görevin nerede çalışacağını seç</value></data>
+  <data name="workLocation.local" xml:space="preserve"><value>Bu bilgisayar</value></data>
+  <data name="workLocation.remoteHosts" xml:space="preserve"><value>SSH sunucuları</value></data>
+  <data name="workLocation.noHosts" xml:space="preserve"><value>SSH sunucusu yapılandırılmamış. Bir tane ekle veya ~/.ssh/config dosyasını düzenle.</value></data>
+  <data name="workLocation.chooseRemoteFolder" xml:space="preserve"><value>Uzak klasör</value></data>
+  <data name="workLocation.remoteFolderPath" xml:space="preserve"><value>Uzak yol</value></data>
+  <data name="workLocation.remoteFolderList" xml:space="preserve"><value>Klasörleri listele</value></data>
+  <data name="workLocation.remoteFolderUp" xml:space="preserve"><value>Üst klasör</value></data>
+  <data name="workLocation.remoteFolderEmpty" xml:space="preserve"><value>Alt klasör bulunamadı.</value></data>
+  <data name="workLocation.remoteFolderUse" xml:space="preserve"><value>Bu klasörü kullan</value></data>
+  <data name="workLocation.connect" xml:space="preserve"><value>Bağlan</value></data>
+  <data name="workLocation.addHost" xml:space="preserve"><value>SSH sunucusu ekle</value></data>
+  <data name="workLocation.useLocal" xml:space="preserve"><value>Bu bilgisayarı kullan</value></data>
+  <data name="settings.sshAlias" xml:space="preserve"><value>Ad</value></data>
+  <data name="settings.sshHostName" xml:space="preserve"><value>Sunucu adı veya IP adresi</value></data>
+  <data name="settings.sshUser" xml:space="preserve"><value>Kullanıcı adı</value></data>
+  <data name="settings.sshPort" xml:space="preserve"><value>Bağlantı noktası</value></data>
+  <data name="settings.sshRemove" xml:space="preserve"><value>Sunucuyu kaldır</value></data>
+  <data name="ssh.busy" xml:space="preserve"><value>Çalışma yerini değiştirmeden önce süren çalışmanın bitmesini bekle.</value></data>
+  <data name="ssh.connecting" xml:space="preserve"><value>{0} sunucusuna bağlanılıyor…</value></data>
+  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Göreve başlamadan önce uzak bir klasör seç.</value></data>
+  <data name="ssh.scanning" xml:space="preserve"><value>SSH sunucu anahtarı kontrol ediliyor…</value></data>
+  <data name="ssh.fingerprintTitle" xml:space="preserve"><value>{0} sunucusunun anahtarını doğrula</value></data>
+  <data name="ssh.fingerprintMessage" xml:space="preserve"><value>Güvenmeden önce parmak izini sunucu yöneticisiyle karşılaştır. Yalnızca eşleşiyorsa devam et.</value></data>
+  <data name="ssh.trustAndConnect" xml:space="preserve"><value>Güven ve bağlan</value></data>
+  <data name="ssh.error.unavailable" xml:space="preserve"><value>Bu bilgisayarda OpenSSH bulunamadı.</value></data>
+  <data name="ssh.error.notReachable" xml:space="preserve"><value>{0} sunucusuna erişilemedi.</value></data>
+  <data name="settings.mcpServers" xml:space="preserve"><value>MCP sunucuları</value></data>
+  <data name="mcp.empty" xml:space="preserve"><value>Henüz MCP sunucusu yapılandırılmadı.</value></data>
+  <data name="mcp.addServer" xml:space="preserve"><value>Sunucu ekle</value></data>
+  <data name="mcp.name" xml:space="preserve"><value>Ad</value></data>
+  <data name="mcp.transport" xml:space="preserve"><value>Aktarım</value></data>
+  <data name="mcp.http" xml:space="preserve"><value>HTTP</value></data>
+  <data name="mcp.stdio" xml:space="preserve"><value>stdio</value></data>
+  <data name="mcp.url" xml:space="preserve"><value>URL</value></data>
+  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (isteğe bağlı)</value></data>
+  <data name="mcp.executable" xml:space="preserve"><value>Çalıştırılabilir dosya</value></data>
+  <data name="mcp.arguments" xml:space="preserve"><value>Bağımsız değişkenler (boşlukla ayrılmış)</value></data>
+  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Sunucunun salt okunur işaretlediği araçları otomatik çalıştır</value></data>
+  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Sunucu açıklamaları güvenilir sayılmaz. Bu seçenek yalnızca salt okunur ve yıkıcı olarak işaretlenmemiş araçlarda onayı atlar.</value></data>
+  <data name="mcp.test" xml:space="preserve"><value>Dene</value></data>
+  <data name="mcp.add" xml:space="preserve"><value>Ekle</value></data>
+  <data name="mcp.reconnect" xml:space="preserve"><value>Yeniden bağlan</value></data>
+  <data name="mcp.remove" xml:space="preserve"><value>Kaldır</value></data>
+  <data name="mcp.idle" xml:space="preserve"><value>Boşta</value></data>
+  <data name="mcp.connecting" xml:space="preserve"><value>Bağlanıyor…</value></data>
+  <data name="mcp.connected" xml:space="preserve"><value>Bağlandı · {0} araç</value></data>
+  <data name="mcp.failed" xml:space="preserve"><value>Başarısız: {0}</value></data>
+  <data name="mcp.testing" xml:space="preserve"><value>Bağlantı deneniyor…</value></data>
+  <data name="mcp.testConnected" xml:space="preserve"><value>Bağlandı. {0} araç kullanılabilir.</value></data>
+  <data name="conversation.toolInput" xml:space="preserve"><value>Araç girdisi</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Bellek</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Bellek kasası</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Yenile</value></data>
+  <data name="memory.reveal" xml:space="preserve"><value>.mem klasörünü aç</value></data>
+  <data name="memory.refused" xml:space="preserve"><value>Kaydedilmedi. Girdi bir kimlik bilgisi içeriyor, sınırı aşıyor veya çalışma alanına yazılamıyor olabilir.</value></data>
+  <data name="memory.noWorkspace" xml:space="preserve"><value>Belleği görüntülemek için yerel bir çalışma alanı seçin.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Bellek, bu çalışma alanındaki ilk istemden sonra başlar.</value></data>
+  <data name="memory.search" xml:space="preserve"><value>Bellekte ara</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Görüntülemek için bir not seçin.</value></data>
+  <data name="memory.save" xml:space="preserve"><value>Kaydet</value></data>
+  <data name="memory.forget" xml:space="preserve"><value>Unut</value></data>
+  <data name="memory.ownRules" xml:space="preserve"><value>Kendi kurallarınız</value></data>
+  <data name="memory.rulesHelp" xml:space="preserve"><value>Bu kurallar bu projedeki her isteğe eklenir.</value></data>
+  <data name="memory.lessons" xml:space="preserve"><value>Öğrenilen dersler</value></data>
+  <data name="memory.learningStats" xml:space="preserve"><value>{0} tur kaydedildi; {1} tanesi düzeltildi veya geri alındı.</value></data>
+  <data name="memory.links" xml:space="preserve"><value>Bağlantılar</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Bağlantılı anmalar</value></data>
+  <data name="memory.userAuthored" xml:space="preserve"><value>kullanıcı yazdı</value></data>
+  <data name="memory.inferred" xml:space="preserve"><value>çıkarım</value></data>
+  <data name="memory.learnedCount" xml:space="preserve"><value>{0} kez öğrenildi</value></data>
+  <data name="memory.usedCount" xml:space="preserve"><value>{0} kez kullanıldı</value></data>
+  <data name="memory.inactive" xml:space="preserve"><value>artık uygulanmıyor</value></data>
+  <data name="memory.pin" xml:space="preserve"><value>Sabitle</value></data>
+  <data name="memory.edit" xml:space="preserve"><value>Düzenle</value></data>
+  <data name="memory.cancel" xml:space="preserve"><value>Vazgeç</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Çalışma alanı erişimi</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Geçerli aktör</value></data>
+  <data name="access.role" xml:space="preserve"><value>Rol</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Yetkili değil</value></data>
+  <data name="access.score" xml:space="preserve"><value>Puan</value></data>
+  <data name="access.device" xml:space="preserve"><value>Cihaz</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Açık anahtar</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Bellek sürümü</value></data>
+  <data name="access.members" xml:space="preserve"><value>Üyeler</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>Henüz üye yok.</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Yetkiyi kaldır</value></data>
+  <data name="access.revoked" xml:space="preserve"><value>yetkisi kaldırıldı</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Cihaz davet et</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Görünen ad</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>Yeni cihaz açık anahtarı</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>İmzalı davet oluştur</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Daveti kabul et</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>İmzalı davet</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Kabul et</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Reddet</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Bekleyen kararlar</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>Bekleyen proje kararı yok.</value></data>
+  <data name="access.noWorkspace" xml:space="preserve"><value>Erişimi yönetmek için yerel bir çalışma alanı seçin.</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Puan: {0}</value></data>
+  <data name="access.initialize" xml:space="preserve"><value>Çalışma alanı belleğini başlat</value></data>
+  <data name="access.initializeHelp" xml:space="preserve"><value>Çalışma alanı erişimi imzalı bir bellek günlüğü kullanır. Başlatma, bu projenin .mem klasöründe sahip kimliği ve olay günlüğü oluşturur.</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>Sahip</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Onaylayıcı</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Katılımcı</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>Gözlemci</value></data>
+  <data name="settings.sandbox" xml:space="preserve"><value>Sandbox</value></data>
+  <data name="settings.sandboxOff" xml:space="preserve"><value>Kapalı — ajan doğrudan mevcut çalışma ağacınızda çalışır.</value></data>
+  <data name="settings.sandboxOn" xml:space="preserve"><value>Açık — ajan ayrı bir git worktree içinde çalışır.</value></data>
+  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Yalıtılmış çalışma alanı işlemlerine devam etmek için kurtarma gerekir.</value></data>
+  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Kurtarmayı yeniden dene</value></data>
+  <data name="settings.sandboxName" xml:space="preserve"><value>Ad</value></data>
+  <data name="settings.sandboxEnter" xml:space="preserve"><value>Yalıtılmış çalışma alanı başlat</value></data>
+  <data name="settings.sandboxMerge" xml:space="preserve"><value>Birleştir ve çık</value></data>
+  <data name="settings.sandboxDiscard" xml:space="preserve"><value>At ve çık</value></data>
+  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Kaynak</value></data>
+  <data name="settings.sandboxBranch" xml:space="preserve"><value>Dal</value></data>
+  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Yeni süreçlerin ağa erişmesine izin ver</value></data>
+  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>Bu ayar yalnızca yeni komutları etkiler. Açık terminal oturumlarının ilkesi değişmez.</value></data>
+  <data name="settings.sandboxOpen" xml:space="preserve"><value>Yalıtılmış alanı aç</value></data>
+  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Kaynak alanı aç</value></data>
+  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Çakışmalar</value></data>
+  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Çözüm hazırlığı</value></data>
+  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Ajana sor</value></data>
+  <data name="settings.sandboxPreview" xml:space="preserve"><value>Önizlemeyi yenile</value></data>
+  <data name="settings.sandboxApprove" xml:space="preserve"><value>Onayla ve birleştir</value></data>
+  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Çözümü iptal et</value></data>
+  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Temizlemeyi yeniden dene</value></data>
+  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Bu yalıtılmış çalışma alanı atılsın mı? Dal kurtarma için korunacak, worktree kaldırılacak.</value></data>
+  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Onay için tüm dosyaları içeren ve çözülmemiş dosya bırakmayan bir önizleme gerekir.</value></data>
+  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Çözüm önizlemesi</value></data>
+  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Çözülmemiş dosyalar</value></data>
+  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>Kaynak HEAD</value></data>
+  <data name="settings.sandboxHead" xml:space="preserve"><value>Yalıtılmış HEAD</value></data>
+  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Önizleme parmak izi</value></data>
+  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Yalıtılmış alanın temizliği bekliyor; kaynak çalışma alanı yeniden değiştirilmedi.</value></data>
+  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Kaydedilmiş alanlar</value></data>
+  <data name="settings.sandboxRecover" xml:space="preserve"><value>Kurtar</value></data>
+  <data name="conversation.accountSwitched.notice" xml:space="preserve"><value>Bu sohbet aynı modelde başka bir hesaba geçti. Önbellek o hesapta sıfırdan başlar; devam etmek token kullanımını ve maliyeti artırabilir.</value></data>
+  <data name="conversation.modelSwitched.notice" xml:space="preserve"><value>Model değişti. Önbellek yeni modele taşınmaz; tüm geçmiş yeniden işlenir, bu da token kullanımını ve maliyeti artırabilir.</value></data>
+  <data name="conversation.contextFull.notice" xml:space="preserve"><value>Bağlam penceresi dolmak üzere; devam etmek token kullanımını ve maliyeti artırabilir. Kısa özetle yeni sohbet açın.</value></data>
+  <data name="context.overflowTitle" xml:space="preserve"><value>Bu konuşma yeni modele sığmıyor</value></data>
+  <data name="context.overflowReason" xml:space="preserve"><value>{0} devam etmek için yaklaşık {1} token istiyor; bu modelde {2} token boş alan kalıyor.</value></data>
+  <data name="context.overflowByModel" xml:space="preserve"><value>Özeti, konuşmayı hâlâ okuyabilen en küçük bağlı model olan {0} yazacak.</value></data>
+  <data name="context.overflowLocally" xml:space="preserve"><value>Bağlı hiçbir model konuşmayı okuyamıyor; özet için hiçbir modele sorulmadan konuşma kısaltılacak.</value></data>
+  <data name="context.overflowCompress" xml:space="preserve"><value>Özetleyip devam et</value></data>
+  <data name="context.overflowNotNow" xml:space="preserve"><value>Şimdi değil</value></data>
+  <data name="context.overflowDeclined" xml:space="preserve"><value>Gönderim durduruldu: konuşma yeni modele sığmıyor.</value></data>
+  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>Başka bir sohbet aynı dosyayı yazıyorsa</value></data>
+  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Sormadan önce bekle</value></data>
+  <data name="settings.conflictWaitValue" xml:space="preserve"><value>{0} saniye bekle</value></data>
+  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Bekle, sonra sor</value></data>
+  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>Başka bir sohbetin yazdığı dosya için önce sessizce bekle; bekleme uzarsa sor.</value></data>
+  <data name="conflict.policy.ask" xml:space="preserve"><value>Bana sor</value></data>
+  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>İki sohbet aynı dosyayı istediğinde hemen sor.</value></data>
+  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Her zaman bekle</value></data>
+  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Sorma; dosyayı tutan sohbet bitene kadar bekle.</value></data>
+  <data name="conflict.title" xml:space="preserve"><value>Dosya kullanımda: {0}</value></data>
+  <data name="conflict.wholeProject" xml:space="preserve"><value>Proje komutu: {0}</value></data>
+  <data name="conflict.stillBusy" xml:space="preserve"><value>Yazma bekletildi: başka bir sohbet hâlâ {0} üzerinde çalışıyor.</value></data>
+  <data name="conflict.userSkipped" xml:space="preserve"><value>İstediğin gibi {0} yazılmadı; diğer sohbette bırakıldı ({1}).</value></data>
+  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Bu sohbetin yazabilmesi için {0} durduruldu.</value></data>
+  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Bu sohbetin yazabilmesi için diğer sohbetler durduruldu.</value></data>
+  <data name="conflict.banner.title" xml:space="preserve"><value>Başka bir sohbet bu dosyayı yazıyor</value></data>
+  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · “{1}” {2} saniyedir dosyayı tutuyor</value></data>
+  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Beklemeye devam et</value></data>
+  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>{0} sohbetini durdur</value></data>
+  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Diğer sohbetleri durdur</value></data>
+  <data name="conflict.banner.skip" xml:space="preserve"><value>Bu yazmayı atla</value></data>
+  <data name="conflict.waiting" xml:space="preserve"><value>“{0}” yazmayı bitirsin diye bekleniyor: {1}</value></data>
+  <data name="usage.context.button" xml:space="preserve"><value>Kullanım</value></data>
+  <data name="usage.context.tooltip" xml:space="preserve"><value>Bağlam ve token kullanımı</value></data>
+  <data name="usage.context.latestRequest" xml:space="preserve"><value>Son istek · bağlam penceresi</value></data>
+  <data name="usage.context.input" xml:space="preserve"><value>Gönderilen girdi</value></data>
+  <data name="usage.context.estimatedInput" xml:space="preserve"><value>Tahmini girdi</value></data>
+  <data name="usage.context.output" xml:space="preserve"><value>Yanıt</value></data>
+  <data name="usage.context.notReported" xml:space="preserve"><value>Sağlayıcı bildirmedi</value></data>
+  <data name="usage.context.estimatedBreakdown" xml:space="preserve"><value>Tahmini girdi dağılımı</value></data>
+  <data name="usage.context.tokens" xml:space="preserve"><value>token</value></data>
+  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} token ({2})</value></data>
+  <data name="usage.context.notAvailable" xml:space="preserve"><value>Bağlam kullanımı henüz yok.</value></data>
+  <data name="usage.context.composition" xml:space="preserve"><value>Tahmini girdi bileşimi</value></data>
+  <data name="usage.context.estimatedRow" xml:space="preserve"><value>{0}: {1} ({2})</value></data>
+  <data name="usage.context.conversation" xml:space="preserve"><value>Sohbet mesajları</value></data>
+  <data name="usage.context.systemPrompt" xml:space="preserve"><value>Sistem talimatları</value></data>
+  <data name="usage.context.toolDefinitions" xml:space="preserve"><value>Tool tanımları</value></data>
+  <data name="usage.context.mcpDefinitions" xml:space="preserve"><value>MCP tool tanımları</value></data>
+  <data name="usage.context.cacheHit" xml:space="preserve"><value>Ölçülen önbellek isabeti</value></data>
+  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Doğrulanmış önek yeniden kullanımı: {0} · {1} / {2} token</value></data>
+  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Ölçüm kapsamı: {0} · {1} / {2} uygun istek</value></data>
+  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Soğuk: {0} · süresi dolan: {1} · değişen: {2}</value></data>
+  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Önbellek yazımı: {0} token</value></data>
+  <data name="usage.context.freshInput" xml:space="preserve"><value>Yeni girdi: {0} token</value></data>
+  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Yeniden kullanım bildirilmeyen: {0} / {1} uygun istek</value></data>
+  <data name="usage.context.latency" xml:space="preserve"><value>Ortalama istek gecikmesi: {0}</value></data>
+  <data name="usage.context.prepare" xml:space="preserve"><value>Ortalama istek hazırlığı: {0}</value></data>
+  <data name="usage.context.cacheLoss" xml:space="preserve"><value>En büyük önbellek kaybı: {0} ({1} token)</value></data>
 </root>

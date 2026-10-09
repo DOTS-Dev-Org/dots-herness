@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-08T21:48:57Z",
+  "eventId" : "E83F174A-0CAC-466F-8A70-8F180AB31A89",
+  "lamport" : 133,
+  "parents" : [
+    "19F5576B-317B-4F0F-A6D5-65EBB038D6C3"
+  ],
+  "payload" : {
+    "commandSummary" : null,
+    "name" : "list_files",
+    "path" : "windows\/DotsHarness\/dist",
+    "resultBytes" : 215,
+    "resultStatus" : "completed",
+    "runId" : "59BD70D0-B5C9-4580-B59E-37A3A32DD769"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "MoHm0yIfJZmARs0cln5apELxuT7ecMUITq22eJ+NhYGVVm6aeLhRBY2SZjJJq8dP6o\/l2t4qTBOlumgIZ7wwFQ=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

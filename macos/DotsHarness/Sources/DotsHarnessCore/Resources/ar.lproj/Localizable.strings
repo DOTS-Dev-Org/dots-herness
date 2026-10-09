@@ -80,7 +80,6 @@
 "settings.title" = "الإعدادات";
 "settings.backToChats" = "العودة إلى الدردشات";
 "settings.tab.general" = "عام";
-"settings.tab.pet" = "حيوان أليف";
 "settings.tab.providers" = "مقدمي الخدمات";
 "settings.tab.custom" = "واجهة برمجة التطبيقات المخصصة";
 "settings.tab.local" = "النماذج المحلية";
@@ -312,7 +311,7 @@
 "composer.settings" = "الإعدادات";
 "composer.skills" = "المهارات";
 "composer.personal" = "شخصي";
-"composer.projectPickerHelp" = "اختر المشروع لهذه الدردشة";
+"composer.projectPickerHelp" = "اختر المشروع لهذه المحادثة";
 "composer.projectPickerTitle" = "مشروع";
 "composer.chooseProject" = "اختر المشروع";
 "composer.noProject" = "لم يتم تحديد أي مشروع";
@@ -377,8 +376,8 @@
 "ssh.error.pathMissing" = "المجلد %@ غير موجود على الحاسوب البعيد.";
 "ssh.error.configWriteFailed" = "تعذّرت كتابة %@ في ~/.ssh/config.";
 "tool.remoteUnavailable" = "‏%1$@ غير متاح أثناء العمل على %2$@. استخدم run_command بأوامر الصدفة بدلًا منه.";
-"git.branchHelp" = "اختر فرع جيت";
-"git.detached" = "رأس منفصل";
+"git.branchHelp" = "اختر فرع Git";
+"git.detached" = "HEAD منفصل";
 "git.search" = "بحث في الفروع";
 "git.branches" = "الفروع";
 "git.noBranches" = "لم يتم العثور على فروع";
@@ -413,8 +412,6 @@
 "slash.model" = "نموذج";
 "slash.plan" = "وضع الخطة";
 "slash.planDetail" = "قم بتشغيل وضع الخطة";
-"slash.mascot" = "حيوان أليف";
-"slash.mascotDetail" = "استيقظ أو أخفي الحيوان الأليف";
 "slash.pluginCreator" = "منشئ الإضافات";
 "slash.pluginCreatorDetail" = "إنشاء إضافة جديدة";
 "pluginCreator.template" = "قالب";
@@ -501,7 +498,6 @@
 "sidebar.hide" = "إخفاء";
 "sidebar.show" = "عرض";
 "sidebar.selectProject" = "اختر المشروع";
-"sidebar.continueWithoutProject" = "الاستمرار بدون مشروع";
 "sidebar.projectOptions" = "خيارات المشروع";
 "sidebar.editProject" = "تحرير المشروع";
 "sidebar.addProject" = "إضافة مشروع";
@@ -533,28 +529,6 @@
 "sidebar.accountOptions" = "خيارات الحساب";
 "sidebar.accountUsage" = "حساب DOTS واستخدامه";
 
-"pet.position.bottomTrailing" = "أسفل اليمين";
-"pet.position.bottomLeading" = "أسفل اليسار";
-"pet.position.topTrailing" = "أعلى اليمين";
-"pet.position.topLeading" = "أعلى اليسار";
-"pet.settings" = "إعدادات الحيوانات الأليفة";
-"pet.hide" = "إخفاء الحيوانات الأليفة";
-"pet.dragHint" = "DOTS Pet · استمر في التحرك";
-"pet.stopAndSend" = "توقف عن الاستماع وأرسل إلى الدردشة المحددة";
-"pet.micOpening" = "جارٍ فتح الميكروفون…";
-"pet.listening" = "جاري الاستماع…";
-"pet.transcribing" = "جارٍ نسخ النموذج الصوتي المحلي…";
-"pet.sending" = "جارٍ الإرسال إلى الدردشة المحددة...";
-"pet.visibility" = "رؤية الحيوانات الأليفة";
-"pet.show" = "عرض الحيوانات الأليفة";
-"pet.visibilityHint" = "يطفو الحيوان الأليف على الشاشة فقط أثناء تمكين هذا الخيار. يتم إيقاف تشغيله عند الإطلاق الأول.";
-"pet.appearance" = "المظهر";
-"pet.position" = "الموقف";
-"pet.size" = "الحجم";
-"pet.sizeValue" = "%d بكسل";
-"pet.avatar" = "الصورة الرمزية";
-"pet.preview" = "معاينة";
-"pet.title" = "حيوان أليف";
 
 "usage.title" = "الاستخدام";
 "usage.accountSummary" = "ملخص حساب DOTS YAZILIM لهذه الفترة";
@@ -870,7 +844,6 @@
 "marketplace.install" = "تثبيت";
 "marketplace.search" = "البحث في الإضافات";
 "marketplace.update" = "تحديث v%@ → v%@";
-"pet.avatarHint" = "اختر الصورة الرمزية للحيوانات الأليفة.";
 "router.customEndpointHint" = "نقطة نهاية واجهة برمجة التطبيقات المخصصة";
 "router.noKeyRequired" = "لا يوجد مفتاح مطلوب. الاتصال بالتوجيه من خلال هذا المزود.";
 "settings.addProviderCustom" = "أضف هذا الموفر من خلال واجهة برمجة التطبيقات المخصصة.";
@@ -1104,9 +1077,6 @@
 "feedback.tag.negative_other" = "أخرى";
 
 // Completed translations for keys added to the desktop catalog.
-"assistantMode.title" = "وضع المساعد";
-"assistantMode.coding" = "برمجة";
-"assistantMode.chat" = "محادثة";
 "tasks.close" = "إغلاق المهام";
 "tasks.back" = "رجوع";
 "tasks.new" = "مهمة جديدة";
@@ -1147,3 +1117,213 @@
 "settings.compactTrigger" = "ضغط السياق تلقائيًا عند";
 "settings.compactTrigger.hint" = "نسبة من نافذة سياق كل نموذج. القيمة الأعلى تُبقي ذاكرة التخزين المؤقت للموجّه فترة أطول لأن الضغط يعيد كتابتها.";
 "conversation.translate" = "ترجمة";
+
+
+// Completed translations for keys added to the desktop catalog.
+"tray.section.running" = "المحادثات قيد التشغيل";
+"tray.section.waiting" = "يتطلب الانتباه";
+"tray.write" = "اكتب رسالة";
+"tray.openUsage" = "فتح شاشة الاستخدام";
+"tray.noChats" = "لا توجد محادثات الآن";
+"tray.unread" = "رد جديد";
+
+// Write-lease conflict copy.
+"conflict.policy.waitThenAsk" = "الانتظار ثم السؤال";
+"conflict.policy.waitThenAsk.detail" = "ينتظر الدردشة الأخرى بصمت ولا يسأل إلا إذا طال الانتظار.";
+"conflict.policy.ask" = "اسألني";
+"conflict.policy.ask.detail" = "يسأل بمجرد أن تريد دردشتان الملف نفسه.";
+"conflict.policy.waitOnly" = "الانتظار دائمًا";
+"conflict.policy.waitOnly.detail" = "لا يسأل: كل كتابة تنتظر الدردشة التي تحتفظ بالملف.";
+"conflict.title" = "تكتب دردشة أخرى %@";
+"conflict.stillBusy" = "تم تعليق الكتابة: ما زالت دردشة أخرى تكتب %@.";
+"conflict.userSkipped" = "تم تخطي الكتابة: بقي %@ مع الدردشة الأخرى (%@) كما طلبت.";
+"conflict.stoppedHolder" = "تم إيقاف الدردشة “%@” بناءً على طلبك ونُفِّذت هذه الكتابة.";
+"conflict.stoppedOthers" = "تم إيقاف الدردشات الأخرى لهذا المشروع بناءً على طلبك ونُفِّذت هذه الكتابة.";
+"conflict.wholeProject" = "المشروع بالكامل (الأمر: %@)";
+"conflict.banner.title" = "تكتب دردشة أخرى هذا الملف";
+"conflict.banner.body" = "%1$@ · تحتفظ به «%2$@» منذ %3$d ثانية";
+"conflict.banner.keepWaiting" = "متابعة الانتظار";
+"conflict.banner.stopHolder" = "أوقف هذه الدردشة";
+"conflict.banner.stopAllOthers" = "أوقف كل الدردشات الأخرى";
+"conflict.banner.skip" = "تخطي هذه الكتابة";
+"conflict.waiting" = "جارٍ انتظار “%@” أثناء الكتابة: %@";
+"settings.workspaceConflictPolicy" = "إذا كانت دردشة أخرى تكتب الملف نفسه";
+"settings.conflictWaitSeconds" = "الانتظار قبل السؤال";
+"settings.conflictWaitValue" = "%d ثانية";
+
+
+"conversation.ranCommand" = "Ran 1 command";
+"conversation.ranCommands" = "Ran %d commands";
+"conversation.runningTools" = "Running tools…";
+"conversation.thinkingPhase" = "Thinking…";
+"conversation.tokensCount" = "%@ tokens";
+"usage.context.window" = "نافذة السياق";
+"usage.planLimits" = "حدود استخدام الخطة";
+"ask.other" = "Other";
+"ask.next" = "Next";
+"ask.skipShort" = "Skip";
+"composer.queue.one" = "1 message queued";
+"composer.queue.many" = "%d messages queued";
+"composer.queue.edit" = "Edit";
+"composer.queue.editBlocked" = "Clear the message box to edit";
+"composer.queue.remove" = "Remove";
+"git.createPR" = "إنشاء PR";
+"git.hideBar" = "إخفاء";
+"composer.queue.next" = "Next: %@";
+
+// Composer, git bar and usage popover.
+"usage.context.tooltip" = "استخدام السياق والرموز";
+"usage.context.conversation" = "رسائل المحادثة";
+"usage.context.toolDefinitions" = "تعريفات الأدوات";
+"usage.context.mcpDefinitions" = "تعريفات أدوات MCP";
+"usage.context.systemPrompt" = "تعليمات النظام";
+"usage.context.cacheHit" = "إصابات ذاكرة التخزين المؤقت للموجّه";
+"usage.context.notReported" = "لم يبلّغ عنه المزوّد";
+"usage.context.cacheWrite" = "تمت كتابة %@ رمزًا في ذاكرة التخزين المؤقت";
+
+// Local AI runtime and custom endpoint tuning.
+"custom.modelOptional" = "اسم النموذج (اختياري)";
+"custom.contextOptional" = "نافذة السياق بالرموز (اختياري)";
+"custom.contextHint" = "اترك الحقلين فارغين لقراءتهما من الخادم. حدّد السياق إذا لم يبلّغ عنه الخادم (Ollama: مطابق لـ OLLAMA_CONTEXT_LENGTH).";
+"custom.contextInvalid" = "يجب أن تكون نافذة السياق رقمًا موجبًا.";
+"custom.detected" = "يعمل على هذا الحاسوب";
+"custom.noModelAvailable" = "%@ لا يعرض أي نماذج. شغّل خادمه أو حدّد اسم نموذج لنقطة النهاية.";
+"local.extraArgs" = "وسائط llama-server إضافية";
+"local.mlxExtraArgs" = "وسائط إضافية لخادم mlx_lm";
+"local.gpuLayers" = "طبقات GPU (auto أو all أو رقم)";
+"local.hardware" = "العتاد";
+"local.hardwareGPU" = "%@ · %@ ذاكرة GPU · %@ RAM";
+"local.importGGUF" = "إضافة ملف GGUF…";
+"local.installMLX" = "تثبيت MLX";
+"local.installingMLX" = "جارٍ تثبيت MLX (Python + mlx-lm)…";
+"local.kvCache" = "نوع ذاكرة KV المؤقتة";
+"local.servingContext" = "%@ · %d رمز";
+"local.tooLarge" = "كبير جدًا";
+"local.tuning" = "الأداء";
+"local.tuningHint" = "عند تركه فارغًا أو auto يضبط وقت التشغيل النموذج بحسب ذاكرة GPU لديك. تُطبَّق التغييرات عند بدء النموذج في المرة القادمة.";
+"local.contextSize" = "حجم السياق (رموز)";
+"local.threads" = "خيوط CPU";
+"local.batchSize" = "حجم الدفعة";
+"local.forget" = "إزالة من القائمة";
+"localModel.needsMemory" = "يحتاج إلى نحو %d غيغابايت من ذاكرة GPU أو RAM.";
+"localRuntime.helperFailed" = "فشل %@ (رمز الخروج %d)";
+"localRuntime.mlxUnsupported" = "يتطلب MLX جهاز Mac بمعالج Apple Silicon.";
+"local.flashAttention" = "Flash attention";
+"local.hardwareMemory" = "%@ RAM";
+
+// Translations completed for keys that had no localized text.
+"conversation.fullToolOutput" = "مخرجات الأداة كاملة";
+"sidebar.showSidebar" = "إظهار الشريط الجانبي";
+"sidebar.hideSidebar" = "إخفاء الشريط الجانبي";
+"navigation.back" = "رجوع";
+"navigation.forward" = "تقدّم";
+"settings.autoApprovePlans" = "الموافقة على الخطط تلقائيًا";
+"settings.autoApprovePlans.hint" = "عند التفعيل تُطبَّق الخطة المُنشأة دون انتظار موافقة منفصلة على الخطة. موافقات مستوى الأدوات تبقى سارية.";
+"media.fallbackUsed" = "تعذّر على المزوّد المحدد إنشاء هذه الصورة. أُنشئت عبر طلب احتياطي لمرة واحدة من خلال %@/%@؛ لم يتغير مزوّد المحادثة الرئيسية ولا نموذجها، لذا تبقى ذاكرة التخزين المؤقت للموجّهات سليمة.";
+"media.imageUnsupportedWithFallbackHint" = "لا أستطيع إنشاء هذه الصورة باستخدام %@. اضبط واجهة API أو مزوّد صور كخيار احتياطي. تبديل نموذج المحادثة الرئيسي لإنشاء الصور فقط قد يُفسد ذاكرة الموجّهات المؤقتة لدى المزوّد.";
+"conversation.generationResumed" = "تم استئناف الرسالة";
+"conversation.cancelPlan" = "إلغاء الخطة";
+"conversation.cancelPlanHelp" = "إلغاء هذه الخطة وتحرير الرسائل المنتظرة";
+"conversation.thinking" = "عملية التفكير";
+"usage.manageResets" = "إدارة عمليات إعادة التعيين";
+"usage.useReset" = "استخدام إعادة التعيين";
+"usage.resetTitle" = "استخدام إعادة تعيين حدّ Claude؟";
+"usage.openClaude" = "المتابعة في Claude";
+"usage.resetConfirmation" = "ستُفتح صفحة الاستخدام في Claude. سجّل الدخول إلى %@ وراجع إعادة التعيين المعروضة لهذا الحساب. لاستخدامها، انقر على إعادة التعيين مجانًا وأكّد في Claude. لا يمكن التراجع عن إعادة التعيين بعد استخدامها. ستتحدّث الحدود عند عودتك إلى HerNess.";
+"usage.resetOpenFailed" = "تعذّر فتح Claude. تأكد من أن الحساب ما زال متصلًا ثم حاول مجددًا.";
+"conversation.review" = "مراجعة";
+"dock.noWorkspace" = "اختر مجلد عمل أولًا.";
+"dock.branch" = "الفرع";
+"dock.refresh" = "تحديث";
+"dock.commit" = "Commit";
+"dock.push" = "Push";
+"dock.fetch" = "Fetch";
+"dock.commitOrPush" = "Commit أو Push";
+"dock.commitMessage" = "رسالة الـ commit";
+"dock.noChanges" = "لا تغييرات من الوكيل.";
+"dock.whyRequest" = "طلبك";
+"dock.whyAgent" = "شرح الوكيل";
+"dock.notRepo" = "هذا المجلد ليس مستودع git.";
+"dock.filterFiles" = "تصفية الملفات…";
+"dock.openFile" = "فتح الملف";
+"dock.selectFile" = "اختر ملفًا من شجرة مساحة العمل";
+"dock.binaryFile" = "ملف ثنائي أو غير قابل للقراءة";
+"project.missing.title" = "لم يتم العثور على مجلد المشروع: %@";
+"project.missing.message" = "ربما تم نقل مجلد المشروع في '%@' أو حذفه. يُرجى اختيار موقعه الجديد أو إزالة المشروع.";
+"project.missing.locate" = "تحديد الموقع…";
+"project.missing.readOnly" = "مجلد المشروع غير متاح. يمكنك عرض المحادثات السابقة؛ تم تعطيل إنشاء محادثات جديدة وإرسال الرسائل إلى أن تختار موقعًا جديدًا.";
+"queue.waitingForPlan" = "بانتظار الموافقة على الخطة";
+"settings.closeToTray" = "المتابعة في منطقة الإشعارات عند إغلاق النافذة";
+"settings.closeToTray.hint" = "تستمر عمليات التشغيل والطرف والمهام المجدولة أثناء إخفاء النافذة؛ وأيقونة منطقة الإشعارات تعيدها.";
+"tray.show" = "فتح النافذة";
+"context.overflowTitle" = "هذه المحادثة لن تتسع في النموذج الجديد";
+"context.overflowReason" = "يحتاج %1$@ إلى نحو %2$d رمز للمتابعة، والمتاح في ذلك النموذج %3$d فقط.";
+"context.overflowByModel" = "سيكتب الملخص %@، وهو أصغر نموذج متصل ما زال قادرًا على قراءة النص.";
+"context.overflowLocally" = "لا يستطيع أي نموذج متصل قراءة النص، لذا تُختصر المحادثة دون سؤال أي نموذج.";
+"context.overflowCompress" = "ضغط ومتابعة";
+"context.overflowNotNow" = "ليس الآن";
+"context.overflowDeclined" = "توقف الإرسال: المحادثة لا تتسع في النموذج الجديد.";
+"usage.context.title" = "الاستخدام";
+"usage.context.input" = "المدخلات المرسلة";
+"usage.context.estimatedInput" = "المدخلات المقدَّرة";
+"usage.context.output" = "المخرجات";
+"usage.context.latestRequest" = "آخر طلب · نافذة السياق";
+"usage.context.estimatedBreakdown" = "تفصيل المدخلات المقدَّر";
+"usage.context.estimateNote" = "تُعرض إجماليات المدخلات/المخرجات من المزوّد عند توفرها. وإلا فإن إجماليات المدخلات وفئات الأدوات/MCP تقديرات محلية.";
+"usage.context.tokens" = "رموز";
+"usage.context.toolCalls" = "استدعاءات الأدوات";
+"usage.context.mcpCalls" = "استدعاءات MCP";
+"usage.context.toolResults" = "نتائج الأدوات";
+"usage.context.mcpResults" = "نتائج MCP";
+"plan.proposed" = "اقترح Claude خطة";
+"plan.reject" = "رفض";
+"plan.revise" = "تعديل…";
+"plan.accept" = "قبول";
+"plan.acceptAuto" = "قبول مع الوضع التلقائي";
+"plan.open" = "فتح الخطة";
+"plan.empty" = "لا توجد خطة بعد";
+"dock.expand" = "توسيع";
+"dock.collapse" = "طي";
+"usage.context.cacheReuse" = "إعادة استخدام الذاكرة المؤقتة في هذه المحادثة";
+"usage.context.cacheFreshInput" = "New / outside-breakpoint input: %@ tokens";
+"usage.context.cacheCoverage" = "تغطية القياس: %@ · %@ / %@ طلب";
+"usage.context.cacheLatency" = "متوسط زمن الطلب: %@ مللي ثانية";
+"usage.context.cacheLoss" = "أكبر خسارة في الذاكرة المؤقتة: %@ · %@ رمز";
+"tray.back" = "المحادثات";
+
+"composer.cacheExpired.explanation" = "انقضت المدة المقدَّرة لصلاحية ذاكرة التخزين المؤقت. ذاكرة التخزين المؤقت للموجّهات هي حالة معالجة مؤقتة لدى المزوّد؛ ويبقى سجل محادثتك محفوظًا. قد تؤدي المتابعة بالسجل الكامل إلى احتساب تلك الرموز كإدخال جديد مرة أخرى. لا يمكن التأكد من أن المزوّد ما زال يحتفظ بالذاكرة المؤقتة إلا من بيانات استخدام الطلب التالي.";
+"composer.accountSwitched.notice" = "انتقلت هذه المحادثة إلى حساب آخر على النموذج نفسه. تبدأ ذاكرة التخزين المؤقت هناك من الصفر؛ قد تستهلك المتابعة رموزًا أكثر وتكلّف أكثر.";
+"composer.contextFull.notice" = "نافذة السياق على وشك الامتلاء؛ قد تستهلك المتابعة رموزًا أكثر وتكلّف أكثر. ابدأ محادثة جديدة بملخص قصير.";
+"composer.cacheExpired.infoTitle" = "لماذا أرى هذا؟";
+"composer.cacheExpired.notice" = "ربما انتهت صلاحية ذاكرة التخزين المؤقت؛ قد تستهلك المتابعة رموزًا أكثر وتكلّف أكثر. ابدأ محادثة جديدة بملخص قصير.";
+"feedback.tag.apply_elsewhere" = "Apply it elsewhere";
+"feedback.tag.broke_existing_feature" = "Broke an existing feature";
+"feedback.tag.did_not_follow_project_style" = "Didn't follow project style";
+"feedback.tag.ignored_project_architecture" = "Ignored project architecture";
+"feedback.tag.keep_project_style" = "Keep the project style";
+"feedback.tag.reuse_architecture" = "Reuse this architecture";
+"feedback.tag.reuse_token_pattern" = "Reuse this token pattern";
+"feedback.tag.wrong_theme_or_token" = "Wrong theme or token";
+
+// Completed translations for keys added to the desktop catalog.
+"conversation.filesChangedCount" = "تم تغيير %d من الملفات";
+"conversation.filesLineSummary" = "+%d −%d";
+"conversation.lineCountsUnavailable" = "عدد الأسطر غير متاح";
+"conversation.filesMore" = "عرض %d ملفات إضافية";
+"conversation.filesLess" = "عرض ملفات أقل";
+"conversation.undoChanges" = "تراجع";
+"conversation.viewChanges" = "عرض التغييرات";
+"conversation.filesReverted" = "تم التراجع عن تغييرات الملفات.";
+
+// Completed translations for keys added to the desktop catalog.
+"composer.modelSwitched.notice" = "تغيّر النموذج. لا تنتقل ذاكرة التخزين المؤقت إلى النموذج الجديد؛ يُعالَج السجل كاملًا من جديد، وقد يستهلك ذلك رموزًا أكثر ويكلّف أكثر.";
+
+"archive.title" = "المحادثات المؤرشفة";
+"archive.empty" = "لا توجد محادثات مؤرشفة.";
+
+"conversation.plan" = "خطة";
+"conversation.system" = "النظام";
+
+"archive.confirmDelete" = "هل تريد حذف هذه المحادثة نهائيًا؟";
+"archive.deletePermanently" = "حذف نهائي";
+"conversation.processedTokensCount" = "%@ رمز";

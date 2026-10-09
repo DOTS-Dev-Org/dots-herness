@@ -25,6 +25,9 @@ public struct StoredProviderAccount: Codable, Sendable, Equatable {
     /// account until this passes, then falls back to the usual ordering.
     public var cooldownUntil: Date?
     public var error: String?
+    /// Context window the user (or the bundled local server) declared for this
+    /// account. Local servers rarely report one, so this beats every guess.
+    public var contextWindow: Int?
 
     public init(
         id: String = UUID().uuidString,
@@ -43,7 +46,8 @@ public struct StoredProviderAccount: Codable, Sendable, Equatable {
         refreshCredentialID: String? = nil,
         priority: Int = 0,
         cooldownUntil: Date? = nil,
-        error: String? = nil
+        error: String? = nil,
+        contextWindow: Int? = nil
     ) {
         self.id = id
         self.provider = provider
@@ -62,9 +66,14 @@ public struct StoredProviderAccount: Codable, Sendable, Equatable {
         self.priority = priority
         self.cooldownUntil = cooldownUntil
         self.error = error
+        self.contextWindow = contextWindow
     }
 
-    enum CodingKeys: String, CodingKey { case id, provider, name, email, sessionAccountID, active, imageFallbackEnabled, status, authType, model, baseURL, api, credentialID, refreshCredentialID, priority, cooldownUntil, error }
+    enum CodingKeys: String, CodingKey { case id, provider, name, email, sessionAccountID, active, imageFallbackEnabled, status, authType, model, baseURL, api, credentialID, refreshCredentialID, priority, cooldownUntil, error, contextWindow }
+
+    /// A custom endpoint saved without a model name is stored as `prefix/`. It
+    /// names no model, so it must never reach a picker or a request.
+    public var hasPlaceholderModel: Bool { model.hasSuffix("/") }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -85,7 +94,8 @@ public struct StoredProviderAccount: Codable, Sendable, Equatable {
             refreshCredentialID: try values.decodeIfPresent(String.self, forKey: .refreshCredentialID),
             priority: try values.decodeIfPresent(Int.self, forKey: .priority) ?? 0,
             cooldownUntil: try values.decodeIfPresent(Date.self, forKey: .cooldownUntil),
-            error: try values.decodeIfPresent(String.self, forKey: .error)
+            error: try values.decodeIfPresent(String.self, forKey: .error),
+            contextWindow: try values.decodeIfPresent(Int.self, forKey: .contextWindow)
         )
     }
 }
@@ -98,6 +108,9 @@ public struct StoredCustomEndpoint: Codable, Sendable, Equatable {
     public var api: String
     public var apiType: String
     public var credentialID: String?
+    /// Model to request when the server's `/models` listing is unavailable.
+    public var model: String?
+    public var contextWindow: Int?
 
     public init(
         id: String = UUID().uuidString,
@@ -106,7 +119,9 @@ public struct StoredCustomEndpoint: Codable, Sendable, Equatable {
         baseURL: String,
         api: String,
         apiType: String,
-        credentialID: String? = nil
+        credentialID: String? = nil,
+        model: String? = nil,
+        contextWindow: Int? = nil
     ) {
         self.id = id
         self.name = name
@@ -115,22 +130,46 @@ public struct StoredCustomEndpoint: Codable, Sendable, Equatable {
         self.api = api
         self.apiType = apiType
         self.credentialID = credentialID
+        self.model = model
+        self.contextWindow = contextWindow
     }
+
+    /// The stored account model: the declared one, or the `prefix/` placeholder.
+    var accountModel: String { model ?? "\(prefix)/" }
 }
 
 public struct StoredProviderState: Codable, Sendable, Equatable {
     public var accounts: [StoredProviderAccount]
     public var endpoints: [StoredCustomEndpoint]
     public var selectedAccountID: String?
+    /// Model-specific context sizes selected by the user, keyed by provider and
+    /// model so identically named models from different services stay separate.
+    public var modelContextWindowOverrides: [String: Int]
 
     public init(
         accounts: [StoredProviderAccount] = [],
         endpoints: [StoredCustomEndpoint] = [],
-        selectedAccountID: String? = nil
+        selectedAccountID: String? = nil,
+        modelContextWindowOverrides: [String: Int] = [:]
     ) {
         self.accounts = accounts
         self.endpoints = endpoints
         self.selectedAccountID = selectedAccountID
+        self.modelContextWindowOverrides = modelContextWindowOverrides
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case accounts, endpoints, selectedAccountID, modelContextWindowOverrides
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            accounts: try values.decodeIfPresent([StoredProviderAccount].self, forKey: .accounts) ?? [],
+            endpoints: try values.decodeIfPresent([StoredCustomEndpoint].self, forKey: .endpoints) ?? [],
+            selectedAccountID: try values.decodeIfPresent(String.self, forKey: .selectedAccountID),
+            modelContextWindowOverrides: try values.decodeIfPresent([String: Int].self, forKey: .modelContextWindowOverrides) ?? [:]
+        )
     }
 }
 
@@ -246,6 +285,16 @@ public final class NativeProviderStore {
         try data.write(to: fileURL, options: .atomic)
     }
 
+    public func setModelContextWindowOverride(provider: String, model: String, contextWindow: Int?) throws {
+        let key = RouterCatalog.modelContextOverrideKey(provider: provider, model: model)
+        if let contextWindow, contextWindow > 0 {
+            state.modelContextWindowOverrides[key] = contextWindow
+        } else {
+            state.modelContextWindowOverrides.removeValue(forKey: key)
+        }
+        try save()
+    }
+
     @discardableResult
     public func addAccount(
         provider: RouterProviderKind,
@@ -293,7 +342,9 @@ public final class NativeProviderStore {
         baseURL: String,
         api: String,
         apiType: String,
-        secret: String
+        secret: String,
+        model: String? = nil,
+        contextWindow: Int? = nil
     ) throws -> StoredCustomEndpoint {
         let normalizedBaseURL = try normalized(baseURL)
         let id = UUID().uuidString
@@ -306,7 +357,9 @@ public final class NativeProviderStore {
             baseURL: normalizedBaseURL,
             api: api,
             apiType: apiType,
-            credentialID: credentialID
+            credentialID: credentialID,
+            model: model,
+            contextWindow: contextWindow
         )
         state.endpoints.append(endpoint)
         try save()
@@ -320,7 +373,9 @@ public final class NativeProviderStore {
         baseURL: String,
         api: String,
         apiType: String,
-        secret: String?
+        secret: String?,
+        model: String? = nil,
+        contextWindow: Int? = nil
     ) throws {
         guard let index = state.endpoints.firstIndex(where: { $0.id == endpoint.id }) else { throw ProviderStoreError.invalidEndpoint }
         let normalizedBaseURL = try normalized(baseURL)
@@ -337,10 +392,12 @@ public final class NativeProviderStore {
                 try vault.set(secret.trimmingCharacters(in: .whitespacesAndNewlines), for: credentialID!)
             }
         }
-        state.endpoints[index] = StoredCustomEndpoint(id: endpoint.id, name: trimmedName, prefix: sanitized, baseURL: normalizedBaseURL, api: api, apiType: apiType, credentialID: credentialID)
+        let updated = StoredCustomEndpoint(id: endpoint.id, name: trimmedName, prefix: sanitized, baseURL: normalizedBaseURL, api: api, apiType: apiType, credentialID: credentialID, model: model, contextWindow: contextWindow)
+        state.endpoints[index] = updated
         for accountIndex in state.accounts.indices where state.accounts[accountIndex].provider == ("custom:" + endpoint.id) {
             state.accounts[accountIndex].name = trimmedName
-            state.accounts[accountIndex].model = sanitized + "/"
+            state.accounts[accountIndex].model = updated.accountModel
+            state.accounts[accountIndex].contextWindow = contextWindow
             state.accounts[accountIndex].baseURL = normalizedBaseURL
             state.accounts[accountIndex].api = api == CustomAPIKind.anthropic.rawValue ? RouterAPIKind.anthropic.rawValue : RouterAPIKind.openAICompatible.rawValue
             if let secret {
@@ -366,10 +423,11 @@ public final class NativeProviderStore {
             active: true,
             status: "connected",
             authType: "custom",
-            model: "\(endpoint.prefix)/",
+            model: endpoint.accountModel,
             baseURL: endpoint.baseURL,
             api: endpoint.api == CustomAPIKind.anthropic.rawValue ? RouterAPIKind.anthropic.rawValue : RouterAPIKind.openAICompatible.rawValue,
-            credentialID: credentialID
+            credentialID: credentialID,
+            contextWindow: endpoint.contextWindow
         )
         state.accounts.append(account)
         if state.selectedAccountID == nil { state.selectedAccountID = account.id }

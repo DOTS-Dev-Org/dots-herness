@@ -7,6 +7,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MobileAttachmentTest {
+    @Test fun `historical snapshot never switches to latest revision`() {
+        val directory = kotlin.io.path.createTempDirectory("MobileAttachmentHistory").toFile()
+        try {
+            val oldFile = java.io.File(directory, "v1.txt").apply { writeText("old") }
+            val newFile = java.io.File(directory, "v2.txt").apply { writeText("new") }
+            val old = MobileAttachment("one", "one.txt", MobileAttachmentKind.FILE, "text/plain", oldFile.toURI().toString(), oldFile.absolutePath, "v1", 1)
+            val latest = MobileAttachment("one", "one.txt", MobileAttachmentKind.FILE, "text/plain", newFile.toURI().toString(), newFile.absolutePath, "v2", 2)
+            val historical = MobilePromptCache.historicalAttachment(old.canonicalBlock(), latest)!!
+            assertEquals("old", historical.providerData()?.toString(Charsets.UTF_8))
+            oldFile.delete()
+            org.junit.Assert.assertNull(MobilePromptCache.historicalAttachment(old.canonicalBlock(), latest)?.providerData())
+        } finally { directory.deleteRecursively() }
+    }
     @Test fun `canonical attachment preserves revision locator and delivered hash`() {
         val original = MobileAttachment(
             attachmentId = "attachment-1",

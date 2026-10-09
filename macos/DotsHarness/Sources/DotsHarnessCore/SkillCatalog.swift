@@ -103,11 +103,20 @@ public enum SkillCatalogError: Error, LocalizedError, Sendable {
 public final class SkillCatalog: ObservableObject {
     private struct State: Codable {
         var disabled: [String] = []
+        var known: [String: Known]?
+    }
+
+    private struct Known: Codable, Equatable {
+        let path: String
+        let name: String
+        var identity: String?
     }
 
     private struct Candidate {
+        /// Carries the id derived from the frontmatter or folder name; `refresh` pins the final one.
         let descriptor: SkillDescriptor
-        let url: URL
+        /// The skill folder on disk (inode and creation date); survives a rename.
+        let identity: String?
     }
 
     public static let maximumSkillBytes = 200_000
@@ -119,6 +128,8 @@ public final class SkillCatalog: ObservableObject {
     private let fileManager: FileManager
     private var workspaceURL: URL?
     private var disabled = Set<String>()
+    /// Last seen location of every skill id. See `pinnedIDs`.
+    private var known: [String: Known] = [:]
 
     public init(
         paths: SupportPaths,
@@ -177,14 +188,71 @@ public final class SkillCatalog: ObservableObject {
             appendRoot(bundled, source: .bundled, to: &candidates, seenRoots: &seenRoots)
         }
 
+        let pins = pinnedIDs(for: candidates)
+        // An id held by a renamed skill is not free for a newcomer that derives the same one.
+        let reserved = Set(zip(candidates, pins).compactMap { $1 == $0.descriptor.id ? nil : $1 })
+        var taken = reserved.union(known.keys).union(candidates.map(\.descriptor.id))
         var selected: [SkillDescriptor] = []
-        var ids = Set<String>()
-        for candidate in candidates {
-            guard !ids.contains(candidate.descriptor.id) else { continue }
-            ids.insert(candidate.descriptor.id)
-            selected.append(candidate.descriptor)
+        var located: [String: Known] = [:]
+        for (candidate, pin) in zip(candidates, pins) {
+            let derived = candidate.descriptor
+            var id = pin ?? derived.id
+            if pin == nil, reserved.contains(id) {
+                id = (2...).lazy.map { "\(derived.id)-\($0)" }.first { !taken.contains($0) } ?? id
+                taken.insert(id)
+            }
+            guard located[id] == nil else { continue }
+            located[id] = Known(path: derived.path, name: derived.name, identity: candidate.identity)
+            selected.append(SkillDescriptor(
+                id: id,
+                name: derived.name,
+                description: derived.description,
+                source: derived.source,
+                path: derived.path,
+                enabled: !disabled.contains(id)
+            ))
         }
         entries = selected
+
+        // A deleted skill gives its id up; one that is merely out of sight (another
+        // workspace, a shadowed duplicate) keeps it.
+        // ponytail: an unmounted workspace volume counts as deleted, its renamed skills fall back to derived ids.
+        let remembered = known
+            .filter { located[$0.key] == nil && fileManager.fileExists(atPath: $0.value.path) }
+            .merging(located) { $1 }
+        if remembered != known {
+            known = remembered
+            saveState()
+        }
+    }
+
+    /// A skill keeps the id it was first seen under. A conversation captures that id and
+    /// earlier messages are never rewritten (the prompt cache prefix survives), so renaming
+    /// the folder, the display name or the frontmatter id must not change it.
+    private func pinnedIDs(for candidates: [Candidate]) -> [String?] {
+        // Strongest evidence first: the same folder on disk, the same SKILL.md path, then a
+        // display name under the same root (a rename that recreated the folder, e.g. via git).
+        // An ambiguous match is not a rename.
+        let evidence: [(Candidate, Known) -> Bool] = [
+            { $0.identity != nil && $0.identity == $1.identity },
+            { $0.descriptor.path == $1.path },
+            { Self.skillRoot($0.descriptor.path) == Self.skillRoot($1.path) && $0.descriptor.name == $1.name },
+        ]
+        var pins = [String?](repeating: nil, count: candidates.count)
+        var claimed = Set<String>()
+        for matches in evidence {
+            for (index, candidate) in candidates.enumerated() where pins[index] == nil {
+                let hits = known.filter { !claimed.contains($0.key) && matches(candidate, $0.value) }
+                guard hits.count == 1, let id = hits.keys.first else { continue }
+                pins[index] = id
+                claimed.insert(id)
+            }
+        }
+        return pins
+    }
+
+    private static func skillRoot(_ skillFile: String) -> String {
+        URL(fileURLWithPath: skillFile).deletingLastPathComponent().deletingLastPathComponent().path
     }
 
     public func descriptor(for id: String, includeDisabled: Bool = false) -> SkillDescriptor? {
@@ -301,7 +369,13 @@ public final class SkillCatalog: ObservableObject {
 
     @discardableResult
     public func create(name: String, description: String, body: String, preferredID: String? = nil) throws -> String {
-        guard let workspaceURL else { throw SkillCatalogError.unavailable("No workspace is open.") }
+        guard let workspaceURL else {
+            throw SkillCatalogError.unavailable("The workspace folder is unavailable.")
+        }
+        var isDirectory = ObjCBool(false)
+        guard fileManager.fileExists(atPath: workspaceURL.path, isDirectory: &isDirectory), isDirectory.boolValue else {
+            throw SkillCatalogError.unavailable("The workspace folder is unavailable.")
+        }
         let id = Self.normalizeID((preferredID?.isEmpty == false ? preferredID! : name))
         guard !id.isEmpty else { throw SkillCatalogError.invalid("A valid skill id could not be derived from the name.") }
         guard descriptor(for: id, includeDisabled: true) == nil else {
@@ -425,16 +499,19 @@ public final class SkillCatalog: ObservableObject {
                   let parsed = try? Self.parse(text: text, fallbackID: child.lastPathComponent) else { continue }
             let id = Self.normalizeID(parsed.id)
             guard !id.isEmpty else { continue }
+            let attributes = try? fileManager.attributesOfItem(atPath: child.path)
+            let identity = (attributes?[.systemFileNumber] as? NSNumber).flatMap { inode in
+                (attributes?[.creationDate] as? Date).map { "\(inode)-\($0.timeIntervalSince1970)" }
+            }
             candidates.append(Candidate(
                 descriptor: SkillDescriptor(
                     id: id,
                     name: parsed.name,
                     description: parsed.description,
                     source: source,
-                    path: skillFile.path,
-                    enabled: !disabled.contains(id)
+                    path: skillFile.path
                 ),
-                url: skillFile
+                identity: identity
             ))
         }
     }
@@ -514,10 +591,11 @@ public final class SkillCatalog: ObservableObject {
         guard let data = try? Data(contentsOf: paths.root.appendingPathComponent("skills-state.json")),
               let state = try? JSONDecoder().decode(State.self, from: data) else { return }
         disabled = Set(state.disabled.map(Self.normalizeID))
+        known = state.known ?? [:]
     }
 
     private func saveState() {
-        let state = State(disabled: disabled.sorted())
+        let state = State(disabled: disabled.sorted(), known: known)
         guard let data = try? JSONEncoder().encode(state) else { return }
         try? data.write(to: paths.root.appendingPathComponent("skills-state.json"), options: .atomic)
     }

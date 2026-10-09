@@ -1,7 +1,7 @@
 [
   {
     "id": "gpt",
-    "name": "GPT",
+    "name": "ChatGPT",
     "category": "oauth",
     "logoSymbol": "sparkles",
     "hint": "Sign in with ChatGPT",
@@ -10,11 +10,12 @@
       "format": "responses",
       "extraHeaders": {
         "originator": "codex_cli_rs",
-        "user-agent": "codex_cli_rs/0.136.0"
+        "user-agent": "codex_cli_rs/0.160.0"
       },
       "quirks": {
         "requiresSessionAccountID": true,
-        "usesCodexInstructions": true
+        "usesCodexInstructions": true,
+        "supportsNativeCompaction": true
       }
     },
     "oauth": {
@@ -33,6 +34,19 @@
       }
     },
     "models": [
+      {
+        "id": "gpt-6.1-sol",
+        "name": "GPT 6.1 Sol",
+        "efforts": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "premium"
+      },
       {
         "id": "gpt-5.6-terra",
         "name": "GPT 5.6 Terra",
@@ -114,7 +128,7 @@
   },
   {
     "id": "claude",
-    "name": "Claude",
+    "name": "Anthropic",
     "category": "oauth",
     "logoSymbol": "circle.hexagongrid",
     "hint": "Sign in with Claude",
@@ -145,6 +159,48 @@
       "manualCodeSeparator": "#"
     },
     "models": [
+      {
+        "id": "claude-fable-5-1",
+        "name": "Claude Fable 5.1",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "premium"
+      },
+      {
+        "id": "claude-haiku-5-5",
+        "name": "Claude Haiku 5.5",
+        "tier": "light"
+      },
+      {
+        "id": "claude-sonnet-5-5",
+        "name": "Claude Sonnet 5.5",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "standard"
+      },
+      {
+        "id": "claude-opus-5-5",
+        "fast": true,
+        "name": "Claude Opus 5.5",
+        "efforts": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "tier": "premium"
+      },
       {
         "id": "claude-sonnet-5",
         "name": "Claude Sonnet 5",
@@ -237,7 +293,8 @@
           "medium",
           "high"
         ],
-        "tier": "premium"
+        "tier": "premium",
+        "supportsLegacyThinkingBudget": true
       },
       {
         "id": "claude-haiku-4-5",
@@ -641,7 +698,8 @@
           "medium",
           "high"
         ],
-        "tier": "premium"
+        "tier": "premium",
+        "supportsLegacyThinkingBudget": true
       },
       {
         "id": "claude-haiku-4-5",
@@ -862,7 +920,10 @@
     "hint": "API key",
     "transport": {
       "baseURL": "https://api.openai.com/v1",
-      "format": "openai-chat"
+      "format": "responses",
+      "quirks": {
+        "supportsNativeCompaction": true
+      }
     },
     "apiKey": {
       "header": "Authorization",

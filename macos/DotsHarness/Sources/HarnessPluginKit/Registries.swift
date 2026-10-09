@@ -39,7 +39,7 @@ public enum ToolRisk: String, Sendable, Equatable, Codable {
     case workspaceMutation
 }
 
-public struct ToolParameter: Sendable, Equatable {
+public struct ToolParameter: Sendable, Equatable, Codable {
     public var name: String
     public var type: String
     public var description: String
@@ -53,7 +53,7 @@ public struct ToolParameter: Sendable, Equatable {
     }
 }
 
-public struct RegisteredTool: Identifiable, Sendable {
+public struct RegisteredTool: Identifiable, Sendable, Equatable, Codable {
     public var id: String { name }
     public var name: String
     public var description: String

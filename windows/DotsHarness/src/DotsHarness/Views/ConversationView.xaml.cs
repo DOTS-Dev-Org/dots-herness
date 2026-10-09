@@ -19,22 +19,48 @@ namespace DotsHarness.Views;
 
 public partial class ConversationView : UserControl
 {
+    private sealed record ModelPickerItem(string Model, string ProviderName, string ProviderKey);
+
     private TerminalSession? _terminal;
     private string? _terminalWorkspace;
     private readonly System.Windows.Threading.DispatcherTimer _workingTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private Conversation? _observedConversation;
     private INotifyCollectionChanged? _observedMessages;
     private INotifyCollectionChanged? _observedPending;
-    private readonly HashSet<ChatMessage> _observedMessageItems = new();
+    private ChatMessage? _observedTailMessage;
     private MessageTail<ChatMessage>? _messageTail;
     private bool _loadingOlder;
+    private int _modelChangeRevision;
+    private int _modelBindScheduled;
+    private int _messageLanguageRefreshPending;
+    private int _scrollScheduled;
+    private ChatMessage? _boundPlanMessage;
+    private string? _boundGitWorkspace;
+    private int _gitTick;
+    private bool _queueExpanded;
+    private bool _gitBarHidden;
+    private readonly List<Button> _queueEditButtons = new();
 
     public ConversationView()
     {
         InitializeComponent();
+        ModelList.ItemTemplate = CreateModelPickerItemTemplate();
         TerminalBox.InputReceived += OnTerminalInput;
         DataContextChanged += OnCtx;
-        _workingTimer.Tick += (_, _) => BindWorkingIndicator();
+        _workingTimer.Tick += (_, _) =>
+        {
+            BindWorkingIndicator();
+            if (++_gitTick % 15 == 0)
+            {
+                BindGitBar();
+                BindCacheResumeNotice();
+            }
+        };
+        DraftBox.TextChanged += (_, _) =>
+        {
+            UpdateQueueEditState();
+            BindFollowUpSuggestion();
+        };
         Scroller.ScrollChanged += OnScrollChanged;
         Loaded += (_, _) => { _workingTimer.Start(); Bind(); };
         Unloaded += (_, _) =>
@@ -75,17 +101,38 @@ public partial class ConversationView : UserControl
 
     private void OnModel(object? sender, PropertyChangedEventArgs e)
     {
-        Dispatcher.Invoke(() =>
+        if (e.PropertyName is nameof(AppModel.Language) or nameof(AppModel.IsRightToLeft))
+            System.Threading.Interlocked.Exchange(ref _messageLanguageRefreshPending, 1);
+        System.Threading.Interlocked.Increment(ref _modelChangeRevision);
+        QueueModelBind();
+    }
+
+    private void QueueModelBind()
+    {
+        if (System.Threading.Interlocked.Exchange(ref _modelBindScheduled, 1) != 0) return;
+        Dispatcher.BeginInvoke(new Action(DrainModelBind), System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    private void DrainModelBind()
+    {
+        var revision = System.Threading.Volatile.Read(ref _modelChangeRevision);
+        try
         {
             Bind();
-            if (e.PropertyName is nameof(AppModel.Language) or nameof(AppModel.IsRightToLeft))
+            if (System.Threading.Interlocked.Exchange(ref _messageLanguageRefreshPending, 0) != 0)
             {
                 Messages.ItemsSource = null;
                 PendingMessages.ItemsSource = null;
                 Messages.ItemsSource = MessageSource(Model?.Selected);
                 PendingMessages.ItemsSource = Model?.Selected?.PendingPrompts;
             }
-        });
+        }
+        finally
+        {
+            System.Threading.Interlocked.Exchange(ref _modelBindScheduled, 0);
+            if (System.Threading.Volatile.Read(ref _modelChangeRevision) != revision)
+                QueueModelBind();
+        }
     }
 
     private bool IsNearBottom()
@@ -136,46 +183,48 @@ public partial class ConversationView : UserControl
 
     private void TryScrollToEndIfNearBottom()
     {
-        if (!IsNearBottom()) return;
-        Dispatcher.BeginInvoke(new Action(() => Scroller.ScrollToEnd()), System.Windows.Threading.DispatcherPriority.Background);
+        if (IsNearBottom()) Scroller.ScrollToEnd();
+    }
+
+    private void QueueScrollToEndIfNearBottom()
+    {
+        if (System.Threading.Interlocked.Exchange(ref _scrollScheduled, 1) != 0) return;
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            System.Threading.Interlocked.Exchange(ref _scrollScheduled, 0);
+            TryScrollToEndIfNearBottom();
+        }), System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    private void QueueScrollToEndAfterLayout()
+    {
+        Dispatcher.BeginInvoke(
+            new Action(() => Scroller.ScrollToEnd()),
+            System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (e.NewItems is not null)
-            foreach (ChatMessage m in e.NewItems)
-            {
-                m.PropertyChanged += OnMessagePropertyChanged;
-                _observedMessageItems.Add(m);
-            }
-        if (e.OldItems is not null)
-            foreach (ChatMessage m in e.OldItems)
-            {
-                m.PropertyChanged -= OnMessagePropertyChanged;
-                _observedMessageItems.Remove(m);
-            }
-        if (e.Action == NotifyCollectionChangedAction.Reset)
-        {
-            foreach (var m in _observedMessageItems.ToList())
-                m.PropertyChanged -= OnMessagePropertyChanged;
-            _observedMessageItems.Clear();
-            if (sender is System.Collections.IEnumerable enumerable)
-                foreach (ChatMessage m in enumerable)
-                {
-                    m.PropertyChanged += OnMessagePropertyChanged;
-                    _observedMessageItems.Add(m);
-                }
-        }
-        Dispatcher.BeginInvoke(new Action(TryScrollToEndIfNearBottom), System.Windows.Threading.DispatcherPriority.Background);
+        ObserveTailMessage(_observedConversation);
+        QueueScrollToEndIfNearBottom();
     }
 
-    private void OnPendingChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
-        Dispatcher.BeginInvoke(new Action(TryScrollToEndIfNearBottom), System.Windows.Threading.DispatcherPriority.Background);
+    private void OnPendingChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        Dispatcher.BeginInvoke(new Action(BindQueue));
+        QueueScrollToEndIfNearBottom();
+    }
 
     private void OnMessagePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(ChatMessage.Text) or nameof(ChatMessage.Streaming))
-            Dispatcher.BeginInvoke(new Action(TryScrollToEndIfNearBottom), System.Windows.Threading.DispatcherPriority.Background);
+        if (e.PropertyName == nameof(ChatMessage.ChangedFiles))
+        {
+            // The changed-files card is attached after the response and can add
+            // enough height to hide its own footer unless we follow it after layout.
+            QueueScrollToEndAfterLayout();
+        }
+        else if (e.PropertyName is nameof(ChatMessage.Text) or nameof(ChatMessage.Streaming))
+            QueueScrollToEndIfNearBottom();
     }
 
     private void ObserveConversation(Conversation? conversation)
@@ -191,9 +240,11 @@ public partial class ConversationView : UserControl
             _observedPending.CollectionChanged -= OnPendingChanged;
             _observedPending = null;
         }
-        foreach (var m in _observedMessageItems)
-            m.PropertyChanged -= OnMessagePropertyChanged;
-        _observedMessageItems.Clear();
+        if (_observedTailMessage is not null)
+        {
+            _observedTailMessage.PropertyChanged -= OnMessagePropertyChanged;
+            _observedTailMessage = null;
+        }
         _observedConversation = conversation;
         if (conversation is null) return;
         _observedMessages = conversation.Messages as INotifyCollectionChanged;
@@ -202,11 +253,18 @@ public partial class ConversationView : UserControl
         _observedPending = conversation.PendingPrompts as INotifyCollectionChanged;
         if (_observedPending is not null)
             _observedPending.CollectionChanged += OnPendingChanged;
-        foreach (var m in conversation.Messages)
-        {
-            m.PropertyChanged += OnMessagePropertyChanged;
-            _observedMessageItems.Add(m);
-        }
+        ObserveTailMessage(conversation);
+    }
+
+    private void ObserveTailMessage(Conversation? conversation)
+    {
+        var latest = conversation?.Messages.LastOrDefault();
+        if (ReferenceEquals(_observedTailMessage, latest)) return;
+        if (_observedTailMessage is not null)
+            _observedTailMessage.PropertyChanged -= OnMessagePropertyChanged;
+        _observedTailMessage = latest;
+        if (_observedTailMessage is not null)
+            _observedTailMessage.PropertyChanged += OnMessagePropertyChanged;
     }
 
     private void Bind()
@@ -219,12 +277,48 @@ public partial class ConversationView : UserControl
         // Same id but a new object = transcript just hydrated; also jump to the newest message.
         var switched = previousId != conversation?.Id || !ReferenceEquals(_observedConversation, conversation);
         TitleText.Text = conversation?.Title ?? Model.L("conversation.title");
+        var contextInputTokens = conversation?.LastContextInputTokens ?? 0;
+        var contextOutputTokens = conversation?.LastContextOutputTokens ?? 0;
+        var contextTokens = contextInputTokens + contextOutputTokens;
+        var contextUsageIsEstimated = conversation is null
+            || conversation.LastContextInputTokensIsEstimated
+            || conversation.LastContextOutputTokens is null;
+        var contextModel = Model.Router.SelectedModelID;
+        string? contextProvider = null;
+        if (conversation?.ContextRouteIdentity is { } contextRoute)
+        {
+            var parts = contextRoute.Split('|');
+            if (parts.Length >= 4)
+            {
+                contextProvider = parts[1];
+                contextModel = parts[^1];
+            }
+        }
+        var contextWindow = contextProvider is not null
+            && RouterCatalog.DocumentedContextWindow(contextProvider, contextModel) is null
+            && conversation is { ContextWindow: > 0 } savedConversation
+                ? savedConversation.ContextWindow
+                : Model.Router.ContextWindowFor(contextModel, contextProvider);
+        CacheUsageButton.Content = Model.L("usage.context.button");
+        CacheUsageButton.ToolTip = Model.L("usage.context.tooltip");
+        CacheUsageButton.Visibility = conversation?.CacheSession?.Events.Count > 0 || contextTokens > 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        ContextUsageSummary.Text = contextWindow > 0 && contextTokens > 0
+            ? $"{(contextUsageIsEstimated ? "≈" : "")}{FormatTokenCount(contextTokens)} / {FormatTokenCount(contextWindow)} ({((double)contextTokens / contextWindow).ToString("P0", CultureInfo.CurrentCulture)})"
+            : "—";
+        ContextUsageProgress.Visibility = contextWindow > 0 ? Visibility.Visible : Visibility.Collapsed;
+        ContextUsageProgress.Value = contextWindow > 0 ? Math.Clamp((double)contextTokens / contextWindow, 0, 1) : 0;
+        BindCacheResumeNotice();
         BindWorkingIndicator();
         TerminalButton.Content = Model.L("conversation.terminal");
         ModelPicker.ToolTip = Model.L("conversation.model");
         DropHint.Text = Model.L("conversation.dropFiles");
         PlanButton.Content = "💡 " + Model.L("conversation.planMode");
         PlanButton.ToolTip = Model.L("conversation.planMode");
+        WorkLocationButton.Content = "⌖ " + Model.L("workLocation.title") + ": " + Model.WorkLocationLabel;
+        WorkLocationButton.ToolTip = Model.L("workLocation.help");
+        WorkLocationButton.IsEnabled = !Model.Bridge.AnyRunBusy;
         System.Windows.Automation.AutomationProperties.SetName(PlanButton, Model.L("conversation.planMode"));
         TerminalTitle.Text = Model.L("conversation.terminal");
         CloseTerminalButton.ToolTip = Model.L("conversation.closeTerminal");
@@ -233,7 +327,7 @@ public partial class ConversationView : UserControl
         VisionRejectButton.Content = Model.L("vision.notNow");
         VisionAllowButton.Content = Model.L("vision.downloadAndContinue");
         EmptyHint.Visibility = conversation is null ? Visibility.Visible : Visibility.Collapsed;
-        EmptyHint.Text = Model.Bridge.Connection is null
+        EmptyHint.Text = !Model.Router.HasActiveRoute
             ? Model.L("conversation.emptyNoProvider")
             : Model.L("conversation.emptySidebar");
         Messages.ItemsSource = MessageSource(conversation);
@@ -241,17 +335,27 @@ public partial class ConversationView : UserControl
         DraftAttachments.ItemsSource = Model.DraftAttachments;
         PlanButton.IsChecked = Model.IsPlanMode;
         var pendingPlanId = conversation?.PendingPlanMessageId;
-        // Only the shown conversation's flags matter; they are recomputed when another one is selected.
-        foreach (var item in conversation?.Messages ?? Enumerable.Empty<ChatMessage>())
+        var pendingPlan = pendingPlanId is null
+            ? null
+            : conversation?.Messages.FirstOrDefault(item => item.Kind == ChatKind.Plan && item.Id == pendingPlanId);
+        if (!ReferenceEquals(_boundPlanMessage, pendingPlan))
         {
-            var isPending = conversation is not null
-                && item.Kind == ChatKind.Plan
-                && item.Id == pendingPlanId;
-            item.IsPendingPlan = isPending;
-            item.IsApplyingPlan = isPending && conversation!.Running;
-            item.CanApplyPlan = isPending
-                && !conversation!.Running
-                && Model.Bridge.Connection is not null;
+            if (_boundPlanMessage is not null)
+            {
+                _boundPlanMessage.IsPendingPlan = false;
+                _boundPlanMessage.IsApplyingPlan = false;
+                _boundPlanMessage.CanApplyPlan = false;
+            }
+            _boundPlanMessage = pendingPlan;
+        }
+        if (pendingPlan is not null && conversation is not null)
+        {
+            pendingPlan.IsPendingPlan = true;
+            pendingPlan.IsApplyingPlan = conversation.Running;
+            pendingPlan.CanApplyPlan = !conversation.Running
+                && conversation.Continuation is null
+                && Model.Bridge.CanSendSelectedConversation
+                && Model.Router.HasActiveRoute;
         }
         var canContinue = conversation?.CanContinue == true && Model.Bridge.CanContinue;
         RefreshModelPicker();
@@ -262,7 +366,18 @@ public partial class ConversationView : UserControl
         StopButton.Visibility = conversation?.Running == true || canContinue
             ? Visibility.Visible
             : Visibility.Collapsed;
+        CancelPlanButton.Content = Model.L("conversation.cancelPlan");
+        CancelPlanButton.ToolTip = Model.L("conversation.cancelPlanHelp");
+        CancelPlanButton.Visibility = conversation?.PlanGateActive == true
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         SendButton.Content = canContinue ? Model.L("conversation.continue") : Model.L("conversation.send");
+        var projectLocationAvailable = Model.Bridge.CanSendSelectedConversation;
+        var missingProjectPath = Model.IsRemoteWorkLocation ? null : Model.MissingProjectPath;
+        ProjectMissingBanner.Visibility = missingProjectPath is null ? Visibility.Collapsed : Visibility.Visible;
+        ProjectMissingText.Text = missingProjectPath is null ? "" : Model.L("project.missing.readOnly");
+        LocateProjectButton.Content = Model.L("project.missing.locate");
+        SendButton.IsEnabled = projectLocationAvailable;
         if (!DraftBox.IsFocused)
         {
             DraftBox.Text = Model.Draft;
@@ -274,6 +389,9 @@ public partial class ConversationView : UserControl
             SkillSuggestionTitle.Text = $"Suggested skill: {suggestion.DraftName}";
             SkillSuggestionDescription.Text = suggestion.DraftDescription;
         }
+        AcceptFollowUpSuggestionButton.Content = Model.L("access.accept");
+        DismissFollowUpSuggestionButton.Content = Model.L("vision.notNow");
+        BindFollowUpSuggestion();
         VoiceIntro.Visibility = Model.ShowsVoiceIntro ? Visibility.Visible : Visibility.Collapsed;
         VoiceIntroTitle.Text = Model.L("voice.intro.title");
         VoiceIntroBody.Text = Model.L("voice.intro.body");
@@ -285,11 +403,176 @@ public partial class ConversationView : UserControl
         VoiceButton.ToolTip = Model.IsVoiceRunning ? Model.L("conversation.stopVoice") : Model.L("conversation.startVoice");
         ObserveConversation(conversation);
         BindApproval();
+        BindWorkspaceConflict();
         BindVision();
+        BindContextOverflow();
         BindQuestion();
+        BindQueue();
+        var gitWorkspace = Model.WorkspacePath;
+        if (!string.Equals(_boundGitWorkspace, gitWorkspace, StringComparison.Ordinal))
+        {
+            _boundGitWorkspace = gitWorkspace;
+            BindGitBar();
+        }
         BindTerminal();
         if (switched && conversation is not null)
             Dispatcher.BeginInvoke(new Action(() => Scroller.ScrollToEnd()), System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    private string BuildContextComposition(Conversation? conversation)
+    {
+        var model = Model;
+        if (model is null || conversation is null) return string.Empty;
+        if (conversation.LastContextInputTokens <= 0 && conversation.LastContextOutputTokens is null)
+            return string.Empty;
+        var composition = NativeContextUsageComposition.Create(
+            conversation.ModelContext,
+            conversation.CacheSession?.Catalog ?? []);
+        var culture = CultureInfo.CurrentCulture;
+        var inputTokens = Math.Max(0, conversation.LastContextInputTokens);
+        var outputTokens = Math.Max(0, conversation.LastContextOutputTokens ?? 0);
+        var inputEstimated = conversation.LastContextInputTokensIsEstimated;
+        var lines = new List<string> { model.L("usage.context.latestRequest") };
+        if (inputTokens > 0)
+            lines.Add($"{model.L(inputEstimated ? "usage.context.estimatedInput" : "usage.context.input")}: {(inputEstimated ? "≈" : "")}{FormatTokenCount(inputTokens)}");
+        lines.Add($"{model.L("usage.context.output")}: {(conversation.LastContextOutputTokens is > 0 ? FormatTokenCount(outputTokens) : model.L("usage.context.notReported"))}");
+
+        var estimates = new (string Key, int Tokens)[]
+        {
+            ("usage.context.conversation", composition.ConversationTokens),
+            ("usage.context.toolDefinitions", composition.NativeToolDefinitionTokens),
+            ("usage.context.mcpDefinitions", composition.McpToolDefinitionTokens),
+            ("usage.context.systemPrompt", composition.SystemPromptTokens),
+        };
+        var estimatedTotal = estimates.Sum(value => Math.Max(0, value.Tokens));
+        if (estimatedTotal > 0 && inputTokens > 0)
+        {
+            lines.Add(model.L("usage.context.estimatedBreakdown"));
+            var positiveEstimates = estimates.Where(value => value.Tokens > 0).ToArray();
+            var allocated = 0;
+            for (var index = 0; index < positiveEstimates.Length; index++)
+            {
+                var estimate = positiveEstimates[index];
+                var remaining = Math.Max(0, inputTokens - allocated);
+                var scaled = index == positiveEstimates.Length - 1
+                    ? remaining
+                    : (int)Math.Round((double)estimate.Tokens / estimatedTotal * inputTokens, MidpointRounding.AwayFromZero);
+                var tokens = Math.Min(remaining, Math.Max(0, scaled));
+                allocated += tokens;
+                if (tokens <= 0) continue;
+                var percentage = ((double)tokens / inputTokens).ToString("P0", culture);
+                lines.Add($"{model.L(estimate.Key)}: ≈{FormatTokenCount(tokens)} ({percentage})");
+            }
+        }
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private string FormatTokenCount(int tokens)
+    {
+        var count = tokens < 1_000
+            ? tokens.ToString("N0", CultureInfo.CurrentCulture)
+            : tokens < 1_000_000
+                ? $"{tokens / 1_000.0:0.0}k"
+                : $"{tokens / 1_000_000.0:0.0}M";
+        return Model?.L("conversation.processedTokensCount", count) ?? count;
+    }
+
+    private NativeCacheSummary? CacheSummaryFor(Conversation? conversation)
+    {
+        var session = conversation?.CacheSession;
+        if (session is null) return null;
+        var routeFingerprint = session.Events.OrderBy(value => value.Timestamp)
+            .LastOrDefault(value => !string.IsNullOrWhiteSpace(value.RouteFingerprint))?.RouteFingerprint;
+        if (routeFingerprint is null) return session.Summary();
+        var events = Model!.Bridge.Conversations
+            .SelectMany(item => item.CacheSession?.Events ?? [])
+            .Where(value => string.Equals(value.RouteFingerprint, routeFingerprint, StringComparison.Ordinal))
+            .OrderBy(value => value.Timestamp)
+            .TakeLast(100)
+            .ToArray();
+        return events.Length == 0 ? session.Summary() : NativeCacheSummary.From(events);
+    }
+
+    private string BuildCacheDetails(NativeCacheSummary? cache)
+    {
+        var model = Model;
+        if (model is null) return string.Empty;
+        if (cache is null || cache.SampleCount == 0) return model.L("usage.context.notAvailable");
+        var culture = CultureInfo.CurrentCulture;
+        string Number(long value) => value.ToString("N0", culture);
+        string Percent(double? value) => value is { } rate ? rate.ToString("P0", culture) : "—";
+        var lines = new List<string>();
+        if (cache.MeasuredTotalInputTokens > 0)
+            lines.Add($"{model.L("usage.context.cacheHit")}: {Percent(cache.CacheHitRate)}");
+        lines.Add(model.L("usage.context.cacheReuse", Percent(cache.ReuseRate), Number(cache.ReusedTokens), Number(cache.EligibleTokens)));
+        lines.Add(model.L("usage.context.cacheCoverage", Percent(cache.ReuseMeasurementCoverage), cache.ExactReuseCount, cache.CandidateCount));
+        lines.Add(model.L("usage.context.cacheStatus", cache.ColdCount, cache.ExpiredCount, cache.ChangedCount));
+        lines.Add(model.L("usage.context.cacheWrite", Number(cache.CacheWriteTokens)));
+        lines.Add(model.L("usage.context.freshInput", Number(cache.FreshInputTokens)));
+        lines.Add(model.L("usage.context.reuseUnknown", cache.UnknownReuseRequestCount, cache.CandidateCount));
+        if (cache.AverageLatencyMilliseconds is { } latency)
+            lines.Add(model.L("usage.context.latency", latency.ToString("N0", culture) + " ms"));
+        if (cache.AveragePrepareMilliseconds is { } prepare)
+            lines.Add(model.L("usage.context.prepare", prepare.ToString("N0", culture) + " ms"));
+        if (cache.LostTokensByReason.OrderByDescending(pair => pair.Value).FirstOrDefault() is { Key: { } reason, Value: > 0 } loss)
+            lines.Add(model.L("usage.context.cacheLoss", reason, Number(loss.Value)));
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private void OnCacheUsageOpened(object sender, RoutedEventArgs e) => BindCacheUsageDetails();
+
+    private void BindCacheUsageDetails()
+    {
+        var conversation = Model?.Selected;
+        ContextUsageBreakdown.Text = BuildContextComposition(conversation);
+        CacheUsageDetails.Text = BuildCacheDetails(CacheSummaryFor(conversation));
+    }
+
+    private void BindCacheResumeNotice()
+    {
+        var model = Model;
+        var conversation = model?.Selected;
+        var routeMatches = model is not null && conversation is not null
+            && !string.IsNullOrEmpty(conversation.ContextRouteIdentity)
+            && string.Equals(
+                conversation.ContextRouteIdentity,
+                model.Router.ContextRouteIdentityFor(model.SelectedModelID, conversation.StickyAccountId),
+                StringComparison.Ordinal);
+        var expiredTokens = routeMatches
+            ? conversation?.CacheSession?.ExpiredLargePrefixTokens(DateTimeOffset.UtcNow)
+            : null;
+        // Every line names a reason the next request costs more than the last one.
+        var notices = new List<string>();
+        if (model is not null && conversation is not null)
+        {
+            // The route ends with the model; any other difference is the serving account.
+            var routeChanged = !routeMatches && !string.IsNullOrEmpty(conversation.ContextRouteIdentity) && conversation.Messages.Count > 0;
+            var modelChanged = routeChanged && !string.Equals(
+                conversation.ContextRouteIdentity.Split('|')[^1], model.SelectedModelID, StringComparison.Ordinal);
+            if (conversation.AccountSwitched || (routeChanged && !modelChanged))
+                notices.Add(model.L("conversation.accountSwitched.notice"));
+            if (modelChanged) notices.Add(model.L("conversation.modelSwitched.notice"));
+            // Same 90% mark at which the conversation compacts.
+            var routeParts = conversation.ContextRouteIdentity?.Split('|') ?? Array.Empty<string>();
+            var window = routeParts.Length >= 4
+                ? model.Router.ContextWindowFor(routeParts[^1], routeParts[1])
+                : model.Router.ContextWindowFor(model.SelectedModelID);
+            if (expiredTokens is not null) notices.Add(model.L("conversation.cacheExpired.notice"));
+            else if (window > 0 && conversation.LastContextInputTokens > window * 0.9)
+                notices.Add(model.L("conversation.contextFull.notice"));
+        }
+
+        CacheResumeWarning.Visibility = notices.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        CacheResumeInfoButton.Visibility = expiredTokens is null ? Visibility.Collapsed : Visibility.Visible;
+        CacheResumeText.Text = string.Join("\n", notices);
+        CacheResumeInfoText.Text = model?.L("conversation.cacheExpired.explanation") ?? "";
+        CacheResumeInfoButton.ToolTip = model?.L("conversation.cacheExpired.infoTitle");
+        if (expiredTokens is null) CacheResumeInfoPopup.IsOpen = false;
+    }
+
+    private void OnCacheResumeInfo(object sender, RoutedEventArgs e)
+    {
+        CacheResumeInfoPopup.IsOpen = !CacheResumeInfoPopup.IsOpen;
     }
 
     private void BindWorkingIndicator()
@@ -304,11 +587,23 @@ public partial class ConversationView : UserControl
 
         var elapsed = FormatElapsed(DateTimeOffset.UtcNow - started);
         var skills = Model!.Bridge.ActiveUsedSkills;
+        var status = LiveStatus(elapsed, conversation.Messages.LastOrDefault()?.Kind == ChatKind.Tool);
         WorkingIndicator.Text = skills.Count == 0
-            ? Model.L("conversation.workingFor", elapsed)
-            : Model.L("conversation.workingUsing", elapsed, string.Join(", ", skills));
+            ? status
+            : $"{status} · {string.Join(", ", skills)}";
         WorkingIndicator.Visibility = Visibility.Visible;
         System.Windows.Automation.AutomationProperties.SetName(WorkingIndicator, WorkingIndicator.Text);
+    }
+
+    /// <summary>"2m 16s · 1.4k tokens · Running tools…"</summary>
+    private string LiveStatus(string elapsed, bool toolsRunning)
+    {
+        var parts = new List<string> { elapsed };
+        var tokens = Model!.Bridge.ActiveRunTokens;
+        if (tokens > 0)
+            parts.Add($"{(Model.Bridge.ActiveRunTokensEstimated ? "≈" : "")}{FormatTokenCount(tokens)}");
+        parts.Add(Model.L(toolsRunning ? "conversation.runningTools" : "conversation.thinkingPhase"));
+        return string.Join(" · ", parts);
     }
 
     private static string FormatElapsed(TimeSpan elapsed)
@@ -324,7 +619,8 @@ public partial class ConversationView : UserControl
     private void BindTerminal()
     {
         var workspace = Model?.TerminalWorkspacePath;
-        TerminalButton.IsEnabled = !string.IsNullOrWhiteSpace(workspace) && Directory.Exists(workspace);
+        TerminalButton.IsEnabled = !string.IsNullOrWhiteSpace(workspace)
+            && (Model?.IsRemoteWorkLocation == true || Directory.Exists(workspace));
         if (_terminal is not null && !string.Equals(_terminalWorkspace, workspace, StringComparison.Ordinal))
         {
             StopTerminal();
@@ -346,10 +642,11 @@ public partial class ConversationView : UserControl
         }
 
         var workspace = Model?.TerminalWorkspacePath;
-        if (string.IsNullOrWhiteSpace(workspace) || !Directory.Exists(workspace)) return;
+        if (string.IsNullOrWhiteSpace(workspace)
+            || (Model?.IsRemoteWorkLocation != true && !Directory.Exists(workspace))) return;
 
         _terminalWorkspace = workspace;
-        _terminal = new TerminalSession(workspace);
+        _terminal = new TerminalSession(workspace, Model?.RemoteTarget);
         _terminal.Changed += OnTerminalChanged;
         TerminalPanel.Visibility = Visibility.Visible;
         _terminal.Start();
@@ -399,12 +696,63 @@ public partial class ConversationView : UserControl
         {
             ApprovalBar.Visibility = Visibility.Visible;
             ApprovalTitle.Text = Model.L("conversation.allow", approval.ToolName);
-            ApprovalReason.Text = approval.Reason ?? "";
+            ApprovalReason.Text = (approval.Reason ?? "") + (string.IsNullOrWhiteSpace(approval.InputPreview)
+                ? ""
+                : "\n\n" + Model.L("conversation.toolInput") + "\n" + approval.InputPreview);
         }
         else
         {
             ApprovalBar.Visibility = Visibility.Collapsed;
         }
+    }
+
+    private void BindWorkspaceConflict()
+    {
+        var model = Model;
+        var conflict = model?.Bridge.PendingConflict;
+        if (conflict is not null && conflict.ConversationId == model!.SelectedConversationId)
+        {
+            ConflictBar.Visibility = Visibility.Visible;
+            LeaseWaitingBar.Visibility = Visibility.Collapsed;
+            ConflictTitle.Text = model.L("conflict.banner.title");
+            ConflictBody.Text = model.L("conflict.banner.body", conflict.Path, conflict.HolderTitle, conflict.HeldSeconds);
+            ConflictKeepWaitingButton.Content = model.L("conflict.banner.keepWaiting");
+            ConflictStopHolderButton.Content = model.L("conflict.banner.stopHolder", conflict.HolderTitle);
+            ConflictStopAllButton.Content = model.L("conflict.banner.stopAllOthers");
+            ConflictStopAllButton.Visibility = conflict.OtherRunningConversations > 1
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            ConflictSkipButton.Content = model.L("conflict.banner.skip");
+            return;
+        }
+
+        ConflictBar.Visibility = Visibility.Collapsed;
+        var waiting = model?.Bridge.WaitingOnLease;
+        LeaseWaitingBar.Visibility = waiting is null ? Visibility.Collapsed : Visibility.Visible;
+        LeaseWaitingText.Text = waiting is null
+            ? ""
+            : model!.L("conflict.waiting", waiting.ConversationTitle, waiting.Label);
+    }
+
+    private async void OnConflictKeepWaiting(object sender, RoutedEventArgs e) =>
+        await AnswerWorkspaceConflictAsync(WorkspaceConflictChoice.KeepWaiting);
+
+    private async void OnConflictStopHolder(object sender, RoutedEventArgs e) =>
+        await AnswerWorkspaceConflictAsync(WorkspaceConflictChoice.StopHolder);
+
+    private async void OnConflictStopAll(object sender, RoutedEventArgs e) =>
+        await AnswerWorkspaceConflictAsync(WorkspaceConflictChoice.StopAllOthers);
+
+    private async void OnConflictSkip(object sender, RoutedEventArgs e) =>
+        await AnswerWorkspaceConflictAsync(WorkspaceConflictChoice.Skip);
+
+    private Task AnswerWorkspaceConflictAsync(WorkspaceConflictChoice choice)
+    {
+        var model = Model;
+        var conversationId = model?.Bridge.PendingConflict?.ConversationId;
+        return conversationId is null
+            ? Task.CompletedTask
+            : model!.Bridge.AnswerWorkspaceConflictAsync(choice, conversationId);
     }
 
     private void BindVision()
@@ -422,6 +770,30 @@ public partial class ConversationView : UserControl
         else
         {
             VisionBar.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void BindContextOverflow()
+    {
+        var pending = Model?.Bridge.PendingContextOverflow;
+        if (pending is not null && pending.ConversationId == Model!.SelectedConversationId)
+        {
+            ContextOverflowBar.Visibility = Visibility.Visible;
+            ContextOverflowTitle.Text = Model.L("context.overflowTitle");
+            ContextOverflowReason.Text = Model.L(
+                "context.overflowReason",
+                pending.TargetModel,
+                pending.RequiredTokens,
+                pending.UsableTokens);
+            ContextOverflowSummary.Text = pending.SummarizerModel is { } model
+                ? Model.L("context.overflowByModel", model)
+                : Model.L("context.overflowLocally");
+            ContextOverflowDeclineButton.Content = Model.L("context.overflowNotNow");
+            ContextOverflowAcceptButton.Content = Model.L("context.overflowCompress");
+        }
+        else
+        {
+            ContextOverflowBar.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -523,14 +895,58 @@ public partial class ConversationView : UserControl
 
     private void OnModelChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (ModelList.SelectedItem is string model
+        if (ModelList.SelectedItem is ModelPickerItem item
             && Model is { } app
-            && !string.Equals(model, app.SelectedModelID, StringComparison.Ordinal))
+            && !string.Equals(item.Model, app.SelectedModelID, StringComparison.Ordinal))
         {
-            app.SetSelectedModel(model);
+            app.SetSelectedModel(item.Model);
             ShowModelList(false);
             RefreshModelPicker();
         }
+    }
+
+    private static DataTemplate CreateModelPickerItemTemplate()
+    {
+        var row = new FrameworkElementFactory(typeof(StackPanel));
+        row.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
+        row.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+
+        var badge = new FrameworkElementFactory(typeof(Border));
+        badge.SetValue(FrameworkElement.WidthProperty, 22d);
+        badge.SetValue(FrameworkElement.HeightProperty, 22d);
+        badge.SetValue(Border.CornerRadiusProperty, new CornerRadius(5));
+        badge.SetValue(Border.BackgroundProperty, Brushes.White);
+        badge.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 0, 8, 0));
+        var badgeGrid = new FrameworkElementFactory(typeof(Grid));
+        var image = new FrameworkElementFactory(typeof(Image));
+        image.SetBinding(Image.SourceProperty, new Binding(nameof(ModelPickerItem.ProviderKey)) { Converter = ProviderMarkImageConverter.Instance });
+        image.SetValue(Image.WidthProperty, 16d);
+        image.SetValue(Image.HeightProperty, 16d);
+        image.SetValue(Image.StretchProperty, Stretch.Uniform);
+        badgeGrid.AppendChild(image);
+        var fallback = new FrameworkElementFactory(typeof(TextBlock));
+        fallback.SetBinding(TextBlock.TextProperty, new Binding(nameof(ModelPickerItem.ProviderKey)) { Converter = LogoMarkConverter.Instance });
+        fallback.SetValue(TextBlock.FontSizeProperty, 9d);
+        fallback.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
+        fallback.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        fallback.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+        fallback.SetBinding(UIElement.VisibilityProperty, new Binding(nameof(ModelPickerItem.ProviderKey)) { Converter = ProviderMarkFallbackVisibilityConverter.Instance });
+        badgeGrid.AppendChild(fallback);
+        badge.AppendChild(badgeGrid);
+        row.AppendChild(badge);
+
+        var labels = new FrameworkElementFactory(typeof(StackPanel));
+        labels.SetValue(StackPanel.VerticalAlignmentProperty, VerticalAlignment.Center);
+        var model = new FrameworkElementFactory(typeof(TextBlock));
+        model.SetBinding(TextBlock.TextProperty, new Binding(nameof(ModelPickerItem.Model)));
+        labels.AppendChild(model);
+        var provider = new FrameworkElementFactory(typeof(TextBlock));
+        provider.SetBinding(TextBlock.TextProperty, new Binding(nameof(ModelPickerItem.ProviderName)));
+        provider.SetValue(TextBlock.FontSizeProperty, 10d);
+        provider.SetValue(TextBlock.ForegroundProperty, Brushes.Gray);
+        labels.AppendChild(provider);
+        row.AppendChild(labels);
+        return new DataTemplate { VisualTree = row };
     }
 
     // Effort stops: "" (provider default) then the model's levels, low to high.
@@ -548,7 +964,11 @@ public partial class ConversationView : UserControl
         if (Model is null) return;
         var selected = Model.SelectedModelID;
         var hasEfforts = EffortStops.Length > 1;
-        ModelPickerName.Text = selected.Length == 0 ? Model.L("modelPicker.selectModel") : selected;
+        var selectedConnection = Model.Router.Connections.FirstOrDefault(item => item.Active && item.Models.Contains(selected, StringComparer.Ordinal))
+            ?? Model.Router.Connections.FirstOrDefault(item => item.Active && string.Equals(item.Model, selected, StringComparison.Ordinal));
+        var selectedProviderName = selectedConnection is null ? "" : RouterCatalog.LabelFor(selectedConnection.Provider);
+        ModelPickerName.Text = selected.Length == 0 ? Model.L("modelPicker.selectModel")
+            : string.IsNullOrEmpty(selectedProviderName) ? selected : $"{selectedProviderName} · {selected}";
         ModelPickerEffort.Text = hasEfforts ? EffortLabel(Model.Router.SelectedEffort) : "";
         EffortTitle.Text = (hasEfforts ? EffortLabel(Model.Router.SelectedEffort) : Model.L("modelPicker.effortUnsupported")) + "  ›";
         EffortTitle.Foreground = IsUltraEffort ? UltraBrush : ThemeBrush(hasEfforts ? "Accent" : "TextSecondary");
@@ -556,16 +976,27 @@ public partial class ConversationView : UserControl
         EffortResetButton.ToolTip = Model.L("modelPicker.reset");
         ModelListHeader.Text = "‹  " + (Model.Router.Models.Count == 0 ? Model.L("modelPicker.noModel") : Model.L("modelPicker.selectModel"));
         EffortTitleButton.ToolTip = Model.L("modelPicker.selectModel");
-        if (!ReferenceEquals(ModelList.ItemsSource, Model.Router.Models)) ModelList.ItemsSource = Model.Router.Models;
-        ModelList.SelectedItem = selected;
+        UsageModeButton.Content = Model.UsageMode == AgentUsageMode.Economy ? "Economy" : "Standard";
+        UsageModeButton.ToolTip = "Toggle response token economy";
+        var pickerItems = Model.Router.Models.Select(id =>
+        {
+            var connection = Model.Router.Connections.FirstOrDefault(item => item.Active && item.Models.Contains(id, StringComparer.Ordinal))
+                ?? Model.Router.Connections.FirstOrDefault(item => item.Active && string.Equals(item.Model, id, StringComparison.Ordinal));
+            var providerKey = connection?.Provider ?? "";
+            return new ModelPickerItem(id, RouterCatalog.LabelFor(providerKey), providerKey);
+        }).ToList();
+        ModelList.ItemsSource = pickerItems;
+        ModelList.SelectedItem = pickerItems.FirstOrDefault(item => string.Equals(item.Model, selected, StringComparison.Ordinal));
         EffortTrack.IsEnabled = hasEfforts;
         EffortTrack.Opacity = hasEfforts ? 1 : 0.45;
         DrawEffortTrack();
     }
 
-    private void OnModelPopupOpened(object? sender, EventArgs e)
+    private async void OnModelPopupOpened(object? sender, EventArgs e)
     {
         ShowModelList(false);
+        RefreshModelPicker();
+        await Model!.Router.RefreshModelsIfNeededAsync();
         RefreshModelPicker();
     }
 
@@ -600,6 +1031,15 @@ public partial class ConversationView : UserControl
     private void OnEffortReset(object sender, RoutedEventArgs e)
     {
         Model?.SetEffort("");
+        RefreshModelPicker();
+    }
+
+    private void OnUsageMode(object sender, RoutedEventArgs e)
+    {
+        if (Model is null) return;
+        Model.SetUsageMode(Model.UsageMode == AgentUsageMode.Economy
+            ? AgentUsageMode.Standard
+            : AgentUsageMode.Economy);
         RefreshModelPicker();
     }
 
@@ -658,6 +1098,13 @@ public partial class ConversationView : UserControl
     {
         Model?.TogglePlanMode();
         e.Handled = true;
+    }
+
+    private void OnWorkLocation(object sender, RoutedEventArgs e)
+    {
+        if (Model is null) return;
+        var dialog = new RemoteWorkLocationWindow(Model) { Owner = Window.GetWindow(this) };
+        dialog.ShowDialog();
     }
 
     private void OnDragOver(object sender, DragEventArgs e)
@@ -834,6 +1281,11 @@ public partial class ConversationView : UserControl
     private async void Send(PromptMode mode)
     {
         if (Model is null) return;
+        if (!Model.Bridge.CanSendSelectedConversation)
+        {
+            Model.Draft = DraftBox.Text;
+            return;
+        }
         StopVoiceInput();
         if (Model.IsVoiceRunning)
         {
@@ -845,10 +1297,236 @@ public partial class ConversationView : UserControl
         DraftBox.Text = "";
     }
 
+    private void OnLocateProject(object sender, RoutedEventArgs e)
+    {
+        if (Model?.MissingProjectPath is not { } missingPath) return;
+        var model = Model;
+        var owner = Window.GetWindow(this);
+        var input = new TextBox { Margin = new Thickness(0, 8, 0, 8), Padding = new Thickness(8, 6, 8, 6), MinWidth = 360 };
+        var dialog = new Window
+        {
+            Title = model.L("project.missing.title", model.ProjectTitle(missingPath)),
+            Width = 440,
+            SizeToContent = SizeToContent.Height,
+            WindowStartupLocation = owner is null ? WindowStartupLocation.CenterScreen : WindowStartupLocation.CenterOwner,
+            ResizeMode = ResizeMode.NoResize,
+            ShowInTaskbar = false,
+            Owner = owner,
+        };
+        var locate = new Button { Content = model.L("project.missing.locate"), MinWidth = 110, IsEnabled = false };
+        var cancel = new Button { Content = model.L("settings.cancel"), MinWidth = 84, Margin = new Thickness(0, 0, 8, 0) };
+        input.TextChanged += (_, _) => locate.IsEnabled = Directory.Exists(input.Text.Trim());
+        cancel.Click += (_, _) => dialog.Close();
+        locate.Click += async (_, _) =>
+        {
+            locate.IsEnabled = false;
+            if (await model.RelocateProjectAsync(missingPath, input.Text.Trim())) dialog.Close();
+            else locate.IsEnabled = Directory.Exists(input.Text.Trim());
+        };
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 8, 0, 0),
+            Children = { cancel, locate },
+        };
+        dialog.Content = new StackPanel
+        {
+            Margin = new Thickness(16),
+            Children =
+            {
+                new TextBlock { Text = model.L("project.missing.message", missingPath), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) },
+                new TextBlock { Text = model.L("settings.folder") }, input, buttons,
+            },
+        };
+        if (owner is not null) dialog.Owner = owner;
+        dialog.ShowDialog();
+    }
+
     private void OnStop(object sender, RoutedEventArgs e)
     {
         if (Model?.Bridge.CanContinue == true) Model.Continue();
         else Model?.Cancel();
+    }
+
+    private void OnCancelPlanFromComposer(object sender, RoutedEventArgs e) => Model?.CancelPlan();
+
+    private static Button QueueIcon(string glyph, string tip, PendingPrompt prompt, RoutedEventHandler click)
+    {
+        var button = new Button
+        {
+            Content = glyph,
+            Tag = prompt,
+            Padding = new Thickness(8, 2, 8, 2),
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            ToolTip = tip,
+        };
+        button.Click += click;
+        return button;
+    }
+
+    /// <summary>"1 message queued  text" rows above the composer; each with send-now, edit and remove.</summary>
+    private void BindQueue()
+    {
+        QueueRows.Children.Clear();
+        _queueEditButtons.Clear();
+        var queued = Model?.Selected?.PendingPrompts.Where(p => p.Mode == PromptMode.Queue).ToList() ?? [];
+        QueueBar.Visibility = queued.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (Model is null) return;
+
+        var multiple = queued.Count > 1;
+        if (multiple)
+        {
+            var toggle = new Button
+            {
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(0, 2, 0, 2),
+            };
+            var head = new DockPanel();
+            var chevron = new TextBlock { Text = _queueExpanded ? "▴" : "▾", VerticalAlignment = VerticalAlignment.Center };
+            DockPanel.SetDock(chevron, Dock.Right);
+            head.Children.Add(chevron);
+            var title = new TextBlock
+            {
+                Text = Model.L("composer.queue.many", queued.Count),
+                FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 0, 10, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            DockPanel.SetDock(title, Dock.Left);
+            head.Children.Add(title);
+            if (!_queueExpanded)
+            {
+                var next = new TextBlock
+                {
+                    Text = Model.L("composer.queue.next", QueueSummary(queued[0])),
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+                next.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondary");
+                head.Children.Add(next);
+            }
+            toggle.Content = head;
+            toggle.Click += (_, _) => { _queueExpanded = !_queueExpanded; BindQueue(); };
+            QueueRows.Children.Add(toggle);
+        }
+
+        if (!multiple || _queueExpanded)
+        {
+            for (var i = 0; i < queued.Count; i++)
+            {
+                var prompt = queued[i];
+                var row = new DockPanel { Margin = new Thickness(0, multiple || i > 0 ? 6 : 0, 0, 0) };
+                var remove = QueueIcon("✕", Model.L("composer.queue.remove"), prompt, OnQueueRemove);
+                var edit = QueueIcon("✎", Model.L("composer.queue.edit"), prompt, OnQueueEdit);
+                var steer = QueueIcon("↵", Model.L("conversation.steer"), prompt, OnSteerPending);
+                _queueEditButtons.Add(edit);
+                foreach (var button in new[] { remove, edit, steer })
+                {
+                    DockPanel.SetDock(button, Dock.Right);
+                    row.Children.Add(button);
+                }
+                if (!multiple)
+                {
+                    var header = new TextBlock
+                    {
+                        Text = Model.L("composer.queue.one"),
+                        FontWeight = FontWeights.SemiBold,
+                        Margin = new Thickness(0, 0, 10, 0),
+                        VerticalAlignment = VerticalAlignment.Center,
+                    };
+                    DockPanel.SetDock(header, Dock.Left);
+                    row.Children.Add(header);
+                }
+                var text = new TextBlock
+                {
+                    Text = QueueSummary(prompt),
+                    TextWrapping = multiple ? TextWrapping.Wrap : TextWrapping.NoWrap,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+                text.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondary");
+                row.Children.Add(text);
+                QueueRows.Children.Add(row);
+            }
+        }
+        UpdateQueueEditState();
+    }
+
+    private static string QueueSummary(PendingPrompt prompt) =>
+        string.IsNullOrEmpty(prompt.Text) ? "…" : prompt.Text.Replace('\n', ' ');
+
+    /// <summary>Editing pulls the text into the composer, so it stays disabled until the box is empty.</summary>
+    private void UpdateQueueEditState()
+    {
+        if (Model is null) return;
+        var busy = !string.IsNullOrWhiteSpace(DraftBox.Text) || Model.DraftAttachments.Count > 0;
+        foreach (var button in _queueEditButtons)
+        {
+            button.IsEnabled = !busy;
+            button.ToolTip = Model.L(busy ? "composer.queue.editBlocked" : "composer.queue.edit");
+        }
+    }
+
+    private void OnQueueRemove(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: PendingPrompt prompt } && Model?.SelectedConversationId is { } conversationId)
+        {
+            Model.Bridge.RemoveQueuedPrompt(conversationId, prompt.Id);
+            BindQueue();
+        }
+        e.Handled = true;
+    }
+
+    private void OnQueueEdit(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: PendingPrompt prompt } && Model?.EditQueuedPrompt(prompt.Id) == true)
+        {
+            DraftBox.Text = Model.Draft;
+            BindQueue();
+            DraftBox.Focus();
+        }
+        e.Handled = true;
+    }
+
+    private async void BindGitBar()
+    {
+        var model = Model;
+        var workspace = model?.WorkspacePath;
+        if (model is null || _gitBarHidden || string.IsNullOrWhiteSpace(workspace))
+        {
+            GitBar.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var info = await model.ReadGitBarAsync();
+        if (!ReferenceEquals(model, Model) || _gitBarHidden) return;
+        if (info is null)
+        {
+            GitBar.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        GitBar.Visibility = Visibility.Visible;
+        GitBarText.Text = $"{Path.GetFileName(workspace.TrimEnd('/', '\\'))}  {info.Branch}";
+        GitStat.Visibility = info.Added + info.Removed > 0 ? Visibility.Visible : Visibility.Collapsed;
+        GitAdded.Text = $"+{info.Added:N0}";
+        GitRemoved.Text = $"-{info.Removed:N0}";
+        CreatePrButton.Content = model.L("git.createPR");
+    }
+
+    private async void OnCreatePr(object sender, RoutedEventArgs e)
+    {
+        if (Model is not null) await Model.OpenPullRequestsAsync();
+    }
+
+    private void OnGitBarClose(object sender, RoutedEventArgs e)
+    {
+        _gitBarHidden = true;
+        GitBar.Visibility = Visibility.Collapsed;
     }
 
     private void OnSteerPending(object sender, RoutedEventArgs e)
@@ -882,6 +1560,18 @@ public partial class ConversationView : UserControl
         e.Handled = true;
     }
 
+    private void OnUndoChanges(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ChatMessage message }) Model?.Bridge.UndoTurn(message);
+        e.Handled = true;
+    }
+
+    private void OnToggleChangedFiles(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ChatMessage message }) message.IsChangedFilesExpanded = !message.IsChangedFilesExpanded;
+        e.Handled = true;
+    }
+
     private void OnSpeakMessage(object sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: ChatMessage message }) Model?.ToggleSpeech(message);
@@ -896,14 +1586,23 @@ public partial class ConversationView : UserControl
 
     private void OnFeedbackGood(object sender, RoutedEventArgs e)
     {
-        if (sender is Button { Tag: ChatMessage message }) Model?.SetFeedback(message, "good");
+        if (sender is Button { Tag: ChatMessage message }) RequestFeedback(message, FeedbackType.Good);
         e.Handled = true;
     }
 
     private void OnFeedbackBad(object sender, RoutedEventArgs e)
     {
-        if (sender is Button { Tag: ChatMessage message }) Model?.SetFeedback(message, "bad");
+        if (sender is Button { Tag: ChatMessage message }) RequestFeedback(message, FeedbackType.Bad);
         e.Handled = true;
+    }
+
+    private void RequestFeedback(ChatMessage message, FeedbackType type)
+    {
+        if (Model is not { } model) return;
+        var dialog = new FeedbackDialog(type, model.Bridge.FeedbackFor(message), submission =>
+            model.Bridge.SubmitFeedback(message, submission.Type, submission.Tags, submission.Comment));
+        if (Window.GetWindow(this) is { } owner) dialog.Owner = owner;
+        dialog.ShowDialog();
     }
 
     private void OnApplyPlan(object sender, RoutedEventArgs e)
@@ -915,8 +1614,24 @@ public partial class ConversationView : UserControl
         e.Handled = true;
     }
 
+    private void OnCancelPlan(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ChatMessage message } && message.IsPendingPlan)
+        {
+            Model?.CancelPlan();
+        }
+        e.Handled = true;
+    }
+
     private void OnDraftKey(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Tab && Keyboard.Modifiers == ModifierKeys.None
+            && string.IsNullOrWhiteSpace(DraftBox.Text) && Model?.ActiveFollowUpSuggestion is not null)
+        {
+            AcceptFollowUpSuggestion();
+            e.Handled = true;
+            return;
+        }
         if (e.Key != Key.Enter) return;
         var steer = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
         if (steer || !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
@@ -925,6 +1640,33 @@ public partial class ConversationView : UserControl
             e.Handled = true;
         }
     }
+
+    private void BindFollowUpSuggestion()
+    {
+        if (Model is null || FollowUpSuggestionBanner is null) return;
+        var suggestion = string.IsNullOrWhiteSpace(DraftBox.Text) ? Model.ActiveFollowUpSuggestion : null;
+        FollowUpSuggestionBanner.Visibility = suggestion is null ? Visibility.Collapsed : Visibility.Visible;
+        FollowUpSuggestionText.Text = suggestion ?? "";
+        if (suggestion is not null)
+        {
+            AcceptFollowUpSuggestionButton.ToolTip = Model.L("access.accept");
+            DismissFollowUpSuggestionButton.ToolTip = Model.L("vision.notNow");
+        }
+    }
+
+    private void AcceptFollowUpSuggestion()
+    {
+        if (Model?.ActiveFollowUpSuggestion is not { } suggestion) return;
+        Model.Draft = suggestion;
+        DraftBox.Text = suggestion;
+        DraftBox.CaretIndex = DraftBox.Text.Length;
+        Model.Bridge.ClearFollowUpSuggestion();
+        DraftBox.Focus();
+    }
+
+    private void OnAcceptFollowUpSuggestion(object sender, RoutedEventArgs e) => AcceptFollowUpSuggestion();
+
+    private void OnDismissFollowUpSuggestion(object sender, RoutedEventArgs e) => Model?.Bridge.ClearFollowUpSuggestion();
 
     private async void OnReject(object sender, RoutedEventArgs e)
     {
@@ -944,6 +1686,18 @@ public partial class ConversationView : UserControl
     private async void OnVisionAllow(object sender, RoutedEventArgs e)
     {
         if (Model is not null) await Model.Bridge.AnswerVisionInstallAsync(true);
+    }
+
+    private async void OnContextOverflowDecline(object sender, RoutedEventArgs e)
+    {
+        if (Model?.Bridge.PendingContextOverflow is { } pending)
+            await Model.Bridge.AnswerContextCompactionAsync(false, pending.ConversationId);
+    }
+
+    private async void OnContextOverflowAccept(object sender, RoutedEventArgs e)
+    {
+        if (Model?.Bridge.PendingContextOverflow is { } pending)
+            await Model.Bridge.AnswerContextCompactionAsync(true, pending.ConversationId);
     }
 }
 
@@ -977,10 +1731,22 @@ public sealed class PromptPlacementLabel : IValueConverter
     {
         PromptPlacement.Steering => LocalizationService.Current.Get("conversation.interrupting"),
         PromptPlacement.Context => LocalizationService.Current.Get("conversation.inContext"),
+        PromptPlacement.WaitingForPlan => LocalizationService.Current.Get("queue.waitingForPlan"),
         _ => LocalizationService.Current.Get("conversation.waiting"),
     };
     public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) =>
         throw new NotSupportedException();
+}
+
+public sealed class PromptModeSteerOnly : IValueConverter
+{
+    public static readonly PromptModeSteerOnly Instance = new();
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is PromptMode.Steer ? Visibility.Visible : Visibility.Collapsed;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+        Binding.DoNothing;
 }
 
 public sealed class PromptModeSteerVisibility : IValueConverter
@@ -1016,7 +1782,7 @@ public sealed class ContextRootLabel : IValueConverter
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         var count = value is System.Collections.ICollection collection ? collection.Count : 0;
-        return count == 0 ? "" : $"📎 Chat context · {count} root{(count == 1 ? "" : "s")}";
+        return count == 0 ? "" : $"📎 Project context · {count} root{(count == 1 ? "" : "s")}";
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
@@ -1117,7 +1883,156 @@ public sealed class NotPlanVisibility : IValueConverter
 {
     public static readonly NotPlanVisibility Instance = new();
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
-        value is ChatKind.Plan ? Visibility.Collapsed : Visibility.Visible;
+        value is ChatMessage message
+            ? message.Kind != ChatKind.Plan && string.IsNullOrEmpty(message.ActivityCode) ? Visibility.Visible : Visibility.Collapsed
+            : value is ChatKind.Plan ? Visibility.Collapsed : Visibility.Visible;
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class ContextCompactionVisibility : IValueConverter
+{
+    public static readonly ContextCompactionVisibility Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is ChatMessage { ActivityCode: "context_compacted_auto" } ? Visibility.Visible : Visibility.Collapsed;
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class ContextCompactionLabel : IValueConverter
+{
+    public static readonly ContextCompactionLabel Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        LocalizationService.Current.Get("conversation.contextCompactedAuto");
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class ActivityDetailVisibility : IValueConverter
+{
+    public static readonly ActivityDetailVisibility Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is ChatMessage { Text.Length: > 0 } ? Visibility.Visible : Visibility.Collapsed;
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class MessageKindLabelVisibility : IValueConverter
+{
+    public static readonly MessageKindLabelVisibility Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is ChatKind.Tool ? Visibility.Collapsed : Visibility.Visible;
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class ToolActivityVisibility : IValueConverter
+{
+    public static readonly ToolActivityVisibility Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is ChatMessage { Kind: ChatKind.Tool } ? Visibility.Visible : Visibility.Collapsed;
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class ToolActivityRunningVisibility : IValueConverter
+{
+    public static readonly ToolActivityRunningVisibility Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is string text && text.StartsWith("→ ", StringComparison.Ordinal) ? Visibility.Visible : Visibility.Collapsed;
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class ToolActivityStateVisibility : IValueConverter
+{
+    public static readonly ToolActivityStateVisibility Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is string text && !text.StartsWith("→ ", StringComparison.Ordinal) ? Visibility.Visible : Visibility.Collapsed;
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class ToolActivityStateIcon : IValueConverter
+{
+    public static readonly ToolActivityStateIcon Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is string text && text.StartsWith("✕ ", StringComparison.Ordinal) ? "!" : "✓";
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class ToolActivityDetailVisibility : IValueConverter
+{
+    public static readonly ToolActivityDetailVisibility Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is not string text) return Visibility.Collapsed;
+        var separator = text.IndexOf('\n');
+        return separator >= 0 && separator < text.Length - 1 ? Visibility.Visible : Visibility.Collapsed;
+    }
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class ToolActivityDetail : IValueConverter
+{
+    public static readonly ToolActivityDetail Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is not string text) return "";
+        var separator = text.IndexOf('\n');
+        if (separator < 0 || separator == text.Length - 1) return "";
+        var detail = text[(separator + 1)..].Trim();
+        return detail.Length <= 240 ? detail : detail[..240] + "…";
+    }
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class MessageBodyVisibility : IValueConverter
+{
+    public static readonly MessageBodyVisibility Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is ChatMessage message && message.Kind != ChatKind.Tool && string.IsNullOrEmpty(message.ActivityCode)
+            ? Visibility.Visible : Visibility.Collapsed;
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class ToolActivityLabel : IValueConverter
+{
+    public static readonly ToolActivityLabel Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is not string text) return "";
+        var title = text.Split('\n', 2)[0].Trim();
+        var running = title.StartsWith("→ ", StringComparison.Ordinal);
+        var failed = title.StartsWith("✕ ", StringComparison.Ordinal);
+        var name = title.Length > 2 && title[1] == ' ' ? title[2..] : title;
+        if (failed) return LocalizationService.Current.Get("conversation.activity.toolFailed", name.Replace('_', ' '));
+        var key = ToolActivityKey(name, running) ?? (running ? "conversation.activity.otherRunning" : "conversation.activity.otherDone");
+        return LocalizationService.Current.Get(key);
+    }
+    internal static string? ToolActivityKey(string name, bool running)
+    {
+        var tool = name.ToLowerInvariant();
+        if (tool is "read_file" or "list_files" or "grep_files" or "glob_files" or "search_files" or "get_latest_attachment")
+            return running ? "conversation.activity.filesReading" : "conversation.activity.filesRead";
+        if (tool is "write_file" or "edit_file" or "create_file" or "delete_file" or "copy_generated_media")
+            return running ? "conversation.activity.filesChanging" : "conversation.activity.filesChanged";
+        if (tool is "run_command" or "terminal_session" or "shell" or "exec")
+            return running ? "conversation.activity.commandsRunning" : "conversation.activity.commandsRun";
+        if (tool.StartsWith("web_", StringComparison.Ordinal) || tool.StartsWith("browser_", StringComparison.Ordinal))
+            return running ? "conversation.activity.webSearching" : "conversation.activity.webSearch";
+        return null;
+    }
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class ToolActivityIcon : IValueConverter
+{
+    public static readonly ToolActivityIcon Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is not string text) return "•";
+        var title = text.Split('\n', 2)[0].Trim();
+        var name = title.Length > 2 && title[1] == ' ' ? title[2..] : title;
+        var key = ToolActivityLabel.ToolActivityKey(name, running: false);
+        if (key is null) return "⋯";
+        if (key.Contains("filesRead", StringComparison.Ordinal)) return "⌕";
+        if (key.Contains("filesChanged", StringComparison.Ordinal)) return "✎";
+        if (key.Contains("commands", StringComparison.Ordinal)) return "⌘";
+        return "⌕";
+    }
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }
 
@@ -1149,19 +2064,90 @@ public sealed class MetadataVisibility : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }
 
+public sealed class ToolOutputVisibility : IValueConverter
+{
+    public static readonly ToolOutputVisibility Instance = new();
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is ChatMessage message
+            && message.Kind == ChatKind.Tool
+            && !string.IsNullOrEmpty(message.RawToolOutput)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
 public sealed class ChangedFileLabel : IValueConverter
 {
     public static readonly ChangedFileLabel Instance = new();
 
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => value is ChangedFile file
-        ? $"{file.Operation switch { ChangedFileOperation.Added => "＋", ChangedFileOperation.Modified => "✎", _ => "−" }} {LocalizationService.Current.Get(file.Operation switch
-        {
-            ChangedFileOperation.Added => "conversation.fileAdded",
-            ChangedFileOperation.Modified => "conversation.fileModified",
-            _ => "conversation.fileDeleted",
-        })}: {file.Path}"
+        ? $"{file.Operation switch { ChangedFileOperation.Added => "＋", ChangedFileOperation.Modified => "✎", _ => "−" }} {file.Path}"
         : "";
 
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class ChangedFileLineLabel : IValueConverter
+{
+    public static readonly ChangedFileLineLabel Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => value is ChangedFile file
+        ? file.AddedLines < 0 || file.DeletedLines < 0 ? "—" : $"+{file.AddedLines} −{file.DeletedLines}"
+        : "";
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class ChangedFilesSummary : IValueConverter
+{
+    public static readonly ChangedFilesSummary Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => value is ChatMessage message
+        ? LocalizationService.Current.Get("conversation.filesChangedCount", message.ChangedFiles.Count)
+        : "";
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class ChangedFilesLineSummary : IValueConverter
+{
+    public static readonly ChangedFilesLineSummary Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => value is ChatMessage message
+        ? message.ChangedFiles.Any(file => file.AddedLines < 0 || file.DeletedLines < 0)
+            ? LocalizationService.Current.Get("conversation.lineCountsUnavailable")
+            : LocalizationService.Current.Get(
+            "conversation.filesLineSummary",
+            message.ChangedFiles.Sum(file => file.AddedLines),
+            message.ChangedFiles.Sum(file => file.DeletedLines))
+        : "";
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class ChangedFilesExpansionLabel : IValueConverter
+{
+    public static readonly ChangedFilesExpansionLabel Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is not ChatMessage message) return "";
+        var remaining = message.ChangedFilesRemaining.Count;
+        return message.IsChangedFilesExpanded
+            ? LocalizationService.Current.Get("conversation.filesLess")
+            : LocalizationService.Current.Get("conversation.filesMore", remaining);
+    }
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class ChangedFilesExpansionVisibility : IValueConverter
+{
+    public static readonly ChangedFilesExpansionVisibility Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is ChatMessage message && message.ChangedFiles.Count > 3 ? Visibility.Visible : Visibility.Collapsed;
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public sealed class PositiveCountVisibility : IValueConverter
+{
+    public static readonly PositiveCountVisibility Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is int count && count > 0 ? Visibility.Visible : Visibility.Collapsed;
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }
 
@@ -1169,7 +2155,7 @@ public sealed class RunSummaryVisibility : IValueConverter
 {
     public static readonly RunSummaryVisibility Instance = new();
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
-        value is ChatMessage message && message.Summary is not null ? Visibility.Visible : Visibility.Collapsed;
+        value is ChatMessage message && message.Summary is not null && message.ChangedFiles.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }
 

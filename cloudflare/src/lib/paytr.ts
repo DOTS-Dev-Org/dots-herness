@@ -106,6 +106,7 @@ export async function createPaytrToken(env: Env, opts: {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: form.toString(),
+    signal: AbortSignal.timeout(10_000),
   });
   const data = await res.json().catch(() => ({})) as { status?: string; token?: string };
   if (!res.ok || data?.status !== "success" || !data?.token) {

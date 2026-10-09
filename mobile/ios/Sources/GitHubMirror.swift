@@ -54,6 +54,7 @@ extension LocalWorkspaceStore {
                 try await nativeGit.clone(repositoryURL: "https://github.com/\(repo.slug).git", destination: root, branch: repo.branch)
                 let files = try agentFiles()
                 try replaceSnapshot(WorkspaceSnapshot(version: 1, workspaceId: "github:\(repo.slug)", workspace: repo.slug, revision: 0, baseCommitSha: nil, files: files, excluded: [], createdAt: Date()))
+                markRepository(repo)
                 repo.save()
                 cloneStatus = "Cloned \(files.count) files from \(repo.slug)."
             } catch {
@@ -99,6 +100,7 @@ extension LocalWorkspaceStore {
                 excluded: excluded,
                 createdAt: Date())
             try replaceSnapshot(snapshot)
+            markRepository(repo)
             repo.save()
             cloneStatus = "Downloaded \(files.count) files to the workspace mirror. Native libgit2 is not linked in this build."
         } catch {

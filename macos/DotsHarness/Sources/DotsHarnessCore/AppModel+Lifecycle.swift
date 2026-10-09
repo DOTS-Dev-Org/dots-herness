@@ -10,35 +10,23 @@ import HarnessPluginKit
 
 @MainActor
 extension AppModel {
-    /// Loads what the first frame shows for the active area only. Called while the window's
-    /// content is being built, so the UI draws once with real data while deferring the
-    /// inactive bridge until after the first frame has been committed to display.
+    /// Loads the project-scoped bridge before the first frame so the UI draws
+    /// once with real data while keeping expensive refresh work deferred.
     public func prepareForFirstFrame() {
         guard !hasPreparedFirstFrame else { return }
         hasPreparedFirstFrame = true
-        if activeArea == .chat {
-            startChatBridgeIfNeeded()
-        } else {
-            startCodingBridgeIfNeeded()
-        }
+        startBridgeIfNeeded()
     }
 
-    public func startChatBridgeIfNeeded() {
-        guard !hasStartedChatBridge else { return }
-        hasStartedChatBridge = true
-        chatBridge.start(workspacePath: "")
-    }
-
-    public func startCodingBridgeIfNeeded() {
-        guard !hasStartedCodingBridge else { return }
-        hasStartedCodingBridge = true
-        codingBridge.start(workspacePath: sandboxRecoveryRequired ? "" : workspacePath)
-        codingBridge.setSandboxPolicy(sandboxExecutionPolicy, branch: activeSandbox?.branch)
+    public func startBridgeIfNeeded() {
+        guard !hasStartedBridge else { return }
+        hasStartedBridge = true
+        bridge.start(workspacePath: sandboxRecoveryRequired ? "" : workspacePath)
+        bridge.setSandboxPolicy(sandboxExecutionPolicy, branch: activeSandbox?.branch)
     }
 
     public func startDeferredBridgeIfNeeded() {
-        startChatBridgeIfNeeded()
-        startCodingBridgeIfNeeded()
+        startBridgeIfNeeded()
     }
 
     public func start() {
@@ -72,15 +60,29 @@ extension AppModel {
             self.remoteControl.start()
             self.remount(refreshCatalog: true)
             self.hasBootstrapped = true
+            self.router.startUsagePolling()
             self.objectWillChange.send()
+
+            // Older installs have a saved live-only model but no catalog cache.
+            // Restore it in the background without requiring the picker to open.
+            if self.router.pendingModelID != nil {
+                Task { @MainActor [weak self] in
+                    await self?.router.refreshModelsIfNeeded()
+                }
+            }
 
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                async let chatRefreshed: () = self.chatBridge.refreshConnection()
-                async let codingRefreshed: () = self.codingBridge.refreshConnection()
+                async let bridgeRefreshed: () = self.bridge.refreshConnection()
                 async let marketRestored: () = self.marketplaceSession.restore()
-                _ = await (chatRefreshed, codingRefreshed, marketRestored)
+                _ = await (bridgeRefreshed, marketRestored)
                 self.syncAccountFromMarketplace()
+                // The release poll is independent of plan recovery, so it runs
+                // alongside it instead of adding its latency to startup.
+                async let updates: () = self.updateChecker.checkForUpdates(manual: false)
+                self.bridge.resolvePendingPlanIntents()
+                await self.bridge.resumeRecoveredPlanIfNeeded()
+                _ = await updates
             }
 
             self.scheduler.runsDueTasks = !self.isBackgroundDaemonEnabled
@@ -107,35 +109,13 @@ extension AppModel {
     }
 
     public func presentTasks() {
+        commitNavigationDestination()
         isSimulatorPresented = false
         isTasksPresented = true
     }
 
     public func toggleSidebarVisibility() {
         navigationState.toggle()
-    }
-
-    public func setActiveArea(_ area: AgentArea) {
-        if area == .chat {
-            startChatBridgeIfNeeded()
-        } else {
-            startCodingBridgeIfNeeded()
-        }
-        guard activeArea != area else { return }
-        cancelEditing()
-        saveDraftState()
-        planModeByArea[activeArea] = isPlanMode
-        activeArea = area
-        assistantMode = area == .chat ? .chat : .coding
-        isPlanMode = planModeByArea[area] ?? false
-        host.settings.set("ui.activeArea", .string(area.rawValue))
-        host.settings.set("ui.assistantMode", .string(area.rawValue))
-        persistSettings()
-        if area == .chat, chatBridge.selectedID == nil {
-            chatBridge.newConversation()
-        }
-        restoreDraftState()
-        objectWillChange.send()
     }
 
     public func shortcut(for action: KeyboardShortcutAction) -> UserKeyboardShortcut {
@@ -192,10 +172,10 @@ extension AppModel {
     public func runScheduledTask(_ task: ScheduledTask) async -> TaskScheduler.RunResult {
         let runner = ScheduledTaskRunner(
             paths: paths,
-            router: codingRouter,
-            endpoint: codingEndpoint,
+            router: router,
+            endpoint: endpoint,
             permissionMode: permissionMode,
-            systemPrompt: { [weak self] in self?.codingBridge.effectiveSystemPromptReport() ?? "" }
+            systemPrompt: { [weak self] in self?.bridge.effectiveSystemPromptReport() ?? "" }
         )
         return await runner.run(task)
     }
@@ -353,8 +333,7 @@ extension AppModel {
         skills.refresh()
         let document = CompositionLoader.loadHost(paths: paths, catalog: catalog)
         _ = host.mount(document)
-        chatBridge.updateSystemPrompt(host.prompt.assembledText())
-        codingBridge.updateSystemPrompt(host.prompt.assembledText())
+        bridge.updateSystemPrompt(host.prompt.assembledText())
         visionModelProgress = visionState == .ready ? 1 : 0
         objectWillChange.send()
     }

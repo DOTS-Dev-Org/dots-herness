@@ -80,7 +80,6 @@
 "settings.title" = "సెట్టింగ్‌లు";
 "settings.backToChats" = "తిరిగి చాట్‌లకు";
 "settings.tab.general" = "సాధారణం";
-"settings.tab.pet" = "పెంపుడు జంతువు";
 "settings.tab.providers" = "ప్రొవైడర్లు";
 "settings.tab.custom" = "అనుకూల API";
 "settings.tab.local" = "స్థానిక నమూనాలు";
@@ -306,22 +305,22 @@
 "composer.add" = "జోడించు";
 "composer.stopListening" = "వినడం ఆపి, వచనాన్ని డ్రాఫ్ట్‌కి జోడించండి";
 "composer.keyboardHelp" = "నమోదు చేయండి: పంపండి · Shift+Enter: కొత్త లైన్ · ⌘/Ctrl+Enter: స్టీర్";
-"composer.followUp.hint" = "తదుపరి సందేశ సూచనను అంగీకరించడానికి Tab నొక్కండి";
+"composer.followUp.hint" = "ఫాలో-అప్ సందేశ సూచనను ఆమోదించడానికి Tabని నొక్కండి";
 "composer.selectModel" = "మోడల్‌ని ఎంచుకోండి";
 "composer.installedSkill" = "వ్యవస్థాపించిన నైపుణ్యం";
 "composer.settings" = "సెట్టింగ్‌లు";
 "composer.skills" = "నైపుణ్యాలు";
 "composer.personal" = "వ్యక్తిగత";
-"composer.projectPickerHelp" = "ఈ చాట్ కోసం ప్రాజెక్ట్‌ను ఎంచుకోండి";
+"composer.projectPickerHelp" = "ఈ సంభాషణ కోసం ప్రాజెక్ట్‌ను ఎంచుకోండి";
 "composer.projectPickerTitle" = "ప్రాజెక్ట్";
 "composer.chooseProject" = "ప్రాజెక్ట్ ఎంచుకోండి";
 "composer.noProject" = "ప్రాజెక్ట్ ఏదీ ఎంచుకోబడలేదు";
 "composer.dontWorkInProject" = "ప్రాజెక్ట్‌లో పని చేయవద్దు";
 "workLocation.title" = "పని చేయండి";
-"workLocation.help" = "ఈ టాస్క్ ఎక్కడ నడుస్తుందో ఎంచుకోండి";
-"workLocation.local" = "స్థానిక";
+"workLocation.help" = "ఈ పని ఎక్కడ నడవాలో ఎంచుకోండి";
+"workLocation.local" = "లోకల్";
 "workLocation.localDetail" = "ఈ కంప్యూటర్‌లో ఈ పనిని అమలు చేయండి";
-"workLocation.localWorktree" = "కొత్త స్థానిక వర్క్‌ట్రీ";
+"workLocation.localWorktree" = "కొత్త లోకల్ వర్క్‌ట్రీ";
 "workLocation.localWorktreeDetail" = "ఈ కంప్యూటర్‌లో వివిక్త చెక్అవుట్‌ని ఉపయోగించండి";
 "workLocation.remote" = "మరో కంప్యూటర్";
 "workLocation.remoteDetail" = "SSH ద్వారా అనుసంధానమైన కంప్యూటర్‌లో పని చేయండి";
@@ -377,8 +376,8 @@
 "ssh.error.pathMissing" = "దూరపు కంప్యూటర్‌లో %@ ఫోల్డర్ లేదు.";
 "ssh.error.configWriteFailed" = "%@ ను ~/.ssh/config లో రాయలేకపోయాం.";
 "tool.remoteUnavailable" = "%2$@ లో పని చేస్తున్నప్పుడు %1$@ అందుబాటులో ఉండదు. బదులుగా run_command తో షెల్ ఆదేశాలు వాడండి.";
-"git.branchHelp" = "Git శాఖను ఎంచుకోండి";
-"git.detached" = "వేరు చేయబడిన HEAD";
+"git.branchHelp" = "Git బ్రాంచ్‌ను ఎంచుకోండి";
+"git.detached" = "డిటాచ్డ్ HEAD";
 "git.search" = "శాఖలను శోధించండి";
 "git.branches" = "శాఖలు";
 "git.noBranches" = "శాఖలు ఏవీ కనుగొనబడలేదు";
@@ -413,8 +412,6 @@
 "slash.model" = "మోడల్";
 "slash.plan" = "ప్లాన్ మోడ్";
 "slash.planDetail" = "ప్లాన్ మోడ్‌ని ఆన్ చేయండి";
-"slash.mascot" = "పెంపుడు జంతువు";
-"slash.mascotDetail" = "పెంపుడు జంతువును మేల్కొలపండి లేదా దాచండి";
 "slash.pluginCreator" = "ప్లగిన్ క్రియేటర్";
 "slash.pluginCreatorDetail" = "కొత్త ప్లగిన్‌ను సృష్టించండి";
 "pluginCreator.template" = "టెంప్లేట్";
@@ -501,7 +498,6 @@
 "sidebar.hide" = "దాచు";
 "sidebar.show" = "చూపించు";
 "sidebar.selectProject" = "ప్రాజెక్ట్ ఎంచుకోండి";
-"sidebar.continueWithoutProject" = "ప్రాజెక్ట్ లేకుండా కొనసాగించండి";
 "sidebar.projectOptions" = "ప్రాజెక్ట్ ఎంపికలు";
 "sidebar.editProject" = "ప్రాజెక్ట్‌ని సవరించండి";
 "sidebar.addProject" = "ప్రాజెక్ట్ జోడించండి";
@@ -528,33 +524,11 @@
 "sidebar.archived" = "ఆర్కైవ్ చేయబడింది";
 "sidebar.chatRunning" = "చాట్ ప్రోగ్రెస్‌లో ఉంది";
 "sidebar.chatCompleted" = "చాట్ పూర్తయింది";
-"sidebar.usage" = "వాడుక";
+"sidebar.usage" = "వినియోగం";
 "sidebar.settings" = "సెట్టింగ్‌లు";
 "sidebar.accountOptions" = "ఖాతా ఎంపికలు";
 "sidebar.accountUsage" = "DOTS ఖాతా మరియు వినియోగం";
 
-"pet.position.bottomTrailing" = "దిగువ కుడి";
-"pet.position.bottomLeading" = "దిగువ ఎడమ";
-"pet.position.topTrailing" = "ఎగువ కుడి";
-"pet.position.topLeading" = "ఎగువ ఎడమవైపు";
-"pet.settings" = "పెంపుడు జంతువు సెట్టింగులు";
-"pet.hide" = "పెంపుడు జంతువును దాచండి";
-"pet.dragHint" = "DOTS పెట్ · తరలించడానికి పట్టుకోండి";
-"pet.stopAndSend" = "వినడం ఆపి, ఎంచుకున్న చాట్‌కి పంపండి";
-"pet.micOpening" = "మైక్రోఫోన్‌ని తెరుస్తోంది...";
-"pet.listening" = "వింటున్నారు...";
-"pet.transcribing" = "స్థానిక వాయిస్ మోడల్ లిప్యంతరీకరణ చేయబడుతోంది…";
-"pet.sending" = "ఎంచుకున్న చాట్‌కి పంపబడుతోంది...";
-"pet.visibility" = "పెంపుడు జంతువు దృశ్యమానత";
-"pet.show" = "పెంపుడు జంతువును చూపించు";
-"pet.visibilityHint" = "ఈ ఎంపిక ప్రారంభించబడినప్పుడు మాత్రమే పెంపుడు జంతువు తెరపై తేలుతుంది. ఇది మొదటి ప్రయోగంలో ఆఫ్‌లో ఉంది.";
-"pet.appearance" = "స్వరూపం";
-"pet.position" = "స్థానం";
-"pet.size" = "పరిమాణం";
-"pet.sizeValue" = "%d px";
-"pet.avatar" = "అవతార్";
-"pet.preview" = "ప్రివ్యూ";
-"pet.title" = "పెంపుడు జంతువు";
 
 "usage.title" = "వాడుక";
 "usage.accountSummary" = "ఈ వ్యవధి యొక్క DOTS YAZILIM ఖాతా సారాంశం";
@@ -870,7 +844,6 @@
 "marketplace.install" = "ఇన్‌స్టాల్ చేయండి";
 "marketplace.search" = "ప్లగిన్‌లను శోధించండి";
 "marketplace.update" = "v%@ → v%@ని నవీకరించండి";
-"pet.avatarHint" = "పెంపుడు జంతువు అవతార్‌ను ఎంచుకోండి.";
 "router.customEndpointHint" = "అనుకూల API ముగింపు స్థానం";
 "router.noKeyRequired" = "కీ అవసరం లేదు. ఈ ప్రొవైడర్ ద్వారా మార్గానికి కనెక్ట్ చేయండి.";
 "settings.addProviderCustom" = "అనుకూల API ద్వారా ఈ ప్రొవైడర్‌ని జోడించండి.";
@@ -1104,9 +1077,6 @@
 "feedback.tag.negative_other" = "ఇతరం";
 
 // Completed translations for keys added to the desktop catalog.
-"assistantMode.title" = "అసిస్టెంట్ మోడ్";
-"assistantMode.coding" = "కోడింగ్";
-"assistantMode.chat" = "చాట్";
 "tasks.close" = "పనులను మూసివేయండి";
 "tasks.back" = "వెనుకకు";
 "tasks.new" = "కొత్త పని";
@@ -1147,3 +1117,213 @@
 "settings.compactTrigger" = "సందర్భాన్ని స్వయంచాలకంగా కుదించే పరిమితి";
 "settings.compactTrigger.hint" = "ప్రతి మోడల్ సందర్భ విండోలో శాతం. కుదింపు ప్రాంప్ట్ కాష్‌ను తిరిగి రాస్తుంది, కాబట్టి ఎక్కువ విలువ కాష్‌ను ఎక్కువ కాలం ఉంచుతుంది.";
 "conversation.translate" = "అనువదించు";
+
+
+// Completed translations for keys added to the desktop catalog.
+"tray.section.running" = "నడుస్తోన్న చాట్‌లు";
+"tray.section.waiting" = "శ్రద్ధ అవసరం";
+"tray.write" = "సందేశం రాయండి";
+"tray.openUsage" = "వినియోగ స్క్రీన్ తెరవండి";
+"tray.noChats" = "ప్రస్తుతం చాట్‌లు లేవు";
+"tray.unread" = "కొత్త సమాధానం";
+
+// Write-lease conflict copy.
+"conflict.policy.waitThenAsk" = "వేచి ఉండి, తర్వాత అడుగు";
+"conflict.policy.waitThenAsk.detail" = "మరో చాట్ కోసం మౌనంగా వేచి ఉంటుంది; ఆలస్యమైతేనే అడుగుతుంది.";
+"conflict.policy.ask" = "నన్ను అడుగు";
+"conflict.policy.ask.detail" = "రెండు చాట్లు ఒకే ఫైల్ కోరిన వెంటనే అడుగుతుంది.";
+"conflict.policy.waitOnly" = "ఎల్లప్పుడూ వేచి ఉండు";
+"conflict.policy.waitOnly.detail" = "ప్రశ్నించదు: ప్రతి వ్రాత ఫైల్ దగ్గర ఉంచిన చాట్ కోసం వేచి ఉంటుంది.";
+"conflict.title" = "మరో చాట్ %@ వ్రస్తున్నది";
+"conflict.stillBusy" = "రైటింగ్ ఆపబడింది: %@ ఇంకా మరో చాట్ వ్రస్తున్నది.";
+"conflict.userSkipped" = "మీ అభ్యర్థన మేరకు %@ ని మరో చాట్ (%@) వద్దే ఉంచి రైటింగ్ వదిలివేసాము.";
+"conflict.stoppedHolder" = "మీ అభ్యర్థన మేరకు చాట్ “%@” ఆపబడింది, ఈ రైటింగ్ జరిగింది.";
+"conflict.stoppedOthers" = "మీ అభ్యర్థన మేరకు ఈ ప్రాజెక్టులోని మిగిలిన చాట్లు ఆపబడ్డాయి, ఈ రైటింగ్ జరిగింది.";
+"conflict.wholeProject" = "మొత్తం ప్రాజెక్టు (ఆదేశం: %@)";
+"conflict.banner.title" = "మరో చాట్ ఈ ఫైల్ వ్రస్తున్నది";
+"conflict.banner.body" = "%1$@ · “%2$@” %3$d సెకన్ల నుండి ఉంచుతోంది";
+"conflict.banner.keepWaiting" = "వేచి ఉండు";
+"conflict.banner.stopHolder" = "ఆ చాట్‌ను ఆపండి";
+"conflict.banner.stopAllOthers" = "మిగిలిన అన్ని చాట్‌లను ఆపండి";
+"conflict.banner.skip" = "ఈ రైటింగ్ వదిలివేయండి";
+"conflict.waiting" = "“%@” వ్రాయడం కోసం వేచి: %@";
+"settings.workspaceConflictPolicy" = "మరో చాట్ అదే ఫైల్ వ్రాస్తుంటే";
+"settings.conflictWaitSeconds" = "అడిగే ముందు వేచి";
+"settings.conflictWaitValue" = "%d సెకన్లు";
+
+
+"conversation.ranCommand" = "Ran 1 command";
+"conversation.ranCommands" = "Ran %d commands";
+"conversation.runningTools" = "Running tools…";
+"conversation.thinkingPhase" = "Thinking…";
+"conversation.tokensCount" = "%@ tokens";
+"usage.context.window" = "కాంటెక్స్ట్ విండో";
+"usage.planLimits" = "ప్లాన్ వినియోగ పరిమితులు";
+"ask.other" = "Other";
+"ask.next" = "Next";
+"ask.skipShort" = "Skip";
+"composer.queue.one" = "1 message queued";
+"composer.queue.many" = "%d messages queued";
+"composer.queue.edit" = "Edit";
+"composer.queue.editBlocked" = "Clear the message box to edit";
+"composer.queue.remove" = "Remove";
+"git.createPR" = "PR సృష్టించండి";
+"git.hideBar" = "దాచు";
+"composer.queue.next" = "Next: %@";
+
+// Composer, git bar and usage popover.
+"usage.context.tooltip" = "కాంటెక్స్ట్ మరియు టోకెన్ వినియోగం";
+"usage.context.conversation" = "చాట్ సందేశాలు";
+"usage.context.toolDefinitions" = "టూల్ నిర్వచనాలు";
+"usage.context.mcpDefinitions" = "MCP టూల్ నిర్వచనాలు";
+"usage.context.systemPrompt" = "సిస్టమ్ సూచనలు";
+"usage.context.cacheHit" = "ప్రాంప్ట్ కాష్ హిట్‌లు";
+"usage.context.notReported" = "ప్రొవైడర్ నివేదించలేదు";
+"usage.context.cacheWrite" = "కాష్‌లో %@ టోకెన్లు వ్రాయబడ్డాయి";
+
+// Local AI runtime and custom endpoint tuning.
+"custom.modelOptional" = "మోడల్ పేరు (ఐచ్ఛికం)";
+"custom.contextOptional" = "టోకెన్లలో కాంటెక్స్ట్ విండో (ఐచ్ఛికం)";
+"custom.contextHint" = "సర్వర్ నుండి చదవడానికి రెండింటినీ ఖాళీగా ఉంచండి. సర్వర్ తెలియజేయకపోతే కాంటెక్స్ట్ ఇవ్వండి (Ollama: OLLAMA_CONTEXT_LENGTH తో సమానం).";
+"custom.contextInvalid" = "కాంటెక్స్ట్ విండో ధన సంఖ్య అయి ఉండాలి.";
+"custom.detected" = "ఈ కంప్యూటర్‌లో నడుస్తున్నవి";
+"custom.noModelAvailable" = "%@ ఏ మోడల్‌లనూ చూపడం లేదు. దాని సర్వర్‌ను ప్రారంభించండి లేదా ఎండ్‌పాయింట్‌కు మోడల్ పేరు ఇవ్వండి.";
+"local.extraArgs" = "అదనపు llama-server ఆర్గ్యుమెంట్లు";
+"local.mlxExtraArgs" = "అదనపు mlx_lm సర్వర్ ఆర్గ్యుమెంట్లు";
+"local.gpuLayers" = "GPU లేయర్లు (auto, all లేదా సంఖ్య)";
+"local.hardware" = "హార్డ్‌వేర్";
+"local.hardwareGPU" = "%@ · %@ GPU మెమరీ · %@ RAM";
+"local.importGGUF" = "GGUF ఫైల్ జోడించండి…";
+"local.installMLX" = "MLX ఇన్‌స్టాల్ చేయండి";
+"local.installingMLX" = "MLX ఇన్‌స్టాల్ అవుతోంది (Python + mlx-lm)…";
+"local.kvCache" = "KV క్యాష్ రకం";
+"local.servingContext" = "%@ · %d టోకెన్లు";
+"local.tooLarge" = "చాలా పెద్దది";
+"local.tuning" = "పనితీరు";
+"local.tuningHint" = "ఖాళీగా లేదా auto గా ఉంచితే రన్‌టైమ్ మోడల్‌ను మీ GPU మెమరీకి సరిపోయేలా అమర్చుతుంది. మార్పులు తదుపరిసారి మోడల్ ప్రారంభమైనప్పుడు వర్తిస్తాయి.";
+"local.contextSize" = "కాంటెక్స్ట్ పరిమాణం (టోకెన్లు)";
+"local.threads" = "CPU థ్రెడ్‌లు";
+"local.batchSize" = "బ్యాచ్ పరిమాణం";
+"local.forget" = "జాబితా నుండి తీసివేయండి";
+"localModel.needsMemory" = "సుమారు %d GB GPU మెమరీ లేదా RAM అవసరం.";
+"localRuntime.helperFailed" = "%@ విఫలమైంది (ఎగ్జిట్ కోడ్ %d)";
+"localRuntime.mlxUnsupported" = "MLX కు Apple Silicon Mac అవసరం.";
+"local.flashAttention" = "Flash attention";
+"local.hardwareMemory" = "%@ RAM";
+
+// Translations completed for keys that had no localized text.
+"conversation.fullToolOutput" = "పూర్తి టూల్ అవుట్‌పుట్";
+"sidebar.showSidebar" = "సైడ్‌బార్ చూపించు";
+"sidebar.hideSidebar" = "సైడ్‌బార్ దాచు";
+"navigation.back" = "వెనుకకు";
+"navigation.forward" = "ముందుకు";
+"settings.autoApprovePlans" = "ప్లాన్‌లను స్వయంచాలకంగా ఆమోదించు";
+"settings.autoApprovePlans.hint" = "ఆన్ చేసినప్పుడు, రూపొందిన ప్లాన్ ప్రత్యేక ప్లాన్ ఆమోదం కోసం వేచి ఉండకుండా అమలవుతుంది. టూల్ స్థాయి ఆమోదాలు అలాగే వర్తిస్తాయి.";
+"media.fallbackUsed" = "ఎంచుకున్న ప్రొవైడర్ ఈ చిత్రాన్ని రూపొందించలేకపోయింది. ఇది %@/%@ ద్వారా ఒక్కసారి ఫాల్‌బ్యాక్ అభ్యర్థనతో రూపొందించబడింది; ప్రధాన సంభాషణ ప్రొవైడర్, మోడల్ మారలేదు, కాబట్టి దాని ప్రాంప్ట్ క్యాష్ అలాగే ఉంది.";
+"media.imageUnsupportedWithFallbackHint" = "నేను %@ తో ఈ చిత్రాన్ని రూపొందించలేను. ఫాల్‌బ్యాక్‌గా ఒక ఇమేజ్ API లేదా ప్రొవైడర్‌ను కాన్ఫిగర్ చేయండి. కేవలం చిత్రం కోసం ప్రధాన చాట్ మోడల్‌ను మార్చితే ప్రొవైడర్ ప్రాంప్ట్ క్యాష్ దెబ్బతినవచ్చు.";
+"conversation.generationResumed" = "సందేశం తిరిగి ప్రారంభమైంది";
+"conversation.cancelPlan" = "ప్లాన్ రద్దు చేయి";
+"conversation.cancelPlanHelp" = "ఈ ప్లాన్‌ను రద్దు చేసి క్యూలో ఉన్న సందేశాలను విడుదల చేయి";
+"conversation.thinking" = "ఆలోచనా ప్రక్రియ";
+"usage.manageResets" = "రీసెట్‌లను నిర్వహించు";
+"usage.useReset" = "రీసెట్ ఉపయోగించు";
+"usage.resetTitle" = "Claude పరిమితి రీసెట్ ఉపయోగించాలా?";
+"usage.openClaude" = "Claude లో కొనసాగించు";
+"usage.resetConfirmation" = "Claude వినియోగ పేజీ తెరుచుకుంటుంది. %@ కు సైన్ ఇన్ చేసి ఆ ఖాతాకు అందించిన రీసెట్‌ను చూడండి. ఉపయోగించడానికి ఉచితంగా రీసెట్ చేయి పై క్లిక్ చేసి Claude లో నిర్ధారించండి. ఒకసారి ఉపయోగించిన రీసెట్‌ను వెనక్కి తీసుకోలేరు. HerNess కు తిరిగి వచ్చినప్పుడు పరిమితులు రిఫ్రెష్ అవుతాయి.";
+"usage.resetOpenFailed" = "Claude ను తెరవలేకపోయాం. ఖాతా ఇంకా కనెక్ట్ అయి ఉందో లేదో చూసి మళ్లీ ప్రయత్నించండి.";
+"conversation.review" = "సమీక్ష";
+"dock.noWorkspace" = "ముందుగా వర్క్‌స్పేస్ ఫోల్డర్‌ను ఎంచుకోండి.";
+"dock.branch" = "బ్రాంచ్";
+"dock.refresh" = "రిఫ్రెష్";
+"dock.commit" = "Commit";
+"dock.push" = "Push";
+"dock.fetch" = "Fetch";
+"dock.commitOrPush" = "Commit లేదా Push";
+"dock.commitMessage" = "Commit సందేశం";
+"dock.noChanges" = "ఏజెంట్ ఎటువంటి మార్పులు చేయలేదు.";
+"dock.whyRequest" = "మీ అభ్యర్థన";
+"dock.whyAgent" = "ఏజెంట్ వివరణ";
+"dock.notRepo" = "ఈ ఫోల్డర్ git రిపాజిటరీ కాదు.";
+"dock.filterFiles" = "ఫైల్‌లను ఫిల్టర్ చేయి…";
+"dock.openFile" = "ఫైల్ తెరువు";
+"dock.selectFile" = "వర్క్‌స్పేస్ ట్రీ నుండి ఒక ఫైల్‌ను ఎంచుకోండి";
+"dock.binaryFile" = "బైనరీ లేదా చదవలేని ఫైల్";
+"project.missing.title" = "ప్రాజెక్ట్ ఫోల్డర్ కనుగొనబడలేదు: %@";
+"project.missing.message" = "'%@' వద్ద ఉన్న ప్రాజెక్ట్ ఫోల్డర్ తరలించబడి లేదా తొలగించబడి ఉండవచ్చు. దాని కొత్త స్థానాన్ని ఎంచుకోండి లేదా ప్రాజెక్ట్‌ను తీసివేయండి.";
+"project.missing.locate" = "స్థానాన్ని ఎంచుకోండి…";
+"project.missing.readOnly" = "ప్రాజెక్ట్ ఫోల్డర్ అందుబాటులో లేదు. మీరు మునుపటి సంభాషణలను చూడవచ్చు; కొత్త స్థానాన్ని ఎంచుకునే వరకు కొత్త సంభాషణలు సృష్టించడం, సందేశాలు పంపడం నిలిపివేయబడతాయి.";
+"queue.waitingForPlan" = "ప్లాన్ ఆమోదం కోసం వేచి ఉంది";
+"settings.closeToTray" = "విండో మూసివేసినప్పుడు ట్రేలో నడుస్తూ ఉంచండి";
+"settings.closeToTray.hint" = "విండో దాచబడినప్పుడు రన్‌లు, టెర్మినల్స్, షెడ్యూల్ పనులు కొనసాగుతాయి; ట్రే ఐకాన్ దాన్ని తిరిగి తెస్తుంది.";
+"tray.show" = "విండో తెరవండి";
+"context.overflowTitle" = "ఈ సంభాషణ కొత్త మోడల్‌లో సరిపోదు";
+"context.overflowReason" = "కొనసాగడానికి %1$@ కు సుమారు %2$d టోకెన్లు అవసరం, ఆ మోడల్‌లో %3$d మాత్రమే ఖాళీగా ఉన్నాయి.";
+"context.overflowByModel" = "సారాంశాన్ని %@ రాస్తుంది; ట్రాన్స్‌క్రిప్ట్‌ను ఇంకా చదవగల అతి చిన్న కనెక్ట్ అయిన మోడల్ అది.";
+"context.overflowLocally" = "కనెక్ట్ అయిన ఏ మోడల్ కూడా ట్రాన్స్‌క్రిప్ట్‌ను చదవలేదు, కాబట్టి ఏ మోడల్‌నూ అడగకుండా సంభాషణ కుదించబడుతుంది.";
+"context.overflowCompress" = "కుదించి కొనసాగించు";
+"context.overflowNotNow" = "ఇప్పుడు కాదు";
+"context.overflowDeclined" = "పంపడం ఆగింది: సంభాషణ కొత్త మోడల్‌లో సరిపోదు.";
+"usage.context.title" = "వినియోగం";
+"usage.context.input" = "పంపిన ఇన్‌పుట్";
+"usage.context.estimatedInput" = "అంచనా ఇన్‌పుట్";
+"usage.context.output" = "అవుట్‌పుట్";
+"usage.context.latestRequest" = "తాజా అభ్యర్థన · కాంటెక్స్ట్ విండో";
+"usage.context.estimatedBreakdown" = "అంచనా ఇన్‌పుట్ విభజన";
+"usage.context.estimateNote" = "ప్రొవైడర్ ఇన్‌పుట్/అవుట్‌పుట్ మొత్తాలు అందుబాటులో ఉన్నప్పుడు చూపబడతాయి. లేకపోతే ఇన్‌పుట్ మొత్తాలు, టూల్/MCP వర్గాలు స్థానిక అంచనాలు.";
+"usage.context.tokens" = "టోకెన్లు";
+"usage.context.toolCalls" = "టూల్ కాల్స్";
+"usage.context.mcpCalls" = "MCP కాల్స్";
+"usage.context.toolResults" = "టూల్ ఫలితాలు";
+"usage.context.mcpResults" = "MCP ఫలితాలు";
+"plan.proposed" = "Claude ఒక ప్లాన్‌ను ప్రతిపాదించింది";
+"plan.reject" = "తిరస్కరించు";
+"plan.revise" = "సవరించు…";
+"plan.accept" = "అంగీకరించు";
+"plan.acceptAuto" = "అంగీకరించి ఆటో మోడ్";
+"plan.open" = "ప్లాన్ తెరువు";
+"plan.empty" = "ఇంకా ప్లాన్ లేదు";
+"dock.expand" = "విస్తరించు";
+"dock.collapse" = "కుదించు";
+"usage.context.cacheReuse" = "ఈ చాట్‌లో క్యాష్ పునర్వినియోగం";
+"usage.context.cacheFreshInput" = "New / outside-breakpoint input: %@ tokens";
+"usage.context.cacheCoverage" = "కొలత కవరేజ్: %@ · %@ / %@ అభ్యర్థనలు";
+"usage.context.cacheLatency" = "సగటు అభ్యర్థన జాప్యం: %@ ms";
+"usage.context.cacheLoss" = "అతిపెద్ద క్యాష్ నష్టం: %@ · %@ టోకెన్లు";
+"tray.back" = "చాట్‌లు";
+
+"composer.cacheExpired.explanation" = "కాష్ అంచనా వ్యవధి ముగిసింది. ప్రాంప్ట్ కాష్ అనేది ప్రొవైడర్ వైపు ఉండే తాత్కాలిక ప్రాసెసింగ్ స్థితి; మీ చాట్ చరిత్ర భద్రంగానే ఉంటుంది. మొత్తం చరిత్రతో కొనసాగిస్తే ఆ టోకెన్లు మళ్లీ కొత్త ఇన్‌పుట్‌గా లెక్కించబడవచ్చు. ప్రొవైడర్ వద్ద కాష్ ఇంకా ఉందో లేదో తదుపరి అభ్యర్థన వినియోగ డేటా ద్వారానే నిర్ధారించవచ్చు.";
+"composer.accountSwitched.notice" = "ఈ చాట్ అదే మోడల్‌పై మరో ఖాతాకు మారింది. అక్కడ కాష్ మొదటి నుంచి మొదలవుతుంది; కొనసాగిస్తే ఎక్కువ టోకెన్లు ఖర్చై, వ్యయం పెరగవచ్చు.";
+"composer.contextFull.notice" = "కాంటెక్స్ట్ విండో దాదాపు నిండిపోయింది; కొనసాగిస్తే ఎక్కువ టోకెన్లు ఖర్చై, వ్యయం పెరగవచ్చు. చిన్న సారాంశంతో కొత్త చాట్ ప్రారంభించండి.";
+"composer.cacheExpired.infoTitle" = "ఇది నాకు ఎందుకు కనిపిస్తోంది?";
+"composer.cacheExpired.notice" = "కాష్ గడువు ముగిసి ఉండవచ్చు; కొనసాగిస్తే ఎక్కువ టోకెన్లు ఖర్చై, వ్యయం పెరగవచ్చు. చిన్న సారాంశంతో కొత్త చాట్ ప్రారంభించండి.";
+"feedback.tag.apply_elsewhere" = "Apply it elsewhere";
+"feedback.tag.broke_existing_feature" = "Broke an existing feature";
+"feedback.tag.did_not_follow_project_style" = "Didn't follow project style";
+"feedback.tag.ignored_project_architecture" = "Ignored project architecture";
+"feedback.tag.keep_project_style" = "Keep the project style";
+"feedback.tag.reuse_architecture" = "Reuse this architecture";
+"feedback.tag.reuse_token_pattern" = "Reuse this token pattern";
+"feedback.tag.wrong_theme_or_token" = "Wrong theme or token";
+
+// Completed translations for keys added to the desktop catalog.
+"conversation.filesChangedCount" = "%d ఫైల్‌లు మార్చబడ్డాయి";
+"conversation.filesLineSummary" = "+%d −%d";
+"conversation.lineCountsUnavailable" = "లైన్ల సంఖ్య అందుబాటులో లేదు";
+"conversation.filesMore" = "మరిన్ని %d ఫైల్‌లను చూపు";
+"conversation.filesLess" = "తక్కువ ఫైల్‌లను చూపు";
+"conversation.undoChanges" = "రద్దు చేయి";
+"conversation.viewChanges" = "మార్పులను వీక్షించు";
+"conversation.filesReverted" = "ఫైల్ మార్పులు వెనక్కి తీసుకోబడ్డాయి.";
+
+// Completed translations for keys added to the desktop catalog.
+"composer.modelSwitched.notice" = "మోడల్ మారింది. కాష్ కొత్త మోడల్‌కు బదిలీ కాదు; మొత్తం చరిత్ర మళ్లీ ప్రాసెస్ అవుతుంది, దీనివల్ల ఎక్కువ టోకెన్లు ఖర్చై, వ్యయం పెరగవచ్చు.";
+
+"archive.title" = "ఆర్కైవ్ చేసిన సంభాషణలు";
+"archive.empty" = "ఆర్కైవ్ చేసిన సంభాషణలు లేవు.";
+
+"conversation.plan" = "ప్లాన్ చేయండి";
+"conversation.system" = "వ్యవస్థ";
+
+"archive.confirmDelete" = "ఈ సంభాషణను శాశ్వతంగా తొలగించాలా?";
+"archive.deletePermanently" = "శాశ్వతంగా తొలగించు";
+"conversation.processedTokensCount" = "%@ టోకెన్లు";

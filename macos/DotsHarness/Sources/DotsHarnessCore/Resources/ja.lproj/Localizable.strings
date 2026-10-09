@@ -62,7 +62,6 @@
 "settings.title" = "設定";
 "settings.backToChats" = "チャットに戻る";
 "settings.tab.general" = "一般";
-"settings.tab.pet" = "ペット";
 "settings.tab.providers" = "プロバイダー";
 "settings.tab.custom" = "カスタム API";
 "settings.tab.local" = "ローカルモデル";
@@ -279,7 +278,7 @@
 "composer.add" = "追加";
 "composer.stopListening" = "聞き取りを停止してテキストを下書きに追加";
 "composer.keyboardHelp" = "Enter: 送信 · Shift+Enter: 改行 · ⌘/Ctrl+Enter: 割り込み";
-"composer.followUp.hint" = "フォローアップメッセージの提案を受け入れるにはTabキーを押します";
+"composer.followUp.hint" = "Tabキーを押してフォローアップメッセージの候補を承認します";
 "composer.selectModel" = "モデルを選択";
 "composer.installedSkill" = "インストール済みスキル";
 "composer.settings" = "設定";
@@ -303,8 +302,6 @@
 "slash.model" = "モデル";
 "slash.plan" = "プランモード";
 "slash.planDetail" = "プランモードをオンにする";
-"slash.mascot" = "ペット";
-"slash.mascotDetail" = "Petを起こす、または隠す";
 "slash.pluginCreator" = "プラグイン作成者";
 "slash.pluginCreatorDetail" = "新しいプラグインを作成";
 "pluginCreator.template" = "テンプレート";
@@ -390,7 +387,6 @@
 "sidebar.hide" = "隠す";
 "sidebar.show" = "表示";
 "sidebar.selectProject" = "プロジェクトを選択";
-"sidebar.continueWithoutProject" = "プロジェクトなしで続ける";
 "sidebar.projectOptions" = "プロジェクトのオプション";
 "sidebar.editProject" = "プロジェクトを編集";
 "sidebar.addProject" = "プロジェクトを追加";
@@ -421,28 +417,6 @@
 "sidebar.settings" = "設定";
 "sidebar.accountOptions" = "アカウントオプション";
 "sidebar.accountUsage" = "DOTSアカウントと使用量";
-"pet.position.bottomTrailing" = "右下";
-"pet.position.bottomLeading" = "左下";
-"pet.position.topTrailing" = "右上";
-"pet.position.topLeading" = "左上";
-"pet.settings" = "Petの設定";
-"pet.hide" = "Petを隠す";
-"pet.dragHint" = "DOTS Pet · 長押しして移動";
-"pet.stopAndSend" = "聞き取りを停止して選択中のチャットへ送信";
-"pet.micOpening" = "マイクを開いています…";
-"pet.listening" = "聞き取り中…";
-"pet.transcribing" = "ローカル音声モデルで文字起こし中…";
-"pet.sending" = "選択中のチャットへ送信中…";
-"pet.visibility" = "Petの表示";
-"pet.show" = "Petを表示";
-"pet.visibilityHint" = "この設定が有効なときだけPetが画面に表示されます。初回起動時はオフです。";
-"pet.appearance" = "外観";
-"pet.position" = "位置";
-"pet.size" = "サイズ";
-"pet.sizeValue" = "%d ピクセル";
-"pet.avatar" = "アバター";
-"pet.preview" = "プレビュー";
-"pet.title" = "ペット";
 "usage.title" = "使用量";
 "usage.accountSummary" = "この期間のDOTS YAZILIMアカウント概要";
 "usage.period" = "この期間";
@@ -716,13 +690,13 @@
 "speech.emptyOutput" = "ローカルの音声エンジンが音声を返しませんでした";
 "speech.invalidAudio" = "ローカル音声エンジンが無効な音声を返しました";
 "router.imageFallback" = "画像のフォールバックとして使用する";
-"composer.projectPickerHelp" = "このチャットのプロジェクトを選択してください";
+"composer.projectPickerHelp" = "この会話のプロジェクトを選択";
 "composer.projectPickerTitle" = "プロジェクト";
 "composer.chooseProject" = "プロジェクトの選択";
 "composer.noProject" = "プロジェクトが選択されていません";
 "composer.dontWorkInProject" = "プロジェクトで働かないでください";
 "workLocation.title" = "で働く";
-"workLocation.help" = "このタスクを実行する場所を選択してください";
+"workLocation.help" = "このタスクの実行場所を選択";
 "workLocation.local" = "ローカル";
 "workLocation.localDetail" = "このコンピュータでこのタスクを実行する";
 "workLocation.localWorktree" = "新しいローカルワークツリー";
@@ -781,8 +755,8 @@
 "ssh.error.pathMissing" = "フォルダ %@ はリモートコンピュータに存在しません。";
 "ssh.error.configWriteFailed" = "%@ を ~/.ssh/config に書き込めませんでした。";
 "tool.remoteUnavailable" = "%2$@ で作業している間は %1$@ を使えません。代わりに run_command でシェルコマンドを使ってください。";
-"git.branchHelp" = "Git ブランチを選択してください";
-"git.detached" = "デタッチドヘッド";
+"git.branchHelp" = "Gitブランチを選択";
+"git.detached" = "デタッチされたHEAD";
 "git.search" = "ブランチを検索";
 "git.branches" = "支店";
 "git.noBranches" = "ブランチが見つかりませんでした";
@@ -850,7 +824,6 @@
 "marketplace.install" = "インストール";
 "marketplace.search" = "プラグインの検索";
 "marketplace.update" = "v%@ → v%@ をアップデートします";
-"pet.avatarHint" = "ペットのアバターを選択します。";
 "router.customEndpointHint" = "カスタム API エンドポイント";
 "router.noKeyRequired" = "キーは必要ありません。このプロバイダーを介してルートに接続します。";
 "settings.addProviderCustom" = "カスタム API を介してこのプロバイダーを追加します。";
@@ -1084,9 +1057,6 @@
 "feedback.tag.negative_other" = "その他";
 
 // Completed translations for keys added to the desktop catalog.
-"assistantMode.title" = "アシスタントモード";
-"assistantMode.coding" = "コーディング";
-"assistantMode.chat" = "チャット";
 "tasks.close" = "タスクを閉じる";
 "tasks.back" = "戻る";
 "tasks.new" = "新しいタスク";
@@ -1127,3 +1097,213 @@
 "settings.compactTrigger" = "コンテキストを自動圧縮する上限";
 "settings.compactTrigger.hint" = "各モデルのコンテキストウィンドウに対する割合です。圧縮はプロンプトキャッシュを書き換えるため、値が大きいほどキャッシュを長く保てます。";
 "conversation.translate" = "翻訳";
+
+
+// Completed translations for keys added to the desktop catalog.
+"tray.section.running" = "実行中のチャット";
+"tray.section.waiting" = "確認が必要";
+"tray.write" = "メッセージを書く";
+"tray.openUsage" = "使用量画面を開く";
+"tray.noChats" = "現在チャットはありません";
+"tray.unread" = "新しい返信";
+
+// Write-lease conflict copy.
+"conflict.policy.waitThenAsk" = "待ってから確認";
+"conflict.policy.waitThenAsk.detail" = "別のチャットを黙って待ち、長引いたときだけ確認します。";
+"conflict.policy.ask" = "確認する";
+"conflict.policy.ask.detail" = "二つのチャットが同じファイルを望んだ時点で確認します。";
+"conflict.policy.waitOnly" = "常に待機";
+"conflict.policy.waitOnly.detail" = "確認しません：各書き込みはファイルを保持するチャットを待ちます。";
+"conflict.title" = "他のチャットが %@ を書き込んでいます";
+"conflict.stillBusy" = "書き込みを見送りました：%@ はまだ他のチャットが書き込んでいます。";
+"conflict.userSkipped" = "ご依頼どおり書き込みをスキップ：%@ は他のチャット (%@) に残りました。";
+"conflict.stoppedHolder" = "ご依頼どおりチャット「%@」を停止し、この書き込みを行いました。";
+"conflict.stoppedOthers" = "ご依頼どおりこのプロジェクトの他のチャットを停止し、この書き込みを行いました。";
+"conflict.wholeProject" = "プロジェクト全体（コマンド: %@）";
+"conflict.banner.title" = "他のチャットがこのファイルを書き込んでいます";
+"conflict.banner.body" = "%1$@ · 「%2$@」が %3$d 秒間保持しています";
+"conflict.banner.keepWaiting" = "引き続き待つ";
+"conflict.banner.stopHolder" = "そのチャットを停止";
+"conflict.banner.stopAllOthers" = "他のすべてのチャットを停止";
+"conflict.banner.skip" = "この書き込みをスキップ";
+"conflict.waiting" = "書き込み中の「%@」を待っています: %@";
+"settings.workspaceConflictPolicy" = "他のチャットが同じファイルを書き込んでいる場合";
+"settings.conflictWaitSeconds" = "確認前に待機";
+"settings.conflictWaitValue" = "%d 秒";
+
+
+"conversation.ranCommand" = "Ran 1 command";
+"conversation.ranCommands" = "Ran %d commands";
+"conversation.runningTools" = "Running tools…";
+"conversation.thinkingPhase" = "Thinking…";
+"conversation.tokensCount" = "%@ tokens";
+"usage.context.window" = "コンテキストウィンドウ";
+"usage.planLimits" = "プランの使用制限";
+"ask.other" = "Other";
+"ask.next" = "Next";
+"ask.skipShort" = "Skip";
+"composer.queue.one" = "1 message queued";
+"composer.queue.many" = "%d messages queued";
+"composer.queue.edit" = "Edit";
+"composer.queue.editBlocked" = "Clear the message box to edit";
+"composer.queue.remove" = "Remove";
+"git.createPR" = "PRを作成";
+"git.hideBar" = "非表示";
+"composer.queue.next" = "Next: %@";
+
+// Composer, git bar and usage popover.
+"usage.context.tooltip" = "コンテキストとトークンの使用量";
+"usage.context.conversation" = "会話メッセージ";
+"usage.context.toolDefinitions" = "ツール定義";
+"usage.context.mcpDefinitions" = "MCPツール定義";
+"usage.context.systemPrompt" = "システム指示";
+"usage.context.cacheHit" = "プロンプトキャッシュのヒット";
+"usage.context.notReported" = "プロバイダーから報告なし";
+"usage.context.cacheWrite" = "%@ トークンをキャッシュに書き込み";
+
+// Local AI runtime and custom endpoint tuning.
+"custom.modelOptional" = "モデル名(任意)";
+"custom.contextOptional" = "コンテキストウィンドウ(トークン数、任意)";
+"custom.contextHint" = "両方を空にするとサーバーから読み取ります。サーバーが報告しない場合はコンテキストを指定してください(Ollama: OLLAMA_CONTEXT_LENGTH と同じ値)。";
+"custom.contextInvalid" = "コンテキストウィンドウは正の数である必要があります。";
+"custom.detected" = "このコンピュータで実行中";
+"custom.noModelAvailable" = "%@ はモデルを一覧表示しません。サーバーを起動するか、エンドポイントにモデル名を設定してください。";
+"local.extraArgs" = "llama-server の追加引数";
+"local.mlxExtraArgs" = "mlx_lm サーバーの追加引数";
+"local.gpuLayers" = "GPU レイヤー(auto、all または数値)";
+"local.hardware" = "ハードウェア";
+"local.hardwareGPU" = "%@ · GPU メモリ %@ · RAM %@";
+"local.importGGUF" = "GGUF ファイルを追加…";
+"local.installMLX" = "MLX をインストール";
+"local.installingMLX" = "MLX をインストール中(Python + mlx-lm)…";
+"local.kvCache" = "KV キャッシュの種類";
+"local.servingContext" = "%@ · %d トークン";
+"local.tooLarge" = "大きすぎます";
+"local.tuning" = "パフォーマンス";
+"local.tuningHint" = "空または auto の場合、ランタイムがモデルを GPU メモリに合わせます。変更は次回のモデル起動時に適用されます。";
+"local.contextSize" = "コンテキストサイズ(トークン)";
+"local.threads" = "CPU スレッド数";
+"local.batchSize" = "バッチサイズ";
+"local.forget" = "リストから削除";
+"localModel.needsMemory" = "約 %d GB の GPU メモリまたは RAM が必要です。";
+"localRuntime.helperFailed" = "%@ が失敗しました(終了コード %d)";
+"localRuntime.mlxUnsupported" = "MLX には Apple シリコン搭載 Mac が必要です。";
+"local.flashAttention" = "Flash attention";
+"local.hardwareMemory" = "%@ RAM";
+
+// Translations completed for keys that had no localized text.
+"conversation.fullToolOutput" = "ツールの出力全体";
+"sidebar.showSidebar" = "サイドバーを表示";
+"sidebar.hideSidebar" = "サイドバーを隠す";
+"navigation.back" = "戻る";
+"navigation.forward" = "進む";
+"settings.autoApprovePlans" = "プランを自動的に承認";
+"settings.autoApprovePlans.hint" = "有効にすると、生成されたプランは個別のプラン承認を待たずに適用されます。ツール単位の承認は引き続き適用されます。";
+"media.fallbackUsed" = "選択したプロバイダーではこの画像を生成できませんでした。%@/%@ への 1 回限りのフォールバックリクエストで生成しました。メインの会話のプロバイダーとモデルは変更されていないため、プロンプトキャッシュはそのまま残ります。";
+"media.imageUnsupportedWithFallbackHint" = "%@ ではこの画像を生成できません。フォールバックとして画像 API またはプロバイダーを設定してください。画像生成のためだけにメインのチャットモデルを切り替えると、プロバイダーのプロンプトキャッシュが失われることがあります。";
+"conversation.generationResumed" = "メッセージを再開しました";
+"conversation.cancelPlan" = "プランをキャンセル";
+"conversation.cancelPlanHelp" = "このプランをキャンセルし、待機中のメッセージを解放します";
+"conversation.thinking" = "思考プロセス";
+"usage.manageResets" = "リセットを管理";
+"usage.useReset" = "リセットを使用";
+"usage.resetTitle" = "Claude の制限リセットを使用しますか?";
+"usage.openClaude" = "Claude で続ける";
+"usage.resetConfirmation" = "Claude の使用状況ページが開きます。%@ にサインインし、そのアカウントに提供されているリセットを確認してください。使用するには「無料でリセット」をクリックし、Claude で確定します。一度使用したリセットは取り消せません。HerNess に戻ると制限が更新されます。";
+"usage.resetOpenFailed" = "Claude を開けませんでした。アカウントがまだ接続されているか確認して、もう一度お試しください。";
+"conversation.review" = "レビュー";
+"dock.noWorkspace" = "先に作業フォルダを選択してください。";
+"dock.branch" = "ブランチ";
+"dock.refresh" = "更新";
+"dock.commit" = "コミット";
+"dock.push" = "プッシュ";
+"dock.fetch" = "フェッチ";
+"dock.commitOrPush" = "コミットまたはプッシュ";
+"dock.commitMessage" = "コミットメッセージ";
+"dock.noChanges" = "エージェントによる変更はありません。";
+"dock.whyRequest" = "あなたのリクエスト";
+"dock.whyAgent" = "エージェントの説明";
+"dock.notRepo" = "このフォルダは git リポジトリではありません。";
+"dock.filterFiles" = "ファイルを絞り込み…";
+"dock.openFile" = "ファイルを開く";
+"dock.selectFile" = "ワークスペースツリーからファイルを選択";
+"dock.binaryFile" = "バイナリまたは読み取れないファイル";
+"project.missing.title" = "プロジェクトフォルダが見つかりません: %@";
+"project.missing.message" = "「%@」にあるプロジェクトフォルダは移動または削除された可能性があります。新しい場所を選ぶか、プロジェクトを削除してください。";
+"project.missing.locate" = "場所を指定…";
+"project.missing.readOnly" = "プロジェクトフォルダを利用できません。以前の会話は表示できますが、新しい場所を選ぶまで新規会話の作成とメッセージ送信はできません。";
+"queue.waitingForPlan" = "プランの承認待ち";
+"settings.closeToTray" = "ウィンドウを閉じてもトレイで実行を続ける";
+"settings.closeToTray.hint" = "ウィンドウを隠しても実行・ターミナル・スケジュールタスクは継続します。トレイのアイコンで戻れます。";
+"tray.show" = "ウィンドウを開く";
+"context.overflowTitle" = "この会話は新しいモデルに収まりません";
+"context.overflowReason" = "%1$@ は続行に約 %2$d トークン必要ですが、このモデルの空きは %3$d しかありません。";
+"context.overflowByModel" = "要約は %@ が作成します。これはトランスクリプトを読める接続済みモデルの中で最小のものです。";
+"context.overflowLocally" = "接続済みのどのモデルもトランスクリプトを読めないため、モデルに問い合わせずに会話を短縮します。";
+"context.overflowCompress" = "圧縮して続行";
+"context.overflowNotNow" = "今はしない";
+"context.overflowDeclined" = "送信を停止しました: 会話が新しいモデルに収まりません。";
+"usage.context.title" = "使用状況";
+"usage.context.input" = "送信した入力";
+"usage.context.estimatedInput" = "推定入力";
+"usage.context.output" = "出力";
+"usage.context.latestRequest" = "最新のリクエスト · コンテキストウィンドウ";
+"usage.context.estimatedBreakdown" = "入力の推定内訳";
+"usage.context.estimateNote" = "プロバイダーの入出力合計は、取得できる場合に表示されます。それ以外の場合、入力合計とツール/MCP カテゴリはローカルでの推定値です。";
+"usage.context.tokens" = "トークン";
+"usage.context.toolCalls" = "ツール呼び出し";
+"usage.context.mcpCalls" = "MCP 呼び出し";
+"usage.context.toolResults" = "ツールの結果";
+"usage.context.mcpResults" = "MCP の結果";
+"plan.proposed" = "Claude がプランを提案しました";
+"plan.reject" = "拒否";
+"plan.revise" = "修正…";
+"plan.accept" = "承認";
+"plan.acceptAuto" = "承認して自動モード";
+"plan.open" = "プランを開く";
+"plan.empty" = "プランはまだありません";
+"dock.expand" = "展開";
+"dock.collapse" = "折りたたむ";
+"usage.context.cacheReuse" = "このチャットでのキャッシュ再利用";
+"usage.context.cacheFreshInput" = "New / outside-breakpoint input: %@ tokens";
+"usage.context.cacheCoverage" = "計測カバー率: %@ · %@ / %@ リクエスト";
+"usage.context.cacheLatency" = "平均リクエスト遅延: %@ ms";
+"usage.context.cacheLoss" = "最大のキャッシュ損失: %@ · %@ トークン";
+"tray.back" = "チャット";
+
+"composer.cacheExpired.explanation" = "キャッシュの推定有効期間が過ぎました。プロンプトキャッシュはプロバイダー側の一時的な処理状態であり、チャット履歴は保存されたままです。履歴全体を使って続けると、そのトークンが再び新規入力として計上されることがあります。プロバイダー側にまだキャッシュが残っていたかどうかは、次のリクエストの使用量データで確認できます。";
+"composer.accountSwitched.notice" = "このチャットは同じモデルのまま別のアカウントに切り替わりました。そのアカウントではキャッシュが最初から始まるため、続けるとトークン使用量とコストが増えることがあります。";
+"composer.contextFull.notice" = "コンテキストウィンドウがほぼいっぱいです。このまま続けると、トークン使用量とコストが増えることがあります。短い要約を添えて新しいチャットを始めてください。";
+"composer.cacheExpired.infoTitle" = "この警告が表示される理由";
+"composer.cacheExpired.notice" = "キャッシュの有効期限が切れている可能性があります。このまま続けると、トークン使用量とコストが増えることがあります。短い要約を添えて新しいチャットを始めてください。";
+"feedback.tag.apply_elsewhere" = "Apply it elsewhere";
+"feedback.tag.broke_existing_feature" = "Broke an existing feature";
+"feedback.tag.did_not_follow_project_style" = "Didn't follow project style";
+"feedback.tag.ignored_project_architecture" = "Ignored project architecture";
+"feedback.tag.keep_project_style" = "Keep the project style";
+"feedback.tag.reuse_architecture" = "Reuse this architecture";
+"feedback.tag.reuse_token_pattern" = "Reuse this token pattern";
+"feedback.tag.wrong_theme_or_token" = "Wrong theme or token";
+
+// Completed translations for keys added to the desktop catalog.
+"conversation.filesChangedCount" = "%d 個のファイルを変更";
+"conversation.filesLineSummary" = "+%d −%d";
+"conversation.lineCountsUnavailable" = "行数を取得できません";
+"conversation.filesMore" = "さらに %d 個のファイルを表示";
+"conversation.filesLess" = "表示するファイルを減らす";
+"conversation.undoChanges" = "元に戻す";
+"conversation.viewChanges" = "変更を表示";
+"conversation.filesReverted" = "ファイルの変更を元に戻しました。";
+
+// Completed translations for keys added to the desktop catalog.
+"composer.modelSwitched.notice" = "モデルが変更されました。キャッシュは新しいモデルに引き継がれず、履歴全体が再処理されるため、トークン使用量とコストが増えることがあります。";
+
+"archive.title" = "アーカイブ済みの会話";
+"archive.empty" = "アーカイブされた会話はありません。";
+
+"conversation.plan" = "計画";
+"conversation.system" = "システム";
+
+"archive.confirmDelete" = "この会話を完全に削除しますか？";
+"archive.deletePermanently" = "完全に削除";
+"conversation.processedTokensCount" = "%@トークン";

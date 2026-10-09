@@ -1,0 +1,29 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-09T13:51:00Z",
+  "eventId" : "7DFD9F82-F24F-4BB5-B53F-E54F4904204E",
+  "lamport" : 301,
+  "parents" : [
+    "D6427E9D-01F1-4064-9EE2-7566B6ADD4C8"
+  ],
+  "payload" : {
+    "key" : "architecture",
+    "value" : "macOS app is a Swift Package: DotsHarness executable composes DotsHarnessUI over DotsHarnessCore; RootView renders NavigationSplitView\/ConversationView and AppModel coordinates state. AgentBridge is a UI-facing facade over @Observable NativeAgentHost; the host owns conversation\/run state and streams provider deltas to UI, with ConversationStore persistence. Sources: macos\/DotsHarness\/Package.swift, Sources\/DotsHarnessUI\/RootView.swift, Sources\/DotsHarnessUI\/ConversationView.swift, Sources\/DotsHarnessCore\/AppModel.swift, Sources\/DotsHarnessCore\/AgentBridge.swift, Sources\/DotsHarnessCore\/AgentBridgeFacade.swift."
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "project",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "eM3eizakmuU\/MKwdySjD5sBw50Yb9FV1tlxw+MxcAhB09xjMGqaPo3o2nuYzjX\/ikY3lgx+JyXhg0ygSfp8FIA=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "project.default.set"
+}

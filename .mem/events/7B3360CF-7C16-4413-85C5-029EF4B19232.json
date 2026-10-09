@@ -1,0 +1,34 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-09-26T19:33:51Z",
+  "eventId" : "7B3360CF-7C16-4413-85C5-029EF4B19232",
+  "lamport" : 32,
+  "parents" : [
+    "B0110B49-3150-4E70-ABEC-E5C8DDF32132"
+  ],
+  "payload" : {
+    "memoryRevision" : 31,
+    "model" : "gpt-6-luna",
+    "promptHash" : "9fb3fe77d641839ad10cbc62278cd4690d84610e1691e72a2b83b21611aa08ac",
+    "promptSummary" : "Mac OS tarafında düzgün bir şekilde kod yazıyor mu? Proje içerisinde herhangi bir sorun var mı? Bunu kontrol et ve düzeltelim.",
+    "provider" : "ChatGPT",
+    "runId" : "2B139236-2081-44E8-9EC8-EFC57A19226B",
+    "startedAt" : "2026-09-26T19:33:51Z"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "GjJkOTQ0l8iUD14UvFIMRWk2QrBTgJnnOrD+9eJsikzg4SsZtzYtuh50iw2mESbcOUXBU6O\/IgJZ1x5PhNq3HQ=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "task.started"
+}

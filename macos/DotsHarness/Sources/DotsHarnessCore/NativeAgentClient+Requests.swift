@@ -3,11 +3,42 @@
 
 import Foundation
 import HarnessPluginKit
+import os
 import PluginRuntime
 
 extension NativeAgentClient {
-    func makeRequest(body: Data, accept: String, sessionKey: String? = nil) throws -> URLRequest {
-        guard let endpoint else { throw NativeAgentError(AppCopy.text("agent.invalidEndpoint")) }
+    private static let prewarmedAt = OSAllocatedUnfairLock(initialState: [String: Date]())
+
+    /// Open the provider connection before a prompt is sent, so the first
+    /// request does not pay for DNS and the TLS handshake. Carries no
+    /// credential and no prompt: a bare HEAD to the origin, on the session the
+    /// real request reuses.
+    static func prewarm(baseURL: String, session: URLSession = .shared) async {
+        guard var components = URLComponents(string: baseURL), let host = components.host,
+              ["http", "https"].contains(components.scheme?.lowercased() ?? "") else { return }
+        components.path = "/"
+        components.query = nil
+        let key = "\(host):\(components.port ?? 0)"
+        // ponytail: fixed 20 s window; idle keep-alive differs per provider, tune if a host drops sooner.
+        let due = prewarmedAt.withLock { seen -> Bool in
+            if let last = seen[key], Date().timeIntervalSince(last) < 20 { return false }
+            seen[key] = Date()
+            return true
+        }
+        guard due, let url = components.url else { return }
+        var request = URLRequest(url: url, timeoutInterval: 10)
+        request.httpMethod = "HEAD"
+        _ = try? await session.data(for: request)
+    }
+
+    func makeRequest(
+        body: Data,
+        accept: String,
+        streaming: Bool = false,
+        sessionKey: String? = nil,
+        anthropicContextEditing: Bool = false
+    ) throws -> URLRequest {
+        guard let endpoint = endpoint(streaming: streaming) else { throw NativeAgentError(AppCopy.text("agent.invalidEndpoint")) }
         var request = URLRequest(url: endpoint, timeoutInterval: 180)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -26,7 +57,9 @@ extension NativeAgentClient {
             request.setValue("google-genai-sdk/1.41.0 gl-node/v22.19.0", forHTTPHeaderField: "X-Goog-Api-Client")
         } else if configuration.api == RouterAPIKind.anthropic.rawValue {
             request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-            if configuration.fast { request.setValue("fast-mode-2026-02-01", forHTTPHeaderField: "anthropic-beta") }
+            if configuration.fast && configuration.usageMode != .economy {
+                request.setValue("fast-mode-2026-02-01", forHTTPHeaderField: "anthropic-beta")
+            }
         } else if configuration.api == RouterAPIKind.chatGPT.rawValue {
             // The Responses transport is shared (Codex, Grok CLI, …); only the
             // ChatGPT backend binds requests to an account id.
@@ -51,16 +84,28 @@ extension NativeAgentClient {
         for (key, value) in configuration.transportSpec?.extraHeaders ?? [:] {
             request.setValue(value, forHTTPHeaderField: key)
         }
+        if anthropicContextEditing {
+            let existing = request.value(forHTTPHeaderField: "anthropic-beta") ?? ""
+            var betas = existing.split(separator: ",").map {
+                String($0).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            if !betas.contains("context-management-2025-06-27") {
+                betas.append("context-management-2025-06-27")
+            }
+            request.setValue(betas.joined(separator: ","), forHTTPHeaderField: "anthropic-beta")
+        }
         request.httpBody = body
         return request
     }
 
-    var endpoint: URL? {
+    /// `streaming` only changes the Gemini method; the other transports ask for
+    /// SSE in the body.
+    func endpoint(streaming: Bool = false) -> URL? {
         // Code Assist methods hang off the base as `…/v1internal:generateContent`,
         // which is not a path segment — build it by string, not URLComponents.
         if configuration.api == RouterAPIKind.geminiCLI.rawValue {
             let base = configuration.baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            return URL(string: base + ":generateContent")
+            return URL(string: base + (streaming ? ":streamGenerateContent?alt=sse" : ":generateContent"))
         }
         guard var components = URLComponents(string: configuration.baseURL),
               let scheme = components.scheme?.lowercased(),
@@ -86,17 +131,37 @@ extension NativeAgentClient {
     func makeBody(
         messages: [AgentMessage],
         tools: [AgentToolDefinition],
-        cachePolicy: AgentCachePolicy
+        cachePolicy: AgentCachePolicy,
+        outputBudget: AgentOutputBudget? = nil
     ) -> [String: Any] {
-        let messages = Self.foldingDynamicPrompt(into: messages)
+        // Tool schemas are part of the provider prefix. Plugin discovery order
+        // is not, so canonicalize it before every transport body is built.
+        let canonicalTools = tools.sorted { AgentCacheNamespace.toolSortKey($0) < AgentCacheNamespace.toolSortKey($1) }
+        let replay = configuration.api == RouterAPIKind.chatGPT.rawValue
+            ? AgentContextCompaction.responsesReplayMessages(messages) : messages
+        let normalizedMessages = EconomyToolOutputPolicy.normalizeMessages(messages)
+        let normalizedReplay = EconomyToolOutputPolicy.normalizeMessages(replay)
+        let messages = Self.foldingDynamicPrompt(into: normalizedReplay)
+        let responseStyle = ResponseStyleResolver.resolve(
+            preference: configuration.responseStylePreference,
+            prompt: normalizedMessages.last(where: { $0.role == .user })?.content
+        )
+        // Keep model effort user-selected, but always bound the total output
+        // tokens so a long reasoning response cannot consume the whole run.
+        let budget = outputBudget ?? AgentOutputBudget.resolve(
+            configuration: configuration,
+            messages: normalizedMessages,
+            tools: canonicalTools,
+            decision: responseStyle
+        )
         if configuration.api == RouterAPIKind.anthropic.rawValue {
-            return makeAnthropicBody(messages: messages, tools: tools)
+            return makeAnthropicBody(messages: messages, tools: canonicalTools, budget: budget, cachePolicy: cachePolicy)
         }
         if configuration.api == RouterAPIKind.chatGPT.rawValue {
-            return makeResponsesBody(messages: messages, tools: tools, cachePolicy: cachePolicy)
+            return makeResponsesBody(messages: messages, tools: canonicalTools, cachePolicy: cachePolicy, budget: budget)
         }
         if configuration.api == RouterAPIKind.geminiCLI.rawValue {
-            return makeGeminiBody(messages: messages, tools: tools)
+            return makeGeminiBody(messages: messages, tools: canonicalTools, budget: budget)
         }
         var wireMessages: [[String: Any]] = []
         for message in messages {
@@ -110,22 +175,28 @@ extension NativeAgentClient {
         }
         var body: [String: Any] = ["model": configuration.model, "messages": wireMessages, "temperature": 0.2]
         // OpenAI-compatible: `prompt_cache_key` routes repeat prefixes to the
-        // same cache shard. Servers that don't implement the field ignore it;
-        // `complete` retries without it for the few that reject it.
+        // same cache shard. Servers that reject the optional field are learned
+        // by `complete`, so later turns avoid a failed probe.
         if let key = cachePolicy.promptCacheKey, !key.isEmpty {
             body["prompt_cache_key"] = key
         }
-        if !tools.isEmpty {
-            body["tools"] = tools.map { $0.jsonObject() }
+        if !canonicalTools.isEmpty {
+            body["tools"] = canonicalTools.map { $0.jsonObject() }
             body["tool_choice"] = "auto"
         }
         if !configuration.effort.isEmpty {
             body["reasoning_effort"] = configuration.effort
         }
+        body["max_tokens"] = budget.maxOutputTokens
         return body
     }
 
-    private func makeAnthropicBody(messages: [AgentMessage], tools: [AgentToolDefinition]) -> [String: Any] {
+    private func makeAnthropicBody(
+        messages: [AgentMessage],
+        tools: [AgentToolDefinition],
+        budget: AgentOutputBudget?,
+        cachePolicy: AgentCachePolicy
+    ) -> [String: Any] {
         let systemMessages = messages.filter {
             $0.role == .system && !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
@@ -163,9 +234,23 @@ extension NativeAgentClient {
         // no answer. Scale the ceiling with the requested depth.
         var body: [String: Any] = [
             "model": configuration.model,
-            "max_tokens": Self.maxTokens(forEffort: configuration.effort),
+            "max_tokens": budget?.maxOutputTokens ?? Self.maxTokens(forEffort: configuration.effort),
             "messages": converted,
         ]
+        if !AnthropicContextEditingCapabilityMemory.shared.isUnsupported(for: configuration) {
+            let triggerTokens = configuration.compactionPolicy.triggerTokens(window: configuration.contextWindow)
+            body["context_management"] = [
+                "edits": [[
+                    "type": "clear_tool_uses_20250919",
+                    "trigger": ["type": "input_tokens", "value": triggerTokens],
+                    "keep": ["type": "tool_uses", "value": 3],
+                    "clear_at_least": [
+                        "type": "input_tokens",
+                        "value": max(1, min(8_192, triggerTokens / 4)),
+                    ],
+                ]],
+            ]
+        }
         let quirks = configuration.transportSpec?.quirks
         let identity = quirks?.injectAgentIdentity.flatMap { configuration.isOAuth ? $0 : nil }
         var systemBlocks: [[String: Any]] = []
@@ -188,7 +273,18 @@ extension NativeAgentClient {
         if !configuration.effort.isEmpty {
             if configuration.isOAuth {
                 body["output_config"] = ["effort": configuration.effort]
-            } else {
+            } else if let budget, configuration.supportsLegacyThinkingBudget,
+                      let reasoningBudget = budget.providerReasoningBudgetTokens {
+                body["thinking"] = [
+                    "type": "enabled",
+                    "budget_tokens": reasoningBudget,
+                ]
+            } else if !configuration.supportsLegacyThinkingBudget, budget != nil {
+                // New adaptive-thinking Claude models reject the legacy
+                // `thinking.budget_tokens` field. Keep the user's selected
+                // effort visible through the adaptive output_config surface.
+                body["output_config"] = ["effort": configuration.effort]
+            } else if budget == nil && configuration.supportsLegacyThinkingBudget {
                 let budget: Int = {
                     switch configuration.effort {
                     case "max": return 32_000
@@ -200,16 +296,36 @@ extension NativeAgentClient {
                     }
                 }()
                 body["thinking"] = ["type": "enabled", "budget_tokens": budget]
+            } else if budget == nil {
+                // Capability metadata says this is not a legacy extended-
+                // thinking model. Adaptive Claude models use effort/output_config
+                // and must not receive thinking.budget_tokens.
+                body["output_config"] = ["effort": configuration.effort]
             }
         }
-        if configuration.fast { body["speed"] = "fast" }
-        Self.applyAnthropicCacheBreakpoints(to: &body, stableSystemBlockIndex: stableSystemIndex)
+        if configuration.fast && configuration.usageMode != .economy { body["speed"] = "fast" }
+        let snapshot = AgentPromptCacheRequestSnapshot(body: body, configuration: configuration, requestStartedAt: Date())
+        let prior = cachePolicy.priorBoundary.flatMap { boundary in
+            boundary.accepted && snapshot.unchanged(boundary) ? boundary : nil
+        }
+        Self.applyAnthropicCacheBreakpoints(to: &body, stableSystemBlockIndex: stableSystemIndex,
+            ttl: configuration.anthropicCacheTTL, priorBoundary: prior)
+        if AgentPromptCacheComparisons.shared.supportsAnthropicDiagnostics(configuration) {
+            let previousID = cachePolicy.comparisonResponseID ?? cachePolicy.priorBoundary?.providerResponseID
+            body["diagnostics"] = ["previous_message_id": previousID.map { $0 as Any } ?? NSNull()]
+        }
         return body
     }
 
     /// Capture context once in the canonical transcript, before persistence and
     /// the first request. Subsequent turns must retain the previous snapshot.
     /// makeBody also accepts legacy/direct callers with a dynamic system block.
+    ///
+    /// Only sections that differ from the copy this transcript last captured are
+    /// written again: an unchanged rules file or skill list is not repeated on
+    /// every turn. A section that went away is closed with a one-line marker.
+    /// Earlier messages are never rewritten, and after compaction drops them the
+    /// sections are simply captured in full again.
     static func foldingDynamicPrompt(into messages: [AgentMessage]) -> [AgentMessage] {
         let isDynamic: (AgentMessage) -> Bool = { $0.role == .system && $0.systemKind == .promptDynamic }
         let dynamic = messages.filter(isDynamic).map(\.content)
@@ -217,57 +333,137 @@ extension NativeAgentClient {
         guard let last = messages.lastIndex(where: { $0.role == .user }) else { return messages }
         var result = messages
         if !result[last].promptContextCaptured {
-            result[last].content = (dynamic + [result[last].content]).filter { !$0.isEmpty }.joined(separator: "\n\n")
+            let blocks = changedPromptSections(dynamic.joined(separator: "\n\n"), since: messages[..<last]) ?? dynamic
+            result[last].content = (blocks + [result[last].content]).filter { !$0.isEmpty }.joined(separator: "\n\n")
             result[last].promptContextCaptured = true
         }
         return result.filter { !isDynamic($0) }
     }
 
-    /// Marks the reused prefix of an Anthropic request as cacheable: one
-    /// `cache_control` breakpoint on the last system block, one on the last
-    /// tool, one on the last message. Everything before each breakpoint is
+    static func retiredPromptSection(_ tag: String) -> String {
+        "<\(tag)>\nNo longer applies.\n</\(tag)>"
+    }
+
+    /// The `<tag>…</tag>` blocks a captured context starts with, in order, and
+    /// whether they were the whole text. Section bodies cannot contain a section
+    /// tag (`PromptSection.defuse`), so the first closing tag ends the block.
+    static func leadingPromptSections(_ text: String) -> (sections: [(tag: String, block: String)], complete: Bool) {
+        var sections: [(tag: String, block: String)] = []
+        var rest = Substring(text)
+        while let match = rest.prefixMatch(of: #/<([a-z_]+)(?: trust="[a-z]+")?>\n(?s:.*?)\n</\1>/#) {
+            sections.append((String(match.1), String(match.0)))
+            rest = rest[match.range.upperBound...].drop(while: \.isNewline)
+        }
+        return (sections, rest.isEmpty)
+    }
+
+    /// What each context section has cost this transcript. A section is captured
+    /// again whenever its text changes and no copy is ever removed, so the copies
+    /// are re-read on every later request: this is where a section that moves too
+    /// often shows up. Largest first.
+    static func promptSectionChurn(in messages: [AgentMessage]) -> [(tag: String, captures: Int, characters: Int)] {
+        var totals: [String: (captures: Int, characters: Int)] = [:]
+        for message in messages where message.role == .user && message.promptContextCaptured {
+            for section in leadingPromptSections(message.content).sections {
+                totals[section.tag, default: (0, 0)].captures += 1
+                totals[section.tag, default: (0, 0)].characters += section.block.utf8.count
+            }
+        }
+        return totals
+            .map { (tag: $0.key, captures: $0.value.captures, characters: $0.value.characters) }
+            .sorted { $0.characters != $1.characters ? $0.characters > $1.characters : $0.tag < $1.tag }
+    }
+
+    /// The Settings rendering of `promptSectionChurn`; empty for a fresh chat.
+    static func promptSectionChurnReport(in messages: [AgentMessage]) -> String {
+        let churn = promptSectionChurn(in: messages)
+        guard !churn.isEmpty else { return "" }
+        let total = churn.reduce(0) { $0 + $1.characters }
+        return (["── captured into this conversation (every copy stays in history and is read again on each request)"]
+            + churn.map { "<\($0.tag)> · \($0.captures)× · \($0.characters) chars · ~\(max(1, $0.characters / 4)) tokens" }
+            + ["── total · \(total) chars · ~\(max(1, total / 4)) tokens"])
+            .joined(separator: "\n")
+    }
+
+    /// nil when `dynamic` is not made of sections (a legacy or direct caller):
+    /// the caller then captures it whole, as before.
+    private static func changedPromptSections(_ dynamic: String, since history: ArraySlice<AgentMessage>) -> [String]? {
+        let current = leadingPromptSections(dynamic)
+        guard current.complete, !current.sections.isEmpty else { return nil }
+        var captured: [String: String] = [:]
+        for message in history where message.role == .user && message.promptContextCaptured {
+            for section in leadingPromptSections(message.content).sections {
+                captured[section.tag] = section.block
+            }
+        }
+        let live = Set(current.sections.map(\.tag))
+        let retired = captured.keys.sorted()
+            .filter { !live.contains($0) && captured[$0] != retiredPromptSection($0) }
+            .map(retiredPromptSection)
+        return current.sections.filter { captured[$0.tag] != $0.block }.map(\.block) + retired
+    }
+
+    /// At most four distinct markers: tools, invariant system, last accepted
+    /// request tail, and the current tail. The prior tail avoids the provider's
+    /// backward-search window when a tool loop appends many content blocks.
+    /// Everything before each breakpoint is
     /// served from the prompt cache on the next turn that keeps the same
     /// account (see RouterController conversation affinity). Below the model's
     /// minimum cacheable length Anthropic silently skips the cache, so sending
     /// this unconditionally is safe.
     static func applyAnthropicCacheBreakpoints(
         to body: inout [String: Any],
-        stableSystemBlockIndex: Int? = nil
+        stableSystemBlockIndex: Int? = nil,
+        ttl: AgentPromptCacheTTL = .oneHour,
+        priorBoundary: AgentPromptCacheBoundary? = nil
     ) {
-        let ephemeral: [String: Any] = ["type": "ephemeral"]
+        let ephemeral: [String: Any] = ["type": "ephemeral", "ttl": ttl.rawValue]
 
         switch body["system"] {
         case let text as String where !text.isEmpty:
             body["system"] = [["type": "text", "text": text, "cache_control": ephemeral]]
         case var blocks as [[String: Any]] where !blocks.isEmpty:
-            if let stableSystemBlockIndex,
-               blocks.indices.contains(stableSystemBlockIndex) {
-                blocks[stableSystemBlockIndex]["cache_control"] = ephemeral
-            }
-            blocks[blocks.count - 1]["cache_control"] = ephemeral
+            for index in blocks.indices { blocks[index].removeValue(forKey: "cache_control") }
+            let stable = stableSystemBlockIndex.flatMap { blocks.indices.contains($0) ? $0 : nil }
+                ?? blocks.count - 1
+            blocks[stable]["cache_control"] = ephemeral
             body["system"] = blocks
         default:
             break
         }
 
         if var tools = body["tools"] as? [[String: Any]], !tools.isEmpty {
+            for index in tools.indices { tools[index].removeValue(forKey: "cache_control") }
             tools[tools.count - 1]["cache_control"] = ephemeral
             body["tools"] = tools
         }
 
         if var messages = body["messages"] as? [[String: Any]], !messages.isEmpty {
-            let last = messages.count - 1
-            var message = messages[last]
-            switch message["content"] {
-            case let text as String where !text.isEmpty:
-                message["content"] = [["type": "text", "text": text, "cache_control": ephemeral]]
-            case var blocks as [[String: Any]] where !blocks.isEmpty:
-                blocks[blocks.count - 1]["cache_control"] = ephemeral
-                message["content"] = blocks
-            default:
-                break
+            for index in messages.indices {
+                if var blocks = messages[index]["content"] as? [[String: Any]] {
+                    for i in blocks.indices { blocks[i].removeValue(forKey: "cache_control") }
+                    messages[index]["content"] = blocks
+                }
             }
-            messages[last] = message
+            func mark(_ messageIndex: Int, blockIndex: Int) {
+                guard messages.indices.contains(messageIndex) else { return }
+                if let text = messages[messageIndex]["content"] as? String, !text.isEmpty, blockIndex == 0 {
+                    messages[messageIndex]["content"] = [["type": "text", "text": text, "cache_control": ephemeral]]
+                } else if var blocks = messages[messageIndex]["content"] as? [[String: Any]],
+                          blocks.indices.contains(blockIndex),
+                          !["thinking", "redacted_thinking"].contains(blocks[blockIndex]["type"] as? String ?? "") {
+                    blocks[blockIndex]["cache_control"] = ephemeral
+                    messages[messageIndex]["content"] = blocks
+                }
+            }
+            if let priorBoundary, let blockCount = priorBoundary.contentBlockCount {
+                mark(priorBoundary.messageCount - 1, blockIndex: blockCount - 1)
+            }
+            if let last = messages.indices.reversed().first(where: {
+                AgentPromptCacheRequestSnapshot.cacheableContentBlock(in: messages[$0]) != nil
+            }), let block = AgentPromptCacheRequestSnapshot.cacheableContentBlock(in: messages[last]) {
+                mark(last, blockIndex: block)
+            }
             body["messages"] = messages
         }
     }
@@ -280,7 +476,11 @@ extension NativeAgentClient {
     // already discounts a repeated prefix automatically, so the affinity pin
     // still pays off here. Upgrade path: a CachedContentStore keyed like
     // AgentBridge.cacheKey, creating/reusing a resource per project+model.
-    private func makeGeminiBody(messages: [AgentMessage], tools: [AgentToolDefinition]) -> [String: Any] {
+    private func makeGeminiBody(
+        messages: [AgentMessage],
+        tools: [AgentToolDefinition],
+        budget: AgentOutputBudget?
+    ) -> [String: Any] {
         var contents: [[String: Any]] = []
         for message in messages where message.role != .system {
             switch message.role {
@@ -323,8 +523,13 @@ extension NativeAgentClient {
                 ["name": tool.name, "description": tool.description, "parameters": tool.parameters.any]
             }]]
         }
-        if !configuration.effort.isEmpty {
-            inner["generationConfig"] = ["thinkingConfig": ["thinkingLevel": configuration.effort]]
+        if !configuration.effort.isEmpty || budget != nil {
+            var generation: [String: Any] = [:]
+            if !configuration.effort.isEmpty {
+                generation["thinkingConfig"] = ["thinkingLevel": configuration.effort]
+            }
+            if let budget { generation["maxOutputTokens"] = budget.maxOutputTokens }
+            inner["generationConfig"] = generation
         }
         var body: [String: Any] = ["model": configuration.model, "request": inner]
         // The project id is discovered once at sign-in and stored on the account.
@@ -340,20 +545,36 @@ extension NativeAgentClient {
     func makeResponsesBody(
         messages: [AgentMessage],
         tools: [AgentToolDefinition],
-        cachePolicy: AgentCachePolicy
+        cachePolicy: AgentCachePolicy,
+        budget: AgentOutputBudget? = nil
     ) -> [String: Any] {
         // The Codex backend keeps `instructions` pinned to the Codex CLI prompt;
         // the caller's own system prompt rides along as a leading developer turn.
+        let responseToolNames = ToolCloak.responsesNameMap(
+            for: tools.map(\.name) + messages.flatMap { $0.toolCalls.map(\.name) }
+        )
         let systemMessages = messages.filter {
             $0.role == .system && !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
         let stableSystemMessages = systemMessages.filter { $0.systemKind == .promptStable }
         let changingSystemMessages = systemMessages.filter { $0.systemKind != .promptStable }
         let pinnedInstructions = configuration.transportSpec?.quirks.usesCodexInstructions == true
+        let explicitStable = AgentPromptCacheComparisons.shared.supportsExplicitBreakpoint(configuration)
         var input: [[String: Any]] = []
         // Only worth a developer turn when `instructions` is pinned to the Codex
         // prompt; otherwise the system prompt is already the instructions.
-        if pinnedInstructions {
+        if explicitStable {
+            input.append(contentsOf: stableSystemMessages.map { message in
+                ["role": "developer", "content": [["type": "input_text", "text": message.content]]]
+            })
+            if !input.isEmpty, var content = input[input.count - 1]["content"] as? [[String: Any]], !content.isEmpty {
+                content[content.count - 1]["prompt_cache_breakpoint"] = ["mode": "explicit"]
+                input[input.count - 1]["content"] = content
+            }
+            input.append(contentsOf: changingSystemMessages.map { message in
+                ["role": "developer", "content": [["type": "input_text", "text": message.content]]]
+            })
+        } else if pinnedInstructions {
             input.append(contentsOf: systemMessages.map { message in
                 ["role": "developer", "content": [["type": "input_text", "text": message.content]]]
             })
@@ -366,7 +587,14 @@ extension NativeAgentClient {
         }
         for message in messages where message.role != .system {
             if !message.providerItems.isEmpty {
-                input.append(contentsOf: message.providerItems.map { item in item.mapValues { $0.any } })
+                input.append(contentsOf: message.providerItems.map { item in
+                    var wire = item.mapValues { $0.any }
+                    if item["type"]?.string == "function_call",
+                       let call = message.toolCalls.first(where: { $0.id == item["call_id"]?.string }) {
+                        wire["name"] = responseToolNames[call.name] ?? call.name
+                    }
+                    return wire
+                })
             } else if message.role == .tool {
                 input.append(["type": "function_call_output", "call_id": message.toolCallID ?? "tool", "output": message.content])
                 if !message.attachments.isEmpty {
@@ -383,7 +611,7 @@ extension NativeAgentClient {
                 input.append(contentsOf: message.toolCalls.map { [
                     "type": "function_call",
                     "call_id": $0.id,
-                    "name": $0.name,
+                    "name": responseToolNames[$0.name] ?? $0.name,
                     "arguments": $0.arguments,
                 ] })
             } else {
@@ -403,7 +631,7 @@ extension NativeAgentClient {
             "model": configuration.model,
             "instructions": configuration.transportSpec?.quirks.usesCodexInstructions == true
                 ? CodexInstructions.default
-                : (stableSystemMessages.map(\.content).joined(separator: "\n\n").isEmpty
+                : (explicitStable || stableSystemMessages.map(\.content).joined(separator: "\n\n").isEmpty
                     ? "You are a helpful assistant."
                     : stableSystemMessages.map(\.content).joined(separator: "\n\n")),
             "input": input,
@@ -415,7 +643,7 @@ extension NativeAgentClient {
         if !tools.isEmpty {
             body["tools"] = tools.map { [
                 "type": "function",
-                "name": $0.name,
+                "name": responseToolNames[$0.name] ?? $0.name,
                 "description": $0.description,
                 "parameters": $0.parameters.any,
             ] }
@@ -423,17 +651,37 @@ extension NativeAgentClient {
         if !configuration.effort.isEmpty {
             body["reasoning"] = ["effort": configuration.effort]
         }
-        if configuration.fast { body["service_tier"] = "priority" }
-        // Responses honours `prompt_cache_key` the same way Chat Completions
-        // does: a stable value keeps repeat prefixes on one cache shard.
+        if let budget {
+            body["max_output_tokens"] = budget.maxOutputTokens
+            // Verbosity is a cached request setting. It follows the saved mode,
+            // never one prompt's wording, so a short question keeps the prefix.
+            if configuration.usageMode == .economy
+                || [.concise, .ultra].contains(configuration.responseStylePreference) {
+                body["text"] = ["verbosity": "low"]
+            }
+        }
+        if configuration.fast && configuration.usageMode != .economy { body["service_tier"] = "priority" }
+        // Keys keep account/conversation accounting separate; newer models route automatically.
         if let key = cachePolicy.promptCacheKey, !key.isEmpty {
             body["prompt_cache_key"] = key
         }
+        var cacheOptions: [String: Any] = [:]
+        if AgentPromptCacheComparisons.shared.supportsImplicitOptions(configuration) {
+            cacheOptions["mode"] = "implicit"
+            cacheOptions["ttl"] = "30m"
+        }
+        if AgentPromptCacheComparisons.shared.supports(configuration), let comparison = cachePolicy.comparisonResponseID {
+            cacheOptions["comparison_response_id"] = comparison
+        }
+        if !cacheOptions.isEmpty { body["prompt_cache_options"] = cacheOptions }
         if configuration.supportsNativeCompaction,
+           !configuration.disableNativeCompactionForRequest,
+           !NativeCompactionCapabilityMemory.shared.isUnsupported(for: configuration),
            configuration.api == RouterAPIKind.chatGPT.rawValue {
+            let threshold = configuration.compactionPolicy.triggerTokens(window: configuration.contextWindow)
             body["context_management"] = [[
                 "type": "compaction",
-                "compact_threshold": configuration.compactionPolicy.triggerTokens(window: configuration.contextWindow),
+                "compact_threshold": threshold,
             ]]
         }
         return body

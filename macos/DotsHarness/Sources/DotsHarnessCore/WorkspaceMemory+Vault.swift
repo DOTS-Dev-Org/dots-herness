@@ -40,7 +40,8 @@ extension WorkspaceMemory {
             front,
             "# Memory index",
             "",
-            "Revision \(revision) · [[map]] · [[preferences]]",
+            "Revision \(revision) · [[map]] · [[preferences]]"
+                + (fileManager.fileExists(atPath: root.appendingPathComponent("learned_rules.md").path) ? " · [[learned_rules]]" : ""),
             "",
             "## Tasks",
             "",
@@ -79,6 +80,8 @@ extension WorkspaceMemory {
         try? body.write(to: root.appendingPathComponent("preferences.md"), atomically: true, encoding: .utf8)
     }
 
+    public static let projectNotePrefix = "project:"
+
     /// Parses the `.mem` vault into linked notes for the Memory settings view.
     public func vault() -> MemoryVault {
         guard let root = memoryDirectory,
@@ -110,6 +113,28 @@ extension WorkspaceMemory {
         for name in ["map.md", "index.md", "preferences.md"] {
             ingest(root.appendingPathComponent(name), fallbackKind: "note")
         }
+        // What was learned is part of the vault too. The rules file is authored by
+        // the feedback store and has no frontmatter. The profile is not a file here
+        // at all: it describes the user across projects, and this vault is committed
+        // with one repository, so it is shown as a note without being written to it.
+        func learned(id: String, kind: String, title: String, path: String, body: String) {
+            guard !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+            byID[id] = MemoryNote(id: id, kind: kind, title: title, path: path, body: body, tags: [kind], links: ["index"])
+            order.append(id)
+            if byID["index"]?.links.contains(id) == false { byID["index"]?.links.append(id) }
+        }
+        // Shown even when empty: it is where the user writes a rule of their own.
+        learned(
+            id: "learned_rules", kind: "rule", title: "Learned rules", path: "learned_rules.md",
+            body: (try? String(contentsOf: root.appendingPathComponent("learned_rules.md"), encoding: .utf8))
+                ?? "# Learned rules"
+        )
+        // The brief and what was learned from the code live in the event log, not
+        // in a file; each is a note so it can be read, corrected and taken back.
+        for (key, value) in projectDefaults.sorted(by: { $0.key < $1.key }) {
+            learned(id: Self.projectNotePrefix + key, kind: "project", title: key, path: "", body: value)
+        }
+        learned(id: "user-profile", kind: "profile", title: "User profile", path: "", body: profile.text(projectID: projectID, stack: stack))
         for folder in ["tasks", "decisions", "conversations"] {
             let dir = root.appendingPathComponent(folder)
             let files = (try? fileManager.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []

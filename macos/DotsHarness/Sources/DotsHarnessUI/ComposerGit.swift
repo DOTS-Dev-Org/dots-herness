@@ -21,6 +21,8 @@ struct GitSnapshot {
     var hasRemote: Bool
     var ahead: Int
     var behind: Int
+    var added = 0
+    var removed = 0
 
     static let empty = GitSnapshot(
         isRepository: false,
@@ -75,6 +77,7 @@ enum GitRepository {
             ["remote"],
             // Ahead/behind vs the current branch's upstream, if one is configured.
             ["rev-list", "--left-right", "--count", "@{upstream}...HEAD"],
+            ["diff", "HEAD", "--numstat"],
         ]
         let outputs = GitOutputs()
         DispatchQueue.concurrentPerform(iterations: commands.count) { index in
@@ -107,7 +110,14 @@ enum GitRepository {
             }
         }
 
-        return GitSnapshot(
+        var added = 0
+        var removed = 0
+        for line in (outputs[6] ?? "").split(whereSeparator: \.isNewline) {
+            let cols = line.split(separator: "\t")
+            if cols.count >= 2 { added += Int(cols[0]) ?? 0; removed += Int(cols[1]) ?? 0 }
+        }
+
+        var snapshot = GitSnapshot(
             isRepository: true,
             currentBranch: branch?.isEmpty == true ? nil : branch,
             branches: branches,
@@ -117,6 +127,9 @@ enum GitRepository {
             ahead: ahead,
             behind: behind
         )
+        snapshot.added = added
+        snapshot.removed = removed
+        return snapshot
     }
 
     /// `git fetch --prune` against all remotes. Relies on the user's system git

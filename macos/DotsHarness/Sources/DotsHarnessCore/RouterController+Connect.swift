@@ -260,21 +260,93 @@ extension RouterController {
         catch { self.error = error.localizedDescription }
     }
 
-    /// Backends with no OpenAI-style `/models` (ChatGPT Codex, Google Code Assist) stay
-    /// registry-driven; everything else lists live, keeping the registry as a floor.
+    /// Claude OAuth does not expose a supported model-catalog endpoint. All
+    /// other providers try their account catalog and keep the registry as fallback.
     func registryOnlyModels(_ account: StoredProviderAccount) -> Bool {
-        (account.api == RouterAPIKind.chatGPT.rawValue && account.provider == "gpt")
-            || account.api == RouterAPIKind.geminiCLI.rawValue
+        account.provider == "claude" && account.authType == "oauth"
     }
 
     /// Where to list this account's models. A provider may host the listing off
     /// its chat base path, so the registry's `modelsURL` wins when present.
     func modelsURL(for account: StoredProviderAccount) -> URL? {
+        let resolved: URL?
         if let declared = RouterCatalog.spec(for: account.provider)?.apiKey?.modelsURL, !declared.isEmpty {
-            return URL(string: declared)
+            resolved = URL(string: declared)
+        } else {
+            let base = account.baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            resolved = URL(string: base + "/models")
         }
-        let base = account.baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        return URL(string: base + "/models")
+        guard let resolved,
+              var components = URLComponents(url: resolved, resolvingAgainstBaseURL: false) else { return resolved }
+        var queryItems = components.queryItems ?? []
+        if account.provider == "gpt" {
+            // The Codex model catalog filters models by client compatibility. Keep
+            // this in sync with the Codex-compatible user-agent in providers.json.
+            let userAgent = RouterCatalog.spec(for: account.provider)?.transport.extraHeaders["user-agent"] ?? ""
+            if let clientVersion = userAgent.split(separator: "/").last.map(String.init), !clientVersion.isEmpty {
+                queryItems.removeAll { $0.name == "client_version" }
+                queryItems.append(URLQueryItem(name: "client_version", value: clientVersion))
+            }
+        }
+        if account.api == RouterAPIKind.anthropic.rawValue, account.authType != "oauth" {
+            // Anthropic defaults to 20 models; request the documented maximum so
+            // the live catalog does not omit still-available model IDs.
+            queryItems.removeAll { $0.name == "limit" }
+            queryItems.append(URLQueryItem(name: "limit", value: "1000"))
+        }
+        components.queryItems = queryItems.isEmpty ? nil : queryItems
+        return components.url ?? resolved
+    }
+
+    /// Google Code Assist exposes account-available models through its quota
+    /// buckets. Antigravity has a separate account catalog response.
+    func modelCatalogRequest(for account: StoredProviderAccount) -> URLRequest? {
+        if account.api == RouterAPIKind.geminiCLI.rawValue,
+           ["gemini-cli", "antigravity"].contains(account.provider) {
+            guard let project = account.sessionAccountID, !project.isEmpty else { return nil }
+            let base = account.baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            let method = account.provider == "antigravity" ? "fetchAvailableModels" : "retrieveUserQuota"
+            guard let url = URL(string: base + ":" + method) else { return nil }
+            var request = URLRequest(url: url, timeoutInterval: 8)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try? JSONSerialization.data(withJSONObject: ["project": project])
+            authorize(&request, for: account)
+            if account.provider == "gemini-cli" {
+                request.setValue(
+                    "GeminiCLI/0.34.0/\(account.model) (darwin; arm64; terminal)",
+                    forHTTPHeaderField: "User-Agent"
+                )
+                request.setValue("google-genai-sdk/1.41.0 gl-node/v22.19.0", forHTTPHeaderField: "X-Goog-Api-Client")
+            }
+            return request
+        }
+
+        guard let url = modelsURL(for: account) else { return nil }
+        var request = URLRequest(url: url, timeoutInterval: 8)
+        authorize(&request, for: account)
+        return request
+    }
+
+    /// Gemini's OpenAI-compatible `/models` response omits input token limits.
+    /// Its native models endpoint publishes `inputTokenLimit`, so fetch that
+    /// metadata separately while keeping the compatible listing authoritative
+    /// for the model ids the app can actually call.
+    func geminiModelMetadataRequest(for account: StoredProviderAccount) -> URLRequest? {
+        guard account.provider == "gemini",
+              var components = URLComponents(string: account.baseURL),
+              components.host?.lowercased() == "generativelanguage.googleapis.com",
+              let key = (try? store.credential(for: account)) ?? nil,
+              !key.isEmpty else { return nil }
+        var path = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        if path.hasSuffix("/openai") { path.removeLast("/openai".count) }
+        if path.isEmpty { path = "v1beta" }
+        components.path = "/\(path)/models"
+        components.queryItems = [URLQueryItem(name: "pageSize", value: "1000")]
+        guard let url = components.url else { return nil }
+        var request = URLRequest(url: url, timeoutInterval: 8)
+        request.setValue(key, forHTTPHeaderField: "x-goog-api-key")
+        return request
     }
 
     /// Applies the account's credential to `request`. An OAuth/subscription token
@@ -293,6 +365,10 @@ extension RouterController {
         }
         for (header, value) in RouterCatalog.spec(for: account.provider)?.transport.extraHeaders ?? [:] {
             request.setValue(value, forHTTPHeaderField: header)
+        }
+        if RouterCatalog.spec(for: account.provider)?.transport.quirks.requiresSessionAccountID == true,
+           let accountID = account.sessionAccountID, !accountID.isEmpty {
+            request.setValue(accountID, forHTTPHeaderField: "ChatGPT-Account-ID")
         }
     }
 

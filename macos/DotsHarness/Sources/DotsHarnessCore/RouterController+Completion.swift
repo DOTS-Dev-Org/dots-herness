@@ -14,7 +14,10 @@ extension RouterController {
         tools: [AgentToolDefinition] = [],
         cachePolicy: AgentCachePolicy = AgentCachePolicy(),
         model: String? = nil,
-        preferredAccountID: String? = nil
+        preferredAccountID: String? = nil,
+        preferredModelID: String? = nil,
+        disableNativeCompactionForRequest: Bool = false,
+        onDelta: NativeAgentClient.StreamDeltaHandler? = nil
     ) async throws -> AgentResponse {
         let requestedModel = (model ?? selectedModelID).trimmingCharacters(in: .whitespacesAndNewlines)
         guard requestedModel == ModelRouter.autoModelID else {
@@ -24,7 +27,9 @@ extension RouterController {
                 tools: tools,
                 cachePolicy: cachePolicy,
                 model: requestedModel.isEmpty ? nil : requestedModel,
-                preferredAccountID: preferredAccountID
+                preferredAccountID: preferredAccountID,
+                disableNativeCompactionForRequest: disableNativeCompactionForRequest,
+                onDelta: onDelta
             )
         }
 
@@ -36,7 +41,10 @@ extension RouterController {
             tools: tools,
             cachePolicy: cachePolicy,
             recordDecision: true,
-            preferredAccountID: preferredAccountID
+            preferredAccountID: preferredAccountID,
+            preferredModelID: preferredModelID,
+            disableNativeCompactionForRequest: disableNativeCompactionForRequest,
+            onDelta: onDelta
         )
     }
 
@@ -48,16 +56,48 @@ extension RouterController {
         tools: [AgentToolDefinition],
         cachePolicy: AgentCachePolicy,
         recordDecision: Bool,
-        preferredAccountID: String? = nil
+        preferredAccountID: String? = nil,
+        preferredModelID: String? = nil,
+        disableNativeCompactionForRequest: Bool = false,
+        onDelta: NativeAgentClient.StreamDeltaHandler? = nil
     ) async throws -> AgentResponse {
         var excluded: Set<String> = []
         var dropped: [String] = []
         while true {
-            guard let decision = ModelRouter.decide(
+            let routedDecision = ModelRouter.decide(
                 messages: messages,
                 available: routableModels,
-                excluding: excluded
-            ) else { throw NativeAgentError(AppCopy.text("agent.configureEndpoint")) }
+                excluding: excluded,
+                economy: usageMode == .economy,
+                // The tool catalog is present on most agent requests even when
+                // this turn will not call a tool. Economy's none/minimal path
+                // must look at the active transcript, not catalog availability.
+                hasTools: messages.last?.role == .tool || !(messages.last?.toolCalls.isEmpty ?? true),
+                effortOverride: selectedEffort
+            )
+            let decision: ModelDecision?
+            if let preferredModelID,
+               let sticky = routableModels.first(where: { $0.id == preferredModelID && !excluded.contains($0.provider) }),
+               let routedDecision {
+                let role = ModelRouter.role(for: messages)
+                let mechanical = !(messages.last?.role == .tool || !(messages.last?.toolCalls.isEmpty ?? true))
+                    && role == .worker
+                decision = ModelDecision(
+                    model: sticky.id,
+                    effort: ModelRouter.requestedEffort(selectedEffort, supported: sticky.efforts)
+                        ?? ModelRouter.effort(
+                            for: role,
+                            supported: sticky.efforts,
+                            mechanical: mechanical,
+                            economy: usageMode == .economy
+                        ),
+                    role: routedDecision.role,
+                    reason: "Auto: continuing (sticky.displayName ?? sticky.id)"
+                )
+            } else {
+                decision = routedDecision
+            }
+            guard let decision else { throw NativeAgentError(AppCopy.text("agent.configureEndpoint")) }
             if recordDecision {
                 lastAutoDecision = decision
                 autoEffortOverride = decision.effort
@@ -69,7 +109,9 @@ extension RouterController {
                     tools: tools,
                     cachePolicy: cachePolicy,
                     model: decision.model,
-                    preferredAccountID: preferredAccountID
+                    preferredAccountID: preferredAccountID,
+                    disableNativeCompactionForRequest: disableNativeCompactionForRequest,
+                    onDelta: onDelta
                 )
                 if recordDecision {
                     let name = routableModels.first { $0.id == decision.model }?.displayName ?? decision.model
@@ -94,6 +136,51 @@ extension RouterController {
         guard let cheapest else { throw NativeAgentError(AppCopy.text("agent.configureEndpoint")) }
         let lowest = cheapest.efforts.first ?? ""
         return try await send(messages: messages, tools: [], cachePolicy: AgentCachePolicy(), model: cheapest.id, effortOverride: lowest)
+    }
+
+    /// Models the exploration subagent can run on: it works through tools.
+    public var explorationModels: [RouterModel] { routableModels.filter(\.tools) }
+
+    /// What a sweep of the project runs on: the model the user picked, else the
+    /// lightest one a subscription already pays for, else the lightest one behind
+    /// an API key. Reading files and reporting where things are does not need the
+    /// model the conversation runs on.
+    public var explorationModel: RouterModel? {
+        Self.explorationChoice(among: explorationModels, picked: explorationModelID)
+    }
+
+    static func explorationChoice(among usable: [RouterModel], picked: String) -> RouterModel? {
+        if let chosen = usable.first(where: { $0.id == picked }) { return chosen }
+        func lightest(_ models: [RouterModel]) -> RouterModel? {
+            models.min { ModelRouter.tier(of: $0) < ModelRouter.tier(of: $1) }
+        }
+        let subscribed = usable.filter {
+            [.oauth, .oauthDevice].contains(RouterCatalog.spec(for: $0.provider)?.category)
+        }
+        return lightest(subscribed) ?? lightest(usable)
+    }
+
+    /// One step of the exploration subagent, at low effort. When that model's
+    /// quota is spent the sweep goes on wherever routing would send it, since a
+    /// stopped side run costs the main one its answer.
+    public func completeExploration(
+        messages: [AgentMessage],
+        tools: [AgentToolDefinition] = []
+    ) async throws -> AgentResponse {
+        guard let model = explorationModel else {
+            return try await completeWithFailover(messages: messages, tools: tools)
+        }
+        do {
+            return try await send(
+                messages: messages,
+                tools: tools,
+                cachePolicy: AgentCachePolicy(),
+                model: model.id,
+                effortOverride: model.efforts.contains("low") ? "low" : (model.efforts.first ?? "")
+            )
+        } catch let failure as NativeAgentError where failure.isLimit {
+            return try await completeWithFailover(messages: messages, tools: tools)
+        }
     }
 
     /// Like `complete`, but never records the routing decision as the conversation's
@@ -151,7 +238,9 @@ extension RouterController {
         if let preferred,
            let pinned = ranked.first(where: { $0.id == preferred }),
            !coolingDown(pinned) {
-            return [pinned] + ranked.filter { $0.id != preferred }
+            // Keep conversation affinity as the first choice, while retaining
+            // every other compatible account as a quota fallback.
+            return [pinned] + ranked.filter { $0.id != pinned.id }
         }
         return ranked
     }
@@ -181,7 +270,9 @@ extension RouterController {
         cachePolicy: AgentCachePolicy,
         model requestedModel: String?,
         preferredAccountID: String? = nil,
-        effortOverride: String? = nil
+        effortOverride: String? = nil,
+        disableNativeCompactionForRequest: Bool = false,
+        onDelta: NativeAgentClient.StreamDeltaHandler? = nil
     ) async throws -> AgentResponse {
         let routes = orderedRoutes(
             store.state.accounts,
@@ -192,17 +283,32 @@ extension RouterController {
         )
         guard !routes.isEmpty else { throw NativeAgentError(AppCopy.text("agent.configureEndpoint")) }
         var failures: [String] = []
+        var limitFailures: [(account: String, error: NativeAgentError)] = []
         for account in routes {
             var refreshed = false
             while true {
                 do {
-                    let configuration = try configuration(for: account, model: requestedModel, effortOverride: effortOverride)
-                    let routeKey = Self.routeCacheKey(cachePolicy.promptCacheKey, accountID: account.id, provider: account.provider, api: account.api)
-                    let response = try await NativeAgentClient(configuration: configuration).complete(
+                    var configuration = try configuration(for: account, model: requestedModel, effortOverride: effortOverride)
+                    configuration.disableNativeCompactionForRequest = disableNativeCompactionForRequest
+                    let routeKey = Self.routeCacheKey(
+                        cachePolicy.promptCacheKey,
+                        accountID: account.id,
+                        provider: account.provider,
+                        api: account.api,
+                        model: configuration.model
+                    )
+                    var response = try await NativeAgentClient(configuration: configuration).complete(
                         messages: messages,
                         tools: tools,
-                        cachePolicy: AgentCachePolicy(promptCacheKey: routeKey)
+                        cachePolicy: AgentCachePolicy(promptCacheKey: routeKey,
+                            comparisonResponseID: cachePolicy.comparisonResponseID,
+                            comparisonScope: cachePolicy.comparisonScope,
+                            priorBoundary: cachePolicy.priorBoundary),
+                        onDelta: onDelta
                     )
+                    response.servedAccountID = account.id
+                    response.servedModelID = configuration.model
+                    response.servedCacheKey = routeKey
                     status = AppCopy.format("router.connected", configuration.provider)
                     lastServedAccountID = account.id
                     lastServedModelID = configuration.model
@@ -216,7 +322,8 @@ extension RouterController {
                             account.id,
                             until: failure.retryAt ?? Date().addingTimeInterval(900)
                         )
-                        throw failure
+                        limitFailures.append((account.name, failure))
+                        break
                     }
                     if failure.statusCode == 401, !refreshed {
                         refreshed = true
@@ -231,6 +338,16 @@ extension RouterController {
                 }
             }
         }
+        if !limitFailures.isEmpty {
+            let limitMessages = limitFailures.map { "\($0.account): \($0.error.message)" }
+            let retryAt = limitFailures.compactMap { $0.error.retryAt }.min()
+            throw NativeAgentError(
+                (limitMessages + failures).joined(separator: "\n"),
+                retryable: false,
+                isLimit: true,
+                retryAt: retryAt
+            )
+        }
         throw NativeAgentError(failures.joined(separator: "\n"), retryable: false)
     }
 
@@ -241,6 +358,11 @@ extension RouterController {
         effortOverride: String? = nil
     ) throws -> AgentConfiguration {
         guard !account.baseURL.isEmpty, !account.model.isEmpty else { throw NativeAgentError("Provider endpoint is incomplete.") }
+        // No model was requested and the endpoint never named one: its server is
+        // down or lists nothing. Sending the `prefix/` placeholder would only fail later.
+        if model?.isEmpty != false, account.hasPlaceholderModel {
+            throw NativeAgentError(AppCopy.format("custom.noModelAvailable", account.name))
+        }
         let key = loadCredentials ? try store.credential(for: account) : nil
         if loadCredentials && (account.api == RouterAPIKind.anthropic.rawValue || account.api == RouterAPIKind.chatGPT.rawValue) {
             guard key != nil else { throw ProviderStoreError.credentialUnavailable }
@@ -250,7 +372,12 @@ extension RouterController {
             model: model?.isEmpty == false ? model! : effectiveModel(for: account),
             apiKey: key,
             provider: RouterCatalog.label(for: account.provider),
-            api: account.api,
+            // Existing OpenAI API-key accounts were stored as Chat Completions.
+            // The built-in OpenAI route now uses Responses so native compaction
+            // is available without requiring users to reconnect their account.
+            api: account.provider == "openai"
+                ? RouterAPIKind.chatGPT.rawValue
+                : account.api,
             accountID: account.id,
             sessionAccountID: account.sessionAccountID,
             specID: account.provider,
@@ -258,15 +385,27 @@ extension RouterController {
             effort: effortOverride ?? effort(for: model?.isEmpty == false ? model! : effectiveModel(for: account)),
             contextWindow: contextWindow(for: model?.isEmpty == false ? model : effectiveModel(for: account)),
             supportsNativeCompaction: RouterCatalog.spec(for: account.provider)?.transport.quirks.supportsNativeCompaction ?? false,
-            compactionPolicy: AgentContextCompactionPolicy.current()
+            compactionPolicy: usageMode == .economy ? .economy : AgentContextCompactionPolicy.current(),
+            usageMode: usageMode,
+            responseStylePreference: responseStylePreference,
+            supportsLegacyThinkingBudget: supportsLegacyThinkingBudget(for: model?.isEmpty == false ? model! : effectiveModel(for: account))
         )
-        config.fast = fastMode && supportsFast(config.model)
+        config.fast = fastMode && usageMode != .economy && supportsFast(config.model)
         return config
     }
 
-    private static func routeCacheKey(_ base: String?, accountID: String, provider: String, api: String) -> String? {
+    private func supportsLegacyThinkingBudget(for model: String) -> Bool {
+        if let resolved = models.first(where: { $0.id == model }) {
+            return resolved.supportsLegacyThinkingBudget
+        }
+        return ProviderRegistry.shared.specs
+            .flatMap(\.models)
+            .first(where: { $0.id == model })?.supportsLegacyThinkingBudget ?? false
+    }
+
+    static func routeCacheKey(_ base: String?, accountID: String, provider: String, api: String, model: String) -> String? {
         guard let base, !base.isEmpty else { return nil }
-        let identity = "\(base)|\(provider)|\(api)|\(accountID)"
+        let identity = "\(base)|\(provider)|\(api)|\(accountID)|\(model)"
         let digest = SHA256.hash(data: Data(identity.utf8))
             .map { String(format: "%02x", $0) }
             .joined()
@@ -286,8 +425,8 @@ extension RouterController {
         return ProviderRegistry.shared.specs.flatMap(\.models).first { $0.id == model }?.fast ?? false
     }
 
-    /// The selected effort, but only when the target model actually accepts it.
-    /// Automatic routing chooses its own level, which wins for that request.
+    /// The selected effort when the target model accepts it. Otherwise automatic
+    /// routing chooses a level the model supports.
     func effort(for model: String) -> String {
         let supported = efforts(for: model)
         if let override = autoEffortOverride {
@@ -316,7 +455,48 @@ extension RouterController {
 
     /// Preview of what automatic routing would do for `messages`, without sending.
     public func previewAutoDecision(for messages: [AgentMessage]) -> ModelDecision? {
-        ModelRouter.decide(messages: messages, available: routableModels)
+        ModelRouter.decide(
+            messages: messages,
+            available: routableModels,
+            economy: usageMode == .economy,
+            hasTools: messages.last?.role == .tool || !(messages.last?.toolCalls.isEmpty ?? true),
+            effortOverride: selectedEffort
+        )
+    }
+
+    /// Effort levels exposed while the model is automatic. The model may vary
+    /// per message, so offer the levels accepted by any currently routable model.
+    public var automaticEffortOptions: [String] {
+        let available = Set(routableModels.flatMap(\.efforts))
+        return ["none", "low", "medium", "high", "xhigh", "max"].filter(available.contains)
+    }
+
+    /// Resolves the expected route without loading credentials or sending a
+    /// request. Context admission uses this so Auto switches are measured
+    /// against the destination model before deciding whether to compact.
+    func contextConfiguration(
+        for messages: [AgentMessage],
+        requestedModel: String?,
+        preferredAccountID: String?,
+        preferredModelID: String?
+    ) -> AgentConfiguration? {
+        let requested = (requestedModel ?? selectedModelID).trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedModel: String
+        if requested == ModelRouter.autoModelID {
+            resolvedModel = preferredModelID ?? previewAutoDecision(for: messages)?.model ?? ""
+        } else {
+            resolvedModel = requested
+        }
+        guard !resolvedModel.isEmpty else { return nil }
+        let routes = orderedRoutes(
+            store.state.accounts,
+            model: resolvedModel,
+            preferred: preferredAccountID,
+            usage: accountUsage,
+            now: Date()
+        )
+        guard let account = routes.first else { return nil }
+        return try? configuration(for: account, model: resolvedModel, loadCredentials: false)
     }
 
     func effectiveModel(for account: StoredProviderAccount) -> String {
@@ -325,11 +505,5 @@ extension RouterController {
             || account.authType == "chatgpt" else { return account.model }
         let registered = RouterCatalog.spec(for: account.provider)?.models.map(\.id) ?? []
         return registered.contains(account.model) || registered.isEmpty ? account.model : registered[0]
-    }
-
-    func isCompactModel(_ model: String) -> Bool {
-        let id = model.lowercased()
-        return id.contains("mini") || id.contains("nano") || id.contains("haiku")
-            || id.contains("flash") || id.contains("lite") || id.contains("small")
     }
 }

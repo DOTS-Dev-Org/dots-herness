@@ -17,8 +17,10 @@ data class MobileRuntimeEvent(
 
 data class StoredMobileConversation(
     val id: String,
+    val projectId: String,
     val status: String,
     val updatedAt: Long,
+    val title: String,
 )
 
 data class StoredMobileMessage(
@@ -32,6 +34,7 @@ data class StoredMobileMessage(
 
 data class StoredMobileModelContext(
     val conversationId: String,
+    val projectId: String,
     val content: String,
 )
 
@@ -46,14 +49,14 @@ class MobileStateStore(context: Context) {
         recoverInterruptedRuns()
     }
 
-    fun startRun(mode: String, planMode: Boolean, prompt: String): String {
+    fun startRun(mode: String, planMode: Boolean, prompt: String, projectId: String = "local-default"): String {
         val conversationId = UUID.randomUUID().toString()
         val now = System.currentTimeMillis()
         val database = helper.writableDatabase
         database.beginTransaction()
         try {
             database.insertOrThrow("conversations", null, values(
-                "id" to conversationId, "status" to "running", "mode" to mode,
+                "id" to conversationId, "project_id" to projectId, "status" to "running", "mode" to mode,
                 "plan_mode" to if (planMode) 1 else 0, "created_at" to now, "updated_at" to now,
             ))
             database.insertOrThrow("pending_actions", null, values(
@@ -70,6 +73,110 @@ class MobileStateStore(context: Context) {
             database.endTransaction()
         }
         return conversationId
+    }
+
+    /** Persist a conversation before classifying or starting its first prompt. */
+    fun reserveConversation(projectId: String = "local-default"): String {
+        val conversationId = UUID.randomUUID().toString()
+        val now = System.currentTimeMillis()
+        val database = helper.writableDatabase
+        database.beginTransaction()
+        try {
+            database.insertOrThrow("conversations", null, values(
+                "id" to conversationId, "project_id" to projectId, "status" to "queued", "mode" to "agent",
+                "plan_mode" to 0, "created_at" to now, "updated_at" to now,
+            ))
+            database.insertOrThrow("model_context", null, values(
+                "conversation_id" to conversationId, "project_id" to projectId,
+                "content_json" to "{\"version\":3,\"messages\":[]}", "updated_at" to now,
+            ))
+            database.setTransactionSuccessful()
+        } finally {
+            database.endTransaction()
+        }
+        return conversationId
+    }
+
+    /** Atomically creates a conversation and durably accepts its first queued prompt. */
+    fun reserveConversation(projectId: String, queuedPromptId: String, queuedPromptPayload: String, snapshot: String): String? {
+        val conversationId = UUID.randomUUID().toString()
+        val now = System.currentTimeMillis()
+        val database = helper.writableDatabase
+        return try {
+            database.beginTransaction()
+            try {
+                database.insertOrThrow("conversations", null, values(
+                    "id" to conversationId, "project_id" to projectId, "status" to "queued", "mode" to "agent",
+                    "plan_mode" to 0, "created_at" to now, "updated_at" to now,
+                ))
+                database.insertOrThrow("model_context", null, values(
+                    "conversation_id" to conversationId, "project_id" to projectId,
+                    "content_json" to MobileEventPayloadSanitizer.redact(snapshot), "updated_at" to now,
+                ))
+                database.insertOrThrow("queued_prompts", null, values(
+                    "id" to queuedPromptId, "conversation_id" to conversationId, "position" to 0,
+                    "payload_json" to MobileEventPayloadSanitizer.redact(queuedPromptPayload), "created_at" to now,
+                ))
+                database.setTransactionSuccessful()
+                conversationId
+            } finally {
+                database.endTransaction()
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** Atomically moves a queued prompt into the transcript and active run. */
+    fun beginReservedRun(
+        conversationId: String,
+        mode: String,
+        planMode: Boolean,
+        prompt: String,
+        consumedPromptId: String? = null,
+        projectId: String = "local-default",
+        snapshot: String? = null,
+        queuedPrompts: List<Pair<String, String>>? = null,
+    ): Boolean {
+        val now = System.currentTimeMillis()
+        val database = helper.writableDatabase
+        return try {
+            database.beginTransaction()
+            try {
+            database.execSQL("UPDATE conversations SET status = 'running', mode = ?, plan_mode = ?, updated_at = ? WHERE id = ?", arrayOf(mode, if (planMode) 1 else 0, now, conversationId))
+            database.insertOrThrow("pending_actions", null, values(
+                "id" to UUID.randomUUID().toString(), "conversation_id" to conversationId,
+                "kind" to "run", "payload_json" to "{}", "status" to "running",
+                "created_at" to now, "updated_at" to now,
+            ))
+            database.insertOrThrow("messages", null, values(
+                "id" to UUID.randomUUID().toString(), "conversation_id" to conversationId,
+                "role" to "user", "content" to MobileEventPayloadSanitizer.redact(prompt), "created_at" to now,
+            ))
+            if (consumedPromptId != null) database.delete("queued_prompts", "id = ? AND conversation_id = ?", arrayOf(consumedPromptId, conversationId))
+            if (snapshot != null) {
+                database.insertWithOnConflict("model_context", null, values(
+                    "conversation_id" to conversationId, "project_id" to projectId,
+                    "content_json" to MobileEventPayloadSanitizer.redact(snapshot), "updated_at" to now,
+                ), SQLiteDatabase.CONFLICT_REPLACE)
+            }
+            if (queuedPrompts != null) {
+                database.delete("queued_prompts", "conversation_id = ?", arrayOf(conversationId))
+                queuedPrompts.forEachIndexed { position, (id, payload) ->
+                    database.insertOrThrow("queued_prompts", null, values(
+                        "id" to id, "conversation_id" to conversationId, "position" to position,
+                        "payload_json" to MobileEventPayloadSanitizer.redact(payload), "created_at" to now,
+                    ))
+                }
+            }
+                database.setTransactionSuccessful()
+                true
+            } finally {
+                database.endTransaction()
+            }
+        } catch (_: Exception) {
+            false
+        }
     }
 
     fun appendMessage(conversationId: String?, role: String, content: String, toolName: String? = null) {
@@ -89,7 +196,7 @@ class MobileStateStore(context: Context) {
         }
     }
 
-    fun appendEvent(conversationId: String?, kind: String, payload: Map<String, String>): MobileRuntimeEvent {
+    fun appendEvent(conversationId: String?, projectId: String = "local-default", kind: String, payload: Map<String, String>): MobileRuntimeEvent {
         val safePayload = MobileEventPayloadSanitizer.sanitize(payload)
         val event = MobileRuntimeEvent(UUID.randomUUID().toString(), conversationId, kind, safePayload, System.currentTimeMillis())
         val json = JSONObject()
@@ -98,7 +205,7 @@ class MobileStateStore(context: Context) {
         database.beginTransaction()
         try {
             database.insertOrThrow("events", null, values(
-                "id" to event.id, "conversation_id" to conversationId.orEmpty(), "kind" to kind,
+                "id" to event.id, "conversation_id" to conversationId.orEmpty(), "project_id" to projectId, "kind" to kind,
                 "payload_json" to json.toString(), "created_at" to event.createdAt,
             ))
             database.setTransactionSuccessful()
@@ -150,10 +257,11 @@ class MobileStateStore(context: Context) {
         val safeReference = credentialReference.takeIf { it.startsWith("keystore:") } ?: "[redacted]"
         helper.writableDatabase.insertWithOnConflict(
             "provider_accounts", null,
-            values("id" to "phone", "provider" to provider, "model" to model,
+            values("id" to "phone.$provider", "provider" to provider, "model" to model,
                 "credential_ref" to safeReference, "created_at" to System.currentTimeMillis()),
             SQLiteDatabase.CONFLICT_REPLACE,
         )
+        helper.writableDatabase.delete("provider_accounts", "id = ?", arrayOf("phone"))
     }
 
     fun saveOAuth(provider: String, accountReference: String) {
@@ -177,20 +285,63 @@ class MobileStateStore(context: Context) {
         )
     }
 
-    fun saveModelContext(conversationId: String?, content: String) {
-        if (conversationId == null) return
-        helper.writableDatabase.insertWithOnConflict(
-            "model_context", null,
-            values("conversation_id" to conversationId, "content_json" to MobileEventPayloadSanitizer.redact(content), "updated_at" to System.currentTimeMillis()),
-            SQLiteDatabase.CONFLICT_REPLACE,
-        )
+    fun saveModelContext(
+        conversationId: String?,
+        projectId: String = "local-default",
+        content: String,
+        queuedPrompts: List<Pair<String, String>>? = null,
+    ): Boolean {
+        if (conversationId == null) return false
+        val database = helper.writableDatabase
+        val now = System.currentTimeMillis()
+        return try {
+            database.beginTransaction()
+            try {
+                database.insertWithOnConflict(
+                "model_context", null,
+                values("conversation_id" to conversationId, "project_id" to projectId, "content_json" to MobileEventPayloadSanitizer.redact(content), "updated_at" to now),
+                SQLiteDatabase.CONFLICT_REPLACE,
+                )
+                if (queuedPrompts != null) {
+                    database.delete("queued_prompts", "conversation_id = ?", arrayOf(conversationId))
+                    queuedPrompts.forEachIndexed { position, (id, payload) ->
+                        database.insertOrThrow("queued_prompts", null, values(
+                            "id" to id, "conversation_id" to conversationId, "position" to position,
+                            "payload_json" to MobileEventPayloadSanitizer.redact(payload), "created_at" to now,
+                        ))
+                    }
+                }
+                database.execSQL("UPDATE conversations SET updated_at = ? WHERE id = ?", arrayOf(now, conversationId))
+                database.setTransactionSuccessful()
+                true
+            } finally {
+                database.endTransaction()
+            }
+        } catch (_: Exception) {
+            false
+        }
     }
 
-    fun latestModelContext(): StoredMobileModelContext? = helper.readableDatabase.query(
-        "model_context", arrayOf("conversation_id", "content_json"),
-        null, null, null, null, "updated_at DESC", "1",
+    fun queuedPromptPayloads(conversationId: String): List<Pair<String, String>> = helper.readableDatabase.query(
+        "queued_prompts", arrayOf("id", "payload_json"), "conversation_id = ?", arrayOf(conversationId), null, null, "position ASC",
     ).use { cursor ->
-        if (cursor.moveToFirst()) StoredMobileModelContext(cursor.getString(0), cursor.getString(1)) else null
+        buildList {
+            while (cursor.moveToNext()) add(cursor.getString(0) to cursor.getString(1))
+        }
+    }
+
+    fun latestModelContext(projectId: String = "local-default"): StoredMobileModelContext? = helper.readableDatabase.query(
+        "model_context", arrayOf("conversation_id", "project_id", "content_json"),
+        "project_id = ?", arrayOf(projectId), null, null, "updated_at DESC", "1",
+    ).use { cursor ->
+        if (cursor.moveToFirst()) StoredMobileModelContext(cursor.getString(0), cursor.getString(1), cursor.getString(2)) else null
+    }
+
+    fun modelContext(conversationId: String): StoredMobileModelContext? = helper.readableDatabase.query(
+        "model_context", arrayOf("conversation_id", "project_id", "content_json"),
+        "conversation_id = ?", arrayOf(conversationId), null, null, null, "1",
+    ).use { cursor ->
+        if (cursor.moveToFirst()) StoredMobileModelContext(cursor.getString(0), cursor.getString(1), cursor.getString(2)) else null
     }
 
     fun saveSetting(key: String, value: String) {
@@ -203,9 +354,9 @@ class MobileStateStore(context: Context) {
         "settings", arrayOf("value"), "key = ?", arrayOf(key), null, null, null, "1",
     ).use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
 
-    fun recentEvents(limit: Int = 500): List<MobileRuntimeEvent> = helper.readableDatabase.query(
+    fun recentEvents(projectId: String = "local-default", limit: Int = 500): List<MobileRuntimeEvent> = helper.readableDatabase.query(
         "events", arrayOf("id", "conversation_id", "kind", "payload_json", "created_at"),
-        null, null, null, null, "rowid DESC", limit.coerceIn(1, 2_000).toString(),
+        "project_id = ?", arrayOf(projectId), null, null, "rowid DESC", limit.coerceIn(1, 2_000).toString(),
     ).use { cursor ->
         val result = mutableListOf<MobileRuntimeEvent>()
         while (cursor.moveToNext()) {
@@ -234,19 +385,21 @@ class MobileStateStore(context: Context) {
     }
 
     /**
-     * Every chat except the caller's own, newest first. The transcript itself is
+     * Every project conversation except the caller's own, newest first. The transcript itself is
      * read separately with [messages], so a listing stays cheap.
      */
-    fun otherConversations(excluding: String?, limit: Int = 20): List<StoredMobileConversation> =
-        helper.readableDatabase.query(
-            "conversations", arrayOf("id", "status", "updated_at"),
-            null, null, null, null, "updated_at DESC", limit.coerceIn(1, 100).toString(),
+    fun otherConversations(excluding: String?, projectId: String = "local-default", limit: Int = 20): List<StoredMobileConversation> =
+        helper.readableDatabase.rawQuery(
+            """SELECT c.id, c.project_id, c.status, c.updated_at,
+                COALESCE((SELECT m.content FROM messages m WHERE m.conversation_id = c.id AND m.role = 'user' ORDER BY m.rowid ASC LIMIT 1), '')
+                FROM conversations c WHERE c.project_id = ? ORDER BY c.updated_at DESC LIMIT ?""",
+            arrayOf(projectId, limit.coerceIn(1, 100).toString()),
         ).use { cursor ->
             buildList {
                 while (cursor.moveToNext()) {
                     val id = cursor.getString(0)
                     if (id == excluding) continue
-                    add(StoredMobileConversation(id, cursor.getString(1), cursor.getLong(2)))
+                    add(StoredMobileConversation(id, cursor.getString(1), cursor.getString(2), cursor.getLong(3), cursor.getString(4)))
                 }
             }
         }
@@ -288,18 +441,28 @@ class MobileStateStore(context: Context) {
             database.execSQL("CREATE TABLE IF NOT EXISTS provider_accounts(id TEXT PRIMARY KEY, provider TEXT NOT NULL, model TEXT, credential_ref TEXT, created_at INTEGER NOT NULL)")
             database.execSQL("CREATE TABLE IF NOT EXISTS oauth_accounts(id TEXT PRIMARY KEY, provider TEXT NOT NULL, account_ref TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
             database.execSQL("CREATE TABLE IF NOT EXISTS repositories(id TEXT PRIMARY KEY, provider TEXT, owner TEXT, name TEXT, branch TEXT, local_path TEXT, base_commit TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
-            database.execSQL("CREATE TABLE IF NOT EXISTS conversations(id TEXT PRIMARY KEY, status TEXT NOT NULL, mode TEXT NOT NULL, plan_mode INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
+            database.execSQL("CREATE TABLE IF NOT EXISTS conversations(id TEXT PRIMARY KEY, project_id TEXT NOT NULL DEFAULT 'local-default', status TEXT NOT NULL, mode TEXT NOT NULL, plan_mode INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
             database.execSQL("CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, tool_name TEXT, created_at INTEGER NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
-            database.execSQL("CREATE TABLE IF NOT EXISTS model_context(conversation_id TEXT PRIMARY KEY, content_json TEXT NOT NULL, updated_at INTEGER NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
+            database.execSQL("CREATE TABLE IF NOT EXISTS model_context(conversation_id TEXT PRIMARY KEY, project_id TEXT NOT NULL DEFAULT 'local-default', content_json TEXT NOT NULL, updated_at INTEGER NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
+            database.execSQL("CREATE TABLE IF NOT EXISTS queued_prompts(id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, position INTEGER NOT NULL, payload_json TEXT NOT NULL, created_at INTEGER NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
             database.execSQL("CREATE TABLE IF NOT EXISTS pending_actions(id TEXT PRIMARY KEY, conversation_id TEXT, kind TEXT NOT NULL, payload_json TEXT NOT NULL, status TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
-            database.execSQL("CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY, conversation_id TEXT, kind TEXT NOT NULL, payload_json TEXT NOT NULL, created_at INTEGER NOT NULL)")
+            database.execSQL("CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY, conversation_id TEXT, project_id TEXT NOT NULL DEFAULT 'local-default', kind TEXT NOT NULL, payload_json TEXT NOT NULL, created_at INTEGER NOT NULL)")
         }
 
         override fun onUpgrade(database: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-            if (oldVersion < 1) onCreate(database)
+            if (oldVersion < 2) {
+                runCatching { database.execSQL("ALTER TABLE conversations ADD COLUMN project_id TEXT NOT NULL DEFAULT 'local-default'") }
+                runCatching { database.execSQL("ALTER TABLE model_context ADD COLUMN project_id TEXT NOT NULL DEFAULT 'local-default'") }
+            }
+            if (oldVersion < 3) {
+                runCatching { database.execSQL("ALTER TABLE events ADD COLUMN project_id TEXT NOT NULL DEFAULT 'local-default'") }
+            }
+            if (oldVersion < 4) {
+                database.execSQL("CREATE TABLE IF NOT EXISTS queued_prompts(id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, position INTEGER NOT NULL, payload_json TEXT NOT NULL, created_at INTEGER NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
+            }
         }
 
-        companion object { const val VERSION = 1 }
+        companion object { const val VERSION = 4 }
     }
 }
 

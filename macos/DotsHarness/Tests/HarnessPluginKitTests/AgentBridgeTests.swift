@@ -34,6 +34,23 @@ final class AgentBridgeTests: XCTestCase {
     }
 
     @MainActor
+    func testConversationActivityNoticesStayOutOfProviderContext() {
+        let conversation = Conversation(messages: [
+            ChatMessage(kind: .user, text: "Inspect the project"),
+            ChatMessage(
+                kind: .system,
+                text: "18,000 → 7,500 tokens",
+                activityCode: "context_compacted_auto"
+            ),
+            ChatMessage(kind: .assistant, text: "The project is ready."),
+        ])
+
+        let context = NativeAgentHost.modelMessagesForContext(conversation)
+
+        XCTAssertEqual(context.map(\.content), ["Inspect the project", "The project is ready."])
+    }
+
+    @MainActor
     func testFreshAppDoesNotInferCurrentDirectoryOrImportChats() {
         let model = AppModel(paths: temporaryPaths())
         XCTAssertTrue(model.isFirstLaunch)
@@ -52,9 +69,8 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertEqual(model.bridge.permissionMode, .ask)
         XCTAssertFalse(model.showsFullAccessWarning)
 
-        // Workspace permissions belong to the Coding runtime. A fresh install
-        // opens Chat when no Coding project exists, so select the workspace
-        // through the public app boundary before exercising Coding behavior.
+        // Workspace permissions belong to the selected project. A fresh install
+        // has no project until the public app boundary selects one.
         model.setWorkspace(workspace.path)
         let existingID = try XCTUnwrap(model.bridge.selectedID)
         model.bridge.renameConversation(existingID, to: "Existing chat")
@@ -265,7 +281,7 @@ final class AgentBridgeTests: XCTestCase {
         bridge.start(workspacePath: workspace.path)
 
         XCTAssertEqual(bridge.conversations.count, 1)
-        XCTAssertEqual(bridge.selected?.title, "New chat")
+        XCTAssertEqual(bridge.selected?.title, "New conversation")
         XCTAssertTrue(bridge.selected?.blank == true)
         XCTAssertEqual(bridge.selected?.cwd, workspace.path)
     }
@@ -339,7 +355,7 @@ final class AgentBridgeTests: XCTestCase {
         let firstDraft = Conversation(id: "draft-a", cwd: workspace.path)
         let legacyChat = Conversation(
             id: "chat",
-            title: "New chat",
+            title: "New conversation",
             messages: [ChatMessage(kind: .user, text: "Fix login flow\nKeep the session alive")],
             blank: false,
             cwd: workspace.path
@@ -376,89 +392,46 @@ final class AgentBridgeTests: XCTestCase {
     }
 
     @MainActor
-    func testChatAndCodingStoresDoNotShareProjectlessConversations() throws {
+    func testUnifiedStoreOnlyLoadsSelectedProjectConversations() throws {
         let paths = temporaryPaths()
         let workspace = paths.root.appendingPathComponent("project", isDirectory: true)
         try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
 
-        let codingStore = ConversationStore(
-            paths: paths,
-            fileName: AgentArea.coding.sessionFileName,
-            area: .coding
-        )
-        codingStore.save([
-            Conversation(id: "project-chat", title: "Project chat", blank: false, cwd: workspace.path, area: .coding)
+        let store = ConversationStore(paths: paths)
+        store.save([
+            Conversation(id: "project-chat", title: "Project chat", blank: false, cwd: workspace.path),
+            Conversation(id: "free-chat", title: "Free chat", blank: false),
         ])
-        let chatStore = ConversationStore(
-            paths: paths,
-            fileName: AgentArea.chat.sessionFileName,
-            area: .chat
-        )
-        chatStore.save([
-            Conversation(id: "free-chat", title: "Free chat", blank: false, area: .chat)
-        ])
+        XCTAssertEqual(store.load(workspacePath: workspace.path).map(\.id), ["project-chat"])
 
-        XCTAssertEqual(codingStore.load(workspacePath: workspace.path).map(\.id), ["project-chat"])
-        XCTAssertTrue(codingStore.load(workspacePath: nil).isEmpty)
-        XCTAssertEqual(chatStore.load(workspacePath: nil).map(\.id), ["free-chat"])
-
-        let codingBridge = AgentBridge(
+        let bridge = AgentBridge(
             paths: paths,
-            router: RouterController(baseURL: "http://127.0.0.1:1"),
-            area: .coding,
-            sessionFileName: AgentArea.coding.sessionFileName
+            router: RouterController(baseURL: "http://127.0.0.1:1")
         )
-        codingBridge.start(workspacePath: workspace.path)
-        XCTAssertTrue(codingBridge.projectlessConversations.isEmpty)
-        let chatBridge = AgentBridge(
-            paths: paths,
-            router: RouterController(baseURL: "http://127.0.0.1:1"),
-            area: .chat,
-            sessionFileName: AgentArea.chat.sessionFileName,
-            chatContextStore: ChatContextStore(paths: paths)
-        )
-        chatBridge.start(workspacePath: "")
-        XCTAssertEqual(chatBridge.projectlessConversations.map(\.id), ["free-chat"])
-        chatBridge.newConversation()
-        XCTAssertNil(chatBridge.selected?.cwd)
-
+        bridge.start(workspacePath: workspace.path)
+        XCTAssertTrue(bridge.conversations(outsideProjects: [workspace.path]).isEmpty)
         let model = AppModel(paths: paths)
-        model.chatBridge.start(workspacePath: "")
-        model.setActiveArea(.chat)
-        model.selectedConversationID = "free-chat"
         XCTAssertEqual(model.workspacePath, "")
-        XCTAssertEqual(model.selectedConversationID, "free-chat")
+        XCTAssertNil(model.selectedConversationID)
     }
 
     @MainActor
-    func testRecentIncludesChatsOfRemovedProjects() throws {
+    func testRecentIncludesConversationsOfRemovedProjects() throws {
         let paths = temporaryPaths()
         let kept = paths.root.appendingPathComponent("project-a", isDirectory: true)
         let removed = paths.root.appendingPathComponent("project-b", isDirectory: true)
         try FileManager.default.createDirectory(at: kept, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: removed, withIntermediateDirectories: true)
 
-        let codingStore = ConversationStore(
-            paths: paths,
-            fileName: AgentArea.coding.sessionFileName,
-            area: .coding
-        )
-        codingStore.save([
-            Conversation(id: "kept-chat", title: "Kept", blank: false, cwd: kept.path, area: .coding),
-            Conversation(id: "orphan-chat", title: "Orphan", blank: false, cwd: removed.path, area: .coding),
+        let store = ConversationStore(paths: paths)
+        store.save([
+            Conversation(id: "kept-chat", title: "Kept", blank: false, cwd: kept.path),
+            Conversation(id: "orphan-chat", title: "Orphan", blank: false, cwd: removed.path),
         ])
-        let chatStore = ConversationStore(
-            paths: paths,
-            fileName: AgentArea.chat.sessionFileName,
-            area: .chat
-        )
-        chatStore.save([Conversation(id: "free-chat", title: "Free", blank: false, area: .chat)])
 
         let bridge = AgentBridge(
             paths: paths,
-            router: RouterController(baseURL: "http://127.0.0.1:1"),
-            area: .coding,
-            sessionFileName: AgentArea.coding.sessionFileName
+            router: RouterController(baseURL: "http://127.0.0.1:1")
         )
         bridge.start(workspacePath: kept.path)
 
@@ -470,15 +443,6 @@ final class AgentBridgeTests: XCTestCase {
             Set(bridge.conversations(outsideProjects: [kept.path, removed.path]).map(\.id)),
             []
         )
-        let chatBridge = AgentBridge(
-            paths: paths,
-            router: RouterController(baseURL: "http://127.0.0.1:1"),
-            area: .chat,
-            sessionFileName: AgentArea.chat.sessionFileName,
-            chatContextStore: ChatContextStore(paths: paths)
-        )
-        chatBridge.start(workspacePath: "")
-        XCTAssertEqual(chatBridge.projectlessConversations.map(\.id), ["free-chat"])
     }
 
     @MainActor
@@ -518,51 +482,22 @@ final class AgentBridgeTests: XCTestCase {
         let workspace = paths.root.appendingPathComponent("project", isDirectory: true)
         try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
 
-        let codingStore = ConversationStore(
-            paths: paths,
-            fileName: AgentArea.coding.sessionFileName,
-            area: .coding
-        )
-        codingStore.save([
-            Conversation(id: "project-chat", title: "Project chat", blank: false, cwd: workspace.path, area: .coding)
+        let store = ConversationStore(paths: paths)
+        store.save([
+            Conversation(id: "project-chat", title: "Project chat", blank: false, cwd: workspace.path)
         ])
-        let chatStore = ConversationStore(
-            paths: paths,
-            fileName: AgentArea.chat.sessionFileName,
-            area: .chat
-        )
-        chatStore.save([Conversation(id: "free-chat", title: "Free chat", blank: false, area: .chat)])
 
         let bridge = AgentBridge(
             paths: paths,
-            router: RouterController(baseURL: "http://127.0.0.1:1"),
-            area: .coding,
-            sessionFileName: AgentArea.coding.sessionFileName
+            router: RouterController(baseURL: "http://127.0.0.1:1")
         )
         bridge.start(workspacePath: workspace.path)
         bridge.togglePinned("project-chat")
         bridge.setArchived("project-chat", archived: true)
 
-        XCTAssertTrue(codingStore.load(workspacePath: workspace.path).first?.pinned == true)
-        XCTAssertTrue(codingStore.load(workspacePath: workspace.path).first?.archived == true)
+        XCTAssertTrue(store.load(workspacePath: workspace.path).first?.pinned == true)
+        XCTAssertTrue(store.load(workspacePath: workspace.path).first?.archived == true)
         XCTAssertEqual(Set(bridge.archivedConversations.map(\.id)), ["project-chat"])
-
-        let chatBridge = AgentBridge(
-            paths: paths,
-            router: RouterController(baseURL: "http://127.0.0.1:1"),
-            area: .chat,
-            sessionFileName: AgentArea.chat.sessionFileName,
-            chatContextStore: ChatContextStore(paths: paths)
-        )
-        chatBridge.start(workspacePath: "")
-        chatBridge.togglePinned("free-chat")
-        chatBridge.setArchived("free-chat", archived: true)
-        XCTAssertTrue(chatStore.load(workspacePath: nil).first?.pinned == true)
-        XCTAssertTrue(chatStore.load(workspacePath: nil).first?.archived == true)
-        XCTAssertEqual(Set(chatBridge.archivedConversations.map(\.id)), ["free-chat"])
-
-        chatBridge.setArchived("free-chat", archived: false)
-        XCTAssertFalse(chatStore.load(workspacePath: nil).first?.archived == true)
     }
 
     func testConversationStoreStartsEmpty() {
@@ -584,17 +519,17 @@ final class AgentBridgeTests: XCTestCase {
         let paths = temporaryPaths()
         let workspace = paths.root.appendingPathComponent("legacy-project", isDirectory: true)
         try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
-        let legacy = Data(#"[{"id":"legacy-chat","title":"Legacy","messages":[{"id":"m","kind":"user","text":"hello"}],"blank":false,"cwd":""} ]"#.utf8)
+        let legacy = Data(#"[{"id":"legacy-chat","title":"Legacy","messages":[{"id":"m","kind":"user","text":"hello"}],"blank":false,"cwd":"\#(workspace.path)"} ]"#.utf8)
         try legacy.write(to: paths.root.appendingPathComponent("sessions.json"))
 
-        let conversation = try XCTUnwrap(ConversationStore(paths: paths).load(workspacePath: nil).first)
+        let conversation = try XCTUnwrap(ConversationStore(paths: paths).load(workspacePath: workspace.path).first)
         XCTAssertEqual(conversation.id, "legacy-chat")
         XCTAssertNil(conversation.messages.first?.turnID)
         XCTAssertTrue(conversation.messages.first?.changedFiles.isEmpty == true)
     }
 
     @MainActor
-    func testOpeningUnreadCompletedConversationMarksItRead() throws {
+    func testOpeningUnreadCompletedConversationMarksItRead() async throws {
         let paths = temporaryPaths()
         let workspace = paths.root.appendingPathComponent("unread-project", isDirectory: true)
         try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
@@ -609,7 +544,12 @@ final class AgentBridgeTests: XCTestCase {
         bridge.select("unread")
 
         XCTAssertFalse(bridge.conversations.first?.unread == true)
-        XCTAssertFalse(ConversationStore(paths: paths).load(workspacePath: workspace.path).first?.unread == true)
+        // select() writes to disk after the switch has painted, not inline.
+        func storedUnread() -> Bool {
+            ConversationStore(paths: paths).load(workspacePath: workspace.path).first?.unread == true
+        }
+        for _ in 0..<200 where storedUnread() { try await Task.sleep(nanoseconds: 10_000_000) }
+        XCTAssertFalse(storedUnread())
     }
 
     @MainActor
@@ -800,18 +740,122 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertEqual(try String(contentsOf: file), "agent")
     }
 
-    func testPendingPromptsAreTransientAndNeverPersisted() throws {
+    func testAcceptedPendingPromptsSurviveRestartWithoutCrossingPlanGate() throws {
         let paths = temporaryPaths()
         let workspace = paths.root.appendingPathComponent("project", isDirectory: true)
         try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
         let store = ConversationStore(paths: paths)
         var conversation = Conversation(id: "queued", cwd: workspace.path)
+        conversation.planGateActive = true
         conversation.pendingPrompts = [PendingPrompt(text: "finish this", mode: .queue)]
         store.save([conversation])
 
         let recovered = store.load(workspacePath: workspace.path)
         XCTAssertEqual(recovered.map(\.id), ["queued"])
-        XCTAssertTrue(recovered[0].pendingPrompts.isEmpty)
+        XCTAssertEqual(recovered[0].pendingPrompts.map(\.text), ["finish this"])
+        XCTAssertTrue(recovered[0].planGateActive)
+        XCTAssertFalse(recovered[0].pendingPrompts[0].bypassesPlanGate)
+    }
+
+    @MainActor
+    func testAmbiguousPlanPromptReservesDurableQueuePositionBeforeClassification() async throws {
+        let paths = temporaryPaths()
+        let workspace = paths.root.appendingPathComponent("project", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        let host = NativeAgentHost(paths: paths, endpoint: AgentEndpointController())
+        host.start(workspacePath: workspace.path)
+
+        var classificationStarted = false
+        var classification: CheckedContinuation<Bool, Never>?
+        host.planIntentClassifierOverride = { _ in
+            await withCheckedContinuation { continuation in
+                classificationStarted = true
+                classification = continuation
+            }
+        }
+
+        host.submitPrompt(
+            text: "plan.md should be updated",
+            attachments: [],
+            mode: .steer,
+            planMode: false,
+            needsPlanIntentResolution: true
+        )
+        let conversationID = try XCTUnwrap(host.selectedID)
+        var stored = ConversationStore(paths: paths).load(workspacePath: workspace.path)
+        XCTAssertEqual(stored.first?.pendingPrompts.map(\.text), ["plan.md should be updated"])
+        XCTAssertFalse(try XCTUnwrap(stored.first?.pendingPrompts.first).isPlanIntentResolved)
+
+        host.submitPrompt(
+            text: "second message",
+            attachments: [],
+            mode: .queue,
+            planMode: false,
+            needsPlanIntentResolution: false
+        )
+        XCTAssertEqual(host.conversations.first?.pendingPrompts.map(\.text), ["plan.md should be updated", "second message"])
+        XCTAssertNil(host.takeNextPrompt(in: conversationID, allowQueue: true))
+
+        for _ in 0..<100 where !classificationStarted { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertTrue(classificationStarted)
+        classification?.resume(returning: false)
+        for _ in 0..<100 {
+            if host.conversations.first?.pendingPrompts.first?.isPlanIntentResolved == true { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        stored = ConversationStore(paths: paths).load(workspacePath: workspace.path)
+        XCTAssertEqual(stored.first?.pendingPrompts.map(\.text), ["plan.md should be updated", "second message"])
+        XCTAssertTrue(try XCTUnwrap(stored.first?.pendingPrompts.first).isPlanIntentResolved)
+    }
+
+    @MainActor
+    func testQueueWaitsForPlanApprovalAndThenContinues() {
+        let host = NativeAgentHost(paths: temporaryPaths(), endpoint: AgentEndpointController())
+        var conversation = Conversation(id: "chat", cwd: "")
+        conversation.messages = [ChatMessage(id: "plan", kind: .plan, text: "the plan")]
+        conversation.pendingPlanMessageID = "plan"
+        let later = PendingPrompt(text: "later", mode: .queue)
+        let steering = PendingPrompt(text: "priority later", mode: .steer)
+        let approval = PendingPrompt(text: "apply", mode: .queue, approvedPlanID: "plan")
+        let stale = PendingPrompt(text: "apply old", mode: .queue, approvedPlanID: "old")
+        conversation.pendingPrompts = [later, steering, stale, approval]
+        host.conversations = [conversation]
+
+        // The plan is pending: only its approval may run, and the stale approval is dropped.
+        XCTAssertEqual(host.takeNextPrompt(in: "chat", allowQueue: true)?.id, approval.id)
+        XCTAssertNil(host.takeNextPrompt(in: "chat", allowQueue: true))
+        XCTAssertEqual(host.conversations[0].pendingPrompts.map(\.id), [later.id, steering.id])
+
+        // Once the plan is applied the held message continues.
+        host.conversations[0].pendingPlanMessageID = nil
+        host.conversations[0].planGateActive = false
+        XCTAssertEqual(host.takeNextPrompt(in: "chat", allowQueue: true)?.id, steering.id)
+    }
+
+    @MainActor
+    func testExplicitQueuePromotionIsTheOnlyPlanGateBypass() {
+        let host = NativeAgentHost(paths: temporaryPaths(), endpoint: AgentEndpointController())
+        var conversation = Conversation(id: "chat", cwd: "")
+        conversation.planGateActive = true
+        let held = PendingPrompt(text: "held", mode: .queue)
+        let normalSteer = PendingPrompt(text: "normal steer", mode: .steer)
+        let promoted = PendingPrompt(
+            text: "run this now",
+            mode: .steer,
+            placement: .steering,
+            bypassesPlanGate: true
+        )
+        conversation.pendingPrompts = [held, normalSteer, promoted]
+        host.conversations = [conversation]
+
+        XCTAssertEqual(host.takeNextPrompt(in: "chat", allowQueue: true)?.id, promoted.id)
+        XCTAssertTrue(host.conversations[0].planGateActive)
+        XCTAssertNil(host.takeNextPrompt(in: "chat", allowQueue: true))
+
+        host.conversations[0].planGateActive = false
+        XCTAssertEqual(host.takeNextPrompt(in: "chat", allowQueue: true)?.id, normalSteer.id)
+        XCTAssertEqual(host.takeNextPrompt(in: "chat", allowQueue: true)?.id, held.id)
     }
 
     func testPlanApprovalRequiresAnExplicitPhrase() {
@@ -830,6 +874,122 @@ final class AgentBridgeTests: XCTestCase {
 
         XCTAssertTrue(error.isLimit)
         XCTAssertFalse(error.retryable)
+    }
+
+    @MainActor
+    func testCompletedNormalRunHasNoContinueAndPromotionPreservesSeparatePause() async throws {
+        URLProtocol.registerClass(ApprovalURLProtocol.self)
+        defer { ApprovalURLProtocol.reset(); URLProtocol.unregisterClass(ApprovalURLProtocol.self) }
+        let paths = temporaryPaths()
+        let workspace = paths.root.appendingPathComponent("normal-project", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        let host = NativeAgentHost(
+            paths: paths,
+            endpoint: AgentEndpointController(baseURL: "http://approval.test", modelID: "test-model")
+        )
+        host.start(workspacePath: workspace.path)
+        await host.refreshConnection()
+
+        await host.send(text: "inspect", mode: .queue)
+        XCTAssertFalse(host.canContinue)
+        XCTAssertNil(host.selected?.continuation)
+
+        let id = try XCTUnwrap(host.selectedID)
+        let pause = ContinuationState(reason: .userStopped)
+        host.conversations[0].continuation = pause
+        host.conversations[0].planGateActive = true
+        let resolvedConfiguration = await host.currentConfiguration()
+        let configuration = try XCTUnwrap(resolvedConfiguration)
+        let task = host.startRun(
+            runID: UUID(),
+            conversationID: id,
+            configuration: configuration,
+            workspace: workspace,
+            context: [AgentMessage(role: .user, content: "independent promoted request")],
+            planGateOverride: true
+        )
+        await task.value
+
+        XCTAssertTrue(host.canContinue)
+        XCTAssertEqual(host.selected?.continuation, pause)
+        XCTAssertTrue(host.selected?.planGateActive == true)
+    }
+
+    @MainActor
+    func testCompletedContinueConsumesPauseAndReleasesPlanGate() async throws {
+        URLProtocol.registerClass(ApprovalURLProtocol.self)
+        defer { ApprovalURLProtocol.reset(); URLProtocol.unregisterClass(ApprovalURLProtocol.self) }
+
+        for reason in [ContinuationPauseReason.userStopped, .providerLimit, .applicationClosed] {
+            for hasPlan in [false, true] {
+                let paths = temporaryPaths()
+                let workspace = paths.root.appendingPathComponent("continue-project", isDirectory: true)
+                try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+                let host = NativeAgentHost(
+                    paths: paths,
+                    endpoint: AgentEndpointController(baseURL: "http://approval.test", modelID: "test-model")
+                )
+                host.start(workspacePath: workspace.path)
+                await host.refreshConnection()
+                let plan = ChatMessage(kind: .plan, text: "Apply the changes")
+                host.conversations = [Conversation(
+                    id: "continued-chat",
+                    messages: [ChatMessage(kind: .user, text: "inspect"), plan],
+                    modelContext: [AgentMessage(role: .user, content: "inspect")],
+                    continuation: ContinuationState(reason: reason),
+                    blank: false,
+                    planGateActive: hasPlan,
+                    pendingPlanMessageID: hasPlan ? plan.id : nil,
+                    cwd: workspace.path
+                )]
+                host.selectedID = "continued-chat"
+                XCTAssertTrue(host.canContinue)
+
+                await host.continueCurrentRun()
+
+                let completed = try XCTUnwrap(host.selected)
+                XCTAssertEqual(completed.messages.last(where: { $0.kind == .assistant })?.text, "done")
+                XCTAssertFalse(completed.running)
+                XCTAssertFalse(completed.canContinue)
+                XCTAssertFalse(host.canContinue)
+                XCTAssertNil(completed.continuation)
+                XCTAssertFalse(completed.planGateActive)
+                XCTAssertNil(completed.pendingPlanMessageID)
+                let restored = try JSONDecoder().decode(Conversation.self, from: JSONEncoder().encode(completed))
+                XCTAssertFalse(NativeAgentHost.recover(restored).canContinue)
+            }
+        }
+    }
+
+    @MainActor
+    func testCompletedContinuedDraftWaitsForApprovalWithoutContinue() async throws {
+        URLProtocol.registerClass(ApprovalURLProtocol.self)
+        defer { ApprovalURLProtocol.reset(); URLProtocol.unregisterClass(ApprovalURLProtocol.self) }
+        let paths = temporaryPaths()
+        let workspace = paths.root.appendingPathComponent("draft-project", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        let host = NativeAgentHost(
+            paths: paths,
+            endpoint: AgentEndpointController(baseURL: "http://approval.test", modelID: "test-model")
+        )
+        host.start(workspacePath: workspace.path)
+        await host.refreshConnection()
+        host.conversations = [Conversation(
+            id: "draft-chat",
+            modelContext: [AgentMessage(role: .user, content: "draft a plan")],
+            continuation: ContinuationState(reason: .userStopped),
+            planGateActive: true,
+            cwd: workspace.path
+        )]
+        host.selectedID = "draft-chat"
+        host.activeRunPlanMode = true
+
+        await host.continueCurrentRun()
+
+        XCTAssertNotNil(host.selected?.pendingPlanMessageID)
+        XCTAssertTrue(host.selected?.planGateActive == true)
+        XCTAssertNil(host.selected?.continuation)
+        XCTAssertFalse(host.canContinue)
     }
 
     func testContinuationSnapshotPersistsToolCallAndFullOutput() throws {
@@ -867,6 +1027,46 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertEqual(restored.continuation?.reason, .providerLimit)
     }
 
+    @MainActor
+    func testApplicationCloseRecoveryDoesNotReplayAnInFlightTool() throws {
+        let conversation = Conversation(
+            id: "closed-chat",
+            modelContext: [
+                AgentMessage(
+                    role: .assistant,
+                    content: "",
+                    toolCalls: [AgentToolCall(id: "write-1", name: "write_file", arguments: "{\"path\":\"a.txt\"}")]
+                ),
+            ],
+            running: true,
+            blank: false,
+            planGateActive: true,
+            inFlightToolCalls: [
+                InFlightToolCall(id: "write-1", name: "write_file", arguments: "{\"path\":\"a.txt\"}"),
+            ],
+        )
+
+        let recovered = NativeAgentHost.recover(conversation)
+
+        XCTAssertFalse(recovered.running)
+        XCTAssertTrue(recovered.planGateActive)
+        XCTAssertTrue(recovered.requiresToolOutcomeRecovery)
+        XCTAssertEqual(recovered.continuation?.reason, .applicationClosed)
+        XCTAssertNotNil(recovered.modelContext.first {
+            $0.role == AgentMessage.Role.tool
+                && $0.toolCallID == "write-1"
+                && $0.content.contains("result of this tool call was durably known")
+        })
+
+        let restored = try JSONDecoder().decode(
+            Conversation.self,
+            from: JSONEncoder().encode(recovered)
+        )
+        XCTAssertTrue(restored.requiresToolOutcomeRecovery)
+        XCTAssertEqual(restored.inFlightToolCalls.first?.id, "write-1")
+        XCTAssertEqual(restored.continuation?.reason, .applicationClosed)
+    }
+
     func testPlanMessagesAndPendingIDPersist() throws {
         let plan = ChatMessage(id: "plan-1", kind: .plan, text: "# Plan\n\n- Read the project")
         let conversation = Conversation(
@@ -886,7 +1086,7 @@ final class AgentBridgeTests: XCTestCase {
     }
 
     func testReadOnlyDefinitionsConstantStillBackstopsSubagent() {
-        XCTAssertEqual(WorkspaceTools.readOnlyDefinitions.map(\.name), ["list_files", "read_file", "grep_files"])
+        XCTAssertEqual(WorkspaceTools.readOnlyDefinitions.map(\.name), ["list_files", "read_file", "grep_files", "glob"])
         XCTAssertTrue(WorkspaceTools.isReadOnly("list_files"))
         XCTAssertTrue(WorkspaceTools.isReadOnly("read_file"))
         XCTAssertFalse(WorkspaceTools.isReadOnly("write_file"))
@@ -950,7 +1150,7 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertEqual(object["role"] as? String, "assistant")
         let toolCalls = object["tool_calls"] as? [[String: Any]]
         XCTAssertEqual(toolCalls?.first?["id"] as? String, "call-1")
-        XCTAssertEqual(WorkspaceTools.definitions.map(\.name), ["list_files", "read_file", "write_file", "remove_file", "grep_files", "run_command", "copy_generated_media", "inspect_generated_media", "ios_simulator"])
+        XCTAssertEqual(WorkspaceTools.definitions.map(\.name), ["list_files", "read_file", "write_file", "remove_file", "grep_files", "run_command", "edit_file", "glob", "copy_generated_media", "inspect_generated_media", "ios_simulator", "android_emulator"])
     }
 
     func testGrepFilesMatchesLinesAndRespectsFilters() throws {
@@ -971,7 +1171,7 @@ final class AgentBridgeTests: XCTestCase {
         let all = WorkspaceTools.execute(
             AgentToolCall(id: "g1", name: "grep_files", arguments: "{\"pattern\":\"alpha\"}"),
             workspace: workspace
-        )
+        , conversationID: "test")
         XCTAssertTrue(all.contains("a.swift:1:let alpha = 1"))
         XCTAssertTrue(all.contains("b.txt:1:alpha here"))
         XCTAssertFalse(all.contains("node_modules"))
@@ -983,14 +1183,14 @@ final class AgentBridgeTests: XCTestCase {
                 arguments: "{\"pattern\":\"alpha\",\"extensions\":\"swift\"}"
             ),
             workspace: workspace
-        )
+        , conversationID: "test")
         XCTAssertTrue(filtered.contains("a.swift"))
         XCTAssertFalse(filtered.contains("b.txt"))
 
         let missing = WorkspaceTools.execute(
             AgentToolCall(id: "g3", name: "grep_files", arguments: "{\"pattern\":\"gamma\"}"),
             workspace: workspace
-        )
+        , conversationID: "test")
         XCTAssertEqual(missing, AppCopy.text("tool.noMatches"))
         try? FileManager.default.removeItem(at: workspace)
     }
@@ -1142,23 +1342,40 @@ final class AgentBridgeTests: XCTestCase {
     }
 
     @MainActor
-    func testExploreToolOfferedOnlyInCodingAreaWithWorkspace() throws {
+    func testExploreToolOfferedOnlyWithWorkspace() throws {
         let workspace = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: workspace) }
 
-        let codingHost = NativeAgentHost(paths: temporaryPaths(), endpoint: AgentEndpointController(), area: .coding)
-        codingHost.setWorkspace(workspace.path)
-        let codingTools = codingHost.agentTools(workspace: workspace).defs.map(\.name)
-        XCTAssertTrue(codingTools.contains("explore"), "explore tool must be available in coding area with open workspace")
+        let host = NativeAgentHost(paths: temporaryPaths(), endpoint: AgentEndpointController())
+        host.setWorkspace(workspace.path)
+        let tools = host.agentTools(workspace: workspace).defs.map(\.name)
+        XCTAssertTrue(tools.contains("explore"), "explore tool must be available in a project with an open workspace")
 
-        let chatHost = NativeAgentHost(paths: temporaryPaths(), endpoint: AgentEndpointController(), area: .chat)
-        chatHost.setWorkspace(workspace.path)
-        let chatTools = chatHost.agentTools(workspace: workspace).defs.map(\.name)
-        XCTAssertFalse(chatTools.contains("explore"), "explore tool must not be exposed in chat area")
-
-        let noWorkspaceTools = codingHost.agentTools(workspace: nil).defs.map(\.name)
+        let noWorkspaceTools = host.agentTools(workspace: nil).defs.map(\.name)
         XCTAssertFalse(noWorkspaceTools.contains("explore"), "explore tool must not be offered without a workspace")
+    }
+
+    @MainActor
+    func testExploreToolFollowsTheSubagentSwitch() throws {
+        let workspace = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: workspace) }
+
+        let router = RouterController(baseURL: "http://127.0.0.1:1")
+        let host = NativeAgentHost(paths: temporaryPaths(), router: router)
+        func offered() -> Bool { host.agentTools(workspace: workspace).defs.contains { $0.name == "explore" } }
+
+        XCTAssertTrue(offered(), "unset preference in standard mode offers explore")
+        router.usageMode = .economy
+        XCTAssertFalse(offered(), "unset preference follows Economy and withholds explore")
+        router.subagentsPreference = true
+        XCTAssertTrue(offered(), "an explicit on outlives Economy")
+        router.usageMode = .standard
+        router.subagentsPreference = false
+        XCTAssertFalse(offered(), "an explicit off outlives standard mode")
+        XCTAssertFalse(ProjectKnowledge.guidance(missing: ["architecture"], explore: false).contains("explore"))
+        XCTAssertTrue(ProjectKnowledge.guidance(missing: ["architecture"]).contains("sweep to explore - and record"))
     }
 
     func testPrefetchExploreCapsToMaxPerTurnAndRejectsExcess() async {
@@ -1242,13 +1459,26 @@ final class AgentBridgeTests: XCTestCase {
             .appendingPathComponent("DotsHarnessTools-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
         let call = AgentToolCall(id: "call", name: "read_file", arguments: "{\"path\":\"../outside.txt\"}")
-        let result = WorkspaceTools.execute(call, workspace: workspace)
+        let result = WorkspaceTools.execute(call, workspace: workspace, conversationID: "test")
         XCTAssertTrue(result.contains("outside the workspace"))
         let memoryCall = AgentToolCall(id: "memory", name: "read_file", arguments: "{\"path\":\".mem/state.json\"}")
-        let memoryResult = WorkspaceTools.execute(memoryCall, workspace: workspace)
+        let memoryResult = WorkspaceTools.execute(memoryCall, workspace: workspace, conversationID: "test")
         XCTAssertFalse(memoryResult.contains(".mem"))
         XCTAssertFalse(memoryResult.contains("host-managed"))
         try? FileManager.default.removeItem(at: workspace)
+    }
+
+    func testGeneratedMediaSaveUsesContentHashAndSniffedExtension() throws {
+        let paths = temporaryPaths()
+        defer { try? FileManager.default.removeItem(at: paths.root) }
+        let jpeg = Data([0xFF, 0xD8, 0xFF, 0xE0, 0x01])
+        let a = try MediaGenerationClient.save(jpeg, kind: .image, paths: paths)
+        let b = try MediaGenerationClient.save(jpeg, kind: .image, paths: paths)
+        XCTAssertEqual(a.path, b.path)
+        XCTAssertTrue(a.path.hasSuffix(".jpg"))
+        XCTAssertEqual(a.mimeType, "image/jpeg")
+        XCTAssertTrue(a.path.hasPrefix(paths.root.appendingPathComponent("generated-media").path))
+        XCTAssertThrowsError(try MediaGenerationClient.save(Data([1, 2, 3]), kind: .image, paths: paths))
     }
 
     func testGeneratedMediaCanBeCopiedIntoWorkspaceAndRejectsUnknownSource() throws {
@@ -1293,7 +1523,7 @@ final class AgentBridgeTests: XCTestCase {
         var result = WorkspaceTools.execute(
             AgentToolCall(id: "remove", name: "remove_file", arguments: "{\"path\":\"old.swift\",\"reason\":\"Replaced by the new architecture.\",\"referenceTerms\":\"OldArchitecture\"}"),
             workspace: workspace
-        )
+        , conversationID: "test")
         XCTAssertTrue(result.hasPrefix("[cleanup:verified]"))
         XCTAssertFalse(FileManager.default.fileExists(atPath: workspace.appendingPathComponent("old.swift").path))
 
@@ -1302,14 +1532,14 @@ final class AgentBridgeTests: XCTestCase {
         result = WorkspaceTools.execute(
             AgentToolCall(id: "keep", name: "remove_file", arguments: "{\"path\":\"old2.swift\",\"reason\":\"Old flow removed.\",\"referenceTerms\":\"OldTwo\"}"),
             workspace: workspace
-        )
+        , conversationID: "test")
         XCTAssertTrue(result.hasPrefix("[cleanup:preserved]"))
 
         try Data("state".utf8).write(to: workspace.appendingPathComponent("state.sqlite"))
         result = WorkspaceTools.execute(
             AgentToolCall(id: "state", name: "remove_file", arguments: "{\"path\":\"state.sqlite\",\"reason\":\"cleanup\",\"referenceTerms\":\"state\"}"),
             workspace: workspace
-        )
+        , conversationID: "test")
         XCTAssertTrue(result.hasPrefix("[cleanup:preserved]"))
     }
 
@@ -1320,7 +1550,7 @@ final class AgentBridgeTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: workspace) }
         // ~300KB, far past the ~64KB pipe buffer that used to wedge the child.
         let call = AgentToolCall(id: "big", name: "run_command", arguments: "{\"command\":\"for i in $(seq 1 30000); do echo 0123456789; done\"}")
-        let result = WorkspaceTools.execute(call, workspace: workspace)
+        let result = WorkspaceTools.execute(call, workspace: workspace, conversationID: "test")
         XCTAssertFalse(result.contains("timed out"))
         XCTAssertTrue(result.contains("0123456789"))
     }
@@ -1335,7 +1565,7 @@ final class AgentBridgeTests: XCTestCase {
             withDestinationURL: URL(fileURLWithPath: "/etc")
         )
         let call = AgentToolCall(id: "esc", name: "read_file", arguments: "{\"path\":\"escape/hosts\"}")
-        let result = WorkspaceTools.execute(call, workspace: workspace)
+        let result = WorkspaceTools.execute(call, workspace: workspace, conversationID: "test")
         XCTAssertTrue(result.contains("outside the workspace"))
     }
 
@@ -1442,8 +1672,10 @@ final class AgentBridgeTests: XCTestCase {
     }
 
     func testChatGPTImageGenerationUsesBuiltInResponsesTool() async throws {
+        let pngBytes = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+        let b64 = pngBytes.base64EncodedString()
         MockURLProtocol.response = Data("""
-        data: {"type":"response.completed","response":{"output":[{"type":"image_generation_call","result":"AQID"}]}}
+        data: {"type":"response.completed","response":{"output":[{"type":"image_generation_call","result":"\(b64)"}]}}
 
         data: [DONE]
         """.utf8)
@@ -1466,7 +1698,7 @@ final class AgentBridgeTests: XCTestCase {
         let media = try await client.generateImage(prompt: "a red fox", paths: paths)
 
         XCTAssertEqual(media.kind, .image)
-        XCTAssertEqual(try Data(contentsOf: media.url), Data([1, 2, 3]))
+        XCTAssertEqual(try Data(contentsOf: media.url), pngBytes)
         XCTAssertEqual(MockURLProtocol.lastRequest?.url?.path, "/backend-api/codex/responses")
         let body = try XCTUnwrap(JSONSerialization.jsonObject(with: try XCTUnwrap(MockURLProtocol.lastBody)) as? [String: Any])
         let tools = try XCTUnwrap(body["tools"] as? [[String: Any]])
@@ -1633,6 +1865,7 @@ final class AgentBridgeTests: XCTestCase {
             result: "ok",
             beforeFile: nil,
             beforeGit: [],
+            afterGit: [],
             workspace: workspace
         )
         memory.finishTask(runID: runID, success: true, finalText: "done")
@@ -1696,6 +1929,7 @@ final class AgentBridgeTests: XCTestCase {
             result: "ok",
             beforeFile: nil,
             beforeGit: [],
+            afterGit: [],
             workspace: workspace
         )
         memory.finishTask(runID: runID, success: true, finalText: "done")
@@ -1733,7 +1967,8 @@ final class AgentBridgeTests: XCTestCase {
 
         let archived = try XCTUnwrap(memory.vault().notes.first { $0.kind == "conversation" })
         XCTAssertTrue(archived.body.contains("hidden from active conversations"))
-        XCTAssertTrue(memory.snapshot(for: "next").text.contains("archived"))
+        // The vault keeps the lifecycle; the prompt no longer carries the list.
+        XCTAssertFalse(memory.snapshot(for: "next").text.contains("archived"))
 
         memory.recordConversationLifecycle(
             conversationID: "chat-1",

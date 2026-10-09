@@ -22,6 +22,37 @@ public partial class SettingsView : UserControl
 {
     private readonly AppModel _model;
     private string _tab = "general";
+    private string _modelContextSearch = "";
+    private string? _pendingArchiveDeleteID;
+    private string? _archiveStatus;
+    private Conversation? _archivePreview;
+    private readonly HashSet<string> _expandedArchiveToolIDs = new(StringComparer.Ordinal);
+    private StackPanel? _mcpStatusRows;
+    private StackPanel? _mcpHttpFields;
+    private StackPanel? _mcpStdioFields;
+    private TextBlock? _mcpTestStatus;
+    private string _mcpName = "";
+    private string _mcpUrl = "";
+    private string _mcpCommand = "";
+    private string _mcpArguments = "";
+    private string _mcpToken = "";
+    private McpTransportKind _mcpTransport = McpTransportKind.Http;
+    private bool _mcpAutoRunReadOnly;
+    private MemoryVault _memoryVault = MemoryVault.Empty;
+    private string? _memorySelectedId;
+    private string? _memoryEditingLessonId;
+    private string? _memoryStatus;
+    private string _memorySearch = "";
+    private string _accessDisplayName = "";
+    private string _accessPublicKey = "";
+    private string _accessInvite = "";
+    private string? _accessError;
+    private string _sandboxName = "agent-work";
+    private MemoryRole _accessInviteRole = MemoryRole.Contributor;
+    private double _accessInviteScore = 50;
+    private KeyboardShortcutAction? _recordingShortcut;
+    private TextBlock? _shortcutStatus;
+    private readonly Dictionary<KeyboardShortcutAction, Button> _shortcutButtons = new();
     private static readonly IReadOnlyDictionary<string, string> LegacyKeys = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         ["General"] = "settings.general", ["Appearance"] = "settings.appearance", ["Ask before closing"] = "settings.confirmBeforeExit",
@@ -65,10 +96,24 @@ public partial class SettingsView : UserControl
         _model = ((App)Application.Current).Model;
         DataContext = _model;
         _model.PropertyChanged += OnModel;
+        _model.Bridge.PropertyChanged += OnBridge;
+        _model.McpRegistry.PropertyChanged += OnMcpRegistry;
         Loaded += (_, _) => RefreshLocalization();
     }
 
     public event EventHandler? BackRequested;
+    public bool IsCapturingKeyboardShortcut => _recordingShortcut is not null;
+
+    /// <summary>Opens a settings section from the desktop shell.</summary>
+    public void SelectTab(string tab)
+    {
+        var item = Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(candidate =>
+            string.Equals(candidate.Tag as string, tab, StringComparison.Ordinal));
+        if (item is null) return;
+        item.IsSelected = true;
+        _tab = tab;
+        ShowCurrentTab();
+    }
 
     private void OnBack(object sender, RoutedEventArgs e) => BackRequested?.Invoke(this, EventArgs.Empty);
 
@@ -77,10 +122,20 @@ public partial class SettingsView : UserControl
         if (Tabs.SelectedItem is not ListBoxItem item) return;
         _tab = item.Tag as string ?? "general";
         ShowCurrentTab();
+        if (_tab == "sandbox") _ = _model.RefreshAvailableSandboxesAsync();
     }
 
     private void OnModel(object? sender, PropertyChangedEventArgs e)
     {
+        if (_tab == "sandbox" && e.PropertyName is (nameof(AppModel.ActiveSandbox)
+            or nameof(AppModel.AvailableSandboxes) or nameof(AppModel.SandboxConflict)
+            or nameof(AppModel.SandboxResolutionPreview) or nameof(AppModel.SandboxNotice)
+            or nameof(AppModel.SandboxRecoveryRequired) or nameof(AppModel.SandboxCleanupPending)
+            or nameof(AppModel.SandboxResolutionBusy) or nameof(AppModel.SandboxNetworkAccess)))
+        {
+            Dispatcher.BeginInvoke(ShowSandbox);
+            return;
+        }
         if (e.PropertyName is nameof(AppModel.VisionState)
             or nameof(AppModel.VisionModelProgress)
             or nameof(AppModel.VisionPluginInstalled)
@@ -93,11 +148,25 @@ public partial class SettingsView : UserControl
             Dispatcher.BeginInvoke(RefreshLocalization);
     }
 
+    private void OnBridge(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(AgentBridge.ArchivedConversations) && _tab == "archive")
+            Dispatcher.BeginInvoke(ShowArchive);
+    }
+
+    private void OnMcpRegistry(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(McpRegistry.Statuses) && _tab == "mcp")
+            Dispatcher.BeginInvoke(RefreshMcpStatuses);
+    }
+
     private void ShowCurrentTab()
     {
         switch (_tab)
         {
             case "providers": ShowProviders(); break;
+            case "model-context": ShowModelContexts(); break;
+            case "archive": ShowArchive(); break;
             case "custom": ShowCustom(); break;
             case "local": ShowLocal(); break;
             case "voice": ShowVoice(); break;
@@ -106,6 +175,10 @@ public partial class SettingsView : UserControl
             case "tasks": ShowTasks(); break;
             case "skills": ShowSkills(); break;
             case "plugins": ShowPlugins(); break;
+            case "mcp": ShowMcp(); break;
+            case "memory": ShowMemory(); break;
+            case "access": ShowAccess(); break;
+            case "sandbox": ShowSandbox(); break;
             case "prompt": ShowPrompt(); break;
             case "legal": ShowLegal(); break;
             default: ShowGeneral(); break;
@@ -116,6 +189,8 @@ public partial class SettingsView : UserControl
     {
         BackButton.Content = "← " + _model.L("settings.back");
         GeneralTab.Content = _model.L("settings.general");
+        ModelContextTab.Content = _model.L("usage.context.window");
+        ArchiveTab.Content = _model.L("settings.archive");
         ProvidersTab.Content = _model.L("settings.providers");
         CustomTab.Content = _model.L("settings.custom");
         LocalTab.Content = _model.L("settings.localModels");
@@ -125,13 +200,342 @@ public partial class SettingsView : UserControl
         TasksTab.Content = _model.L("settings.tasks");
         SkillsTab.Content = _model.L("conversation.skills");
         PluginsTab.Content = _model.L("settings.plugins");
+        McpTab.Content = _model.L("settings.mcpServers");
+        MemoryTab.Content = _model.L("settings.tab.memory");
+        AccessTab.Content = _model.L("settings.tab.access");
+        SandboxTab.Content = _model.L("settings.sandbox");
         PromptTab.Content = _model.L("settings.systemPrompt");
         LegalTab.Content = _model.L("legal.title");
         ShowCurrentTab();
     }
 
+    private void ShowArchive()
+    {
+        var panel = new StackPanel();
+        if (_archivePreview is { } selected)
+        {
+            panel.Children.Add(ArchiveTranscript(selected));
+            Body.Content = panel;
+            return;
+        }
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = _model.L("archive.title"),
+            FontSize = 22,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 16),
+        });
+        if (!string.IsNullOrWhiteSpace(_archiveStatus))
+            panel.Children.Add(new TextBlock
+            {
+                Text = _archiveStatus,
+                Foreground = TryBrush("TextSecondary"),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 10),
+            });
+
+        var archived = _model.Bridge.ArchivedConversations;
+        if (archived.Count == 0)
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = _model.L("archive.empty"),
+                Foreground = TryBrush("TextSecondary"),
+            });
+        }
+        foreach (var conversation in archived)
+        {
+            var row = new StackPanel();
+            row.Children.Add(new TextBlock
+            {
+                Text = conversation.Title,
+                FontWeight = FontWeights.SemiBold,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            });
+            if (!string.IsNullOrWhiteSpace(conversation.Cwd))
+                row.Children.Add(new TextBlock
+                {
+                    Text = conversation.Cwd,
+                    FontSize = 11,
+                    Foreground = TryBrush("TextSecondary"),
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    Margin = new Thickness(0, 3, 0, 0),
+                });
+
+            var actions = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(0, 10, 0, 0),
+            };
+            if (_pendingArchiveDeleteID == conversation.Id)
+            {
+                actions.Children.Add(new TextBlock
+                {
+                    Text = _model.L("archive.confirmDelete"),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 10, 0),
+                });
+                var confirmDelete = new Button
+                {
+                    Content = _model.L("archive.deletePermanently"),
+                    Margin = new Thickness(0, 0, 6, 0),
+                    Padding = new Thickness(10, 4, 10, 4),
+                };
+                confirmDelete.Click += (_, _) =>
+                {
+                    _archiveStatus = _model.Bridge.DeleteConversation(conversation.Id)
+                        ? null
+                        : _model.L("archive.deleteFailed");
+                    if (_archivePreview?.Id == conversation.Id) _archivePreview = null;
+                    _pendingArchiveDeleteID = null;
+                    ShowArchive();
+                };
+                actions.Children.Add(confirmDelete);
+                var cancelDelete = new Button
+                {
+                    Content = _model.L("archive.cancel"),
+                    Padding = new Thickness(10, 4, 10, 4),
+                };
+                cancelDelete.Click += (_, _) => { _pendingArchiveDeleteID = null; ShowArchive(); };
+                actions.Children.Add(cancelDelete);
+            }
+            else
+            {
+                var view = new Button
+                {
+                    Content = _model.L("settings.view"),
+                    Margin = new Thickness(0, 0, 6, 0),
+                    Padding = new Thickness(10, 4, 10, 4),
+                };
+                view.Click += (_, _) =>
+                {
+                    _archivePreview = _model.Bridge.LoadArchivedConversation(conversation.Id);
+                    _expandedArchiveToolIDs.Clear();
+                    ShowArchive();
+                };
+                actions.Children.Add(view);
+                var restore = new Button
+                {
+                    Content = _model.L("archive.restore"),
+                    Margin = new Thickness(0, 0, 6, 0),
+                    Padding = new Thickness(10, 4, 10, 4),
+                };
+                restore.Click += (_, _) =>
+                {
+                    _archiveStatus = _model.Bridge.SetArchived(conversation.Id, false)
+                        ? null
+                        : _model.L("archive.restoreFailed");
+                    if (_archivePreview?.Id == conversation.Id) _archivePreview = null;
+                    ShowArchive();
+                };
+                actions.Children.Add(restore);
+                var delete = new Button
+                {
+                    Content = _model.L("archive.delete"),
+                    Padding = new Thickness(10, 4, 10, 4),
+                };
+                delete.Click += (_, _) => { _archiveStatus = null; _pendingArchiveDeleteID = conversation.Id; ShowArchive(); };
+                actions.Children.Add(delete);
+            }
+            row.Children.Add(actions);
+            panel.Children.Add(new Border
+            {
+                Padding = new Thickness(12),
+                Margin = new Thickness(0, 0, 0, 10),
+                BorderBrush = TryBrush("BorderSubtle"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Child = row,
+            });
+        }
+        Body.Content = panel;
+    }
+
+    private UIElement ArchiveTranscript(Conversation conversation)
+    {
+        var detail = new StackPanel();
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(0, 0, 0, 14),
+        };
+        var back = new Button
+        {
+            Content = $"‹  {_model.L("archive.title")}",
+            Margin = new Thickness(0, 0, 6, 0),
+            Padding = new Thickness(10, 4, 10, 4),
+        };
+        back.Click += (_, _) =>
+        {
+            _archivePreview = null;
+            _expandedArchiveToolIDs.Clear();
+            ShowArchive();
+        };
+        actions.Children.Add(back);
+        var restore = new Button
+        {
+            Content = _model.L("archive.restore"),
+            Margin = new Thickness(0, 0, 6, 0),
+            Padding = new Thickness(10, 4, 10, 4),
+        };
+        restore.Click += (_, _) =>
+        {
+            _archiveStatus = _model.Bridge.SetArchived(conversation.Id, false)
+                ? null
+                : _model.L("archive.restoreFailed");
+            _archivePreview = null;
+            _expandedArchiveToolIDs.Clear();
+            ShowArchive();
+        };
+        actions.Children.Add(restore);
+        var delete = new Button
+        {
+            Content = _model.L("archive.delete"),
+            Padding = new Thickness(10, 4, 10, 4),
+        };
+        delete.Click += (_, _) =>
+        {
+            _archiveStatus = null;
+            _pendingArchiveDeleteID = conversation.Id;
+            _archivePreview = null;
+            _expandedArchiveToolIDs.Clear();
+            ShowArchive();
+        };
+        actions.Children.Add(delete);
+        detail.Children.Add(actions);
+        detail.Children.Add(new TextBlock
+        {
+            Text = conversation.Title,
+            FontSize = 18,
+            FontWeight = FontWeights.SemiBold,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 4),
+        });
+        if (!string.IsNullOrWhiteSpace(conversation.Cwd))
+            detail.Children.Add(new TextBlock
+            {
+                Text = conversation.Cwd,
+                FontSize = 11,
+                Foreground = TryBrush("TextSecondary"),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 12),
+            });
+
+        var messages = new StackPanel();
+        if (conversation.Messages.Count == 0)
+        {
+            messages.Children.Add(new TextBlock
+            {
+                Text = "—",
+                Foreground = TryBrush("TextSecondary"),
+            });
+        }
+        foreach (var message in conversation.Messages)
+        {
+            if (message.Kind == ChatKind.Tool)
+            {
+                var isExpanded = _expandedArchiveToolIDs.Contains(message.Id);
+                var toolToggle = new Button
+                {
+                    Content = $"{(isExpanded ? "▾" : "▸")}  {_model.L("conversation.tool")} · {ArchiveToolSummary(message.Text)}",
+                    HorizontalContentAlignment = HorizontalAlignment.Left,
+                    Padding = new Thickness(10, 8, 10, 8),
+                };
+                toolToggle.Click += (_, _) =>
+                {
+                    if (!_expandedArchiveToolIDs.Add(message.Id))
+                        _expandedArchiveToolIDs.Remove(message.Id);
+                    ShowArchive();
+                };
+                var toolContent = new StackPanel();
+                toolContent.Children.Add(toolToggle);
+                if (isExpanded)
+                {
+                    toolContent.Children.Add(new Border
+                    {
+                        Padding = new Thickness(10),
+                        Margin = new Thickness(0, 4, 0, 0),
+                        Background = TryBrush("ChromeBackground"),
+                        CornerRadius = new CornerRadius(6),
+                        Child = new TextBlock
+                        {
+                            Text = string.IsNullOrWhiteSpace(message.RawToolOutput)
+                                ? message.Text
+                                : message.RawToolOutput,
+                            TextWrapping = TextWrapping.Wrap,
+                            FontFamily = new FontFamily("Consolas"),
+                            Foreground = TryBrush("TextPrimary"),
+                        },
+                    });
+                }
+                messages.Children.Add(new Border
+                {
+                    Margin = new Thickness(0, 0, 0, 8),
+                    BorderBrush = TryBrush("BorderSubtle"),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(6),
+                    Child = toolContent,
+                });
+                continue;
+            }
+
+            var body = string.Join("\n", new[] { message.Text }
+                .Concat(message.Attachments.Select(attachment => attachment.Name))
+                .Where(value => !string.IsNullOrWhiteSpace(value)));
+            var content = new StackPanel();
+            content.Children.Add(new TextBlock
+            {
+                Text = $"{_model.L(message.Kind switch
+                {
+                    ChatKind.User => "conversation.you",
+                    ChatKind.Assistant => "conversation.assistant",
+                    ChatKind.Plan => "conversation.plan",
+                    _ => "conversation.system",
+                })} · {message.CreatedAt.ToLocalTime():g}",
+                FontSize = 11,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = TryBrush("TextSecondary"),
+                Margin = new Thickness(0, 0, 0, 4),
+            });
+            content.Children.Add(new TextBlock
+            {
+                Text = string.IsNullOrWhiteSpace(body) ? "—" : body,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = TryBrush("TextPrimary"),
+            });
+            messages.Children.Add(new Border
+            {
+                Padding = new Thickness(10),
+                Margin = new Thickness(0, 0, 0, 8),
+                Background = TryBrush("ChromeBackground"),
+                CornerRadius = new CornerRadius(6),
+                Child = content,
+            });
+        }
+        detail.Children.Add(new ScrollViewer
+        {
+            Content = messages,
+            MaxHeight = 560,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Margin = new Thickness(0, 10, 0, 0),
+        });
+        return detail;
+    }
+
+    private string ArchiveToolSummary(string text)
+    {
+        var firstLine = text.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim())
+            .FirstOrDefault(line => line.Length > 0);
+        if (string.IsNullOrWhiteSpace(firstLine)) return _model.L("conversation.tool");
+        return firstLine.Length > 120 ? firstLine[..120] : firstLine;
+    }
+
     private void ShowGeneral()
     {
+        _recordingShortcut = null;
+        _shortcutButtons.Clear();
         var panel = new StackPanel();
         panel.Children.Add(Heading("settings.general"));
         panel.Children.Add(Label("settings.language"));
@@ -162,20 +566,196 @@ public partial class SettingsView : UserControl
             }
         };
         panel.Children.Add(appearance);
-        panel.Children.Add(Label("Browser backend"));
+        AddKeyboardShortcutEditor(panel);
+        var subagents = new CheckBox
+        {
+            Content = _model.Language == AppLanguage.Turkish ? "Alt ajanları kullan" : "Use subagents",
+            IsChecked = _model.SubagentsEnabled,
+            Margin = new Thickness(0, 0, 0, 4),
+        };
+        subagents.Click += (_, _) => _model.SetSubagentsEnabled(subagents.IsChecked == true);
+        panel.Children.Add(subagents);
+        panel.Children.Add(new TextBlock
+        {
+            Text = _model.Language == AppLanguage.Turkish
+                ? "Açıkken ajan, zor ve uzun görevlerde çok dosyalı aramaları ve birbirinden bağımsız düzenleme parçalarını paralel alt ajanlara devreder; ana konuşmaya yalnızca özet girer. Düzenleyen her alt ajan yalnızca kendisine atanan dosyalara yazabilir, atamalar çakışamaz. Basit görevlerde çağırmaz. Her alt ajan ayrı model çağrısıdır; maliyeti düşürmek için kapatın. Seçim yapılmadıysa Ekonomi modunda kapalıdır."
+                : "When on, the agent hands searches that sweep many files, and independent parts of a large change, to parallel subagents on hard or long tasks; only their summary enters the main conversation. An editing subagent can write only the files assigned to it, and assignments cannot overlap. Simple tasks never call one. Each subagent is a separate model run; turn this off to lower cost. Until you choose, it is off in Economy mode.",
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 12),
+        });
+        panel.Children.Add(Label(ResponseStyleTitle()));
+        var responseStyle = new ComboBox { Margin = new Thickness(0, 0, 0, 4) };
+        var responseStyles = Enum.GetValues<AgentResponseStylePreference>();
+        foreach (var preference in responseStyles) responseStyle.Items.Add(ResponseStyleLabel(preference));
+        responseStyle.SelectedIndex = Array.IndexOf(responseStyles, _model.ResponseStylePreference);
+        responseStyle.SelectionChanged += (_, _) =>
+        {
+            if (responseStyle.SelectedIndex >= 0 && responseStyle.SelectedIndex < responseStyles.Length)
+                _model.SetResponseStylePreference(responseStyles[responseStyle.SelectedIndex]);
+        };
+        panel.Children.Add(responseStyle);
+        panel.Children.Add(new TextBlock
+        {
+            Text = _model.Language == AppLanguage.Turkish
+                ? "Bu ayar promptu değiştirmez. Kısa/ultra tercihi best-effort'tur; kesin token, tamamlanma veya maliyet garantisi vermez."
+                : "This setting does not rewrite the prompt. Concise/Ultra are best-effort preferences; they do not guarantee a token count, completion, or lower cost.",
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 12),
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = _model.Language == AppLanguage.Turkish ? "Bağlamı otomatik sıkıştırma eşiği" : "Auto-compact context at",
+            Margin = new Thickness(0, 0, 0, 4),
+        });
+        var compactValue = new TextBox
+        {
+            Width = 64,
+            Text = _model.UsageMode == AgentUsageMode.Economy ? "90" : _model.ContextCompactionThresholdPercent.ToString(),
+            IsReadOnly = _model.UsageMode == AgentUsageMode.Economy,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            TextAlignment = TextAlignment.Center,
+        };
+        TextBlock? compactThresholdLabel = null;
+        string CompactThresholdLabelText()
+        {
+            var selectedModel = _model.SelectedModelID;
+            var isAutoModel = string.IsNullOrWhiteSpace(selectedModel) || selectedModel == "auto";
+            var compactPercentForModel = _model.UsageMode == AgentUsageMode.Economy ? 90 : _model.ContextCompactionThresholdPercent;
+            var compactLimit = _model.UsageMode == AgentUsageMode.Economy
+                ? ContextCompaction.EconomyReplayTokenLimit
+                : ContextCompaction.CodingReplayTokenLimit;
+            var compactThreshold = isAutoModel
+                ? compactLimit
+                : ContextCompaction.NativeThreshold(
+                    _model.Router.ContextWindowFor(selectedModel),
+                    compactPercentForModel,
+                    _model.UsageMode == AgentUsageMode.Economy);
+            var compactCount = compactThreshold.ToString("N0", CultureInfo.GetCultureInfo(
+                _model.Language == AppLanguage.Turkish ? "tr-TR" : "en-US"));
+            return isAutoModel
+                ? (_model.Language == AppLanguage.Turkish
+                    ? $"Otomatik modelde en çok {compactCount} token"
+                    : $"Auto-routed models: up to {compactCount} tokens")
+                : (_model.Language == AppLanguage.Turkish
+                    ? $"Etkin eşik: {compactCount} token"
+                    : $"Effective threshold: {compactCount} tokens");
+        }
+        void RefreshCompactThresholdLabel()
+        {
+            if (compactThresholdLabel is not null) compactThresholdLabel.Text = CompactThresholdLabelText();
+        }
+        void SetCompactPercent(int value)
+        {
+            var normalized = Math.Clamp(value, 0, 100);
+            _model.SetContextCompactionThresholdPercent(normalized);
+            compactValue.Text = normalized.ToString();
+            RefreshCompactThresholdLabel();
+        }
+        void CommitCompactPercent()
+        {
+            if (int.TryParse(compactValue.Text, out var value)) SetCompactPercent(value);
+            else compactValue.Text = _model.ContextCompactionThresholdPercent.ToString();
+        }
+        compactValue.LostFocus += (_, _) => CommitCompactPercent();
+        var compactControls = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };
+        var compactMinus = new Button { Content = "−", Margin = new Thickness(0, 0, 6, 0), Padding = new Thickness(10, 2, 10, 2), IsEnabled = _model.UsageMode != AgentUsageMode.Economy };
+        compactMinus.Click += (_, _) => SetCompactPercent((int.TryParse(compactValue.Text, out var value) ? value : _model.ContextCompactionThresholdPercent) - 1);
+        var compactPlus = new Button { Content = "+", Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(10, 2, 10, 2), IsEnabled = _model.UsageMode != AgentUsageMode.Economy };
+        compactPlus.Click += (_, _) => SetCompactPercent((int.TryParse(compactValue.Text, out var value) ? value : _model.ContextCompactionThresholdPercent) + 1);
+        compactControls.Children.Add(compactMinus);
+        compactControls.Children.Add(compactValue);
+        compactControls.Children.Add(new TextBlock { Text = "%", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0) });
+        compactControls.Children.Add(compactPlus);
+        panel.Children.Add(compactControls);
+        if (_model.UsageMode == AgentUsageMode.Economy)
+        {
+            compactControls.ToolTip = _model.Language == AppLanguage.Turkish
+                ? "Ekonomi politikasında eşik sabit olarak %90'dır."
+                : "Economy policy uses a fixed 90% threshold.";
+        }
+        panel.Children.Add(new TextBlock
+        {
+            Text = _model.Language == AppLanguage.Turkish
+                ? "Her modelin kendi bağlam penceresinin yüzdesi. Daha yüksek değer, sıkıştırmayı ve önbellek önekinin yeniden yazılmasını geciktirir."
+                : "Percentage of the selected model's context window. Higher values delay compaction and rewriting the cache prefix.",
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 12),
+        });
+        compactThresholdLabel = new TextBlock
+        {
+            Text = CompactThresholdLabelText(),
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            Margin = new Thickness(0, -8, 0, 12),
+        };
+        panel.Children.Add(compactThresholdLabel);
+        panel.Children.Add(Label("settings.workspaceConflictPolicy"));
+        var conflictPolicies = new[]
+        {
+            (Policy: WorkspaceConflictPolicy.WaitThenAsk, Key: "waitThenAsk"),
+            (Policy: WorkspaceConflictPolicy.Ask, Key: "ask"),
+            (Policy: WorkspaceConflictPolicy.WaitOnly, Key: "waitOnly"),
+        };
+        var conflictPolicy = new ComboBox { Margin = new Thickness(0, 0, 0, 4) };
+        foreach (var item in conflictPolicies)
+            conflictPolicy.Items.Add(_model.L("conflict.policy." + item.Key));
+        conflictPolicy.SelectedIndex = Array.FindIndex(conflictPolicies, item => item.Policy == _model.WorkspaceConflictPolicy);
+        var conflictPolicyDetail = new TextBlock
+        {
+            Text = _model.L("conflict.policy." + conflictPolicies[Math.Max(0, conflictPolicy.SelectedIndex)].Key + ".detail"),
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 8),
+        };
+        ComboBox? conflictWait = null;
+        conflictPolicy.SelectionChanged += (_, _) =>
+        {
+            if (conflictPolicy.SelectedIndex < 0 || conflictPolicy.SelectedIndex >= conflictPolicies.Length) return;
+            var selectedPolicy = conflictPolicies[conflictPolicy.SelectedIndex];
+            _model.SetWorkspaceConflictPolicy(selectedPolicy.Policy);
+            conflictPolicyDetail.Text = _model.L("conflict.policy." + selectedPolicy.Key + ".detail");
+            if (conflictWait is not null)
+                conflictWait.IsEnabled = selectedPolicy.Policy == WorkspaceConflictPolicy.WaitThenAsk;
+        };
+        panel.Children.Add(conflictPolicy);
+        panel.Children.Add(conflictPolicyDetail);
+        panel.Children.Add(Label("settings.conflictWaitSeconds"));
+        var waitChoices = new[] { 10, 30, 60, 120 };
+        conflictWait = new ComboBox { Margin = new Thickness(0, 0, 0, 12) };
+        foreach (var seconds in waitChoices)
+            conflictWait.Items.Add(_model.L("settings.conflictWaitValue", seconds));
+        conflictWait.SelectedIndex = Array.IndexOf(waitChoices, _model.ConflictWaitSeconds);
+        if (conflictWait.SelectedIndex < 0) conflictWait.SelectedIndex = 1;
+        conflictWait.IsEnabled = _model.WorkspaceConflictPolicy == WorkspaceConflictPolicy.WaitThenAsk;
+        conflictWait.SelectionChanged += (_, _) =>
+        {
+            if (conflictWait.SelectedIndex >= 0 && conflictWait.SelectedIndex < waitChoices.Length)
+                _model.SetConflictWaitSeconds(waitChoices[conflictWait.SelectedIndex]);
+        };
+        panel.Children.Add(conflictWait);
+        panel.Children.Add(Label("Preferred Browser & Engine"));
         var browserBackends = new (string Label, BrowserBackend? Value)[]
         {
+            ("In-App Native Live Browser (Microsoft.Web.WebView2)", BrowserBackend.Native),
             ("Automatic (ask when unclear)", null),
-            ("Managed isolated browser", BrowserBackend.Managed),
-            ("Existing Chrome profile", BrowserBackend.Extension),
+            ("Managed isolated browser (Chrome)", BrowserBackend.Managed),
+            ("Existing Chrome profile (Extension)", BrowserBackend.Extension),
         };
         var browser = new ComboBox { Margin = new Thickness(0, 0, 0, 4) };
         foreach (var choice in browserBackends) browser.Items.Add(choice.Label);
         browser.SelectedIndex = _model.SelectedBrowserBackend switch
         {
-            BrowserBackend.Managed => 1,
-            BrowserBackend.Extension => 2,
-            _ => 0,
+            BrowserBackend.Native => 0,
+            BrowserBackend.Managed => 2,
+            BrowserBackend.Extension => 3,
+            _ => 1,
         };
         browser.SelectionChanged += (_, _) =>
         {
@@ -185,10 +765,26 @@ public partial class SettingsView : UserControl
         panel.Children.Add(browser);
         panel.Children.Add(new TextBlock
         {
-            Text = "The selected backend is fixed for each run. Extension setup failures are shown instead of falling back silently.",
+            Text = "Native Live Browser runs directly inside the Right Dock with zero overhead (Microsoft.Web.WebView2). Managed isolated browser and Existing Chrome profile are also available.",
             FontSize = 11,
             Foreground = TryBrush("TextSecondary"),
             TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 12),
+        });
+        var computerUse = new CheckBox
+        {
+            Content = _model.Language == AppLanguage.Turkish ? "Uygulamaları ekran üzerinden kontrol et (Computer Use)" : "Inspect and control desktop applications (Computer Use)",
+            IsChecked = _model.IsComputerUseEnabled,
+            Margin = new Thickness(0, 0, 0, 4),
+        };
+        computerUse.Click += (_, _) => _model.SetComputerUseEnabled(computerUse.IsChecked == true);
+        panel.Children.Add(computerUse);
+        panel.Children.Add(new TextBlock
+        {
+            Text = _model.Language == AppLanguage.Turkish
+                ? "Ajan açık uygulamaların ekranını inceleyebilir, fare ve klavyeyle işlem yapıp sonucu kontrol edebilir. Masaüstü işlemleri erişim onayına tabidir."
+                : "The agent can inspect running apps, view screenshots, use the mouse and keyboard, and verify the result. Desktop actions require access approval.",
+            FontSize = 11, Foreground = TryBrush("TextSecondary"), TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 0, 0, 12),
         });
         var confirmBeforeExit = new CheckBox
@@ -199,6 +795,22 @@ public partial class SettingsView : UserControl
         };
         confirmBeforeExit.Click += (_, _) => _model.SetConfirmBeforeExit(confirmBeforeExit.IsChecked == true);
         panel.Children.Add(confirmBeforeExit);
+        var closeToTray = new CheckBox
+        {
+            Content = _model.L("settings.closeToTray"),
+            IsChecked = _model.CloseToTray,
+            Margin = new Thickness(0, 0, 0, 4),
+        };
+        closeToTray.Click += (_, _) => _model.SetCloseToTray(closeToTray.IsChecked == true);
+        panel.Children.Add(closeToTray);
+        panel.Children.Add(new TextBlock
+        {
+            Text = _model.L("settings.closeToTray.hint"),
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 12),
+        });
         var seedProjectRules = new CheckBox
         {
             Content = _model.L("settings.seedProjectRules"),
@@ -207,9 +819,17 @@ public partial class SettingsView : UserControl
         };
         seedProjectRules.Click += (_, _) => _model.SetSeedProjectRules(seedProjectRules.IsChecked == true);
         panel.Children.Add(seedProjectRules);
-        if (_model.ActiveArea == AgentArea.Coding)
+        var autoApprovePlans = new CheckBox
         {
-            panel.Children.Add(BoundField("settings.workspace", _model.WorkspacePath, _model.SetWorkspace));
+            Content = _model.L("settings.autoApprovePlans"),
+            IsChecked = _model.AutoApprovePlans,
+            Margin = new Thickness(0, 0, 0, 12),
+        };
+        autoApprovePlans.Click += (_, _) => _model.SetAutoApprovePlans(autoApprovePlans.IsChecked == true);
+        panel.Children.Add(autoApprovePlans);
+        if (!string.IsNullOrWhiteSpace(_model.WorkspacePath))
+        {
+            panel.Children.Add(BoundField("settings.workspace", _model.WorkspacePath, value => _model.SetWorkspace(value)));
             if (_model.Bridge.Connection is { } info)
             {
                 panel.Children.Add(Readonly("settings.connectedModel", $"{info.Provider}/{info.Model}"));
@@ -227,6 +847,269 @@ public partial class SettingsView : UserControl
             Margin = new Thickness(0, 12, 0, 12),
         });
         panel.Children.Add(new SlotHost { Slot = WellKnownSlot.SettingsSections, Registry = _model.Host.Slots });
+        Body.Content = panel;
+    }
+
+    private void AddKeyboardShortcutEditor(Panel parent)
+    {
+        parent.Children.Add(Heading("settings.shortcuts"));
+        parent.Children.Add(new TextBlock
+        {
+            Text = _model.L("settings.shortcuts.hint"),
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 8),
+        });
+        foreach (var action in KeyboardShortcutCatalog.Actions)
+        {
+            var row = new Grid { Margin = new Thickness(0, 2, 0, 2) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var title = new TextBlock
+            {
+                Text = _model.KeyboardShortcutTitle(action),
+                VerticalAlignment = VerticalAlignment.Center,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 10, 0),
+            };
+            var button = new Button
+            {
+                MinWidth = 138,
+                Padding = new Thickness(8, 4, 8, 4),
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                Content = _model.ShortcutFor(action).DisplayValue,
+            };
+            button.Click += (_, _) => BeginShortcutCapture(action);
+            Grid.SetColumn(title, 0);
+            Grid.SetColumn(button, 1);
+            row.Children.Add(title);
+            row.Children.Add(button);
+            parent.Children.Add(row);
+            _shortcutButtons[action] = button;
+        }
+
+        _shortcutStatus = new TextBlock
+        {
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 6, 0, 4),
+        };
+        parent.Children.Add(_shortcutStatus);
+        var reset = new Button
+        {
+            Content = _model.L("settings.shortcuts.reset"),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 0, 0, 12),
+            Padding = new Thickness(10, 4, 10, 4),
+        };
+        reset.Click += (_, _) =>
+        {
+            _recordingShortcut = null;
+            _model.ResetKeyboardShortcuts();
+            SetShortcutStatus("");
+            RefreshShortcutButtons();
+        };
+        parent.Children.Add(reset);
+    }
+
+    private void BeginShortcutCapture(KeyboardShortcutAction action)
+    {
+        _recordingShortcut = action;
+        SetShortcutStatus("");
+        RefreshShortcutButtons();
+        if (_shortcutButtons.TryGetValue(action, out var button)) System.Windows.Input.Keyboard.Focus(button);
+    }
+
+    /// <summary>Called by the owning shell's preview-key handler while recording a shortcut.</summary>
+    public bool HandleShortcutKey(string key, byte modifiers)
+    {
+        if (_recordingShortcut is not { } action) return false;
+        if (UserKeyboardShortcut.TryNormalizeKey(key, out var normalized) && normalized == "ESCAPE")
+        {
+            _recordingShortcut = null;
+            SetShortcutStatus("");
+            RefreshShortcutButtons();
+            return true;
+        }
+        if (!UserKeyboardShortcut.TryNormalizeKey(key, out normalized)
+            || modifiers == 0
+            || (modifiers & UserKeyboardShortcut.AllModifiers) != modifiers)
+        {
+            SetShortcutStatus(_model.L("settings.shortcuts.hint"));
+            return true;
+        }
+
+        var shortcut = new UserKeyboardShortcut(normalized, modifiers);
+        var result = _model.UpdateShortcut(action, shortcut);
+        _recordingShortcut = null;
+        if (result.Status == KeyboardShortcutUpdateStatus.Conflict && result.ConflictingAction is { } conflict)
+        {
+            SetShortcutStatus(_model.L(
+                "settings.shortcuts.conflict",
+                shortcut.DisplayValue,
+                _model.KeyboardShortcutTitle(conflict)));
+        }
+        else SetShortcutStatus("");
+        RefreshShortcutButtons();
+        return true;
+    }
+
+    private void RefreshShortcutButtons()
+    {
+        foreach (var (action, button) in _shortcutButtons)
+        {
+            button.Content = _recordingShortcut == action
+                ? _model.L("settings.shortcuts.pressKeys")
+                : _model.ShortcutFor(action).DisplayValue;
+        }
+    }
+
+    private void SetShortcutStatus(string value)
+    {
+        if (_shortcutStatus is not null) _shortcutStatus.Text = value;
+    }
+
+    private void ShowModelContexts()
+    {
+        var router = _model.Router;
+        var panel = new StackPanel();
+        panel.Children.Add(new TextBlock
+        {
+            Text = _model.L("usage.context.window"),
+            FontSize = 22,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 8),
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = _model.L("model.context.description"),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = TryBrush("TextSecondary"),
+            Margin = new Thickness(0, 0, 0, 12),
+        });
+
+        var toolbar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 12) };
+        var search = new TextBox
+        {
+            Text = _modelContextSearch,
+            MinWidth = 220,
+            Margin = new Thickness(0, 0, 8, 0),
+            ToolTip = _model.L("model.context.search"),
+        };
+        toolbar.Children.Add(search);
+        var refresh = new Button { Content = _model.L("settings.refresh"), Padding = new Thickness(10, 3, 10, 3) };
+        refresh.Click += async (_, _) =>
+        {
+            await router.RefreshAsync();
+            Dispatcher.BeginInvoke(ShowModelContexts);
+        };
+        toolbar.Children.Add(refresh);
+        panel.Children.Add(toolbar);
+
+        var settings = router.ModelContextSettings;
+        if (settings.Count == 0)
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = _model.L("model.context.empty"),
+                Foreground = TryBrush("TextSecondary"),
+                TextWrapping = TextWrapping.Wrap,
+            });
+            Body.Content = panel;
+            return;
+        }
+
+        var rows = new List<(FrameworkElement Element, string SearchText)>();
+        foreach (var setting in settings)
+        {
+            var card = new StackPanel { Margin = new Thickness(0, 0, 0, 14) };
+            card.Children.Add(new TextBlock
+            {
+                Text = $"{setting.ProviderName} · {setting.Model}",
+                FontWeight = FontWeights.SemiBold,
+                TextWrapping = TextWrapping.Wrap,
+            });
+            card.Children.Add(new TextBlock
+            {
+                Text = setting.DetectedContextWindow is { } detected
+                    ? string.Format(CultureInfo.CurrentCulture, _model.L("model.context.detected"), detected.ToString("N0", CultureInfo.CurrentCulture))
+                    : _model.L("model.context.notDetected"),
+                FontSize = 11,
+                Foreground = TryBrush("TextSecondary"),
+                Margin = new Thickness(0, 2, 0, 5),
+            });
+
+            var controls = new StackPanel { Orientation = Orientation.Horizontal };
+            var input = new TextBox
+            {
+                Text = setting.OverrideContextWindow?.ToString(CultureInfo.InvariantCulture) ?? "",
+                Width = 170,
+                Margin = new Thickness(0, 0, 8, 0),
+                ToolTip = _model.L("usage.context.window"),
+            };
+            controls.Children.Add(input);
+            var status = new TextBlock { VerticalAlignment = VerticalAlignment.Center, Foreground = TryBrush("TextSecondary") };
+            var save = new Button { Content = _model.L("settings.saveChanges"), Padding = new Thickness(10, 3, 10, 3), Margin = new Thickness(0, 0, 6, 0) };
+            save.Click += (_, _) =>
+            {
+                if (string.IsNullOrWhiteSpace(input.Text))
+                {
+                    try
+                    {
+                        router.SetModelContextWindowOverride(setting.Provider, setting.Model, null);
+                        status.Text = _model.L("model.context.saved");
+                    }
+                    catch (Exception ex) { status.Text = ex.Message; }
+                    return;
+                }
+                var text = input.Text.Trim();
+                var digits = new string(text.Where(char.IsDigit).ToArray());
+                if (!text.All(character => char.IsDigit(character) || char.IsWhiteSpace(character) || character is '.' or ',' or '_')
+                    || !int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) || parsed <= 0)
+                {
+                    status.Text = _model.L("model.context.invalid");
+                    return;
+                }
+                try
+                {
+                    router.SetModelContextWindowOverride(setting.Provider, setting.Model, parsed);
+                    input.Text = parsed.ToString(CultureInfo.InvariantCulture);
+                    status.Text = _model.L("model.context.saved");
+                }
+                catch (Exception ex) { status.Text = ex.Message; }
+            };
+            controls.Children.Add(save);
+            var automatic = new Button { Content = _model.L("model.context.auto"), Padding = new Thickness(10, 3, 10, 3), Margin = new Thickness(0, 0, 8, 0) };
+            automatic.Click += (_, _) =>
+            {
+                try
+                {
+                    router.SetModelContextWindowOverride(setting.Provider, setting.Model, null);
+                    input.Text = "";
+                    status.Text = _model.L("model.context.saved");
+                }
+                catch (Exception ex) { status.Text = ex.Message; }
+            };
+            controls.Children.Add(automatic);
+            controls.Children.Add(status);
+            card.Children.Add(controls);
+            panel.Children.Add(card);
+            rows.Add((card, $"{setting.ProviderName} {setting.Provider} {setting.Model}"));
+        }
+
+        void ApplyFilter()
+        {
+            _modelContextSearch = search.Text;
+            var query = _modelContextSearch.Trim();
+            foreach (var (element, searchText) in rows)
+                element.Visibility = query.Length == 0 || searchText.Contains(query, StringComparison.CurrentCultureIgnoreCase)
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+        }
+        search.TextChanged += (_, _) => ApplyFilter();
+        ApplyFilter();
         Body.Content = panel;
     }
 
@@ -265,14 +1148,24 @@ public partial class SettingsView : UserControl
                 Foreground = TryBrush("TextSecondary"),
             });
         }
-        foreach (var group in router.Connections.GroupBy(connection => connection.Provider))
+        var providerGroups = router.Connections
+            .GroupBy(connection => connection.Provider)
+            .OrderBy(group => group.Min(connection => connection.Priority))
+            .ToList();
+        var providerOrder = providerGroups.Select(group => group.Key).ToArray();
+        for (var providerIndex = 0; providerIndex < providerGroups.Count; providerIndex++)
         {
+            var group = providerGroups[providerIndex];
             var provider = RouterCatalog.KindFor(group.Key);
             panel.Children.Add(ProviderHeader(
                 RouterCatalog.LabelFor(group.Key),
                 provider?.LogoKey ?? "generic",
-                group.Count()));
-            foreach (var connection in group) panel.Children.Add(ConnectionCard(connection, router));
+                group.Count(),
+                router,
+                providerOrder,
+                providerIndex));
+            foreach (var connection in group.OrderBy(connection => connection.Priority))
+                panel.Children.Add(ConnectionCard(connection, router));
             if (provider is not null) panel.Children.Add(AddProviderButton(provider, picker, router));
         }
         _ = router.RefreshAsync();
@@ -309,7 +1202,9 @@ public partial class SettingsView : UserControl
         {
             host.Children.Add(new TextBlock
             {
-                Text = _model.L("settings.signInBrowser"),
+                Text = router.SelectedKind.Kind == RouterAuthKind.OauthDevice
+                    ? _model.L("settings.deviceLogin")
+                    : _model.L("settings.signInBrowser"),
                 FontSize = 11,
                 Foreground = TryBrush("TextSecondary"),
                 TextWrapping = TextWrapping.Wrap,
@@ -405,15 +1300,53 @@ public partial class SettingsView : UserControl
         return card;
     }
 
-    private UIElement ProviderHeader(string name, string key, int count)
+    private UIElement ProviderHeader(
+        string name,
+        string key,
+        int count,
+        RouterController router,
+        string[] providerOrder,
+        int providerIndex)
     {
-        var row = new StackPanel
+        var row = new DockPanel
         {
-            Orientation = Orientation.Horizontal,
             Margin = new Thickness(0, 12, 0, 8),
         };
-        row.Children.Add(ProviderBadge(name, key));
-        row.Children.Add(new TextBlock
+        var priority = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+        };
+        var up = new Button
+        {
+            Content = "↑",
+            Width = 26,
+            Height = 24,
+            Padding = new Thickness(0),
+            IsEnabled = providerIndex > 0,
+            ToolTip = _model.L("router.priorityUp"),
+        };
+        System.Windows.Automation.AutomationProperties.SetName(up, _model.L("router.priorityUp"));
+        up.Click += (_, _) => MoveProviderPriority(router, providerOrder, providerIndex, providerIndex - 1);
+        priority.Children.Add(up);
+        var down = new Button
+        {
+            Content = "↓",
+            Width = 26,
+            Height = 24,
+            Padding = new Thickness(0),
+            Margin = new Thickness(4, 0, 0, 0),
+            IsEnabled = providerIndex < providerOrder.Length - 1,
+            ToolTip = _model.L("router.priorityDown"),
+        };
+        System.Windows.Automation.AutomationProperties.SetName(down, _model.L("router.priorityDown"));
+        down.Click += (_, _) => MoveProviderPriority(router, providerOrder, providerIndex, providerIndex + 1);
+        priority.Children.Add(down);
+        DockPanel.SetDock(priority, Dock.Right);
+        row.Children.Add(priority);
+
+        var identity = new StackPanel { Orientation = Orientation.Horizontal };
+        identity.Children.Add(ProviderBadge(name, key));
+        identity.Children.Add(new TextBlock
         {
             Text = $"{name} · {count} {_model.L(count == 1 ? "settings.account" : "settings.accounts")}",
             FontSize = 14,
@@ -422,7 +1355,19 @@ public partial class SettingsView : UserControl
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(8, 0, 0, 0),
         });
+        row.Children.Add(identity);
         return row;
+    }
+
+    private void MoveProviderPriority(RouterController router, string[] providerOrder, int source, int destination)
+    {
+        if (source < 0 || source >= providerOrder.Length || destination < 0 || destination >= providerOrder.Length) return;
+        var next = providerOrder.ToList();
+        var provider = next[source];
+        next.RemoveAt(source);
+        next.Insert(destination, provider);
+        router.ReorderProviders(next);
+        ShowProviders();
     }
 
     private UIElement AddProviderButton(RouterProviderKind provider, ComboBox picker, RouterController router)
@@ -469,6 +1414,8 @@ public partial class SettingsView : UserControl
         panel.Children.Add(BoundField("Prefix (model id, e.g. local)", router.CustomPrefix, v => router.CustomPrefix = v));
         panel.Children.Add(BoundField("Base URL", router.CustomBaseUrl, v => router.CustomBaseUrl = v));
         panel.Children.Add(BoundField("API key (optional for local)", router.CustomApiKey, v => router.CustomApiKey = v, password: true));
+        panel.Children.Add(BoundField("Model name (optional)", router.CustomModel, v => router.CustomModel = v));
+        panel.Children.Add(BoundField("Context window in tokens (optional; empty reads it from the server)", router.CustomContextWindow, v => router.CustomContextWindow = v));
         var kind = new ComboBox { Margin = new Thickness(0, 0, 0, 8) };
         kind.Items.Add(CustomApiKind.OpenaiCompatible);
         kind.Items.Add(CustomApiKind.AnthropicCompatible);
@@ -487,6 +1434,24 @@ public partial class SettingsView : UserControl
             var cancel = new Button { Content = _model.L("settings.cancelEdit"), Padding = new Thickness(12, 4, 12, 4), Margin = new Thickness(0, 0, 0, 16) };
             cancel.Click += (_, _) => { router.CancelEditNode(); ShowCustom(); };
             panel.Children.Add(cancel);
+        }
+        if (router.DetectedServers.Count > 0)
+        {
+            panel.Children.Add(Heading("Running on this computer"));
+            foreach (var server in router.DetectedServers)
+            {
+                var found = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
+                var connectFound = new Button { Content = _model.L("settings.connect"), Padding = new Thickness(10, 2, 10, 2), Margin = new Thickness(0, 0, 8, 0) };
+                connectFound.Click += async (_, _) => { await router.ConnectDetectedAsync(server); ShowCustom(); };
+                found.Children.Add(connectFound);
+                found.Children.Add(new TextBlock { Text = $"{server.Name} · {server.BaseUrl}", VerticalAlignment = VerticalAlignment.Center });
+                panel.Children.Add(found);
+            }
+        }
+        else if (!_scannedLocalServers)
+        {
+            _scannedLocalServers = true;
+            _ = ScanLocalServersAsync();
         }
         panel.Children.Add(Heading("Custom providers"));
         if (router.Nodes.Count == 0)
@@ -529,7 +1494,27 @@ public partial class SettingsView : UserControl
         }
         if (router.Error is { } err) panel.Children.Add(ErrorText(err));
         _ = router.RefreshAsync();
+        _customPanel = panel;
         Body.Content = panel;
+    }
+
+    private StackPanel? _customPanel;
+    private StackPanel? _localPanel;
+    private bool _scannedLocalServers;
+    private bool _scannedLocalDevices;
+    private string _ggufPath = "";
+
+    /// <summary>Looks for local servers once, then redraws if the tab is still showing.</summary>
+    private async Task ScanLocalServersAsync()
+    {
+        await _model.Router.DetectLocalServersAsync();
+        if (_model.Router.DetectedServers.Count > 0 && ReferenceEquals(Body.Content, _customPanel)) ShowCustom();
+    }
+
+    private async Task RefreshLocalDevicesAsync()
+    {
+        await _model.Local.RefreshDevicesAsync();
+        if (ReferenceEquals(Body.Content, _localPanel)) ShowLocal();
     }
 
     private void ShowLocal()
@@ -539,15 +1524,21 @@ public partial class SettingsView : UserControl
         var panel = new StackPanel();
         panel.Children.Add(HeaderRow("Local models", local.Status, null));
         if (local.Error is { } err) panel.Children.Add(ErrorText(err));
-        panel.Children.Add(Readonly("llama-server", local.RuntimeReady ? _model.L("settings.installed") : _model.L("settings.notInstalled")));
+        if (local.RuntimeReady && local.Devices.Count == 0 && !_scannedLocalDevices)
+        {
+            _scannedLocalDevices = true;
+            _ = RefreshLocalDevicesAsync();
+        }
+        panel.Children.Add(Readonly("Hardware", local.HardwareSummary));
+        panel.Children.Add(Readonly($"llama.cpp {LocalRuntime.LlamaTag}", local.RuntimeReady ? _model.L("settings.installed") : _model.L("settings.notInstalled")));
         panel.Children.Add(Readonly("Listen", local.Runtime.ServerUrl.ToString()));
         if (local.Serving && local.RunningModelId is { } running)
         {
-            panel.Children.Add(Readonly("Serving", running));
+            panel.Children.Add(Readonly("Serving", local.ServedContext is { } served ? $"{running} · {served} tokens" : running));
         }
         var runtimeRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 16) };
         var install = new Button { Content = local.RuntimeReady ? _model.L("settings.reinstallRuntime") : _model.L("settings.installLlama"), Padding = new Thickness(12, 4, 12, 4) };
-        install.Click += async (_, _) => { await local.InstallRuntimeAsync(); ShowLocal(); };
+        install.Click += async (_, _) => { if (local.RuntimeReady) await local.ReinstallRuntimeAsync(); else await local.InstallRuntimeAsync(); _scannedLocalDevices = false; ShowLocal(); };
         runtimeRow.Children.Add(install);
         if (local.Serving)
         {
@@ -560,8 +1551,27 @@ public partial class SettingsView : UserControl
         {
             panel.Children.Add(new ProgressBar { Value = rt * 100, Maximum = 100, Height = 8, Margin = new Thickness(0, 0, 0, 12) });
         }
+        panel.Children.Add(Heading("Performance"));
+        panel.Children.Add(Label("Empty or auto lets llama.cpp fit the model to your GPU memory. Changes apply the next time a model starts."));
+        var tuning = local.Settings;
+        void Tune(string label, string value, Action<string> set) =>
+            panel.Children.Add(BoundField(label, value, v => { set(v.Trim()); local.SaveSettings(); }));
+        static int Number(string text) => int.TryParse(text, out var number) && number > 0 ? number : 0;
+        static string Shown(int value) => value > 0 ? value.ToString() : "";
+        Tune("GPU build: auto, Cuda13, Cuda12, Rocm, Vulkan or Cpu (reinstall the runtime to apply)", tuning.Backend, v => tuning.Backend = v.Length == 0 ? "auto" : v);
+        Tune("Context size in tokens", Shown(tuning.ContextSize), v => tuning.ContextSize = Number(v));
+        Tune("GPU layers: auto, all or a number", tuning.GpuLayers, v => tuning.GpuLayers = v.Length == 0 ? "auto" : v);
+        Tune("CPU threads", Shown(tuning.Threads), v => tuning.Threads = Number(v));
+        Tune("Batch size", Shown(tuning.BatchSize), v => tuning.BatchSize = Number(v));
+        Tune("Flash attention: auto, on or off", tuning.FlashAttention, v => tuning.FlashAttention = v.Length == 0 ? "auto" : v);
+        Tune("KV cache type: empty (f16), q8_0, q5_1 or q4_0", tuning.KvCacheType, v => tuning.KvCacheType = v);
+        Tune("Extra llama-server arguments", tuning.ExtraArgs, v => tuning.ExtraArgs = v);
         panel.Children.Add(Heading("Download and run"));
-        foreach (var spec in LocalModelCatalog.Models)
+        panel.Children.Add(BoundField("Add your own GGUF (full file path)", _ggufPath, v => _ggufPath = v));
+        var import = new Button { Content = "Add GGUF", Padding = new Thickness(12, 4, 12, 4), Margin = new Thickness(0, 0, 0, 12) };
+        import.Click += (_, _) => { local.ImportModel(_ggufPath.Trim().Trim('"')); _ggufPath = ""; ShowLocal(); };
+        panel.Children.Add(import);
+        foreach (var spec in local.Models)
         {
             var card = new Border
             {
@@ -584,6 +1594,17 @@ public partial class SettingsView : UserControl
                     Padding = new Thickness(6, 1, 6, 1),
                     Margin = new Thickness(8, 0, 0, 0),
                     Child = new TextBlock { Text = "LRM", FontSize = 10, FontWeight = FontWeights.SemiBold },
+                });
+            }
+            if (spec.MinMemoryGb > 0 && !local.Fits(spec))
+            {
+                name.Children.Add(new TextBlock
+                {
+                    Text = "Too large for this GPU / RAM",
+                    FontSize = 10,
+                    Margin = new Thickness(8, 0, 0, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = TryBrush("TextSecondary"),
                 });
             }
             title.Children.Add(name);
@@ -625,6 +1646,7 @@ public partial class SettingsView : UserControl
             card.Child = stack;
             panel.Children.Add(card);
         }
+        _localPanel = panel;
         Body.Content = panel;
     }
 
@@ -1099,12 +2121,14 @@ public partial class SettingsView : UserControl
         content.Children.Add(header);
         content.Children.Add(new TextBlock
         {
-            Text = "Pluginler herkese açık listelenir. Doğrulanmamış native kod yalnızca açık onayınızdan sonra etkinleştirilir.",
+            Text = "Ana Marketplace yalnızca incelenmiş, Harness kapsamındaki pluginleri gösterir. Community / Experimental alanı ayrı tutulur; tüm native pluginler açık onayınızdan sonra etkinleştirilir.",
             FontSize = 11,
             Foreground = TryBrush("TextSecondary"),
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 6, 0, 8),
         });
+        var account = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
+        content.Children.Add(account);
         var list = new StackPanel();
         content.Children.Add(list);
         card.Child = content;
@@ -1112,46 +2136,305 @@ public partial class SettingsView : UserControl
 
         void Render()
         {
+            RenderAccount();
             list.Children.Clear();
-            if (_model.Marketplace.Entries.Count == 0)
-            {
+            list.Children.Add(new TextBlock { Text = "Ana Marketplace", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 8, 0, 2) });
+            AddEntries(_model.Marketplace.Entries);
+            list.Children.Add(new TextBlock { Text = "Community / Experimental", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 12, 0, 2) });
+            AddEntries(_model.Marketplace.CommunityEntries);
+            if (_model.Marketplace.Entries.Count == 0 && _model.Marketplace.CommunityEntries.Count == 0)
                 list.Children.Add(new TextBlock { Text = "Marketplace kaydı yok veya henüz yenilenmedi.", FontSize = 11, Foreground = TryBrush("TextSecondary") });
-                return;
-            }
-            foreach (var entry in _model.Marketplace.Entries)
+            AddForks();
+
+            void AddEntries(IReadOnlyList<NativeMarketplaceEntry> entries)
             {
-                var row = new DockPanel { Margin = new Thickness(0, 4, 0, 4) };
-                var text = new StackPanel();
-                text.Children.Add(new TextBlock { Text = $"{entry.Name} v{entry.Version}", FontWeight = FontWeights.SemiBold });
-                text.Children.Add(new TextBlock { Text = $"{entry.Id} · {entry.VerificationStatus} · {string.Join(", ", (entry.Artifacts ?? Array.Empty<NativeMarketplaceArtifact>()).Select(a => $"{a.Platform}/{a.Architecture}:{a.Status}"))}", FontSize = 10, Foreground = TryBrush("TextSecondary") });
-                row.Children.Add(text);
-                var install = new Button { Content = "Kabul et ve etkinleştir", Padding = new Thickness(8, 3, 8, 3), HorizontalAlignment = HorizontalAlignment.Right, IsEnabled = (entry.Artifacts ?? Array.Empty<NativeMarketplaceArtifact>()).Any(a => a.Status == "ready") };
-                install.Click += async (_, _) =>
+                foreach (var entry in entries)
                 {
-                    var consent = MessageBox.Show(Window.GetWindow(this), "Bu işlem native kod çalıştırır ve plugini trusted olarak hemen etkinleştirir. Devam etmek istiyor musunuz?", "Doğrulanmamış native plugin", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
-                    if (consent != MessageBoxResult.OK) return;
-                    try
+                    var row = new DockPanel { Margin = new Thickness(0, 4, 0, 4) };
+                    var text = new StackPanel();
+                    text.Children.Add(new TextBlock { Text = $"{entry.Name} v{entry.Version}", FontWeight = FontWeights.SemiBold });
+                    text.Children.Add(new TextBlock { Text = $"{entry.Id} · {entry.CatalogScope} · {entry.Category} · {entry.VerificationStatus} · moderation:{entry.ModerationStatus} · risk:{entry.RiskLevel} · {string.Join(", ", (entry.Artifacts ?? Array.Empty<NativeMarketplaceArtifact>()).Select(a => $"{a.Platform}/{a.Architecture}:{a.Status}"))}", FontSize = 10, Foreground = TryBrush("TextSecondary") });
+                    var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+                    var installed = _model.Catalog.Entries.FirstOrDefault(candidate => candidate.Id == entry.Id && candidate.Kind == PluginKind.Dylib);
+                    var updateAvailable = installed is not null
+                        && SemVer.TryParse(installed.Manifest.Version, out var installedVersion)
+                        && SemVer.TryParse(entry.Version, out var releaseVersion)
+                        && installedVersion.CompareTo(releaseVersion) < 0;
+                    if (installed is null || updateAvailable)
                     {
-                        await _model.Marketplace.InstallAsync(entry);
-                        _model.Remount();
-                        ShowPlugins();
+                        var install = new Button
+                        {
+                            Content = updateAvailable ? "Update and enable" : "Accept and enable",
+                            Padding = new Thickness(8, 3, 8, 3),
+                            IsEnabled = _model.Marketplace.CanInstall(entry),
+                        };
+                        install.Click += async (_, _) =>
+                        {
+                            var permissions = string.Join(", ", entry.Permissions ?? Array.Empty<string>());
+                            var consent = MessageBox.Show(Window.GetWindow(this), $"Area: {entry.CatalogScope} · Category: {entry.Category} · Risk: {entry.RiskLevel}\nPermissions: {permissions}\n\nThis installs and immediately enables native code. Review the category, risk, permissions, and source before continuing.", "Native plugin consent", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+                            if (consent != MessageBoxResult.OK) return;
+                            try
+                            {
+                                await _model.Marketplace.InstallAsync(entry);
+                                _model.Remount();
+                                ShowPlugins();
+                            }
+                            catch (Exception error) { MessageBox.Show(Window.GetWindow(this), error.Message, "Marketplace", MessageBoxButton.OK, MessageBoxImage.Error); }
+                        };
+                        actions.Children.Add(install);
                     }
-                    catch (Exception error) { MessageBox.Show(Window.GetWindow(this), error.Message, "Marketplace", MessageBoxButton.OK, MessageBoxImage.Error); }
-                };
-                row.Children.Add(install);
-                list.Children.Add(row);
+                    else
+                    {
+                        actions.Children.Add(new TextBlock { Text = "Installed", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4) });
+                        if (!_model.Marketplace.Forks.HasFork(entry.Id))
+                        {
+                            var customize = new Button { Content = "Customize", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(4, 0, 0, 0) };
+                            customize.Click += (_, _) =>
+                            {
+                                try { _model.Marketplace.Forks.CreateFork(entry.Id, entry.Version); _model.Remount(); ShowPlugins(); }
+                                catch (Exception error) { MessageBox.Show(Window.GetWindow(this), error.Message, "Marketplace", MessageBoxButton.OK, MessageBoxImage.Error); }
+                            };
+                            actions.Children.Add(customize);
+                        }
+                        var remove = new Button { Content = "Remove", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(4, 0, 0, 0) };
+                        remove.Click += (_, _) =>
+                        {
+                            if (MessageBox.Show(Window.GetWindow(this), $"Remove {entry.Name} from this device?", "Marketplace", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+                            try { _model.Marketplace.RemoveInstalled(entry.Id); ShowPlugins(); }
+                            catch (Exception error) { MessageBox.Show(Window.GetWindow(this), error.Message, "Marketplace", MessageBoxButton.OK, MessageBoxImage.Error); }
+                        };
+                        actions.Children.Add(remove);
+                    }
+                    if (_model.MarketplaceSession.IsSignedIn)
+                    {
+                        var report = new Button { Content = "Report", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(6, 0, 0, 0) };
+                        report.Click += async (_, _) =>
+                        {
+                            var dialog = new MarketplaceReportWindow(_model.Marketplace, entry);
+                            if (Window.GetWindow(this) is { } owner) dialog.Owner = owner;
+                            if (dialog.ShowDialog() == true) Render();
+                        };
+                        actions.Children.Add(report);
+                    }
+                    DockPanel.SetDock(actions, Dock.Right);
+                    row.Children.Add(actions);
+                    row.Children.Add(text);
+                    list.Children.Add(row);
+                }
+            }
+
+            void AddForks()
+            {
+                var forks = _model.Marketplace.Forks.Forks;
+                if (forks.Count == 0) return;
+                list.Children.Add(new TextBlock { Text = "Local customizations", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 12, 0, 4) });
+                foreach (var fork in forks)
+                {
+                    var card = new StackPanel { Margin = new Thickness(0, 3, 0, 8) };
+                    card.Children.Add(new TextBlock { Text = $"{fork.Id} · upstream {fork.UpstreamId} · v{fork.UpstreamVersion}", FontFamily = new FontFamily("Consolas") });
+                    if (fork.UpstreamVersionAvailable is { } available)
+                        card.Children.Add(new TextBlock { Text = $"New upstream v{available}; local changes are preserved.", Foreground = TryBrush("TextSecondary"), FontSize = 10 });
+                    var actions = new WrapPanel { Margin = new Thickness(0, 3, 0, 0) };
+                    var open = new Button { Content = "Open folder", Padding = new Thickness(7, 2, 7, 2), Margin = new Thickness(0, 0, 5, 4) };
+                    open.Click += (_, _) =>
+                    {
+                        try { Process.Start(new ProcessStartInfo { FileName = _model.Marketplace.Forks.FolderFor(fork), UseShellExecute = true }); }
+                        catch (Exception error) { MessageBox.Show(Window.GetWindow(this), error.Message, "Marketplace", MessageBoxButton.OK, MessageBoxImage.Error); }
+                    };
+                    var export = new Button { Content = "Export", Padding = new Thickness(7, 2, 7, 2), Margin = new Thickness(0, 0, 5, 4) };
+                    export.Click += (_, _) =>
+                    {
+                        var picker = new Microsoft.Win32.SaveFileDialog { FileName = fork.Id + ".dotsplugin", DefaultExt = ".dotsplugin", Filter = "DOTS plugin package (*.dotsplugin)|*.dotsplugin", AddExtension = true, OverwritePrompt = true };
+                        if (picker.ShowDialog(Window.GetWindow(this)) != true) return;
+                        try { _model.Marketplace.Forks.Export(fork, picker.FileName); }
+                        catch (Exception error) { MessageBox.Show(Window.GetWindow(this), error.Message, "Marketplace", MessageBoxButton.OK, MessageBoxImage.Error); }
+                    };
+                    var enable = new Button { Content = "Review and enable", Padding = new Thickness(7, 2, 7, 2), Margin = new Thickness(0, 0, 5, 4) };
+                    enable.Click += (_, _) =>
+                    {
+                        if (MessageBox.Show(Window.GetWindow(this), $"{fork.Id} is a local native-code fork of {fork.UpstreamId}. Its source may have changed and it is not signed by the Marketplace. Enabling it grants native execution. Review its source first?", "Custom plugin consent", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+                        try { _model.Marketplace.Forks.AcceptAndEnable(fork); _model.Remount(); ShowPlugins(); }
+                        catch (Exception error) { MessageBox.Show(Window.GetWindow(this), error.Message, "Marketplace", MessageBoxButton.OK, MessageBoxImage.Error); }
+                    };
+                    actions.Children.Add(open);
+                    actions.Children.Add(export);
+                    actions.Children.Add(enable);
+                    if (fork.UpstreamVersionAvailable is { } newer)
+                    {
+                        var compared = new Button { Content = "Compared", Padding = new Thickness(7, 2, 7, 2), Margin = new Thickness(0, 0, 5, 4) };
+                        compared.Click += (_, _) => { _model.Marketplace.Forks.AcknowledgeUpstream(fork, newer); Render(); };
+                        actions.Children.Add(compared);
+                    }
+                    var delete = new Button { Content = "Delete", Padding = new Thickness(7, 2, 7, 2), Margin = new Thickness(0, 0, 5, 4) };
+                    delete.Click += (_, _) =>
+                    {
+                        if (MessageBox.Show(Window.GetWindow(this), $"Delete local fork {fork.Id}?", "Marketplace", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+                        try { _model.Marketplace.DeleteFork(fork); ShowPlugins(); }
+                        catch (Exception error) { MessageBox.Show(Window.GetWindow(this), error.Message, "Marketplace", MessageBoxButton.OK, MessageBoxImage.Error); }
+                    };
+                    actions.Children.Add(delete);
+                    card.Children.Add(actions);
+                    list.Children.Add(card);
+                }
             }
         }
 
+        void RenderAccount()
+        {
+            account.Children.Clear();
+            if (_model.MarketplaceSession.IsSignedIn)
+            {
+                var row = new WrapPanel { Margin = new Thickness(0, 2, 0, 6) };
+                row.Children.Add(new TextBlock
+                {
+                    Text = "HerNess: " + (_model.MarketplaceSession.Profile?.Email ?? "Signed in"),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 10, 4),
+                });
+                var publish = new Button { Content = "Publish native plugin", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 6, 4) };
+                publish.Click += async (_, _) =>
+                {
+                    var dialog = new MarketplacePublishWindow(_model.MarketplacePublisher);
+                    if (Window.GetWindow(this) is { } owner) dialog.Owner = owner;
+                    if (dialog.ShowDialog() != true) return;
+                    try { await _model.Marketplace.RefreshOwnedPluginsAsync(); Render(); }
+                    catch (Exception error) { account.Children.Add(ErrorText(error.Message)); }
+                };
+                var signOut = new Button { Content = "Sign out", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 6, 4) };
+                signOut.Click += async (_, _) => { await _model.MarketplaceSession.SignOutAsync(); Render(); };
+                var refreshOwned = new Button { Content = "Refresh my plugins", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 6, 4) };
+                refreshOwned.Click += async (_, _) =>
+                {
+                    try { await _model.Marketplace.RefreshOwnedPluginsAsync(); Render(); }
+                    catch (Exception error) { account.Children.Add(ErrorText(error.Message)); }
+                };
+                row.Children.Add(publish); row.Children.Add(refreshOwned); row.Children.Add(signOut);
+                account.Children.Add(row);
+                if (!string.IsNullOrWhiteSpace(_model.Marketplace.OwnedPluginsError))
+                    account.Children.Add(ErrorText(_model.Marketplace.OwnedPluginsError));
+                foreach (var plugin in _model.Marketplace.OwnedPlugins)
+                {
+                    var pluginCard = new StackPanel { Margin = new Thickness(0, 4, 0, 6) };
+                    var pluginRow = new DockPanel();
+                    pluginRow.Children.Add(new TextBlock { Text = $"{plugin.Name} · {plugin.Id} · {plugin.SourceVisibility}", FontWeight = FontWeights.SemiBold });
+                    var unpublish = new Button { Content = "Unpublish", Padding = new Thickness(7, 2, 7, 2), HorizontalAlignment = HorizontalAlignment.Right };
+                    unpublish.Click += async (_, _) =>
+                    {
+                        if (MessageBox.Show(Window.GetWindow(this), $"Unpublish {plugin.Name}? Existing installations will not be removed.", "Marketplace", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+                        try { await _model.Marketplace.UnpublishAsync(plugin.Id); Render(); }
+                        catch (Exception error) { account.Children.Add(ErrorText(error.Message)); }
+                    };
+                    pluginRow.Children.Add(unpublish);
+                    pluginCard.Children.Add(pluginRow);
+                    foreach (var release in plugin.Releases ?? Array.Empty<MarketplaceOwnedRelease>())
+                    {
+                        var artifacts = string.Join(", ", (release.Artifacts ?? Array.Empty<MarketplaceOwnedArtifact>()).Select(item => $"{item.Platform}/{item.Architecture}:{item.Status}"));
+                        pluginCard.Children.Add(new TextBlock
+                        {
+                            Text = $"v{release.Version} · {release.ModerationStatus} · {release.CatalogScope}/{release.Category} · risk:{release.RiskLevel} · {artifacts}",
+                            FontSize = 10,
+                            Foreground = TryBrush("TextSecondary"),
+                            TextWrapping = TextWrapping.Wrap,
+                        });
+                    }
+                    account.Children.Add(pluginCard);
+                }
+            }
+            else
+            {
+                var login = new WrapPanel { Margin = new Thickness(0, 2, 0, 6) };
+                var email = new TextBox { Width = 210, Padding = new Thickness(7, 4, 7, 4), Margin = new Thickness(0, 0, 6, 4), ToolTip = "HerNess account email" };
+                var password = new PasswordBox { Width = 180, Padding = new Thickness(7, 4, 7, 4), Margin = new Thickness(0, 0, 6, 4) };
+                var status = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) };
+                var signIn = new Button { Content = "Sign in to publish", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 0, 4) };
+                signIn.Click += async (_, _) =>
+                {
+                    signIn.IsEnabled = false;
+                    status.Text = "Signing in…";
+                    try
+                    {
+                        await _model.MarketplaceSession.SignInAsync(email.Text, password.Password);
+                        await _model.Marketplace.RefreshOwnedPluginsAsync();
+                        Render();
+                    }
+                    catch (Exception error) { status.Text = error.Message; signIn.IsEnabled = true; }
+                };
+                login.Children.Add(email); login.Children.Add(password); login.Children.Add(signIn);
+                account.Children.Add(login); account.Children.Add(status);
+                var oauth = new WrapPanel { Margin = new Thickness(0, 2, 0, 4) };
+                var google = new Button { Content = "Continue with Google", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 6, 4) };
+                google.Click += (_, _) =>
+                {
+                    try { _model.MarketplaceSession.BeginOAuth(MarketplaceProvider.Google); status.Text = "Google sign-in opened in your browser…"; }
+                    catch (Exception error) { status.Text = error.Message; }
+                };
+                var github = new Button { Content = "Continue with GitHub", Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 6, 4) };
+                github.Click += (_, _) =>
+                {
+                    try { _model.MarketplaceSession.BeginOAuth(MarketplaceProvider.GitHub); status.Text = "GitHub sign-in opened in your browser…"; }
+                    catch (Exception error) { status.Text = error.Message; }
+                };
+                oauth.Children.Add(google); oauth.Children.Add(github);
+                account.Children.Add(oauth);
+                account.Children.Add(new TextBlock
+                {
+                    Text = "Sign in with Google, GitHub, or your HerNess email and password. Session tokens are stored by the platform credential service.",
+                    FontSize = 10, Foreground = TryBrush("TextSecondary"), TextWrapping = TextWrapping.Wrap,
+                });
+            }
+        }
+
+        var observingMarketplace = false;
+        void OnMarketplaceChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName is not (nameof(NativeMarketplaceClient.Entries)
+                or nameof(NativeMarketplaceClient.CommunityEntries)
+                or nameof(NativeMarketplaceClient.OwnedPlugins)
+                or nameof(NativeMarketplaceClient.OwnedPluginsError))) return;
+            Dispatcher.BeginInvoke(new Action(Render));
+        }
+        void OnMarketplaceSessionChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName is not (nameof(MarketplaceSession.Profile)
+                or nameof(MarketplaceSession.IsSignedIn)
+                or nameof(MarketplaceSession.LastError))) return;
+            Dispatcher.BeginInvoke(new Action(Render));
+        }
+        void SetMarketplaceObservation(bool enabled)
+        {
+            if (observingMarketplace == enabled) return;
+            observingMarketplace = enabled;
+            if (enabled)
+            {
+                _model.Marketplace.PropertyChanged += OnMarketplaceChanged;
+                _model.MarketplaceSession.PropertyChanged += OnMarketplaceSessionChanged;
+            }
+            else
+            {
+                _model.Marketplace.PropertyChanged -= OnMarketplaceChanged;
+                _model.MarketplaceSession.PropertyChanged -= OnMarketplaceSessionChanged;
+            }
+        }
+        card.Loaded += (_, _) => SetMarketplaceObservation(true);
+        card.Unloaded += (_, _) => SetMarketplaceObservation(false);
+        SetMarketplaceObservation(true);
+
         refresh.Click += async (_, _) =>
         {
-            try { await _model.Marketplace.RefreshAsync(); Render(); }
+            try { await _model.Marketplace.RefreshAsync(); await _model.Marketplace.RefreshCommunityAsync(); Render(); }
             catch (Exception error) { list.Children.Clear(); list.Children.Add(ErrorText(error.Message)); }
         };
         Render();
         _ = Task.Run(async () =>
         {
-            try { await _model.Marketplace.RefreshAsync(); Dispatcher.Invoke(Render); }
+            try
+            {
+                await _model.MarketplaceSession.RestoreAsync();
+                await _model.Marketplace.RefreshAsync();
+                await _model.Marketplace.RefreshCommunityAsync();
+                if (_model.MarketplaceSession.IsSignedIn) await _model.Marketplace.RefreshOwnedPluginsAsync();
+                Dispatcher.Invoke(Render);
+            }
             catch { /* keep the public empty state */ }
         });
     }
@@ -1407,6 +2690,180 @@ public partial class SettingsView : UserControl
         }
     }
 
+    private void ShowMcp()
+    {
+        var panel = new StackPanel();
+        panel.Children.Add(new TextBlock
+        {
+            Text = _model.L("settings.mcpServers"),
+            FontSize = 22,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 16),
+        });
+
+        _mcpStatusRows = new StackPanel();
+        panel.Children.Add(_mcpStatusRows);
+        RefreshMcpStatuses();
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = _model.L("mcp.addServer"),
+            FontSize = 16,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 24, 0, 8),
+        });
+        panel.Children.Add(new TextBlock { Text = _model.L("mcp.name") });
+        var name = new TextBox { Text = _mcpName, Margin = new Thickness(0, 4, 0, 10), MinWidth = 340 };
+        name.TextChanged += (_, _) => _mcpName = name.Text;
+        panel.Children.Add(name);
+
+        panel.Children.Add(new TextBlock { Text = _model.L("mcp.transport") });
+        var transport = new ComboBox { Width = 220, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 4, 0, 10) };
+        transport.Items.Add(new ComboBoxItem { Content = _model.L("mcp.http"), Tag = McpTransportKind.Http });
+        transport.Items.Add(new ComboBoxItem { Content = _model.L("mcp.stdio"), Tag = McpTransportKind.Stdio });
+        transport.SelectedIndex = _mcpTransport == McpTransportKind.Http ? 0 : 1;
+        panel.Children.Add(transport);
+
+        _mcpHttpFields = new StackPanel();
+        _mcpHttpFields.Children.Add(new TextBlock { Text = _model.L("mcp.url") });
+        var url = new TextBox { Text = _mcpUrl, Margin = new Thickness(0, 4, 0, 10), MinWidth = 340 };
+        url.TextChanged += (_, _) => _mcpUrl = url.Text;
+        _mcpHttpFields.Children.Add(url);
+        _mcpHttpFields.Children.Add(new TextBlock { Text = _model.L("mcp.bearerToken") });
+        var token = new PasswordBox { Password = _mcpToken, Margin = new Thickness(0, 4, 0, 10), MinWidth = 340 };
+        token.PasswordChanged += (_, _) => _mcpToken = token.Password;
+        _mcpHttpFields.Children.Add(token);
+        panel.Children.Add(_mcpHttpFields);
+
+        _mcpStdioFields = new StackPanel();
+        _mcpStdioFields.Children.Add(new TextBlock { Text = _model.L("mcp.executable") });
+        var command = new TextBox { Text = _mcpCommand, Margin = new Thickness(0, 4, 0, 10), MinWidth = 340 };
+        command.TextChanged += (_, _) => _mcpCommand = command.Text;
+        _mcpStdioFields.Children.Add(command);
+        _mcpStdioFields.Children.Add(new TextBlock { Text = _model.L("mcp.arguments") });
+        var arguments = new TextBox { Text = _mcpArguments, Margin = new Thickness(0, 4, 0, 10), MinWidth = 340 };
+        arguments.TextChanged += (_, _) => _mcpArguments = arguments.Text;
+        _mcpStdioFields.Children.Add(arguments);
+        panel.Children.Add(_mcpStdioFields);
+
+        void SetTransport()
+        {
+            _mcpTransport = (transport.SelectedItem as ComboBoxItem)?.Tag is McpTransportKind selected
+                ? selected
+                : McpTransportKind.Http;
+            _mcpHttpFields.Visibility = _mcpTransport == McpTransportKind.Http ? Visibility.Visible : Visibility.Collapsed;
+            _mcpStdioFields.Visibility = _mcpTransport == McpTransportKind.Stdio ? Visibility.Visible : Visibility.Collapsed;
+        }
+        transport.SelectionChanged += (_, _) => SetTransport();
+        SetTransport();
+
+        var autoRun = new CheckBox
+        {
+            Content = _model.L("mcp.autoRunReadOnly"),
+            IsChecked = _mcpAutoRunReadOnly,
+            Margin = new Thickness(0, 8, 0, 2),
+        };
+        autoRun.Click += (_, _) => _mcpAutoRunReadOnly = autoRun.IsChecked == true;
+        panel.Children.Add(autoRun);
+        panel.Children.Add(new TextBlock
+        {
+            Text = _model.L("mcp.autoRunHelp"),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = TryBrush("TextSecondary"),
+            Margin = new Thickness(0, 0, 0, 10),
+        });
+
+        _mcpTestStatus = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = TryBrush("TextSecondary"),
+            Margin = new Thickness(0, 0, 0, 8),
+        };
+        panel.Children.Add(_mcpTestStatus);
+        var actions = new StackPanel { Orientation = Orientation.Horizontal };
+        var test = new Button { Content = _model.L("mcp.test"), Padding = new Thickness(12, 5, 12, 5), Margin = new Thickness(0, 0, 8, 0) };
+        test.Click += async (_, _) =>
+        {
+            _mcpTestStatus.Text = _model.L("mcp.testing");
+            var result = await _model.McpRegistry.TestAsync(McpDraft(), _mcpTransport == McpTransportKind.Http ? _mcpToken : null);
+            _mcpTestStatus.Text = result.ToolCount is { } count ? _model.L("mcp.testConnected", count) : result.Error ?? "Connection failed.";
+        };
+        var add = new Button { Content = _model.L("mcp.add"), Padding = new Thickness(12, 5, 12, 5) };
+        add.Click += async (_, _) =>
+        {
+            try
+            {
+                var config = McpDraft();
+                _model.McpRegistry.Upsert(config, _mcpTransport == McpTransportKind.Http ? _mcpToken : null);
+                _mcpName = _mcpUrl = _mcpCommand = _mcpArguments = _mcpToken = "";
+                _mcpAutoRunReadOnly = false;
+                _mcpTestStatus.Text = "";
+                ShowMcp();
+                await _model.McpRegistry.ConnectAsync(config.Id);
+            }
+            catch (Exception error) { _mcpTestStatus.Text = error.Message; }
+        };
+        actions.Children.Add(test);
+        actions.Children.Add(add);
+        panel.Children.Add(actions);
+        Body.Content = panel;
+    }
+
+    private McpServerConfig McpDraft() => new()
+    {
+        Name = _mcpName,
+        Transport = _mcpTransport,
+        Url = _mcpUrl,
+        Command = _mcpCommand,
+        Arguments = _mcpArguments.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries),
+        AutoRunReadOnly = _mcpAutoRunReadOnly,
+    };
+
+    private void RefreshMcpStatuses()
+    {
+        if (_mcpStatusRows is null) return;
+        _mcpStatusRows.Children.Clear();
+        var statuses = _model.McpRegistry.Statuses;
+        if (statuses.Count == 0)
+        {
+            _mcpStatusRows.Children.Add(new TextBlock
+            {
+                Text = _model.L("mcp.empty"),
+                Foreground = TryBrush("TextSecondary"),
+                Margin = new Thickness(0, 0, 0, 12),
+            });
+            return;
+        }
+        foreach (var status in statuses)
+        {
+            var row = new DockPanel { Margin = new Thickness(0, 0, 0, 8), LastChildFill = false };
+            var actions = new StackPanel { Orientation = Orientation.Horizontal };
+            var reconnect = new Button { Content = _model.L("mcp.reconnect"), Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(8, 3, 8, 3) };
+            reconnect.Click += async (_, _) => await _model.McpRegistry.ConnectAsync(status.Id);
+            var remove = new Button { Content = _model.L("mcp.remove"), Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(8, 3, 8, 3) };
+            remove.Click += async (_, _) => await _model.McpRegistry.RemoveAsync(status.Id);
+            actions.Children.Add(reconnect);
+            actions.Children.Add(remove);
+            DockPanel.SetDock(actions, Dock.Right);
+            row.Children.Add(actions);
+            var label = status.State switch
+            {
+                McpConnectionState.Connecting => _model.L("mcp.connecting"),
+                McpConnectionState.Connected => _model.L("mcp.connected", status.ToolCount),
+                McpConnectionState.Failed => _model.L("mcp.failed", status.Error ?? ""),
+                _ => _model.L("mcp.idle"),
+            };
+            row.Children.Add(new TextBlock
+            {
+                Text = status.Name + " · " + label,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalAlignment = VerticalAlignment.Center,
+                MaxWidth = 460,
+            });
+            _mcpStatusRows.Children.Add(row);
+        }
+    }
+
     private void ShowLegal()
     {
         var panel = new StackPanel();
@@ -1450,6 +2907,431 @@ public partial class SettingsView : UserControl
         Body.Content = panel;
     }
 
+    private ListBox? _memoryList;
+    private ContentControl? _memoryDetail;
+    private Canvas? _memoryGraph;
+
+    private string? MemoryWorkspace()
+    {
+        if (_model.IsRemoteWorkLocation) return null;
+        var path = _model.Bridge.Selected?.Cwd ?? _model.WorkspacePath;
+        return !string.IsNullOrWhiteSpace(path) && Directory.Exists(path) ? path : null;
+    }
+
+    private void ShowMemory()
+    {
+        var workspace = MemoryWorkspace();
+        _memoryVault = WorkspaceMemoryVault.Read(workspace, _model.Paths.Root);
+        var panel = new StackPanel();
+        panel.Children.Add(new TextBlock
+        {
+            Text = _model.L("memory.vault.title"),
+            FontSize = 22,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 10),
+        });
+        var toolbar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
+        var refresh = new Button { Content = _model.L("memory.refresh"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(0, 0, 6, 0) };
+        refresh.Click += (_, _) => ShowMemory();
+        toolbar.Children.Add(refresh);
+        if (workspace is not null && Directory.Exists(Path.Combine(workspace, ".mem")))
+        {
+            var reveal = new Button { Content = _model.L("memory.reveal"), Padding = new Thickness(10, 4, 10, 4) };
+            reveal.Click += (_, _) => Process.Start(new ProcessStartInfo("explorer.exe", Path.Combine(workspace, ".mem")) { UseShellExecute = true });
+            toolbar.Children.Add(reveal);
+        }
+        panel.Children.Add(toolbar);
+        if (_memoryStatus is not null)
+            panel.Children.Add(new TextBlock { Text = _memoryStatus, Foreground = _memoryStatus == _model.L("memory.refused") ? Brushes.IndianRed : TryBrush("TextSecondary"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
+
+        if (workspace is null || _memoryVault.Notes.Count == 0)
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = _model.L(workspace is null ? "memory.noWorkspace" : "memory.notInitialized"),
+                Foreground = TryBrush("TextSecondary"),
+                TextWrapping = TextWrapping.Wrap,
+            });
+            Body.Content = panel;
+            return;
+        }
+
+        var search = new TextBox { Text = _memorySearch, ToolTip = _model.L("memory.search"), Margin = new Thickness(0, 0, 0, 8), Padding = new Thickness(8, 5, 8, 5) };
+        panel.Children.Add(search);
+        _memoryGraph = new Canvas { Height = 142, Margin = new Thickness(0, 0, 0, 8), Background = TryBrush("ChromeBackground") };
+        _memoryGraph.SizeChanged += (_, _) => DrawMemoryGraph();
+        panel.Children.Add(_memoryGraph);
+
+        var content = new Grid { Height = 390 };
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(230) });
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        _memoryList = new ListBox { Margin = new Thickness(0, 0, 8, 0) };
+        _memoryDetail = new ContentControl();
+        Grid.SetColumn(_memoryDetail, 1);
+        content.Children.Add(_memoryList);
+        content.Children.Add(_memoryDetail);
+        panel.Children.Add(content);
+        Body.Content = panel;
+
+        search.TextChanged += (_, _) =>
+        {
+            _memorySearch = search.Text;
+            PopulateMemoryList();
+        };
+        _memoryList.SelectionChanged += (_, _) =>
+        {
+            if (_memoryList.SelectedItem is not ListBoxItem { Tag: MemoryNote note }) return;
+            _memorySelectedId = note.Id;
+            ShowMemoryDetail(note);
+            DrawMemoryGraph();
+        };
+        PopulateMemoryList();
+        DrawMemoryGraph();
+    }
+
+    private static readonly string[] MemoryKindOrder = ["map", "index", "profile", "project", "rule", "preference", "task", "conversation", "decision", "file", "missing", "note"];
+
+    private List<MemoryNote> FilteredMemoryNotes() => _memoryVault.Notes
+        .Where(note => string.IsNullOrWhiteSpace(_memorySearch)
+            || (note.Title + "\n" + note.Body + "\n" + string.Join(" ", note.Tags)).Contains(_memorySearch, StringComparison.OrdinalIgnoreCase))
+        .OrderBy(note => Array.IndexOf(MemoryKindOrder, note.Kind) is var rank && rank >= 0 ? rank : MemoryKindOrder.Length)
+        .ThenBy(note => note.Title, StringComparer.OrdinalIgnoreCase).ToList();
+
+    private void PopulateMemoryList()
+    {
+        if (_memoryList is null) return;
+        var selectedId = _memorySelectedId;
+        _memoryList.Items.Clear();
+        foreach (var note in FilteredMemoryNotes())
+        {
+            var row = new StackPanel { Margin = new Thickness(2) };
+            row.Children.Add(new TextBlock { Text = note.Title, TextTrimming = TextTrimming.CharacterEllipsis, FontWeight = FontWeights.SemiBold });
+            if (note.Tags.Count > 0) row.Children.Add(new TextBlock { Text = string.Join(" · ", note.Tags), FontSize = 10, Foreground = TryBrush("TextSecondary"), TextTrimming = TextTrimming.CharacterEllipsis });
+            _memoryList.Items.Add(new ListBoxItem { Content = row, Tag = note });
+        }
+        var selected = _memoryList.Items.OfType<ListBoxItem>().FirstOrDefault(item => (item.Tag as MemoryNote)?.Id == selectedId)
+            ?? _memoryList.Items.OfType<ListBoxItem>().FirstOrDefault();
+        if (selected is not null)
+        {
+            selected.IsSelected = true;
+            _memorySelectedId = (selected.Tag as MemoryNote)?.Id;
+        }
+        else if (_memoryDetail is not null) _memoryDetail.Content = new TextBlock { Text = _model.L("memory.selectNote"), Foreground = TryBrush("TextSecondary") };
+    }
+
+    private void ShowMemoryDetail(MemoryNote note)
+    {
+        if (_memoryDetail is null) return;
+        var workspace = MemoryWorkspace();
+        var panel = new StackPanel { Margin = new Thickness(8, 0, 0, 0) };
+        panel.Children.Add(new TextBlock { Text = note.Title, FontSize = 19, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
+        if (!string.IsNullOrWhiteSpace(note.Path)) panel.Children.Add(new TextBlock { Text = note.Path, FontSize = 11, FontFamily = new FontFamily("Consolas"), Foreground = TryBrush("TextSecondary"), Margin = new Thickness(0, 3, 0, 6) });
+
+        if (note.Kind == "project")
+        {
+            var editor = new TextBox { Text = note.Body, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MinHeight = 130, MaxLength = WorkspaceFacts.KnowledgeKeys.Contains(note.Title) ? WorkspaceFacts.MaxKnowledgeLength : WorkspaceFacts.MaxTextLength };
+            panel.Children.Add(editor);
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
+            var save = new Button { Content = _model.L("memory.save"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(0, 0, 6, 0) };
+            save.Click += (_, _) => SaveMemory(new MemoryEdit(MemoryEditKind.SetProject, Key: note.Title, Value: editor.Text));
+            var forget = new Button { Content = _model.L("memory.forget"), Padding = new Thickness(10, 4, 10, 4) };
+            forget.Click += (_, _) => SaveMemory(new MemoryEdit(MemoryEditKind.ForgetProject, Key: note.Title), clearSelection: true);
+            actions.Children.Add(save); actions.Children.Add(forget);
+            panel.Children.Add(actions);
+            panel.Children.Add(new TextBlock { Text = $"{editor.Text.Length} / {editor.MaxLength}", FontSize = 10, Foreground = TryBrush("TextSecondary"), Margin = new Thickness(0, 4, 0, 0) });
+        }
+        else if (note.Id == "learned_rules")
+        {
+            var manual = WorkspaceLessons.ManualRules(workspace);
+            panel.Children.Add(new TextBlock { Text = _model.L("memory.ownRules"), FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 4) });
+            panel.Children.Add(new TextBlock { Text = _model.L("memory.rulesHelp"), FontSize = 11, Foreground = TryBrush("TextSecondary"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 6) });
+            var rules = new TextBox { Text = manual, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 80, MaxLength = WorkspaceLessons.MaxLessonCharacters };
+            panel.Children.Add(rules);
+            var saveRules = new Button { Content = _model.L("memory.save"), Padding = new Thickness(10, 4, 10, 4), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 6, 0, 10) };
+            saveRules.Click += (_, _) => SaveMemory(new MemoryEdit(MemoryEditKind.SetManualRules, Value: rules.Text));
+            panel.Children.Add(saveRules);
+            panel.Children.Add(new TextBlock { Text = _model.L("memory.lessons"), FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 2, 0, 6) });
+            var stats = WorkspaceLessons.LearningStats(workspace);
+            panel.Children.Add(new TextBlock { Text = _model.L("memory.learningStats", stats.Turns, stats.Corrected), FontSize = 11, Foreground = TryBrush("TextSecondary"), Margin = new Thickness(0, 0, 0, 8) });
+            foreach (var lesson in WorkspaceLessons.RankedRead(workspace)) panel.Children.Add(BuildLessonRow(lesson, stats.Uses.FirstOrDefault(item => lesson.Cited.StartsWith("[" + item.Record + " ", StringComparison.Ordinal)).Count));
+        }
+        else
+        {
+            var body = new TextBox { Text = note.Body, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MinHeight = 180, BorderThickness = new Thickness(0), Background = Brushes.Transparent, Foreground = TryBrush("TextPrimary") };
+            panel.Children.Add(body);
+        }
+
+        if (note.Links.Count > 0)
+        {
+            panel.Children.Add(new TextBlock { Text = _model.L("memory.links"), FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 10, 0, 4) });
+            foreach (var id in note.Links)
+            {
+                var target = _memoryVault.Notes.FirstOrDefault(item => item.Id == id);
+                if (target is null) continue;
+                var link = new Button { Content = target.Title, Tag = target.Id, HorizontalContentAlignment = HorizontalAlignment.Left, Padding = new Thickness(4, 2, 4, 2), Margin = new Thickness(0, 1, 0, 1) };
+                link.Click += (_, _) => SelectMemoryNote(target.Id);
+                panel.Children.Add(link);
+            }
+        }
+        if (note.Backlinks.Count > 0)
+        {
+            panel.Children.Add(new TextBlock { Text = _model.L("memory.backlinks"), FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 10, 0, 4) });
+            foreach (var id in note.Backlinks)
+            {
+                var target = _memoryVault.Notes.FirstOrDefault(item => item.Id == id);
+                if (target is null) continue;
+                var link = new Button { Content = target.Title, Tag = target.Id, HorizontalContentAlignment = HorizontalAlignment.Left, Padding = new Thickness(4, 2, 4, 2), Margin = new Thickness(0, 1, 0, 1) };
+                link.Click += (_, _) => SelectMemoryNote(target.Id);
+                panel.Children.Add(link);
+            }
+        }
+        _memoryDetail.Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+    }
+
+    private UIElement BuildLessonRow(Lesson lesson, int uses)
+    {
+        var panel = new StackPanel();
+        if (_memoryEditingLessonId == lesson.Id)
+        {
+            var edit = new TextBox { Text = lesson.Rule, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 48 };
+            var actions = new StackPanel { Orientation = Orientation.Horizontal };
+            var save = new Button { Content = _model.L("memory.save"), Padding = new Thickness(8, 3, 8, 3) };
+            save.Click += (_, _) => { _memoryEditingLessonId = null; SaveMemory(new MemoryEdit(MemoryEditKind.EditLesson, Id: lesson.Id, Value: edit.Text)); };
+            var cancel = new Button { Content = _model.L("memory.cancel"), Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(6, 0, 0, 0) };
+            cancel.Click += (_, _) => { _memoryEditingLessonId = null; ShowMemoryDetail(_memoryVault.Notes.FirstOrDefault(note => note.Id == "learned_rules") ?? new MemoryNote("learned_rules", "rule", "Learned rules", "", "", [], [], [])); };
+            actions.Children.Add(save); actions.Children.Add(cancel);
+            panel.Children.Add(edit); panel.Children.Add(actions);
+        }
+        else panel.Children.Add(new TextBlock { Text = lesson.Line, TextWrapping = TextWrapping.Wrap });
+        var metadata = string.Join(" · ", new[]
+        {
+            lesson.IsExplicit ? _model.L("memory.userAuthored") : _model.L("memory.inferred"),
+            _model.L("memory.learnedCount", lesson.Hits),
+            _model.L("memory.usedCount", uses),
+            lesson.IsActive(DateTimeOffset.UtcNow) ? "" : _model.L("memory.inactive"),
+            string.Join(", ", lesson.Paths),
+        }.Where(value => value.Length > 0));
+        panel.Children.Add(new TextBlock { Text = metadata, FontSize = 10, Foreground = TryBrush("TextSecondary"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 4) });
+        if (_memoryEditingLessonId != lesson.Id)
+        {
+            var actions = new StackPanel { Orientation = Orientation.Horizontal };
+            if (!lesson.IsExplicit)
+            {
+                var pin = new Button { Content = _model.L("memory.pin"), Padding = new Thickness(7, 3, 7, 3) };
+                pin.Click += (_, _) => SaveMemory(new MemoryEdit(MemoryEditKind.PinLesson, Id: lesson.Id)); actions.Children.Add(pin);
+            }
+            var edit = new Button { Content = _model.L("memory.edit"), Padding = new Thickness(7, 3, 7, 3), Margin = new Thickness(5, 0, 0, 0) };
+            edit.Click += (_, _) => { _memoryEditingLessonId = lesson.Id; ShowMemoryDetail(_memoryVault.Notes.FirstOrDefault(note => note.Id == "learned_rules")!); };
+            var forget = new Button { Content = _model.L("memory.forget"), Padding = new Thickness(7, 3, 7, 3), Margin = new Thickness(5, 0, 0, 0) };
+            forget.Click += (_, _) => SaveMemory(new MemoryEdit(MemoryEditKind.ForgetLesson, Id: lesson.Id));
+            actions.Children.Add(edit); actions.Children.Add(forget); panel.Children.Add(actions);
+        }
+        return new Border { Child = panel, Padding = new Thickness(8), Margin = new Thickness(0, 0, 0, 6), BorderBrush = TryBrush("BorderSubtle"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6) };
+    }
+
+    private void SaveMemory(MemoryEdit edit, bool clearSelection = false)
+    {
+        var workspace = MemoryWorkspace();
+        var saved = WorkspaceMemoryVault.Edit(workspace, _model.Paths.Root, edit);
+        _memoryStatus = saved ? null : _model.L("memory.refused");
+        if (clearSelection) _memorySelectedId = null;
+        ShowMemory();
+    }
+
+    private void SelectMemoryNote(string id)
+    {
+        _memorySelectedId = id;
+        PopulateMemoryList();
+    }
+
+    private void DrawMemoryGraph()
+    {
+        if (_memoryGraph is null) return;
+        _memoryGraph.Children.Clear();
+        var notes = _memoryVault.Notes.Where(note => note.Kind is not ("missing" or "file")).ToList();
+        if (notes.Count == 0) return;
+        var width = Math.Max(_memoryGraph.ActualWidth, 500);
+        var height = _memoryGraph.Height;
+        var center = new Point(width / 2, height / 2);
+        var radius = Math.Max(28, Math.Min(width * .40, height * .38));
+        var positions = new Dictionary<string, Point>(StringComparer.Ordinal);
+        for (var index = 0; index < notes.Count; index++)
+        {
+            var angle = 2 * Math.PI * index / notes.Count - Math.PI / 2;
+            positions[notes[index].Id] = new Point(center.X + Math.Cos(angle) * radius, center.Y + Math.Sin(angle) * radius);
+        }
+        foreach (var edge in _memoryVault.Edges)
+        {
+            if (!positions.TryGetValue(edge.From, out var from) || !positions.TryGetValue(edge.To, out var to)) continue;
+            _memoryGraph.Children.Add(new System.Windows.Shapes.Line { X1 = from.X, Y1 = from.Y, X2 = to.X, Y2 = to.Y, Stroke = TryBrush("BorderSubtle"), StrokeThickness = 1 });
+        }
+        foreach (var note in notes)
+        {
+            var point = positions[note.Id];
+            var dot = new Button { Content = "●", FontSize = 18, Padding = new Thickness(0), Width = 24, Height = 24, Background = Brushes.Transparent, BorderThickness = new Thickness(0), ToolTip = note.Title, Foreground = note.Id == _memorySelectedId ? Brushes.DodgerBlue : TryBrush("TextSecondary") };
+            dot.Click += (_, _) => SelectMemoryNote(note.Id);
+            Canvas.SetLeft(dot, point.X - 12); Canvas.SetTop(dot, point.Y - 12); _memoryGraph.Children.Add(dot);
+            var label = new TextBlock { Text = note.Title, FontSize = 9, Foreground = TryBrush("TextSecondary"), IsHitTestVisible = false };
+            Canvas.SetLeft(label, point.X + 10); Canvas.SetTop(label, point.Y + 5); _memoryGraph.Children.Add(label);
+        }
+    }
+
+    private string _accessToken = "";
+
+    private void ShowAccess()
+    {
+        var workspace = MemoryWorkspace();
+        var panel = new StackPanel();
+        panel.Children.Add(new TextBlock { Text = _model.L("settings.tab.access"), FontSize = 22, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 12) });
+        if (workspace is null)
+        {
+            panel.Children.Add(new TextBlock { Text = _model.L("access.noWorkspace"), TextWrapping = TextWrapping.Wrap, Foreground = TryBrush("TextSecondary") });
+            Body.Content = panel;
+            return;
+        }
+        WorkspaceAccessSnapshot access;
+        WorkspaceAccessStore store;
+        try
+        {
+            store = new WorkspaceAccessStore(workspace, _model.Paths.Root);
+            access = store.Snapshot();
+        }
+        catch (Exception error)
+        {
+            panel.Children.Add(new TextBlock { Text = error.Message, Foreground = Brushes.IndianRed, TextWrapping = TextWrapping.Wrap });
+            Body.Content = panel;
+            return;
+        }
+
+        var actor = AccessSection("access.currentActor");
+        AddAccessValue(actor, "access.role", access.Role is { } actorRole ? AccessRole(actorRole) : _model.L("access.notAuthorized"));
+        AddAccessValue(actor, "access.score", access.Score.ToString(CultureInfo.InvariantCulture));
+        AddAccessValue(actor, "access.device", access.DeviceId.Length == 0 ? "—" : access.DeviceId[..Math.Min(20, access.DeviceId.Length)]);
+        AddAccessValue(actor, "access.publicKey", access.PublicKey);
+        AddAccessValue(actor, "access.memoryRevision", access.Revision.ToString(CultureInfo.InvariantCulture));
+        if (!access.MemoryReady)
+        {
+            actor.Children.Add(new TextBlock { Text = _model.L("access.initializeHelp"), FontSize = 11, TextWrapping = TextWrapping.Wrap, Foreground = TryBrush("TextSecondary"), Margin = new Thickness(0, 8, 0, 6) });
+            var initialize = new Button { Content = _model.L("access.initialize"), Padding = new Thickness(10, 4, 10, 4) };
+            initialize.Click += (_, _) => RunAccess(() => store.Initialize());
+            actor.Children.Add(initialize);
+        }
+        panel.Children.Add(actor);
+
+        if (access.MemoryReady)
+        {
+            var members = AccessSection("access.members");
+            if (access.Members.Count == 0) members.Children.Add(new TextBlock { Text = _model.L("access.noMembers"), Foreground = TryBrush("TextSecondary") });
+            foreach (var member in access.Members)
+            {
+                var row = new DockPanel { Margin = new Thickness(0, 0, 0, 8), LastChildFill = false };
+                if (member.DeviceId != access.DeviceId && access.Role == MemoryRole.Owner && !member.Revoked)
+                {
+                    var revoke = new Button { Content = _model.L("access.revoke"), Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(8, 0, 0, 0) };
+                    revoke.Click += (_, _) => RunAccess(() => store.Revoke(member.DeviceId));
+                    DockPanel.SetDock(revoke, Dock.Right); row.Children.Add(revoke);
+                }
+                var label = member.DisplayName.Length > 0 ? member.DisplayName : member.PersonId;
+                var info = $"{AccessRoleName(member.Role)} · {member.Score} · {member.DeviceId[..Math.Min(12, member.DeviceId.Length)]}" + (member.Revoked ? " · " + _model.L("access.revoked") : "");
+                var summary = new StackPanel();
+                summary.Children.Add(new TextBlock { Text = label, FontWeight = FontWeights.SemiBold });
+                summary.Children.Add(new TextBlock { Text = info, FontSize = 11, Foreground = TryBrush("TextSecondary"), TextWrapping = TextWrapping.Wrap });
+                row.Children.Add(summary);
+                members.Children.Add(row);
+            }
+            panel.Children.Add(members);
+
+            var invite = AccessSection("access.inviteDevice");
+            Button? create = null;
+            void RefreshInviteEnabled()
+            {
+                if (create is not null) create.IsEnabled = access.Role == MemoryRole.Owner && _accessDisplayName.Length > 0 && _accessPublicKey.Length > 0;
+            }
+            invite.Children.Add(AccessField("access.displayName", _accessDisplayName, value => { _accessDisplayName = value; RefreshInviteEnabled(); }));
+            invite.Children.Add(AccessField("access.newDevicePublicKey", _accessPublicKey, value => { _accessPublicKey = value; RefreshInviteEnabled(); }, monospaced: true));
+            var roleBox = new ComboBox { Margin = new Thickness(0, 2, 0, 8) };
+            foreach (var role in Enum.GetValues<MemoryRole>()) roleBox.Items.Add(new ComboBoxItem { Content = AccessRole(role), Tag = role });
+            roleBox.SelectedIndex = Array.IndexOf(Enum.GetValues<MemoryRole>(), _accessInviteRole);
+            roleBox.SelectionChanged += (_, _) => { if (roleBox.SelectedItem is ComboBoxItem { Tag: MemoryRole selectedRole }) _accessInviteRole = selectedRole; };
+            invite.Children.Add(new TextBlock { Text = _model.L("access.role"), FontSize = 12, FontWeight = FontWeights.SemiBold });
+            invite.Children.Add(roleBox);
+            var scoreLabel = new TextBlock { Text = _model.L("access.scoreValue", (int)_accessInviteScore), FontSize = 12, Margin = new Thickness(0, 4, 0, 0) };
+            invite.Children.Add(scoreLabel);
+            var score = new Slider { Minimum = 0, Maximum = 100, Value = _accessInviteScore, TickFrequency = 1, IsSnapToTickEnabled = true, Margin = new Thickness(0, 0, 0, 8) };
+            score.ValueChanged += (_, _) => { _accessInviteScore = score.Value; scoreLabel.Text = _model.L("access.scoreValue", (int)_accessInviteScore); };
+            invite.Children.Add(score);
+            create = new Button { Content = _model.L("access.createInvitation"), Padding = new Thickness(10, 4, 10, 4), IsEnabled = access.Role == MemoryRole.Owner && _accessDisplayName.Length > 0 && _accessPublicKey.Length > 0 };
+            create.Click += (_, _) =>
+            {
+                try { _accessToken = store.CreateInvite(_accessDisplayName, _accessInviteRole, (int)_accessInviteScore, _accessPublicKey); _accessError = null; }
+                catch (Exception error) { _accessError = error.Message; }
+                ShowAccess();
+            };
+            invite.Children.Add(create);
+            if (_accessToken.Length > 0) invite.Children.Add(new TextBox { Text = _accessToken, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 70, Margin = new Thickness(0, 8, 0, 0) });
+            panel.Children.Add(invite);
+
+            var accept = AccessSection("access.acceptInvitation");
+            var token = new TextBox { Text = _accessInvite, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 65, ToolTip = _model.L("access.signedInvitation") };
+            token.TextChanged += (_, _) => _accessInvite = token.Text;
+            accept.Children.Add(token);
+            var acceptButton = new Button { Content = _model.L("access.accept"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(0, 6, 0, 0), IsEnabled = !string.IsNullOrWhiteSpace(_accessInvite) };
+            token.TextChanged += (_, _) => acceptButton.IsEnabled = !string.IsNullOrWhiteSpace(token.Text);
+            acceptButton.Click += (_, _) => RunAccess(() => { store.AcceptInvite(_accessInvite); _accessInvite = ""; });
+            accept.Children.Add(acceptButton);
+            panel.Children.Add(accept);
+
+            var decisions = AccessSection("access.pendingDecisions");
+            if (access.PendingDecisions.Count == 0) decisions.Children.Add(new TextBlock { Text = _model.L("access.noPendingDecisions"), Foreground = TryBrush("TextSecondary") });
+            foreach (var proposal in access.PendingDecisions)
+            {
+                var row = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
+                row.Children.Add(new TextBlock { Text = proposal.Summary.Length > 0 ? proposal.Summary : proposal.EventId, TextWrapping = TextWrapping.Wrap });
+                var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 5, 0, 0) };
+                var approve = new Button { Content = _model.L("access.accept"), Padding = new Thickness(8, 3, 8, 3), IsEnabled = access.Role is { } actualRole && actualRole.Rank() >= MemoryRole.Approver.Rank() };
+                approve.Click += (_, _) => RunAccess(() => store.ResolveDecision(proposal.EventId, accept: true));
+                var reject = new Button { Content = _model.L("access.reject"), Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(6, 0, 0, 0), IsEnabled = access.Role is { } rejectRole && rejectRole.Rank() >= MemoryRole.Approver.Rank() };
+                reject.Click += (_, _) => RunAccess(() => store.ResolveDecision(proposal.EventId, accept: false));
+                actions.Children.Add(approve); actions.Children.Add(reject); row.Children.Add(actions); decisions.Children.Add(row);
+            }
+            panel.Children.Add(decisions);
+        }
+        if (_accessError is not null) panel.Children.Add(new TextBlock { Text = _accessError, Foreground = Brushes.IndianRed, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) });
+        Body.Content = panel;
+
+        void RunAccess(Action operation)
+        {
+            try { operation(); _accessError = null; }
+            catch (Exception error) { _accessError = error.Message; }
+            ShowAccess();
+        }
+    }
+
+    private StackPanel AccessSection(string titleKey)
+    {
+        var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 14) };
+        panel.Children.Add(new TextBlock { Text = _model.L(titleKey), FontSize = 15, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 8) });
+        return panel;
+    }
+
+    private void AddAccessValue(StackPanel section, string key, string value)
+    {
+        section.Children.Add(new TextBlock { Text = _model.L(key) + ": " + value, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 2), FontSize = key == "access.publicKey" ? 10 : 12, FontFamily = key is "access.publicKey" or "access.device" ? new FontFamily("Consolas") : new FontFamily("Segoe UI") });
+    }
+
+    private UIElement AccessField(string labelKey, string value, Action<string> changed, bool monospaced = false)
+    {
+        var field = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
+        field.Children.Add(new TextBlock { Text = _model.L(labelKey), FontSize = 12, FontWeight = FontWeights.SemiBold });
+        var input = new TextBox { Text = value, TextWrapping = TextWrapping.Wrap, AcceptsReturn = monospaced, FontFamily = monospaced ? new FontFamily("Consolas") : new FontFamily("Segoe UI") };
+        input.TextChanged += (_, _) => changed(input.Text);
+        field.Children.Add(input);
+        return field;
+    }
+
+    private string AccessRole(MemoryRole role) => _model.L("access.role." + role.Value());
+    private string AccessRoleName(string raw) => MemoryRoleRules.TryParse(raw, out var role) ? AccessRole(role) : raw;
+
     private void ShowPrompt()
     {
         var text = _model.EffectiveSystemPrompt();
@@ -1470,6 +3352,24 @@ public partial class SettingsView : UserControl
         AppModel.AppearanceKind.Dark => _model.L("settings.appearanceDark"),
         _ => _model.L("settings.appearanceSystem"),
     };
+
+    private string ResponseStyleTitle() => _model.Language == AppLanguage.Turkish ? "Yanıt stili" : "Response style";
+
+    private string ResponseStyleLabel(AgentResponseStylePreference preference) => _model.Language == AppLanguage.Turkish
+        ? preference switch
+        {
+            AgentResponseStylePreference.Balanced => "Dengeli",
+            AgentResponseStylePreference.Concise => "Kısa",
+            AgentResponseStylePreference.Ultra => "Ultra kısa",
+            _ => "Detaylı",
+        }
+        : preference switch
+        {
+            AgentResponseStylePreference.Balanced => "Balanced",
+            AgentResponseStylePreference.Concise => "Concise",
+            AgentResponseStylePreference.Ultra => "Ultra",
+            _ => "Detailed",
+        };
 
     private string LocalizedTaskState(TaskRunKind state) => state switch
     {
@@ -1515,31 +3415,47 @@ public partial class SettingsView : UserControl
         badge.SetValue(Border.WidthProperty, 25d);
         badge.SetValue(Border.HeightProperty, 25d);
         badge.SetValue(Border.CornerRadiusProperty, new CornerRadius(7));
-        badge.SetValue(Border.BackgroundProperty, TryBrushStatic("PanelBackground"));
+        badge.SetValue(Border.BackgroundProperty, Brushes.White);
+        var content = new FrameworkElementFactory(typeof(Grid));
+        var image = new FrameworkElementFactory(typeof(Image));
+        image.SetBinding(Image.SourceProperty, new Binding("LogoKey") { Converter = ProviderMarkImageConverter.Instance });
+        image.SetValue(Image.WidthProperty, 16d);
+        image.SetValue(Image.HeightProperty, 16d);
+        image.SetValue(Image.StretchProperty, Stretch.Uniform);
+        content.AppendChild(image);
         var text = new FrameworkElementFactory(typeof(TextBlock));
         text.SetBinding(TextBlock.TextProperty, new Binding("LogoKey") { Converter = LogoMarkConverter.Instance });
         text.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         text.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
         text.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
-        badge.AppendChild(text);
+        text.SetBinding(UIElement.VisibilityProperty, new Binding("LogoKey") { Converter = ProviderMarkFallbackVisibilityConverter.Instance });
+        content.AppendChild(text);
+        badge.AppendChild(content);
         return badge;
     }
 
-    private static Border ProviderBadge(string name, string key) => new()
+    private static Border ProviderBadge(string name, string key)
     {
-        Width = 25,
-        Height = 25,
-        CornerRadius = new CornerRadius(7),
-        Background = TryBrushStatic("PanelBackground"),
-        Child = new TextBlock
+        UIElement content = ProviderMarkImageConverter.Load(key) is { } mark
+            ? new Image { Source = mark, Width = 16, Height = 16, Stretch = Stretch.Uniform }
+            : new TextBlock
         {
             Text = LogoMarkConverter.Mark(name, key),
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             FontWeight = FontWeights.Bold,
             FontSize = 10,
-        },
-    };
+            Foreground = Brushes.Black,
+        };
+        return new Border
+        {
+            Width = 25,
+            Height = 25,
+            CornerRadius = new CornerRadius(7),
+            Background = Brushes.White,
+            Child = content,
+        };
+    }
 
     private static Brush? TryBrushStatic(string key) => Application.Current?.TryFindResource(key) as Brush;
 
@@ -1596,6 +3512,145 @@ public partial class SettingsView : UserControl
         return stack;
     }
 
+    private void ShowSandbox()
+    {
+        var model = _model;
+        var panel = new StackPanel();
+        panel.Children.Add(new TextBlock { Text = model.L("settings.sandbox"), FontSize = 22, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 8) });
+        panel.Children.Add(new TextBlock
+        {
+            Text = model.ActiveSandbox is null ? model.L("settings.sandboxOff") : model.L("settings.sandboxOn"),
+            Foreground = TryBrush("TextSecondary"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8),
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = model.SandboxProcessIsolationStatus,
+            Foreground = model.SandboxProcessIsolationAvailable ? TryBrush("TextSecondary") : Brushes.IndianRed,
+            TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12),
+        });
+        if (!string.IsNullOrWhiteSpace(model.SandboxNotice))
+            panel.Children.Add(new TextBlock { Text = model.SandboxNotice, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12) });
+
+        var toolbar = new WrapPanel { Margin = new Thickness(0, 0, 0, 10) };
+        var refresh = new Button { Content = model.L("settings.refresh"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(0, 0, 6, 6) };
+        refresh.Click += async (_, _) => { await model.RefreshAvailableSandboxesAsync(); ShowSandbox(); };
+        toolbar.Children.Add(refresh);
+        if (model.ActiveSandbox is { } active)
+        {
+            var openSandbox = new Button { Content = model.L("settings.sandboxOpen"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(0, 0, 6, 6) };
+            openSandbox.Click += (_, _) => model.RevealSandboxPath(active.Path);
+            var openOrigin = new Button { Content = model.L("settings.sandboxOpenOrigin"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(0, 0, 6, 6) };
+            openOrigin.Click += (_, _) => model.RevealSandboxPath(active.OriginPath);
+            toolbar.Children.Add(openSandbox); toolbar.Children.Add(openOrigin);
+        }
+        panel.Children.Add(toolbar);
+
+        if (model.SandboxRecoveryRequired)
+        {
+            panel.Children.Add(new TextBlock { Text = model.L("settings.sandboxRecoveryRequired"), Foreground = Brushes.IndianRed, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
+            var retry = new Button { Content = model.L("settings.sandboxRetryRecovery"), Padding = new Thickness(10, 4, 10, 4), IsEnabled = !model.Bridge.AnyRunBusy };
+            retry.Click += async (_, _) => await model.RetrySandboxRecoveryAsync();
+            panel.Children.Add(retry);
+        }
+
+        if (model.ActiveSandbox is { } sandbox)
+        {
+            panel.Children.Add(SettingLine(model.L("settings.sandboxName"), sandbox.Name));
+            panel.Children.Add(SettingLine(model.L("settings.sandboxOrigin"), sandbox.OriginPath));
+            panel.Children.Add(SettingLine(model.L("settings.sandboxBranch"), sandbox.Branch));
+            var network = new CheckBox { Content = model.L("settings.sandboxNetwork"), IsChecked = model.SandboxNetworkAccess, Margin = new Thickness(0, 8, 0, 2) };
+            network.Checked += (_, _) => model.SandboxNetworkAccess = true;
+            network.Unchecked += (_, _) => model.SandboxNetworkAccess = false;
+            panel.Children.Add(network);
+            panel.Children.Add(new TextBlock { Text = model.L("settings.sandboxNetwork.hint"), FontSize = 11, Foreground = TryBrush("TextSecondary"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 10) });
+            var actions = new WrapPanel { Margin = new Thickness(0, 0, 0, 10) };
+            var merge = new Button { Content = model.L("settings.sandboxMerge"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(0, 0, 6, 6), IsEnabled = !model.Bridge.AnyRunBusy && !model.SandboxCleanupPending && !model.SandboxRecoveryRequired && model.SandboxConflict is null };
+            merge.Click += async (_, _) => await model.ExitSandboxAsync(merge: true);
+            var discard = new Button { Content = model.L("settings.sandboxDiscard"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(0, 0, 6, 6), IsEnabled = !model.Bridge.AnyRunBusy && !model.SandboxRecoveryRequired };
+            discard.Click += async (_, _) =>
+            {
+                if (MessageBox.Show(Window.GetWindow(this), model.L("settings.sandboxDiscardConfirm"), model.L("settings.sandbox"), MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes)
+                    await model.ExitSandboxAsync(merge: false);
+            };
+            actions.Children.Add(merge); actions.Children.Add(discard);
+            panel.Children.Add(actions);
+            if (model.SandboxCleanupPending)
+            {
+                panel.Children.Add(new TextBlock { Text = model.L("settings.sandboxCleanupPending"), Foreground = Brushes.DarkOrange, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 6) });
+                var cleanup = new Button { Content = model.L("settings.sandboxRetryCleanup"), Padding = new Thickness(10, 4, 10, 4), IsEnabled = !model.Bridge.AnyRunBusy };
+                cleanup.Click += async (_, _) => await model.RetrySandboxCleanupAsync();
+                panel.Children.Add(cleanup);
+            }
+            if (model.SandboxConflict is { } conflict)
+            {
+                panel.Children.Add(new TextBlock { Text = model.L("settings.sandboxConflicts"), FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 12, 0, 4) });
+                foreach (var file in conflict.Files) panel.Children.Add(new TextBlock { Text = "• " + file, FontFamily = new FontFamily("Consolas"), TextWrapping = TextWrapping.Wrap });
+                var conflictActions = new WrapPanel { Margin = new Thickness(0, 8, 0, 8) };
+                var prepare = new Button { Content = model.L("settings.sandboxPrepareResolution"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(0, 0, 6, 6), IsEnabled = !model.SandboxResolutionBusy && !model.SandboxRecoveryRequired };
+                prepare.Click += async (_, _) => await model.PrepareSandboxResolutionAsync();
+                var ask = new Button { Content = model.L("settings.sandboxAskAgent"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(0, 0, 6, 6), IsEnabled = !model.Bridge.AnyRunBusy && !model.SandboxResolutionBusy };
+                ask.Click += async (_, _) => await model.AskAgentToResolveSandboxConflictAsync();
+                conflictActions.Children.Add(prepare); conflictActions.Children.Add(ask);
+                if (model.SandboxResolutionPreview is not null)
+                {
+                    var previewButton = new Button { Content = model.L("settings.sandboxPreview"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(0, 0, 6, 6) };
+                    previewButton.Click += async (_, _) => await model.PreviewSandboxResolutionAsync();
+                    conflictActions.Children.Add(previewButton);
+                    var cancel = new Button { Content = model.L("settings.sandboxCancelResolution"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(0, 0, 6, 6), IsEnabled = !model.SandboxResolutionBusy };
+                    cancel.Click += async (_, _) => await model.CancelSandboxResolutionAsync();
+                    conflictActions.Children.Add(cancel);
+                }
+                panel.Children.Add(conflictActions);
+                if (model.SandboxResolutionPreview is { } preview)
+                {
+                    panel.Children.Add(new TextBlock { Text = model.L("settings.sandboxResolutionReady"), FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 4, 0, 4) });
+                    panel.Children.Add(new TextBlock { Text = model.L("settings.sandboxFingerprint") + ": " + preview.Fingerprint, FontSize = 10, Foreground = TryBrush("TextSecondary"), TextWrapping = TextWrapping.Wrap });
+                    if (preview.UnresolvedFiles.Count > 0)
+                        panel.Children.Add(new TextBlock { Text = model.L("settings.sandboxUnresolved") + ": " + string.Join(", ", preview.UnresolvedFiles), Foreground = Brushes.IndianRed, TextWrapping = TextWrapping.Wrap });
+                    if (preview.IsTruncated) panel.Children.Add(ErrorText(model.L("settings.sandboxResolutionIncomplete")));
+                    var diff = new TextBox { Text = preview.Diff, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.NoWrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, MinHeight = 180, MaxHeight = 330, FontFamily = new FontFamily("Consolas") };
+                    panel.Children.Add(diff);
+                    var approve = new Button { Content = model.L("settings.sandboxApprove"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(0, 8, 0, 0), IsEnabled = !preview.IsTruncated && preview.UnresolvedFiles.Count == 0 && !model.SandboxResolutionBusy && !model.Bridge.AnyRunBusy };
+                    approve.Click += async (_, _) => await model.ApplySandboxResolutionAsync();
+                    panel.Children.Add(approve);
+                }
+            }
+        }
+        else
+        {
+            panel.Children.Add(new TextBlock { Text = model.L("settings.workspace") + ": " + (string.IsNullOrWhiteSpace(model.WorkspacePath) ? "—" : model.WorkspacePath), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
+            var create = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 12) };
+            var name = new TextBox { Text = _sandboxName, Width = 200, Padding = new Thickness(7, 4, 7, 4), Margin = new Thickness(0, 0, 6, 0) };
+            name.TextChanged += (_, _) => _sandboxName = name.Text;
+            var enter = new Button { Content = model.L("settings.sandboxEnter"), Padding = new Thickness(10, 4, 10, 4), IsEnabled = !string.IsNullOrWhiteSpace(model.WorkspacePath) && !model.IsRemoteWorkLocation && !model.SandboxRecoveryRequired && !model.Bridge.AnyRunBusy };
+            enter.Click += async (_, _) => await model.EnterSandboxAsync(_sandboxName);
+            create.Children.Add(name); create.Children.Add(enter); panel.Children.Add(create);
+            if (model.AvailableSandboxes.Count > 0)
+            {
+                panel.Children.Add(new TextBlock { Text = model.L("settings.sandboxRecovery"), FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 8, 0, 4) });
+                foreach (var candidate in model.AvailableSandboxes)
+                {
+                    var row = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
+                    var recover = new Button { Content = model.L("settings.sandboxRecover"), Padding = new Thickness(8, 3, 8, 3), Tag = candidate };
+                    recover.Click += async (_, _) => await model.RecoverSandboxAsync(candidate);
+                    DockPanel.SetDock(recover, Dock.Right);
+                    row.Children.Add(recover);
+                    row.Children.Add(new TextBlock { Text = $"{candidate.Name} · {candidate.Branch}\n{candidate.Path}", TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
+                    panel.Children.Add(row);
+                }
+            }
+        }
+        Body.Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+    }
+
+    private static UIElement SettingLine(string label, string value)
+    {
+        var panel = new StackPanel { Margin = new Thickness(0, 2, 0, 2) };
+        panel.Children.Add(new TextBlock { Text = label, FontWeight = FontWeights.SemiBold });
+        panel.Children.Add(new TextBlock { Text = value, TextWrapping = TextWrapping.Wrap, FontFamily = new FontFamily("Consolas"), Foreground = TryBrush("TextSecondary") });
+        return panel;
+    }
+
     private static TextBlock ErrorText(string text) => new()
     {
         Text = text,
@@ -1648,4 +3703,40 @@ internal sealed class LogoMarkConverter : IValueConverter
             ? string.Concat(words.Take(2).Select(word => word[0])).ToUpperInvariant()
             : source[..Math.Min(2, source.Length)].ToUpperInvariant();
     }
+}
+
+internal sealed class ProviderMarkImageConverter : IValueConverter
+{
+    public static readonly ProviderMarkImageConverter Instance = new();
+    private static readonly Dictionary<string, BitmapImage> Cache = new(StringComparer.OrdinalIgnoreCase);
+
+    public object? Convert(object value, Type targetType, object parameter, CultureInfo culture) => Load(value as string ?? "");
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+
+    public static BitmapImage? Load(string key)
+    {
+        var resource = ProviderMarkCatalog.ResourceNameFor(key);
+        if (resource is null) return null;
+        if (Cache.TryGetValue(resource, out var cached)) return cached;
+        try
+        {
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.UriSource = new Uri($"pack://application:,,,/Resources/ProviderMarks/{resource}.png", UriKind.Absolute);
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.EndInit();
+            image.Freeze();
+            Cache[resource] = image;
+            return image;
+        }
+        catch { return null; }
+    }
+}
+
+internal sealed class ProviderMarkFallbackVisibilityConverter : IValueConverter
+{
+    public static readonly ProviderMarkFallbackVisibilityConverter Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        ProviderMarkCatalog.ResourceNameFor(value as string) is null ? Visibility.Visible : Visibility.Collapsed;
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }

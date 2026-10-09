@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-08T21:34:37Z",
+  "eventId" : "0F2BEA51-1E72-4335-9895-6CA76921D233",
+  "lamport" : 90,
+  "parents" : [
+    "177E08C1-0DB9-4D43-B3C5-C7D4CE2DF83C"
+  ],
+  "payload" : {
+    "commandSummary" : null,
+    "name" : "read_file",
+    "path" : "linux\/DotsHarness\/src\/DotsHarness\/DotsHarness.csproj",
+    "resultBytes" : 1722,
+    "resultStatus" : "completed",
+    "runId" : "0BD4562A-0972-4C1A-AFF0-3BEA70B4F18C"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "Zna0fgnsnnvrlRbBa\/FZgUNwv7Qjto6TUAx7Qte1bRHFkuhywbrmtTVyD0Bc7iZz3eaHJKZzdHx4IW2VrwuZWw=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

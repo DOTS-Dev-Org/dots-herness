@@ -1,0 +1,31 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-09-24T22:13:17Z",
+  "eventId" : "B0110B49-3150-4E70-ABEC-E5C8DDF32132",
+  "lamport" : 31,
+  "parents" : [
+    "BD98455B-B33C-4199-A5D0-03022D232387"
+  ],
+  "payload" : {
+    "decisionProposed" : false,
+    "preferenceUpdated" : false,
+    "runId" : "DFEACEA1-7C89-4FE7-87B7-C7CB1C794E61",
+    "status" : "completed"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "9mFkGMu+Vh9oT2qI44DBXwAv3YAQFQHz9ClIElsLRkqZvuSAhF32Rv\/oywHzPj8io0\/RLBYop7Dqrs8Ts+fMEA=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "semantic.completed"
+}

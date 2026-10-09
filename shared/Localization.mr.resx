@@ -7,10 +7,15 @@
   <data name="language.system" xml:space="preserve"><value>सिस्टम भाषा</value></data>
   <data name="settings.language" xml:space="preserve"><value>अॅपची भाषा</value></data>
   <data name="settings.general" xml:space="preserve"><value>सामान्य</value></data>
-  <data name="settings.back" xml:space="preserve"><value>गप्पांकडे परत</value></data>
+  <data name="settings.back" xml:space="preserve"><value>प्रकल्पांकडे परत</value></data>
   <data name="settings.appearance" xml:space="preserve"><value>दिसणे</value></data>
   <data name="settings.theme" xml:space="preserve"><value>थीम</value></data>
   <data name="settings.confirmBeforeExit" xml:space="preserve"><value>बंद करण्यापूर्वी विचारा</value></data>
+  <data name="settings.closeToTray" xml:space="preserve"><value>विंडो बंद केल्यावर ट्रेमध्ये चालू ठेवा</value></data>
+  <data name="settings.closeToTray.hint" xml:space="preserve"><value>विंडो लपवल्यावर रन, टर्मिनल आणि शेड्यूल केलेली कामे चालू राहतात; ट्रे आयकॉन ती परत आणते.</value></data>
+  <data name="tray.show" xml:space="preserve"><value>विंडो उघडा</value></data>
+  <data name="tray.quit" xml:space="preserve"><value>बाहेर पडा</value></data>
+  <data name="tray.noChats" xml:space="preserve"><value>सध्या कोणतीही चॅट नाही</value></data>
   <data name="settings.workspace" xml:space="preserve"><value>वर्कस्पेस</value></data>
   <data name="settings.folder" xml:space="preserve"><value>फोल्डर</value></data>
   <data name="settings.chooseWorkspace" xml:space="preserve"><value>कार्यक्षेत्र निवडा</value></data>
@@ -154,7 +159,7 @@
   <data name="settings.tasks" xml:space="preserve"><value>कार्ये</value></data>
   <data name="settings.systemPrompt" xml:space="preserve"><value>सिस्टम प्रॉम्प्ट</value></data>
   <data name="sidebar.chats" xml:space="preserve"><value>चॅट्स</value></data>
-  <data name="sidebar.newChat" xml:space="preserve"><value>नवीन चॅट</value></data>
+  <data name="sidebar.newChat" xml:space="preserve"><value>नवीन संभाषण</value></data>
   <data name="sidebar.settings" xml:space="preserve"><value>सेटिंग्ज</value></data>
   <data name="sidebar.userMenu" xml:space="preserve"><value>वापरकर्ता मेनू</value></data>
   <data name="conversation.model" xml:space="preserve"><value>मॉडेल</value></data>
@@ -293,6 +298,12 @@
   <data name="usage.resetsIn" xml:space="preserve"><value>{0} मध्ये रीसेट होईल</value></data>
   <data name="usage.resetsOn" xml:space="preserve"><value>{0} ला रीसेट होईल</value></data>
   <data name="usage.resetsAvailable" xml:space="preserve"><value>{0} रीसेट उपलब्ध</value></data>
+  <data name="usage.manageResets" xml:space="preserve"><value>Manage resets</value></data>
+  <data name="usage.useReset" xml:space="preserve"><value>Use reset</value></data>
+  <data name="usage.resetTitle" xml:space="preserve"><value>Use a Claude limit reset?</value></data>
+  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude's Usage page will open. Sign in to {0} and review the reset offered to that account. To use it, click Reset for free and confirm in Claude. Once used, a reset cannot be undone. Limits refresh when you return to HerNess.</value></data>
+  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Could not open Claude. Check that the account is still connected, then try again.</value></data>
+  <data name="usage.openClaude" xml:space="preserve"><value>Open Claude</value></data>
   <data name="usage.needLogin" xml:space="preserve"><value>मर्यादा पाहण्यासाठी Claude मध्ये साइन इन करा</value></data>
   <data name="usage.noLimitInfo" xml:space="preserve"><value>मर्यादेची माहिती नाही</value></data>
   <data name="usage.loadFailed" xml:space="preserve"><value>वापर लोड करता आला नाही</value></data>
@@ -316,4 +327,312 @@
   <data name="feedback.good" xml:space="preserve"><value>चांगले उत्तर</value></data>
   <data name="feedback.bad" xml:space="preserve"><value>खराब उत्तर</value></data>
   <data name="conversation.translate" xml:space="preserve"><value>भाषांतर करा</value></data>
+  <data name="queue.waitingForPlan" xml:space="preserve"><value>योजनेच्या मंजुरीची प्रतीक्षा</value></data>
+  <data name="project.missing.title" xml:space="preserve"><value>प्रकल्प फोल्डर सापडले नाही: {0}</value></data>
+  <data name="project.missing.message" xml:space="preserve"><value>'{0}' येथील प्रकल्प फोल्डर हलवले किंवा हटवले असू शकते. त्याचे नवीन स्थान निवडा किंवा प्रकल्प काढा.</value></data>
+  <data name="project.missing.locate" xml:space="preserve"><value>स्थान शोधा…</value></data>
+  <data name="project.missing.readOnly" xml:space="preserve"><value>प्रकल्प फोल्डर उपलब्ध नाही. तुम्ही मागील संभाषणे पाहू शकता; नवीन स्थान निवडेपर्यंत नवीन संभाषण सुरू करणे आणि संदेश पाठवणे बंद राहील.</value></data>
+  <data name="conversation.ranCommand" xml:space="preserve"><value>Ran 1 command</value></data>
+  <data name="conversation.ranCommands" xml:space="preserve"><value>Ran {0} commands</value></data>
+  <data name="conversation.runningTools" xml:space="preserve"><value>Running tools…</value></data>
+  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Thinking…</value></data>
+  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} tokens</value></data>
+  <data name="usage.context.window" xml:space="preserve"><value>Context window</value></data>
+  <data name="usage.planLimits" xml:space="preserve"><value>Plan usage limits</value></data>
+  <data name="composer.queue.one" xml:space="preserve"><value>1 message queued</value></data>
+  <data name="composer.queue.many" xml:space="preserve"><value>{0} messages queued</value></data>
+  <data name="composer.queue.edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Clear the message box to edit</value></data>
+  <data name="composer.queue.remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="git.createPR" xml:space="preserve"><value>Create PR</value></data>
+  <data name="git.hideBar" xml:space="preserve"><value>Hide</value></data>
+  <data name="composer.queue.next" xml:space="preserve"><value>Next: {0}</value></data>
+  <data name="sidebar.pinProject" xml:space="preserve"><value>प्रकल्प पिन करा</value></data>
+  <data name="sidebar.unpinProject" xml:space="preserve"><value>प्रकल्प अनपिन करा</value></data>
+  <data name="sidebar.sortLastUpdate" xml:space="preserve"><value>शेवटचे अद्यतन</value></data>
+  <data name="sidebar.sortPriority" xml:space="preserve"><value>प्राधान्य</value></data>
+  <data name="settings.autoApprovePlans" xml:space="preserve"><value>प्लॅन आपोआप मंजूर करा</value></data>
+  <data name="conversation.fullToolOutput" xml:space="preserve"><value>टूलचे संपूर्ण आउटपुट</value></data>
+  <data name="workspace.noProject" xml:space="preserve"><value>प्रोजेक्ट नाही</value></data>
+  <data name="conversation.cancelPlan" xml:space="preserve"><value>प्लॅन रद्द करा</value></data>
+  <data name="conversation.cancelPlanHelp" xml:space="preserve"><value>हा प्लॅन रद्द करा आणि रांगेतील संदेश मोकळे करा</value></data>
+  <data name="media.generated" xml:space="preserve"><value>प्रतिमा तयार झाली.</value></data>
+  <data name="media.fallbackUsed" xml:space="preserve"><value>निवडलेला प्रदाता ही प्रतिमा तयार करू शकला नाही. ती {0}/{1} द्वारे एकदाच केलेल्या फॉलबॅक विनंतीने तयार केली; मुख्य संभाषणाचा प्रदाता आणि मॉडेल बदलले नाहीत, त्यामुळे त्याचा प्रॉम्प्ट कॅशे तसाच आहे.</value></data>
+  <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>मी {0} वापरून ही प्रतिमा तयार करू शकत नाही. फॉलबॅक म्हणून एखादा इमेज API किंवा प्रदाता कॉन्फिगर करा. फक्त प्रतिमेसाठी मुख्य चॅट मॉडेल बदलल्यास प्रदात्याचा प्रॉम्प्ट कॅशे बिघडू शकतो.</value></data>
+  <data name="feedback.close" xml:space="preserve"><value>बंद करा</value></data>
+  <data name="feedback.commentPlaceholder" xml:space="preserve"><value>तपशील शेअर करा (ऐच्छिक)</value></data>
+  <data name="feedback.conversationNotFound" xml:space="preserve"><value>हे चॅट आता उपलब्ध नाही.</value></data>
+  <data name="feedback.disclaimer" xml:space="preserve"><value>HerNess स्थानिक पातळीवर सुधारण्यासाठी तुमचा अभिप्राय वापरला जाऊ शकतो.</value></data>
+  <data name="feedback.messageNotFound" xml:space="preserve"><value>हे उत्तर आता उपलब्ध नाही.</value></data>
+  <data name="feedback.missingPrompt" xml:space="preserve"><value>या उत्तराची विनंती सापडली नाही.</value></data>
+  <data name="feedback.missingResponse" xml:space="preserve"><value>या उत्तरामध्ये पुनरावलोकन करण्यासाठी मजकूर नाही.</value></data>
+  <data name="feedback.persistenceFailed" xml:space="preserve"><value>अभिप्राय स्थानिकरित्या जतन करता आला नाही.</value></data>
+  <data name="feedback.streamingMessage" xml:space="preserve"><value>अभिप्राय पाठवण्यापूर्वी उत्तर पूर्ण होईपर्यंत प्रतीक्षा करा.</value></data>
+  <data name="feedback.submit" xml:space="preserve"><value>सबमिट करा</value></data>
+  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Apply it elsewhere</value></data>
+  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Broke an existing feature</value></data>
+  <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>माझ्या सूचनांचे पालन केले नाही</value></data>
+  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Didn't follow project style</value></data>
+  <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>जलद आणि कार्यक्षम</value></data>
+  <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>माझ्या सूचनांचे पालन केले</value></data>
+  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Ignored project architecture</value></data>
+  <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>चुकीचे किंवा अपूर्ण</value></data>
+  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Keep the project style</value></data>
+  <data name="feedback.tag.lost_context" xml:space="preserve"><value>संदर्भ हरवला</value></data>
+  <data name="feedback.tag.negative_other" xml:space="preserve"><value>इतर</value></data>
+  <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>विषयाबाहेर / कक्षेबाहेर</value></data>
+  <data name="feedback.tag.output_quality" xml:space="preserve"><value>चांगली कोड / आउटपुट गुणवत्ता</value></data>
+  <data name="feedback.tag.positive_other" xml:space="preserve"><value>इतर</value></data>
+  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Reuse this architecture</value></data>
+  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Reuse this token pattern</value></data>
+  <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>सुरक्षा किंवा कायदेशीर समस्या</value></data>
+  <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>मंद किंवा सदोष</value></data>
+  <data name="feedback.tag.task_completed" xml:space="preserve"><value>माझे काम पूर्ण केले</value></data>
+  <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>उपयुक्त स्वायत्तता</value></data>
+  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Wrong theme or token</value></data>
+  <data name="feedback.title" xml:space="preserve"><value>अभिप्राय शेअर करा</value></data>
+  <data name="feedback.unavailable" xml:space="preserve"><value>अभिप्राय फक्त वर्कस्पेस चॅटमध्ये उपलब्ध आहे.</value></data>
+  <data name="feedback.unsupportedMessage" xml:space="preserve"><value>अभिप्राय फक्त असिस्टंटच्या उत्तरांसाठी पाठवता येतो.</value></data>
+  <data name="router.priorityUp" xml:space="preserve"><value>प्राधान्य वाढवले</value></data>
+  <data name="router.priorityDown" xml:space="preserve"><value>प्राधान्य कमी केले</value></data>
+  <data name="conversation.cacheExpired.explanation" xml:space="preserve"><value>कॅशची अंदाजित मुदत संपली आहे. प्रॉम्प्ट कॅश ही प्रदात्याकडील तात्पुरती प्रक्रिया स्थिती आहे; तुमचा चॅट इतिहास जतन केलेलाच राहतो. संपूर्ण इतिहासासह पुढे सुरू ठेवल्यास ते टोकन पुन्हा नवीन इनपुट म्हणून मोजले जाऊ शकतात. प्रदात्याकडे कॅश अजूनही होता की नाही, याची खात्री पुढील विनंतीच्या वापर डेटावरूनच होते.</value></data>
+  <data name="conversation.cacheExpired.infoTitle" xml:space="preserve"><value>मला हे का दिसत आहे?</value></data>
+  <data name="conversation.cacheExpired.notice" xml:space="preserve"><value>कॅशची मुदत संपली असू शकते; पुढे सुरू ठेवल्यास अधिक टोकन वापरले जाऊ शकतात आणि खर्च वाढू शकतो. छोट्या सारांशासह नवीन चॅट सुरू करा.</value></data>
+  <data name="conversation.filesChangedCount" xml:space="preserve"><value>{0} फाइल बदलल्या</value></data>
+  <data name="conversation.filesLess" xml:space="preserve"><value>कमी फाइल दाखवा</value></data>
+  <data name="conversation.filesLineSummary" xml:space="preserve"><value>+{0} −{1}</value></data>
+  <data name="conversation.filesMore" xml:space="preserve"><value>आणखी {0} फाइल दाखवा</value></data>
+  <data name="conversation.filesReverted" xml:space="preserve"><value>फाइलमधील बदल पूर्ववत केले.</value></data>
+  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>The saved file version is unavailable, so the workspace was left unchanged.</value></data>
+  <data name="conversation.undoChanges" xml:space="preserve"><value>पूर्ववत करा</value></data>
+  <data name="conversation.viewChanges" xml:space="preserve"><value>बदल पाहा</value></data>
+  <data name="settings.archive" xml:space="preserve"><value>संग्रह</value></data>
+  <data name="archive.title" xml:space="preserve"><value>संग्रहित संभाषणे</value></data>
+  <data name="archive.empty" xml:space="preserve"><value>संग्रहित संभाषणे नाहीत.</value></data>
+  <data name="archive.confirmDelete" xml:space="preserve"><value>हे संभाषण कायमचे हटवायचे?</value></data>
+  <data name="archive.deletePermanently" xml:space="preserve"><value>कायमचे हटवा</value></data>
+  <data name="archive.cancel" xml:space="preserve"><value>रद्द करा</value></data>
+  <data name="archive.restore" xml:space="preserve"><value>संग्रहातून काढा</value></data>
+  <data name="archive.delete" xml:space="preserve"><value>हटवा</value></data>
+  <data name="archive.deleteFailed" xml:space="preserve"><value>संभाषण हटवता आले नाही.</value></data>
+  <data name="archive.restoreFailed" xml:space="preserve"><value>संभाषण पुनर्संचयित करता आले नाही.</value></data>
+  <data name="conversation.lineCountsUnavailable" xml:space="preserve"><value>ओळींची संख्या उपलब्ध नाही</value></data>
+  <data name="conversation.historyConflict" xml:space="preserve"><value>या फेरीनंतर कार्यक्षेत्रातील फाइल बदलल्या ({0}); कोणतीही फाइल पुनर्संचयित केली नाही.</value></data>
+  <data name="conversation.historyRewound" xml:space="preserve"><value>संभाषण आणि कार्यक्षेत्रातील बदल मागे घेतले.</value></data>
+  <data name="sidebar.archiveChat" xml:space="preserve"><value>संभाषण संग्रहित करा</value></data>
+  <data name="sidebar.pinChat" xml:space="preserve"><value>चॅट पिन करा</value></data>
+  <data name="sidebar.unpinChat" xml:space="preserve"><value>चॅट अनपिन करा</value></data>
+
+  <data name="workLocation.title" xml:space="preserve"><value>मध्ये काम करा</value></data>
+  <data name="workLocation.help" xml:space="preserve"><value>हे काम कुठे चालेल ते निवडा</value></data>
+  <data name="workLocation.local" xml:space="preserve"><value>लोकल</value></data>
+  <data name="workLocation.remoteHosts" xml:space="preserve"><value>दूरस्थ संगणक</value></data>
+  <data name="workLocation.noHosts" xml:space="preserve"><value>अजून कोणतेही SSH यजमान नाहीत</value></data>
+  <data name="workLocation.chooseRemoteFolder" xml:space="preserve"><value>दूरस्थ फोल्डर निवडा…</value></data>
+  <data name="workLocation.remoteFolderPath" xml:space="preserve"><value>मार्ग</value></data>
+  <data name="workLocation.remoteFolderList" xml:space="preserve"><value>यादी</value></data>
+  <data name="workLocation.remoteFolderUp" xml:space="preserve"><value>वरचे फोल्डर</value></data>
+  <data name="workLocation.remoteFolderEmpty" xml:space="preserve"><value>इथे उपफोल्डर नाहीत</value></data>
+  <data name="workLocation.remoteFolderUse" xml:space="preserve"><value>हे फोल्डर वापरा</value></data>
+  <data name="workLocation.connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="workLocation.addHost" xml:space="preserve"><value>संगणक जोडा…</value></data>
+  <data name="workLocation.useLocal" xml:space="preserve"><value>Use this computer</value></data>
+  <data name="settings.sshAlias" xml:space="preserve"><value>उपनाव</value></data>
+  <data name="settings.sshHostName" xml:space="preserve"><value>यजमान किंवा IP</value></data>
+  <data name="settings.sshUser" xml:space="preserve"><value>वापरकर्तानाव</value></data>
+  <data name="settings.sshPort" xml:space="preserve"><value>पोर्ट</value></data>
+  <data name="settings.sshRemove" xml:space="preserve"><value>काढा</value></data>
+  <data name="ssh.busy" xml:space="preserve"><value>कामाची जागा बदलण्यापूर्वी सुरू असलेले काम संपण्याची वाट पाहा.</value></data>
+  <data name="ssh.connecting" xml:space="preserve"><value>{0} शी जोडत आहे…</value></data>
+  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Choose a remote folder before starting a task.</value></data>
+  <data name="ssh.scanning" xml:space="preserve"><value>यजमान किल्ली आणत आहे…</value></data>
+  <data name="ssh.fingerprintTitle" xml:space="preserve"><value>हा {0} चा फिंगरप्रिंट आहे का?</value></data>
+  <data name="ssh.fingerprintMessage" xml:space="preserve"><value>विश्वास ठेवण्याआधी सर्व्हरशी ताळमेळ पाहा. जुळल्यासच पुढे जा.</value></data>
+  <data name="ssh.trustAndConnect" xml:space="preserve"><value>विश्वास ठेवून जोडा</value></data>
+  <data name="ssh.error.unavailable" xml:space="preserve"><value>या Mac वर ssh सापडला नाही.</value></data>
+  <data name="ssh.error.notReachable" xml:space="preserve"><value>{0} पर्यंत पोहोचता आले नाही.</value></data>
+  <data name="conversation.choosePane" xml:space="preserve"><value>Choose a pane</value></data>
+  <data name="sidebar.toggle" xml:space="preserve"><value>Show or hide sidebar</value></data>
+  <data name="settings.mcpServers" xml:space="preserve"><value>MCP servers</value></data>
+  <data name="mcp.empty" xml:space="preserve"><value>No MCP servers configured.</value></data>
+  <data name="mcp.addServer" xml:space="preserve"><value>Add server</value></data>
+  <data name="mcp.name" xml:space="preserve"><value>Name</value></data>
+  <data name="mcp.transport" xml:space="preserve"><value>Transport</value></data>
+  <data name="mcp.http" xml:space="preserve"><value>HTTP</value></data>
+  <data name="mcp.stdio" xml:space="preserve"><value>stdio</value></data>
+  <data name="mcp.url" xml:space="preserve"><value>URL</value></data>
+  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (optional)</value></data>
+  <data name="mcp.executable" xml:space="preserve"><value>Executable path</value></data>
+  <data name="mcp.arguments" xml:space="preserve"><value>Arguments (space-separated)</value></data>
+  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Auto-run tools the server marks read-only</value></data>
+  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Server annotations are untrusted. Enabling this skips approval only for tools marked read-only and not destructive.</value></data>
+  <data name="mcp.test" xml:space="preserve"><value>Test</value></data>
+  <data name="mcp.add" xml:space="preserve"><value>Add</value></data>
+  <data name="mcp.reconnect" xml:space="preserve"><value>Reconnect</value></data>
+  <data name="mcp.remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="mcp.idle" xml:space="preserve"><value>Idle</value></data>
+  <data name="mcp.connecting" xml:space="preserve"><value>Connecting…</value></data>
+  <data name="mcp.connected" xml:space="preserve"><value>Connected · {0} tool(s)</value></data>
+  <data name="mcp.failed" xml:space="preserve"><value>Failed: {0}</value></data>
+  <data name="mcp.testing" xml:space="preserve"><value>Testing…</value></data>
+  <data name="mcp.testConnected" xml:space="preserve"><value>Connected. {0} tool(s) available.</value></data>
+  <data name="conversation.toolInput" xml:space="preserve"><value>Tool input</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Memory</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Memory vault</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="memory.reveal" xml:space="preserve"><value>Open .mem folder</value></data>
+  <data name="memory.refused" xml:space="preserve"><value>Not saved. The entry may contain a credential, exceed its limit, or the workspace may be unavailable.</value></data>
+  <data name="memory.noWorkspace" xml:space="preserve"><value>Select a local workspace to view its memory.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Memory starts after the first prompt in this workspace.</value></data>
+  <data name="memory.search" xml:space="preserve"><value>Search memory</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Select a note to view it.</value></data>
+  <data name="memory.save" xml:space="preserve"><value>Save</value></data>
+  <data name="memory.forget" xml:space="preserve"><value>Forget</value></data>
+  <data name="memory.ownRules" xml:space="preserve"><value>Your own rules</value></data>
+  <data name="memory.rulesHelp" xml:space="preserve"><value>These rules are added to every request in this project.</value></data>
+  <data name="memory.lessons" xml:space="preserve"><value>Learned lessons</value></data>
+  <data name="memory.learningStats" xml:space="preserve"><value>{0} turns logged; {1} were corrected or undone.</value></data>
+  <data name="memory.links" xml:space="preserve"><value>Links</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Linked mentions</value></data>
+  <data name="memory.userAuthored" xml:space="preserve"><value>user-authored</value></data>
+  <data name="memory.inferred" xml:space="preserve"><value>inferred</value></data>
+  <data name="memory.learnedCount" xml:space="preserve"><value>learned {0}×</value></data>
+  <data name="memory.usedCount" xml:space="preserve"><value>used {0}×</value></data>
+  <data name="memory.inactive" xml:space="preserve"><value>no longer applied</value></data>
+  <data name="memory.pin" xml:space="preserve"><value>Pin</value></data>
+  <data name="memory.edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="memory.cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Workspace access</value></data>
+  <data name="access.currentActor" xml:space="preserve"><value>Current actor</value></data>
+  <data name="access.role" xml:space="preserve"><value>Role</value></data>
+  <data name="access.notAuthorized" xml:space="preserve"><value>Not authorized</value></data>
+  <data name="access.score" xml:space="preserve"><value>Score</value></data>
+  <data name="access.device" xml:space="preserve"><value>Device</value></data>
+  <data name="access.publicKey" xml:space="preserve"><value>Public key</value></data>
+  <data name="access.memoryRevision" xml:space="preserve"><value>Memory revision</value></data>
+  <data name="access.members" xml:space="preserve"><value>Members</value></data>
+  <data name="access.noMembers" xml:space="preserve"><value>No members yet.</value></data>
+  <data name="access.revoke" xml:space="preserve"><value>Revoke</value></data>
+  <data name="access.revoked" xml:space="preserve"><value>revoked</value></data>
+  <data name="access.inviteDevice" xml:space="preserve"><value>Invite device</value></data>
+  <data name="access.displayName" xml:space="preserve"><value>Display name</value></data>
+  <data name="access.newDevicePublicKey" xml:space="preserve"><value>New device public key</value></data>
+  <data name="access.createInvitation" xml:space="preserve"><value>Create signed invitation</value></data>
+  <data name="access.acceptInvitation" xml:space="preserve"><value>Accept invitation</value></data>
+  <data name="access.signedInvitation" xml:space="preserve"><value>Signed invitation</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Accept</value></data>
+  <data name="access.reject" xml:space="preserve"><value>Reject</value></data>
+  <data name="access.pendingDecisions" xml:space="preserve"><value>Pending decisions</value></data>
+  <data name="access.noPendingDecisions" xml:space="preserve"><value>No pending project decisions.</value></data>
+  <data name="access.noWorkspace" xml:space="preserve"><value>Select a local workspace to manage access.</value></data>
+  <data name="access.scoreValue" xml:space="preserve"><value>Score: {0}</value></data>
+  <data name="access.initialize" xml:space="preserve"><value>Initialize workspace memory</value></data>
+  <data name="access.initializeHelp" xml:space="preserve"><value>Workspace access uses a signed memory log. Initializing creates the owner identity and event log in this project's .mem folder.</value></data>
+  <data name="access.role.owner" xml:space="preserve"><value>Owner</value></data>
+  <data name="access.role.approver" xml:space="preserve"><value>Approver</value></data>
+  <data name="access.role.contributor" xml:space="preserve"><value>Contributor</value></data>
+  <data name="access.role.observer" xml:space="preserve"><value>Observer</value></data>
+  <data name="settings.sandbox" xml:space="preserve"><value>Sandbox</value></data>
+  <data name="settings.sandboxOff" xml:space="preserve"><value>Off — the agent works directly in your checkout.</value></data>
+  <data name="settings.sandboxOn" xml:space="preserve"><value>On — the agent works in a separate git worktree.</value></data>
+  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Recovery is required before sandbox operations can continue.</value></data>
+  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Retry recovery</value></data>
+  <data name="settings.sandboxName" xml:space="preserve"><value>Name</value></data>
+  <data name="settings.sandboxEnter" xml:space="preserve"><value>Start sandbox</value></data>
+  <data name="settings.sandboxMerge" xml:space="preserve"><value>Merge and exit</value></data>
+  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Discard and exit</value></data>
+  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Origin</value></data>
+  <data name="settings.sandboxBranch" xml:space="preserve"><value>Branch</value></data>
+  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Allow network for new processes</value></data>
+  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>This applies only to new commands. Existing terminal sessions keep their current policy.</value></data>
+  <data name="settings.sandboxOpen" xml:space="preserve"><value>Open sandbox</value></data>
+  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Open origin</value></data>
+  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Conflicts</value></data>
+  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Prepare resolution</value></data>
+  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Ask agent</value></data>
+  <data name="settings.sandboxPreview" xml:space="preserve"><value>Refresh preview</value></data>
+  <data name="settings.sandboxApprove" xml:space="preserve"><value>Approve and merge</value></data>
+  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Cancel resolution</value></data>
+  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Retry cleanup</value></data>
+  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Discard this sandbox? Its branch will be kept for recovery, but its worktree will be removed.</value></data>
+  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Approval requires a complete preview with no unresolved files.</value></data>
+  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Resolution preview</value></data>
+  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Unresolved files</value></data>
+  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>Origin HEAD</value></data>
+  <data name="settings.sandboxHead" xml:space="preserve"><value>Sandbox HEAD</value></data>
+  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Preview fingerprint</value></data>
+  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Sandbox cleanup is still pending; the origin was not changed again.</value></data>
+  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Saved sandboxes</value></data>
+  <data name="settings.sandboxRecover" xml:space="preserve"><value>Recover</value></data>
+  <data name="conversation.accountSwitched.notice" xml:space="preserve"><value>ही चॅट त्याच मॉडेलवर दुसऱ्या खात्यावर गेली आहे. तिथे कॅश शून्यापासून सुरू होतो; पुढे सुरू ठेवल्यास अधिक टोकन वापरले जाऊ शकतात आणि खर्च वाढू शकतो.</value></data>
+  <data name="conversation.modelSwitched.notice" xml:space="preserve"><value>मॉडेल बदलले आहे. कॅश नवीन मॉडेलकडे जात नाही; संपूर्ण इतिहासावर पुन्हा प्रक्रिया होते, त्यामुळे अधिक टोकन वापरले जाऊ शकतात आणि खर्च वाढू शकतो.</value></data>
+  <data name="conversation.contextFull.notice" xml:space="preserve"><value>कॉन्टेक्स्ट विंडो जवळजवळ भरली आहे; पुढे सुरू ठेवल्यास अधिक टोकन वापरले जाऊ शकतात आणि खर्च वाढू शकतो. छोट्या सारांशासह नवीन चॅट सुरू करा.</value></data>
+  <data name="context.overflowTitle" xml:space="preserve"><value>हे संभाषण नवीन मॉडेलमध्ये बसणार नाही</value></data>
+  <data name="context.overflowReason" xml:space="preserve"><value>सुरू ठेवण्यासाठी {0} ला सुमारे {1} टोकन लागतात, आणि त्या मॉडेलमध्ये फक्त {2} मोकळे आहेत.</value></data>
+  <data name="context.overflowByModel" xml:space="preserve"><value>सारांश {0} लिहील, जो अजूनही ट्रान्सक्रिप्ट वाचू शकणारा सर्वात लहान जोडलेला मॉडेल आहे.</value></data>
+  <data name="context.overflowLocally" xml:space="preserve"><value>कोणताही जोडलेला मॉडेल ट्रान्सक्रिप्ट वाचू शकत नाही, म्हणून कोणत्याही मॉडेलला न विचारता संभाषण छोटे केले जाते.</value></data>
+  <data name="context.overflowCompress" xml:space="preserve"><value>संकुचित करून सुरू ठेवा</value></data>
+  <data name="context.overflowNotNow" xml:space="preserve"><value>आत्ता नाही</value></data>
+  <data name="context.overflowDeclined" xml:space="preserve"><value>पाठवणे थांबले: संभाषण नवीन मॉडेलमध्ये बसत नाही.</value></data>
+  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>When another chat is writing the same file</value></data>
+  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Wait before asking</value></data>
+  <data name="settings.conflictWaitValue" xml:space="preserve"><value>Wait {0} seconds</value></data>
+  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Wait, then ask</value></data>
+  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>A chat that wants a file another chat is writing waits quietly, and asks only if the wait goes on too long.</value></data>
+  <data name="conflict.policy.ask" xml:space="preserve"><value>Ask me</value></data>
+  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Ask as soon as two chats want the same file.</value></data>
+  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Always wait</value></data>
+  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Never ask: a write waits for the chat that holds the file.</value></data>
+  <data name="conflict.title" xml:space="preserve"><value>A file is busy: {0}</value></data>
+  <data name="conflict.wholeProject" xml:space="preserve"><value>Project command: {0}</value></data>
+  <data name="conflict.stillBusy" xml:space="preserve"><value>Write held back: another chat is still writing {0}.</value></data>
+  <data name="conflict.userSkipped" xml:space="preserve"><value>Write skipped: {0} was left with the other chat ({1}), as you asked.</value></data>
+  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Stopped {0} so this chat could write.</value></data>
+  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Stopped other chats so this chat could write.</value></data>
+  <data name="conflict.banner.title" xml:space="preserve"><value>Another chat is writing this file</value></data>
+  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · held by “{1}” for {2} seconds</value></data>
+  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Keep waiting</value></data>
+  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Stop {0}</value></data>
+  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Stop all other chats</value></data>
+  <data name="conflict.banner.skip" xml:space="preserve"><value>Skip this write</value></data>
+  <data name="conflict.waiting" xml:space="preserve"><value>Waiting for “{0}” to finish writing: {1}</value></data>
+  <data name="usage.context.button" xml:space="preserve"><value>वापर</value></data>
+  <data name="usage.context.tooltip" xml:space="preserve"><value>संदर्भ आणि टोकन वापर</value></data>
+  <data name="usage.context.latestRequest" xml:space="preserve"><value>नवीनतम विनंती · कॉन्टेक्स्ट विंडो</value></data>
+  <data name="usage.context.input" xml:space="preserve"><value>पाठवलेले इनपुट</value></data>
+  <data name="usage.context.estimatedInput" xml:space="preserve"><value>अंदाजे इनपुट</value></data>
+  <data name="usage.context.output" xml:space="preserve"><value>आउटपुट</value></data>
+  <data name="usage.context.notReported" xml:space="preserve"><value>प्रदात्याने कळवले नाही</value></data>
+  <data name="usage.context.estimatedBreakdown" xml:space="preserve"><value>अंदाजे इनपुट तपशील</value></data>
+  <data name="usage.context.tokens" xml:space="preserve"><value>टोकन</value></data>
+  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} tokens ({2})</value></data>
+  <data name="usage.context.notAvailable" xml:space="preserve"><value>Context usage is not available yet.</value></data>
+  <data name="usage.context.composition" xml:space="preserve"><value>Estimated input composition</value></data>
+  <data name="usage.context.estimatedRow" xml:space="preserve"><value>{0}: {1} ({2})</value></data>
+  <data name="usage.context.conversation" xml:space="preserve"><value>चॅट संदेश</value></data>
+  <data name="usage.context.systemPrompt" xml:space="preserve"><value>सिस्टम सूचना</value></data>
+  <data name="usage.context.toolDefinitions" xml:space="preserve"><value>टूल व्याख्या</value></data>
+  <data name="usage.context.mcpDefinitions" xml:space="preserve"><value>MCP टूल व्याख्या</value></data>
+  <data name="usage.context.cacheHit" xml:space="preserve"><value>Measured cache hit</value></data>
+  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Verified prefix reuse: {0} · {1} / {2} tokens</value></data>
+  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Measurement coverage: {0} · {1} of {2} eligible requests</value></data>
+  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Cold: {0} · expired: {1} · changed: {2}</value></data>
+  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Cache writes: {0} tokens</value></data>
+  <data name="usage.context.freshInput" xml:space="preserve"><value>Fresh input: {0} tokens</value></data>
+  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Reuse not reported: {0} of {1} eligible requests</value></data>
+  <data name="usage.context.latency" xml:space="preserve"><value>Average request latency: {0}</value></data>
+  <data name="usage.context.prepare" xml:space="preserve"><value>Average request preparation: {0}</value></data>
+  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Largest cache loss: {0} ({1} tokens)</value></data>
+  <data name="settings.shortcuts" xml:space="preserve"><value>Keyboard shortcuts</value></data>
+  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Select a shortcut to change it. Press a key combination with at least one modifier.</value></data>
+  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Show or hide sidebar</value></data>
+  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Press keys…</value></data>
+  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Restore defaults</value></data>
+  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} is already assigned to {1}.</value></data>
+  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull requests</value></data>
+  <data name="conversation.review" xml:space="preserve"><value>Review</value></data>
+  <data name="conversation.files" xml:space="preserve"><value>Files</value></data>
+  <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
+  <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
+  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} टोकन</value></data>
 </root>

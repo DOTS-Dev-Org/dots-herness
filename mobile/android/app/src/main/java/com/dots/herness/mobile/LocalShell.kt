@@ -16,6 +16,12 @@ class LocalShell(private val root: () -> File) {
     var lines by mutableStateOf<List<String>>(emptyList()); private set
     var directory by mutableStateOf(""); private set
 
+    /** A terminal session belongs to the selected project. */
+    fun resetForProject() {
+        directory = ""
+        lines = emptyList()
+    }
+
     val prompt get() = "/$directory"
 
     suspend fun run(line: String): String {

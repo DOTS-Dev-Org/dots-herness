@@ -30,6 +30,42 @@ final class PromptHistoryTests: XCTestCase {
         XCTAssertFalse(next.contains { $0.systemKind == .promptDynamic })
     }
 
+    func testUnchangedSectionsAreCapturedOnceAndRetiredOnesAreClosed() {
+        func context(_ sections: [PromptSection]) -> String { HerNessPrompt.assemble(sections) }
+        let rules = PromptSection(tag: "project_context", trust: .rules, text: "use tabs")
+        let first = capture([AgentMessage(role: .user, content: "one")], context: context([
+            PromptSection(tag: "runtime_context", trust: .core, text: "date one"), rules,
+            PromptSection(tag: "plan_mode", trust: .core, text: "plan only"),
+        ]))
+        XCTAssertTrue(first[0].content.contains("use tabs"))
+
+        let second = capture(first + [AgentMessage(role: .user, content: "two")], context: context([
+            PromptSection(tag: "runtime_context", trust: .core, text: "date two"), rules,
+        ]))
+        XCTAssertEqual(Array(second.prefix(first.count)), first)
+        XCTAssertEqual(second.last?.content, """
+            <runtime_context>
+            date two
+            </runtime_context>
+
+            <plan_mode>
+            No longer applies.
+            </plan_mode>
+
+            two
+            """)
+
+        // Nothing changed: the turn carries the user's text only.
+        let third = capture(second + [AgentMessage(role: .user, content: "three")], context: context([
+            PromptSection(tag: "runtime_context", trust: .core, text: "date two"), rules,
+        ]))
+        XCTAssertEqual(third.last?.content, "three")
+
+        // History was compacted away: the sections are captured in full again.
+        let compacted = capture([AgentMessage(role: .user, content: "four")], context: context([rules]))
+        XCTAssertTrue(compacted[0].content.contains("use tabs"))
+    }
+
     func testAllTransportsPreserveEarlierRequestPrefix() throws {
         let first = capture([
             AgentMessage(role: .system, content: "policy", systemKind: .promptStable),
@@ -87,6 +123,36 @@ final class PromptHistoryTests: XCTestCase {
             let before = try requestItems(client.makeBody(messages: chat, tools: [], cachePolicy: AgentCachePolicy()))
             let after = try requestItems(client.makeBody(messages: fork, tools: [], cachePolicy: AgentCachePolicy()))
             XCTAssertEqual(try normalized(before), try normalized(Array(after.prefix(before.count))), api)
+        }
+    }
+
+    func testAddingAToolKeepsExistingWireNamesAndHistoryOnEveryTransport() throws {
+        func tool(_ name: String) -> AgentToolDefinition {
+            AgentToolDefinition(name: name, description: name, parameters: .object(["type": .string("object"), "properties": .object([:])]))
+        }
+        func names(_ value: Any?) -> [String] {
+            if let object = value as? [String: Any] {
+                return [object["name"] as? String].compactMap { $0 } + object.filter { $0.key != "parameters" && $0.key != "input_schema" }.values.flatMap(names)
+            }
+            return (value as? [Any])?.flatMap(names) ?? []
+        }
+        let history = capture([
+            AgentMessage(role: .system, content: "policy", systemKind: .promptStable),
+            AgentMessage(role: .user, content: "question"),
+            AgentMessage(role: .assistant, content: "", toolCalls: [AgentToolCall(id: "call", name: "skill.read", arguments: "{\"id\":\"demo\"}")]),
+            AgentMessage(role: .tool, content: "skill text", toolCallID: "call")
+        ], context: "state")
+        let old = [tool("skill.read"), tool("read.file")]
+        let grown = [tool("a.new_tool")] + old.reversed() + [tool("zz.last")]
+        for api in ["openai-compatible", RouterAPIKind.anthropic.rawValue, RouterAPIKind.chatGPT.rawValue, RouterAPIKind.geminiCLI.rawValue] {
+            let client = NativeAgentClient(configuration: AgentConfiguration(baseURL: "https://example.test/v1", model: "test", api: api))
+            let before = client.makeBody(messages: history, tools: old, cachePolicy: AgentCachePolicy())
+            let after = client.makeBody(messages: history, tools: grown, cachePolicy: AgentCachePolicy())
+            let oldNames = names(before["tools"] ?? (before["request"] as? [String: Any])?["tools"])
+            let newNames = names(after["tools"] ?? (after["request"] as? [String: Any])?["tools"])
+            XCTAssertEqual(oldNames.count, 2, api)
+            XCTAssertEqual(newNames.filter(oldNames.contains), oldNames, api)
+            XCTAssertEqual(try normalized(requestItems(before)), try normalized(requestItems(after)), api)
         }
     }
 

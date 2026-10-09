@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-09T13:49:46Z",
+  "eventId" : "BF935474-B22A-44DD-AFD9-3FEF824AEFC3",
+  "lamport" : 297,
+  "parents" : [
+    "517C109B-8E6F-4E15-90CB-AFD94640A442"
+  ],
+  "payload" : {
+    "commandSummary" : null,
+    "name" : "grep_files",
+    "path" : "macos\/DotsHarness\/Tests\/HarnessPluginKitTests",
+    "resultBytes" : 13,
+    "resultStatus" : "completed",
+    "runId" : "9DE0859A-D8D7-4AD1-9466-0E1B951F54FF"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "+SRRt3277oqFAfdn9J0sU9oJZ2SczjecbRI9saypvS414oAuHI9Reti89utOoUGLv6Qon6VUDT1tPjj0xuPelg=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

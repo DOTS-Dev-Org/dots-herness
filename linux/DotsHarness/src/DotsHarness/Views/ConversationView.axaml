@@ -19,9 +19,23 @@
             <Setter Property="Margin" Value="0,0,0,8"/>
         </Style>
     </UserControl.Styles>
-    <DockPanel>
+    <Grid>
+        <DockPanel>
         <DockPanel DockPanel.Dock="Top" Margin="20,14,20,8">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button x:Name="CacheUsageButton" Content="Context" Margin="0,0,8,0" Padding="10,4" IsVisible="False">
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight">
+                            <StackPanel Width="320" Spacing="6">
+                                <TextBlock x:Name="ContextUsageSummary" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                <ProgressBar x:Name="ContextUsageProgress" Minimum="0" Maximum="1" Height="5" IsVisible="False"/>
+                                <TextBlock x:Name="ContextUsageBreakdown" FontSize="11" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextSecondary}"/>
+                                <TextBlock x:Name="CacheUsageDetails" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
                 <Button x:Name="TerminalButton" Content="Terminal" Padding="12,4"
                         Click="OnTerminal"/>
                 <Button x:Name="ModelPicker" Margin="8,0,0,0" Padding="12,4" ToolTip.Tip="Model">
@@ -52,6 +66,8 @@
                                         <Canvas x:Name="EffortTrack" Height="30" Background="Transparent"
                                                 PointerPressed="OnEffortPressed" PointerMoved="OnEffortPointer"
                                                 SizeChanged="OnEffortTrackSized"/>
+                                        <Button x:Name="UsageModeButton" Margin="0,8,0,0" Padding="8,3"
+                                                HorizontalAlignment="Center" Click="OnUsageMode"/>
                                     </StackPanel>
                                 </Border>
                                 <StackPanel x:Name="ModelListPanel" IsVisible="False">
@@ -68,6 +84,8 @@
                 </Button>
                 <Button x:Name="StopButton" Content="Stop" Margin="8,0,0,0" Padding="12,4"
                         Click="OnStop" IsVisible="False"/>
+                <Button x:Name="CancelPlanButton" Content="Cancel plan" Margin="8,0,0,0" Padding="12,4"
+                        Click="OnCancelPlanFromComposer" IsVisible="False"/>
             </StackPanel>
             <TextBlock x:Name="TitleText" FontSize="16" FontWeight="SemiBold"
                        Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
@@ -107,9 +125,30 @@
                         </StackPanel>
                     </DockPanel>
                 </Border>
+                <Border x:Name="FollowUpSuggestionBanner" DockPanel.Dock="Top" Classes="composer-banner" IsVisible="False">
+                    <DockPanel LastChildFill="True">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button x:Name="DismissFollowUpSuggestionButton" Margin="0,0,8,0" Padding="12,6"
+                                    Click="OnDismissFollowUpSuggestion"/>
+                            <Button x:Name="AcceptFollowUpSuggestionButton" Padding="12,6"
+                                    Click="OnAcceptFollowUpSuggestion"/>
+                        </StackPanel>
+                        <TextBlock x:Name="FollowUpSuggestionText" VerticalAlignment="Center" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextSecondary}" MaxHeight="54"/>
+                    </DockPanel>
+                </Border>
                 <TextBlock x:Name="DropHint" DockPanel.Dock="Top" Text="Drop files here"
                            IsVisible="False" Margin="0,0,0,8"
                            Foreground="{DynamicResource Accent}"/>
+                <Border x:Name="ProjectMissingBanner" DockPanel.Dock="Top" IsVisible="False"
+                        Background="{DynamicResource PanelBackground}" CornerRadius="8" Padding="10" Margin="0,0,0,8">
+                    <DockPanel LastChildFill="True">
+                        <Button x:Name="LocateProjectButton" DockPanel.Dock="Right" Click="OnLocateProject"
+                                Margin="8,0,0,0" Padding="10,4"/>
+                        <TextBlock x:Name="ProjectMissingText" VerticalAlignment="Center" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextSecondary}"/>
+                    </DockPanel>
+                </Border>
                 <ItemsControl x:Name="DraftAttachments" DockPanel.Dock="Top" Margin="0,0,0,8">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
@@ -143,7 +182,27 @@
                             </Style>
                         </ToggleButton.Styles>
                     </ToggleButton>
+                    <Button x:Name="WorkLocationButton" Margin="8,0,0,0" Padding="10,4"
+                            Click="OnWorkLocation" ToolTip.Tip="Choose where this task runs"/>
                 </StackPanel>
+                <Border x:Name="CacheResumeWarning" DockPanel.Dock="Top" Classes="composer-banner" IsVisible="False">
+                    <DockPanel>
+                        <Button x:Name="CacheResumeInfoButton" DockPanel.Dock="Right" Content="ⓘ" Padding="6,2"
+                                Margin="8,0,0,0" ToolTip.Tip="Cache information">
+                            <Button.Flyout>
+                                <Flyout Placement="TopEdgeAlignedRight">
+                                    <Border Width="320" Padding="12" CornerRadius="10" Background="{DynamicResource ChromeBackground}"
+                                            BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1">
+                                        <TextBlock x:Name="CacheResumeInfoText" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource TextSecondary}"/>
+                                    </Border>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                        <TextBlock x:Name="CacheResumeText" TextWrapping="Wrap" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextSecondary}"/>
+                    </DockPanel>
+                </Border>
                 <Button x:Name="VoiceButton" DockPanel.Dock="Right" Content="Mic" Width="80" Height="36"
                         Margin="8,0,0,0" Click="OnVoice" ToolTip.Tip="Start voice input"/>
                 <Button x:Name="SendButton" DockPanel.Dock="Right" Content="Send" Width="80" Height="36"
@@ -157,6 +216,22 @@
                 <TextBlock x:Name="VoiceStatus" DockPanel.Dock="Top" Margin="0,6,0,0" FontSize="11"
                            Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" IsVisible="False"/>
             </DockPanel>
+        </Border>
+        <Border x:Name="GitBar" DockPanel.Dock="Bottom" Classes="composer-banner" IsVisible="False">
+            <DockPanel>
+                <Button x:Name="GitBarCloseButton" DockPanel.Dock="Right" Content="✕" Padding="8,2" Background="Transparent"
+                        BorderThickness="0" Click="OnGitBarClose"/>
+                <Button x:Name="CreatePrButton" DockPanel.Dock="Right" Padding="12,3" Margin="0,0,4,0" Click="OnCreatePr"/>
+                <StackPanel x:Name="GitStat" DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,10,0" VerticalAlignment="Center">
+                    <TextBlock x:Name="GitAdded" FontFamily="monospace" Foreground="#4CC26A"/>
+                    <TextBlock x:Name="GitRemoved" FontFamily="monospace" Foreground="#F0506E" Margin="6,0,0,0"/>
+                </StackPanel>
+                <TextBlock x:Name="GitBarText" FontFamily="monospace" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextSecondary}"/>
+            </DockPanel>
+        </Border>
+        <Border x:Name="QueueBar" DockPanel.Dock="Bottom" Classes="composer-banner" IsVisible="False">
+            <StackPanel x:Name="QueueRows"/>
         </Border>
         <Border x:Name="QuestionBar" DockPanel.Dock="Bottom" Classes="composer-banner" IsVisible="False">
             <DockPanel>
@@ -181,6 +256,37 @@
                     <Button x:Name="VisionRejectButton" Content="Not now" Margin="0,0,8,0" Click="OnVisionReject"/>
                     <Button x:Name="VisionAllowButton" Content="Download and continue" Click="OnVisionAllow"/>
                 </StackPanel>
+            </DockPanel>
+        </Border>
+        <Border x:Name="ContextOverflowBar" DockPanel.Dock="Bottom" Classes="composer-banner" IsVisible="False">
+            <DockPanel>
+                <StackPanel>
+                    <TextBlock x:Name="ContextOverflowTitle" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock x:Name="ContextOverflowReason" FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="ContextOverflowSummary" FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="12,0,0,0">
+                    <Button x:Name="ContextOverflowDeclineButton" Margin="0,0,8,0" Click="OnContextOverflowDecline"/>
+                    <Button x:Name="ContextOverflowAcceptButton" Click="OnContextOverflowAccept"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+        <Border x:Name="ConflictBar" DockPanel.Dock="Bottom" Classes="composer-banner" IsVisible="False">
+            <StackPanel Spacing="5">
+                <TextBlock x:Name="ConflictTitle" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                <TextBlock x:Name="ConflictBody" FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                <WrapPanel HorizontalAlignment="Right">
+                    <Button x:Name="ConflictKeepWaitingButton" Margin="0,0,8,0" Click="OnConflictKeepWaiting"/>
+                    <Button x:Name="ConflictStopHolderButton" Margin="0,0,8,0" Click="OnConflictStopHolder"/>
+                    <Button x:Name="ConflictStopAllButton" Margin="0,0,8,0" Click="OnConflictStopAll"/>
+                    <Button x:Name="ConflictSkipButton" Click="OnConflictSkip"/>
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+        <Border x:Name="LeaseWaitingBar" DockPanel.Dock="Bottom" Classes="composer-banner" IsVisible="False">
+            <DockPanel>
+                <ProgressBar DockPanel.Dock="Left" IsIndeterminate="True" Width="38" Height="6" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                <TextBlock x:Name="LeaseWaitingText" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" VerticalAlignment="Center"/>
             </DockPanel>
         </Border>
         <Border x:Name="ApprovalBar" DockPanel.Dock="Bottom" Classes="composer-banner" IsVisible="False">
@@ -236,19 +342,68 @@
                         <DataTemplate x:DataType="core:ChatMessage">
                             <Border Margin="0,0,0,20" MaxWidth="760" HorizontalAlignment="{Binding Kind, Converter={x:Static views:KindAlignment.Instance}}">
                                 <StackPanel>
+                                    <Border Margin="0,0,0,6" Padding="10,8" CornerRadius="11"
+                                            Background="{DynamicResource PanelBackground}"
+                                            BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
+                                            IsVisible="{Binding ., Converter={x:Static views:ContextCompactionVisibility.Instance}}">
+                                        <DockPanel LastChildFill="True">
+                                            <TextBlock DockPanel.Dock="Left" Text="↘" Margin="0,0,10,0"
+                                                       Foreground="{DynamicResource Accent}" VerticalAlignment="Center"/>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding ., Converter={x:Static views:ContextCompactionLabel.Instance}}"
+                                                           FontSize="12" Foreground="{DynamicResource TextSecondary}"/>
+                                                <TextBlock Text="{Binding Text}" Margin="0,2,0,0" FontSize="11"
+                                                           Foreground="{DynamicResource TextSecondary}"
+                                                           IsVisible="{Binding ., Converter={x:Static views:ActivityDetailVisibility.Instance}}"/>
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </Border>
 <Grid>
-                                    <StackPanel IsVisible="{Binding Kind, Converter={x:Static views:NotPlanVisibility.Instance}}">
+                                    <StackPanel IsVisible="{Binding ., Converter={x:Static views:NotPlanVisibility.Instance}}">
                                         <DockPanel>
                                             <TextBlock Text="{Binding Kind, Converter={x:Static views:KindLabel.Instance}}"
                                                        FontSize="11" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource TextSecondary}"/>
+                                                       Foreground="{DynamicResource TextSecondary}"
+                                                       IsVisible="{Binding Kind, Converter={x:Static views:MessageKindLabelVisibility.Instance}}"/>
                                             <TextBlock Text="…" HorizontalAlignment="Right"
                                                        IsVisible="{Binding Streaming}"/>
                                         </DockPanel>
+                                        <Border Margin="0,4,0,0" Padding="9,7" CornerRadius="10"
+                                                Background="{DynamicResource PanelBackground}"
+                                                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
+                                                IsVisible="{Binding ., Converter={x:Static views:ToolActivityVisibility.Instance}}">
+                                            <DockPanel LastChildFill="True">
+                                                <TextBlock DockPanel.Dock="Left" Text="{Binding Text, Converter={x:Static views:ToolActivityIcon.Instance}}"
+                                                           Width="22" Foreground="{DynamicResource Accent}" VerticalAlignment="Center"/>
+                                                <TextBlock DockPanel.Dock="Right" Text="{Binding Text, Converter={x:Static views:ToolActivityStateIcon.Instance}}"
+                                                           Margin="8,0,0,0" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"
+                                                           IsVisible="{Binding Text, Converter={x:Static views:ToolActivityStateVisibility.Instance}}"/>
+                                                <ProgressBar DockPanel.Dock="Right" Width="28" Height="4" Margin="8,0,0,0"
+                                                             IsIndeterminate="True" VerticalAlignment="Center"
+                                                             IsVisible="{Binding Text, Converter={x:Static views:ToolActivityRunningVisibility.Instance}}"/>
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Text, Converter={x:Static views:ToolActivityLabel.Instance}}"
+                                                               FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding Text, Converter={x:Static views:ToolActivityDetail.Instance}}"
+                                                               Margin="0,2,0,0" FontSize="10" FontFamily="Consolas"
+                                                               Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
+                                                               TextTrimming="CharacterEllipsis" MaxHeight="32"
+                                                               IsVisible="{Binding Text, Converter={x:Static views:ToolActivityDetailVisibility.Instance}}"/>
+                                                </StackPanel>
+                                            </DockPanel>
+                                        </Border>
                                         <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,6,0,0" TextAlignment="{Binding Kind, Converter={x:Static views:KindTextAlignment.Instance}}"
-                                                   Foreground="{DynamicResource TextPrimary}"/>
-                                        <TextBlock Text="{Binding ContextRootIds, Converter={x:Static views:ContextRootLabel.Instance}}"
-                                                   FontSize="11" Foreground="{DynamicResource TextSecondary}" Margin="0,6,0,0"/>
+                                                   Foreground="{DynamicResource TextPrimary}"
+                                                   IsVisible="{Binding ., Converter={x:Static views:MessageBodyVisibility.Instance}}"/>
+                                        <Expander IsExpanded="False" Margin="0,6,0,0"
+                                                  Header="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.fullToolOutput}"
+                                                  IsVisible="{Binding ., Converter={x:Static views:ToolOutputVisibility.Instance}}">
+                                            <ScrollViewer MaxHeight="360" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                                                <TextBlock Text="{Binding RawToolOutput}" TextWrapping="NoWrap" FontFamily="Consolas"
+                                                           Foreground="{DynamicResource TextSecondary}"/>
+                                            </ScrollViewer>
+                                        </Expander>
                                         <TextBlock Text="{Binding ., Converter={x:Static views:RunSummaryLabel.Instance}}" TextWrapping="Wrap" Margin="0,8,0,0"
                                                    Foreground="{DynamicResource TextSecondary}"
                                                    IsVisible="{Binding ., Converter={x:Static views:RunSummaryVisibility.Instance}}"/>
@@ -298,16 +453,56 @@
                                                 </ItemsControl>
                                             </StackPanel>
                                         </Expander>
-                                        <Expander Header="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.changedFiles}" IsExpanded="False" Margin="0,6,0,0"
-                                                  IsVisible="{Binding ., Converter={x:Static views:MetadataVisibility.Instance}, ConverterParameter=files}">
-                                            <ItemsControl ItemsSource="{Binding ChangedFiles}" Margin="8,6,0,0">
-                                                <ItemsControl.ItemTemplate><DataTemplate x:DataType="core:ChangedFile">
-                                                    <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}" TextTrimming="CharacterEllipsis"
-                                                               Foreground="{DynamicResource TextPrimary}"
-                                                               AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"/>
-                                                </DataTemplate></ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </Expander>
+                                        <Border Margin="0,8,0,0" Padding="10" CornerRadius="10"
+                                                Background="{DynamicResource PanelBackground}"
+                                                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
+                                                IsVisible="{Binding ., Converter={x:Static views:MetadataVisibility.Instance}, ConverterParameter=files}">
+                                            <StackPanel>
+                                                <DockPanel LastChildFill="False">
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFilesSummary.Instance}}"
+                                                                   FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                                                        <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFilesLineSummary.Instance}}"
+                                                                   Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0"/>
+                                                    </StackPanel>
+                                                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                                                        <Button Content="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.undoChanges}"
+                                                                Tag="{Binding}" Click="OnUndoChanges" Margin="4,0"
+                                                                IsVisible="{Binding Summary.UndoAvailable}"/>
+                                                        <Button Content="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.viewChanges}"
+                                                                Tag="{Binding}" Click="OnToggleChangedFiles" Margin="4,0"
+                                                                IsVisible="{Binding ChangedFilesRemaining.Count, Converter={x:Static views:PositiveCountVisibility.Instance}}"/>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                                <ItemsControl ItemsSource="{Binding ChangedFilesPreview}" Margin="0,8,0,0">
+                                                    <ItemsControl.ItemTemplate><DataTemplate x:DataType="core:ChangedFile">
+                                                        <DockPanel LastChildFill="True" Margin="0,2">
+                                                            <TextBlock DockPanel.Dock="Right" Text="{Binding ., Converter={x:Static views:ChangedFileLineLabel.Instance}}"
+                                                                       Foreground="{DynamicResource Accent}" Margin="10,0,0,0"/>
+                                                            <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}" TextTrimming="CharacterEllipsis"
+                                                                       Foreground="{DynamicResource TextPrimary}"
+                                                                       AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"/>
+                                                        </DockPanel>
+                                                    </DataTemplate></ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <ItemsControl ItemsSource="{Binding ChangedFilesRemaining}"
+                                                              IsVisible="{Binding IsChangedFilesExpanded}">
+                                                    <ItemsControl.ItemTemplate><DataTemplate x:DataType="core:ChangedFile">
+                                                        <DockPanel LastChildFill="True" Margin="0,2">
+                                                            <TextBlock DockPanel.Dock="Right" Text="{Binding ., Converter={x:Static views:ChangedFileLineLabel.Instance}}"
+                                                                       Foreground="{DynamicResource Accent}" Margin="10,0,0,0"/>
+                                                            <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}" TextTrimming="CharacterEllipsis"
+                                                                       Foreground="{DynamicResource TextPrimary}"
+                                                                       AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"/>
+                                                        </DockPanel>
+                                                    </DataTemplate></ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <Button Content="{Binding ., Converter={x:Static views:ChangedFilesExpansionLabel.Instance}}"
+                                                        Tag="{Binding}" Click="OnToggleChangedFiles" HorizontalAlignment="Left"
+                                                        Margin="0,5,0,0" Padding="4,2"
+                                                        IsVisible="{Binding ., Converter={x:Static views:ChangedFilesExpansionVisibility.Instance}}"/>
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
                                     <Border IsVisible="{Binding Kind, Converter={x:Static views:PlanVisibility.Instance}}"
                                             BorderBrush="{DynamicResource Accent}" BorderThickness="1" CornerRadius="10"
@@ -350,22 +545,66 @@
                                                     </ItemsControl>
                                                 </StackPanel>
                                             </Expander>
-                                        <Expander IsExpanded="False" Margin="0,0,0,6"
-                                                  Header="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.changedFiles}"
-                                                  IsVisible="{Binding ., Converter={x:Static views:MetadataVisibility.Instance}, ConverterParameter=files}">
-                                                <ItemsControl ItemsSource="{Binding ChangedFiles}" Margin="8,6,0,0">
+                                        <Border Margin="0,4,0,8" Padding="10" CornerRadius="10"
+                                                Background="{DynamicResource PanelBackground}"
+                                                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
+                                                IsVisible="{Binding ., Converter={x:Static views:MetadataVisibility.Instance}, ConverterParameter=files}">
+                                            <StackPanel>
+                                                <DockPanel LastChildFill="False">
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFilesSummary.Instance}}"
+                                                                   FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                                                        <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFilesLineSummary.Instance}}"
+                                                                   Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0"/>
+                                                    </StackPanel>
+                                                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                                                        <Button Content="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.undoChanges}"
+                                                                Tag="{Binding}" Click="OnUndoChanges" Margin="4,0"
+                                                                IsVisible="{Binding Summary.UndoAvailable}"/>
+                                                        <Button Content="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.viewChanges}"
+                                                                Tag="{Binding}" Click="OnToggleChangedFiles" Margin="4,0"
+                                                                IsVisible="{Binding ChangedFilesRemaining.Count, Converter={x:Static views:PositiveCountVisibility.Instance}}"/>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                                <ItemsControl ItemsSource="{Binding ChangedFilesPreview}" Margin="0,8,0,0">
                                                     <ItemsControl.ItemTemplate><DataTemplate x:DataType="core:ChangedFile">
-                                                        <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}" TextTrimming="CharacterEllipsis"
-                                                                   Foreground="{DynamicResource TextPrimary}"
-                                                                   AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"/>
+                                                        <DockPanel LastChildFill="True" Margin="0,2">
+                                                            <TextBlock DockPanel.Dock="Right" Text="{Binding ., Converter={x:Static views:ChangedFileLineLabel.Instance}}"
+                                                                       Foreground="{DynamicResource Accent}" Margin="10,0,0,0"/>
+                                                            <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}" TextTrimming="CharacterEllipsis"
+                                                                       Foreground="{DynamicResource TextPrimary}"
+                                                                       AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"/>
+                                                        </DockPanel>
                                                     </DataTemplate></ItemsControl.ItemTemplate>
                                                 </ItemsControl>
-                                            </Expander>
+                                                <ItemsControl ItemsSource="{Binding ChangedFilesRemaining}"
+                                                              IsVisible="{Binding IsChangedFilesExpanded}">
+                                                    <ItemsControl.ItemTemplate><DataTemplate x:DataType="core:ChangedFile">
+                                                        <DockPanel LastChildFill="True" Margin="0,2">
+                                                            <TextBlock DockPanel.Dock="Right" Text="{Binding ., Converter={x:Static views:ChangedFileLineLabel.Instance}}"
+                                                                       Foreground="{DynamicResource Accent}" Margin="10,0,0,0"/>
+                                                            <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}" TextTrimming="CharacterEllipsis"
+                                                                       Foreground="{DynamicResource TextPrimary}"
+                                                                       AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"/>
+                                                        </DockPanel>
+                                                    </DataTemplate></ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <Button Content="{Binding ., Converter={x:Static views:ChangedFilesExpansionLabel.Instance}}"
+                                                        Tag="{Binding}" Click="OnToggleChangedFiles" HorizontalAlignment="Left"
+                                                        Margin="0,5,0,0" Padding="4,2"
+                                                        IsVisible="{Binding ., Converter={x:Static views:ChangedFilesExpansionVisibility.Instance}}"/>
+                                            </StackPanel>
+                                        </Border>
                                             <Button Content="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.applyPlan}" Tag="{Binding}" Click="OnApplyPlan"
                                                     IsVisible="{Binding IsPendingPlan}"
                                                     IsEnabled="{Binding CanApplyPlan}" HorizontalAlignment="Left"
                                                     Padding="12,5" ToolTip.Tip="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.applyPlanHelp}"
                                                     AutomationProperties.Name="Apply plan"/>
+                                            <Button Content="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.cancelPlan}" Tag="{Binding}" Click="OnCancelPlan"
+                                                    IsVisible="{Binding IsPendingPlan}"
+                                                    IsEnabled="{Binding IsPendingPlan}" HorizontalAlignment="Left"
+                                                    Padding="12,5" ToolTip.Tip="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.cancelPlanHelp}"
+                                                    AutomationProperties.Name="Cancel plan"/>
                                         </StackPanel>
                                     </Border>
                                 </Grid>
@@ -413,6 +652,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="core:PendingPrompt">
                             <Border Margin="0,0,0,12" Padding="12" CornerRadius="12"
+                                    IsVisible="{Binding Mode, Converter={x:Static views:PromptModeSteerOnly.Instance}}"
                                     Background="{DynamicResource BubbleUser}" Opacity="0.72">
                                 <StackPanel>
                                     <DockPanel LastChildFill="False">
@@ -458,5 +698,9 @@
                 </ItemsControl>
             </StackPanel>
         </ScrollViewer>
-    </DockPanel>
+        </DockPanel>
+        <!-- Cover the native detail-pane top separator at the chat boundary. -->
+        <Border Height="2" VerticalAlignment="Top" Background="{DynamicResource PanelBackground}"
+                IsHitTestVisible="False" ZIndex="10"/>
+    </Grid>
 </UserControl>

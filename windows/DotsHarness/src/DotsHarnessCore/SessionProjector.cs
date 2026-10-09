@@ -41,7 +41,11 @@ public enum ChangedFileOperation
     Deleted,
 }
 
-public sealed record ChangedFile(string Path, ChangedFileOperation Operation);
+public sealed record ChangedFile(string Path, ChangedFileOperation Operation)
+{
+    public int AddedLines { get; init; } = -1;
+    public int DeletedLines { get; init; } = -1;
+}
 
 public sealed record WorkspaceRunSummary(
     string RunId,
@@ -56,6 +60,7 @@ public sealed record WorkspaceRunSummary(
     string TestStatus)
 {
     public BrowserRunSummary? Browser { get; init; }
+    public bool UndoAvailable { get; init; }
 }
 
 public sealed class ChatAttachment
@@ -310,6 +315,8 @@ public enum PromptPlacement
     Queued,
     Steering,
     Context,
+    /// Queued behind a plan that still needs the user's approval.
+    WaitingForPlan,
 }
 
 public static class PromptModeExtensions
@@ -359,14 +366,24 @@ public sealed class PendingPrompt : PluginRuntime.ObservableObject
     private PromptMode _mode;
     private PromptPlacement _placement;
     private bool _planMode;
+    private bool _planIntentResolved = true;
+    private long _queueOrder;
 
     public string Id { get => _id; set => SetProperty(ref _id, value); }
     public string Text { get => _text; set => SetProperty(ref _text, value); }
     public PromptMode Mode { get => _mode; set => SetProperty(ref _mode, value); }
     public PromptPlacement Placement { get => _placement; set => SetProperty(ref _placement, value); }
     public bool PlanMode { get => _planMode; set => SetProperty(ref _planMode, value); }
+    /// False while the natural-language plan classifier is unresolved. Persisted so a restart cannot let later messages overtake it.
+    public bool PlanIntentResolved { get => _planIntentResolved; set => SetProperty(ref _planIntentResolved, value); }
+    /// Submission order across queue and steer lanes for this conversation.
+    public long QueueOrder { get => _queueOrder; set => SetProperty(ref _queueOrder, value); }
+    /// The approval of a pending plan; it is never held back by that plan.
+    public bool IsApproval { get; set; }
+    /// Set only by an explicit user action on this queue item. It permits one
+    /// prompt to run while the plan gate remains active.
+    public bool BypassesPlanGate { get; set; }
     public List<ChatAttachment> Attachments { get; set; } = [];
-    public List<string> ContextRootIds { get; set; } = [];
 }
 
 public sealed class ChatMessage : PluginRuntime.ObservableObject
@@ -374,6 +391,7 @@ public sealed class ChatMessage : PluginRuntime.ObservableObject
     private string _id = Guid.NewGuid().ToString();
     private ChatKind _kind;
     private string _text = "";
+    private string? _rawToolOutput;
     private DateTimeOffset _createdAt = DateTimeOffset.Now;
     private bool _streaming;
     private bool _isPendingPlan;
@@ -384,23 +402,43 @@ public sealed class ChatMessage : PluginRuntime.ObservableObject
     private List<string> _usedSkills = [];
     private List<string> _usedTools = [];
     private WorkspaceRunSummary? _summary;
+    private bool _isChangedFilesExpanded;
     private string? _translation;
     private bool _isTranslating;
     private bool _isSpeaking;
     private string? _feedback;
+    private List<ChatAttachment> _attachments = [];
 
     public string Id { get => _id; set => SetProperty(ref _id, value); }
     public ChatKind Kind { get => _kind; set => SetProperty(ref _kind, value); }
     public string Text { get => _text; set => SetProperty(ref _text, value); }
+    /// A UI-only conversation event; never serialized into the provider context.
+    public string? ActivityCode { get; set; }
+    /// Complete tool result kept with the visible transcript. Text may be a
+    /// short preview while the provider receives a reversible reduced view.
+    public string? RawToolOutput { get => _rawToolOutput; set => SetProperty(ref _rawToolOutput, value); }
     public DateTimeOffset CreatedAt { get => _createdAt; set => SetProperty(ref _createdAt, value); }
     public bool Streaming { get => _streaming; set => SetProperty(ref _streaming, value); }
     public string? TurnId { get; set; }
-    [JsonPropertyName("contextRootIDs")]
-    public List<string> ContextRootIds { get; set; } = [];
-    public List<ChangedFile> ChangedFiles { get => _changedFiles; set => SetProperty(ref _changedFiles, value ?? []); }
+    public List<ChangedFile> ChangedFiles
+    {
+        get => _changedFiles;
+        set
+        {
+            if (!SetProperty(ref _changedFiles, value ?? [])) return;
+            OnPropertyChanged(nameof(ChangedFilesPreview));
+            OnPropertyChanged(nameof(ChangedFilesRemaining));
+        }
+    }
     public List<string> UsedSkills { get => _usedSkills; set => SetProperty(ref _usedSkills, value ?? []); }
     public List<string> UsedTools { get => _usedTools; set => SetProperty(ref _usedTools, value ?? []); }
     public WorkspaceRunSummary? Summary { get => _summary; set => SetProperty(ref _summary, value); }
+    [JsonIgnore]
+    public bool IsChangedFilesExpanded { get => _isChangedFilesExpanded; set => SetProperty(ref _isChangedFilesExpanded, value); }
+    [JsonIgnore]
+    public List<ChangedFile> ChangedFilesPreview => ChangedFiles.Take(3).ToList();
+    [JsonIgnore]
+    public List<ChangedFile> ChangedFilesRemaining => ChangedFiles.Skip(3).ToList();
     [JsonIgnore]
     public bool IsPendingPlan { get => _isPendingPlan; set => SetProperty(ref _isPendingPlan, value); }
     [JsonIgnore]
@@ -409,7 +447,7 @@ public sealed class ChatMessage : PluginRuntime.ObservableObject
     public bool IsApplyingPlan { get => _isApplyingPlan; set => SetProperty(ref _isApplyingPlan, value); }
     [JsonIgnore]
     public string? PlanError { get => _planError; set => SetProperty(ref _planError, value); }
-    public List<ChatAttachment> Attachments { get; set; } = [];
+    public List<ChatAttachment> Attachments { get => _attachments; set => SetProperty(ref _attachments, value ?? []); }
     public ChatMedia? Media { get; set; }
     /// "good", "bad" or null. Kept with the message; not sent anywhere.
     public string? Feedback { get => _feedback; set => SetProperty(ref _feedback, value); }
@@ -437,6 +475,15 @@ public enum ContinuationPauseReason
 {
     ProviderLimit,
     UserStopped,
+    ApplicationClosed,
+    ToolStepLimit,
+}
+
+public sealed class InFlightToolCall
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Arguments { get; set; } = "{}";
 }
 
 public sealed class ContinuationState
@@ -445,14 +492,21 @@ public sealed class ContinuationState
     public string Provider { get; set; } = "";
     public string Model { get; set; } = "";
     public string Message { get; set; } = "";
+    /// Optional provider-supplied reset time. A known reset can trigger a
+    /// continuation attempt; it never releases the plan gate or queue itself.
+    public DateTimeOffset? RetryAt { get; set; }
+    /// Whether the interrupted request was still drafting a plan. An approved
+    /// plan execution is false and must resume with the full tool set.
+    public bool PlanMode { get; set; }
 }
 
 public sealed class Conversation : PluginRuntime.ObservableObject
 {
-    private string _title = "New chat";
+    private string _title = "New conversation";
     private bool _running;
     private bool _blank = true;
     private string? _pendingPlanMessageId;
+    private bool _planGateActive;
     private DateTimeOffset? _runStartedAt;
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
@@ -461,28 +515,82 @@ public sealed class Conversation : PluginRuntime.ObservableObject
     /// Model-facing provider transcript; compaction may replace archived history.
     /// The visible Messages collection remains complete.
     public List<NativeMessage> ModelContext { get; set; } = [];
+    /// Optional for legacy records; preserves tool epochs and exact cache evidence across restarts.
+    public NativeCacheSession? CacheSession { get; set; }
     /// The latest structured summary replaces only archived model context; the
     /// visible transcript remains complete.
     public string ContextSummary { get; set; } = "";
     public int ContextCompactionCount { get; set; }
     public int LastContextInputTokens { get; set; }
+    public bool LastContextInputTokensIsEstimated { get; set; } = true;
+    public int? LastContextOutputTokens { get; set; }
     public int ContextWindow { get; set; }
+    public string ContextRouteIdentity { get; set; } = "";
+    /// Latest visible activity, retained in header-only loads for the Recent list.
+    public DateTimeOffset LastActivityAt { get; set; } = DateTimeOffset.MinValue;
+    /// Archive state is shared with the macOS session format.
+    public bool Archived { get; set; }
+    /// Pinned state is shared with the macOS session format.
+    public bool Pinned { get; set; }
+    /// Provider account that successfully served this conversation's latest turn.
+    /// Persisting it prevents a global account selection from moving a warm chat.
+    public string? StickyAccountId { get; set; }
+    /// Account that reported the most recent limit; an explicit Continue can
+    /// exclude it once to resume the same model on another connected account.
+    public string? LastLimitedAccountId { get; set; }
+    /// The latest turn was served by another account on the same model. The
+    /// composer banner reports it until the next prompt is sent.
+    public bool AccountSwitched { get; set; }
     public ContinuationState? Continuation { get; set; }
+    /// Journaled before a tool batch starts. The journal survives a process
+    /// crash so recovery never retries an externally visible mutation blindly.
+    public List<InFlightToolCall> InFlightToolCalls { get; set; } = [];
+    /// Keeps the unknown-result marker active while recovery is being prepared;
+    /// approved plans may auto-continue, while Cancel plan remains available.
+    public bool RequiresToolOutcomeRecovery { get; set; }
     [JsonIgnore]
     public bool CanContinue => !Running && Continuation is not null;
-    [JsonIgnore]
+    /// Accepted prompts not yet sent to the provider. Safe to restore because
+    /// active prompts are removed only after their user turn is persisted.
     public System.Collections.ObjectModel.ObservableCollection<PendingPrompt> PendingPrompts { get; set; } = new();
     public bool Running { get => _running; set => SetProperty(ref _running, value); }
     [JsonIgnore]
     public DateTimeOffset? RunStartedAt { get => _runStartedAt; set => SetProperty(ref _runStartedAt, value); }
     public bool Blank { get => _blank; set => SetProperty(ref _blank, value); }
-    public string? PendingPlanMessageId { get => _pendingPlanMessageId; set => SetProperty(ref _pendingPlanMessageId, value); }
+    public string? PendingPlanMessageId
+    {
+        get => _pendingPlanMessageId;
+        set
+        {
+            if (!SetProperty(ref _pendingPlanMessageId, value)) return;
+            foreach (var prompt in PendingPrompts)
+            {
+                if (prompt.IsApproval || prompt.Placement == PromptPlacement.Context) continue;
+                prompt.Placement = value is not null || PlanGateActive
+                    ? PromptPlacement.WaitingForPlan
+                    : prompt.Mode == PromptMode.Steer ? PromptPlacement.Steering : PromptPlacement.Queued;
+            }
+        }
+    }
+    /// A plan remains a hard barrier from its first plan-mode request until the
+    /// approved plan completes or an explicit plan cancellation clears it.
+    public bool PlanGateActive
+    {
+        get => _planGateActive;
+        set
+        {
+            if (!SetProperty(ref _planGateActive, value)) return;
+            foreach (var prompt in PendingPrompts)
+            {
+                if (prompt.IsApproval || prompt.Placement == PromptPlacement.Context) continue;
+                prompt.Placement = value
+                    ? PromptPlacement.WaitingForPlan
+                    : prompt.Mode == PromptMode.Steer ? PromptPlacement.Steering : PromptPlacement.Queued;
+            }
+        }
+    }
     public string? Cwd { get; set; }
     public string? AgentPreset { get; set; }
-    [JsonPropertyName("area")]
-    public AgentArea Area { get; set; } = AgentArea.Coding;
-    [JsonPropertyName("chatProjectID")]
-    public string? ChatProjectId { get; set; }
 }
 
 public sealed record PendingApproval(
@@ -490,13 +598,19 @@ public sealed record PendingApproval(
     string SessionId,
     string ApprovalId,
     string ToolName,
-    string? Reason);
+    string? Reason,
+    string? InputPreview = null);
 
 public static class SessionProjector
 {
+    public static DateTimeOffset LastActivity(Conversation conversation) =>
+        conversation.Messages.Count == 0
+            ? conversation.LastActivityAt
+            : conversation.Messages.Max(message => message.CreatedAt);
+
     public static bool IsPlaceholderTitle(string? title) =>
         string.IsNullOrWhiteSpace(title)
-        || title is "New chat" or "Untitled" or "Session";
+        || title is "New chat" or "New conversation" or "Untitled" or "Session";
 
     public static string TitleFor(string text)
     {
@@ -532,7 +646,7 @@ public static class SessionProjector
         return new Conversation
         {
             Id = id,
-            Title = blank ? "New chat" : IsPlaceholderTitle(title) ? "Untitled" : title,
+            Title = blank ? "New conversation" : IsPlaceholderTitle(title) ? "Untitled" : title,
             Running = item.TryGetValue("running", out var r) && (r.AsBool() ?? false),
             Blank = blank,
             Cwd = item.TryGetValue("cwd", out var cwd) ? cwd.AsString() : null,

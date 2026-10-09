@@ -36,7 +36,8 @@ data class ExcludedFile(val path: String, val reason: String)
 data class WorkspaceSnapshot(val workspaceId: String, val revision: Long, val files: List<RemoteFile>, val excluded: List<ExcludedFile>, val baseCommitSha: String? = null)
 data class RemoteEvent(val id: String, val sequence: Long, val kind: String, val payload: Map<String, String>, val artifactId: String?)
 data class RemoteArtifact(val id: String, val kind: String, val bytes: Long)
-data class Bootstrap(val workspaceId: String, val revision: Long, val status: String, val isBusy: Boolean, val accessMode: String, val provider: String?, val model: String?, val capabilities: List<String>)
+data class RemoteProjectDescriptor(val id: String, val name: String, val workspaceId: String, val branch: String?)
+data class Bootstrap(val workspaceId: String, val revision: Long, val status: String, val isBusy: Boolean, val accessMode: String, val provider: String?, val model: String?, val capabilities: List<String>, val projectId: String? = null)
 data class CommandResult(val commandId: String, val status: String, val approvalId: String?, val result: String?, val error: String?)
 
 private data class PairingPayload(val endpoint: String, val code: String) {
@@ -71,12 +72,19 @@ class RemoteClient(private val context: Context) : ViewModel() {
     var isGuest by mutableStateOf(false); private set
     var cloneStatus by mutableStateOf(""); private set
     var repo by mutableStateOf(RepoCoordinates()); private set
+    var projects by mutableStateOf<List<MobileProject>>(emptyList()); private set
+    var selectedProjectLocationAvailable by mutableStateOf(false); private set
+    var remoteProjects by mutableStateOf<List<RemoteProjectDescriptor>>(emptyList()); private set
+    var remoteSelectedProjectId by mutableStateOf<String?>(null); private set
     private val secure = SecureStore(context)
+    private val projectStore = MobileProjectStore(context)
     private val preferences = context.getSharedPreferences("herness.preferences", Context.MODE_PRIVATE)
     private val eventLock = Any()
     private var eventJob: Job? = null
 
     init {
+        projects = projectStore.projects
+        refreshProjectAvailability()
         endpoint = secure.read("endpoint") ?: ""
         token = secure.read("token") ?: ""
         isGuest = preferences.getBoolean("guest_mode", false) || preferences.getBoolean("works_offline", false)
@@ -86,7 +94,72 @@ class RemoteClient(private val context: Context) : ViewModel() {
     }
 
     val paired get() = endpoint.isNotBlank() && token.isNotBlank()
-    val workspaceId get() = bootstrap?.workspaceId ?: snapshot?.workspaceId ?: ""
+    val workspaceId get() = remoteProjects.firstOrNull { it.id == remoteSelectedProjectId }?.workspaceId ?: bootstrap?.workspaceId ?: snapshot?.workspaceId ?: ""
+    val selectedProjectId: String get() = projectStore.selectedProjectId
+    val selectedProject: MobileProject get() = projectStore.selected
+    val projectLocationAvailableNow: Boolean get() = File(selectedProject.localRoot).isDirectory
+    val remoteProjectMatchesSelectedProject: Boolean
+        get() = !remoteSelectedProjectId.isNullOrBlank() && projectStore.selected.remoteProjectId == remoteSelectedProjectId
+
+    fun selectProject(id: String): Boolean {
+        val changed = projectStore.select(id)
+        if (!changed) return false
+        projects = projectStore.projects
+        refreshProjectAvailability()
+        snapshot = null
+        loadRepo()
+        loadCachedSnapshot()
+        if (paired && !projectStore.selected.remoteProjectId.isNullOrBlank()) {
+            selectRemoteProject(projectStore.selected.remoteProjectId!!)
+        } else if (paired) {
+            clearRemoteProjectScope()
+        }
+        return true
+    }
+
+    fun addProject(name: String): MobileProject {
+        val project = projectStore.add(name)
+        projects = projectStore.projects
+        refreshProjectAvailability()
+        clearRemoteProjectScope()
+        return project
+    }
+
+    fun renameProject(id: String, name: String) {
+        projectStore.projects.firstOrNull { it.id == id }?.let {
+            it.name = name.trim().ifBlank { it.name }
+            projectStore.update(it)
+            projects = projectStore.projects
+        }
+    }
+
+    fun deleteProject(id: String) { projectStore.remove(id); projects = projectStore.projects; refreshProjectAvailability() }
+
+    fun refreshProjectAvailability() {
+        val available = projectLocationAvailableNow
+        if (selectedProjectLocationAvailable != available) selectedProjectLocationAvailable = available
+    }
+
+    fun newRelocationDestination(): File = File(
+        context.filesDir,
+        "herness-projects/$selectedProjectId/files-relocated-${UUID.randomUUID()}",
+    )
+
+    fun relocateSelectedProject(destination: File): Boolean {
+        if (!destination.isDirectory || !projectStore.updateLocalRoot(selectedProjectId, destination)) return false
+        projects = projectStore.projects
+        refreshProjectAvailability()
+        return selectedProjectLocationAvailable
+    }
+
+    /** Keep a local/offline project from accidentally using the last desktop scope. */
+    fun clearRemoteProjectScope() {
+        eventJob?.cancel()
+        remoteSelectedProjectId = null
+        snapshot = null
+        events = emptyList()
+        bootstrap = bootstrap?.copy(projectId = null)
+    }
 
     fun pair(onDone: () -> Unit = {}) {
         val payload = PairingPayload.fromFields(pairingEndpoint, pairingCode)
@@ -131,17 +204,22 @@ class RemoteClient(private val context: Context) : ViewModel() {
     fun connect() {
         viewModelScope.launch(Dispatchers.IO) {
             connecting = true
-            try { bootstrap = parseBootstrap(http("/v1/control/bootstrap").body); error = null; startEvents() }
+            try {
+                bootstrap = parseBootstrap(http("/v1/control/bootstrap").body)
+                runCatching { loadRemoteProjectsBlocking() }
+                error = null
+                if (remoteProjectMatchesSelectedProject) startEvents() else clearRemoteProjectScope()
+            }
             catch (t: Throwable) { error = t.message ?: "Connection failed" }
             connecting = false
         }
     }
 
     fun requestSnapshot() {
-        if (!paired) return
+        if (!paired || !remoteProjectMatchesSelectedProject) return
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                snapshot = parseSnapshot(http("/v1/control/snapshot/request", "POST").body)
+                snapshot = parseSnapshot(http(controlPath("/v1/control/snapshot/request"), "POST").body)
                 cacheSnapshot(snapshot!!)
                 var conflictPath: String? = null
                 snapshot!!.files.forEach { file ->
@@ -156,7 +234,7 @@ class RemoteClient(private val context: Context) : ViewModel() {
                             return@runCatching
                         }
                         target.parentFile?.mkdirs()
-                        target.writeBytes(http("/v1/control/file?path=${URLEncoder.encode(file.path, "UTF-8")}").body)
+                        target.writeBytes(http(controlPath("/v1/control/file?path=${URLEncoder.encode(file.path, "UTF-8")}")).body)
                     }
                 }
                 error = conflictPath?.let { "Conflict: $it changed on both the phone and desktop. Your local edit was kept." }
@@ -166,12 +244,12 @@ class RemoteClient(private val context: Context) : ViewModel() {
     }
 
     suspend fun readFile(path: String): String = withContext(Dispatchers.IO) {
-        try { String(http("/v1/control/file?path=${URLEncoder.encode(path, "UTF-8")}").body, StandardCharsets.UTF_8) }
+        try { String(http(controlPath("/v1/control/file?path=${URLEncoder.encode(path, "UTF-8")}")).body, StandardCharsets.UTF_8) }
         catch (t: Throwable) { cachedFile(path) ?: throw t }
     }
 
     suspend fun artifactText(id: String): String = withContext(Dispatchers.IO) {
-        String(http("/v1/control/artifact?id=${URLEncoder.encode(id, "UTF-8")}").body, StandardCharsets.UTF_8)
+        String(http(controlPath("/v1/control/artifact?id=${URLEncoder.encode(id, "UTF-8")}")).body, StandardCharsets.UTF_8)
     }
 
     suspend fun downloadArtifact(id: String, fileName: String): File = withContext(Dispatchers.IO) {
@@ -179,7 +257,7 @@ class RemoteClient(private val context: Context) : ViewModel() {
         val directory = File(context.cacheDir, "herness-artifacts").apply { mkdirs() }
         val target = File(directory, safeName)
         val temporary = File(directory, ".$safeName.part-${UUID.randomUUID()}")
-        temporary.writeBytes(http("/v1/control/artifact?id=${URLEncoder.encode(id, "UTF-8")}").body)
+        temporary.writeBytes(http(controlPath("/v1/control/artifact?id=${URLEncoder.encode(id, "UTF-8")}")).body)
         if (!temporary.renameTo(target)) {
             temporary.copyTo(target, overwrite = true)
             temporary.delete()
@@ -188,7 +266,7 @@ class RemoteClient(private val context: Context) : ViewModel() {
     }
 
     suspend fun artifacts(): List<RemoteArtifact> = withContext(Dispatchers.IO) {
-        val array = JSONArray(String(http("/v1/control/artifacts").body))
+        val array = JSONArray(String(http(controlPath("/v1/control/artifacts")).body))
         (0 until array.length()).map { index ->
             val item = array.getJSONObject(index)
             RemoteArtifact(item.getString("id"), item.optString("kind", "artifact"), item.optLong("bytes"))
@@ -268,6 +346,13 @@ class RemoteClient(private val context: Context) : ViewModel() {
 
     fun saveRepo(value: RepoCoordinates) {
         repo = value
+        projectStore.projects.firstOrNull { it.id == selectedProjectId }?.let { project ->
+            project.sourceKind = "github"
+            project.repository = value.slug
+            project.branch = value.branch
+            projectStore.update(project)
+            projects = projectStore.projects
+        }
         metaFile("repo.json").apply {
             parentFile?.mkdirs()
             writeText(JSONObject().put("owner", value.owner).put("repository", value.repository).put("branch", value.branch).toString())
@@ -276,9 +361,14 @@ class RemoteClient(private val context: Context) : ViewModel() {
 
     private fun loadRepo() {
         val file = metaFile("repo.json")
-        if (!file.exists()) return
-        runCatching { JSONObject(file.readText()) }.getOrNull()?.let {
-            repo = RepoCoordinates(it.optString("owner"), it.optString("repository"), it.optString("branch", "main"))
+        if (file.exists()) {
+            runCatching { JSONObject(file.readText()) }.getOrNull()?.let {
+                repo = RepoCoordinates(it.optString("owner"), it.optString("repository"), it.optString("branch", "main"))
+            }
+            return
+        }
+        projectStore.selected.repository?.let { slug ->
+            RepoCoordinates.parse(slug, projectStore.selected.branch ?: "main")?.let { repo = it }
         }
     }
 
@@ -288,10 +378,14 @@ class RemoteClient(private val context: Context) : ViewModel() {
 
     fun phoneSecret(name: String): String = secure.read("phone.$name").orEmpty()
 
+    fun migrateLegacyProviderKey(provider: String) {
+        secure.migrateLegacyProviderKey(provider)
+    }
+
     suspend fun command(kind: String, payload: Map<String, Any?>, expectedRevision: Long? = null): CommandResult = withContext(Dispatchers.IO) {
         val payloadJson = JSONObject(); payload.forEach { (key, value) -> payloadJson.put(key, value) }
-        val json = JSONObject().put("id", UUID.randomUUID().toString()).put("workspaceId", workspaceId).put("kind", kind).put("expectedRevision", expectedRevision).put("payload", payloadJson).toString().toByteArray()
-        val response = http("/v1/control/commands", "POST", json, allowError = true)
+        val json = JSONObject().put("id", UUID.randomUUID().toString()).put("workspaceId", workspaceId).put("projectID", remoteSelectedProjectId ?: selectedProjectId).put("kind", kind).put("expectedRevision", expectedRevision).put("payload", payloadJson).toString().toByteArray()
+        val response = http(controlPath("/v1/control/commands"), "POST", json, allowError = true)
         val value = JSONObject(String(response.body))
         if (response.status !in 200..299 && value.optString("status") != "conflict") throw IllegalStateException(value.optString("error", "Remote command failed"))
         CommandResult(value.optString("commandId"), value.optString("status"), value.optString("approvalId").ifBlank { null }, value.opt("result")?.toString(), value.optString("error").ifBlank { null })
@@ -299,7 +393,16 @@ class RemoteClient(private val context: Context) : ViewModel() {
 
     fun clearError() { error = null }
     fun reportError(message: String) { error = message }
-    fun forget() { eventJob?.cancel(); secure.delete("endpoint"); secure.delete("token"); endpoint = ""; token = ""; bootstrap = null; leaveGuest() }
+    fun forget() {
+        clearRemoteProjectScope()
+        remoteProjects = emptyList()
+        secure.delete("endpoint")
+        secure.delete("token")
+        endpoint = ""
+        token = ""
+        bootstrap = null
+        leaveGuest()
+    }
     fun cachedFiles() = snapshot?.files ?: emptyList()
     fun cachedText(path: String) = cachedFile(path)
     fun cachedChanges(): List<GitHubFileChange> = cachedFiles().mapNotNull { file ->
@@ -313,7 +416,7 @@ class RemoteClient(private val context: Context) : ViewModel() {
             var after = events.maxOfOrNull { it.sequence } ?: 0L
             while (isActive) {
                 try {
-                    val connection = open("/v1/control/events?after=$after")
+                    val connection = open(controlPath("/v1/control/events?after=$after"))
                     if (connection.responseCode != 200) throw IllegalStateException("Event stream refused")
                     connection.inputStream.bufferedReader().useLines { lines ->
                         var json = ""
@@ -341,13 +444,52 @@ class RemoteClient(private val context: Context) : ViewModel() {
         val normalized = base.trimEnd('/')
         val parsed = runCatching { URI(normalized) }.getOrNull()
         check(parsed?.scheme?.lowercase() == "https" && !parsed.host.isNullOrBlank() && parsed.userInfo == null) { "HTTPS endpoint required" }
-        val url = URL(normalized + path); val connection = url.openConnection() as HttpURLConnection; connection.requestMethod = method; connection.connectTimeout = 8000; connection.readTimeout = 30000; connection.doInput = true
+        val url = URL(normalized + path); val connection = url.openConnection() as HttpURLConnection; connection.requestMethod = method; connection.connectTimeout = 8000; connection.readTimeout = if (path.contains("/commands")) 120000 else 30000; connection.doInput = true
         if (auth) connection.setRequestProperty("Authorization", "Bearer $token")
         if (body != null) { connection.doOutput = true; connection.setRequestProperty("Content-Type", "application/json"); connection.outputStream.use { it.write(body) } }
         return connection
     }
 
-    private fun parseBootstrap(body: ByteArray) = JSONObject(String(body)).let { Bootstrap(it.getString("workspaceId"), it.getLong("revision"), it.optString("status"), it.optBoolean("isBusy"), it.optString("accessMode"), it.optString("provider").ifBlank { null }, it.optString("model").ifBlank { null }, it.optJSONArray("capabilities")?.strings() ?: emptyList()) }
+    fun selectRemoteProject(id: String) {
+        if (!paired) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val body = JSONObject().put("projectID", id).toString().toByteArray()
+                val value = JSONObject(String(http("/v2/control/projects/select", "POST", body).body))
+                remoteSelectedProjectId = value.optString("projectID").ifBlank { id }
+                bootstrap = bootstrap?.copy(workspaceId = value.optString("workspaceId", bootstrap?.workspaceId.orEmpty()), projectId = remoteSelectedProjectId)
+                snapshot = null
+                remoteProjects.firstOrNull { it.id == remoteSelectedProjectId }?.let { descriptor ->
+                    projectStore.bindRemoteProject(descriptor)
+                    projects = projectStore.projects
+                    loadRepo()
+                    loadCachedSnapshot()
+                }
+                // The stream is workspace-scoped; reconnect after selection so
+                // old-project events are not shown under the new project.
+                eventJob?.cancel()
+                events = emptyList()
+                startEvents()
+            } catch (t: Throwable) { error = t.message ?: "Project selection failed" }
+        }
+    }
+
+    private fun loadRemoteProjectsBlocking() {
+        if (!paired) return
+        val value = JSONObject(String(http("/v2/control/projects").body))
+        val array = value.optJSONArray("projects") ?: JSONArray()
+                remoteProjects = (0 until array.length()).map { index ->
+            val item = array.getJSONObject(index)
+            RemoteProjectDescriptor(item.getString("id"), item.optString("name", "Project"), item.getString("workspaceId"), item.optString("branch").ifBlank { null })
+        }
+        val serverProjectId = value.optString("projectID").ifBlank { null }
+        remoteSelectedProjectId = serverProjectId?.takeIf { it == projectStore.selected.remoteProjectId }
+        if (remoteSelectedProjectId != null) loadCachedSnapshot()
+    }
+
+    private fun controlPath(v1Path: String): String = if (remoteSelectedProjectId.isNullOrBlank()) v1Path else v1Path.replaceFirst("/v1/", "/v2/")
+
+    private fun parseBootstrap(body: ByteArray) = JSONObject(String(body)).let { Bootstrap(it.getString("workspaceId"), it.getLong("revision"), it.optString("status"), it.optBoolean("isBusy"), it.optString("accessMode"), it.optString("provider").ifBlank { null }, it.optString("model").ifBlank { null }, it.optJSONArray("capabilities")?.strings() ?: emptyList(), it.optString("projectID").ifBlank { null }) }
     private fun parseSnapshot(body: ByteArray) = JSONObject(String(body)).let { root -> WorkspaceSnapshot(root.getString("workspaceId"), root.getLong("revision"), root.getJSONArray("files").objects { RemoteFile(it.getString("path"), it.getLong("bytes"), it.getString("sha256"), it.optInt("mode")) }, root.getJSONArray("excluded").objects { ExcludedFile(it.getString("path"), it.getString("reason")) }, root.optString("baseCommitSha").ifBlank { null }) }
     private fun parseEvent(body: String) = JSONObject(body).let { root -> val payload = root.optJSONObject("payload")?.keys()?.asSequence()?.associateWith { key -> root.getJSONObject("payload").opt(key)?.toString().orEmpty() } ?: emptyMap(); RemoteEvent(root.getString("id"), root.getLong("sequence"), root.getString("kind"), payload, root.optString("artifactId").ifBlank { null }) }
     private fun JSONArray.strings() = (0 until length()).map { getString(it) }
@@ -363,11 +505,12 @@ class RemoteClient(private val context: Context) : ViewModel() {
 
     /** The mirror root. Metadata lives in a sibling directory so the shell, the
      *  agent, and any GitHub push only ever see real user files. */
-    fun workspaceRoot(): File = File(context.filesDir, "herness-workspace/files").apply { mkdirs() }.canonicalFile
+    fun workspaceRoot(): File = File(selectedProject.localRoot).canonicalFile
 
-    private fun metaFile(name: String) = File(context.filesDir, "herness-workspace/meta/$name").apply { parentFile?.mkdirs() }
+    private fun metaFile(name: String) = File(context.filesDir, "herness-projects/${selectedProjectId}/meta/$name").apply { parentFile?.mkdirs() }
 
     private fun localTarget(path: String): File {
+        check(projectLocationAvailableNow) { "The local project folder is unavailable." }
         require(path.split('/').none { it == ".mem" || it.startsWith(".mem.") }) { "The .mem path is not available to mobile tools." }
         val root = workspaceRoot()
         val target = File(root, path).canonicalFile
@@ -408,4 +551,14 @@ class SecureStore(context: Context) {
     fun write(name: String, value: String) { val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, key()) }; preferences.edit().putString(name, Base64.getEncoder().encodeToString(cipher.iv + cipher.doFinal(value.toByteArray()))).apply() }
     fun read(name: String): String? = runCatching { val bytes = Base64.getDecoder().decode(preferences.getString(name, null)); val cipher = Cipher.getInstance("AES/GCM/NoPadding"); cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, bytes.copyOfRange(0, 12))); String(cipher.doFinal(bytes.copyOfRange(12, bytes.size))) }.getOrNull()
     fun delete(name: String) { preferences.edit().remove(name).apply() }
+
+    /** Migrate the pre-account mobile key to the provider selected on upgrade. */
+    fun migrateLegacyProviderKey(provider: String) {
+        val legacyKey = "phone.provider"
+        val value = read(legacyKey).orEmpty()
+        if (value.isBlank()) return
+        val scopedKey = MobileHarnessRuntime.credentialKey(provider)
+        if (read(scopedKey).orEmpty().isBlank()) write(scopedKey, value)
+        delete(legacyKey)
+    }
 }

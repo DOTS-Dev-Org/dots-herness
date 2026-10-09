@@ -107,6 +107,34 @@ final class MultiAccountRoutingTests: XCTestCase {
     // MARK: - affinityAccountID
 
     @MainActor
+    func testRouteCacheKeyIsStableForSameModelAndSeparatesModelChanges() {
+        let first = RouterController.routeCacheKey(
+            "herness:unified-v2:conversation",
+            accountID: "account-1",
+            provider: "openai",
+            api: "responses",
+            model: "model-a"
+        )
+        let repeated = RouterController.routeCacheKey(
+            "herness:unified-v2:conversation",
+            accountID: "account-1",
+            provider: "openai",
+            api: "responses",
+            model: "model-a"
+        )
+        let changedModel = RouterController.routeCacheKey(
+            "herness:unified-v2:conversation",
+            accountID: "account-1",
+            provider: "openai",
+            api: "responses",
+            model: "model-b"
+        )
+
+        XCTAssertEqual(first, repeated)
+        XCTAssertNotEqual(first, changedModel)
+    }
+
+    @MainActor
     func testAffinityDroppedWhenModelChanged() {
         let router = RouterController(baseURL: "http://127.0.0.1:1")
         // Model changed away from the pinned model: the pin is dropped before the

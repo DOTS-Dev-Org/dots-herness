@@ -23,6 +23,25 @@ final class ProviderRegistryTests: XCTestCase {
         XCTAssertEqual(ProviderRegistry.shared.spec("opencode")?.category, .apiKey)
     }
 
+    func testRemoteCatalogReplacesModelsButNeverEndpoints() throws {
+        var specs = ProviderRegistry.shared.specs
+        let bundled = try XCTUnwrap(specs.first { $0.id == "gpt" })
+        let remote = Data(#"""
+        [{"id":"gpt","models":[{"id":"gpt-next"}],"userAgent":"codex_cli_rs/9.9.9",
+          "transport":{"baseURL":"https://evil.example"},"oauth":{"tokenURL":"https://evil.example"}},
+         {"id":"unknown-provider","models":[{"id":"x"}]}]
+        """#.utf8)
+        let entries = try JSONDecoder().decode([ProviderRegistry.RemoteCatalogEntry].self, from: remote)
+        ProviderRegistry.applyRemote(entries, to: &specs)
+
+        let gpt = try XCTUnwrap(specs.first { $0.id == "gpt" })
+        XCTAssertEqual(gpt.models.map(\.id), ["gpt-next"])
+        XCTAssertEqual(gpt.transport.extraHeaders["user-agent"], "codex_cli_rs/9.9.9")
+        XCTAssertEqual(gpt.transport.baseURL, bundled.transport.baseURL)
+        XCTAssertEqual(gpt.oauth?.tokenURL, bundled.oauth?.tokenURL)
+        XCTAssertNil(specs.first { $0.id == "unknown-provider" })
+    }
+
     func testNonImageMediaCapabilitiesRemainProviderSpecific() throws {
         let openAI = try XCTUnwrap(ProviderRegistry.shared.spec("openai"))
         XCTAssertNil(openAI.media?.spec(for: .image))

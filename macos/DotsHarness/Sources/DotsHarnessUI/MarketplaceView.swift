@@ -16,8 +16,10 @@ public struct MarketplaceView: View {
     @State private var actionError: String?
     @State private var pendingConsent: MarketplaceEntry?
     @State private var pendingForkConsent: MarketplaceFork?
+    @State private var pendingReport: MarketplaceEntry?
     @State private var showPublish = false
     @State private var showEmailSignIn = false
+    @State private var selectedArea = "core"
 
     public init(model: AppModel) {
         self.model = model
@@ -27,9 +29,10 @@ public struct MarketplaceView: View {
     }
 
     private var filtered: [MarketplaceEntry] {
-        guard !query.isEmpty else { return market.entries }
+        let source = selectedArea == "core" ? market.entries : market.communityEntries
+        guard !query.isEmpty else { return source }
         let q = query.lowercased()
-        return market.entries.filter {
+        return source.filter {
             $0.name.lowercased().contains(q)
                 || $0.id.lowercased().contains(q)
                 || $0.description.lowercased().contains(q)
@@ -46,7 +49,7 @@ public struct MarketplaceView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Button("Plugin yayınla") { showPublish = true }
-                    Button("Çıkış") { signOutMarketplace() }
+                Button("Çıkış") { signOutMarketplace() }
                 } else {
                     Menu("Giriş yap") {
                         ForEach(MarketplaceProvider.allCases) { provider in
@@ -66,6 +69,22 @@ public struct MarketplaceView: View {
                 .textFieldStyle(.roundedBorder)
                 .padding(.horizontal)
 
+            Picker("Marketplace alanı", selection: $selectedArea) {
+                Text("Ana Marketplace").tag("core")
+                Text("Community / Experimental").tag("community")
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.top, 8)
+
+            Text(selectedArea == "core"
+                 ? "DOTS Harness iş akışına doğrudan katkı veren, incelenmiş pluginler."
+                 : "Ana keşif alanından ayrı, AI tarafından topluluk veya deneysel olarak sınıflandırılmış pluginler.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal)
+                .padding(.top, 4)
+
             if !market.forks.forks.isEmpty {
                 localForks
                     .padding(.horizontal)
@@ -82,11 +101,13 @@ public struct MarketplaceView: View {
                 Text(error).font(.caption).foregroundStyle(.red).padding(.horizontal).padding(.top, 4)
             }
 
-            if market.entries.isEmpty {
+            if filtered.isEmpty {
                 ContentUnavailableView(
-                    AppCopy.text("marketplace.empty"),
+                    selectedArea == "core" ? AppCopy.text("marketplace.empty") : "Community alanında henüz plugin yok",
                     systemImage: "shippingbox",
-                    description: Text(AppCopy.text("marketplace.emptyHint"))
+                    description: Text(selectedArea == "core"
+                                      ? AppCopy.text("marketplace.emptyHint")
+                                      : "Community pluginleri ayrı inceleme ve açık native-code onayı gerektirir.")
                 )
                 .frame(maxHeight: .infinity)
             } else {
@@ -97,7 +118,7 @@ public struct MarketplaceView: View {
         }
         .frame(minWidth: 520, minHeight: 420)
         .task {
-            if market.entries.isEmpty { await market.refresh() }
+            if market.entries.isEmpty && market.communityEntries.isEmpty { await market.refresh() }
             await market.refreshOwnedPlugins()
         }
         .onChange(of: session.isSignedIn) { _, signedIn in
@@ -120,6 +141,9 @@ public struct MarketplaceView: View {
         .sheet(isPresented: $showEmailSignIn) {
             MarketplaceEmailSignInView(session: session)
         }
+        .sheet(item: $pendingReport) { entry in
+            MarketplaceReportView(market: market, entry: entry)
+        }
         .confirmationDialog(
             "Bu plugin native kod çalıştırır",
             isPresented: Binding(
@@ -134,7 +158,11 @@ public struct MarketplaceView: View {
             }
             Button("İptal", role: .cancel) { pendingConsent = nil }
         } message: { entry in
-            Text("\(entry.name) doğrulanmamış bir üçüncü taraf native pluginidir. Kaynak kodu ve lisansı Marketplace ekranından inceleyin. Kabul ederseniz plugin trusted olarak hemen çalıştırılır.")
+            let area = entry.catalogScope == "core"
+                ? "ana Marketplace"
+                : (entry.catalogScope == "experimental" ? "Experimental alanı" : "Community alanı")
+            let review = entry.verificationStatus == "verified" ? "DOTS incelemesinden geçmiş" : "inceleme bekleyen"
+            Text("\(entry.name), \(area) içindeki \(review) üçüncü taraf native pluginidir. Kategori: \(categoryTitle(entry.category)). İzinleri ve kaynak kodunu inceleyin. Kabul ederseniz plugin trusted olarak hemen çalıştırılır.")
         }
         .confirmationDialog(
             "Özelleştirilmiş plugin native kod çalıştırır",
@@ -167,7 +195,12 @@ public struct MarketplaceView: View {
             Text(entry.id).font(.caption.monospaced()).foregroundStyle(.secondary)
             HStack(spacing: 8) {
                 TagBadge(entry.tier, background: AnyShapeStyle(.quaternary))
-                TagBadge(entry.verificationStatus == "verified" ? "verified" : "doğrulanmamış", background: AnyShapeStyle(.quaternary))
+                TagBadge(scopeTitle(entry.catalogScope), background: AnyShapeStyle(.quaternary))
+                TagBadge(categoryTitle(entry.category), background: AnyShapeStyle(.quaternary))
+                TagBadge(entry.verificationStatus == "verified" ? "DOTS reviewed" : "inceleme bekliyor", background: AnyShapeStyle(.quaternary))
+                if entry.riskLevel != "low" && entry.riskLevel != "unknown" {
+                    TagBadge("risk: \(entry.riskLevel)", background: AnyShapeStyle(.quaternary))
+                }
                 if entry.signature != nil || entry.currentArtifact?.signature != nil {
                     TagBadge("signed", background: AnyShapeStyle(.quaternary))
                 }
@@ -181,6 +214,44 @@ public struct MarketplaceView: View {
             if !entry.description.isEmpty {
                 Text(entry.description).font(.caption)
             }
+            HStack(spacing: 8) {
+                if !entry.permissions.isEmpty {
+                    Text("İzinler: \(entry.permissions.joined(separator: ", "))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                Spacer()
+                if session.isSignedIn {
+                    Button("Raporla") { pendingReport = entry }
+                        .buttonStyle(.borderless)
+                        .font(.caption2)
+                }
+            }
+        }
+    }
+
+    private func categoryTitle(_ category: String) -> String {
+        switch category {
+        case "coding": return "Coding"
+        case "git": return "Git"
+        case "devops": return "DevOps"
+        case "qa": return "QA"
+        case "browser": return "Browser"
+        case "workspace": return "Workspace"
+        case "models": return "Models"
+        case "integrations": return "Integrations"
+        case "productivity": return "Productivity"
+        case "community": return "Community"
+        default: return "Other"
+        }
+    }
+
+    private func scopeTitle(_ scope: String) -> String {
+        switch scope {
+        case "core": return "Ana"
+        case "experimental": return "Experimental"
+        default: return "Community"
         }
     }
 
@@ -268,6 +339,12 @@ public struct MarketplaceView: View {
                         HStack(spacing: 6) {
                             Text("v\(release.version)").font(.caption.monospaced())
                             Text(release.license).font(.caption2).foregroundStyle(.secondary)
+                            Text("\(release.catalogScope) / \(release.category)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Text(release.moderationStatus)
+                                .font(.caption2)
+                                .foregroundStyle(release.moderationStatus == "rejected" || release.moderationStatus == "suspended" ? .red : .secondary)
                             ForEach(release.artifacts) { artifact in
                                 Text("\(artifact.platform)/\(artifact.architecture): \(artifact.status)")
                                     .font(.caption2)
@@ -481,7 +558,7 @@ private struct MarketplacePublishView: View {
                 Text(error).font(.caption).foregroundStyle(.red)
             }
             HStack {
-                Text("Yayın sonrası plugin hemen listelenir; platform buildleri pending/ready/failed olarak izlenir.")
+                Text("Yayın sonrası AI kategori, alan ve risk sınıflandırması yapar. Plugin build tamamlandıktan sonra da insan incelemesi bitene kadar listelenmez.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -542,6 +619,74 @@ private struct MarketplacePublishView: View {
             } catch {
                 self.error = error.localizedDescription
             }
+        }
+    }
+}
+
+@MainActor
+private struct MarketplaceReportView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var market: MarketplaceClient
+    let entry: MarketplaceEntry
+    @State private var reason = "other"
+    @State private var details = ""
+    @State private var error: String?
+    @State private var isSubmitting = false
+
+    private static let reasons: [(String, String)] = [
+        ("malware", "Malware veya zararlı davranış"),
+        ("credential_theft", "Kimlik bilgisi / credential hırsızlığı"),
+        ("data_exfiltration", "Veri dışarı aktarma"),
+        ("deceptive_listing", "Yanıltıcı listeleme / impersonation"),
+        ("spam", "Spam veya boş wrapper"),
+        ("copyright", "Telif / lisans ihlali"),
+        ("other", "Diğer"),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Plugin'i raporla").font(.title2.weight(.semibold))
+                Spacer()
+                Button("Kapat") { dismiss() }
+            }
+            Text("\(entry.name) · v\(entry.version)")
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+            Picker("Neden", selection: $reason) {
+                ForEach(Self.reasons, id: \.0) { value, label in
+                    Text(label).tag(value)
+                }
+            }
+            TextEditor(text: $details)
+                .font(.body)
+                .frame(minHeight: 110)
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(.quaternary))
+            if let error {
+                Text(error).font(.caption).foregroundStyle(.red)
+            }
+            HStack {
+                Spacer()
+                Button("Raporu gönder") { submit() }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isSubmitting)
+            }
+        }
+        .padding(22)
+        .frame(width: 500)
+    }
+
+    private func submit() {
+        isSubmitting = true
+        error = nil
+        Task {
+            do {
+                try await market.report(entry, reason: reason, details: details)
+                dismiss()
+            } catch {
+                self.error = error.localizedDescription
+            }
+            isSubmitting = false
         }
     }
 }

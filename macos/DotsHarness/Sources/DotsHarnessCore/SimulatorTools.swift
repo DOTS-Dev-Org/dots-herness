@@ -9,8 +9,11 @@ public enum SimulatorTools {
         AgentToolDefinition(
             name: "ios_simulator",
             description: """
-            Control the iOS Simulator: list devices, boot or shut one down, install and launch an \
-            app bundle, open a URL, switch appearance, or capture a screenshot into the workspace.
+            Control the iOS Simulator. Before any verification, call list_devices and reuse a \
+            compatible Booted simulator by its exact UDID. Do not boot another simulator while a \
+            compatible one is already Booted, unless the user explicitly asks for a different device. \
+            Only boot a compatible device if none is running. Supports install/launch, URLs, appearance, \
+            and screenshots.
             """,
             parameters: .object([
                 "type": .string("object"),

@@ -19,12 +19,14 @@ final class ConcurrentRunsTests: XCTestCase {
     /// Two chats run at once; switching chats leaves the first one running.
     @MainActor
     func testChatsRunInParallelAndKeepRunningInBackground() async throws {
+        let paths = temporaryPaths()
+        let workspace = paths.root.appendingPathComponent("project", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
         let host = NativeAgentHost(
-            paths: temporaryPaths(),
-            endpoint: AgentEndpointController(baseURL: "http://parallel.test", modelID: "test-model"),
-            area: .chat
+            paths: paths,
+            endpoint: AgentEndpointController(baseURL: "http://parallel.test", modelID: "test-model")
         )
-        host.start(workspacePath: "")
+        host.start(workspacePath: workspace.path)
         await host.refreshConnection()
         let started = Date()
 

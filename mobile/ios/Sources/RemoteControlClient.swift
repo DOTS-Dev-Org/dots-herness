@@ -60,6 +60,45 @@ struct Bootstrap: Codable, Sendable {
     let isBusy: Bool
     let accessMode: String
     let capabilities: [String]
+    let projectID: String?
+
+    enum CodingKeys: String, CodingKey {
+        case protocolVersion, workspaceId, workspace, revision, conversationId, provider, model, status, isBusy, accessMode, capabilities, projectID
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        protocolVersion = try values.decode(Int.self, forKey: .protocolVersion)
+        workspaceId = try values.decode(String.self, forKey: .workspaceId)
+        workspace = try values.decode(String.self, forKey: .workspace)
+        revision = try values.decode(Int64.self, forKey: .revision)
+        conversationId = try values.decodeIfPresent(String.self, forKey: .conversationId)
+        provider = try values.decodeIfPresent(String.self, forKey: .provider)
+        model = try values.decodeIfPresent(String.self, forKey: .model)
+        status = try values.decode(String.self, forKey: .status)
+        isBusy = try values.decode(Bool.self, forKey: .isBusy)
+        accessMode = try values.decode(String.self, forKey: .accessMode)
+        capabilities = try values.decode([String].self, forKey: .capabilities)
+        projectID = try values.decodeIfPresent(String.self, forKey: .projectID)
+    }
+}
+
+struct RemoteProjectDescriptor: Codable, Identifiable, Sendable, Equatable {
+    let id: String
+    let name: String
+    let workspaceId: String
+    let branch: String?
+}
+
+private struct RemoteProjectsResponse: Codable, Sendable {
+    let protocolVersion: Int
+    let projectID: String?
+    let projects: [RemoteProjectDescriptor]
+}
+
+private struct RemoteProjectSelection: Codable, Sendable {
+    let projectID: String
+    let workspaceId: String
 }
 
 struct PairingResult: Codable, Sendable {
@@ -108,6 +147,7 @@ struct ControlCommand: Encodable {
     let id: String
     let workspaceId: String
     let sessionId: String?
+    let projectID: String?
     let kind: String
     let expectedRevision: Int64?
     let payload: [String: RemoteJSONValue]
@@ -149,6 +189,8 @@ final class RemoteControlClient: ObservableObject {
     @Published private(set) var isConnecting = false
     @Published private(set) var isPairing = false
     @Published private(set) var isGuest = UserDefaults.standard.bool(forKey: "herness.guest") || UserDefaults.standard.bool(forKey: "worksOffline")
+    @Published private(set) var remoteProjects: [RemoteProjectDescriptor] = []
+    @Published private(set) var remoteSelectedProjectID: String?
     @Published var errorMessage: String?
     @Published var pairingEndpoint = ""
     @Published var pairingCode = ""
@@ -171,7 +213,7 @@ final class RemoteControlClient: ObservableObject {
     }
 
     var isPaired: Bool { !endpoint.isEmpty && !token.isEmpty }
-    var workspaceID: String { bootstrap?.workspaceId ?? snapshot?.workspaceId ?? "" }
+    var workspaceID: String { remoteProjects.first(where: { $0.id == remoteSelectedProjectID })?.workspaceId ?? bootstrap?.workspaceId ?? snapshot?.workspaceId ?? "" }
 
     func pair() async {
         guard let payload = PairingPayload(endpoint: pairingEndpoint, code: pairingCode) else {
@@ -227,13 +269,14 @@ final class RemoteControlClient: ObservableObject {
             let (data, response) = try await request(url: url)
             try validate(response, data: data)
             bootstrap = try decoder.decode(Bootstrap.self, from: data)
+            await loadRemoteProjects()
             errorMessage = nil
             startEvents()
         } catch { errorMessage = error.localizedDescription }
     }
 
     func requestSnapshot() async {
-        guard let url = endpointURL("/v1/control/snapshot/request") else { errorMessage = ClientError.invalidEndpoint.localizedDescription; return }
+        guard let url = endpointURL(controlPath("/v1/control/snapshot/request")) else { errorMessage = ClientError.invalidEndpoint.localizedDescription; return }
         do { let (data, response) = try await request(url: url, method: "POST"); try validate(response, data: data); snapshot = try decoder.decode(WorkspaceSnapshot.self, from: data) }
         catch { errorMessage = error.localizedDescription }
     }
@@ -245,7 +288,7 @@ final class RemoteControlClient: ObservableObject {
     }
 
     func readFileData(_ path: String) async throws -> Data {
-        guard var components = URLComponents(url: try endpointURLOrThrow("/v1/control/file"), resolvingAgainstBaseURL: false) else { throw ClientError.invalidEndpoint }
+        guard var components = URLComponents(url: try endpointURLOrThrow(controlPath("/v1/control/file")), resolvingAgainstBaseURL: false) else { throw ClientError.invalidEndpoint }
         components.queryItems = [URLQueryItem(name: "path", value: path)]
         let (data, response) = try await request(url: components.url!)
         try validate(response, data: data)
@@ -259,7 +302,7 @@ final class RemoteControlClient: ObservableObject {
     }
 
     func artifactData(_ id: String) async throws -> Data {
-        guard var components = URLComponents(url: try endpointURLOrThrow("/v1/control/artifact"), resolvingAgainstBaseURL: false) else { throw ClientError.invalidEndpoint }
+        guard var components = URLComponents(url: try endpointURLOrThrow(controlPath("/v1/control/artifact")), resolvingAgainstBaseURL: false) else { throw ClientError.invalidEndpoint }
         components.queryItems = [URLQueryItem(name: "id", value: id)]
         let (data, response) = try await request(url: components.url!)
         try validate(response, data: data)
@@ -268,9 +311,11 @@ final class RemoteControlClient: ObservableObject {
 
     @discardableResult
     func command(kind: String, payload: [String: RemoteJSONValue], expectedRevision: Int64? = nil) async throws -> CommandResponse {
-        guard let url = endpointURL("/v1/control/commands"), !workspaceID.isEmpty else { throw ClientError.invalidEndpoint }
-        let value = ControlCommand(id: UUID().uuidString, workspaceId: workspaceID, sessionId: bootstrap?.conversationId, kind: kind, expectedRevision: expectedRevision, payload: payload)
-        let (data, response) = try await request(url: url, method: "POST", body: try encoder.encode(value))
+        guard let url = endpointURL(controlPath("/v1/control/commands")), !workspaceID.isEmpty else { throw ClientError.invalidEndpoint }
+        var payload = payload
+        payload["projectID"] = .string(remoteSelectedProjectID ?? "")
+        let value = ControlCommand(id: UUID().uuidString, workspaceId: workspaceID, sessionId: bootstrap?.conversationId, projectID: remoteSelectedProjectID, kind: kind, expectedRevision: expectedRevision, payload: payload)
+        let (data, response) = try await request(url: url, method: "POST", body: try encoder.encode(value), timeout: 120)
         if let commandResponse = try? decoder.decode(CommandResponse.self, from: data), commandResponse.status == "conflict" { return commandResponse }
         try validate(response, data: data)
         return try decoder.decode(CommandResponse.self, from: data)
@@ -283,12 +328,61 @@ final class RemoteControlClient: ObservableObject {
     func phoneSecret(_ key: String) -> String { secure.read("phone.\(key)") ?? "" }
 
     func disconnect() {
-        eventTask?.cancel(); eventTask = nil; token = ""; endpoint = ""; bootstrap = nil; isGuest = false; UserDefaults.standard.set(false, forKey: "herness.guest"); UserDefaults.standard.set(false, forKey: "worksOffline"); secure.delete("endpoint"); secure.delete("token")
+        eventTask?.cancel(); eventTask = nil; token = ""; endpoint = ""; bootstrap = nil; remoteProjects = []; remoteSelectedProjectID = nil; isGuest = false; UserDefaults.standard.set(false, forKey: "herness.guest"); UserDefaults.standard.set(false, forKey: "worksOffline"); secure.delete("endpoint"); secure.delete("token")
     }
 
-    private func request(url: URL, method: String = "GET", body: Data? = nil) async throws -> (Data, URLResponse) {
+    /// Stop using the last desktop project while the phone is on a local or
+    /// GitHub project. Pairing remains intact so the user can select a desktop
+    /// project again without pairing a second time.
+    func clearRemoteProjectScope() {
+        eventTask?.cancel()
+        eventTask = nil
+        remoteSelectedProjectID = nil
+        snapshot = nil
+        events = []
+        lastSequence = 0
+    }
+
+    func selectRemoteProject(_ id: String) async {
+        guard isPaired, let url = endpointURL("/v2/control/projects/select") else { return }
+        do {
+            let body = try encoder.encode(["projectID": id])
+            let (data, response) = try await request(url: url, method: "POST", body: body)
+            try validate(response, data: data)
+            let selection = try decoder.decode(RemoteProjectSelection.self, from: data)
+            remoteSelectedProjectID = selection.projectID
+            snapshot = nil
+            // The event stream is workspace-scoped. Reconnect it after a
+            // project change so events from the previous remote project cannot
+            // remain attached to the new selection.
+            events = []
+            lastSequence = 0
+            startEvents()
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    private func loadRemoteProjects() async {
+        guard let url = endpointURL("/v2/control/projects") else { return }
+        do {
+            let (data, response) = try await request(url: url)
+            try validate(response, data: data)
+            let result = try decoder.decode(RemoteProjectsResponse.self, from: data)
+            remoteProjects = result.projects
+            remoteSelectedProjectID = result.projectID
+        } catch {
+            // v1-only desktop hosts remain supported.
+            remoteProjects = []
+            remoteSelectedProjectID = nil
+        }
+    }
+
+    private func controlPath(_ v1Path: String) -> String {
+        remoteSelectedProjectID == nil ? v1Path : v1Path.replacingOccurrences(of: "/v1/", with: "/v2/", options: [.anchored])
+    }
+
+    private func request(url: URL, method: String = "GET", body: Data? = nil, timeout: TimeInterval = 60) async throws -> (Data, URLResponse) {
         guard url.scheme?.lowercased() == "https", url.user == nil, url.password == nil, url.host != nil else { throw ClientError.invalidEndpoint }
-        var request = URLRequest(url: url); request.httpMethod = method; request.httpBody = body; request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization"); if body != nil { request.setValue("application/json", forHTTPHeaderField: "Content-Type") }; return try await session.data(for: request)
+        var request = URLRequest(url: url); request.timeoutInterval = timeout; request.httpMethod = method; request.httpBody = body; request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization"); if body != nil { request.setValue("application/json", forHTTPHeaderField: "Content-Type") }; return try await session.data(for: request)
     }
 
     private func endpointURL(_ path: String) -> URL? {
@@ -308,7 +402,7 @@ final class RemoteControlClient: ObservableObject {
             guard let self else { return }
             while !Task.isCancelled {
                 do {
-                    guard let url = endpointURL("/v1/control/events?after=\(lastSequence)"), var request = URLRequest(url: url) as URLRequest? else { return }
+                    guard let url = endpointURL(controlPath("/v1/control/events?after=\(lastSequence)")), var request = URLRequest(url: url) as URLRequest? else { return }
                     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization"); request.setValue(String(lastSequence), forHTTPHeaderField: "Last-Event-ID")
                     let (bytes, response) = try await session.bytes(for: request); guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw ClientError.server("Event stream refused") }
                     var eventData = ""
@@ -345,4 +439,19 @@ final class SecureStore {
     }
     func write(_ value: String, key: String) { let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: key]; SecItemDelete(query as CFDictionary); var item = query; item[kSecValueData as String] = Data(value.utf8); SecItemAdd(item as CFDictionary, nil) }
     func delete(_ key: String) { let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: key]; SecItemDelete(query as CFDictionary) }
+
+    /// Migrate the pre-account mobile key exactly once.  The old key had no
+    /// provider identity, so it is assigned to the provider that was selected
+    /// when the app last ran and then removed; future lookups are scoped.
+    func migrateLegacyProviderKey(to provider: String) {
+        let legacyKey = "phone.provider"
+        guard let value = read(legacyKey), !value.isEmpty else { return }
+        let scopedKey = MobileAgent.credentialKey(for: provider)
+        if let existing = read(scopedKey), !existing.isEmpty {
+            delete(legacyKey)
+        } else {
+            write(value, key: scopedKey)
+            delete(legacyKey)
+        }
+    }
 }

@@ -60,6 +60,14 @@ export type Env = {
   /** GitHub App installation token or narrowly scoped workflow token. */
   MARKETPLACE_BUILD_DISPATCH_TOKEN?: string;
   MARKETPLACE_BUILD_DISPATCH_REF?: string;
+  /** Server-side TypeSafe key used only for Marketplace semantic classification. */
+  TYPESAFE_API_KEY?: string;
+  /** Lists Claude models for the hourly model-catalog sync. `wrangler secret put ANTHROPIC_API_KEY` */
+  ANTHROPIC_API_KEY?: string;
+  /** Optional TypeSafe API origin; defaults to https://api.typesafe.ai. */
+  TYPESAFE_API_URL?: string;
+  /** TypeSafe model alias used for Marketplace classification. */
+  TYPESAFE_MODEL?: string;
   SMTP_HOST?: string;
   SMTP_PORT?: string;
   SMTP_FROM_EMAIL?: string;

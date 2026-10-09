@@ -14,16 +14,21 @@ ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = ROOT / "mobile/localization/languages.json"
 IOS = ROOT / "mobile/ios/Resources"
 ANDROID = ROOT / "mobile/android/app/src/main/res"
+sys.path.insert(0, str(ROOT / "tools"))
+from sync_mobile_localization import localized_values  # noqa: E402
+
 ENTRY = re.compile(r'^\s*"((?:\\.|[^"\\])*)"\s*=\s*"((?:\\.|[^"\\])*)"\s*;\s*$')
 PLACEHOLDER = re.compile(r"%(?:\d+\$)?(?:lld|[dfs@])")
 
 REQUIRED = {
-    "intro.eyebrow.connect", "intro.title.connect", "intro.description.connect",
-    "intro.eyebrow.agent", "intro.title.agent", "intro.description.agent",
-    "intro.eyebrow.ship", "intro.title.ship", "intro.description.ship",
+    "intro.title.connect", "intro.description.connect",
+    "intro.title.agent", "intro.description.agent",
+    "intro.title.ship", "intro.description.ship",
     "intro.skip", "intro.back", "intro.continue", "intro.start", "intro.language",
     "intro.languageAccessibility", "intro.languageSystem", "intro.page",
     "mobile.splash.logo", "mobile.splash.buildLine", "mobile.connection.title", "app.ok",
+    "project.missing.title", "project.missing.message", "project.missing.locate", "project.missing.readOnly",
+    "sidebar.recent", "sidebar.noChats",
 }
 
 
@@ -66,7 +71,7 @@ def read_android(path: Path) -> dict[str, str]:
             raise ValueError(f"{path}: string without name")
         if name in values:
             raise ValueError(f"{path}: duplicate resource {name}")
-        values[name] = "".join(item.itertext())
+        values[name] = "".join(item.itertext()).replace("\\'", "'")
     return values
 
 
@@ -117,6 +122,21 @@ def main() -> int:
         for key in set(expected) & set(values):
             if Counter(PLACEHOLDER.findall(expected[key])) != Counter(PLACEHOLDER.findall(values[key])):
                 errors.append(f"Android {locale}: placeholder mismatch for {key}")
+
+    # Key parity alone allows a missing translation to be silently filled with
+    # English. Compare both generated resources with the canonical locale data.
+    for locale in locales:
+        try:
+            expected = localized_values(locale)
+        except ValueError as error:
+            errors.append(str(error))
+            continue
+        for key, value in expected.items():
+            if ios_values.get(locale, {}).get(key) != value:
+                errors.append(f"iOS {locale}: stale or missing translation for {key}")
+            name = android_name(key)
+            if android_values.get(locale, {}).get(name) != value:
+                errors.append(f"Android {locale}: stale or missing translation for {name}")
 
     for key in sorted(REQUIRED):
         if key not in base: errors.append(f"English iOS catalog: missing required key {key}")

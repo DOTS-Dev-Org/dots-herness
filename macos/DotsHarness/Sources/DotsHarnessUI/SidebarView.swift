@@ -19,10 +19,6 @@ struct SidebarView: View {
     @State private var searchText = ""
     @State private var isProjectsExpanded = true
     @State private var isRecentExpanded = true
-    /// Path of the project whose chat sublist is open. Chats are only ever
-    /// loaded for the active project (`model.workspacePath`), so this is only
-    /// meaningful when it matches the active project.
-    @State private var expandedProjectPath: String?
     @State private var hoveredConversationID: String?
     @State private var projectPendingRemoval: String?
     @State private var projectEditorTarget: ProjectEditorTarget?
@@ -30,10 +26,18 @@ struct SidebarView: View {
     /// Section header the cursor is over; its chevron and actions only show then.
     @State private var hoveredSectionTitle: String?
     @State private var projectPreviewPath: String?
-    @State private var showAllProjectChats = false
-    @ObservedObject private var startupGate = StartupGate.shared
-
+    /// Projects whose chat list is showing past `visibleConversationLimit`.
+    @State private var expandedChatLists: Set<String> = []
     private let visibleConversationLimit = 7
+
+    /// Shown in the sidebar header; the window titlebar stays empty so the name
+    /// reads once instead of twice.
+    static let appDisplayName: String = {
+        let info = Bundle.main.infoDictionary
+        return (info?["CFBundleDisplayName"] as? String)
+            ?? (info?["CFBundleName"] as? String)
+            ?? ProcessInfo.processInfo.processName
+    }()
 
     /// Sidebar-owned voice session. No `onTranscript` closure, so a finished
     /// transcript is sent straight as a message.
@@ -56,22 +60,19 @@ struct SidebarView: View {
 
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
-                        if model.activeArea == .chat {
-                            chatSidebarContent
-                        } else {
-                            primaryNavigation
+                        primaryNavigation
 
                             sectionHeader(
                                 title: AppCopy.text("sidebar.projects"),
                                 isExpanded: $isProjectsExpanded,
-                                showsStatusDot: startupGate.isOpen && model.conversations.contains {
+                                showsStatusDot: model.conversations.contains {
                                     $0.unread && !$0.running && !$0.blank && !$0.archived
                                 }
                             ) {
                                 projectsSectionActions
                             }
 
-                            if isProjectsExpanded, startupGate.isOpen {
+                            if isProjectsExpanded {
                                 projectsSection
                             }
 
@@ -83,9 +84,8 @@ struct SidebarView: View {
                                 EmptyView()
                             }
 
-                            if isRecentExpanded, startupGate.isOpen {
-                                recentSection
-                            }
+                        if isRecentExpanded {
+                            recentSection
                         }
 
                     }
@@ -97,42 +97,18 @@ struct SidebarView: View {
 
                 accountFooter
             }
-
-            if isAccountMenuPresented {
-                Button(action: dismissAccountMenu) {
-                    Color.black.opacity(0.08)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(AppCopy.text("common.cancel"))
-                .zIndex(1)
-
-                AccountMenuPopover(
-                    account: model.account,
-                    onUsage: {
-                        dismissAccountMenu()
-                        model.presentUsage()
-                    },
-                    onSettings: {
-                        dismissAccountMenu()
-                        model.presentSettings()
-                    },
-                    onSignOut: {
-                        dismissAccountMenu()
-                        showSignOutConfirmation = true
-                    }
-                )
-                .padding(.horizontal, 8)
-                .padding(.bottom, 64)
-                .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .bottomLeading)))
-                .zIndex(2)
-            }
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .navigationSplitViewColumnWidth(min: 250, ideal: 280, max: 340)
+        .task {
+            while !Task.isCancelled {
+                model.refreshProjectLocationAvailability()
+                try? await Task.sleep(for: .seconds(1))
+            }
+        }
         .onExitCommand {
             if isAccountMenuPresented {
-                dismissAccountMenu()
+                isAccountMenuPresented = false
             }
         }
         .alert(AppCopy.text("sidebar.signOutQuestion"), isPresented: $showSignOutConfirmation) {
@@ -173,9 +149,9 @@ struct SidebarView: View {
             }
         }
         .onChange(of: model.workspacePath) { _, value in
-            if value.isEmpty {
-                expandedProjectPath = nil
-            }
+            // Opening a project reveals its chats. Nothing is ever removed here:
+            // switching or adding a project must leave the other open lists open.
+            if !value.isEmpty { model.setProjectChatsExpanded(true, for: value) }
         }
     }
 
@@ -194,6 +170,12 @@ struct SidebarView: View {
                     .frame(width: 22, height: 22)
                     .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
             }
+
+            Text(Self.appDisplayName)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .allowsHitTesting(false)
 
             Spacer(minLength: 0)
 
@@ -305,132 +287,6 @@ struct SidebarView: View {
             )
         }
         .padding(.bottom, 10)
-    }
-
-    private var chatSidebarContent: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SidebarNavigationRow(
-                title: AppCopy.text("sidebar.newChat"),
-                systemImage: "square.and.pencil",
-                trailingSystemImage: "plus.circle",
-                action: { model.newChatConversation(in: model.selected?.chatProjectID) }
-            )
-            .padding(.bottom, 10)
-
-            sectionHeader(
-                title: AppCopy.text("sidebar.projects"),
-                isExpanded: $isProjectsExpanded,
-                showsStatusDot: startupGate.isOpen && model.chatProjects.contains { project in
-                    !project.archived && model.chatConversations(in: project.id).contains {
-                        $0.unread && !$0.running && !$0.blank && !$0.archived
-                    }
-                }
-            ) {
-                Button {
-                    promptForText(
-                        title: AppCopy.text("sidebar.addProject"),
-                        message: AppCopy.text("sidebar.projectTitle")
-                    ) { name in
-                        let project = model.createChatProject(name: name)
-                        model.newChatConversation(in: project.id)
-                    }
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 12, weight: .semibold))
-                        .frame(width: 20, height: 20)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .help(AppCopy.text("sidebar.addProject"))
-            }
-
-            if isProjectsExpanded, startupGate.isOpen {
-                ForEach(model.chatProjects.filter { !$0.archived }) { project in
-                    chatProjectRow(project)
-                }
-            }
-
-            // Chats without a project sit outside the projects, as plain chats.
-            if startupGate.isOpen {
-                VStack(alignment: .leading, spacing: 1) {
-                    ForEach(sortedByActivity(filteredConversations(model.unassignedChatConversations))) { conversation in
-                        conversationRow(conversation, indented: false)
-                    }
-                }
-                .padding(.top, 8)
-            }
-        }
-    }
-
-    private func chatProjectRow(_ project: ChatProject) -> some View {
-        let conversations = filteredConversations(model.chatConversations(in: project.id))
-        let isActive = model.selected?.chatProjectID == project.id
-        return VStack(alignment: .leading, spacing: 1) {
-            HStack(spacing: 3) {
-                Button {
-                    if let conversation = sortedByActivity(conversations).first {
-                        model.selectedConversationID = conversation.id
-                    } else {
-                        model.newChatConversation(in: project.id)
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: project.pinned ? "pin.fill" : "bubble.left.and.bubble.right")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(project.pinned ? Color.accentColor : .secondary)
-                        Text(project.name)
-                            .font(.system(size: 14))
-                            .lineLimit(1)
-                        Spacer(minLength: 0)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-
-                Menu {
-                    Button(project.pinned
-                        ? AppCopy.text("sidebar.unpinProject")
-                        : AppCopy.text("sidebar.pinProject")) {
-                        model.toggleChatProjectPinned(project.id)
-                    }
-                    Button(AppCopy.text("sidebar.archiveChats")) {
-                        model.setChatProjectArchived(project.id, archived: true)
-                    }
-                    Divider()
-                    Button(AppCopy.text("sidebar.deleteChat"), role: .destructive) {
-                        model.deleteChatProject(project.id)
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 12, weight: .semibold))
-                        .frame(width: 22, height: 24)
-                }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .foregroundStyle(.secondary)
-
-                Button { model.newChatConversation(in: project.id) } label: {
-                    Image(systemName: "square.and.pencil")
-                        .font(.system(size: 13, weight: .medium))
-                        .frame(width: 24, height: 24)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                }
-            .padding(.horizontal, 8)
-            .frame(minHeight: 30)
-
-            if isActive {
-                ForEach(sortedByActivity(conversations).prefix(visibleConversationLimit)) { conversation in
-                    conversationRow(conversation)
-                }
-            }
-        }
-        .background(
-            isActive ? Color.primary.opacity(0.105) : Color.clear,
-            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-        )
     }
 
     /// Shared header for the "Projects" and "Recent" sections. Title and chevron
@@ -586,7 +442,7 @@ struct SidebarView: View {
                 ForEach(model.projectPaths, id: \.self) { path in
                     projectRow(path)
                 }
-                projectConversations
+                projectConversations(for: model.workspacePath)
             } else {
                 ForEach(projectGroups) { group in
                     if let title = group.title {
@@ -596,9 +452,8 @@ struct SidebarView: View {
                         projectRow(path)
 
                         if model.sidebarLayoutMode == .groupedByProject,
-                           path == model.workspacePath,
-                           expandedProjectPath == path {
-                            projectConversations
+                           model.expandedProjectPaths.contains(path) {
+                            projectConversations(for: path)
                         }
                     }
                 }
@@ -649,18 +504,60 @@ struct SidebarView: View {
         )
     }
 
+    /// Opens a project's chat list without touching any other open list. An
+    /// inactive project is selected first; a missing folder keeps the locate
+    /// prompt instead of expanding an empty row.
+    private func openProjectChats(_ path: String) {
+        guard model.isProjectLocationAvailable(path) else {
+            model.selectProject(path)
+            return
+        }
+        if path != model.workspacePath { model.selectProject(path) }
+        guard model.workspacePath == path else { return }
+        expandProjectChats(path)
+    }
+
+    /// Opens one project's chat list. Every other list the user left open stays open.
+    private func expandProjectChats(_ path: String) {
+        withAnimation(.easeOut(duration: 0.16)) {
+            model.setProjectChatsExpanded(true, for: path)
+        }
+    }
+
+    private func collapseProjectChats(_ path: String) {
+        withAnimation(.easeOut(duration: 0.16)) {
+            model.setProjectChatsExpanded(false, for: path)
+        }
+    }
+
     private func projectRow(_ path: String) -> some View {
         let isActive = path == model.workspacePath
+        let isNewChat = model.selected?.blank == true
+        let isAvailable = model.isProjectLocationAvailable(path)
+        let isExpanded = model.expandedProjectPaths.contains(path)
         return HStack(spacing: 3) {
-            Button {
-                if isActive {
-                    withAnimation(.easeOut(duration: 0.16)) {
-                        expandedProjectPath = expandedProjectPath == path ? nil : path
+            if model.sidebarLayoutMode == .groupedByProject {
+                Button {
+                    if isExpanded {
+                        collapseProjectChats(path)
+                    } else {
+                        openProjectChats(path)
                     }
-                } else {
-                    model.selectProject(path)
-                    expandedProjectPath = path
+                } label: {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .frame(width: 16, height: 24)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .foregroundStyle(.tertiary)
+                .help(AppCopy.text(isExpanded ? "sidebar.showLess" : "sidebar.showMore"))
+                .accessibilityLabel(projectName(path))
+                .accessibilityValue(AppCopy.text(isExpanded ? "sidebar.showLess" : "sidebar.showMore"))
+            }
+
+            Button {
+                openProjectChats(path)
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "folder")
@@ -710,7 +607,7 @@ struct SidebarView: View {
             .help(AppCopy.text("sidebar.projectOptions"))
 
             Button {
-                expandedProjectPath = path
+                expandProjectChats(path)
                 model.newConversation(in: path)
             } label: {
                 Image(systemName: "square.and.pencil")
@@ -724,17 +621,27 @@ struct SidebarView: View {
         .foregroundStyle(.primary)
         .padding(.horizontal, 8)
         .frame(minHeight: 30)
-        .background(
-            isActive ? Color.primary.opacity(0.105) : Color.clear,
-            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-        )
+        .background {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(isActive && isNewChat ? Color.primary.opacity(0.105) : Color.clear)
+        }
+        .opacity(isAvailable ? 1 : 0.48)
         .contextMenu {
             projectMenuItems(path)
+        }
+        .task(id: path) {
+            model.loadGitProjectStatusIfNeeded(path)
         }
     }
 
     @ViewBuilder
     private func projectMenuItems(_ path: String) -> some View {
+        if !model.isProjectLocationAvailable(path) {
+            Button(AppCopy.text("project.missing.locate"), systemImage: "folder") {
+                model.promptToRelocateProject(missingPath: path)
+            }
+            Divider()
+        }
         Button(
             model.isProjectPinned(path) ? AppCopy.text("sidebar.unpinProject") : AppCopy.text("sidebar.pinProject"),
             systemImage: model.isProjectPinned(path) ? "pin.slash" : "pin"
@@ -807,13 +714,20 @@ struct SidebarView: View {
         }
     }
 
-    private var projectConversations: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            let conversations = orderedConversations(model.conversations, forProject: model.workspacePath)
-            let visible = showAllProjectChats
-                ? conversations
-                : Array(conversations.prefix(visibleConversationLimit))
+    /// Chats belonging to one open project row. The active project reads the
+    /// bridge's loaded list so live run and unread state stays current; an open
+    /// but inactive project reads headers from disk, which keeps its chats on
+    /// screen without switching the workspace to it.
+    private func projectConversations(for path: String) -> some View {
+        let isActive = path == model.workspacePath
+        let conversations = orderedConversations(
+            isActive ? model.conversations : bridge.conversations(inProject: path),
+            forProject: path
+        )
+        let showAll = expandedChatLists.contains(path)
+        let visible = showAll ? conversations : Array(conversations.prefix(visibleConversationLimit))
 
+        return VStack(alignment: .leading, spacing: 1) {
             if visible.isEmpty && !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text(AppCopy.text("sidebar.noChats"))
                     .font(.system(size: 13))
@@ -825,7 +739,8 @@ struct SidebarView: View {
                 ForEach(visible) { conversation in
                     conversationRow(
                         conversation,
-                        manualReorderProject: model.workspacePath,
+                        ownerProject: path,
+                        manualReorderProject: path,
                         manualOrder: order
                     )
                 }
@@ -833,10 +748,14 @@ struct SidebarView: View {
                 if conversations.count > visibleConversationLimit {
                     Button {
                         withAnimation(.easeOut(duration: 0.16)) {
-                            showAllProjectChats.toggle()
+                            if showAll {
+                                expandedChatLists.remove(path)
+                            } else {
+                                expandedChatLists.insert(path)
+                            }
                         }
                     } label: {
-                        Text(showAllProjectChats
+                        Text(showAll
                             ? AppCopy.text("sidebar.showLess")
                             : AppCopy.text("sidebar.showMore"))
                             .font(.system(size: 13))
@@ -863,7 +782,7 @@ struct SidebarView: View {
                     .padding(.vertical, 6)
             } else {
                 ForEach(conversations) { conversation in
-                    conversationRow(conversation, indented: false)
+                    conversationRow(conversation, indented: false, isRecent: true)
                 }
             }
         }
@@ -877,12 +796,23 @@ struct SidebarView: View {
     private func conversationRow(
         _ conversation: Conversation,
         indented: Bool = true,
+        isRecent: Bool = false,
+        ownerProject: String? = nil,
         manualReorderProject: String? = nil,
         manualOrder: [String] = []
     ) -> some View {
         HStack(spacing: 0) {
             Button {
-                model.selectedConversationID = conversation.id
+                if isRecent {
+                    _ = model.openRecentConversation(conversation)
+                } else {
+                    // An open project that isn't active lists chats the bridge has
+                    // not loaded. Select its project first so the transcript opens.
+                    if let ownerProject, ownerProject != model.workspacePath {
+                        model.selectProject(ownerProject)
+                    }
+                    model.selectedConversationID = conversation.id
+                }
             } label: {
                 Text(conversation.title)
                     .font(.system(size: 14))
@@ -974,14 +904,15 @@ struct SidebarView: View {
     private func conversationStatus(_ conversation: Conversation) -> some View {
         if conversation.running {
             ProgressView()
+                .progressViewStyle(.circular)
                 .controlSize(.mini)
-                .tint(Color.secondary)
+                .tint(Color.blue)
                 .frame(width: 16, height: 16)
                 .accessibilityLabel(AppCopy.text("sidebar.chatRunning"))
         } else if !conversation.blank {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Color.blue)
+            Circle()
+                .fill(Color.blue)
+                .frame(width: 7, height: 7)
                 .frame(width: 16, height: 16)
                 .accessibilityLabel(AppCopy.text("sidebar.chatCompleted"))
         }
@@ -989,13 +920,9 @@ struct SidebarView: View {
 
     private var accountFooter: some View {
         VStack(spacing: 0) {
-            Divider()
-
             HStack(spacing: 4) {
                 Button {
-                    withAnimation(.easeInOut(duration: 0.18)) {
-                        isAccountMenuPresented.toggle()
-                    }
+                    isAccountMenuPresented.toggle()
                 } label: {
                     HStack(spacing: 9) {
                         AccountBadge(initials: model.account.initials, size: 28)
@@ -1005,8 +932,8 @@ struct SidebarView: View {
                             .lineLimit(1)
                         Spacer(minLength: 0)
                     }
-                    .padding(.horizontal, 10)
-                    .frame(height: 42)
+                    .padding(.horizontal, 6)
+                    .frame(maxWidth: .infinity, minHeight: 42, alignment: .leading)
                     .contentShape(Rectangle())
                     .background(
                         isAccountMenuPresented ? Color.primary.opacity(0.12) : Color.clear,
@@ -1015,25 +942,31 @@ struct SidebarView: View {
                 }
                 .buttonStyle(.plain)
                 .help(AppCopy.text("sidebar.accountOptions"))
+                .popover(isPresented: $isAccountMenuPresented, attachmentAnchor: .rect(.bounds)) {
+                    AccountMenuPopover(
+                        account: model.account,
+                        model: model,
+                        onSettings: {
+                            dismissAccountMenu()
+                            model.presentSettings()
+                        },
+                        onSignOut: {
+                            dismissAccountMenu()
+                            showSignOutConfirmation = true
+                        }
+                    )
+                    .frame(width: 280)
+                }
 
                 voiceControl
 
-                Button {
-                    model.presentUsage()
-                } label: {
-                    Image(systemName: "questionmark.circle")
-                        .font(.system(size: 13, weight: .medium))
-                        .frame(width: 26, height: 26)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .padding(.trailing, 10)
-                .help(AppCopy.text("sidebar.accountUsage"))
+                SidebarUsageBadge(router: model.router)
+                    .padding(.trailing, 10)
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 7)
         }
-        .background(.bar)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     /// Footer voice control. Idle: a menu to pick the project the voice chat runs
@@ -1195,50 +1128,22 @@ struct SidebarView: View {
     }
 
     private var recentConversations: [Conversation] {
-        orderedConversations(projectlessConversations, forProject: nil)
+        orderedConversations(recentProjectConversations, forProject: nil)
             .prefix(visibleConversationLimit)
             .map { $0 }
     }
 
-    /// "Recent" holds every chat no listed project owns: chats started without a
-    /// project, plus chats whose project was removed while they were kept.
-    private var projectlessConversations: [Conversation] {
-        // Coding "Recent" = chats whose project was removed: they keep a cwd.
-        // Projectless chats belong to the Chat area and never show here.
-        guard model.activeArea == .coding, bridge.area == .coding else { return [] }
-        return bridge.conversations(outsideProjects: model.projectPaths)
-            .filter {
-                $0.area == .coding && ConversationStore.normalizedPath($0.cwd) != nil
-            }
+    /// "Recent" holds retained conversations whose original project no longer
+    /// has a connected folder, whether its entry was removed or the folder vanished.
+    private var recentProjectConversations: [Conversation] {
+        return bridge.conversations(outsideProjects: model.connectedProjectPaths)
+            .filter { $0.projectless || ConversationStore.normalizedPath($0.cwd) != nil }
     }
 
     /// `forProject` picks the sort order to apply; pass `nil` for lists (like
     /// "Recent") that aren't scoped to one project's own preference.
     private func orderedConversations(_ conversations: [Conversation], forProject path: String?) -> [Conversation] {
-        let visible = filteredConversations(conversations)
-        let order = path.map(model.sortOrder(forProject:)) ?? .lastUpdate
-        switch order {
-        case .lastUpdate:
-            return sortedByActivity(visible)
-        case .priority:
-            // ponytail: Conversation has no explicit priority field yet; approximate
-            // priority as pinned-first, then title, until a real priority field exists.
-            return visible.sorted {
-                if $0.pinned != $1.pinned { return $0.pinned }
-                return $0.title.localizedStandardCompare($1.title) == .orderedAscending
-            }
-        case .manual:
-            guard let path else { return sortedByActivity(visible) }
-            let manualOrder = model.projectManualOrder[path] ?? []
-            let rank = Dictionary(uniqueKeysWithValues: manualOrder.enumerated().map { ($1, $0) })
-            return visible.sorted {
-                if $0.pinned != $1.pinned { return $0.pinned }
-                let lhs = rank[$0.id] ?? Int.max
-                let rhs = rank[$1.id] ?? Int.max
-                if lhs != rhs { return lhs < rhs }
-                return latestActivity(of: $0) > latestActivity(of: $1)
-            }
-        }
+        model.ordered(filteredConversations(conversations), forProject: path)
     }
 
     private func filteredConversations(_ conversations: [Conversation]) -> [Conversation] {
@@ -1250,21 +1155,40 @@ struct SidebarView: View {
                 || bridge.contentMatches(conversation, query: query)
         }
     }
+}
 
-    /// Pinned first, then most recent activity. The activity date is computed
-    /// once per conversation instead of on every comparison: it walks the whole
-    /// message list, and the sidebar sorts these lists on every redraw.
-    private func sortedByActivity(_ conversations: [Conversation]) -> [Conversation] {
-        conversations
-            .map { (conversation: $0, activity: latestActivity(of: $0)) }
-            .sorted {
-                if $0.conversation.pinned != $1.conversation.pinned { return $0.conversation.pinned }
-                return $0.activity > $1.activity
+extension AppModel {
+    /// A project's chats in the order its sort preference asks for; `nil` is for
+    /// lists (like "Recent") that aren't scoped to one project's own preference.
+    func ordered(_ conversations: [Conversation], forProject path: String?) -> [Conversation] {
+        // Pinned first, then most recent activity.
+        func byActivity() -> [Conversation] {
+            conversations.sorted {
+                if $0.pinned != $1.pinned { return $0.pinned }
+                return $0.activityDate > $1.activityDate
             }
-            .map(\.conversation)
-    }
-
-    private func latestActivity(of conversation: Conversation) -> Date {
-        conversation.activityDate
+        }
+        switch path.map(sortOrder(forProject:)) ?? .lastUpdate {
+        case .lastUpdate:
+            return byActivity()
+        case .priority:
+            // ponytail: Conversation has no explicit priority field yet; approximate
+            // priority as pinned-first, then title, until a real priority field exists.
+            return conversations.sorted {
+                if $0.pinned != $1.pinned { return $0.pinned }
+                return $0.title.localizedStandardCompare($1.title) == .orderedAscending
+            }
+        case .manual:
+            guard let path else { return byActivity() }
+            let manualOrder = projectManualOrder[path] ?? []
+            let rank = Dictionary(uniqueKeysWithValues: manualOrder.enumerated().map { ($1, $0) })
+            return conversations.sorted {
+                if $0.pinned != $1.pinned { return $0.pinned }
+                let lhs = rank[$0.id] ?? Int.max
+                let rhs = rank[$1.id] ?? Int.max
+                if lhs != rhs { return lhs < rhs }
+                return $0.activityDate > $1.activityDate
+            }
+        }
     }
 }

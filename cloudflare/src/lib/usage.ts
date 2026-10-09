@@ -593,6 +593,11 @@ export async function loadWorkspaceUsage(
     connection_type: string | null;
   };
 
+  // Every read below keys off (env, userId, workspaceId, filter) and needs none
+  // of the others' rows, so they all go out together and are awaited where they
+  // are consumed. Issued one after another this path cost six to eight
+  // round-trips per dashboard poll; overlapped it costs one.
+  //
   // A user's connection list changes far less often than clients poll usage,
   // so it is cached per user and scope.
   //
@@ -603,7 +608,7 @@ export async function loadWorkspaceUsage(
   // those would mean a cache-clear on nearly every poll, defeating the cache,
   // and a two-minute delay on a plan label the user did not just change is
   // invisible. Hence the short TTL — it bounds exactly that staleness.
-  const connectionRows = await vpsCached<ConnectionRow[]>(
+  const connectionsPromise = vpsCached<ConnectionRow[]>(
     env,
     `conns:${userId ?? "none"}:${includeTeamShared ? `team:${workspaceId}` : "own"}`,
     120,
@@ -615,6 +620,100 @@ export async function loadWorkspaceUsage(
       return results || [];
     }
   );
+
+  // Usage is always personal (user_id). Without userId we can only return connections + empty usage.
+  const usageQuery = !userId
+    ? null
+    : normalizedFilter
+      ? `SELECT p.id, apu.connection_id, uc.account_label, p.name, p.status, p.brand_color, p.default_unit,
+                p.image_key, p.support_type,
+                apu.used_percent, apu.used, apu.total, apu.budget_limit, apu.alert_threshold, apu.alert_thresholds,
+                apu.resets_at, apu.error, apu.observed_at, apu.source, apu.updated_at,
+                apu.custom_nickname, apu.custom_logo_url, apu.windows_json
+           FROM user_provider_usage apu
+           JOIN providers p ON p.id = apu.provider_id
+           JOIN user_connections uc ON uc.id = apu.connection_id
+          WHERE apu.user_id = ? AND apu.provider_id = ?`
+      : `SELECT p.id, apu.connection_id, uc.account_label, p.name, p.status, p.brand_color, p.default_unit,
+                p.image_key, p.support_type,
+                apu.used_percent, apu.used, apu.total, apu.budget_limit, apu.alert_threshold, apu.alert_thresholds,
+                apu.resets_at, apu.error, apu.observed_at, apu.source, apu.updated_at,
+                apu.custom_nickname, apu.custom_logo_url, apu.windows_json
+           FROM user_provider_usage apu
+           JOIN providers p ON p.id = apu.provider_id
+           JOIN user_connections uc ON uc.id = apu.connection_id
+          WHERE apu.user_id = ?`;
+
+  const usageBind = !userId
+    ? []
+    : normalizedFilter
+      ? [userId, normalizedFilter]
+      : [userId];
+
+  const usageRowsPromise: Promise<UsageRow[]> =
+    userId && usageQuery
+      ? vpsCached<UsageRow[]>(
+          env,
+          `usage-meta:${userId}:${normalizedFilter || "all"}`,
+          120,
+          async () => {
+            const { results } = await db(env)
+              .prepare(usageQuery)
+              .bind(...usageBind)
+              .all<UsageRow>();
+            return results || [];
+          }
+        )
+      : Promise.resolve<UsageRow[]>([]);
+
+  const subRowsPromise: Promise<(SubscriptionRow & { connection_id: string })[]> = userId
+    ? vpsCached<(SubscriptionRow & { connection_id: string })[]>(
+        env,
+        `subs-meta:${userId}`,
+        120,
+        async () => {
+          const { results } = await db(env)
+            .prepare(
+              `SELECT connection_id, provider_id, plan_name, price_usd_cents,
+                      billing_cycle, auto_renew, purchased_at, renews_at,
+                      source, last_refreshed_at, refresh_status, refresh_note
+                 FROM provider_subscriptions
+                WHERE user_id = ?`
+            )
+            .bind(userId)
+            .all<SubscriptionRow & { connection_id: string }>();
+          return results || [];
+        }
+      )
+    : Promise.resolve<(SubscriptionRow & { connection_id: string })[]>([]);
+
+  // Freshness lives in Redis now; the D1 columns are only a last-known value
+  // for rows written before the move, so Redis wins where it has an entry.
+  const freshnessPromise: Promise<Awaited<ReturnType<typeof getVpsFreshness>>> = userId
+    ? getVpsFreshness(env, userId)
+    : Promise.resolve(null);
+
+  // Catalog list prices — used when user has not set a manual override.
+  const catalogPromise = vpsCached<SubscriptionPacketRow[]>(
+    env,
+    "catalog:subscription_packets:v1",
+    600,
+    async () => {
+      const { results } = await db(env)
+        .prepare(
+          `SELECT provider_id, plan_slug, plan_label, price_usd_cents
+             FROM subscription_packets`
+        )
+        .all<SubscriptionPacketRow>();
+      return results || [];
+    }
+  );
+
+  // High-frequency live values come from one user JSON snapshot; it is fetched
+  // alongside the rest and overlaid later, where the legacy rows are patched.
+  const snapshotPromise = userId ? getUsageSnapshot(env, userId) : null;
+
+  const connectionRows = await connectionsPromise;
 
   type ConnRow = {
     id: string;
@@ -677,6 +776,34 @@ export async function loadWorkspaceUsage(
     }
   }
 
+  // Provider meta (name/status/brand) — needed to render placeholder entries
+  // for connections that haven't produced any usage row, and for billing.
+  // It only depends on the connection list, so start it with the rest rather
+  // than after them.
+  const providerMetaPromise: Promise<ProviderRow[]> =
+    connectedProviderIds.length === 0
+      ? Promise.resolve<ProviderRow[]>([])
+      : (() => {
+          const placeholders = connectedProviderIds.map(() => "?").join(", ");
+          // The provider catalog is editorial data — it changes when an admin edits
+          // it, not per request — so it is cached by the exact id set requested.
+          return vpsCached<ProviderRow[]>(
+            env,
+            `providers:${[...connectedProviderIds].sort().join(",")}`,
+            600,
+            async () => {
+              const { results } = await db(env)
+                .prepare(
+                  `SELECT id, name, status, brand_color, default_unit, default_price_usd_cents, support_type, image_key
+                     FROM providers WHERE id IN (${placeholders})`
+                )
+                .bind(...connectedProviderIds)
+                .all<ProviderRow>();
+              return results || [];
+            }
+          );
+        })();
+
   // GET/read paths are cache-only. Upstream refreshes belong to the explicit
   // POST refresh endpoints; keep this branch disabled for every GET caller.
   const shouldRefresh = false;
@@ -700,49 +827,7 @@ export async function loadWorkspaceUsage(
     );
   }
 
-  // Usage is always personal (user_id). Without userId we can only return connections + empty usage.
-  const usageQuery = !userId
-    ? null
-    : normalizedFilter
-      ? `SELECT p.id, apu.connection_id, uc.account_label, p.name, p.status, p.brand_color, p.default_unit,
-                p.image_key, p.support_type,
-                apu.used_percent, apu.used, apu.total, apu.budget_limit, apu.alert_threshold, apu.alert_thresholds,
-                apu.resets_at, apu.error, apu.observed_at, apu.source, apu.updated_at,
-                apu.custom_nickname, apu.custom_logo_url, apu.windows_json
-           FROM user_provider_usage apu
-           JOIN providers p ON p.id = apu.provider_id
-           JOIN user_connections uc ON uc.id = apu.connection_id
-          WHERE apu.user_id = ? AND apu.provider_id = ?`
-      : `SELECT p.id, apu.connection_id, uc.account_label, p.name, p.status, p.brand_color, p.default_unit,
-                p.image_key, p.support_type,
-                apu.used_percent, apu.used, apu.total, apu.budget_limit, apu.alert_threshold, apu.alert_thresholds,
-                apu.resets_at, apu.error, apu.observed_at, apu.source, apu.updated_at,
-                apu.custom_nickname, apu.custom_logo_url, apu.windows_json
-           FROM user_provider_usage apu
-           JOIN providers p ON p.id = apu.provider_id
-           JOIN user_connections uc ON uc.id = apu.connection_id
-          WHERE apu.user_id = ?`;
-
-  const usageBind = !userId
-    ? []
-    : normalizedFilter
-      ? [userId, normalizedFilter]
-      : [userId];
-
-  const usageRows = userId && usageQuery
-    ? await vpsCached<UsageRow[]>(
-        env,
-        `usage-meta:${userId}:${normalizedFilter || "all"}`,
-        120,
-        async () => {
-          const { results } = await db(env)
-            .prepare(usageQuery)
-            .bind(...usageBind)
-            .all<UsageRow>();
-          return results || [];
-        }
-      )
-    : [];
+  const usageRows = await usageRowsPromise;
   const usageRowByConnection = new Map<string, UsageRow>();
   for (const row of usageRows || []) usageRowByConnection.set(row.connection_id, row);
 
@@ -755,30 +840,11 @@ export async function loadWorkspaceUsage(
     if (parsed.length) windowsByConnection.set(row.connection_id, parsed as WindowRow[]);
   }
 
-  const subRows = userId
-    ? await vpsCached<(SubscriptionRow & { connection_id: string })[]>(
-        env,
-        `subs-meta:${userId}`,
-        120,
-        async () => {
-          const { results } = await db(env)
-            .prepare(
-              `SELECT connection_id, provider_id, plan_name, price_usd_cents,
-                      billing_cycle, auto_renew, purchased_at, renews_at,
-                      source, last_refreshed_at, refresh_status, refresh_note
-                 FROM provider_subscriptions
-                WHERE user_id = ?`
-            )
-            .bind(userId)
-            .all<SubscriptionRow & { connection_id: string }>();
-          return results || [];
-        }
-      )
-    : [];
+  const subRows = await subRowsPromise;
 
   // Freshness lives in Redis now; the D1 columns are only a last-known value
   // for rows written before the move, so Redis wins where it has an entry.
-  const liveFreshness = userId ? await getVpsFreshness(env, userId) : null;
+  const liveFreshness = await freshnessPromise;
   const applyFreshness = (connectionId: string, row: SubscriptionRow): SubscriptionRow => {
     const live = liveFreshness?.[connectionId];
     if (!live) return row;
@@ -819,21 +885,7 @@ export async function loadWorkspaceUsage(
     }
   }
 
-  // Catalog list prices — used when user has not set a manual override.
-  const catalogRows = await vpsCached<SubscriptionPacketRow[]>(
-    env,
-    "catalog:subscription_packets:v1",
-    600,
-    async () => {
-      const { results } = await db(env)
-        .prepare(
-          `SELECT provider_id, plan_slug, plan_label, price_usd_cents
-             FROM subscription_packets`
-        )
-        .all<SubscriptionPacketRow>();
-      return results || [];
-    }
-  );
+  const catalogRows = await catalogPromise;
   const catalogByProvider = new Map<string, SubscriptionPacketRow[]>();
   for (const row of catalogRows || []) {
     const list = catalogByProvider.get(row.provider_id) || [];
@@ -848,37 +900,16 @@ export async function loadWorkspaceUsage(
     }
   }
 
-  // Provider meta (name/status/brand) — needed to render placeholder entries
-  // for connections that haven't produced any usage row yet.
   const providerMetaById = new Map<string, ProviderRow>();
-  if (connectedProviderIds.length > 0) {
-    const placeholders = connectedProviderIds.map(() => "?").join(", ");
-    // The provider catalog is editorial data — it changes when an admin edits
-    // it, not per request — so it is cached by the exact id set requested.
-    const metaRows = await vpsCached<ProviderRow[]>(
-      env,
-      `providers:${[...connectedProviderIds].sort().join(",")}`,
-      600,
-      async () => {
-        const { results } = await db(env)
-          .prepare(
-            `SELECT id, name, status, brand_color, default_unit, default_price_usd_cents, support_type, image_key
-               FROM providers WHERE id IN (${placeholders})`
-          )
-          .bind(...connectedProviderIds)
-          .all<ProviderRow>();
-        return results || [];
-      }
-    );
-    for (const m of metaRows || []) providerMetaById.set(m.id, m);
-  }
+  for (const m of (await providerMetaPromise) || []) providerMetaById.set(m.id, m);
 
-  // High-frequency live values come from one user JSON snapshot. Keep the
-  // legacy user_provider_usage row as the settings/fallback source, then
-  // overlay only its live fields. New connections may have no legacy row yet,
-  // so create an in-memory row from the connection + provider catalog metadata.
-  if (userId) {
-    const snapshot = await getUsageSnapshot(env, userId);
+  // High-frequency live values come from one user JSON snapshot, fetched with
+  // the rest above. Keep the legacy user_provider_usage row as the
+  // settings/fallback source, then overlay only its live fields. New
+  // connections may have no legacy row yet, so create an in-memory row from the
+  // connection + provider catalog metadata.
+  if (snapshotPromise) {
+    const snapshot = await snapshotPromise;
     for (const conn of connectionRowsNormalized) {
       const entry = snapshot[conn.id];
       if (!entry) continue;
@@ -987,44 +1018,23 @@ export async function loadWorkspaceUsage(
     if (list.length > 0) usage[providerId] = list;
   }
 
-  const providerIdsForBilling = new Set<string>([
-    ...connectedProviderIds,
-    ...Object.keys(usage),
-  ]);
-
+  // Billing covers exactly the connected providers: `usage` is only ever keyed
+  // by ids from connectedProviderIds, so the meta rows fetched above already
+  // are the billing rows. Re-querying the same `providers:` key here cost a
+  // second round-trip for data already in hand.
   const billingProviders: ProviderBillingPayload[] = [];
-  if (providerIdsForBilling.size > 0) {
-    const ids = [...providerIdsForBilling];
-    const placeholders = ids.map(() => "?").join(", ");
-    const providerRows = await vpsCached<ProviderRow[]>(
-      env,
-      `providers:${[...ids].sort().join(",")}`,
-      600,
-      async () => {
-        const { results } = await db(env)
-          .prepare(
-            `SELECT id, name, status, brand_color, default_unit, default_price_usd_cents, support_type, image_key
-               FROM providers WHERE id IN (${placeholders})`
-          )
-          .bind(...ids)
-          .all<ProviderRow>();
-        return results || [];
-      }
+  for (const provider of providerMetaById.values()) {
+    const firstConn = connectionsByProvider.get(provider.id)?.[0];
+    billingProviders.push(
+      mapBillingProvider(
+        provider,
+        subsByProvider.get(provider.id),
+        Boolean(usage[provider.id]?.length),
+        scopeByProvider.get(provider.id) || "personal",
+        catalogByProvider.get(provider.id) || [],
+        firstConn?.created_at ?? null
+      )
     );
-
-    for (const provider of providerRows || []) {
-      const firstConn = connectionsByProvider.get(provider.id)?.[0];
-      billingProviders.push(
-        mapBillingProvider(
-          provider,
-          subsByProvider.get(provider.id),
-          Boolean(usage[provider.id]?.length),
-          scopeByProvider.get(provider.id) || "personal",
-          catalogByProvider.get(provider.id) || [],
-          firstConn?.created_at ?? null
-        )
-      );
-    }
   }
 
   const connectedProviders = connectedProviderIds.map((id) => {

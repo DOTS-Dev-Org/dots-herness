@@ -14,6 +14,8 @@ using JsonValue = HarnessPluginKit.JsonValue;
 
 namespace DotsHarness.Tests;
 
+// Resets the process-wide read ledger, like the other classes of this collection.
+[Collection("ReadLedger")]
 public sealed class AgentBridgeTests
 {
     [Theory]
@@ -92,13 +94,27 @@ public sealed class AgentBridgeTests
             Id = "plan-chat",
             Blank = false,
             PendingPlanMessageId = "plan-1",
+            PlanGateActive = true,
         };
         conversation.Messages.Add(new ChatMessage { Id = "plan-1", Kind = ChatKind.Plan, Text = "# Plan" });
+        conversation.PendingPrompts.Add(new PendingPrompt
+        {
+            Id = "held-prompt",
+            Text = "Continue after the plan",
+            Mode = PromptMode.Queue,
+            PlanIntentResolved = false,
+            QueueOrder = 17,
+        });
 
         var restored = JsonSerializer.Deserialize<Conversation>(JsonSerializer.Serialize(conversation));
 
         Assert.NotNull(restored);
         Assert.Equal("plan-1", restored!.PendingPlanMessageId);
+        Assert.True(restored.PlanGateActive);
+        Assert.Equal("Continue after the plan", Assert.Single(restored.PendingPrompts).Text);
+        Assert.False(restored.PendingPrompts[0].BypassesPlanGate);
+        Assert.False(restored.PendingPrompts[0].PlanIntentResolved);
+        Assert.Equal(17, restored.PendingPrompts[0].QueueOrder);
         Assert.Equal(ChatKind.Plan, Assert.Single(restored.Messages).Kind);
     }
 
@@ -142,17 +158,23 @@ public sealed class AgentBridgeTests
     public void PlanModeOnlyExposesReadOnlyWorkspaceTools()
     {
         Assert.Equal(
-            new[] { "list_files", "read_file", "grep_files", "inspect_generated_media", "run_command" },
+            new[] { "list_files", "read_file", "grep_files", "run_command", "glob", "inspect_generated_media" },
             NativeWorkspaceTools.PlanDefinitions.Select(tool => tool.Name));
         Assert.True(NativeWorkspaceTools.IsWorkspaceMutation("write_file"));
+        Assert.True(NativeWorkspaceTools.IsWorkspaceMutation("edit_file"));
         Assert.True(NativeWorkspaceTools.IsWorkspaceMutation("remove_file"));
         Assert.False(NativeWorkspaceTools.IsWorkspaceMutation("run_command"));
         Assert.True(NativeWorkspaceTools.IsReadOnly("list_files"));
         Assert.True(NativeWorkspaceTools.IsReadOnly("read_file"));
         Assert.False(NativeWorkspaceTools.IsReadOnly("write_file"));
+        Assert.False(NativeWorkspaceTools.IsReadOnly("edit_file"));
         Assert.True(NativeWorkspaceTools.IsReadOnly("grep_files"));
+        Assert.True(NativeWorkspaceTools.IsReadOnly("glob"));
         Assert.True(NativeWorkspaceTools.IsReadOnly("inspect_generated_media"));
         Assert.False(NativeWorkspaceTools.IsReadOnly("run_command"));
+        // The web tools are read-only, so plan mode keeps them.
+        Assert.True(NativeWebTools.IsReadOnly("web_fetch"));
+        Assert.False(NativeWorkspaceTools.IsWorkspaceMutation("web_search"));
     }
 
     [Fact]
@@ -436,6 +458,51 @@ public sealed class AgentBridgeTests
     }
 
     [Fact]
+    public async Task AmbiguousPlanIntentReservesQueuePositionBeforeClassification()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"DotsHarnessTests-{Guid.NewGuid()}");
+        var workspace = Path.Combine(root, "workspace");
+        Directory.CreateDirectory(workspace);
+        try
+        {
+            using var provider = new OrderedProvider();
+            using var router = new RouterController(PathsFor(root));
+            var endpoint = router.Store.AddCustom("Queue test", "queue-test", provider.Url.ToString().TrimEnd('/'), NativeProviderProtocol.OpenAiCompatible, "chat", null);
+            router.Store.AddCustomAccount(endpoint, null);
+            await router.RefreshAsync();
+
+            var bridge = new AgentBridge(router, PathsFor(root));
+            await bridge.StartAsync(workspace);
+            var classification = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var first = bridge.SendWithPlanIntentResolutionAsync(
+                "plan.md should be updated",
+                [],
+                PromptMode.Steer,
+                planMode: false,
+                _ => classification.Task);
+            var second = bridge.SendAsync("second");
+
+            Assert.Equal(new[] { "plan.md should be updated", "second" }, bridge.Selected?.PendingPrompts.Select(prompt => prompt.Text));
+            Assert.False(bridge.Selected?.PendingPrompts.First().PlanIntentResolved);
+            var saved = JsonSerializer.Deserialize<List<Conversation>>(File.ReadAllText(Path.Combine(root, "sessions.json")));
+            Assert.NotNull(saved);
+            Assert.Equal(new[] { "plan.md should be updated", "second" }, saved![0].PendingPrompts.Select(prompt => prompt.Text));
+            Assert.False(saved[0].PendingPrompts.First().PlanIntentResolved);
+            Assert.Empty(provider.Prompts);
+
+            classification.SetResult(false);
+            await provider.FirstRequest.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            provider.ReleaseFirst.TrySetResult(true);
+            await Task.WhenAll(first, second).WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Equal(new[] { "plan.md should be updated", "second" }, provider.Prompts);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task SteeringQueuedPromptStopsCurrentRunAndRunsSelectedPromptFirst()
     {
         var root = Path.Combine(Path.GetTempPath(), $"DotsHarnessTests-{Guid.NewGuid()}");
@@ -519,7 +586,7 @@ public sealed class AgentBridgeTests
     }
 
     [Fact]
-    public async Task PlanRunUsesReadOnlyToolsAndApprovalUsesFullTools()
+    public async Task PlanAndApprovedRunRetainSameCatalogAndCacheNamespace()
     {
         var root = Path.Combine(Path.GetTempPath(), $"DotsHarnessTests-{Guid.NewGuid()}");
         var workspace = Path.Combine(root, "workspace");
@@ -545,8 +612,9 @@ public sealed class AgentBridgeTests
             Assert.Contains("Response language", planSystem!["content"]!.GetValue<string>());
             // Tools go out sorted by name so the prompt-cache prefix is stable.
             Assert.Equal(
-                new[] { "grep_files", "list_files", "read_file", "run_command" },
+                NativeWorkspaceTools.Definitions.Select(tool => tool.Name).OrderBy(name => name, StringComparer.Ordinal).ToArray(),
                 provider.ToolNames[0].Intersect(NativeWorkspaceTools.Definitions.Select(tool => tool.Name)).ToArray());
+            Assert.Equal(1, conversation.CacheSession?.Epoch);
 
             await bridge.SendAsync("apply plan").WaitAsync(TimeSpan.FromSeconds(10));
 
@@ -555,6 +623,52 @@ public sealed class AgentBridgeTests
                 NativeWorkspaceTools.Definitions.Select(tool => tool.Name).OrderBy(name => name, StringComparer.Ordinal).ToArray(),
                 provider.ToolNames[1].Intersect(NativeWorkspaceTools.Definitions.Select(tool => tool.Name)).ToArray());
             Assert.Contains(conversation.Messages, message => message.Kind == ChatKind.Assistant && message.Text == "Implemented.");
+            Assert.Equal(provider.ToolNames[0], provider.ToolNames[1]);
+            Assert.Equal(planRequest["prompt_cache_key"]?.GetValue<string>(),
+                JsonNode.Parse(provider.Requests[1])?["prompt_cache_key"]?.GetValue<string>());
+            Assert.Equal(1, conversation.CacheSession?.Epoch);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task PlanGateHoldsQueuedAndSteeringPromptsUntilApprovedPlanCompletes()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"DotsHarnessTests-{Guid.NewGuid()}");
+        var workspace = Path.Combine(root, "workspace");
+        Directory.CreateDirectory(workspace);
+        try
+        {
+            using var provider = new PlanProvider();
+            using var router = new RouterController(PathsFor(root));
+            var endpoint = router.Store.AddCustom("Plan gate test", "plan-gate-test", provider.Url.ToString().TrimEnd('/'), NativeProviderProtocol.OpenAiCompatible, "chat", null);
+            router.Store.AddCustomAccount(endpoint, null);
+            await router.RefreshAsync();
+
+            var bridge = new AgentBridge(router, PathsFor(root));
+            await bridge.StartAsync(workspace);
+            await bridge.SendAsync("inspect the project", planMode: true).WaitAsync(TimeSpan.FromSeconds(10));
+
+            var conversation = Assert.IsType<Conversation>(bridge.Selected);
+            Assert.NotNull(conversation.PendingPlanMessageId);
+            var queued = bridge.SendAsync("queued after plan");
+            var steering = bridge.SendAsync("priority after plan", PromptMode.Steer);
+
+            Assert.False(queued.IsCompleted);
+            Assert.False(steering.IsCompleted);
+            Assert.Contains(conversation.PendingPrompts, prompt => prompt.Text == "queued after plan");
+            Assert.Contains(conversation.PendingPrompts, prompt => prompt.Text == "priority after plan");
+
+            await bridge.ApplyPlanAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            await Task.WhenAll(queued, steering).WaitAsync(TimeSpan.FromSeconds(10));
+
+            Assert.Null(conversation.PendingPlanMessageId);
+            Assert.False(conversation.PlanGateActive);
+            Assert.Contains(conversation.Messages, message => message.Kind == ChatKind.User && message.Text == "queued after plan");
+            Assert.Contains(conversation.Messages, message => message.Kind == ChatKind.User && message.Text == "priority after plan");
         }
         finally
         {

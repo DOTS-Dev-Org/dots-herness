@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-08T21:48:57Z",
+  "eventId" : "BDE211D8-53BF-425C-A337-3C6E5B55C7DD",
+  "lamport" : 135,
+  "parents" : [
+    "E662039B-E913-4E72-A26F-585A5AFFE476"
+  ],
+  "payload" : {
+    "commandSummary" : "find windows\/DotsHarness\/dist linux\/DotsHarness\/dist -maxdepth 2 -type f \\( -name '*.zip' -o -name '*.tar.gz' \\) -exec ls -lh {} \\; 2>\/dev\/null",
+    "name" : "run_command",
+    "path" : null,
+    "resultBytes" : 401,
+    "resultStatus" : "completed",
+    "runId" : "59BD70D0-B5C9-4580-B59E-37A3A32DD769"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "KhW5S\/K2MwgNea9p9HRiQl6uAXIOj\/7Cfo3tqQ2pP5uPQP6917pK0GZuolc6uPSI3WfAZre7Bejv4yKn4WS+3Q=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

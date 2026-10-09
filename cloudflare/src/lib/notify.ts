@@ -98,6 +98,7 @@ export async function sendTelegramAlert(
         text: message,
         parse_mode: "HTML",
       }),
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
       // Do not log token or chat id — only status for diagnostics
@@ -161,30 +162,35 @@ export async function checkUsageThresholdAlerts(
     .first();
   if (!hasPriorState) {
     const cooldownUntil = new Date(Date.now() + COOLDOWN_MS).toISOString();
-    for (const threshold of crossed) {
-      await db(env)
-        .prepare(
-          `INSERT OR IGNORE INTO alert_states
-             (connection_id, user_id, provider_id, threshold_percentage, triggered_at, cooldown_until)
-           VALUES (?, ?, ?, ?, ?, ?)`
+    await db(env)
+      .batch(
+        crossed.map((threshold) =>
+          db(env)
+            .prepare(
+              `INSERT OR IGNORE INTO alert_states
+                 (connection_id, user_id, provider_id, threshold_percentage, triggered_at, cooldown_until)
+               VALUES (?, ?, ?, ?, ?, ?)`
+            )
+            .bind(connectionId, userId, providerId, threshold, now, cooldownUntil)
         )
-        .bind(connectionId, userId, providerId, threshold, now, cooldownUntil)
-        .run();
-    }
+      );
     return;
   }
 
   const ready: number[] = [];
-  for (const threshold of crossed) {
-    const existing = await db(env)
+  if (crossed.length > 0) {
+    // One read for the whole crossed set instead of one per threshold.
+    const placeholders = crossed.map(() => "?").join(", ");
+    const inCooldown = await db(env)
       .prepare(
-        `SELECT 1 FROM alert_states
-         WHERE connection_id = ? AND threshold_percentage = ?
-           AND cooldown_until > ?`
+        `SELECT threshold_percentage FROM alert_states
+          WHERE connection_id = ? AND threshold_percentage IN (${placeholders})
+            AND cooldown_until > ?`
       )
-      .bind(connectionId, threshold, now)
-      .first();
-    if (!existing) ready.push(threshold);
+      .bind(connectionId, ...crossed, now)
+      .all<{ threshold_percentage: number }>();
+    const blocked = new Set((inCooldown?.results || []).map((r) => r.threshold_percentage));
+    for (const threshold of crossed) if (!blocked.has(threshold)) ready.push(threshold);
   }
   if (!ready.length) return;
 
@@ -199,50 +205,59 @@ export async function checkUsageThresholdAlerts(
   const pct = Math.round(usedPercent);
   const cooldownUntil = new Date(Date.now() + COOLDOWN_MS).toISOString();
 
-  for (const threshold of ready) {
-    const plainMessage = `⚠️ ${providerName} limit uyarısı: %${pct} (eşik %${threshold})`;
-    const htmlMessage = `<b>⚠️ ${escapeHtml(providerName)}</b> limit uyarısı: %${pct} (eşik %${threshold})`;
+  // Each threshold is an independent alert: used to be delivered one after
+  // another, so a 50→80→95 cascade paid for three sequential Telegram/FCM
+  // round-trip sets before the write was acknowledged.
+  await Promise.all(
+    ready.map(async (threshold) => {
+      const plainMessage = `⚠️ ${providerName} limit uyarısı: %${pct} (eşik %${threshold})`;
+      const htmlMessage = `<b>⚠️ ${escapeHtml(providerName)}</b> limit uyarısı: %${pct} (eşik %${threshold})`;
 
-    await insertUserNotificationEvent(env, {
-      userId,
-      workspaceId,
-      typeId: "provider_limit_alert",
-      providerId,
-      usedPercent: pct,
-      thresholdPercent: threshold,
-    });
+      await insertUserNotificationEvent(env, {
+        userId,
+        workspaceId,
+        typeId: "provider_limit_alert",
+        providerId,
+        usedPercent: pct,
+        thresholdPercent: threshold,
+      });
 
-    const deliveries: Promise<void>[] = [];
-    if (telegram) {
-      deliveries.push(sendTelegramAlert(env, telegram.botToken, telegram.chatId, htmlMessage));
-    }
-    if (fcmTokens.length > 0) {
-      deliveries.push(
-        sendFcmToUserTokens(env, userId, fcmTokens, {
-          title: "AI Watcher",
-          body: plainMessage,
-          data: {
-            type: "usage_threshold",
-            provider_id: providerId,
-            used_percent: String(pct),
-            threshold_percent: String(threshold),
-          },
-        })
-      );
-    }
-    await Promise.all(deliveries);
+      const deliveries: Promise<void>[] = [];
+      if (telegram) {
+        deliveries.push(sendTelegramAlert(env, telegram.botToken, telegram.chatId, htmlMessage));
+      }
+      if (fcmTokens.length > 0) {
+        deliveries.push(
+          sendFcmToUserTokens(env, userId, fcmTokens, {
+            title: "AI Watcher",
+            body: plainMessage,
+            data: {
+              type: "usage_threshold",
+              provider_id: providerId,
+              used_percent: String(pct),
+              threshold_percent: String(threshold),
+            },
+          })
+        );
+      }
+      await Promise.all(deliveries);
+    })
+  );
 
-    await db(env)
-      .prepare(
-        `INSERT INTO alert_states (connection_id, user_id, provider_id, threshold_percentage, triggered_at, cooldown_until)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(connection_id, threshold_percentage) DO UPDATE SET
-           triggered_at = excluded.triggered_at,
-           cooldown_until = excluded.cooldown_until`
+  await db(env)
+    .batch(
+      ready.map((threshold) =>
+        db(env)
+          .prepare(
+            `INSERT INTO alert_states (connection_id, user_id, provider_id, threshold_percentage, triggered_at, cooldown_until)
+             VALUES (?, ?, ?, ?, ?, ?)
+             ON CONFLICT(connection_id, threshold_percentage) DO UPDATE SET
+               triggered_at = excluded.triggered_at,
+               cooldown_until = excluded.cooldown_until`
+          )
+          .bind(connectionId, userId, providerId, threshold, now, cooldownUntil)
       )
-      .bind(connectionId, userId, providerId, threshold, now, cooldownUntil)
-      .run();
-  }
+    );
 }
 
 export function scheduleUsageThresholdAlerts(

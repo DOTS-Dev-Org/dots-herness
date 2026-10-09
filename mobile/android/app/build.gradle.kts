@@ -1,7 +1,11 @@
 import java.util.Properties
 
+// ponytail: release signing only when keystore.properties exists (CI injects it);
+// dev builds must not require real signing material in the tree.
+val keystoreFile = rootProject.file("keystore.properties")
+val hasKeystore = keystoreFile.exists()
 val keystoreProperties = Properties().apply {
-    rootProject.file("keystore.properties").inputStream().use(::load)
+    if (hasKeystore) keystoreFile.inputStream().use(::load)
 }
 
 plugins {
@@ -12,11 +16,13 @@ plugins {
 
 android { namespace = "com.dots.herness.mobile"; compileSdk = 36
     signingConfigs {
-        create("hernessRelease") {
-            storeFile = rootProject.file(keystoreProperties["storeFile"] as String)
-            storePassword = keystoreProperties["storePassword"] as String
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
+        if (hasKeystore) {
+            create("hernessRelease") {
+                storeFile = rootProject.file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
         }
     }
     defaultConfig {
@@ -27,7 +33,7 @@ android { namespace = "com.dots.herness.mobile"; compileSdk = 36
     externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt") } }
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("hernessRelease")
+            if (hasKeystore) signingConfig = signingConfigs.getByName("hernessRelease")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -54,6 +60,10 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
+    // FoldingFeature and window-local posture updates for unfolded foldables.
+    implementation("androidx.window:window:1.5.1")
+    // Navigation drawer icons; text glyphs render differently on every device.
+    implementation("androidx.compose.material:material-icons-extended")
     // Sandboxed JS for `runtime: js` plugins; Rhino runs interpreted, so tool
     // calls stay synchronous instead of bouncing through a WebView callback.
     implementation("org.mozilla:rhino:1.7.15")

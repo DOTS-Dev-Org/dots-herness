@@ -29,6 +29,8 @@ targets:
         HERNESS_GITHUB_CLIENT_ID: ""
         LSApplicationCategoryType: public.app-category.developer-tools
         NSLocalNetworkUsageDescription: Connect HerNess to services on your local network when you choose to use them.
+        NSMicrophoneUsageDescription: Allow HerNess to use the microphone when you tap the microphone to dictate a prompt.
+        NSSpeechRecognitionUsageDescription: Allow HerNess to transcribe speech into your prompt when you tap the microphone.
         UIBackgroundModes:
           - fetch
         BGTaskSchedulerPermittedIdentifiers:
@@ -49,6 +51,10 @@ targets:
         #   - framework: ../native/libgit2.xcframework
         #   - OTHER_LDFLAGS: ["-lgit2"]
         # Until then MobileGitClient.c auto-falls back to HERNESS_GIT_UNAVAILABLE without breaking build (has_include guard).
+      configs:
+        Release:
+          SWIFT_OPTIMIZATION_LEVEL: "-Osize"
+          ASSETCATALOG_COMPILER_OPTIMIZATION: space
     scheme:
       gatherCoverageData: false
       testTargets:

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Release publish → .tar.gz → dosya yöneticisinde aç
+# Release publish → .tar.xz → dosya yöneticisinde aç
 #
 # Kullanım:
 #   ./linux/DotsHarness/scripts/package-tar.sh
@@ -17,13 +17,15 @@ RUNTIME="${RUNTIME:-${DOTNET_RUNTIME:-}}"
 FRAMEWORK="${FRAMEWORK:-net8.0}"
 CONFIGURATION="${CONFIGURATION:-Release}"
 DIST_DIR="${OUTPUT_PATH:-$ROOT/dist}"
-SELF_CONTAINED=true
-READY_TO_RUN="${READY_TO_RUN:-true}"
+SELF_CONTAINED="${SELF_CONTAINED:-false}"
+# ReadyToRun adds native code alongside IL and inflates desktop bundles.
+# Keep release packages compact by default; opt in when startup time matters more.
+READY_TO_RUN="${READY_TO_RUN:-false}"
 OPEN_RESULT=true
 
 usage() {
     cat <<'EOF'
-Release publish alır, DotsHarness tar.gz üretir, dosya yöneticisinde açar.
+Release publish alır, DotsHarness tar.xz üretir, dosya yöneticisinde açar.
 
 Kullanım:
   ./scripts/package-tar.sh
@@ -36,20 +38,40 @@ Seçenekler:
       --runtime RID             Runtime kimliği (varsayılan: host mimarisi).
       --framework TFM           Hedef çerçeve (varsayılan: net8.0).
   -c, --configuration NAME      Yapılandırma (varsayılan: Release).
-      --framework-dependent     Self-contained değil, paylaşılan runtime kullan.
-      --ready-to-run            ReadyToRun (varsayılan açık; kapatmak için READY_TO_RUN=false).
+      --framework-dependent     Paylaşılan runtime kullan (varsayılan).
+      --self-contained          .NET 8 runtime'ını pakete dahil et (paket büyür).
+      --ready-to-run            ReadyToRun aç (varsayılan kapalı; READY_TO_RUN=true ile de açılabilir).
       --output PATH             dist klasörü.
   -h, --help                    Bu yardım metnini göster.
 
 Ortam değişkenleri:
   VERSION, RUNTIME, DOTNET_RUNTIME, FRAMEWORK, CONFIGURATION, OUTPUT_PATH,
-  READY_TO_RUN
+  READY_TO_RUN, SELF_CONTAINED
 EOF
 }
 
 fail() {
     printf 'Hata: %s\n' "$1" >&2
     exit 1
+}
+
+prune_foreign_runtime_assets() {
+    local publish_dir="$1"
+    local target_runtime="$2"
+    local runtimes_dir="$publish_dir/runtimes"
+    [[ -d "$runtimes_dir" ]] || return 0
+
+    local candidate runtime_id
+    for candidate in "$runtimes_dir"/*; do
+        [[ -d "$candidate" ]] || continue
+        runtime_id="${candidate##*/}"
+        [[ "$runtime_id" == "$target_runtime" ]] && continue
+        case "$runtime_id" in
+            android-*|browser-*|freebsd-*|ios-*|linux-*|macos-*|maccatalyst-*|osx-*|tvos-*|wasi-*|win-*|win10-*)
+                rm -rf -- "$candidate"
+                ;;
+        esac
+    done
 }
 
 detect_runtime() {
@@ -92,6 +114,10 @@ while [[ $# -gt 0 ]]; do
             SELF_CONTAINED=false
             shift
             ;;
+        --self-contained)
+            SELF_CONTAINED=true
+            shift
+            ;;
         --ready-to-run)
             READY_TO_RUN=true
             shift
@@ -112,6 +138,7 @@ kernel="$(uname -s 2>/dev/null || true)"
 
 command -v dotnet >/dev/null 2>&1 || fail "'dotnet' bulunamadı. .NET 8 SDK kurulumunu ve PATH ayarını kontrol edin."
 command -v tar >/dev/null 2>&1 || fail "'tar' bulunamadı."
+command -v xz >/dev/null 2>&1 || fail "'xz' bulunamadı. tar.xz paketi üretmek için xz-utils kurun."
 
 PROJECT_FILE="$ROOT/src/DotsHarness/DotsHarness.csproj"
 [[ -f "$PROJECT_FILE" ]] || fail "Proje dosyası bulunamadı: $PROJECT_FILE"
@@ -128,6 +155,12 @@ case "$(printf '%s' "$READY_TO_RUN" | tr '[:upper:]' '[:lower:]')" in
     *) fail "Geçersiz READY_TO_RUN değeri: $READY_TO_RUN (true veya false kullanın)." ;;
 esac
 
+case "$(printf '%s' "$SELF_CONTAINED" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes) SELF_CONTAINED=true ;;
+    0|false|no) SELF_CONTAINED=false ;;
+    *) fail "Geçersiz SELF_CONTAINED değeri: $SELF_CONTAINED (true veya false kullanın)." ;;
+esac
+
 if [[ -z "$RUNTIME" ]]; then
     RUNTIME="$(detect_runtime)"
 fi
@@ -138,7 +171,7 @@ fi
 
 STAGE_NAME="${APP_NAME}-${VERSION}-${RUNTIME}"
 STAGE_DIR="$DIST_DIR/$STAGE_NAME"
-TAR_PATH="$DIST_DIR/${STAGE_NAME}.tar.gz"
+TAR_PATH="$DIST_DIR/${STAGE_NAME}.tar.xz"
 
 echo "==> Release publish"
 echo "    Ürün: $APP_NAME"
@@ -185,6 +218,9 @@ if [[ -f "$SCHEDULER_PROJECT" ]]; then
     chmod +x "$STAGE_DIR/DotsHarnessScheduler"
 fi
 
+echo "    Yalnızca $RUNTIME yerel varlıkları pakette tutuluyor"
+prune_foreign_runtime_assets "$STAGE_DIR" "$RUNTIME"
+
 ICON_SOURCE="$ROOT/src/DotsHarness/Resources/DotsHarness.png"
 [[ -f "$ICON_SOURCE" ]] || fail "Uygulama ikonu bulunamadı: $ICON_SOURCE"
 cp "$ICON_SOURCE" "$STAGE_DIR/${APP_NAME}.png"
@@ -206,7 +242,9 @@ cat > "$STAGE_DIR/README.txt" <<EOF
 ${DISPLAY_NAME} ${VERSION}
 ======================
 
-Linux x64 / arm64 native Avalonia build.
+Linux ${RUNTIME} Avalonia build.
+
+$(if [[ "$SELF_CONTAINED" == true ]]; then echo ".NET 8 ayrıca gerekmez; runtime bu pakete dahildir."; else echo ".NET 8 Runtime gerekir. Kurulum: https://dotnet.microsoft.com/download/dotnet/8.0"; fi)
 
 Çalıştır:
   ./${APP_NAME}
@@ -216,8 +254,8 @@ altına, ${APP_NAME}.png dosyasını da ~/.local/share/icons/hicolor/512x512/app
 altına kopyalayabilirsin. Exec yolunu tam path yapman gerekir.
 EOF
 
-echo "==> tar.gz oluştur"
-tar -C "$DIST_DIR" -czf "$TAR_PATH" "$STAGE_NAME"
+echo "==> tar.xz oluştur"
+tar -C "$DIST_DIR" -cJf "$TAR_PATH" "$STAGE_NAME"
 
 echo "==> Hazır: $TAR_PATH"
 echo "    Uygulama: $APP_PATH"
@@ -237,4 +275,4 @@ elif command -v gio >/dev/null 2>&1; then
 else
     echo "    xdg-open yok; klasör: $DIST_DIR"
 fi
-echo "Bitti. ${STAGE_NAME}.tar.gz dosyasını dağıtabilir veya $STAGE_DIR içindeki ${APP_NAME}'i çalıştırabilirsin."
+echo "Bitti. ${STAGE_NAME}.tar.xz dosyasını dağıtabilir veya $STAGE_DIR içindeki ${APP_NAME}'i çalıştırabilirsin."

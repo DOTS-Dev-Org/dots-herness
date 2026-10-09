@@ -160,7 +160,19 @@ public final class MarketplacePublisher: ObservableObject {
         guard (200..<300).contains(source.1.statusCode) else {
             throw MarketplacePublishError.response(source.1.statusCode, String(decoding: source.0, as: UTF8.self))
         }
-        status = "Native platform buildleri kuyruğa alınıyor…"
+        let moderationSummary: String
+        if let sourceObject = try? JSONSerialization.jsonObject(with: source.0) as? [String: Any],
+           let moderationStatus = sourceObject["moderation_status"] as? String,
+           let category = sourceObject["category"] as? String,
+           let scope = sourceObject["catalog_scope"] as? String {
+            let model = sourceObject["moderation_model"] as? String
+            moderationSummary = model == "unavailable"
+                ? "AI sınıflandırması kullanılamadı; geçici etiket: \(category) · \(scope) · \(moderationStatus). İnsan incelemesi zorunlu."
+                : "AI sınıflandırması: \(category) · \(scope) · \(moderationStatus). İnsan incelemesi bekleniyor."
+        } else {
+            moderationSummary = "AI sınıflandırması tamamlanamadı; insan incelemesi bekleniyor."
+        }
+        status = "\(moderationSummary) Native platform buildleri kuyruğa alınıyor…"
         let build = try await session.authorizedData(
             path: "api/marketplace/releases/\(releaseID)/build",
             method: "POST",

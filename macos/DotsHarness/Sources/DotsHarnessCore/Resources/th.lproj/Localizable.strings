@@ -80,7 +80,6 @@
 "settings.title" = "การตั้งค่า";
 "settings.backToChats" = "กลับไปที่การแชท";
 "settings.tab.general" = "ทั่วไป";
-"settings.tab.pet" = "สัตว์เลี้ยง";
 "settings.tab.providers" = "ผู้ให้บริการ";
 "settings.tab.custom" = "API ที่กำหนดเอง";
 "settings.tab.local" = "โมเดลท้องถิ่น";
@@ -312,16 +311,16 @@
 "composer.settings" = "การตั้งค่า";
 "composer.skills" = "ทักษะ";
 "composer.personal" = "ส่วนตัว";
-"composer.projectPickerHelp" = "เลือกโปรเจ็กต์สำหรับการแชทนี้";
+"composer.projectPickerHelp" = "เลือกโปรเจกต์สำหรับการสนทนานี้";
 "composer.projectPickerTitle" = "โครงการ";
 "composer.chooseProject" = "เลือกโครงการ";
 "composer.noProject" = "ไม่ได้เลือกโครงการ";
 "composer.dontWorkInProject" = "อย่าทำงานในโครงการ";
 "workLocation.title" = "ทำงานใน";
-"workLocation.help" = "เลือกว่างานนี้จะดำเนินการที่ไหน";
-"workLocation.local" = "ท้องถิ่น";
+"workLocation.help" = "เลือกที่ที่งานนี้จะรัน";
+"workLocation.local" = "ในเครื่อง";
 "workLocation.localDetail" = "รันงานนี้บนคอมพิวเตอร์เครื่องนี้";
-"workLocation.localWorktree" = "ผังงานท้องถิ่นใหม่";
+"workLocation.localWorktree" = "เวิร์กทรีในเครื่องใหม่";
 "workLocation.localWorktreeDetail" = "ใช้การชำระเงินแบบแยกบนคอมพิวเตอร์เครื่องนี้";
 "workLocation.remote" = "คอมพิวเตอร์เครื่องอื่น";
 "workLocation.remoteDetail" = "ทำงานผ่าน SSH บนคอมพิวเตอร์ที่คุณเชื่อมต่อ";
@@ -377,8 +376,8 @@
 "ssh.error.pathMissing" = "ไม่มีโฟลเดอร์ %@ บนคอมพิวเตอร์ระยะไกล";
 "ssh.error.configWriteFailed" = "เขียน %@ ลง ~/.ssh/config ไม่ได้";
 "tool.remoteUnavailable" = "%1$@ ใช้ไม่ได้ขณะทำงานบน %2$@ ให้ใช้ run_command กับคำสั่งเชลล์แทน";
-"git.branchHelp" = "เลือกสาขา Git";
-"git.detached" = "HEAD เดี่ยว";
+"git.branchHelp" = "เลือกบรานช์ Git";
+"git.detached" = "HEAD ที่แยกออก";
 "git.search" = "ค้นหาสาขา";
 "git.branches" = "สาขา";
 "git.noBranches" = "ไม่พบสาขา";
@@ -413,8 +412,6 @@
 "slash.model" = "รุ่น";
 "slash.plan" = "โหมดแผน";
 "slash.planDetail" = "เปิดโหมดแผน";
-"slash.mascot" = "สัตว์เลี้ยง";
-"slash.mascotDetail" = "ปลุกหรือซ่อนสัตว์เลี้ยง";
 "slash.pluginCreator" = "ตัวสร้างปลั๊กอิน";
 "slash.pluginCreatorDetail" = "สร้างปลั๊กอินใหม่";
 "pluginCreator.template" = "เทมเพลต";
@@ -501,7 +498,6 @@
 "sidebar.hide" = "ซ่อน";
 "sidebar.show" = "แสดง";
 "sidebar.selectProject" = "เลือกโครงการ";
-"sidebar.continueWithoutProject" = "ดำเนินการต่อโดยไม่มีโครงการ";
 "sidebar.projectOptions" = "ตัวเลือกโครงการ";
 "sidebar.editProject" = "แก้ไขโครงการ";
 "sidebar.addProject" = "เพิ่มโปรเจกต์";
@@ -533,28 +529,6 @@
 "sidebar.accountOptions" = "ตัวเลือกบัญชี";
 "sidebar.accountUsage" = "บัญชี DOTS และการใช้งาน";
 
-"pet.position.bottomTrailing" = "ล่างขวา";
-"pet.position.bottomLeading" = "ซ้ายล่าง";
-"pet.position.topTrailing" = "ขวาบน";
-"pet.position.topLeading" = "ซ้ายบน";
-"pet.settings" = "การตั้งค่าสัตว์เลี้ยง";
-"pet.hide" = "ซ่อนสัตว์เลี้ยง";
-"pet.dragHint" = "DOTS Pet · กดค้างเพื่อย้าย";
-"pet.stopAndSend" = "หยุดฟังและส่งไปยังแชทที่เลือก";
-"pet.micOpening" = "กำลังเปิดไมโครโฟน...";
-"pet.listening" = "กำลังฟัง...";
-"pet.transcribing" = "กำลังถอดเสียงโมเดลเสียงท้องถิ่น...";
-"pet.sending" = "กำลังส่งไปยังแชทที่เลือก...";
-"pet.visibility" = "การมองเห็นสัตว์เลี้ยง";
-"pet.show" = "แสดงสัตว์เลี้ยง";
-"pet.visibilityHint" = "สัตว์เลี้ยงจะลอยบนหน้าจอเฉพาะในขณะที่เปิดใช้งานตัวเลือกนี้ ปิดอยู่เมื่อเปิดตัวครั้งแรก";
-"pet.appearance" = "ลักษณะที่ปรากฏ";
-"pet.position" = "ตำแหน่ง";
-"pet.size" = "ขนาด";
-"pet.sizeValue" = "%d พิกเซล";
-"pet.avatar" = "อวตาร";
-"pet.preview" = "ดูตัวอย่าง";
-"pet.title" = "สัตว์เลี้ยง";
 
 "usage.title" = "การใช้งาน";
 "usage.accountSummary" = "สรุปบัญชี DOTS YAZILIM ของงวดนี้";
@@ -870,7 +844,6 @@
 "marketplace.install" = "ติดตั้ง";
 "marketplace.search" = "ค้นหาปลั๊กอิน";
 "marketplace.update" = "อัพเดต v%@ → v%@";
-"pet.avatarHint" = "เลือกอวาตาร์สัตว์เลี้ยง";
 "router.customEndpointHint" = "จุดสิ้นสุด API ที่กำหนดเอง";
 "router.noKeyRequired" = "ไม่ต้องใช้กุญแจ เชื่อมต่อเพื่อกำหนดเส้นทางผ่านผู้ให้บริการรายนี้";
 "settings.addProviderCustom" = "เพิ่มผู้ให้บริการนี้ผ่าน Custom API";
@@ -1104,9 +1077,6 @@
 "feedback.tag.negative_other" = "อื่นๆ";
 
 // Completed translations for keys added to the desktop catalog.
-"assistantMode.title" = "โหมดผู้ช่วย";
-"assistantMode.coding" = "การเขียนโค้ด";
-"assistantMode.chat" = "แชท";
 "tasks.close" = "ปิดงาน";
 "tasks.back" = "ย้อนกลับ";
 "tasks.new" = "งานใหม่";
@@ -1147,3 +1117,213 @@
 "settings.compactTrigger" = "บีบอัดบริบทอัตโนมัติที่";
 "settings.compactTrigger.hint" = "สัดส่วนของหน้าต่างบริบทของแต่ละโมเดล ค่าที่สูงกว่าจะเก็บแคชพรอมต์ไว้นานขึ้น เพราะการบีบอัดจะเขียนแคชใหม่";
 "conversation.translate" = "แปล";
+
+
+// Completed translations for keys added to the desktop catalog.
+"tray.section.running" = "แชทที่กำลังทำงาน";
+"tray.section.waiting" = "ต้องตรวจสอบ";
+"tray.write" = "เขียนข้อความ";
+"tray.openUsage" = "เปิดหน้าจอการใช้";
+"tray.noChats" = "ไม่มีแชทในขณะนี้";
+"tray.unread" = "คำตอบใหม่";
+
+// Write-lease conflict copy.
+"conflict.policy.waitThenAsk" = "รอ แล้วค่อยถาม";
+"conflict.policy.waitThenAsk.detail" = "รออีกแชตอย่างเงียบ ๆ และจะถามเฉพาะเมื่อรอนานเกินไป";
+"conflict.policy.ask" = "ถามฉัน";
+"conflict.policy.ask.detail" = "ถามทันทีเมื่อสองแชตต้องการไฟล์เดียวกัน";
+"conflict.policy.waitOnly" = "รอเสมอ";
+"conflict.policy.waitOnly.detail" = "ไม่ถาม: การเขียนแต่ละครั้งรอแชตที่ถือไฟล์อยู่";
+"conflict.title" = "แชตอื่นกำลังเขียน %@";
+"conflict.stillBusy" = "ระงับการเขียน: %@ ยังถูกเขียนโดยแชตอื่น";
+"conflict.userSkipped" = "ข้ามการเขียน: %@ ยังคงอยู่กับแชตอื่น (%@) ตามที่ขอ";
+"conflict.stoppedHolder" = "หยุดแชต “%@” ตามที่คุณขอ และการเขียนนี้ดำเนินต่อ";
+"conflict.stoppedOthers" = "หยุดแชตอื่นของโปรเจกต์นี้ตามที่คุณขอ และการเขียนนี้ดำเนินต่อ";
+"conflict.wholeProject" = "โปรเจกต์ทั้งหมด (คำสั่ง: %@)";
+"conflict.banner.title" = "แชตอื่นกำลังเขียนไฟล์นี้";
+"conflict.banner.body" = "%1$@ · “%2$@” ถือไว้ %3$d วินาที";
+"conflict.banner.keepWaiting" = "รอต่อไป";
+"conflict.banner.stopHolder" = "หยุดแชตนั้น";
+"conflict.banner.stopAllOthers" = "หยุดแชตอื่นทั้งหมด";
+"conflict.banner.skip" = "ข้ามการเขียนนี้";
+"conflict.waiting" = "กำลังรอ “%@” เขียน: %@";
+"settings.workspaceConflictPolicy" = "หากแชตอื่นกำลังเขียนไฟล์เดียวกัน";
+"settings.conflictWaitSeconds" = "รอ ก่อนถาม";
+"settings.conflictWaitValue" = "%d วินาที";
+
+
+"conversation.ranCommand" = "Ran 1 command";
+"conversation.ranCommands" = "Ran %d commands";
+"conversation.runningTools" = "Running tools…";
+"conversation.thinkingPhase" = "Thinking…";
+"conversation.tokensCount" = "%@ tokens";
+"usage.context.window" = "หน้าต่างบริบท";
+"usage.planLimits" = "ขีดจำกัดการใช้งานของแพ็กเกจ";
+"ask.other" = "Other";
+"ask.next" = "Next";
+"ask.skipShort" = "Skip";
+"composer.queue.one" = "1 message queued";
+"composer.queue.many" = "%d messages queued";
+"composer.queue.edit" = "Edit";
+"composer.queue.editBlocked" = "Clear the message box to edit";
+"composer.queue.remove" = "Remove";
+"git.createPR" = "สร้าง PR";
+"git.hideBar" = "ซ่อน";
+"composer.queue.next" = "Next: %@";
+
+// Composer, git bar and usage popover.
+"usage.context.tooltip" = "การใช้งานบริบทและโทเค็น";
+"usage.context.conversation" = "ข้อความแชต";
+"usage.context.toolDefinitions" = "คำจำกัดความเครื่องมือ";
+"usage.context.mcpDefinitions" = "คำจำกัดความเครื่องมือ MCP";
+"usage.context.systemPrompt" = "คำสั่งระบบ";
+"usage.context.cacheHit" = "การเข้าถึงแคชพรอมต์";
+"usage.context.notReported" = "ผู้ให้บริการไม่ได้รายงาน";
+"usage.context.cacheWrite" = "เขียน %@ โทเค็นลงแคชแล้ว";
+
+// Local AI runtime and custom endpoint tuning.
+"custom.modelOptional" = "ชื่อโมเดล (ไม่บังคับ)";
+"custom.contextOptional" = "หน้าต่างบริบทเป็นโทเค็น (ไม่บังคับ)";
+"custom.contextHint" = "เว้นว่างทั้งสองช่องเพื่ออ่านค่าจากเซิร์ฟเวอร์ ระบุบริบทเมื่อเซิร์ฟเวอร์ไม่แจ้ง (Ollama: ให้ตรงกับ OLLAMA_CONTEXT_LENGTH)";
+"custom.contextInvalid" = "หน้าต่างบริบทต้องเป็นจำนวนบวก";
+"custom.detected" = "กำลังทำงานบนคอมพิวเตอร์เครื่องนี้";
+"custom.noModelAvailable" = "%@ ไม่แสดงรายการโมเดล ให้เริ่มเซิร์ฟเวอร์หรือกำหนดชื่อโมเดลให้ endpoint";
+"local.extraArgs" = "อาร์กิวเมนต์ llama-server เพิ่มเติม";
+"local.mlxExtraArgs" = "อาร์กิวเมนต์เซิร์ฟเวอร์ mlx_lm เพิ่มเติม";
+"local.gpuLayers" = "เลเยอร์บน GPU (auto, all หรือตัวเลข)";
+"local.hardware" = "ฮาร์ดแวร์";
+"local.hardwareGPU" = "%@ · หน่วยความจำ GPU %@ · RAM %@";
+"local.importGGUF" = "เพิ่มไฟล์ GGUF…";
+"local.installMLX" = "ติดตั้ง MLX";
+"local.installingMLX" = "กำลังติดตั้ง MLX (Python + mlx-lm)…";
+"local.kvCache" = "ชนิดแคช KV";
+"local.servingContext" = "%@ · %d โทเค็น";
+"local.tooLarge" = "ใหญ่เกินไป";
+"local.tuning" = "ประสิทธิภาพ";
+"local.tuningHint" = "เว้นว่างหรือ auto เพื่อให้รันไทม์ปรับโมเดลให้พอดีกับหน่วยความจำ GPU ของคุณ การเปลี่ยนแปลงมีผลเมื่อเริ่มโมเดลครั้งถัดไป";
+"local.contextSize" = "ขนาดบริบท (โทเค็น)";
+"local.threads" = "เธรด CPU";
+"local.batchSize" = "ขนาดแบตช์";
+"local.forget" = "นำออกจากรายการ";
+"localModel.needsMemory" = "ต้องใช้หน่วยความจำ GPU หรือ RAM ประมาณ %d GB";
+"localRuntime.helperFailed" = "%@ ล้มเหลว (รหัสออก %d)";
+"localRuntime.mlxUnsupported" = "MLX ต้องใช้ Mac ที่มี Apple Silicon";
+"local.flashAttention" = "Flash attention";
+"local.hardwareMemory" = "%@ RAM";
+
+// Translations completed for keys that had no localized text.
+"conversation.fullToolOutput" = "เอาต์พุตของเครื่องมือทั้งหมด";
+"sidebar.showSidebar" = "แสดงแถบด้านข้าง";
+"sidebar.hideSidebar" = "ซ่อนแถบด้านข้าง";
+"navigation.back" = "ย้อนกลับ";
+"navigation.forward" = "ไปข้างหน้า";
+"settings.autoApprovePlans" = "อนุมัติแผนโดยอัตโนมัติ";
+"settings.autoApprovePlans.hint" = "เมื่อเปิดใช้ แผนที่สร้างขึ้นจะถูกนำไปใช้โดยไม่รอการอนุมัติแผนแยกต่างหาก การอนุมัติระดับเครื่องมือยังคงมีผล";
+"media.fallbackUsed" = "ผู้ให้บริการที่เลือกไม่สามารถสร้างภาพนี้ได้ ภาพถูกสร้างด้วยคำขอสำรองครั้งเดียวผ่าน %@/%@ ผู้ให้บริการและโมเดลของการสนทนาหลักไม่ได้เปลี่ยน แคชพรอมต์จึงยังคงอยู่ครบ";
+"media.imageUnsupportedWithFallbackHint" = "ฉันสร้างภาพนี้ด้วย %@ ไม่ได้ โปรดตั้งค่า API หรือผู้ให้บริการภาพเป็นตัวสำรอง การสลับโมเดลแชตหลักเพียงเพื่อสร้างภาพอาจทำให้แคชพรอมต์ของผู้ให้บริการเสียหาย";
+"conversation.generationResumed" = "ดำเนินข้อความต่อแล้ว";
+"conversation.cancelPlan" = "ยกเลิกแผน";
+"conversation.cancelPlanHelp" = "ยกเลิกแผนนี้และปล่อยข้อความที่รอคิวอยู่";
+"conversation.thinking" = "กระบวนการคิด";
+"usage.manageResets" = "จัดการการรีเซ็ต";
+"usage.useReset" = "ใช้การรีเซ็ต";
+"usage.resetTitle" = "ใช้การรีเซ็ตขีดจำกัดของ Claude หรือไม่";
+"usage.openClaude" = "ดำเนินการต่อใน Claude";
+"usage.resetConfirmation" = "หน้าการใช้งานของ Claude จะเปิดขึ้น ลงชื่อเข้าใช้ %@ แล้วตรวจสอบการรีเซ็ตที่เสนอให้บัญชีนั้น หากต้องการใช้ ให้คลิกรีเซ็ตฟรีแล้วยืนยันใน Claude เมื่อใช้แล้วจะยกเลิกการรีเซ็ตไม่ได้ ขีดจำกัดจะรีเฟรชเมื่อคุณกลับมาที่ HerNess";
+"usage.resetOpenFailed" = "เปิด Claude ไม่ได้ ตรวจสอบว่าบัญชียังเชื่อมต่ออยู่ แล้วลองอีกครั้ง";
+"conversation.review" = "ตรวจทาน";
+"dock.noWorkspace" = "เลือกโฟลเดอร์พื้นที่ทำงานก่อน";
+"dock.branch" = "แบรนช์";
+"dock.refresh" = "รีเฟรช";
+"dock.commit" = "Commit";
+"dock.push" = "Push";
+"dock.fetch" = "Fetch";
+"dock.commitOrPush" = "Commit หรือ Push";
+"dock.commitMessage" = "ข้อความ commit";
+"dock.noChanges" = "เอเจนต์ไม่ได้เปลี่ยนแปลงอะไร";
+"dock.whyRequest" = "คำขอของคุณ";
+"dock.whyAgent" = "คำอธิบายของเอเจนต์";
+"dock.notRepo" = "โฟลเดอร์นี้ไม่ใช่ที่เก็บ git";
+"dock.filterFiles" = "กรองไฟล์…";
+"dock.openFile" = "เปิดไฟล์";
+"dock.selectFile" = "เลือกไฟล์จากโครงสร้างพื้นที่ทำงาน";
+"dock.binaryFile" = "ไฟล์ไบนารีหรืออ่านไม่ได้";
+"project.missing.title" = "ไม่พบโฟลเดอร์โปรเจกต์: %@";
+"project.missing.message" = "โฟลเดอร์โปรเจกต์ที่ '%@' อาจถูกย้ายหรือลบไปแล้ว โปรดเลือกตำแหน่งใหม่หรือลบโปรเจกต์";
+"project.missing.locate" = "ค้นหาตำแหน่ง…";
+"project.missing.readOnly" = "โฟลเดอร์โปรเจกต์ไม่พร้อมใช้งาน คุณยังดูบทสนทนาเดิมได้ แต่จะสร้างบทสนทนาใหม่หรือส่งข้อความไม่ได้จนกว่าจะเลือกตำแหน่งใหม่";
+"queue.waitingForPlan" = "กำลังรอการอนุมัติแผน";
+"settings.closeToTray" = "ทำงานต่อในถาดระบบเมื่อปิดหน้าต่าง";
+"settings.closeToTray.hint" = "การทำงาน เทอร์มินัล และงานที่กำหนดเวลาจะดำเนินต่อขณะซ่อนหน้าต่าง; ไอคอนถาดระบบจะเปิดกลับมา";
+"tray.show" = "เปิดหน้าต่าง";
+"context.overflowTitle" = "การสนทนานี้จะใส่ในโมเดลใหม่ไม่พอ";
+"context.overflowReason" = "%1$@ ต้องใช้ประมาณ %2$d โทเค็นเพื่อดำเนินการต่อ แต่โมเดลนั้นเหลือว่างเพียง %3$d";
+"context.overflowByModel" = "สรุปจะเขียนโดย %@ ซึ่งเป็นโมเดลที่เชื่อมต่ออยู่ขนาดเล็กที่สุดที่ยังอ่านบันทึกการสนทนาได้";
+"context.overflowLocally" = "ไม่มีโมเดลที่เชื่อมต่ออยู่ตัวใดอ่านบันทึกการสนทนาได้ จึงย่อการสนทนาโดยไม่ถามโมเดลใด";
+"context.overflowCompress" = "บีบอัดแล้วดำเนินการต่อ";
+"context.overflowNotNow" = "ยังไม่ใช่ตอนนี้";
+"context.overflowDeclined" = "หยุดส่งแล้ว: การสนทนาใส่ในโมเดลใหม่ไม่พอ";
+"usage.context.title" = "การใช้งาน";
+"usage.context.input" = "อินพุตที่ส่ง";
+"usage.context.estimatedInput" = "อินพุตโดยประมาณ";
+"usage.context.output" = "เอาต์พุต";
+"usage.context.latestRequest" = "คำขอล่าสุด · หน้าต่างบริบท";
+"usage.context.estimatedBreakdown" = "รายละเอียดอินพุตโดยประมาณ";
+"usage.context.estimateNote" = "ยอดรวมอินพุต/เอาต์พุตของผู้ให้บริการจะแสดงเมื่อมีข้อมูล มิฉะนั้นยอดรวมอินพุตและหมวดเครื่องมือ/MCP เป็นค่าประมาณในเครื่อง";
+"usage.context.tokens" = "โทเค็น";
+"usage.context.toolCalls" = "การเรียกเครื่องมือ";
+"usage.context.mcpCalls" = "การเรียก MCP";
+"usage.context.toolResults" = "ผลลัพธ์ของเครื่องมือ";
+"usage.context.mcpResults" = "ผลลัพธ์ MCP";
+"plan.proposed" = "Claude เสนอแผน";
+"plan.reject" = "ปฏิเสธ";
+"plan.revise" = "แก้ไข…";
+"plan.accept" = "ยอมรับ";
+"plan.acceptAuto" = "ยอมรับและโหมดอัตโนมัติ";
+"plan.open" = "เปิดแผน";
+"plan.empty" = "ยังไม่มีแผน";
+"dock.expand" = "ขยาย";
+"dock.collapse" = "ย่อ";
+"usage.context.cacheReuse" = "การใช้แคชซ้ำในการสนทนานี้";
+"usage.context.cacheFreshInput" = "New / outside-breakpoint input: %@ tokens";
+"usage.context.cacheCoverage" = "ความครอบคลุมของการวัด: %@ · %@ / %@ คำขอ";
+"usage.context.cacheLatency" = "เวลาแฝงเฉลี่ยของคำขอ: %@ มิลลิวินาที";
+"usage.context.cacheLoss" = "การสูญเสียแคชมากที่สุด: %@ · %@ โทเค็น";
+"tray.back" = "แชต";
+
+"composer.cacheExpired.explanation" = "อายุโดยประมาณของแคชสิ้นสุดแล้ว แคชพรอมต์เป็นสถานะการประมวลผลชั่วคราวฝั่งผู้ให้บริการ ประวัติแชทของคุณยังคงถูกบันทึกไว้ หากใช้งานต่อด้วยประวัติทั้งหมด โทเค็นเหล่านั้นอาจถูกนับเป็นอินพุตใหม่อีกครั้ง ต้องใช้ข้อมูลการใช้งานของคำขอถัดไปเพื่อยืนยันว่าผู้ให้บริการยังมีแคชอยู่หรือไม่";
+"composer.accountSwitched.notice" = "แชทนี้ย้ายไปใช้อีกบัญชีหนึ่งบนโมเดลเดิม แคชในบัญชีนั้นเริ่มต้นใหม่ทั้งหมด หากใช้งานต่ออาจใช้โทเค็นมากขึ้นและมีค่าใช้จ่ายสูงขึ้น";
+"composer.contextFull.notice" = "หน้าต่างบริบทใกล้เต็มแล้ว หากใช้งานต่ออาจใช้โทเค็นมากขึ้นและมีค่าใช้จ่ายสูงขึ้น เริ่มแชทใหม่พร้อมสรุปสั้น ๆ";
+"composer.cacheExpired.infoTitle" = "ทำไมฉันจึงเห็นข้อความนี้";
+"composer.cacheExpired.notice" = "แคชอาจหมดอายุแล้ว หากใช้งานต่ออาจใช้โทเค็นมากขึ้นและมีค่าใช้จ่ายสูงขึ้น เริ่มแชทใหม่พร้อมสรุปสั้น ๆ";
+"feedback.tag.apply_elsewhere" = "Apply it elsewhere";
+"feedback.tag.broke_existing_feature" = "Broke an existing feature";
+"feedback.tag.did_not_follow_project_style" = "Didn't follow project style";
+"feedback.tag.ignored_project_architecture" = "Ignored project architecture";
+"feedback.tag.keep_project_style" = "Keep the project style";
+"feedback.tag.reuse_architecture" = "Reuse this architecture";
+"feedback.tag.reuse_token_pattern" = "Reuse this token pattern";
+"feedback.tag.wrong_theme_or_token" = "Wrong theme or token";
+
+// Completed translations for keys added to the desktop catalog.
+"conversation.filesChangedCount" = "เปลี่ยนแปลง %d ไฟล์";
+"conversation.filesLineSummary" = "+%d −%d";
+"conversation.lineCountsUnavailable" = "ไม่สามารถดูจำนวนบรรทัดได้";
+"conversation.filesMore" = "แสดงอีก %d ไฟล์";
+"conversation.filesLess" = "แสดงไฟล์น้อยลง";
+"conversation.undoChanges" = "เลิกทำ";
+"conversation.viewChanges" = "ดูการเปลี่ยนแปลง";
+"conversation.filesReverted" = "เลิกทำการเปลี่ยนแปลงไฟล์แล้ว";
+
+// Completed translations for keys added to the desktop catalog.
+"composer.modelSwitched.notice" = "มีการเปลี่ยนโมเดล แคชจะไม่ถูกนำไปใช้กับโมเดลใหม่ ประวัติทั้งหมดจะถูกประมวลผลใหม่ ซึ่งอาจใช้โทเค็นมากขึ้นและมีค่าใช้จ่ายสูงขึ้น";
+
+"archive.title" = "การสนทนาที่เก็บถาวร";
+"archive.empty" = "ไม่มีการสนทนาที่เก็บถาวร";
+
+"conversation.plan" = "แผน";
+"conversation.system" = "ระบบ";
+
+"archive.confirmDelete" = "ลบการสนทนานี้อย่างถาวรหรือไม่?";
+"archive.deletePermanently" = "ลบถาวร";
+"conversation.processedTokensCount" = "%@ โทเค็น";

@@ -74,21 +74,73 @@ extension RouterController {
         let prefix = sanitizedPrefix(customPrefix.isEmpty ? name : customPrefix)
         let base = customBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty, !prefix.isEmpty, !base.isEmpty else { error = AppCopy.text("router.customFieldsRequired"); return }
+        let modelName = customModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        let model = modelName.isEmpty ? nil : modelName
+        let contextText = customContextWindow.trimmingCharacters(in: .whitespacesAndNewlines)
+        let contextWindow = Int(contextText).flatMap { $0 > 0 ? $0 : nil }
+        guard contextText.isEmpty || contextWindow != nil else { error = AppCopy.text("custom.contextInvalid"); return }
         do {
             let secret = customAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
             if let editingNodeID, let endpoint = store.state.endpoints.first(where: { $0.id == editingNodeID }) {
-                try store.updateCustom(endpoint: endpoint, name: name, prefix: prefix, baseURL: base, api: customKind.rawValue, apiType: customAPIType.rawValue, secret: secret.isEmpty ? nil : secret)
+                try store.updateCustom(endpoint: endpoint, name: name, prefix: prefix, baseURL: base, api: customKind.rawValue, apiType: customAPIType.rawValue, secret: secret.isEmpty ? nil : secret, model: model, contextWindow: contextWindow)
                 onConnectionChanged?(ConnectionTransition(action: "replaced", previousConnectionLabel: endpoint.name, currentConnectionLabel: name, cleanupStatus: "preserved"))
                 self.editingNodeID = nil
                 status = "Custom API “\(name)” updated"
             } else {
-                let endpoint = try store.addCustom(name: name, prefix: prefix, baseURL: base, api: customKind.rawValue, apiType: customAPIType.rawValue, secret: secret)
+                let endpoint = try store.addCustom(name: name, prefix: prefix, baseURL: base, api: customKind.rawValue, apiType: customAPIType.rawValue, secret: secret, model: model, contextWindow: contextWindow)
                 if registerKey { _ = try store.addCustomAccount(endpoint: endpoint, secret: secret) }
                 onConnectionChanged?(ConnectionTransition(action: "added", currentConnectionLabel: name, cleanupStatus: "preserved"))
                 status = AppCopy.format("router.customAPIAdded", name)
             }
             customAPIKey = ""
+            customModel = ""
+            customContextWindow = ""
             await refresh()
+            // The picker must show the endpoint's real models right away.
+            await refreshModels(force: true)
+            await detectLocalServers()
+        } catch { self.error = error.localizedDescription }
+    }
+
+    /// Finds OpenAI-compatible servers the user already runs on this machine
+    /// (Ollama, LM Studio, llama.cpp, …) that are not connected yet.
+    public func detectLocalServers() async {
+        let known = Set(store.state.endpoints.map(\.baseURL))
+        detectedServers = await LocalServerDiscovery.scan().filter { !known.contains($0.baseURL) }
+    }
+
+    /// One-click connect for a detected server: no key, models listed live.
+    public func connect(_ server: LocalServerDiscovery.Server) async {
+        editingNodeID = nil
+        customName = server.name
+        customPrefix = server.name
+        customBaseURL = server.baseURL
+        customAPIKey = ""
+        customModel = ""
+        customContextWindow = ""
+        customKind = .openai
+        customAPIType = .chat
+        await createCustomNode(registerKey: true)
+    }
+
+    /// Registers the bundled local server as one endpoint with one account,
+    /// replacing whatever model it served before.
+    public func publishLocalNode(name: String, prefix: String, baseURL: String, model: String, contextWindow: Int) async {
+        do {
+            let api = CustomAPIKind.openai.rawValue
+            let apiType = CustomOpenAIAPIType.chat.rawValue
+            let endpoint: StoredCustomEndpoint
+            if let existing = store.state.endpoints.first(where: { $0.prefix == prefix }) {
+                try store.updateCustom(endpoint: existing, name: name, prefix: prefix, baseURL: baseURL, api: api, apiType: apiType, secret: nil, model: model, contextWindow: contextWindow)
+                endpoint = store.state.endpoints.first { $0.id == existing.id } ?? existing
+            } else {
+                endpoint = try store.addCustom(name: name, prefix: prefix, baseURL: baseURL, api: api, apiType: apiType, secret: "", model: model, contextWindow: contextWindow)
+            }
+            if !store.state.accounts.contains(where: { $0.provider == "custom:\(endpoint.id)" }) {
+                try store.addCustomAccount(endpoint: endpoint, secret: "")
+            }
+            await refresh()
+            await refreshModels(force: true)
         } catch { self.error = error.localizedDescription }
     }
 
@@ -101,12 +153,16 @@ extension RouterController {
         customKind = endpoint.api == CustomAPIKind.anthropic.rawValue ? .anthropic : .openai
         customAPIType = endpoint.apiType == CustomOpenAIAPIType.responses.rawValue ? .responses : .chat
         customAPIKey = ""
+        customModel = endpoint.model ?? ""
+        customContextWindow = endpoint.contextWindow.map(String.init) ?? ""
         error = nil
     }
 
     public func cancelEditNode() {
         editingNodeID = nil
         customAPIKey = ""
+        customModel = ""
+        customContextWindow = ""
     }
 
     public func deleteNode(_ node: RouterNode) async {
@@ -163,10 +219,11 @@ extension RouterController {
     func refreshState() {
         connections = store.state.accounts.map(RouterConnection.init(from:))
         nodes = store.state.endpoints.map(RouterNode.init(from:))
-        // Seed from the registry so the picker has the connected accounts' models
-        // on launch, without waiting on (or requiring) a live listing.
-        if models.isEmpty { models = registryModels() }
-        selectedModelID = selectedModelID.isEmpty ? store.state.accounts.first(where: \.active)?.model ?? "" : selectedModelID
+        // Restore the last known account catalog before validating the saved
+        // selection. Live-only models must survive launch without a network read.
+        if models.isEmpty { models = cachedModelCatalog() ?? registryModels() }
+        if selectedModelID.isEmpty { select(modelID: store.state.accounts.first(where: \.active)?.model ?? "") }
+        reconcileSelection()
         reachable = true
     }
 
@@ -179,12 +236,21 @@ extension RouterController {
             let specModels = RouterCatalog.spec(for: account.provider)?.models ?? []
             for spec in specModels {
                 seeded.append(RouterModel(
-                    id: spec.id, owner: owner, contextWindow: spec.contextWindow, efforts: spec.efforts,
+                    id: spec.id, owner: owner,
+                    contextWindow: account.contextWindow
+                        ?? RouterCatalog.documentedContextWindow(for: spec.id, provider: account.provider)
+                        ?? spec.contextWindow,
+                    efforts: spec.efforts,
                     displayName: spec.name, provider: account.provider, tier: spec.tier, fast: spec.fast
                 ))
             }
-            if !account.model.isEmpty, !seeded.contains(where: { $0.id == account.model }) {
-                seeded.append(RouterModel(id: account.model, owner: owner, provider: account.provider))
+            if !account.model.isEmpty, !account.hasPlaceholderModel, !seeded.contains(where: { $0.id == account.model }) {
+                seeded.append(RouterModel(
+                    id: account.model, owner: owner,
+                    contextWindow: account.contextWindow
+                        ?? RouterCatalog.documentedContextWindow(for: account.model, provider: account.provider),
+                    provider: account.provider
+                ))
             }
         }
         return seeded
@@ -196,7 +262,7 @@ extension RouterController {
             return .json(["error": ["message": "A valid share key is required"]], status: 401)
         }
         if request.method == "GET", request.path == "/v1/models" {
-            let data = store.state.accounts.filter(\.active).map { account in
+            let data = store.state.accounts.filter { $0.active && !$0.hasPlaceholderModel }.map { account in
                 ["id": account.model, "object": "model", "owned_by": RouterCatalog.label(for: account.provider)]
             }
             return .json(["object": "list", "data": data])

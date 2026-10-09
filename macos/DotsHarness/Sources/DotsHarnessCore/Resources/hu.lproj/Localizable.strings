@@ -80,7 +80,6 @@
 "settings.title" = "Beállítások elemre";
 "settings.backToChats" = "Vissza a chatekhez";
 "settings.tab.general" = "Általános";
-"settings.tab.pet" = "Pet";
 "settings.tab.providers" = "Szolgáltatók";
 "settings.tab.custom" = "Egyéni API";
 "settings.tab.local" = "Helyi modellek";
@@ -306,22 +305,22 @@
 "composer.add" = "Hozzáadás";
 "composer.stopListening" = "Hagyja abba a hallgatást, és adja hozzá a szöveget a piszkozathoz";
 "composer.keyboardHelp" = "Enter: küldés · Shift+Enter: új sor · ⌘/Ctrl+Enter: irányít";
-"composer.followUp.hint" = "A Tab megnyomásával elfogadhatod a követő üzenetre vonatkozó javaslatot";
+"composer.followUp.hint" = "Nyomja meg a Tab billentyűt a követő üzenetjavaslat elfogadásához";
 "composer.selectModel" = "Válasszon modellt";
 "composer.installedSkill" = "Telepített készség";
 "composer.settings" = "Beállítások elemre";
 "composer.skills" = "Készségek";
 "composer.personal" = "Személyes";
-"composer.projectPickerHelp" = "Válassza ki a projektet ehhez a csevegéshez";
+"composer.projectPickerHelp" = "Válaszd ki a projektet ehhez a beszélgetéshez";
 "composer.projectPickerTitle" = "Projekt";
 "composer.chooseProject" = "Válasszon projektet";
 "composer.noProject" = "Nincs kiválasztva projekt";
 "composer.dontWorkInProject" = "Ne dolgozzon projektben";
 "workLocation.title" = "Dolgozzon be";
-"workLocation.help" = "Válassza ki, hol fusson ez a feladat";
+"workLocation.help" = "Válaszd ki, hol fusson ez a feladat";
 "workLocation.local" = "Helyi";
 "workLocation.localDetail" = "Futtassa ezt a feladatot ezen a számítógépen";
-"workLocation.localWorktree" = "Új helyi munkafa";
+"workLocation.localWorktree" = "Új helyi worktree";
 "workLocation.localWorktreeDetail" = "Használjon elszigetelt pénztárat ezen a számítógépen";
 "workLocation.remote" = "Másik számítógép";
 "workLocation.remoteDetail" = "Munka SSH-n keresztül egy géppel, amelyhez csatlakozol";
@@ -377,8 +376,8 @@
 "ssh.error.pathMissing" = "A(z) %@ mappa nem létezik a távoli gépen.";
 "ssh.error.configWriteFailed" = "A(z) %@ nem írható a ~/.ssh/config fájlba.";
 "tool.remoteUnavailable" = "A(z) %1$@ nem érhető el, amíg a(z) %2$@ gépen dolgozol. Használd helyette a run_command parancsot shell-parancsokkal.";
-"git.branchHelp" = "Válassz egy Git ágat";
-"git.detached" = "Levált FEJ";
+"git.branchHelp" = "Git-ág kiválasztása";
+"git.detached" = "Leválasztott HEAD";
 "git.search" = "Keresés az ágakban";
 "git.branches" = "Ágak";
 "git.noBranches" = "Nem található ág";
@@ -413,8 +412,6 @@
 "slash.model" = "Modell";
 "slash.plan" = "Tervezési mód";
 "slash.planDetail" = "Kapcsolja be a terv módot";
-"slash.mascot" = "Pet";
-"slash.mascotDetail" = "Ébressze fel vagy rejtse el az állatot";
 "slash.pluginCreator" = "Bővítménykészítő";
 "slash.pluginCreatorDetail" = "Új bővítmény létrehozása";
 "pluginCreator.template" = "Sablon";
@@ -501,7 +498,6 @@
 "sidebar.hide" = "Elrejtés";
 "sidebar.show" = "Megjelenítés";
 "sidebar.selectProject" = "Válasszon projektet";
-"sidebar.continueWithoutProject" = "Folytassa projekt nélkül";
 "sidebar.projectOptions" = "Projekt opciók";
 "sidebar.editProject" = "Projekt szerkesztése";
 "sidebar.addProject" = "Projekt hozzáadása";
@@ -533,28 +529,6 @@
 "sidebar.accountOptions" = "Fiókbeállítások";
 "sidebar.accountUsage" = "DOTS fiók és használat";
 
-"pet.position.bottomTrailing" = "Jobbra lent";
-"pet.position.bottomLeading" = "Balra lent";
-"pet.position.topTrailing" = "Jobbra fent";
-"pet.position.topLeading" = "Balra fent";
-"pet.settings" = "Kisállatok beállításai";
-"pet.hide" = "Kisállat elrejtése";
-"pet.dragHint" = "DOTS Pet · Tartsa lenyomva a mozgáshoz";
-"pet.stopAndSend" = "Hagyja abba a hallgatást, és küldje el a kiválasztott csevegésre";
-"pet.micOpening" = "Mikrofon megnyitása…";
-"pet.listening" = "Hallgatás…";
-"pet.transcribing" = "A helyi hangminta átírása folyamatban van…";
-"pet.sending" = "Küldés a kiválasztott csevegésbe…";
-"pet.visibility" = "Kisállat láthatósága";
-"pet.show" = "Mutasd kisállat";
-"pet.visibilityHint" = "Az állat csak akkor lebeg a képernyőn, ha ez az opció be van kapcsolva. Első indításkor ki van kapcsolva.";
-"pet.appearance" = "Megjelenés";
-"pet.position" = "Pozíció";
-"pet.size" = "Méret";
-"pet.sizeValue" = "%d px";
-"pet.avatar" = "Avatar";
-"pet.preview" = "Előnézet";
-"pet.title" = "Pet";
 
 "usage.title" = "Használat";
 "usage.accountSummary" = "Ennek az időszaknak a DOTS YAZILIM fiókösszefoglalója";
@@ -870,7 +844,6 @@
 "marketplace.install" = "Telepítés";
 "marketplace.search" = "Bővítmények keresése";
 "marketplace.update" = "A v%@ → v%@ frissítése";
-"pet.avatarHint" = "Válassz egy kisállat avatárt.";
 "router.customEndpointHint" = "Egyéni API-végpont";
 "router.noKeyRequired" = "Nincs szükség kulcsra. Csatlakozzon az útvonalhoz ezen a szolgáltatón keresztül.";
 "settings.addProviderCustom" = "Adja hozzá ezt a szolgáltatót az Egyéni API-n keresztül.";
@@ -1104,9 +1077,6 @@
 "feedback.tag.negative_other" = "Egyéb";
 
 // Completed translations for keys added to the desktop catalog.
-"assistantMode.title" = "Asszisztens mód";
-"assistantMode.coding" = "Kódolás";
-"assistantMode.chat" = "Csevegés";
 "tasks.close" = "Feladatok bezárása";
 "tasks.back" = "Vissza";
 "tasks.new" = "Új feladat";
@@ -1147,3 +1117,213 @@
 "settings.compactTrigger" = "Kontextus automatikus tömörítése itt:";
 "settings.compactTrigger.hint" = "Az egyes modellek kontextusablakának aránya. A magasabb érték tovább megőrzi a prompt-gyorsítótárat, mert a tömörítés újraírja azt.";
 "conversation.translate" = "Fordítás";
+
+
+// Completed translations for keys added to the desktop catalog.
+"tray.section.running" = "Futó beszélgetések";
+"tray.section.waiting" = "Figyelmet igényel";
+"tray.write" = "Üzenet írása";
+"tray.openUsage" = "Használat képernyő megnyitása";
+"tray.noChats" = "Most nincs beszélgetés";
+"tray.unread" = "Új válasz";
+
+// Write-lease conflict copy.
+"conflict.policy.waitThenAsk" = "Várj, majd kérdez";
+"conflict.policy.waitThenAsk.detail" = "Csendben megvárja a másik csetet, és csak akkor kérdez, ha a várakozás túl hosszú.";
+"conflict.policy.ask" = "Kérdezz tőlem";
+"conflict.policy.ask.detail" = "Azonnal kérdez, ha két cset ugyanazt a fájlt akarja.";
+"conflict.policy.waitOnly" = "Mindig várj";
+"conflict.policy.waitOnly.detail" = "Nem kérdez: minden írás arra a csetre vár, amelyik birtokolja a fájlt.";
+"conflict.title" = "Egy másik cset írja: %@";
+"conflict.stillBusy" = "Az írás félretéve: %@ még mindig egy másik cset írja.";
+"conflict.userSkipped" = "Az írás kihagyva: %@ a másik csetnél maradt (%@), ahogy kérted.";
+"conflict.stoppedHolder" = "A(z) „%@” csetet a kérésedre leállítottuk, és az írás lefutott.";
+"conflict.stoppedOthers" = "A kérésedre a projekt többi csetje leállt, és az írás lefutott.";
+"conflict.wholeProject" = "az egész projekt (parancs: %@)";
+"conflict.banner.title" = "Másik cset írja ezt a fájlt";
+"conflict.banner.body" = "%1$@ · a „%2$@” tartja %3$d másodperce";
+"conflict.banner.keepWaiting" = "Várj tovább";
+"conflict.banner.stopHolder" = "Állítsd le a csetet";
+"conflict.banner.stopAllOthers" = "Állítsd le az összes többi csetet";
+"conflict.banner.skip" = "Hagyd ki ezt az írást";
+"conflict.waiting" = "Várakozás „%@” írására: %@";
+"settings.workspaceConflictPolicy" = "Ha egy másik cset ugyanazt a fájlt írja";
+"settings.conflictWaitSeconds" = "Várakozás kérdezés előtt";
+"settings.conflictWaitValue" = "%d másodperc";
+
+
+"conversation.ranCommand" = "Ran 1 command";
+"conversation.ranCommands" = "Ran %d commands";
+"conversation.runningTools" = "Running tools…";
+"conversation.thinkingPhase" = "Thinking…";
+"conversation.tokensCount" = "%@ tokens";
+"usage.context.window" = "Kontextusablak";
+"usage.planLimits" = "A csomag használati korlátai";
+"ask.other" = "Other";
+"ask.next" = "Next";
+"ask.skipShort" = "Skip";
+"composer.queue.one" = "1 message queued";
+"composer.queue.many" = "%d messages queued";
+"composer.queue.edit" = "Edit";
+"composer.queue.editBlocked" = "Clear the message box to edit";
+"composer.queue.remove" = "Remove";
+"git.createPR" = "PR létrehozása";
+"git.hideBar" = "Elrejtés";
+"composer.queue.next" = "Next: %@";
+
+// Composer, git bar and usage popover.
+"usage.context.tooltip" = "Kontextus- és tokenhasználat";
+"usage.context.conversation" = "Csevegési üzenetek";
+"usage.context.toolDefinitions" = "Eszközdefiníciók";
+"usage.context.mcpDefinitions" = "MCP-eszközdefiníciók";
+"usage.context.systemPrompt" = "Rendszerutasítások";
+"usage.context.cacheHit" = "Prompt-gyorsítótár találatok";
+"usage.context.notReported" = "A szolgáltató nem jelentette";
+"usage.context.cacheWrite" = "%@ token írva a gyorsítótárba";
+
+// Local AI runtime and custom endpoint tuning.
+"custom.modelOptional" = "Modell neve (nem kötelező)";
+"custom.contextOptional" = "Kontextusablak tokenben (nem kötelező)";
+"custom.contextHint" = "Hagyd mindkettőt üresen, hogy a szerverről olvassa be. Add meg a kontextust, ha a szerver nem közli (Ollama: egyezzen az OLLAMA_CONTEXT_LENGTH értékével).";
+"custom.contextInvalid" = "A kontextusablaknak pozitív számnak kell lennie.";
+"custom.detected" = "Ezen a számítógépen fut";
+"custom.noModelAvailable" = "%@ nem listáz modelleket. Indítsd el a szerverét, vagy adj meg modellnevet a végponthoz.";
+"local.extraArgs" = "További llama-server argumentumok";
+"local.mlxExtraArgs" = "További mlx_lm szerver argumentumok";
+"local.gpuLayers" = "GPU-rétegek (auto, all vagy egy szám)";
+"local.hardware" = "Hardver";
+"local.hardwareGPU" = "%@ · %@ GPU-memória · %@ RAM";
+"local.importGGUF" = "GGUF-fájl hozzáadása…";
+"local.installMLX" = "MLX telepítése";
+"local.installingMLX" = "MLX telepítése (Python + mlx-lm)…";
+"local.kvCache" = "KV-gyorsítótár típusa";
+"local.servingContext" = "%@ · %d token";
+"local.tooLarge" = "Túl nagy";
+"local.tuning" = "Teljesítmény";
+"local.tuningHint" = "Üresen vagy auto értéken a futtatókörnyezet a GPU memóriájához igazítja a modellt. A változások a modell következő indításakor lépnek életbe.";
+"local.contextSize" = "Kontextusméret (token)";
+"local.threads" = "CPU-szálak";
+"local.batchSize" = "Kötegméret";
+"local.forget" = "Eltávolítás a listáról";
+"localModel.needsMemory" = "Körülbelül %d GB GPU-memória vagy RAM szükséges.";
+"localRuntime.helperFailed" = "%@ sikertelen (kilépési kód: %d)";
+"localRuntime.mlxUnsupported" = "Az MLX-hez Apple Silicon Mac szükséges.";
+"local.flashAttention" = "Flash attention";
+"local.hardwareMemory" = "%@ RAM";
+
+// Translations completed for keys that had no localized text.
+"conversation.fullToolOutput" = "Az eszköz teljes kimenete";
+"sidebar.showSidebar" = "Oldalsáv megjelenítése";
+"sidebar.hideSidebar" = "Oldalsáv elrejtése";
+"navigation.back" = "Vissza";
+"navigation.forward" = "Előre";
+"settings.autoApprovePlans" = "Tervek automatikus jóváhagyása";
+"settings.autoApprovePlans.hint" = "Ha be van kapcsolva, a létrehozott terv külön tervjóváhagyás megvárása nélkül érvényesül. Az eszközszintű jóváhagyások továbbra is érvényesek.";
+"media.fallbackUsed" = "A kiválasztott szolgáltató nem tudta létrehozni ezt a képet. Egyszeri tartalék kéréssel készült ezen keresztül: %@/%@; a fő beszélgetés szolgáltatója és modellje nem változott, így a prompt-gyorsítótár érintetlen marad.";
+"media.imageUnsupportedWithFallbackHint" = "Ezt a képet nem tudom létrehozni ezzel: %@. Állíts be tartalékként egy kép-API-t vagy szolgáltatót. Ha csak a képgenerálás miatt váltasz fő csevegőmodellt, az tönkreteheti a szolgáltató prompt-gyorsítótárát.";
+"conversation.generationResumed" = "Üzenet folytatva";
+"conversation.cancelPlan" = "Terv megszakítása";
+"conversation.cancelPlanHelp" = "A terv megszakítása és a sorban álló üzenetek felszabadítása";
+"conversation.thinking" = "Gondolkodási folyamat";
+"usage.manageResets" = "Visszaállítások kezelése";
+"usage.useReset" = "Visszaállítás használata";
+"usage.resetTitle" = "Használsz egy Claude-korlát visszaállítást?";
+"usage.openClaude" = "Folytatás a Claude-ban";
+"usage.resetConfirmation" = "Megnyílik a Claude használati oldala. Jelentkezz be ide: %@, és nézd meg a fióknak felajánlott visszaállítást. A használatához kattints az Ingyenes visszaállítás gombra, és erősítsd meg a Claude-ban. A felhasznált visszaállítás nem vonható vissza. A korlátok frissülnek, amikor visszatérsz a HerNessbe.";
+"usage.resetOpenFailed" = "A Claude megnyitása nem sikerült. Ellenőrizd, hogy a fiók még csatlakoztatva van-e, majd próbáld újra.";
+"conversation.review" = "Áttekintés";
+"dock.noWorkspace" = "Előbb válassz munkamappát.";
+"dock.branch" = "Ág";
+"dock.refresh" = "Frissítés";
+"dock.commit" = "Commit";
+"dock.push" = "Push";
+"dock.fetch" = "Fetch";
+"dock.commitOrPush" = "Commit vagy push";
+"dock.commitMessage" = "Commit üzenet";
+"dock.noChanges" = "Az ügynök nem módosított semmit.";
+"dock.whyRequest" = "A kérésed";
+"dock.whyAgent" = "Az ügynök magyarázata";
+"dock.notRepo" = "Ez a mappa nem git-tároló.";
+"dock.filterFiles" = "Fájlok szűrése…";
+"dock.openFile" = "Fájl megnyitása";
+"dock.selectFile" = "Válassz egy fájlt a munkaterület fájából";
+"dock.binaryFile" = "Bináris vagy nem olvasható fájl";
+"project.missing.title" = "A projektmappa nem található: %@";
+"project.missing.message" = "Előfordulhat, hogy a(z) „%@” helyen lévő projektmappát áthelyezték vagy törölték. Válaszd ki az új helyét, vagy távolítsd el a projektet.";
+"project.missing.locate" = "Hely kiválasztása…";
+"project.missing.readOnly" = "Projektmappa nem érhető el. A korábbi beszélgetéseket megtekintheted; új beszélgetés és üzenet küldése az új hely kiválasztásáig le van tiltva.";
+"queue.waitingForPlan" = "Várakozás a terv jóváhagyására";
+"settings.closeToTray" = "Az ablak bezárása után is fusson tovább a tálcán";
+"settings.closeToTray.hint" = "A futások, terminálok és ütemezett feladatok folytatódnak, amíg az ablak el van rejtve; a tálcaikon visszaállítja.";
+"tray.show" = "Ablak megnyitása";
+"context.overflowTitle" = "Ez a beszélgetés nem fér bele az új modellbe";
+"context.overflowReason" = "%1$@ számára körülbelül %2$d token kell a folytatáshoz, és abban a modellben csak %3$d szabad.";
+"context.overflowByModel" = "Az összefoglalót %@ írja meg: a legkisebb csatlakoztatott modell, amely még el tudja olvasni az átiratot.";
+"context.overflowLocally" = "Egyetlen csatlakoztatott modell sem tudja elolvasni az átiratot, ezért a beszélgetés modell megkérdezése nélkül rövidül.";
+"context.overflowCompress" = "Tömörítés és folytatás";
+"context.overflowNotNow" = "Most nem";
+"context.overflowDeclined" = "Küldés leállítva: a beszélgetés nem fér bele az új modellbe.";
+"usage.context.title" = "Használat";
+"usage.context.input" = "Elküldött bemenet";
+"usage.context.estimatedInput" = "Becsült bemenet";
+"usage.context.output" = "Kimenet";
+"usage.context.latestRequest" = "Legutóbbi kérés · kontextusablak";
+"usage.context.estimatedBreakdown" = "Becsült bemeneti bontás";
+"usage.context.estimateNote" = "A szolgáltató bemeneti/kimeneti összegei akkor látszanak, ha elérhetők. Egyébként a bemeneti összegek és az eszköz/MCP kategóriák helyi becslések.";
+"usage.context.tokens" = "token";
+"usage.context.toolCalls" = "Eszközhívások";
+"usage.context.mcpCalls" = "MCP-hívások";
+"usage.context.toolResults" = "Eszközeredmények";
+"usage.context.mcpResults" = "MCP-eredmények";
+"plan.proposed" = "A Claude tervet javasolt";
+"plan.reject" = "Elutasítás";
+"plan.revise" = "Átdolgozás…";
+"plan.accept" = "Elfogadás";
+"plan.acceptAuto" = "Elfogadás és automatikus mód";
+"plan.open" = "Terv megnyitása";
+"plan.empty" = "Még nincs terv";
+"dock.expand" = "Kibontás";
+"dock.collapse" = "Összecsukás";
+"usage.context.cacheReuse" = "Gyorsítótár újrafelhasználása ebben a csevegésben";
+"usage.context.cacheFreshInput" = "New / outside-breakpoint input: %@ tokens";
+"usage.context.cacheCoverage" = "Mérési lefedettség: %@ · %@ / %@ kérés";
+"usage.context.cacheLatency" = "Átlagos kérési késleltetés: %@ ms";
+"usage.context.cacheLoss" = "Legnagyobb gyorsítótár-veszteség: %@ · %@ token";
+"tray.back" = "Csevegések";
+
+"composer.cacheExpired.explanation" = "A gyorsítótár becsült élettartama letelt. A promptgyorsítótár a szolgáltató oldalán lévő ideiglenes feldolgozási állapot; a csevegési előzmények továbbra is mentve maradnak. Ha a teljes előzménnyel folytatod, ezek a tokenek ismét új bemenetként számíthatnak. Csak a következő kérés használati adatai erősítik meg, hogy a szolgáltatónál megvolt-e még a gyorsítótár.";
+"composer.accountSwitched.notice" = "Ez a csevegés ugyanazzal a modellel egy másik fiókra váltott. A gyorsítótár ott a nulláról indul; a folytatás több tokent használhat, és többe kerülhet.";
+"composer.contextFull.notice" = "A kontextusablak majdnem megtelt; a folytatás több tokent használhat, és többe kerülhet. Indíts új csevegést egy rövid összefoglalóval.";
+"composer.cacheExpired.infoTitle" = "Miért látom ezt?";
+"composer.cacheExpired.notice" = "Előfordulhat, hogy a gyorsítótár lejárt; a folytatás több tokent használhat, és többe kerülhet. Indíts új csevegést egy rövid összefoglalóval.";
+"feedback.tag.apply_elsewhere" = "Apply it elsewhere";
+"feedback.tag.broke_existing_feature" = "Broke an existing feature";
+"feedback.tag.did_not_follow_project_style" = "Didn't follow project style";
+"feedback.tag.ignored_project_architecture" = "Ignored project architecture";
+"feedback.tag.keep_project_style" = "Keep the project style";
+"feedback.tag.reuse_architecture" = "Reuse this architecture";
+"feedback.tag.reuse_token_pattern" = "Reuse this token pattern";
+"feedback.tag.wrong_theme_or_token" = "Wrong theme or token";
+
+// Completed translations for keys added to the desktop catalog.
+"conversation.filesChangedCount" = "%d fájl módosítva";
+"conversation.filesLineSummary" = "+%d −%d";
+"conversation.lineCountsUnavailable" = "A sorok száma nem érhető el";
+"conversation.filesMore" = "További %d fájl megjelenítése";
+"conversation.filesLess" = "Kevesebb fájl megjelenítése";
+"conversation.undoChanges" = "Visszavonás";
+"conversation.viewChanges" = "Módosítások megtekintése";
+"conversation.filesReverted" = "A fájlmódosítások vissza lettek vonva.";
+
+// Completed translations for keys added to the desktop catalog.
+"composer.modelSwitched.notice" = "A modell megváltozott. A gyorsítótár nem kerül át az új modellre; a teljes előzmény újra feldolgozásra kerül, ami több tokent használhat, és többe kerülhet.";
+
+"archive.title" = "Archivált beszélgetések";
+"archive.empty" = "Nincsenek archivált beszélgetések.";
+
+"conversation.plan" = "Terv";
+"conversation.system" = "Rendszer";
+
+"archive.confirmDelete" = "Véglegesen törlöd ezt a beszélgetést?";
+"archive.deletePermanently" = "Végleges törlés";
+"conversation.processedTokensCount" = "%@ token";

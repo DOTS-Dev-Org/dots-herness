@@ -1,0 +1,33 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-09-26T20:06:16Z",
+  "eventId" : "81B4D498-09FE-49FE-91EE-40995CA83DA2",
+  "lamport" : 35,
+  "parents" : [
+    "1F7D2F48-6EB5-4EE3-B854-3F7C9726E7CD"
+  ],
+  "payload" : {
+    "commandSummary" : null,
+    "name" : "list_files",
+    "path" : ".",
+    "resultBytes" : 141,
+    "resultStatus" : "completed",
+    "runId" : "AFCE3051-D965-4D6A-BB89-3FFB3CC48324"
+  },
+  "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+  "schemaVersion" : 1,
+  "scope" : "task",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "J\/i+7c07ur+\/Nr87fjEQe00+p6x5\/jKHWrPyYnaAAacZvKgcn8oemBkGdIcd1+eKH\/LsnFS+HS2Vx10OEzdxOA=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "tool.executed"
+}

@@ -24,19 +24,7 @@ extension AppModel {
     /// Terminal panes are keyed by this, so a remote folder never shares a
     /// session list with a local directory of the same path.
     public var terminalWorkspaceKey: String {
-        if activeArea == .chat {
-            return chatBridge.chatContextRoots.first(where: { $0.kind == .directory })?.path ?? ""
-        }
         return remoteWorkspace?.identity ?? workspacePath
-    }
-
-    public var activeChatProjectName: String {
-        guard activeArea == .chat,
-              let projectID = chatBridge.selected?.chatProjectID,
-              let project = chatProjects.first(where: { $0.id == projectID }) else {
-            return AgentArea.chat.title
-        }
-        return project.name
     }
 
     public func refreshSSHHosts() {
@@ -54,7 +42,7 @@ extension AppModel {
             sandboxNotice = "Leave the active sandbox before working on a remote host."
             return
         }
-        guard !codingBridge.anyRunBusy else {
+        guard !bridge.anyRunBusy else {
             sshNotice = AppCopy.text("ssh.busy")
             return
         }
@@ -81,7 +69,7 @@ extension AppModel {
                     self.setRemoteWorkspace(path: remembered)
                 } else {
                     self.remoteWorkspace = nil
-                    self.codingBridge.setRemoteTarget(nil)
+                    self.bridge.setRemoteTarget(nil)
                 }
             case .failure(let error):
                 self.sshNotice = error.localizedDescription
@@ -96,8 +84,8 @@ extension AppModel {
                 SSHRunner.closeMaster(alias: previous)
             }
             remoteWorkspace = nil
-            codingBridge.setRemoteTarget(nil)
-            codingBridge.setSandboxPolicy(sandboxExecutionPolicy, branch: activeSandbox?.branch)
+            bridge.setRemoteTarget(nil)
+            bridge.setSandboxPolicy(sandboxExecutionPolicy, branch: activeSandbox?.branch)
         }
         host.settings.set("agent.workLocation", .string(setting.storageValue))
         persistSettings()
@@ -120,7 +108,7 @@ extension AppModel {
             }
             let target = SSHTarget(alias: alias, remotePath: resolved)
             self.remoteWorkspace = target
-            self.codingBridge.setRemoteTarget(target)
+            self.bridge.setRemoteTarget(target)
             self.sshStore.rememberRemotePath(alias: alias, path: resolved)
             self.sshNotice = nil
         }
@@ -278,18 +266,4 @@ extension AppModel {
         )
     }
 
-    /// Chat terminals must be rooted in a directory the user explicitly
-    /// supplied in a Chat message. They must never inherit the Coding
-    /// workspace's sandbox or the app process' current directory.
-    public var chatTerminalExecutionPolicy: SandboxExecutionPolicy? {
-        guard activeArea == .chat,
-              let root = chatBridge.chatContextRoots.first(where: { $0.kind == .directory }) else {
-            return nil
-        }
-        let rootURL = URL(fileURLWithPath: root.path, isDirectory: true)
-        return SandboxExecutionPolicy(
-            workspaceURL: rootURL,
-            networkAccess: true
-        )
-    }
 }

@@ -1,11 +1,10 @@
 // Copyright (c) 2026 DOTS
-// Claude OAuth tool cloaking. When an OAuth (subscription) token calls
-// /v1/messages, Anthropic expects Claude Code's own tool surface. Arbitrary
-// client tools are renamed with a suffix and a few canonical Claude Code tool
-// names are added as decoys so the request looks like it came from the CLI.
-// Response tool-call names are mapped back with `restore`.
+// Provider-specific tool names for wire protocols. Claude OAuth uses a
+// Claude-Code-shaped tool surface; Responses requires short ASCII function
+// names. Names are restored before the app dispatches returned tool calls.
 
 import Foundation
+import CryptoKit
 
 public enum ToolCloak {
     public static let suffix = "_cc"
@@ -14,6 +13,18 @@ public enum ToolCloak {
 
     private static func wire(_ name: String, cloak: Bool) -> String {
         name.replacingOccurrences(of: ".", with: dot) + (cloak ? suffix : "")
+    }
+
+    /// Responses function names must use a restricted ASCII identifier format.
+    /// Give each internal tool a short deterministic wire name, then restore the
+    /// original name before dispatching the returned call inside the app.
+    public static func responsesNameMap(for toolNames: [String]) -> [String: String] {
+        var result: [String: String] = [:]
+        for name in Set(toolNames) {
+            let hash = SHA256.hash(data: Data(name.utf8)).map { String(format: "%02x", $0) }.joined()
+            result[name] = "tool_" + hash.prefix(32)
+        }
+        return result
     }
 
     private static func decoyTools() -> [[String: Any]] {

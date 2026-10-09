@@ -191,6 +191,71 @@ final class LiveProviderTests: XCTestCase {
         }
     }
 
+    /// A streamed reply must be the buffered reply: the prose shown while it is
+    /// written is what the finished message holds, and a tool call still arrives whole.
+    @MainActor
+    func testStreamedReplyMatchesTheFinishedMessage() async throws {
+        try XCTSkipUnless(enabled, "Set DOTS_LIVE=1 to run the live provider probe.")
+        actor Collected {
+            var text = "", first: Date?
+            func add(_ delta: NativeAgentClient.StreamDelta) {
+                guard case .text(let piece) = delta else { return }
+                first = first ?? Date()
+                text += piece
+            }
+        }
+        let light = ["claude": "claude-haiku-4-5", "gpt": "gpt-5.6-luna"]
+        let store = NativeProviderStore(paths: .default())
+        let accounts = store.state.accounts.filter { $0.active && light[$0.provider] != nil }
+        try XCTSkipIf(accounts.isEmpty, "No active Claude or GPT account is connected.")
+        let tool = AgentToolDefinition(
+            name: "get_weather",
+            description: "Get the current weather for a city.",
+            parameters: .object([
+                "type": .string("object"),
+                "properties": .object(["city": .object(["type": .string("string")])]),
+                "required": .array([.string("city")]),
+            ])
+        )
+        for account in accounts {
+            let client = NativeAgentClient(configuration: AgentConfiguration(
+                baseURL: account.baseURL,
+                model: light[account.provider]!,
+                apiKey: try store.credential(for: account),
+                provider: RouterCatalog.label(for: account.provider),
+                api: account.api,
+                sessionAccountID: account.sessionAccountID,
+                specID: account.provider,
+                authType: account.authType
+            ))
+            do {
+                let collected = Collected()
+                let started = Date()
+                let response = try await client.complete(
+                    messages: [AgentMessage(role: .user, content: "Write about 150 words on how TCP slow start works.")],
+                    onDelta: { await collected.add($0) }
+                )
+                let streamed = await collected.text
+                let first = await collected.first.map { Int($0.timeIntervalSince(started) * 1000) } ?? -1
+                print("STREAM \(account.provider) firstDelta=\(first)ms total=\(Int(Date().timeIntervalSince(started) * 1000))ms chars=\(streamed.count)")
+                XCTAssertFalse(streamed.isEmpty, "\(account.provider): no delta arrived")
+                XCTAssertEqual(streamed, response.message.content, account.provider)
+
+                let called = try await client.complete(
+                    messages: [AgentMessage(role: .user, content: "What is the weather in Istanbul? Use the tool.")],
+                    tools: [tool],
+                    onDelta: { _ in }
+                )
+                XCTAssertEqual(called.message.toolCalls.first?.name, "get_weather", account.provider)
+                XCTAssertTrue(called.message.toolCalls.first?.arguments.contains("city") ?? false, account.provider)
+            } catch {
+                let message = (error as? NativeAgentError)?.message ?? error.localizedDescription
+                try XCTSkipIf(isAccountLimit(message), "account out of budget: \(message)")
+                throw error
+            }
+        }
+    }
+
     /// API-key providers, driven through the real transport. The key comes from
     /// the environment so no credential is ever written into the repo:
     ///   DOTS_TEST_OPENCODE_KEY=sk-… DOTS_LIVE=1 swift test --filter LiveProviderTests

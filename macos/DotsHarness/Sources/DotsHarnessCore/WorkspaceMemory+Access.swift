@@ -112,6 +112,13 @@ extension WorkspaceMemory {
             "key": sanitize(key, limit: 60),
             "value": sanitize(value, limit: 240),
         ])
+        syncFacts()
+    }
+
+    /// Records a fact about the user that holds in every project. It needs no
+    /// workspace: the profile lives beside the app's settings, not in a repository.
+    public func setUserPreference(key: String, value: String) throws {
+        try profile.setPreference(key: sanitize(key, limit: 60), value: sanitize(value, limit: 240))
     }
 
     /// Records a project-wide fact - what this project is for, what it must not
@@ -120,14 +127,35 @@ extension WorkspaceMemory {
     public func setProjectDefault(key: String, value: String) throws {
         _ = try writeEvent(type: "project.default.set", scope: "project", payload: [
             "key": sanitize(key, limit: 60),
-            "value": sanitize(value, limit: 240),
+            "value": sanitize(value, limit: ProjectKnowledge.limit(forKey: sanitize(key, limit: 60))),
         ])
+        syncFacts()
+    }
+
+    /// Takes a project entry out of the prompt. The event stays in the log.
+    public func forgetProjectDefault(key: String) throws {
+        _ = try writeEvent(type: "project.default.set", scope: "project", payload: ["key": sanitize(key, limit: 60)])
+        syncFacts(removing: Fact(kind: "project", key: sanitize(key, limit: 60), text: ""))
+    }
+
+    /// The project entries: this host's own, and those another client recorded
+    /// in the facts file. Its own win where both name a key.
+    public var projectDefaults: [String: String] {
+        let own = ((state["projectDefaults"] as? [String: Any]) ?? [:]).compactMapValues { $0 as? String }
+        return own.merging(foreignFacts("project", knownKeys: Set(own.keys))) { own, _ in own }
     }
 
     /// True once the project brief has any entry, so the host asks for one only
-    /// while the vault still knows nothing about the project.
+    /// while the vault still knows nothing about the project. What was learned
+    /// from the code is not a brief: only the user can say what the project is for.
     public var hasProjectBrief: Bool {
-        !((state["projectDefaults"] as? [String: Any]) ?? [:]).isEmpty
+        projectDefaults.keys.contains { !ProjectKnowledge.keys.contains($0) }
+    }
+
+    /// The knowledge entries nobody has recorded yet.
+    public var missingKnowledge: [String] {
+        let defaults = projectDefaults
+        return ProjectKnowledge.keys.filter { defaults[$0] == nil }
     }
 
     public func proposeDecision(summary: String, details: [String: Any] = [:]) throws {

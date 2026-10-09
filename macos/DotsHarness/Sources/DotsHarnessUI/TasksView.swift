@@ -330,7 +330,7 @@ private struct TaskDetailView: View {
                                 .foregroundStyle(run.ok ? .green : .red)
                             Text(run.startedAt.formatted(date: .abbreviated, time: .shortened)).font(.caption.weight(.medium))
                             Spacer()
-                            if !run.modelID.isEmpty { Text(run.modelID).font(.caption2).foregroundStyle(.secondary) }
+                            if !run.modelID.isEmpty { Text(model.router.modelLabel(forID: run.modelID)).font(.caption2).foregroundStyle(.secondary) }
                         }
                         Text(run.output).font(.caption).foregroundStyle(.secondary).lineLimit(4)
                     }
@@ -342,9 +342,7 @@ private struct TaskDetailView: View {
     }
 
     private func modelMenu(title: String, selection: Binding<String>) -> some View {
-        let selectedName = model.router.models.first(where: { $0.id == selection.wrappedValue })
-            .map { RouterCatalog.modelDisplayName(for: $0) }
-            ?? RouterCatalog.modelDisplayName(for: RouterModel(id: selection.wrappedValue))
+        let selectedName = model.router.modelLabel(forID: selection.wrappedValue)
         return HStack {
             Text(title).font(.caption.weight(.medium)).foregroundStyle(.secondary)
             Spacer()
@@ -453,8 +451,10 @@ private struct TaskAssistantView: View {
         if let value = patch.prompt { task.prompt = value }
         if let value = patch.workspacePath { task.workspacePath = value }
         if let value = patch.targetPath { task.targetPath = value }
-        if let value = patch.modelID { task.modelID = value }
-        if let value = patch.fallbackModelID { task.fallbackModelID = value }
+        // The patch is model output, so its model ids are only trusted as far as
+        // the catalog agrees; anything else falls back to automatic routing.
+        if let value = patch.modelID { task.modelID = model.router.usableModelID(value) }
+        if let value = patch.fallbackModelID { task.fallbackModelID = model.router.usableModelID(value) }
         if let value = patch.allowsNetwork { task.allowsNetwork = value }
         if let value = patch.enabled { task.enabled = value }
     }

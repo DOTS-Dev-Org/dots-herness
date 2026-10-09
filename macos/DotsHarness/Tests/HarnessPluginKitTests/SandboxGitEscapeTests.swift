@@ -44,7 +44,7 @@ final class SandboxGitEscapeTests: XCTestCase {
         let data = try JSONSerialization.data(withJSONObject: ["command": command])
         return WorkspaceTools.execute(
             AgentToolCall(id: UUID().uuidString, name: "run_command", arguments: String(decoding: data, as: UTF8.self)),
-            workspace: worktree,
+            workspace: worktree, conversationID: "test",
             sandboxPolicy: try policy()
         )
     }

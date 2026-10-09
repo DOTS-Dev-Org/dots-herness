@@ -187,7 +187,7 @@ final class SandboxProfileTests: XCTestCase {
                 name: "run_command",
                 arguments: String(decoding: data, as: UTF8.self)
             ),
-            workspace: workspace,
+            workspace: workspace, conversationID: "test",
             sandboxPolicy: policy
         )
     }

@@ -135,6 +135,43 @@ public final class PluginHost: ObservableObject {
     private let root: ServiceRealm
     private var contexts: [String: LivePluginContext] = [:]
     private let catalog: PluginCatalog
+    private var configuredToolOwners: [String: String] = [:]
+    private var acceptedToolCatalog: [RegisteredTool] = []
+    private var mounting = false
+    private struct CachedToolCatalog: Codable {
+        var owners: [String: String]
+        var tools: [RegisteredTool]
+    }
+    private var toolCatalogURL: URL { catalog.paths.root.appendingPathComponent("plugin-tool-catalog.json") }
+
+    /// Definitions survive disabled or temporarily failed mounts. Closures do
+    /// not; ToolRegistry.call still requires a currently mounted implementation.
+    public func cacheableTools() -> [RegisteredTool] {
+        guard !mounting else { return acceptedToolCatalog }
+        let active = tools.tools()
+        let activeOwners = Set(fibers.map(\.id))
+        let installed = Set(catalog.entries.map { $0.manifest.id })
+        let retained = acceptedToolCatalog.filter { tool in
+            !activeOwners.contains(tool.owner)
+                && configuredToolOwners[tool.owner].map(installed.contains) == true
+        }
+        let next = (retained + active).sorted { $0.name < $1.name }
+        if next != acceptedToolCatalog {
+            acceptedToolCatalog = next
+            saveToolCatalog()
+        }
+        return next
+    }
+
+    public func toolBindingIdentity(_ realName: String) -> String? {
+        cacheableTools().first(where: { $0.name == realName }).map { $0.owner + "|" + $0.name }
+    }
+
+    private func saveToolCatalog() {
+        guard let data = try? JSONEncoder().encode(CachedToolCatalog(owners: configuredToolOwners, tools: acceptedToolCatalog)) else { return }
+        try? FileManager.default.createDirectory(at: toolCatalogURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? data.write(to: toolCatalogURL, options: .atomic)
+    }
 
     public init(catalog: PluginCatalog, settings: InMemorySettingsRegistry? = nil) {
         self.catalog = catalog
@@ -154,6 +191,14 @@ public final class PluginHost: ObservableObject {
             "provider.imageAdapters": imageAdapters,
             "host.data": hostData,
         ])
+        loadToolCatalog()
+    }
+
+    private func loadToolCatalog() {
+        guard let data = try? Data(contentsOf: toolCatalogURL),
+              let saved = try? JSONDecoder().decode(CachedToolCatalog.self, from: data) else { return }
+        configuredToolOwners = saved.owners
+        acceptedToolCatalog = saved.tools
     }
 
     public func provideService(_ name: String, _ value: Any) {
@@ -161,6 +206,7 @@ public final class PluginHost: ObservableObject {
     }
 
     public func unmountAll() {
+        _ = cacheableTools()
         for context in contexts.values { context.dispose() }
         contexts.removeAll()
         fibers.removeAll()
@@ -170,6 +216,10 @@ public final class PluginHost: ObservableObject {
     @discardableResult
     public func mount(_ document: CompositionDocument) -> [MountIssue] {
         unmountAll()
+        let previousOwners = configuredToolOwners
+        let previousCatalog = acceptedToolCatalog
+        mounting = true
+        configuredToolOwners = Dictionary(document.entries.map { ($0.id, $0.plugin) }, uniquingKeysWith: { first, _ in first })
         var nextIssues: [MountIssue] = []
         let enabled = document.entries.filter { !$0.disabled }
 
@@ -211,17 +261,18 @@ public final class PluginHost: ObservableObject {
                     settings: settings,
                     events: events
                 )
+                // Register the context before apply so even a plugin that
+                // registers a closure and then throws is fully disposed.
+                contexts[entry.id] = context
                 try FiberLocal.$owner.withValue(entry.id) {
                     try plugin.apply(context)
                 }
                 if document.plane == .session {
                     let published = Set(root.publishedNames).subtracting(publishedBefore)
                     if isolate.isEmpty, !published.isEmpty {
-                        context.dispose()
                         throw PluginError.globalService(published.sorted().joined(separator: ", "))
                     }
                 }
-                contexts[entry.id] = context
                 fibers.append(MountedFiber(
                     id: entry.id,
                     pluginId: resolved.manifest.id,
@@ -236,10 +287,16 @@ public final class PluginHost: ObservableObject {
         if !nextIssues.isEmpty {
             // Failed mount disposes everything it started.
             unmountAll()
+            configuredToolOwners = previousOwners
+            acceptedToolCatalog = previousCatalog
+            mounting = false
             issues = nextIssues
             return nextIssues
         }
+        mounting = false
         issues = []
+        _ = cacheableTools()
+        saveToolCatalog()
         events.emit("plugins/mounted", fibers.map(\.id))
         return []
     }
