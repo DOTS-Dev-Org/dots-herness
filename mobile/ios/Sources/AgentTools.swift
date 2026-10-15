@@ -5,6 +5,10 @@ import Foundation
 /// tool call fails the same way a bad snapshot path does.
 enum AgentTools {
     static let maximumReadCharacters = 60_000
+    /// A read without an explicit limit returns one page: most questions need a
+    /// section, and a later page is one offset away.
+    static let defaultReadLines = 250
+    static let defaultReadCharacters = 20_000
     static let maximumListedFiles = 2_000
 
     static func readFile(at url: URL, offset: Int? = nil, limit: Int? = nil) throws -> String {
@@ -13,22 +17,26 @@ enum AgentTools {
         let lines = text.components(separatedBy: "\n")
         let start = max(1, offset ?? 1)
         guard start <= lines.count else { return "Offset is past the end of the file; it has \(lines.count) lines." }
-        let count = min(lines.count - start + 1, max(0, limit ?? lines.count))
+        let count = min(lines.count - start + 1, max(0, limit ?? defaultReadLines))
         let end = start + count
+        let maximum = limit == nil ? defaultReadCharacters : maximumReadCharacters
         var emitted: [String] = []
         var size = 0
         var line = start
         while line < end {
             let candidate = lines[line - 1]
             let cost = candidate.utf8.count + 1
-            if size + cost > maximumReadCharacters && !emitted.isEmpty { break }
+            if size + cost > maximum && !emitted.isEmpty { break }
             emitted.append(candidate)
             size += cost
             line += 1
         }
         ReadLedger.shared.recordLines(url, data: data, lines: start..<line, totalLines: lines.count)
         let body = emitted.joined(separator: "\n")
-        return line >= end ? body : body + "\n\n[truncated] Continue with offset: \(line)"
+        // A default page that stops before the end of the file says so; an explicit
+        // limit that was met in full is the answer that was asked for.
+        let more = limit == nil ? line <= lines.count : line < end
+        return more ? body + "\n\n[truncated] Continue with offset: \(line)" : body
     }
     static let askUserAnsweredDirective = """
     The user answered your clarification. Continue the original request now in the current mode: perform the
@@ -59,11 +67,11 @@ enum AgentTools {
 
             AgentToolSpec(
                 name: "read_file",
-                description: "Read whole lines of a UTF-8 file. Use offset and limit to page through long files; all pages of the same version together authorize editing.",
+                description: "Read whole lines of a UTF-8 file. Returns 250 lines by default; a longer file ends with a continuation line naming the next offset. edit_file only needs the lines it replaces to have been read; all pages of the same version are needed before write_file rewrites it.",
                 schema: object([
                     "path": string("Workspace-relative file path."),
                     "offset": ["type": "integer", "description": "First line, 1-based. Defaults to 1."],
-                    "limit": ["type": "integer", "description": "Maximum number of lines to read."],
+                    "limit": ["type": "integer", "description": "Maximum number of lines to read. Defaults to 250."],
                 ], required: ["path"])
             ) { input in
                 let path = try input.required("path", tool: "read_file")
@@ -206,7 +214,7 @@ enum AgentTools {
                         let value = String(line)
                         if regex.firstMatch(in: value, range: NSRange(value.startIndex..., in: value)) != nil {
                             hits.append("\(path):\(index + 1): \(value.prefix(300))")
-                            if hits.count >= 200 { return hits.joined(separator: "\n") + "\n… more matches not listed" }
+                            if hits.count >= 100 { return hits.joined(separator: "\n") + "\n… more matches not listed" }
                         }
                     }
                 }

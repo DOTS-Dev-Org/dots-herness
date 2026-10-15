@@ -55,29 +55,36 @@ enum FileEditTools {
         guard let text = String(data: current, encoding: .utf8) else {
             return "Tool error: \(path) is not valid UTF-8 text."
         }
-        // Same authority rule as write_file: an edit assumes the model has seen the
-        // bytes it is matching against.
-        switch ReadLedger.shared.state(for: file, data: current) {
+        // An edit assumes the model has seen the bytes it is matching against. Unlike
+        // write_file it does not need the whole file: the lines it replaces must lie
+        // inside pages read from this exact version.
+        let totalLines = text.components(separatedBy: "\n").count
+        let coverage = ReadLedger.shared.coverage(for: file, data: current, totalLines: totalLines)
+        switch coverage.state {
         case .unread: return "Tool error: \(path) has not been read in this conversation. Read it before editing."
         case .stale: return "Tool error: \(path) changed since it was read. Read it again before editing."
         case .fresh: break
         }
-        switch apply(edits: edits, to: text, path: path) {
+        let partial = !coverage.lines.contains(integersIn: 1..<(totalLines + 1))
+        switch apply(edits: edits, to: text, path: path, covered: partial ? coverage.lines : nil) {
         case .rejected(let reason):
             return reason
-        case .applied(let updated, let summary):
-            return write(updated: updated, to: file, path: path, summary: summary)
+        case .applied(let updated, let summary, let covered):
+            return write(updated: updated, to: file, path: path, summary: summary, covered: covered)
         }
     }
 
     enum EditOutcome {
         case rejected(String)
-        case applied(updated: String, summary: String)
+        case applied(updated: String, summary: String, covered: IndexSet?)
     }
 
     /// The pure half of `edit_file`: all-or-nothing, so a rejected replacement
-    /// leaves the file untouched rather than half-applied.
-    static func apply(edits: [[String: Any]], to text: String, path: String) -> EditOutcome {
+    /// leaves the file untouched rather than half-applied. `covered` is the set of
+    /// lines read when only part of the file was; every replaced line must be in it,
+    /// and it comes back shifted past each edit.
+    static func apply(edits: [[String: Any]], to text: String, path: String, covered: IndexSet? = nil) -> EditOutcome {
+        var covered = covered
         var updated = text
         var summary: [String] = []
         for (index, edit) in edits.enumerated() {
@@ -104,6 +111,21 @@ enum FileEditTools {
                     """)
                 }
             }
+            if let read = covered {
+                let touched = (replaceAll ? found : Array(found.prefix(1))).map { position -> (start: Int, end: Int) in
+                    let match = updated.range(of: oldText, range: position..<updated.endIndex)!
+                    let last = updated.index(before: match.upperBound)
+                    return (newlineCount(in: updated, upTo: position) + 1, newlineCount(in: updated, upTo: last) + 1)
+                }
+                if let unread = touched.first(where: { !read.contains(integersIn: $0.start...$0.end) }) {
+                    return .rejected("Tool error: edit \(index + 1) changes lines \(unread.start)-\(unread.end) of \(path), which were not read in this conversation. "
+                        + "Read them with read_file offset/limit first. Nothing was written.")
+                }
+                let delta = newlineCount(in: newText) - newlineCount(in: oldText)
+                covered = touched.sorted { $0.start > $1.start }.reduce(read) {
+                    shiftedLines($0, editStart: $1.start, editEnd: $1.end, delta: delta)
+                }
+            }
             if replaceAll {
                 updated = updated.replacingOccurrences(of: oldText, with: newText)
                 summary.append("replaced \(found.count) occurrence\(found.count == 1 ? "" : "s")")
@@ -113,17 +135,26 @@ enum FileEditTools {
                 summary.append("replaced 1 occurrence")
             }
         }
-        return .applied(updated: updated, summary: summary.joined(separator: "; "))
+        return .applied(updated: updated, summary: summary.joined(separator: "; "), covered: covered)
     }
 
-    static func write(updated: String, to file: URL, path: String, summary: String) -> String {
+    static func write(updated: String, to file: URL, path: String, summary: String, covered: IndexSet? = nil) -> String {
         let data = Data(updated.utf8)
         do {
             try data.write(to: file, options: .atomic)
         } catch {
             return "Tool error: could not write \(path): \(error.localizedDescription)"
         }
-        ReadLedger.shared.record(file, data: data)
+        if let covered {
+            // Carry what was read over to the new version, shifted past each edit, so
+            // the next edit in the same section needs no reread.
+            let newTotal = updated.components(separatedBy: "\n").count
+            for range in covered.rangeView {
+                ReadLedger.shared.recordLines(file, data: data, lines: range.lowerBound..<min(range.upperBound, newTotal + 1), totalLines: newTotal)
+            }
+        } else {
+            ReadLedger.shared.record(file, data: data)
+        }
         return "Edited \(path) (\(summary))."
     }
 
@@ -137,6 +168,23 @@ enum FileEditTools {
             cursor = found.upperBound
         }
         return positions
+    }
+
+    /// Counts "\n" bytes, the same separator read_file pages by, so a CRLF line is one
+    /// line here too (Swift treats "\r\n" as a single Character).
+    static func newlineCount(in text: String, upTo position: String.Index? = nil) -> Int {
+        text[text.startIndex..<(position ?? text.endIndex)].utf8.reduce(0) { $0 + ($1 == 10 ? 1 : 0) }
+    }
+
+    /// Moves read lines after an edit of `editStart...editEnd` that changed the
+    /// line count by `delta`: later lines shift, the edited span stretches or
+    /// shrinks, earlier lines stay.
+    static func shiftedLines(_ lines: IndexSet, editStart: Int, editEnd: Int, delta: Int) -> IndexSet {
+        var result = lines
+        result.remove(integersIn: editStart...editEnd)
+        result.shift(startingAt: editEnd + 1, by: delta)
+        if editEnd + delta >= editStart { result.insert(integersIn: editStart...(editEnd + delta)) }
+        return result
     }
 
     static func lineNumber(in text: String, at position: String.Index) -> Int {

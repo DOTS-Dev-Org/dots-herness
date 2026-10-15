@@ -46,13 +46,17 @@ public struct SettingsView: View {
         Array(Tab.allCases)
     }
 
-    private var effectiveCompactionTokens: Int {
-        let policy = model.router.usageMode == .economy
+    private var compactionPolicy: AgentContextCompactionPolicy {
+        model.router.usageMode == .economy
             ? AgentContextCompactionPolicy.economy
             : AgentContextCompactionPolicy.current()
-        guard !model.router.isAutoSelected else {
-            return policy.maxTokens ?? AgentContextCompactionPolicy.codingReplayTokenLimit
-        }
+    }
+
+    /// Nil when Auto routing picks the model: the threshold is then the
+    /// percentage of whichever model's window, not one token count.
+    private var effectiveCompactionTokens: Int? {
+        let policy = compactionPolicy
+        guard !model.router.isAutoSelected else { return policy.maxTokens }
         return policy.triggerTokens(window: model.router.contextWindow(for: model.router.selectedModelID))
     }
 
@@ -527,12 +531,21 @@ public struct SettingsView: View {
                     Text(AppCopy.text("settings.compactTrigger.hint"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text((compactionThresholdIsAutoCeiling ? "≤ " : "") + AppCopy.format(
-                        "conversation.tokensCount",
-                        effectiveCompactionTokens.formatted(.number.locale(AppCopy.locale))
-                    ))
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    if let tokens = effectiveCompactionTokens {
+                        Text((compactionThresholdIsAutoCeiling ? "≤ " : "") + AppCopy.format(
+                            "conversation.tokensCount",
+                            tokens.formatted(.number.locale(AppCopy.locale))
+                        ))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    } else {
+                        let percent = Int((compactionPolicy.triggerRatio * 100).rounded())
+                        Text(AppCopy.language == .tr
+                             ? "Otomatik modelde her modelin penceresinin %\(percent)'i"
+                             : "Auto-routed models: \(percent)% of each model's window")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             Section(AppCopy.language == .tr ? "Proje keşfi" : "Project exploration") {

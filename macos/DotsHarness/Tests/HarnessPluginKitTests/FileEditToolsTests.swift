@@ -108,6 +108,35 @@ final class FileEditToolsTests: XCTestCase {
         XCTAssertEqual(try contents("h.swift"), "x\n")
     }
 
+    func testPartialReadAllowsEditsInsideItAndCarriesTheRangeOver() throws {
+        let text = (1...600).map { "line-\($0)" }.joined(separator: "\n")
+        let url = try seed("long.swift", text, read: false)
+        // One default page: lines 1-250.
+        ReadLedger.shared.recordLines(url, data: Data(text.utf8), lines: 1..<251, totalLines: 600, conversationID: conversation)
+
+        XCTAssertTrue(edit("long.swift", [["old_text": "line-10\n", "new_text": "line-10\nadded-a\nadded-b\n"]]).hasPrefix("Edited"))
+        // The read lines moved two down with the edit: line-250 is now line 252 and
+        // still counts as read; line-251 (now 253) still does not.
+        XCTAssertTrue(edit("long.swift", [["old_text": "line-250\n", "new_text": "line-250!\n"]]).hasPrefix("Edited"))
+        let refused = edit("long.swift", [["old_text": "line-251\n", "new_text": "nope\n"]])
+        XCTAssertTrue(refused.contains("which were not read"), refused)
+        XCTAssertFalse(try contents("long.swift").contains("nope"))
+        // write_file still needs the whole file.
+        XCTAssertEqual(
+            ReadLedger.shared.state(for: url, data: try Data(contentsOf: url), conversationID: conversation),
+            .unread
+        )
+    }
+
+    func testReplaceAllOnAPartialReadNeedsEveryOccurrenceRead() throws {
+        let text = (1...400).map { $0 == 5 || $0 == 300 ? "same" : "l\($0)" }.joined(separator: "\n")
+        let url = try seed("dup.swift", text, read: false)
+        ReadLedger.shared.recordLines(url, data: Data(text.utf8), lines: 1..<251, totalLines: 400, conversationID: conversation)
+        let result = edit("dup.swift", [["old_text": "same", "new_text": "other", "replace_all": true]])
+        XCTAssertTrue(result.contains("lines 300-300"), result)
+        XCTAssertFalse(try contents("dup.swift").contains("other"))
+    }
+
     func testUnreadFileCannotBeEdited() throws {
         try seed("i.swift", "value = 1\n", read: false)
         let result = edit("i.swift", [["old_text": "value = 1", "new_text": "value = 2"]])

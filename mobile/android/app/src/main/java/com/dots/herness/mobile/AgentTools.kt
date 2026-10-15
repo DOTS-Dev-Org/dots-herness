@@ -18,6 +18,11 @@ import java.util.concurrent.ConcurrentHashMap
  */
 object AgentTools {
     const val MAXIMUM_READ_CHARACTERS = 60_000
+    /** A read without an explicit limit returns one page: most questions need a
+     * section, and a later page is one offset away. */
+    const val DEFAULT_READ_LINES = 250
+    const val DEFAULT_READ_CHARACTERS = 20_000
+    const val MAXIMUM_SEARCH_MATCHES = 100
     const val MAXIMUM_LISTED_FILES = 2_000
     const val ASK_USER_ANSWERED_DIRECTIVE = "The user answered your clarification. Continue the original request now in the current mode: perform the requested work in ordinary execution, or return the complete plan in plan mode. Do not send a status-only reply while tools can proceed. Preserve unrelated pre-existing edits automatically; do not mention them unless a specific inspected conflict blocks the requested change."
     const val MAXIMUM_EDIT_BATCH = 50
@@ -41,7 +46,7 @@ object AgentTools {
      */
     val reads = ReadLedger()
 
-    fun readFile(root: File, path: String, offset: Int = 1, limit: Int = Int.MAX_VALUE): String {
+    fun readFile(root: File, path: String, offset: Int = 1, limit: Int? = null): String {
         val target = resolve(root, path)
         val bytes = target.readBytes()
         val text = String(bytes, Charsets.UTF_8)
@@ -49,22 +54,26 @@ object AgentTools {
         val lines = text.split('\n')
         val start = offset.coerceAtLeast(1)
         if (start > lines.size) return "Offset is past the end of the file; it has ${lines.size} lines."
-        val count = limit.coerceAtLeast(0).coerceAtMost(lines.size - start + 1)
+        val count = (limit ?: DEFAULT_READ_LINES).coerceAtLeast(0).coerceAtMost(lines.size - start + 1)
         val end = start + count
+        val maximum = if (limit == null) DEFAULT_READ_CHARACTERS else MAXIMUM_READ_CHARACTERS
         val emitted = mutableListOf<String>()
         var size = 0
         var line = start
         while (line < end) {
             val candidate = lines[line - 1]
             val cost = candidate.toByteArray(Charsets.UTF_8).size + 1
-            if (size + cost > MAXIMUM_READ_CHARACTERS && emitted.isNotEmpty()) break
+            if (size + cost > maximum && emitted.isNotEmpty()) break
             emitted += candidate
             size += cost
             line++
         }
         reads.recordLines(target, bytes, start, line, lines.size)
         val body = emitted.joinToString("\n")
-        return if (line >= end) body else body + "\n\n[truncated] Continue with offset: $line"
+        // A default page that stops before the end of the file says so; an explicit
+        // limit that was met in full is the answer that was asked for.
+        val more = if (limit == null) line <= lines.size else line < end
+        return if (more) body + "\n\n[truncated] Continue with offset: $line" else body
     }
 
     fun resolve(root: File, path: String): File {
@@ -112,18 +121,18 @@ object AgentTools {
 
         AgentToolSpec(
             "read_file",
-            "Read whole lines of a UTF-8 file. Use offset and limit to page through long files; all pages of the same version together authorize editing.",
+            "Read whole lines of a UTF-8 file. Returns 250 lines by default; a longer file ends with a continuation line naming the next offset. edit_file only needs the lines it replaces to have been read; all pages of the same version are needed before write_file rewrites it.",
             schema(mapOf("path" to "Workspace-relative file path."), listOf("path")).apply {
                 getJSONObject("properties")
                     .put("offset", JSONObject().put("type", "integer").put("description", "First line, 1-based. Defaults to 1."))
-                    .put("limit", JSONObject().put("type", "integer").put("description", "Maximum number of lines to read."))
+                    .put("limit", JSONObject().put("type", "integer").put("description", "Maximum number of lines to read. Defaults to 250."))
             }
         ) { input ->
             withContext(Dispatchers.IO) {
                 val path = input.required("path", "read_file")
                 readFile(root(), path,
                     if (input.has("offset")) input.optInt("offset", 1) else 1,
-                    if (input.has("limit")) input.optInt("limit", Int.MAX_VALUE) else Int.MAX_VALUE
+                    if (input.has("limit")) input.optInt("limit", DEFAULT_READ_LINES) else null
                 ) + MobileLessons.fileNotice(root(), path)
             }
         },
@@ -214,9 +223,9 @@ object AgentTools {
                 for (path in walk(root()).filter { prefix.isBlank() || it.startsWith(prefix) }) {
                     val text = runCatching { resolve(root(), path).readText() }.getOrNull() ?: continue
                     text.lineSequence().forEachIndexed { index, line ->
-                        if (hits.size < 200 && regex.containsMatchIn(line)) hits += "$path:${index + 1}: ${line.take(300)}"
+                        if (hits.size < MAXIMUM_SEARCH_MATCHES && regex.containsMatchIn(line)) hits += "$path:${index + 1}: ${line.take(300)}"
                     }
-                    if (hits.size >= 200) return@withContext hits.joinToString("\n") + "\n… more matches not listed"
+                    if (hits.size >= MAXIMUM_SEARCH_MATCHES) return@withContext hits.joinToString("\n") + "\n… more matches not listed"
                 }
                 if (hits.isEmpty()) "No matches." else hits.joinToString("\n")
             }
@@ -356,13 +365,18 @@ object AgentTools {
         // Strict, so a binary file is refused instead of arriving as replacement
         // characters the model then "matches" against.
         val text = WebTools.decodeUtf8(current) ?: return "Tool error: $path is not valid UTF-8 text."
-        // Same authority rule as read_file: an edit assumes the model has seen the
-        // bytes it is matching against.
-        when (reads.state(file, current)) {
+        // An edit assumes the model has seen the bytes it is matching against. Unlike
+        // write_file it does not need the whole file: the lines it replaces must lie
+        // inside pages read from this exact version.
+        val totalLines = text.split('\n').size
+        val (state, read) = reads.coverage(file, current, totalLines)
+        when (state) {
             ReadState.UNREAD -> return "Tool error: $path has not been read in this conversation. Read it before editing."
             ReadState.STALE -> return "Tool error: $path changed since it was read. Read it again before editing."
             ReadState.FRESH -> Unit
         }
+        var covered = read
+        val partial = !(covered.size == 1 && covered[0].first == 1 && covered[0].last >= totalLines)
 
         var updated = text
         val summary = mutableListOf<String>()
@@ -391,6 +405,17 @@ object AgentTools {
                         "Nothing was written. Widen old_text with surrounding lines, or set replace_all."
                 }
             }
+            if (partial) {
+                val touched = (if (replaceAll) found else found.take(1))
+                    .map { lineNumber(updated, it) to lineNumber(updated, it + oldText.length - 1) }
+                val unread = touched.firstOrNull { (start, end) -> covered.none { start >= it.first && end <= it.last } }
+                if (unread != null) {
+                    return "Tool error: edit $index changes lines ${unread.first}-${unread.second} of $path, which were not read in this conversation. " +
+                        "Read them with read_file offset/limit first. Nothing was written."
+                }
+                val delta = newText.count { it == '\n' } - oldText.count { it == '\n' }
+                for ((_, end) in touched.sortedByDescending { it.first }) covered = shiftRanges(covered, end, delta)
+            }
             if (replaceAll) {
                 updated = updated.replace(oldText, newText)
                 summary += "replaced ${found.size} occurrence${if (found.size == 1) "" else "s"}"
@@ -405,7 +430,12 @@ object AgentTools {
         runCatching { writeAtomically(file, data) }.getOrElse { failure ->
             return "Tool error: could not write $path: ${failure.message ?: "the write failed."}"
         }
-        reads.record(file, data)
+        if (partial) {
+            // Carry what was read over to the new version, shifted past each edit, so
+            // the next edit in the same section needs no reread.
+            val newTotal = updated.split('\n').size
+            for (range in covered) reads.recordLines(file, data, range.first, minOf(range.last + 1, newTotal + 1), newTotal)
+        } else reads.record(file, data)
         return "Edited ${relativePath(root, file)} (${summary.joinToString("; ")})."
     }
 
@@ -421,6 +451,17 @@ object AgentTools {
             cursor = found + needle.length
         }
         return positions
+    }
+
+    /** Moves read ranges after an edit that ended on [editEnd] and changed the line
+     * count by [delta]: later ranges shift, the range holding the edit stretches or
+     * shrinks, earlier ones stay. */
+    fun shiftRanges(ranges: List<IntRange>, editEnd: Int, delta: Int): List<IntRange> = ranges.map {
+        when {
+            it.first > editEnd -> (it.first + delta)..(it.last + delta)
+            it.last >= editEnd -> it.first..(it.last + delta)
+            else -> it
+        }
     }
 
     fun lineNumber(text: String, position: Int): Int =
@@ -811,6 +852,17 @@ class ReadLedger {
     @Synchronized fun state(file: File, current: ByteArray): ReadState {
         val recorded = hashes[key(file)] ?: return ReadState.UNREAD
         return if (recorded == AgentTools.sha256(current)) ReadState.FRESH else ReadState.STALE
+    }
+
+    /** Line ranges (1-based, inclusive) read from exactly this version. A complete
+     * read is one range over the whole file. STALE when an older version was read;
+     * UNREAD when nothing was. */
+    @Synchronized fun coverage(file: File, current: ByteArray, totalLines: Int): Pair<ReadState, List<IntRange>> {
+        val path = key(file)
+        val hash = AgentTools.sha256(current)
+        hashes[path]?.let { return if (it == hash) ReadState.FRESH to listOf(1..totalLines) else ReadState.STALE to emptyList() }
+        pages[path]?.let { return if (it.hash == hash) ReadState.FRESH to it.ranges else ReadState.STALE to emptyList() }
+        return ReadState.UNREAD to emptyList()
     }
 
     @Synchronized fun recordLines(file: File, bytes: ByteArray, start: Int, end: Int, totalLines: Int) {

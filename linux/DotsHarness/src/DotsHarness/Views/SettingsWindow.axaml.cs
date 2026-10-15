@@ -640,11 +640,15 @@ public partial class SettingsWindow : Window
             var selectedModel = Model.SelectedModelID;
             var isAutoModel = string.IsNullOrWhiteSpace(selectedModel) || selectedModel == "auto";
             var compactPercentForModel = Model.UsageMode == AgentUsageMode.Economy ? 90 : Model.ContextCompactionThresholdPercent;
-            var compactLimit = Model.UsageMode == AgentUsageMode.Economy
-                ? ContextCompaction.EconomyReplayTokenLimit
-                : ContextCompaction.CodingReplayTokenLimit;
+            var economy = Model.UsageMode == AgentUsageMode.Economy;
+            if (isAutoModel && !economy)
+            {
+                return Model.Language == AppLanguage.Turkish
+                    ? $"Otomatik modelde her modelin penceresinin %{compactPercentForModel}'i"
+                    : $"Auto-routed models: {compactPercentForModel}% of each model's window";
+            }
             var compactThreshold = isAutoModel
-                ? compactLimit
+                ? ContextCompaction.EconomyReplayTokenLimit
                 : ContextCompaction.NativeThreshold(
                     Model.Router.ContextWindowFor(selectedModel),
                     compactPercentForModel,

@@ -5,6 +5,42 @@ namespace DotsHarness.Tests;
 
 public sealed class ContextCompactionTests
 {
+    private static NativeMessage ReadCall(string id, string arguments) =>
+        new("assistant", "", ToolCalls: [new NativeToolCall(id, "read_file", arguments)]);
+
+    private static NativeMessage ToolResult(string id, string content) =>
+        new("tool", content, ToolCallId: id);
+
+    [Fact]
+    public void OnlyTheLatestReadOfTheSameLinesKeepsItsBody()
+    {
+        var messages = new List<NativeMessage>
+        {
+            new("system", "policy"),
+            new("user", "look"),
+            ReadCall("a", """{"path":"src/app.cs"}"""),
+            ToolResult("a", "old body"),
+            ReadCall("b", """{"path":"src/app.cs","offset":251}"""),
+            ToolResult("b", "second page"),
+            ReadCall("c", """{"path":"./src/app.cs","offset":1}"""),
+            ToolResult("c", "new body"),
+            ReadCall("d", """{"path":"src/other.cs"}"""),
+            ToolResult("d", "Tool error: missing"),
+            ReadCall("e", """{"path":"src/other.cs"}"""),
+            ToolResult("e", "Tool error: missing again"),
+        };
+
+        var result = ContextCompaction.SupersedeRepeatedReads(messages);
+
+        Assert.Equal(ContextCompaction.SupersededReadMarker, result[3].Content);
+        Assert.Equal("second page", result[5].Content);
+        Assert.Equal("new body", result[7].Content);
+        Assert.Equal("Tool error: missing", result[9].Content);
+        Assert.Equal(messages.Count, result.Count);
+        // Running it again changes nothing, so the persisted prefix stays stable.
+        Assert.Equal(result, ContextCompaction.SupersedeRepeatedReads(result));
+    }
+
     [Fact]
     public void DefaultBudgetTriggersAtNinetyPercentAndTargetsSixtyFivePercent()
     {

@@ -1605,6 +1605,8 @@ final class MobileHarnessRuntime: ObservableObject {
         let captured = promptHistory.capture(
             prompt: prompt, policy: activeSystemPrompt(), context: HerNessPrompt.pluginGuidance(pluginPrompt)
         )
+        // Once per user turn, so the cached prefix moves at most once.
+        wire = MobilePromptHistory.supersedeRepeatedReads(wire)
         wire.append(canonicalUserMessage(text: captured, attachments: attachments))
         if let consumedQueuedPrompt {
             queuedPrompts.removeAll { $0.id == consumedQueuedPrompt.id }

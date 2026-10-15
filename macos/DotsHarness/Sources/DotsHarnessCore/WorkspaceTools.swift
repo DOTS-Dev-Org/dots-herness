@@ -147,9 +147,11 @@ public enum WorkspaceTools {
         AgentToolDefinition(
             name: "read_file",
             description: """
-            Read a UTF-8 text file inside the current workspace. Prefer a narrow \
-            offset/limit range for relevant sections; long files are truncated with \
-            a continuation line. Read the full file only when the requested operation requires it.
+            Read a UTF-8 text file inside the current workspace. Returns 250 lines by \
+            default; a longer file ends with a continuation line naming the next offset. \
+            Prefer a narrow offset/limit range for relevant sections. edit_file only needs \
+            the lines it replaces to have been read; read every page only when write_file \
+            will rewrite the whole file.
             """,
             parameters: .object([
                 "type": .string("object"),
@@ -164,7 +166,7 @@ public enum WorkspaceTools {
                     ]),
                     "limit": .object([
                         "type": .string("integer"),
-                        "description": .string("How many lines to read. Defaults to as many as fit."),
+                        "description": .string("How many lines to read. Defaults to 250."),
                     ]),
                 ]),
                 "required": .array([.string("path")]),
@@ -398,7 +400,7 @@ public enum WorkspaceTools {
         return names.isEmpty ? AppCopy.text("tool.empty") : names.joined(separator: "\n")
     }
 
-    private static let grepMaxMatches = 200
+    private static let grepMaxMatches = 100
     private static let grepMaxFiles = 5_000
     private static let grepMaxLineCharacters = 240
 
@@ -450,6 +452,10 @@ public enum WorkspaceTools {
     }
 
     static let readMaxBytes = 60_000
+    /// A read without an explicit limit returns one page: most questions need a
+    /// section, and a later page is one offset away.
+    static let defaultReadLines = 250
+    static let defaultReadMaxBytes = 20_000
 
     /// Reads whole lines, never a partial one, and stops at `readMaxBytes`. A cut
     /// answer names the line to continue from, so a long file stays reachable
@@ -465,7 +471,8 @@ public enum WorkspaceTools {
         guard start <= lines.count else {
             return AppCopy.format("tool.offsetPastEnd", lines.count)
         }
-        let end = limit.map { min(lines.count, start + max(0, $0) - 1) } ?? lines.count
+        let end = min(lines.count, start + max(0, limit ?? defaultReadLines) - 1)
+        let maxBytes = limit == nil ? defaultReadMaxBytes : readMaxBytes
 
         var emitted: [String] = []
         var bytes = 0
@@ -473,7 +480,7 @@ public enum WorkspaceTools {
         while line <= end {
             let candidate = lines[line - 1]
             let size = candidate.utf8.count + 1
-            if bytes + size > readMaxBytes, !emitted.isEmpty { break }
+            if bytes + size > maxBytes, !emitted.isEmpty { break }
             emitted.append(candidate)
             bytes += size
             line += 1
@@ -482,9 +489,12 @@ public enum WorkspaceTools {
         // Pages from the same on-disk version together authorize a complete read.
         ReadLedger.shared.recordLines(file, data: data, lines: start..<line,
                                       totalLines: lines.count, conversationID: conversationID)
-        return line > end
-            ? body
-            : body + "\n\n" + AppCopy.format("tool.truncatedAt", line)
+        // A default page that stops before the end of the file says so; an explicit
+        // limit that was met in full is the answer that was asked for.
+        let more = limit == nil ? line <= lines.count : line <= end
+        return more
+            ? body + "\n\n" + AppCopy.format("tool.truncatedAt", line)
+            : body
     }
 
     private static func writeFile(at path: String, content: String, workspace: URL, conversationID: String) throws -> String {
@@ -872,6 +882,21 @@ final class ReadLedger: @unchecked Sendable {
         scope.pages.removeValue(forKey: file.path)
         scope.order.removeAll { $0 == file.path }
         scopes[conversationID] = scope
+    }
+
+    /// Lines (1-based) read from exactly this version. A complete read covers the
+    /// whole file. Stale when an older version was read; unread when nothing was.
+    func coverage(for file: URL, data: Data, totalLines: Int, conversationID: String) -> (state: State, lines: IndexSet) {
+        let hash = Self.hash(data)
+        lock.lock(); defer { lock.unlock() }
+        let scope = scopes[conversationID]
+        if let known = scope?.hashes[file.path] {
+            return known == hash ? (.fresh, IndexSet(integersIn: 1..<(totalLines + 1))) : (.stale, IndexSet())
+        }
+        if let page = scope?.pages[file.path] {
+            return page.hash == hash ? (.fresh, page.lines) : (.stale, IndexSet())
+        }
+        return (.unread, IndexSet())
     }
 
     func state(for file: URL, data: Data, conversationID: String) -> State {

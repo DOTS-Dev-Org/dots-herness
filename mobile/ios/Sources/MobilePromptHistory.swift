@@ -7,9 +7,68 @@ struct MobilePromptHistory: Codable {
     private var capturedPolicy: String?
     private var capturedContext: String?
 
-    static let codingReplayTokenLimit = 32_768
+    /// Compacts at the user's percentage of the provider's own context window.
     static func compactionThreshold(window: Int, percent: Int) -> Int {
-        max(1, min(codingReplayTokenLimit, Int(Double(max(1, window)) * Double(max(0, min(100, percent))) / 100)))
+        max(1, Int(Double(max(1, window)) * Double(max(0, min(100, percent))) / 100))
+    }
+
+    static let supersededReadMarker =
+        "[read_file result superseded: the same lines of this file were read again later in this conversation]"
+
+    /// Replaces an older read_file result with a one-line marker when the same
+    /// lines of the same file (same path, offset and limit) were read again later:
+    /// the later result is the current one, the older copy only inflates every
+    /// request. Call it once when a new user turn starts; rewriting history moves
+    /// the cached prefix, so doing it mid-turn would miss the cache on every request.
+    static func supersedeRepeatedReads(_ wire: [[String: Any]]) -> [[String: Any]] {
+        var keys: [String: String] = [:]
+        for message in wire where message["role"] as? String == "assistant" {
+            for block in message["content"] as? [[String: Any]] ?? []
+            where block["type"] as? String == "tool_use" && block["name"] as? String == "read_file" {
+                if let id = block["id"] as? String, let key = readKey(block["input"] as? [String: Any]) { keys[id] = key }
+            }
+            for item in message["responses_output_items"] as? [[String: Any]] ?? []
+            where item["type"] as? String == "function_call" && item["name"] as? String == "read_file" {
+                let input = (item["arguments"] as? String).flatMap { try? JSONSerialization.jsonObject(with: Data($0.utf8)) } as? [String: Any]
+                if let id = item["call_id"] as? String, let key = readKey(input) { keys[id] = key }
+            }
+        }
+        guard keys.count >= 2 else { return wire }
+
+        var results: [(message: Int, block: Int, key: String)] = []
+        for (messageIndex, message) in wire.enumerated() where message["role"] as? String == "user" {
+            for (blockIndex, block) in (message["content"] as? [[String: Any]] ?? []).enumerated()
+            where block["type"] as? String == "tool_result" && (block["is_error"] as? Bool) != true {
+                if let id = block["tool_use_id"] as? String, let key = keys[id],
+                   isReadBody(block["content"] as? String) { results.append((messageIndex, blockIndex, key)) }
+            }
+        }
+        var latest: [String: (Int, Int)] = [:]
+        for entry in results { latest[entry.key] = (entry.message, entry.block) }
+        var result = wire
+        for entry in results {
+            guard let last = latest[entry.key], (entry.message, entry.block) < last,
+                  var content = result[entry.message]["content"] as? [[String: Any]] else { continue }
+            content[entry.block]["content"] = supersededReadMarker
+            result[entry.message]["content"] = content
+        }
+        return result
+    }
+
+    private static func readKey(_ input: [String: Any]?) -> String? {
+        guard var path = (input?["path"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\\", with: "/") else { return nil }
+        while path.hasPrefix("./") { path.removeFirst(2) }
+        guard !path.isEmpty else { return nil }
+        let offset = max(1, (input?["offset"] as? NSNumber)?.intValue ?? 1)
+        let limit = (input?["limit"] as? NSNumber).map { String($0.intValue) } ?? ""
+        return "\(path)\n\(offset)\n\(limit)"
+    }
+
+    /// Tool errors are not file contents; they never supersede and are never superseded.
+    private static func isReadBody(_ content: String?) -> Bool {
+        guard let content else { return false }
+        return content != supersededReadMarker && !content.hasPrefix("Tool error") && !content.hasPrefix("Error")
     }
 
     init(policy: String? = nil) {

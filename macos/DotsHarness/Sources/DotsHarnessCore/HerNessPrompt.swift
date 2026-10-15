@@ -152,8 +152,9 @@ public enum HerNessPrompt {
         - Base every claim that a file was read or written, or a command was run, on a
           tool result that confirmed it.
         - Complete a requested coding change through the workspace tools. Read the target file
-          with read_file before editing; if it is paged, follow its offset through the rest of
-          the file. Reads of all pages of the same file version count as a complete read.
+          with read_file before editing. read_file returns 250 lines by default; edit_file
+          needs only the lines it replaces to have been read, while write_file needs every page
+          of the same file version.
           A stale-file rejection requires rereading the current version and adapting the edit.
           After editing, reread the changed section and inspect the resulting diff. When the
           user requests build, test, or visual verification, perform that verification through

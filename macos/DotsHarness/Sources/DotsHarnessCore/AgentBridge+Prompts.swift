@@ -692,6 +692,8 @@ extension NativeAgentHost {
         if hasStoredContext {
             var stored = conversations[index].modelContext
             if hasUserContent || approvedPlanID != nil {
+                // Once per user turn, so the cached prefix moves at most once.
+                stored = AgentContextCompaction.supersedeRepeatedReads(stored)
                 stored.append(AgentMessage(role: .user, content: explicitSkill?.prompt ?? text, attachments: stableAttachments))
             }
             context = stored

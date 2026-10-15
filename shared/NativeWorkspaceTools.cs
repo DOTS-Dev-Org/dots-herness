@@ -32,10 +32,10 @@ public static class NativeWorkspaceTools
     public static IReadOnlyList<NativeToolDefinition> Definitions { get; } =
     [
         new("list_files", "List files and directories inside the current workspace.", Schema(("path", "Relative path. Use . for the workspace root.", false))),
-        new("read_file", "Read a UTF-8 text file inside the current workspace. Prefer a narrow offset/limit range for relevant sections; long files are truncated with a continuation line. Read the full file only when the requested operation requires it.", Schema(
+        new("read_file", "Read a UTF-8 text file inside the current workspace. Returns 250 lines by default; a longer file ends with a continuation line naming the next offset. Prefer a narrow offset/limit range for relevant sections. edit_file only needs the lines it replaces to have been read; read every page only when write_file will rewrite the whole file.", Schema(
             ("path", "Relative path to the file.", true),
             ("offset", "First line to read, 1-based. Defaults to the start of the file.", false),
-            ("limit", "How many lines to read. Defaults to as many as fit.", false))),
+            ("limit", "How many lines to read. Defaults to 250.", false))),
         new("write_file", "Create or replace a UTF-8 text file inside the current workspace. It writes the whole file, so read an existing file first: rewriting one you have not read, or one that changed since you read it, is refused.", Schema(("path", "Relative path to the file.", true), ("content", "Complete file contents.", true))),
         new("remove_file", "Remove one unused source/config/test/import file only after references are checked.", Schema(
             ("path", "Relative path to the file to remove.", true),
@@ -174,8 +174,13 @@ public static class NativeWorkspaceTools
     }
 
     private const int ReadMaxBytes = 60_000;
+    /// A read without an explicit limit returns one page: most questions need a
+    /// section, and a later page is one offset away.
+    internal const int DefaultReadLines = 250;
+    private const int DefaultReadMaxBytes = 20_000;
 
-    /// Reads whole lines, never a partial one, and stops at <see cref="ReadMaxBytes"/>.
+    /// Reads whole lines, never a partial one, and stops at <see cref="ReadMaxBytes"/>
+    /// (<see cref="DefaultReadMaxBytes"/> when no limit was given).
     /// A cut answer names the line to continue from, so a long file stays reachable
     /// without falling back to a shell command.
     private static string ReadFile(string? path, int? offset, int? limit, string workspace)
@@ -190,7 +195,8 @@ public static class NativeWorkspaceTools
         var lines = text.Split('\n');
         var start = Math.Max(1, offset ?? 1);
         if (start > lines.Length) return $"Offset is past the end of the file; it has {lines.Length} lines.";
-        var end = limit is { } take ? Math.Min(lines.Length, start + Math.Max(0, take) - 1) : lines.Length;
+        var end = Math.Min(lines.Length, start + Math.Max(0, limit ?? DefaultReadLines) - 1);
+        var maxBytes = limit is null ? DefaultReadMaxBytes : ReadMaxBytes;
 
         var emitted = new List<string>();
         var size = 0;
@@ -199,14 +205,17 @@ public static class NativeWorkspaceTools
         {
             var candidate = lines[line - 1];
             var cost = Encoding.UTF8.GetByteCount(candidate) + 1;
-            if (size + cost > ReadMaxBytes && emitted.Count > 0) break;
+            if (size + cost > maxBytes && emitted.Count > 0) break;
             emitted.Add(candidate);
             size += cost;
             line++;
         }
         var body = string.Join('\n', emitted);
         ReadLedger.RecordLines(file, bytes, start, line, lines.Length);
-        return line > end ? body : body + $"\n\n[truncated] Continue with offset: {line}";
+        // A default page that stops before the end of the file says so; an explicit
+        // limit that was met in full is the answer that was asked for.
+        var more = limit is null ? line <= lines.Length : line <= end;
+        return more ? body + $"\n\n[truncated] Continue with offset: {line}" : body;
     }
 
     private static int? Count(JsonNode? node)
@@ -222,7 +231,7 @@ public static class NativeWorkspaceTools
         return null;
     }
 
-    private const int GrepMaxMatches = 200;
+    private const int GrepMaxMatches = 100;
     private const int GrepMaxFiles = 5_000;
     private const int GrepMaxLineCharacters = 240;
 
@@ -672,6 +681,25 @@ public static class ReadLedger
         {
             Hashes.Remove(file);
             Pages.Remove(file);
+        }
+    }
+
+    /// <summary>
+    /// Line ranges (1-based, end exclusive) the agent read from exactly this version.
+    /// A complete read is one range over the whole file. Stale when an older version
+    /// was read; Unread when nothing was.
+    /// </summary>
+    public static (ReadState State, List<(int Start, int End)> Ranges) Coverage(string file, byte[] content, int totalLines)
+    {
+        file = Key(file);
+        var hash = Hash(content);
+        lock (Gate)
+        {
+            if (Hashes.TryGetValue(file, out var known))
+                return known == hash ? (ReadState.Fresh, [(1, totalLines + 1)]) : (ReadState.Stale, []);
+            if (Pages.TryGetValue(file, out var page))
+                return page.Hash == hash ? (ReadState.Fresh, page.Ranges.ToList()) : (ReadState.Stale, []);
+            return (ReadState.Unread, []);
         }
     }
 

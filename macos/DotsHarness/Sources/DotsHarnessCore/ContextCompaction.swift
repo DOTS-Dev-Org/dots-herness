@@ -5,7 +5,8 @@ import Foundation
 import HarnessPluginKit
 
 public struct AgentContextCompactionPolicy: Sendable, Equatable, Codable {
-    public static let codingReplayTokenLimit = 32_768
+    /// Economy mode is the only built-in absolute ceiling. Every other policy
+    /// compacts at the user's percentage of the provider's own context window.
     public static let economyReplayTokenLimit = 16_384
     public enum ID: String, Sendable, Codable, CaseIterable {
         case baseline = "p0"
@@ -47,8 +48,7 @@ public struct AgentContextCompactionPolicy: Sendable, Equatable, Codable {
     public static let baseline = AgentContextCompactionPolicy(
         id: .baseline,
         triggerRatio: 0.90,
-        targetRatio: 0.65,
-        maxTokens: codingReplayTokenLimit
+        targetRatio: 0.65
     )
 
     public static let cacheAware = AgentContextCompactionPolicy(
@@ -77,9 +77,9 @@ public struct AgentContextCompactionPolicy: Sendable, Equatable, Codable {
     public static let maxTokensKey = "dots.contextCompactionMaxTokens"
     public static let replayBudgetKey = "dots.contextReplayBudgetTokens"
 
-    /// The percentage is an upper threshold. A separate replay budget prevents
-    /// large-window models from repeatedly processing hundreds of thousands of
-    /// tokens before compaction. The legacy, unused ceiling remains ignored.
+    /// The percentage of the provider's window is the threshold. An explicit
+    /// replay budget, when a caller stored one, still caps it. The legacy,
+    /// unused ceiling remains ignored.
     public static func current(defaults: UserDefaults = .standard) -> AgentContextCompactionPolicy {
         let selectedID = ID(rawValue: defaults.string(forKey: userDefaultsKey) ?? "")
         if selectedID == .economy { return .economy }
@@ -94,7 +94,7 @@ public struct AgentContextCompactionPolicy: Sendable, Equatable, Codable {
             id: .custom,
             triggerRatio: trigger,
             targetRatio: min(trigger, max(0, trigger - 0.25)),
-            maxTokens: replayBudget.flatMap { $0 > 0 ? $0 : nil } ?? codingReplayTokenLimit
+            maxTokens: replayBudget.flatMap { $0 > 0 ? $0 : nil }
         )
     }
 }
@@ -150,6 +150,55 @@ public struct AgentContextCompactionSelection: Sendable, Equatable {
 }
 
 public enum AgentContextCompaction {
+    public static let supersededReadMarker =
+        "[read_file result superseded: the same lines of this file were read again later in this conversation]"
+
+    /// Replaces an older read_file result with a one-line marker when the same
+    /// lines of the same file (same path, offset and limit) were read again later:
+    /// the later result is the current one, the older copy only inflates every
+    /// request. Call it once when a new user turn starts and persist the result.
+    /// Rewriting history moves the cached prefix, so doing it mid-turn would miss
+    /// the cache on every request instead of once.
+    public static func supersedeRepeatedReads(_ messages: [AgentMessage]) -> [AgentMessage] {
+        var keys: [String: String] = [:]
+        for call in messages.filter({ $0.role == .assistant }).flatMap(\.toolCalls)
+        where call.name.lowercased() == "read_file" {
+            if let key = readKey(call.arguments) { keys[call.id] = key }
+        }
+        guard keys.count >= 2 else { return messages }
+
+        var latest: [String: Int] = [:]
+        for (index, message) in messages.enumerated() where message.role == .tool {
+            if let id = message.toolCallID, let key = keys[id], isReadBody(message.content) { latest[key] = index }
+        }
+        var result = messages
+        for (index, message) in messages.enumerated() where message.role == .tool {
+            guard let id = message.toolCallID, let key = keys[id],
+                  let last = latest[key], last > index, isReadBody(message.content) else { continue }
+            result[index].content = supersededReadMarker
+            result[index].providerItems = EconomyToolOutputPolicy.normalizeProviderItems(message.providerItems, output: supersededReadMarker)
+        }
+        return result
+    }
+
+    private static func readKey(_ arguments: String) -> String? {
+        guard let object = try? JSONSerialization.jsonObject(with: Data(arguments.utf8)) as? [String: Any],
+              var path = (object["path"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: "\\", with: "/") else { return nil }
+        while path.hasPrefix("./") { path.removeFirst(2) }
+        guard !path.isEmpty else { return nil }
+        let offset = max(1, (object["offset"] as? NSNumber)?.intValue ?? 1)
+        let limit = (object["limit"] as? NSNumber).map { String($0.intValue) } ?? ""
+        return "\(path)\n\(offset)\n\(limit)"
+    }
+
+    /// Tool errors are not file contents; they never supersede and are never superseded.
+    private static func isReadBody(_ content: String) -> Bool {
+        content != supersededReadMarker
+            && !content.hasPrefix("Tool error")
+            && !content.hasPrefix("Error")
+    }
+
     /// The latest opaque Responses checkpoint replaces everything before it.
     /// Keep policy and post-checkpoint call/result pairs; the visible transcript
     /// is stored separately and is never shortened here.
