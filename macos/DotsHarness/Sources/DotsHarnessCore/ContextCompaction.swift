@@ -5,9 +5,6 @@ import Foundation
 import HarnessPluginKit
 
 public struct AgentContextCompactionPolicy: Sendable, Equatable, Codable {
-    /// Economy mode is the only built-in absolute ceiling. Every other policy
-    /// compacts at the user's percentage of the provider's own context window.
-    public static let economyReplayTokenLimit = 16_384
     public enum ID: String, Sendable, Codable, CaseIterable {
         case baseline = "p0"
         case cacheAware = "p1"
@@ -67,8 +64,7 @@ public struct AgentContextCompactionPolicy: Sendable, Equatable, Codable {
         id: .economy,
         triggerRatio: 0.90,
         targetRatio: 0.65,
-        maxRecentGroups: 6,
-        maxTokens: economyReplayTokenLimit
+        maxRecentGroups: 6
     )
 
 
