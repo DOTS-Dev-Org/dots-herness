@@ -1882,6 +1882,8 @@ public sealed partial class AgentBridge : ObservableObject
             {
                 if (hasUserContent || request.ExecutionText is not null)
                 {
+                    // Once per user turn, so the cached prefix moves at most once.
+                    messages = ContextCompaction.SupersedeRepeatedReads(messages);
                     messages.Add(new NativeMessage("user", modelPrompt, Attachments: ToNativeAttachments(stableAttachments)));
                 }
             }

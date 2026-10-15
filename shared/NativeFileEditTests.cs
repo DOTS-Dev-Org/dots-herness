@@ -63,7 +63,7 @@ public sealed class NativeFileEditTests : IDisposable
             var args = new JsonObject { ["path"] = "project.swift", ["offset"] = start, ["limit"] = 20 }.ToJsonString();
             var page = await NativeWorkspaceTools.ExecuteAsync(new NativeToolCall("read", "read_file", args), _root);
             Assert.Equal(page, EconomyPolicy.NormalizeToolOutput(page, "read_file", args));
-            if (start == 1) Assert.Contains("has not been read", EditCall("project.swift", ("line-180:", "fixed-180:")));
+            if (start == 1) Assert.Contains("lines 180-180 of project.swift, which were not read", EditCall("project.swift", ("line-180:", "fixed-180:")));
         }
         Assert.StartsWith("Edited", EditCall("project.swift", ("line-180:", "fixed-180:")));
         Assert.Equal(original.Replace("line-180:", "fixed-180:"), File.ReadAllText(file));
@@ -86,7 +86,43 @@ public sealed class NativeFileEditTests : IDisposable
         File.WriteAllText(file, "changed\ntwo\nthree\nfour");
         await NativeWorkspaceTools.ExecuteAsync(new NativeToolCall("read", "read_file",
             new JsonObject { ["path"] = "pages.txt", ["offset"] = 3 }.ToJsonString()), _root);
-        Assert.Contains("has not been read", EditCall("pages.txt", ("changed", "bad")));
+        Assert.Contains("which were not read", EditCall("pages.txt", ("changed", "bad")));
+    }
+
+    [Fact]
+    public async Task APartialReadAllowsEditsInsideItAndCarriesTheRangeOver()
+    {
+        var original = string.Join('\n', Enumerable.Range(1, 600).Select(i => $"line-{i}"));
+        Seed("long.txt", original);
+        var page = await ReadAsync("long.txt");
+        Assert.EndsWith("[truncated] Continue with offset: 251", page);
+        Assert.Contains("line-250", page);
+        Assert.DoesNotContain("line-251", page);
+
+        Assert.StartsWith("Edited", EditCall("long.txt", ("line-10\n", "line-10\nadded-a\nadded-b\n")));
+        // The read range moved two lines down with the edit: line-250 is now line 252
+        // and still counts as read, line-251 (now 253) still does not.
+        Assert.StartsWith("Edited", EditCall("long.txt", ("line-250\n", "line-250!\n")));
+        Assert.Contains("which were not read", EditCall("long.txt", ("line-251\n", "nope\n")));
+        // write_file still needs the whole file.
+        var write = await NativeWorkspaceTools.ExecuteAsync(new NativeToolCall("write", "write_file",
+            new JsonObject { ["path"] = "long.txt", ["content"] = "x" }.ToJsonString()), _root);
+        Assert.DoesNotContain("Wrote", write);
+        Assert.Contains("added-a", Content("long.txt"));
+    }
+
+    [Fact]
+    public async Task ReplaceAllOnAPartialReadNeedsEveryOccurrenceRead()
+    {
+        Seed("dup.txt", string.Join('\n', Enumerable.Range(1, 400).Select(i => i is 5 or 300 ? "same" : $"l{i}")));
+        await ReadAsync("dup.txt");
+        var answer = NativeFileEdit.Execute(new NativeToolCall("edit", "edit_file", new JsonObject
+        {
+            ["path"] = "dup.txt",
+            ["edits"] = new JsonArray(new JsonObject { ["old_text"] = "same", ["new_text"] = "other", ["replace_all"] = true }),
+        }.ToJsonString()), _root);
+        Assert.Contains("lines 300-300", answer);
+        Assert.DoesNotContain("other", Content("dup.txt"));
     }
 
     [Fact]

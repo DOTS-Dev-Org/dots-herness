@@ -2,6 +2,35 @@ import XCTest
 @testable import HerNessMobile
 
 final class MobilePromptHistoryTests: XCTestCase {
+    func testOnlyTheLatestReadOfTheSameLinesKeepsItsBody() {
+        func call(_ id: String, _ input: [String: Any]) -> [String: Any] {
+            ["role": "assistant", "content": [["type": "tool_use", "id": id, "name": "read_file", "input": input]]]
+        }
+        func result(_ id: String, _ content: String) -> [String: Any] {
+            ["role": "user", "content": [["type": "tool_result", "tool_use_id": id, "content": content]]]
+        }
+        let wire: [[String: Any]] = [
+            ["role": "user", "content": [["type": "text", "text": "look"]]],
+            call("a", ["path": "src/app.swift"]), result("a", "old body"),
+            call("b", ["path": "src/app.swift", "offset": 251]), result("b", "second page"),
+            ["role": "assistant", "content": [], "responses_output_items": [
+                ["type": "function_call", "call_id": "c", "name": "read_file", "arguments": #"{"path":"./src/app.swift","offset":1}"#],
+            ]],
+            result("c", "new body"),
+        ]
+        func body(_ wire: [[String: Any]], _ index: Int) -> String? {
+            ((wire[index]["content"] as? [[String: Any]])?.first)?["content"] as? String
+        }
+
+        let reduced = MobilePromptHistory.supersedeRepeatedReads(wire)
+
+        XCTAssertEqual(body(reduced, 2), MobilePromptHistory.supersededReadMarker)
+        XCTAssertEqual(body(reduced, 4), "second page")
+        XCTAssertEqual(body(reduced, 6), "new body")
+        let again = MobilePromptHistory.supersedeRepeatedReads(reduced)
+        XCTAssertEqual((0..<again.count).map { body(again, $0) }, (0..<reduced.count).map { body(reduced, $0) })
+    }
+
     func testUnchangedContextAndPolicyUpdateAreNotRepeatedAndReversionIsExplicit() {
         var history = MobilePromptHistory()
         XCTAssertEqual(history.capture(prompt: "one", policy: "policy one", context: "plugin"), "plugin\n\none")
@@ -14,9 +43,9 @@ final class MobilePromptHistoryTests: XCTestCase {
         XCTAssertEqual(history.capture(prompt: "seven", policy: "policy one", context: "plugin"), "plugin\n\nseven")
     }
 
-    func testReplayBudgetCapsLargeWindowsAndHonorsLowerPercentages() {
-        XCTAssertEqual(MobilePromptHistory.compactionThreshold(window: 272_000, percent: 90), 32_768)
-        XCTAssertEqual(MobilePromptHistory.compactionThreshold(window: 1_000_000, percent: 90), 32_768)
+    func testThresholdIsThePercentageOfTheProviderWindow() {
+        XCTAssertEqual(MobilePromptHistory.compactionThreshold(window: 272_000, percent: 90), 244_800)
+        XCTAssertEqual(MobilePromptHistory.compactionThreshold(window: 1_000_000, percent: 90), 900_000)
         XCTAssertEqual(MobilePromptHistory.compactionThreshold(window: 32_768, percent: 70), 22_937)
         XCTAssertEqual(MobilePromptHistory.compactionThreshold(window: 1_000_000, percent: 0), 1)
     }

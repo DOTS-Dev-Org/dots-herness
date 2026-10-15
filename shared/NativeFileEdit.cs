@@ -187,15 +187,19 @@ public static class NativeFileEdit
         string text;
         try { text = new UTF8Encoding(false, true).GetString(current); }
         catch (DecoderFallbackException) { return $"Tool error: {path} is not valid UTF-8 text."; }
-        // Same authority rule as write_file: an edit assumes the model has seen the bytes
-        // it is matching against.
-        switch (ReadLedger.StateOf(file, current))
+        // An edit assumes the model has seen the bytes it is matching against. Unlike
+        // write_file it does not need the whole file: the lines it replaces must lie
+        // inside pages read from this exact version.
+        var totalLines = text.Split('\n').Length;
+        var (state, covered) = ReadLedger.Coverage(file, current, totalLines);
+        switch (state)
         {
             case ReadState.Unread:
                 return $"Tool error: {path} has not been read in this conversation. Read it before editing.";
             case ReadState.Stale:
                 return $"Tool error: {path} changed since it was read. Read it again before editing.";
         }
+        var partial = !(covered.Count == 1 && covered[0].Start == 1 && covered[0].End > totalLines);
 
         var updated = text;
         var summary = new List<string>();
@@ -220,6 +224,19 @@ public static class NativeFileEdit
                     + " (around line" + (lines.Length == 1 ? "" : "s") + " " + string.Join(", ", lines) + "). "
                     + "Nothing was written. Widen old_text with surrounding lines, or set replace_all.";
             }
+            if (partial)
+            {
+                var touched = (replaceAll ? found : found.Take(1))
+                    .Select(position => (Start: LineNumber(updated, position), End: LineNumber(updated, position + oldText.Length - 1)))
+                    .ToList();
+                var unread = touched.FirstOrDefault(span => !covered.Any(range => range.Start <= span.Start && span.End < range.End));
+                if (unread != default)
+                    return $"Tool error: edit {index + 1} changes lines {unread.Start}-{unread.End} of {path}, which were not read in this conversation. "
+                        + "Read them with read_file offset/limit first. Nothing was written.";
+                var delta = newText.Count(c => c == '\n') - oldText.Count(c => c == '\n');
+                foreach (var span in touched.OrderByDescending(span => span.Start))
+                    covered = ShiftRanges(covered, span.End, delta);
+            }
             if (replaceAll)
             {
                 updated = updated.Replace(oldText, newText, StringComparison.Ordinal);
@@ -240,7 +257,15 @@ public static class NativeFileEdit
             WriteAtomically(file, data);
         }
         catch (Exception ex) { return $"Tool error: could not write {path}: {ex.Message}"; }
-        ReadLedger.Record(file, data);
+        if (partial)
+        {
+            // Carry what was read over to the new version, shifted past each edit, so
+            // the next edit in the same section needs no reread.
+            var newTotal = updated.Split('\n').Length;
+            foreach (var range in covered.Where(range => range.End > range.Start))
+                ReadLedger.RecordLines(file, data, range.Start, Math.Min(range.End, newTotal + 1), newTotal);
+        }
+        else ReadLedger.Record(file, data);
         return $"Edited {RelativePath(WorkspaceRoot(workspace), file)} ({string.Join("; ", summary)}).";
     }
 
@@ -280,6 +305,15 @@ public static class NativeFileEdit
         }
         return positions;
     }
+
+    /// Moves read ranges after an edit that ended on <paramref name="editEnd"/> and
+    /// changed the line count by <paramref name="delta"/>: later ranges shift, the
+    /// range holding the edit stretches or shrinks, earlier ones stay.
+    internal static List<(int Start, int End)> ShiftRanges(List<(int Start, int End)> ranges, int editEnd, int delta) =>
+        ranges.Select(range => range.Start > editEnd
+                ? (range.Start + delta, range.End + delta)
+                : range.End > editEnd ? (range.Start, range.End + delta) : range)
+            .ToList();
 
     internal static int LineNumber(string text, int position)
     {

@@ -11,10 +11,74 @@ internal class MobilePromptHistory(initialPolicy: String? = null) {
     private var capturedContext: String? = null
 
     companion object {
-        const val CODING_REPLAY_TOKEN_LIMIT = 32_768
+        /** Compacts at the user's percentage of the provider's own context window. */
         fun compactionThreshold(window: Int, percent: Int): Int =
             ((window.coerceAtLeast(1).toDouble() * percent.coerceIn(0, 100) / 100.0).toInt())
-                .coerceIn(1, CODING_REPLAY_TOKEN_LIMIT)
+                .coerceAtLeast(1)
+
+        const val SUPERSEDED_READ_MARKER =
+            "[read_file result superseded: the same lines of this file were read again later in this conversation]"
+
+        /**
+         * Replaces an older read_file result with a one-line marker when the same
+         * lines of the same file (same path, offset and limit) were read again later:
+         * the later result is the current one, the older copy only inflates every
+         * request. Call it once when a new user turn starts; rewriting history moves
+         * the cached prefix, so doing it mid-turn would miss the cache on every request.
+         * Changes [wire] in place and says whether anything changed.
+         */
+        fun supersedeRepeatedReads(wire: List<JSONObject>): Boolean {
+            val keys = mutableMapOf<String, String>()
+            for (message in wire.filter { it.optString("role") == "assistant" }) {
+                val content = message.optJSONArray("content") ?: JSONArray()
+                for (index in 0 until content.length()) {
+                    val block = content.optJSONObject(index) ?: continue
+                    if (block.optString("type") != "tool_use" || block.optString("name") != "read_file") continue
+                    readKey(block.optJSONObject("input"))?.let { keys[block.optString("id")] = it }
+                }
+                val items = message.optJSONArray("responses_output_items") ?: JSONArray()
+                for (index in 0 until items.length()) {
+                    val item = items.optJSONObject(index) ?: continue
+                    if (item.optString("type") != "function_call" || item.optString("name") != "read_file") continue
+                    val input = runCatching { JSONObject(item.optString("arguments")) }.getOrNull()
+                    readKey(input)?.let { keys[item.optString("call_id")] = it }
+                }
+            }
+            if (keys.size < 2) return false
+
+            val results = mutableListOf<Pair<JSONObject, String>>()
+            for (message in wire.filter { it.optString("role") == "user" }) {
+                val content = message.optJSONArray("content") ?: continue
+                for (index in 0 until content.length()) {
+                    val block = content.optJSONObject(index) ?: continue
+                    if (block.optString("type") != "tool_result" || block.optBoolean("is_error")) continue
+                    val key = keys[block.optString("tool_use_id")] ?: continue
+                    if (isReadBody(block.opt("content") as? String)) results += block to key
+                }
+            }
+            val latest = results.associate { (block, key) -> key to block }
+            var changed = false
+            for ((block, key) in results) {
+                if (latest[key] === block) continue
+                block.put("content", SUPERSEDED_READ_MARKER)
+                changed = true
+            }
+            return changed
+        }
+
+        private fun readKey(input: JSONObject?): String? {
+            if (input == null) return null
+            var path = input.optString("path").trim().replace('\\', '/')
+            while (path.startsWith("./")) path = path.substring(2)
+            if (path.isEmpty()) return null
+            val offset = if (input.has("offset")) input.optInt("offset", 1).coerceAtLeast(1) else 1
+            val limit = if (input.has("limit")) input.optInt("limit").toString() else ""
+            return "$path\n$offset\n$limit"
+        }
+
+        /** Tool errors are not file contents; they never supersede and are never superseded. */
+        private fun isReadBody(content: String?): Boolean =
+            content != null && content != SUPERSEDED_READ_MARKER && !content.startsWith("Tool error") && !content.startsWith("Error")
 
         fun restore(value: JSONObject?, fallbackPolicy: String? = null): MobilePromptHistory =
             MobilePromptHistory(value?.optString("policy")?.takeIf { it.isNotEmpty() } ?: fallbackPolicy).apply {

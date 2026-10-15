@@ -946,6 +946,8 @@ class MobileHarnessRuntime(
         val attachmentLabel = attachments.joinToString(", ") { it.displayName }
         transcript = transcript + AgentTurn("user", listOf(prompt, attachmentLabel.takeIf { it.isNotEmpty() }?.let { "[Attachments: $it]" }).filterNotNull().filter { it.isNotEmpty() }.joinToString("\n"))
         val captured = promptHistory.capture(prompt, activeSystemPrompt(), HerNessPrompt.pluginGuidance(pluginPrompt))
+        // Once per user turn, so the cached prefix moves at most once.
+        MobilePromptHistory.supersedeRepeatedReads(wire)
         wire += canonicalUserMessage(captured, attachments)
         if (consumedQueuedPrompt != null) {
             queuedPrompts.removeAll { it.id == consumedQueuedPrompt.id }

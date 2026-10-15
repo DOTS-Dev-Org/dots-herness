@@ -6,6 +6,30 @@ import org.json.JSONObject
 import org.json.JSONArray
 
 class MobilePromptHistoryTest {
+    @Test fun `only the latest read of the same lines keeps its body`() {
+        fun call(id: String, input: JSONObject) = JSONObject().put("role", "assistant").put("content", JSONArray().put(
+            JSONObject().put("type", "tool_use").put("id", id).put("name", "read_file").put("input", input)))
+        fun result(id: String, content: String) = JSONObject().put("role", "user").put("content", JSONArray().put(
+            JSONObject().put("type", "tool_result").put("tool_use_id", id).put("content", content)))
+        val wire = listOf(
+            JSONObject().put("role", "user").put("content", JSONArray().put(JSONObject().put("type", "text").put("text", "look"))),
+            call("a", JSONObject().put("path", "src/app.kt")), result("a", "old body"),
+            call("b", JSONObject().put("path", "src/app.kt").put("offset", 251)), result("b", "second page"),
+            JSONObject().put("role", "assistant").put("content", JSONArray()).put("responses_output_items", JSONArray().put(
+                JSONObject().put("type", "function_call").put("call_id", "c").put("name", "read_file")
+                    .put("arguments", "{\"path\":\"./src/app.kt\",\"offset\":1}"))),
+            result("c", "new body"),
+        )
+        fun body(index: Int) = wire[index].getJSONArray("content").getJSONObject(0).getString("content")
+
+        assertTrue(MobilePromptHistory.supersedeRepeatedReads(wire))
+        assertEquals(MobilePromptHistory.SUPERSEDED_READ_MARKER, body(2))
+        assertEquals("second page", body(4))
+        assertEquals("new body", body(6))
+        // Running it again changes nothing, so the persisted prefix stays stable.
+        assertFalse(MobilePromptHistory.supersedeRepeatedReads(wire))
+    }
+
     @Test fun `unchanged context and policy updates are sent once and reversion is explicit`() {
         val history = MobilePromptHistory()
         assertEquals("plugin\n\none", history.capture("one", "policy one", "plugin"))
@@ -18,9 +42,9 @@ class MobilePromptHistoryTest {
         assertEquals("plugin\n\nseven", history.capture("seven", "policy one", "plugin"))
     }
 
-    @Test fun `replay budget caps large windows and honors lower percentages`() {
-        assertEquals(32_768, MobilePromptHistory.compactionThreshold(272_000, 90))
-        assertEquals(32_768, MobilePromptHistory.compactionThreshold(1_000_000, 90))
+    @Test fun `threshold is the percentage of the provider window`() {
+        assertEquals(244_800, MobilePromptHistory.compactionThreshold(272_000, 90))
+        assertEquals(900_000, MobilePromptHistory.compactionThreshold(1_000_000, 90))
         assertEquals(22_937, MobilePromptHistory.compactionThreshold(32_768, 70))
         assertEquals(1, MobilePromptHistory.compactionThreshold(1_000_000, 0))
     }

@@ -2,6 +2,32 @@ import XCTest
 @testable import DotsHarnessCore
 
 final class ContextCompactionTests: XCTestCase {
+    func testOnlyTheLatestReadOfTheSameLinesKeepsItsBody() {
+        func call(_ id: String, _ arguments: String) -> AgentMessage {
+            AgentMessage(role: .assistant, content: "", toolCalls: [AgentToolCall(id: id, name: "read_file", arguments: arguments)])
+        }
+        func result(_ id: String, _ content: String) -> AgentMessage {
+            AgentMessage(role: .tool, content: content, name: "read_file", toolCallID: id)
+        }
+        let messages = [
+            AgentMessage(role: .user, content: "look"),
+            call("a", #"{"path":"src/app.swift"}"#), result("a", "old body"),
+            call("b", #"{"path":"src/app.swift","offset":251}"#), result("b", "second page"),
+            call("c", #"{"path":"./src/app.swift","offset":1}"#), result("c", "new body"),
+            call("d", #"{"path":"src/other.swift"}"#), result("d", "Tool error: missing"),
+            call("e", #"{"path":"src/other.swift"}"#), result("e", "Tool error: missing again"),
+        ]
+
+        let reduced = AgentContextCompaction.supersedeRepeatedReads(messages)
+
+        XCTAssertEqual(reduced[2].content, AgentContextCompaction.supersededReadMarker)
+        XCTAssertEqual(reduced[4].content, "second page")
+        XCTAssertEqual(reduced[6].content, "new body")
+        XCTAssertEqual(reduced[8].content, "Tool error: missing")
+        // Running it again changes nothing, so the persisted prefix stays stable.
+        XCTAssertEqual(AgentContextCompaction.supersedeRepeatedReads(reduced), reduced)
+    }
+
     func testEconomyPolicyUsesNinetyPercentAndReservesLargeDynamicOutput() {
         let budget = AgentContextCompaction.budget(
             contextWindow: 32_768,
@@ -132,17 +158,18 @@ final class ContextCompactionTests: XCTestCase {
         defaults.set(70.0, forKey: AgentContextCompactionPolicy.triggerPercentKey)
         let percent = AgentContextCompactionPolicy.current(defaults: defaults)
         XCTAssertEqual(percent.id, .custom)
-        XCTAssertEqual(percent.triggerTokens(window: 250_000), 32_768)
-        XCTAssertEqual(percent.triggerTokens(window: 1_000_000), 32_768)
+        XCTAssertEqual(percent.triggerTokens(window: 250_000), 175_000)
+        XCTAssertEqual(percent.triggerTokens(window: 1_000_000), 700_000)
 
-        // The old ignored key cannot override the new replay budget.
+        // The old ignored key cannot cap the percentage.
         defaults.set(300_000, forKey: AgentContextCompactionPolicy.maxTokensKey)
         let withoutLegacyCap = AgentContextCompactionPolicy.current(defaults: defaults)
-        XCTAssertEqual(withoutLegacyCap.triggerTokens(window: 1_000_000), 32_768)
-        XCTAssertEqual(withoutLegacyCap.maxTokens, 32_768)
+        XCTAssertEqual(withoutLegacyCap.triggerTokens(window: 1_000_000), 700_000)
+        XCTAssertNil(withoutLegacyCap.maxTokens)
 
-        defaults.set(800_000, forKey: AgentContextCompactionPolicy.replayBudgetKey)
-        XCTAssertEqual(AgentContextCompactionPolicy.current(defaults: defaults).triggerTokens(window: 1_000_000), 700_000)
+        // An explicit replay budget still caps it.
+        defaults.set(400_000, forKey: AgentContextCompactionPolicy.replayBudgetKey)
+        XCTAssertEqual(AgentContextCompactionPolicy.current(defaults: defaults).triggerTokens(window: 1_000_000), 400_000)
 
         defaults.set(0, forKey: AgentContextCompactionPolicy.triggerPercentKey)
         XCTAssertEqual(AgentContextCompactionPolicy.current(defaults: defaults).triggerTokens(window: 1_000), 1)

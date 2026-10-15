@@ -71,6 +71,21 @@ final class ReadLedger: @unchecked Sendable {
         order.removeAll { $0 == key }
     }
 
+    /// Lines (1-based) read from exactly this version. A complete read covers the
+    /// whole file. Stale when an older version was read; unread when nothing was.
+    func coverage(for file: URL, data: Data, totalLines: Int) -> (state: State, lines: IndexSet) {
+        let key = Self.key(file)
+        let hash = Self.hash(data)
+        lock.lock(); defer { lock.unlock() }
+        if let known = hashes[key] {
+            return known == hash ? (.fresh, IndexSet(integersIn: 1..<(totalLines + 1))) : (.stale, IndexSet())
+        }
+        if let page = pages[key] {
+            return page.hash == hash ? (.fresh, page.lines) : (.stale, IndexSet())
+        }
+        return (.unread, IndexSet())
+    }
+
     func state(for file: URL, data: Data) -> State {
         let key = Self.key(file)
         lock.lock()

@@ -263,6 +263,26 @@ final class FileEditToolsTests: XCTestCase {
         XCTAssertEqual(answer, "Tool error: long.txt has not been read in this conversation. Read it before editing.")
     }
 
+    func testPartialReadAllowsEditsInsideItAndCarriesTheRangeOver() async throws {
+        let text = (1...600).map { "line-\($0)" }.joined(separator: "\n")
+        try seed(["long.txt": text])
+        let url = base.appendingPathComponent("long.txt")
+        ReadLedger.shared.forget(url)
+        // One default page: lines 1-250.
+        ReadLedger.shared.recordLines(url, data: Data(text.utf8), lines: 1..<251, totalLines: 600)
+
+        var answer = await FileEditTools.edit(path: "long.txt", edits: [["old_text": "line-10\n", "new_text": "line-10\nadded-a\nadded-b\n"]], resolve: resolver())
+        XCTAssertTrue(answer.hasPrefix("Edited"), answer)
+        // The read lines moved two down with the edit: line-250 still counts as read,
+        // line-251 still does not.
+        answer = await FileEditTools.edit(path: "long.txt", edits: [["old_text": "line-250\n", "new_text": "line-250!\n"]], resolve: resolver())
+        XCTAssertTrue(answer.hasPrefix("Edited"), answer)
+        answer = await FileEditTools.edit(path: "long.txt", edits: [["old_text": "line-251\n", "new_text": "nope\n"]], resolve: resolver())
+        XCTAssertTrue(answer.contains("which were not read"), answer)
+        // write_file still needs the whole file.
+        XCTAssertEqual(ReadLedger.shared.state(for: url, data: try Data(contentsOf: url)), .unread)
+    }
+
     // MARK: - Helpers
 
     private func resolver() -> FileEditTools.PathResolver {

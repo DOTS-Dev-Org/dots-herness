@@ -21,11 +21,11 @@ final class TokenEconomyTests: XCTestCase {
         try? FileManager.default.removeItem(at: root)
     }
 
-    func testLargeCodingWindowsCompactBeforeReplayGrowsToTheWindowLimit() {
+    func testLargeCodingWindowsCompactAtTheirPercentageAndEconomyKeepsItsCeiling() {
         for window in [272_000, 1_000_000] {
             let standard = AgentContextCompaction.budget(contextWindow: window, policy: .baseline)
             let economy = AgentContextCompaction.budget(contextWindow: window, policy: .economy)
-            XCTAssertEqual(standard.triggerTokens, 32_768)
+            XCTAssertEqual(standard.triggerTokens, Int(Double(standard.usableInputTokens) * 0.90))
             XCTAssertEqual(economy.triggerTokens, 16_384)
             XCTAssertLessThan(standard.targetTokens, standard.triggerTokens)
             XCTAssertLessThan(economy.targetTokens, economy.triggerTokens)
@@ -34,7 +34,7 @@ final class TokenEconomyTests: XCTestCase {
                 contextWindow: window, supportsNativeCompaction: true, compactionPolicy: .baseline
             ))
             let body = client.makeBody(messages: [AgentMessage(role: .user, content: "fix code")], tools: [], cachePolicy: .init())
-            XCTAssertEqual((body["context_management"] as? [[String: Any]])?.first?["compact_threshold"] as? Int, 32_768)
+            XCTAssertEqual((body["context_management"] as? [[String: Any]])?.first?["compact_threshold"] as? Int, Int(Double(window) * 0.90))
         }
     }
 

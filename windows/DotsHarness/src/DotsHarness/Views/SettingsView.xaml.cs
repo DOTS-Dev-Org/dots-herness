@@ -625,11 +625,15 @@ public partial class SettingsView : UserControl
             var selectedModel = _model.SelectedModelID;
             var isAutoModel = string.IsNullOrWhiteSpace(selectedModel) || selectedModel == "auto";
             var compactPercentForModel = _model.UsageMode == AgentUsageMode.Economy ? 90 : _model.ContextCompactionThresholdPercent;
-            var compactLimit = _model.UsageMode == AgentUsageMode.Economy
-                ? ContextCompaction.EconomyReplayTokenLimit
-                : ContextCompaction.CodingReplayTokenLimit;
+            var economy = _model.UsageMode == AgentUsageMode.Economy;
+            if (isAutoModel && !economy)
+            {
+                return _model.Language == AppLanguage.Turkish
+                    ? $"Otomatik modelde her modelin penceresinin %{compactPercentForModel}'i"
+                    : $"Auto-routed models: {compactPercentForModel}% of each model's window";
+            }
             var compactThreshold = isAutoModel
-                ? compactLimit
+                ? ContextCompaction.EconomyReplayTokenLimit
                 : ContextCompaction.NativeThreshold(
                     _model.Router.ContextWindowFor(selectedModel),
                     compactPercentForModel,

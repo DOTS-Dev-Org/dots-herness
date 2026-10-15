@@ -13,7 +13,7 @@ public readonly record struct ContextBudget(
     int UsableInputTokens,
     double TriggerRatio = ContextCompaction.TriggerRatio,
     double TargetRatio = ContextCompaction.TargetRatio,
-    int? MaxTokens = ContextCompaction.CodingReplayTokenLimit)
+    int? MaxTokens = null)
 {
     private double CeilingScale => MaxTokens is > 0 && UsableInputTokens * TriggerRatio > MaxTokens.Value
         ? MaxTokens.Value / (UsableInputTokens * TriggerRatio) : 1;
@@ -45,11 +45,14 @@ public sealed record ContextCompactionSelection(
 /// memory store. The visible transcript and files on disk remain the source of truth.
 public static class ContextCompaction
 {
-    public const int CodingReplayTokenLimit = 32_768;
+    /// Economy mode is the only absolute ceiling. Every other mode compacts at
+    /// the user's percentage of the provider's own context window.
     public const int EconomyReplayTokenLimit = 16_384;
-    public static int NativeThreshold(int window, int percent, bool economy = false) =>
-        Math.Max(1, Math.Min(economy ? EconomyReplayTokenLimit : CodingReplayTokenLimit,
-            (int)(Math.Max(1, window) * Math.Clamp(percent, 0, 100) / 100d)));
+    public static int NativeThreshold(int window, int percent, bool economy = false)
+    {
+        var threshold = Math.Max(1, (int)(Math.Max(1, window) * Math.Clamp(percent, 0, 100) / 100d));
+        return economy ? Math.Min(EconomyReplayTokenLimit, threshold) : threshold;
+    }
     public const string SummaryMarker = "[context-summary-v1]";
     public const string LocalHistoryReductionMarker = "[local-context-window-v1]";
     public const double TriggerRatio = 0.90;
@@ -96,7 +99,7 @@ public static class ContextCompaction
             economy ? 0.65 : Math.Min(
                 Math.Clamp(triggerPercent, 0, 100) / 100d,
                 Math.Max(0, Math.Clamp(triggerPercent, 0, 100) / 100d - 0.25)),
-            economy ? EconomyReplayTokenLimit : CodingReplayTokenLimit);
+            economy ? EconomyReplayTokenLimit : null);
     }
 
     public static int EstimateTokens(NativeMessage message)
@@ -225,6 +228,78 @@ Arşiv kanıtı:
 {evidence}
 """;
     }
+
+    public const string SupersededReadMarker =
+        "[read_file result superseded: the same lines of this file were read again later in this conversation]";
+
+    /// <summary>
+    /// Replaces an older read_file result with a one-line marker when the same lines
+    /// of the same file (same path, offset and limit) were read again later: the later
+    /// result is the current one, the older copy only inflates every request. Call it
+    /// once when a new user turn starts and persist the result. Rewriting history
+    /// moves the cached prefix, so doing it mid-turn would miss the cache on every
+    /// request instead of once.
+    /// </summary>
+    public static List<NativeMessage> SupersedeRepeatedReads(IReadOnlyList<NativeMessage> messages)
+    {
+        var keys = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var call in messages.Where(message => message.Role == "assistant").SelectMany(message => message.ToolCalls ?? []))
+        {
+            if (string.Equals(call.Name, "read_file", StringComparison.OrdinalIgnoreCase) && ReadKey(call.Arguments) is { } key)
+                keys[call.Id] = key;
+        }
+        if (keys.Count < 2) return messages.ToList();
+
+        var latest = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (var index = 0; index < messages.Count; index++)
+        {
+            var message = messages[index];
+            if (message.Role == "tool" && message.ToolCallId is { } id && keys.TryGetValue(id, out var key) && IsReadBody(message.Content))
+                latest[key] = index;
+        }
+        var result = messages.ToList();
+        for (var index = 0; index < result.Count; index++)
+        {
+            var message = result[index];
+            if (message.Role != "tool" || message.ToolCallId is not { } id || !keys.TryGetValue(id, out var key)) continue;
+            if (!latest.TryGetValue(key, out var last) || last <= index || !IsReadBody(message.Content)) continue;
+            result[index] = message with
+            {
+                Content = SupersededReadMarker,
+                ProviderItems = EconomyPolicy.NormalizeProviderItems(message.ProviderItems, SupersededReadMarker),
+            };
+        }
+        return result;
+    }
+
+    private static string? ReadKey(string arguments)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(arguments);
+            var root = document.RootElement;
+            if (!root.TryGetProperty("path", out var path) || path.ValueKind != JsonValueKind.String) return null;
+            var normalized = (path.GetString() ?? "").Trim().Replace('\\', '/');
+            while (normalized.StartsWith("./", StringComparison.Ordinal)) normalized = normalized[2..];
+            if (normalized.Length == 0) return null;
+            var offset = root.TryGetProperty("offset", out var o) && o.TryGetInt32(out var start) ? Math.Max(1, start) : 1;
+            var limit = root.TryGetProperty("limit", out var l) && l.TryGetInt32(out var take) ? take.ToString() : "";
+            return $"{normalized}\n{offset}\n{limit}";
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// Error answers are not file contents; they never supersede and are never superseded.
+    private static bool IsReadBody(string content) =>
+        content != SupersededReadMarker
+        && !content.StartsWith("Tool error", StringComparison.Ordinal)
+        && !content.StartsWith("Error", StringComparison.Ordinal)
+        && !content.StartsWith("A file path is required", StringComparison.Ordinal)
+        && !content.StartsWith("Offset is past the end", StringComparison.Ordinal)
+        && !content.StartsWith("File is not UTF-8", StringComparison.Ordinal);
 
     public static bool TrimToolResults(List<NativeMessage> messages, int targetTokens)
     {

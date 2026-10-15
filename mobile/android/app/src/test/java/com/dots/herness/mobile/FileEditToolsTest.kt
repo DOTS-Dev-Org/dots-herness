@@ -46,12 +46,38 @@ class FileEditToolsTest {
         val file = seed("project.swift", original, read = false)
         for (start in 1..240 step 20) {
             AgentTools.readFile(root, "project.swift", start, 20)
-            if (start == 1) assertTrue(edit("project.swift", replacement("line-180:", "fixed-180:")).contains("has not been read"))
+            if (start == 1) assertTrue(edit("project.swift", replacement("line-180:", "fixed-180:")).contains("lines 180-180 of project.swift, which were not read"))
         }
         assertTrue(edit("project.swift", replacement("line-180:", "fixed-180:")).startsWith("Edited"))
         assertEquals(original.replace("line-180:", "fixed-180:"), file.readText())
         assertTrue(AgentTools.readFile(root, "project.swift", 180, 1).startsWith("fixed-180:"))
         assertEquals(ReadState.FRESH, AgentTools.reads.state(file, file.readBytes()))
+    }
+
+    @Test
+    fun `a partial read allows edits inside it and carries the range over`() {
+        val file = seed("long.txt", (1..600).joinToString("\n") { "line-$it" }, read = false)
+        val page = AgentTools.readFile(root, "long.txt")
+        assertTrue(page, page.endsWith("[truncated] Continue with offset: 251"))
+        assertFalse(page.contains("line-251"))
+
+        assertTrue(edit("long.txt", replacement("line-10\n", "line-10\nadded-a\nadded-b\n")).startsWith("Edited"))
+        // The read range moved two lines down with the edit: line-250 still counts as
+        // read, line-251 still does not.
+        assertTrue(edit("long.txt", replacement("line-250\n", "line-250!\n")).startsWith("Edited"))
+        assertTrue(edit("long.txt", replacement("line-251\n", "nope\n")).contains("which were not read"))
+        assertFalse(file.readText().contains("nope"))
+        // write_file still needs the whole file.
+        assertEquals(ReadState.UNREAD, AgentTools.reads.state(file, file.readBytes()))
+    }
+
+    @Test
+    fun `replace all on a partial read needs every occurrence read`() {
+        seed("dup.txt", (1..400).joinToString("\n") { if (it == 5 || it == 300) "same" else "l$it" }, read = false)
+        AgentTools.readFile(root, "dup.txt")
+        val result = edit("dup.txt", replacement("same", "other", replaceAll = true))
+        assertTrue(result, result.contains("lines 300-300"))
+        assertFalse(contents("dup.txt").contains("other"))
     }
 
     @Test
