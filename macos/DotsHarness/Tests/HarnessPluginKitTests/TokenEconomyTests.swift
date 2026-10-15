@@ -21,12 +21,12 @@ final class TokenEconomyTests: XCTestCase {
         try? FileManager.default.removeItem(at: root)
     }
 
-    func testLargeCodingWindowsCompactAtTheirPercentageAndEconomyKeepsItsCeiling() {
+    func testLargeWindowsCompactAtTheirPercentageInEveryMode() {
         for window in [272_000, 1_000_000] {
             let standard = AgentContextCompaction.budget(contextWindow: window, policy: .baseline)
             let economy = AgentContextCompaction.budget(contextWindow: window, policy: .economy)
             XCTAssertEqual(standard.triggerTokens, Int(Double(standard.usableInputTokens) * 0.90))
-            XCTAssertEqual(economy.triggerTokens, 16_384)
+            XCTAssertEqual(economy.triggerTokens, Int(Double(economy.usableInputTokens) * 0.90))
             XCTAssertLessThan(standard.targetTokens, standard.triggerTokens)
             XCTAssertLessThan(economy.targetTokens, economy.triggerTokens)
             let client = NativeAgentClient(configuration: AgentConfiguration(

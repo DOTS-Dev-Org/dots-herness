@@ -918,7 +918,7 @@ public sealed class NativeProviderRouter
         {
             var percent = UsageMode == AgentUsageMode.Economy ? 90 : Math.Clamp(CompactionThresholdPercent, 0, 100);
             var window = contextWindow ?? route.ContextWindow ?? 200_000;
-            var triggerTokens = ContextCompaction.NativeThreshold(window, percent, UsageMode == AgentUsageMode.Economy);
+            var triggerTokens = ContextCompaction.NativeThreshold(window, percent);
             body["context_management"] = new JsonObject
             {
                 ["edits"] = new JsonArray(new JsonObject
@@ -944,7 +944,7 @@ public sealed class NativeProviderRouter
             body["context_management"] = new JsonArray(new JsonObject
             {
                 ["type"] = "compaction",
-                ["compact_threshold"] = ContextCompaction.NativeThreshold(window, percent, UsageMode == AgentUsageMode.Economy),
+                ["compact_threshold"] = ContextCompaction.NativeThreshold(window, percent),
             });
         }
         var routeCacheKey = RouteCacheKey(promptCacheKey, route, model ?? route.Model);

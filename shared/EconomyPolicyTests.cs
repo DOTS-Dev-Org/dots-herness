@@ -6,18 +6,17 @@ namespace DotsHarness.Tests;
 public sealed class EconomyPolicyTests
 {
     [Fact]
-    public void LargeWindowsCompactAtTheirPercentageAndEconomyKeepsItsCeiling()
+    public void LargeWindowsCompactAtTheirPercentageInEveryMode()
     {
         foreach (var window in new[] { 272_000, 1_000_000 })
         {
             var standard = ContextCompaction.Budget(window);
             var economy = ContextCompaction.Budget(window, economy: true);
             Assert.Equal((int)(standard.UsableInputTokens * .90), standard.TriggerTokens);
-            Assert.Equal(16_384, economy.TriggerTokens);
+            Assert.Equal((int)(economy.UsableInputTokens * .90), economy.TriggerTokens);
             Assert.True(standard.TargetTokens < standard.TriggerTokens);
             Assert.True(economy.TargetTokens < economy.TriggerTokens);
             Assert.Equal((int)(window * .90), ContextCompaction.NativeThreshold(window, 90));
-            Assert.Equal(16_384, ContextCompaction.NativeThreshold(window, 90, true));
         }
         Assert.Equal(1, ContextCompaction.NativeThreshold(1_000_000, 0));
     }

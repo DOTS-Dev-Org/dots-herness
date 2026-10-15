@@ -45,14 +45,10 @@ public sealed record ContextCompactionSelection(
 /// memory store. The visible transcript and files on disk remain the source of truth.
 public static class ContextCompaction
 {
-    /// Economy mode is the only absolute ceiling. Every other mode compacts at
-    /// the user's percentage of the provider's own context window.
-    public const int EconomyReplayTokenLimit = 16_384;
-    public static int NativeThreshold(int window, int percent, bool economy = false)
-    {
-        var threshold = Math.Max(1, (int)(Math.Max(1, window) * Math.Clamp(percent, 0, 100) / 100d));
-        return economy ? Math.Min(EconomyReplayTokenLimit, threshold) : threshold;
-    }
+    /// Every mode compacts at a percentage of the provider's own context window;
+    /// there is no absolute token ceiling.
+    public static int NativeThreshold(int window, int percent) =>
+        Math.Max(1, (int)(Math.Max(1, window) * Math.Clamp(percent, 0, 100) / 100d));
     public const string SummaryMarker = "[context-summary-v1]";
     public const string LocalHistoryReductionMarker = "[local-context-window-v1]";
     public const double TriggerRatio = 0.90;
@@ -99,7 +95,7 @@ public static class ContextCompaction
             economy ? 0.65 : Math.Min(
                 Math.Clamp(triggerPercent, 0, 100) / 100d,
                 Math.Max(0, Math.Clamp(triggerPercent, 0, 100) / 100d - 0.25)),
-            economy ? EconomyReplayTokenLimit : null);
+            null);
     }
 
     public static int EstimateTokens(NativeMessage message)

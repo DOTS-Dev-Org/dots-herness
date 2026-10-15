@@ -625,28 +625,20 @@ public partial class SettingsView : UserControl
             var selectedModel = _model.SelectedModelID;
             var isAutoModel = string.IsNullOrWhiteSpace(selectedModel) || selectedModel == "auto";
             var compactPercentForModel = _model.UsageMode == AgentUsageMode.Economy ? 90 : _model.ContextCompactionThresholdPercent;
-            var economy = _model.UsageMode == AgentUsageMode.Economy;
-            if (isAutoModel && !economy)
+            if (isAutoModel)
             {
                 return _model.Language == AppLanguage.Turkish
                     ? $"Otomatik modelde her modelin penceresinin %{compactPercentForModel}'i"
                     : $"Auto-routed models: {compactPercentForModel}% of each model's window";
             }
-            var compactThreshold = isAutoModel
-                ? ContextCompaction.EconomyReplayTokenLimit
-                : ContextCompaction.NativeThreshold(
-                    _model.Router.ContextWindowFor(selectedModel),
-                    compactPercentForModel,
-                    _model.UsageMode == AgentUsageMode.Economy);
+            var compactThreshold = ContextCompaction.NativeThreshold(
+                _model.Router.ContextWindowFor(selectedModel),
+                compactPercentForModel);
             var compactCount = compactThreshold.ToString("N0", CultureInfo.GetCultureInfo(
                 _model.Language == AppLanguage.Turkish ? "tr-TR" : "en-US"));
-            return isAutoModel
-                ? (_model.Language == AppLanguage.Turkish
-                    ? $"Otomatik modelde en çok {compactCount} token"
-                    : $"Auto-routed models: up to {compactCount} tokens")
-                : (_model.Language == AppLanguage.Turkish
-                    ? $"Etkin eşik: {compactCount} token"
-                    : $"Effective threshold: {compactCount} tokens");
+            return _model.Language == AppLanguage.Turkish
+                ? $"Etkin eşik: {compactCount} token"
+                : $"Effective threshold: {compactCount} tokens";
         }
         void RefreshCompactThresholdLabel()
         {
