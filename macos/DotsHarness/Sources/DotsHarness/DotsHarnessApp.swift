@@ -269,7 +269,9 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelega
 }
 
 extension AppDelegate {
-    func application(_ application: NSApplication, open urls: [URL]) -> Bool {
+    // Must return Void: a Bool-returning variant does not match the
+    // NSApplicationDelegate requirement, so AppKit never calls it.
+    func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls where url.scheme == "herness" {
             showMainWindow()
             Task { @MainActor [weak self] in
@@ -278,7 +280,6 @@ extension AppDelegate {
                 model.syncAccountFromMarketplace()
             }
         }
-        return urls.contains { $0.scheme == "herness" }
     }
 }
 
