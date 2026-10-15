@@ -8,8 +8,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PluginRuntime", "src\Plugin
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotsHarnessCore", "src\DotsHarnessCore\DotsHarnessCore.csproj", "{A1B2C3D4-0001-4000-8000-000000000003}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FableThinkingPlugin", "src\FableThinkingPlugin\FableThinkingPlugin.csproj", "{A1B2C3D4-0001-4000-8000-000000000004}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelloPlugin", "src\HelloPlugin\HelloPlugin.csproj", "{A1B2C3D4-0001-4000-8000-000000000006}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VisionPlugin", "src\VisionPlugin\VisionPlugin.csproj", "{A1B2C3D4-0001-4000-8000-00000000000A}"
@@ -38,10 +36,6 @@ Global
 		{A1B2C3D4-0001-4000-8000-000000000003}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1B2C3D4-0001-4000-8000-000000000003}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1B2C3D4-0001-4000-8000-000000000003}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A1B2C3D4-0001-4000-8000-000000000004}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A1B2C3D4-0001-4000-8000-000000000004}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A1B2C3D4-0001-4000-8000-000000000004}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A1B2C3D4-0001-4000-8000-000000000004}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A1B2C3D4-0001-4000-8000-000000000006}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A1B2C3D4-0001-4000-8000-000000000006}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1B2C3D4-0001-4000-8000-000000000006}.Release|Any CPU.ActiveCfg = Release|Any CPU

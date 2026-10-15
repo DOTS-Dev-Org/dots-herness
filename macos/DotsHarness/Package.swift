@@ -11,7 +11,6 @@ let package = Package(
         .executable(name: "DotsHarness", targets: ["DotsHarness"]),
         .executable(name: "dotsplugin", targets: ["DotsPluginTool"]),
         .library(name: "HarnessPluginKit", type: .dynamic, targets: ["HarnessPluginKit"]),
-        .library(name: "FableThinkingPlugin", type: .dynamic, targets: ["FableThinkingPlugin"]),
         .library(name: "HelloPlugin", type: .dynamic, targets: ["HelloPlugin"]),
         // Not linked by the app; dlopen'd on first transcription so whisper +
         // ggml/Metal never enter the launch-time dyld graph when voice is unused.
@@ -62,11 +61,6 @@ let package = Package(
             resources: [.process("Resources")]
         ),
         .target(
-            name: "FableThinkingPlugin",
-            dependencies: ["HarnessPluginKit"],
-            path: "Sources/FableThinkingPlugin"
-        ),
-        .target(
             name: "HelloPlugin",
             dependencies: ["HarnessPluginKit"],
             path: "Examples/HelloPlugin/Sources/HelloPlugin"
@@ -78,7 +72,6 @@ let package = Package(
                 "PluginRuntime",
                 "DotsHarnessCore",
                 "DotsHarnessUI",
-                "FableThinkingPlugin",
             ],
             path: "Sources/DotsHarness",
             resources: [.process("Resources")]
@@ -95,7 +88,6 @@ let package = Package(
                 "PluginRuntime",
                 "DotsHarnessCore",
                 "DotsHarnessUI",
-                "FableThinkingPlugin",
             ],
             path: "Tests/HarnessPluginKitTests"
         ),
