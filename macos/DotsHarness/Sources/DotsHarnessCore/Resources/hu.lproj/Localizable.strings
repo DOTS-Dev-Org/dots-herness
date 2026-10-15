@@ -1327,3 +1327,26 @@
 "archive.confirmDelete" = "Véglegesen törlöd ezt a beszélgetést?";
 "archive.deletePermanently" = "Végleges törlés";
 "conversation.processedTokensCount" = "%@ token";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "Adja meg a modellre jellemző kontextusméretet tokenben. Az „Automatikus” a modell által jelentett vagy dokumentált méretet használja, ha elérhető, egyébként a fiókhoz beállított értéket.";
+"model.context.search" = "Modellek keresése";
+"model.context.detected" = "Automatikus érték: %@ token";
+"model.context.notDetected" = "A szolgáltató nem jelent kontextusméretet.";
+"model.context.empty" = "Még nincs elérhető modell. Csatlakoztasson egy szolgáltatót, vagy frissítse a modelllistát.";
+"model.context.save" = "Mentés";
+"model.context.auto" = "Automatikus";
+"model.context.invalid" = "Adjon meg pozitív egész számot a tokenek számaként.";
+"model.context.saved" = "Mentve.";
+"conversation.activity.filesRead" = "Fájlokat olvasott";
+"conversation.activity.filesChanged" = "Fájlokat módosított";
+"conversation.activity.commandsRun" = "Parancsokat futtatott";
+"conversation.activity.webSearch" = "Keresett a weben";
+"conversation.activity.filesReading" = "Fájlok olvasása…";
+"conversation.activity.filesChanging" = "Fájlok szerkesztése…";
+"conversation.activity.commandsRunning" = "Parancsok futtatása…";
+"conversation.activity.webSearching" = "Keresés a weben…";
+"conversation.activity.otherDone" = "Eszközt használt";
+"conversation.activity.otherRunning" = "Eszköz futtatása…";
+"conversation.activity.toolFailed" = "Az eszköz hibát jelzett: %@";
+"conversation.contextCompactedAuto" = "A kontextus automatikusan tömörítve";

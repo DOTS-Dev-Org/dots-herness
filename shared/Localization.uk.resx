@@ -636,4 +636,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} токенів</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>Вкажіть розмір контексту для моделі в токенах. «Автоматично» використовує розмір, повідомлений моделлю або вказаний у документації, а якщо його немає — значення, задане для облікового запису.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>Пошук моделей</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>Автоматичне значення: {0} токенів</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>Постачальник не повідомляє розмір контексту.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>Моделі ще недоступні. Підключіть постачальника або оновіть список моделей.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>Збережено.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>Автоматично</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>Введіть додатне ціле число токенів.</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>Контекст стиснуто автоматично</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>Прочитано файли</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>Змінено файли</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>Виконано команди</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>Виконано пошук в інтернеті</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>Читання файлів…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>Редагування файлів…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>Виконання команд…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>Пошук в інтернеті…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>Використано інструмент</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>Виконується інструмент…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>Збій інструменту: {0}</value></data>
 </root>

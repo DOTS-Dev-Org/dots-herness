@@ -635,4 +635,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} டோக்கன்கள்</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>மாடலுக்கான சூழல் அளவை டோக்கன்களில் உள்ளிடவும். "தானியங்கு" கிடைக்கும்போது மாடல் தெரிவித்த அல்லது ஆவணப்படுத்திய அளவையும், பின்னர் கணக்கிற்கு அமைக்கப்பட்ட மதிப்பையும் பயன்படுத்தும்.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>மாடல்களைத் தேடு</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>தானியங்கு மதிப்பு: {0} டோக்கன்கள்</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>வழங்குநர் சூழல் அளவைத் தெரிவிக்கவில்லை.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>இன்னும் மாடல்கள் எதுவும் இல்லை. ஒரு வழங்குநரை இணைக்கவும் அல்லது மாடல் பட்டியலைப் புதுப்பிக்கவும்.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>சேமிக்கப்பட்டது.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>தானியங்கு</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>டோக்கன்களின் எண்ணிக்கையை நேர்ம முழு எண்ணாக உள்ளிடவும்.</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>சூழல் தானாகச் சுருக்கப்பட்டது</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>கோப்புகளைப் படித்தது</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>கோப்புகளை மாற்றியது</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>கட்டளைகளை இயக்கியது</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>இணையத்தில் தேடியது</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>கோப்புகளைப் படிக்கிறது…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>கோப்புகளைத் திருத்துகிறது…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>கட்டளைகளை இயக்குகிறது…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>இணையத்தில் தேடுகிறது…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>ஒரு கருவியைப் பயன்படுத்தியது</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>கருவி இயங்குகிறது…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>கருவி தோல்வியடைந்தது: {0}</value></data>
 </root>

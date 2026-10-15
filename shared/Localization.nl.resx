@@ -636,4 +636,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} tokens</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>Voer een modelspecifieke contextgrootte in tokens in. 'Automatisch' gebruikt de door het model gemelde of gedocumenteerde grootte als die beschikbaar is, en anders de waarde die voor het account is ingesteld.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>Modellen zoeken</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>Automatische waarde: {0} tokens</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>De provider meldt geen contextgrootte.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>Er zijn nog geen modellen beschikbaar. Verbind een provider of vernieuw de modellijst.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>Opgeslagen.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>Automatisch</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>Voer een positief geheel aantal tokens in.</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>Context automatisch gecomprimeerd</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>Bestanden gelezen</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>Bestanden gewijzigd</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>Opdrachten uitgevoerd</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>Op het web gezocht</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>Bestanden lezen…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>Bestanden bewerken…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>Opdrachten uitvoeren…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>Zoeken op het web…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>Een tool gebruikt</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>Tool uitvoeren…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>Tool mislukt: {0}</value></data>
 </root>

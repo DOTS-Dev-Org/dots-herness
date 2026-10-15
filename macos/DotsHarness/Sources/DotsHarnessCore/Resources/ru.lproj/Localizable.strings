@@ -1307,3 +1307,26 @@
 "archive.confirmDelete" = "Удалить этот разговор навсегда?";
 "archive.deletePermanently" = "Удалить навсегда";
 "conversation.processedTokensCount" = "%@ токенов";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "Укажите размер контекста для модели в токенах. «Автоматически» использует размер, сообщённый моделью или указанный в документации, а если его нет — значение, заданное для аккаунта.";
+"model.context.search" = "Поиск моделей";
+"model.context.detected" = "Автоматическое значение: %@ токенов";
+"model.context.notDetected" = "Провайдер не сообщает размер контекста.";
+"model.context.empty" = "Модели пока недоступны. Подключите провайдера или обновите список моделей.";
+"model.context.save" = "Сохранить";
+"model.context.auto" = "Автоматически";
+"model.context.invalid" = "Введите целое положительное число токенов.";
+"model.context.saved" = "Сохранено.";
+"conversation.activity.filesRead" = "Прочитаны файлы";
+"conversation.activity.filesChanged" = "Изменены файлы";
+"conversation.activity.commandsRun" = "Выполнены команды";
+"conversation.activity.webSearch" = "Выполнен поиск в интернете";
+"conversation.activity.filesReading" = "Чтение файлов…";
+"conversation.activity.filesChanging" = "Редактирование файлов…";
+"conversation.activity.commandsRunning" = "Выполнение команд…";
+"conversation.activity.webSearching" = "Поиск в интернете…";
+"conversation.activity.otherDone" = "Использован инструмент";
+"conversation.activity.otherRunning" = "Выполняется инструмент…";
+"conversation.activity.toolFailed" = "Сбой инструмента: %@";
+"conversation.contextCompactedAuto" = "Контекст сжат автоматически";

@@ -636,4 +636,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} token</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>Inserisci una dimensione del contesto specifica per il modello, in token. «Automatico» usa la dimensione dichiarata o documentata dal modello, se disponibile, e altrimenti il valore configurato per l'account.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>Cerca modelli</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>Valore automatico: {0} token</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>Il provider non indica una dimensione del contesto.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>Nessun modello ancora disponibile. Collega un provider o aggiorna l'elenco dei modelli.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>Salvato.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>Automatico</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>Inserisci un numero intero positivo di token.</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>Contesto compattato automaticamente</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>File letti</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>File modificati</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>Comandi eseguiti</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>Ricerca sul web</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>Lettura dei file…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>Modifica dei file…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>Esecuzione dei comandi…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>Ricerca sul web…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>Strumento utilizzato</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>Esecuzione di uno strumento…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>Strumento non riuscito: {0}</value></data>
 </root>

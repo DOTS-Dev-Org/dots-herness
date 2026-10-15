@@ -635,4 +635,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} ٹوکن</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>ماڈل کے لیے سیاق کا سائز ٹوکنز میں درج کریں۔ "خودکار" دستیاب ہونے پر ماڈل کا بتایا ہوا یا دستاویزی سائز، اور پھر اکاؤنٹ کے لیے ترتیب دی گئی قدر استعمال کرتا ہے۔</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>ماڈلز تلاش کریں</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>خودکار قدر: {0} ٹوکن</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>فراہم کنندہ سیاق کا سائز نہیں بتاتا۔</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>ابھی کوئی ماڈل دستیاب نہیں۔ کوئی فراہم کنندہ منسلک کریں یا ماڈل کی فہرست ریفریش کریں۔</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>محفوظ ہو گیا۔</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>خودکار</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>ٹوکنز کی ایک مثبت مکمل تعداد درج کریں۔</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>سیاق خودکار طور پر مختصر کیا گیا</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>فائلیں پڑھیں</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>فائلیں تبدیل کیں</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>کمانڈز چلائیں</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>ویب پر تلاش کیا</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>فائلیں پڑھی جا رہی ہیں…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>فائلوں میں ترمیم ہو رہی ہے…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>کمانڈز چل رہی ہیں…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>ویب پر تلاش ہو رہی ہے…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>ایک ٹول استعمال کیا</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>ٹول چل رہا ہے…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>ٹول ناکام ہو گیا: {0}</value></data>
 </root>

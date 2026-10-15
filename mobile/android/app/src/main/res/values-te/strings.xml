@@ -23,19 +23,19 @@
     <string name="common_save">సేవ్ చేయండి</string>
     <string name="common_start">ప్రారంభించండి</string>
     <string name="common_stop">ఆపు</string>
-    <string name="conversation_activity_commands_run">Ran commands</string>
-    <string name="conversation_activity_commands_running">Running commands…</string>
-    <string name="conversation_activity_files_changed">Changed files</string>
-    <string name="conversation_activity_files_changing">Editing files…</string>
-    <string name="conversation_activity_files_read">Read files</string>
-    <string name="conversation_activity_files_reading">Reading files…</string>
-    <string name="conversation_activity_other_running">Running a tool…</string>
-    <string name="conversation_activity_tool_failed" formatted="false">Tool failed: %@</string>
-    <string name="conversation_activity_web_search">Searched the web</string>
-    <string name="conversation_activity_web_searching">Searching the web…</string>
+    <string name="conversation_activity_commands_run">కమాండ్‌లను అమలు చేసింది</string>
+    <string name="conversation_activity_commands_running">కమాండ్‌లను అమలు చేస్తోంది…</string>
+    <string name="conversation_activity_files_changed">ఫైల్‌లను మార్చింది</string>
+    <string name="conversation_activity_files_changing">ఫైల్‌లను సవరిస్తోంది…</string>
+    <string name="conversation_activity_files_read">ఫైల్‌లను చదివింది</string>
+    <string name="conversation_activity_files_reading">ఫైల్‌లను చదువుతోంది…</string>
+    <string name="conversation_activity_other_running">సాధనం నడుస్తోంది…</string>
+    <string name="conversation_activity_tool_failed" formatted="false">సాధనం విఫలమైంది: %@</string>
+    <string name="conversation_activity_web_search">వెబ్‌లో వెతికింది</string>
+    <string name="conversation_activity_web_searching">వెబ్‌లో వెతుకుతోంది…</string>
     <string name="conversation_assistant">డాట్స్ జీను</string>
     <string name="conversation_close_terminal">టెర్మినల్ మూసివేయి</string>
-    <string name="conversation_context_compacted_auto">Context compacted automatically</string>
+    <string name="conversation_context_compacted_auto">కాంటెక్స్ట్ స్వయంచాలకంగా కుదించబడింది</string>
     <string name="conversation_files">ఫైళ్లు</string>
     <string name="conversation_open_terminal">టెర్మినల్ తెరవండి</string>
     <string name="conversation_queued_message">వరుస సందేశం</string>

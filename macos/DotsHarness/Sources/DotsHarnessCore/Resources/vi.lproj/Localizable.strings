@@ -1327,3 +1327,26 @@
 "archive.confirmDelete" = "Xóa vĩnh viễn cuộc trò chuyện này?";
 "archive.deletePermanently" = "Xóa vĩnh viễn";
 "conversation.processedTokensCount" = "%@ token";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "Nhập kích thước ngữ cảnh riêng cho mô hình, tính bằng token. \"Tự động\" dùng kích thước do mô hình báo cáo hoặc ghi trong tài liệu khi có, sau đó là giá trị đã cấu hình cho tài khoản.";
+"model.context.search" = "Tìm mô hình";
+"model.context.detected" = "Giá trị tự động: %@ token";
+"model.context.notDetected" = "Nhà cung cấp không báo cáo kích thước ngữ cảnh.";
+"model.context.empty" = "Chưa có mô hình nào. Hãy kết nối một nhà cung cấp hoặc làm mới danh sách mô hình.";
+"model.context.save" = "Lưu";
+"model.context.auto" = "Tự động";
+"model.context.invalid" = "Nhập một số nguyên dương cho số token.";
+"model.context.saved" = "Đã lưu.";
+"conversation.activity.filesRead" = "Đã đọc tệp";
+"conversation.activity.filesChanged" = "Đã thay đổi tệp";
+"conversation.activity.commandsRun" = "Đã chạy lệnh";
+"conversation.activity.webSearch" = "Đã tìm kiếm trên web";
+"conversation.activity.filesReading" = "Đang đọc tệp…";
+"conversation.activity.filesChanging" = "Đang chỉnh sửa tệp…";
+"conversation.activity.commandsRunning" = "Đang chạy lệnh…";
+"conversation.activity.webSearching" = "Đang tìm kiếm trên web…";
+"conversation.activity.otherDone" = "Đã dùng một công cụ";
+"conversation.activity.otherRunning" = "Đang chạy công cụ…";
+"conversation.activity.toolFailed" = "Công cụ thất bại: %@";
+"conversation.contextCompactedAuto" = "Ngữ cảnh đã được tự động nén";

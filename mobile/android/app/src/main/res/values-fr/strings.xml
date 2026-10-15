@@ -23,19 +23,19 @@
     <string name="common_save">Enregistrer</string>
     <string name="common_start">Démarrer</string>
     <string name="common_stop">Arrêter</string>
-    <string name="conversation_activity_commands_run">Ran commands</string>
-    <string name="conversation_activity_commands_running">Running commands…</string>
-    <string name="conversation_activity_files_changed">Changed files</string>
-    <string name="conversation_activity_files_changing">Editing files…</string>
-    <string name="conversation_activity_files_read">Read files</string>
-    <string name="conversation_activity_files_reading">Reading files…</string>
-    <string name="conversation_activity_other_running">Running a tool…</string>
-    <string name="conversation_activity_tool_failed" formatted="false">Tool failed: %@</string>
-    <string name="conversation_activity_web_search">Searched the web</string>
-    <string name="conversation_activity_web_searching">Searching the web…</string>
+    <string name="conversation_activity_commands_run">Commandes exécutées</string>
+    <string name="conversation_activity_commands_running">Exécution des commandes…</string>
+    <string name="conversation_activity_files_changed">Fichiers modifiés</string>
+    <string name="conversation_activity_files_changing">Modification des fichiers…</string>
+    <string name="conversation_activity_files_read">Fichiers lus</string>
+    <string name="conversation_activity_files_reading">Lecture des fichiers…</string>
+    <string name="conversation_activity_other_running">Exécution d\'un outil…</string>
+    <string name="conversation_activity_tool_failed" formatted="false">Échec de l\'outil : %@</string>
+    <string name="conversation_activity_web_search">Recherche sur le web</string>
+    <string name="conversation_activity_web_searching">Recherche sur le web…</string>
     <string name="conversation_assistant">Harnais à points</string>
     <string name="conversation_close_terminal">Fermer le terminal</string>
-    <string name="conversation_context_compacted_auto">Context compacted automatically</string>
+    <string name="conversation_context_compacted_auto">Contexte compacté automatiquement</string>
     <string name="conversation_files">Fichiers</string>
     <string name="conversation_open_terminal">Ouvrir le terminal</string>
     <string name="conversation_queued_message">Message en attente</string>

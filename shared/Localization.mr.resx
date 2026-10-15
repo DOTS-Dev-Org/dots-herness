@@ -635,4 +635,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} टोकन</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>मॉडेलसाठी संदर्भ आकार टोकनमध्ये प्रविष्ट करा. "स्वयंचलित" उपलब्ध असल्यास मॉडेलने कळवलेला किंवा दस्तऐवजीकृत आकार, आणि नंतर खात्यासाठी सेट केलेले मूल्य वापरते.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>मॉडेल शोधा</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>स्वयंचलित मूल्य: {0} टोकन</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>प्रदाता संदर्भ आकार कळवत नाही.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>अद्याप कोणतेही मॉडेल उपलब्ध नाही. प्रदाता जोडा किंवा मॉडेल सूची रिफ्रेश करा.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>जतन केले.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>स्वयंचलित</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>टोकनची धन पूर्णांक संख्या प्रविष्ट करा.</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>संदर्भ आपोआप संक्षिप्त केला</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>फायली वाचल्या</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>फायली बदलल्या</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>आदेश चालवले</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>वेबवर शोधले</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>फायली वाचत आहे…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>फायली संपादित करत आहे…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>आदेश चालवत आहे…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>वेबवर शोधत आहे…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>एक साधन वापरले</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>साधन चालू आहे…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>साधन अयशस्वी: {0}</value></data>
 </root>

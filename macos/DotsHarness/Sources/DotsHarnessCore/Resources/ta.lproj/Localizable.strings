@@ -1327,3 +1327,26 @@
 "archive.confirmDelete" = "இந்த உரையாடலை நிரந்தரமாக நீக்கவா?";
 "archive.deletePermanently" = "நிரந்தரமாக நீக்கு";
 "conversation.processedTokensCount" = "%@ டோக்கன்கள்";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "மாடலுக்கான சூழல் அளவை டோக்கன்களில் உள்ளிடவும். \"தானியங்கு\" கிடைக்கும்போது மாடல் தெரிவித்த அல்லது ஆவணப்படுத்திய அளவையும், பின்னர் கணக்கிற்கு அமைக்கப்பட்ட மதிப்பையும் பயன்படுத்தும்.";
+"model.context.search" = "மாடல்களைத் தேடு";
+"model.context.detected" = "தானியங்கு மதிப்பு: %@ டோக்கன்கள்";
+"model.context.notDetected" = "வழங்குநர் சூழல் அளவைத் தெரிவிக்கவில்லை.";
+"model.context.empty" = "இன்னும் மாடல்கள் எதுவும் இல்லை. ஒரு வழங்குநரை இணைக்கவும் அல்லது மாடல் பட்டியலைப் புதுப்பிக்கவும்.";
+"model.context.save" = "சேமி";
+"model.context.auto" = "தானியங்கு";
+"model.context.invalid" = "டோக்கன்களின் எண்ணிக்கையை நேர்ம முழு எண்ணாக உள்ளிடவும்.";
+"model.context.saved" = "சேமிக்கப்பட்டது.";
+"conversation.activity.filesRead" = "கோப்புகளைப் படித்தது";
+"conversation.activity.filesChanged" = "கோப்புகளை மாற்றியது";
+"conversation.activity.commandsRun" = "கட்டளைகளை இயக்கியது";
+"conversation.activity.webSearch" = "இணையத்தில் தேடியது";
+"conversation.activity.filesReading" = "கோப்புகளைப் படிக்கிறது…";
+"conversation.activity.filesChanging" = "கோப்புகளைத் திருத்துகிறது…";
+"conversation.activity.commandsRunning" = "கட்டளைகளை இயக்குகிறது…";
+"conversation.activity.webSearching" = "இணையத்தில் தேடுகிறது…";
+"conversation.activity.otherDone" = "ஒரு கருவியைப் பயன்படுத்தியது";
+"conversation.activity.otherRunning" = "கருவி இயங்குகிறது…";
+"conversation.activity.toolFailed" = "கருவி தோல்வியடைந்தது: %@";
+"conversation.contextCompactedAuto" = "சூழல் தானாகச் சுருக்கப்பட்டது";

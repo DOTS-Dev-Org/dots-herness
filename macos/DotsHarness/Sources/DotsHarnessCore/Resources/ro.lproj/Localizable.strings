@@ -1327,3 +1327,26 @@
 "archive.confirmDelete" = "Ștergi definitiv această conversație?";
 "archive.deletePermanently" = "Șterge definitiv";
 "conversation.processedTokensCount" = "%@ tokeni";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "Introduceți o dimensiune a contextului specifică modelului, în tokeni. „Automat” folosește dimensiunea raportată sau documentată de model, când este disponibilă, apoi valoarea configurată pentru cont.";
+"model.context.search" = "Căutați modele";
+"model.context.detected" = "Valoare automată: %@ tokeni";
+"model.context.notDetected" = "Furnizorul nu raportează o dimensiune a contextului.";
+"model.context.empty" = "Nu există încă modele disponibile. Conectați un furnizor sau reîmprospătați lista de modele.";
+"model.context.save" = "Salvați";
+"model.context.auto" = "Automat";
+"model.context.invalid" = "Introduceți un număr întreg pozitiv de tokeni.";
+"model.context.saved" = "Salvat.";
+"conversation.activity.filesRead" = "A citit fișiere";
+"conversation.activity.filesChanged" = "A modificat fișiere";
+"conversation.activity.commandsRun" = "A rulat comenzi";
+"conversation.activity.webSearch" = "A căutat pe web";
+"conversation.activity.filesReading" = "Se citesc fișierele…";
+"conversation.activity.filesChanging" = "Se editează fișierele…";
+"conversation.activity.commandsRunning" = "Se rulează comenzile…";
+"conversation.activity.webSearching" = "Se caută pe web…";
+"conversation.activity.otherDone" = "A folosit un instrument";
+"conversation.activity.otherRunning" = "Se rulează un instrument…";
+"conversation.activity.toolFailed" = "Instrumentul a eșuat: %@";
+"conversation.contextCompactedAuto" = "Contextul a fost compactat automat";

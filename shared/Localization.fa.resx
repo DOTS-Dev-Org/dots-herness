@@ -635,4 +635,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} توکن</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>اندازه زمینه مخصوص مدل را بر حسب توکن وارد کنید. «خودکار» در صورت وجود از اندازه اعلام‌شده یا مستند مدل و سپس از مقدار تنظیم‌شده برای حساب استفاده می‌کند.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>جست‌وجوی مدل‌ها</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>مقدار خودکار: {0} توکن</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>ارائه‌دهنده اندازه زمینه را اعلام نمی‌کند.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>هنوز مدلی در دسترس نیست. یک ارائه‌دهنده متصل کنید یا فهرست مدل‌ها را تازه‌سازی کنید.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>ذخیره شد.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>خودکار</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>یک عدد صحیح مثبت برای تعداد توکن وارد کنید.</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>زمینه به‌طور خودکار فشرده شد</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>فایل‌ها خوانده شد</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>فایل‌ها تغییر کرد</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>فرمان‌ها اجرا شد</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>در وب جست‌وجو شد</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>در حال خواندن فایل‌ها…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>در حال ویرایش فایل‌ها…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>در حال اجرای فرمان‌ها…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>در حال جست‌وجو در وب…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>از یک ابزار استفاده شد</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>در حال اجرای ابزار…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>ابزار ناموفق بود: {0}</value></data>
 </root>

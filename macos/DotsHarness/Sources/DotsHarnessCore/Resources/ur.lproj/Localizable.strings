@@ -1327,3 +1327,26 @@
 "archive.confirmDelete" = "کیا یہ گفتگو مستقل طور پر حذف کر دی جائے؟";
 "archive.deletePermanently" = "مستقل طور پر حذف کریں";
 "conversation.processedTokensCount" = "%@ ٹوکن";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "ماڈل کے لیے سیاق کا سائز ٹوکنز میں درج کریں۔ \"خودکار\" دستیاب ہونے پر ماڈل کا بتایا ہوا یا دستاویزی سائز، اور پھر اکاؤنٹ کے لیے ترتیب دی گئی قدر استعمال کرتا ہے۔";
+"model.context.search" = "ماڈلز تلاش کریں";
+"model.context.detected" = "خودکار قدر: %@ ٹوکن";
+"model.context.notDetected" = "فراہم کنندہ سیاق کا سائز نہیں بتاتا۔";
+"model.context.empty" = "ابھی کوئی ماڈل دستیاب نہیں۔ کوئی فراہم کنندہ منسلک کریں یا ماڈل کی فہرست ریفریش کریں۔";
+"model.context.save" = "محفوظ کریں";
+"model.context.auto" = "خودکار";
+"model.context.invalid" = "ٹوکنز کی ایک مثبت مکمل تعداد درج کریں۔";
+"model.context.saved" = "محفوظ ہو گیا۔";
+"conversation.activity.filesRead" = "فائلیں پڑھیں";
+"conversation.activity.filesChanged" = "فائلیں تبدیل کیں";
+"conversation.activity.commandsRun" = "کمانڈز چلائیں";
+"conversation.activity.webSearch" = "ویب پر تلاش کیا";
+"conversation.activity.filesReading" = "فائلیں پڑھی جا رہی ہیں…";
+"conversation.activity.filesChanging" = "فائلوں میں ترمیم ہو رہی ہے…";
+"conversation.activity.commandsRunning" = "کمانڈز چل رہی ہیں…";
+"conversation.activity.webSearching" = "ویب پر تلاش ہو رہی ہے…";
+"conversation.activity.otherDone" = "ایک ٹول استعمال کیا";
+"conversation.activity.otherRunning" = "ٹول چل رہا ہے…";
+"conversation.activity.toolFailed" = "ٹول ناکام ہو گیا: %@";
+"conversation.contextCompactedAuto" = "سیاق خودکار طور پر مختصر کیا گیا";

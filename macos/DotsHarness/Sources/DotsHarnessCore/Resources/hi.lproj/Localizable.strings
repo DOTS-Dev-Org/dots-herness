@@ -1327,3 +1327,26 @@
 "archive.confirmDelete" = "क्या इस बातचीत को स्थायी रूप से हटाना है?";
 "archive.deletePermanently" = "स्थायी रूप से हटाएँ";
 "conversation.processedTokensCount" = "%@ टोकन";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "मॉडल के लिए संदर्भ आकार टोकन में दर्ज करें। \"स्वचालित\" उपलब्ध होने पर मॉडल द्वारा बताए गए या दस्तावेज़ में दिए गए आकार का, और फिर खाते के लिए सेट मान का उपयोग करता है।";
+"model.context.search" = "मॉडल खोजें";
+"model.context.detected" = "स्वचालित मान: %@ टोकन";
+"model.context.notDetected" = "प्रदाता संदर्भ आकार नहीं बताता।";
+"model.context.empty" = "अभी कोई मॉडल उपलब्ध नहीं है। कोई प्रदाता कनेक्ट करें या मॉडल सूची रीफ़्रेश करें।";
+"model.context.save" = "सहेजें";
+"model.context.auto" = "स्वचालित";
+"model.context.invalid" = "टोकन की एक धनात्मक पूर्ण संख्या दर्ज करें।";
+"model.context.saved" = "सहेजा गया।";
+"conversation.activity.filesRead" = "फ़ाइलें पढ़ीं";
+"conversation.activity.filesChanged" = "फ़ाइलें बदलीं";
+"conversation.activity.commandsRun" = "कमांड चलाए";
+"conversation.activity.webSearch" = "वेब पर खोजा";
+"conversation.activity.filesReading" = "फ़ाइलें पढ़ी जा रही हैं…";
+"conversation.activity.filesChanging" = "फ़ाइलें संपादित की जा रही हैं…";
+"conversation.activity.commandsRunning" = "कमांड चलाए जा रहे हैं…";
+"conversation.activity.webSearching" = "वेब पर खोजा जा रहा है…";
+"conversation.activity.otherDone" = "एक टूल का उपयोग किया";
+"conversation.activity.otherRunning" = "टूल चल रहा है…";
+"conversation.activity.toolFailed" = "टूल विफल रहा: %@";
+"conversation.contextCompactedAuto" = "संदर्भ अपने आप संक्षिप्त किया गया";

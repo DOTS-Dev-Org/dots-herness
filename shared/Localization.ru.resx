@@ -636,4 +636,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} токенов</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>Укажите размер контекста для модели в токенах. «Автоматически» использует размер, сообщённый моделью или указанный в документации, а если его нет — значение, заданное для аккаунта.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>Поиск моделей</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>Автоматическое значение: {0} токенов</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>Провайдер не сообщает размер контекста.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>Модели пока недоступны. Подключите провайдера или обновите список моделей.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>Сохранено.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>Автоматически</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>Введите целое положительное число токенов.</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>Контекст сжат автоматически</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>Прочитаны файлы</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>Изменены файлы</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>Выполнены команды</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>Выполнен поиск в интернете</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>Чтение файлов…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>Редактирование файлов…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>Выполнение команд…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>Поиск в интернете…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>Использован инструмент</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>Выполняется инструмент…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>Сбой инструмента: {0}</value></data>
 </root>

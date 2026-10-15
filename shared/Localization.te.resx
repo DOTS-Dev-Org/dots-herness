@@ -635,4 +635,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} టోకెన్లు</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>మోడల్‌కు ప్రత్యేకమైన కాంటెక్స్ట్ పరిమాణాన్ని టోకెన్‌లలో నమోదు చేయండి. "స్వయంచాలకం" అందుబాటులో ఉంటే మోడల్ నివేదించిన లేదా డాక్యుమెంట్ చేసిన పరిమాణాన్ని, ఆపై ఖాతాకు కాన్ఫిగర్ చేసిన విలువను ఉపయోగిస్తుంది.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>మోడల్‌లను వెతకండి</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>స్వయంచాలక విలువ: {0} టోకెన్‌లు</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>ప్రొవైడర్ కాంటెక్స్ట్ పరిమాణాన్ని నివేదించదు.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>ఇంకా మోడల్‌లు అందుబాటులో లేవు. ఒక ప్రొవైడర్‌ను కనెక్ట్ చేయండి లేదా మోడల్ జాబితాను రిఫ్రెష్ చేయండి.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>సేవ్ చేయబడింది.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>స్వయంచాలకం</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>టోకెన్‌ల సంఖ్యను ధన పూర్ణాంకంగా నమోదు చేయండి.</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>కాంటెక్స్ట్ స్వయంచాలకంగా కుదించబడింది</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>ఫైల్‌లను చదివింది</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>ఫైల్‌లను మార్చింది</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>కమాండ్‌లను అమలు చేసింది</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>వెబ్‌లో వెతికింది</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>ఫైల్‌లను చదువుతోంది…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>ఫైల్‌లను సవరిస్తోంది…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>కమాండ్‌లను అమలు చేస్తోంది…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>వెబ్‌లో వెతుకుతోంది…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>ఒక సాధనాన్ని ఉపయోగించింది</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>సాధనం నడుస్తోంది…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>సాధనం విఫలమైంది: {0}</value></data>
 </root>

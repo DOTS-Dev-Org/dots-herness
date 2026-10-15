@@ -636,4 +636,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} رمز</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>أدخل حجم سياق خاصًا بالنموذج بعدد الرموز. يستخدم الخيار «تلقائي» الحجم الذي يعلنه النموذج أو الموثّق له عند توفره، ثم القيمة المضبوطة للحساب.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>البحث في النماذج</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>القيمة التلقائية: {0} رمز</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>لا يعلن المزوّد عن حجم السياق.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>لا توجد نماذج متاحة بعد. اربط مزوّدًا أو حدّث قائمة النماذج.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>تم الحفظ.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>تلقائي</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>أدخل عددًا صحيحًا موجبًا من الرموز.</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>تم ضغط السياق تلقائيًا</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>قرأ الملفات</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>غيّر الملفات</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>شغّل الأوامر</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>بحث في الويب</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>جارٍ قراءة الملفات…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>جارٍ تعديل الملفات…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>جارٍ تشغيل الأوامر…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>جارٍ البحث في الويب…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>استخدم أداة</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>جارٍ تشغيل أداة…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>فشلت الأداة: {0}</value></data>
 </root>

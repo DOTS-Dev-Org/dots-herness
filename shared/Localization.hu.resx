@@ -635,4 +635,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} token</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>Adja meg a modellre jellemző kontextusméretet tokenben. Az „Automatikus” a modell által jelentett vagy dokumentált méretet használja, ha elérhető, egyébként a fiókhoz beállított értéket.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>Modellek keresése</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>Automatikus érték: {0} token</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>A szolgáltató nem jelent kontextusméretet.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>Még nincs elérhető modell. Csatlakoztasson egy szolgáltatót, vagy frissítse a modelllistát.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>Mentve.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>Automatikus</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>Adjon meg pozitív egész számot a tokenek számaként.</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>A kontextus automatikusan tömörítve</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>Fájlokat olvasott</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>Fájlokat módosított</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>Parancsokat futtatott</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>Keresett a weben</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>Fájlok olvasása…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>Fájlok szerkesztése…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>Parancsok futtatása…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>Keresés a weben…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>Eszközt használt</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>Eszköz futtatása…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>Az eszköz hibát jelzett: {0}</value></data>
 </root>

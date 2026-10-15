@@ -635,4 +635,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} tokens</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>Εισαγάγετε μέγεθος πλαισίου ειδικά για το μοντέλο, σε tokens. Η επιλογή «Αυτόματο» χρησιμοποιεί το μέγεθος που αναφέρει ή τεκμηριώνει το μοντέλο, όταν υπάρχει, και έπειτα την τιμή που έχει οριστεί για τον λογαριασμό.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>Αναζήτηση μοντέλων</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>Αυτόματη τιμή: {0} tokens</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>Ο πάροχος δεν αναφέρει μέγεθος πλαισίου.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>Δεν υπάρχουν ακόμη διαθέσιμα μοντέλα. Συνδέστε έναν πάροχο ή ανανεώστε τη λίστα μοντέλων.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>Αποθηκεύτηκε.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>Αυτόματο</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>Εισαγάγετε έναν θετικό ακέραιο αριθμό tokens.</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>Το πλαίσιο συμπιέστηκε αυτόματα</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>Διάβασε αρχεία</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>Άλλαξε αρχεία</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>Εκτέλεσε εντολές</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>Αναζήτησε στον ιστό</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>Ανάγνωση αρχείων…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>Επεξεργασία αρχείων…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>Εκτέλεση εντολών…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>Αναζήτηση στον ιστό…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>Χρησιμοποίησε ένα εργαλείο</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>Εκτέλεση εργαλείου…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>Το εργαλείο απέτυχε: {0}</value></data>
 </root>

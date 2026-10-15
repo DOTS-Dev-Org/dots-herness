@@ -1327,3 +1327,26 @@
 "archive.confirmDelete" = "Hapus percakapan ini secara permanen?";
 "archive.deletePermanently" = "Hapus permanen";
 "conversation.processedTokensCount" = "%@ token";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "Masukkan ukuran konteks khusus model dalam token. \"Otomatis\" memakai ukuran yang dilaporkan atau didokumentasikan model jika tersedia, lalu nilai yang dikonfigurasi untuk akun.";
+"model.context.search" = "Cari model";
+"model.context.detected" = "Nilai otomatis: %@ token";
+"model.context.notDetected" = "Penyedia tidak melaporkan ukuran konteks.";
+"model.context.empty" = "Belum ada model yang tersedia. Hubungkan penyedia atau muat ulang daftar model.";
+"model.context.save" = "Simpan";
+"model.context.auto" = "Otomatis";
+"model.context.invalid" = "Masukkan bilangan bulat positif untuk jumlah token.";
+"model.context.saved" = "Tersimpan.";
+"conversation.activity.filesRead" = "Membaca file";
+"conversation.activity.filesChanged" = "Mengubah file";
+"conversation.activity.commandsRun" = "Menjalankan perintah";
+"conversation.activity.webSearch" = "Mencari di web";
+"conversation.activity.filesReading" = "Membaca file…";
+"conversation.activity.filesChanging" = "Mengedit file…";
+"conversation.activity.commandsRunning" = "Menjalankan perintah…";
+"conversation.activity.webSearching" = "Mencari di web…";
+"conversation.activity.otherDone" = "Menggunakan alat";
+"conversation.activity.otherRunning" = "Menjalankan alat…";
+"conversation.activity.toolFailed" = "Alat gagal: %@";
+"conversation.contextCompactedAuto" = "Konteks dipadatkan secara otomatis";

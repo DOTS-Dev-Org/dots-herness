@@ -1327,3 +1327,26 @@
 "archive.confirmDelete" = "ลบการสนทนานี้อย่างถาวรหรือไม่?";
 "archive.deletePermanently" = "ลบถาวร";
 "conversation.processedTokensCount" = "%@ โทเค็น";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "ป้อนขนาดบริบทเฉพาะของโมเดลเป็นจำนวนโทเค็น \"อัตโนมัติ\" จะใช้ขนาดที่โมเดลรายงานหรือระบุไว้ในเอกสารเมื่อมี จากนั้นจึงใช้ค่าที่กำหนดไว้สำหรับบัญชี";
+"model.context.search" = "ค้นหาโมเดล";
+"model.context.detected" = "ค่าอัตโนมัติ: %@ โทเค็น";
+"model.context.notDetected" = "ผู้ให้บริการไม่ได้รายงานขนาดบริบท";
+"model.context.empty" = "ยังไม่มีโมเดลที่ใช้ได้ เชื่อมต่อผู้ให้บริการหรือรีเฟรชรายการโมเดล";
+"model.context.save" = "บันทึก";
+"model.context.auto" = "อัตโนมัติ";
+"model.context.invalid" = "ป้อนจำนวนโทเค็นเป็นจำนวนเต็มบวก";
+"model.context.saved" = "บันทึกแล้ว";
+"conversation.activity.filesRead" = "อ่านไฟล์แล้ว";
+"conversation.activity.filesChanged" = "เปลี่ยนแปลงไฟล์แล้ว";
+"conversation.activity.commandsRun" = "เรียกใช้คำสั่งแล้ว";
+"conversation.activity.webSearch" = "ค้นหาบนเว็บแล้ว";
+"conversation.activity.filesReading" = "กำลังอ่านไฟล์…";
+"conversation.activity.filesChanging" = "กำลังแก้ไขไฟล์…";
+"conversation.activity.commandsRunning" = "กำลังเรียกใช้คำสั่ง…";
+"conversation.activity.webSearching" = "กำลังค้นหาบนเว็บ…";
+"conversation.activity.otherDone" = "ใช้เครื่องมือแล้ว";
+"conversation.activity.otherRunning" = "กำลังเรียกใช้เครื่องมือ…";
+"conversation.activity.toolFailed" = "เครื่องมือล้มเหลว: %@";
+"conversation.contextCompactedAuto" = "บีบอัดบริบทโดยอัตโนมัติแล้ว";

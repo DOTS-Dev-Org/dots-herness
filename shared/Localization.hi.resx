@@ -635,4 +635,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} टोकन</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>मॉडल के लिए संदर्भ आकार टोकन में दर्ज करें। "स्वचालित" उपलब्ध होने पर मॉडल द्वारा बताए गए या दस्तावेज़ में दिए गए आकार का, और फिर खाते के लिए सेट मान का उपयोग करता है।</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>मॉडल खोजें</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>स्वचालित मान: {0} टोकन</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>प्रदाता संदर्भ आकार नहीं बताता।</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>अभी कोई मॉडल उपलब्ध नहीं है। कोई प्रदाता कनेक्ट करें या मॉडल सूची रीफ़्रेश करें।</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>सहेजा गया।</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>स्वचालित</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>टोकन की एक धनात्मक पूर्ण संख्या दर्ज करें।</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>संदर्भ अपने आप संक्षिप्त किया गया</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>फ़ाइलें पढ़ीं</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>फ़ाइलें बदलीं</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>कमांड चलाए</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>वेब पर खोजा</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>फ़ाइलें पढ़ी जा रही हैं…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>फ़ाइलें संपादित की जा रही हैं…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>कमांड चलाए जा रहे हैं…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>वेब पर खोजा जा रहा है…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>एक टूल का उपयोग किया</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>टूल चल रहा है…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>टूल विफल रहा: {0}</value></data>
 </root>

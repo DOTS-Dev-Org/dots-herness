@@ -1327,3 +1327,26 @@
 "archive.confirmDelete" = "Smazat tuto konverzaci trvale?";
 "archive.deletePermanently" = "Trvale smazat";
 "conversation.processedTokensCount" = "%@ tokenů";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "Zadejte velikost kontextu pro model v tokenech. „Automaticky“ použije velikost hlášenou nebo zdokumentovanou modelem, pokud je k dispozici, a jinak hodnotu nastavenou pro účet.";
+"model.context.search" = "Hledat modely";
+"model.context.detected" = "Automatická hodnota: %@ tokenů";
+"model.context.notDetected" = "Poskytovatel neuvádí velikost kontextu.";
+"model.context.empty" = "Zatím nejsou k dispozici žádné modely. Připojte poskytovatele nebo obnovte seznam modelů.";
+"model.context.save" = "Uložit";
+"model.context.auto" = "Automaticky";
+"model.context.invalid" = "Zadejte kladné celé číslo počtu tokenů.";
+"model.context.saved" = "Uloženo.";
+"conversation.activity.filesRead" = "Přečetl soubory";
+"conversation.activity.filesChanged" = "Změnil soubory";
+"conversation.activity.commandsRun" = "Spustil příkazy";
+"conversation.activity.webSearch" = "Hledal na webu";
+"conversation.activity.filesReading" = "Čtení souborů…";
+"conversation.activity.filesChanging" = "Úprava souborů…";
+"conversation.activity.commandsRunning" = "Spouštění příkazů…";
+"conversation.activity.webSearching" = "Hledání na webu…";
+"conversation.activity.otherDone" = "Použil nástroj";
+"conversation.activity.otherRunning" = "Spouštění nástroje…";
+"conversation.activity.toolFailed" = "Nástroj selhal: %@";
+"conversation.contextCompactedAuto" = "Kontext byl automaticky zhuštěn";

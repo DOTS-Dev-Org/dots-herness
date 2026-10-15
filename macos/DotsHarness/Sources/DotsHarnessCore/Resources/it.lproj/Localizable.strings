@@ -1307,3 +1307,26 @@
 "archive.confirmDelete" = "Eliminare definitivamente questa conversazione?";
 "archive.deletePermanently" = "Elimina definitivamente";
 "conversation.processedTokensCount" = "%@ token";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "Inserisci una dimensione del contesto specifica per il modello, in token. «Automatico» usa la dimensione dichiarata o documentata dal modello, se disponibile, e altrimenti il valore configurato per l'account.";
+"model.context.search" = "Cerca modelli";
+"model.context.detected" = "Valore automatico: %@ token";
+"model.context.notDetected" = "Il provider non indica una dimensione del contesto.";
+"model.context.empty" = "Nessun modello ancora disponibile. Collega un provider o aggiorna l'elenco dei modelli.";
+"model.context.save" = "Salva";
+"model.context.auto" = "Automatico";
+"model.context.invalid" = "Inserisci un numero intero positivo di token.";
+"model.context.saved" = "Salvato.";
+"conversation.activity.filesRead" = "File letti";
+"conversation.activity.filesChanged" = "File modificati";
+"conversation.activity.commandsRun" = "Comandi eseguiti";
+"conversation.activity.webSearch" = "Ricerca sul web";
+"conversation.activity.filesReading" = "Lettura dei file…";
+"conversation.activity.filesChanging" = "Modifica dei file…";
+"conversation.activity.commandsRunning" = "Esecuzione dei comandi…";
+"conversation.activity.webSearching" = "Ricerca sul web…";
+"conversation.activity.otherDone" = "Strumento utilizzato";
+"conversation.activity.otherRunning" = "Esecuzione di uno strumento…";
+"conversation.activity.toolFailed" = "Strumento non riuscito: %@";
+"conversation.contextCompactedAuto" = "Contesto compattato automaticamente";

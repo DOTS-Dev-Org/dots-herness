@@ -1327,3 +1327,26 @@
 "archive.confirmDelete" = "ఈ సంభాషణను శాశ్వతంగా తొలగించాలా?";
 "archive.deletePermanently" = "శాశ్వతంగా తొలగించు";
 "conversation.processedTokensCount" = "%@ టోకెన్లు";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "మోడల్‌కు ప్రత్యేకమైన కాంటెక్స్ట్ పరిమాణాన్ని టోకెన్‌లలో నమోదు చేయండి. \"స్వయంచాలకం\" అందుబాటులో ఉంటే మోడల్ నివేదించిన లేదా డాక్యుమెంట్ చేసిన పరిమాణాన్ని, ఆపై ఖాతాకు కాన్ఫిగర్ చేసిన విలువను ఉపయోగిస్తుంది.";
+"model.context.search" = "మోడల్‌లను వెతకండి";
+"model.context.detected" = "స్వయంచాలక విలువ: %@ టోకెన్‌లు";
+"model.context.notDetected" = "ప్రొవైడర్ కాంటెక్స్ట్ పరిమాణాన్ని నివేదించదు.";
+"model.context.empty" = "ఇంకా మోడల్‌లు అందుబాటులో లేవు. ఒక ప్రొవైడర్‌ను కనెక్ట్ చేయండి లేదా మోడల్ జాబితాను రిఫ్రెష్ చేయండి.";
+"model.context.save" = "సేవ్ చేయండి";
+"model.context.auto" = "స్వయంచాలకం";
+"model.context.invalid" = "టోకెన్‌ల సంఖ్యను ధన పూర్ణాంకంగా నమోదు చేయండి.";
+"model.context.saved" = "సేవ్ చేయబడింది.";
+"conversation.activity.filesRead" = "ఫైల్‌లను చదివింది";
+"conversation.activity.filesChanged" = "ఫైల్‌లను మార్చింది";
+"conversation.activity.commandsRun" = "కమాండ్‌లను అమలు చేసింది";
+"conversation.activity.webSearch" = "వెబ్‌లో వెతికింది";
+"conversation.activity.filesReading" = "ఫైల్‌లను చదువుతోంది…";
+"conversation.activity.filesChanging" = "ఫైల్‌లను సవరిస్తోంది…";
+"conversation.activity.commandsRunning" = "కమాండ్‌లను అమలు చేస్తోంది…";
+"conversation.activity.webSearching" = "వెబ్‌లో వెతుకుతోంది…";
+"conversation.activity.otherDone" = "ఒక సాధనాన్ని ఉపయోగించింది";
+"conversation.activity.otherRunning" = "సాధనం నడుస్తోంది…";
+"conversation.activity.toolFailed" = "సాధనం విఫలమైంది: %@";
+"conversation.contextCompactedAuto" = "కాంటెక్స్ట్ స్వయంచాలకంగా కుదించబడింది";

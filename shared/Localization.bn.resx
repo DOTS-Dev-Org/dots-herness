@@ -635,4 +635,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} টোকেন</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>মডেলের জন্য নির্দিষ্ট কনটেক্সট আকার টোকেনে লিখুন। "স্বয়ংক্রিয়" থাকলে মডেলের জানানো বা নথিভুক্ত আকার ব্যবহার হয়, তা না থাকলে অ্যাকাউন্টে কনফিগার করা মান।</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>মডেল খুঁজুন</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>স্বয়ংক্রিয় মান: {0} টোকেন</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>প্রদানকারী কনটেক্সটের আকার জানায় না।</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>এখনো কোনো মডেল উপলভ্য নেই। একটি প্রদানকারী সংযুক্ত করুন বা মডেল তালিকা রিফ্রেশ করুন।</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>সংরক্ষিত হয়েছে।</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>স্বয়ংক্রিয়</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>টোকেনের একটি ধনাত্মক পূর্ণসংখ্যা লিখুন।</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>কনটেক্সট স্বয়ংক্রিয়ভাবে সংকুচিত হয়েছে</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>ফাইল পড়া হয়েছে</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>ফাইল পরিবর্তন করা হয়েছে</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>কমান্ড চালানো হয়েছে</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>ওয়েবে খোঁজা হয়েছে</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>ফাইল পড়া হচ্ছে…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>ফাইল সম্পাদনা করা হচ্ছে…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>কমান্ড চালানো হচ্ছে…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>ওয়েবে খোঁজা হচ্ছে…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>একটি টুল ব্যবহার করা হয়েছে</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>একটি টুল চলছে…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>টুল ব্যর্থ হয়েছে: {0}</value></data>
 </root>

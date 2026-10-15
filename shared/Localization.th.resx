@@ -635,4 +635,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} โทเค็น</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>ป้อนขนาดบริบทเฉพาะของโมเดลเป็นจำนวนโทเค็น "อัตโนมัติ" จะใช้ขนาดที่โมเดลรายงานหรือระบุไว้ในเอกสารเมื่อมี จากนั้นจึงใช้ค่าที่กำหนดไว้สำหรับบัญชี</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>ค้นหาโมเดล</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>ค่าอัตโนมัติ: {0} โทเค็น</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>ผู้ให้บริการไม่ได้รายงานขนาดบริบท</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>ยังไม่มีโมเดลที่ใช้ได้ เชื่อมต่อผู้ให้บริการหรือรีเฟรชรายการโมเดล</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>บันทึกแล้ว</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>อัตโนมัติ</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>ป้อนจำนวนโทเค็นเป็นจำนวนเต็มบวก</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>บีบอัดบริบทโดยอัตโนมัติแล้ว</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>อ่านไฟล์แล้ว</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>เปลี่ยนแปลงไฟล์แล้ว</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>เรียกใช้คำสั่งแล้ว</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>ค้นหาบนเว็บแล้ว</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>กำลังอ่านไฟล์…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>กำลังแก้ไขไฟล์…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>กำลังเรียกใช้คำสั่ง…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>กำลังค้นหาบนเว็บ…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>ใช้เครื่องมือแล้ว</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>กำลังเรียกใช้เครื่องมือ…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>เครื่องมือล้มเหลว: {0}</value></data>
 </root>

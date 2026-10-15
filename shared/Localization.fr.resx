@@ -635,4 +635,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} tokens</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>Saisissez une taille de contexte propre au modèle, en tokens. « Automatique » utilise la taille indiquée ou documentée par le modèle lorsqu'elle est disponible, puis la valeur configurée pour le compte.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>Rechercher des modèles</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>Valeur automatique : {0} tokens</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>Le fournisseur n'indique pas de taille de contexte.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>Aucun modèle disponible pour l'instant. Connectez un fournisseur ou actualisez la liste des modèles.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>Enregistré.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>Automatique</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>Saisissez un nombre entier positif de tokens.</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>Contexte compacté automatiquement</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>Fichiers lus</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>Fichiers modifiés</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>Commandes exécutées</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>Recherche sur le web</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>Lecture des fichiers…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>Modification des fichiers…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>Exécution des commandes…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>Recherche sur le web…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>Outil utilisé</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>Exécution d'un outil…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>Échec de l'outil : {0}</value></data>
 </root>

@@ -1327,3 +1327,26 @@
 "archive.confirmDelete" = "এই কথোপকথন স্থায়ীভাবে মুছে ফেলবেন?";
 "archive.deletePermanently" = "স্থায়ীভাবে মুছুন";
 "conversation.processedTokensCount" = "%@ টোকেন";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "মডেলের জন্য নির্দিষ্ট কনটেক্সট আকার টোকেনে লিখুন। \"স্বয়ংক্রিয়\" থাকলে মডেলের জানানো বা নথিভুক্ত আকার ব্যবহার হয়, তা না থাকলে অ্যাকাউন্টে কনফিগার করা মান।";
+"model.context.search" = "মডেল খুঁজুন";
+"model.context.detected" = "স্বয়ংক্রিয় মান: %@ টোকেন";
+"model.context.notDetected" = "প্রদানকারী কনটেক্সটের আকার জানায় না।";
+"model.context.empty" = "এখনো কোনো মডেল উপলভ্য নেই। একটি প্রদানকারী সংযুক্ত করুন বা মডেল তালিকা রিফ্রেশ করুন।";
+"model.context.save" = "সংরক্ষণ করুন";
+"model.context.auto" = "স্বয়ংক্রিয়";
+"model.context.invalid" = "টোকেনের একটি ধনাত্মক পূর্ণসংখ্যা লিখুন।";
+"model.context.saved" = "সংরক্ষিত হয়েছে।";
+"conversation.activity.filesRead" = "ফাইল পড়া হয়েছে";
+"conversation.activity.filesChanged" = "ফাইল পরিবর্তন করা হয়েছে";
+"conversation.activity.commandsRun" = "কমান্ড চালানো হয়েছে";
+"conversation.activity.webSearch" = "ওয়েবে খোঁজা হয়েছে";
+"conversation.activity.filesReading" = "ফাইল পড়া হচ্ছে…";
+"conversation.activity.filesChanging" = "ফাইল সম্পাদনা করা হচ্ছে…";
+"conversation.activity.commandsRunning" = "কমান্ড চালানো হচ্ছে…";
+"conversation.activity.webSearching" = "ওয়েবে খোঁজা হচ্ছে…";
+"conversation.activity.otherDone" = "একটি টুল ব্যবহার করা হয়েছে";
+"conversation.activity.otherRunning" = "একটি টুল চলছে…";
+"conversation.activity.toolFailed" = "টুল ব্যর্থ হয়েছে: %@";
+"conversation.contextCompactedAuto" = "কনটেক্সট স্বয়ংক্রিয়ভাবে সংকুচিত হয়েছে";

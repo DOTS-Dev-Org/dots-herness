@@ -1327,3 +1327,26 @@
 "archive.confirmDelete" = "این گفتگو برای همیشه حذف شود؟";
 "archive.deletePermanently" = "حذف دائمی";
 "conversation.processedTokensCount" = "%@ توکن";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "اندازه زمینه مخصوص مدل را بر حسب توکن وارد کنید. «خودکار» در صورت وجود از اندازه اعلام‌شده یا مستند مدل و سپس از مقدار تنظیم‌شده برای حساب استفاده می‌کند.";
+"model.context.search" = "جست‌وجوی مدل‌ها";
+"model.context.detected" = "مقدار خودکار: %@ توکن";
+"model.context.notDetected" = "ارائه‌دهنده اندازه زمینه را اعلام نمی‌کند.";
+"model.context.empty" = "هنوز مدلی در دسترس نیست. یک ارائه‌دهنده متصل کنید یا فهرست مدل‌ها را تازه‌سازی کنید.";
+"model.context.save" = "ذخیره";
+"model.context.auto" = "خودکار";
+"model.context.invalid" = "یک عدد صحیح مثبت برای تعداد توکن وارد کنید.";
+"model.context.saved" = "ذخیره شد.";
+"conversation.activity.filesRead" = "فایل‌ها خوانده شد";
+"conversation.activity.filesChanged" = "فایل‌ها تغییر کرد";
+"conversation.activity.commandsRun" = "فرمان‌ها اجرا شد";
+"conversation.activity.webSearch" = "در وب جست‌وجو شد";
+"conversation.activity.filesReading" = "در حال خواندن فایل‌ها…";
+"conversation.activity.filesChanging" = "در حال ویرایش فایل‌ها…";
+"conversation.activity.commandsRunning" = "در حال اجرای فرمان‌ها…";
+"conversation.activity.webSearching" = "در حال جست‌وجو در وب…";
+"conversation.activity.otherDone" = "از یک ابزار استفاده شد";
+"conversation.activity.otherRunning" = "در حال اجرای ابزار…";
+"conversation.activity.toolFailed" = "ابزار ناموفق بود: %@";
+"conversation.contextCompactedAuto" = "زمینه به‌طور خودکار فشرده شد";

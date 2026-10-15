@@ -1327,3 +1327,26 @@
 "archive.confirmDelete" = "هل تريد حذف هذه المحادثة نهائيًا؟";
 "archive.deletePermanently" = "حذف نهائي";
 "conversation.processedTokensCount" = "%@ رمز";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "أدخل حجم سياق خاصًا بالنموذج بعدد الرموز. يستخدم الخيار «تلقائي» الحجم الذي يعلنه النموذج أو الموثّق له عند توفره، ثم القيمة المضبوطة للحساب.";
+"model.context.search" = "البحث في النماذج";
+"model.context.detected" = "القيمة التلقائية: %@ رمز";
+"model.context.notDetected" = "لا يعلن المزوّد عن حجم السياق.";
+"model.context.empty" = "لا توجد نماذج متاحة بعد. اربط مزوّدًا أو حدّث قائمة النماذج.";
+"model.context.save" = "حفظ";
+"model.context.auto" = "تلقائي";
+"model.context.invalid" = "أدخل عددًا صحيحًا موجبًا من الرموز.";
+"model.context.saved" = "تم الحفظ.";
+"conversation.activity.filesRead" = "قرأ الملفات";
+"conversation.activity.filesChanged" = "غيّر الملفات";
+"conversation.activity.commandsRun" = "شغّل الأوامر";
+"conversation.activity.webSearch" = "بحث في الويب";
+"conversation.activity.filesReading" = "جارٍ قراءة الملفات…";
+"conversation.activity.filesChanging" = "جارٍ تعديل الملفات…";
+"conversation.activity.commandsRunning" = "جارٍ تشغيل الأوامر…";
+"conversation.activity.webSearching" = "جارٍ البحث في الويب…";
+"conversation.activity.otherDone" = "استخدم أداة";
+"conversation.activity.otherRunning" = "جارٍ تشغيل أداة…";
+"conversation.activity.toolFailed" = "فشلت الأداة: %@";
+"conversation.contextCompactedAuto" = "تم ضغط السياق تلقائيًا";

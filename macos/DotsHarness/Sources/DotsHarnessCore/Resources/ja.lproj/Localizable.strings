@@ -1307,3 +1307,26 @@
 "archive.confirmDelete" = "この会話を完全に削除しますか？";
 "archive.deletePermanently" = "完全に削除";
 "conversation.processedTokensCount" = "%@トークン";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "モデルごとのコンテキストサイズをトークン数で入力します。「自動」では、モデルが報告またはドキュメントで公開しているサイズを優先し、ない場合はアカウントに設定された値を使用します。";
+"model.context.search" = "モデルを検索";
+"model.context.detected" = "自動値: %@ トークン";
+"model.context.notDetected" = "プロバイダーはコンテキストサイズを報告していません。";
+"model.context.empty" = "利用できるモデルがまだありません。プロバイダーを接続するか、モデル一覧を更新してください。";
+"model.context.save" = "保存";
+"model.context.auto" = "自動";
+"model.context.invalid" = "正の整数でトークン数を入力してください。";
+"model.context.saved" = "保存しました。";
+"conversation.activity.filesRead" = "ファイルを読み取りました";
+"conversation.activity.filesChanged" = "ファイルを変更しました";
+"conversation.activity.commandsRun" = "コマンドを実行しました";
+"conversation.activity.webSearch" = "ウェブを検索しました";
+"conversation.activity.filesReading" = "ファイルを読み取り中…";
+"conversation.activity.filesChanging" = "ファイルを編集中…";
+"conversation.activity.commandsRunning" = "コマンドを実行中…";
+"conversation.activity.webSearching" = "ウェブを検索中…";
+"conversation.activity.otherDone" = "ツールを使用しました";
+"conversation.activity.otherRunning" = "ツールを実行中…";
+"conversation.activity.toolFailed" = "ツールが失敗しました: %@";
+"conversation.contextCompactedAuto" = "コンテキストを自動圧縮しました";

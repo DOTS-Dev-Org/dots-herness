@@ -635,4 +635,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} token</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>Nhập kích thước ngữ cảnh riêng cho mô hình, tính bằng token. "Tự động" dùng kích thước do mô hình báo cáo hoặc ghi trong tài liệu khi có, sau đó là giá trị đã cấu hình cho tài khoản.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>Tìm mô hình</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>Giá trị tự động: {0} token</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>Nhà cung cấp không báo cáo kích thước ngữ cảnh.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>Chưa có mô hình nào. Hãy kết nối một nhà cung cấp hoặc làm mới danh sách mô hình.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>Đã lưu.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>Tự động</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>Nhập một số nguyên dương cho số token.</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>Ngữ cảnh đã được tự động nén</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>Đã đọc tệp</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>Đã thay đổi tệp</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>Đã chạy lệnh</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>Đã tìm kiếm trên web</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>Đang đọc tệp…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>Đang chỉnh sửa tệp…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>Đang chạy lệnh…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>Đang tìm kiếm trên web…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>Đã dùng một công cụ</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>Đang chạy công cụ…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>Công cụ thất bại: {0}</value></data>
 </root>

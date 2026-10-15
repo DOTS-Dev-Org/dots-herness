@@ -636,4 +636,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0}トークン</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>モデルごとのコンテキストサイズをトークン数で入力します。「自動」では、モデルが報告またはドキュメントで公開しているサイズを優先し、ない場合はアカウントに設定された値を使用します。</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>モデルを検索</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>自動値: {0} トークン</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>プロバイダーはコンテキストサイズを報告していません。</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>利用できるモデルがまだありません。プロバイダーを接続するか、モデル一覧を更新してください。</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>保存しました。</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>自動</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>正の整数でトークン数を入力してください。</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>コンテキストを自動圧縮しました</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>ファイルを読み取りました</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>ファイルを変更しました</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>コマンドを実行しました</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>ウェブを検索しました</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>ファイルを読み取り中…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>ファイルを編集中…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>コマンドを実行中…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>ウェブを検索中…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>ツールを使用しました</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>ツールを実行中…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>ツールが失敗しました: {0}</value></data>
 </root>

@@ -635,4 +635,24 @@
   <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
   <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
   <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} token</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>Masukkan ukuran konteks khusus model dalam token. "Otomatis" memakai ukuran yang dilaporkan atau didokumentasikan model jika tersedia, lalu nilai yang dikonfigurasi untuk akun.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>Cari model</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>Nilai otomatis: {0} token</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>Penyedia tidak melaporkan ukuran konteks.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>Belum ada model yang tersedia. Hubungkan penyedia atau muat ulang daftar model.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>Tersimpan.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>Otomatis</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>Masukkan bilangan bulat positif untuk jumlah token.</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>Konteks dipadatkan secara otomatis</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>Membaca file</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>Mengubah file</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>Menjalankan perintah</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>Mencari di web</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>Membaca file…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>Mengedit file…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>Menjalankan perintah…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>Mencari di web…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>Menggunakan alat</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>Menjalankan alat…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>Alat gagal: {0}</value></data>
 </root>

@@ -1307,3 +1307,26 @@
 "archive.confirmDelete" = "Dit gesprek permanent verwijderen?";
 "archive.deletePermanently" = "Permanent verwijderen";
 "conversation.processedTokensCount" = "%@ tokens";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "Voer een modelspecifieke contextgrootte in tokens in. 'Automatisch' gebruikt de door het model gemelde of gedocumenteerde grootte als die beschikbaar is, en anders de waarde die voor het account is ingesteld.";
+"model.context.search" = "Modellen zoeken";
+"model.context.detected" = "Automatische waarde: %@ tokens";
+"model.context.notDetected" = "De provider meldt geen contextgrootte.";
+"model.context.empty" = "Er zijn nog geen modellen beschikbaar. Verbind een provider of vernieuw de modellijst.";
+"model.context.save" = "Opslaan";
+"model.context.auto" = "Automatisch";
+"model.context.invalid" = "Voer een positief geheel aantal tokens in.";
+"model.context.saved" = "Opgeslagen.";
+"conversation.activity.filesRead" = "Bestanden gelezen";
+"conversation.activity.filesChanged" = "Bestanden gewijzigd";
+"conversation.activity.commandsRun" = "Opdrachten uitgevoerd";
+"conversation.activity.webSearch" = "Op het web gezocht";
+"conversation.activity.filesReading" = "Bestanden lezen…";
+"conversation.activity.filesChanging" = "Bestanden bewerken…";
+"conversation.activity.commandsRunning" = "Opdrachten uitvoeren…";
+"conversation.activity.webSearching" = "Zoeken op het web…";
+"conversation.activity.otherDone" = "Een tool gebruikt";
+"conversation.activity.otherRunning" = "Tool uitvoeren…";
+"conversation.activity.toolFailed" = "Tool mislukt: %@";
+"conversation.contextCompactedAuto" = "Context automatisch gecomprimeerd";

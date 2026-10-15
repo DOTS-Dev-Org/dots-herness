@@ -23,19 +23,19 @@
     <string name="common_save">சேமிக்கவும்</string>
     <string name="common_start">தொடங்கு</string>
     <string name="common_stop">நிறுத்து</string>
-    <string name="conversation_activity_commands_run">Ran commands</string>
-    <string name="conversation_activity_commands_running">Running commands…</string>
-    <string name="conversation_activity_files_changed">Changed files</string>
-    <string name="conversation_activity_files_changing">Editing files…</string>
-    <string name="conversation_activity_files_read">Read files</string>
-    <string name="conversation_activity_files_reading">Reading files…</string>
-    <string name="conversation_activity_other_running">Running a tool…</string>
-    <string name="conversation_activity_tool_failed" formatted="false">Tool failed: %@</string>
-    <string name="conversation_activity_web_search">Searched the web</string>
-    <string name="conversation_activity_web_searching">Searching the web…</string>
+    <string name="conversation_activity_commands_run">கட்டளைகளை இயக்கியது</string>
+    <string name="conversation_activity_commands_running">கட்டளைகளை இயக்குகிறது…</string>
+    <string name="conversation_activity_files_changed">கோப்புகளை மாற்றியது</string>
+    <string name="conversation_activity_files_changing">கோப்புகளைத் திருத்துகிறது…</string>
+    <string name="conversation_activity_files_read">கோப்புகளைப் படித்தது</string>
+    <string name="conversation_activity_files_reading">கோப்புகளைப் படிக்கிறது…</string>
+    <string name="conversation_activity_other_running">கருவி இயங்குகிறது…</string>
+    <string name="conversation_activity_tool_failed" formatted="false">கருவி தோல்வியடைந்தது: %@</string>
+    <string name="conversation_activity_web_search">இணையத்தில் தேடியது</string>
+    <string name="conversation_activity_web_searching">இணையத்தில் தேடுகிறது…</string>
     <string name="conversation_assistant">புள்ளிகள் ஹார்னஸ்</string>
     <string name="conversation_close_terminal">முனையத்தை மூடு</string>
-    <string name="conversation_context_compacted_auto">Context compacted automatically</string>
+    <string name="conversation_context_compacted_auto">சூழல் தானாகச் சுருக்கப்பட்டது</string>
     <string name="conversation_files">கோப்புகள்</string>
     <string name="conversation_open_terminal">முனையத்தைத் திறக்கவும்</string>
     <string name="conversation_queued_message">வரிசைப்படுத்தப்பட்ட செய்தி</string>

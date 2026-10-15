@@ -1307,3 +1307,26 @@
 "archive.confirmDelete" = "永久删除此对话？";
 "archive.deletePermanently" = "永久删除";
 "conversation.processedTokensCount" = "%@ 个 token";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "输入该模型专用的上下文大小（以 token 计）。“自动”会优先使用模型报告或文档中注明的大小，否则使用为账户配置的值。";
+"model.context.search" = "搜索模型";
+"model.context.detected" = "自动值：%@ 个 token";
+"model.context.notDetected" = "提供商未报告上下文大小。";
+"model.context.empty" = "暂无可用模型。请连接提供商或刷新模型列表。";
+"model.context.save" = "保存";
+"model.context.auto" = "自动";
+"model.context.invalid" = "请输入正整数形式的 token 数。";
+"model.context.saved" = "已保存。";
+"conversation.activity.filesRead" = "已读取文件";
+"conversation.activity.filesChanged" = "已更改文件";
+"conversation.activity.commandsRun" = "已运行命令";
+"conversation.activity.webSearch" = "已搜索网页";
+"conversation.activity.filesReading" = "正在读取文件…";
+"conversation.activity.filesChanging" = "正在编辑文件…";
+"conversation.activity.commandsRunning" = "正在运行命令…";
+"conversation.activity.webSearching" = "正在搜索网页…";
+"conversation.activity.otherDone" = "已使用工具";
+"conversation.activity.otherRunning" = "正在运行工具…";
+"conversation.activity.toolFailed" = "工具失败：%@";
+"conversation.contextCompactedAuto" = "上下文已自动压缩";

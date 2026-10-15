@@ -1327,3 +1327,26 @@
 "archive.confirmDelete" = "Να διαγραφεί οριστικά αυτή η συνομιλία;";
 "archive.deletePermanently" = "Οριστική διαγραφή";
 "conversation.processedTokensCount" = "%@ tokens";
+
+// Completed translations for keys added to the desktop catalog.
+"model.context.description" = "Εισαγάγετε μέγεθος πλαισίου ειδικά για το μοντέλο, σε tokens. Η επιλογή «Αυτόματο» χρησιμοποιεί το μέγεθος που αναφέρει ή τεκμηριώνει το μοντέλο, όταν υπάρχει, και έπειτα την τιμή που έχει οριστεί για τον λογαριασμό.";
+"model.context.search" = "Αναζήτηση μοντέλων";
+"model.context.detected" = "Αυτόματη τιμή: %@ tokens";
+"model.context.notDetected" = "Ο πάροχος δεν αναφέρει μέγεθος πλαισίου.";
+"model.context.empty" = "Δεν υπάρχουν ακόμη διαθέσιμα μοντέλα. Συνδέστε έναν πάροχο ή ανανεώστε τη λίστα μοντέλων.";
+"model.context.save" = "Αποθήκευση";
+"model.context.auto" = "Αυτόματο";
+"model.context.invalid" = "Εισαγάγετε έναν θετικό ακέραιο αριθμό tokens.";
+"model.context.saved" = "Αποθηκεύτηκε.";
+"conversation.activity.filesRead" = "Διάβασε αρχεία";
+"conversation.activity.filesChanged" = "Άλλαξε αρχεία";
+"conversation.activity.commandsRun" = "Εκτέλεσε εντολές";
+"conversation.activity.webSearch" = "Αναζήτησε στον ιστό";
+"conversation.activity.filesReading" = "Ανάγνωση αρχείων…";
+"conversation.activity.filesChanging" = "Επεξεργασία αρχείων…";
+"conversation.activity.commandsRunning" = "Εκτέλεση εντολών…";
+"conversation.activity.webSearching" = "Αναζήτηση στον ιστό…";
+"conversation.activity.otherDone" = "Χρησιμοποίησε ένα εργαλείο";
+"conversation.activity.otherRunning" = "Εκτέλεση εργαλείου…";
+"conversation.activity.toolFailed" = "Το εργαλείο απέτυχε: %@";
+"conversation.contextCompactedAuto" = "Το πλαίσιο συμπιέστηκε αυτόματα";
