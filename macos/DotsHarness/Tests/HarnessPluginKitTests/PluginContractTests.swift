@@ -5,7 +5,6 @@ import XCTest
 import HarnessPluginKit
 import PluginRuntime
 import DotsHarnessCore
-import FableThinkingPlugin
 
 @MainActor
 final class PluginContractTests: XCTestCase {
@@ -13,36 +12,36 @@ final class PluginContractTests: XCTestCase {
         let yaml = """
         plane: host
         entries:
-          - id: fable-thinking
-            plugin: dots.fable-thinking
+          - id: prompt
+            plugin: dots.test-prompt
         """
         let document = try MiniYAML.decode(CompositionDocument.self, from: yaml)
         XCTAssertEqual(document.plane, .host)
         XCTAssertEqual(document.entries.count, 1)
 
         let patchText = """
-        - disable: fable-thinking
+        - disable: prompt
         """
         let patches = try MiniYAML.loadPatches(from: patchText)
         let next = CompositionPatch.apply(patches, to: document)
         XCTAssertTrue(next.entries[0].disabled)
     }
 
-    func testFableMount() throws {
+    func testPromptPluginMount() throws {
         let catalog = PluginCatalog(paths: temporaryPaths())
-        catalog.registerBuiltin(FableThinkingPlugin.self)
+        catalog.registerBuiltin(PromptPlugin.self)
         let host = PluginHost(catalog: catalog)
-        let issues = host.mount(CompositionDocument(plane: .host, entries: [CompositionEntry(id: "fable-thinking", plugin: "dots.fable-thinking")]))
+        let issues = host.mount(CompositionDocument(plane: .host, entries: [CompositionEntry(id: "prompt", plugin: "dots.test-prompt")]))
         XCTAssertTrue(issues.isEmpty, issues.map(\.message).joined())
         XCTAssertEqual(host.fibers.count, 1)
-        XCTAssertTrue(host.prompt.assembledText().contains("Fable style"))
+        XCTAssertTrue(host.prompt.assembledText().contains(PromptPlugin.text))
     }
 
     func testUnmountReversesSlotsAndPrompt() throws {
         let catalog = PluginCatalog(paths: temporaryPaths())
-        catalog.registerBuiltin(FableThinkingPlugin.self)
+        catalog.registerBuiltin(PromptPlugin.self)
         let host = PluginHost(catalog: catalog)
-        _ = host.mount(CompositionDocument(plane: .host, entries: [CompositionEntry(id: "fable-thinking", plugin: "dots.fable-thinking")]))
+        _ = host.mount(CompositionDocument(plane: .host, entries: [CompositionEntry(id: "prompt", plugin: "dots.test-prompt")]))
         host.unmountAll()
         XCTAssertTrue(host.prompt.sections().isEmpty)
         XCTAssertTrue(host.slots.occupants(in: WellKnownSlot.overlay).isEmpty)
@@ -153,6 +152,26 @@ final class PluginContractTests: XCTestCase {
         return paths
     }
 
+}
+
+final class PromptPlugin: DefaultPlugin {
+    static let manifest = PluginManifest(
+        id: "dots.test-prompt",
+        name: "Prompt",
+        version: "1.0.0",
+        plane: .host,
+        inject: ["prompt"],
+        description: "Test-only prompt section"
+    )
+
+    static let text = "Test-only prompt section"
+
+    init() {}
+
+    func apply(_ ctx: PluginContext) throws {
+        _ = try ctx.require("prompt")
+        ctx.prompt.section(name: "test:prompt", order: 5, text: Self.text)
+    }
 }
 
 final class PublishingPlugin: DefaultPlugin {

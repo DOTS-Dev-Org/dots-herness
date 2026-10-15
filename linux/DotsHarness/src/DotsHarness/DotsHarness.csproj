@@ -29,6 +29,8 @@
     <AvaloniaResource Include="Resources\ProviderMarks\*.png" />
     <AvaloniaResource Include="Resources\presets\host.yml" />
     <Content Include="Resources\skills\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Cross-platform skills live once in shared/skills; only platform-specific ones stay in Resources\skills. -->
+    <Content Include="..\..\..\..\shared\skills\**\*" Link="Resources\skills\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Resources\skillsmp-popular-200.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

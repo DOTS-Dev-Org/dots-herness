@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using DotsHarnessCore;
-using FableThinkingPlugin;
 using HarnessPluginKit;
 using PluginRuntime;
 using Xunit;
@@ -19,25 +18,29 @@ public sealed class PluginContractTests
     [Fact]
     public void BundledHostMountsCleanlyWithoutBuiltinPrompt()
     {
-        // Fable guidance ships as the bundled fable-thinking skill now, so the
-        // default host composition mounts nothing even with the plugin registered.
+        // Prompt guidance ships as bundled skills, so the default host
+        // composition mounts nothing even with a prompt plugin registered.
         var catalog = new PluginCatalog(TemporaryPaths());
-        catalog.RegisterBuiltin<FableThinkingPlugin.FableThinkingPlugin>();
+        catalog.RegisterBuiltin<PromptPlugin>();
         var host = new PluginHost(catalog);
         var issues = host.Mount(CompositionLoader.BundledHost());
 
         Assert.True(issues.Count == 0, string.Join("; ", issues.Select(issue => issue.Message)));
         Assert.Empty(host.Fibers);
-        Assert.DoesNotContain("Fable style", host.Prompt.AssembledText());
+        Assert.DoesNotContain(PromptPlugin.Text, host.Prompt.AssembledText());
     }
 
     [Fact]
     public void UnmountReversesPromptAndServices()
     {
         var catalog = new PluginCatalog(TemporaryPaths());
-        catalog.RegisterBuiltin<FableThinkingPlugin.FableThinkingPlugin>();
+        catalog.RegisterBuiltin<PromptPlugin>();
         var host = new PluginHost(catalog);
-        _ = host.Mount(CompositionLoader.BundledHost());
+        _ = host.Mount(new CompositionDocument(PluginPlane.Host, new[]
+        {
+            new CompositionEntry("prompt", "dots.test-prompt"),
+        }));
+        Assert.Contains(PromptPlugin.Text, host.Prompt.AssembledText());
 
         host.UnmountAll();
 
@@ -158,6 +161,25 @@ public sealed class PluginContractTests
             Path.Combine(root, "runtime"));
         paths.Ensure();
         return paths;
+    }
+}
+
+public sealed class PromptPlugin : IDefaultPlugin
+{
+    public const string Text = "Test-only prompt section";
+
+    public PluginManifest Manifest { get; } = new(
+        "dots.test-prompt",
+        "Prompt",
+        "1.0.0",
+        PluginPlane.Host,
+        Inject: new[] { "prompt" },
+        Description: "Test-only prompt section");
+
+    public void Apply(IPluginContext ctx)
+    {
+        _ = ctx.Require("prompt");
+        ctx.Prompt.Section("test:prompt", 5, Text);
     }
 }
 
