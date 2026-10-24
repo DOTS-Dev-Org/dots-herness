@@ -419,6 +419,45 @@ public sealed class CachePrefixContractTests
     }
 
     [Fact]
+    public void RouteWithoutRetentionWarnsOnlyWhenACachedPrefixDrops()
+    {
+        var session = new NativeCacheSession();
+        void Add(int cached, string classification = "unknown") => session.AppendEvent(
+            new NativeCacheUsageEvent(Guid.NewGuid().ToString(), DateTimeOffset.UtcNow, "scope", new NativeUsage(40_000, 1, cached),
+                new NativeCacheReuseEvidence(null, "prefix", "settings", classification, "retention_not_verified", "none")));
+        Add(0);
+        Assert.Null(session.ExpiredLargePrefixTokens(DateTimeOffset.UtcNow)); // first request: nothing was cached yet
+        Add(36_000);
+        Assert.Null(session.ExpiredLargePrefixTokens(DateTimeOffset.UtcNow));
+        Add(0, "changed");
+        Assert.Null(session.ExpiredLargePrefixTokens(DateTimeOffset.UtcNow)); // compaction rewrote the prefix
+        Add(500);
+        Assert.Equal(40_000, session.ExpiredLargePrefixTokens(DateTimeOffset.UtcNow));
+        Add(36_000);
+        Assert.Null(session.ExpiredLargePrefixTokens(DateTimeOffset.UtcNow.AddMinutes(59)));
+        Assert.Equal(40_000, session.ExpiredLargePrefixTokens(DateTimeOffset.UtcNow.AddMinutes(61))); // idle past an hour
+    }
+
+    [Fact]
+    public void LocalRouteWarnsWhenAnotherChatTookTheServerNotAfterIdleTime()
+    {
+        var started = DateTimeOffset.UtcNow;
+        static NativeCacheUsageEvent Local(DateTimeOffset at, int cached) => new(Guid.NewGuid().ToString(), at, "scope",
+            new NativeUsage(40_000, 1, cached), new NativeCacheReuseEvidence(null, "prefix", "settings", "unknown", "retention_not_verified", "none"),
+            RouteFingerprint: "local-server", Local: true);
+        var chat = new NativeCacheSession();
+        var other = new NativeCacheSession();
+        chat.AppendEvent(Local(started, 0));
+        chat.AppendEvent(Local(started.AddSeconds(10), 36_000));
+        NativeCacheSession[] all = [chat, other];
+        Assert.Null(chat.ExpiredLargePrefixTokens(started.AddHours(3), others: all)); // idle time alone says nothing
+        other.AppendEvent(Local(started.AddSeconds(5), 0));
+        Assert.Null(chat.ExpiredLargePrefixTokens(started.AddHours(3), others: all)); // before our last request
+        other.AppendEvent(Local(started.AddMinutes(1), 0));
+        Assert.Equal(40_000, chat.ExpiredLargePrefixTokens(started.AddMinutes(2), others: all));
+    }
+
+    [Fact]
     public void RollingReuseKeepsRoutesSeparateAndRejectsInvalidCounters()
     {
         var session = new NativeCacheSession();

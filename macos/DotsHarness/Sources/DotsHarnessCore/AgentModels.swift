@@ -94,6 +94,18 @@ public struct AgentConfiguration: Sendable, Equatable {
     }
 
     var transportSpec: ProviderSpec.Transport? { ProviderRegistry.shared.spec(specID)?.transport }
+
+    /// `provider` is a display label; the account records its spec id, so the
+    /// spec id is what identifies the route.
+    func routeIdentity(model: String) -> String {
+        [
+            api,
+            specID.isEmpty ? provider : specID,
+            accountID ?? "",
+            baseURL.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+            model,
+        ].joined(separator: "|")
+    }
     var isOAuth: Bool { authType == "oauth" || authType == "chatgpt" }
 }
 
@@ -163,6 +175,13 @@ public struct AgentMessage: Sendable, Equatable, Codable {
     public var toolCalls: [AgentToolCall]
     public var attachments: [ChatAttachment]
     public var systemKind: SystemKind?
+    /// Marks model-only messages used to continue one assistant answer across
+    /// bounded provider requests. These messages are never shown in the chat.
+    public var responseContinuationID: String?
+    /// Marks ordinary prose emitted alongside a tool call as visible progress.
+    /// Provider projections may omit only this text; tool calls, thinking, and
+    /// opaque provider items remain available for replay.
+    public var isTransientProgressText: Bool
     /// Persisted with the model transcript; never sent as a provider field.
     public var promptContextCaptured: Bool = false
     /// Raw Responses output items are kept only when the same Responses route is
@@ -178,7 +197,9 @@ public struct AgentMessage: Sendable, Equatable, Codable {
         toolCalls: [AgentToolCall] = [],
         attachments: [ChatAttachment] = [],
         providerItems: [JSONObject] = [],
-        systemKind: SystemKind? = nil
+        systemKind: SystemKind? = nil,
+        responseContinuationID: String? = nil,
+        isTransientProgressText: Bool = false
     ) {
         self.role = role
         self.content = content
@@ -189,10 +210,12 @@ public struct AgentMessage: Sendable, Equatable, Codable {
         self.attachments = attachments
         self.providerItems = providerItems
         self.systemKind = systemKind
+        self.responseContinuationID = responseContinuationID
+        self.isTransientProgressText = isTransientProgressText
     }
 
     private enum CodingKeys: String, CodingKey {
-        case role, content, thinking, name, toolCallID, toolCalls, attachments, providerItems, systemKind, promptContextCaptured
+        case role, content, thinking, name, toolCallID, toolCalls, attachments, providerItems, systemKind, responseContinuationID, isTransientProgressText, promptContextCaptured
     }
 
     public init(from decoder: Decoder) throws {
@@ -206,6 +229,8 @@ public struct AgentMessage: Sendable, Equatable, Codable {
         attachments = try container.decodeIfPresent([ChatAttachment].self, forKey: .attachments) ?? []
         providerItems = try container.decodeIfPresent([JSONObject].self, forKey: .providerItems) ?? []
         systemKind = try container.decodeIfPresent(SystemKind.self, forKey: .systemKind)
+        responseContinuationID = try container.decodeIfPresent(String.self, forKey: .responseContinuationID)
+        isTransientProgressText = try container.decodeIfPresent(Bool.self, forKey: .isTransientProgressText) ?? false
         promptContextCaptured = try container.decodeIfPresent(Bool.self, forKey: .promptContextCaptured) ?? false
     }
 
@@ -220,7 +245,37 @@ public struct AgentMessage: Sendable, Equatable, Codable {
         try container.encode(attachments, forKey: .attachments)
         try container.encode(providerItems, forKey: .providerItems)
         try container.encodeIfPresent(systemKind, forKey: .systemKind)
+        try container.encodeIfPresent(responseContinuationID, forKey: .responseContinuationID)
+        if isTransientProgressText { try container.encode(true, forKey: .isTransientProgressText) }
         try container.encode(promptContextCaptured, forKey: .promptContextCaptured)
+    }
+
+    /// A brief update ("Running the tests now.") stays in the replayed history so the
+    /// model keeps seeing that it reports progress; only longer prose is omitted.
+    /// The length is fixed per message, so the cached prefix never changes later.
+    static let briefProgressCharacters = 240
+
+    mutating func markTransientProgressForToolCall() {
+        guard role == .assistant,
+              !toolCalls.isEmpty,
+              content.trimmingCharacters(in: .whitespacesAndNewlines).count > Self.briefProgressCharacters else { return }
+        isTransientProgressText = true
+    }
+
+    public static func responseStylePrompt(in messages: [AgentMessage]) -> String? {
+        if let originalPrompt = messages.last(where: { $0.role == .user && $0.responseContinuationID == nil })?.content {
+            return originalPrompt
+        }
+        guard let continuationPrompt = messages.last(where: {
+            $0.role == .user && $0.responseContinuationID != nil
+        })?.content else { return nil }
+        let originalMarker = "Original user request (verbatim):\n"
+        let outputMarker = "\n\nThe assistant message immediately following this instruction"
+        guard let start = continuationPrompt.range(of: originalMarker)?.upperBound,
+              let end = continuationPrompt.range(of: outputMarker, range: start..<continuationPrompt.endIndex)?.lowerBound else {
+            return continuationPrompt
+        }
+        return String(continuationPrompt[start..<end])
     }
 
     public func jsonObject() -> [String: Any] {
@@ -528,7 +583,11 @@ public struct NativeAgentError: Error, Sendable, LocalizedError, Equatable {
     public var statusCode: Int?
     public var retryable: Bool
     public var isLimit: Bool
+    public var isContextWindowExceeded: Bool
     public var isImageInputUnsupported: Bool
+    /// The request never reached the provider or the connection dropped (no
+    /// internet, lost connection, timeout); the run pauses until the network is back.
+    public var isNetworkFailure: Bool
     /// When the provider said it would accept requests again, taken from the rate
     /// limit headers. Nil when it did not say, which is not the same as "never".
     public var retryAt: Date?
@@ -539,14 +598,29 @@ public struct NativeAgentError: Error, Sendable, LocalizedError, Equatable {
         retryable: Bool = false,
         isLimit: Bool = false,
         isImageInputUnsupported: Bool = false,
-        retryAt: Date? = nil
+        retryAt: Date? = nil,
+        isContextWindowExceeded: Bool = false,
+        isNetworkFailure: Bool = false
     ) {
         self.message = message
+        self.isNetworkFailure = isNetworkFailure
         self.statusCode = statusCode
         self.isLimit = isLimit || statusCode == 429
+        self.isContextWindowExceeded = isContextWindowExceeded || Self.indicatesContextWindowExceeded(message)
         self.isImageInputUnsupported = isImageInputUnsupported
         self.retryable = self.isLimit ? false : retryable
         self.retryAt = retryAt
+    }
+
+    static func indicatesContextWindowExceeded(_ message: String) -> Bool {
+        let normalized = message.lowercased().replacingOccurrences(of: "_", with: " ")
+        let contextTerms = ["context window", "context length", "maximum context", "max context", "prompt length", "input length"]
+        let overflowTerms = ["exceed", "too long", "too large", "too many tokens", "maximum", "max tokens", "full", "limit"]
+        if ["prompt is too long", "prompt too long", "input is too long", "input too long"].contains(where: normalized.contains) {
+            return true
+        }
+        return contextTerms.contains(where: normalized.contains)
+            && overflowTerms.contains(where: normalized.contains)
     }
 
     /// Reads the moment a rate-limited provider will serve again. Providers disagree

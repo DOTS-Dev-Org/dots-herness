@@ -39,21 +39,6 @@ public static class MiniYaml
             ?? throw PluginException.InvalidComposition("failed to decode YAML");
     }
 
-    public static CompositionDocument DecodeDocument(string text)
-    {
-        var root = LoadObject(text);
-        var plane = ParsePlane(root.TryGetValue("plane", out var p) ? p.AsString() : null);
-        var entries = new List<CompositionEntry>();
-        if (root.TryGetValue("entries", out var raw) && raw.AsArray() is { } items)
-        {
-            foreach (var item in items)
-            {
-                if (item.AsObject() is { } obj) entries.Add(DecodeEntry(obj));
-            }
-        }
-        return new CompositionDocument(plane, entries);
-    }
-
     public static PluginManifest DecodeManifest(string text)
     {
         var root = LoadObject(text);

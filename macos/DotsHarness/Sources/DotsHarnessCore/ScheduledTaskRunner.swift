@@ -32,10 +32,10 @@ public struct ScheduledTaskRunner {
     public func run(_ task: ScheduledTask) async -> TaskScheduler.RunResult {
         let prompt = task.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty else {
-            return TaskScheduler.RunResult(ok: false, message: "Empty prompt")
+            return TaskScheduler.RunResult(ok: false, message: AppCopy.text("tasks.run.emptyPrompt"))
         }
         guard let workspace = Self.validWorkspace(task.workspacePath) else {
-            return TaskScheduler.RunResult(ok: false, message: "Workspace not found: \(task.workspacePath)")
+            return TaskScheduler.RunResult(ok: false, message: AppCopy.format("tasks.run.noWorkspace", task.workspacePath))
         }
 
         // A task stores a model id, and providers retire models. Anything the
@@ -45,7 +45,7 @@ public struct ScheduledTaskRunner {
             .map { router.usableModelID($0) }
             .filter { !$0.isEmpty }
         let attempts: [String?] = models.isEmpty ? [nil] : models.map(Optional.some)
-        var lastResult = TaskScheduler.RunResult(ok: false, message: "No response")
+        var lastResult = TaskScheduler.RunResult(ok: false, message: AppCopy.text("tasks.run.noResponse"))
 
         for (index, model) in attempts.enumerated() {
             let result = await runAttempt(
@@ -100,7 +100,7 @@ public struct ScheduledTaskRunner {
 
         host.newConversation()
         guard let conversationID = host.selectedID else {
-            return TaskScheduler.RunResult(ok: false, message: "Could not open a conversation", modelID: model ?? "", fallbackUsed: fallbackUsed)
+            return TaskScheduler.RunResult(ok: false, message: AppCopy.text("tasks.run.noConversation"), modelID: model ?? "", fallbackUsed: fallbackUsed)
         }
         let stamp = DateFormatter.taskStamp.string(from: Date())
         host.renameConversation(conversationID, to: "\(task.name) — \(stamp)")
@@ -118,7 +118,7 @@ public struct ScheduledTaskRunner {
         host.deleteConversation(conversationID)
         return TaskScheduler.RunResult(
             ok: ok,
-            message: output.isEmpty ? "No response" : String(output.prefix(4000)),
+            message: output.isEmpty ? AppCopy.text("tasks.run.noResponse") : String(output.prefix(4000)),
             modelID: usedModel,
             fallbackUsed: fallbackUsed
         )

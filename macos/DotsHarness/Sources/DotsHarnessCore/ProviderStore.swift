@@ -75,6 +75,18 @@ public struct StoredProviderAccount: Codable, Sendable, Equatable {
     /// names no model, so it must never reach a picker or a request.
     public var hasPlaceholderModel: Bool { model.hasSuffix("/") }
 
+    /// Existing OpenAI API-key accounts were stored as Chat Completions; the
+    /// built-in OpenAI route is served through Responses.
+    var routeAPI: String { provider == "openai" ? RouterAPIKind.chatGPT.rawValue : api }
+
+    /// Must stay equal to `AgentConfiguration.routeIdentity(model:)` for the
+    /// configuration built from this account, or every request looks like a
+    /// route change.
+    func routeIdentity(model: String) -> String {
+        [routeAPI, provider, id, baseURL.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), model]
+            .joined(separator: "|")
+    }
+
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
@@ -202,11 +214,17 @@ public final class ProviderVault: @unchecked Sendable {
             kSecAttrService as String: service,
             kSecAttrAccount as String: id,
         ]
-        let attributes: [String: Any] = [kSecValueData as String: data]
+        let attributes: [String: Any] = [
+            kSecValueData as String: data,
+            // Rewrite the accessibility too: items written by an older build
+            // had no class and could travel in a backup.
+            kSecAttrAccessible as String: KeychainAccess.whenUnlocked,
+        ]
         let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
         if updateStatus == errSecItemNotFound {
             var item = query
             item[kSecValueData as String] = data
+            item[kSecAttrAccessible as String] = KeychainAccess.whenUnlocked
             let status = SecItemAdd(item as CFDictionary, nil)
             guard status == errSecSuccess else { throw ProviderStoreError.keychain(status) }
         } else if updateStatus != errSecSuccess {
@@ -473,11 +491,6 @@ public final class NativeProviderStore {
     public func setImageFallback(_ accountID: String, _ enabled: Bool) throws {
         guard let index = state.accounts.firstIndex(where: { $0.id == accountID }) else { return }
         state.accounts[index].imageFallbackEnabled = enabled
-        try save()
-    }
-
-    public func setSelected(_ accountID: String?) throws {
-        state.selectedAccountID = accountID
         try save()
     }
 

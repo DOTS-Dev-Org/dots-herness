@@ -341,17 +341,20 @@ public struct ChangedFile: Identifiable, Hashable, Sendable, Codable, Equatable 
     public let operation: Operation
     public let addedLines: Int
     public let deletedLines: Int
+    /// Bounded diff captured when this turn finished so history previews never reread the workspace.
+    public let preview: String?
 
     public var id: String { "\(operation.rawValue):\(path)" }
 
-    public init(path: String, operation: Operation, addedLines: Int = -1, deletedLines: Int = -1) {
+    public init(path: String, operation: Operation, addedLines: Int = -1, deletedLines: Int = -1, preview: String? = nil) {
         self.path = path
         self.operation = operation
         self.addedLines = addedLines
         self.deletedLines = deletedLines
+        self.preview = preview
     }
 
-    private enum CodingKeys: String, CodingKey { case path, operation, addedLines, deletedLines }
+    private enum CodingKeys: String, CodingKey { case path, operation, addedLines, deletedLines, preview }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -359,6 +362,7 @@ public struct ChangedFile: Identifiable, Hashable, Sendable, Codable, Equatable 
         operation = try container.decode(Operation.self, forKey: .operation)
         addedLines = try container.decodeIfPresent(Int.self, forKey: .addedLines) ?? -1
         deletedLines = try container.decodeIfPresent(Int.self, forKey: .deletedLines) ?? -1
+        preview = try container.decodeIfPresent(String.self, forKey: .preview)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -367,6 +371,7 @@ public struct ChangedFile: Identifiable, Hashable, Sendable, Codable, Equatable 
         try container.encode(operation, forKey: .operation)
         try container.encode(addedLines, forKey: .addedLines)
         try container.encode(deletedLines, forKey: .deletedLines)
+        try container.encodeIfPresent(preview, forKey: .preview)
     }
 }
 
@@ -382,7 +387,10 @@ public struct WorkspaceRunSummary: Hashable, Sendable, Codable, Equatable {
     public let deletedCount: Int
     public let testStatus: String
     public let browser: BrowserRunSummary?
-    public let undoAvailable: Bool?
+    public var undoAvailable: Bool?
+    /// False when the turn ran something whose writes could not be traced to paths,
+    /// so its changed files are the whole workspace diff. Nil on older records.
+    public let attributionKnown: Bool?
 
     public init(
         runID: String,
@@ -396,7 +404,8 @@ public struct WorkspaceRunSummary: Hashable, Sendable, Codable, Equatable {
         deletedCount: Int,
         testStatus: String,
         browser: BrowserRunSummary? = nil,
-        undoAvailable: Bool? = nil
+        undoAvailable: Bool? = nil,
+        attributionKnown: Bool? = nil
     ) {
         self.runID = runID
         self.turnID = turnID
@@ -410,6 +419,7 @@ public struct WorkspaceRunSummary: Hashable, Sendable, Codable, Equatable {
         self.testStatus = testStatus
         self.browser = browser
         self.undoAvailable = undoAvailable
+        self.attributionKnown = attributionKnown
     }
 }
 
@@ -429,6 +439,8 @@ public enum ConversationMutationError: Error, LocalizedError, Sendable, Equatabl
     case messageNotFound
     case notLatestUserMessage
     case snapshotUnavailable
+    case forkUnavailable
+    case forkSaveFailed
     case conflict([String])
     case restoreFailed(String)
     case invalidMessage
@@ -445,6 +457,10 @@ public enum ConversationMutationError: Error, LocalizedError, Sendable, Equatabl
             return AppCopy.text("conversation.editOnlyLatest")
         case .snapshotUnavailable:
             return AppCopy.text("conversation.historyUnavailable")
+        case .forkUnavailable:
+            return AppCopy.text("conversation.forkUnavailable")
+        case .forkSaveFailed:
+            return AppCopy.text("conversation.forkSaveFailed")
         case .conflict(let paths):
             return AppCopy.format("conversation.historyConflict", paths.joined(separator: ", "))
         case .restoreFailed(let path):
@@ -536,6 +552,9 @@ public struct ChatMessage: Identifiable, Sendable, Equatable, Codable {
         id = try container.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
         kind = try container.decodeIfPresent(Kind.self, forKey: .kind) ?? .system
         text = try container.decodeIfPresent(String.self, forKey: .text) ?? ""
+        if kind == .assistant || kind == .plan {
+            text = WorkspaceBacklogText.visibleText(text)
+        }
         rawToolOutput = try container.decodeIfPresent(String.self, forKey: .rawToolOutput)
         thinking = try container.decodeIfPresent(String.self, forKey: .thinking)
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
@@ -557,7 +576,10 @@ public struct ChatMessage: Identifiable, Sendable, Equatable, Codable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(kind, forKey: .kind)
-        try container.encode(text, forKey: .text)
+        let persistedText = kind == .assistant || kind == .plan
+            ? WorkspaceBacklogText.visibleText(text)
+            : text
+        try container.encode(persistedText, forKey: .text)
         try container.encodeIfPresent(rawToolOutput, forKey: .rawToolOutput)
         try container.encodeIfPresent(thinking, forKey: .thinking)
         try container.encode(createdAt, forKey: .createdAt)
@@ -637,6 +659,12 @@ public struct PendingPrompt: Identifiable, Codable, Sendable, Equatable {
     /// from a normal queue or steer mode.
     public var bypassesPlanGate: Bool
     public var attachments: [ChatAttachment]
+    /// Prompt-scoped subagent permission. Nil in older/system prompts means use
+    /// the current preference when the prompt starts.
+    public var subagentsOverride: Bool?
+    /// Set on a prompt the app wrote itself (a finished background task): the transcript
+    /// shows this line as a notice, while `text` is what the model reads.
+    public var notice: String?
 
     public init(
         id: String = UUID().uuidString,
@@ -647,7 +675,9 @@ public struct PendingPrompt: Identifiable, Codable, Sendable, Equatable {
         planIntentResolved: Bool = true,
         approvedPlanID: String? = nil,
         bypassesPlanGate: Bool = false,
-        attachments: [ChatAttachment] = []
+        attachments: [ChatAttachment] = [],
+        subagentsOverride: Bool? = nil,
+        notice: String? = nil
     ) {
         self.id = id
         self.text = text
@@ -658,6 +688,8 @@ public struct PendingPrompt: Identifiable, Codable, Sendable, Equatable {
         self.approvedPlanID = approvedPlanID
         self.bypassesPlanGate = bypassesPlanGate
         self.attachments = attachments
+        self.subagentsOverride = subagentsOverride
+        self.notice = notice
     }
 
     public var isPlanIntentResolved: Bool { planIntentResolved != false }
@@ -669,19 +701,12 @@ public enum ContinuationPauseReason: String, Sendable, Equatable, Codable {
     case userStopped
     /// The host stopped while a tool could still have had an external side effect.
     case applicationClosed
+    /// The network dropped mid-run; it resumes by itself once the connection is back.
+    case networkLost
 }
 
-public struct InFlightToolCall: Sendable, Equatable, Codable {
-    public var id: String
-    public var name: String
-    public var arguments: String
-
-    public init(id: String, name: String, arguments: String) {
-        self.id = id
-        self.name = name
-        self.arguments = arguments
-    }
-}
+/// A tool call journaled before it runs, so a crash mid-batch is recoverable.
+public typealias InFlightToolCall = AgentToolCall
 
 public struct ContinuationState: Sendable, Equatable, Codable {
     public var reason: ContinuationPauseReason
@@ -691,22 +716,26 @@ public struct ContinuationState: Sendable, Equatable, Codable {
     /// When the provider said its limit resets. The run resumes itself then, so a
     /// pinned model waits out its quota instead of needing the user back at the app.
     public var retryAt: Date?
+    /// Keeps a one-prompt override when the run pauses and resumes later.
+    public var subagentsOverride: Bool?
 
     public init(
         reason: ContinuationPauseReason,
         provider: String = "",
         model: String = "",
         message: String = "",
-        retryAt: Date? = nil
+        retryAt: Date? = nil,
+        subagentsOverride: Bool? = nil
     ) {
         self.reason = reason
         self.provider = provider
         self.model = model
         self.message = message
         self.retryAt = retryAt
+        self.subagentsOverride = subagentsOverride
     }
 
-    enum CodingKeys: String, CodingKey { case reason, provider, model, message, retryAt }
+    enum CodingKeys: String, CodingKey { case reason, provider, model, message, retryAt, subagentsOverride }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -715,6 +744,19 @@ public struct ContinuationState: Sendable, Equatable, Codable {
         model = try c.decodeIfPresent(String.self, forKey: .model) ?? ""
         message = try c.decodeIfPresent(String.self, forKey: .message) ?? ""
         retryAt = try c.decodeIfPresent(Date.self, forKey: .retryAt)
+        subagentsOverride = try c.decodeIfPresent(Bool.self, forKey: .subagentsOverride)
+    }
+}
+
+public struct ConversationTranscriptPage: Sendable {
+    public let messages: [ChatMessage]
+    public let startIndex: Int
+    public let totalCount: Int
+
+    public init(messages: [ChatMessage], startIndex: Int, totalCount: Int) {
+        self.messages = messages
+        self.startIndex = startIndex
+        self.totalCount = totalCount
     }
 }
 
@@ -730,6 +772,9 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
     public var contextSummary: String
     public var contextCompactionCount: Int
     public var lastContextInputTokens: Int
+    /// Local estimate of the request `lastContextInputTokens` counted; 0 when
+    /// that count is itself an estimate.
+    public var lastContextEstimatedTokens: Int
     public var contextWindow: Int
     public var contextRouteIdentity: String
     public var cacheEpoch: AgentConversationCacheEpoch?
@@ -741,7 +786,12 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
     /// Live-only timestamp; deliberately excluded from persisted sessions.
     public var runStartedAt: Date?
     public var pinned: Bool
+    /// User-set sidebar priority: 0 none, 1 low, 2 medium, 3 high.
+    public var priority: Int = 0
     public var archived: Bool
+    /// When the conversation entered the archive. Nil for conversations archived
+    /// before this metadata was introduced.
+    public var archivedAt: Date?
     public var blank: Bool
     /// A completed response the user has not opened yet.
     public var unread: Bool
@@ -772,8 +822,20 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
     /// False for a sidebar header decoded without its transcript (see
     /// `ConversationStore.loadHeaders`). Headers are never written over full records.
     public var contentLoaded = true
+    /// False while only a window of the visible transcript is resident. The
+    /// provider modelContext remains fully loaded for the selected conversation.
+    public var transcriptComplete = true
+    /// Absolute index of the first visible message currently loaded from disk.
+    public var messageStartIndex = 0
+    /// IDs loaded from disk pages, used to merge edits back without decoding the
+    /// rest of the transcript into memory.
+    public var loadedTranscriptMessageIDs = Set<String>()
     /// Newest message time for a header, read from the stored `lastActivityAt`.
     public var headerActivityAt: Date?
+
+    public var hasOlderTranscriptMessages: Bool {
+        contentLoaded && !transcriptComplete && messageStartIndex > 0
+    }
 
     /// Newest message time; drives sidebar ordering without decoding transcripts.
     public var activityDate: Date {
@@ -788,6 +850,9 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         header.headerActivityAt = activityDate
         header.messages = []
         header.modelContext = []
+        header.transcriptComplete = false
+        header.messageStartIndex = 0
+        header.loadedTranscriptMessageIDs = []
         header.cacheEpoch = nil
         header.pendingPrompts = []
         header.runStartedAt = nil
@@ -798,21 +863,32 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
     /// Copies the fields a user can change from the sidebar (header) onto a full record.
     public mutating func applyMetadata(from header: Conversation) {
         title = header.title
+        cwd = header.cwd
+        projectless = header.projectless
         pinned = header.pinned
+        priority = header.priority
         archived = header.archived
+        archivedAt = header.archivedAt
         unread = header.unread
         agentPreset = header.agentPreset
         modelPreferenceID = header.modelPreferenceID
     }
 
+    /// The stored default titles are English sentinels; show them in the app language.
+    public var displayTitle: String {
+        title == "New conversation" || title == "New chat" ? AppCopy.text("sidebar.newChat") : title
+    }
+
     public init(
         id: String = UUID().uuidString,
         title: String = "New conversation",
+
         messages: [ChatMessage] = [],
         modelContext: [AgentMessage] = [],
         contextSummary: String = "",
         contextCompactionCount: Int = 0,
         lastContextInputTokens: Int = 0,
+        lastContextEstimatedTokens: Int = 0,
         contextWindow: Int = 0,
         contextRouteIdentity: String = "",
         cacheEpoch: AgentConversationCacheEpoch? = nil,
@@ -822,6 +898,7 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         runStartedAt: Date? = nil,
         pinned: Bool = false,
         archived: Bool = false,
+        archivedAt: Date? = nil,
         blank: Bool = true,
         unread: Bool = false,
         planGateActive: Bool = false,
@@ -842,6 +919,7 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         self.contextSummary = contextSummary
         self.contextCompactionCount = contextCompactionCount
         self.lastContextInputTokens = lastContextInputTokens
+        self.lastContextEstimatedTokens = lastContextEstimatedTokens
         self.contextWindow = contextWindow
         self.contextRouteIdentity = contextRouteIdentity
         self.cacheEpoch = cacheEpoch
@@ -851,6 +929,7 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         self.runStartedAt = runStartedAt
         self.pinned = pinned
         self.archived = archived
+        self.archivedAt = archivedAt
         self.blank = blank
         self.unread = unread
         self.planGateActive = planGateActive || pendingPlanMessageID != nil
@@ -877,8 +956,8 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, messages, modelContext, contextSummary, contextCompactionCount, lastContextInputTokens, contextWindow, contextRouteIdentity
-        case continuation, pendingPrompts, running, pinned, archived, blank, unread, planGateActive, pendingPlanMessageID, cwd, projectless, agentPreset
+        case id, title, messages, modelContext, contextSummary, contextCompactionCount, lastContextInputTokens, lastContextEstimatedTokens, contextWindow, contextRouteIdentity
+        case continuation, pendingPrompts, running, pinned, priority, archived, archivedAt, blank, unread, planGateActive, pendingPlanMessageID, cwd, projectless, agentPreset
         case inFlightToolCalls, requiresToolOutcomeRecovery, stickyAccountID, stickyModelID, modelPreferenceID, lastActivityAt, cacheEpoch
     }
 
@@ -890,21 +969,29 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
         title = try container.decodeIfPresent(String.self, forKey: .title) ?? "New conversation"
-        if decoder.userInfo[ConversationStore.headersOnlyKey] as? Bool == true {
+        let headersOnly = decoder.userInfo[ConversationStore.headersOnlyKey] as? Bool == true
+        if headersOnly {
             // Sidebar header: skip the transcript and provider context entirely.
             messages = []
             modelContext = []
             contentLoaded = false
+            transcriptComplete = false
             headerActivityAt = try container.decodeIfPresent(Date.self, forKey: .lastActivityAt)
                 ?? (try container.decodeIfPresent([ActivityStamp].self, forKey: .messages))?
                     .compactMap(\.createdAt).max()
         } else {
             messages = try container.decodeIfPresent([ChatMessage].self, forKey: .messages) ?? []
             modelContext = try container.decodeIfPresent([AgentMessage].self, forKey: .modelContext) ?? []
+            contentLoaded = true
+            transcriptComplete = true
+            messageStartIndex = 0
+            loadedTranscriptMessageIDs = []
+            headerActivityAt = nil
         }
         contextSummary = try container.decodeIfPresent(String.self, forKey: .contextSummary) ?? ""
         contextCompactionCount = try container.decodeIfPresent(Int.self, forKey: .contextCompactionCount) ?? 0
         lastContextInputTokens = try container.decodeIfPresent(Int.self, forKey: .lastContextInputTokens) ?? 0
+        lastContextEstimatedTokens = try container.decodeIfPresent(Int.self, forKey: .lastContextEstimatedTokens) ?? 0
         contextWindow = try container.decodeIfPresent(Int.self, forKey: .contextWindow) ?? 0
         contextRouteIdentity = try container.decodeIfPresent(String.self, forKey: .contextRouteIdentity) ?? ""
         cacheEpoch = decoder.userInfo[ConversationStore.headersOnlyKey] as? Bool == true
@@ -916,7 +1003,9 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         running = try container.decodeIfPresent(Bool.self, forKey: .running) ?? false
         runStartedAt = nil
         pinned = try container.decodeIfPresent(Bool.self, forKey: .pinned) ?? false
+        priority = try container.decodeIfPresent(Int.self, forKey: .priority) ?? 0
         archived = try container.decodeIfPresent(Bool.self, forKey: .archived) ?? false
+        archivedAt = try container.decodeIfPresent(Date.self, forKey: .archivedAt)
         blank = try container.decodeIfPresent(Bool.self, forKey: .blank) ?? true
         unread = try container.decodeIfPresent(Bool.self, forKey: .unread) ?? false
         planGateActive = try container.decodeIfPresent(Bool.self, forKey: .planGateActive) ?? false
@@ -941,6 +1030,7 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         try container.encode(contextSummary, forKey: .contextSummary)
         try container.encode(contextCompactionCount, forKey: .contextCompactionCount)
         try container.encode(lastContextInputTokens, forKey: .lastContextInputTokens)
+        try container.encode(lastContextEstimatedTokens, forKey: .lastContextEstimatedTokens)
         try container.encode(contextWindow, forKey: .contextWindow)
         try container.encode(contextRouteIdentity, forKey: .contextRouteIdentity)
         try container.encodeIfPresent(cacheEpoch, forKey: .cacheEpoch)
@@ -948,7 +1038,9 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         try container.encode(pendingPrompts, forKey: .pendingPrompts)
         try container.encode(running, forKey: .running)
         try container.encode(pinned, forKey: .pinned)
+        if priority != 0 { try container.encode(priority, forKey: .priority) }
         try container.encode(archived, forKey: .archived)
+        try container.encodeIfPresent(archivedAt, forKey: .archivedAt)
         try container.encode(blank, forKey: .blank)
         try container.encode(unread, forKey: .unread)
         try container.encode(planGateActive, forKey: .planGateActive)
@@ -966,24 +1058,26 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
 
 }
 
-/// Small, transparent JSON store. A first install has no file and therefore no
-/// imported or synthetic chats.
+/// SQLite-backed conversation store. A first install creates an empty database;
+/// an existing sessions.json archive is imported once and kept as a backup.
 public final class ConversationStore: @unchecked Sendable {
-    private struct FileStamp: Equatable {
-        let modified: Date?
-        let size: Int?
+    private struct JSONMemberSlice {
+        let keyRange: Range<Int>
+        let valueRange: Range<Int>
+        let key: String
     }
 
     private let fileURL: URL
     private let fileManager: FileManager
+    private var database: ConversationSQLiteDatabase?
+    private var databaseReady = false
     private let cacheLock = NSLock()
-    private var cache: (stamp: FileStamp, conversations: [Conversation])?
-    private var headerCache: (stamp: FileStamp, conversations: [Conversation])?
     static let headersOnlyKey = CodingUserInfoKey(rawValue: "dots.conversationHeadersOnly")!
     private var revisionValue = 0
+    private var headersCache: (revision: Int, headers: [Conversation])?
 
-    /// Bumped whenever the decoded file changes. Callers that derive expensive
-    /// values from `loadAll()` memoise them against this.
+    /// Bumped whenever the stored database changes. Sidebar-derived lists use this
+    /// to invalidate their small metadata-only cache.
     public var revision: Int {
         cacheLock.lock()
         defer { cacheLock.unlock() }
@@ -997,227 +1091,668 @@ public final class ConversationStore: @unchecked Sendable {
     ) {
         self.fileURL = paths.root.appendingPathComponent(fileName)
         self.fileManager = fileManager
+        if let database = try? ConversationSQLiteDatabase(url: paths.root.appendingPathComponent("sessions.sqlite")) {
+            self.database = database
+            migrateLegacyJSONIfNeeded(database)
+        }
+    }
+
+    private func migrateLegacyJSONIfNeeded(_ database: ConversationSQLiteDatabase) {
+        if database.legacyImportCompleted {
+            databaseReady = true
+            return
+        }
+        guard fileManager.fileExists(atPath: fileURL.path) else {
+            do {
+                try database.markLegacyImportCompleted()
+                databaseReady = true
+            } catch {
+                databaseReady = false
+            }
+            return
+        }
+        guard let snapshot = readEntries() else {
+            preserveCorruptFile()
+            do {
+                try database.markLegacyImportCompleted()
+                databaseReady = true
+            } catch {
+                databaseReady = false
+            }
+            return
+        }
+        do {
+            try database.importLegacy(records: snapshot.entries.map(\.data)) { [self] data in
+                decodeConversation(from: data)
+            }
+            databaseReady = true
+        } catch {
+            databaseReady = false
+        }
     }
 
     public func load(workspacePath: String?) -> [Conversation] {
         let workspacePath = Self.normalizedPath(workspacePath)
-        return loadAll().filter { Self.normalizedPath($0.cwd) == workspacePath }
+        guard databaseReady, let database else { return [] }
+        return database.headers(workspacePath: workspacePath).compactMap { database.load(id: $0.id, allMessages: true) }
     }
 
-    /// Every stored chat, whatever workspace it belongs to. Used by the sidebar
-    /// to surface chats whose project is no longer listed. The sidebar re-reads
-    /// this on every redraw, so the decoded file is cached until it changes.
+    /// Explicit full-history read. Normal app startup and sidebar access should
+    /// use `loadHeaders()` or `load(id:)` so inactive transcripts stay on disk.
     public func loadAll() -> [Conversation] {
-        let stamp = fileStamp()
-        cacheLock.lock()
-        if let cache, cache.stamp == stamp {
-            let cached = cache.conversations
-            cacheLock.unlock()
-            return cached
-        }
-        cacheLock.unlock()
-
-        guard let data = try? Data(contentsOf: fileURL),
-              let all = try? JSONDecoder().decode([Conversation].self, from: data) else {
-            return []
-        }
-        let sorted = all.filter(isSupportedConversation).sorted { $0.id < $1.id }
-        cacheLock.lock()
-        cache = (stamp, sorted)
-        revisionValue += 1
-        cacheLock.unlock()
-        return sorted
+        guard databaseReady else { return [] }
+        return database?.loadAll() ?? []
     }
 
-    /// Titles and sidebar metadata only: transcripts are skipped, so listing every
-    /// project's chats does not decode every project's messages. Returns the full
-    /// records when they are already cached for the same file state.
-    public func loadHeaders() -> [Conversation] {
-        let stamp = fileStamp()
-        cacheLock.lock()
-        if let cache, cache.stamp == stamp {
-            let cached = cache.conversations
-            cacheLock.unlock()
-            return cached
-        }
-        if let headerCache, headerCache.stamp == stamp {
-            let cached = headerCache.conversations
-            cacheLock.unlock()
-            return cached
-        }
-        cacheLock.unlock()
+    /// Reads only unresolved queue prompts for plan-intent recovery. Transcript
+    /// messages and provider context are skipped by the projection decoder.
+    public func forEachPendingPlanIntent(ids: [String], _ visit: (String, String, String) -> Void) {
+        guard databaseReady else { return }
+        database?.forEachPendingPlanIntent(ids: ids, visit)
+    }
 
-        let decoder = JSONDecoder()
-        decoder.userInfo[Self.headersOnlyKey] = true
-        guard let data = try? Data(contentsOf: fileURL),
-              let all = try? decoder.decode([Conversation].self, from: data) else {
-            return []
-        }
-        let sorted = all.filter(isSupportedConversation).sorted { $0.id < $1.id }
+    /// Reads only timestamps and file-change summaries for workspace activity.
+    /// Message text and raw tool results are skipped by the projection decoder.
+    public func forEachRecentChangedFiles(
+        ids: [String],
+        since cutoff: Date,
+        _ visit: (String, String, [ChangedFile]) -> Void
+    ) {
+        guard databaseReady else { return }
+        database?.forEachRecentChangedFiles(ids: ids, since: cutoff, visit)
+    }
+
+    /// Titles and sidebar metadata only. The cache contains headers, never message
+    /// bodies, tool output, or provider context.
+    public func loadHeaders() -> [Conversation] {
+        guard databaseReady else { return [] }
+        // The sidebar asks on every redraw; decoding every row's state_json each time
+        // was a main-thread hot spot. Only save/delete change rows, and both bump revision.
+        let revision = self.revision
         cacheLock.lock()
-        headerCache = (stamp, sorted)
-        revisionValue += 1
+        if let cached = headersCache, cached.revision == revision {
+            cacheLock.unlock()
+            return cached.headers
+        }
         cacheLock.unlock()
-        return sorted
+        let headers = database?.headers() ?? []
+        cacheLock.lock()
+        headersCache = (revision, headers)
+        cacheLock.unlock()
+        return headers
+    }
+
+    /// Loads one transcript from disk. No transcript cache is kept after return.
+    public func load(id: String) -> Conversation? {
+        guard databaseReady else { return nil }
+        return database?.load(id: id, allMessages: true)
+    }
+
+    /// Loads the provider context and only the newest visible transcript page.
+    /// Message bodies outside that page are never decoded into model objects.
+    func loadRecentConversation(
+        id: String,
+        limit: Int = 10,
+        includeModelContext: Bool = true
+    ) -> Conversation? {
+        guard databaseReady, limit > 0 else { return nil }
+        return database?.load(id: id, limit: limit, includeModelContext: includeModelContext)
+    }
+
+    /// Reads a complete transcript for explicit summaries without loading the
+    /// provider context or retaining the result in the store.
+    func loadTranscript(id: String) -> [ChatMessage]? {
+        guard databaseReady else { return nil }
+        return database?.transcript(id: id)
+    }
+
+    /// Reads one older message page. The offset is an exclusive index into the
+    /// stored transcript, so newly appended messages do not shift older pages.
+    func loadMessagePage(
+        id: String,
+        endingBefore offset: Int,
+        limit: Int = 10
+    ) -> ConversationTranscriptPage? {
+        guard databaseReady else { return nil }
+        return database?.messagePage(id: id, endingBefore: offset, limit: limit)
+    }
+
+    /// Loads only the requested records from SQLite without retaining unrelated
+    /// projects or message bodies in the store's cache.
+    public func load(ids: [String]) -> [Conversation] {
+        guard databaseReady else { return [] }
+        return database?.load(ids: ids) ?? []
     }
 
     public func loadHeaders(workspacePath: String?) -> [Conversation] {
-        let workspacePath = Self.normalizedPath(workspacePath)
-        return loadHeaders().filter { Self.normalizedPath($0.cwd) == workspacePath }
+        guard databaseReady else { return [] }
+        return database?.loadHeaders(workspacePath: workspacePath) ?? []
     }
 
-    /// Bytes on disk; decides whether a staged (headers first) load is worth it.
-    public var fileSize: Int { fileStamp().size ?? 0 }
+    /// Bytes on disk, for storage diagnostics and UI thresholds.
+    public var fileSize: Int { databaseReady ? (database?.fileSize ?? 0) : 0 }
 
-    /// Modification date + size: cheap to read and enough to notice a rewrite.
-    private func fileStamp() -> FileStamp {
-        // FileManager, not URL.resourceValues: URL caches its values, which would
-        // hide a rewrite made through another store instance.
-        let attributes = try? fileManager.attributesOfItem(atPath: fileURL.path)
-        return FileStamp(
-            modified: attributes?[.modificationDate] as? Date,
-            size: attributes?[.size] as? Int
-        )
-    }
-
-    /// One stored conversation as its own JSON object. The file is kept in this form so a
-    /// save re-encodes only what changed instead of decoding and encoding every chat.
+    /// A view of one raw JSON object. Slices share the mapped source data for the
+    /// duration of a read or write; they are never kept between store operations.
     private struct RawEntry {
         let id: String
         let data: Data
+        let header: Conversation
     }
 
-    /// The file as it stood after our last write (or last read), valid while its stamp matches.
-    private var rawCache: (stamp: FileStamp, entries: [RawEntry], filteredOutAny: Bool)?
-    /// Last encoding of each conversation, reused while it compares equal.
-    private var encodedCache: [String: (value: Conversation, data: Data)] = [:]
+    private struct EntrySnapshot {
+        let entries: [RawEntry]
+        let filteredOutAny: Bool
+    }
+
+    private struct PlanIntentPrompt: Decodable {
+        let id: String
+        let text: String
+        let planIntentResolved: Bool?
+    }
+
+    private struct PlanIntentRecord: Decodable {
+        let id: String
+        let pendingPrompts: [PlanIntentPrompt]?
+    }
+
+    private struct ActivityMessage: Decodable {
+        let createdAt: Date?
+        let changedFiles: [ChangedFile]?
+    }
+
+    private struct ActivityRecord: Decodable {
+        let id: String
+        let title: String
+        let messages: [ActivityMessage]?
+    }
+
+    private struct MessageIdentity: Decodable {
+        let id: String
+    }
+
     private let writeLock = NSLock()
 
-    private func encodedData(for conversation: Conversation) -> Data? {
-        if let cached = encodedCache[conversation.id], cached.value == conversation { return cached.data }
-        guard let data = try? JSONEncoder().encode(conversation) else { return nil }
-        encodedCache[conversation.id] = (conversation, data)
-        return data
+    private func decodeHeader(from data: Data) -> Conversation? {
+        let decoder = JSONDecoder()
+        decoder.userInfo[Self.headersOnlyKey] = true
+        return try? decoder.decode(Conversation.self, from: data)
     }
 
-    /// The stored conversations as raw entries; from memory when the file is unchanged since
-    /// we last saw it, otherwise decoded from disk (another process may have written).
-    private func currentEntries(stamp: FileStamp) -> (entries: [RawEntry], filteredOutAny: Bool) {
-        cacheLock.lock()
-        let cached = rawCache
-        cacheLock.unlock()
-        if let cached, cached.stamp == stamp { return (cached.entries, cached.filteredOutAny) }
-        guard let data = try? Data(contentsOf: fileURL) else { return ([], false) }
-        guard let decoded = try? JSONDecoder().decode([Conversation].self, from: data) else {
-            // The save that follows rewrites the file from what is known now: keep the
-            // unreadable original instead of silently dropping it.
-            if !data.isEmpty {
-                try? data.write(to: fileURL.appendingPathExtension("corrupt"), options: .atomic)
+    private func decodeConversation(
+        from data: Data,
+        skippingMessages: Bool = false,
+        skippingModelContext: Bool = false
+    ) -> Conversation? {
+        let decoder = JSONDecoder()
+        guard skippingMessages || skippingModelContext else {
+            return try? decoder.decode(Conversation.self, from: data)
+        }
+
+        // Decode small record metadata separately from the two potentially large
+        // arrays. JSONDecoder can otherwise parse skipped values while building
+        // its container, briefly materializing the whole visible transcript.
+        guard let members = Self.topLevelObjectMembers(in: data) else { return nil }
+        let excluded: Set<String> = ["messages", "modelContext"]
+        var metadata = Data()
+        metadata.append(UInt8(ascii: "{"))
+        var memberCount = 0
+        for member in members where !excluded.contains(member.key) {
+            if memberCount > 0 { metadata.append(UInt8(ascii: ",")) }
+            metadata.append(Data(data[member.keyRange]))
+            metadata.append(UInt8(ascii: ":"))
+            metadata.append(Data(data[member.valueRange]))
+            memberCount += 1
+        }
+        metadata.append(UInt8(ascii: "}"))
+
+        guard var conversation = try? decoder.decode(Conversation.self, from: metadata) else { return nil }
+        if !skippingMessages,
+           let member = members.first(where: { $0.key == "messages" }) {
+            guard let messages = try? decoder.decode([ChatMessage].self, from: Data(data[member.valueRange])) else {
+                return nil
             }
-            return ([], false)
+            conversation.messages = messages
         }
-        let supported = decoded.filter(isSupportedConversation)
-        let filteredOutAny = supported.count != decoded.count
-        let entries = supported.compactMap { conversation in
-            encodedData(for: conversation).map { RawEntry(id: conversation.id, data: $0) }
+        if !skippingModelContext,
+           let member = members.first(where: { $0.key == "modelContext" }) {
+            guard let context = try? decoder.decode([AgentMessage].self, from: Data(data[member.valueRange])) else {
+                return nil
+            }
+            conversation.modelContext = context
         }
-        return (entries, filteredOutAny)
+        return conversation
     }
 
+    private func messageElements(in record: Data) -> (Data, [Range<Int>])? {
+        guard let members = Self.topLevelObjectMembers(in: record),
+              let member = members.first(where: { $0.key == "messages" }) else { return nil }
+        let array = Data(record[member.valueRange])
+        guard let ranges = Self.topLevelObjectRanges(in: array) else { return nil }
+        return (array, ranges)
+    }
+
+    private func decodeMessage(in data: Data, at range: Range<Int>) -> ChatMessage? {
+        try? JSONDecoder().decode(ChatMessage.self, from: Data(data[range]))
+    }
+
+    private func decodeMessages(
+        in data: Data,
+        ranges: [Range<Int>],
+        range: Range<Int>
+    ) -> [ChatMessage] {
+        let lower = min(max(0, range.lowerBound), ranges.count)
+        let upper = min(max(lower, range.upperBound), ranges.count)
+        var messages: [ChatMessage] = []
+        messages.reserveCapacity(upper - lower)
+        for index in lower..<upper {
+            if let message = decodeMessage(in: data, at: ranges[index]) {
+                messages.append(message)
+            }
+        }
+        return messages
+    }
+
+    private static func topLevelObjectMembers(in data: Data) -> [JSONMemberSlice]? {
+        let baseIndex = data.startIndex
+        let rawMembers = data.withUnsafeBytes { rawBuffer -> [(Range<Int>, Range<Int>)]? in
+            let bytes = rawBuffer.bindMemory(to: UInt8.self)
+            guard !bytes.isEmpty else { return nil }
+
+            func skipWhitespace(_ index: inout Int) {
+                while index < bytes.count {
+                    switch bytes[index] {
+                    case 0x20, 0x09, 0x0A, 0x0D: index += 1
+                    default: return
+                    }
+                }
+            }
+
+            func stringEnd(from start: Int) -> Int? {
+                guard start < bytes.count, bytes[start] == 0x22 else { return nil }
+                var index = start + 1
+                var escaped = false
+                while index < bytes.count {
+                    let byte = bytes[index]
+                    if escaped {
+                        escaped = false
+                    } else if byte == 0x5C {
+                        escaped = true
+                    } else if byte == 0x22 {
+                        return index + 1
+                    }
+                    index += 1
+                }
+                return nil
+            }
+
+            func valueEnd(from start: Int) -> Int? {
+                guard start < bytes.count else { return nil }
+                if bytes[start] == 0x22 { return stringEnd(from: start) }
+                if bytes[start] == 0x7B || bytes[start] == 0x5B {
+                    var closers: [UInt8] = [bytes[start] == 0x7B ? 0x7D : 0x5D]
+                    var index = start + 1
+                    var inString = false
+                    var escaped = false
+                    while index < bytes.count {
+                        let byte = bytes[index]
+                        if inString {
+                            if escaped {
+                                escaped = false
+                            } else if byte == 0x5C {
+                                escaped = true
+                            } else if byte == 0x22 {
+                                inString = false
+                            }
+                        } else {
+                            switch byte {
+                            case 0x22: inString = true
+                            case 0x7B: closers.append(0x7D)
+                            case 0x5B: closers.append(0x5D)
+                            case 0x7D, 0x5D:
+                                guard closers.last == byte else { return nil }
+                                closers.removeLast()
+                                if closers.isEmpty { return index + 1 }
+                            default: break
+                            }
+                        }
+                        index += 1
+                    }
+                    return nil
+                }
+                var index = start
+                while index < bytes.count {
+                    switch bytes[index] {
+                    case 0x2C, 0x5D, 0x7D, 0x20, 0x09, 0x0A, 0x0D: return index > start ? index : nil
+                    default: index += 1
+                    }
+                }
+                return index > start ? index : nil
+            }
+
+            var index = 0
+            skipWhitespace(&index)
+            guard index < bytes.count, bytes[index] == 0x7B else { return nil }
+            index += 1
+            var result: [(Range<Int>, Range<Int>)] = []
+            while true {
+                skipWhitespace(&index)
+                guard index < bytes.count else { return nil }
+                if bytes[index] == 0x7D {
+                    index += 1
+                    skipWhitespace(&index)
+                    return index == bytes.count ? result : nil
+                }
+                let keyStart = index
+                guard let keyEnd = stringEnd(from: keyStart) else { return nil }
+                index = keyEnd
+                skipWhitespace(&index)
+                guard index < bytes.count, bytes[index] == 0x3A else { return nil }
+                index += 1
+                skipWhitespace(&index)
+                let valueStart = index
+                guard let end = valueEnd(from: valueStart) else { return nil }
+                result.append((keyStart..<keyEnd, valueStart..<end))
+                index = end
+                skipWhitespace(&index)
+                guard index < bytes.count else { return nil }
+                if bytes[index] == 0x2C {
+                    index += 1
+                    continue
+                }
+                if bytes[index] == 0x7D { continue }
+                return nil
+            }
+        }
+        guard let rawMembers else { return nil }
+        let decoder = JSONDecoder()
+        return rawMembers.compactMap { relativeKeyRange, relativeValueRange in
+            let keyRange = (baseIndex + relativeKeyRange.lowerBound)..<(baseIndex + relativeKeyRange.upperBound)
+            let valueRange = (baseIndex + relativeValueRange.lowerBound)..<(baseIndex + relativeValueRange.upperBound)
+            guard let key = try? decoder.decode(String.self, from: Data(data[keyRange])) else { return nil }
+            return JSONMemberSlice(keyRange: keyRange, valueRange: valueRange, key: key)
+        }
+    }
+
+    private static func hasSameMetadata(_ lhs: Conversation, as rhs: Conversation) -> Bool {
+        lhs.title == rhs.title
+            && lhs.cwd == rhs.cwd
+            && lhs.projectless == rhs.projectless
+            && lhs.pinned == rhs.pinned
+            && lhs.priority == rhs.priority
+            && lhs.archived == rhs.archived
+            && lhs.archivedAt == rhs.archivedAt
+            && lhs.unread == rhs.unread
+            && lhs.agentPreset == rhs.agentPreset
+            && lhs.modelPreferenceID == rhs.modelPreferenceID
+    }
+
+    /// Scans the top-level JSON array without materializing its message objects.
+    /// Only a small header is decoded for each record; full decode happens for a
+    /// selected ID or an explicit full-history operation.
+    private func readEntries() -> EntrySnapshot? {
+        guard fileManager.fileExists(atPath: fileURL.path) else {
+            return EntrySnapshot(entries: [], filteredOutAny: false)
+        }
+        guard let data = try? Data(contentsOf: fileURL, options: [.mappedIfSafe]),
+              let ranges = Self.topLevelObjectRanges(in: data) else { return nil }
+
+        var entries: [RawEntry] = []
+        var filteredOutAny = false
+        entries.reserveCapacity(ranges.count)
+        for range in ranges {
+            let objectData = data[range]
+            guard let header = decodeHeader(from: objectData) else { return nil }
+            guard isSupportedConversation(header) else {
+                filteredOutAny = true
+                continue
+            }
+            entries.append(RawEntry(id: header.id, data: objectData, header: header))
+        }
+        return EntrySnapshot(entries: entries, filteredOutAny: filteredOutAny)
+    }
+
+    private static func topLevelObjectRanges(in data: Data) -> [Range<Int>]? {
+        let baseIndex = data.startIndex
+        return data.withUnsafeBytes { rawBuffer -> [Range<Int>]? in
+            let bytes = rawBuffer.bindMemory(to: UInt8.self)
+            guard !bytes.isEmpty else { return nil }
+
+            func skipWhitespace(_ index: inout Int) {
+                while index < bytes.count {
+                    switch bytes[index] {
+                    case 0x20, 0x09, 0x0A, 0x0D: index += 1
+                    default: return
+                    }
+                }
+            }
+
+            var index = 0
+            skipWhitespace(&index)
+            guard index < bytes.count, bytes[index] == 0x5B else { return nil } // [
+            index += 1
+            var ranges: [Range<Int>] = []
+            var afterComma = false
+
+            while true {
+                skipWhitespace(&index)
+                guard index < bytes.count else { return nil }
+                if bytes[index] == 0x5D { // ]
+                    guard !afterComma else { return nil }
+                    index += 1
+                    skipWhitespace(&index)
+                    return index == bytes.count ? ranges : nil
+                }
+                guard bytes[index] == 0x7B else { return nil } // {
+                let start = index
+                var depth = 0
+                var inString = false
+                var escaped = false
+                var closed = false
+
+                while index < bytes.count {
+                    let byte = bytes[index]
+                    if inString {
+                        if escaped {
+                            escaped = false
+                        } else if byte == 0x5C {
+                            escaped = true
+                        } else if byte == 0x22 {
+                            inString = false
+                        }
+                    } else {
+                        switch byte {
+                        case 0x22: inString = true
+                        case 0x7B: depth += 1
+                        case 0x7D:
+                            depth -= 1
+                            if depth == 0 {
+                                index += 1
+                                ranges.append((baseIndex + start)..<(baseIndex + index))
+                                afterComma = false
+                                closed = true
+                            }
+                        default: break
+                        }
+                    }
+                    if closed { break }
+                    index += 1
+                }
+                guard closed else { return nil }
+                skipWhitespace(&index)
+                guard index < bytes.count else { return nil }
+                if bytes[index] == 0x2C { // ,
+                    afterComma = true
+                    index += 1
+                    continue
+                }
+                if bytes[index] == 0x5D { continue } // handled at loop top
+                return nil
+            }
+        }
+    }
+
+    /// Encodes only the resident transcript window and splices it into the raw
+    /// stored record, preserving message JSON outside the loaded pages.
+    private func encodePagedConversation(_ conversation: Conversation, preserving existingData: Data) -> Data? {
+        guard let existingMembers = Self.topLevelObjectMembers(in: existingData),
+              let existingMessagesMember = existingMembers.first(where: { $0.key == "messages" }) else { return nil }
+        let existingMessagesData = Data(existingData[existingMessagesMember.valueRange])
+        guard let existingRanges = Self.topLevelObjectRanges(in: existingMessagesData) else { return nil }
+
+        let encoder = JSONEncoder()
+        var encodedCurrent: [String: Data] = [:]
+        for message in conversation.messages {
+            guard let data = try? encoder.encode(message) else { return nil }
+            encodedCurrent[message.id] = data
+        }
+
+        var existingIDs = Set<String>()
+        var mergedMessages = Data()
+        mergedMessages.append(UInt8(ascii: "["))
+        var emittedCount = 0
+        func appendMessage(_ data: Data) {
+            if emittedCount > 0 { mergedMessages.append(UInt8(ascii: ",")) }
+            mergedMessages.append(data)
+            emittedCount += 1
+        }
+        for range in existingRanges {
+            let rawMessage = Data(existingMessagesData[range])
+            guard let identity = try? JSONDecoder().decode(MessageIdentity.self, from: rawMessage) else { return nil }
+            existingIDs.insert(identity.id)
+            if conversation.loadedTranscriptMessageIDs.contains(identity.id) {
+                if let updated = encodedCurrent[identity.id] {
+                    appendMessage(updated)
+                }
+            } else {
+                appendMessage(rawMessage)
+            }
+        }
+        for message in conversation.messages where !existingIDs.contains(message.id) {
+            guard let encoded = encodedCurrent[message.id] else { return nil }
+            appendMessage(encoded)
+        }
+        mergedMessages.append(UInt8(ascii: "]"))
+
+        guard let partialData = try? encoder.encode(conversation),
+              let partialMembers = Self.topLevelObjectMembers(in: partialData),
+              partialMembers.contains(where: { $0.key == "messages" }) else { return nil }
+        var result = Data()
+        result.append(UInt8(ascii: "{"))
+        for (index, member) in partialMembers.enumerated() {
+            if index > 0 { result.append(UInt8(ascii: ",")) }
+            result.append(Data(partialData[member.keyRange]))
+            result.append(UInt8(ascii: ":"))
+            result.append(member.key == "messages"
+                ? mergedMessages
+                : Data(partialData[member.valueRange]))
+        }
+        result.append(UInt8(ascii: "}"))
+        return result
+    }
+
+    /// Changes sidebar fields without decoding or re-encoding message history or
+    /// provider context from the stored record.
+    private func encodeMetadataUpdate(_ conversation: Conversation, preserving existingData: Data) -> Data? {
+        let metadataKeys: Set<String> = [
+            "title", "cwd", "projectless", "pinned", "priority", "archived",
+            "archivedAt", "unread", "agentPreset", "modelPreferenceID",
+        ]
+        guard let existingMembers = Self.topLevelObjectMembers(in: existingData),
+              let updateData = try? JSONEncoder().encode(conversation),
+              let updateMembers = Self.topLevelObjectMembers(in: updateData) else { return nil }
+
+        let updates = Dictionary(
+            updateMembers.filter { metadataKeys.contains($0.key) }.map { ($0.key, $0) },
+            uniquingKeysWith: { _, latest in latest }
+        )
+        let existingKeys = Set(existingMembers.map(\.key))
+        var result = Data()
+        result.append(UInt8(ascii: "{"))
+        var memberCount = 0
+        func appendMember(keyRange: Range<Int>, valueRange: Range<Int>, source: Data) {
+            if memberCount > 0 { result.append(UInt8(ascii: ",")) }
+            result.append(Data(source[keyRange]))
+            result.append(UInt8(ascii: ":"))
+            result.append(Data(source[valueRange]))
+            memberCount += 1
+        }
+        for member in existingMembers {
+            if metadataKeys.contains(member.key) {
+                if let update = updates[member.key] {
+                    appendMember(keyRange: update.keyRange, valueRange: update.valueRange, source: updateData)
+                }
+            } else {
+                appendMember(keyRange: member.keyRange, valueRange: member.valueRange, source: existingData)
+            }
+        }
+        for update in updateMembers where metadataKeys.contains(update.key) && !existingKeys.contains(update.key) {
+            appendMember(keyRange: update.keyRange, valueRange: update.valueRange, source: updateData)
+        }
+        result.append(UInt8(ascii: "}"))
+        return result
+    }
+
+    private func preserveCorruptFile() {
+        guard let data = try? Data(contentsOf: fileURL), !data.isEmpty else { return }
+        try? data.write(to: fileURL.appendingPathExtension("corrupt"), options: .atomic)
+    }
+
+    private var saveTicket = 0
+    private var lastSavedTicket = 0
+
+    private func nextSaveTicket() -> Int {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        saveTicket += 1
+        return saveTicket
+    }
+
+    /// For an edit that must not block the click that made it (picking a model),
+    /// persist on a background queue. Save tickets prevent an older snapshot from
+    /// reaching SQLite after a newer one.
+    public func saveInBackground(_ conversations: [Conversation]) {
+        let ticket = nextSaveTicket()
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            _ = save(conversations, ticket: ticket)
+        }
+    }
+
+    /// `previous`: what the caller last saved per conversation, valid at store
+    /// `revision`; only what differs from it is written. Another write since
+    /// that revision falls back to a full save.
     @discardableResult
-    public func save(_ conversations: [Conversation]) -> Bool {
+    public func save(_ conversations: [Conversation], previous: [String: Conversation] = [:], revision: Int = -1) -> Bool {
+        save(conversations, ticket: nextSaveTicket(), previous: previous, revision: revision)
+    }
+
+    private func save(_ conversations: [Conversation], ticket: Int, previous: [String: Conversation] = [:], revision: Int = -1) -> Bool {
         writeLock.lock()
         defer { writeLock.unlock() }
-
-        let stampBefore = fileStamp()
-        let (existing, filteredOutAny) = currentEntries(stamp: stampBefore)
-
-        // A header carries no transcript: keep the stored record, update its metadata.
-        var incoming: [(conversation: Conversation, data: Data)] = []
-        for conversation in conversations where isSupportedConversation(conversation) {
-            if conversation.contentLoaded {
-                guard let data = encodedData(for: conversation) else { return false }
-                incoming.append((conversation, data))
-            } else {
-                guard let entry = existing.first(where: { $0.id == conversation.id }),
-                      var full = try? JSONDecoder().decode(Conversation.self, from: entry.data) else { continue }
-                full.applyMetadata(from: conversation)
-                guard let data = encodedData(for: full) else { return false }
-                incoming.append((full, data))
-            }
-        }
-        let ids = Set(incoming.map { $0.conversation.id })
-        let merged = existing.filter { !ids.contains($0.id) }
-            + incoming.map { RawEntry(id: $0.conversation.id, data: $0.data) }
-
-        // A turn persists on every message append, and most of those writes carry
-        // conversations whose bytes did not change. The atomic rewrite — temp file,
-        // full payload, rename — is the whole cost, so compare first and leave the
-        // file (and the revision) alone when the result is what is already stored.
-        if !filteredOutAny, !merged.isEmpty, merged.count == existing.count,
-           zip(merged, existing).allSatisfy({ $0.id == $1.id && $0.data == $1.data }) {
-            return true
-        }
-
-        var body = Data()
-        body.reserveCapacity(merged.reduce(2) { $0 + $1.data.count + 1 })
-        body.append(UInt8(ascii: "["))
-        for (index, entry) in merged.enumerated() {
-            if index > 0 { body.append(UInt8(ascii: ",")) }
-            body.append(entry.data)
-        }
-        body.append(UInt8(ascii: "]"))
-
-        try? fileManager.createDirectory(
-            at: fileURL.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
-        guard (try? body.write(to: fileURL, options: .atomic)) != nil else {
-            cacheLock.lock()
-            rawCache = nil
-            cache = nil
-            headerCache = nil
-            revisionValue += 1
-            cacheLock.unlock()
-            return false
-        }
-
-        let stampAfter = fileStamp()
+        guard ticket > lastSavedTicket else { return true }
+        lastSavedTicket = ticket
+        guard databaseReady, let database else { return false }
+        let previous = revision == self.revision ? previous : [:]
+        guard database.save(conversations.filter(isSupportedConversation), previous: previous) else { return false }
         cacheLock.lock()
-        rawCache = (stampAfter, merged, false)
-        cache = nil
-        // The header list follows the write instead of being decoded again on the next
-        // sidebar redraw (which happens on every change while a run is in progress).
-        if let headers = headerCache, headers.stamp == stampBefore {
-            var byID = Dictionary(headers.conversations.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-            for (conversation, _) in incoming where isSupportedConversation(conversation) {
-                byID[conversation.id] = conversation.headerCopy()
-            }
-            headerCache = (stampAfter, byID.values.sorted { $0.id < $1.id })
-        } else {
-            headerCache = nil
-        }
         revisionValue += 1
         cacheLock.unlock()
         return true
     }
 
     public func delete(_ conversationID: String) {
+        delete([conversationID])
+    }
+
+    /// Removes multiple conversations while invalidating the list cache once.
+    public func delete(_ conversationIDs: [String]) {
+        let uniqueIDs = Array(Set(conversationIDs))
+        guard !uniqueIDs.isEmpty else { return }
+
         writeLock.lock()
         defer { writeLock.unlock() }
-        guard let data = try? Data(contentsOf: fileURL),
-              var all = try? JSONDecoder().decode([Conversation].self, from: data) else {
-            return
-        }
-        all = all.filter(isSupportedConversation)
-        all.removeAll { $0.id == conversationID }
-        guard let data = try? JSONEncoder().encode(all) else { return }
-        try? data.write(to: fileURL, options: .atomic)
+        guard databaseReady, let database, database.delete(uniqueIDs) > 0 else { return }
         cacheLock.lock()
-        rawCache = nil
-        encodedCache[conversationID] = nil
-        cache = nil
-        headerCache = nil
         revisionValue += 1
         cacheLock.unlock()
     }

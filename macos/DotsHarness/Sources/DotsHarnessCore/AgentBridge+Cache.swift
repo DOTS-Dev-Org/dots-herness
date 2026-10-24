@@ -69,17 +69,22 @@ extension NativeAgentHost {
         if name == ComputerUseTools.toolName { return isComputerUseEnabled }
         if name.hasPrefix("mcp__") { return mcpRegistry?.isAvailable(name) == true }
         if name.hasPrefix("plugin__") {
-            guard let real = pluginToolDefinitions().nameMap[name] else { return false }
-            return pluginHost?.tools.tools().contains(where: { $0.name == real }) == true
+            guard let real = agentTools(workspace: workspaceURL).pluginNames[name] else { return false }
+            return pluginHost?.tools.contains(real) == true
         }
         return true
     }
 
     func cacheToolContractMatches(_ name: String, tools: [AgentToolDefinition], workspace: URL?, pluginNames: [String: String], bindings: [String: String]) -> Bool {
+        // The gateway tools are the host's own fixed interface, not part of the live catalog.
+        if DeferredToolSession.definitions.contains(where: { $0.name == name }) { return true }
         guard cacheToolAvailable(name), let advertised = tools.first(where: { $0.name == name }) else { return false }
         let current = agentTools(workspace: workspace)
-        guard let live = current.defs.first(where: { $0.name == name }), live == advertised else { return false }
-        return current.pluginNames[name] == pluginNames[name]
-            && cacheBindingIDs(tools: current.defs, pluginNames: current.pluginNames)[name] == bindings[name]
+        guard let live = current.defs.first(where: { $0.name == name }), live == advertised,
+              current.pluginNames[name] == pluginNames[name] else { return false }
+        let binding = current.pluginNames[name].flatMap { pluginHost?.toolBindingIdentity($0) }
+            ?? mcpRegistry?.bindingIdentity(name)
+            ?? name
+        return binding == bindings[name]
     }
 }

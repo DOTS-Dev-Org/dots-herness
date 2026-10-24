@@ -1,20 +1,26 @@
 // Copyright (c) 2026 DOTS
 // Reads the rules files an agent-aware repository already ships - AGENTS.md,
-// CLAUDE.md, .cursor/rules - so HerNess honours the conventions a project has
-// already written down for other tools. The text is project context, never
-// policy: it is emitted under trust="data".
+// CLAUDE.md, AGENTS.override.md, .cursor/rules - so HerNess honours the
+// conventions a project has already written down for other tools.
 //
-// Mirrors macos/DotsHarness/Sources/DotsHarnessCore/ProjectRules.swift.
+// Mirrors workspace-level loading in macOS ProjectRules.swift; descendant scope
+// context is assembled by the macOS agent host.
 
 namespace DotsHarnessCore;
 
 public static class ProjectRules
 {
+    private sealed record CachedSnapshot(string Signature, string Text);
+    private static readonly object CacheGate = new();
+    private static readonly Dictionary<string, CachedSnapshot> Snapshots = new(StringComparer.Ordinal);
+
     /// <summary>
     /// Read in this order; the first entries carry the most weight because a
     /// repository that has both usually keeps AGENTS.md as the general file.
     /// </summary>
     public static readonly string[] FileNames = ["AGENTS.md", "CLAUDE.md", ".cursorrules"];
+
+    public const string OverrideFileName = "AGENTS.override.md";
 
     public const string CursorRulesDirectory = ".cursor/rules";
 
@@ -31,17 +37,75 @@ public static class ProjectRules
     /// The workspace's rules text, already labelled by source file. Empty when
     /// the project ships none.
     /// </summary>
-    public static string Text(string? workspace)
+    public static string Text(string? workspace) => Snapshot(workspace).Text;
+
+    /// <summary>Returns whether the rule text came from the metadata-validated cache.</summary>
+    internal static (string Text, bool CacheHit) Snapshot(string? workspace)
     {
-        if (string.IsNullOrWhiteSpace(workspace) || !Directory.Exists(workspace)) return "";
-        Sync(workspace);
+        if (string.IsNullOrWhiteSpace(workspace) || !Directory.Exists(workspace)) return ("", false);
+        lock (CacheGate)
+        {
+            var root = ResolveLinks(Path.GetFullPath(workspace));
+            var before = Signature(root);
+            if (Snapshots.TryGetValue(root, out var cached) && cached.Signature == before)
+                return (cached.Text, true);
+
+            var text = LoadTextAndSync(root);
+            var after = Signature(root);
+            if (before == after)
+            {
+                if (Snapshots.Count >= 16) Snapshots.Clear();
+                Snapshots[root] = new CachedSnapshot(after, text);
+            }
+            else
+            {
+                Snapshots.Remove(root);
+            }
+            return (text, false);
+        }
+    }
+
+    /// <summary>Invalidates a workspace after an in-app rules-file write.</summary>
+    public static void Invalidate(string? workspace)
+    {
+        if (string.IsNullOrWhiteSpace(workspace)) return;
+        lock (CacheGate) Snapshots.Remove(ResolveLinks(Path.GetFullPath(workspace)));
+    }
+
+    private static string LoadTextAndSync(string workspace)
+    {
+        var files = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+        foreach (var name in FileNames.Append(OverrideFileName))
+        {
+            var data = ReadData(Path.Combine(workspace, name), workspace);
+            if (data is not null) files[name] = data;
+        }
+
+        var agents = Path.Combine(workspace, "AGENTS.md");
+        var claude = Path.Combine(workspace, "CLAUDE.md");
+        if (Contains(workspace, agents) && Contains(workspace, claude)
+            && SyncPair(agents, claude, files) is { } pair
+            && files.TryGetValue(Path.GetFileName(pair.Source), out var sourceData))
+        {
+            try
+            {
+                File.WriteAllBytes(pair.Target, sourceData);
+                files[Path.GetFileName(pair.Target)] = sourceData;
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+
         var blocks = new List<string>();
         var bodies = new HashSet<string>(StringComparer.Ordinal);
         var total = 0;
 
-        foreach (var name in FileNames)
+        var rootRuleNames = files.ContainsKey(OverrideFileName)
+            ? new[] { OverrideFileName, ".cursorrules" }
+            : FileNames;
+        foreach (var name in rootRuleNames)
         {
-            var block = Read(Path.Combine(workspace, name), name, workspace);
+            var block = files.TryGetValue(name, out var data) ? Render(data, name) : null;
             if (block is null) continue;
             // After sync AGENTS.md and CLAUDE.md hold the same text; emit it once.
             if (!bodies.Add(block[block.IndexOf('\n')..])) continue;
@@ -52,7 +116,8 @@ public static class ProjectRules
 
         foreach (var path in CursorRuleFiles(workspace))
         {
-            var block = Read(path, RelativeLabel(path, workspace), workspace);
+            var data = ReadData(path, workspace);
+            var block = data is null ? null : Render(data, RelativeLabel(path, workspace));
             if (block is null) continue;
             if (total + block.Length > MaxTotalBytes) break;
             total += block.Length;
@@ -87,11 +152,12 @@ public static class ProjectRules
         var agents = Path.Combine(workspace, "AGENTS.md");
         var claude = Path.Combine(workspace, "CLAUDE.md");
         if (!Contains(workspace, agents) || !Contains(workspace, claude)) return false;
-        if (File.Exists(agents) || File.Exists(claude)) return false;
+        if (File.Exists(agents) || File.Exists(claude) || File.Exists(Path.Combine(workspace, OverrideFileName))) return false;
         try
         {
             File.WriteAllText(agents, Seed);
             File.WriteAllText(claude, Seed);
+            Invalidate(workspace);
             return true;
         }
         catch (IOException) { return false; }
@@ -106,32 +172,61 @@ public static class ProjectRules
     public static void Sync(string? workspace)
     {
         if (string.IsNullOrWhiteSpace(workspace) || !Directory.Exists(workspace)) return;
-        var agents = Path.Combine(workspace, "AGENTS.md");
-        var claude = Path.Combine(workspace, "CLAUDE.md");
-        if (!Contains(workspace, agents) || !Contains(workspace, claude)) return;
-
-        var hasAgents = File.Exists(agents);
-        var hasClaude = File.Exists(claude);
-        if (!hasAgents && !hasClaude) return;
-
-        string source, target;
-        if (!hasClaude) (source, target) = (agents, claude);
-        else if (!hasAgents) (source, target) = (claude, agents);
-        else
-        {
-            (source, target) = File.GetLastWriteTimeUtc(agents) >= File.GetLastWriteTimeUtc(claude)
-                ? (agents, claude)
-                : (claude, agents);
-        }
-
+        var root = ResolveLinks(Path.GetFullPath(workspace));
+        var agents = Path.Combine(root, "AGENTS.md");
+        var claude = Path.Combine(root, "CLAUDE.md");
+        if (!Contains(root, agents) || !Contains(root, claude)) return;
+        var files = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+        var agentsData = ReadData(agents, root);
+        var claudeData = ReadData(claude, root);
+        if (agentsData is not null) files[Path.GetFileName(agents)] = agentsData;
+        if (claudeData is not null) files[Path.GetFileName(claude)] = claudeData;
+        if (SyncPair(agents, claude, files) is not { } pair
+            || !files.TryGetValue(Path.GetFileName(pair.Source), out var data)) return;
         try
         {
-            var data = File.ReadAllBytes(source);
-            if (File.Exists(target) && data.AsSpan().SequenceEqual(File.ReadAllBytes(target))) return;
-            File.WriteAllBytes(target, data);
+            File.WriteAllBytes(pair.Target, data);
+            Invalidate(root);
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
+    }
+
+    private static (string Source, string Target)? SyncPair(string agents, string claude, IReadOnlyDictionary<string, byte[]> files)
+    {
+        files.TryGetValue(Path.GetFileName(agents), out var a);
+        files.TryGetValue(Path.GetFileName(claude), out var c);
+        if (a is null && c is null || a is not null && c is not null && a.AsSpan().SequenceEqual(c)) return null;
+        if (a is not null && c is null) return (agents, claude);
+        if (a is null && c is not null) return (claude, agents);
+        return File.GetLastWriteTimeUtc(agents) >= File.GetLastWriteTimeUtc(claude)
+            ? (agents, claude)
+            : (claude, agents);
+    }
+
+    private static string Signature(string workspace)
+    {
+        var parts = new List<string> { workspace };
+        foreach (var name in FileNames.Append(OverrideFileName)) parts.Add(FileStamp(Path.Combine(workspace, name), workspace));
+        var cursorFiles = CursorRuleFiles(workspace).ToArray();
+        parts.Add("cursor:" + string.Join("\0", cursorFiles.Select(Path.GetFileName)));
+        parts.AddRange(cursorFiles.Select(path => FileStamp(path, workspace)));
+        return string.Join("\u0001", parts);
+    }
+
+    private static string FileStamp(string path, string workspace)
+    {
+        if (!Contains(workspace, path)) return path + "|outside";
+        var resolved = ResolveLinks(Path.GetFullPath(path));
+        try
+        {
+            var info = new FileInfo(resolved);
+            if (!info.Exists) return path + "|missing";
+            return string.Join("|", path, resolved, info.Length,
+                info.LastWriteTimeUtc.Ticks, info.CreationTimeUtc.Ticks, (int)info.Attributes);
+        }
+        catch (IOException) { return path + "|missing"; }
+        catch (UnauthorizedAccessException) { return path + "|missing"; }
     }
 
     private static IEnumerable<string> CursorRuleFiles(string workspace)
@@ -139,12 +234,13 @@ public static class ProjectRules
         var directory = Path.Combine(workspace, ".cursor", "rules");
         if (!Directory.Exists(directory)) return [];
         return Directory.EnumerateFiles(directory)
-            .Where(path => Path.GetExtension(path) is ".md" or ".mdc")
+            .Where(path => Path.GetExtension(path).Equals(".md", StringComparison.OrdinalIgnoreCase)
+                || Path.GetExtension(path).Equals(".mdc", StringComparison.OrdinalIgnoreCase))
             .OrderBy(Path.GetFileName, StringComparer.Ordinal)
             .Take(MaxCursorRuleFiles);
     }
 
-    private static string? Read(string path, string label, string workspace)
+    private static byte[]? ReadData(string path, string workspace)
     {
         // Same symlink rule the file tools use: a rules file that resolves
         // outside the workspace is not this project's rules file.
@@ -153,6 +249,11 @@ public static class ProjectRules
         try { bytes = File.ReadAllBytes(path); }
         catch (IOException) { return null; }
         catch (UnauthorizedAccessException) { return null; }
+        return bytes;
+    }
+
+    private static string? Render(byte[] bytes, string label)
+    {
         if (bytes.Length == 0) return null;
         var truncated = bytes.Length > MaxBytesPerFile;
         var body = System.Text.Encoding.UTF8

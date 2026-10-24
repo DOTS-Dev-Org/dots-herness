@@ -13,6 +13,9 @@ extension NativeAgentClient {
         private var usage: JSONObject = [:]
         private var blocks: [Int: JSONObject] = [:]
         private var arguments: [Int: String] = [:]
+        /// Streamed text, thinking and signature per block, appended in place and merged
+        /// into the block once: rebuilding the block's string per delta was O(n²).
+        private var streamed: [Int: [String: String]] = [:]
         private var diagnostics: JSONValue?
 
         mutating func consume(line rawLine: some StringProtocol) throws {
@@ -29,20 +32,19 @@ extension NativeAgentClient {
                 guard let index = event["index"]?.int, let block = event["content_block"]?.object else { return }
                 blocks[index] = block
             case "content_block_delta":
-                guard let index = event["index"]?.int, var block = blocks[index] else { return }
+                guard let index = event["index"]?.int, blocks[index] != nil else { return }
                 let delta = event["delta"]
                 switch delta?["type"]?.string {
                 case "text_delta":
-                    block["text"] = .string((block["text"]?.string ?? "") + (delta?["text"]?.string ?? ""))
+                    streamed[index, default: [:]]["text", default: ""] += delta?["text"]?.string ?? ""
                 case "thinking_delta":
-                    block["thinking"] = .string((block["thinking"]?.string ?? "") + (delta?["thinking"]?.string ?? ""))
+                    streamed[index, default: [:]]["thinking", default: ""] += delta?["thinking"]?.string ?? ""
                 case "signature_delta":
-                    block["signature"] = .string((block["signature"]?.string ?? "") + (delta?["signature"]?.string ?? ""))
+                    streamed[index, default: [:]]["signature", default: ""] += delta?["signature"]?.string ?? ""
                 case "input_json_delta":
                     arguments[index, default: ""] += delta?["partial_json"]?.string ?? ""
                 default: break
                 }
-                blocks[index] = block
             case "message_delta":
                 if let partial = event["usage"]?.object { usage.merge(partial) { _, new in new } }
                 if let reason = event["delta"]?["stop_reason"] { message["stop_reason"] = reason }
@@ -62,6 +64,9 @@ extension NativeAgentClient {
             final["usage"] = .object(usage)
             final["content"] = .array(try blocks.keys.sorted().map { index in
                 var block = blocks[index]!
+                for (key, text) in streamed[index] ?? [:] {
+                    block[key] = .string((block[key]?.string ?? "") + text)
+                }
                 if let json = arguments[index], !json.isEmpty {
                     block["input"] = try JSONCodec.parse(Data(json.utf8))
                 }
@@ -158,7 +163,8 @@ extension NativeAgentClient {
             error["message"]?.string ?? "The provider stream reported an error.",
             statusCode: status,
             retryable: isRetryable(status),
-            isLimit: limitKind(from: event, status: status) != nil
+            isLimit: limitKind(from: event, status: status) != nil,
+            isContextWindowExceeded: contextWindowOverflow(from: event)
         )
     }
 
@@ -318,19 +324,12 @@ extension NativeAgentClient {
                 }
                 return []
             case "response.failed", "error":
-                let message = event["message"]?.string
-                    ?? event["error"]?["message"]?.string
-                    ?? event["response"]?["error"]?["message"]?.string
-                    ?? "The Codex stream reported an error."
-                let status = event["status"]?.int
-                    ?? event["error"]?["status"]?.int
-                    ?? event["response"]?["status"]?.int
-                    ?? event["response"]?["error"]?["status"]?.int
-                    ?? 502
+                let (message, status) = NativeAgentClient.streamFailure(in: event, fallback: "The Codex stream reported an error.")
                 throw NativeAgentError(
                     message,
                     statusCode: status,
-                    isLimit: NativeAgentClient.limitKind(from: event, status: status) != nil
+                    isLimit: NativeAgentClient.limitKind(from: event, status: status) != nil,
+                    isContextWindowExceeded: NativeAgentClient.contextWindowOverflow(from: event)
                 )
             default:
                 return []
@@ -410,6 +409,10 @@ extension NativeAgentClient {
         var data = Data()
         var lineStart = 0
         var firstDelta: Int?
+        // Each delta hopped to the main actor on its own, a job per token. Deltas are
+        // sent in 50 ms batches instead, adjacent ones of a kind joined into one.
+        var pending: [StreamDelta] = []
+        var flushedAt = Date.distantPast
         for try await byte in bytes {
             data.append(byte)
             guard byte == 0x0A else { continue }
@@ -417,10 +420,29 @@ extension NativeAgentClient {
             if firstDelta == nil, output.isOutput {
                 firstDelta = Int(Date().timeIntervalSince(started) * 1_000)
             }
-            if let onDelta { for delta in output.deltas { await onDelta(delta) } }
             lineStart = data.count
+            guard let onDelta else { continue }
+            pending.append(contentsOf: output.deltas)
+            if !pending.isEmpty, Date().timeIntervalSince(flushedAt) >= 0.05 {
+                for delta in joinedDeltas(pending) { await onDelta(delta) }
+                pending.removeAll(keepingCapacity: true)
+                flushedAt = Date()
+            }
         }
+        if let onDelta { for delta in joinedDeltas(pending) { await onDelta(delta) } }
         return (data, response, firstDelta)
+    }
+
+    static func joinedDeltas(_ deltas: [StreamDelta]) -> [StreamDelta] {
+        var joined: [StreamDelta] = []
+        for delta in deltas {
+            switch (joined.last, delta) {
+            case (.text(let head)?, .text(let tail)): joined[joined.count - 1] = .text(head + tail)
+            case (.thinking(let head)?, .thinking(let tail)): joined[joined.count - 1] = .thinking(head + tail)
+            default: joined.append(delta)
+            }
+        }
+        return joined
     }
 
     /// Responses (`response.*.delta`) and Anthropic (`content_block_delta`) put
@@ -428,50 +450,5 @@ extension NativeAgentClient {
     /// echoes the instructions, which may contain the word themselves.
     static func isOutputDeltaLine(_ line: Data) -> Bool {
         line.starts(with: Data("data:".utf8)) && line.prefix(96).range(of: Data("delta\"".utf8)) != nil
-    }
-
-    /// Read a `/responses` body as it arrives, handing each piece of prose to
-    /// `onDelta` before the request has finished.
-    ///
-    /// The reader is deliberately line-oriented: `bytes.lines` splits on the
-    /// newlines SSE uses as event boundaries, so a delta is shown the moment its
-    /// `data:` line is complete rather than when the whole answer lands.
-    static func responseFromSSEStream(
-        _ request: URLRequest,
-        session: URLSession,
-        limit: Int = 12_000_000,
-        onDelta: (@Sendable (StreamDelta) async -> Void)? = nil
-    ) async throws -> AgentResponse {
-        let (bytes, response) = try await session.bytes(for: request)
-        guard let http = response as? HTTPURLResponse else { throw NativeAgentError(AppCopy.text("agent.badResponse")) }
-        var state = ResponseStreamState()
-        // The status is known before the body is read, so a refusal still arrives
-        // as parsed JSON rather than as a truncated stream.
-        guard (200..<300).contains(http.statusCode) else {
-            var data = Data()
-            for try await byte in bytes {
-                data.append(byte)
-                if data.count > limit { break }
-            }
-            let value = (try? JSONCodec.parse(data)) ?? .null
-            throw NativeAgentError(
-                Self.errorMessage(from: value, status: http.statusCode),
-                statusCode: http.statusCode,
-                retryable: Self.isRetryable(http.statusCode),
-                isLimit: Self.limitKind(from: value, status: http.statusCode) != nil,
-                retryAt: NativeAgentError.retryAt(from: response)
-            )
-        }
-        var seenBytes = 0
-        for try await line in bytes.lines {
-            seenBytes += line.utf8.count + 1
-            // A stream is not exempt from the size ceiling; it just reaches it live.
-            guard seenBytes <= limit else { throw NativeAgentError(AppCopy.text("agent.responseTooLarge")) }
-            // A JSON body on a streaming request means the endpoint answered
-            // without SSE; the state machine's first line sees the whole payload.
-            let deltas = try state.consume(line: line)
-            for delta in deltas { await onDelta?(delta) }
-        }
-        return try state.response()
     }
 }

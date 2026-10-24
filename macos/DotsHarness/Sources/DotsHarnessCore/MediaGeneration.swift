@@ -1,5 +1,5 @@
 // Copyright (c) 2026 DOTS
-// Provider-backed image, video, and speech generation.
+// Provider-backed image, video, speech, and music generation.
 
 import CryptoKit
 import Foundation
@@ -9,12 +9,14 @@ public enum MediaKind: String, Codable, CaseIterable, Sendable, Equatable {
     case image
     case video
     case audio
+    case music
 
     public var command: String {
         switch self {
         case .image: return "imagegen"
         case .video: return "videogen"
         case .audio: return "audiogen"
+        case .music: return "musicgen"
         }
     }
 
@@ -23,6 +25,7 @@ public enum MediaKind: String, Codable, CaseIterable, Sendable, Equatable {
         case .image: return AppCopy.text("media.image")
         case .video: return AppCopy.text("media.video")
         case .audio: return AppCopy.text("media.audio")
+        case .music: return AppCopy.text("media.music")
         }
     }
 
@@ -31,6 +34,8 @@ public enum MediaKind: String, Codable, CaseIterable, Sendable, Equatable {
         case .image: return "/images/generations"
         case .video: return "/videos"
         case .audio: return "/audio/speech"
+        // ponytail: no vendor-neutral music endpoint exists; a provider names its own in `media.music.path`.
+        case .music: return "/audio/generations"
         }
     }
 
@@ -38,7 +43,7 @@ public enum MediaKind: String, Codable, CaseIterable, Sendable, Equatable {
         switch self {
         case .image: return "png"
         case .video: return "mp4"
-        case .audio: return "mp3"
+        case .audio, .music: return "mp3"
         }
     }
 
@@ -46,7 +51,7 @@ public enum MediaKind: String, Codable, CaseIterable, Sendable, Equatable {
         switch self {
         case .image: return "image/png"
         case .video: return "video/mp4"
-        case .audio: return "audio/mpeg"
+        case .audio, .music: return "audio/mpeg"
         }
     }
 }
@@ -70,6 +75,7 @@ public struct MediaRequest: Sendable, Equatable {
         case "imagegen", "image", "img": kind = .image
         case "videogen", "video": kind = .video
         case "audiogen", "audio", "speech": kind = .audio
+        case "musicgen", "music": kind = .music
         default: kind = nil
         }
         guard let kind else { return nil }
@@ -125,7 +131,9 @@ public enum MediaGenerationClient {
         configuration: AgentConfiguration,
         provider: ProviderMediaSpec,
         paths: SupportPaths,
-        session: URLSession = .shared
+        session: URLSession = .shared,
+        seconds: Int? = nil,
+        stem: MusicStemRequest? = nil
     ) async throws -> ChatMedia {
         let prompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty else {
@@ -160,6 +168,16 @@ public enum MediaGenerationClient {
                 paths: paths,
                 session: session
             )
+        case .music:
+            return try await music(
+                prompt: prompt,
+                seconds: seconds,
+                stem: stem,
+                configuration: configuration,
+                provider: provider,
+                paths: paths,
+                session: session
+            )
         }
     }
 
@@ -185,31 +203,33 @@ public enum MediaGenerationClient {
 
         let (data, response) = try await session.data(for: request)
         try validate(data: data, response: response)
+        let imageData = try await firstOutput(in: data, session: session)
+        return try save(imageData, kind: .image, paths: paths, prompt: prompt)
+    }
+
+    /// `data[0]` of an OpenAI-style generation reply: inline base64, or a link to fetch.
+    private static func firstOutput(in data: Data, session: URLSession) async throws -> Data {
         let value = try JSONCodec.parse(data)
         guard case .array(let items) = value["data"], let item = items.first else {
             throw NativeAgentError(AppCopy.text("media.noOutput"))
         }
-
-        let imageData: Data
         if let encoded = item["b64_json"]?.string {
             let raw = encoded.components(separatedBy: ",").last ?? encoded
             guard let decoded = Data(base64Encoded: raw) else {
                 throw NativeAgentError(AppCopy.text("media.invalidOutput"))
             }
-            imageData = decoded
-        } else if let rawURL = item["url"]?.string,
-                  let url = URL(string: rawURL),
-                  ["http", "https"].contains(url.scheme?.lowercased()) {
-            var download = URLRequest(url: url, timeoutInterval: 180)
-            download.httpMethod = "GET"
-            let (downloaded, downloadResponse) = try await session.data(for: download)
-            try validate(data: downloaded, response: downloadResponse)
-            imageData = downloaded
-        } else {
+            return decoded
+        }
+        guard let rawURL = item["url"]?.string,
+              let url = URL(string: rawURL),
+              ["http", "https"].contains(url.scheme?.lowercased()) else {
             throw NativeAgentError(AppCopy.text("media.noOutput"))
         }
-
-        return try save(imageData, kind: .image, paths: paths)
+        var download = URLRequest(url: url, timeoutInterval: 180)
+        download.httpMethod = "GET"
+        let (downloaded, downloadResponse) = try await session.data(for: download)
+        try validate(data: downloaded, response: downloadResponse)
+        return downloaded
     }
 
     private static func video(
@@ -222,8 +242,8 @@ public enum MediaGenerationClient {
         let path = provider.path ?? MediaKind.video.defaultPath
         let boundary = "DotsHarness-\(UUID().uuidString)"
         var body = Data()
-        appendField("model", value: provider.model, boundary: boundary, to: &body)
-        appendField("prompt", value: prompt, boundary: boundary, to: &body)
+        MultipartFormData.appendField("model", value: provider.model, boundary: boundary, to: &body)
+        MultipartFormData.appendField("prompt", value: prompt, boundary: boundary, to: &body)
         body.append(Data("--\(boundary)--\r\n".utf8))
 
         var createRequest = try request(
@@ -274,7 +294,7 @@ public enum MediaGenerationClient {
         contentRequest.httpMethod = "GET"
         let (content, contentResponse) = try await session.data(for: contentRequest)
         try validate(data: content, response: contentResponse)
-        return try save(content, kind: .video, paths: paths)
+        return try save(content, kind: .video, paths: paths, prompt: prompt)
     }
 
     private static func audio(
@@ -300,7 +320,58 @@ public enum MediaGenerationClient {
 
         let (data, response) = try await session.data(for: request)
         try validate(data: data, response: response)
-        return try save(data, kind: .audio, paths: paths)
+        return try save(data, kind: .audio, paths: paths, prompt: prompt)
+    }
+
+    /// Text to music. The reply is either the audio itself or the JSON envelope image generation uses.
+    private static func music(
+        prompt: String,
+        seconds: Int?,
+        stem: MusicStemRequest?,
+        configuration: AgentConfiguration,
+        provider: ProviderMediaSpec,
+        paths: SupportPaths,
+        session: URLSession
+    ) async throws -> ChatMedia {
+        let elevenLabs = provider.format == MusicEndpoint.Format.elevenLabs.rawValue
+        var request = try request(
+            url: endpoint(
+                configuration: configuration,
+                path: provider.path ?? (elevenLabs ? "/music" : MediaKind.music.defaultPath)
+            ),
+            configuration: configuration
+        )
+        request.httpMethod = "POST"
+        // A model on this machine can take several times the track's length to render it.
+        request.timeoutInterval = 900
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("audio/*, application/json", forHTTPHeaderField: "Accept")
+        var body: [String: Any]
+        if elevenLabs {
+            request.setValue(nil, forHTTPHeaderField: "Authorization")
+            request.setValue(configuration.apiKey, forHTTPHeaderField: "xi-api-key")
+            body = ["prompt": prompt, "model_id": provider.model]
+            if let seconds { body["music_length_ms"] = min(max(seconds * 1000, 3000), 600_000) }
+            if let stem, stem.lyrics == nil { body["force_instrumental"] = true }
+        } else {
+            body = ["model": provider.model, "prompt": prompt]
+            if let seconds { body["duration"] = seconds }
+            if let stem {
+                body["instrument"] = stem.instrument
+                body["bpm"] = stem.bpm
+                body["key"] = stem.key
+                if let lyrics = stem.lyrics { body["lyrics"] = lyrics }
+            }
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await session.data(for: request)
+        try validate(data: data, response: response)
+        let isJSON = response.mimeType?.lowercased().contains("json") == true
+        return try save(
+            isJSON ? try await firstOutput(in: data, session: session) : data,
+            kind: .music, paths: paths, prompt: prompt
+        )
     }
 
     private static func endpoint(configuration: AgentConfiguration, path: String) throws -> URL {
@@ -338,26 +409,33 @@ public enum MediaGenerationClient {
             let value = try? JSONCodec.parse(data)
             let message = value?["error"]?["message"]?.string
                 ?? value?["message"]?.string
+                ?? value?["detail"]?["message"]?.string
+                ?? value?["detail"]?.string
                 ?? AppCopy.format("agent.requestFailed", status)
             throw NativeAgentError(message, statusCode: status, retryable: status == 408 || status == 429 || (500..<600).contains(status))
         }
     }
 
-    static func save(_ data: Data, kind: MediaKind, paths: SupportPaths) throws -> ChatMedia {
-        try save(data, kind: kind, mimeType: kind.mimeType, paths: paths)
+    static func save(_ data: Data, kind: MediaKind, paths: SupportPaths, prompt: String? = nil) throws -> ChatMedia {
+        try save(data, kind: kind, mimeType: kind.mimeType, paths: paths, prompt: prompt)
     }
 
     static let maxSavedBytes = 200 * 1024 * 1024
 
     /// Fixed `generated-media` directory only; the name is the SHA-256 of the bytes
     /// (no collisions, identical content dedupes) and, for images, the extension
-    /// comes from magic bytes rather than the provider's Content-Type.
-    static func save(_ data: Data, kind: MediaKind, mimeType: String, paths: SupportPaths) throws -> ChatMedia {
+    /// comes from magic bytes rather than the provider's Content-Type. Every saved
+    /// file is filed in the library; `prompt` becomes its title there.
+    static func save(
+        _ data: Data, kind: MediaKind, mimeType: String, paths: SupportPaths, prompt: String? = nil
+    ) throws -> ChatMedia {
         guard !data.isEmpty, data.count <= maxSavedBytes else { throw NativeAgentError(AppCopy.text("media.invalidOutput")) }
         var ext = kind.fileExtension
         var mime = mimeType
         if kind == .image {
             guard let sniffed = sniffImage(data) else { throw NativeAgentError(AppCopy.text("media.invalidOutput")) }
+            (ext, mime) = sniffed
+        } else if kind == .music, let sniffed = sniffAudio(data) {
             (ext, mime) = sniffed
         }
         let directory = paths.root.appendingPathComponent("generated-media", isDirectory: true)
@@ -367,7 +445,19 @@ public enum MediaGenerationClient {
         if !FileManager.default.fileExists(atPath: url.path) {
             try data.write(to: url, options: .atomic)
         }
+        if let libraryKind = MediaLibraryItem.Kind(rawValue: kind.rawValue) {
+            MediaLibrary.record(url, kind: libraryKind, prompt: prompt, root: paths.root)
+        }
         return ChatMedia(kind: kind, path: url.path, mimeType: mime)
+    }
+
+    /// Music servers answer in whatever container they render to; the default stays mp3.
+    private static func sniffAudio(_ d: Data) -> (String, String)? {
+        let b = [UInt8](d.prefix(4))
+        if b == [0x52, 0x49, 0x46, 0x46] { return ("wav", "audio/wav") }
+        if b == [0x66, 0x4C, 0x61, 0x43] { return ("flac", "audio/flac") }
+        if b == [0x4F, 0x67, 0x67, 0x53] { return ("ogg", "audio/ogg") }
+        return nil
     }
 
     private static func sniffImage(_ d: Data) -> (String, String)? {
@@ -398,11 +488,5 @@ public enum MediaGenerationClient {
             throw NativeAgentError(AppCopy.format("agent.requestFailed", status))
         }
         return try save(data, kind: payload.kind, mimeType: payload.mimeType, paths: paths)
-    }
-
-    private static func appendField(_ name: String, value: String, boundary: String, to data: inout Data) {
-        data.append(Data("--\(boundary)\r\n".utf8))
-        data.append(Data("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".utf8))
-        data.append(Data("\(value)\r\n".utf8))
     }
 }

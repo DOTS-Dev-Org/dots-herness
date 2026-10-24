@@ -49,6 +49,48 @@ final class LocalizationTests: XCTestCase {
         }
     }
 
+    func testMemoryAndTrustCopyIsLocalizedInEveryLanguage() {
+        let keys = [
+            "settings.tab.memoryTransfer",
+            "memory.transfer.title",
+            "memory.transfer.description",
+            "memory.transfer.project",
+            "memory.transfer.projectHelp",
+            "memory.transfer.personal",
+            "memory.transfer.personalHelp",
+            "memory.transfer.export",
+            "memory.transfer.import",
+            "memory.transfer.exported",
+            "memory.transfer.imported",
+            "memory.transfer.invalidArchive",
+            "memory.trust.header",
+            "memory.trust.prompt",
+            "memory.trust.yes",
+            "memory.trust.no",
+            "memory.lesson.header",
+            "memory.lesson.prompt",
+            "memory.lesson.keep",
+            "memory.lesson.forget",
+        ]
+        AppCopy.setLanguage(.en)
+        let englishValues = Dictionary(uniqueKeysWithValues: keys.map { ($0, AppCopy.text($0)) })
+
+        for language in AppLanguage.supported {
+            AppCopy.setLanguage(language)
+            for key in keys {
+                let value = AppCopy.text(key)
+                XCTAssertNotEqual(value, key, "\(language.rawValue): \(key)")
+                XCTAssertFalse(value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "\(language.rawValue): \(key)")
+                if language != .en, let englishValue = englishValues[key] {
+                    XCTAssertNotEqual(value, englishValue, "\(language.rawValue): \(key) fell back to English")
+                }
+            }
+            let formattedLesson = AppCopy.format("memory.lesson.prompt", "sample")
+            XCTAssertTrue(formattedLesson.contains("sample"), language.rawValue)
+            XCTAssertFalse(formattedLesson.contains("%@"), language.rawValue)
+        }
+    }
+
     func testLocalizedFormattingPreservesArguments() {
         AppCopy.setLanguage(.tr)
         XCTAssertEqual(

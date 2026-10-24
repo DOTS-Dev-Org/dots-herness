@@ -11,6 +11,8 @@ import DotsHarnessCore
 @MainActor
 final class MarkdownCache {
     static let shared = MarkdownCache()
+    private static let parsedCacheCostLimit = 16 * 1024 * 1024
+    private static let maxCachedMarkdownBytes = 1024 * 1024
     private let cache = NSCache<NSString, ParsedPlanMarkdown>()
 
     final class ParsedPlanMarkdown {
@@ -24,18 +26,51 @@ final class MarkdownCache {
             let heading: (level: Int, text: AttributedString)?
             /// A `label: number` row of a ```chart fence, scaled to the block's peak.
             var bar: (label: String, text: String, fraction: Double)?
-            /// A `stage: note` row of a ```flow fence.
-            var step: (title: String, note: String, isLast: Bool)?
+            /// A `stage: note [tone: badge]` row of a ```flow fence.
+            var step: (number: Int, title: String, note: String, badge: DiagramTag?, isLast: Bool)?
             var isChartFence = false
         }
         let entries: [Entry]
+        let blocks: [MarkdownBlock]
         init(entries: [Entry]) {
             self.entries = entries
+            self.blocks = Self.makeBlocks(from: entries)
+        }
+
+        private static func makeBlocks(from entries: [Entry]) -> [MarkdownBlock] {
+            var blocks: [MarkdownBlock] = []
+            var index = 0
+            while index < entries.count {
+                let entry = entries[index]
+                guard entry.isCode, !entry.isChartFence, !isFence(entry.line) else {
+                    blocks.append(.entry(index, entry))
+                    index += 1
+                    continue
+                }
+                let start = index
+                var lines: [String] = []
+                index += 1
+                while index < entries.count, !isFence(entries[index].line) {
+                    lines.append(entries[index].line)
+                    index += 1
+                }
+                let isDiagram = entry.line.trimmingCharacters(in: .whitespaces) == "```diagram"
+                blocks.append(isDiagram ? .diagram(start, DiagramSpec(lines: lines)) : .code(start, lines))
+                index += 1 // closing fence, or the end of a reply still streaming
+            }
+            return blocks
+        }
+
+        private static func isFence(_ line: String) -> Bool {
+            line.trimmingCharacters(in: .whitespaces).hasPrefix("```")
         }
     }
 
     private init() {
-        cache.countLimit = 200
+        // 48 thrashed once a transcript held more markdown bubbles than that: every
+        // redraw re-parsed them all. The byte cost limit is what bounds memory.
+        cache.countLimit = 512
+        cache.totalCostLimit = Self.parsedCacheCostLimit
     }
 
     /// `store: false` for a reply still being written: every partial text is a new key.
@@ -58,11 +93,15 @@ final class MarkdownCache {
                 entries[index].bar = (row.label, row.text, peak > 0 ? abs(row.value) / peak : 0)
             }
             chartRows.removeAll()
-            for index in flowRows {
-                let parts = entries[index].line.split(separator: ":", maxSplits: 1).map {
+            for (number, index) in flowRows.enumerated() {
+                let (body, badge) = DiagramTag.split(entries[index].line)
+                let parts = body.split(separator: ":", maxSplits: 1).map {
                     $0.trimmingCharacters(in: .whitespaces)
                 }
-                entries[index].step = (parts[0], parts.count > 1 ? parts[1] : "", index == flowRows.last)
+                entries[index].step = (
+                    number + 1, parts.first ?? "", parts.count > 1 ? parts[1] : "",
+                    badge, index == flowRows.last
+                )
             }
             flowRows.removeAll()
         }
@@ -92,7 +131,18 @@ final class MarkdownCache {
         }
         flushChart() // a chart still streaming has no closing fence yet
         let result = ParsedPlanMarkdown(entries: entries)
-        if store { cache.setObject(result, forKey: key) }
+        let textBytes = text.utf8.count
+        if store, textBytes <= Self.maxCachedMarkdownBytes {
+            // Include the NSString key, source lines, attributed runs, and
+            // grouped code/diagram blocks in the estimate. NSCache treats this
+            // as a pressure hint, so oversized documents are excluded outright.
+            let (textCost, textOverflow) = textBytes.multipliedReportingOverflow(by: 8)
+            let (entryCost, entryOverflow) = entries.count.multipliedReportingOverflow(by: 256)
+            let (cost, costOverflow) = textCost.addingReportingOverflow(entryCost)
+            if !textOverflow, !entryOverflow, !costOverflow {
+                cache.setObject(result, forKey: key, cost: max(cost, 1))
+            }
+        }
         return result
     }
 
@@ -109,12 +159,14 @@ final class MarkdownCache {
     }
     private let lineCache: NSCache<NSString, EntryBox> = {
         let cache = NSCache<NSString, EntryBox>()
-        cache.countLimit = 4_000
+        cache.countLimit = 2_000
+        cache.totalCostLimit = 8 * 1024 * 1024
         return cache
     }()
 
     private func entry(for line: String, isCode: Bool, store: Bool) -> ParsedPlanMarkdown.Entry {
-        let key = ((isCode ? "c" : "t") + line) as NSString
+        let keyText = (isCode ? "c" : "t") + line
+        let key = keyText as NSString
         if let cached = lineCache.object(forKey: key) { return cached.entry }
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         var attributed: AttributedString?
@@ -151,15 +203,29 @@ final class MarkdownCache {
             bulletText: bulletText,
             heading: heading
         )
-        if store { lineCache.setObject(EntryBox(entry), forKey: key) }
+        let keyBytes = keyText.utf8.count
+        if store, keyBytes <= 16 * 1024 {
+            let (lineCost, overflow) = keyBytes.multipliedReportingOverflow(by: 4)
+            let (cost, additionOverflow) = lineCost.addingReportingOverflow(256)
+            if !overflow, !additionOverflow {
+                lineCache.setObject(EntryBox(entry), forKey: key, cost: cost)
+            }
+        }
         return entry
     }
 
     private func parseMarkdown<S: StringProtocol>(_ line: S) -> AttributedString {
-        (try? AttributedString(
+        guard var text = try? AttributedString(
             markdown: String(line),
             options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        )) ?? AttributedString(String(line))
+        ) else { return AttributedString(String(line)) }
+        // Default inline code is body-size SF Mono, which reads larger and looser
+        // than the prose around it. One step down, on a faint chip.
+        for run in text.runs where run.inlinePresentationIntent?.contains(.code) == true {
+            text[run.range].font = .system(.callout, design: .monospaced)
+            text[run.range].backgroundColor = Color.primary.opacity(0.07)
+        }
+        return text
     }
 
     private func parseNumberedItem(_ line: String) -> (number: String, text: String)? {
@@ -175,6 +241,20 @@ final class MarkdownCache {
     }
 }
 
+/// One row of conversation markdown: a parsed line, or a whole plain ``` fence.
+enum MarkdownBlock: Identifiable {
+    case entry(Int, MarkdownCache.ParsedPlanMarkdown.Entry)
+    case code(Int, [String])
+    case diagram(Int, DiagramSpec)
+
+    var id: Int {
+        switch self {
+        case .entry(let index, _), .code(let index, _), .diagram(let index, _):
+            return index
+        }
+    }
+}
+
 struct PlanMarkdownView: View {
     let text: String
     var caches = true
@@ -182,8 +262,8 @@ struct PlanMarkdownView: View {
     var body: some View {
         let parsed = MarkdownCache.shared.parsed(for: text, store: caches)
         return VStack(alignment: .leading, spacing: 6) {
-            ForEach(Array(parsed.entries.enumerated()), id: \.offset) { _, entry in
-                entryView(entry)
+            ForEach(parsed.blocks) { block in
+                blockView(block)
             }
         }
         .lineSpacing(3)
@@ -191,15 +271,43 @@ struct PlanMarkdownView: View {
     }
 
     @ViewBuilder
+    private func blockView(_ block: MarkdownBlock) -> some View {
+        switch block {
+        case .entry(_, let entry): entryView(entry)
+        case .code(_, let lines): CodeBlockView(lines: lines)
+        case .diagram(_, let spec): DiagramView(spec: spec)
+        }
+    }
+
+    @ViewBuilder
     private func entryView(_ entry: MarkdownCache.ParsedPlanMarkdown.Entry) -> some View {
         if entry.isChartFence {
             EmptyView()
         } else if let step = entry.step {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Image(systemName: step.isLast ? "checkmark.circle.fill" : "arrow.down.circle.fill")
-                    .foregroundStyle(Color.accentColor)
-                Text(step.title).fontWeight(.semibold)
-                Text(step.note).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text("\(step.number)")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .frame(minWidth: 16, alignment: .trailing)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(inlineMarkdown(step.title)).fontWeight(.semibold)
+                        if !step.note.isEmpty {
+                            Text(inlineMarkdown(step.note)).foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer(minLength: 8)
+                    if let badge = step.badge {
+                        Text(badge.label)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(badge.color)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(badge.color.opacity(0.15), in: Capsule())
+                    }
+                }
+                .padding(.vertical, 6)
+                if !step.isLast { Divider().padding(.leading, 26) }
             }
             .font(.callout)
         } else if let bar = entry.bar {
@@ -224,36 +332,39 @@ struct PlanMarkdownView: View {
         } else if let heading = entry.heading {
             switch heading.level {
             case 1:
-                Text(heading.text)
+                rich(heading.text)
                     .font(.title3.weight(.bold))
                     .padding(.top, 4)
+                    .help(linkHoverHelp(in: heading.text))
             case 2:
-                Text(heading.text)
+                rich(heading.text)
                     .font(.body.weight(.semibold))
                     .padding(.top, 5)
+                    .help(linkHoverHelp(in: heading.text))
             default:
-                Text(heading.text)
+                rich(heading.text)
                     .font(.callout.weight(.semibold))
                     .padding(.top, 3)
+                    .help(linkHoverHelp(in: heading.text))
             }
         } else if let check = entry.checkState {
             HStack(alignment: .top, spacing: 7) {
                 Image(systemName: check.checked ? "checkmark.square.fill" : "square")
                     .foregroundStyle(check.checked ? Color.accentColor : .secondary)
-                Text(check.text)
+                rich(check.text).help(linkHoverHelp(in: check.text))
             }
         } else if let bullet = entry.bulletText {
             HStack(alignment: .top, spacing: 7) {
                 Text("•")
                     .foregroundStyle(.secondary)
-                Text(bullet)
+                rich(bullet).help(linkHoverHelp(in: bullet))
             }
         } else if let numbered = entry.numbered {
             HStack(alignment: .top, spacing: 7) {
                 Text(numbered.number)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
-                Text(numbered.text)
+                rich(numbered.text).help(linkHoverHelp(in: numbered.text))
             }
         } else if entry.line.trimmingCharacters(in: .whitespaces).hasPrefix("```") {
             Text(entry.line)
@@ -262,10 +373,61 @@ struct PlanMarkdownView: View {
         } else if entry.line.isEmpty {
             Color.clear.frame(height: 2)
         } else if let attr = entry.attributed {
-            Text(attr)
+            rich(attr).help(linkHoverHelp(in: attr))
         } else {
             Text(entry.line)
         }
+    }
+
+    /// Codex-style file references: a document glyph ahead of each workspace file link.
+    private func rich(_ text: AttributedString) -> Text {
+        let runs = text.runs[\.link]
+        guard runs.contains(where: { $0.0.flatMap(AppModel.fileLinkPath) != nil }) else { return Text(text) }
+        return runs.reduce(Text(verbatim: "")) { result, run in
+            let piece = Text(AttributedString(text[run.1]))
+            guard run.0.flatMap(AppModel.fileLinkPath) != nil else { return Text("\(result)\(piece)") }
+            let icon = Text(Image(systemName: "doc")).foregroundStyle(Color.accentColor)
+            return Text("\(result)\(icon)\u{2009}\(piece)")
+        }
+    }
+
+    private func linkHoverHelp(in text: AttributedString) -> String {
+        text.runs.compactMap { run -> String? in
+            guard let url = run.link else { return nil }
+            let label = String(text[run.range].characters)
+            if let path = AppModel.fileLinkPath(url) { return "\(label)\n\(path)" }
+            let domain = url.host ?? url.absoluteString
+            return "\(label)\n\(domain)\n\(url.absoluteString)"
+        }
+        .joined(separator: "\n\n")
+    }
+}
+
+/// A plain fenced block. Lines stay unwrapped so box diagrams keep their columns;
+/// the copy button sits in the header, top-right.
+struct CodeBlockView: View {
+    let lines: [String]
+
+    var body: some View {
+        let code = lines.joined(separator: "\n")
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Spacer()
+                CopyFeedbackButton(text: code)
+            }
+            .padding(.horizontal, 8)
+            .padding(.top, 6)
+            ScrollView(.horizontal, showsIndicators: true) {
+                Text(code)
+                    .font(.system(.callout, design: .monospaced))
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 8)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.black.opacity(0.06), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
     }
 }
 

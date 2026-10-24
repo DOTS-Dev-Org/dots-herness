@@ -63,55 +63,6 @@ final class ContextOverflowGateTests: XCTestCase {
         return router
     }
 
-    private func transcript(messages: Int, characters: Int = 20_000) -> [AgentMessage] {
-        (0..<messages).map { index in
-            AgentMessage(
-                role: index.isMultiple(of: 2) ? .user : .assistant,
-                content: String(repeating: index.isMultiple(of: 2) ? "x" : "y", count: characters)
-            )
-        }
-    }
-
-    private func host() throws -> (NativeAgentHost, String) {
-        let host = NativeAgentHost(
-            paths: temporaryPaths(),
-            endpoint: AgentEndpointController(baseURL: "http://overflow.test", modelID: "old-model")
-        )
-        host.start(workspacePath: FileManager.default.temporaryDirectory.path)
-        host.newConversation()
-        let id = try XCTUnwrap(host.selectedID)
-        return (host, id)
-    }
-
-    private func setRoute(_ host: NativeAgentHost, conversationID: String, to identity: String) {
-        guard let index = host.conversations.firstIndex(where: { $0.id == conversationID }) else { return }
-        host.conversations[index].contextRouteIdentity = identity
-    }
-
-    private func overflow(
-        _ host: NativeAgentHost,
-        conversationID: String,
-        messages: [AgentMessage],
-        targetWindow: Int
-    ) -> PendingContextOverflow? {
-        host.contextOverflow(
-            messages: messages,
-            conversationID: conversationID,
-            configuration: AgentConfiguration(
-                baseURL: "http://overflow.test",
-                model: "old-model",
-                contextWindow: 200_000
-            ),
-            tools: [],
-            contextConfiguration: AgentConfiguration(
-                baseURL: "http://overflow.test",
-                model: "new-model",
-                contextWindow: targetWindow
-            ),
-            routeIdentity: "new-route"
-        )
-    }
-
     // MARK: - how much a summarizer is asked to read
 
     func testArchiveUsesTheCeilingWhenTheWindowIsLarge() {
@@ -232,44 +183,5 @@ final class ContextOverflowGateTests: XCTestCase {
             )?.accountID,
             "new"
         )
-    }
-
-    // MARK: - the warning itself
-
-    func testOverflowIsRaisedWhenTheNewModelCannotAdmitTheConversation() throws {
-        let (host, id) = try host()
-        setRoute(host, conversationID: id, to: "old-route")
-        let overflow = try XCTUnwrap(overflow(host, conversationID: id, messages: transcript(messages: 6), targetWindow: 4_096))
-        XCTAssertEqual(overflow.conversationID, id)
-        XCTAssertEqual(overflow.routeIdentity, "new-route")
-        XCTAssertGreaterThan(overflow.requiredTokens, overflow.usableTokens)
-        XCTAssertNil(overflow.summarizerModel, "no provider is connected, so nobody can be asked")
-    }
-
-    /// A conversation that outgrows the model it has been using already compacts
-    /// on its own; that is not the surprise this banner is for.
-    func testOverflowStaysQuietWhenTheRouteDidNotChange() throws {
-        let (host, id) = try host()
-        setRoute(host, conversationID: id, to: "new-route")
-        XCTAssertNil(overflow(host, conversationID: id, messages: transcript(messages: 6), targetWindow: 4_096))
-    }
-
-    func testOverflowStaysQuietWhenTheConversationStillFits() throws {
-        let (host, id) = try host()
-        setRoute(host, conversationID: id, to: "old-route")
-        XCTAssertNil(overflow(
-            host,
-            conversationID: id,
-            messages: transcript(messages: 2, characters: 400),
-            targetWindow: 200_000
-        ))
-    }
-
-    /// One exchange cannot be archived into a summary, so the banner would promise
-    /// work the app cannot do.
-    func testOverflowStaysQuietWhenThereIsNothingToArchive() throws {
-        let (host, id) = try host()
-        setRoute(host, conversationID: id, to: "old-route")
-        XCTAssertNil(overflow(host, conversationID: id, messages: transcript(messages: 1), targetWindow: 4_096))
     }
 }

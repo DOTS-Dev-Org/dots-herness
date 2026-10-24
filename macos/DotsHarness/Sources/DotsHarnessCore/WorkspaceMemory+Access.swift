@@ -1,238 +1,89 @@
 // Copyright (c) 2026 DOTS
-// Members, invites, preferences and decisions.
+// Project facts and private user preferences. Repository permissions are managed by Git.
 
-import CryptoKit
 import Foundation
 import PluginRuntime
 
 extension WorkspaceMemory {
-    public func accessStatus() -> WorkspaceAccessStatus {
-        let member = currentMember()
-        return WorkspaceAccessStatus(
-            personID: identity?.personID ?? "",
-            deviceID: identity?.deviceID ?? "",
-            role: (member?["role"] as? String).flatMap(MemoryRole.init(rawValue:)),
-            score: member?["score"] as? Int ?? 0,
-            memberCount: (state["members"] as? [[String: Any]] ?? []).count,
-            pendingDecisionCount: (state["pendingProposals"] as? [[String: Any]] ?? []).count,
-            revision: revision,
-            memoryReady: manifest != nil
-        )
-    }
-
-    public func memberSummaries() -> [[String: String]] {
-        (state["members"] as? [[String: Any]] ?? []).compactMap { member in
-            guard let personID = member["personId"] as? String,
-                  let deviceID = member["deviceId"] as? String else { return nil }
-            return [
-                "personId": personID,
-                "deviceId": deviceID,
-                "displayName": member["displayName"] as? String ?? "",
-                "role": member["role"] as? String ?? MemoryRole.observer.rawValue,
-                "score": String(member["score"] as? Int ?? 0),
-                "revoked": String(member["revoked"] as? Bool ?? false),
-            ]
-        }
-    }
-
-    public func pendingDecisions() -> [[String: Any]] {
-        state["pendingProposals"] as? [[String: Any]] ?? []
-    }
-
-    public func createInvite(
-        personID: String = UUID().uuidString,
-        displayName: String,
-        role: MemoryRole = .contributor,
-        score: Int = 50,
-        publicKey: String
-    ) throws -> String {
-        guard canWrite(role: .owner), let identity else { throw WorkspaceMemoryError.unauthorized }
-        var payload: [String: Any] = [
-            "schemaVersion": 1,
-            "projectId": projectID ?? "",
-            "personId": personID,
-            "displayName": sanitize(displayName, limit: 80),
-            "role": role.rawValue,
-            "score": max(0, min(100, score)),
-            "publicKey": publicKey,
-            "invitedBy": identity.personID,
-            "createdAt": isoNow(),
-        ]
-        let eventID = try writeEvent(type: "member.invited", scope: "device", payload: payload)
-        payload["eventId"] = eventID
-        payload["actor"] = [
-            "personId": identity.personID,
-            "deviceId": identity.deviceID,
-            "keyId": identity.keyID,
-            "publicKey": identity.publicKey,
-        ]
-        let signed = try signedObject(payload, key: privateKey, actor: identity)
-        guard let data = try? JSONSerialization.data(withJSONObject: signed, options: [.sortedKeys]) else {
-            throw WorkspaceMemoryError.invalidInvitation
-        }
-        return data.base64EncodedString()
-    }
-
-    public func acceptInvite(_ token: String) throws {
-        try ensureIdentity()
-        guard let data = Data(base64Encoded: token),
-              let invitation = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let projectID = invitation["projectId"] as? String,
-              projectID == self.projectID,
-              let publicKey = invitation["publicKey"] as? String,
-              publicKey == identity?.publicKey else {
-            throw WorkspaceMemoryError.invalidInvitation
-        }
-        guard let signed = invitation["signature"] as? [String: Any],
-              let signature = signed["value"] as? String,
-              let rootKey = rootPublicKey,
-              verify(signature: signature, object: invitationWithoutSignature(invitation), publicKey: rootKey) else {
-            throw WorkspaceMemoryError.invalidInvitation
-        }
-        _ = try writeEvent(
-            type: "member.accepted",
-            scope: "device",
-            payload: [
-                "personId": invitation["personId"] as Any,
-                "deviceId": identity?.deviceID as Any,
-                "displayName": invitation["displayName"] as Any,
-                "role": invitation["role"] as Any,
-                "score": invitation["score"] as Any,
-                "publicKey": publicKey,
-            ]
-        )
-    }
-
-    /// Records a lasting actor preference. The projection supersedes any earlier
-    /// value under the same key, so repeated calls never pile up.
-    public func setPreference(key: String, value: String) throws {
-        guard let identity else { throw WorkspaceMemoryError.noWorkspace }
-        _ = try writeEvent(type: "preference.set", scope: "person", payload: [
-            "personId": identity.personID,
-            "key": sanitize(key, limit: 60),
-            "value": sanitize(value, limit: 240),
-        ])
-        syncFacts()
-    }
-
-    /// Records a fact about the user that holds in every project. It needs no
-    /// workspace: the profile lives beside the app's settings, not in a repository.
-    public func setUserPreference(key: String, value: String) throws {
-        try profile.setPreference(key: sanitize(key, limit: 60), value: sanitize(value, limit: 240))
-    }
-
-    /// Records a project-wide fact - what this project is for, what it must not
-    /// do. Writable by an owner or approver, which is what the person who created
-    /// the vault already is; an invited contributor cannot rewrite the brief.
+    /// Records a durable fact about this project in `.mem/facts.md`.
     public func setProjectDefault(key: String, value: String) throws {
-        _ = try writeEvent(type: "project.default.set", scope: "project", payload: [
-            "key": sanitize(key, limit: 60),
-            "value": sanitize(value, limit: ProjectKnowledge.limit(forKey: sanitize(key, limit: 60))),
-        ])
-        syncFacts()
+        try setProjectMemoryFact(kind: "project", key: key, text: value)
     }
 
-    /// Takes a project entry out of the prompt. The event stays in the log.
     public func forgetProjectDefault(key: String) throws {
-        _ = try writeEvent(type: "project.default.set", scope: "project", payload: ["key": sanitize(key, limit: 60)])
-        syncFacts(removing: Fact(kind: "project", key: sanitize(key, limit: 60), text: ""))
+        try removeProjectMemoryFact(kind: "project", key: sanitize(key, limit: 60))
     }
 
-    /// The project entries: this host's own, and those another client recorded
-    /// in the facts file. Its own win where both name a key.
+    /// Settled project decisions are project facts too; the repository's Git history records who changed them.
+    public func recordProjectDecision(summary: String) throws {
+        let text = sanitize(summary, limit: 240)
+        guard !text.isEmpty else { return }
+        let key = "decision-" + String(digest(Data(text.utf8)).prefix(12))
+        try setProjectMemoryFact(kind: "decision", key: key, text: text)
+    }
+
     public var projectDefaults: [String: String] {
-        let own = ((state["projectDefaults"] as? [String: Any]) ?? [:]).compactMapValues { $0 as? String }
-        return own.merging(foreignFacts("project", knownKeys: Set(own.keys))) { own, _ in own }
+        projectFactsByKind()["project"] ?? [:]
     }
 
-    /// True once the project brief has any entry, so the host asks for one only
-    /// while the vault still knows nothing about the project. What was learned
-    /// from the code is not a brief: only the user can say what the project is for.
     public var hasProjectBrief: Bool {
         projectDefaults.keys.contains { !ProjectKnowledge.keys.contains($0) }
     }
 
-    /// The knowledge entries nobody has recorded yet.
     public var missingKnowledge: [String] {
         let defaults = projectDefaults
         return ProjectKnowledge.keys.filter { defaults[$0] == nil }
     }
 
-    public func proposeDecision(summary: String, details: [String: Any] = [:]) throws {
-        guard canWrite(role: .contributor) else { throw WorkspaceMemoryError.unauthorized }
-        var payload = details
-        payload["summary"] = sanitize(summary, limit: 240)
-        _ = try writeEvent(type: "decision.proposed", scope: "project", payload: payload)
+    /// A preference that belongs to the person and follows them to every project.
+    public func setUserPreference(key: String, value: String) throws {
+        try profile.setPreference(key: sanitize(key, limit: 60), value: sanitize(value, limit: 240))
     }
 
-    public func revoke(deviceID: String) throws {
-        guard canWrite(role: .owner) else { throw WorkspaceMemoryError.unauthorized }
-        _ = try writeEvent(type: "member.revoked", scope: "device", payload: ["deviceId": deviceID])
+    /// A preference for this project only. It remains in the user's app support folder.
+    public func setProjectUserPreference(key: String, value: String) throws {
+        guard let projectID else { throw WorkspaceMemoryError.noWorkspace }
+        try profile.setProjectPreference(projectID: projectID, key: sanitize(key, limit: 60), value: sanitize(value, limit: 240))
     }
 
-    public func updateMember(deviceID: String, role: MemoryRole, score: Int, displayName: String? = nil) throws {
-        guard canWrite(role: .owner) else { throw WorkspaceMemoryError.unauthorized }
-        var payload: [String: Any] = [
-            "deviceId": deviceID,
-            "role": role.rawValue,
-            "score": max(0, min(100, score)),
-        ]
-        if let displayName { payload["displayName"] = sanitize(displayName, limit: 80) }
-        _ = try writeEvent(type: "member.updated", scope: "device", payload: payload)
-    }
-
-    public func resolveDecision(eventID: String, accept: Bool) throws {
-        guard canWrite(role: .approver) else { throw WorkspaceMemoryError.unauthorized }
-        guard let proposal = (state["pendingProposals"] as? [[String: Any]])?.first(where: { $0["eventId"] as? String == eventID }) else {
-            return
-        }
-        if accept {
-            _ = try writeEvent(type: "decision.accepted", scope: "project", supersedes: proposal["supersedes"] as? [String] ?? [], payload: proposal)
-        } else {
-            _ = try writeEvent(type: "decision.rejected", scope: "project", payload: ["proposalEventId": eventID])
+    public func removeUserPreference(key: String, scope: MemoryPreferenceScope) throws {
+        switch scope {
+        case .everywhere:
+            try profile.removePreference(key: key, projectID: nil)
+        case .thisProject:
+            guard let projectID else { throw WorkspaceMemoryError.noWorkspace }
+            try profile.removePreference(key: key, projectID: projectID)
         }
     }
 
-    private func currentMember() -> [String: Any]? {
-        guard let deviceID = identity?.deviceID else { return nil }
-        return member(deviceID: deviceID)
+    // MARK: - Trust in project memory that came with the repository
+
+    /// Project memory HerNess started in this checkout is trusted. Memory that was
+    /// already there - cloned or pulled in - stays plain data until the user trusts it.
+    /// Keyed by the checkout's path: the project id is read from the repository and can be copied.
+    public var projectMemoryTrust: Bool? {
+        guard let key = workspaceURL?.standardizedFileURL.path else { return nil }
+        return trustDecisions()[key]
     }
 
-    func member(deviceID: String) -> [String: Any]? {
-        (state["members"] as? [[String: Any]] ?? []).first { $0["deviceId"] as? String == deviceID }
+    public var projectMemoryTrusted: Bool { projectMemoryTrust == true }
+
+    /// The repository brought memory the user has not decided about yet.
+    public var needsProjectMemoryTrust: Bool {
+        enabled && manifest != nil && projectMemoryTrust == nil && !projectMemoryFacts().isEmpty
     }
 
-    func upsertMember(_ payload: [String: Any]) {
-        guard let deviceID = payload["deviceId"] as? String else { return }
-        var members = state["members"] as? [[String: Any]] ?? []
-        members.removeAll { $0["deviceId"] as? String == deviceID }
-        members.append(payload)
-        state["members"] = members
+    public func setProjectMemoryTrust(_ trusted: Bool) throws {
+        guard let key = workspaceURL?.standardizedFileURL.path else { throw WorkspaceMemoryError.noWorkspace }
+        var decisions = trustDecisions()
+        decisions[key] = trusted
+        try fileManager.createDirectory(at: paths.root, withIntermediateDirectories: true)
+        try JSONSerialization.data(withJSONObject: decisions, options: [.sortedKeys]).write(to: trustURL, options: .atomic)
     }
 
-    func setMember(deviceID: String, key: String, value: Any) {
-        var members = state["members"] as? [[String: Any]] ?? []
-        guard let index = members.firstIndex(where: { $0["deviceId"] as? String == deviceID }) else { return }
-        members[index][key] = value
-        state["members"] = members
-    }
+    private var trustURL: URL { paths.root.appendingPathComponent("project-memory-trust.json") }
 
-    func canWrite(role required: MemoryRole) -> Bool {
-        guard let member = currentMember(),
-              member["revoked"] as? Bool != true,
-              let role = member["role"] as? String,
-              let actual = MemoryRole(rawValue: role) else { return false }
-        return actual.rank >= required.rank
-    }
-
-    func canWrite(for type: String) -> Bool {
-        switch type {
-        case "workspace.initialized": return true
-        case "member.accepted": return true
-        case "member.invited", "member.revoked", "member.updated": return canWrite(role: .owner)
-        case "decision.accepted", "decision.rejected", "project.default.set": return canWrite(role: .approver)
-        case "preference.set": return canWrite(role: .observer)
-        default: return canWrite(role: .contributor)
-        }
+    private func trustDecisions() -> [String: Bool] {
+        (try? Data(contentsOf: trustURL)).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Bool] } ?? [:]
     }
 }

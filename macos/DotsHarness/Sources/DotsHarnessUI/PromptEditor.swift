@@ -14,6 +14,8 @@ struct PromptTextEditor: NSViewRepresentable {
     let onAcceptSlashCommand: () -> Bool
     let onMoveSlashCommand: (Int) -> Bool
     let followUpSuggestion: String?
+    var onDropFiles: (([URL]) -> Void)? = nil
+    var onPasteImage: ((Data) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -32,6 +34,8 @@ struct PromptTextEditor: NSViewRepresentable {
         editor.onAcceptSlashCommand = onAcceptSlashCommand
         editor.onMoveSlashCommand = onMoveSlashCommand
         editor.followUpSuggestion = followUpSuggestion
+        editor.onDropFiles = onDropFiles
+        editor.onPasteImage = onPasteImage
         editor.onSuggestionAccepted = { [weak coordinator = context.coordinator] text in
             coordinator?.suggestionAccepted(text)
         }
@@ -60,6 +64,8 @@ struct PromptTextEditor: NSViewRepresentable {
         editor.onAcceptSlashCommand = onAcceptSlashCommand
         editor.onMoveSlashCommand = onMoveSlashCommand
         editor.followUpSuggestion = followUpSuggestion
+        editor.onDropFiles = onDropFiles
+        editor.onPasteImage = onPasteImage
         editor.isEditable = isEnabled
 
         if editor.string != text {
@@ -99,6 +105,51 @@ final class PromptNSTextView: NSTextView {
     var onMoveSlashCommand: ((Int) -> Bool)?
     var onSuggestionAccepted: ((String) -> Void)?
     var followUpSuggestion: String?
+    var onDropFiles: (([URL]) -> Void)?
+    var onPasteImage: ((Data) -> Void)?
+
+    // An in-window card drawn over the editor keeps its own cursor: AppKit
+    // tracking ignores what SwiftUI draws on top, hit testing does not.
+    private func isCovered(_ event: NSEvent) -> Bool {
+        guard let content = window?.contentView,
+              let hit = content.hitTest(content.superview?.convert(event.locationInWindow, from: nil) ?? event.locationInWindow)
+        else { return false }
+        return !hit.isDescendant(of: self)
+    }
+    override func mouseMoved(with event: NSEvent) {
+        if !isCovered(event) { super.mouseMoved(with: event) }
+    }
+    override func cursorUpdate(with event: NSEvent) {
+        if !isCovered(event) { super.cursorUpdate(with: event) }
+    }
+
+    override func paste(_ sender: Any?) {
+        guard let onPasteImage,
+              let png = Self.pngImageData(from: .general) else {
+            super.paste(sender)
+            return
+        }
+        onPasteImage(png)
+    }
+
+    static func pngImageData(from pasteboard: NSPasteboard) -> Data? {
+        guard let image = NSImage(pasteboard: pasteboard),
+              let tiff = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff) else { return nil }
+        return bitmap.representation(using: .png, properties: [:])
+    }
+
+    // NSTextView would otherwise swallow a file drop and insert its path as text,
+    // so the surrounding SwiftUI `onDrop` never sees it.
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        guard let onDropFiles,
+              let urls = sender.draggingPasteboard.readObjects(
+                  forClasses: [NSURL.self],
+                  options: [.urlReadingFileURLsOnly: true]
+              ) as? [URL], !urls.isEmpty else { return super.performDragOperation(sender) }
+        onDropFiles(urls)
+        return true
+    }
 
     func acceptFollowUpSuggestion() -> Bool {
         guard string.isEmpty,
@@ -162,10 +213,11 @@ final class PromptNSTextView: NSTextView {
     }
 }
 
-enum SlashCommandKind {
+enum SlashCommandKind: Equatable {
     case setting
     case media
     case skill
+    case template
 }
 
 struct SlashCommand: Identifiable {
@@ -180,12 +232,13 @@ struct SlashCommand: Identifiable {
 struct SlashCommandPalette: View {
     let settings: [SlashCommand]
     let media: [SlashCommand]
+    let templates: [SlashCommand]
     let skills: [SlashCommand]
     @Binding var highlightedID: String?
     let onSelect: (SlashCommand) -> Void
 
     private var commands: [SlashCommand] {
-        settings + media + skills
+        settings + media + templates + skills
     }
 
     var body: some View {
@@ -202,6 +255,14 @@ struct SlashCommandPalette: View {
                     sectionTitle(AppCopy.text("composer.generate"))
                         .padding(.top, 7)
                     ForEach(media) { command in
+                        commandRow(command)
+                    }
+                }
+
+                if !templates.isEmpty {
+                    sectionTitle(AppCopy.text("composer.prompts"))
+                        .padding(.top, 7)
+                    ForEach(templates) { command in
                         commandRow(command)
                     }
                 }

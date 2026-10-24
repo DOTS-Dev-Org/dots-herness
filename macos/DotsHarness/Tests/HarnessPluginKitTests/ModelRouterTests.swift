@@ -24,6 +24,15 @@ final class ModelRouterTests: XCTestCase {
     private func user(_ text: String) -> AgentMessage { AgentMessage(role: .user, content: text) }
     private func assistant(_ text: String = "ok") -> AgentMessage { AgentMessage(role: .assistant, content: text) }
 
+    func testOpenAIDocumentedWindowsCoverCurrentModels() {
+        for model in ["gpt-5.6-luna", "gpt-6-sol", "gpt-6.1-sol", "openai/gpt-5.6-terra"] {
+            XCTAssertEqual(RouterCatalog.documentedContextWindow(for: model, provider: "openai"), 1_050_000, model)
+        }
+        for model in ["gpt-5.6-mini"] {
+            XCTAssertNil(RouterCatalog.documentedContextWindow(for: model, provider: "openai"), model)
+        }
+    }
+
     // MARK: Role
 
     func testOpeningTurnPlansOnThePremiumModel() throws {
@@ -224,8 +233,8 @@ final class ModelRouterTests: XCTestCase {
 
     func testModelDisplayNameMakesUnknownIDsReadable() {
         XCTAssertEqual(
-            RouterCatalog.modelDisplayName(for: RouterModel(id: "openai/gpt-4.1-mini", provider: "openrouter")),
-            "GPT 4.1 Mini"
+            RouterCatalog.modelDisplayName(for: RouterModel(id: "openai/gpt-5.6-luna", provider: "openrouter")),
+            "GPT 5.6 Luna"
         )
     }
 

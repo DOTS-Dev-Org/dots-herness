@@ -70,25 +70,31 @@ private struct ConsentStatements: View {
 
 private struct LegalAgreementContent: View {
     let documents: LegalDocuments
-    @ObservedObject var model: AppModel
+    @State private var termsExpanded = false
+    @State private var privacyExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(AppCopy.text("legal.termsTab")).font(.headline)
-            Text(documents.termsMarkdown)
-                .font(.system(size: 12))
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            DisclosureGroup(isExpanded: $termsExpanded) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(documents.termsMarkdown)
+                        .font(.system(size: 12))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    ConsentStatements()
+                }
+            } label: {
+                Text(AppCopy.text("legal.termsTab")).font(.headline)
+            }
 
-            ConsentStatements()
-
-            Divider().padding(.vertical, 4)
-
-            Text(AppCopy.text("legal.privacyTab")).font(.headline)
-            Text(documents.privacyMarkdown)
-                .font(.system(size: 12))
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            DisclosureGroup(isExpanded: $privacyExpanded) {
+                Text(documents.privacyMarkdown)
+                    .font(.system(size: 12))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } label: {
+                Text(AppCopy.text("legal.privacyTab")).font(.headline)
+            }
         }
     }
 }
@@ -103,7 +109,7 @@ public struct LegalGateView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
                 Spacer()
-                LanguagePickerButton(model: model)
+                LanguagePickerButton(model: model, isUnboxed: true)
 
                 Button {
                     model.setAppearance(colorScheme == .dark ? .light : .dark)
@@ -112,7 +118,9 @@ public struct LegalGateView: View {
                         .imageScale(.medium)
                         .frame(width: 28, height: 28)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
+                .padding(6)
+                .contentShape(Rectangle())
                 .help(AppCopy.text(colorScheme == .dark ? "appearance.light" : "appearance.dark"))
                 .accessibilityLabel(AppCopy.text("settings.theme"))
                 .accessibilityValue(AppCopy.text(colorScheme == .dark ? "appearance.light" : "appearance.dark"))
@@ -122,7 +130,7 @@ public struct LegalGateView: View {
 
             if let documents = model.legalDocuments {
                 ScrollView {
-                    LegalAgreementContent(documents: documents, model: model)
+                    LegalAgreementContent(documents: documents)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

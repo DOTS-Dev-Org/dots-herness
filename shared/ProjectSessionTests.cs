@@ -52,21 +52,22 @@ public sealed class ProjectSessionTests : IDisposable
         };
         var project = new Conversation { Id = "project", Cwd = workspace };
         var projectlessChat = new Conversation { Id = "free-chat" };
+        var explicitProjectless = new Conversation { Id = "no-project", Projectless = true };
 
         File.WriteAllText(
             Path.Combine(_paths.Root, "coding-sessions.json"),
             JsonSerializer.Serialize(new[] { shortCopy, project }));
         File.WriteAllText(
             Path.Combine(_paths.Root, "chat-sessions.json"),
-            JsonSerializer.Serialize(new[] { fullCopy, projectlessChat }));
+            JsonSerializer.Serialize(new[] { fullCopy, projectlessChat, explicitProjectless }));
 
         SessionAreaMigration.Run(_paths);
 
         var canonicalPath = Path.Combine(_paths.Root, "sessions.json");
         var migrated = Read(canonicalPath);
-        Assert.Equal(new[] { "duplicate", "project" }, migrated.Select(item => item.Id));
+        Assert.Equal(new[] { "duplicate", "no-project", "project" }, migrated.Select(item => item.Id));
         Assert.Equal(2, migrated.Single(item => item.Id == "duplicate").Messages.Count);
-        Assert.All(migrated, item => Assert.False(string.IsNullOrWhiteSpace(item.Cwd)));
+        Assert.All(migrated, item => Assert.True(!string.IsNullOrWhiteSpace(item.Cwd) || item.Projectless));
         Assert.False(File.Exists(Path.Combine(_paths.Root, "coding-sessions.json")));
         Assert.False(File.Exists(Path.Combine(_paths.Root, "chat-sessions.json")));
         Assert.DoesNotContain(migrated, item => item.Id == "free-chat");

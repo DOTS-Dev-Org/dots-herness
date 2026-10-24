@@ -32,7 +32,6 @@ public final class LegalService {
 
     private static let acceptedHashKey = "legal.acceptedHash"
     private static let acceptedAtKey = "legal.acceptedAt"
-    private static let consentPrefix = "legal.consent."
 
     private let settings: SettingsRegistry
     private let cacheURL: URL?

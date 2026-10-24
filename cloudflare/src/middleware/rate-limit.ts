@@ -15,16 +15,32 @@ export type RateLimitResult = {
   retryAfter: number;
 };
 
-/** Client IP from Cloudflare or reverse-proxy headers. */
-export function getClientIp(c: Context | { req: { header: (name: string) => string | undefined } }): string {
+/**
+ * Client IP for rate limiting.
+ *
+ * `CF-Connecting-IP` is written by Cloudflare and cannot be forged by the
+ * client. `X-Forwarded-For` can be: trusting it would let anyone rotate the
+ * rate-limit key with a header, which turns the login and forgot-password
+ * limits into no limit at all. It is only read when the deployment allows
+ * local origins, i.e. local development without a proxy in front.
+ */
+export function getClientIp(
+  c: Context | { req: { header: (name: string) => string | undefined }; env?: Pick<Env, "ALLOW_LOCAL_ORIGINS"> }
+): string {
   const header = c.req.header.bind(c.req);
-  return (
-    header("CF-Connecting-IP")?.trim() ||
-    header("cf-connecting-ip")?.trim() ||
-    header("X-Forwarded-For")?.split(",")[0]?.trim() ||
-    header("x-forwarded-for")?.split(",")[0]?.trim() ||
-    "unknown"
-  );
+  const connecting = header("CF-Connecting-IP")?.trim() || header("cf-connecting-ip")?.trim();
+  if (connecting) return connecting;
+  if (allowsForwardedFor(c)) {
+    const forwarded = header("X-Forwarded-For")?.split(",")[0]?.trim() || header("x-forwarded-for")?.split(",")[0]?.trim();
+    if (forwarded) return forwarded;
+  }
+  return "unknown";
+}
+
+/** True only where the app runs behind no proxy that rewrites the client IP. */
+function allowsForwardedFor(c: unknown): boolean {
+  const env = (c as { env?: Pick<Env, "ALLOW_LOCAL_ORIGINS"> }).env;
+  return env?.ALLOW_LOCAL_ORIGINS === "1";
 }
 
 /** Fixed-window rate limit backed by the D1 transient-state table. */

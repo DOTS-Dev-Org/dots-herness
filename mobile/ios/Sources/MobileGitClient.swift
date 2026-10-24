@@ -22,7 +22,17 @@ final class MobileGitClient: @unchecked Sendable {
     var available: Bool { herness_git_available() != 0 }
 
     func execute(operation: String, arguments: [String: String] = [:]) async -> MobileGitResult {
-        let root = self.root.resolvingSymlinksInPath().standardizedFileURL
+        let workspaceRoot = self.root.resolvingSymlinksInPath().standardizedFileURL
+        do {
+            return try await MobileWorkspaceWriteLease.shared.withLease(for: workspaceRoot) {
+                await self.executeUnlocked(operation: operation, arguments: arguments, root: workspaceRoot)
+            }
+        } catch {
+            return MobileGitResult(code: Int32(HERNESS_GIT_ERROR), output: "Git operation cancelled.")
+        }
+    }
+
+    private func executeUnlocked(operation: String, arguments: [String: String], root: URL) async -> MobileGitResult {
         let repoPath: String
         if let value = arguments["repoPath"] {
             let candidate = (value.hasPrefix("/") ? URL(fileURLWithPath: value) : root.appendingPathComponent(value))
@@ -74,7 +84,6 @@ final class MobileGitClient: @unchecked Sendable {
 
     func fetch() async throws { try await require("fetch") }
     func checkout(branch: String) async throws { try await require("checkout", argument: branch) }
-    func createBranch(_ branch: String) async throws { try await require("create_branch", argument: branch) }
     func commit(message: String, authorName: String, authorEmail: String) async throws {
         try await require("commit", argument: message, authorName: authorName, authorEmail: authorEmail)
     }

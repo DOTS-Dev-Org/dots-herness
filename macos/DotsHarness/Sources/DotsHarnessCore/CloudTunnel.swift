@@ -15,6 +15,9 @@ public final class CloudTunnelProcess {
 
     public func start(
         gatewayPort: Int,
+        // The origin speaks TLS with a self-signed certificate (the remote-control
+        // gateway); cloudflared reaches it over loopback.
+        originTLS: Bool = false,
         progress: (@Sendable (FileDownloader.Progress) -> Void)? = nil
     ) async throws -> String {
         stop()
@@ -46,7 +49,7 @@ public final class CloudTunnelProcess {
         let pipe = Pipe()
         let running = Process()
         running.executableURL = binary
-        running.arguments = ["tunnel", "--no-autoupdate", "--url", "http://127.0.0.1:" + String(gatewayPort)]
+        running.arguments = ["tunnel", "--no-autoupdate", "--url", (originTLS ? "https" : "http") + "://127.0.0.1:" + String(gatewayPort)] + (originTLS ? ["--no-tls-verify"] : [])
         running.standardOutput = pipe
         running.standardError = pipe
         pipe.fileHandleForReading.readabilityHandler = { handle in

@@ -161,6 +161,7 @@ public sealed class LocalRuntime
     /// no longer carries binaries, and a moving tag would run unreviewed code.
     /// </summary>
     public const string LlamaTag = "b11146";
+    public const int IdleUnloadSeconds = 15;
 
     public sealed record PinnedAsset(string Name, long Size, string Sha256)
     {
@@ -500,6 +501,9 @@ public sealed class LocalRuntime
             "--jinja",
             // One agent talks to this server; more slots would split the context.
             "--parallel", "1",
+            // Weights and KV cache leave memory after this long without a request;
+            // the next request reloads them. /health and /props do not count.
+            "--sleep-idle-seconds", IdleUnloadSeconds.ToString(),
             "--gpu-layers", string.IsNullOrWhiteSpace(settings.GpuLayers) ? "auto" : settings.GpuLayers.Trim(),
         };
         if (settings.Threads > 0) arguments.AddRange(["--threads", settings.Threads.ToString()]);

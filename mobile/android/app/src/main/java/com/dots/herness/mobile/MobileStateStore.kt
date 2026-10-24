@@ -25,11 +25,18 @@ data class StoredMobileConversation(
 
 data class StoredMobileMessage(
     val id: String,
+    val rowId: Long,
     val conversationId: String,
     val role: String,
     val content: String,
     val toolName: String?,
     val createdAt: Long,
+)
+
+data class StoredMobileMessagePage(
+    val messages: List<StoredMobileMessage>,
+    val beforeRowId: Long?,
+    val hasOlder: Boolean,
 )
 
 data class StoredMobileModelContext(
@@ -43,10 +50,17 @@ data class StoredMobileModelContext(
  * accepted by this class; only a secure-storage reference is persisted.
  */
 class MobileStateStore(context: Context) {
+    private companion object { const val RETAINED_EVENTS = 10_000 }
+
     private val helper = StateDatabase(context.applicationContext)
 
     init {
         recoverInterruptedRuns()
+        // The event log is append-only and read newest-first at most 2,000 rows per
+        // project; older rows only grew the file and every scan of it.
+        helper.writableDatabase.execSQL(
+            "DELETE FROM events WHERE rowid <= (SELECT rowid FROM events ORDER BY rowid DESC LIMIT 1 OFFSET $RETAINED_EVENTS)",
+        )
     }
 
     fun startRun(mode: String, planMode: Boolean, prompt: String, projectId: String = "local-default"): String {
@@ -370,18 +384,36 @@ class MobileStateStore(context: Context) {
         result.asReversed()
     }
 
-    fun messages(conversationId: String, limit: Int = 500): List<StoredMobileMessage> = helper.readableDatabase.query(
-        "messages", arrayOf("id", "conversation_id", "role", "content", "tool_name", "created_at"),
-        "conversation_id = ?", arrayOf(conversationId), null, null, "rowid ASC", limit.coerceIn(1, 2_000).toString(),
-    ).use { cursor ->
-        buildList {
-            while (cursor.moveToNext()) {
-                add(StoredMobileMessage(
-                    cursor.getString(0), cursor.getString(1), cursor.getString(2), cursor.getString(3),
-                    cursor.getString(4).ifBlank { null }, cursor.getLong(5),
-                ))
+    fun messages(conversationId: String, limit: Int = 10): List<StoredMobileMessage> =
+        messagePage(conversationId, limit = limit).messages
+
+    fun messagePage(conversationId: String, beforeRowId: Long? = null, limit: Int = 10): StoredMobileMessagePage {
+        val pageSize = limit.coerceIn(1, 2_000)
+        val selection = if (beforeRowId == null) "conversation_id = ?" else "conversation_id = ? AND rowid < ?"
+        // The limit counts conversational messages only: tool steps and notices ride
+        // along, otherwise a tool-heavy turn fills the page and hides the user's messages.
+        // ponytail: 2,000-row cap so a run of thousands of tool steps can't stall the read.
+        var hasOlder = false
+        val newestFirst = helper.readableDatabase.query(
+            "messages", arrayOf("rowid", "id", "conversation_id", "role", "content", "tool_name", "created_at"),
+            selection, if (beforeRowId == null) arrayOf(conversationId) else arrayOf(conversationId, beforeRowId.toString()),
+            null, null, "rowid DESC",
+        ).use { cursor ->
+            buildList {
+                var counted = 0
+                while (cursor.moveToNext()) {
+                    if (counted == pageSize || size == 2_000) { hasOlder = true; break }
+                    val message = StoredMobileMessage(
+                        cursor.getString(1), cursor.getLong(0), cursor.getString(2), cursor.getString(3), cursor.getString(4),
+                        cursor.getString(5).ifBlank { null }, cursor.getLong(6),
+                    )
+                    add(message)
+                    if (message.role != "tool" && message.role != "system") counted++
+                }
             }
         }
+        val page = newestFirst.asReversed()
+        return StoredMobileMessagePage(page, page.firstOrNull()?.rowId, hasOlder)
     }
 
     /**
@@ -443,10 +475,18 @@ class MobileStateStore(context: Context) {
             database.execSQL("CREATE TABLE IF NOT EXISTS repositories(id TEXT PRIMARY KEY, provider TEXT, owner TEXT, name TEXT, branch TEXT, local_path TEXT, base_commit TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
             database.execSQL("CREATE TABLE IF NOT EXISTS conversations(id TEXT PRIMARY KEY, project_id TEXT NOT NULL DEFAULT 'local-default', status TEXT NOT NULL, mode TEXT NOT NULL, plan_mode INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
             database.execSQL("CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, tool_name TEXT, created_at INTEGER NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
+            database.execSQL("CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id)")
             database.execSQL("CREATE TABLE IF NOT EXISTS model_context(conversation_id TEXT PRIMARY KEY, project_id TEXT NOT NULL DEFAULT 'local-default', content_json TEXT NOT NULL, updated_at INTEGER NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
             database.execSQL("CREATE TABLE IF NOT EXISTS queued_prompts(id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, position INTEGER NOT NULL, payload_json TEXT NOT NULL, created_at INTEGER NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
             database.execSQL("CREATE TABLE IF NOT EXISTS pending_actions(id TEXT PRIMARY KEY, conversation_id TEXT, kind TEXT NOT NULL, payload_json TEXT NOT NULL, status TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
             database.execSQL("CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY, conversation_id TEXT, project_id TEXT NOT NULL DEFAULT 'local-default', kind TEXT NOT NULL, payload_json TEXT NOT NULL, created_at INTEGER NOT NULL)")
+            createLookupIndexes(database)
+        }
+
+        /** recentEvents and latestModelContext filter by project; without these both scan the table. */
+        private fun createLookupIndexes(database: SQLiteDatabase) {
+            database.execSQL("CREATE INDEX IF NOT EXISTS idx_events_project ON events(project_id)")
+            database.execSQL("CREATE INDEX IF NOT EXISTS idx_model_context_project ON model_context(project_id, updated_at)")
         }
 
         override fun onUpgrade(database: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -460,20 +500,36 @@ class MobileStateStore(context: Context) {
             if (oldVersion < 4) {
                 database.execSQL("CREATE TABLE IF NOT EXISTS queued_prompts(id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, position INTEGER NOT NULL, payload_json TEXT NOT NULL, created_at INTEGER NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
             }
+            if (oldVersion < 5) {
+                database.execSQL("CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id)")
+            }
+            if (oldVersion < 6) createLookupIndexes(database)
         }
 
-        companion object { const val VERSION = 4 }
+        companion object { const val VERSION = 6 }
     }
 }
 
-private object MobileEventPayloadSanitizer {
-    private val secretPattern = Regex("(?i)(api[_ -]?key|access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|password|authorization)\\s*[:=]\\s*\\S+|\\bBearer\\s+\\S+|\\b(?:sk|ghp|github_pat|xox[baprs])[-_][A-Za-z0-9_-]{12,}\\b")
+internal object MobileEventPayloadSanitizer {
+    private val secretPattern = Regex("""(?i)(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|secret|password|authorization)\s*[:=]\s*(?:bearer\s+)?(?:[^\s"\\]|\\/)+|\bBearer\s+(?:[^\s"\\]|\\/)+|\b(?:sk|ghp|github_pat|xox[baprs])[-_][A-Za-z0-9_-]{12,}\b""")
+    private val quotedSecretPattern = Regex("""(?i)((?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|secret|password|authorization)(?:\\")?"?\s*[:=]\s*(?:bearer\s+)?)(?:"(?:\\.|[^"\\])*"|\\"(?:\\.|[^\\"])*\\")""")
 
     fun sanitize(payload: Map<String, String>): Map<String, String> = payload.mapValues { (key, value) ->
-        if (isSensitiveKey(key)) "[redacted]" else redact(value)
+        if (isSensitiveKey(key) || containsSecret(value)) "[redacted]" else value
     }
 
-    fun redact(value: String): String = if (secretPattern.containsMatchIn(value)) "[redacted]" else value
+    /** Masks credential values in persisted text while retaining JSON structure. */
+    fun redact(value: String): String = secretPattern.replace(redactQuotedValues(value), "[redacted]")
+
+    private fun containsSecret(value: String): Boolean =
+        quotedSecretPattern.containsMatchIn(value) || secretPattern.containsMatchIn(value)
+
+    private fun redactQuotedValues(value: String): String = quotedSecretPattern.replace(value) { match ->
+        val prefix = match.groups[1]?.value.orEmpty()
+        val quotedValue = match.value.substring(prefix.length)
+        val delimiter = if (quotedValue.startsWith("\\\"")) "\\\"" else "\""
+        "$prefix$delimiter[redacted]$delimiter"
+    }
 
     private fun isSensitiveKey(key: String): Boolean {
         val normalized = key.replace("-", "").replace("_", "").lowercase()

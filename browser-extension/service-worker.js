@@ -15,12 +15,22 @@ function isWebURL(value) {
 }
 
 function scopeKey(scope) {
+  const parts = scopeParts(scope);
+  return parts ? parts.map((part) => `${part.length}:${part}`).join("") : null;
+}
+
+function scopeParts(scope) {
   if (!scope || typeof scope !== "object") return null;
   const area = String(scope.area || "").trim();
   const conversationID = String(scope.conversationID || "").trim();
   const runID = String(scope.runID || "").trim();
-  if (!area || !conversationID || !runID) return null;
-  return `${area}:${conversationID}:${runID}`;
+  return area && conversationID && runID ? [area, conversationID, runID] : null;
+}
+
+function sameScope(left, right) {
+  const a = scopeParts(left);
+  const b = scopeParts(right);
+  return a !== null && b !== null && a.every((part, index) => part === b[index]);
 }
 
 async function readLeases() {
@@ -52,7 +62,7 @@ async function closeScope(scope, leases, connectionID = null) {
   const key = scopeKey(scope);
   if (!key) throw new Error("scope is required");
   for (const lease of Object.values(leases)) {
-    if (lease.scopeKey === key && (connectionID === null || lease.connectionID === connectionID)) {
+    if (sameScope(lease.scope, scope) && (connectionID === null || lease.connectionID === connectionID)) {
       await closeLease(lease, leases);
     }
   }
@@ -98,7 +108,7 @@ async function openTab(message, connectionID) {
 async function touchLease(message, leases, connectionID) {
   const leaseID = String(message.leaseID || "");
   const lease = leases[leaseID];
-  if (!lease || lease.scopeKey !== scopeKey(message.scope) || lease.connectionID !== connectionID) {
+  if (!lease || !sameScope(lease.scope, message.scope) || lease.connectionID !== connectionID) {
     throw new Error("page is not owned by this run");
   }
   lease.leaseExpiresAt = Date.now() + LEASE_MS;

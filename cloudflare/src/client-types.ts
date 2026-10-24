@@ -14,6 +14,7 @@ import billingRoutes from "./routes/api/billing";
 import legalRoutes from "./routes/api/legal";
 import aitrackRoutes from "./routes/aitrack/index";
 import { marketplaceApi } from "./routes/api/marketplace";
+import { mediaCommunityApi } from "./routes/api/media-community";
 
 export const apiApp = new Hono<{ Bindings: Env; Variables: AppVariables }>()
   .use("*", securityGuardMiddleware)
@@ -32,9 +33,12 @@ export const apiApp = new Hono<{ Bindings: Env; Variables: AppVariables }>()
   .route("/billing", billingRoutes)
   .route("/legal", legalRoutes)
   .route("/marketplace", marketplaceApi)
+  .route("/media/community", mediaCommunityApi)
   .route("/", publicRoutes);
 
-export const aitrackApp = aitrackRoutes;
+// The tracking app sits outside apiApp, so it needs the guard on its own:
+// every request writes to D1 and had no rate limit at all.
+export const aitrackApp = aitrackRoutes.use("*", securityGuardMiddleware);
 
 export type ApiAppType = typeof apiApp;
 export type AitrackAppType = typeof aitrackApp;

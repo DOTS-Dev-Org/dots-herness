@@ -37,16 +37,89 @@ public sealed class DelegateToolTests : IDisposable
         {
             var index = step++;
             return Task.FromResult(new NativeResponse(
-                index < turns.Count ? new NativeMessage("assistant", "", ToolCalls: turns[index]) : new NativeMessage("assistant", final),
+                index < turns.Count ? new NativeMessage("assistant", "", ToolCalls: Gateway(turns[index])) : new NativeMessage("assistant", final),
                 null));
         };
+    }
+
+    private static IReadOnlyList<NativeToolCall> Gateway(IReadOnlyList<NativeToolCall> calls) => calls.SelectMany(call => new[] {
+        new NativeToolCall("discover-" + call.Id, "discover_tools", new JsonObject { ["query"] = call.Name }.ToJsonString()),
+        new NativeToolCall(call.Id, "invoke_tool", new JsonObject { ["name"] = call.Name, ["arguments"] = call.Arguments }.ToJsonString())
+    }).ToArray();
+
+    [Fact]
+    public async Task ExploreStepBudgetIsATargetNotACeiling()
+    {
+        // Fresh calls past the budget keep going; the checkpoint is sent once.
+        var step = 0;
+        var checkpoints = 0;
+        ExploreTool.Complete progressing = (messages, _, _) =>
+        {
+            var n = ++step;
+            if (n <= 20)
+                return Task.FromResult(new NativeResponse(new NativeMessage("assistant", "",
+                    ToolCalls: [Call("list_files", new JsonObject { ["path"] = "d" + n })]), null));
+            checkpoints = messages.Count(message => message.Role == "user" && message.Content.StartsWith("You have used the planned"));
+            return Task.FromResult(new NativeResponse(new NativeMessage("assistant", "done\nStatus: answered"), null));
+        };
+        var task = Call("explore", new JsonObject { ["plan"] = "p", ["task"] = "long " + Guid.NewGuid() });
+        var outcome = await ExploreTool.RunAsync(task, progressing, _root, CancellationToken.None);
+        Assert.Equal(21, outcome.Steps);
+        Assert.False(outcome.HitStepLimit);
+        Assert.Equal(1, checkpoints);
+
+        // Past the budget, a step that only repeats earlier calls ends the run.
+        var toolCounts = new List<int>();
+        ExploreTool.Complete looping = (messages, tools, _) =>
+        {
+            toolCounts.Add(tools.Count);
+            return Task.FromResult(new NativeResponse(messages[^1].Content.StartsWith("Stop searching.")
+            ? new NativeMessage("assistant", "wrapped\nStatus: partial")
+            : new NativeMessage("assistant", "", ToolCalls: [new NativeToolCall("l", "list_files", "{\"path\":\".\"}")]), null));
+        };
+        var stuck = await ExploreTool.RunAsync(Call("explore", new JsonObject { ["plan"] = "p", ["task"] = "loop " + Guid.NewGuid() }), looping, _root, CancellationToken.None);
+        Assert.Equal(15, stuck.Steps);
+        Assert.True(stuck.HitStepLimit);
+        Assert.Equal("wrapped\nStatus: partial", stuck.Answer);
+        // The wrap-up keeps the tools, so the cached prefix still matches.
+        Assert.Single(toolCounts.Distinct());
+    }
+
+    [Fact]
+    public async Task ExploreKeepsALongAnswerInOneRequestAndEachRunHasItsOwnRoute()
+    {
+        var long_ = new string('c', 6_000) + "\nStatus: answered";
+        var scopes = new List<string?>();
+        ExploreTool.Complete complete = (messages, _, _) =>
+        {
+            var route = SubagentRoute.Current;
+            scopes.Add(route?.Scope);
+            if (messages.Any(message => message.Role == "tool"))
+                return Task.FromResult(new NativeResponse(new NativeMessage("assistant", long_), null));
+            route?.Pin("account-a");
+            return Task.FromResult(new NativeResponse(new NativeMessage("assistant", "",
+                ToolCalls: [new NativeToolCall("r", "list_files", "{\"path\":\".\"}")]), null));
+        };
+        var first = await ExploreTool.RunAsync(Call("explore", new JsonObject { ["plan"] = "p", ["task"] = "route " + Guid.NewGuid() }), complete, _root, CancellationToken.None);
+        await ExploreTool.RunAsync(Call("explore", new JsonObject { ["plan"] = "p", ["task"] = "route " + Guid.NewGuid() }), complete, _root, CancellationToken.None);
+        Assert.Equal(long_, first.Answer);
+        Assert.Equal(2, first.Steps);
+        Assert.Equal(4, scopes.Count);
+        Assert.DoesNotContain(null, scopes);
+        Assert.Equal(scopes[0], scopes[1]);
+        Assert.NotEqual(scopes[1], scopes[2]);
+        Assert.Null(SubagentRoute.Current);
+        var pinned = new SubagentRoute();
+        pinned.Pin("account-a");
+        pinned.Pin(null);
+        Assert.Equal("account-a", pinned.AccountId);
     }
 
     [Fact]
     public void AssignmentsAreNormalizedAndOverlapIsFound()
     {
         var (assignment, error) = DelegateTool.Parse(
-            Call("delegate", new JsonObject { ["task"] = "do it", ["files"] = new JsonArray("./ui/../ui/a.txt", "ui/a.txt", "docs/") }), _root);
+            Call("delegate", new JsonObject { ["plan"] = "p", ["task"] = "do it", ["files"] = new JsonArray("./ui/../ui/a.txt", "ui/a.txt", "docs/") }), _root);
         Assert.Null(error);
         Assert.Equal(new[] { "ui/a.txt", "docs" }, assignment!.Claims);
 
@@ -56,9 +129,9 @@ public sealed class DelegateToolTests : IDisposable
         // A shared name prefix is not a shared directory.
         Assert.Null(DelegateTool.Overlap(["ui"], ["ui2/a.txt", "b.txt"]));
 
-        Assert.NotNull(DelegateTool.Parse(Call("delegate", new JsonObject { ["task"] = "x", ["files"] = new JsonArray() }), _root).Error);
-        Assert.NotNull(DelegateTool.Parse(Call("delegate", new JsonObject { ["task"] = "", ["files"] = new JsonArray("a") }), _root).Error);
-        Assert.NotNull(DelegateTool.Parse(Call("delegate", new JsonObject { ["task"] = "x", ["files"] = new JsonArray("../outside.txt") }), _root).Error);
+        Assert.NotNull(DelegateTool.Parse(Call("delegate", new JsonObject { ["plan"] = "p", ["task"] = "x", ["files"] = new JsonArray() }), _root).Error);
+        Assert.NotNull(DelegateTool.Parse(Call("delegate", new JsonObject { ["plan"] = "p", ["task"] = "", ["files"] = new JsonArray("a") }), _root).Error);
+        Assert.NotNull(DelegateTool.Parse(Call("delegate", new JsonObject { ["plan"] = "p", ["task"] = "x", ["files"] = new JsonArray("../outside.txt") }), _root).Error);
     }
 
     [Fact]
@@ -123,6 +196,23 @@ public sealed class DelegateToolTests : IDisposable
         return (result, NativeWorkspaceTools.CommandSucceeded(result));
     };
 
+    [Fact]
+    public async Task CommandTimeoutIsClampedAndATimeoutKeepsItsOutput()
+    {
+        Assert.Equal(120, NativeWorkspaceTools.CommandTimeout(null));
+        Assert.Equal(600, NativeWorkspaceTools.CommandTimeout(JsonValue.Create(900)));
+        Assert.Equal(120, NativeWorkspaceTools.CommandTimeout(JsonValue.Create(-5)));
+        var command = OperatingSystem.IsWindows() ? "echo started && ping -n 6 127.0.0.1 > nul" : "echo started; sleep 5";
+        var result = await NativeWorkspaceTools.ExecuteAsync(
+            Call("run_command", new JsonObject { ["command"] = command, ["timeout_seconds"] = 1 }), _root);
+        Assert.StartsWith("Command timed out after 1 seconds.", result);
+        Assert.Contains("started", result);
+        Assert.NotEmpty(NativeWorkspaceTools.LockNotice("Another instance of SwiftPM is already running using '.build'"));
+        Assert.NotEmpty(NativeWorkspaceTools.LockNotice("Another instance of SwiftPM (PID: 18547) is already running using '.build'"));
+        Assert.True(NativeWorkspaceTools.IsSleepPoll("sleep 30; tail -n 20 build.log"));
+        Assert.False(NativeWorkspaceTools.IsSleepPoll("swift test && sleep 1"));
+    }
+
     private static string Find(string text) => OperatingSystem.IsWindows() ? $"findstr /c:{text} ui\\a.txt" : $"grep -q {text} ui/a.txt";
 
     [Fact]
@@ -130,19 +220,58 @@ public sealed class DelegateToolTests : IDisposable
     {
         var (assignment, error) = DelegateTool.Parse(Call("delegate", new JsonObject
         {
-            ["task"] = "x", ["files"] = new JsonArray("ui"), ["checks"] = new JsonArray(" dotnet test --filter A ", "dotnet test --filter A", ""),
+            ["plan"] = "p", ["task"] = "x", ["files"] = new JsonArray("ui"), ["checks"] = new JsonArray(" dotnet test --filter A ", "dotnet test --filter A", ""),
         }), _root);
         Assert.Null(error);
         Assert.Equal(new[] { "dotnet test --filter A" }, assignment!.Checks);
 
-        Assert.NotNull(DelegateTool.Parse(Call("delegate", new JsonObject { ["task"] = "x", ["files"] = new JsonArray("ui"), ["checks"] = new JsonArray("rm -rf build && make") }), _root).Error);
-        Assert.NotNull(DelegateTool.Parse(Call("delegate", new JsonObject { ["task"] = "x", ["files"] = new JsonArray("ui"), ["checks"] = new JsonArray("a", "b", "c", "d") }), _root).Error);
+        Assert.NotNull(DelegateTool.Parse(Call("delegate", new JsonObject { ["plan"] = "p", ["task"] = "x", ["files"] = new JsonArray("ui"), ["checks"] = new JsonArray("rm -rf build && make") }), _root).Error);
+        Assert.NotNull(DelegateTool.Parse(Call("delegate", new JsonObject { ["plan"] = "p", ["task"] = "x", ["files"] = new JsonArray("ui"), ["checks"] = new JsonArray("a", "b", "c", "d") }), _root).Error);
 
         Assert.True(NativeWorkspaceTools.CommandSucceeded("ok"));
         Assert.True(NativeWorkspaceTools.CommandSucceeded("Command exited with status 0."));
         Assert.False(NativeWorkspaceTools.CommandSucceeded("boom\nCommand exited with status 1."));
         Assert.False(NativeWorkspaceTools.CommandSucceeded("Command timed out after 45 seconds."));
         Assert.False(NativeWorkspaceTools.CommandSucceeded("Tool error: sandbox unavailable"));
+    }
+
+    [Fact]
+    public void LightModelNeedsACheck()
+    {
+        JsonObject Args(params string[] checks) => new()
+        {
+            ["plan"] = "p", ["task"] = "x", ["files"] = new JsonArray("ui"), ["model"] = "light",
+            ["checks"] = new JsonArray(checks.Select(check => (JsonNode)JsonValue.Create(check)!).ToArray()),
+        };
+        Assert.NotNull(DelegateTool.Parse(Call("delegate", Args()), _root).Error);
+        Assert.True(DelegateTool.Parse(Call("delegate", Args("dotnet build")), _root).Assignment!.Light);
+        Assert.False(DelegateTool.Parse(Call("delegate", new JsonObject { ["plan"] = "p", ["task"] = "x", ["files"] = new JsonArray("ui") }), _root).Assignment!.Light);
+    }
+
+    [Fact]
+    public async Task FailingChecksMoveALightPartToTheConversationModel()
+    {
+        var lights = new List<bool>();
+        var turns = new[]
+        {
+            new[] { Call("run_check", new JsonObject { ["check"] = 1 }) },
+            new[] { Call("run_check", new JsonObject { ["check"] = 1 }) },
+        };
+        ExploreTool.Complete complete = (_, _, _) =>
+        {
+            lights.Add(SubagentRoute.Current?.Light == true);
+            var index = lights.Count - 1;
+            return Task.FromResult(new NativeResponse(index < turns.Length
+                ? new NativeMessage("assistant", "", ToolCalls: Gateway(turns[index]))
+                : new NativeMessage("assistant", "Status: partial"), null));
+        };
+        var outcome = await DelegateTool.RunAsync(
+            new DelegateTool.Assignment("p", "x", ["ui"], [Find("never")], Light: true), "delegate-light", complete, _root, default, Check);
+
+        Assert.Equal(new[] { true, true, false }, lights);
+        Assert.True(outcome.RanLight);
+        Assert.True(outcome.LeftLight);
+        Assert.Contains("light model failed", outcome.ToolResult);
     }
 
     [Fact]

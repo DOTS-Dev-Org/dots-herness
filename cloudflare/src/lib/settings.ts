@@ -16,17 +16,6 @@ export function parseSettingBool(value: string | undefined | null, fallback: boo
   return fallback;
 }
 
-export async function getSystemSettings(env: Env): Promise<Record<string, string>> {
-  const { results } = await db(env)
-    .prepare("SELECT key, value FROM system_settings")
-    .all<{ key: string; value: string }>();
-  const settings: Record<string, string> = {};
-  for (const row of results ?? []) {
-    settings[row.key] = row.value;
-  }
-  return settings;
-}
-
 export async function isRegistrationOpen(env: Env): Promise<boolean> {
   const row = await db(env)
     .prepare("SELECT value FROM system_settings WHERE key = 'registration_open'")

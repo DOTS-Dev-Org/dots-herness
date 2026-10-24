@@ -11,7 +11,7 @@ public sealed partial class AgentBridge
         if (conversation is null || conversation.Messages.All(item => item.Id != message.Id)) return null;
         var workspace = conversation.Cwd;
         if (string.IsNullOrWhiteSpace(workspace) || !Directory.Exists(workspace)) return null;
-        return new FeedbackStore(workspace).Record(conversation.Id, message.Id);
+        return new FeedbackStore(workspace, _paths.Root).Record(conversation.Id, message.Id);
     }
 
     /// <summary>
@@ -66,21 +66,22 @@ public sealed partial class AgentBridge
             normalizedTags,
             comment.Trim(),
             DateTimeOffset.UtcNow);
-        var store = new FeedbackStore(workspace);
+        var store = new FeedbackStore(workspace, _paths.Root);
         if (!store.Upsert(record)) return "feedback.persistenceFailed";
 
         var source = "feedback:" + store.DerivedKey(record);
         WorkspaceLessons.LogCorrection(workspace, "feedback", conversation.Id, message.TurnId,
-            "unknown", "unknown", "unknown", type == FeedbackType.Good ? "approved" : "rejected");
+            "unknown", "unknown", "unknown", type == FeedbackType.Good ? "approved" : "rejected", _paths.Root);
         // Replacing feedback invalidates both the user's previous direct rule and
         // the evaluator's old inference before either new projection is written.
-        WorkspaceLessons.Set(workspace, null, source);
-        WorkspaceLessons.Set(workspace, null, source + Lesson.InferredSuffix);
+        WorkspaceLessons.Set(workspace, null, source, _paths.Root);
+        WorkspaceLessons.Set(workspace, null, source + Lesson.InferredSuffix, _paths.Root);
         if (FeedbackStore.DirectRule(record) is { } directRule)
         {
             WorkspaceLessons.Set(workspace,
                 new Lesson("", directRule, "", [], [], record.Timestamp),
-                source);
+                source,
+                _paths.Root);
         }
         WorkspaceLessons.SyncUserProfile(workspace, _paths.Root, WorkspaceStack.Current(workspace, _paths.Root));
 
@@ -150,12 +151,11 @@ public sealed partial class AgentBridge
             response = $"[Media: {(mediaKind.Length == 0 ? "attachment" : mediaKind)}]";
         }
         if (response != expected.Response) return false;
-        var current = new FeedbackStore(conversation.Cwd).Record(conversationId, expected.MessageId);
+        var current = new FeedbackStore(conversation.Cwd, _paths.Root).Record(conversationId, expected.MessageId);
         return current is not null
             && current.Timestamp == expected.Timestamp
             && current.Type == expected.Type
-            && current.Prompt == expected.Prompt
-            && current.Response == expected.Response
+            && current.Digest == expected.Digest
             && current.UserComment == expected.UserComment
             && current.Tags.SequenceEqual(expected.Tags, StringComparer.Ordinal);
     }

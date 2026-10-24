@@ -2,6 +2,7 @@
 // Prompt sending, queueing, steering and run setup.
 
 import Foundation
+import Network
 import HarnessPluginKit
 import Observation
 import PluginRuntime
@@ -46,7 +47,6 @@ extension NativeAgentHost {
         clearFollowUpSuggestion()
         finishApproval(false)
         finishVisionInstall(false)
-        finishContextCompaction(false)
         finishQuestion(nil)
         queuePausedAfterStop = true
         pauseCurrentConversation(conversationID, reason: reason)
@@ -216,12 +216,16 @@ extension NativeAgentHost {
         planMode: Bool,
         needsPlanIntentResolution: Bool,
         approvedPlanID: String? = nil,
+        subagentsOverride: Bool? = nil,
         onPlanModeResolved: (() -> Void)? = nil
     ) -> Bool {
-        ensureContentLoaded()
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty || !attachments.isEmpty,
               hasRunnableAgentScope() else { return false }
+        guard ensurePromptContextLoaded() else {
+            status = AppCopy.text("conversation.historyUnavailable")
+            return false
+        }
         if selectedID == nil { newConversation() }
         guard let conversationID = selectedID,
               let index = conversations.firstIndex(where: { $0.id == conversationID }) else { return false }
@@ -235,18 +239,32 @@ extension NativeAgentHost {
             planMode: planMode,
             planIntentResolved: !needsPlanIntentResolution,
             approvedPlanID: approvedPlanID,
-            attachments: attachments
+            attachments: attachments,
+            subagentsOverride: subagentsOverride ?? subagentsEnabledForNewPrompt
         )
+        // A reserved message makes the chat real, as `accept` does when it starts. Otherwise a
+        // start that is refused leaves a blank chat holding the message: the sidebar hides it and
+        // "New chat" reuses it, so the message shows up later in an unrelated new chat.
+        let wasBlank = conversations[index].blank
+        let previousTitle = conversations[index].title
+        if wasBlank {
+            conversations[index].title = Self.title(for: trimmed.isEmpty ? attachments.map(\.name).joined(separator: ", ") : trimmed)
+            conversations[index].blank = false
+        }
         enqueue(prompt, in: conversationID)
         guard persist() else {
             conversations[index].pendingPrompts.removeAll { $0.id == prompt.id }
+            if wasBlank {
+                conversations[index].blank = true
+                conversations[index].title = previousTitle
+            }
             status = "This message could not be saved on this device; it has not been sent. Please try again."
             return false
         }
         if needsPlanIntentResolution {
             resolvePlanIntent(for: prompt.id, text: trimmed, in: conversationID, onResolved: onPlanModeResolved)
         } else {
-            resolvePendingPlanIntents()
+            resolvePendingPlanIntents(in: conversationID)
             startQueuedPromptIfReleased(in: conversationID)
         }
         return true
@@ -254,13 +272,24 @@ extension NativeAgentHost {
 
     /// A reserved classifier request is safe to repeat after restart; it never
     /// starts a provider run or executes tools by itself.
-    public func resolvePendingPlanIntents() {
-        ensureContentLoaded()
-        for conversation in conversations {
-            for prompt in conversation.pendingPrompts where !prompt.isPlanIntentResolved {
-                resolvePlanIntent(for: prompt.id, text: prompt.text, in: conversation.id)
-            }
+    public func resolvePendingPlanIntents(in conversationID: String? = nil) {
+        func resolve(_ conversationID: String, _ promptID: String, _ text: String) {
+            resolvePlanIntent(for: promptID, text: text, in: conversationID)
         }
+        if let conversationID {
+            if let conversation = conversations.first(where: { $0.id == conversationID && $0.contentLoaded }) {
+                for prompt in conversation.pendingPrompts where !prompt.isPlanIntentResolved {
+                    resolvePlanIntent(for: prompt.id, text: prompt.text, in: conversation.id)
+                }
+            } else {
+                store.forEachPendingPlanIntent(ids: [conversationID], resolve)
+            }
+            return
+        }
+        // Inspect only queued prompt metadata. The resolver does not load the
+        // transcripts or provider contexts of inactive chats.
+        let workspaceIDs = store.loadHeaders(workspacePath: workspaceURL?.path).map(\.id)
+        store.forEachPendingPlanIntent(ids: workspaceIDs, resolve)
     }
 
     private func resolvePlanIntent(
@@ -273,6 +302,11 @@ extension NativeAgentHost {
         pendingPlanIntentTasks[promptID] = Task { @MainActor [weak self] in
             guard let self else { return }
             let requestsPlan = await self.classifyPlanIntent(text)
+            guard self.ensurePromptContextLoaded(conversationID) else {
+                self.pendingPlanIntentTasks.removeValue(forKey: promptID)
+                self.status = AppCopy.text("conversation.historyUnavailable")
+                return
+            }
             guard let index = self.conversations.firstIndex(where: { $0.id == conversationID }),
                   let promptIndex = self.conversations[index].pendingPrompts.firstIndex(where: { $0.id == promptID }) else {
                 self.pendingPlanIntentTasks.removeValue(forKey: promptID)
@@ -294,6 +328,10 @@ extension NativeAgentHost {
             self.pendingPlanIntentTasks.removeValue(forKey: promptID)
             if requestsPlan { onResolved?() }
             self.startQueuedPromptIfReleased(in: conversationID)
+            Task { @MainActor [weak self] in
+                await Task.yield()
+                self?.trimInactiveConversationContent()
+            }
         }
     }
 
@@ -327,14 +365,50 @@ extension NativeAgentHost {
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             guard !Task.isCancelled, let self else { return }
             guard self.selectedID == conversationID,
-                  self.conversations.first(where: { $0.id == conversationID })?.canContinue == true else { return }
+                  self.conversations.first(where: { $0.id == conversationID })?.canContinue == true,
+                  let conversation = self.conversations.first(where: { $0.id == conversationID }),
+                  Self.isWarmForAutoResume(conversation, events: self.contextUsageEvents()) else { return }
             await self.continueCurrentRun()
         }
     }
 
+    /// Resumes a run that paused on a dropped connection as soon as the network
+    /// comes back. Only the interactive app calls this; bots and scheduled hosts don't.
+    public func startNetworkWatch() {
+        guard networkMonitor == nil else { return }
+        let monitor = NWPathMonitor()
+        monitor.pathUpdateHandler = { [weak self] path in
+            let satisfied = path.status == .satisfied
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let cameBack = satisfied && !self.networkSatisfied
+                self.networkSatisfied = satisfied
+                if cameBack { await self.resumeAfterNetworkIfNeeded() }
+            }
+        }
+        monitor.start(queue: DispatchQueue(label: "herness.network-watch"))
+        networkMonitor = monitor
+    }
+
+    // ponytail: only the selected chat resumes, the way limit resumes do; others keep their Continue button.
+    func resumeAfterNetworkIfNeeded() async {
+        guard let conversation = selected,
+              conversation.continuation?.reason == .networkLost,
+              Self.isWarmForAutoResume(conversation, events: contextUsageEvents()),
+              canContinue else { return }
+        await continueCurrentRun()
+    }
+
+    public func cancelScheduledLimitResume() {
+        limitResumeTask?.cancel()
+        limitResumeTask = nil
+    }
+
     public func continueCurrentRun(
         text: String? = nil,
-        attachments: [ChatAttachment] = []
+        attachments: [ChatAttachment] = [],
+        notice: String? = nil,
+        subagentsOverride: Bool? = nil
     ) async {
         await waitForContent()
         guard hasRunnableAgentScope(), canContinue, let conversationID = selectedID else {
@@ -345,13 +419,21 @@ extension NativeAgentHost {
         limitResumeTask?.cancel()
         limitResumeTask = nil
         continuationQueued = true
-        let storedModel = conversations.first(where: { $0.id == conversationID })?.continuation?.model
-        let resumesPlanDraft = conversations.first(where: { $0.id == conversationID })?.pendingPlanMessageID == nil
-            && activeRunPlanMode
+        let continuation = conversations.first(where: { $0.id == conversationID })?.continuation
+        let storedModel = continuation?.model
+        let allowAccountFailoverAfterLimit = continuation?.reason == .providerLimit
+        let resumesPlanDraft = conversations.first(where: { $0.id == conversationID }).map { conversation in
+            conversation.pendingPlanMessageID == nil
+                && (activeRunPlanMode
+                    || (conversation.planGateActive && continuation?.reason == .applicationClosed))
+        } ?? false
         // Resuming keeps the interrupted conversation's model, but a persisted id
         // can name a model the catalogs no longer list; then route automatically.
         var modelOverride: String?
-        if router?.isAutoSelected == true, let storedModel, let usable = router?.usableModelID(storedModel),
+        if !allowAccountFailoverAfterLimit,
+           router?.isAutoSelected == true,
+           let storedModel,
+           let usable = router?.usableModelID(storedModel),
            !usable.isEmpty {
             modelOverride = usable
         }
@@ -381,24 +463,37 @@ extension NativeAgentHost {
             workspace: workspaceURL,
             planMode: resumesPlanDraft,
             continuationOnly: true,
-            modelOverride: modelOverride
+            modelOverride: modelOverride,
+            allowAccountFailoverAfterLimit: allowAccountFailoverAfterLimit,
+            notice: notice,
+            subagentsOverride: subagentsOverride
+                ?? continuation?.subagentsOverride
+                ?? subagentsEnabledForNewPrompt
         )
         continuationQueued = false
     }
 
-    /// Approved plan execution may continue after an application restart. The
-    /// recovery marker is still carried into the next provider request, so the
-    /// provider must reconcile the unknown tool result instead of receiving an
-    /// instruction to replay the old call. Drafts waiting for approval and
-    /// user-stopped runs remain manual; only an interrupted plan is resumable
-    /// automatically.
-    public func resumeRecoveredPlanIfNeeded() async {
+    /// An interrupted conversation can continue after an application restart.
+    /// Unknown tool outcomes stay in the next provider request so the old tool
+    /// call is reconciled instead of replayed.
+    public func resumeRecoveredConversationIfNeeded(for conversationID: String? = nil) async {
         await waitForContent()
         guard !isBusy,
               let conversation = selected,
-              conversation.planGateActive,
-              conversation.continuation?.reason == .applicationClosed else { return }
+              conversation.continuation?.reason == .applicationClosed,
+              Self.isWarmForAutoResume(conversation, events: contextUsageEvents()) else { return }
+        if let conversationID, conversation.id != conversationID { return }
         await continueCurrentRun()
+    }
+
+    /// Resume only when recent telemetry supports a large, warm cache. If the
+    /// provider reports an expired or lost prefix, leave the Continue action to the user.
+    static func isWarmForAutoResume(
+        _ conversation: Conversation,
+        events: [AgentContextUsageEvent],
+        now: Date = Date()
+    ) -> Bool {
+        AgentCacheResumePolicy.isWarm(conversationID: conversation.id, events: events, now: now)
     }
 
     public func applyPlan() async {
@@ -424,14 +519,15 @@ extension NativeAgentHost {
         )
     }
 
-    func send(
+    public func send(
         text: String,
         attachments: [ChatAttachment],
         mode: PromptMode,
         planMode: Bool,
         approvedPlanID: String?,
         recognizesApproval: Bool,
-        modelOverride: String? = nil
+        modelOverride: String? = nil,
+        subagentsOverride: Bool? = nil
     ) async {
         // Busy/queue checks below concern the chat the message was typed in, even if
         // the user switches chats while the provider configuration loads.
@@ -443,7 +539,8 @@ extension NativeAgentHost {
                 planMode: planMode,
                 approvedPlanID: approvedPlanID,
                 recognizesApproval: recognizesApproval,
-                modelOverride: modelOverride
+                modelOverride: modelOverride,
+                subagentsOverride: subagentsOverride
             )
         }
     }
@@ -455,10 +552,12 @@ extension NativeAgentHost {
         planMode: Bool,
         approvedPlanID: String?,
         recognizesApproval: Bool,
-        modelOverride: String?
+        modelOverride: String?,
+        subagentsOverride: Bool?
     ) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty || !attachments.isEmpty else { return }
+        let effectiveSubagentsOverride = subagentsOverride ?? subagentsEnabledForNewPrompt
         let workspace = workspaceURL
         guard hasRunnableAgentScope() else {
             status = AppCopy.text("agent.workspaceMissing")
@@ -481,7 +580,8 @@ extension NativeAgentHost {
                 mode: .queue,
                 planMode: false,
                 approvedPlanID: planID,
-                recognizesApproval: false
+                recognizesApproval: false,
+                subagentsOverride: effectiveSubagentsOverride
             )
             return
         }
@@ -499,7 +599,8 @@ extension NativeAgentHost {
                 planMode: effectivePlanMode,
                 approvedPlanID: approvedPlanID,
                 recognizesApproval: recognizesApproval,
-                modelOverride: modelOverride
+                modelOverride: modelOverride,
+                subagentsOverride: effectiveSubagentsOverride
             )
             return
         }
@@ -509,7 +610,8 @@ extension NativeAgentHost {
             attachments: attachments,
             mode: mode,
             planMode: effectivePlanMode,
-            approvedPlanID: approvedPlanID
+            approvedPlanID: approvedPlanID,
+            subagentsOverride: effectiveSubagentsOverride
         ) { return }
 
         if !effectivePlanMode, attachments.isEmpty, let request = MediaRequest.parse(trimmed) {
@@ -522,7 +624,11 @@ extension NativeAgentHost {
            let conversation = selected,
            conversation.canContinue,
            !isBusy {
-            await continueCurrentRun(text: trimmed, attachments: attachments)
+            await continueCurrentRun(
+                text: trimmed,
+                attachments: attachments,
+                subagentsOverride: effectiveSubagentsOverride
+            )
             return
         }
 
@@ -531,8 +637,27 @@ extension NativeAgentHost {
             attachments: attachments,
             mode: mode,
             planMode: effectivePlanMode,
-            approvedPlanID: approvedPlanID
+            approvedPlanID: approvedPlanID,
+            subagentsOverride: effectiveSubagentsOverride
         ) { return }
+
+        // Same hold as the composer's queue: the turn is over, its background task is not.
+        if mode == .queue, approvedPlanID == nil,
+           let id = AgentRunScope.conversationID ?? selectedID,
+           hasRunningBackgroundTask(in: id) {
+            enqueue(
+                PendingPrompt(
+                    text: trimmed,
+                    mode: mode,
+                    planMode: effectivePlanMode,
+                    attachments: attachments,
+                    subagentsOverride: effectiveSubagentsOverride
+                ),
+                in: id
+            )
+            persist()
+            return
+        }
 
         guard let configuration = await currentConfiguration() else {
             status = AppCopy.text("agent.configureEndpoint")
@@ -546,7 +671,8 @@ extension NativeAgentHost {
             attachments: attachments,
             mode: mode,
             planMode: effectivePlanMode,
-            approvedPlanID: approvedPlanID
+            approvedPlanID: approvedPlanID,
+            subagentsOverride: effectiveSubagentsOverride
         ) { return }
         if selectedID == nil {
             newConversation()
@@ -560,7 +686,8 @@ extension NativeAgentHost {
             workspace: workspace,
             planMode: effectivePlanMode,
             approvedPlanID: approvedPlanID,
-            modelOverride: modelOverride
+            modelOverride: modelOverride,
+            subagentsOverride: effectiveSubagentsOverride
         )
     }
 
@@ -573,22 +700,30 @@ extension NativeAgentHost {
         planMode: Bool = false,
         approvedPlanID: String? = nil,
         continuationOnly: Bool = false,
-        modelOverride: String? = nil
+        modelOverride: String? = nil,
+        allowAccountFailoverAfterLimit: Bool = false,
+        notice: String? = nil,
+        subagentsOverride: Bool? = nil
     ) async {
+        let effectiveSubagentsOverride = subagentsOverride ?? subagentsEnabledForNewPrompt
         // Bound to this conversation, so a chat switch during the awaits below
         // cannot redirect the turn's state to the newly selected chat.
         await AgentRunScope.$conversationID.withValue(conversationID) {
-            await startPromptInScope(
-                text: text,
-                attachments: attachments,
-                in: conversationID,
-                configuration: configuration,
-                workspace: workspace,
-                planMode: planMode,
-                approvedPlanID: approvedPlanID,
-                continuationOnly: continuationOnly,
-                modelOverride: modelOverride
-            )
+            await AgentRunScope.$subagentsOverride.withValue(effectiveSubagentsOverride) {
+                await startPromptInScope(
+                    text: text,
+                    attachments: attachments,
+                    in: conversationID,
+                    configuration: configuration,
+                    workspace: workspace,
+                    planMode: planMode,
+                    approvedPlanID: approvedPlanID,
+                    continuationOnly: continuationOnly,
+                    modelOverride: modelOverride,
+                    allowAccountFailoverAfterLimit: allowAccountFailoverAfterLimit,
+                    notice: notice
+                )
+            }
         }
     }
 
@@ -601,9 +736,12 @@ extension NativeAgentHost {
         planMode: Bool,
         approvedPlanID: String?,
         continuationOnly: Bool,
-        modelOverride: String?
+        modelOverride: String?,
+        allowAccountFailoverAfterLimit: Bool,
+        notice: String?
     ) async {
         guard let index = conversations.firstIndex(where: { $0.id == conversationID }) else { return }
+        state(for: conversationID).activeSubagentsOverride = AgentRunScope.subagentsOverride
         guard hasRunnableAgentScope() else {
             status = AppCopy.text("agent.workspaceMissing")
             return
@@ -649,14 +787,14 @@ extension NativeAgentHost {
             let messageID = UUID().uuidString
             let userMessage = ChatMessage(
                 id: messageID,
-                kind: .user,
-                text: text,
+                kind: notice == nil ? .user : .system,
+                text: notice ?? text,
                 attachments: stableAttachments,
                 turnID: turnID
             )
             let isFirstUserMessage = !conversations[index].messages.contains(where: { $0.kind == .user })
             conversations[index].messages.append(userMessage)
-            if isFirstUserMessage || conversations[index].blank {
+            if notice == nil, isFirstUserMessage || conversations[index].blank {
                 let titleText = text.isEmpty ? attachments.map { $0.name }.joined(separator: ", ") : text
                 conversations[index].title = Self.title(for: titleText)
                 conversations[index].blank = false
@@ -681,12 +819,14 @@ extension NativeAgentHost {
                 comment: text
             )
         }
-        memory.prepareForPrompt(
+        memory.prepareForPromptInBackground(
             prompt: memoryPrompt,
             runID: runID,
             provider: configuration.provider,
             model: configuration.model
         )
+        // The first prompt of a new project creates its id, which names the user layer.
+        syncFeedbackStore()
         let hasStoredContext = !conversations[index].modelContext.isEmpty
         var context: [AgentMessage]
         if hasStoredContext {
@@ -704,6 +844,8 @@ extension NativeAgentHost {
                 memoryPrompt: memoryPrompt,
                 planMode: planMode
             )
+            // The transcript holds a notice as a system line, which the rebuilt context skips.
+            if notice != nil { context.append(AgentMessage(role: .user, content: text)) }
             if let explicitSkill,
                let userIndex = context.lastIndex(where: { $0.role == .user }) {
                 context[userIndex].content = explicitSkill.prompt
@@ -734,7 +876,8 @@ extension NativeAgentHost {
             // Continue resumes the paused work itself. Only an explicitly
             // promoted queued prompt bypasses and preserves a separate plan.
             planGateOverride: false,
-            modelOverride: modelOverride
+            modelOverride: modelOverride,
+            allowAccountFailoverAfterLimit: allowAccountFailoverAfterLimit
         )
         await task.value
     }
@@ -748,12 +891,22 @@ extension NativeAgentHost {
             requeuePendingPrompt(prompt, in: conversationID)
             return false
         }
-        guard selectedID == conversationID, !isBusy else {
+        // Checked before the prompt leaves the queue, so a refused start cannot drop it.
+        guard hasRunnableAgentScope() else {
+            status = AppCopy.text("agent.workspaceMissing")
+            return false
+        }
+        // Only a notice starts a turn in a chat that is not on screen: its plain start is
+        // bound to the conversation, while compact, media and Continue act on the visible one.
+        let background = selectedID != conversationID
+        guard !isBusy,
+              !background || (prompt.notice != nil
+                  && conversations.first(where: { $0.id == conversationID })?.canContinue != true) else {
             requeuePendingPrompt(prompt, in: conversationID)
             return false
         }
 
-        if let rest = Self.compactCommand(prompt.text) {
+        if !background, let rest = Self.compactCommand(prompt.text) {
             await compactCurrentConversation()
             if rest.isEmpty && prompt.attachments.isEmpty {
                 if let index = conversations.firstIndex(where: { $0.id == conversationID }) {
@@ -769,7 +922,8 @@ extension NativeAgentHost {
             return await resumePendingPrompt(conversations[index].pendingPrompts[promptIndex], in: conversationID)
         }
 
-        if prompt.approvedPlanID == nil,
+        if prompt.notice == nil,
+           prompt.approvedPlanID == nil,
            !prompt.planMode,
            prompt.attachments.isEmpty,
            let request = MediaRequest.parse(prompt.text) {
@@ -792,7 +946,12 @@ extension NativeAgentHost {
                 conversations[index].pendingPrompts.removeAll { $0.id == prompt.id }
                 persist()
             }
-            await continueCurrentRun(text: prompt.text, attachments: prompt.attachments)
+            await continueCurrentRun(
+                text: prompt.text,
+                attachments: prompt.attachments,
+                notice: prompt.notice,
+                subagentsOverride: prompt.subagentsOverride ?? subagentsEnabledForNewPrompt
+            )
             return true
         }
         guard let configuration = await currentConfiguration() else {
@@ -800,9 +959,11 @@ extension NativeAgentHost {
             status = AppCopy.text("agent.configureEndpoint")
             return false
         }
-        guard selectedID == conversationID, !isBusy else {
+        guard selectedID == conversationID || background, !isBusy else {
             requeuePendingPrompt(prompt, in: conversationID)
-            if activeConversationID == conversationID {
+            // A run that started meanwhile is only interrupted for steering; a queued
+            // message or a notice waits for it to end.
+            if prompt.mode == .steer, activeConversationID == conversationID {
                 appendStopEventIfNeeded(to: conversationID)
                 activeTask?.cancel()
             }
@@ -819,7 +980,9 @@ extension NativeAgentHost {
             workspace: workspaceURL,
             planMode: prompt.planMode,
             approvedPlanID: prompt.approvedPlanID,
-            continuationOnly: prompt.bypassesPlanGate
+            continuationOnly: prompt.bypassesPlanGate,
+            notice: prompt.notice,
+            subagentsOverride: prompt.subagentsOverride ?? subagentsEnabledForNewPrompt
         )
         return true
     }
@@ -910,6 +1073,17 @@ extension NativeAgentHost {
             }
         }
 
+        func reportUnsupported() {
+            let turn = finishActiveTurnUntracked(conversationID: conversationID, workspace: workspaceURL)
+            append(
+                ChatMessage(kind: .assistant, text: AppCopy.format("media.unsupported", request.kind.displayName)),
+                to: conversationID,
+                turnID: turn.turnID,
+                changedFiles: turn.changedFiles
+            )
+            status = AppCopy.text("media.unsupportedStatus")
+        }
+
         do {
             guard !prompt.isEmpty else {
                 let turn = finishActiveTurnUntracked(conversationID: conversationID, workspace: workspaceURL)
@@ -926,18 +1100,10 @@ extension NativeAgentHost {
             let statusModel: String
             if request.kind == .image {
                 guard let router else {
-                    let turn = finishActiveTurnUntracked(conversationID: conversationID, workspace: workspaceURL)
-                    append(
-                        ChatMessage(kind: .assistant, text: AppCopy.format("media.unsupported", request.kind.displayName)),
-                        to: conversationID,
-                        turnID: turn.turnID,
-                        changedFiles: turn.changedFiles
-                    )
-                    status = AppCopy.text("media.unsupportedStatus")
-                    return
+                    return reportUnsupported()
                 }
                 let generated = try await router.generateImage(prompt: prompt)
-                media = try MediaGenerationClient.save(generated.output.data, kind: .image, paths: paths)
+                media = try MediaGenerationClient.save(generated.output.data, kind: .image, paths: paths, prompt: prompt)
                 if let fallbackFrom = generated.fallbackFrom {
                     fallbackNotice = AppCopy.format(
                         "media.fallbackUsed",
@@ -948,25 +1114,10 @@ extension NativeAgentHost {
                 statusModel = generated.model
             } else {
                 guard let configuration = await currentConfiguration() else {
-                    let turn = finishActiveTurnUntracked(conversationID: conversationID, workspace: workspaceURL)
-                    append(
-                        ChatMessage(kind: .assistant, text: AppCopy.format("media.unsupported", request.kind.displayName)),
-                        to: conversationID,
-                        turnID: turn.turnID,
-                        changedFiles: turn.changedFiles
-                    )
-                    status = AppCopy.text("media.unsupportedStatus")
-                    return
+                    return reportUnsupported()
                 }
                 guard let provider = ProviderRegistry.shared.spec(configuration.specID)?.media?.spec(for: request.kind) else {
-                    let turn = finishActiveTurnUntracked(conversationID: conversationID, workspace: workspaceURL)
-                    append(
-                        ChatMessage(kind: .assistant, text: AppCopy.format("media.unsupported", request.kind.displayName), turnID: turn.turnID, changedFiles: turn.changedFiles),
-                        to: conversationID,
-                        turnID: turn.turnID
-                    )
-                    status = AppCopy.text("media.unsupportedStatus")
-                    return
+                    return reportUnsupported()
                 }
                 media = try await MediaGenerationClient.generate(
                     kind: request.kind,
@@ -1036,7 +1187,8 @@ extension NativeAgentHost {
         planMode: Bool = false,
         approvedPlanID: String? = nil,
         planGateOverride: Bool = false,
-        modelOverride: String? = nil
+        modelOverride: String? = nil,
+        allowAccountFailoverAfterLimit: Bool = false
     ) -> Task<Void, Never> {
         // The run's Task inherits this scope: it keeps running, with its own state,
         // while the user works in another chat.
@@ -1051,7 +1203,8 @@ extension NativeAgentHost {
                 planMode: planMode,
                 approvedPlanID: approvedPlanID,
                 planGateOverride: planGateOverride,
-                modelOverride: modelOverride
+                modelOverride: modelOverride,
+                allowAccountFailoverAfterLimit: allowAccountFailoverAfterLimit
             )
         }
     }
@@ -1066,15 +1219,22 @@ extension NativeAgentHost {
         planMode: Bool,
         approvedPlanID: String?,
         planGateOverride: Bool,
-        modelOverride: String?
+        modelOverride: String?,
+        allowAccountFailoverAfterLimit: Bool
     ) -> Task<Void, Never> {
         clearFollowUpSuggestion()
+        // The system prompt (memory, code graph) is built here, before the run's own
+        // CPU clock starts; the run records it as the first step's `prompt` stage.
+        let promptCPU = AgentStepCPUTrace.thread()
+        let promptPreparationMetrics = PromptPreparationMetrics()
         let runContext = contextWithSystemPrompt(
             context,
             workspace: workspace,
             planMode: planMode,
-            prompt: memoryPrompt.isEmpty ? promptFromContext(context) : memoryPrompt
+            prompt: memoryPrompt.isEmpty ? promptFromContext(context) : memoryPrompt,
+            metrics: promptPreparationMetrics
         )
+        let promptCPUMilliseconds = AgentStepCPUTrace.milliseconds(since: promptCPU, to: AgentStepCPUTrace.thread())
         activeRunID = runID
         activeConversationID = conversationID
         activeContext = Self.durableContext(runContext)
@@ -1121,6 +1281,21 @@ extension NativeAgentHost {
 
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
+            var runContext = runContext
+            var promptCPUMilliseconds = promptCPUMilliseconds
+            if await self.askMemoryQuestions(conversationID: conversationID, workspace: workspace) {
+                guard !Task.isCancelled, self.activeRunID == runID else { return }
+                let promptCPU = AgentStepCPUTrace.thread()
+                runContext = self.contextWithSystemPrompt(
+                    context,
+                    workspace: workspace,
+                    planMode: planMode,
+                    prompt: memoryPrompt.isEmpty ? self.promptFromContext(context) : memoryPrompt,
+                    metrics: promptPreparationMetrics
+                )
+                promptCPUMilliseconds += AgentStepCPUTrace.milliseconds(since: promptCPU, to: AgentStepCPUTrace.thread())
+                self.activeContext = Self.durableContext(runContext)
+            }
             await self.run(
                 runID: runID,
                 conversationID: conversationID,
@@ -1130,7 +1305,10 @@ extension NativeAgentHost {
                 planMode: planMode,
                 approvedPlanID: approvedPlanID,
                 planGateOverride: planGateOverride,
-                modelOverride: modelOverride
+                modelOverride: modelOverride,
+                allowAccountFailoverAfterLimit: allowAccountFailoverAfterLimit,
+                promptCPUMilliseconds: promptCPUMilliseconds,
+                promptPreparationMetrics: promptPreparationMetrics
             )
         }
         activeTask = task
@@ -1141,9 +1319,11 @@ extension NativeAgentHost {
         _ context: [AgentMessage],
         workspace: URL?,
         planMode: Bool,
-        prompt: String
+        prompt: String,
+        metrics: PromptPreparationMetrics? = nil
     ) -> [AgentMessage] {
-        let promptMessages = systemPromptMessages(workspace: workspace, planMode: planMode, prompt: prompt)
+        let promptMessages = systemPromptMessages(workspace: workspace, planMode: planMode, prompt: prompt, metrics: metrics)
+        let contextStarted = AgentStepCPUTrace.thread()
         var result: [AgentMessage] = []
         var insertedPrompt = false
         var sawLegacyPrompt = false
@@ -1180,7 +1360,9 @@ extension NativeAgentHost {
         if !insertedPrompt {
             result.insert(contentsOf: promptMessages, at: 0)
         }
-        return NativeAgentClient.foldingDynamicPrompt(into: result)
+        let folded = NativeAgentClient.foldingDynamicPrompt(into: result)
+        metrics?.record("prompt_context", since: contextStarted)
+        return folded
     }
 
     func conversationPrompt(_ conversation: Conversation) -> String {

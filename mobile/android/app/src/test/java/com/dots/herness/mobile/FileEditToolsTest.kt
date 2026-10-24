@@ -46,6 +46,7 @@ class FileEditToolsTest {
         val file = seed("project.swift", original, read = false)
         for (start in 1..240 step 20) {
             AgentTools.readFile(root, "project.swift", start, 20)
+            if (start == 1) assertEquals(ReadState.UNREAD, AgentTools.reads.state(file, file.readBytes()))
             if (start == 1) assertTrue(edit("project.swift", replacement("line-180:", "fixed-180:")).contains("lines 180-180 of project.swift, which were not read"))
         }
         assertTrue(edit("project.swift", replacement("line-180:", "fixed-180:")).startsWith("Edited"))
@@ -58,7 +59,7 @@ class FileEditToolsTest {
     fun `a partial read allows edits inside it and carries the range over`() {
         val file = seed("long.txt", (1..600).joinToString("\n") { "line-$it" }, read = false)
         val page = AgentTools.readFile(root, "long.txt")
-        assertTrue(page, page.endsWith("[truncated] Continue with offset: 251"))
+        assertTrue(page, page.endsWith("[truncated] Continue with offset: 251 (file has 600 lines)"))
         assertFalse(page.contains("line-251"))
 
         assertTrue(edit("long.txt", replacement("line-10\n", "line-10\nadded-a\nadded-b\n")).startsWith("Edited"))
@@ -94,7 +95,7 @@ class FileEditToolsTest {
     @Test
     fun `write tool rejects unread and externally changed files`() = runBlocking {
         val file = seed("guard.txt", "original", read = false)
-        val tool = AgentTools.workspace { root }.first { it.name == "write_file" }
+        val tool = AgentTools.workspace(root = { root }).first { it.name == "write_file" }
         val args = JSONObject().put("path", "guard.txt").put("content", "replacement")
         assertTrue(tool.run(args).contains("prior read_file"))
         assertEquals("original", file.readText())
@@ -177,6 +178,17 @@ class FileEditToolsTest {
         val result = edit("m.swift", JSONObject().put("old_text", "x"))
         assertTrue(result, result.contains("needs both old_text and new_text"))
         assertEquals("x\n", contents("m.swift"))
+    }
+
+    @Test
+    fun `one page authorizes an edit but never a whole file rewrite`() {
+        val file = seed("part.txt", "one\ntwo\nthree\nfour", read = false)
+        AgentTools.readFile(root, "part.txt", 2, 1)
+        assertTrue(edit("part.txt", replacement("two", "2")).startsWith("Edited"))
+        assertTrue(edit("part.txt", replacement("2", "zwei")).startsWith("Edited"))
+        assertEquals(ReadState.UNREAD, AgentTools.reads.state(file, file.readBytes()))
+        file.writeText("changed outside")
+        assertTrue(edit("part.txt", replacement("changed", "bad")).contains("changed since it was read"))
     }
 
     @Test
@@ -353,7 +365,7 @@ class FileEditToolsTest {
 
     @Test
     fun `both tools are offered through the workspace list`() {
-        val names = AgentTools.workspace { root }.map { it.name }.toSet()
+        val names = AgentTools.workspace(root = { root }).map { it.name }.toSet()
         assertTrue(names.contains("edit_file"))
         assertTrue(names.contains("glob"))
         assertFalse(names.contains("web_fetch"))

@@ -95,14 +95,19 @@ public struct FeedbackTarget: Identifiable, Equatable, Sendable {
 public struct FeedbackRecord: Codable, Equatable, Identifiable, Sendable {
     public let conversationID: String
     public let messageID: String
-    public let prompt: String
-    public let response: String
+    /// Which request and answer the feedback was given on, as a hash: the text itself
+    /// stays in the conversation and is never copied into memory.
+    public let digest: String
     public let feedbackType: FeedbackType
     public let tags: [String]
     public let userComment: String
     public let timestamp: Date
 
     public var id: String { "\(conversationID):\(messageID)" }
+
+    public static func digest(prompt: String, response: String) -> String {
+        SHA256.hash(data: Data((prompt + "\u{0}" + response).utf8)).map { String(format: "%02x", $0) }.joined()
+    }
 
     public init(
         conversationID: String,
@@ -116,8 +121,7 @@ public struct FeedbackRecord: Codable, Equatable, Identifiable, Sendable {
     ) {
         self.conversationID = conversationID
         self.messageID = messageID
-        self.prompt = prompt
-        self.response = response
+        self.digest = Self.digest(prompt: prompt, response: response)
         self.feedbackType = feedbackType
         self.tags = tags
         self.userComment = userComment
@@ -127,12 +131,40 @@ public struct FeedbackRecord: Codable, Equatable, Identifiable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case conversationID = "conversation_id"
         case messageID = "message_id"
+        case digest
         case prompt
         case response
         case feedbackType = "feedback_type"
         case tags
         case userComment = "user_comment"
         case timestamp
+    }
+
+    /// A record written before the text was dropped still carries it; it is read as
+    /// its hash and written back without the text (see `FeedbackStore.dropRawText`).
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        conversationID = try values.decode(String.self, forKey: .conversationID)
+        messageID = try values.decode(String.self, forKey: .messageID)
+        digest = try values.decodeIfPresent(String.self, forKey: .digest) ?? Self.digest(
+            prompt: try values.decodeIfPresent(String.self, forKey: .prompt) ?? "",
+            response: try values.decodeIfPresent(String.self, forKey: .response) ?? ""
+        )
+        feedbackType = try values.decode(FeedbackType.self, forKey: .feedbackType)
+        tags = try values.decodeIfPresent([String].self, forKey: .tags) ?? []
+        userComment = try values.decodeIfPresent(String.self, forKey: .userComment) ?? ""
+        timestamp = try values.decode(Date.self, forKey: .timestamp)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(conversationID, forKey: .conversationID)
+        try values.encode(messageID, forKey: .messageID)
+        try values.encode(digest, forKey: .digest)
+        try values.encode(feedbackType, forKey: .feedbackType)
+        try values.encode(tags, forKey: .tags)
+        try values.encode(userComment, forKey: .userComment)
+        try values.encode(timestamp, forKey: .timestamp)
     }
 }
 
@@ -160,23 +192,13 @@ public enum FeedbackError: Error, LocalizedError, Sendable, Equatable {
     }
 }
 
-/// The evaluator receives only a bounded, redacted representation. The raw
-/// prompt and response remain local in feedback.jsonl and are never needed by
-/// the evaluator after this value is built.
+/// Bounds of what the evaluator is shown; see `LessonEvaluator.payload`.
 public enum FeedbackEvaluator {
     public static let maxPromptCharacters = 8_000
     public static let maxResponseCharacters = 12_000
     public static let maxCommentCharacters = 2_000
     public static let maxTagCharacters = 1_000
     public static let maxRuleCharacters = 600
-
-    public static func payload(for record: FeedbackRecord) -> String {
-        LessonEvaluator.payload(for: LessonEvidence(
-            signal: .feedback, source: "", prompt: record.prompt, response: record.response,
-            comment: record.userComment, tags: record.tags,
-            outcome: record.feedbackType == .good ? "approved" : "rejected"
-        ))
-    }
 
     /// Immediate, evaluator-free rule from the user's own negative comment.
     /// Positive comments must be generalized from the complete turn evidence;
@@ -197,55 +219,30 @@ public enum FeedbackEvaluator {
     }
 }
 
-/// A small, workspace-local JSONL store. It owns the generated gold-example
-/// and learned-rule projections as well so a feedback edit can invalidate its
-/// old derived artifacts without touching unrelated memory notes.
+/// A small, workspace-local JSONL store. It owns the generated learned-rule
+/// projection as well so a feedback edit can invalidate its old derived
+/// artifacts without touching unrelated memory notes.
 public final class FeedbackStore: @unchecked Sendable {
-    private struct GoldExample: Codable, Sendable {
-        let conversationID: String
-        let messageID: String
-        let prompt: String
-        let response: String
-        let tags: [String]
-        let timestamp: Date
-
-        init(_ record: FeedbackRecord) {
-            conversationID = record.conversationID
-            messageID = record.messageID
-            prompt = record.prompt
-            response = record.response
-            tags = record.tags
-            timestamp = record.timestamp
-        }
-
-        private enum CodingKeys: String, CodingKey {
-            case conversationID = "conversation_id"
-            case messageID = "message_id"
-            case prompt
-            case response
-            case tags
-            case timestamp
-        }
-    }
-
     static let rulesStart = "<!-- herness:feedback-rules:start -->"
     static let rulesEnd = "<!-- herness:feedback-rules:end -->"
-    private static let maxExamplesCharacters = 8_000
     private static let stopWords: Set<String> = [
         "the", "and", "for", "with", "that", "this", "from", "are", "was", "were", "have", "has", "not", "you", "your",
         "bir", "ve", "ile", "için", "icin", "bu", "şu", "su", "olan", "olarak", "çok", "cok", "ama", "de", "da", "mi",
     ]
 
-    public let workspaceURL: URL?
-    private let fileManager: FileManager
+    /// The person's folder for this project in the user layer (see
+    /// `WorkspaceMemory.userMemoryDirectory`). Feedback, lessons and rules are theirs
+    /// and never go into the repository. Nil until the project has an id.
+    public let directory: URL?
+    let fileManager: FileManager
     private let lock = NSLock()
 
-    public init(workspaceURL: URL?, fileManager: FileManager = .default) {
-        self.workspaceURL = workspaceURL?.standardizedFileURL
+    public init(directory: URL?, fileManager: FileManager = .default) {
+        self.directory = directory?.standardizedFileURL
         self.fileManager = fileManager
     }
 
-    public var isAvailable: Bool { workspaceURL != nil }
+    public var isAvailable: Bool { directory != nil }
 
     public func record(conversationID: String, messageID: String) -> FeedbackRecord? {
         withLock { loadUnlocked().first { $0.conversationID == conversationID && $0.messageID == messageID } }
@@ -257,7 +254,7 @@ public final class FeedbackStore: @unchecked Sendable {
 
     public func upsert(_ record: FeedbackRecord) throws {
         try withLock {
-            guard workspaceURL != nil else { throw FeedbackError.unavailable }
+            guard directory != nil else { throw FeedbackError.unavailable }
             var all = loadUnlocked()
             all.removeAll { $0.id == record.id }
             all.append(record)
@@ -266,40 +263,15 @@ public final class FeedbackStore: @unchecked Sendable {
         }
     }
 
-    /// Rebuilds the current positive projection from the current feedback
-    /// records. The file is intentionally an array so it remains easy to read
-    /// and consume without a JSON database dependency.
-    public func rebuildGoldExamples() throws {
-        try withLock {
-            guard workspaceURL != nil else { throw FeedbackError.unavailable }
-            let examples = loadUnlocked()
-                .filter { $0.feedbackType == .good }
-                .map(GoldExample.init)
-            let encoder = makeEncoder()
-            do {
-                try writeData(encoder.encode(examples), to: "gold_examples.json")
-            } catch {
-                throw FeedbackError.persistenceFailed
-            }
-        }
-    }
-
-    /// Approved earlier answers that resemble this prompt, bounded.
-    public func examplesText(for prompt: String) -> String {
+    /// Removes what earlier versions kept of the conversation: the request and answer
+    /// inside each record, and the approved answers copied out as examples.
+    public func dropRawText() {
         withLock {
-            let examples = selectedExamples(for: prompt)
-            return examples.isEmpty ? "" : "## Gold examples (reference only)\n\(format(examples))"
+            try? fileManager.removeItem(at: url(for: "gold_examples.json"))
+            guard let text = try? String(contentsOf: url(for: "feedback.jsonl"), encoding: .utf8),
+                  text.contains("\"prompt\":") || text.contains("\"response\":") else { return }
+            try? writeJSONLLines(loadUnlocked())
         }
-    }
-
-    /// Native project memory, learned rules and relevant gold examples in one text.
-    public func context(for prompt: String, baseMemory: String) -> String {
-        let rules = rulesText()
-        return [
-            baseMemory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : baseMemory,
-            rules.isEmpty ? "" : "## Learned rules\n\(rules)",
-            examplesText(for: prompt),
-        ].filter { !$0.isEmpty }.joined(separator: "\n\n")
     }
 
     /// A stable, non-path-bearing key used in the generated markdown marker.
@@ -308,22 +280,26 @@ public final class FeedbackStore: @unchecked Sendable {
         return SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined().prefix(16).description
     }
 
-    private struct FileStamp: Equatable {
+    struct FileStamp: Equatable {
         let modified: Date?
         let size: Int?
+
+        init(_ url: URL, fileManager: FileManager) {
+            let attributes = try? fileManager.attributesOfItem(atPath: url.path)
+            modified = attributes?[.modificationDate] as? Date
+            size = (attributes?[.size] as? NSNumber)?.intValue
+        }
     }
 
     /// The chat asks for the feedback of every message on every redraw; the file is
     /// re-read only when it changed on disk.
     private var loadCache: (stamp: FileStamp, records: [FeedbackRecord])?
+    /// lessons.json is read for every prompt and every file tool call.
+    var lessonsCache: (stamp: FileStamp, lessons: [Lesson])?
 
     func loadUnlocked() -> [FeedbackRecord] {
-        guard let url = workspaceURL.map({ $0.appendingPathComponent(".mem", isDirectory: true).appendingPathComponent("feedback.jsonl") }) else { return [] }
-        let attributes = try? fileManager.attributesOfItem(atPath: url.path)
-        let stamp = FileStamp(
-            modified: attributes?[.modificationDate] as? Date,
-            size: (attributes?[.size] as? NSNumber)?.intValue
-        )
+        guard let url = directory.map({ $0.appendingPathComponent("feedback.jsonl") }) else { return [] }
+        let stamp = FileStamp(url, fileManager: fileManager)
         if let loadCache, loadCache.stamp == stamp { return loadCache.records }
         guard let data = try? Data(contentsOf: url),
               let text = String(data: data, encoding: .utf8) else {
@@ -356,8 +332,7 @@ public final class FeedbackStore: @unchecked Sendable {
     }
 
     func writeData(_ data: Data, to name: String, permissions: Int16? = nil) throws {
-        guard let workspaceURL else { throw FeedbackError.unavailable }
-        let root = workspaceURL.appendingPathComponent(".mem", isDirectory: true)
+        guard let root = directory else { throw FeedbackError.unavailable }
         do {
             try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
             let destination = root.appendingPathComponent(name)
@@ -389,49 +364,12 @@ public final class FeedbackStore: @unchecked Sendable {
         return result
     }
 
-    private func selectedExamples(for prompt: String) -> [GoldExample] {
-        guard let data = try? Data(contentsOf: url(for: "gold_examples.json")),
-              let examples = try? makeDecoder().decode([GoldExample].self, from: data) else { return [] }
-        let promptTokens = Self.tokens(prompt)
-        guard !promptTokens.isEmpty else { return [] }
-        return examples.compactMap { example -> (Double, GoldExample)? in
-            // Scored against the earlier request only: a long response shares a
-            // word with almost any prompt. One shared word is not relevance either,
-            // unless the prompt is that one word.
-            let exampleTokens = Self.tokens(example.prompt)
-            let overlap = promptTokens.intersection(exampleTokens).count
-            guard overlap >= min(2, promptTokens.count) else { return nil }
-            let union = promptTokens.union(exampleTokens).count
-            let score = Double(overlap) / Double(max(1, union))
-            return (score, example)
-        }
-        .sorted {
-            if $0.0 != $1.0 { return $0.0 > $1.0 }
-            return $0.1.timestamp > $1.1.timestamp
-        }
-        .prefix(3)
-        .map(\.1)
-    }
-
-    private func format(_ examples: [GoldExample]) -> String {
-        var output = ""
-        for (index, example) in examples.enumerated() {
-            let block = [
-                "### Example \(index + 1)",
-                "Prompt:\n\(clip(example.prompt, to: 600))",
-                "Response:\n\(clip(example.response, to: 2_000))",
-            ].joined(separator: "\n")
-            let candidate = output.isEmpty ? block : output + "\n\n" + block
-            guard candidate.count <= Self.maxExamplesCharacters else { break }
-            output = candidate
-        }
-        return output
-    }
-
     /// Content words of a text; shared with the task-history selection.
     /// Lowercased without diacritics, so "arayüzü" and "arayuzu" are one word.
+    private static let posixLocale = Locale(identifier: "en_US_POSIX")
+
     static func folded(_ value: String) -> String {
-        value.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+        value.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: posixLocale)
             .lowercased()
             .replacingOccurrences(of: "ı", with: "i")
     }
@@ -442,14 +380,8 @@ public final class FeedbackStore: @unchecked Sendable {
         })
     }
 
-    func clip(_ value: String, to limit: Int) -> String {
-        guard value.count > limit else { return value }
-        return String(value.prefix(limit)) + "\n[content clipped]"
-    }
-
     func url(for name: String) -> URL {
-        workspaceURL?.appendingPathComponent(".mem", isDirectory: true).appendingPathComponent(name)
-            ?? URL(fileURLWithPath: "/dev/null")
+        directory?.appendingPathComponent(name) ?? URL(fileURLWithPath: "/dev/null")
     }
 
     func makeEncoder(prettyPrinted: Bool = true) -> JSONEncoder {

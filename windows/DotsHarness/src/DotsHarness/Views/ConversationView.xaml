@@ -6,7 +6,7 @@
              AllowDrop="True"
              PreviewDragOver="OnDragOver"
              DragLeave="OnDragLeave"
-             Drop="OnDrop"
+             PreviewDrop="OnDrop"
              Background="{DynamicResource PanelBackground}">
     <UserControl.Resources>
         <Style x:Key="ComposerBannerStyle" TargetType="{x:Type Border}">
@@ -82,6 +82,8 @@
                                             SizeChanged="OnEffortTrackSized"/>
                                     <Button x:Name="UsageModeButton" Margin="0,8,0,0" Padding="8,3"
                                             HorizontalAlignment="Center" Click="OnUsageMode"/>
+                                    <Button x:Name="FastModeButton" Margin="0,6,0,0" Padding="8,3" Visibility="Collapsed"
+                                            HorizontalAlignment="Center" Click="OnFastMode"/>
                                 </StackPanel>
                             </Border>
                             <StackPanel x:Name="ModelListPanel" Visibility="Collapsed">
@@ -96,6 +98,8 @@
                         </StackPanel>
                     </Border>
                 </Popup>
+                <Image x:Name="ComposerLoadingAnimation" Width="20" Height="20" Margin="0,0,2,0"
+                       Visibility="Collapsed" Stretch="Uniform" IsHitTestVisible="False"/>
                 <Button x:Name="StopButton" Content="Stop" Margin="8,0,0,0" Padding="12,4"
                         Click="OnStop" Visibility="Collapsed"/>
                 <Button x:Name="CancelPlanButton" Content="Cancel plan" Margin="8,0,0,0" Padding="12,4"
@@ -125,9 +129,9 @@
                 <Border x:Name="SkillSuggestionBanner" Style="{StaticResource ComposerBannerStyle}" Visibility="Collapsed">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button x:Name="DismissSkillSuggestionButton" Content="Not now" Margin="0,0,8,0"
+                            <Button x:Name="DismissSkillSuggestionButton" Margin="0,0,8,0"
                                     Padding="12,6" Click="OnDismissSkillSuggestion"/>
-                            <Button x:Name="AcceptSkillSuggestionButton" Content="Create Skill"
+                            <Button x:Name="AcceptSkillSuggestionButton"
                                     Padding="12,6" Click="OnAcceptSkillSuggestion"/>
                         </StackPanel>
                         <StackPanel VerticalAlignment="Center">
@@ -167,7 +171,18 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Background="{DynamicResource PanelBackground}" CornerRadius="8" Padding="6" Margin="0,0,8,0">
+                                                    <Border Background="{DynamicResource PanelBackground}" CornerRadius="8" Padding="6" Margin="0,0,8,0"
+                                                            ToolTipService.InitialShowDelay="350">
+                                                        <Border.ToolTip>
+                                                            <ToolTip DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                                <StackPanel MaxWidth="420">
+                                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                                    <TextBlock Text="{Binding Kind}" FontSize="11" Foreground="Gray"/>
+                                                                    <TextBlock Text="{Binding MimeType}" FontSize="11" Foreground="Gray"/>
+                                                                    <TextBlock Text="{Binding FilePath}" FontSize="11" TextWrapping="Wrap"/>
+                                                                </StackPanel>
+                                                            </ToolTip>
+                                                        </Border.ToolTip>
                                 <StackPanel Orientation="Horizontal">
                                     <Image Width="48" Height="48" Stretch="UniformToFill"
                                            Source="{Binding FilePath, Converter={x:Static views:AttachmentImage.Instance}}"
@@ -201,6 +216,17 @@
                     <Button x:Name="WorkLocationButton" Margin="8,0,0,0" Padding="10,4"
                             Click="OnWorkLocation" ToolTip="Choose where this task runs"/>
                 </StackPanel>
+                <Border x:Name="ProviderLimitWarning" Style="{StaticResource ComposerBannerStyle}" Visibility="Collapsed">
+                    <DockPanel LastChildFill="True">
+                        <TextBlock DockPanel.Dock="Left" Text="◷" Margin="0,0,10,0" FontSize="16"
+                                   Foreground="#F87171" VerticalAlignment="Center"/>
+                        <StackPanel>
+                            <TextBlock x:Name="ProviderLimitTitle" FontWeight="SemiBold" Foreground="#F87171"/>
+                            <TextBlock x:Name="ProviderLimitCountdown" Margin="0,2,0,0" FontSize="11"
+                                       TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
                 <Border x:Name="CacheResumeWarning" Style="{StaticResource ComposerBannerStyle}" Visibility="Collapsed">
                     <DockPanel LastChildFill="True">
                         <Button x:Name="CacheResumeInfoButton" DockPanel.Dock="Right" Content="ⓘ" Padding="6,2"
@@ -217,6 +243,8 @@
                     </Border>
                 </Popup>
                 <DockPanel>
+                    <Button x:Name="AddButton" DockPanel.Dock="Left" Content="+" FontSize="18" Width="36" Height="36"
+                            Padding="0" Margin="0,0,8,0" Click="OnAddMenu"/>
                     <Button x:Name="VoiceButton" DockPanel.Dock="Right" Content="Mic" Width="80" Height="36"
                             Margin="8,0,0,0" Click="OnVoice" ToolTip="Start voice input"/>
                     <Button x:Name="SendButton" DockPanel.Dock="Right" Content="Send" Width="80" Height="36"
@@ -252,6 +280,9 @@
         </Border>
         <Border x:Name="QueueBar" DockPanel.Dock="Bottom" Style="{StaticResource ComposerBannerStyle}" Visibility="Collapsed">
             <StackPanel x:Name="QueueRows"/>
+        </Border>
+        <Border x:Name="PlanBar" DockPanel.Dock="Bottom" Style="{StaticResource ComposerBannerStyle}" Visibility="Collapsed">
+            <StackPanel x:Name="PlanRows"/>
         </Border>
         <Border x:Name="QuestionBar" DockPanel.Dock="Bottom" Style="{StaticResource ComposerBannerStyle}" Visibility="Collapsed">
             <DockPanel>
@@ -305,7 +336,8 @@
         </Border>
         <Border x:Name="LeaseWaitingBar" DockPanel.Dock="Bottom" Style="{StaticResource ComposerBannerStyle}" Visibility="Collapsed">
             <DockPanel>
-                <ProgressBar DockPanel.Dock="Left" IsIndeterminate="True" Width="38" Height="6" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                <Image x:Name="LeaseWaitingLoadingAnimation" DockPanel.Dock="Left" Width="24" Height="24"
+                       Margin="0,0,10,0" Stretch="Uniform" IsHitTestVisible="False"/>
                 <TextBlock x:Name="LeaseWaitingText" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" VerticalAlignment="Center"/>
             </DockPanel>
         </Border>
@@ -415,9 +447,9 @@
                                                 </StackPanel>
                                             </DockPanel>
                                         </Border>
-                                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,6,0,0" TextAlignment="{Binding Kind, Converter={x:Static views:KindTextAlignment.Instance}}"
-                                                   Foreground="{DynamicResource TextPrimary}"
-                                                   Visibility="{Binding ., Converter={x:Static views:MessageBodyVisibility.Instance}}"/>
+                                        <views:MarkdownBody Text="{Binding Text}" Margin="0,6,0,0" TextAlignment="{Binding Kind, Converter={x:Static views:KindTextAlignment.Instance}}"
+                                                            TextElement.Foreground="{DynamicResource TextPrimary}"
+                                                            Visibility="{Binding ., Converter={x:Static views:MessageBodyVisibility.Instance}}"/>
                                         <Expander IsExpanded="False" Margin="0,6,0,0"
                                                   Header="{Binding Converter={x:Static views:LocalizedCopy.Instance}, ConverterParameter=conversation.fullToolOutput}"
                                                   Visibility="{Binding ., Converter={x:Static views:ToolOutputVisibility.Instance}}">
@@ -431,17 +463,32 @@
                                                    Visibility="{Binding ., Converter={x:Static views:RunSummaryVisibility.Instance}}"/>
                                         <Image MaxWidth="520" MaxHeight="520" Stretch="Uniform" HorizontalAlignment="Left" Margin="0,8,0,0"
                                                Source="{Binding Media.FilePath, Converter={x:Static views:AttachmentImage.Instance}}"/>
+                                        <views:AudioPlayerRow Path="{Binding Media.FilePath}" HorizontalAlignment="Left" Margin="0,8,0,0"
+                                                             Visibility="{Binding Media.IsAudio, Converter={x:Static views:BoolToVis.Instance}}"/>
                                         <ItemsControl ItemsSource="{Binding Attachments}" Margin="0,8,0,0">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Border Background="{DynamicResource PanelBackground}" CornerRadius="8" Padding="6" Margin="0,0,8,0">
+                                                    <Border Background="{DynamicResource PanelBackground}" CornerRadius="8" Padding="6" Margin="0,0,8,0"
+                                                            ToolTipService.InitialShowDelay="350">
+                                                        <Border.ToolTip>
+                                                            <ToolTip DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                                <StackPanel MaxWidth="420">
+                                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                                    <TextBlock Text="{Binding Kind}" FontSize="11" Foreground="Gray"/>
+                                                                    <TextBlock Text="{Binding MimeType}" FontSize="11" Foreground="Gray"/>
+                                                                    <TextBlock Text="{Binding FilePath}" FontSize="11" TextWrapping="Wrap"/>
+                                                                </StackPanel>
+                                                            </ToolTip>
+                                                        </Border.ToolTip>
                                                         <StackPanel Orientation="Horizontal">
                                                             <Image Width="64" Height="64" Stretch="UniformToFill"
                                                                    Source="{Binding FilePath, Converter={x:Static views:AttachmentImage.Instance}}"
                                                                    Visibility="{Binding IsImage, Converter={x:Static views:BoolToVis.Instance}}"/>
+                                                            <views:AudioPlayerRow Path="{Binding FilePath}" VerticalAlignment="Center" Margin="6,0,0,0"
+                                                                                Visibility="{Binding IsAudio, Converter={x:Static views:BoolToVis.Instance}}"/>
                                                             <StackPanel Width="170" Margin="6,0,0,0" VerticalAlignment="Center">
                                                                 <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextPrimary}"/>
                                                                 <TextBlock Text="{Binding Kind}" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
@@ -503,7 +550,26 @@
                                                                            Foreground="{DynamicResource Accent}" Margin="10,0,0,0"/>
                                                                 <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}" TextTrimming="CharacterEllipsis"
                                                                            Foreground="{DynamicResource TextPrimary}"
-                                                                           AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"/>
+                                                                           AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"
+                                                                           ToolTipService.InitialShowDelay="350">
+                                                                    <TextBlock.ToolTip>
+                                                                        <ToolTip DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" MaxWidth="660">
+                                                                            <Border Padding="10" CornerRadius="8" Background="{DynamicResource PanelBackground}"
+                                                                                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1">
+                                                                                <StackPanel>
+                                                                                    <DockPanel>
+                                                                                        <TextBlock Text="{Binding Path}" FontFamily="Consolas" TextTrimming="CharacterEllipsis"/>
+                                                                                        <TextBlock DockPanel.Dock="Right" Text="{Binding ., Converter={x:Static views:ChangedFileLineLabel.Instance}}"
+                                                                                                   Margin="10,0,0,0" Foreground="{DynamicResource Accent}"/>
+                                                                                    </DockPanel>
+                                                                                    <ScrollViewer MaxHeight="420" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                                                                                        <TextBlock Text="{Binding Preview}" FontFamily="Consolas" TextWrapping="NoWrap"/>
+                                                                                    </ScrollViewer>
+                                                                                </StackPanel>
+                                                                            </Border>
+                                                                        </ToolTip>
+                                                                    </TextBlock.ToolTip>
+                                                                </TextBlock>
                                                             </DockPanel>
                                                         </DataTemplate></ItemsControl.ItemTemplate>
                                                     </ItemsControl>
@@ -515,7 +581,26 @@
                                                                            Foreground="{DynamicResource Accent}" Margin="10,0,0,0"/>
                                                                 <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}" TextTrimming="CharacterEllipsis"
                                                                            Foreground="{DynamicResource TextPrimary}"
-                                                                           AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"/>
+                                                                           AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"
+                                                                           ToolTipService.InitialShowDelay="350">
+                                                                    <TextBlock.ToolTip>
+                                                                        <ToolTip DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" MaxWidth="660">
+                                                                            <Border Padding="10" CornerRadius="8" Background="{DynamicResource PanelBackground}"
+                                                                                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1">
+                                                                                <StackPanel>
+                                                                                    <DockPanel>
+                                                                                        <TextBlock Text="{Binding Path}" FontFamily="Consolas" TextTrimming="CharacterEllipsis"/>
+                                                                                        <TextBlock DockPanel.Dock="Right" Text="{Binding ., Converter={x:Static views:ChangedFileLineLabel.Instance}}"
+                                                                                                   Margin="10,0,0,0" Foreground="{DynamicResource Accent}"/>
+                                                                                    </DockPanel>
+                                                                                    <ScrollViewer MaxHeight="420" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                                                                                        <TextBlock Text="{Binding Preview}" FontFamily="Consolas" TextWrapping="NoWrap"/>
+                                                                                    </ScrollViewer>
+                                                                                </StackPanel>
+                                                                            </Border>
+                                                                        </ToolTip>
+                                                                    </TextBlock.ToolTip>
+                                                                </TextBlock>
                                                             </DockPanel>
                                                         </DataTemplate></ItemsControl.ItemTemplate>
                                                     </ItemsControl>
@@ -597,7 +682,26 @@
                                                                            Foreground="{DynamicResource Accent}" Margin="10,0,0,0"/>
                                                                 <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}" TextTrimming="CharacterEllipsis"
                                                                            Foreground="{DynamicResource TextPrimary}"
-                                                                           AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"/>
+                                                                           AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"
+                                                                           ToolTipService.InitialShowDelay="350">
+                                                                    <TextBlock.ToolTip>
+                                                                        <ToolTip DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" MaxWidth="660">
+                                                                            <Border Padding="10" CornerRadius="8" Background="{DynamicResource PanelBackground}"
+                                                                                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1">
+                                                                                <StackPanel>
+                                                                                    <DockPanel>
+                                                                                        <TextBlock Text="{Binding Path}" FontFamily="Consolas" TextTrimming="CharacterEllipsis"/>
+                                                                                        <TextBlock DockPanel.Dock="Right" Text="{Binding ., Converter={x:Static views:ChangedFileLineLabel.Instance}}"
+                                                                                                   Margin="10,0,0,0" Foreground="{DynamicResource Accent}"/>
+                                                                                    </DockPanel>
+                                                                                    <ScrollViewer MaxHeight="420" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                                                                                        <TextBlock Text="{Binding Preview}" FontFamily="Consolas" TextWrapping="NoWrap"/>
+                                                                                    </ScrollViewer>
+                                                                                </StackPanel>
+                                                                            </Border>
+                                                                        </ToolTip>
+                                                                    </TextBlock.ToolTip>
+                                                                </TextBlock>
                                                             </DockPanel>
                                                         </DataTemplate></ItemsControl.ItemTemplate>
                                                     </ItemsControl>
@@ -609,7 +713,26 @@
                                                                            Foreground="{DynamicResource Accent}" Margin="10,0,0,0"/>
                                                                 <TextBlock Text="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}" TextTrimming="CharacterEllipsis"
                                                                            Foreground="{DynamicResource TextPrimary}"
-                                                                           AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"/>
+                                                                           AutomationProperties.Name="{Binding ., Converter={x:Static views:ChangedFileLabel.Instance}}"
+                                                                           ToolTipService.InitialShowDelay="350">
+                                                                    <TextBlock.ToolTip>
+                                                                        <ToolTip DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" MaxWidth="660">
+                                                                            <Border Padding="10" CornerRadius="8" Background="{DynamicResource PanelBackground}"
+                                                                                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1">
+                                                                                <StackPanel>
+                                                                                    <DockPanel>
+                                                                                        <TextBlock Text="{Binding Path}" FontFamily="Consolas" TextTrimming="CharacterEllipsis"/>
+                                                                                        <TextBlock DockPanel.Dock="Right" Text="{Binding ., Converter={x:Static views:ChangedFileLineLabel.Instance}}"
+                                                                                                   Margin="10,0,0,0" Foreground="{DynamicResource Accent}"/>
+                                                                                    </DockPanel>
+                                                                                    <ScrollViewer MaxHeight="420" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                                                                                        <TextBlock Text="{Binding Preview}" FontFamily="Consolas" TextWrapping="NoWrap"/>
+                                                                                    </ScrollViewer>
+                                                                                </StackPanel>
+                                                                            </Border>
+                                                                        </ToolTip>
+                                                                    </TextBlock.ToolTip>
+                                                                </TextBlock>
                                                             </DockPanel>
                                                         </DataTemplate></ItemsControl.ItemTemplate>
                                                     </ItemsControl>
@@ -701,7 +824,18 @@
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Border Background="{DynamicResource PanelBackground}" CornerRadius="8" Padding="6" Margin="0,0,8,0">
+                                                <Border Background="{DynamicResource PanelBackground}" CornerRadius="8" Padding="6" Margin="0,0,8,0"
+                                                        ToolTipService.InitialShowDelay="350">
+                                                    <Border.ToolTip>
+                                                        <ToolTip DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                            <StackPanel MaxWidth="420">
+                                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                                <TextBlock Text="{Binding Kind}" FontSize="11" Foreground="Gray"/>
+                                                                <TextBlock Text="{Binding MimeType}" FontSize="11" Foreground="Gray"/>
+                                                                <TextBlock Text="{Binding FilePath}" FontSize="11" TextWrapping="Wrap"/>
+                                                            </StackPanel>
+                                                        </ToolTip>
+                                                    </Border.ToolTip>
                                                     <StackPanel Orientation="Horizontal">
                                                         <Image Width="64" Height="64" Stretch="UniformToFill"
                                                                Source="{Binding FilePath, Converter={x:Static views:AttachmentImage.Instance}}"
@@ -720,6 +854,11 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <Border x:Name="CompletedPlanSummary" Margin="24,0,24,12" Padding="9"
+                        MaxWidth="760" HorizontalAlignment="Left" CornerRadius="9"
+                        Background="{DynamicResource PanelBackground}" Visibility="Collapsed">
+                    <StackPanel x:Name="CompletedPlanRows"/>
+                </Border>
             </StackPanel>
         </ScrollViewer>
         </DockPanel>

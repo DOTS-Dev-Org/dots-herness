@@ -6,28 +6,6 @@ using System.Text.Json.Serialization;
 
 namespace DotsHarnessCore;
 
-[JsonConverter(typeof(JsonStringEnumConverter))]
-public enum ComputerUseAction
-{
-    [JsonPropertyName("list_windows")] ListWindows,
-    [JsonPropertyName("focus_app")] FocusApp,
-    [JsonPropertyName("launch_app")] LaunchApp,
-    [JsonPropertyName("close_window")] CloseWindow,
-    [JsonPropertyName("quit_app")] QuitApp,
-    [JsonPropertyName("screenshot")] Screenshot,
-    [JsonPropertyName("mouse_move")] MouseMove,
-    [JsonPropertyName("left_click")] LeftClick,
-    [JsonPropertyName("right_click")] RightClick,
-    [JsonPropertyName("middle_click")] MiddleClick,
-    [JsonPropertyName("double_click")] DoubleClick,
-    [JsonPropertyName("triple_click")] TripleClick,
-    [JsonPropertyName("mouse_down")] MouseDown,
-    [JsonPropertyName("mouse_up")] MouseUp,
-    [JsonPropertyName("type")] Type,
-    [JsonPropertyName("key")] Key,
-    [JsonPropertyName("scroll")] Scroll,
-}
-
 public sealed record ComputerUsePermissions(bool ScreenRecording, bool InputSimulation)
 {
     public bool IsFullyAuthorized => ScreenRecording && InputSimulation;

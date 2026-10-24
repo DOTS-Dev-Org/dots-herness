@@ -208,6 +208,48 @@ final class MCPAndToolBridgeTests: XCTestCase {
         XCTAssertTrue(host.agentTerminals.isEmpty)
     }
 
+    @MainActor
+    func testBackgroundTaskExitQueuesAWakeUpForItsConversation() async throws {
+        let paths = temporaryPaths()
+        let workspace = paths.root.appendingPathComponent("task-project", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        let host = NativeAgentHost(
+            paths: paths,
+            endpoint: AgentEndpointController(baseURL: "http://term.test", modelID: "test-model")
+        )
+        // Not selected, so the wake-up stays queued instead of starting a run.
+        host.conversations.append(Conversation(id: "A", cwd: workspace.path))
+
+        let started = host.agentTerminal(
+            AgentToolCall(
+                id: "1", name: TerminalSessionTool.name,
+                arguments: #"{"action":"start","command":"sh -c 'exit 3'","description":"failing build"}"#
+            ),
+            conversationID: "A", workspace: workspace
+        )
+        XCTAssertTrue(started.hasPrefix("Started background task "), started)
+        let session = try XCTUnwrap(host.agentTerminals["A"]?.first)
+
+        for _ in 0..<200 where session.isRunning { try await Task.sleep(for: .milliseconds(50)) }
+        XCTAssertEqual(session.exitCode, 3)
+        XCTAssertNotNil(session.endedAt)
+        let queued = try XCTUnwrap(host.conversations.first { $0.id == "A" }?.pendingPrompts.first)
+        XCTAssertTrue(queued.text.contains("failing build") && queued.text.contains(session.id.uuidString), queued.text)
+
+        // A task the user stops does not wake the agent.
+        host.conversations[0].pendingPrompts = []
+        _ = host.agentTerminal(
+            AgentToolCall(id: "2", name: TerminalSessionTool.name, arguments: #"{"action":"start","command":"sleep 30"}"#),
+            conversationID: "A", workspace: workspace
+        )
+        let sleeper = try XCTUnwrap(host.agentTerminals["A"]?.last)
+        sleeper.stop()
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertNil(sleeper.exitCode)
+        XCTAssertTrue(host.conversations[0].pendingPrompts.isEmpty)
+        host.stopAllAgentTerminals()
+    }
+
     private func temporaryPaths() -> SupportPaths {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("DotsHarnessTests-\(UUID().uuidString)", isDirectory: true)

@@ -298,13 +298,14 @@
   <data name="usage.resetsIn" xml:space="preserve"><value>รีเซ็ตใน {0}</value></data>
   <data name="usage.resetsOn" xml:space="preserve"><value>รีเซ็ต {0}</value></data>
   <data name="usage.resetsAvailable" xml:space="preserve"><value>รีเซ็ตได้อีก {0} ครั้ง</value></data>
-  <data name="usage.manageResets" xml:space="preserve"><value>Manage resets</value></data>
-  <data name="usage.useReset" xml:space="preserve"><value>Use reset</value></data>
-  <data name="usage.resetTitle" xml:space="preserve"><value>Use a Claude limit reset?</value></data>
-  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude's Usage page will open. Sign in to {0} and review the reset offered to that account. To use it, click Reset for free and confirm in Claude. Once used, a reset cannot be undone. Limits refresh when you return to HerNess.</value></data>
-  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Could not open Claude. Check that the account is still connected, then try again.</value></data>
-  <data name="usage.openClaude" xml:space="preserve"><value>Open Claude</value></data>
+  <data name="usage.manageResets" xml:space="preserve"><value>จัดการการรีเซ็ต</value></data>
+  <data name="usage.useReset" xml:space="preserve"><value>ใช้การรีเซ็ต</value></data>
+  <data name="usage.resetTitle" xml:space="preserve"><value>ใช้การรีเซ็ตขีดจำกัดของ Claude หรือไม่</value></data>
+  <data name="usage.resetConfirmation" xml:space="preserve"><value>หน้าการใช้งานของ Claude จะเปิดขึ้น ลงชื่อเข้าใช้ {0} และตรวจดูการรีเซ็ตที่เสนอให้บัญชีนั้น หากต้องการใช้ ให้คลิก Reset for free และยืนยันใน Claude การรีเซ็ตที่ใช้แล้วไม่สามารถยกเลิกได้ ขีดจำกัดจะรีเฟรชเมื่อคุณกลับมาที่ HerNess</value></data>
+  <data name="usage.resetOpenFailed" xml:space="preserve"><value>เปิด Claude ไม่ได้ ตรวจสอบว่าบัญชียังเชื่อมต่ออยู่ แล้วลองอีกครั้ง</value></data>
+  <data name="usage.openClaude" xml:space="preserve"><value>เปิด Claude</value></data>
   <data name="usage.needLogin" xml:space="preserve"><value>ลงชื่อเข้าใช้ Claude เพื่อดูขีดจำกัด</value></data>
+  <data name="agent.providerLimitTitle" xml:space="preserve"><value>ถึงขีดจำกัดของผู้ให้บริการแล้ว</value></data>
   <data name="usage.noLimitInfo" xml:space="preserve"><value>ไม่มีข้อมูลขีดจำกัด</value></data>
   <data name="usage.loadFailed" xml:space="preserve"><value>โหลดข้อมูลการใช้งานไม่สำเร็จ</value></data>
   <data name="usage.loading" xml:space="preserve"><value>กำลังโหลดการใช้งาน…</value></data>
@@ -332,21 +333,21 @@
   <data name="project.missing.message" xml:space="preserve"><value>โฟลเดอร์โปรเจกต์ที่ '{0}' อาจถูกย้ายหรือลบไปแล้ว โปรดเลือกตำแหน่งใหม่หรือลบโปรเจกต์</value></data>
   <data name="project.missing.locate" xml:space="preserve"><value>ค้นหาตำแหน่ง…</value></data>
   <data name="project.missing.readOnly" xml:space="preserve"><value>โฟลเดอร์โปรเจกต์ไม่พร้อมใช้งาน คุณยังดูบทสนทนาเดิมได้ แต่จะสร้างบทสนทนาใหม่หรือส่งข้อความไม่ได้จนกว่าจะเลือกตำแหน่งใหม่</value></data>
-  <data name="conversation.ranCommand" xml:space="preserve"><value>Ran 1 command</value></data>
-  <data name="conversation.ranCommands" xml:space="preserve"><value>Ran {0} commands</value></data>
-  <data name="conversation.runningTools" xml:space="preserve"><value>Running tools…</value></data>
-  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Thinking…</value></data>
-  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} tokens</value></data>
-  <data name="usage.context.window" xml:space="preserve"><value>Context window</value></data>
-  <data name="usage.planLimits" xml:space="preserve"><value>Plan usage limits</value></data>
-  <data name="composer.queue.one" xml:space="preserve"><value>1 message queued</value></data>
-  <data name="composer.queue.many" xml:space="preserve"><value>{0} messages queued</value></data>
-  <data name="composer.queue.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Clear the message box to edit</value></data>
-  <data name="composer.queue.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="git.createPR" xml:space="preserve"><value>Create PR</value></data>
-  <data name="git.hideBar" xml:space="preserve"><value>Hide</value></data>
-  <data name="composer.queue.next" xml:space="preserve"><value>Next: {0}</value></data>
+  <data name="conversation.ranCommand" xml:space="preserve"><value>รัน 1 คำสั่งแล้ว</value></data>
+  <data name="conversation.ranCommands" xml:space="preserve"><value>รัน {0} คำสั่งแล้ว</value></data>
+  <data name="conversation.runningTools" xml:space="preserve"><value>กำลังรันเครื่องมือ…</value></data>
+  <data name="conversation.thinkingPhase" xml:space="preserve"><value>กำลังคิด…</value></data>
+  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} โทเค็น</value></data>
+  <data name="usage.context.window" xml:space="preserve"><value>หน้าต่างบริบท</value></data>
+  <data name="usage.planLimits" xml:space="preserve"><value>ขีดจำกัดการใช้งานของแพ็กเกจ</value></data>
+  <data name="composer.queue.one" xml:space="preserve"><value>1 ข้อความในคิว</value></data>
+  <data name="composer.queue.many" xml:space="preserve"><value>{0} ข้อความในคิว</value></data>
+  <data name="composer.queue.edit" xml:space="preserve"><value>แก้ไข</value></data>
+  <data name="composer.queue.editBlocked" xml:space="preserve"><value>ล้างช่องข้อความเพื่อแก้ไข</value></data>
+  <data name="composer.queue.remove" xml:space="preserve"><value>นำออก</value></data>
+  <data name="git.createPR" xml:space="preserve"><value>สร้าง PR</value></data>
+  <data name="git.hideBar" xml:space="preserve"><value>ซ่อน</value></data>
+  <data name="composer.queue.next" xml:space="preserve"><value>ถัดไป: {0}</value></data>
   <data name="sidebar.pinProject" xml:space="preserve"><value>ปักหมุดโปรเจกต์</value></data>
   <data name="sidebar.unpinProject" xml:space="preserve"><value>เลิกปักหมุดโปรเจกต์</value></data>
   <data name="sidebar.sortLastUpdate" xml:space="preserve"><value>อัปเดตล่าสุด</value></data>
@@ -357,6 +358,8 @@
   <data name="conversation.cancelPlan" xml:space="preserve"><value>ยกเลิกแผน</value></data>
   <data name="conversation.cancelPlanHelp" xml:space="preserve"><value>ยกเลิกแผนนี้และปล่อยข้อความที่รอคิวอยู่</value></data>
   <data name="media.generated" xml:space="preserve"><value>สร้างภาพแล้ว</value></data>
+  <data name="media.videoGenerated" xml:space="preserve"><value>สร้างวิดีโอแล้ว</value></data>
+  <data name="media.audioGenerated" xml:space="preserve"><value>สร้างเสียงพูดแล้ว</value></data>
   <data name="media.fallbackUsed" xml:space="preserve"><value>ผู้ให้บริการที่เลือกไม่สามารถสร้างภาพนี้ได้ ภาพถูกสร้างด้วยคำขอสำรองครั้งเดียวผ่าน {0}/{1} ผู้ให้บริการและโมเดลของการสนทนาหลักไม่ได้เปลี่ยน แคชพรอมต์จึงยังคงอยู่ครบ</value></data>
   <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>ฉันสร้างภาพนี้ด้วย {0} ไม่ได้ โปรดตั้งค่า API หรือผู้ให้บริการภาพเป็นตัวสำรอง การสลับโมเดลแชตหลักเพียงเพื่อสร้างภาพอาจทำให้แคชพรอมต์ของผู้ให้บริการเสียหาย</value></data>
   <data name="feedback.close" xml:space="preserve"><value>ปิด</value></data>
@@ -369,27 +372,27 @@
   <data name="feedback.persistenceFailed" xml:space="preserve"><value>บันทึกความคิดเห็นในเครื่องไม่สำเร็จ</value></data>
   <data name="feedback.streamingMessage" xml:space="preserve"><value>รอให้คำตอบเสร็จก่อนส่งความคิดเห็น</value></data>
   <data name="feedback.submit" xml:space="preserve"><value>ส่ง</value></data>
-  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Apply it elsewhere</value></data>
-  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Broke an existing feature</value></data>
+  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>นำไปใช้ที่อื่น</value></data>
+  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>ทำให้ฟีเจอร์ที่มีอยู่เสีย</value></data>
   <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>ไม่ทำตามคำสั่งของฉัน</value></data>
-  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Didn't follow project style</value></data>
+  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>ไม่ทำตามสไตล์ของโปรเจกต์</value></data>
   <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>รวดเร็วและมีประสิทธิภาพ</value></data>
   <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>ทำตามคำสั่งของฉัน</value></data>
-  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Ignored project architecture</value></data>
+  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>เพิกเฉยต่อสถาปัตยกรรมของโปรเจกต์</value></data>
   <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>ไม่ถูกต้องหรือไม่สมบูรณ์</value></data>
-  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Keep the project style</value></data>
+  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>รักษาสไตล์ของโปรเจกต์</value></data>
   <data name="feedback.tag.lost_context" xml:space="preserve"><value>สูญเสียบริบท</value></data>
   <data name="feedback.tag.negative_other" xml:space="preserve"><value>อื่นๆ</value></data>
   <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>นอกหัวข้อ / นอกขอบเขต</value></data>
   <data name="feedback.tag.output_quality" xml:space="preserve"><value>คุณภาพโค้ด / ผลลัพธ์ดี</value></data>
   <data name="feedback.tag.positive_other" xml:space="preserve"><value>อื่นๆ</value></data>
-  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Reuse this architecture</value></data>
-  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Reuse this token pattern</value></data>
+  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>ใช้สถาปัตยกรรมนี้ซ้ำ</value></data>
+  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>ใช้รูปแบบโทเค็นนี้ซ้ำ</value></data>
   <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>ปัญหาด้านความปลอดภัยหรือกฎหมาย</value></data>
   <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>ช้าหรือมีข้อบกพร่อง</value></data>
   <data name="feedback.tag.task_completed" xml:space="preserve"><value>แก้ปัญหางานของฉันได้</value></data>
   <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>การทำงานอัตโนมัติที่มีประโยชน์</value></data>
-  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Wrong theme or token</value></data>
+  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>ธีมหรือโทเค็นผิด</value></data>
   <data name="feedback.title" xml:space="preserve"><value>แชร์ความคิดเห็น</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>ความคิดเห็นใช้ได้เฉพาะในการแชทของพื้นที่ทำงาน</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>ส่งความคิดเห็นได้เฉพาะคำตอบของผู้ช่วย</value></data>
@@ -398,12 +401,13 @@
   <data name="conversation.cacheExpired.explanation" xml:space="preserve"><value>อายุโดยประมาณของแคชสิ้นสุดแล้ว แคชพรอมต์เป็นสถานะการประมวลผลชั่วคราวฝั่งผู้ให้บริการ ประวัติแชทของคุณยังคงถูกบันทึกไว้ หากใช้งานต่อด้วยประวัติทั้งหมด โทเค็นเหล่านั้นอาจถูกนับเป็นอินพุตใหม่อีกครั้ง ต้องใช้ข้อมูลการใช้งานของคำขอถัดไปเพื่อยืนยันว่าผู้ให้บริการยังมีแคชอยู่หรือไม่</value></data>
   <data name="conversation.cacheExpired.infoTitle" xml:space="preserve"><value>ทำไมฉันจึงเห็นข้อความนี้</value></data>
   <data name="conversation.cacheExpired.notice" xml:space="preserve"><value>แคชอาจหมดอายุแล้ว หากใช้งานต่ออาจใช้โทเค็นมากขึ้นและมีค่าใช้จ่ายสูงขึ้น เริ่มแชทใหม่พร้อมสรุปสั้น ๆ</value></data>
+  <data name="conversation.cacheLocal.notice" xml:space="preserve"><value>แคชของโมเดลภายในเครื่องถูกล้างแล้ว ประวัติทั้งหมดจะถูกประมวลผลใหม่และการตอบกลับอาจช้าลง เริ่มแชตใหม่พร้อมสรุปสั้น ๆ</value></data>
   <data name="conversation.filesChangedCount" xml:space="preserve"><value>เปลี่ยนแปลง {0} ไฟล์</value></data>
   <data name="conversation.filesLess" xml:space="preserve"><value>แสดงไฟล์น้อยลง</value></data>
   <data name="conversation.filesLineSummary" xml:space="preserve"><value>+{0} −{1}</value></data>
   <data name="conversation.filesMore" xml:space="preserve"><value>แสดงอีก {0} ไฟล์</value></data>
   <data name="conversation.filesReverted" xml:space="preserve"><value>เลิกทำการเปลี่ยนแปลงไฟล์แล้ว</value></data>
-  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>The saved file version is unavailable, so the workspace was left unchanged.</value></data>
+  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>ไม่มีเวอร์ชันไฟล์ที่บันทึกไว้ จึงไม่ได้เปลี่ยนแปลงเวิร์กสเปซ</value></data>
   <data name="conversation.undoChanges" xml:space="preserve"><value>เลิกทำ</value></data>
   <data name="conversation.viewChanges" xml:space="preserve"><value>ดูการเปลี่ยนแปลง</value></data>
   <data name="settings.archive" xml:space="preserve"><value>เก็บถาวร</value></data>
@@ -434,9 +438,9 @@
   <data name="workLocation.remoteFolderUp" xml:space="preserve"><value>โฟลเดอร์ด้านบน</value></data>
   <data name="workLocation.remoteFolderEmpty" xml:space="preserve"><value>ที่นี่ไม่มีโฟลเดอร์ย่อย</value></data>
   <data name="workLocation.remoteFolderUse" xml:space="preserve"><value>ใช้โฟลเดอร์นี้</value></data>
-  <data name="workLocation.connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="workLocation.connect" xml:space="preserve"><value>เชื่อมต่อ</value></data>
   <data name="workLocation.addHost" xml:space="preserve"><value>เพิ่มคอมพิวเตอร์…</value></data>
-  <data name="workLocation.useLocal" xml:space="preserve"><value>Use this computer</value></data>
+  <data name="workLocation.useLocal" xml:space="preserve"><value>ใช้คอมพิวเตอร์เครื่องนี้</value></data>
   <data name="settings.sshAlias" xml:space="preserve"><value>ชื่อแทน</value></data>
   <data name="settings.sshHostName" xml:space="preserve"><value>โฮสต์หรือ IP</value></data>
   <data name="settings.sshUser" xml:space="preserve"><value>ชื่อผู้ใช้</value></data>
@@ -444,126 +448,106 @@
   <data name="settings.sshRemove" xml:space="preserve"><value>เอาออก</value></data>
   <data name="ssh.busy" xml:space="preserve"><value>โปรดรอให้การทำงานปัจจุบันเสร็จก่อนเปลี่ยนที่ทำงาน</value></data>
   <data name="ssh.connecting" xml:space="preserve"><value>กำลังเชื่อมต่อ {0}…</value></data>
-  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Choose a remote folder before starting a task.</value></data>
+  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>เลือกโฟลเดอร์ระยะไกลก่อนเริ่มงาน</value></data>
   <data name="ssh.scanning" xml:space="preserve"><value>กำลังดึงกุญแจโฮสต์…</value></data>
   <data name="ssh.fingerprintTitle" xml:space="preserve"><value>นี่คือลายนิ้วมือของ {0} ใช่ไหม</value></data>
   <data name="ssh.fingerprintMessage" xml:space="preserve"><value>เทียบกับเซิร์ฟเวอร์ก่อนไว้ใจ และดำเนินต่อเมื่อตรงกันเท่านั้น</value></data>
   <data name="ssh.trustAndConnect" xml:space="preserve"><value>ไว้ใจและเชื่อมต่อ</value></data>
   <data name="ssh.error.unavailable" xml:space="preserve"><value>ไม่พบ ssh บน Mac เครื่องนี้</value></data>
   <data name="ssh.error.notReachable" xml:space="preserve"><value>ติดต่อ {0} ไม่ได้</value></data>
-  <data name="conversation.choosePane" xml:space="preserve"><value>Choose a pane</value></data>
-  <data name="sidebar.toggle" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.mcpServers" xml:space="preserve"><value>MCP servers</value></data>
-  <data name="mcp.empty" xml:space="preserve"><value>No MCP servers configured.</value></data>
-  <data name="mcp.addServer" xml:space="preserve"><value>Add server</value></data>
-  <data name="mcp.name" xml:space="preserve"><value>Name</value></data>
-  <data name="mcp.transport" xml:space="preserve"><value>Transport</value></data>
+  <data name="conversation.choosePane" xml:space="preserve"><value>เลือกบานหน้าต่าง</value></data>
+  <data name="sidebar.toggle" xml:space="preserve"><value>แสดงหรือซ่อนแถบด้านข้าง</value></data>
+  <data name="settings.mcpServers" xml:space="preserve"><value>เซิร์ฟเวอร์ MCP</value></data>
+  <data name="mcp.empty" xml:space="preserve"><value>ยังไม่ได้กำหนดค่าเซิร์ฟเวอร์ MCP</value></data>
+  <data name="mcp.addServer" xml:space="preserve"><value>เพิ่มเซิร์ฟเวอร์</value></data>
+  <data name="mcp.name" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="mcp.transport" xml:space="preserve"><value>การส่งข้อมูล</value></data>
   <data name="mcp.http" xml:space="preserve"><value>HTTP</value></data>
   <data name="mcp.stdio" xml:space="preserve"><value>stdio</value></data>
   <data name="mcp.url" xml:space="preserve"><value>URL</value></data>
-  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (optional)</value></data>
-  <data name="mcp.executable" xml:space="preserve"><value>Executable path</value></data>
-  <data name="mcp.arguments" xml:space="preserve"><value>Arguments (space-separated)</value></data>
-  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Auto-run tools the server marks read-only</value></data>
-  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Server annotations are untrusted. Enabling this skips approval only for tools marked read-only and not destructive.</value></data>
-  <data name="mcp.test" xml:space="preserve"><value>Test</value></data>
-  <data name="mcp.add" xml:space="preserve"><value>Add</value></data>
-  <data name="mcp.reconnect" xml:space="preserve"><value>Reconnect</value></data>
-  <data name="mcp.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="mcp.idle" xml:space="preserve"><value>Idle</value></data>
-  <data name="mcp.connecting" xml:space="preserve"><value>Connecting…</value></data>
-  <data name="mcp.connected" xml:space="preserve"><value>Connected · {0} tool(s)</value></data>
-  <data name="mcp.failed" xml:space="preserve"><value>Failed: {0}</value></data>
-  <data name="mcp.testing" xml:space="preserve"><value>Testing…</value></data>
-  <data name="mcp.testConnected" xml:space="preserve"><value>Connected. {0} tool(s) available.</value></data>
-  <data name="conversation.toolInput" xml:space="preserve"><value>Tool input</value></data>
-  <data name="settings.tab.memory" xml:space="preserve"><value>Memory</value></data>
-  <data name="memory.vault.title" xml:space="preserve"><value>Memory vault</value></data>
-  <data name="memory.refresh" xml:space="preserve"><value>Refresh</value></data>
-  <data name="memory.reveal" xml:space="preserve"><value>Open .mem folder</value></data>
-  <data name="memory.refused" xml:space="preserve"><value>Not saved. The entry may contain a credential, exceed its limit, or the workspace may be unavailable.</value></data>
-  <data name="memory.noWorkspace" xml:space="preserve"><value>Select a local workspace to view its memory.</value></data>
-  <data name="memory.notInitialized" xml:space="preserve"><value>Memory starts after the first prompt in this workspace.</value></data>
-  <data name="memory.search" xml:space="preserve"><value>Search memory</value></data>
-  <data name="memory.selectNote" xml:space="preserve"><value>Select a note to view it.</value></data>
-  <data name="memory.save" xml:space="preserve"><value>Save</value></data>
-  <data name="memory.forget" xml:space="preserve"><value>Forget</value></data>
-  <data name="memory.ownRules" xml:space="preserve"><value>Your own rules</value></data>
-  <data name="memory.rulesHelp" xml:space="preserve"><value>These rules are added to every request in this project.</value></data>
-  <data name="memory.lessons" xml:space="preserve"><value>Learned lessons</value></data>
-  <data name="memory.learningStats" xml:space="preserve"><value>{0} turns logged; {1} were corrected or undone.</value></data>
-  <data name="memory.links" xml:space="preserve"><value>Links</value></data>
-  <data name="memory.backlinks" xml:space="preserve"><value>Linked mentions</value></data>
-  <data name="memory.userAuthored" xml:space="preserve"><value>user-authored</value></data>
-  <data name="memory.inferred" xml:space="preserve"><value>inferred</value></data>
-  <data name="memory.learnedCount" xml:space="preserve"><value>learned {0}×</value></data>
-  <data name="memory.usedCount" xml:space="preserve"><value>used {0}×</value></data>
-  <data name="memory.inactive" xml:space="preserve"><value>no longer applied</value></data>
-  <data name="memory.pin" xml:space="preserve"><value>Pin</value></data>
-  <data name="memory.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="memory.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="settings.tab.access" xml:space="preserve"><value>Workspace access</value></data>
-  <data name="access.currentActor" xml:space="preserve"><value>Current actor</value></data>
-  <data name="access.role" xml:space="preserve"><value>Role</value></data>
-  <data name="access.notAuthorized" xml:space="preserve"><value>Not authorized</value></data>
-  <data name="access.score" xml:space="preserve"><value>Score</value></data>
-  <data name="access.device" xml:space="preserve"><value>Device</value></data>
-  <data name="access.publicKey" xml:space="preserve"><value>Public key</value></data>
-  <data name="access.memoryRevision" xml:space="preserve"><value>Memory revision</value></data>
-  <data name="access.members" xml:space="preserve"><value>Members</value></data>
-  <data name="access.noMembers" xml:space="preserve"><value>No members yet.</value></data>
-  <data name="access.revoke" xml:space="preserve"><value>Revoke</value></data>
-  <data name="access.revoked" xml:space="preserve"><value>revoked</value></data>
-  <data name="access.inviteDevice" xml:space="preserve"><value>Invite device</value></data>
-  <data name="access.displayName" xml:space="preserve"><value>Display name</value></data>
-  <data name="access.newDevicePublicKey" xml:space="preserve"><value>New device public key</value></data>
-  <data name="access.createInvitation" xml:space="preserve"><value>Create signed invitation</value></data>
-  <data name="access.acceptInvitation" xml:space="preserve"><value>Accept invitation</value></data>
-  <data name="access.signedInvitation" xml:space="preserve"><value>Signed invitation</value></data>
-  <data name="access.accept" xml:space="preserve"><value>Accept</value></data>
-  <data name="access.reject" xml:space="preserve"><value>Reject</value></data>
-  <data name="access.pendingDecisions" xml:space="preserve"><value>Pending decisions</value></data>
-  <data name="access.noPendingDecisions" xml:space="preserve"><value>No pending project decisions.</value></data>
-  <data name="access.noWorkspace" xml:space="preserve"><value>Select a local workspace to manage access.</value></data>
-  <data name="access.scoreValue" xml:space="preserve"><value>Score: {0}</value></data>
-  <data name="access.initialize" xml:space="preserve"><value>Initialize workspace memory</value></data>
-  <data name="access.initializeHelp" xml:space="preserve"><value>Workspace access uses a signed memory log. Initializing creates the owner identity and event log in this project's .mem folder.</value></data>
-  <data name="access.role.owner" xml:space="preserve"><value>Owner</value></data>
-  <data name="access.role.approver" xml:space="preserve"><value>Approver</value></data>
-  <data name="access.role.contributor" xml:space="preserve"><value>Contributor</value></data>
-  <data name="access.role.observer" xml:space="preserve"><value>Observer</value></data>
-  <data name="settings.sandbox" xml:space="preserve"><value>Sandbox</value></data>
-  <data name="settings.sandboxOff" xml:space="preserve"><value>Off — the agent works directly in your checkout.</value></data>
-  <data name="settings.sandboxOn" xml:space="preserve"><value>On — the agent works in a separate git worktree.</value></data>
-  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Recovery is required before sandbox operations can continue.</value></data>
-  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Retry recovery</value></data>
-  <data name="settings.sandboxName" xml:space="preserve"><value>Name</value></data>
-  <data name="settings.sandboxEnter" xml:space="preserve"><value>Start sandbox</value></data>
-  <data name="settings.sandboxMerge" xml:space="preserve"><value>Merge and exit</value></data>
-  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Discard and exit</value></data>
-  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Origin</value></data>
-  <data name="settings.sandboxBranch" xml:space="preserve"><value>Branch</value></data>
-  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Allow network for new processes</value></data>
-  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>This applies only to new commands. Existing terminal sessions keep their current policy.</value></data>
-  <data name="settings.sandboxOpen" xml:space="preserve"><value>Open sandbox</value></data>
-  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Open origin</value></data>
-  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Conflicts</value></data>
-  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Prepare resolution</value></data>
-  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Ask agent</value></data>
-  <data name="settings.sandboxPreview" xml:space="preserve"><value>Refresh preview</value></data>
-  <data name="settings.sandboxApprove" xml:space="preserve"><value>Approve and merge</value></data>
-  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Cancel resolution</value></data>
-  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Retry cleanup</value></data>
-  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Discard this sandbox? Its branch will be kept for recovery, but its worktree will be removed.</value></data>
-  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Approval requires a complete preview with no unresolved files.</value></data>
-  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Resolution preview</value></data>
-  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Unresolved files</value></data>
-  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>Origin HEAD</value></data>
-  <data name="settings.sandboxHead" xml:space="preserve"><value>Sandbox HEAD</value></data>
-  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Preview fingerprint</value></data>
-  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Sandbox cleanup is still pending; the origin was not changed again.</value></data>
-  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Saved sandboxes</value></data>
-  <data name="settings.sandboxRecover" xml:space="preserve"><value>Recover</value></data>
+  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (ไม่บังคับ)</value></data>
+  <data name="mcp.executable" xml:space="preserve"><value>พาธไฟล์ปฏิบัติการ</value></data>
+  <data name="mcp.arguments" xml:space="preserve"><value>อาร์กิวเมนต์ (คั่นด้วยช่องว่าง)</value></data>
+  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>เรียกใช้เครื่องมือที่เซิร์ฟเวอร์ระบุว่าอ่านอย่างเดียวโดยอัตโนมัติ</value></data>
+  <data name="mcp.autoRunHelp" xml:space="preserve"><value>คำอธิบายประกอบของเซิร์ฟเวอร์ไม่น่าเชื่อถือ การเปิดใช้จะข้ามการอนุมัติเฉพาะเครื่องมือที่ทำเครื่องหมายว่าอ่านอย่างเดียวและไม่ทำลายเท่านั้น</value></data>
+  <data name="mcp.test" xml:space="preserve"><value>ทดสอบ</value></data>
+  <data name="mcp.add" xml:space="preserve"><value>เพิ่มเซิร์ฟเวอร์</value></data>
+  <data name="mcp.reconnect" xml:space="preserve"><value>เชื่อมต่อใหม่</value></data>
+  <data name="mcp.remove" xml:space="preserve"><value>นำออก</value></data>
+  <data name="mcp.idle" xml:space="preserve"><value>ว่าง</value></data>
+  <data name="mcp.connecting" xml:space="preserve"><value>กำลังเชื่อมต่อ…</value></data>
+  <data name="mcp.connected" xml:space="preserve"><value>เชื่อมต่อแล้ว · {0} เครื่องมือ</value></data>
+  <data name="mcp.failed" xml:space="preserve"><value>ล้มเหลว: {0}</value></data>
+  <data name="mcp.testing" xml:space="preserve"><value>กำลังทดสอบ…</value></data>
+  <data name="mcp.testConnected" xml:space="preserve"><value>เชื่อมต่อแล้ว มี {0} เครื่องมือพร้อมใช้</value></data>
+  <data name="conversation.toolInput" xml:space="preserve"><value>อินพุตเครื่องมือ</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>หน่วยความจำ</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>คลังหน่วยความจำ</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>รีเฟรช</value></data>
+  <data name="memory.enabled" xml:space="preserve"><value>เปิดหน่วยความจำ</value></data>
+  <data name="memory.scanFrequency" xml:space="preserve"><value>ความถี่ในการสแกน</value></data>
+  <data name="memory.scan.off" xml:space="preserve"><value>ปิด</value></data>
+  <data name="memory.scan.hourly" xml:space="preserve"><value>ทุกชั่วโมง</value></data>
+  <data name="memory.scan.daily" xml:space="preserve"><value>ทุกวัน</value></data>
+  <data name="memory.scan.weekly" xml:space="preserve"><value>ทุกสัปดาห์</value></data>
+  <data name="memory.enabledHelp" xml:space="preserve"><value>เมื่อปิด จะไม่มีการจดบันทึกงาน ไม่มีการเรียนรู้ และไม่มีการส่งข้อค้นพบไปยังโมเดล สิ่งที่บันทึกไว้แล้วจะยังอยู่บนดิสก์</value></data>
+  <data name="memory.scanHelp" xml:space="preserve"><value>บันทึกงานแบบย่อจะถูกเก็บไว้เพื่อให้เรียกดูเหตุผลของข้อค้นพบได้หลังการสแกน เมื่อปิดการสแกน จะไม่มีการเรียกโมเดลในเบื้องหลัง</value></data>
+  <data name="memory.reveal" xml:space="preserve"><value>เปิดโฟลเดอร์ .mem</value></data>
+  <data name="memory.refused" xml:space="preserve"><value>ไม่ได้บันทึก รายการอาจมีข้อมูลรับรอง เกินขีดจำกัด หรือเวิร์กสเปซอาจไม่พร้อมใช้งาน</value></data>
+  <data name="memory.noWorkspace" xml:space="preserve"><value>เลือกเวิร์กสเปซในเครื่องเพื่อดูหน่วยความจำ</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>หน่วยความจำจะเริ่มหลังพรอมต์แรกในเวิร์กสเปซนี้</value></data>
+  <data name="memory.search" xml:space="preserve"><value>ค้นหาหน่วยความจำ</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>เลือกโน้ตเพื่อดู</value></data>
+  <data name="memory.save" xml:space="preserve"><value>บันทึก</value></data>
+  <data name="memory.forget" xml:space="preserve"><value>ลืม</value></data>
+  <data name="memory.ownRules" xml:space="preserve"><value>กฎของคุณเอง</value></data>
+  <data name="memory.rulesHelp" xml:space="preserve"><value>กฎเหล่านี้จะถูกเพิ่มในทุกคำขอของโปรเจกต์นี้</value></data>
+  <data name="memory.lessons" xml:space="preserve"><value>บทเรียนที่ได้</value></data>
+  <data name="memory.learningStats" xml:space="preserve"><value>บันทึก {0} รอบ; {1} รอบถูกแก้ไขหรือเลิกทำ</value></data>
+  <data name="memory.links" xml:space="preserve"><value>ลิงก์</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>การกล่าวถึงที่เชื่อมโยง</value></data>
+  <data name="memory.userAuthored" xml:space="preserve"><value>ผู้ใช้เขียน</value></data>
+  <data name="memory.inferred" xml:space="preserve"><value>อนุมาน</value></data>
+  <data name="memory.learnedCount" xml:space="preserve"><value>เรียนรู้ {0}×</value></data>
+  <data name="memory.usedCount" xml:space="preserve"><value>ใช้ {0}×</value></data>
+  <data name="memory.inactive" xml:space="preserve"><value>ไม่ได้ใช้อีกต่อไป</value></data>
+  <data name="memory.pin" xml:space="preserve"><value>ปักหมุด</value></data>
+  <data name="memory.edit" xml:space="preserve"><value>แก้ไข</value></data>
+  <data name="memory.cancel" xml:space="preserve"><value>ยกเลิก</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>การเข้าถึงเวิร์กสเปซ</value></data>
+  <data name="access.accept" xml:space="preserve"><value>ยอมรับ</value></data>
+  <data name="settings.sandbox" xml:space="preserve"><value>แซนด์บ็อกซ์</value></data>
+  <data name="settings.sandboxOff" xml:space="preserve"><value>ปิด — เอเจนต์ทำงานในเช็กเอาต์ของคุณโดยตรง</value></data>
+  <data name="settings.sandboxOn" xml:space="preserve"><value>เปิด — เอเจนต์ทำงานใน git worktree แยก</value></data>
+  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>ต้องกู้คืนก่อนจึงจะดำเนินการกับแซนด์บ็อกซ์ต่อได้</value></data>
+  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>ลองกู้คืนอีกครั้ง</value></data>
+  <data name="settings.sandboxName" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="settings.sandboxEnter" xml:space="preserve"><value>เริ่มแซนด์บ็อกซ์</value></data>
+  <data name="settings.sandboxMerge" xml:space="preserve"><value>ผสานและออก</value></data>
+  <data name="settings.sandboxDiscard" xml:space="preserve"><value>ละทิ้งและออก</value></data>
+  <data name="settings.sandboxOrigin" xml:space="preserve"><value>ต้นทาง</value></data>
+  <data name="settings.sandboxBranch" xml:space="preserve"><value>สาขา</value></data>
+  <data name="settings.sandboxNetwork" xml:space="preserve"><value>อนุญาตเครือข่ายสำหรับโปรเซสใหม่</value></data>
+  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>มีผลกับคำสั่งใหม่เท่านั้น เซสชันเทอร์มินัลที่มีอยู่จะใช้นโยบายปัจจุบันต่อไป</value></data>
+  <data name="settings.sandboxOpen" xml:space="preserve"><value>เปิดแซนด์บ็อกซ์</value></data>
+  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>เปิดต้นทาง</value></data>
+  <data name="settings.sandboxConflicts" xml:space="preserve"><value>ข้อขัดแย้ง</value></data>
+  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>เตรียมการแก้ไข</value></data>
+  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>ถามเอเจนต์</value></data>
+  <data name="settings.sandboxPreview" xml:space="preserve"><value>รีเฟรชตัวอย่าง</value></data>
+  <data name="settings.sandboxApprove" xml:space="preserve"><value>อนุมัติและผสาน</value></data>
+  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>ยกเลิกการแก้ไข</value></data>
+  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>ลองล้างอีกครั้ง</value></data>
+  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>ละทิ้งแซนด์บ็อกซ์นี้หรือไม่ บรานช์จะถูกเก็บไว้เพื่อกู้คืน แต่ worktree จะถูกลบ</value></data>
+  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>การอนุมัติต้องมีตัวอย่างที่สมบูรณ์และไม่มีไฟล์ที่ยังไม่ได้แก้ไข</value></data>
+  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>ตัวอย่างการแก้ไข</value></data>
+  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>ไฟล์ที่ยังไม่ได้แก้ไข</value></data>
+  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>HEAD ของต้นทาง</value></data>
+  <data name="settings.sandboxHead" xml:space="preserve"><value>HEAD ของแซนด์บ็อกซ์</value></data>
+  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>ลายนิ้วมือตัวอย่าง</value></data>
+  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>การล้างแซนด์บ็อกซ์ยังค้างอยู่ ต้นทางไม่ได้ถูกเปลี่ยนอีก</value></data>
+  <data name="settings.sandboxRecovery" xml:space="preserve"><value>แซนด์บ็อกซ์ที่บันทึกไว้</value></data>
+  <data name="settings.sandboxRecover" xml:space="preserve"><value>กู้คืน</value></data>
   <data name="conversation.accountSwitched.notice" xml:space="preserve"><value>แชทนี้ย้ายไปใช้อีกบัญชีหนึ่งบนโมเดลเดิม แคชในบัญชีนั้นเริ่มต้นใหม่ทั้งหมด หากใช้งานต่ออาจใช้โทเค็นมากขึ้นและมีค่าใช้จ่ายสูงขึ้น</value></data>
   <data name="conversation.modelSwitched.notice" xml:space="preserve"><value>มีการเปลี่ยนโมเดล แคชจะไม่ถูกนำไปใช้กับโมเดลใหม่ ประวัติทั้งหมดจะถูกประมวลผลใหม่ ซึ่งอาจใช้โทเค็นมากขึ้นและมีค่าใช้จ่ายสูงขึ้น</value></data>
   <data name="conversation.contextFull.notice" xml:space="preserve"><value>หน้าต่างบริบทใกล้เต็มแล้ว หากใช้งานต่ออาจใช้โทเค็นมากขึ้นและมีค่าใช้จ่ายสูงขึ้น เริ่มแชทใหม่พร้อมสรุปสั้น ๆ</value></data>
@@ -574,28 +558,28 @@
   <data name="context.overflowCompress" xml:space="preserve"><value>บีบอัดแล้วดำเนินการต่อ</value></data>
   <data name="context.overflowNotNow" xml:space="preserve"><value>ยังไม่ใช่ตอนนี้</value></data>
   <data name="context.overflowDeclined" xml:space="preserve"><value>หยุดส่งแล้ว: การสนทนาใส่ในโมเดลใหม่ไม่พอ</value></data>
-  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>When another chat is writing the same file</value></data>
-  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Wait before asking</value></data>
-  <data name="settings.conflictWaitValue" xml:space="preserve"><value>Wait {0} seconds</value></data>
-  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Wait, then ask</value></data>
-  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>A chat that wants a file another chat is writing waits quietly, and asks only if the wait goes on too long.</value></data>
-  <data name="conflict.policy.ask" xml:space="preserve"><value>Ask me</value></data>
-  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Ask as soon as two chats want the same file.</value></data>
-  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Always wait</value></data>
-  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Never ask: a write waits for the chat that holds the file.</value></data>
-  <data name="conflict.title" xml:space="preserve"><value>A file is busy: {0}</value></data>
-  <data name="conflict.wholeProject" xml:space="preserve"><value>Project command: {0}</value></data>
-  <data name="conflict.stillBusy" xml:space="preserve"><value>Write held back: another chat is still writing {0}.</value></data>
-  <data name="conflict.userSkipped" xml:space="preserve"><value>Write skipped: {0} was left with the other chat ({1}), as you asked.</value></data>
-  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Stopped {0} so this chat could write.</value></data>
-  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Stopped other chats so this chat could write.</value></data>
-  <data name="conflict.banner.title" xml:space="preserve"><value>Another chat is writing this file</value></data>
-  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · held by “{1}” for {2} seconds</value></data>
-  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Keep waiting</value></data>
-  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Stop {0}</value></data>
-  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Stop all other chats</value></data>
-  <data name="conflict.banner.skip" xml:space="preserve"><value>Skip this write</value></data>
-  <data name="conflict.waiting" xml:space="preserve"><value>Waiting for “{0}” to finish writing: {1}</value></data>
+  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>หากแชตอื่นกำลังเขียนไฟล์เดียวกัน</value></data>
+  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>รอ ก่อนถาม</value></data>
+  <data name="settings.conflictWaitValue" xml:space="preserve"><value>{0} วินาที</value></data>
+  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>รอ แล้วค่อยถาม</value></data>
+  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>รออีกแชตอย่างเงียบ ๆ และจะถามเฉพาะเมื่อรอนานเกินไป</value></data>
+  <data name="conflict.policy.ask" xml:space="preserve"><value>ถามฉัน</value></data>
+  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>ถามทันทีเมื่อสองแชตต้องการไฟล์เดียวกัน</value></data>
+  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>รอเสมอ</value></data>
+  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>ไม่ถาม: การเขียนแต่ละครั้งรอแชตที่ถือไฟล์อยู่</value></data>
+  <data name="conflict.title" xml:space="preserve"><value>แชตอื่นกำลังเขียน {0}</value></data>
+  <data name="conflict.wholeProject" xml:space="preserve"><value>โปรเจกต์ทั้งหมด (คำสั่ง: {0})</value></data>
+  <data name="conflict.stillBusy" xml:space="preserve"><value>ระงับการเขียน: {0} ยังถูกเขียนโดยแชตอื่น</value></data>
+  <data name="conflict.userSkipped" xml:space="preserve"><value>ข้ามการเขียน: {0} ยังคงอยู่กับแชตอื่น ({1}) ตามที่ขอ</value></data>
+  <data name="conflict.stoppedHolder" xml:space="preserve"><value>หยุดแชต “{0}” ตามที่คุณขอ และการเขียนนี้ดำเนินต่อ</value></data>
+  <data name="conflict.stoppedOthers" xml:space="preserve"><value>หยุดแชตอื่นของโปรเจกต์นี้ตามที่คุณขอ และการเขียนนี้ดำเนินต่อ</value></data>
+  <data name="conflict.banner.title" xml:space="preserve"><value>แชตอื่นกำลังเขียนไฟล์นี้</value></data>
+  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · “{1}” ถือไว้ {2} วินาที</value></data>
+  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>รอต่อไป</value></data>
+  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>หยุดแชตนั้น</value></data>
+  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>หยุดแชตอื่นทั้งหมด</value></data>
+  <data name="conflict.banner.skip" xml:space="preserve"><value>ข้ามการเขียนนี้</value></data>
+  <data name="conflict.waiting" xml:space="preserve"><value>กำลังรอ “{0}” เขียน: {1}</value></data>
   <data name="usage.context.button" xml:space="preserve"><value>การใช้งาน</value></data>
   <data name="usage.context.tooltip" xml:space="preserve"><value>การใช้งานบริบทและโทเค็น</value></data>
   <data name="usage.context.latestRequest" xml:space="preserve"><value>คำขอล่าสุด · หน้าต่างบริบท</value></data>
@@ -605,34 +589,738 @@
   <data name="usage.context.notReported" xml:space="preserve"><value>ผู้ให้บริการไม่ได้รายงาน</value></data>
   <data name="usage.context.estimatedBreakdown" xml:space="preserve"><value>รายละเอียดอินพุตโดยประมาณ</value></data>
   <data name="usage.context.tokens" xml:space="preserve"><value>โทเค็น</value></data>
-  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} tokens ({2})</value></data>
-  <data name="usage.context.notAvailable" xml:space="preserve"><value>Context usage is not available yet.</value></data>
-  <data name="usage.context.composition" xml:space="preserve"><value>Estimated input composition</value></data>
+  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} โทเค็น ({2})</value></data>
+  <data name="usage.context.notAvailable" xml:space="preserve"><value>ยังไม่มีข้อมูลการใช้บริบท</value></data>
+  <data name="usage.context.composition" xml:space="preserve"><value>องค์ประกอบอินพุตโดยประมาณ</value></data>
   <data name="usage.context.estimatedRow" xml:space="preserve"><value>{0}: {1} ({2})</value></data>
   <data name="usage.context.conversation" xml:space="preserve"><value>ข้อความแชต</value></data>
   <data name="usage.context.systemPrompt" xml:space="preserve"><value>คำสั่งระบบ</value></data>
   <data name="usage.context.toolDefinitions" xml:space="preserve"><value>คำจำกัดความเครื่องมือ</value></data>
   <data name="usage.context.mcpDefinitions" xml:space="preserve"><value>คำจำกัดความเครื่องมือ MCP</value></data>
-  <data name="usage.context.cacheHit" xml:space="preserve"><value>Measured cache hit</value></data>
-  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Verified prefix reuse: {0} · {1} / {2} tokens</value></data>
-  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Measurement coverage: {0} · {1} of {2} eligible requests</value></data>
-  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Cold: {0} · expired: {1} · changed: {2}</value></data>
-  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Cache writes: {0} tokens</value></data>
-  <data name="usage.context.freshInput" xml:space="preserve"><value>Fresh input: {0} tokens</value></data>
-  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Reuse not reported: {0} of {1} eligible requests</value></data>
-  <data name="usage.context.latency" xml:space="preserve"><value>Average request latency: {0}</value></data>
-  <data name="usage.context.prepare" xml:space="preserve"><value>Average request preparation: {0}</value></data>
-  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Largest cache loss: {0} ({1} tokens)</value></data>
-  <data name="settings.shortcuts" xml:space="preserve"><value>Keyboard shortcuts</value></data>
-  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Select a shortcut to change it. Press a key combination with at least one modifier.</value></data>
-  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Press keys…</value></data>
-  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Restore defaults</value></data>
-  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} is already assigned to {1}.</value></data>
-  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull requests</value></data>
-  <data name="conversation.review" xml:space="preserve"><value>Review</value></data>
-  <data name="conversation.files" xml:space="preserve"><value>Files</value></data>
-  <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
-  <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
-  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} โทเค็น</value></data>
+  <data name="usage.context.cacheHit" xml:space="preserve"><value>แคชฮิตที่วัดได้</value></data>
+  <data name="usage.context.cacheReuse" xml:space="preserve"><value>การใช้คำนำหน้าซ้ำที่ยืนยันแล้ว: {0} · {1} / {2} โทเค็น</value></data>
+  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>ความครอบคลุมการวัด: {0} · {1} จาก {2} คำขอที่เข้าเกณฑ์</value></data>
+  <data name="usage.context.cacheStatus" xml:space="preserve"><value>เย็น: {0} · หมดอายุ: {1} · เปลี่ยนแปลง: {2}</value></data>
+  <data name="usage.context.cacheWrite" xml:space="preserve"><value>การเขียนแคช: {0} โทเค็น</value></data>
+  <data name="usage.context.freshInput" xml:space="preserve"><value>อินพุตใหม่: {0} โทเค็น</value></data>
+  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>ไม่มีการรายงานการใช้ซ้ำ: {0} จาก {1} คำขอที่เข้าเกณฑ์</value></data>
+  <data name="usage.context.latency" xml:space="preserve"><value>เวลาแฝงคำขอเฉลี่ย: {0}</value></data>
+  <data name="usage.context.prepare" xml:space="preserve"><value>เวลาเตรียมคำขอเฉลี่ย: {0}</value></data>
+  <data name="usage.context.cacheLoss" xml:space="preserve"><value>การสูญเสียแคชมากที่สุด: {0} ({1} โทเค็น)</value></data>
+  <data name="settings.shortcuts" xml:space="preserve"><value>แป้นพิมพ์ลัด</value></data>
+  <data name="settings.shortcuts.hint" xml:space="preserve"><value>เลือกแป้นพิมพ์ลัดเพื่อเปลี่ยน กดชุดแป้นที่มีปุ่มปรับแต่งอย่างน้อยหนึ่งปุ่ม</value></data>
+  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>แสดงหรือซ่อนแถบด้านข้าง</value></data>
+  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>กดแป้น…</value></data>
+  <data name="settings.shortcuts.reset" xml:space="preserve"><value>คืนค่าเริ่มต้น</value></data>
+  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} ถูกกำหนดให้กับ {1} แล้ว</value></data>
+  <data name="sidebar.pullRequests" xml:space="preserve"><value>พูลรีเควสต์</value></data>
+  <data name="conversation.review" xml:space="preserve"><value>รีวิว</value></data>
+  <data name="conversation.files" xml:space="preserve"><value>ไฟล์</value></data>
+  <data name="conversation.browser" xml:space="preserve"><value>เบราว์เซอร์</value></data>
+  <data name="conversation.newChat" xml:space="preserve"><value>บทสนทนาใหม่</value></data>
+  <data name="conversation.processedTokensCount" xml:space="preserve"><value>ประมวลผลใหม่ {0} โทเค็น</value></data>
+  <data name="settings.skillSuggestions" xml:space="preserve"><value>แสดงคำแนะนำทักษะ</value></data>
+  <data name="settings.skillSuggestions.hint" xml:space="preserve"><value>แนะนำทักษะเฉพาะเมื่อบทเรียนเดียวกันถูกเรียนรู้สามครั้ง หรือเอเจนต์ทำเวิร์กโฟลว์ที่คุณจะต้องใช้อีกเสร็จ สูงสุดสัปดาห์ละหนึ่งการ์ด ปิด: จะไม่มีการ์ดแนะนำ และเอเจนต์จะไม่เสนอทักษะ</value></data>
+  <data name="skill.suggestion.title" xml:space="preserve"><value>ทักษะที่แนะนำ: {0}</value></data>
+  <data name="skill.suggestion.create" xml:space="preserve"><value>สร้างทักษะ</value></data>
+  <data name="skill.suggestion.dismiss" xml:space="preserve"><value>ไว้ก่อน</value></data>
+  <data name="settings.autoAccountFailover" xml:space="preserve"><value>ลองใช้บัญชีอื่นโดยอัตโนมัติเมื่อถึงขีดจำกัด</value></data>
+  <data name="settings.autoAccountFailover.hint" xml:space="preserve"><value>เมื่อปิดอยู่ แชทจะหยุดชั่วคราว กด ดำเนินการต่อ เพื่อลองใช้บัญชีอื่นที่เข้ากันได้ เมื่อเปิดอยู่ บัญชีที่เข้ากันได้จะถูกลองโดยอัตโนมัติ</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>ป้อนขนาดบริบทเฉพาะของโมเดลเป็นโทเค็น อัตโนมัติจะใช้ขนาดที่รายงานหรือระบุไว้ของโมเดลหากมี จากนั้นจึงใช้ค่าที่กำหนดค่าไว้ของบัญชี</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>ค้นหาโมเดล</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>ค่าอัตโนมัติ: {0} โทเค็น</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>ผู้ให้บริการไม่ได้รายงานขนาดบริบท</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>ยังไม่มีโมเดลที่ใช้งานได้ โปรดเชื่อมต่อผู้ให้บริการหรือรีเฟรชรายการโมเดล</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>บันทึกแล้ว</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>อัตโนมัติ</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>ป้อนจำนวนโทเค็นเป็นจำนวนเต็มบวก</value></data>
+  <data name="attachment.files" xml:space="preserve"><value>ไฟล์หรือรูปภาพ</value></data>
+  <data name="attachment.project" xml:space="preserve"><value>ทำงานในโครงการ</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>บีบอัดบริบทโดยอัตโนมัติแล้ว</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>อ่านไฟล์แล้ว</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>ไฟล์ที่แก้ไขแล้ว</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>เรียกใช้คำสั่งแล้ว</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>ค้นหาบนเว็บแล้ว</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>กำลังอ่านไฟล์…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>กำลังแก้ไขไฟล์…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>กำลังเรียกใช้คำสั่ง…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>กำลังค้นหาบนเว็บ…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>ใช้เครื่องมือแล้ว</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>กำลังเรียกใช้เครื่องมือ…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>เครื่องมือล้มเหลว: {0}</value></data>
+  <data name="tasks.menu" xml:space="preserve"><value>งาน</value></data>
+  <data name="tasks.title" xml:space="preserve"><value>งานที่กำหนดเวลาไว้</value></data>
+  <data name="tasks.subtitle" xml:space="preserve"><value>เรียกใช้พร้อมท์ตามกำหนดเวลา cron</value></data>
+  <data name="tasks.empty" xml:space="preserve"><value>ยังไม่มีงาน</value></data>
+  <data name="tasks.add" xml:space="preserve"><value>เพิ่มงาน</value></data>
+  <data name="tasks.edit" xml:space="preserve"><value>แก้ไขงาน</value></data>
+  <data name="tasks.delete" xml:space="preserve"><value>ลบ</value></data>
+  <data name="tasks.runNow" xml:space="preserve"><value>เรียกใช้ตอนนี้</value></data>
+  <data name="tasks.enabled" xml:space="preserve"><value>เปิดใช้งานแล้ว</value></data>
+  <data name="tasks.field.name" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="tasks.field.cron" xml:space="preserve"><value>การแสดงออกของครอน</value></data>
+  <data name="tasks.field.prompt" xml:space="preserve"><value>พรอมต์</value></data>
+  <data name="tasks.field.workspace" xml:space="preserve"><value>พื้นที่ทำงาน</value></data>
+  <data name="tasks.cron.invalid" xml:space="preserve"><value>นิพจน์ cron ไม่ถูกต้อง</value></data>
+  <data name="tasks.cron.next" xml:space="preserve"><value>การเรียกใช้ครั้งถัดไป</value></data>
+  <data name="tasks.close" xml:space="preserve"><value>ปิดงาน</value></data>
+  <data name="tasks.back" xml:space="preserve"><value>ย้อนกลับ</value></data>
+  <data name="tasks.new" xml:space="preserve"><value>งานใหม่</value></data>
+  <data name="tasks.active" xml:space="preserve"><value>งานของคุณ</value></data>
+  <data name="tasks.disabled" xml:space="preserve"><value>ปิดใช้งาน</value></data>
+  <data name="tasks.suggestions" xml:space="preserve"><value>คำแนะนำ</value></data>
+  <data name="tasks.history" xml:space="preserve"><value>การเรียกใช้ล่าสุด</value></data>
+  <data name="tasks.history.empty" xml:space="preserve"><value>งานนี้ยังไม่เคยเรียกใช้</value></data>
+  <data name="tasks.field.target" xml:space="preserve"><value>ไฟล์หรือโฟลเดอร์เป้าหมาย</value></data>
+  <data name="tasks.field.targetHint" xml:space="preserve"><value>เส้นทางเสริมภายในเวิร์กสเปซ</value></data>
+  <data name="tasks.target.invalid" xml:space="preserve"><value>เป้าหมายต้องอยู่ภายในเวิร์กสเปซ</value></data>
+  <data name="tasks.field.model" xml:space="preserve"><value>โมเดล</value></data>
+  <data name="tasks.field.fallback" xml:space="preserve"><value>โมเดลสำรอง</value></data>
+  <data name="tasks.network" xml:space="preserve"><value>อนุญาตการเข้าถึงเครือข่าย</value></data>
+  <data name="tasks.assistant.title" xml:space="preserve"><value>ผู้ช่วยงาน</value></data>
+  <data name="tasks.assistant.placeholder" xml:space="preserve"><value>ขอให้เปลี่ยนงานนี้…</value></data>
+  <data name="tasks.assistant.updated" xml:space="preserve"><value>อัปเดตงานแล้ว</value></data>
+  <data name="tasks.notification.title" xml:space="preserve"><value>งานที่กำหนดเวลาไว้</value></data>
+  <data name="tasks.notification.completed" xml:space="preserve"><value>เสร็จสิ้น</value></data>
+  <data name="tasks.notification.failed" xml:space="preserve"><value>ล้มเหลว</value></data>
+  <data name="tasks.notification.fallback" xml:space="preserve"><value>ใช้โมเดลสำรอง</value></data>
+  <data name="tasks.suggestion.daily.title" xml:space="preserve"><value>สรุปรายวัน</value></data>
+  <data name="tasks.suggestion.daily.detail" xml:space="preserve"><value>สรุปงานล่าสุด ลำดับความสำคัญที่ค้างอยู่ และการเปลี่ยนแปลงในเวิร์กสเปซ</value></data>
+  <data name="tasks.suggestion.daily.schedule" xml:space="preserve"><value>วันธรรมดาเวลา 8:00 น.</value></data>
+  <data name="tasks.suggestion.daily.prompt" xml:space="preserve"><value>ตรวจสอบการสนทนาล่าสุดและการเปลี่ยนแปลงในเวิร์กสเปซ สรุปลำดับความสำคัญที่สำคัญที่สุดสำหรับวันนี้</value></data>
+  <data name="tasks.suggestion.weekly.title" xml:space="preserve"><value>รีวิวรายสัปดาห์</value></data>
+  <data name="tasks.suggestion.weekly.detail" xml:space="preserve"><value>เปลี่ยนงานล่าสุดเป็นอัปเดตสถานะแบบกระชับทุกวันศุกร์</value></data>
+  <data name="tasks.suggestion.weekly.schedule" xml:space="preserve"><value>วันศุกร์เวลา 16:00 น.</value></data>
+  <data name="tasks.suggestion.weekly.prompt" xml:space="preserve"><value>ตรวจสอบการสนทนาและการเปลี่ยนแปลงในเวิร์กสเปซสัปดาห์นี้ เขียนอัปเดตสถานะแบบกระชับที่มีงานที่เสร็จแล้ว ความเสี่ยง และขั้นตอนถัดไป</value></data>
+  <data name="tasks.suggestion.followup.title" xml:space="preserve"><value>ตัวตรวจสอบการติดตาม</value></data>
+  <data name="tasks.suggestion.followup.detail" xml:space="preserve"><value>ตรวจสอบกิจกรรมล่าสุดและทำเครื่องหมายสิ่งที่ต้องให้ความสนใจ</value></data>
+  <data name="tasks.suggestion.followup.schedule" xml:space="preserve"><value>วันธรรมดาเวลา 9:00 น.</value></data>
+  <data name="tasks.suggestion.followup.prompt" xml:space="preserve"><value>ตรวจสอบกิจกรรมงานและเวิร์กสเปซล่าสุด ทำเครื่องหมายงานที่ยังไม่เสร็จ การเรียกใช้ที่ล้มเหลว และสิ่งที่ต้องให้ความสนใจ</value></data>
+  <data name="tasks.lastRun" xml:space="preserve"><value>วิ่งครั้งสุดท้าย</value></data>
+  <data name="tasks.state.never" xml:space="preserve"><value>ไม่เคยวิ่ง</value></data>
+  <data name="tasks.state.running" xml:space="preserve"><value>กำลังดำเนินการ...</value></data>
+  <data name="tasks.state.ok" xml:space="preserve"><value>ประสบความสำเร็จ</value></data>
+  <data name="tasks.state.failed" xml:space="preserve"><value>ล้มเหลว</value></data>
+  <data name="tasks.openConversation" xml:space="preserve"><value>เปิดการสนทนา</value></data>
+  <data name="tasks.save" xml:space="preserve"><value>บันทึก</value></data>
+  <data name="tasks.cancel" xml:space="preserve"><value>ยกเลิก</value></data>
+  <data name="tasks.background" xml:space="preserve"><value>เรียกใช้งานในขณะที่แอปปิดอยู่</value></data>
+  <data name="tasks.background.hint" xml:space="preserve"><value>ติดตั้งตัวช่วยเบื้องหลัง (เปิดตัว) ที่รันงานที่ครบกำหนดแม้ว่าจะไม่ได้เปิด Dots Harness ก็ตาม</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>แผนที่</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>ดัชนี</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>งาน</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>การตัดสินใจ</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>การตั้งค่า</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>บทสนทนา</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>ไม่มีการกล่าวถึงที่เชื่อมโยง</value></data>
+  <data name="memory.graph" xml:space="preserve"><value>กราฟ</value></data>
+  <data name="media.image" xml:space="preserve"><value>รูปภาพ</value></data>
+  <data name="media.video" xml:space="preserve"><value>วิดีโอ</value></data>
+  <data name="media.audio" xml:space="preserve"><value>เสียง</value></data>
+  <data name="media.promptMissing" xml:space="preserve"><value>อธิบายสิ่งที่จะสร้างหลังจากคำสั่ง</value></data>
+  <data name="media.promptMissingFor" xml:space="preserve"><value>อธิบาย {0} ที่จะสร้างหลังจากคำสั่ง</value></data>
+  <data name="media.modelMissing" xml:space="preserve"><value>ไม่ได้กำหนดค่าโมเดลผู้ให้บริการสื่อ</value></data>
+  <data name="media.noOutput" xml:space="preserve"><value>ผู้ให้บริการส่งคืนไม่มีเอาต์พุตสื่อ</value></data>
+  <data name="media.invalidOutput" xml:space="preserve"><value>ผู้ให้บริการส่งคืนข้อมูลสื่อที่ไม่ถูกต้อง</value></data>
+  <data name="media.generationFailed" xml:space="preserve"><value>ผู้ให้บริการไม่สามารถสร้างสื่อได้</value></data>
+  <data name="media.videoTimeout" xml:space="preserve"><value>การสร้างวิดีโอหมดเวลา</value></data>
+  <data name="media.busy" xml:space="preserve"><value>การสร้างหรือการดำเนินการตัวแทนกำลังดำเนินการอยู่ ลองอีกครั้งเมื่อเสร็จสิ้น</value></data>
+  <data name="media.unsupported" xml:space="preserve"><value>ฉันไม่สามารถสร้างสิ่งนี้ได้ที่นี่ ผู้ให้บริการที่เลือกไม่มีความสามารถนี้</value></data>
+  <data name="media.unsupportedStatus" xml:space="preserve"><value>ผู้ให้บริการที่เลือกไม่รองรับการสร้างสื่อ</value></data>
+  <data name="media.fileMissing" xml:space="preserve"><value>ไฟล์ที่สร้างขึ้นไม่สามารถใช้งานได้อีกต่อไป</value></data>
+  <data name="media.openAudio" xml:space="preserve"><value>เปิดเสียงที่สร้างขึ้น</value></data>
+  <data name="media.save" xml:space="preserve"><value>บันทึก</value></data>
+  <data name="media.showInFinder" xml:space="preserve"><value>แสดงใน Finder</value></data>
+  <data name="rail.home" xml:space="preserve"><value>หน้าแรก</value></data>
+  <data name="rail.media" xml:space="preserve"><value>สื่อ</value></data>
+  <data name="rail.tasks" xml:space="preserve"><value>งาน</value></data>
+  <data name="rail.bots" xml:space="preserve"><value>บอท</value></data>
+  <data name="rail.marketplace" xml:space="preserve"><value>ตลาด</value></data>
+  <data name="rail.memory" xml:space="preserve"><value>หน่วยความจำ</value></data>
+  <data name="rail.settings" xml:space="preserve"><value>การตั้งค่า</value></data>
+  <data name="models.followApp" xml:space="preserve"><value>โมเดลของแอป</value></data>
+  <data name="studio.preset.square" xml:space="preserve"><value>โพสต์สี่เหลี่ยมจัตุรัส</value></data>
+  <data name="studio.preset.story" xml:space="preserve"><value>สตอรี่</value></data>
+  <data name="studio.preset.landscape" xml:space="preserve"><value>แนวนอน</value></data>
+  <data name="studio.preset.thumbnail" xml:space="preserve"><value>ภาพขนาดย่อวิดีโอ</value></data>
+  <data name="studio.preset.logo" xml:space="preserve"><value>โลโก้</value></data>
+  <data name="studio.preset.poster" xml:space="preserve"><value>โปสเตอร์</value></data>
+  <data name="studio.template.announcement" xml:space="preserve"><value>ประกาศ</value></data>
+  <data name="studio.template.story" xml:space="preserve"><value>สตอรี่</value></data>
+  <data name="studio.template.thumbnail" xml:space="preserve"><value>ภาพขนาดย่อวิดีโอ</value></data>
+  <data name="studio.template.slide" xml:space="preserve"><value>สไลด์ชื่อเรื่อง</value></data>
+  <data name="studio.template.logo" xml:space="preserve"><value>โลโก้</value></data>
+  <data name="studio.template.mobile" xml:space="preserve"><value>หน้าจอมือถือ</value></data>
+  <data name="studio.category.social" xml:space="preserve"><value>โซเชียลมีเดีย</value></data>
+  <data name="studio.category.uiux" xml:space="preserve"><value>UI/UX</value></data>
+  <data name="studio.category.presentation" xml:space="preserve"><value>การนำเสนอและอินโฟกราฟิก</value></data>
+  <data name="studio.category.other" xml:space="preserve"><value>การออกแบบอื่นๆ</value></data>
+  <data name="studio.sample.title" xml:space="preserve"><value>ชื่อเรื่องของคุณ</value></data>
+  <data name="studio.sample.detail" xml:space="preserve"><value>บรรทัดสั้นๆ ที่บอกได้มากกว่า</value></data>
+  <data name="studio.sample.brand" xml:space="preserve"><value>แบรนด์</value></data>
+  <data name="studio.sample.text" xml:space="preserve"><value>ข้อความ</value></data>
+  <data name="studio.copyOf" xml:space="preserve"><value>สำเนา {0}</value></data>
+  <data name="studio.untitled" xml:space="preserve"><value>โปรเจกต์ไม่มีชื่อ</value></data>
+  <data name="studio.home.title" xml:space="preserve"><value>อธิบายไอเดียของคุณแล้วทำให้เป็นจริง</value></data>
+  <data name="studio.home.search" xml:space="preserve"><value>ค้นหา</value></data>
+  <data name="studio.home.sort.name" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="studio.home.filter.all" xml:space="preserve"><value>ทุกช่วงเวลา</value></data>
+  <data name="studio.home.filter.week" xml:space="preserve"><value>7 วันที่ผ่านมา</value></data>
+  <data name="studio.home.filter.month" xml:space="preserve"><value>30 วันที่ผ่านมา</value></data>
+  <data name="studio.home.starred" xml:space="preserve"><value>ติดดาว</value></data>
+  <data name="studio.home.star" xml:space="preserve"><value>ติดดาว</value></data>
+  <data name="studio.home.unstar" xml:space="preserve"><value>เอาดาวออก</value></data>
+  <data name="studio.home.modified" xml:space="preserve"><value>แก้ไขล่าสุด</value></data>
+  <data name="studio.home.canvases" xml:space="preserve"><value>แคนวาส</value></data>
+  <data name="studio.projects" xml:space="preserve"><value>โปรเจกต์</value></data>
+  <data name="studio.templates" xml:space="preserve"><value>เทมเพลต</value></data>
+  <data name="studio.community" xml:space="preserve"><value>ชุมชน</value></data>
+  <data name="studio.community.banner" xml:space="preserve"><value>ค้นพบการออกแบบที่สร้างสรรค์โดยชุมชน</value></data>
+  <data name="studio.community.saved" xml:space="preserve"><value>ที่บันทึกไว้</value></data>
+  <data name="studio.community.share" xml:space="preserve"><value>แชร์ไปยังชุมชน</value></data>
+  <data name="studio.community.shared" xml:space="preserve"><value>ส่งเพื่อตรวจสอบแล้ว จะปรากฏในชุมชนเมื่อได้รับการอนุมัติ</value></data>
+  <data name="studio.community.signIn" xml:space="preserve"><value>ลงชื่อเข้าใช้บัญชี HerNess ของคุณเพื่อแชร์ไปยังชุมชน</value></data>
+  <data name="studio.community.empty" xml:space="preserve"><value>ยังไม่มีการออกแบบของชุมชนที่นี่</value></data>
+  <data name="studio.projectName" xml:space="preserve"><value>ชื่อโปรเจกต์</value></data>
+  <data name="studio.newProject" xml:space="preserve"><value>โปรเจกต์ใหม่</value></data>
+  <data name="studio.create" xml:space="preserve"><value>สร้างโปรเจกต์</value></data>
+  <data name="studio.rename" xml:space="preserve"><value>เปลี่ยนชื่อ</value></data>
+  <data name="studio.duplicate" xml:space="preserve"><value>ทำซ้ำ</value></data>
+  <data name="studio.deleteConfirm" xml:space="preserve"><value>ลบ “{0}” หรือไม่ แคนวาสและไฟล์ที่อัปโหลดจะถูกลบ</value></data>
+  <data name="studio.projectMeta" xml:space="preserve"><value>แคนวาส: {0}, แก้ไข {1}</value></data>
+  <data name="studio.empty.title" xml:space="preserve"><value>ยังไม่มีโปรเจกต์สื่อ</value></data>
+  <data name="studio.empty.detail" xml:space="preserve"><value>โปรเจกต์คือบอร์ดของแคนวาส เพิ่มข้อความ รูปทรง และรูปภาพเอง หรืออธิบายสิ่งที่ต้องการแล้วให้โมเดลสร้างทีละเลเยอร์</value></data>
+  <data name="studio.addCanvas" xml:space="preserve"><value>แคนวาส</value></data>
+  <data name="studio.undo" xml:space="preserve"><value>เลิกทำ</value></data>
+  <data name="studio.redo" xml:space="preserve"><value>ทำซ้ำ</value></data>
+  <data name="studio.zoomOut" xml:space="preserve"><value>ซูมออก</value></data>
+  <data name="studio.zoomIn" xml:space="preserve"><value>ซูมเข้า</value></data>
+  <data name="studio.zoomFit" xml:space="preserve"><value>พอดีทุกแคนวาส</value></data>
+  <data name="studio.layers" xml:space="preserve"><value>เลเยอร์</value></data>
+  <data name="studio.layers.empty" xml:space="preserve"><value>แคนวาสนี้ยังไม่มีเลเยอร์</value></data>
+  <data name="studio.layer.text" xml:space="preserve"><value>ข้อความ</value></data>
+  <data name="studio.layer.shape" xml:space="preserve"><value>รูปทรง</value></data>
+  <data name="studio.layer.upload" xml:space="preserve"><value>อัปโหลด</value></data>
+  <data name="studio.layer.show" xml:space="preserve"><value>แสดงเลเยอร์</value></data>
+  <data name="studio.layer.hide" xml:space="preserve"><value>ซ่อนเลเยอร์</value></data>
+  <data name="studio.shape.rectangle" xml:space="preserve"><value>สี่เหลี่ยมผืนผ้า</value></data>
+  <data name="studio.shape.ellipse" xml:space="preserve"><value>วงรี</value></data>
+  <data name="studio.name" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="studio.opacity" xml:space="preserve"><value>ความทึบ</value></data>
+  <data name="studio.fontSize" xml:space="preserve"><value>ขนาด</value></data>
+  <data name="studio.weight.regular" xml:space="preserve"><value>ปกติ</value></data>
+  <data name="studio.weight.medium" xml:space="preserve"><value>ปานกลาง</value></data>
+  <data name="studio.weight.bold" xml:space="preserve"><value>ตัวหนา</value></data>
+  <data name="studio.fill" xml:space="preserve"><value>สีเติม</value></data>
+  <data name="studio.cornerRadius" xml:space="preserve"><value>รัศมีมุม</value></data>
+  <data name="studio.playVideo" xml:space="preserve"><value>เล่นวิดีโอ</value></data>
+  <data name="studio.size" xml:space="preserve"><value>ขนาด</value></data>
+  <data name="studio.background" xml:space="preserve"><value>พื้นหลัง</value></data>
+  <data name="studio.deleteCanvas" xml:space="preserve"><value>ลบแคนวาส</value></data>
+  <data name="studio.ai.kind.design" xml:space="preserve"><value>ดีไซน์</value></data>
+  <data name="studio.ai.kind.image" xml:space="preserve"><value>รูปภาพ</value></data>
+  <data name="studio.ai.kind.video" xml:space="preserve"><value>วิดีโอ</value></data>
+  <data name="studio.ai.placeholder.design" xml:space="preserve"><value>อธิบายดีไซน์ที่จะสร้างบนแคนวาสนี้</value></data>
+  <data name="studio.ai.placeholder.image" xml:space="preserve"><value>อธิบายรูปภาพที่จะสร้าง</value></data>
+  <data name="studio.ai.placeholder.video" xml:space="preserve"><value>อธิบายวิดีโอที่จะสร้าง</value></data>
+  <data name="studio.ai.run" xml:space="preserve"><value>สร้าง</value></data>
+  <data name="studio.ai.planning" xml:space="preserve"><value>กำลังวางแผนเลเยอร์</value></data>
+  <data name="studio.ai.layerProgress" xml:space="preserve"><value>เลเยอร์ {0}/{1}: {2}</value></data>
+  <data name="studio.ai.drawing" xml:space="preserve"><value>กำลังสร้างรูปภาพ</value></data>
+  <data name="studio.ai.renderingVideo" xml:space="preserve"><value>กำลังสร้างวิดีโอ อาจใช้เวลาสักครู่</value></data>
+  <data name="studio.ai.noPlan" xml:space="preserve"><value>โมเดลไม่ได้ส่งเลเยอร์กลับมา ลองอีกครั้งหรือเลือกโมเดลอื่น</value></data>
+  <data name="studio.settings.title" xml:space="preserve"><value>โมเดลสื่อ</value></data>
+  <data name="studio.settings.design" xml:space="preserve"><value>ดีไซน์</value></data>
+  <data name="studio.settings.model" xml:space="preserve"><value>โมเดล</value></data>
+  <data name="studio.settings.designHelp" xml:space="preserve"><value>โมเดลแชทที่แปลงคำขอเป็นเลเยอร์</value></data>
+  <data name="studio.settings.source" xml:space="preserve"><value>แหล่งที่มา</value></data>
+  <data name="studio.settings.source.provider" xml:space="preserve"><value>ผู้ให้บริการ</value></data>
+  <data name="studio.settings.source.local" xml:space="preserve"><value>ในเครื่อง</value></data>
+  <data name="studio.settings.modelDefault" xml:space="preserve"><value>ค่าเริ่มต้นของผู้ให้บริการ</value></data>
+  <data name="studio.settings.local" xml:space="preserve"><value>เซิร์ฟเวอร์ในเครื่อง</value></data>
+  <data name="studio.settings.localURL" xml:space="preserve"><value>URL หลัก</value></data>
+  <data name="studio.settings.localHelp" xml:space="preserve"><value>เซิร์ฟเวอร์ที่เข้ากันได้กับ OpenAI บนเครื่องนี้หรือในเครือข่าย ใช้เมื่อแหล่งที่มาด้านบนตั้งเป็นในเครื่อง พร้อมชื่อโมเดลที่คุณป้อนไว้ที่นั่น</value></data>
+  <data name="studio.settings.music.connect" xml:space="preserve"><value>เชื่อมต่อ API</value></data>
+  <data name="studio.settings.music.type.standard" xml:space="preserve"><value>เซิร์ฟเวอร์เพลง</value></data>
+  <data name="studio.settings.music.type.elevenlabs" xml:space="preserve"><value>ElevenLabs</value></data>
+  <data name="studio.settings.music.name" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="studio.settings.music.key" xml:space="preserve"><value>คีย์ API</value></data>
+  <data name="studio.settings.music.help" xml:space="preserve"><value>เซิร์ฟเวอร์เพลงตอบสนองต่อ POST /audio/generations และแสดงรายการโมเดลที่ /models; tools/music_server.py เป็นหนึ่งในนั้น คีย์ API ถูกเก็บไว้ในพวงกุญแจ</value></data>
+  <data name="studio.ai.kind.next" xml:space="preserve"><value>หน้าจอถัดไป</value></data>
+  <data name="studio.ai.placeholder.next" xml:space="preserve"><value>อธิบายหน้าจอถัดไป หรือเว้นว่างไว้เพื่อทำต่อจากเดิม</value></data>
+  <data name="studio.ai.noImages" xml:space="preserve"><value>ไม่ได้เชื่อมต่อตัวสร้างภาพ เลเยอร์ภาพจึงถูกปล่อยไว้เป็นตัวยึดตำแหน่ง เชื่อมต่อตัวสร้างภาพ แล้วสร้างแต่ละภาพจากเลเยอร์ของภาพนั้น</value></data>
+  <data name="studio.screenNumber" xml:space="preserve"><value>หน้าจอ {0}</value></data>
+  <data name="studio.layer.icon" xml:space="preserve"><value>ไอคอน</value></data>
+  <data name="studio.layer.lock" xml:space="preserve"><value>ล็อกเลเยอร์</value></data>
+  <data name="studio.layer.unlock" xml:space="preserve"><value>ปลดล็อกเลเยอร์</value></data>
+  <data name="studio.layer.front" xml:space="preserve"><value>นำมาไว้หน้าสุด</value></data>
+  <data name="studio.layer.back" xml:space="preserve"><value>ส่งไปไว้หลังสุด</value></data>
+  <data name="studio.position" xml:space="preserve"><value>ตำแหน่ง</value></data>
+  <data name="studio.rotation" xml:space="preserve"><value>การหมุน</value></data>
+  <data name="studio.appearance" xml:space="preserve"><value>ลักษณะ</value></data>
+  <data name="studio.gradient" xml:space="preserve"><value>ไล่ระดับสี</value></data>
+  <data name="studio.stroke" xml:space="preserve"><value>เส้นขอบ</value></data>
+  <data name="studio.shadow" xml:space="preserve"><value>เงา</value></data>
+  <data name="studio.symbol" xml:space="preserve"><value>ชื่อสัญลักษณ์</value></data>
+  <data name="studio.imagePrompt" xml:space="preserve"><value>คำอธิบายภาพ</value></data>
+  <data name="studio.generateImage" xml:space="preserve"><value>สร้างภาพ</value></data>
+  <data name="studio.export" xml:space="preserve"><value>ส่งออก</value></data>
+  <data name="studio.exportAll" xml:space="preserve"><value>ส่งออกทุกแคนวาส</value></data>
+  <data name="studio.font.default" xml:space="preserve"><value>ไม่มีเชิง</value></data>
+  <data name="studio.font.rounded" xml:space="preserve"><value>มน</value></data>
+  <data name="studio.font.serif" xml:space="preserve"><value>มีเชิง</value></data>
+  <data name="studio.font.mono" xml:space="preserve"><value>ความกว้างคงที่</value></data>
+  <data name="studio.tool.move" xml:space="preserve"><value>ย้าย</value></data>
+  <data name="studio.tool.hand" xml:space="preserve"><value>มือ</value></data>
+  <data name="studio.tool.pen" xml:space="preserve"><value>ปากกา</value></data>
+  <data name="studio.tool.pencil" xml:space="preserve"><value>ดินสอ</value></data>
+  <data name="studio.shape.line" xml:space="preserve"><value>เส้น</value></data>
+  <data name="studio.shape.arrow" xml:space="preserve"><value>ลูกศร</value></data>
+  <data name="studio.shape.polygon" xml:space="preserve"><value>รูปหลายเหลี่ยม</value></data>
+  <data name="studio.shape.star" xml:space="preserve"><value>ดาว</value></data>
+  <data name="studio.actions" xml:space="preserve"><value>การทำงาน</value></data>
+  <data name="studio.unlockAll" xml:space="preserve"><value>ปลดล็อกทุกเลเยอร์</value></data>
+  <data name="studio.frames.phone" xml:space="preserve"><value>โทรศัพท์</value></data>
+  <data name="studio.frames.tablet" xml:space="preserve"><value>แท็บเล็ต</value></data>
+  <data name="studio.frames.desktop" xml:space="preserve"><value>เดสก์ท็อป</value></data>
+  <data name="studio.frames.presentation" xml:space="preserve"><value>งานนำเสนอ</value></data>
+  <data name="studio.frames.watch" xml:space="preserve"><value>นาฬิกา</value></data>
+  <data name="studio.frames.paper" xml:space="preserve"><value>กระดาษ</value></data>
+  <data name="studio.frames.social" xml:space="preserve"><value>โซเชียลมีเดีย</value></data>
+  <data name="studio.tool.scale" xml:space="preserve"><value>ปรับสเกล</value></data>
+  <data name="studio.tool.section" xml:space="preserve"><value>ส่วน</value></data>
+  <data name="studio.tool.slice" xml:space="preserve"><value>สไลซ์</value></data>
+  <data name="studio.tool.textPath" xml:space="preserve"><value>ข้อความตามเส้น</value></data>
+  <data name="studio.tool.comment" xml:space="preserve"><value>ความคิดเห็น</value></data>
+  <data name="studio.search" xml:space="preserve"><value>ค้นหา</value></data>
+  <data name="studio.cut" xml:space="preserve"><value>ตัด</value></data>
+  <data name="studio.paste" xml:space="preserve"><value>วาง</value></data>
+  <data name="bots.preset.assistant" xml:space="preserve"><value>ผู้ช่วย</value></data>
+  <data name="bots.preset.researcher" xml:space="preserve"><value>นักวิจัย</value></data>
+  <data name="bots.preset.coder" xml:space="preserve"><value>นักเขียนโค้ด</value></data>
+  <data name="bots.new" xml:space="preserve"><value>บอทใหม่</value></data>
+  <data name="bots.edit" xml:space="preserve"><value>แก้ไขบอท</value></data>
+  <data name="bots.clear" xml:space="preserve"><value>ล้างแชท</value></data>
+  <data name="bots.send" xml:space="preserve"><value>ส่งข้อความ</value></data>
+  <data name="bots.deleteConfirm" xml:space="preserve"><value>ลบ “{0}” และแชทของมันหรือไม่</value></data>
+  <data name="bots.empty.title" xml:space="preserve"><value>ยังไม่มีบอท</value></data>
+  <data name="bots.empty.detail" xml:space="preserve"><value>บอทคือผู้ช่วยที่มีคำสั่ง โมเดล และแชทต่อเนื่องเป็นของตัวเอง ให้โฟลเดอร์แก่บอทแล้วบอทจะทำงานในนั้นในฐานะเอเจนต์</value></data>
+  <data name="bots.greeting" xml:space="preserve"><value>ส่งข้อความถึง {0} เพื่อเริ่มต้น</value></data>
+  <data name="bots.placeholder" xml:space="preserve"><value>ข้อความถึง {0}</value></data>
+  <data name="bots.agentIn" xml:space="preserve"><value>เอเจนต์ใน {0}</value></data>
+  <data name="bots.name" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="bots.icon" xml:space="preserve"><value>ไอคอน</value></data>
+  <data name="bots.instructions" xml:space="preserve"><value>คำสั่ง</value></data>
+  <data name="bots.instructionsHelp" xml:space="preserve"><value>บอทควรทำตัวอย่างไร รู้อะไรบ้าง และตอบอย่างไร</value></data>
+  <data name="bots.workspace" xml:space="preserve"><value>โฟลเดอร์เอเจนต์</value></data>
+  <data name="bots.workspace.none" xml:space="preserve"><value>ไม่มี: แชทอย่างเดียว</value></data>
+  <data name="bots.workspace.choose" xml:space="preserve"><value>เลือกโฟลเดอร์</value></data>
+  <data name="bots.workspace.clear" xml:space="preserve"><value>นำออก</value></data>
+  <data name="bots.workspaceHelp" xml:space="preserve"><value>เมื่อมีโฟลเดอร์ บอทจะอ่าน เขียน และรันคำสั่งในนั้นได้โดยไม่ต้องถาม และไม่มีสิทธิ์เข้าถึงเครือข่าย หากไม่มีโฟลเดอร์จะแชทอย่างเดียว</value></data>
+  <data name="bots.error.noReply" xml:space="preserve"><value>บอทไม่ได้ตอบกลับ</value></data>
+  <data name="bots.status.delivered" xml:space="preserve"><value>ส่งถึงบอตแล้ว</value></data>
+  <data name="bots.status.waiting" xml:space="preserve"><value>กำลังรอบอต</value></data>
+  <data name="tasks.plan.title" xml:space="preserve"><value>ตั้งเวลางาน</value></data>
+  <data name="tasks.plan.subtitle" xml:space="preserve"><value>HerNess ทำงานที่เกิดซ้ำแทนคุณ</value></data>
+  <data name="tasks.upcoming" xml:space="preserve"><value>กำลังจะมาถึง</value></data>
+  <data name="tasks.instructions" xml:space="preserve"><value>คำสั่ง…</value></data>
+  <data name="tasks.repeat" xml:space="preserve"><value>ทำซ้ำ</value></data>
+  <data name="tasks.time" xml:space="preserve"><value>เวลา</value></data>
+  <data name="tasks.day" xml:space="preserve"><value>วัน</value></data>
+  <data name="tasks.advanced" xml:space="preserve"><value>ขั้นสูง</value></data>
+  <data name="tasks.create" xml:space="preserve"><value>สร้าง</value></data>
+  <data name="tasks.repeat.hourly" xml:space="preserve"><value>ทุกชั่วโมง</value></data>
+  <data name="tasks.repeat.daily" xml:space="preserve"><value>ทุกวัน</value></data>
+  <data name="tasks.repeat.weekdays" xml:space="preserve"><value>วันทำงาน</value></data>
+  <data name="tasks.repeat.weekly" xml:space="preserve"><value>ทุกสัปดาห์</value></data>
+  <data name="tasks.repeat.custom" xml:space="preserve"><value>กำหนดเอง</value></data>
+  <data name="bots.preset.assistant.detail" xml:space="preserve"><value>รับความช่วยเหลือสำหรับงานประจำวัน</value></data>
+  <data name="bots.preset.researcher.detail" xml:space="preserve"><value>ค้นคว้าหัวข้อและเปรียบเทียบแหล่งข้อมูล</value></data>
+  <data name="bots.preset.coder.detail" xml:space="preserve"><value>เขียนโค้ดและแก้ปัญหา</value></data>
+  <data name="tasks.suggestion.email.title" xml:space="preserve"><value>ติดตามอีเมล</value></data>
+  <data name="tasks.suggestion.email.detail" xml:space="preserve"><value>ตรวจอีเมลสำคัญและสรุปสิ่งที่ต้องใส่ใจ</value></data>
+  <data name="tasks.suggestion.reading.title" xml:space="preserve"><value>อ่านช่วงสุดสัปดาห์</value></data>
+  <data name="tasks.suggestion.reading.detail" xml:space="preserve"><value>ค้นหาบทความตามความสนใจของฉันทุกสัปดาห์</value></data>
+  <data name="tasks.suggestion.prices.title" xml:space="preserve"><value>แจ้งเตือนราคา</value></data>
+  <data name="tasks.suggestion.prices.detail" xml:space="preserve"><value>ตรวจราคาสินค้าที่ฉันติดตามและแจ้งส่วนลด</value></data>
+  <data name="tasks.suggestion.events.title" xml:space="preserve"><value>ค้นหากิจกรรม</value></data>
+  <data name="tasks.suggestion.events.detail" xml:space="preserve"><value>ค้นหาคอนเสิร์ตและกิจกรรมที่ตรงกับความสนใจของฉัน</value></data>
+  <data name="tasks.suggestion.weekend.title" xml:space="preserve"><value>วางแผนสุดสัปดาห์</value></data>
+  <data name="tasks.suggestion.weekend.detail" xml:space="preserve"><value>แนะนำกิจกรรมสุดสัปดาห์ตามความชอบของฉัน</value></data>
+  <data name="tasks.suggestions.memory" xml:space="preserve"><value>อิงจากความจำของคุณ</value></data>
+  <data name="tasks.suggestions.personalizing" xml:space="preserve"><value>กำลังเตรียมคำแนะนำจากความจำของคุณ…</value></data>
+  <data name="tasks.suggestions.unavailable" xml:space="preserve"><value>ตัวอย่างคำแนะนำ · ยังปรับเฉพาะบุคคลไม่ได้</value></data>
+  <data name="tasks.suggestions.refresh" xml:space="preserve"><value>รีเฟรชคำแนะนำ</value></data>
+  <data name="tasks.suggestions.instruction" xml:space="preserve"><value>ปรับผลลัพธ์ตามความสนใจและความชอบของฉัน สรุปสิ่งที่พบ และแจ้งหากขาดข้อมูลหรือสิทธิ์เข้าถึง</value></data>
+  <data name="media.music" xml:space="preserve"><value>เพลง</value></data>
+  <data name="studio.music" xml:space="preserve"><value>เพลง</value></data>
+  <data name="studio.library" xml:space="preserve"><value>คลัง</value></data>
+  <data name="studio.music.composing" xml:space="preserve"><value>กำลังประพันธ์เพลง อาจใช้เวลาสองสามนาที</value></data>
+  <data name="studio.music.song" xml:space="preserve"><value>เพลง</value></data>
+  <data name="studio.music.inspector" xml:space="preserve"><value>รายละเอียด</value></data>
+  <data name="studio.music.section" xml:space="preserve"><value>ท่อน</value></data>
+  <data name="studio.music.section.delete" xml:space="preserve"><value>ลบท่อน</value></data>
+  <data name="studio.music.lyrics" xml:space="preserve"><value>เนื้อเพลง</value></data>
+  <data name="studio.music.track" xml:space="preserve"><value>แทร็ก</value></data>
+  <data name="studio.music.track.generate" xml:space="preserve"><value>สร้างแทร็ก</value></data>
+  <data name="studio.music.track.empty" xml:space="preserve"><value>ยังไม่มีเสียง</value></data>
+  <data name="studio.music.track.delete" xml:space="preserve"><value>ลบแทร็ก</value></data>
+  <data name="studio.music.mix" xml:space="preserve"><value>มิกซ์</value></data>
+  <data name="studio.music.tempo" xml:space="preserve"><value>เทมโปและคีย์</value></data>
+  <data name="studio.music.generating" xml:space="preserve"><value>กำลังสร้าง {0} แทร็ก</value></data>
+  <data name="studio.music.placeholder" xml:space="preserve"><value>อธิบายเพลง: อารมณ์ เรื่องราว เครื่องดนตรี ใครร้อง</value></data>
+  <data name="studio.music.empty" xml:space="preserve"><value>อธิบายเพลงด้านบนหรือเริ่มเพลงว่างเปล่า แผนจะมาก่อน: ท่อนเพลง เนื้อเพลง และหนึ่งแทร็กต่อเครื่องดนตรี ซึ่งคุณแก้ไขได้ก่อนสร้างเสียง</value></data>
+  <data name="studio.music.plan" xml:space="preserve"><value>เขียนเพลง</value></data>
+  <data name="studio.music.new" xml:space="preserve"><value>เพลงว่างเปล่า</value></data>
+  <data name="studio.music.noPlan" xml:space="preserve"><value>โมเดลไม่ได้ส่งคืนแผนเพลง ลองอีกครั้งหรือเลือกโมเดลอื่น</value></data>
+  <data name="studio.music.deleteConfirm" xml:space="preserve"><value>ลบ “{0}” หรือไม่? แทร็กและไฟล์เสียงจะถูกลบออก</value></data>
+  <data name="studio.music.trackCount" xml:space="preserve"><value>{0} แทร็ก</value></data>
+  <data name="studio.music.bpm" xml:space="preserve"><value>{0} BPM</value></data>
+  <data name="studio.music.key" xml:space="preserve"><value>คีย์</value></data>
+  <data name="studio.music.generateAll" xml:space="preserve"><value>สร้างทั้งหมด</value></data>
+  <data name="studio.music.regenerate" xml:space="preserve"><value>สร้างแทร็กนี้ใหม่อีกครั้ง</value></data>
+  <data name="studio.music.script" xml:space="preserve"><value>บทภาพยนตร์</value></data>
+  <data name="studio.music.artists" xml:space="preserve"><value>ศิลปิน</value></data>
+  <data name="studio.music.artist.add" xml:space="preserve"><value>เพิ่มศิลปิน</value></data>
+  <data name="studio.music.artist.default" xml:space="preserve"><value>ศิลปิน {0}</value></data>
+  <data name="studio.music.artist.name" xml:space="preserve"><value>ชื่อ</value></data>
+  <data name="studio.music.artist.style" xml:space="preserve"><value>เสียงและสไตล์</value></data>
+  <data name="studio.music.section.add" xml:space="preserve"><value>เพิ่มท่อน</value></data>
+  <data name="studio.music.section.default" xml:space="preserve"><value>ท่อนเวิร์ส</value></data>
+  <data name="studio.music.section.bars" xml:space="preserve"><value>{0} ห้องเพลง</value></data>
+  <data name="studio.music.line.add" xml:space="preserve"><value>เพิ่มบรรทัด</value></data>
+  <data name="studio.music.line.placeholder" xml:space="preserve"><value>บรรทัดเนื้อเพลง</value></data>
+  <data name="studio.music.line.unsung" xml:space="preserve"><value>ไม่มี</value></data>
+  <data name="studio.music.track.add" xml:space="preserve"><value>เพิ่มแทร็ก</value></data>
+  <data name="studio.music.track.instrument" xml:space="preserve"><value>เครื่องดนตรี</value></data>
+  <data name="studio.music.track.prompt" xml:space="preserve"><value>ควรเล่นอย่างไร</value></data>
+  <data name="studio.music.track.vocal" xml:space="preserve"><value>เสียงร้อง · {0}</value></data>
+  <data name="studio.music.mute" xml:space="preserve"><value>ปิดเสียง</value></data>
+  <data name="studio.music.solo" xml:space="preserve"><value>โซโล่</value></data>
+  <data name="library.all" xml:space="preserve"><value>ทั้งหมด</value></data>
+  <data name="library.kind.image" xml:space="preserve"><value>รูปภาพ</value></data>
+  <data name="library.kind.video" xml:space="preserve"><value>วิดีโอ</value></data>
+  <data name="library.kind.audio" xml:space="preserve"><value>เสียง</value></data>
+  <data name="library.kind.music" xml:space="preserve"><value>เพลง</value></data>
+  <data name="library.kind.document" xml:space="preserve"><value>เอกสาร</value></data>
+  <data name="library.add" xml:space="preserve"><value>เพิ่มไฟล์</value></data>
+  <data name="library.addFailed" xml:space="preserve"><value>ไม่สามารถเพิ่ม {0} ไฟล์ได้</value></data>
+  <data name="library.open" xml:space="preserve"><value>เปิด</value></data>
+  <data name="library.empty.title" xml:space="preserve"><value>ยังไม่มีข้อมูลที่นี่</value></data>
+  <data name="library.empty.detail" xml:space="preserve"><value>รูปภาพ วิดีโอ เสียง และเพลงที่คุณสร้างจะถูกจัดเก็บไว้ที่นี่โดยอัตโนมัติ คุณสามารถเพิ่มเอกสารและไฟล์อื่นๆ ได้เอง</value></data>
+  <data name="backgroundTasks.title" xml:space="preserve"><value>งานเบื้องหลัง</value></data>
+  <data name="backgroundTasks.empty" xml:space="preserve"><value>ไม่มีงานเบื้องหลัง</value></data>
+  <data name="backgroundTasks.finished" xml:space="preserve"><value>เสร็จแล้ว</value></data>
+  <data name="backgroundTasks.failed" xml:space="preserve"><value>ล้มเหลว (รหัสออก {0})</value></data>
+  <data name="backgroundTasks.stopped" xml:space="preserve"><value>หยุดแล้ว</value></data>
+  <data name="backgroundTasks.clear" xml:space="preserve"><value>ล้างงานที่เสร็จแล้ว</value></data>
+  <data name="backgroundTasks.runningCount" xml:space="preserve"><value>งานที่กำลังทำงาน: {0}</value></data>
+  <data name="backgroundTasks.wake" xml:space="preserve"><value>งานเบื้องหลัง “{0}” สิ้นสุดด้วยรหัสออก {1} อ่านผลลัพธ์ด้วย terminal_session (เซสชัน {2}) แล้วทำต่อ</value></data>
+  <data name="backgroundTasks.waitingInput" xml:space="preserve"><value>รอการป้อนข้อมูล</value></data>
+  <data name="local.installed" xml:space="preserve"><value>ติดตั้งแล้ว</value></data>
+  <data name="marketplace.title" xml:space="preserve"><value>ตลาด</value></data>
+  <data name="marketplace.empty" xml:space="preserve"><value>ไม่มีปลั๊กอิน</value></data>
+  <data name="marketplace.emptyHint" xml:space="preserve"><value>กดรีเฟรชเพื่อโหลดรีจิสทรี</value></data>
+  <data name="marketplace.install" xml:space="preserve"><value>ติดตั้ง</value></data>
+  <data name="marketplace.search" xml:space="preserve"><value>ค้นหาปลั๊กอิน</value></data>
+  <data name="marketplace.update" xml:space="preserve"><value>อัพเดต v{0} → v{1}</value></data>
+  <data name="marketplace.by" xml:space="preserve"><value>โดย {0}</value></data>
+  <data name="market.tab.plugins" xml:space="preserve"><value>ปลั๊กอิน</value></data>
+  <data name="market.tab.skills" xml:space="preserve"><value>สกิล</value></data>
+  <data name="market.tab.starters" xml:space="preserve"><value>เทมเพลตโปรเจกต์</value></data>
+  <data name="starters.intro" xml:space="preserve"><value>เลือกเทมเพลตและโฟลเดอร์ว่าง พรอมต์จะไปอยู่ในช่องเขียนให้คุณอ่านและส่ง</value></data>
+  <data name="starters.use" xml:space="preserve"><value>ใช้เทมเพลต</value></data>
+  <data name="starters.chooseFolder" xml:space="preserve"><value>เลือกโฟลเดอร์ว่างสำหรับโปรเจกต์ใหม่</value></data>
+  <data name="starters.web.title" xml:space="preserve"><value>เว็บแอป</value></data>
+  <data name="starters.web.detail" xml:space="preserve"><value>Next.js พร้อม TypeScript เลย์เอาต์ เส้นทาง API ตัวอย่าง และ linting</value></data>
+  <data name="starters.landing.title" xml:space="preserve"><value>แลนดิงเพจ</value></data>
+  <data name="starters.landing.detail" xml:space="preserve"><value>HTML และ CSS แบบสแตติกพร้อมส่วนฮีโร่ ฟีเจอร์ ราคา และการติดต่อ ไม่ต้องบิลด์</value></data>
+  <data name="starters.api.title" xml:space="preserve"><value>บริการ API</value></data>
+  <data name="starters.api.detail" xml:space="preserve"><value>FastAPI พร้อมการตรวจสถานะ ทรัพยากรตัวอย่าง การตั้งค่า และการทดสอบ</value></data>
+  <data name="starters.ios.title" xml:space="preserve"><value>แอป iOS</value></data>
+  <data name="starters.ios.detail" xml:space="preserve"><value>SwiftUI พร้อมสองหน้าจอ โมเดลที่สังเกตได้ และยูนิตเทสต์หนึ่งชุด</value></data>
+  <data name="starters.worker.title" xml:space="preserve"><value>Cloudflare Worker</value></data>
+  <data name="starters.worker.detail" xml:space="preserve"><value>API ด้วย TypeScript บน Workers พร้อม binding แบบมีชนิดและการทดสอบ</value></data>
+  <data name="starters.cli.title" xml:space="preserve"><value>เครื่องมือบรรทัดคำสั่ง</value></data>
+  <data name="starters.cli.detail" xml:space="preserve"><value>แพ็กเกจ Python พร้อมคำสั่งย่อย การทดสอบ และวิธีติดตั้ง</value></data>
+  <data name="common.cancel" xml:space="preserve"><value>ยกเลิก</value></data>
+  <data name="common.connect" xml:space="preserve"><value>เชื่อมต่อ</value></data>
+  <data name="common.copied" xml:space="preserve"><value>คัดลอกแล้ว</value></data>
+  <data name="common.delete" xml:space="preserve"><value>ลบ</value></data>
+  <data name="common.done" xml:space="preserve"><value>เสร็จแล้ว</value></data>
+  <data name="common.download" xml:space="preserve"><value>ดาวน์โหลด</value></data>
+  <data name="common.idle" xml:space="preserve"><value>ไม่ได้ใช้งาน</value></data>
+  <data name="common.refresh" xml:space="preserve"><value>รีเฟรช</value></data>
+  <data name="common.remove" xml:space="preserve"><value>ลบ</value></data>
+  <data name="common.start" xml:space="preserve"><value>เริ่ม</value></data>
+  <data name="common.stop" xml:space="preserve"><value>หยุด</value></data>
+  <data name="common.test" xml:space="preserve"><value>ทดสอบ</value></data>
+  <data name="common.save" xml:space="preserve"><value>บันทึก</value></data>
+  <data name="common.view" xml:space="preserve"><value>ดู</value></data>
+  <data name="composer.add" xml:space="preserve"><value>เพิ่ม</value></data>
+  <data name="attachment.addApp" xml:space="preserve"><value>เพิ่มแอป Dots Harness</value></data>
+  <data name="attachment.projectDetail" xml:space="preserve"><value>เลือกโปรเจ็กต์สำหรับการแชทใหม่</value></data>
+  <data name="attachment.goal" xml:space="preserve"><value>เป้าหมาย</value></data>
+  <data name="attachment.goalDetail" xml:space="preserve"><value>ตั้งเป้าหมายในการทำงานให้บรรลุ</value></data>
+  <data name="attachment.plan" xml:space="preserve"><value>โหมดแผน</value></data>
+  <data name="attachment.planDetail" xml:space="preserve"><value>เปิดโหมดแผน</value></data>
+  <data name="attachment.saveSkill" xml:space="preserve"><value>บันทึกทักษะ</value></data>
+  <data name="attachment.plugins" xml:space="preserve"><value>ปลั๊กอิน</value></data>
+  <data name="attachment.slashCommands" xml:space="preserve"><value>คำสั่งสแลช</value></data>
+  <data name="attachment.folder" xml:space="preserve"><value>เพิ่มโฟลเดอร์</value></data>
+  <data name="attachment.connectors" xml:space="preserve"><value>ตัวเชื่อมต่อ</value></data>
+  <data name="attachment.documentsDetail" xml:space="preserve"><value>สร้างและแก้ไขอาร์ติแฟกต์ของเอกสาร</value></data>
+  <data name="attachment.pdfDetail" xml:space="preserve"><value>อ่าน สร้าง และตรวจสอบไฟล์ PDF</value></data>
+  <data name="attachment.spreadsheetsDetail" xml:space="preserve"><value>สร้างและแก้ไขไฟล์สเปรดชีต</value></data>
+  <data name="modelPicker.model" xml:space="preserve"><value>รุ่น</value></data>
+  <data name="modelPicker.speed" xml:space="preserve"><value>ความเร็ว</value></data>
+  <data name="modelPicker.maximum" xml:space="preserve"><value>สูงสุด</value></data>
+  <data name="modelPicker.standard" xml:space="preserve"><value>มาตรฐาน</value></data>
+  <data name="modelPicker.fast" xml:space="preserve"><value>รวดเร็ว</value></data>
+  <data name="modelPicker.auto" xml:space="preserve"><value>อัตโนมัติ</value></data>
+  <data name="modelPicker.autoHint" xml:space="preserve"><value>เลือกรูปแบบและความพยายามต่อข้อความ</value></data>
+  <data name="settings.sshPassword" xml:space="preserve"><value>รหัสผ่าน (ใช้ครั้งเดียว)</value></data>
+  <data name="settings.sshRememberPassword" xml:space="preserve"><value>จดจำรหัสผ่าน</value></data>
+  <data name="settings.sshRememberPassword.hint" xml:space="preserve"><value>ไม่จำเป็น: รหัสผ่านใช้เพียงครั้งเดียวเพื่อติดตั้งกุญแจ และจะไม่ถูกเขียนลง ~/.ssh/config เลย</value></data>
+  <data name="ssh.continue" xml:space="preserve"><value>ต่อไป</value></data>
+  <data name="ssh.enrolling" xml:space="preserve"><value>กำลังติดตั้งกุญแจ…</value></data>
+  <data name="ssh.enrolled.hint" xml:space="preserve"><value>การเชื่อมต่อครั้งต่อไปจะใช้กุญแจ ไม่ต้องใช้รหัสผ่านอีก</value></data>
+  <data name="ssh.retry" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
+  <data name="ssh.retryHint" xml:space="preserve"><value>ตรวจสอบที่อยู่ ชื่อผู้ใช้ และรหัสผ่าน แล้วลองใหม่</value></data>
+  <data name="ssh.installKeyManually" xml:space="preserve"><value>เพิ่มกุญแจนี้ใน ~/.ssh/authorized_keys บนเซิร์ฟเวอร์ แล้วลองใหม่</value></data>
+  <data name="ssh.copyPublicKey" xml:space="preserve"><value>คัดลอกกุญแจ</value></data>
+  <data name="ssh.error.passwordAuthDisabled" xml:space="preserve"><value>เซิร์ฟเวอร์ไม่รับการเข้าสู่ระบบด้วยรหัสผ่าน</value></data>
+  <data name="ssh.error.authFailed" xml:space="preserve"><value>{0} ปฏิเสธการเข้าสู่ระบบ</value></data>
+  <data name="ssh.error.hostKeyChanged" xml:space="preserve"><value>กุญแจโฮสต์ของ {0} เปลี่ยนไป อย่าดำเนินต่อเว้นแต่เซิร์ฟเวอร์ถูกติดตั้งใหม่</value></data>
+  <data name="ssh.error.invalidInput" xml:space="preserve"><value>ป้อนนามแฝง ชื่อโฮสต์ ชื่อผู้ใช้ และพอร์ตที่ถูกต้อง</value></data>
+  <data name="sidebar.projects" xml:space="preserve"><value>โครงการ</value></data>
+  <data name="sidebar.recent" xml:space="preserve"><value>ล่าสุด</value></data>
+  <data name="sidebar.search" xml:space="preserve"><value>ค้นหาแชท</value></data>
+  <data name="sidebar.sites" xml:space="preserve"><value>เว็บไซต์</value></data>
+  <data name="sidebar.scheduled" xml:space="preserve"><value>กำหนดเวลาแล้ว</value></data>
+  <data name="sidebar.addProject" xml:space="preserve"><value>เพิ่มโปรเจกต์</value></data>
+  <data name="settings.compactTrigger" xml:space="preserve"><value>บีบอัดบริบทอัตโนมัติที่</value></data>
+  <data name="settings.compactTrigger.hint" xml:space="preserve"><value>สัดส่วนของหน้าต่างบริบทของแต่ละโมเดล ค่าที่สูงกว่าจะเก็บแคชพรอมต์ไว้นานขึ้น เพราะการบีบอัดจะเขียนแคชใหม่</value></data>
+  <data name="settings.explore.subagents" xml:space="preserve"><value>ใช้เอเจนต์ย่อย</value></data>
+  <data name="settings.explore.hint" xml:space="preserve"><value>เมื่อเปิด ในงานที่ยากหรือยาว เอเจนต์จะส่งการค้นหาที่ไล่ดูหลายไฟล์และส่วนที่แยกอิสระของการเปลี่ยนแปลงขนาดใหญ่ให้เอเจนต์ย่อยที่ทำงานขนานกัน โดยมีเพียงสรุปของเอเจนต์ย่อยเท่านั้นที่เข้าสู่บทสนทนาหลัก เอเจนต์ย่อยที่แก้ไขเขียนได้เฉพาะไฟล์ที่ได้รับมอบหมาย และการมอบหมายต้องไม่ซ้อนกัน งานง่ายจะไม่เรียกใช้ เอเจนต์ย่อยแต่ละตัวคือการรันโมเดลแยกกัน ปิดเพื่อลดค่าใช้จ่าย</value></data>
+  <data name="settings.responseStyle" xml:space="preserve"><value>รูปแบบการตอบ</value></data>
+  <data name="settings.responseStyle.hint" xml:space="preserve"><value>การตั้งค่านี้ไม่เขียนพรอมต์ใหม่ กระชับ/อัลตร้าเป็นความต้องการแบบพยายามให้ดีที่สุด ไม่รับประกันจำนวนโทเค็น ความสมบูรณ์ หรือค่าใช้จ่ายที่ต่ำลง</value></data>
+  <data name="responseStyle.balanced" xml:space="preserve"><value>สมดุล</value></data>
+  <data name="responseStyle.concise" xml:space="preserve"><value>กระชับ</value></data>
+  <data name="responseStyle.ultra" xml:space="preserve"><value>อัลตร้า</value></data>
+  <data name="responseStyle.detailed" xml:space="preserve"><value>ละเอียด</value></data>
+  <data name="settings.computerUse.enable" xml:space="preserve"><value>เปิดใช้การใช้คอมพิวเตอร์</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>เวอร์ชันและการอัปเดต</value></data>
+  <data name="settings.updates.available" xml:space="preserve"><value>มีเวอร์ชันใหม่: v{0}</value></data>
+  <data name="settings.updates.download" xml:space="preserve"><value>ดาวน์โหลดการอัปเดต</value></data>
+  <data name="dock.branch" xml:space="preserve"><value>แบรนช์</value></data>
+  <data name="dock.refresh" xml:space="preserve"><value>รีเฟรช</value></data>
+  <data name="dock.commit" xml:space="preserve"><value>คอมมิต</value></data>
+  <data name="dock.push" xml:space="preserve"><value>พุช</value></data>
+  <data name="dock.fetch" xml:space="preserve"><value>เฟตช์</value></data>
+  <data name="dock.commitOrPush" xml:space="preserve"><value>Commit หรือ Push</value></data>
+  <data name="dock.commitMessage" xml:space="preserve"><value>ข้อความ commit</value></data>
+  <data name="dock.noChanges" xml:space="preserve"><value>เอเจนต์ไม่ได้เปลี่ยนแปลงอะไร</value></data>
+  <data name="dock.whyRequest" xml:space="preserve"><value>คำขอของคุณ</value></data>
+  <data name="dock.whyAgent" xml:space="preserve"><value>คำอธิบายของเอเจนต์</value></data>
+  <data name="dock.notRepo" xml:space="preserve"><value>โฟลเดอร์นี้ไม่ใช่ที่เก็บ git</value></data>
+  <data name="dock.gitMissing" xml:space="preserve"><value>ยังไม่ได้ติดตั้ง Git ซึ่งจำเป็นสำหรับการรีวิว, commit และ push</value></data>
+  <data name="dock.installGit" xml:space="preserve"><value>ติดตั้ง Git</value></data>
+  <data name="dock.filterFiles" xml:space="preserve"><value>กรองไฟล์…</value></data>
+  <data name="dock.openFile" xml:space="preserve"><value>เปิดไฟล์</value></data>
+  <data name="dock.selectFile" xml:space="preserve"><value>เลือกไฟล์จากโครงสร้างพื้นที่ทำงาน</value></data>
+  <data name="dock.binaryFile" xml:space="preserve"><value>ไฟล์ไบนารีหรืออ่านไม่ได้</value></data>
+  <data name="dock.expand" xml:space="preserve"><value>ขยาย</value></data>
+  <data name="dock.collapse" xml:space="preserve"><value>ย่อ</value></data>
+  <data name="dock.split" xml:space="preserve"><value>แบ่ง</value></data>
+  <data name="dock.unsplit" xml:space="preserve"><value>แสดงแท็บเดียว</value></data>
+  <data name="dock.newTab" xml:space="preserve"><value>แท็บใหม่</value></data>
+  <data name="dock.address" xml:space="preserve"><value>ค้นหาหรือป้อน URL</value></data>
+  <data name="dock.invalidAddress" xml:space="preserve"><value>ป้อนที่อยู่เว็บหรือคำค้นหาที่ถูกต้อง</value></data>
+  <data name="dock.openExternal" xml:space="preserve"><value>เปิดในเบราว์เซอร์เริ่มต้น</value></data>
+  <data name="dock.bottomTerminal" xml:space="preserve"><value>เปิดเทอร์มินัลด้านล่าง</value></data>
+  <data name="dock.splitHorizontal" xml:space="preserve"><value>แบ่งด้านข้าง</value></data>
+  <data name="dock.splitVertical" xml:space="preserve"><value>แบ่งด้านบนและล่าง</value></data>
+  <data name="dock.noWorkspace" xml:space="preserve"><value>เลือกโฟลเดอร์พื้นที่ทำงานก่อน</value></data>
+  <data name="git.branchHelp" xml:space="preserve"><value>เลือกบรานช์ Git</value></data>
+  <data name="git.uncommitted" xml:space="preserve"><value>ไม่มีข้อผูกมัด: ไฟล์ {0}</value></data>
+  <data name="market.area.core" xml:space="preserve"><value>Marketplace หลัก</value></data>
+  <data name="market.area.experimental" xml:space="preserve"><value>ทดลอง</value></data>
+  <data name="market.area.community" xml:space="preserve"><value>ชุมชน</value></data>
+  <data name="market.area.communityExperimental" xml:space="preserve"><value>ชุมชน / ทดลอง</value></data>
+  <data name="market.account" xml:space="preserve"><value>บัญชี HerNess</value></data>
+  <data name="market.signIn" xml:space="preserve"><value>ลงชื่อเข้าใช้</value></data>
+  <data name="market.signIn.email" xml:space="preserve"><value>อีเมลและรหัสผ่าน</value></data>
+  <data name="market.signIn.title" xml:space="preserve"><value>ลงชื่อเข้าใช้ด้วยบัญชี HerNess</value></data>
+  <data name="market.email" xml:space="preserve"><value>อีเมล</value></data>
+  <data name="market.password" xml:space="preserve"><value>รหัสผ่าน</value></data>
+  <data name="market.likeSignIn" xml:space="preserve"><value>ลงชื่อเข้าใช้เพื่อกดถูกใจ</value></data>
+  <data name="market.customize" xml:space="preserve"><value>ปรับแต่ง</value></data>
+  <data name="market.localForks" xml:space="preserve"><value>การปรับแต่งในเครื่อง</value></data>
+  <data name="market.openFolder" xml:space="preserve"><value>เปิดโฟลเดอร์</value></data>
+  <data name="market.fork.compared" xml:space="preserve"><value>เปรียบเทียบแล้ว</value></data>
+  <data name="market.consent.title" xml:space="preserve"><value>ปลั๊กอินนี้รันโค้ดเนทีฟ</value></data>
+  <data name="market.consent.accept" xml:space="preserve"><value>ยอมรับและเปิดใช้</value></data>
+  <data name="market.consent.message" xml:space="preserve"><value>{0} เป็นปลั๊กอินเนทีฟจากบุคคลที่สาม พื้นที่: {1} การตรวจสอบ: {2} หมวดหมู่: {3} โปรดตรวจสอบสิทธิ์และซอร์สโค้ด หากยอมรับ ปลั๊กอินจะทำงานทันทีในฐานะที่เชื่อถือได้</value></data>
+  <data name="market.review.verified" xml:space="preserve"><value>ตรวจสอบโดย DOTS</value></data>
+  <data name="market.review.pending" xml:space="preserve"><value>รอการตรวจสอบ</value></data>
+  <data name="market.community.empty" xml:space="preserve"><value>ยังไม่มีปลั๊กอินจากชุมชน</value></data>
+  <data name="market.community.emptyHint" xml:space="preserve"><value>ปลั๊กอินจากชุมชนต้องผ่านการตรวจสอบแยกต่างหากและได้รับความยินยอมอย่างชัดแจ้งให้รันโค้ดเนทีฟ</value></data>
+  <data name="market.report" xml:space="preserve"><value>รายงาน</value></data>
+  <data name="market.report.title" xml:space="preserve"><value>รายงานปลั๊กอิน</value></data>
+  <data name="market.report.reason" xml:space="preserve"><value>เหตุผล</value></data>
+  <data name="market.report.submit" xml:space="preserve"><value>ส่งรายงาน</value></data>
+  <data name="market.report.malware" xml:space="preserve"><value>มัลแวร์หรือพฤติกรรมที่เป็นอันตราย</value></data>
+  <data name="market.report.credentialTheft" xml:space="preserve"><value>การขโมยข้อมูลรับรอง</value></data>
+  <data name="market.report.exfiltration" xml:space="preserve"><value>การลักลอบนำข้อมูลออก</value></data>
+  <data name="market.report.deceptive" xml:space="preserve"><value>รายการที่ทำให้เข้าใจผิดหรือการแอบอ้าง</value></data>
+  <data name="market.report.spam" xml:space="preserve"><value>สแปมหรือ wrapper ที่ว่างเปล่า</value></data>
+  <data name="market.report.copyright" xml:space="preserve"><value>การละเมิดลิขสิทธิ์หรือสัญญาอนุญาต</value></data>
+  <data name="market.publish" xml:space="preserve"><value>เผยแพร่ปลั๊กอิน</value></data>
+  <data name="market.publish.title" xml:space="preserve"><value>เผยแพร่ปลั๊กอินเนทีฟ</value></data>
+  <data name="market.publish.hint" xml:space="preserve"><value>โฟลเดอร์ปลั๊กอินต้องมี plugin.yml, plugin.ir.json และสัญญาอนุญาต ไม่รับ JavaScript และรันไทม์แบบประกาศ บิลด์ของแพลตฟอร์มสร้างใน CI</value></data>
+  <data name="market.publish.noFolder" xml:space="preserve"><value>ยังไม่ได้เลือกโฟลเดอร์ปลั๊กอิน</value></data>
+  <data name="market.publish.chooseFolder" xml:space="preserve"><value>เลือกโฟลเดอร์</value></data>
+  <data name="market.publish.irPreview" xml:space="preserve"><value>ตัวอย่าง plugin.ir.json</value></data>
+  <data name="market.publish.sourcePreview" xml:space="preserve"><value>ตัวอย่างซอร์สเนทีฟ</value></data>
+  <data name="market.publish.version" xml:space="preserve"><value>เวอร์ชัน (SemVer)</value></data>
+  <data name="market.publish.license" xml:space="preserve"><value>สัญญาอนุญาต SPDX (เช่น MIT)</value></data>
+  <data name="market.publish.visibility" xml:space="preserve"><value>การมองเห็นซอร์ส</value></data>
+  <data name="market.publish.public" xml:space="preserve"><value>สาธารณะ — แสดงแพ็กเกจซอร์สในรายการ</value></data>
+  <data name="market.publish.private" xml:space="preserve"><value>ส่วนตัว — เฉพาะเจ้าของและ CI เท่านั้นที่เข้าถึงได้</value></data>
+  <data name="market.publish.targets" xml:space="preserve"><value>แพลตฟอร์มเป้าหมาย</value></data>
+  <data name="market.publish.footer" xml:space="preserve"><value>หลังเผยแพร่ AI จะจัดหมวดหมู่ พื้นที่ และความเสี่ยง แม้บิลด์ปลั๊กอินเสร็จแล้ว ก็จะยังไม่แสดงจนกว่าการตรวจสอบโดยมนุษย์จะเสร็จ</value></data>
+  <data name="market.publish.submit" xml:space="preserve"><value>เผยแพร่</value></data>
+  <data name="market.publish.error.http" xml:space="preserve"><value>เผยแพร่ใน Marketplace ไม่สำเร็จ (HTTP {0}): {1}</value></data>
+  <data name="market.publish.error.license" xml:space="preserve"><value>เลือกสัญญาอนุญาตเพื่อเผยแพร่ปลั๊กอิน</value></data>
+  <data name="market.publish.error.noManifest" xml:space="preserve"><value>ไม่พบ plugin.yml ในโฟลเดอร์ที่เลือก</value></data>
+  <data name="market.publish.error.nativeOnly" xml:space="preserve"><value>เผยแพร่ได้เฉพาะปลั๊กอินเนทีฟเท่านั้น</value></data>
+  <data name="market.publish.error.semver" xml:space="preserve"><value>ป้อนเวอร์ชัน SemVer ที่ถูกต้อง</value></data>
+  <data name="market.publish.error.targets" xml:space="preserve"><value>เลือกแพลตฟอร์มเป้าหมายอย่างน้อยหนึ่งรายการและการมองเห็นซอร์สที่ถูกต้อง</value></data>
+  <data name="market.publish.error.package" xml:space="preserve"><value>แพ็กเกจต้องมีไฟล์ plugin.ir.json และ license</value></data>
+  <data name="market.publish.error.irVersion" xml:space="preserve"><value>plugin.ir.json ต้องเป็นเวอร์ชัน 1</value></data>
+  <data name="market.publish.error.releaseID" xml:space="preserve"><value>ไม่สามารถรับ ID รุ่นของ Marketplace ได้</value></data>
+  <data name="market.publish.error.noVersion" xml:space="preserve"><value>plugin.yml ไม่มีฟิลด์ version</value></data>
+  <data name="market.publish.status.registering" xml:space="preserve"><value>กำลังสร้างรายการใน Marketplace…</value></data>
+  <data name="market.publish.status.uploading" xml:space="preserve"><value>กำลังอัปโหลดแพ็กเกจซอร์สเนทีฟ…</value></data>
+  <data name="market.publish.status.aiUnavailable" xml:space="preserve"><value>การจัดประเภทด้วย AI ใช้ไม่ได้ ป้ายกำกับชั่วคราว: {0} · {1} · {2} ต้องมีการตรวจสอบโดยมนุษย์</value></data>
+  <data name="market.publish.status.aiDone" xml:space="preserve"><value>การจัดประเภทด้วย AI: {0} · {1} · {2} กำลังรอการตรวจสอบโดยมนุษย์</value></data>
+  <data name="market.publish.status.aiFailed" xml:space="preserve"><value>การจัดประเภทด้วย AI ไม่เสร็จสมบูรณ์ กำลังรอการตรวจสอบโดยมนุษย์</value></data>
+  <data name="market.publish.status.queueing" xml:space="preserve"><value>กำลังจัดคิวบิลด์แพลตฟอร์มเนทีฟ…</value></data>
+  <data name="market.publish.status.uploaded" xml:space="preserve"><value>อัปโหลดแพ็กเกจซอร์สแล้ว กำลังรอการตรวจสอบจาก CI เนทีฟ</value></data>
+  <data name="market.error.notSignedIn" xml:space="preserve"><value>การเผยแพร่ใน Marketplace ต้องใช้บัญชี HerNess</value></data>
+  <data name="market.error.invalidCallback" xml:space="preserve"><value>การเรียกกลับการลงชื่อเข้าใช้ HerNess ไม่ถูกต้อง</value></data>
+  <data name="market.error.stateMismatch" xml:space="preserve"><value>สถานะการลงชื่อเข้าใช้ HerNess ไม่ตรงกัน</value></data>
+  <data name="market.error.request" xml:space="preserve"><value>คำขอ Marketplace ล้มเหลว (HTTP {0}): {1}</value></data>
+  <data name="market.error.invalidResponse" xml:space="preserve"><value>Marketplace ส่งคืนการตอบกลับที่ไม่ถูกต้อง</value></data>
+  <data name="market.error.credentials" xml:space="preserve"><value>ต้องระบุอีเมลและรหัสผ่าน</value></data>
+  <data name="remote.scan" xml:space="preserve"><value>สแกนคิวอาร์โค้ดนี้ หรือป้อนรหัสใช้ครั้งเดียวใน HerNess Mobile</value></data>
+  <data name="remote.newCode" xml:space="preserve"><value>รหัสจับคู่ใหม่</value></data>
+  <data name="remote.copyLink" xml:space="preserve"><value>คัดลอกลิงก์จับคู่</value></data>
+  <data name="remote.tunnel.enable" xml:space="preserve"><value>เปิดใช้ Cloudflare Quick Tunnel</value></data>
+  <data name="remote.hint" xml:space="preserve"><value>คีย์ของผู้ให้บริการอยู่บนเดสก์ท็อป การเขียนไฟล์ เทอร์มินัล บิลด์ ดีพลอย และการทำงานกับ PR ยังคงใช้โหมดอนุมัติที่เลือก</value></data>
+  <data name="settings.tab.mobile" xml:space="preserve"><value>ควบคุมผ่านมือถือ</value></data>
+  <data name="settings.compaction.economyFixed" xml:space="preserve"><value>นโยบายประหยัดใช้เกณฑ์คงที่ 90%</value></data>
+  <data name="settings.browser.title" xml:space="preserve"><value>เบราว์เซอร์และเอนจินที่ต้องการ</value></data>
+  <data name="settings.browser.auto" xml:space="preserve"><value>อัตโนมัติ (ในแอป หรือเบราว์เซอร์ที่คุณระบุ)</value></data>
+  <data name="settings.browser.managed" xml:space="preserve"><value>เบราว์เซอร์แยกที่จัดการให้ (Chrome)</value></data>
+  <data name="settings.browser.chrome" xml:space="preserve"><value>Chrome ของฉัน</value></data>
+  <data name="settings.browser.desktopHint" xml:space="preserve"><value>เบราว์เซอร์ในแอปใช้เอนจินเบราว์เซอร์ของระบบ และยังใช้ Chrome แบบจัดการกับโปรไฟล์ Chrome เดิมของคุณได้</value></data>
+  <data name="settings.browser.inAppDesktop" xml:space="preserve"><value>เบราว์เซอร์ในแอป</value></data>
+  <data name="settings.computerUse.desktopHint" xml:space="preserve"><value>เอเจนต์ตรวจสอบแอปที่กำลังทำงาน ดูภาพหน้าจอ ใช้เมาส์และแป้นพิมพ์ และตรวจผลลัพธ์ได้ การทำงานบนเดสก์ท็อปต้องได้รับอนุมัติสิทธิ์เข้าถึง</value></data>
+  <data name="settings.computerUse.linuxHint" xml:space="preserve"><value>การใช้คอมพิวเตอร์บน Linux ต้องใช้ X11, xdotool และ maim หรือ ImageMagick ไม่รองรับ Wayland</value></data>
+  <data name="market.settings.hint" xml:space="preserve"><value>Main Marketplace มีปลั๊กอิน Harness ที่ผ่านการตรวจสอบ ส่วน Community และ Experimental แยกต่างหาก และปลั๊กอินเนทีฟต้องได้รับอนุมัติก่อนทำงาน</value></data>
+  <data name="market.registry.empty" xml:space="preserve"><value>ไม่พบรายการ Marketplace รีเฟรชรีจิสทรีเพื่อลองอีกครั้ง</value></data>
+  <data name="market.signIn.hint" xml:space="preserve"><value>ลงชื่อเข้าใช้ด้วย Google, GitHub หรืออีเมลและรหัสผ่าน HerNess โทเค็นเซสชันจะอยู่ในคลังข้อมูลรับรองของแพลตฟอร์ม</value></data>
+  <data name="dock.clean" xml:space="preserve"><value>เวิร์กทรีสะอาด</value></data>
+  <data name="market.publish.folderPickerUnavailable" xml:space="preserve"><value>สภาพแวดล้อมเดสก์ท็อปนี้ไม่มีตัวเลือกโฟลเดอร์</value></data>
+  <data name="market.publish.localFolderRequired" xml:space="preserve"><value>เลือกโฟลเดอร์ในเครื่องเพื่อเผยแพร่ปลั๊กอิน</value></data>
+  <data name="market.report.details" xml:space="preserve"><value>รายละเอียด (ไม่บังคับ สูงสุด 5,000 ตัวอักษร)</value></data>
+  <data name="dock.browser.webview2Unavailable" xml:space="preserve"><value>เริ่ม WebView2 ไม่ได้ ให้ติดตั้งหรือซ่อมแซม Microsoft Edge WebView2 Runtime</value></data>
+  <data name="settings.marketplace" xml:space="preserve"><value>ตลาด</value></data>
+  <data name="workspace.use" xml:space="preserve"><value>ใช้พื้นที่ทำงาน</value></data>
+  <data name="market.fork.consent.title" xml:space="preserve"><value>ปลั๊กอินที่ปรับแต่งนี้รันโค้ดเนทีฟ</value></data>
+  <data name="market.fork.consent.message" xml:space="preserve"><value>{0} เป็น fork ในเครื่อง ซอร์สแยกจาก upstream โปรดตรวจสอบการเปลี่ยนแปลงก่อนเปิดใช้</value></data>
+  <data name="market.fork.newUpstream" xml:space="preserve"><value>Upstream ใหม่: v{0} การเปลี่ยนแปลงในเครื่องจะยังคงอยู่</value></data>
+  <data name="market.remove.confirmTitle" xml:space="preserve"><value>นำปลั๊กอิน Marketplace ออกไหม</value></data>
+  <data name="market.remove.confirmMessage" xml:space="preserve"><value>นำ {0} ออกจากอุปกรณ์นี้ไหม</value></data>
+  <data name="market.report.other" xml:space="preserve"><value>อื่นๆ</value></data>
+  <data name="modelPicker.economy" xml:space="preserve"><value>ประหยัด</value></data>
+  <data name="conversation.toggleResponseEconomy" xml:space="preserve"><value>สลับการประหยัดโทเค็นในการตอบ</value></data>
+  <data name="market.unpublish.confirmMessage" xml:space="preserve"><value>ยกเลิกเผยแพร่ {0} ไหม การติดตั้งเดิมจะไม่ถูกลบ</value></data>
+  <data name="market.permissions" xml:space="preserve"><value>สิทธิ์</value></data>
+  <data name="market.risk" xml:space="preserve"><value>ความเสี่ยง: {0}</value></data>
+  <data name="market.category.coding" xml:space="preserve"><value>การเขียนโค้ด</value></data>
+  <data name="market.category.git" xml:space="preserve"><value>Git</value></data>
+  <data name="market.category.qa" xml:space="preserve"><value>การทดสอบและคุณภาพ</value></data>
+  <data name="market.category.devops" xml:space="preserve"><value>DevOps</value></data>
+  <data name="market.category.browser" xml:space="preserve"><value>เบราว์เซอร์</value></data>
+  <data name="market.category.web" xml:space="preserve"><value>เว็บ</value></data>
+  <data name="market.category.backend" xml:space="preserve"><value>แบ็กเอนด์</value></data>
+  <data name="market.category.mobile" xml:space="preserve"><value>มือถือ</value></data>
+  <data name="market.category.models" xml:space="preserve"><value>โมเดล</value></data>
+  <data name="market.category.integrations" xml:space="preserve"><value>การผสานรวม</value></data>
+  <data name="market.category.workspace" xml:space="preserve"><value>พื้นที่ทำงาน</value></data>
+  <data name="market.category.productivity" xml:space="preserve"><value>ประสิทธิภาพการทำงาน</value></data>
+  <data name="market.category.tools" xml:space="preserve"><value>เครื่องมือ</value></data>
+  <data name="market.category.design" xml:space="preserve"><value>การออกแบบ</value></data>
+  <data name="market.category.documents" xml:space="preserve"><value>เอกสาร</value></data>
+  <data name="market.category.authoring" xml:space="preserve"><value>การเขียนทักษะ</value></data>
+  <data name="market.category.community" xml:space="preserve"><value>ชุมชน</value></data>
+  <data name="market.category.other" xml:space="preserve"><value>อื่นๆ</value></data>
+  <data name="navigation.back" xml:space="preserve"><value>ย้อนกลับ</value></data>
+  <data name="navigation.forward" xml:space="preserve"><value>ไปข้างหน้า</value></data>
+  <data name="dock.restart" xml:space="preserve"><value>รีสตาร์ท</value></data>
+  <data name="dock.go" xml:space="preserve"><value>ไป</value></data>
+  <data name="terminal.sandboxUnavailable" xml:space="preserve"><value>แซนด์บ็อกซ์ของเทอร์มินัลไม่พร้อมใช้งาน: {0}</value></data>
+  <data name="remote.lan" xml:space="preserve"><value>ปลายทาง LAN</value></data>
+  <data name="remote.code" xml:space="preserve"><value>รหัส</value></data>
+  <data name="remote.expires" xml:space="preserve"><value>หมดอายุ: {0}</value></data>
+  <data name="remote.pairingLink" xml:space="preserve"><value>ลิงก์จับคู่</value></data>
+  <data name="custom.detected" xml:space="preserve"><value>กำลังทำงานบนคอมพิวเตอร์เครื่องนี้</value></data>
+  <data name="custom.modelOptional" xml:space="preserve"><value>ชื่อโมเดล (ไม่บังคับ)</value></data>
+  <data name="custom.contextOptional" xml:space="preserve"><value>หน้าต่างบริบทเป็นโทเค็น (ไม่บังคับ)</value></data>
+  <data name="custom.prefix" xml:space="preserve"><value>คำนำหน้าโมเดล</value></data>
+  <data name="local.tuning" xml:space="preserve"><value>ประสิทธิภาพ</value></data>
+  <data name="local.tuningHint" xml:space="preserve"><value>เว้นว่างหรือ auto เพื่อให้รันไทม์ปรับโมเดลให้พอดีกับหน่วยความจำ GPU ของคุณ การเปลี่ยนแปลงมีผลเมื่อเริ่มโมเดลครั้งถัดไป</value></data>
+  <data name="local.contextSize" xml:space="preserve"><value>ขนาดบริบท (โทเค็น)</value></data>
+  <data name="local.gpuLayers" xml:space="preserve"><value>เลเยอร์บน GPU (auto, all หรือตัวเลข)</value></data>
+  <data name="local.threads" xml:space="preserve"><value>เธรด CPU</value></data>
+  <data name="local.batchSize" xml:space="preserve"><value>ขนาดแบตช์</value></data>
+  <data name="local.flashAttention" xml:space="preserve"><value>Flash attention</value></data>
+  <data name="local.kvCache" xml:space="preserve"><value>ชนิดแคช KV</value></data>
+  <data name="local.extraArgs" xml:space="preserve"><value>อาร์กิวเมนต์ llama-server เพิ่มเติม</value></data>
+  <data name="local.hardware" xml:space="preserve"><value>ฮาร์ดแวร์</value></data>
+  <data name="local.listen" xml:space="preserve"><value>การฟัง</value></data>
+  <data name="local.importGGUF" xml:space="preserve"><value>เพิ่มไฟล์ GGUF…</value></data>
+  <data name="local.tooLarge" xml:space="preserve"><value>ใหญ่เกินไป</value></data>
+  <data name="local.backend" xml:space="preserve"><value>แบ็กเอนด์ GPU</value></data>
+  <data name="settings.compaction.autoRouted" xml:space="preserve"><value>โมเดลที่กำหนดเส้นทางอัตโนมัติ</value></data>
+  <data name="settings.compaction.effectiveThreshold" xml:space="preserve"><value>เกณฑ์ที่มีผล</value></data>
+  <data name="sidebar.signOut" xml:space="preserve"><value>ออกจากระบบ</value></data>
+  <data name="market.unpublish" xml:space="preserve"><value>ยกเลิกการเผยแพร่</value></data>
+  <data name="settings.sshHosts" xml:space="preserve"><value>คอมพิวเตอร์ระยะไกล (SSH)</value></data>
+  <data name="settings.sshHosts.hint" xml:space="preserve"><value>โฮสต์มาจาก ~/.ssh/config โฮสต์ที่เพิ่มที่นี่จะถูกเขียนกลับไปในไฟล์นั้น</value></data>
+  <data name="settings.sshNoHosts" xml:space="preserve"><value>ไม่มีโฮสต์ใน ~/.ssh/config</value></data>
+  <data name="settings.sshAddHost" xml:space="preserve"><value>เพิ่มคอมพิวเตอร์…</value></data>
+  <data name="settings.sshTest" xml:space="preserve"><value>ทดสอบ</value></data>
+  <data name="settings.sshManaged" xml:space="preserve"><value>เพิ่มที่นี่</value></data>
+  <data name="settings.sshFromConfig" xml:space="preserve"><value>จาก ~/.ssh/config</value></data>
+  <data name="settings.sshRemove.handWritten" xml:space="preserve"><value>โฮสต์นี้ถูกเขียนด้วยมือใน ~/.ssh/config โปรดเอาออกที่นั่น</value></data>
+  <data name="settings.updates.current" xml:space="preserve"><value>เวอร์ชันปัจจุบัน</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>กำลังตรวจหาการอัปเดต…</value></data>
+  <data name="settings.updates.checkAgain" xml:space="preserve"><value>ตรวจอีกครั้ง</value></data>
+  <data name="settings.updates.upToDate" xml:space="preserve"><value>แอปเป็นเวอร์ชันล่าสุดแล้ว</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>ตรวจหาการอัปเดต</value></data>
+  <data name="settings.updates.retry" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
+  <data name="settings.updates.hint" xml:space="preserve"><value>ตรวจหารุ่นล่าสุดที่มีให้</value></data>
+  <data name="settings.updates.required" xml:space="preserve"><value>จำเป็น</value></data>
+  <data name="ssh.connected" xml:space="preserve"><value>{0} ตอบกลับแล้ว</value></data>
+  <data name="remote.enable" xml:space="preserve"><value>อนุญาตให้ควบคุมจากระยะไกล</value></data>
+  <data name="remote.shareLan" xml:space="preserve"><value>แชร์กับเครือข่ายท้องถิ่น</value></data>
+  <data name="remote.enableHint" xml:space="preserve"><value>เกตเวย์ระยะไกลปิดอยู่ เปิดเพื่อจับคู่โทรศัพท์</value></data>
+  <data name="plan.title" xml:space="preserve"><value>แผน</value></data>
+  <data name="plan.proposed" xml:space="preserve"><value>Claude เสนอแผน</value></data>
+  <data name="plan.revise" xml:space="preserve"><value>แก้ไข…</value></data>
+  <data name="plan.acceptAuto" xml:space="preserve"><value>ยอมรับและโหมดอัตโนมัติ</value></data>
 </root>

@@ -11,7 +11,6 @@ import PluginRuntime
 public struct SettingsView: View {
     @ObservedObject var model: AppModel
     @State private var tab: Tab = .general
-    @AppStorage(AgentContextCompactionPolicy.triggerPercentKey) private var compactPercent = 90
     @State private var sandboxName = ""
     @State private var discardSandboxConfirmation = false
     @State private var showAddSSHHost = false
@@ -29,45 +28,27 @@ public struct SettingsView: View {
     }
 
     enum Tab: String, CaseIterable, Identifiable {
-        case general, modelContext, access, memory, archive, providers, custom, local, share, mobile, skills, plugins, mcp, prompt, legal
+        case general, memoryTransfer, archive, providers, custom, local, media, share, mobile, skills, plugins, mcp, prompt, legal
         var id: String { rawValue }
         var title: String {
-            rawValue == "modelContext" ? AppCopy.text("usage.context.window")
-                : rawValue == "archive"
+            rawValue == "archive"
                 ? AppCopy.text("sidebar.archived")
                 : rawValue == "skills" ? AppCopy.text("settings.tab.skills")
-                : rawValue == "mcp" ? "MCP servers"
+                : rawValue == "media" ? AppCopy.text("rail.media")
+                : rawValue == "mcp" ? AppCopy.text("settings.tab.mcp")
                 : rawValue == "legal" ? AppCopy.text("legal.title")
-                : rawValue == "mobile" ? "Mobile control" : AppCopy.text("settings.tab.\(rawValue)")
+                : rawValue == "mobile" ? AppCopy.text("settings.tab.mobile") : AppCopy.text("settings.tab.\(rawValue)")
         }
     }
 
-    private var visibleTabs: [Tab] {
-        Array(Tab.allCases)
-    }
-
-    private var compactionPolicy: AgentContextCompactionPolicy {
-        model.router.usageMode == .economy
-            ? AgentContextCompactionPolicy.economy
-            : AgentContextCompactionPolicy.current()
-    }
-
-    /// Nil when Auto routing picks the model: the threshold is then the
-    /// percentage of whichever model's window, not one token count.
-    private var effectiveCompactionTokens: Int? {
-        let policy = compactionPolicy
-        guard !model.router.isAutoSelected else { return policy.maxTokens }
-        return policy.triggerTokens(window: model.router.contextWindow(for: model.router.selectedModelID))
-    }
-
-    private var compactionThresholdIsAutoCeiling: Bool {
-        model.router.isAutoSelected
+    private func memoryScanTitle(_ interval: MemoryScanInterval) -> String {
+        AppCopy.text("settings.memory.scan.\(interval.rawValue)")
     }
 
     public var body: some View {
         GeometryReader { proxy in
             NavigationSplitView(columnVisibility: $sidebarVisibility) {
-                List(visibleTabs, selection: $tab) { item in
+                List(Tab.allCases, selection: $tab) { item in
                     Text(item.title).tag(item)
                 }
                 .safeAreaInset(edge: .top, spacing: 0) {
@@ -88,15 +69,14 @@ public struct SettingsView: View {
             } detail: {
                 switch tab {
                 case .general: general
-                case .modelContext: ModelContextSettingsView(router: model.router)
-                case .access: WorkspaceAccessView(bridge: model.bridge)
-                case .memory: MemoryVaultView(bridge: model.bridge)
+                case .memoryTransfer: MemoryTransferView(bridge: model.bridge)
                 case .archive: ConversationArchiveView(model: model)
                 case .providers: RouterProvidersView(router: model.router)
                 case .custom: CustomAPIView(router: model.router, local: model.local)
                 case .share: RouterShareView(router: model.router)
                 case .mobile: RemoteMobileSettingsView(model: model)
                 case .local: LocalModelsView(local: model.local)
+                case .media: MediaSettingsView(model: model)
                 case .skills: SkillsSettingsView(model: model)
                 case .plugins: PluginSettingsView(model: model)
                 case .mcp: MCPSettingsView(registry: model.mcpRegistry)
@@ -123,12 +103,13 @@ public struct SettingsView: View {
         .onAppear {
             if let requested = model.settingsInitialTab,
                let resolved = Tab(rawValue: requested),
-               visibleTabs.contains(resolved) {
+               Tab.allCases.contains(resolved) {
                 tab = resolved
-            } else if !visibleTabs.contains(tab) {
+            } else if !Tab.allCases.contains(tab) {
                 tab = .general
             }
-            model.settingsInitialTab = nil
+            // Writing nil over nil still publishes and redraws every AppModel observer.
+            if model.settingsInitialTab != nil { model.settingsInitialTab = nil }
             model.refreshAvailableSandboxes()
         }
     }
@@ -153,6 +134,13 @@ public struct SettingsView: View {
             isSidebarCompact = false
             applyAutomaticSidebarVisibility(preferredSidebarVisibility)
         }
+    }
+
+    /// Built in steps: as one expression this is slow enough to trip the type checker.
+    private var explorationModelNote: String {
+        let note = AppCopy.text("settings.explore.modelNote")
+        guard let current = model.router.explorationModel.map({ $0.displayName ?? $0.id }) else { return note }
+        return note + " " + AppCopy.format("settings.explore.current", current)
     }
 
     private var general: some View {
@@ -421,6 +409,15 @@ public struct SettingsView: View {
                     Text(issue).font(.caption).foregroundStyle(.orange)
                 }
             }
+            Section(AppCopy.text("router.accountRouting")) {
+                Toggle(AppCopy.text("router.autoAccountFailover"), isOn: Binding(
+                    get: { model.router.autoAccountFailoverAfterLimit },
+                    set: { model.setAutoAccountFailoverAfterLimit($0) }
+                ))
+                Text(AppCopy.text("router.autoAccountFailover.hint"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Section(AppCopy.text("settings.appearance")) {
                 LabeledContent(AppCopy.text("settings.language")) {
                     LanguagePickerButton(model: model)
@@ -465,6 +462,13 @@ public struct SettingsView: View {
                 Text(AppCopy.text("settings.seedProjectRules.hint"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Toggle(AppCopy.text("settings.skillSuggestions"), isOn: Binding(
+                    get: { model.skillSuggestionsEnabled },
+                    set: { model.setSkillSuggestionsEnabled($0) }
+                ))
+                Text(AppCopy.text("settings.skillSuggestions.hint"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Picker(AppCopy.text("settings.workspaceConflictPolicy"), selection: Binding(
                     get: { model.workspaceConflictPolicy },
                     set: { model.setWorkspaceConflictPolicy($0) }
@@ -486,79 +490,16 @@ public struct SettingsView: View {
                         }
                     }
                 }
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text(AppCopy.text("settings.compactTrigger"))
-                        Spacer()
-                        if model.router.usageMode == .economy {
-                            Text("90%")
-                                .monospacedDigit()
-                                .foregroundStyle(.secondary)
-                        } else {
-                            Button {
-                                compactPercent = max(0, compactPercent - 1)
-                            } label: {
-                                Image(systemName: "minus")
-                            }
-                            .buttonStyle(.bordered)
-                            .accessibilityLabel(AppCopy.language == .tr ? "Azalt" : "Decrease")
-                            TextField("", value: $compactPercent, format: .number)
-                                .frame(width: 54)
-                                .multilineTextAlignment(.trailing)
-                                .monospacedDigit()
-                                .textFieldStyle(.roundedBorder)
-                                .accessibilityLabel(AppCopy.text("settings.compactTrigger"))
-                            Text("%")
-                            Button {
-                                compactPercent = min(100, compactPercent + 1)
-                            } label: {
-                                Image(systemName: "plus")
-                            }
-                            .buttonStyle(.bordered)
-                            .accessibilityLabel(AppCopy.language == .tr ? "Artır" : "Increase")
-                        }
-                    }
-                    .onChange(of: compactPercent) { _, value in
-                        compactPercent = min(100, max(0, value))
-                    }
-                    if model.router.usageMode == .economy {
-                        Text(AppCopy.language == .tr
-                             ? "Ekonomi politikasında eşik sabit olarak %90'dır."
-                             : "Economy policy uses a fixed 90% threshold.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Text(AppCopy.text("settings.compactTrigger.hint"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    if let tokens = effectiveCompactionTokens {
-                        Text((compactionThresholdIsAutoCeiling ? "≤ " : "") + AppCopy.format(
-                            "conversation.tokensCount",
-                            tokens.formatted(.number.locale(AppCopy.locale))
-                        ))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                    } else {
-                        let percent = Int((compactionPolicy.triggerRatio * 100).rounded())
-                        Text(AppCopy.language == .tr
-                             ? "Otomatik modelde her modelin penceresinin %\(percent)'i"
-                             : "Auto-routed models: \(percent)% of each model's window")
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                    }
-                }
             }
-            Section(AppCopy.language == .tr ? "Proje keşfi" : "Project exploration") {
-                Toggle(AppCopy.language == .tr ? "Alt ajanları kullan" : "Use subagents", isOn: Binding(
+            Section(AppCopy.text("settings.explore.title")) {
+                Toggle(AppCopy.text("settings.explore.subagents"), isOn: Binding(
                     get: { model.router.subagentsEnabled },
                     set: { model.setSubagentsEnabled($0) }
                 ))
-                Text(AppCopy.language == .tr
-                     ? "Açıkken ajan, zor ve uzun görevlerde çok dosyalı aramaları ve birbirinden bağımsız düzenleme parçalarını paralel alt ajanlara devreder; ana konuşmaya yalnızca özet girer. Düzenleyen her alt ajan yalnızca kendisine atanan dosyalara yazabilir, atamalar çakışamaz. Basit görevlerde çağırmaz. Her alt ajan ayrı model çağrısıdır; maliyeti düşürmek için kapatın. Seçim yapılmadıysa Ekonomi modunda kapalıdır."
-                     : "When on, the agent hands searches that sweep many files, and independent parts of a large change, to parallel subagents on hard or long tasks; only their summary enters the main conversation. An editing subagent can write only the files assigned to it, and assignments cannot overlap. Simple tasks never call one. Each subagent is a separate model run; turn this off to lower cost. Until you choose, it is off in Economy mode.")
+                Text(AppCopy.text("settings.explore.hint"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Picker(AppCopy.language == .tr ? "Keşif modeli" : "Exploration model", selection: Binding(
+                Picker(AppCopy.text("settings.explore.model"), selection: Binding(
                     get: {
                         model.router.explorationModels.contains { $0.id == model.router.explorationModelID }
                             ? model.router.explorationModelID
@@ -566,22 +507,48 @@ public struct SettingsView: View {
                     },
                     set: { model.setExplorationModel($0) }
                 )) {
-                    Text(AppCopy.language == .tr ? "Otomatik (en düşük maliyetli)" : "Automatic (lowest cost)").tag("")
+                    Text(AppCopy.text("settings.explore.auto")).tag("")
                     ForEach(model.router.explorationModels) { candidate in
                         Text(candidate.displayName ?? candidate.id).tag(candidate.id)
                     }
                 }
                 .disabled(!model.router.subagentsEnabled)
-                Text(AppCopy.language == .tr
-                     ? "Projeyi tarayan alt ajan bu modelle ve düşük efor ile çalışır. Otomatik seçim önce aboneliğinizdeki en hafif modeli, abonelik yoksa API anahtarınızdaki en hafif modeli kullanır."
-                       + (model.router.explorationModel.map { " Şu an: \($0.displayName ?? $0.id)." } ?? "")
-                     : "The subagent that sweeps the project runs on this model at low effort. Automatic uses the lightest model on your subscription, or the lightest one behind your API key when there is no subscription."
-                       + (model.router.explorationModel.map { " Currently: \($0.displayName ?? $0.id)." } ?? ""))
+                Text(explorationModelNote)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Section(AppCopy.language == .tr ? "Yanıt stili" : "Response style") {
-                Picker(AppCopy.language == .tr ? "Varsayılan yanıt stili" : "Default response style", selection: Binding(
+            Section(AppCopy.text("settings.tab.memory")) {
+                Toggle(AppCopy.text("settings.memory.on"), isOn: Binding(
+                    get: { model.bridge.memoryEnabled },
+                    set: { model.setMemoryEnabled($0) }
+                ))
+                Text(AppCopy.text("settings.memory.offHint"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Picker(AppCopy.text("settings.memory.scanEvery"), selection: Binding(
+                    get: { model.bridge.memoryScanInterval },
+                    set: { model.setMemoryScanInterval($0) }
+                )) {
+                    ForEach(MemoryScanInterval.allCases) { interval in
+                        Text(memoryScanTitle(interval)).tag(interval)
+                    }
+                }
+                .disabled(!model.bridge.memoryEnabled)
+                Text(AppCopy.text("settings.memory.hint"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                LabeledContent(AppCopy.text("settings.status")) {
+                    Text(AppCopy.format("settings.memory.statusLine", model.bridge.insightCount, model.bridge.unscannedTaskCount)
+                         + (model.bridge.lastMemoryScan.map { " · " + $0.formatted(.relative(presentation: .named).locale(AppCopy.locale)) } ?? ""))
+                        .foregroundStyle(.secondary)
+                }
+                Button(AppCopy.text("settings.memory.scanNow")) {
+                    Task { await model.bridge.scanMemoryNow() }
+                }
+                .disabled(model.bridge.memoryScanRunning || model.bridge.unscannedTaskCount == 0)
+            }
+            Section(AppCopy.text("settings.responseStyle")) {
+                Picker(AppCopy.text("settings.responseStyle.default"), selection: Binding(
                     get: { model.router.responseStylePreference },
                     set: { model.setResponseStylePreference($0) }
                 )) {
@@ -592,14 +559,12 @@ public struct SettingsView: View {
                 Text(model.router.responseStylePreference.detail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(AppCopy.language == .tr
-                     ? "Bu ayar promptu değiştirmez. Kısa/ultra tercihi best-effort'tur; kesin token, tamamlanma veya maliyet garantisi vermez."
-                     : "This setting does not rewrite the prompt. Concise/Ultra are best-effort preferences; they do not guarantee a token count, completion, or lower cost.")
+                Text(AppCopy.text("settings.responseStyle.hint"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Section("Preferred Browser & Engine") {
-                Picker("Engine", selection: Binding(
+            Section(AppCopy.text("settings.browser.title")) {
+                Picker(AppCopy.text("settings.browser.engine"), selection: Binding(
                     get: { model.browserBackend?.rawValue ?? BrowserBackend.unknown.rawValue },
                     set: { rawValue in
                         model.setBrowserBackend(
@@ -607,46 +572,45 @@ public struct SettingsView: View {
                         )
                     }
                 )) {
-                    Text("In-App Native Live Browser (Apple WebKit)").tag(BrowserBackend.native.rawValue)
-                    Text("Automatic (ask when unclear)").tag(BrowserBackend.unknown.rawValue)
-                    Text("Managed isolated browser (Chrome)").tag(BrowserBackend.managed.rawValue)
-                    Text("Existing Chrome profile (Extension)").tag(BrowserBackend.`extension`.rawValue)
+                    Text(AppCopy.text("settings.browser.auto")).tag(BrowserBackend.unknown.rawValue)
+                    Text(AppCopy.text("settings.browser.native")).tag(BrowserBackend.native.rawValue)
+                    Text(AppCopy.text("settings.browser.safari")).tag(BrowserBackend.safari.rawValue)
+                    Text(AppCopy.text("settings.browser.chrome")).tag(BrowserBackend.`extension`.rawValue)
+                    Text(AppCopy.text("settings.browser.managed")).tag(BrowserBackend.managed.rawValue)
                 }
-                Text("In-App Native Browser runs Apple WebKit in the Right Dock with zero extra resource overhead (0 MB download). Managed isolated browser uses external Chrome via CDP.")
+                Text(AppCopy.text("settings.browser.hint"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Section("Computer Use") {
-                Toggle("Enable Computer Use", isOn: Binding(
+            Section(AppCopy.text("settings.computerUse.title")) {
+                Toggle(AppCopy.text("settings.computerUse.enable"), isOn: Binding(
                     get: { model.isComputerUseEnabled },
                     set: { model.setComputerUseEnabled($0) }
                 ))
-                Text(AppCopy.language == .tr
-                     ? "Ajan açık uygulamaları görebilir, ekran görüntülerini inceleyebilir, fare ve klavyeyle işlem yapıp sonucu kontrol edebilir. Tam erişimde otomatik çalışır; diğer erişim modlarında onay ister. macOS Ekran Kaydı ve Erişilebilirlik izinleri gerekir."
-                     : "The agent can inspect running apps, view screenshots, use the mouse and keyboard, and verify the result. Full access runs automatically; other access modes ask for approval. macOS Screen Recording and Accessibility permissions are required.")
+                Text(AppCopy.text("settings.computerUse.hint"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
                 if model.isComputerUseEnabled {
                     let perms = ComputerUseService.permissions()
-                    LabeledContent("Screen Recording") {
+                    LabeledContent(AppCopy.text("settings.computerUse.screenRecording")) {
                         HStack(spacing: 8) {
-                            Text(perms.screenRecording ? "Granted" : "Permission Required")
+                            Text(AppCopy.text(perms.screenRecording ? "settings.computerUse.granted" : "settings.computerUse.required"))
                                 .foregroundStyle(perms.screenRecording ? .green : .orange)
                             if !perms.screenRecording {
-                                Button("Request Permission") {
+                                Button(AppCopy.text("settings.computerUse.request")) {
                                     ComputerUseService.requestScreenRecordingPermission()
                                     ComputerUseService.openSystemSettings(privacyPane: "screen")
                                 }
                             }
                         }
                     }
-                    LabeledContent("Accessibility") {
+                    LabeledContent(AppCopy.text("settings.computerUse.accessibility")) {
                         HStack(spacing: 8) {
-                            Text(perms.accessibility ? "Granted" : "Permission Required")
+                            Text(AppCopy.text(perms.accessibility ? "settings.computerUse.granted" : "settings.computerUse.required"))
                                 .foregroundStyle(perms.accessibility ? .green : .orange)
                             if !perms.accessibility {
-                                Button("Request Permission") {
+                                Button(AppCopy.text("settings.computerUse.request")) {
                                     ComputerUseService.requestAccessibilityPermission()
                                     ComputerUseService.openSystemSettings(privacyPane: "accessibility")
                                 }
@@ -750,8 +714,10 @@ public struct SettingsView: View {
     }
 
     private var prompt: some View {
-        ScrollView {
-            Text(model.effectiveSystemPrompt().isEmpty ? AppCopy.text("settings.promptEmpty") : model.effectiveSystemPrompt())
+        // Built once per redraw: it reads memory, lessons and the code graph.
+        let systemPrompt = model.effectiveSystemPrompt()
+        return ScrollView {
+            Text(systemPrompt.isEmpty ? AppCopy.text("settings.promptEmpty") : systemPrompt)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
@@ -764,8 +730,8 @@ private struct SettingsUpdateSection: View {
     @ObservedObject var checker: UpdateChecker
 
     var body: some View {
-        Section(AppCopy.language == .tr ? "Sürüm ve Güncellemeler" : "Version & Updates") {
-            LabeledContent(AppCopy.language == .tr ? "Mevcut Sürüm" : "Current Version") {
+        Section(AppCopy.text("settings.updates.title")) {
+            LabeledContent(AppCopy.text("settings.updates.current")) {
                 Text("v\(checker.currentVersion) (\(checker.currentBuild))")
                     .font(.subheadline.monospaced())
                     .foregroundStyle(.secondary)
@@ -775,7 +741,7 @@ private struct SettingsUpdateSection: View {
             case .checking:
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    Text(AppCopy.language == .tr ? "Güncellemeler denetleniyor..." : "Checking for updates...")
+                    Text(AppCopy.text("settings.updates.checking"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -784,10 +750,10 @@ private struct SettingsUpdateSection: View {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.down.circle.fill")
                             .foregroundStyle(info.mandatory ? .red : .accentColor)
-                        Text(AppCopy.language == .tr ? "Yeni bir sürüm mevcut: v\(info.latestVersion)" : "New version available: v\(info.latestVersion)")
+                        Text(AppCopy.format("settings.updates.available", info.latestVersion))
                             .font(.subheadline.bold())
                         if info.mandatory {
-                            Text(AppCopy.language == .tr ? "Zorunlu" : "Required")
+                            Text(AppCopy.text("settings.updates.required"))
                                 .font(.caption2.bold())
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -805,23 +771,23 @@ private struct SettingsUpdateSection: View {
                     }
 
                     HStack(spacing: 8) {
-                        Button(AppCopy.language == .tr ? "Güncellemeyi İndir" : "Download Update") {
+                        Button(AppCopy.text("settings.updates.download")) {
                             checker.openDownloadPage()
                         }
                         .buttonStyle(.borderedProminent)
 
-                        Button(AppCopy.language == .tr ? "Yeniden Denetle" : "Check Again") {
+                        Button(AppCopy.text("settings.updates.checkAgain")) {
                             Task { await checker.checkForUpdates(manual: true) }
                         }
                     }
                 }
             case .upToDate:
                 HStack {
-                    Label(AppCopy.language == .tr ? "Uygulama güncel." : "Application is up to date.", systemImage: "checkmark.circle.fill")
+                    Label(AppCopy.text("settings.updates.upToDate"), systemImage: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                         .font(.caption)
                     Spacer()
-                    Button(AppCopy.language == .tr ? "Güncellemeleri Denetle" : "Check for Updates") {
+                    Button(AppCopy.text("settings.updates.check")) {
                         Task { await checker.checkForUpdates(manual: true) }
                     }
                 }
@@ -831,17 +797,17 @@ private struct SettingsUpdateSection: View {
                         .foregroundStyle(.orange)
                         .font(.caption)
                     Spacer()
-                    Button(AppCopy.language == .tr ? "Tekrar Dene" : "Retry") {
+                    Button(AppCopy.text("settings.updates.retry")) {
                         Task { await checker.checkForUpdates(manual: true) }
                     }
                 }
             case .idle:
                 HStack {
-                    Text(AppCopy.language == .tr ? "En son sürüm bilgisi kontrol edilebilir." : "Check for the latest available release.")
+                    Text(AppCopy.text("settings.updates.hint"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Button(AppCopy.language == .tr ? "Güncellemeleri Denetle" : "Check for Updates") {
+                    Button(AppCopy.text("settings.updates.check")) {
                         Task { await checker.checkForUpdates(manual: true) }
                     }
                 }

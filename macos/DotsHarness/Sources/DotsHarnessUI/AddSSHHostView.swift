@@ -108,8 +108,7 @@ struct AddSSHHostView: View {
                     .lineLimit(3)
                     .textSelection(.enabled)
                 Button(AppCopy.text("ssh.copyPublicKey")) {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(key, forType: .string)
+                    NSPasteboard.copy(key)
                 }
             }
         }

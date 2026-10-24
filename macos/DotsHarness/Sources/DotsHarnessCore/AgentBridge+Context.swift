@@ -11,19 +11,14 @@ extension NativeAgentHost {
         let durable = Self.durableContext(messages)
         activeContext = durable
         if let index = conversations.firstIndex(where: { $0.id == conversationID }) {
-            conversations[index].modelContext = durable
+            conversations[index].modelContext = durable.filter { $0.responseContinuationID == nil }
         }
-        persist()
+        persistSoon()
     }
 
     public func contextUsageEvents() -> [AgentContextUsageEvent] {
         _ = listTick
         return contextTelemetry.events()
-    }
-
-    public func contextCacheSummary() -> AgentContextCacheSummary {
-        _ = listTick
-        return contextTelemetry.summary()
     }
 
     @discardableResult
@@ -40,13 +35,16 @@ extension NativeAgentHost {
         modelOverride: String? = nil,
         inputComposition: AgentContextInputComposition? = nil,
         effectiveOutputBudget: AgentOutputBudget? = nil,
+        requestedEffort: String? = nil,
         responseStyle: AgentResponseStyle? = nil,
         retryCount: Int? = nil,
         retryUsage: AgentUsage? = nil,
         errorKind: String? = nil,
         tools: [AgentToolDefinition]? = nil,
         requestContextSegment: Int? = nil,
-        prepareMilliseconds: Int? = nil
+        prepareMilliseconds: Int? = nil,
+        cpu: AgentStepCPUTrace? = nil,
+        compaction: AgentCompactionTrace? = nil
     ) -> UUID? {
         guard response?.usage != nil || errorKind != nil || inputComposition != nil || requestKind == .compactionSummary else { return nil }
         let servedConfiguration = response?.servedAccountID.flatMap { id in
@@ -65,21 +63,22 @@ extension NativeAgentHost {
             turnID: activeTurnID,
             provider: servedConfiguration.provider,
             api: servedConfiguration.api,
-            model: modelOverride ?? router?.lastServedModelID ?? configuration.model,
+            model: response?.servedModelID ?? modelOverride ?? router?.lastServedModelID ?? configuration.model,
             cacheKey: cacheKey,
             requestKind: requestKind,
             strategy: strategy,
             policyID: configuration.compactionPolicy.id,
             selectedEffort: servedConfiguration.effort,
+            requestedEffort: requestedEffort,
             usageMode: configuration.usageMode,
             responseStyle: responseStyle,
             retryCount: retryCount,
             retryUsage: retryUsage,
             effectiveOutputBudget: effectiveOutputBudget,
             usage: response?.usage,
-            contextWindowTokens: router?.contextWindow(
+            contextWindowTokens: compaction?.contextWindow ?? router?.contextWindow(
                 for: response?.servedModelID ?? modelOverride ?? configuration.model,
-                provider: servedConfiguration.provider
+                provider: servedConfiguration.specID.isEmpty ? nil : servedConfiguration.specID
             ) ?? configuration.contextWindow,
             inputComposition: inputComposition,
             contextTokensBefore: contextTokensBefore,
@@ -87,25 +86,29 @@ extension NativeAgentHost {
             latencyMilliseconds: Int(max(0, Date().timeIntervalSince(startedAt) * 1_000)),
             firstTokenMilliseconds: response?.firstTokenMilliseconds,
             prepareMilliseconds: prepareMilliseconds,
+            cpu: cpu,
             nativeCompactionFallback: response?.nativeCompactionFallback ?? false,
             errorKind: errorKind,
             cacheTrace: tools.map { definitions in
                 AgentCacheTrace(
                     toolFingerprint: AgentCacheNamespace.toolFingerprint(definitions),
                     policyRevision: AgentCacheNamespace.promptContextRevision(
-                        systemPromptSections(workspace: workspaceURL, planMode: false, prompt: "")),
+                        [corePolicySection(workspace: workspaceURL)]),
                     contextSegment: requestContextSegment ?? conversations.first(where: { $0.id == conversationID })?.contextCompactionCount ?? 0,
                     ttlSeconds: response?.effectiveCacheTTLSeconds,
                     requestStartedAt: startedAt,
                     fast: servedConfiguration.fast,
                     accountFingerprint: servedConfiguration.accountID.map(AgentCacheTrace.fingerprint),
-                    endpointFingerprint: AgentCacheTrace.fingerprint(servedConfiguration.baseURL.lowercased()))
+                    endpointFingerprint: AgentCacheTrace.fingerprint(servedConfiguration.baseURL.lowercased()),
+                    local: AgentCacheTrace.isLoopback(servedConfiguration.baseURL))
             },
             providerCacheDiagnostics: response?.cacheDiagnostics,
-            cacheReuseEvidence: reuseEvidence
+            cacheReuseEvidence: reuseEvidence,
+            compactionTrace: compaction
         )
         contextTelemetry.append(event)
-        if var boundary = response?.proposedCacheBoundary,
+        // A subagent's boundary belongs to its own transcript, never the parent's.
+        if !requestKind.isSubagent, var boundary = response?.proposedCacheBoundary,
            let index = conversations.firstIndex(where: { $0.id == conversationID }) {
             boundary.baselineEventID = event.id.uuidString
             // A successful request without a proven terminal counter is still
@@ -146,6 +149,25 @@ extension NativeAgentHost {
         return event.id
     }
 
+    /// One subagent step, recorded apart from the conversation's own requests so
+    /// its cost and cache reuse are measurable.
+    func recordSubagentUsage(
+        _ response: AgentResponse,
+        kind: AgentContextRequestKind,
+        conversationID: String,
+        configuration: AgentConfiguration,
+        cacheKey: String?,
+        messages: [AgentMessage],
+        startedAt: Date
+    ) {
+        let tokens = AgentContextCompaction.estimateTokens(messages)
+        recordContextUsage(
+            response, conversationID: conversationID, configuration: configuration, cacheKey: cacheKey,
+            requestKind: kind, strategy: .none, contextTokensBefore: tokens, contextTokensAfter: tokens,
+            startedAt: startedAt
+        )
+    }
+
     func compactIfNeeded(
         messages: [AgentMessage],
         conversationID: String,
@@ -155,6 +177,7 @@ extension NativeAgentHost {
         client: NativeAgentClient,
         nativeCompactionDisabled: Bool,
         force: Bool = false,
+        forceDeterministic: Bool = false,
         contextConfiguration: AgentConfiguration? = nil,
         routeIdentityOverride: String? = nil,
         router: RouterController? = nil
@@ -179,42 +202,66 @@ extension NativeAgentHost {
         let normalized = EconomyToolOutputPolicy.normalizeMessages(messages)
         let previousInput = routeChanged ? 0 : (previousConversation?.lastContextInputTokens ?? 0)
         let normalizedEstimate = admission.normalizedTokens
+        // Provider-reported input already includes the system prompt and tool
+        // schemas; both sides of the delta include the same tool estimate.
+        let observedInput = AgentContextCompaction.observedInputTokens(
+            estimate: normalizedEstimate + budget.toolDefinitionTokens,
+            lastInput: previousInput,
+            lastEstimate: previousConversation?.lastContextEstimatedTokens ?? 0
+        )
         let admissionFits = admission.fits
         let nativeCanCompact = budgetConfiguration.supportsNativeCompaction
             && !nativeCompactionDisabled
-            && !NativeCompactionCapabilityMemory.shared.isUnsupported(for: budgetConfiguration)
+            && !EndpointCapabilityMemory.nativeCompaction.isUnsupported(for: budgetConfiguration)
             && budgetConfiguration.api == RouterAPIKind.chatGPT.rawValue
+        let shouldPrune = force
+            || !admissionFits
+            || (!routeChanged && observedInput >= budget.triggerTokens)
+        let compactDeterministically = forceDeterministic
+            || admission.deterministic
+            || (nativeCanCompact && !routeChanged)
+        let trace = AgentCompactionTrace(
+            contextWindow: budget.contextWindow,
+            reservedOutputTokens: budget.reservedOutputTokens,
+            toolDefinitionTokens: budget.toolDefinitionTokens,
+            usableInputTokens: budget.usableInputTokens,
+            triggerTokens: budget.triggerTokens,
+            targetTokens: budget.targetTokens,
+            policyID: budget.policy.id,
+            promptTokens: estimated,
+            normalizedTokens: normalizedEstimate,
+            previousInputTokens: previousInput,
+            routeChanged: routeChanged,
+            admissionFits: admissionFits,
+            nativeCanCompact: nativeCanCompact,
+            compactDeterministically: compactDeterministically,
+            shouldPrune: shouldPrune,
+            forced: force,
+            toolCount: tools.count
+        )
+        let unchanged = ContextCompactionOutcome(
+            messages: messages,
+            strategy: .none,
+            contextTokensBefore: estimated,
+            contextTokensAfter: estimated,
+            trace: trace
+        )
         if nativeCanCompact, !force, admissionFits {
             // The selected Responses route owns threshold compaction. Do not
             // rewrite its cached prefix locally while the request still fits.
-            return ContextCompactionOutcome(
-                messages: messages,
-                strategy: .none,
-                contextTokensBefore: estimated,
-                contextTokensAfter: estimated
-            )
+            return unchanged
         }
-        let shouldPrune = force
-            || !admissionFits
-            || (!routeChanged && max(normalizedEstimate, previousInput) >= budget.triggerTokens)
-        let compactDeterministically = admission.deterministic || (nativeCanCompact && !routeChanged)
         if compactDeterministically {
-            guard shouldPrune else {
-                return ContextCompactionOutcome(
-                    messages: messages,
-                    strategy: .none,
-                    contextTokensBefore: estimated,
-                    contextTokensAfter: estimated
-                )
-            }
-            let economyMessages = shouldPrune
-                ? AgentContextCompaction.economyPrune(normalized, targetTokens: budget.targetTokens)
-                : normalized
+            guard shouldPrune else { return unchanged }
+            let economyMessages = AgentContextCompaction.economyPrune(normalized, targetTokens: budget.targetTokens)
             let after = AgentContextCompaction.estimateTokens(economyMessages)
             let changed = economyMessages != messages
             if changed, let index = conversations.firstIndex(where: { $0.id == conversationID }) {
-                conversations[index].contextCompactionCount += shouldPrune ? 1 : 0
+                conversations[index].contextCompactionCount += 1
+                // Compaction drops read_file bodies; reads must not vouch for them.
+                ReadLedger.shared.forgetConversation(conversationID)
                 conversations[index].lastContextInputTokens = after
+                conversations[index].lastContextEstimatedTokens = 0
                 conversations[index].contextWindow = budget.contextWindow
             }
             if changed { saveModelContext(economyMessages, in: conversationID) }
@@ -222,29 +269,20 @@ extension NativeAgentHost {
                 messages: economyMessages,
                 strategy: changed ? .deterministic : .none,
                 contextTokensBefore: estimated,
-                contextTokensAfter: after
+                contextTokensAfter: after,
+                trace: trace
             )
         }
         guard force
             || !admissionFits
-            || (!routeChanged && max(normalizedEstimate, previousInput) >= budget.triggerTokens) else {
-            return ContextCompactionOutcome(
-                messages: messages,
-                strategy: .none,
-                contextTokensBefore: estimated,
-                contextTokensAfter: estimated
-            )
+            || (!routeChanged && observedInput >= budget.triggerTokens) else {
+            return unchanged
         }
         if nativeCanCompact {
             // Let the documented Responses route own the compaction item. The
             // opaque item is returned in the provider transcript and must not be
             // replaced with a local summary before the provider sees it.
-            return ContextCompactionOutcome(
-                messages: messages,
-                strategy: .none,
-                contextTokensBefore: estimated,
-                contextTokensAfter: estimated
-            )
+            return unchanged
         }
         let previousSummary = conversations.first(where: { $0.id == conversationID })?.contextSummary
         let durableMessages = Self.durableContext(messages)
@@ -271,7 +309,10 @@ extension NativeAgentHost {
             if AgentContextCompaction.trimToolResults(&trimmed, targetTokens: budget.targetTokens) {
                 if let index = conversations.firstIndex(where: { $0.id == conversationID }) {
                     conversations[index].contextCompactionCount += 1
+                    // Compaction drops read_file bodies; reads must not vouch for them.
+                    ReadLedger.shared.forgetConversation(conversationID)
                     conversations[index].lastContextInputTokens = AgentContextCompaction.estimateTokens(trimmed)
+                    conversations[index].lastContextEstimatedTokens = 0
                     conversations[index].contextWindow = budget.contextWindow
                 }
                 saveModelContext(trimmed, in: conversationID)
@@ -279,15 +320,11 @@ extension NativeAgentHost {
                     messages: trimmed,
                     strategy: .fallback,
                     contextTokensBefore: estimated,
-                    contextTokensAfter: AgentContextCompaction.estimateTokens(trimmed)
+                    contextTokensAfter: AgentContextCompaction.estimateTokens(trimmed),
+                    trace: trace
                 )
             }
-            return ContextCompactionOutcome(
-                messages: messages,
-                strategy: .none,
-                contextTokensBefore: estimated,
-                contextTokensAfter: estimated
-            )
+            return unchanged
         }
 
         status = "Context automatically compacting…"
@@ -394,9 +431,9 @@ extension NativeAgentHost {
             }
         }
 
-        let validSummary = AgentContextCompaction.isValidSummary(summary)
+        let validSummary = selection.attachFileLists(to: AgentContextCompaction.isValidSummary(summary)
             ? summary
-            : AgentContextCompaction.fallbackSummary(previousSummary: previousSummary, archiveText: selection.archiveText)
+            : AgentContextCompaction.fallbackSummary(previousSummary: previousSummary, archiveText: selection.archiveText))
         let strategy: AgentCompactionStrategy = AgentContextCompaction.isValidSummary(summary) ? .aiSummary : .fallback
         let preserveProviderItems = (router?.preserveProviderItems(for: contextConfiguration?.model ?? modelOverride ?? configuration.model))
             ?? (budgetConfiguration.api == RouterAPIKind.chatGPT.rawValue)
@@ -404,7 +441,10 @@ extension NativeAgentHost {
         if let index = conversations.firstIndex(where: { $0.id == conversationID }) {
             conversations[index].contextSummary = validSummary
             conversations[index].contextCompactionCount += 1
+            // Compaction drops read_file bodies; reads must not vouch for them.
+            ReadLedger.shared.forgetConversation(conversationID)
             conversations[index].lastContextInputTokens = AgentContextCompaction.estimateTokens(compacted)
+            conversations[index].lastContextEstimatedTokens = 0
             conversations[index].contextWindow = budget.contextWindow
         }
         saveModelContext(compacted, in: conversationID)
@@ -413,7 +453,8 @@ extension NativeAgentHost {
             messages: compacted,
             strategy: strategy,
             contextTokensBefore: estimated,
-            contextTokensAfter: AgentContextCompaction.estimateTokens(compacted)
+            contextTokensAfter: AgentContextCompaction.estimateTokens(compacted),
+            trace: trace
         )
     }
 
@@ -440,17 +481,10 @@ extension NativeAgentHost {
                 return "unresolved|\(stickyAccountID)|\(targetModel)"
             }
             if let account = router.store.state.accounts.first(where: { $0.id == stickyAccountID }) {
-                return [account.api, account.provider, account.id, account.baseURL.lowercased(), targetModel]
-                    .joined(separator: "|")
+                return account.routeIdentity(model: targetModel)
             }
         }
-        return [
-            configuration.api,
-            configuration.provider,
-            configuration.accountID ?? "",
-            configuration.baseURL.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
-            requestedModel,
-        ].joined(separator: "|")
+        return configuration.routeIdentity(model: requestedModel)
     }
 
     func preferredAccountID(_ router: RouterController, conversationID: String, modelOverride: String?) -> String? {

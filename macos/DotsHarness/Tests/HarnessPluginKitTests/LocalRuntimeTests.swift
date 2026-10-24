@@ -39,14 +39,13 @@ final class LocalRuntimeTests: XCTestCase {
         XCTAssertNotEqual(arm.sha256, intel.sha256)
     }
 
-    func testMLXLockPinsEveryPackageByHash() throws {
+    func testMLXVersionMatchesThePinnedPackage() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-        let lock = try String(contentsOf: root.appendingPathComponent("Sources/DotsHarnessCore/Resources/mlx-requirements.txt"), encoding: .utf8)
-        let packages = lock.split(separator: "\n").filter { !$0.hasPrefix(" ") && $0.contains("==") }
-        XCTAssertTrue(packages.contains { $0.hasPrefix("mlx-lm==\(LocalRuntime.mlxVersion)") })
-        // A package line is followed by at least one hash line, so hashes can never be fewer.
-        XCTAssertGreaterThanOrEqual(lock.components(separatedBy: "--hash=sha256:").count - 1, packages.count)
-        XCTAssertGreaterThan(packages.count, 10)
+        let manifest = try String(contentsOf: root.appendingPathComponent("Package.swift"), encoding: .utf8)
+        XCTAssertTrue(manifest.contains("mlx-swift-lm\", exact: \"\(LocalRuntime.mlxVersion)\""))
+        XCTAssertTrue(LocalRuntime.mlxServerBuild.hasPrefix(LocalRuntime.mlxVersion))
+        XCTAssertTrue(LocalRuntime.mlxAsset.url.absoluteString.hasSuffix("/dotsmlx-\(LocalRuntime.mlxServerBuild)-macos-arm64.tar.gz"))
+        XCTAssertEqual(LocalRuntime.mlxAsset.sha256.count, 64)
     }
 
     func testParsesGPUDevicesAndSkipsCPUAccelerators() {
@@ -63,7 +62,7 @@ final class LocalRuntimeTests: XCTestCase {
     func testLlamaArgumentsFollowUserTuning() {
         let defaults = LocalRuntime.llamaArguments(modelPath: "/m.gguf", alias: "m", port: 1, context: 8192, settings: LocalRuntimeSettings())
         XCTAssertEqual(defaults, ["--model", "/m.gguf", "--host", "127.0.0.1", "--port", "1", "--ctx-size", "8192",
-                                  "--alias", "m", "--jinja", "--parallel", "1", "--gpu-layers", "auto"])
+                                  "--alias", "m", "--jinja", "--parallel", "1", "--sleep-idle-seconds", "15", "--gpu-layers", "auto"])
         var tuned = LocalRuntimeSettings()
         tuned.gpuLayers = "20"
         tuned.threads = 6
@@ -153,7 +152,15 @@ final class LocalRuntimeTests: XCTestCase {
         let paths = Self.livePaths()
         let runtime = LocalRuntime(paths: paths, port: 18_798)
         defer { runtime.stop() }
-        try await runtime.ensureMLX()
+        // `swift test` builds dotsmlx beside the test bundle; mlx.metallib comes from
+        // scripts/build-mlx-metallib.sh .build "$(swift build --show-bin-path)"
+        // DOTS_LIVE_MLX_DOWNLOAD=1 serves with the published archive instead.
+        if ProcessInfo.processInfo.environment["DOTS_LIVE_MLX_DOWNLOAD"] == "1" {
+            runtime.mlxServerURL = runtime.mlxDirectory.appendingPathComponent("dotsmlx")
+            try await runtime.ensureMLX()
+        } else {
+            runtime.mlxServerURL = Bundle(for: Self.self).bundleURL.deletingLastPathComponent().appendingPathComponent("dotsmlx")
+        }
         let spec = LocalModelCatalog.spec(id: "mlx-qwen25-05b-4bit")!
         try await runtime.downloadModel(spec)
         XCTAssertTrue(runtime.isInstalled(spec))

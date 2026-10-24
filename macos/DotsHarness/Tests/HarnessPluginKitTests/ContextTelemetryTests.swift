@@ -70,6 +70,43 @@ final class ContextTelemetryTests: XCTestCase {
         XCTAssertFalse(raw.contains("tool arguments"))
     }
 
+    func testLedgerAppendsInPlaceAndTrimsPastTheSlack() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("DotsHarnessTelemetry-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = SupportPaths(
+            root: root,
+            plugins: root.appendingPathComponent("plugins", isDirectory: true),
+            presets: root.appendingPathComponent("presets", isDirectory: true),
+            settings: root.appendingPathComponent("settings.json"),
+            hostPatch: root.appendingPathComponent("host.patch.yml"),
+            trust: root.appendingPathComponent("trust.json"),
+            models: root.appendingPathComponent("models", isDirectory: true),
+            runtime: root.appendingPathComponent("runtime", isDirectory: true)
+        )
+        paths.ensure()
+        func event(_ index: Int) -> AgentContextUsageEvent {
+            AgentContextUsageEvent(
+                conversationID: "conversation", provider: "OpenAI",
+                api: RouterAPIKind.openAICompatible.rawValue, model: "test-model", cacheKey: nil,
+                requestKind: .main, strategy: .none, policyID: .baseline,
+                contextTokensBefore: index, contextTokensAfter: 0, latencyMilliseconds: 1,
+                cpu: AgentStepCPUTrace(prepareStages: ["save": 3], requestMainThread: 5, requestProcess: 9)
+            )
+        }
+        let store = AgentContextTelemetryStore(paths: paths, maxEvents: 10)
+        for index in 0..<11 { store.append(event(index)) }
+        // A fresh reader decodes the spliced file, not the writer's cache.
+        let reread = AgentContextTelemetryStore(paths: paths, maxEvents: 10).events()
+        XCTAssertEqual(reread.map(\.contextTokensBefore), Array(0..<11))
+        XCTAssertEqual(reread.last?.cpu?.prepareMainThread, 3)
+        XCTAssertNotNil(reread.last?.previousRequestGapSeconds)
+
+        store.append(event(11))
+        let trimmed = AgentContextTelemetryStore(paths: paths, maxEvents: 10).events()
+        XCTAssertEqual(trimmed.map(\.contextTokensBefore), Array(2..<12))
+    }
+
     func testRetryUsageIsStoredSeparatelyFromTheSuccessfulAttempt() {
         let event = AgentContextUsageEvent(
             conversationID: "conversation",

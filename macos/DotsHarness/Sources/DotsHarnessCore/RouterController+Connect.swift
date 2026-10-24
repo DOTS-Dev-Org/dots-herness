@@ -63,7 +63,7 @@ extension RouterController {
             return
         }
         guard !selectedKind.baseURL.isEmpty else {
-            error = "This provider needs a Custom API endpoint."
+            error = AppCopy.text("router.connect.needsEndpoint")
             return
         }
         do {
@@ -80,14 +80,14 @@ extension RouterController {
 
     public func startBrowser() async {
         guard let spec = RouterCatalog.spec(for: selectedKind.id), let oauth = spec.oauth else {
-            error = "This provider does not support browser sign-in. Use an API key or Custom API."
+            error = AppCopy.text("router.connect.noBrowserSignIn")
             return
         }
         let engine = OAuthFlow(spec: oauth, session: oauthSession)
         let verifier = OAuthFlow.randomToken()
         let state = OAuthFlow.randomToken()
         guard let authURL = engine.authorizeURL(verifier: verifier, state: state)?.absoluteString else {
-            error = "Could not build the sign-in URL."
+            error = AppCopy.text("router.connect.badURL")
             return
         }
         flow = .browser(provider: selectedKind.id, authURL: authURL, redirectURI: oauth.redirectURI, codeVerifier: verifier, state: state)
@@ -99,14 +99,14 @@ extension RouterController {
             flow = .idle
             return
         }
-        if let url = URL(string: authURL) { NSWorkspace.shared.open(url) }
+        if let url = URL(string: authURL) { SafeURL.openWeb(url) }
         let loginState = state
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 300_000_000_000)
             guard let self,
                   case .browser(_, _, _, _, let currentState) = self.flow,
                   currentState == loginState else { return }
-            self.error = "The sign-in request timed out. Start it again."
+            self.error = AppCopy.text("router.connect.timeout")
             self.cancelFlow()
         }
         status = AppCopy.text("router.waitingAuthorization")
@@ -134,7 +134,7 @@ extension RouterController {
             ?? oauth.manualCodeSeparator.flatMap { sep in
                 rawCode.components(separatedBy: sep).count > 1 ? rawCode.components(separatedBy: sep).last : nil
             }
-        if let returnedState, returnedState != expectedState { error = "The login callback state did not match."; return }
+        if let returnedState, returnedState != expectedState { error = AppCopy.text("router.connect.stateMismatch"); return }
         do {
             let tokens = try await OAuthFlow(spec: oauth, session: oauthSession).exchange(code: rawCode, verifier: verifier, state: expectedState)
             let provider = RouterCatalog.kind(for: providerID) ?? selectedKind
@@ -184,13 +184,13 @@ extension RouterController {
         let (data, response) = try await URLSession.shared.data(for: request)
         guard (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) == true,
               let payload = try? JSONCodec.parse(data) else {
-            throw RouterTestError.message("Could not read the Google Code Assist project for this account.")
+            throw RouterTestError.message(AppCopy.text("router.connect.googleProjectRead"))
         }
         // The field is a bare string on some accounts and an object on others.
         let project = payload["cloudaicompanionProject"]?.string
             ?? payload["cloudaicompanionProject"]?["id"]?.string
         guard let project, !project.isEmpty else {
-            throw RouterTestError.message("This Google account has no Gemini Code Assist project.")
+            throw RouterTestError.message(AppCopy.text("router.connect.googleNoProject"))
         }
         return project
     }
@@ -198,7 +198,7 @@ extension RouterController {
     public func startDevice() async {
         guard let spec = RouterCatalog.spec(for: selectedKind.id), let oauth = spec.oauth,
               oauth.deviceCodeURL?.isEmpty == false else {
-            error = "This provider does not expose a native device login yet. Use an API key or Custom API."
+            error = AppCopy.text("router.connect.noDeviceLogin")
             return
         }
         let engine = OAuthFlow(spec: oauth, session: oauthSession)
@@ -218,7 +218,7 @@ extension RouterController {
             extra: [:]
         )
         status = AppCopy.text("router.waitingAuthorization")
-        if let url = URL(string: device.verificationURL) { NSWorkspace.shared.open(url) }
+        if let url = URL(string: device.verificationURL) { SafeURL.openWeb(url) }
 
         do {
             let tokens = try await engine.pollDevice(device)

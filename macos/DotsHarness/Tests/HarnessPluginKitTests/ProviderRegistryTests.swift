@@ -42,6 +42,16 @@ final class ProviderRegistryTests: XCTestCase {
         XCTAssertNil(specs.first { $0.id == "unknown-provider" })
     }
 
+    func testRemoteCatalogWithoutEffortsKeepsBundledLevels() throws {
+        var specs = ProviderRegistry.shared.specs
+        let remote = Data(#"[{"id":"claude","models":[{"id":"claude-haiku-5-5"}]}]"#.utf8)
+        let entries = try JSONDecoder().decode([ProviderRegistry.RemoteCatalogEntry].self, from: remote)
+        ProviderRegistry.applyRemote(entries, to: &specs)
+
+        let haiku = try XCTUnwrap(specs.first { $0.id == "claude" }?.models.first { $0.id == "claude-haiku-5-5" })
+        XCTAssertFalse(haiku.efforts.isEmpty, "a catalog that omits efforts must not disable the effort slider")
+    }
+
     func testNonImageMediaCapabilitiesRemainProviderSpecific() throws {
         let openAI = try XCTUnwrap(ProviderRegistry.shared.spec("openai"))
         XCTAssertNil(openAI.media?.spec(for: .image))
@@ -160,7 +170,7 @@ final class ProviderRegistryTests: XCTestCase {
             api: RouterAPIKind.chatGPT.rawValue,
             contextWindow: 10_000,
             supportsNativeCompaction: true,
-            compactionPolicy: .cacheAware
+            compactionPolicy: .baseline
         ))
         let body = client.makeBody(
             messages: [
@@ -182,7 +192,7 @@ final class ProviderRegistryTests: XCTestCase {
         XCTAssertEqual(userContent.first?["text"] as? String, "workspace activity\n\nhello")
 
         let management = try XCTUnwrap(body["context_management"] as? [[String: Any]])
-        XCTAssertEqual(management.first?["compact_threshold"] as? Int, 8_000)
+        XCTAssertEqual(management.first?["compact_threshold"] as? Int, 9_000)
     }
 
     func testCodexSSESurfacesStreamError() {
@@ -403,6 +413,31 @@ final class ProviderRegistryTests: XCTestCase {
         XCTAssertTrue(try XCTUnwrap(result.message.toolCalls.first?.arguments).contains("Istanbul"))
         XCTAssertEqual(result.usage?.inputTokens, 9)
         XCTAssertEqual(result.usage?.outputTokens, 4)
+    }
+
+    func testGeminiThinkingTokensCountAsOutput() throws {
+        let json = """
+        {"candidates":[{"content":{"parts":[{"text":"pong"}]}}],
+         "usageMetadata":{"promptTokenCount":9,"candidatesTokenCount":4,"thoughtsTokenCount":30}}
+        """
+        let usage = try NativeAgentClient.geminiResponse(from: try JSONCodec.parse(Data(json.utf8))).usage
+        XCTAssertEqual(usage?.outputTokens, 34)
+        XCTAssertEqual(usage?.reasoningTokens, 30)
+    }
+
+    /// The identity saved after a response and the one computed before the
+    /// next request must match, or compaction treats every step as a route change.
+    func testAccountAndConfigurationAgreeOnRouteIdentity() {
+        for (provider, api) in [("gpt", "chatgpt"), ("openai", "openai-compatible"), ("claude", "anthropic")] {
+            let account = StoredProviderAccount(
+                provider: provider, name: "n", model: "m", baseURL: "https://API.example/v1 ", api: api, credentialID: "c"
+            )
+            let configuration = AgentConfiguration(
+                baseURL: account.baseURL, model: "m", provider: RouterCatalog.label(for: provider),
+                api: account.routeAPI, accountID: account.id, specID: provider
+            )
+            XCTAssertEqual(account.routeIdentity(model: "m"), configuration.routeIdentity(model: "m"))
+        }
     }
 
     /// Client credentials come from the local `oauth-clients.json`, never the

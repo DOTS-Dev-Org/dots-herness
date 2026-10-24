@@ -9,6 +9,8 @@
   <data name="language.system" xml:space="preserve"><value>System language</value></data>
   <data name="settings.language" xml:space="preserve"><value>App language</value></data>
   <data name="settings.general" xml:space="preserve"><value>General</value></data>
+  <data name="settings.autoAccountFailover" xml:space="preserve"><value>Automatically try another account after a limit</value></data>
+  <data name="settings.autoAccountFailover.hint" xml:space="preserve"><value>When off, the chat pauses on the limited account; press Continue to try another compatible account. When on, compatible accounts are tried automatically.</value></data>
   <data name="settings.shortcuts" xml:space="preserve"><value>Keyboard shortcuts</value></data>
   <data name="settings.shortcuts.hint" xml:space="preserve"><value>Select a shortcut to change it. Press a key combination with at least one modifier.</value></data>
   <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Show or hide sidebar</value></data>
@@ -141,6 +143,8 @@
   <data name="settings.createKey" xml:space="preserve"><value>Create key</value></data>
   <data name="settings.revealFolder" xml:space="preserve"><value>Reveal folder</value></data>
   <data name="settings.reload" xml:space="preserve"><value>Reload</value></data>
+  <data name="attachment.files" xml:space="preserve"><value>Files or photos</value></data>
+  <data name="attachment.project" xml:space="preserve"><value>Work in a project</value></data>
   <data name="settings.plugins" xml:space="preserve"><value>Plugins</value></data>
   <data name="settings.pluginsHint" xml:space="preserve"><value>Native plugins are installed from the signed Marketplace. JavaScript and manifest-only plugins are not loadable; native code requires explicit Trust.</value></data>
   <data name="settings.lastMountFailed" xml:space="preserve"><value>Last mount failed</value></data>
@@ -161,6 +165,7 @@
   <data name="conversation.title" xml:space="preserve"><value>Dots Harness</value></data>
   <data name="conversation.emptyNoProvider" xml:space="preserve"><value>Connect a provider account to start a conversation.</value></data>
   <data name="conversation.emptySidebar" xml:space="preserve"><value>Start a conversation from the sidebar.</value></data>
+  <data name="conversation.loadOlderMessages" xml:space="preserve"><value>Load older messages</value></data>
   <data name="conversation.allow" xml:space="preserve"><value>Allow {0}?</value></data>
   <data name="vision.title" xml:space="preserve"><value>Vision fallback</value></data>
   <data name="vision.installTitle" xml:space="preserve"><value>This provider cannot read the image</value></data>
@@ -229,6 +234,7 @@
   <data name="conversation.dropFiles" xml:space="preserve"><value>Drop files here</value></data>
   <data name="conversation.send" xml:space="preserve"><value>Send</value></data>
   <data name="conversation.cacheExpired.notice" xml:space="preserve"><value>Cache may have expired; continuing can use more tokens and cost more. Start a new chat with a short summary.</value></data>
+  <data name="conversation.cacheLocal.notice" xml:space="preserve"><value>The local model's cache was cleared; the whole history will be processed again and the reply may be slow. Start a new chat with a short summary.</value></data>
   <data name="conversation.cacheExpired.infoTitle" xml:space="preserve"><value>Why am I seeing this?</value></data>
   <data name="conversation.cacheExpired.explanation" xml:space="preserve"><value>The estimated cache lifetime has passed. Prompt cache is temporary provider-side processing state; your chat history remains saved. Continuing with the full history can make those tokens count as fresh input again. Usage data from your next request will confirm whether the provider still had a cache hit.</value></data>
   <data name="conversation.accountSwitched.notice" xml:space="preserve"><value>This chat moved to another account on the same model. The cache starts from scratch there; continuing can use more tokens and cost more.</value></data>
@@ -303,6 +309,8 @@
   <data name="conversation.activity.toolFailed" xml:space="preserve"><value>Tool failed: {0}</value></data>
   <data name="status.pressContinue" xml:space="preserve"><value>Press Continue to resume this message.</value></data>
   <data name="media.generated" xml:space="preserve"><value>Image generated.</value></data>
+  <data name="media.videoGenerated" xml:space="preserve"><value>Video generated.</value></data>
+  <data name="media.audioGenerated" xml:space="preserve"><value>Speech generated.</value></data>
   <data name="media.fallbackUsed" xml:space="preserve"><value>The selected provider could not generate this image. It was generated through a one-shot fallback request via {0}/{1}; the main conversation provider and model were not changed, so its prompt cache remains intact.</value></data>
   <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>I can't generate this image with {0}. Configure an image API/provider as a fallback. Switching the main chat model just for image generation can break the provider prompt cache.</value></data>
   <data name="conversation.used" xml:space="preserve"><value>Used</value></data>
@@ -385,6 +393,7 @@
   <data name="usage.resetOpenFailed" xml:space="preserve"><value>Could not open Claude. Check that the account is still connected, then try again.</value></data>
   <data name="usage.openClaude" xml:space="preserve"><value>Open Claude</value></data>
   <data name="usage.needLogin" xml:space="preserve"><value>Sign in to Claude to see limits</value></data>
+  <data name="agent.providerLimitTitle" xml:space="preserve"><value>Provider limit reached</value></data>
   <data name="usage.noLimitInfo" xml:space="preserve"><value>No limit info</value></data>
   <data name="usage.loadFailed" xml:space="preserve"><value>Couldn’t load usage</value></data>
   <data name="usage.loading" xml:space="preserve"><value>Loading usage…</value></data>
@@ -515,6 +524,14 @@
   <data name="settings.tab.memory" xml:space="preserve"><value>Memory</value></data>
   <data name="memory.vault.title" xml:space="preserve"><value>Memory vault</value></data>
   <data name="memory.refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="memory.enabled" xml:space="preserve"><value>Memory on</value></data>
+  <data name="memory.scanFrequency" xml:space="preserve"><value>Scan frequency</value></data>
+  <data name="memory.scan.off" xml:space="preserve"><value>Off</value></data>
+  <data name="memory.scan.hourly" xml:space="preserve"><value>Hourly</value></data>
+  <data name="memory.scan.daily" xml:space="preserve"><value>Daily</value></data>
+  <data name="memory.scan.weekly" xml:space="preserve"><value>Weekly</value></data>
+  <data name="memory.enabledHelp" xml:space="preserve"><value>When off, no task is noted, nothing is learned and no finding is sent to a model; what was already saved stays on disk.</value></data>
+  <data name="memory.scanHelp" xml:space="preserve"><value>The lightest model turns finished tasks into short findings; compact task notes remain available so their reasons can be recalled later. With the scan off, no model is called in the background.</value></data>
   <data name="memory.reveal" xml:space="preserve"><value>Open .mem folder</value></data>
   <data name="memory.refused" xml:space="preserve"><value>Not saved. The entry may contain a credential, exceed its limit, or the workspace may be unavailable.</value></data>
   <data name="memory.noWorkspace" xml:space="preserve"><value>Select a local workspace to view its memory.</value></data>
@@ -537,36 +554,20 @@
   <data name="memory.pin" xml:space="preserve"><value>Pin</value></data>
   <data name="memory.edit" xml:space="preserve"><value>Edit</value></data>
   <data name="memory.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="settings.tab.access" xml:space="preserve"><value>Workspace access</value></data>
-  <data name="access.currentActor" xml:space="preserve"><value>Current actor</value></data>
-  <data name="access.role" xml:space="preserve"><value>Role</value></data>
-  <data name="access.notAuthorized" xml:space="preserve"><value>Not authorized</value></data>
-  <data name="access.score" xml:space="preserve"><value>Score</value></data>
-  <data name="access.device" xml:space="preserve"><value>Device</value></data>
-  <data name="access.publicKey" xml:space="preserve"><value>Public key</value></data>
-  <data name="access.memoryRevision" xml:space="preserve"><value>Memory revision</value></data>
-  <data name="access.members" xml:space="preserve"><value>Members</value></data>
-  <data name="access.noMembers" xml:space="preserve"><value>No members yet.</value></data>
-  <data name="access.revoke" xml:space="preserve"><value>Revoke</value></data>
-  <data name="access.revoked" xml:space="preserve"><value>revoked</value></data>
-  <data name="access.inviteDevice" xml:space="preserve"><value>Invite device</value></data>
-  <data name="access.displayName" xml:space="preserve"><value>Display name</value></data>
-  <data name="access.newDevicePublicKey" xml:space="preserve"><value>New device public key</value></data>
-  <data name="access.createInvitation" xml:space="preserve"><value>Create signed invitation</value></data>
-  <data name="access.acceptInvitation" xml:space="preserve"><value>Accept invitation</value></data>
-  <data name="access.signedInvitation" xml:space="preserve"><value>Signed invitation</value></data>
+  <data name="settings.tab.memoryTransfer" xml:space="preserve"><value>Memory transfer</value></data>
+  <data name="memory.transfer.title" xml:space="preserve"><value>Memory transfer</value></data>
+  <data name="memory.transfer.description" xml:space="preserve"><value>Export or import portable memory files. Personal memory stays on this computer unless you choose to export it.</value></data>
+  <data name="memory.transfer.project" xml:space="preserve"><value>Project memory</value></data>
+  <data name="memory.transfer.projectHelp" xml:space="preserve"><value>Includes project facts and decisions. Excludes personal preferences, chats, tasks, device keys and access data.</value></data>
+  <data name="memory.transfer.personal" xml:space="preserve"><value>Personal memory</value></data>
+  <data name="memory.transfer.personalHelp" xml:space="preserve"><value>Includes your saved preferences and profile. Excludes project facts, chats and task history.</value></data>
+  <data name="memory.transfer.export" xml:space="preserve"><value>Export</value></data>
+  <data name="memory.transfer.import" xml:space="preserve"><value>Import</value></data>
+  <data name="memory.transfer.exported" xml:space="preserve"><value>Memory archive saved.</value></data>
+  <data name="memory.transfer.imported" xml:space="preserve"><value>Memory imported. Matching entries were updated.</value></data>
+  <data name="memory.transfer.invalidArchive" xml:space="preserve"><value>This memory archive is invalid or has the wrong scope.</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Memory transfer</value></data>
   <data name="access.accept" xml:space="preserve"><value>Accept</value></data>
-  <data name="access.reject" xml:space="preserve"><value>Reject</value></data>
-  <data name="access.pendingDecisions" xml:space="preserve"><value>Pending decisions</value></data>
-  <data name="access.noPendingDecisions" xml:space="preserve"><value>No pending project decisions.</value></data>
-  <data name="access.noWorkspace" xml:space="preserve"><value>Select a local workspace to manage access.</value></data>
-  <data name="access.scoreValue" xml:space="preserve"><value>Score: {0}</value></data>
-  <data name="access.initialize" xml:space="preserve"><value>Initialize workspace memory</value></data>
-  <data name="access.initializeHelp" xml:space="preserve"><value>Workspace access uses a signed memory log. Initializing creates the owner identity and event log in this project's .mem folder.</value></data>
-  <data name="access.role.owner" xml:space="preserve"><value>Owner</value></data>
-  <data name="access.role.approver" xml:space="preserve"><value>Approver</value></data>
-  <data name="access.role.contributor" xml:space="preserve"><value>Contributor</value></data>
-  <data name="access.role.observer" xml:space="preserve"><value>Observer</value></data>
   <data name="settings.sandbox" xml:space="preserve"><value>Sandbox</value></data>
   <data name="settings.sandboxOff" xml:space="preserve"><value>Off — the agent works directly in your checkout.</value></data>
   <data name="settings.sandboxOn" xml:space="preserve"><value>On — the agent works in a separate git worktree.</value></data>
@@ -624,7 +625,7 @@
   <data name="conflict.banner.title" xml:space="preserve"><value>Another chat is writing this file</value></data>
   <data name="conflict.banner.body" xml:space="preserve"><value>{0} · held by “{1}” for {2} seconds</value></data>
   <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Keep waiting</value></data>
-  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Stop {0}</value></data>
+  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Stop that chat</value></data>
   <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Stop all other chats</value></data>
   <data name="conflict.banner.skip" xml:space="preserve"><value>Skip this write</value></data>
   <data name="conflict.waiting" xml:space="preserve"><value>Waiting for “{0}” to finish writing: {1}</value></data>
@@ -655,4 +656,704 @@
   <data name="usage.context.latency" xml:space="preserve"><value>Average request latency: {0}</value></data>
   <data name="usage.context.prepare" xml:space="preserve"><value>Average request preparation: {0}</value></data>
   <data name="usage.context.cacheLoss" xml:space="preserve"><value>Largest cache loss: {0} ({1} tokens)</value></data>
+  <data name="settings.skillSuggestions" xml:space="preserve"><value>Show skill suggestions</value></data>
+  <data name="settings.skillSuggestions.hint" xml:space="preserve"><value>Suggests a skill only when a lesson is learned three times or the agent finishes a workflow you will need again; at most one card a week. Off: no suggestion cards appear, and the agent does not propose skills.</value></data>
+  <data name="skill.suggestion.title" xml:space="preserve"><value>Suggested skill: {0}</value></data>
+  <data name="skill.suggestion.create" xml:space="preserve"><value>Create Skill</value></data>
+  <data name="skill.suggestion.dismiss" xml:space="preserve"><value>Not now</value></data>
+  <data name="tasks.menu" xml:space="preserve"><value>Tasks</value></data>
+  <data name="tasks.title" xml:space="preserve"><value>Scheduled Tasks</value></data>
+  <data name="tasks.subtitle" xml:space="preserve"><value>Run a prompt on a cron schedule.</value></data>
+  <data name="tasks.empty" xml:space="preserve"><value>No tasks yet.</value></data>
+  <data name="tasks.add" xml:space="preserve"><value>Add Task</value></data>
+  <data name="tasks.edit" xml:space="preserve"><value>Edit Task</value></data>
+  <data name="tasks.delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="tasks.runNow" xml:space="preserve"><value>Run now</value></data>
+  <data name="tasks.enabled" xml:space="preserve"><value>Enabled</value></data>
+  <data name="tasks.field.name" xml:space="preserve"><value>Name</value></data>
+  <data name="tasks.field.cron" xml:space="preserve"><value>Cron expression</value></data>
+  <data name="tasks.field.prompt" xml:space="preserve"><value>Prompt</value></data>
+  <data name="tasks.field.workspace" xml:space="preserve"><value>Workspace</value></data>
+  <data name="tasks.cron.invalid" xml:space="preserve"><value>Invalid cron expression.</value></data>
+  <data name="tasks.cron.next" xml:space="preserve"><value>Next runs</value></data>
+  <data name="tasks.close" xml:space="preserve"><value>Close tasks</value></data>
+  <data name="tasks.back" xml:space="preserve"><value>Back</value></data>
+  <data name="tasks.new" xml:space="preserve"><value>New task</value></data>
+  <data name="tasks.active" xml:space="preserve"><value>Your tasks</value></data>
+  <data name="tasks.disabled" xml:space="preserve"><value>Disabled</value></data>
+  <data name="tasks.suggestions" xml:space="preserve"><value>Suggestions</value></data>
+  <data name="tasks.history" xml:space="preserve"><value>Recent runs</value></data>
+  <data name="tasks.history.empty" xml:space="preserve"><value>This task has not run yet.</value></data>
+  <data name="tasks.field.target" xml:space="preserve"><value>Target file or folder</value></data>
+  <data name="tasks.field.targetHint" xml:space="preserve"><value>Optional path inside the workspace</value></data>
+  <data name="tasks.target.invalid" xml:space="preserve"><value>The target must exist inside the workspace.</value></data>
+  <data name="tasks.field.model" xml:space="preserve"><value>Model</value></data>
+  <data name="tasks.field.fallback" xml:space="preserve"><value>Fallback model</value></data>
+  <data name="tasks.network" xml:space="preserve"><value>Allow network access</value></data>
+  <data name="tasks.assistant.title" xml:space="preserve"><value>Task assistant</value></data>
+  <data name="tasks.assistant.placeholder" xml:space="preserve"><value>Ask to change this task…</value></data>
+  <data name="tasks.assistant.updated" xml:space="preserve"><value>Task updated.</value></data>
+  <data name="tasks.notification.title" xml:space="preserve"><value>Scheduled task</value></data>
+  <data name="tasks.notification.completed" xml:space="preserve"><value>Completed</value></data>
+  <data name="tasks.notification.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="tasks.notification.fallback" xml:space="preserve"><value>Fallback model used</value></data>
+  <data name="tasks.suggestion.daily.title" xml:space="preserve"><value>Daily brief</value></data>
+  <data name="tasks.suggestion.daily.detail" xml:space="preserve"><value>Summarize recent work, open priorities, and workspace changes.</value></data>
+  <data name="tasks.suggestion.daily.schedule" xml:space="preserve"><value>Weekdays at 8:00 AM</value></data>
+  <data name="tasks.suggestion.daily.prompt" xml:space="preserve"><value>Review recent conversations and workspace changes. Summarize the most important priorities for today.</value></data>
+  <data name="tasks.suggestion.weekly.title" xml:space="preserve"><value>Weekly review</value></data>
+  <data name="tasks.suggestion.weekly.detail" xml:space="preserve"><value>Turn recent work into a concise status update every Friday.</value></data>
+  <data name="tasks.suggestion.weekly.schedule" xml:space="preserve"><value>Fridays at 4:00 PM</value></data>
+  <data name="tasks.suggestion.weekly.prompt" xml:space="preserve"><value>Review this week's conversations and workspace changes. Write a concise status update with completed work, risks, and next steps.</value></data>
+  <data name="tasks.suggestion.followup.title" xml:space="preserve"><value>Follow-up monitor</value></data>
+  <data name="tasks.suggestion.followup.detail" xml:space="preserve"><value>Review recent activity and flag anything that needs attention.</value></data>
+  <data name="tasks.suggestion.followup.schedule" xml:space="preserve"><value>Weekdays at 9:00 AM</value></data>
+  <data name="tasks.suggestion.followup.prompt" xml:space="preserve"><value>Review recent task and workspace activity. Flag unfinished work, failed runs, and anything that needs attention.</value></data>
+  <data name="tasks.lastRun" xml:space="preserve"><value>Last run</value></data>
+  <data name="tasks.state.never" xml:space="preserve"><value>Never run</value></data>
+  <data name="tasks.state.running" xml:space="preserve"><value>Running…</value></data>
+  <data name="tasks.state.ok" xml:space="preserve"><value>Succeeded</value></data>
+  <data name="tasks.state.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="tasks.openConversation" xml:space="preserve"><value>Open conversation</value></data>
+  <data name="tasks.save" xml:space="preserve"><value>Save</value></data>
+  <data name="tasks.cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="tasks.background" xml:space="preserve"><value>Run tasks while the app is closed</value></data>
+  <data name="tasks.background.hint" xml:space="preserve"><value>Installs a background helper (launchd) that runs due tasks even when Dots Harness is not open.</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Map</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Index</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Tasks</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Decisions</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Preferences</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Conversations</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>No linked mentions.</value></data>
+  <data name="memory.graph" xml:space="preserve"><value>Graph</value></data>
+  <data name="media.image" xml:space="preserve"><value>image</value></data>
+  <data name="media.video" xml:space="preserve"><value>video</value></data>
+  <data name="media.audio" xml:space="preserve"><value>audio</value></data>
+  <data name="media.promptMissing" xml:space="preserve"><value>Describe what to generate after the command.</value></data>
+  <data name="media.promptMissingFor" xml:space="preserve"><value>Describe the {0} to generate after the command.</value></data>
+  <data name="media.modelMissing" xml:space="preserve"><value>The media provider model is not configured.</value></data>
+  <data name="media.noOutput" xml:space="preserve"><value>The provider returned no media output.</value></data>
+  <data name="media.invalidOutput" xml:space="preserve"><value>The provider returned invalid media data.</value></data>
+  <data name="media.generationFailed" xml:space="preserve"><value>The provider could not generate the media.</value></data>
+  <data name="media.videoTimeout" xml:space="preserve"><value>Video generation timed out.</value></data>
+  <data name="media.busy" xml:space="preserve"><value>A generation or agent run is already in progress. Try again when it finishes.</value></data>
+  <data name="media.unsupported" xml:space="preserve"><value>I can't generate this here. The selected provider does not have this capability.</value></data>
+  <data name="media.unsupportedStatus" xml:space="preserve"><value>Media generation is not supported by the selected provider.</value></data>
+  <data name="media.fileMissing" xml:space="preserve"><value>The generated file is no longer available.</value></data>
+  <data name="media.openAudio" xml:space="preserve"><value>Open generated audio</value></data>
+  <data name="media.save" xml:space="preserve"><value>Save</value></data>
+  <data name="media.showInFinder" xml:space="preserve"><value>Show in Finder</value></data>
+  <data name="rail.home" xml:space="preserve"><value>Home</value></data>
+  <data name="rail.media" xml:space="preserve"><value>Media</value></data>
+  <data name="rail.tasks" xml:space="preserve"><value>Tasks</value></data>
+  <data name="rail.bots" xml:space="preserve"><value>Bots</value></data>
+  <data name="rail.marketplace" xml:space="preserve"><value>Market</value></data>
+  <data name="rail.memory" xml:space="preserve"><value>Memory</value></data>
+  <data name="rail.settings" xml:space="preserve"><value>Settings</value></data>
+  <data name="models.followApp" xml:space="preserve"><value>App's model</value></data>
+  <data name="studio.preset.square" xml:space="preserve"><value>Square post</value></data>
+  <data name="studio.preset.story" xml:space="preserve"><value>Story</value></data>
+  <data name="studio.preset.landscape" xml:space="preserve"><value>Landscape</value></data>
+  <data name="studio.preset.thumbnail" xml:space="preserve"><value>Video thumbnail</value></data>
+  <data name="studio.preset.logo" xml:space="preserve"><value>Logo</value></data>
+  <data name="studio.preset.poster" xml:space="preserve"><value>Poster</value></data>
+  <data name="studio.template.announcement" xml:space="preserve"><value>Announcement</value></data>
+  <data name="studio.template.story" xml:space="preserve"><value>Story</value></data>
+  <data name="studio.template.thumbnail" xml:space="preserve"><value>Video thumbnail</value></data>
+  <data name="studio.template.slide" xml:space="preserve"><value>Title slide</value></data>
+  <data name="studio.template.logo" xml:space="preserve"><value>Logo</value></data>
+  <data name="studio.template.mobile" xml:space="preserve"><value>Mobile screen</value></data>
+  <data name="studio.category.social" xml:space="preserve"><value>Social Media</value></data>
+  <data name="studio.category.uiux" xml:space="preserve"><value>UI/UX</value></data>
+  <data name="studio.category.presentation" xml:space="preserve"><value>Presentation &amp; Infographic</value></data>
+  <data name="studio.category.other" xml:space="preserve"><value>Other designs</value></data>
+  <data name="studio.sample.title" xml:space="preserve"><value>Your title</value></data>
+  <data name="studio.sample.detail" xml:space="preserve"><value>A short line that says more</value></data>
+  <data name="studio.sample.brand" xml:space="preserve"><value>Brand</value></data>
+  <data name="studio.sample.text" xml:space="preserve"><value>Text</value></data>
+  <data name="studio.copyOf" xml:space="preserve"><value>{0} copy</value></data>
+  <data name="studio.untitled" xml:space="preserve"><value>Untitled project</value></data>
+  <data name="studio.home.title" xml:space="preserve"><value>Describe your idea and bring it to life</value></data>
+  <data name="studio.home.search" xml:space="preserve"><value>Search</value></data>
+  <data name="studio.home.sort.name" xml:space="preserve"><value>Name</value></data>
+  <data name="studio.home.filter.all" xml:space="preserve"><value>All time</value></data>
+  <data name="studio.home.filter.week" xml:space="preserve"><value>Last 7 days</value></data>
+  <data name="studio.home.filter.month" xml:space="preserve"><value>Last 30 days</value></data>
+  <data name="studio.home.starred" xml:space="preserve"><value>Starred</value></data>
+  <data name="studio.home.star" xml:space="preserve"><value>Add to starred</value></data>
+  <data name="studio.home.unstar" xml:space="preserve"><value>Remove from starred</value></data>
+  <data name="studio.home.modified" xml:space="preserve"><value>Last modified</value></data>
+  <data name="studio.home.canvases" xml:space="preserve"><value>Canvases</value></data>
+  <data name="studio.projects" xml:space="preserve"><value>Projects</value></data>
+  <data name="studio.templates" xml:space="preserve"><value>Templates</value></data>
+  <data name="studio.community" xml:space="preserve"><value>Community</value></data>
+  <data name="studio.community.banner" xml:space="preserve"><value>Discover designs made by the community</value></data>
+  <data name="studio.community.saved" xml:space="preserve"><value>Saved</value></data>
+  <data name="studio.community.share" xml:space="preserve"><value>Share to Community</value></data>
+  <data name="studio.community.shared" xml:space="preserve"><value>Sent for review. It appears in Community once approved.</value></data>
+  <data name="studio.community.signIn" xml:space="preserve"><value>Sign in to your HerNess account to share to Community.</value></data>
+  <data name="studio.community.empty" xml:space="preserve"><value>No community designs here yet.</value></data>
+  <data name="studio.projectName" xml:space="preserve"><value>Project name</value></data>
+  <data name="studio.newProject" xml:space="preserve"><value>New project</value></data>
+  <data name="studio.create" xml:space="preserve"><value>Create project</value></data>
+  <data name="studio.rename" xml:space="preserve"><value>Rename</value></data>
+  <data name="studio.duplicate" xml:space="preserve"><value>Duplicate</value></data>
+  <data name="studio.deleteConfirm" xml:space="preserve"><value>Delete “{0}”? Its canvases and uploaded files are removed.</value></data>
+  <data name="studio.projectMeta" xml:space="preserve"><value>Canvases: {0}, edited {1}</value></data>
+  <data name="studio.empty.title" xml:space="preserve"><value>No media projects yet</value></data>
+  <data name="studio.empty.detail" xml:space="preserve"><value>A project is a board of canvases. Add text, shapes and images yourself, or describe what you want and let a model build it layer by layer.</value></data>
+  <data name="studio.addCanvas" xml:space="preserve"><value>Canvas</value></data>
+  <data name="studio.undo" xml:space="preserve"><value>Undo</value></data>
+  <data name="studio.redo" xml:space="preserve"><value>Redo</value></data>
+  <data name="studio.zoomOut" xml:space="preserve"><value>Zoom out</value></data>
+  <data name="studio.zoomIn" xml:space="preserve"><value>Zoom in</value></data>
+  <data name="studio.zoomFit" xml:space="preserve"><value>Fit all canvases</value></data>
+  <data name="studio.layers" xml:space="preserve"><value>Layers</value></data>
+  <data name="studio.layers.empty" xml:space="preserve"><value>This canvas has no layers yet.</value></data>
+  <data name="studio.layer.text" xml:space="preserve"><value>Text</value></data>
+  <data name="studio.layer.shape" xml:space="preserve"><value>Shape</value></data>
+  <data name="studio.layer.upload" xml:space="preserve"><value>Upload</value></data>
+  <data name="studio.layer.show" xml:space="preserve"><value>Show layer</value></data>
+  <data name="studio.layer.hide" xml:space="preserve"><value>Hide layer</value></data>
+  <data name="studio.shape.rectangle" xml:space="preserve"><value>Rectangle</value></data>
+  <data name="studio.shape.ellipse" xml:space="preserve"><value>Ellipse</value></data>
+  <data name="studio.name" xml:space="preserve"><value>Name</value></data>
+  <data name="studio.opacity" xml:space="preserve"><value>Opacity</value></data>
+  <data name="studio.fontSize" xml:space="preserve"><value>Size</value></data>
+  <data name="studio.weight.regular" xml:space="preserve"><value>Regular</value></data>
+  <data name="studio.weight.medium" xml:space="preserve"><value>Medium</value></data>
+  <data name="studio.weight.bold" xml:space="preserve"><value>Bold</value></data>
+  <data name="studio.fill" xml:space="preserve"><value>Fill</value></data>
+  <data name="studio.cornerRadius" xml:space="preserve"><value>Corner radius</value></data>
+  <data name="studio.playVideo" xml:space="preserve"><value>Play video</value></data>
+  <data name="studio.size" xml:space="preserve"><value>Size</value></data>
+  <data name="studio.background" xml:space="preserve"><value>Background</value></data>
+  <data name="studio.deleteCanvas" xml:space="preserve"><value>Delete canvas</value></data>
+  <data name="studio.ai.kind.design" xml:space="preserve"><value>Design</value></data>
+  <data name="studio.ai.kind.image" xml:space="preserve"><value>Image</value></data>
+  <data name="studio.ai.kind.video" xml:space="preserve"><value>Video</value></data>
+  <data name="studio.ai.placeholder.design" xml:space="preserve"><value>Describe the design to build on this canvas</value></data>
+  <data name="studio.ai.placeholder.image" xml:space="preserve"><value>Describe the image to generate</value></data>
+  <data name="studio.ai.placeholder.video" xml:space="preserve"><value>Describe the video to generate</value></data>
+  <data name="studio.ai.run" xml:space="preserve"><value>Generate</value></data>
+  <data name="studio.ai.planning" xml:space="preserve"><value>Planning layers</value></data>
+  <data name="studio.ai.layerProgress" xml:space="preserve"><value>Layer {0} of {1}: {2}</value></data>
+  <data name="studio.ai.drawing" xml:space="preserve"><value>Generating image</value></data>
+  <data name="studio.ai.renderingVideo" xml:space="preserve"><value>Generating video. This can take a few minutes.</value></data>
+  <data name="studio.ai.noPlan" xml:space="preserve"><value>The model did not return layers. Try again or pick another model.</value></data>
+  <data name="studio.settings.title" xml:space="preserve"><value>Media models</value></data>
+  <data name="studio.settings.design" xml:space="preserve"><value>Design</value></data>
+  <data name="studio.settings.model" xml:space="preserve"><value>Model</value></data>
+  <data name="studio.settings.designHelp" xml:space="preserve"><value>The chat model that turns a request into layers.</value></data>
+  <data name="studio.settings.source" xml:space="preserve"><value>Source</value></data>
+  <data name="studio.settings.source.provider" xml:space="preserve"><value>Provider</value></data>
+  <data name="studio.settings.source.local" xml:space="preserve"><value>Local</value></data>
+  <data name="studio.settings.modelDefault" xml:space="preserve"><value>Provider default</value></data>
+  <data name="studio.settings.local" xml:space="preserve"><value>Local server</value></data>
+  <data name="studio.settings.localURL" xml:space="preserve"><value>Base URL</value></data>
+  <data name="studio.settings.localHelp" xml:space="preserve"><value>An OpenAI-compatible server on this machine or network. Used when a source above is set to Local, with the model name you enter there.</value></data>
+  <data name="studio.settings.music.connect" xml:space="preserve"><value>Connect API</value></data>
+  <data name="studio.settings.music.type.standard" xml:space="preserve"><value>Music server</value></data>
+  <data name="studio.settings.music.type.elevenlabs" xml:space="preserve"><value>ElevenLabs</value></data>
+  <data name="studio.settings.music.name" xml:space="preserve"><value>Name</value></data>
+  <data name="studio.settings.music.key" xml:space="preserve"><value>API key</value></data>
+  <data name="studio.settings.music.help" xml:space="preserve"><value>A music server answers POST /audio/generations and lists its models at /models; tools/music_server.py is one. The API key is kept in the Keychain.</value></data>
+  <data name="studio.ai.kind.next" xml:space="preserve"><value>Next screen</value></data>
+  <data name="studio.ai.placeholder.next" xml:space="preserve"><value>Describe the next screen, or leave empty to continue the flow</value></data>
+  <data name="studio.ai.noImages" xml:space="preserve"><value>No image generator is connected, so image layers were left as placeholders. Connect one, then generate each image from its layer.</value></data>
+  <data name="studio.screenNumber" xml:space="preserve"><value>Screen {0}</value></data>
+  <data name="studio.layer.icon" xml:space="preserve"><value>Icon</value></data>
+  <data name="studio.layer.lock" xml:space="preserve"><value>Lock layer</value></data>
+  <data name="studio.layer.unlock" xml:space="preserve"><value>Unlock layer</value></data>
+  <data name="studio.layer.front" xml:space="preserve"><value>Bring to front</value></data>
+  <data name="studio.layer.back" xml:space="preserve"><value>Send to back</value></data>
+  <data name="studio.position" xml:space="preserve"><value>Position</value></data>
+  <data name="studio.rotation" xml:space="preserve"><value>Rotation</value></data>
+  <data name="studio.appearance" xml:space="preserve"><value>Appearance</value></data>
+  <data name="studio.gradient" xml:space="preserve"><value>Gradient</value></data>
+  <data name="studio.stroke" xml:space="preserve"><value>Stroke</value></data>
+  <data name="studio.shadow" xml:space="preserve"><value>Shadow</value></data>
+  <data name="studio.symbol" xml:space="preserve"><value>Symbol name</value></data>
+  <data name="studio.imagePrompt" xml:space="preserve"><value>Image description</value></data>
+  <data name="studio.generateImage" xml:space="preserve"><value>Generate image</value></data>
+  <data name="studio.export" xml:space="preserve"><value>Export</value></data>
+  <data name="studio.exportAll" xml:space="preserve"><value>Export all canvases</value></data>
+  <data name="studio.font.default" xml:space="preserve"><value>Sans</value></data>
+  <data name="studio.font.rounded" xml:space="preserve"><value>Rounded</value></data>
+  <data name="studio.font.serif" xml:space="preserve"><value>Serif</value></data>
+  <data name="studio.font.mono" xml:space="preserve"><value>Mono</value></data>
+  <data name="studio.tool.move" xml:space="preserve"><value>Move</value></data>
+  <data name="studio.tool.hand" xml:space="preserve"><value>Hand</value></data>
+  <data name="studio.tool.pen" xml:space="preserve"><value>Pen</value></data>
+  <data name="studio.tool.pencil" xml:space="preserve"><value>Pencil</value></data>
+  <data name="studio.shape.line" xml:space="preserve"><value>Line</value></data>
+  <data name="studio.shape.arrow" xml:space="preserve"><value>Arrow</value></data>
+  <data name="studio.shape.polygon" xml:space="preserve"><value>Polygon</value></data>
+  <data name="studio.shape.star" xml:space="preserve"><value>Star</value></data>
+  <data name="studio.actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="studio.unlockAll" xml:space="preserve"><value>Unlock all layers</value></data>
+  <data name="studio.frames.phone" xml:space="preserve"><value>Phone</value></data>
+  <data name="studio.frames.tablet" xml:space="preserve"><value>Tablet</value></data>
+  <data name="studio.frames.desktop" xml:space="preserve"><value>Desktop</value></data>
+  <data name="studio.frames.presentation" xml:space="preserve"><value>Presentation</value></data>
+  <data name="studio.frames.watch" xml:space="preserve"><value>Watch</value></data>
+  <data name="studio.frames.paper" xml:space="preserve"><value>Paper</value></data>
+  <data name="studio.frames.social" xml:space="preserve"><value>Social media</value></data>
+  <data name="studio.tool.scale" xml:space="preserve"><value>Scale</value></data>
+  <data name="studio.tool.section" xml:space="preserve"><value>Section</value></data>
+  <data name="studio.tool.slice" xml:space="preserve"><value>Slice</value></data>
+  <data name="studio.tool.textPath" xml:space="preserve"><value>Text on path</value></data>
+  <data name="studio.tool.comment" xml:space="preserve"><value>Comment</value></data>
+  <data name="studio.search" xml:space="preserve"><value>Search</value></data>
+  <data name="studio.cut" xml:space="preserve"><value>Cut</value></data>
+  <data name="studio.paste" xml:space="preserve"><value>Paste</value></data>
+  <data name="bots.preset.assistant" xml:space="preserve"><value>Assistant</value></data>
+  <data name="bots.preset.researcher" xml:space="preserve"><value>Researcher</value></data>
+  <data name="bots.preset.coder" xml:space="preserve"><value>Coder</value></data>
+  <data name="bots.new" xml:space="preserve"><value>New bot</value></data>
+  <data name="bots.edit" xml:space="preserve"><value>Edit bot</value></data>
+  <data name="bots.clear" xml:space="preserve"><value>Clear chat</value></data>
+  <data name="bots.send" xml:space="preserve"><value>Send message</value></data>
+  <data name="bots.deleteConfirm" xml:space="preserve"><value>Delete “{0}” and its chat?</value></data>
+  <data name="bots.empty.title" xml:space="preserve"><value>No bots yet</value></data>
+  <data name="bots.empty.detail" xml:space="preserve"><value>A bot is an assistant with its own instructions, model and ongoing chat. Give it a folder and it works there as an agent.</value></data>
+  <data name="bots.greeting" xml:space="preserve"><value>Send {0} a message to start.</value></data>
+  <data name="bots.placeholder" xml:space="preserve"><value>Message {0}</value></data>
+  <data name="bots.agentIn" xml:space="preserve"><value>Agent in {0}</value></data>
+  <data name="bots.name" xml:space="preserve"><value>Name</value></data>
+  <data name="bots.icon" xml:space="preserve"><value>Icon</value></data>
+  <data name="bots.instructions" xml:space="preserve"><value>Instructions</value></data>
+  <data name="bots.instructionsHelp" xml:space="preserve"><value>How the bot should behave, what it knows and how it answers.</value></data>
+  <data name="bots.workspace" xml:space="preserve"><value>Agent folder</value></data>
+  <data name="bots.workspace.none" xml:space="preserve"><value>None: chat only</value></data>
+  <data name="bots.workspace.choose" xml:space="preserve"><value>Choose folder</value></data>
+  <data name="bots.workspace.clear" xml:space="preserve"><value>Remove</value></data>
+  <data name="bots.workspaceHelp" xml:space="preserve"><value>With a folder, the bot can read, write and run commands inside it without asking, and has no network access. Without one it only chats.</value></data>
+  <data name="bots.error.noReply" xml:space="preserve"><value>The bot did not reply.</value></data>
+  <data name="bots.status.delivered" xml:space="preserve"><value>Delivered to the bot</value></data>
+  <data name="bots.status.waiting" xml:space="preserve"><value>Waiting for the bot</value></data>
+  <data name="tasks.plan.title" xml:space="preserve"><value>Schedule a task</value></data>
+  <data name="tasks.plan.subtitle" xml:space="preserve"><value>HerNess runs recurring work for you.</value></data>
+  <data name="tasks.upcoming" xml:space="preserve"><value>Upcoming</value></data>
+  <data name="tasks.instructions" xml:space="preserve"><value>Instructions…</value></data>
+  <data name="tasks.repeat" xml:space="preserve"><value>Repeat</value></data>
+  <data name="tasks.time" xml:space="preserve"><value>Time</value></data>
+  <data name="tasks.day" xml:space="preserve"><value>Day</value></data>
+  <data name="tasks.advanced" xml:space="preserve"><value>Advanced</value></data>
+  <data name="tasks.create" xml:space="preserve"><value>Create</value></data>
+  <data name="tasks.repeat.hourly" xml:space="preserve"><value>Hourly</value></data>
+  <data name="tasks.repeat.daily" xml:space="preserve"><value>Daily</value></data>
+  <data name="tasks.repeat.weekdays" xml:space="preserve"><value>Weekdays</value></data>
+  <data name="tasks.repeat.weekly" xml:space="preserve"><value>Weekly</value></data>
+  <data name="tasks.repeat.custom" xml:space="preserve"><value>Custom</value></data>
+  <data name="bots.preset.assistant.detail" xml:space="preserve"><value>Help with everyday tasks</value></data>
+  <data name="bots.preset.researcher.detail" xml:space="preserve"><value>Explore topics and compare sources</value></data>
+  <data name="bots.preset.coder.detail" xml:space="preserve"><value>Write code and solve problems</value></data>
+  <data name="tasks.suggestion.email.title" xml:space="preserve"><value>Email follow-up</value></data>
+  <data name="tasks.suggestion.email.detail" xml:space="preserve"><value>Check important emails and summarize what needs attention.</value></data>
+  <data name="tasks.suggestion.reading.title" xml:space="preserve"><value>Weekend reading</value></data>
+  <data name="tasks.suggestion.reading.detail" xml:space="preserve"><value>Find an article about my interests each week.</value></data>
+  <data name="tasks.suggestion.prices.title" xml:space="preserve"><value>Price alerts</value></data>
+  <data name="tasks.suggestion.prices.detail" xml:space="preserve"><value>Check prices of products I follow and report discounts.</value></data>
+  <data name="tasks.suggestion.events.title" xml:space="preserve"><value>Discover events</value></data>
+  <data name="tasks.suggestion.events.detail" xml:space="preserve"><value>Find concerts and events that match my interests.</value></data>
+  <data name="tasks.suggestion.weekend.title" xml:space="preserve"><value>Plan my weekend</value></data>
+  <data name="tasks.suggestion.weekend.detail" xml:space="preserve"><value>Suggest weekend activities based on my preferences.</value></data>
+  <data name="tasks.suggestions.memory" xml:space="preserve"><value>Based on your memory</value></data>
+  <data name="tasks.suggestions.personalizing" xml:space="preserve"><value>Preparing suggestions from your memory…</value></data>
+  <data name="tasks.suggestions.unavailable" xml:space="preserve"><value>Example suggestions · personalization unavailable</value></data>
+  <data name="tasks.suggestions.refresh" xml:space="preserve"><value>Refresh suggestions</value></data>
+  <data name="tasks.suggestions.instruction" xml:space="preserve"><value>Tailor the result to my interests and preferences. Summarize what you find. If information or access is missing, tell me what is needed.</value></data>
+  <data name="media.music" xml:space="preserve"><value>music</value></data>
+  <data name="studio.music" xml:space="preserve"><value>Music</value></data>
+  <data name="studio.library" xml:space="preserve"><value>Library</value></data>
+  <data name="studio.music.composing" xml:space="preserve"><value>Composing music. This can take a few minutes.</value></data>
+  <data name="studio.music.song" xml:space="preserve"><value>Song</value></data>
+  <data name="studio.music.inspector" xml:space="preserve"><value>Details</value></data>
+  <data name="studio.music.section" xml:space="preserve"><value>Section</value></data>
+  <data name="studio.music.section.delete" xml:space="preserve"><value>Delete section</value></data>
+  <data name="studio.music.lyrics" xml:space="preserve"><value>Lyrics</value></data>
+  <data name="studio.music.track" xml:space="preserve"><value>Track</value></data>
+  <data name="studio.music.track.generate" xml:space="preserve"><value>Generate track</value></data>
+  <data name="studio.music.track.empty" xml:space="preserve"><value>No audio yet</value></data>
+  <data name="studio.music.track.delete" xml:space="preserve"><value>Delete track</value></data>
+  <data name="studio.music.mix" xml:space="preserve"><value>Mix</value></data>
+  <data name="studio.music.tempo" xml:space="preserve"><value>Tempo and key</value></data>
+  <data name="studio.music.generating" xml:space="preserve"><value>Generating {0} tracks</value></data>
+  <data name="studio.music.placeholder" xml:space="preserve"><value>Describe the song: mood, story, instruments, who sings</value></data>
+  <data name="studio.music.empty" xml:space="preserve"><value>Describe a song above, or start an empty one. The plan comes first: sections, lyrics and one track per instrument, which you can change before any audio is made.</value></data>
+  <data name="studio.music.plan" xml:space="preserve"><value>Write song</value></data>
+  <data name="studio.music.new" xml:space="preserve"><value>Empty song</value></data>
+  <data name="studio.music.noPlan" xml:space="preserve"><value>The model did not return a song plan. Try again or pick another model.</value></data>
+  <data name="studio.music.deleteConfirm" xml:space="preserve"><value>Delete “{0}”? Its tracks and audio files are removed.</value></data>
+  <data name="studio.music.trackCount" xml:space="preserve"><value>{0} tracks</value></data>
+  <data name="studio.music.bpm" xml:space="preserve"><value>{0} BPM</value></data>
+  <data name="studio.music.key" xml:space="preserve"><value>Key</value></data>
+  <data name="studio.music.generateAll" xml:space="preserve"><value>Generate all</value></data>
+  <data name="studio.music.regenerate" xml:space="preserve"><value>Generate this track again</value></data>
+  <data name="studio.music.script" xml:space="preserve"><value>Script</value></data>
+  <data name="studio.music.artists" xml:space="preserve"><value>Artists</value></data>
+  <data name="studio.music.artist.add" xml:space="preserve"><value>Add artist</value></data>
+  <data name="studio.music.artist.default" xml:space="preserve"><value>Artist {0}</value></data>
+  <data name="studio.music.artist.name" xml:space="preserve"><value>Name</value></data>
+  <data name="studio.music.artist.style" xml:space="preserve"><value>Voice and style</value></data>
+  <data name="studio.music.section.add" xml:space="preserve"><value>Add section</value></data>
+  <data name="studio.music.section.default" xml:space="preserve"><value>Verse</value></data>
+  <data name="studio.music.section.bars" xml:space="preserve"><value>{0} bars</value></data>
+  <data name="studio.music.line.add" xml:space="preserve"><value>Add line</value></data>
+  <data name="studio.music.line.placeholder" xml:space="preserve"><value>Lyric line</value></data>
+  <data name="studio.music.line.unsung" xml:space="preserve"><value>No one</value></data>
+  <data name="studio.music.track.add" xml:space="preserve"><value>Add track</value></data>
+  <data name="studio.music.track.instrument" xml:space="preserve"><value>Instrument</value></data>
+  <data name="studio.music.track.prompt" xml:space="preserve"><value>How it should play</value></data>
+  <data name="studio.music.track.vocal" xml:space="preserve"><value>Vocals · {0}</value></data>
+  <data name="studio.music.mute" xml:space="preserve"><value>Mute</value></data>
+  <data name="studio.music.solo" xml:space="preserve"><value>Solo</value></data>
+  <data name="library.all" xml:space="preserve"><value>All</value></data>
+  <data name="library.kind.image" xml:space="preserve"><value>Images</value></data>
+  <data name="library.kind.video" xml:space="preserve"><value>Videos</value></data>
+  <data name="library.kind.audio" xml:space="preserve"><value>Speech</value></data>
+  <data name="library.kind.music" xml:space="preserve"><value>Music</value></data>
+  <data name="library.kind.document" xml:space="preserve"><value>Documents</value></data>
+  <data name="library.add" xml:space="preserve"><value>Add files</value></data>
+  <data name="library.addFailed" xml:space="preserve"><value>{0} files could not be added.</value></data>
+  <data name="library.open" xml:space="preserve"><value>Open</value></data>
+  <data name="library.empty.title" xml:space="preserve"><value>Nothing here yet</value></data>
+  <data name="library.empty.detail" xml:space="preserve"><value>Images, videos, speech and music you generate are filed here on their own. Add documents and other files yourself.</value></data>
+  <data name="backgroundTasks.title" xml:space="preserve"><value>Background tasks</value></data>
+  <data name="backgroundTasks.empty" xml:space="preserve"><value>No background tasks</value></data>
+  <data name="backgroundTasks.finished" xml:space="preserve"><value>Finished</value></data>
+  <data name="backgroundTasks.failed" xml:space="preserve"><value>Failed (exit {0})</value></data>
+  <data name="backgroundTasks.stopped" xml:space="preserve"><value>Stopped</value></data>
+  <data name="backgroundTasks.clear" xml:space="preserve"><value>Clear finished</value></data>
+  <data name="backgroundTasks.runningCount" xml:space="preserve"><value>Running tasks: {0}</value></data>
+  <data name="backgroundTasks.wake" xml:space="preserve"><value>Background task “{0}” finished with exit code {1}. Read its output with terminal_session (session {2}) and continue.</value></data>
+  <data name="backgroundTasks.waitingInput" xml:space="preserve"><value>Waiting for input</value></data>
+  <data name="local.installed" xml:space="preserve"><value>Installed</value></data>
+  <data name="marketplace.title" xml:space="preserve"><value>Marketplace</value></data>
+  <data name="marketplace.empty" xml:space="preserve"><value>No plugins</value></data>
+  <data name="marketplace.emptyHint" xml:space="preserve"><value>Press Refresh to load the registry.</value></data>
+  <data name="marketplace.install" xml:space="preserve"><value>Install</value></data>
+  <data name="marketplace.search" xml:space="preserve"><value>Search plugins</value></data>
+  <data name="marketplace.update" xml:space="preserve"><value>Update v{0} → v{1}</value></data>
+  <data name="marketplace.by" xml:space="preserve"><value>by {0}</value></data>
+  <data name="market.tab.plugins" xml:space="preserve"><value>Plugins</value></data>
+  <data name="market.tab.skills" xml:space="preserve"><value>Skills</value></data>
+  <data name="market.tab.starters" xml:space="preserve"><value>Project starters</value></data>
+  <data name="starters.intro" xml:space="preserve"><value>Pick a starter and an empty folder. The prompt lands in the composer for you to read and send.</value></data>
+  <data name="starters.use" xml:space="preserve"><value>Use starter</value></data>
+  <data name="starters.chooseFolder" xml:space="preserve"><value>Choose an empty folder for the new project.</value></data>
+  <data name="starters.web.title" xml:space="preserve"><value>Web app</value></data>
+  <data name="starters.web.detail" xml:space="preserve"><value>Next.js with TypeScript, a layout, an example API route and linting.</value></data>
+  <data name="starters.landing.title" xml:space="preserve"><value>Landing page</value></data>
+  <data name="starters.landing.detail" xml:space="preserve"><value>Static HTML and CSS with hero, features, pricing and contact. No build step.</value></data>
+  <data name="starters.api.title" xml:space="preserve"><value>API service</value></data>
+  <data name="starters.api.detail" xml:space="preserve"><value>FastAPI with a health check, an example resource, settings and tests.</value></data>
+  <data name="starters.ios.title" xml:space="preserve"><value>iOS app</value></data>
+  <data name="starters.ios.detail" xml:space="preserve"><value>SwiftUI with two screens, an observable model and a unit test.</value></data>
+  <data name="starters.worker.title" xml:space="preserve"><value>Cloudflare Worker</value></data>
+  <data name="starters.worker.detail" xml:space="preserve"><value>TypeScript API on Workers with typed bindings and a test.</value></data>
+  <data name="starters.cli.title" xml:space="preserve"><value>Command-line tool</value></data>
+  <data name="starters.cli.detail" xml:space="preserve"><value>Python package with subcommands, tests and install instructions.</value></data>
+  <data name="common.cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="common.connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="common.copied" xml:space="preserve"><value>Copied</value></data>
+  <data name="common.delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="common.done" xml:space="preserve"><value>Done</value></data>
+  <data name="common.download" xml:space="preserve"><value>Download</value></data>
+  <data name="common.idle" xml:space="preserve"><value>Idle</value></data>
+  <data name="common.refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="common.remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="common.start" xml:space="preserve"><value>Start</value></data>
+  <data name="common.stop" xml:space="preserve"><value>Stop</value></data>
+  <data name="common.test" xml:space="preserve"><value>Test</value></data>
+  <data name="common.save" xml:space="preserve"><value>Save</value></data>
+  <data name="common.view" xml:space="preserve"><value>View</value></data>
+  <data name="composer.add" xml:space="preserve"><value>Add</value></data>
+  <data name="attachment.addApp" xml:space="preserve"><value>Add the Dots Harness app</value></data>
+  <data name="attachment.projectDetail" xml:space="preserve"><value>Choose a project for new conversations</value></data>
+  <data name="attachment.goal" xml:space="preserve"><value>Goal</value></data>
+  <data name="attachment.goalDetail" xml:space="preserve"><value>Set a goal to work toward</value></data>
+  <data name="attachment.plan" xml:space="preserve"><value>Plan mode</value></data>
+  <data name="attachment.planDetail" xml:space="preserve"><value>Turn on plan mode</value></data>
+  <data name="attachment.saveSkill" xml:space="preserve"><value>Save a skill</value></data>
+  <data name="attachment.plugins" xml:space="preserve"><value>Plugins</value></data>
+  <data name="attachment.slashCommands" xml:space="preserve"><value>Slash commands</value></data>
+  <data name="attachment.folder" xml:space="preserve"><value>Add folder</value></data>
+  <data name="attachment.connectors" xml:space="preserve"><value>Connectors</value></data>
+  <data name="attachment.documentsDetail" xml:space="preserve"><value>Create and edit document artifacts</value></data>
+  <data name="attachment.pdfDetail" xml:space="preserve"><value>Read, create, and verify PDF files</value></data>
+  <data name="attachment.spreadsheetsDetail" xml:space="preserve"><value>Create and edit spreadsheet files</value></data>
+  <data name="modelPicker.model" xml:space="preserve"><value>Model</value></data>
+  <data name="modelPicker.speed" xml:space="preserve"><value>Speed</value></data>
+  <data name="modelPicker.maximum" xml:space="preserve"><value>Maximum</value></data>
+  <data name="modelPicker.standard" xml:space="preserve"><value>Standard</value></data>
+  <data name="modelPicker.fast" xml:space="preserve"><value>Fast</value></data>
+  <data name="modelPicker.auto" xml:space="preserve"><value>Auto</value></data>
+  <data name="modelPicker.autoHint" xml:space="preserve"><value>Picks the model and effort per message</value></data>
+  <data name="settings.sshPassword" xml:space="preserve"><value>Password (used once)</value></data>
+  <data name="settings.sshRememberPassword" xml:space="preserve"><value>Remember password</value></data>
+  <data name="settings.sshRememberPassword.hint" xml:space="preserve"><value>Not needed: the password is only used once, to install a key. It is never written to ~/.ssh/config.</value></data>
+  <data name="ssh.continue" xml:space="preserve"><value>Continue</value></data>
+  <data name="ssh.enrolling" xml:space="preserve"><value>Installing the key…</value></data>
+  <data name="ssh.enrolled.hint" xml:space="preserve"><value>Later connections use the key; the password is no longer needed.</value></data>
+  <data name="ssh.retry" xml:space="preserve"><value>Try again</value></data>
+  <data name="ssh.retryHint" xml:space="preserve"><value>Check the address, the username and the password, then try again.</value></data>
+  <data name="ssh.installKeyManually" xml:space="preserve"><value>Add this key to ~/.ssh/authorized_keys on the server, then try again.</value></data>
+  <data name="ssh.copyPublicKey" xml:space="preserve"><value>Copy key</value></data>
+  <data name="ssh.error.passwordAuthDisabled" xml:space="preserve"><value>The server does not accept password logins.</value></data>
+  <data name="ssh.error.authFailed" xml:space="preserve"><value>{0} refused the login.</value></data>
+  <data name="ssh.error.hostKeyChanged" xml:space="preserve"><value>The host key of {0} has changed. Do not continue unless the server was reinstalled.</value></data>
+  <data name="ssh.error.invalidInput" xml:space="preserve"><value>Enter a valid alias, host name, user name, and port.</value></data>
+  <data name="sidebar.projects" xml:space="preserve"><value>Projects</value></data>
+  <data name="sidebar.recent" xml:space="preserve"><value>Recent</value></data>
+  <data name="sidebar.search" xml:space="preserve"><value>Search chats</value></data>
+  <data name="sidebar.sites" xml:space="preserve"><value>Sites</value></data>
+  <data name="sidebar.scheduled" xml:space="preserve"><value>Scheduled</value></data>
+  <data name="sidebar.addProject" xml:space="preserve"><value>Add project</value></data>
+  <data name="settings.compactTrigger" xml:space="preserve"><value>Auto-compact context at</value></data>
+  <data name="settings.compactTrigger.hint" xml:space="preserve"><value>Share of each model's context window. A higher value keeps the prompt cache longer, because compaction rewrites it.</value></data>
+  <data name="settings.explore.subagents" xml:space="preserve"><value>Use subagents</value></data>
+  <data name="settings.explore.hint" xml:space="preserve"><value>When on, the agent hands searches that sweep many files, and independent parts of a large change, to parallel subagents on hard or long tasks; only their summary enters the main conversation. An editing subagent can write only the files assigned to it, and assignments cannot overlap. Simple tasks never call one. Each subagent is a separate model run; turn this off to lower cost.</value></data>
+  <data name="settings.responseStyle" xml:space="preserve"><value>Response style</value></data>
+  <data name="settings.responseStyle.hint" xml:space="preserve"><value>This setting does not rewrite the prompt. Concise/Ultra are best-effort preferences; they do not guarantee a token count, completion, or lower cost.</value></data>
+  <data name="responseStyle.balanced" xml:space="preserve"><value>Balanced</value></data>
+  <data name="responseStyle.concise" xml:space="preserve"><value>Concise</value></data>
+  <data name="responseStyle.ultra" xml:space="preserve"><value>Ultra</value></data>
+  <data name="responseStyle.detailed" xml:space="preserve"><value>Detailed</value></data>
+  <data name="settings.computerUse.enable" xml:space="preserve"><value>Enable computer use</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>Version and updates</value></data>
+  <data name="settings.updates.available" xml:space="preserve"><value>New version available: v{0}</value></data>
+  <data name="settings.updates.download" xml:space="preserve"><value>Download update</value></data>
+  <data name="dock.branch" xml:space="preserve"><value>Branch</value></data>
+  <data name="dock.refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="dock.commit" xml:space="preserve"><value>Commit</value></data>
+  <data name="dock.push" xml:space="preserve"><value>Push</value></data>
+  <data name="dock.fetch" xml:space="preserve"><value>Fetch</value></data>
+  <data name="dock.commitOrPush" xml:space="preserve"><value>Commit or push</value></data>
+  <data name="dock.commitMessage" xml:space="preserve"><value>Commit message</value></data>
+  <data name="dock.noChanges" xml:space="preserve"><value>No changes by the agent.</value></data>
+  <data name="dock.whyRequest" xml:space="preserve"><value>Your request</value></data>
+  <data name="dock.whyAgent" xml:space="preserve"><value>Agent's explanation</value></data>
+  <data name="dock.notRepo" xml:space="preserve"><value>This folder is not a git repository.</value></data>
+  <data name="dock.gitMissing" xml:space="preserve"><value>Git is not installed. Review, commit and push need it.</value></data>
+  <data name="dock.installGit" xml:space="preserve"><value>Install Git</value></data>
+  <data name="dock.filterFiles" xml:space="preserve"><value>Filter files…</value></data>
+  <data name="dock.openFile" xml:space="preserve"><value>Open file</value></data>
+  <data name="dock.selectFile" xml:space="preserve"><value>Select a file from the workspace tree</value></data>
+  <data name="dock.binaryFile" xml:space="preserve"><value>Binary or unreadable file</value></data>
+  <data name="dock.expand" xml:space="preserve"><value>Expand</value></data>
+  <data name="dock.collapse" xml:space="preserve"><value>Collapse</value></data>
+  <data name="dock.split" xml:space="preserve"><value>Split</value></data>
+  <data name="dock.unsplit" xml:space="preserve"><value>Show one at a time</value></data>
+  <data name="dock.newTab" xml:space="preserve"><value>New tab</value></data>
+  <data name="dock.address" xml:space="preserve"><value>Search or enter URL</value></data>
+  <data name="dock.invalidAddress" xml:space="preserve"><value>Enter a valid web address or search.</value></data>
+  <data name="dock.openExternal" xml:space="preserve"><value>Open in default browser</value></data>
+  <data name="dock.bottomTerminal" xml:space="preserve"><value>Open bottom terminal</value></data>
+  <data name="dock.splitHorizontal" xml:space="preserve"><value>Split side by side</value></data>
+  <data name="dock.splitVertical" xml:space="preserve"><value>Split above and below</value></data>
+  <data name="dock.noWorkspace" xml:space="preserve"><value>Choose a workspace folder first.</value></data>
+  <data name="git.branchHelp" xml:space="preserve"><value>Choose a Git branch</value></data>
+  <data name="git.uncommitted" xml:space="preserve"><value>Uncommitted: {0} files</value></data>
+  <data name="market.area.core" xml:space="preserve"><value>Main Marketplace</value></data>
+  <data name="market.area.experimental" xml:space="preserve"><value>Experimental</value></data>
+  <data name="market.area.community" xml:space="preserve"><value>Community</value></data>
+  <data name="market.area.communityExperimental" xml:space="preserve"><value>Community / Experimental</value></data>
+  <data name="market.account" xml:space="preserve"><value>HerNess account</value></data>
+  <data name="market.signIn" xml:space="preserve"><value>Sign in</value></data>
+  <data name="market.signIn.email" xml:space="preserve"><value>Email and password</value></data>
+  <data name="market.signIn.title" xml:space="preserve"><value>Sign in with your HerNess account</value></data>
+  <data name="market.email" xml:space="preserve"><value>Email</value></data>
+  <data name="market.password" xml:space="preserve"><value>Password</value></data>
+  <data name="market.likeSignIn" xml:space="preserve"><value>Sign in to like</value></data>
+  <data name="market.customize" xml:space="preserve"><value>Customize</value></data>
+  <data name="market.localForks" xml:space="preserve"><value>Local customizations</value></data>
+  <data name="market.openFolder" xml:space="preserve"><value>Open folder</value></data>
+  <data name="market.fork.compared" xml:space="preserve"><value>Compared</value></data>
+  <data name="market.consent.title" xml:space="preserve"><value>This plugin runs native code</value></data>
+  <data name="market.consent.accept" xml:space="preserve"><value>Accept and enable</value></data>
+  <data name="market.consent.message" xml:space="preserve"><value>{0} is a third-party native plugin. Area: {1}. Review: {2}. Category: {3}. Check its permissions and source code. If you accept, the plugin runs immediately as trusted.</value></data>
+  <data name="market.review.verified" xml:space="preserve"><value>Reviewed by DOTS</value></data>
+  <data name="market.review.pending" xml:space="preserve"><value>Awaiting review</value></data>
+  <data name="market.community.empty" xml:space="preserve"><value>No Community plugins yet</value></data>
+  <data name="market.community.emptyHint" xml:space="preserve"><value>Community plugins need a separate review and explicit consent to run native code.</value></data>
+  <data name="market.report" xml:space="preserve"><value>Report</value></data>
+  <data name="market.report.title" xml:space="preserve"><value>Report plugin</value></data>
+  <data name="market.report.reason" xml:space="preserve"><value>Reason</value></data>
+  <data name="market.report.submit" xml:space="preserve"><value>Send report</value></data>
+  <data name="market.report.malware" xml:space="preserve"><value>Malware or harmful behavior</value></data>
+  <data name="market.report.credentialTheft" xml:space="preserve"><value>Credential theft</value></data>
+  <data name="market.report.exfiltration" xml:space="preserve"><value>Data exfiltration</value></data>
+  <data name="market.report.deceptive" xml:space="preserve"><value>Misleading listing or impersonation</value></data>
+  <data name="market.report.spam" xml:space="preserve"><value>Spam or empty wrapper</value></data>
+  <data name="market.report.copyright" xml:space="preserve"><value>Copyright or license violation</value></data>
+  <data name="market.publish" xml:space="preserve"><value>Publish plugin</value></data>
+  <data name="market.publish.title" xml:space="preserve"><value>Publish native plugin</value></data>
+  <data name="market.publish.hint" xml:space="preserve"><value>The plugin folder must contain plugin.yml, plugin.ir.json and a license. JavaScript and declarative runtimes are not accepted; platform builds are created in CI.</value></data>
+  <data name="market.publish.noFolder" xml:space="preserve"><value>No plugin folder selected</value></data>
+  <data name="market.publish.chooseFolder" xml:space="preserve"><value>Choose folder</value></data>
+  <data name="market.publish.irPreview" xml:space="preserve"><value>plugin.ir.json preview</value></data>
+  <data name="market.publish.sourcePreview" xml:space="preserve"><value>Native source preview</value></data>
+  <data name="market.publish.version" xml:space="preserve"><value>Version (SemVer)</value></data>
+  <data name="market.publish.license" xml:space="preserve"><value>SPDX license (e.g. MIT)</value></data>
+  <data name="market.publish.visibility" xml:space="preserve"><value>Source visibility</value></data>
+  <data name="market.publish.public" xml:space="preserve"><value>Public — the source package is listed</value></data>
+  <data name="market.publish.private" xml:space="preserve"><value>Private — only the owner and CI can access it</value></data>
+  <data name="market.publish.targets" xml:space="preserve"><value>Platform targets</value></data>
+  <data name="market.publish.footer" xml:space="preserve"><value>After publishing, AI classifies the category, area and risk. Even once the plugin build finishes, it is not listed until human review is complete.</value></data>
+  <data name="market.publish.submit" xml:space="preserve"><value>Publish</value></data>
+  <data name="market.publish.error.http" xml:space="preserve"><value>Marketplace publishing failed (HTTP {0}): {1}</value></data>
+  <data name="market.publish.error.license" xml:space="preserve"><value>Choose a license to publish a plugin.</value></data>
+  <data name="market.publish.error.noManifest" xml:space="preserve"><value>No plugin.yml found in the selected folder.</value></data>
+  <data name="market.publish.error.nativeOnly" xml:space="preserve"><value>Only native plugins can be published.</value></data>
+  <data name="market.publish.error.semver" xml:space="preserve"><value>Enter a valid SemVer version.</value></data>
+  <data name="market.publish.error.targets" xml:space="preserve"><value>Choose at least one platform target and a valid source visibility.</value></data>
+  <data name="market.publish.error.package" xml:space="preserve"><value>The package must contain plugin.ir.json and license files.</value></data>
+  <data name="market.publish.error.irVersion" xml:space="preserve"><value>plugin.ir.json must be version 1.</value></data>
+  <data name="market.publish.error.releaseID" xml:space="preserve"><value>Could not get the Marketplace release ID.</value></data>
+  <data name="market.publish.error.noVersion" xml:space="preserve"><value>plugin.yml is missing the version field.</value></data>
+  <data name="market.publish.status.registering" xml:space="preserve"><value>Creating the Marketplace entry…</value></data>
+  <data name="market.publish.status.uploading" xml:space="preserve"><value>Uploading the native source package…</value></data>
+  <data name="market.publish.status.aiUnavailable" xml:space="preserve"><value>AI classification unavailable; provisional label: {0} · {1} · {2}. Human review is required.</value></data>
+  <data name="market.publish.status.aiDone" xml:space="preserve"><value>AI classification: {0} · {1} · {2}. Awaiting human review.</value></data>
+  <data name="market.publish.status.aiFailed" xml:space="preserve"><value>AI classification could not finish; awaiting human review.</value></data>
+  <data name="market.publish.status.queueing" xml:space="preserve"><value>Queuing native platform builds…</value></data>
+  <data name="market.publish.status.uploaded" xml:space="preserve"><value>Source package uploaded; awaiting native CI verification.</value></data>
+  <data name="market.error.notSignedIn" xml:space="preserve"><value>Marketplace publishing requires a HerNess account.</value></data>
+  <data name="market.error.invalidCallback" xml:space="preserve"><value>The HerNess sign-in callback was invalid.</value></data>
+  <data name="market.error.stateMismatch" xml:space="preserve"><value>The HerNess sign-in state did not match.</value></data>
+  <data name="market.error.request" xml:space="preserve"><value>Marketplace request failed (HTTP {0}): {1}</value></data>
+  <data name="market.error.invalidResponse" xml:space="preserve"><value>The Marketplace returned an invalid response.</value></data>
+  <data name="market.error.credentials" xml:space="preserve"><value>Email and password are required.</value></data>
+  <data name="remote.scan" xml:space="preserve"><value>Scan this QR code or enter the one-time code in HerNess Mobile.</value></data>
+  <data name="remote.newCode" xml:space="preserve"><value>New pairing code</value></data>
+  <data name="remote.copyLink" xml:space="preserve"><value>Copy pairing link</value></data>
+  <data name="remote.tunnel.enable" xml:space="preserve"><value>Enable Cloudflare Quick Tunnel</value></data>
+  <data name="remote.hint" xml:space="preserve"><value>Provider keys stay on the desktop. File writes, terminal, build, deploy and PR actions still use the selected approval mode.</value></data>
+  <data name="settings.tab.mobile" xml:space="preserve"><value>Mobile control</value></data>
+  <data name="settings.compaction.economyFixed" xml:space="preserve"><value>Economy policy uses a fixed 90% threshold.</value></data>
+  <data name="settings.browser.title" xml:space="preserve"><value>Preferred browser and engine</value></data>
+  <data name="settings.browser.auto" xml:space="preserve"><value>Automatic (in-app, or the browser you name)</value></data>
+  <data name="settings.browser.managed" xml:space="preserve"><value>Managed isolated browser (Chrome)</value></data>
+  <data name="settings.browser.chrome" xml:space="preserve"><value>My Chrome</value></data>
+  <data name="settings.browser.desktopHint" xml:space="preserve"><value>The in-app browser uses the system browser engine. Managed Chrome and your existing Chrome profile are also available.</value></data>
+  <data name="settings.browser.inAppDesktop" xml:space="preserve"><value>In-app browser</value></data>
+  <data name="settings.computerUse.desktopHint" xml:space="preserve"><value>The agent can inspect running apps, view screenshots, use the mouse and keyboard, and verify the result. Desktop actions require access approval.</value></data>
+  <data name="settings.computerUse.linuxHint" xml:space="preserve"><value>Linux computer use requires X11, xdotool, and maim or ImageMagick. Wayland is not supported.</value></data>
+  <data name="market.settings.hint" xml:space="preserve"><value>The Main Marketplace contains reviewed Harness plugins. Community and Experimental listings are separate, and native plugins require your approval before they can run.</value></data>
+  <data name="market.registry.empty" xml:space="preserve"><value>No Marketplace entries found. Refresh the registry to try again.</value></data>
+  <data name="market.signIn.hint" xml:space="preserve"><value>Sign in with Google, GitHub, or your HerNess email and password. Session tokens stay in your platform's credential store.</value></data>
+  <data name="dock.clean" xml:space="preserve"><value>Working tree is clean.</value></data>
+  <data name="market.publish.folderPickerUnavailable" xml:space="preserve"><value>This desktop environment does not provide a folder picker.</value></data>
+  <data name="market.publish.localFolderRequired" xml:space="preserve"><value>Choose a local folder to publish a plugin.</value></data>
+  <data name="market.report.details" xml:space="preserve"><value>Details (optional, up to 5,000 characters)</value></data>
+  <data name="dock.browser.webview2Unavailable" xml:space="preserve"><value>WebView2 could not start. Install or repair the Microsoft Edge WebView2 Runtime.</value></data>
+  <data name="settings.marketplace" xml:space="preserve"><value>Marketplace</value></data>
+  <data name="workspace.use" xml:space="preserve"><value>Use Workspace</value></data>
+  <data name="market.fork.consent.title" xml:space="preserve"><value>This customized plugin runs native code</value></data>
+  <data name="market.fork.consent.message" xml:space="preserve"><value>{0} is a local fork. Its source is independent of upstream; review the changes before you enable it.</value></data>
+  <data name="market.fork.newUpstream" xml:space="preserve"><value>New upstream: v{0}; local changes are kept</value></data>
+  <data name="market.remove.confirmTitle" xml:space="preserve"><value>Remove Marketplace plugin?</value></data>
+  <data name="market.remove.confirmMessage" xml:space="preserve"><value>Remove {0} from this device?</value></data>
+  <data name="market.report.other" xml:space="preserve"><value>Other</value></data>
+  <data name="modelPicker.economy" xml:space="preserve"><value>Economy</value></data>
+  <data name="conversation.toggleResponseEconomy" xml:space="preserve"><value>Toggle response token economy</value></data>
+  <data name="market.unpublish.confirmMessage" xml:space="preserve"><value>Unpublish {0}? Existing installations will not be removed.</value></data>
+  <data name="market.permissions" xml:space="preserve"><value>Permissions</value></data>
+  <data name="market.risk" xml:space="preserve"><value>Risk: {0}</value></data>
+  <data name="market.category.coding" xml:space="preserve"><value>Coding</value></data>
+  <data name="market.category.git" xml:space="preserve"><value>Git</value></data>
+  <data name="market.category.qa" xml:space="preserve"><value>Testing &amp; Quality</value></data>
+  <data name="market.category.devops" xml:space="preserve"><value>DevOps</value></data>
+  <data name="market.category.browser" xml:space="preserve"><value>Browser</value></data>
+  <data name="market.category.web" xml:space="preserve"><value>Web</value></data>
+  <data name="market.category.backend" xml:space="preserve"><value>Backend</value></data>
+  <data name="market.category.mobile" xml:space="preserve"><value>Mobile</value></data>
+  <data name="market.category.models" xml:space="preserve"><value>Models</value></data>
+  <data name="market.category.integrations" xml:space="preserve"><value>Integrations</value></data>
+  <data name="market.category.workspace" xml:space="preserve"><value>Workspace</value></data>
+  <data name="market.category.productivity" xml:space="preserve"><value>Productivity</value></data>
+  <data name="market.category.tools" xml:space="preserve"><value>Tools</value></data>
+  <data name="market.category.design" xml:space="preserve"><value>Design</value></data>
+  <data name="market.category.documents" xml:space="preserve"><value>Documents</value></data>
+  <data name="market.category.authoring" xml:space="preserve"><value>Skill authoring</value></data>
+  <data name="market.category.community" xml:space="preserve"><value>Community</value></data>
+  <data name="market.category.other" xml:space="preserve"><value>Other</value></data>
+  <data name="navigation.back" xml:space="preserve"><value>Back</value></data>
+  <data name="navigation.forward" xml:space="preserve"><value>Forward</value></data>
+  <data name="dock.restart" xml:space="preserve"><value>Restart</value></data>
+  <data name="dock.go" xml:space="preserve"><value>Go</value></data>
+  <data name="terminal.sandboxUnavailable" xml:space="preserve"><value>Terminal sandbox unavailable: {0}</value></data>
+  <data name="remote.lan" xml:space="preserve"><value>LAN endpoint</value></data>
+  <data name="remote.code" xml:space="preserve"><value>Code</value></data>
+  <data name="remote.expires" xml:space="preserve"><value>Expires {0}</value></data>
+  <data name="remote.pairingLink" xml:space="preserve"><value>Pairing link</value></data>
+  <data name="custom.detected" xml:space="preserve"><value>Running on this computer</value></data>
+  <data name="custom.modelOptional" xml:space="preserve"><value>Model name (optional)</value></data>
+  <data name="custom.contextOptional" xml:space="preserve"><value>Context window in tokens (optional)</value></data>
+  <data name="custom.prefix" xml:space="preserve"><value>Model prefix</value></data>
+  <data name="local.tuning" xml:space="preserve"><value>Performance</value></data>
+  <data name="local.tuningHint" xml:space="preserve"><value>Empty or auto lets the runtime fit the model to your GPU memory. Changes apply the next time a model starts.</value></data>
+  <data name="local.contextSize" xml:space="preserve"><value>Context size (tokens)</value></data>
+  <data name="local.gpuLayers" xml:space="preserve"><value>GPU layers (auto, all or a number)</value></data>
+  <data name="local.threads" xml:space="preserve"><value>CPU threads</value></data>
+  <data name="local.batchSize" xml:space="preserve"><value>Batch size</value></data>
+  <data name="local.flashAttention" xml:space="preserve"><value>Flash attention</value></data>
+  <data name="local.kvCache" xml:space="preserve"><value>KV cache type</value></data>
+  <data name="local.extraArgs" xml:space="preserve"><value>Extra llama-server arguments</value></data>
+  <data name="local.hardware" xml:space="preserve"><value>Hardware</value></data>
+  <data name="local.listen" xml:space="preserve"><value>Listening</value></data>
+  <data name="local.importGGUF" xml:space="preserve"><value>Add a GGUF file…</value></data>
+  <data name="local.tooLarge" xml:space="preserve"><value>Too large</value></data>
+  <data name="local.backend" xml:space="preserve"><value>GPU backend</value></data>
+  <data name="settings.compaction.autoRouted" xml:space="preserve"><value>Auto-routed models</value></data>
+  <data name="settings.compaction.effectiveThreshold" xml:space="preserve"><value>Effective threshold</value></data>
+  <data name="sidebar.signOut" xml:space="preserve"><value>Sign out</value></data>
+  <data name="market.unpublish" xml:space="preserve"><value>Unpublish</value></data>
+  <data name="settings.sshHosts" xml:space="preserve"><value>Remote computers (SSH)</value></data>
+  <data name="settings.sshHosts.hint" xml:space="preserve"><value>Hosts come from ~/.ssh/config. A host added here is written back to it.</value></data>
+  <data name="settings.sshNoHosts" xml:space="preserve"><value>No hosts in ~/.ssh/config.</value></data>
+  <data name="settings.sshAddHost" xml:space="preserve"><value>Add computer…</value></data>
+  <data name="settings.sshTest" xml:space="preserve"><value>Test</value></data>
+  <data name="settings.sshManaged" xml:space="preserve"><value>added here</value></data>
+  <data name="settings.sshFromConfig" xml:space="preserve"><value>from ~/.ssh/config</value></data>
+  <data name="settings.sshRemove.handWritten" xml:space="preserve"><value>This host was written by hand in ~/.ssh/config. Remove it there.</value></data>
+  <data name="settings.updates.current" xml:space="preserve"><value>Current version</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>Checking for updates…</value></data>
+  <data name="settings.updates.checkAgain" xml:space="preserve"><value>Check again</value></data>
+  <data name="settings.updates.upToDate" xml:space="preserve"><value>The app is up to date.</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>Check for updates</value></data>
+  <data name="settings.updates.retry" xml:space="preserve"><value>Try again</value></data>
+  <data name="settings.updates.hint" xml:space="preserve"><value>Check for the latest available release.</value></data>
+  <data name="settings.updates.required" xml:space="preserve"><value>Required</value></data>
+  <data name="ssh.connected" xml:space="preserve"><value>{0} answered.</value></data>
+  <data name="remote.enable" xml:space="preserve"><value>Allow remote control</value></data>
+  <data name="remote.shareLan" xml:space="preserve"><value>Share with the local network</value></data>
+  <data name="remote.enableHint" xml:space="preserve"><value>The remote gateway is off. Turn it on to pair a phone.</value></data>
+  <data name="plan.title" xml:space="preserve"><value>Plan</value></data>
+  <data name="plan.proposed" xml:space="preserve"><value>Claude proposed a plan</value></data>
+  <data name="plan.revise" xml:space="preserve"><value>Revise…</value></data>
+  <data name="plan.acceptAuto" xml:space="preserve"><value>Accept and auto mode</value></data>
+  <data name="memory.trust.header" xml:space="preserve"><value>Project memory</value></data>
+  <data name="memory.trust.prompt" xml:space="preserve"><value>This repository came with its own memory (.mem/facts.md) that HerNess did not write here. Trust it? Trusted memory can steer HerNess in this project; otherwise it is read only as unverified information.</value></data>
+  <data name="memory.trust.yes" xml:space="preserve"><value>Trust it</value></data>
+  <data name="memory.trust.no" xml:space="preserve"><value>Don't trust</value></data>
+  <data name="memory.lesson.header" xml:space="preserve"><value>Learned lesson</value></data>
+  <data name="memory.lesson.prompt" xml:space="preserve"><value>HerNess inferred this from one earlier turn: “{0}” Is it right?</value></data>
+  <data name="memory.lesson.keep" xml:space="preserve"><value>Right, keep it</value></data>
+  <data name="memory.lesson.forget" xml:space="preserve"><value>Wrong, forget it</value></data>
+  <data name="notifications.title" xml:space="preserve"><value>Notifications</value></data>
+  <data name="notifications.emptyTitle" xml:space="preserve"><value>You're all caught up</value></data>
+  <data name="notifications.emptyBody" xml:space="preserve"><value>Questions and completed work will appear here.</value></data>
+  <data name="notifications.markAllRead" xml:space="preserve"><value>Mark all read</value></data>
+  <data name="notifications.clearAll" xml:space="preserve"><value>Clear all</value></data>
+  <data name="notifications.itemCount" xml:space="preserve"><value>{0} notifications</value></data>
+  <data name="notifications.unreadCount" xml:space="preserve"><value>{0} unread notifications</value></data>
+  <data name="notifications.question" xml:space="preserve"><value>A question needs your answer</value></data>
+  <data name="notifications.approval" xml:space="preserve"><value>Waiting for approval</value></data>
+  <data name="notifications.actionRequired" xml:space="preserve"><value>Your attention is needed</value></data>
+  <data name="notifications.responseReady" xml:space="preserve"><value>Response completed</value></data>
+  <data name="notifications.operationFailed" xml:space="preserve"><value>Work failed</value></data>
 </root>

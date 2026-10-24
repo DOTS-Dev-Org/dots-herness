@@ -6,6 +6,14 @@ import org.json.JSONObject
 import org.json.JSONArray
 
 class MobilePromptHistoryTest {
+    @Test fun `compact command keeps the message that follows it`() {
+        assertEquals("", MobilePromptHistory.compactCommand("/compact"))
+        assertEquals("fix the login bug", MobilePromptHistory.compactCommand("/compact fix the login bug"))
+        assertEquals("second line", MobilePromptHistory.compactCommand("/compact\nsecond line"))
+        assertNull(MobilePromptHistory.compactCommand("/compactor"))
+        assertNull(MobilePromptHistory.compactCommand("please /compact"))
+    }
+
     @Test fun `only the latest read of the same lines keeps its body`() {
         fun call(id: String, input: JSONObject) = JSONObject().put("role", "assistant").put("content", JSONArray().put(
             JSONObject().put("type", "tool_use").put("id", id).put("name", "read_file").put("input", input)))
@@ -183,7 +191,7 @@ class MobilePromptHistoryTest {
         assertEquals("tools_changed", response.getJSONObject("diagnostics").getJSONObject("cache_miss_reason").optString("type"))
         assertNull(MobilePromptCache.rejectedFeature(500, "diagnostics")); assertNull(MobilePromptCache.rejectedFeature(400, "invalid unrelated setting"))
         assertEquals("claude_diagnostics", MobilePromptCache.rejectedFeature(422, "previous_message_id not supported"))
-        assertTrue(MobilePromptCache.supportsDiagnostics("gpt-5.6-luna")); assertFalse(MobilePromptCache.supportsDiagnostics("gpt-4.1"))
+        assertTrue(MobilePromptCache.supportsDiagnostics("gpt-5.6-luna")); assertFalse(MobilePromptCache.supportsDiagnostics("gpt-5.2"))
     }
 
     @Test fun `responses caching fields match only actual supported route`() {
@@ -199,7 +207,7 @@ class MobilePromptHistoryTest {
         assertEquals("policy", codex.optString("instructions")); assertFalse(codex.getJSONObject("prompt_cache_options").has("ttl"))
         assertEquals("resp_previous", codex.getJSONObject("prompt_cache_options").optString("comparison_response_id"))
         val legacy = JSONObject(original)
-        MobilePromptCache.configureResponsesCache(legacy, "https://api.openai.com/v1/responses", "gpt-4.1", state, "a", "api")
+        MobilePromptCache.configureResponsesCache(legacy, "https://api.openai.com/v1/responses", "gpt-5.2", state, "a", "api")
         assertEquals(MobilePromptCache.wireJson(JSONObject(original)), MobilePromptCache.wireJson(legacy))
         val proxy = JSONObject(original)
         MobilePromptCache.configureResponsesCache(proxy, "https://proxy.example/responses", "gpt-5.6-luna", state, "a", "api")
@@ -268,7 +276,7 @@ class MobilePromptHistoryTest {
     }
 
     @Test fun `prompt cache key is shared by conversations and separates accounts and tools`() {
-        fun key(account: String = "openai", tools: String = "tools") = MobilePromptCache.key("openai", "openai-chat", "gpt-4.1", account, tools)
+        fun key(account: String = "openai", tools: String = "tools") = MobilePromptCache.key("openai", "openai-chat", "gpt-5.6-terra", account, tools)
         // No conversation or compaction input: a new chat reuses the stable prefix.
         assertEquals(key(), key())
         assertNotEquals(key(), key(account = "other"))
@@ -284,8 +292,8 @@ class MobilePromptHistoryTest {
             JSONObject().put("role", "system").put("content", "stable policy"),
             text("user", "Inspect the project files."),
             JSONObject().put("role", "assistant").put("content", JSONArray().put(JSONObject()
-                .put("type", "tool_use").put("id", "read-1").put("name", "read_file")
-                .put("input", JSONObject().put("path", "Sources/App.kt")))),
+                .put("type", "tool_use").put("id", "read-1").put("name", "invoke_tool")
+                .put("input", JSONObject().put("name", "read_file").put("arguments", JSONObject().put("path", "Sources/App.kt").toString())))),
             JSONObject().put("role", "user").put("content", JSONArray().put(JSONObject()
                 .put("type", "tool_result").put("tool_use_id", "read-1")
                 .put("content", "PRIVATE_FILE_BODY_SHOULD_NOT_BE_REPLAYED"))),
@@ -336,5 +344,14 @@ class MobilePromptHistoryTest {
         assertFalse(selection.archiveText.contains("ARCHIVE_TAIL_15"))
         assertTrue(selection.archiveText.length <= MobileContextCompaction.MAXIMUM_ARCHIVE_CHARACTERS)
         assertTrue(MobileContextCompaction.fallbackSummary(null, selection.archiveText).contains("atlandı"))
+    }
+
+    @Test
+    fun providerContextOverflowIsDistinctFromQuotaLimits() {
+        assertTrue(indicatesContextWindowExceeded("prompt is too long: 210000 tokens > 200000 maximum"))
+        assertTrue(indicatesContextWindowExceeded("This model's maximum context length is 128000 tokens."))
+        assertTrue(indicatesContextWindowExceeded("context_length_exceeded"))
+        assertFalse(indicatesContextWindowExceeded("Rate limit reached for requests"))
+        assertFalse(indicatesContextWindowExceeded("You exceeded your current quota"))
     }
 }

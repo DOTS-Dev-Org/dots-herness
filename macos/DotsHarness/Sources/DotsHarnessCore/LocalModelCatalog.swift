@@ -176,7 +176,7 @@ public enum LocalModelCatalog {
         ),
     ]
 
-    /// MLX builds, served by `mlx_lm` on Apple Silicon. `bytes` is the whole
+    /// MLX builds, served by `dotsmlx` on Apple Silicon. `bytes` is the whole
     /// repository; the file list is read from Hugging Face at download time.
     public static let mlxModels: [LocalModelSpec] = [
         mlx(id: "mlx-qwen25-05b-4bit", name: "Qwen2.5 0.5B Instruct", size: "0.5B · 4-bit · ~290 MB",

@@ -94,8 +94,9 @@ extension NativeAgentHost {
         conflictWaitSeconds = max(0, seconds)
     }
 
-    /// Takes the write lease one mutating call needs, waiting or asking as the
-    /// policy says. The caller passes the result straight to
+    /// Takes the write lease one mutating call needs, deferring the first default-
+    /// policy collision so the agent can finish independent work before retrying.
+    /// The caller passes the result straight to
     /// `releaseWorkspaceLease`, which ignores the cases that hold nothing.
     func acquireWorkspaceLease(
         for call: AgentToolCall,
@@ -111,6 +112,31 @@ extension NativeAgentHost {
         let label = leaseLabel(for: call, workspace: workspace)
         if let granted = tryTakeLease(target, call: call, conversationID: conversationID, runID: runID, label: label) {
             return granted
+        }
+
+        if workspaceConflictPolicy == .waitThenAsk,
+           !WorkspaceLeases.shared.isFinalCheckRequested(target, conversationID: conversationID) {
+            if let holder = WorkspaceLeases.shared.holder(for: target, excluding: conversationID) {
+                WorkspaceLeases.shared.deferWrite(target, conversationID: conversationID, label: label)
+                return .refused(
+                    "WRITE NOT RUN: \(holder.conversationTitle) is using \(label). Keep this change pending, "
+                        + "finish the other independent work, then reread \(label) and retry this exact write once at the end. "
+                        + "The app will ask the user only if the final recheck is still blocked. Do not overwrite or skip it."
+                )
+            }
+            // The holder may have released the lease between the first attempt and
+            // inspection. Take it now if it stayed free.
+            if let granted = tryTakeLease(target, call: call, conversationID: conversationID, runID: runID, label: label) {
+                return granted
+            }
+            if let holder = WorkspaceLeases.shared.holder(for: target, excluding: conversationID) {
+                WorkspaceLeases.shared.deferWrite(target, conversationID: conversationID, label: label)
+                return .refused(
+                    "WRITE NOT RUN: \(holder.conversationTitle) is using \(label). Keep this change pending, "
+                        + "finish the other independent work, then reread \(label) and retry this exact write once at the end. "
+                        + "The app will ask the user only if the final recheck is still blocked. Do not overwrite or skip it."
+                )
+            }
         }
 
         let waitSeconds: TimeInterval? = switch workspaceConflictPolicy {
@@ -134,7 +160,9 @@ extension NativeAgentHost {
         } else if workspaceConflictPolicy == .waitOnly {
             return .refused(AppCopy.format("conflict.stillBusy", label))
         }
-        return await askForLease(target, label: label, call: call, conversationID: conversationID, runID: runID)
+        let outcome = await askForLease(target, label: label, call: call, conversationID: conversationID, runID: runID)
+        WorkspaceLeases.shared.clearDeferredWrite(target, conversationID: conversationID)
+        return outcome
     }
 
     func releaseWorkspaceLease(_ outcome: WorkspaceLeaseOutcome) {

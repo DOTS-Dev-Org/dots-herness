@@ -101,12 +101,9 @@ struct WelcomeView: View {
 
     @ViewBuilder
     private var logo: some View {
-        // Transparent-background mark, cropped to the glyph (Resources/WelcomeLogo.png,
-        // bundled via .process). ponytail: derived from AppIcon.icns by flood-filling the
-        // cream backdrop; a faint edge fringe survives on very dark backgrounds — replace
-        // with a vector/native-transparent source if that ever shows at this size.
+        // Transparent mascot generated from shared/branding/herness-logo.webp.
         if let url = Bundle.module.url(forResource: "WelcomeLogo", withExtension: "png"),
-           let mark = NSImage(contentsOf: url) {
+           let mark = ImageFileCache.image(at: url) {
             Image(nsImage: mark)
                 .resizable()
                 .interpolation(.high)

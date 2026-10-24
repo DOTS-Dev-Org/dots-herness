@@ -12,6 +12,7 @@ import { mapPlatformToProviderId, parseUsageSnapshot } from "../../lib/users";
 import { normalizeSyncInterval } from "../../lib/sync_interval";
 import {
   TEAM_ROLES,
+  createTeamInviteWithinSeatLimit,
   getTeamMember,
   hasSeatAvailable,
   rank,
@@ -454,13 +455,29 @@ team.post(
   expires.setDate(expires.getDate() + 7);
   const expiresAt = sqliteTimestamp(expires);
 
-  await db(c.env)
-    .prepare(
-      `INSERT INTO team_invites (id, workspace_id, email, role, token, invited_by, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    )
-    .bind(id, workspaceId, email, role, await hashToken(token), myId, expiresAt)
-    .run();
+  const inserted = await createTeamInviteWithinSeatLimit(c.env, {
+    id,
+    workspaceId,
+    email,
+    role,
+    token: await hashToken(token),
+    invitedBy: myId,
+    expiresAt,
+  });
+  if (!inserted) {
+    const currentSeats = await hasSeatAvailable(c.env, workspaceId);
+    if (!currentSeats.available) {
+      return c.json(
+        { error: "seat_limit_reached", used: currentSeats.used, limit: currentSeats.limit },
+        409,
+      );
+    }
+    const duplicate = await db(c.env)
+      .prepare("SELECT 1 FROM team_invites WHERE workspace_id = ? AND email = ? AND accepted_at IS NULL AND datetime(expires_at) > CURRENT_TIMESTAMP")
+      .bind(workspaceId, email)
+      .first();
+    return c.json({ error: duplicate ? "invite_already_pending" : "already_member" }, 409);
+  }
 
   await recordAudit(c.env, {
     workspaceId,

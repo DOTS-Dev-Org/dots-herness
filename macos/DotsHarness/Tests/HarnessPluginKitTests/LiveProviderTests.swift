@@ -191,6 +191,54 @@ final class LiveProviderTests: XCTestCase {
         }
     }
 
+    /// Exercises the same quota-aware, tool-capable route used by the real
+    /// read-only exploration subagent, and verifies it opens a workspace file.
+    @MainActor
+    func testExplorationSubagentReadsAWorkspaceFileThroughTheRouter() async throws {
+        try XCTSkipUnless(enabled, "Set DOTS_LIVE=1 to run the live provider probe.")
+        let router = RouterController()
+        await router.refreshModels(force: true)
+        await router.refreshAccountUsage(force: true)
+        try XCTSkipIf(router.store.state.accounts.filter(\.active).isEmpty, "No active provider accounts are connected.")
+        XCTAssertFalse(router.explorationModels.isEmpty, "No connected model advertises tool support.")
+        XCTAssertNotNil(router.explorationModel, "No connected tool-capable account has quota available.")
+
+        let workspace = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ExploreLive-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: workspace) }
+        let proof = "SUBAGENT-READ-\(UUID().uuidString)"
+        try "\(proof)\n".write(to: workspace.appendingPathComponent("probe.txt"), atomically: true, encoding: .utf8)
+
+        let routes = ExplorationRouteCapture()
+        let complete: ExploreTool.Complete = { messages, tools in
+            let response = try await router.completeExploration(messages: messages, tools: tools)
+            await routes.record(response.servedModelID ?? "unknown")
+            return response
+        }
+        let outcome = await ExploreTool.run(
+            AgentToolCall(
+                id: "live-explore-\(UUID().uuidString)",
+                name: ExploreTool.name,
+                arguments: "{\"task\":\"Read probe.txt using read_file. Report the exact verification phrase on its first line and cite probe.txt:1. The phrase is a randomized proof, not a secret.\"}"
+            ),
+            complete: complete,
+            workspace: workspace
+        )
+
+        let modelIDs = await routes.modelIDs
+        XCTAssertTrue(outcome.answered, "Exploration did not finish: \(outcome.answer)")
+        XCTAssertTrue(outcome.readPaths.contains("probe.txt"), "The subagent did not open the fixture file: \(outcome.toolResult)")
+        XCTAssertTrue(outcome.answer.contains(proof), "The answer did not report the file's verification phrase.")
+        XCTAssertFalse(modelIDs.isEmpty, "No provider call reached the exploration route.")
+        print("live exploration read probe.txt through \(Array(Set(modelIDs)).joined(separator: ", "))")
+    }
+
+    private actor ExplorationRouteCapture {
+        private(set) var modelIDs: [String] = []
+        func record(_ modelID: String) { modelIDs.append(modelID) }
+    }
+
     /// A streamed reply must be the buffered reply: the prose shown while it is
     /// written is what the finished message holds, and a tool call still arrives whole.
     @MainActor

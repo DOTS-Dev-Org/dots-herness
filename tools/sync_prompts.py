@@ -11,8 +11,13 @@ identical. Run it after editing a canonical file:
 Platform-specific text (self-verification and the platform tool-use block) is
 deliberately not synced and stays in its own file. Optional targets are skipped
 only when their source file is absent.
+
+Single-line literals (the dark cockpit rule in ResponseStyle.swift and .cs, and
+in both mobile HerNessPrompt files) are
+listed in LINE_TARGETS: only the quoted body of that line is rewritten.
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -73,6 +78,32 @@ TARGETS = [
     ),
 ]
 
+# (file, canonical prompt, line pattern). Group 2 is the quoted body. It is
+# rewritten as " " + canonical text: the literal starts with a space so it can
+# be appended to the guidance.
+LINE_TARGETS = [
+    (
+        "macos/DotsHarness/Sources/DotsHarnessCore/ResponseStyle.swift",
+        "response-style.txt",
+        re.compile(r'^(    static let darkCockpit = ")([^"\n]*)(")$', re.M),
+    ),
+    (
+        "shared/ResponseStyle.cs",
+        "response-style.txt",
+        re.compile(r'^(    private const string DarkCockpit = ")([^"\n]*)(";)$', re.M),
+    ),
+    (
+        "mobile/ios/Sources/HerNessPrompt.swift",
+        "response-style.txt",
+        re.compile(r'^(    static let responseStyle = ")([^"\n]*)(")$', re.M),
+    ),
+    (
+        "mobile/android/app/src/main/java/com/dots/herness/mobile/HerNessPrompt.kt",
+        "response-style.txt",
+        re.compile(r'^(    const val RESPONSE_STYLE = ")([^"\n]*)(")$', re.M),
+    ),
+]
+
 
 def _active(path: str) -> bool:
     """Check a target when its source file exists.
@@ -108,6 +139,23 @@ def main() -> int:
         stale.append(f"{path} ({prompt_name})")
         if not check:
             file.write_text(source[:begin] + body + source[finish:])
+
+    for path, prompt_name, pattern in LINE_TARGETS:
+        if not _active(path):
+            continue
+        file = ROOT / path
+        source = file.read_text()
+        text = " " + (PROMPTS / prompt_name).read_text().strip()
+        if '"' in text or "\\" in text or "$" in text:
+            raise SystemExit(f"{prompt_name}: quote or backslash would break the literal")
+        match = pattern.search(source)
+        if match is None:
+            raise SystemExit(f"{path}: literal line not found")
+        if match.group(2) == text:
+            continue
+        stale.append(f"{path} ({prompt_name})")
+        if not check:
+            file.write_text(source[:match.start(2)] + text + source[match.end(2):])
 
     if not stale:
         print("prompts in sync")

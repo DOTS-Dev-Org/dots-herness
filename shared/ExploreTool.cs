@@ -14,14 +14,14 @@ namespace DotsHarnessCore;
 public static class ExploreTool
 {
     public const string Name = "explore";
-    /// The subagent answers a bounded question; a run that needs more was the wrong question to delegate.
-    private const int MaxSteps = 20;
-    /// A target, not a ceiling: only an answer well past it is asked to tighten once.
-    private const int CondenseThreshold = 2_000;
-    private const int CondenseTrigger = 3_500;
-    private const int MaxReportedPaths = 40;
+    /// The steps the subagent is told to plan for. A target, not a ceiling: a half answer
+    /// costs the parent a second run, so a search still making progress may go past it.
+    private const int StepBudget = 15;
+    /// The safety ceiling. Every step resends the whole context, so past the budget a
+    /// step that repeats an earlier call ends the run instead of spending to here.
+    private const int MaxSteps = 40;
     /// Maximum concurrent explore subagents allowed in a single turn to protect UX, UI and quota.
-    public const int MaxPerTurn = 3;
+    public const int MaxPerTurn = 2;
 
     public static NativeToolDefinition Definition { get; } = new(
         Name,
@@ -30,10 +30,13 @@ public static class ExploreTool
         + "than the file contents - locating where something is defined, what calls it, how a pattern is used "
         + "across the project. It cannot edit anything, so verify and change code yourself afterwards. Do not "
         + "use it for a file you already know the path of, or when one grep_files call or reading fewer than "
-        + "three files answers the question: do that directly, since a subagent costs a whole extra run. State the question in full, "
+        + "three files answers the question: do that directly, since a subagent costs a whole extra run. Use it "
+        + "only when the search is broad and the edit is narrow. When the files you would search are the files "
+        + "you will change, read them yourself: an explore read does not count as yours, so you would read them "
+        + "twice. State the question in full, "
         + "including the naming conventions and paths worth trying, since the subagent sees nothing of this "
         + "conversation. For a broad investigation, split it into independent questions and call explore "
-        + "several times in the same turn (maximum 3 subagents per turn): those subagents run in parallel and only their findings enter this "
+        + "several times in the same turn (maximum 2 subagents per turn): those subagents run in parallel and only their findings enter this "
         + "conversation.",
         new JsonObject
         {
@@ -54,6 +57,9 @@ public static class ExploreTool
         given by searching the project with grep_files, list_files, and read_file. You cannot edit
         anything and must never claim that you did. Search before you read: grep_files answers most
         questions in one call. Stop as soon as the question is answered.
+        Plan to finish within about 15 steps, sending independent calls together. If the question
+        truly needs more, keep going: a complete answer is worth more steps than a half one the caller
+        must redo. Never repeat a search or re-read a file.
         Reply with the findings only - no plan, no preamble, no suggested fixes - in exactly this shape:
 
         ## Findings
@@ -86,6 +92,9 @@ public static class ExploreTool
                 if (HitStepLimit) parts.Add("[The subagent reached its step limit.]");
                 if (Answer.Length > 0 && Steps > 0 && ReadPaths.Count == 0 && Searches == 0)
                     parts.Add("[Unverified: the subagent answered without searching or reading any file.]");
+                // The measure the tool's own description gives for when not to delegate.
+                if (Answered && Searches <= 1 && ReadPaths.Count < 3 && Searches + ReadPaths.Count > 0)
+                    parts.Add("[Unneeded delegation: this took at most one search and fewer than three files. Do lookups this small directly; a subagent costs a whole extra run.]");
                 if (ReadPaths.Count > 0) parts.Add("Files read: " + string.Join(", ", ReadPaths));
                 return string.Join("\n\n", parts);
             }
@@ -107,21 +116,27 @@ public static class ExploreTool
         try { task = JsonNode.Parse(call.Arguments)?["task"]?.GetValue<string>()?.Trim(); }
         catch { }
         if (string.IsNullOrEmpty(task)) return new Outcome("Tool error: explore needs a task.", [], 0, 0, false);
+        SubagentRoute.Current = new SubagentRoute();
 
         var memoKey = string.Join(' ', task.ToLowerInvariant().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        // The few read-only tools go out with their schemas: a discover round would cost a step.
         var tools = NativeWorkspaceTools.Definitions.Where(tool => NativeWorkspaceTools.IsReadOnly(tool.Name)).ToArray();
-        var messages = new List<NativeMessage> { new("system", SystemPrompt), new("user", task) };
+        // The files named like the question, so the subagent opens them before it searches.
+        var hints = WorkspaceFileIndex.Text(workspace, task);
+        var messages = new List<NativeMessage> { new("system", SystemPrompt), new("user", hints.Length == 0 ? task : task + "\n\n" + hints) };
         if (Memo.TryGetValue(memoKey, out var resumed))
         {
             messages.Add(new("user", "An earlier attempt at this same question was cut short. Continue from what it already found instead of searching again:\n" + resumed));
         }
         var readPaths = new List<string>();
+        var seenCalls = new HashSet<string>(StringComparer.Ordinal);
         var searches = 0;
         var steps = 0;
 
         for (var i = 0; i < MaxSteps; i++)
         {
             ct.ThrowIfCancellationRequested();
+            if (steps > 0) messages = ContextCompaction.SupersedeRepeatedReads(messages);
             steps++;
             NativeResponse response;
             try { response = await complete(messages, tools, ct).ConfigureAwait(false); }
@@ -138,38 +153,34 @@ public static class ExploreTool
             if (calls.Count == 0)
             {
                 var text = response.Message.Content.Trim();
+                // The 2000-character target lives in the prompt only: a retry to shorten
+                // the answer resends the whole transcript to save a few hundred tokens
+                // the parent reads from cache, so it never pays for itself.
                 if (text.Length == 0) return Close(memoKey, "The subagent returned no findings.", readPaths, steps, searches, false);
-                if (text.Length > CondenseTrigger)
-                {
-                    messages.Add(new("user", $"Tighten this answer to under {CondenseThreshold} characters without dropping any finding or its path:line."));
-                    try
-                    {
-                        var shorter = (await complete(messages, [], ct).ConfigureAwait(false)).Message.Content.Trim();
-                        if (shorter.Length > 0 && shorter.Length < text.Length) text = shorter;
-                    }
-                    catch (OperationCanceledException) { throw; }
-                    catch { }
-                }
                 return Close(memoKey, text, readPaths, steps, searches, false);
             }
-            // The subagent's own read-only calls also run side by side.
-            var results = await Task.WhenAll(calls.Select(toolCall => NativeWorkspaceTools.IsReadOnly(toolCall.Name)
-                ? NativeWorkspaceTools.ExecuteAsync(toolCall, workspace, ct, AgentCommandSandboxMode.StrictNoDesktop)
-                : Task.FromResult("Tool error: the exploration agent is read-only."))).ConfigureAwait(false);
-            for (var index = 0; index < calls.Count; index++)
+            foreach (var toolCall in calls)
             {
-                var toolCall = calls[index];
+                var result = NativeWorkspaceTools.IsReadOnly(toolCall.Name)
+                    ? await NativeWorkspaceTools.ExecuteAsync(toolCall, workspace, ct, AgentCommandSandboxMode.StrictNoDesktop).ConfigureAwait(false)
+                    : "Tool error: the exploration agent is read-only.";
                 if (toolCall.Name is "grep_files" or "list_files") searches++;
                 if (toolCall.Name == "read_file" && ToolPath(toolCall) is { } path && !readPaths.Contains(path)) readPaths.Add(path);
-                messages.Add(new("tool", results[index], toolCall.Id));
+                messages.Add(new("tool", EconomyPolicy.NormalizeToolOutput(result, toolCall.Name, toolCall.Arguments), toolCall.Id));
             }
+            // Count evaluates every call, so each one is recorded.
+            var fresh = calls.Count(toolCall => seenCalls.Add(toolCall.Name + "\0" + toolCall.Arguments)) > 0;
+            if (steps >= StepBudget && !fresh) break;
+            if (steps == StepBudget) messages.Add(new("user", Checkpoint));
         }
 
         // The budget is spent, but the transcript holds everything found: one last
-        // tool-free call turns it into an answer instead of throwing it away.
+        // call turns it into an answer instead of throwing it away. It keeps the same
+        // tools: the provider caches the prefix from the tool list on, so dropping them
+        // would resend the whole transcript uncached.
         messages.Add(new("user", "Stop searching. Answer the original question now from what you have already found, and say plainly what you could not determine."));
         var final = "";
-        try { final = (await complete(messages, [], ct).ConfigureAwait(false)).Message.Content.Trim(); }
+        try { final = (await complete(messages, tools, ct).ConfigureAwait(false)).Message.Content.Trim(); }
         catch (OperationCanceledException) { throw; }
         catch { }
         if (final.Length == 0)
@@ -178,6 +189,18 @@ public static class ExploreTool
             final = "The subagent reached its step limit without an answer." + (partial.Length == 0 ? "" : "\n\nPartial findings:\n" + partial);
         }
         return Close(memoKey, final, readPaths, steps, searches, true);
+    }
+
+    private const string Checkpoint =
+        "You have used the planned 15 steps. If the question is answered, reply now. Otherwise continue only "
+        + "on the part still open - no repeated search, no re-read file - and reply as soon as it is closed. "
+        + "You have at most 25 more steps.";
+
+    /// <summary>The effort an explore run asks for: low where the model offers it, else its lightest.</summary>
+    public static string? Effort(string? model)
+    {
+        var levels = NativeEffortCatalog.Levels(model);
+        return levels.Contains("low") ? "low" : levels.FirstOrDefault();
     }
 
     private static Outcome Close(string memoKey, string answer, List<string> readPaths, int steps, int searches, bool hitStepLimit)

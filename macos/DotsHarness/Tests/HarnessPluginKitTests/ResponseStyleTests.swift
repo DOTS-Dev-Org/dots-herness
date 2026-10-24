@@ -42,8 +42,8 @@ final class ResponseStyleTests: XCTestCase {
 
     func testShortStylesCarryDarkCockpitRuleAndChartFenceScalesToPeak() async {
         for preference in [AgentResponseStylePreference.concise, .ultra] {
-            XCTAssertTrue(preference.decision.guidance.contains("silence means normal"))
-            XCTAssertTrue(preference.decision.guidance.contains("```chart"))
+            XCTAssertTrue(preference.decision.guidance.contains("including passing checks"))
+            XCTAssertFalse(preference.decision.guidance.contains("```chart"))
         }
         XCTAssertFalse(AgentResponseStylePreference.detailed.decision.guidance.contains("Dark cockpit"))
 
@@ -62,6 +62,80 @@ final class ResponseStyleTests: XCTestCase {
         XCTAssertEqual(flow[1].step?.title, "Client")
         XCTAssertEqual(flow[1].step?.note, "POST /login")
         XCTAssertEqual(flow.map { $0.step?.isLast }, [nil, false, true])
-        XCTAssertTrue(AgentResponseStylePreference.ultra.decision.guidance.contains("```flow"))
+        XCTAssertEqual(flow[2].step?.number, 2)
+        XCTAssertNil(flow[1].step?.badge)
+
+        let audited = await MainActor.run {
+            MarkdownCache.shared.parsed(for: "```flow\nHarita: şema 4 `## x` [warn: Eski şema]\nBilgi: sırada [Sırada]\n```", store: false).entries
+        }
+        XCTAssertEqual(audited[1].step?.note, "şema 4 `## x`")
+        XCTAssertEqual(audited[1].step?.badge, DiagramTag(tone: "warn", label: "Eski şema"))
+        XCTAssertEqual(audited[2].step?.badge, DiagramTag(tone: nil, label: "Sırada"))
+
+        let spec = DiagramSpec(lines: [
+            "Kural: AGENTS.md [repo] | Kişisel: Mac [local] | Git index",
+            "> System prompt",
+            "Model çalışır",
+            "legend: repo = Repo, commit'lenir | local = Bu Mac",
+        ])
+        XCTAssertEqual(spec.layers.map(\.nodes.count), [3, 1])
+        XCTAssertEqual(spec.layers[1].caption, "System prompt")
+        XCTAssertEqual(spec.layers[0].nodes[1].note, "Mac")
+        XCTAssertNil(spec.layers[0].nodes[2].group)
+        XCTAssertEqual(spec.legend.map(\.group), ["repo", "local"])
+        XCTAssertNotEqual(spec.color(for: "repo"), spec.color(for: "local"))
+        XCTAssertEqual(spec.color(for: "ok"), .green)
+
+        let blocks = await MainActor.run {
+            MarkdownCache.shared.parsed(for: "```diagram\nA | B\n```", store: false).blocks
+        }
+        guard case .diagram(_, let parsed) = blocks[0] else { return XCTFail("diagram fence not grouped") }
+        XCTAssertEqual(parsed.layers.first?.nodes.map(\.title), ["A", "B"])
+        XCTAssertTrue(AgentResponseStylePreference.ultra.decision.guidance.contains("optional diagram"))
+    }
+
+    func testBareCountsInTaskRequestsAreNotLimits() {
+        for prompt in [
+            "Başlığı 5 kelime yap",
+            "Add 2 words to the commit message",
+            "Add a 512 token limit to the prompt builder",
+            "Bu isteğin maliyeti 3 token",
+            "Set the max_tokens limit to 512 tokens",
+        ] {
+            XCTAssertNil(ResponseStyleDetector.detectLimit(prompt), prompt)
+            XCTAssertEqual(ResponseStyleDetector.detect(prompt).style, .standard, prompt)
+        }
+    }
+
+    func testCountsWithALimitCueStillApply() {
+        XCTAssertEqual(ResponseStyleDetector.detectLimit("200 token ile sınırla")?.maxOutputTokens, 200)
+        XCTAssertEqual(ResponseStyleDetector.detectLimit("Keep it under 50 words")?.maxWords, 50)
+        XCTAssertEqual(ResponseStyleDetector.detectLimit("max 80 words")?.maxWords, 80)
+    }
+
+    func testWordLimitsStayInThePromptWithoutProviderCap() {
+        let words = ResponseStyleDetector.detect("100 kelimeyi geçme")
+        XCTAssertEqual(words.maxWords, 100)
+        XCTAssertNil(words.providerOutputTokenCap)
+        XCTAssertEqual(ResponseStyleDetector.detect("En fazla 200 token kullan").providerOutputTokenCap, 200)
+    }
+
+    func testDarkCockpitKeepsRequestedResultsAndRequiredProgress() {
+        let guidance = AgentResponseStylePreference.ultra.decision.guidance
+        XCTAssertTrue(guidance.contains("including passing checks"))
+        XCTAssertTrue(guidance.contains("requested result"))
+        XCTAssertTrue(guidance.contains("progress updates"))
+        XCTAssertFalse(guidance.contains("never narrate"))
+    }
+
+    func testPlainFenceIsOneCopyableBlock() async {
+        let blocks = await MainActor.run {
+            MarkdownCache.shared.parsed(for: "Akış:\n```\n┌─┐\n└─┘\n```\nSon", store: false).blocks
+        }
+        XCTAssertEqual(blocks.count, 3)
+        guard case .code(_, let lines) = blocks[1] else {
+            return XCTFail("expected a code block, got \(blocks)")
+        }
+        XCTAssertEqual(lines, ["┌─┐", "└─┘"])
     }
 }

@@ -12,6 +12,14 @@ public final class NemotronRuntime: @unchecked Sendable {
     public let port: Int
 
     private var process: Process?
+    private var idleTask: Task<Void, Never>?
+    private let activityLock = NSLock()
+    private var lastActivity = Date.distantPast
+    /// The server keeps the ASR model on the GPU (about 1 GB resident). It stops after this
+    /// long without audio or a start, and the next dictation press starts it again.
+    public static let defaultIdleStopAfter: TimeInterval = 60
+    public let idleStopAfter: TimeInterval
+
     private var runtimeArchive: URL {
         paths.runtime.appendingPathComponent("nemo-speech.tar.gz")
     }
@@ -19,9 +27,14 @@ public final class NemotronRuntime: @unchecked Sendable {
         paths.runtime.appendingPathComponent("nemo-speech", isDirectory: true)
     }
 
-    public init(paths: SupportPaths, port: Int = NemotronRuntime.defaultPort) {
+    public init(
+        paths: SupportPaths,
+        port: Int = NemotronRuntime.defaultPort,
+        idleStopAfter: TimeInterval = NemotronRuntime.defaultIdleStopAfter
+    ) {
         self.paths = paths
         self.port = port
+        self.idleStopAfter = idleStopAfter
         paths.ensure()
     }
 
@@ -134,7 +147,17 @@ public final class NemotronRuntime: @unchecked Sendable {
         )
     }
 
+    /// Marks dictation in use. Captured audio calls this too, so an open mic keeps the server up.
+    public func noteActivity() {
+        activityLock.withLock { lastActivity = Date() }
+    }
+
+    private var lastActivityDate: Date {
+        activityLock.withLock { lastActivity }
+    }
+
     public func start() throws -> URL {
+        noteActivity()
         if process?.isRunning == true {
             return serverURL
         }
@@ -166,6 +189,12 @@ public final class NemotronRuntime: @unchecked Sendable {
                 "--port", String(port),
                 "--endpointing",
                 "--stop-history-eou-ms", "800",
+                // Warmup took 11 s to ready; without it the server is ready in ~1 s and
+                // the first request costs ~0.4 s more. Measured on the 0.6B q8_0 model.
+                "--no-warmup",
+                // Dictation is one stream at a time. Each arena slot reserves device rows for a
+                // streaming state (~11 MB each); the default 16 cost ~160 MB resident for nothing.
+                "--asr.batching.state_arena_slots", "2",
             ],
             parentPID: getpid()
         )
@@ -174,13 +203,38 @@ public final class NemotronRuntime: @unchecked Sendable {
         process.standardError = FileHandle.nullDevice
         try process.run()
         self.process = process
+        armIdleStop()
         return serverURL
     }
 
     public func stop() {
+        idleTask?.cancel()
+        idleTask = nil
         process?.terminate()
         process = nil
+        // The supervisor takes the server down with it, unless it died first; then the server
+        // is orphaned, out of reach of `process`, and would keep the model resident.
+        let root = runtimeRoot
+        Task.detached(priority: .utility) { Self.reapOrphans(runtimeRoot: root) }
     }
+
+    private func armIdleStop() {
+        idleTask?.cancel()
+        idleTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                guard let interval = self?.idleStopAfter else { return }
+                try? await Task.sleep(for: .seconds(min(15, max(1, interval / 4))))
+                guard !Task.isCancelled, let self else { return }
+                if Date().timeIntervalSince(self.lastActivityDate) >= self.idleStopAfter {
+                    self.stop()
+                    return
+                }
+            }
+        }
+    }
+
+    /// True while the speech server process is alive (it may still be loading the model).
+    public var isRunning: Bool { process?.isRunning == true }
 
     // MARK: - Orphan protection
 

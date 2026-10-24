@@ -51,8 +51,10 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ArrowBack
@@ -61,6 +63,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Language
@@ -68,8 +71,10 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -147,6 +152,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
+import androidx.compose.runtime.snapshotFlow
 import androidx.window.layout.FoldingFeature
 import androidx.window.layout.WindowInfoTracker
 
@@ -203,7 +210,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        lifecycleAgent?.resumeRecoveredPlanIfNeeded()
+        lifecycleAgent?.resumeRecoveredConversationIfNeeded()
     }
 
     override fun onStop() {
@@ -243,6 +250,7 @@ private fun HerNessApp(
     var confirmBeforeExit by remember { mutableStateOf(preferences.getBoolean("confirm_before_exit", true)) }
     var showingSplash by remember { mutableStateOf(true) }
     val stateStore = remember { MobileStateStore(context.applicationContext) }
+    val personalMemoryRoot = remember { java.io.File(context.filesDir, "herness-memory") }
     val legal = remember { LegalModel(baseContext.applicationContext) }
     LaunchedEffect(effectiveLanguage.code) {
         legal.setLanguage(effectiveLanguage.code)
@@ -302,8 +310,9 @@ private fun HerNessApp(
             ).apply {
                 selectProject(loopProjectID)
                 register(WebTools.specs())
-                register(AgentTools.workspace { loopRoot })
-                learnedRules = { MobileLessons.rulesText(loopRoot) }
+                register(AgentTools.workspace({ loopRoot }, { personalMemoryRoot }))
+                learnedRules = { MobileLessons.rulesText(loopRoot, userRoot = personalMemoryRoot) }
+                personalMemory = { MobilePersonalMemory.text(personalMemoryRoot, loopRoot) }
                 register(AgentTools.runtime(loopShell, { loopRoot }, loopGit, client))
                 replaceProjectTools(Plugins { loopRoot }.reload())
             }
@@ -314,8 +323,13 @@ private fun HerNessApp(
         chatGPTOAuth.refreshIfNeeded()
         agent.selectProject(client.selectedProjectId)
         agent.register(WebTools.specs())
-        agent.register(AgentTools.workspace { client.workspaceRoot() })
-        agent.learnedRules = { MobileLessons.rulesText(client.workspaceRoot()) }
+        agent.register(AgentTools.workspace({ client.workspaceRoot() }, { personalMemoryRoot }))
+        agent.learnedRules = { MobileLessons.rulesText(client.workspaceRoot(), userRoot = personalMemoryRoot) }
+        agent.memoryQuestions = { asked -> MobileLessons.memoryQuestions(client.workspaceRoot(), asked, memoryText(context), personalMemoryRoot) }
+        agent.memoryAnswer = { id, choice -> MobileLessons.answerMemoryQuestion(id, choice, client.workspaceRoot(), personalMemoryRoot) }
+        agent.personalMemory = {
+            MobilePersonalMemory.text(personalMemoryRoot, if (agent.isNoProjectMode) null else client.workspaceRoot())
+        }
         agent.register(AgentTools.runtime(shell, { client.workspaceRoot() }, git, client))
         agent.replaceProjectTools(plugins.reload())
         agent.pluginPrompt = plugins.promptSections.joinToString("\n")
@@ -347,17 +361,6 @@ private fun HerNessApp(
             preferences.edit().putBoolean("has_seen_intro", true).apply()
             hasSeenIntro = true
         }
-    } else if (legal.needsAcceptance) {
-        LegalGate(
-            legal = legal,
-            selectedLanguage = selectedLanguage,
-            onLanguageChange = { language ->
-                selectedLanguageCode = language.code
-                preferences.setMobileLanguage(language)
-            },
-            isDarkTheme = isDarkTheme,
-            onThemeToggle = onThemeToggle,
-        )
     } else {
         WorkspaceShell(
             client, agent, shell, plugins, mcp, loops, git, githubOAuth, chatGPTOAuth,
@@ -376,6 +379,20 @@ private fun HerNessApp(
             },
         )
     }
+    // A herness://pair link can be opened by any web page, so the desktop is
+    // never contacted until the user confirms the host and the pairing code.
+    val pendingPair = client.pendingPair
+    if (pendingPair != null) AlertDialog(
+        onDismissRequest = { client.cancelPendingPair() },
+        title = { Text(stringResource(R.string.mobile_pairing_confirm_title).replace("%@", pendingPair.host)) },
+        text = { Text(stringResource(R.string.mobile_pairing_confirm_message).replace("%@", pendingPair.code)) },
+        confirmButton = {
+            TextButton({ client.confirmPendingPair() }) { Text(stringResource(R.string.common_connect)) }
+        },
+        dismissButton = {
+            TextButton({ client.cancelPendingPair() }) { Text(stringResource(R.string.common_cancel)) }
+        },
+    )
     }
 }
 
@@ -506,7 +523,7 @@ private fun IntroScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             if (page < introSlides.lastIndex) {
                                 TextButton(
-                                    onClick = onFinish,
+                                    onClick = { scope.launch { pagerState.animateScrollToPage(introSlides.lastIndex) } },
                                     colors = ButtonDefaults.textButtonColors(
                                         contentColor = if (isDarkTheme) Color.White.copy(alpha = 0.92f) else Color.Black.copy(alpha = 0.88f)
                                     )
@@ -547,7 +564,7 @@ private fun IntroScreen(
                             }
                             if (page < introSlides.lastIndex) {
                                 TextButton(
-                                    onClick = onFinish,
+                                    onClick = { scope.launch { pagerState.animateScrollToPage(introSlides.lastIndex) } },
                                     colors = ButtonDefaults.textButtonColors(
                                         contentColor = if (isDarkTheme) Color.White.copy(alpha = 0.92f) else Color.Black.copy(alpha = 0.88f)
                                     )
@@ -767,10 +784,59 @@ private fun WorkspaceShell(
     var relocatingMissingProject by remember { mutableStateOf(false) }
     var folderImportError by remember { mutableStateOf<String?>(null) }
     var showingToolsPanel by remember { mutableStateOf(false) }
+    var showingNotifications by remember { mutableStateOf(false) }
     val drawerState = androidx.compose.material3.rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val notificationInbox = remember(context) { MobileNotificationInbox.shared(context.applicationContext) }
+    val personalMemoryRoot = remember(context) { java.io.File(context.filesDir, "herness-memory") }
     val drawerWidth = minOf(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp * 0.64f, 260.dp)
+    var observedRunState by remember { mutableStateOf(agent.running) }
+    LaunchedEffect(agent.running) {
+        if (observedRunState && !agent.running) {
+            val failed = agent.runtimeState == "failed"
+            if (failed || agent.runtimeState == "completed") {
+                val turn = agent.transcript.lastOrNull { it.role == if (failed) "error" else "assistant" }
+                if (turn != null) notificationInbox.append(
+                    kind = if (failed) "failed" else "completed",
+                    title = context.getString(if (failed) R.string.notifications_operation_failed else R.string.notifications_response_ready),
+                    subtitle = client.selectedProject.name,
+                    detail = turn.text,
+                    conversationId = agent.activeConversationId,
+                    projectId = agent.projectId,
+                    conversationPath = client.workspaceRoot().absolutePath,
+                    isRead = tab == 0,
+                )
+            }
+        }
+        observedRunState = agent.running
+    }
+    LaunchedEffect(agent.questionRequest?.id) {
+        val question = agent.questionRequest ?: return@LaunchedEffect
+        notificationInbox.append(
+            kind = "question",
+            title = context.getString(R.string.notifications_question),
+            subtitle = client.selectedProject.name,
+            detail = question.askUserQuestions.joinToString(" · ") { it.prompt }.ifBlank { question.question },
+            conversationId = agent.activeConversationId,
+            projectId = agent.projectId,
+            conversationPath = client.workspaceRoot().absolutePath,
+            isRead = tab == 0,
+        )
+    }
+    LaunchedEffect(agent.approvalRequest?.id) {
+        val approval = agent.approvalRequest ?: return@LaunchedEffect
+        notificationInbox.append(
+            kind = "approval",
+            title = context.getString(R.string.notifications_approval),
+            subtitle = client.selectedProject.name,
+            detail = approval.toolName,
+            conversationId = agent.activeConversationId,
+            projectId = agent.projectId,
+            conversationPath = client.workspaceRoot().absolutePath,
+            isRead = tab == 0,
+        )
+    }
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
             scope.launch {
@@ -830,8 +896,10 @@ private fun WorkspaceShell(
     LaunchedEffect(client.selectedProjectId) {
         shell.resetForProject()
         agent.register(WebTools.specs())
-        agent.register(AgentTools.workspace { client.workspaceRoot() })
-        agent.learnedRules = { MobileLessons.rulesText(client.workspaceRoot()) }
+        agent.register(AgentTools.workspace({ client.workspaceRoot() }, { personalMemoryRoot }))
+        agent.learnedRules = { MobileLessons.rulesText(client.workspaceRoot(), userRoot = personalMemoryRoot) }
+        agent.memoryQuestions = { asked -> MobileLessons.memoryQuestions(client.workspaceRoot(), asked, memoryText(context), personalMemoryRoot) }
+        agent.memoryAnswer = { id, choice -> MobileLessons.answerMemoryQuestion(id, choice, client.workspaceRoot(), personalMemoryRoot) }
         agent.register(AgentTools.runtime(shell, { client.workspaceRoot() }, git, client))
         agent.replaceProjectTools(plugins.reload())
         agent.pluginPrompt = plugins.promptSections.joinToString("\n")
@@ -863,6 +931,7 @@ private fun WorkspaceShell(
                         client = client,
                         agent = agent,
                         loops = loops,
+                        notificationInbox = notificationInbox,
                         importingFolder = importingFolder,
                         selectedTab = tab,
                         onTabSelected = { tab = it; showingToolsPanel = false },
@@ -874,6 +943,7 @@ private fun WorkspaceShell(
                                 tab = 0
                             }
                         },
+                        onNotificationsClick = { showingNotifications = true },
                     )
                 },
                 bottomSidebar = { paneModifier ->
@@ -882,6 +952,7 @@ private fun WorkspaceShell(
                         client = client,
                         agent = agent,
                         loops = loops,
+                        notificationInbox = notificationInbox,
                         importingFolder = importingFolder,
                         selectedTab = tab,
                         onTabSelected = { tab = it; showingToolsPanel = false },
@@ -893,6 +964,7 @@ private fun WorkspaceShell(
                                 tab = 0
                             }
                         },
+                        onNotificationsClick = { showingNotifications = true },
                     )
                 },
                 content = { paneModifier ->
@@ -905,6 +977,7 @@ private fun WorkspaceShell(
                         plugins = plugins,
                         mcp = mcp,
                         loops = loops,
+                        personalMemoryRoot = personalMemoryRoot,
                         github = github,
                         chatGPT = chatGPT,
                         legal = legal,
@@ -923,6 +996,7 @@ private fun WorkspaceShell(
                         },
                         onImportFolder = { folderPicker.launch(null) },
                         isImporting = importingFolder,
+                        onReturnToAgent = { tab = 0 },
                     )
                 },
             )
@@ -936,6 +1010,7 @@ private fun WorkspaceShell(
                     client = client,
                     agent = agent,
                     loops = loops,
+                        notificationInbox = notificationInbox,
                     importingFolder = importingFolder,
                     selectedTab = tab,
                     onTabSelected = {
@@ -961,6 +1036,10 @@ private fun WorkspaceShell(
                             scope.launch { drawerState.close() }
                         }
                     },
+                    onNotificationsClick = {
+                        showingNotifications = true
+                        scope.launch { drawerState.close() }
+                    },
                     onDismiss = { scope.launch { drawerState.close() } },
                 )
             }
@@ -979,8 +1058,10 @@ private fun WorkspaceShell(
                             client,
                             agent,
                             loops,
+                            notificationInbox = notificationInbox,
                             importLocked = importingFolder,
                             onMenuClick = { scope.launch { drawerState.open() } },
+                            onNotificationsClick = { showingNotifications = true },
                             onToolsClick = { showingToolsPanel = true },
                         )
                     } else {
@@ -996,7 +1077,13 @@ private fun WorkspaceShell(
                                     when (tab) {
                                         1 -> stringResource(R.string.conversation_files)
                                         2 -> stringResource(R.string.mobile_nav_terminal)
-                                        else -> stringResource(R.string.mobile_nav_preview)
+                                        3 -> stringResource(R.string.mobile_nav_preview)
+                                        5 -> stringResource(R.string.rail_tasks)
+                                        6 -> stringResource(R.string.rail_memory)
+                                        7 -> stringResource(R.string.rail_media)
+                                        8 -> stringResource(R.string.rail_bots)
+                                        9 -> stringResource(R.string.rail_marketplace)
+                                        else -> stringResource(R.string.mobile_nav_settings)
                                     },
                                     style = MaterialTheme.typography.titleMedium,
                                 )
@@ -1019,6 +1106,11 @@ private fun WorkspaceShell(
                             )
                             2 -> TerminalTab(shell, client)
                             3 -> PreviewScreen(client)
+                            5 -> TasksScreen(loops)
+                            6 -> MemoryScreen(client, personalMemoryRoot)
+                            7 -> MobileMediaStudioScreen(client)
+                            8 -> MobileBotsScreen(client, agent) { tab = 0 }
+                            9 -> MobileMarketplaceScreen(client, agent) { tab = 0 }
                             else -> SettingsScreen(client, agent, plugins, mcp, loops, github, chatGPT, legal, selectedLanguage, onLanguageChange, isDarkTheme, onThemeToggle, confirmBeforeExit, onConfirmBeforeExitChange, ::requestExit)
                         }
                         if (tab == 0) {
@@ -1052,6 +1144,24 @@ private fun WorkspaceShell(
         title = { Text(stringResource(R.string.conversation_files)) },
         text = { Text(folderImportError.orEmpty()) },
         confirmButton = { TextButton({ folderImportError = null }) { Text(stringResource(R.string.app_ok)) } },
+    )
+    if (showingNotifications) MobileNotificationsDialog(
+        inbox = notificationInbox,
+        onDismiss = { showingNotifications = false },
+        onSelect = { item ->
+            val projectId = item.projectId
+            if (projectId == MobileAgent.NO_PROJECT_ID && agent.projectId != MobileAgent.NO_PROJECT_ID) {
+                if (agent.running || loops.running != null) return@MobileNotificationsDialog
+                agent.selectNoProject()
+            } else if (!projectId.isNullOrBlank() && projectId != MobileAgent.NO_PROJECT_ID && projectId != client.selectedProjectId) {
+                if (agent.running || loops.running != null || !client.selectProject(projectId)) return@MobileNotificationsDialog
+                agent.selectProject(projectId)
+            }
+            if (!item.conversationId.isNullOrBlank() && !agent.openConversation(item.conversationId)) return@MobileNotificationsDialog
+            notificationInbox.markRead(item.id)
+            tab = 0
+            showingNotifications = false
+        },
     )
     if (showingExitConfirmation) AlertDialog(
         onDismissRequest = { showingExitConfirmation = false },
@@ -1166,6 +1276,11 @@ private fun foldableNavigationItems() = listOf(
     FoldableNavigationItem(1, stringResource(R.string.conversation_files), Icons.Filled.Folder),
     FoldableNavigationItem(2, stringResource(R.string.mobile_nav_terminal), Icons.Filled.Terminal),
     FoldableNavigationItem(3, stringResource(R.string.mobile_nav_preview), Icons.Filled.Language),
+    FoldableNavigationItem(5, stringResource(R.string.rail_tasks), Icons.Filled.Schedule),
+    FoldableNavigationItem(6, stringResource(R.string.rail_memory), Icons.Filled.Psychology),
+    FoldableNavigationItem(7, stringResource(R.string.rail_media), Icons.Filled.AutoAwesome),
+    FoldableNavigationItem(8, stringResource(R.string.rail_bots), Icons.Filled.Psychology),
+    FoldableNavigationItem(9, stringResource(R.string.rail_marketplace), Icons.Filled.Folder),
     FoldableNavigationItem(4, stringResource(R.string.mobile_nav_settings), Icons.Filled.Settings),
 )
 
@@ -1213,12 +1328,14 @@ private fun FoldableSidebar(
     client: RemoteClient,
     agent: MobileAgent,
     loops: LoopScheduler,
+    notificationInbox: MobileNotificationInbox,
     importingFolder: Boolean,
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
     onNewConversation: () -> Unit,
     onConversationSelected: (String) -> Unit,
     onProjectSelected: (String) -> Unit,
+    onNotificationsClick: () -> Unit,
     onDismiss: (() -> Unit)? = null,
 ) {
     var conversations by remember(client.selectedProjectId) { mutableStateOf(emptyList<StoredMobileConversation>()) }
@@ -1227,6 +1344,9 @@ private fun FoldableSidebar(
     var newProjectName by remember { mutableStateOf("") }
     val navItems = foldableNavigationItems()
     val untitledConversation = stringResource(R.string.mobile_agent_new_conversation)
+    val notificationsLabel = if (notificationInbox.unreadCount > 0) {
+        stringResource(R.string.notifications_unread_count, notificationInbox.unreadCount)
+    } else stringResource(R.string.notifications_title)
     LaunchedEffect(client.selectedProjectId, agent.transcript.size, agent.running, agent.runtimeState, agent.activeConversationId) {
         conversations = withContext(Dispatchers.IO) { agent.recentConversations() }
     }
@@ -1237,6 +1357,12 @@ private fun FoldableSidebar(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("HerNess", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.weight(1f))
+            IconButton(onClick = onNotificationsClick) {
+                Text(
+                    if (notificationInbox.unreadCount > 0) "🔔 ${notificationInbox.unreadCount}" else "🔔",
+                    modifier = Modifier.semantics { contentDescription = notificationsLabel },
+                )
+            }
             if (onDismiss != null) {
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.mobile_agent_close))
@@ -1391,16 +1517,21 @@ private fun FoldableBottomSidebar(
     client: RemoteClient,
     agent: MobileAgent,
     loops: LoopScheduler,
+    notificationInbox: MobileNotificationInbox,
     importingFolder: Boolean,
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
     onNewConversation: () -> Unit,
     onConversationSelected: (String) -> Unit,
     onProjectSelected: (String) -> Unit,
+    onNotificationsClick: () -> Unit,
 ) {
     var conversations by remember(client.selectedProjectId) { mutableStateOf(emptyList<StoredMobileConversation>()) }
     val navItems = foldableNavigationItems()
     val untitledConversation = stringResource(R.string.mobile_agent_new_conversation)
+    val notificationsLabel = if (notificationInbox.unreadCount > 0) {
+        stringResource(R.string.notifications_unread_count, notificationInbox.unreadCount)
+    } else stringResource(R.string.notifications_title)
     LaunchedEffect(client.selectedProjectId, agent.transcript.size, agent.running, agent.runtimeState, agent.activeConversationId) {
         conversations = withContext(Dispatchers.IO) { agent.recentConversations() }
     }
@@ -1416,6 +1547,12 @@ private fun FoldableBottomSidebar(
                 enabled = !agent.running && loops.running == null && !importingFolder,
                 onProjectSelected = onProjectSelected,
             )
+            IconButton(onClick = onNotificationsClick) {
+                Text(
+                    if (notificationInbox.unreadCount > 0) "🔔 ${notificationInbox.unreadCount}" else "🔔",
+                    modifier = Modifier.semantics { contentDescription = notificationsLabel },
+                )
+            }
             IconButton(onClick = onNewConversation, enabled = !agent.running && !importingFolder) {
                 Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.mobile_agent_new_conversation))
             }
@@ -1473,6 +1610,7 @@ private fun FoldableWorkspaceContent(
     plugins: Plugins,
     mcp: McpRegistry,
     loops: LoopScheduler,
+    personalMemoryRoot: java.io.File,
     github: GitHubOAuth,
     chatGPT: ChatGPTOAuth,
     legal: LegalModel,
@@ -1486,6 +1624,7 @@ private fun FoldableWorkspaceContent(
     onEnsureProjectLocation: () -> Unit,
     onImportFolder: () -> Unit,
     isImporting: Boolean,
+    onReturnToAgent: () -> Unit,
 ) {
     Scaffold(
         modifier = modifier,
@@ -1513,6 +1652,11 @@ private fun FoldableWorkspaceContent(
                     1 -> FilesScreen(client.selectedProjectId, { client.workspaceRoot() }, onImportFolder, isImporting)
                     2 -> TerminalTab(shell, client)
                     3 -> PreviewScreen(client)
+                    5 -> TasksScreen(loops)
+                    6 -> MemoryScreen(client, personalMemoryRoot)
+                    7 -> MobileMediaStudioScreen(client)
+                    8 -> MobileBotsScreen(client, agent, onReturnToAgent)
+                    9 -> MobileMarketplaceScreen(client, agent, onReturnToAgent)
                     else -> SettingsScreen(
                         client, agent, plugins, mcp, loops, github, chatGPT, legal,
                         selectedLanguage, onLanguageChange, isDarkTheme, onThemeToggle,
@@ -1587,6 +1731,18 @@ private fun WorkspaceToolsDrawer(
                         onClick = { onSelect(3) },
                         icon = { Icon(Icons.Filled.Language, contentDescription = null) },
                     )
+                    NavigationDrawerItem(
+                        label = { Text(stringResource(R.string.rail_tasks)) },
+                        selected = selectedTab == 5,
+                        onClick = { onSelect(5) },
+                        icon = { Icon(Icons.Filled.Schedule, contentDescription = null) },
+                    )
+                    NavigationDrawerItem(
+                        label = { Text(stringResource(R.string.rail_memory)) },
+                        selected = selectedTab == 6,
+                        onClick = { onSelect(6) },
+                        icon = { Icon(Icons.Filled.Psychology, contentDescription = null) },
+                    )
                 }
             }
         }
@@ -1598,12 +1754,17 @@ private fun ProjectScopeBar(
     client: RemoteClient,
     agent: MobileAgent,
     loops: LoopScheduler,
+    notificationInbox: MobileNotificationInbox,
     importLocked: Boolean = false,
     onMenuClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
     onToolsClick: () -> Unit,
 ) {
     var newProjectName by remember { mutableStateOf("") }
     var renameName by remember(client.selectedProjectId) { mutableStateOf(client.selectedProject.name) }
+    val notificationsLabel = if (notificationInbox.unreadCount > 0) {
+        stringResource(R.string.notifications_unread_count, notificationInbox.unreadCount)
+    } else stringResource(R.string.notifications_title)
     val projectSwitchLocked = agent.running || loops.running != null || importLocked
 
     fun select(id: String) {
@@ -1621,6 +1782,12 @@ private fun ProjectScopeBar(
             }
             Text("Projects", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.weight(1f))
+            IconButton(onClick = onNotificationsClick) {
+                Text(
+                    if (notificationInbox.unreadCount > 0) "🔔 ${notificationInbox.unreadCount}" else "🔔",
+                    modifier = Modifier.semantics { contentDescription = notificationsLabel },
+                )
+            }
             IconButton(onClick = onToolsClick) {
                 Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.mobile_nav_menu))
             }
@@ -1872,6 +2039,30 @@ private fun MobileAgentWelcome(onChoose: (String) -> Unit) {
 }
 
 @Composable
+private fun HerNessLoadingAnimation(modifier: Modifier = Modifier) {
+    val frames = remember {
+        intArrayOf(
+            R.drawable.herness_loader_frame_0,
+            R.drawable.herness_loader_frame_1,
+            R.drawable.herness_loader_frame_2,
+            R.drawable.herness_loader_frame_3,
+        )
+    }
+    var frame by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(220)
+            frame = (frame + 1) % frames.size
+        }
+    }
+    Image(
+        painter = painterResource(frames[frame]),
+        contentDescription = null,
+        modifier = modifier,
+    )
+}
+
+@Composable
 private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateMissing: () -> Unit) {
     var prompt by remember { mutableStateOf("") }
     var draftAttachments by remember { mutableStateOf<List<MobileAttachment>>(emptyList()) }
@@ -1879,9 +2070,85 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
     var showModels by remember { mutableStateOf(false) }
     var showHistory by remember { mutableStateOf(false) }
     var selectedHistoryId by remember { mutableStateOf<String?>(null) }
+    var selectedHistoryPage by remember { mutableStateOf<StoredMobileMessagePage?>(null) }
+    val transcriptListState = remember(agent.activeConversationId) { LazyListState() }
+    var transcriptPositionedAtLatest by remember(agent.activeConversationId) { mutableStateOf(false) }
+    var loadingOlderTranscript by remember(agent.activeConversationId) { mutableStateOf(false) }
+    val historyListState = rememberLazyListState()
+    var historyPositionedAtLatest by remember(selectedHistoryId) { mutableStateOf(false) }
+    var loadingOlderHistory by remember(selectedHistoryId) { mutableStateOf(false) }
     var showCacheUsage by remember { mutableStateOf(false) }
     var showCacheResumeInfo by remember { mutableStateOf(false) }
     var cacheNoticeTick by remember { mutableIntStateOf(0) }
+    val planSteps = MobilePlanSteps.current(agent.transcript)
+    val latestPlanIndex = agent.transcript.indexOfLast { it.role == "tool" && it.toolName == MobilePlanSteps.NAME }
+    val lastToolIndex = agent.transcript.indexOfLast { it.role == "tool" }
+    val lastAssistantIndex = agent.transcript.indexOfLast { it.role == "assistant" }
+    val completedPlan = planSteps.isNotEmpty()
+        && !agent.running
+        && agent.queuedPromptItems.isEmpty()
+        && latestPlanIndex >= 0
+        && !agent.transcript[latestPlanIndex].failed
+        && !agent.transcript[latestPlanIndex].isRunning
+        && lastAssistantIndex > lastToolIndex
+    LaunchedEffect(agent.activeConversationId, agent.transcript.size, completedPlan) {
+        if (!transcriptPositionedAtLatest && agent.transcript.isNotEmpty()) {
+            val summaryIndex = agent.transcript.size + if (agent.hasOlderTranscriptMessages) 1 else 0
+            transcriptListState.scrollToItem(if (completedPlan) summaryIndex else agent.transcript.lastIndex)
+            transcriptPositionedAtLatest = true
+        } else if (completedPlan) {
+            val lastVisibleIndex = transcriptListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            if (lastVisibleIndex >= agent.transcript.size - 2) {
+                val summaryIndex = agent.transcript.size + if (agent.hasOlderTranscriptMessages) 1 else 0
+                transcriptListState.animateScrollToItem(summaryIndex)
+            }
+        }
+    }
+    LaunchedEffect(agent.activeConversationId) {
+        snapshotFlow {
+            Triple(
+                transcriptPositionedAtLatest,
+                transcriptListState.firstVisibleItemIndex,
+                agent.hasOlderTranscriptMessages,
+            )
+        }.distinctUntilChanged().collect { (positioned, firstVisible, hasOlder) ->
+            if (positioned && firstVisible == 0 && hasOlder && !loadingOlderTranscript) {
+                loadingOlderTranscript = true
+                agent.loadOlderTranscriptMessages()
+                loadingOlderTranscript = false
+            }
+        }
+    }
+    LaunchedEffect(selectedHistoryId, selectedHistoryPage?.messages?.size) {
+        val page = selectedHistoryPage
+        if (selectedHistoryId != null && !historyPositionedAtLatest && page != null && page.messages.isNotEmpty()) {
+            historyListState.scrollToItem(page.messages.lastIndex)
+            historyPositionedAtLatest = true
+        }
+    }
+    LaunchedEffect(selectedHistoryId) {
+        snapshotFlow {
+            Triple(
+                historyPositionedAtLatest,
+                historyListState.firstVisibleItemIndex,
+                selectedHistoryPage?.hasOlder == true,
+            )
+        }.distinctUntilChanged().collect { (positioned, firstVisible, hasOlder) ->
+            val id = selectedHistoryId
+            val page = selectedHistoryPage
+            val beforeRowId = page?.beforeRowId
+            if (positioned && id != null && firstVisible == 0 && hasOlder && page != null && beforeRowId != null && !loadingOlderHistory) {
+                loadingOlderHistory = true
+                val olderPage = agent.storedMessagePage(id, beforeRowId)
+                selectedHistoryPage = if (olderPage.messages.isEmpty()) {
+                    page.copy(hasOlder = false)
+                } else {
+                    olderPage.copy(messages = olderPage.messages + page.messages)
+                }
+                loadingOlderHistory = false
+            }
+        }
+    }
     LaunchedEffect(agent.activeConversationId) {
         while (true) {
             delay(30_000)
@@ -1988,7 +2255,7 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
         }
         if (agent.requiresToolOutcomeRecovery) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(agent.toolOutcomeRecoveryMessage ?: "Tool sonucu doğrulanmalı", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                Text(agent.toolOutcomeRecoveryMessage ?: "Çalışma kesintiye uğradı", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Spacer(Modifier.weight(1f))
                     if (!agent.running) {
@@ -2048,8 +2315,8 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
                 MobileAgentWelcome { prompt = it }
             }
         } else {
-            LazyColumn(Modifier.weight(1f)) {
-                items(agent.transcript) { turn ->
+            LazyColumn(Modifier.weight(1f), state = transcriptListState) {
+                items(agent.transcript, key = { it.id }) { turn ->
                     when (turn.role) {
                         "activity" -> Card(
                             Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -2080,7 +2347,7 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
                                 Column(Modifier.padding(horizontal = 12.dp, vertical = 9.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                                         if (turn.isRunning) {
-                                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                            HerNessLoadingAnimation(Modifier.size(16.dp))
                                         } else {
                                             Text(
                                                 mobileToolActivityIcon(turn.toolName, turn.failed),
@@ -2092,6 +2359,7 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
                                             style = MaterialTheme.typography.bodySmall,
                                             color = if (turn.failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
+                                        if (turn.isRunning) ToolClock()
                                     }
                                     turn.activityDetail?.takeIf(String::isNotBlank)?.let { detail ->
                                         Text(
@@ -2122,7 +2390,32 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
                                 style = MaterialTheme.typography.labelMedium,
                                 color = when (turn.role) { "error" -> MaterialTheme.colorScheme.error; "assistant" -> MaterialTheme.colorScheme.primary; "system" -> MaterialTheme.colorScheme.secondary; else -> MaterialTheme.colorScheme.onSurfaceVariant },
                             )
-                            Text(turn.text)
+                            MarkdownBody(turn.text)
+                        }
+                    }
+                }
+                if (completedPlan) {
+                    item(key = "completed-plan-${agent.activeConversationId}") {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                        ) {
+                            Column(Modifier.padding(9.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    "✓ ${stringResource(R.string.plan_title)} · ${planSteps.size}/${planSteps.size}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                planSteps.forEach { (title, _) ->
+                                    Text(
+                                        "✓  $title",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -2139,15 +2432,31 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
             }
         }
         agent.questionRequest?.let { question ->
-            Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(stringResource(R.string.mobile_agent_clarification), style = MaterialTheme.typography.titleSmall)
-                Text(question.question)
-                OutlinedTextField(questionAnswer, { questionAnswer = it }, Modifier.fillMaxWidth(), enabled = client.selectedProjectLocationAvailable, label = { Text(stringResource(R.string.mobile_agent_answer)) })
-                Button({
-                    val answer = questionAnswer
-                    questionAnswer = ""
-                    agent.answerQuestion(question.id, listOf(answer))
-                }, enabled = client.selectedProjectLocationAvailable && questionAnswer.isNotBlank()) { Text(stringResource(R.string.mobile_agent_answer)) }
+            if (question.askUserQuestions.isNotEmpty()) {
+                MobileAskUserCard(
+                    questions = question.askUserQuestions,
+                    enabled = client.selectedProjectLocationAvailable,
+                    onSubmit = { agent.answerQuestion(question.id, it) },
+                    onSkip = { agent.answerQuestion(question.id, emptyList()) },
+                )
+            } else {
+                Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(stringResource(R.string.mobile_agent_clarification), style = MaterialTheme.typography.titleSmall)
+                    Text(question.question)
+                    if (question.options.isNotEmpty()) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            question.options.forEach { option ->
+                                OutlinedButton({ agent.answerQuestion(question.id, listOf(option)) }, enabled = client.selectedProjectLocationAvailable) { Text(option) }
+                            }
+                        }
+                    }
+                    OutlinedTextField(questionAnswer, { questionAnswer = it }, Modifier.fillMaxWidth(), enabled = client.selectedProjectLocationAvailable, label = { Text(stringResource(R.string.mobile_agent_answer)) })
+                    Button({
+                        val answer = questionAnswer
+                        questionAnswer = ""
+                        agent.answerQuestion(question.id, listOf(answer))
+                    }, enabled = client.selectedProjectLocationAvailable && questionAnswer.isNotBlank()) { Text(stringResource(R.string.mobile_agent_answer)) }
+                }
             }
         }
         if (draftAttachments.isNotEmpty()) {
@@ -2189,6 +2498,31 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
                 }
             }
         }
+        // Live checklist from the agent's latest update_plan, pinned above the composer.
+        if (planSteps.isNotEmpty() && !completedPlan) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+            ) {
+                Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        "☰ ${planSteps.count { it.second == "done" }}/${planSteps.size}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    planSteps.forEach { (title, status) ->
+                        Text(
+                            (when (status) { "done" -> "✓  "; "in_progress" -> "◌  "; else -> "○  " }) + title,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = if (status == "in_progress") FontWeight.SemiBold else null,
+                            color = if (status == "pending") MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                            maxLines = 2,
+                        )
+                    }
+                }
+            }
+        }
         Surface(
             modifier = Modifier.fillMaxWidth().padding(8.dp),
             shape = RoundedCornerShape(18.dp),
@@ -2223,6 +2557,7 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
                     ),
                 )
                 if (agent.running) {
+                    HerNessLoadingAnimation(Modifier.size(18.dp))
                     Button({ if (agent.send(prompt, attachments = draftAttachments, mode = "queue", planMode = agent.planMode)) { prompt = ""; draftAttachments = emptyList() } }, enabled = canSendPrompt && (prompt.isNotBlank() || draftAttachments.isNotEmpty())) { Text(stringResource(R.string.mobile_agent_queue)) }
                     TextButton({ if (agent.send(prompt, attachments = draftAttachments, mode = "steer", planMode = agent.planMode)) { prompt = ""; draftAttachments = emptyList() } }, enabled = canSendPrompt && (prompt.isNotBlank() || draftAttachments.isNotEmpty())) { Text(stringResource(R.string.conversation_steer)) }
                     Button({ agent.cancel() }) { Text(stringResource(R.string.common_stop)) }
@@ -2247,41 +2582,50 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
     )
     if (showHistory) {
         val conversations = agent.recentConversations()
-        val selectedMessages = selectedHistoryId?.let(agent::storedMessages).orEmpty()
+        val selectedMessages = selectedHistoryPage?.messages.orEmpty()
         AlertDialog(
             onDismissRequest = { showHistory = false; selectedHistoryId = null },
             title = { Text(stringResource(R.string.sidebar_recent)) },
             text = {
-                Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
+                Column(Modifier.heightIn(max = 480.dp).fillMaxWidth()) {
                     if (selectedHistoryId != null) {
-                        TextButton({ selectedHistoryId = null }) { Text("‹ " + stringResource(R.string.sidebar_recent)) }
-                        selectedMessages.forEach { message ->
-                            Text(
-                                when (message.role) {
-                                    "user" -> stringResource(R.string.mobile_agent_user)
-                                    "assistant" -> stringResource(R.string.conversation_assistant)
-                                    "tool" -> mobileToolActivityLabel(message.toolName)
-                                    "activity" -> stringResource(contextCompactionResource(message.toolName))
-                                    "error" -> stringResource(R.string.mobile_agent_error)
-                                    else -> stringResource(R.string.mobile_event_run_summary)
-                                },
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(message.content, Modifier.padding(bottom = 10.dp))
+                        TextButton({ selectedHistoryId = null; selectedHistoryPage = null }) {
+                            Text("‹ " + stringResource(R.string.sidebar_recent))
                         }
-                    } else if (conversations.isEmpty()) {
-                        Text(stringResource(R.string.sidebar_no_chats))
-                    } else {
-                        conversations.forEach { conversation ->
-                            TextButton(onClick = { selectedHistoryId = conversation.id }) {
-                                Text(java.text.DateFormat.getDateTimeInstance().format(java.util.Date(conversation.updatedAt)))
+                    }
+                    LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = historyListState) {
+                        if (selectedHistoryId != null) {
+                            items(selectedMessages, key = { it.rowId }) { message ->
+                                Text(
+                                    when (message.role) {
+                                        "user" -> stringResource(R.string.mobile_agent_user)
+                                        "assistant" -> stringResource(R.string.conversation_assistant)
+                                        "tool" -> mobileToolActivityLabel(message.toolName)
+                                        "activity" -> stringResource(contextCompactionResource(message.toolName))
+                                        "error" -> stringResource(R.string.mobile_agent_error)
+                                        else -> stringResource(R.string.mobile_event_run_summary)
+                                    },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                MarkdownBody(message.content, Modifier.padding(bottom = 10.dp))
+                            }
+                        } else if (conversations.isEmpty()) {
+                            item { Text(stringResource(R.string.sidebar_no_chats)) }
+                        } else {
+                            items(conversations, key = { it.id }) { conversation ->
+                                TextButton(onClick = {
+                                    selectedHistoryId = conversation.id
+                                    selectedHistoryPage = agent.storedMessagePage(conversation.id)
+                                }) {
+                                    Text(java.text.DateFormat.getDateTimeInstance().format(java.util.Date(conversation.updatedAt)))
+                                }
                             }
                         }
                     }
                 }
             },
-            confirmButton = { TextButton({ showHistory = false; selectedHistoryId = null }) { Text(stringResource(R.string.mobile_agent_close)) } },
+            confirmButton = { TextButton({ showHistory = false; selectedHistoryId = null; selectedHistoryPage = null }) { Text(stringResource(R.string.mobile_agent_close)) } },
         )
     }
     if (showModels) AlertDialog(
@@ -2296,6 +2640,10 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
                             Text(definition.name)
                         }
                     }
+                }
+                if (agent.supportsFast) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.mobile_agent_fast), Modifier.weight(1f))
+                    Switch(checked = agent.fastMode, onCheckedChange = agent::updateFastMode)
                 }
                 agent.availableModelsFor(agent.provider).forEach { value ->
                     TextButton({ agent.selectModel(value); showModels = false }) {
@@ -2312,6 +2660,105 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
 }
 
 /** Terminal tab: the constrained mobile runtime, never an implicit desktop shell. */
+@Composable
+private fun MobileAskUserCard(
+    questions: List<MobileAskUserQuestion>,
+    enabled: Boolean,
+    onSubmit: (List<String>) -> Unit,
+    onSkip: () -> Unit,
+) {
+    var page by remember(questions) { mutableIntStateOf(0) }
+    var selections by remember(questions) { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var customAnswers by remember(questions) { mutableStateOf<Map<String, String>>(emptyMap()) }
+    if (questions.isEmpty()) return
+    val current = questions[page.coerceIn(questions.indices)]
+    val isLast = page == questions.lastIndex
+    val defaultHeader = stringResource(R.string.ask_default_header, page + 1)
+
+    fun answer(question: MobileAskUserQuestion): String {
+        val custom = customAnswers[question.id].orEmpty().trim()
+        return custom.ifBlank { selections[question.id].orEmpty() }
+    }
+
+    fun choose(option: String) {
+        val updated = selections.toMutableMap()
+        if (updated[current.id] == option) updated.remove(current.id) else updated[current.id] = option
+        selections = updated
+        customAnswers = customAnswers.toMutableMap().apply { remove(current.id) }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            Text(stringResource(R.string.mobile_agent_clarification), style = MaterialTheme.typography.titleSmall)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "${page + 1}/${questions.size}",
+                    color = MaterialTheme.colorScheme.tertiary,
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.background(MaterialTheme.colorScheme.tertiaryContainer, RoundedCornerShape(50)).padding(horizontal = 9.dp, vertical = 4.dp),
+                )
+                Text(
+                    current.header.ifBlank { defaultHeader },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(current.prompt, style = MaterialTheme.typography.bodyMedium)
+
+            current.options.forEach { option ->
+                val selected = selections[current.id] == option
+                val parts = option.split(" — ", limit = 2).takeIf { it.size == 2 }
+                    ?: option.split(": ", limit = 2).takeIf { it.size == 2 }
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable(enabled = enabled) { choose(option) },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    ),
+                ) {
+                    Row(Modifier.padding(start = 10.dp, end = 4.dp, top = 3.dp, bottom = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f).padding(vertical = 5.dp)) {
+                            Text(parts?.get(0) ?: option, style = MaterialTheme.typography.bodyMedium)
+                            parts?.getOrNull(1)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        }
+                        Checkbox(checked = selected, onCheckedChange = { choose(option) }, enabled = enabled)
+                    }
+                }
+            }
+
+            OutlinedTextField(
+                value = customAnswers[current.id].orEmpty(),
+                onValueChange = { value ->
+                    customAnswers = customAnswers.toMutableMap().apply { put(current.id, value) }
+                    if (value.isNotBlank()) selections = selections.toMutableMap().apply { remove(current.id) }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = enabled,
+                minLines = 1,
+                maxLines = 4,
+                label = { Text(stringResource(R.string.ask_other)) },
+                placeholder = { Text(stringResource(R.string.ask_custom_placeholder)) },
+            )
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(onClick = onSkip, enabled = enabled) { Text(stringResource(R.string.ask_skip_short)) }
+                Spacer(Modifier.weight(1f))
+                if (isLast) {
+                    Button(onClick = { onSubmit(questions.map { answer(it) }) }, enabled = enabled) {
+                        Text(stringResource(R.string.ask_submit))
+                    }
+                } else {
+                    Button(onClick = { page++ }, enabled = enabled) { Text(stringResource(R.string.ask_next)) }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun TerminalTab(shell: LocalShell, client: RemoteClient) {
     PhoneTerminalScreen(shell, client)
@@ -2562,6 +3009,126 @@ private fun LoopsSection(loops: LoopScheduler) {
     OutlinedTextField(minutes, { minutes = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.loop_minutes_label)) })
     Button({ loops.add(name, prompt, minutes.toIntOrNull() ?: 60); name = ""; prompt = ""; minutes = "60" }, enabled = prompt.isNotBlank()) { Text(stringResource(R.string.mobile_loops_add)) }
     Text(stringResource(R.string.mobile_loops_background_hint), style = MaterialTheme.typography.bodySmall)
+}
+
+@Composable
+private fun TasksScreen(loops: LoopScheduler) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        LoopsSection(loops)
+    }
+}
+
+@Composable
+private fun MemoryScreen(client: RemoteClient, userRoot: java.io.File) {
+    val root = client.workspaceRoot()
+    var kind by remember { mutableStateOf("project") }
+    var scope by remember { mutableStateOf("user") }
+    var key by remember { mutableStateOf("") }
+    var value by remember { mutableStateOf("") }
+    var status by remember { mutableStateOf("") }
+    var refresh by remember { mutableIntStateOf(0) }
+    var deleteTarget by remember { mutableStateOf<MobileFacts.Entry?>(null) }
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(stringResource(R.string.vault_section_project), style = MaterialTheme.typography.titleMedium)
+        if (MobileFacts.needsTrust(root, userRoot)) {
+            Text(stringResource(R.string.memory_trust_prompt), style = MaterialTheme.typography.bodySmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button({ MobileFacts.setTrust(true, root, userRoot); refresh++ }) { Text(stringResource(R.string.memory_trust_yes)) }
+                OutlinedButton({ MobileFacts.setTrust(false, root, userRoot); refresh++ }) { Text(stringResource(R.string.memory_trust_no)) }
+            }
+        }
+        if (MobileFacts.trust(root, userRoot) == false) {
+            Text(MobileFacts.text(root, userRoot), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        val projectEntries = remember(root, refresh) { MobileFacts.entries(root).filter { it.kind != "preference" } }
+        projectEntries.forEach { entry ->
+            Card(Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(entry.key, style = MaterialTheme.typography.titleSmall)
+                        Text(entry.text, style = MaterialTheme.typography.bodySmall)
+                    }
+                    IconButton(onClick = { deleteTarget = entry }) {
+                        Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.common_delete))
+                    }
+                }
+            }
+        }
+
+        Text(stringResource(R.string.vault_section_profile), style = MaterialTheme.typography.titleMedium)
+        val personalMemory = remember(root, refresh) { MobilePersonalMemory.text(userRoot, root) }
+        if (personalMemory.isNotEmpty()) Text(personalMemory, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        HorizontalDivider()
+        Text(stringResource(R.string.vault_new), style = MaterialTheme.typography.titleMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { kind = "project" }) {
+                Text(stringResource(R.string.vault_new_project_entry))
+            }
+            OutlinedButton(onClick = { kind = "preference" }) {
+                Text(stringResource(R.string.vault_new_preference))
+            }
+        }
+        OutlinedTextField(
+            key,
+            { key = it },
+            Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.vault_entry_key_language)) },
+            singleLine = true,
+        )
+        OutlinedTextField(
+            value,
+            { value = it },
+            Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.vault_entry_value)) },
+            minLines = 2,
+            maxLines = 5,
+        )
+        if (kind == "preference") {
+            Text(stringResource(R.string.vault_entry_scope), style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { scope = "user" }) {
+                    Text(stringResource(R.string.vault_entry_everywhere))
+                }
+                OutlinedButton(onClick = { scope = "project" }) {
+                    Text(stringResource(R.string.vault_entry_this_project))
+                }
+            }
+        }
+        Button(
+            onClick = {
+                status = MobileFacts.record(root, kind, key, value, scope, userRoot)
+                value = ""
+                refresh++
+            },
+            enabled = client.selectedProjectLocationAvailable && key.isNotBlank() && value.isNotBlank(),
+        ) { Text(stringResource(R.string.common_save)) }
+        if (status.isNotBlank()) Text(status, style = MaterialTheme.typography.bodySmall)
+    }
+
+    deleteTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = { Text(stringResource(R.string.vault_delete_confirm)) },
+            confirmButton = {
+                TextButton({
+                    MobileFacts.remove(root, target.kind, target.key)
+                    deleteTarget = null
+                    refresh++
+                }) { Text(stringResource(R.string.common_delete)) }
+            },
+            dismissButton = {
+                TextButton({ deleteTarget = null }) { Text(stringResource(R.string.common_cancel)) }
+            },
+        )
+    }
 }
 
 @Composable
@@ -2941,7 +3508,6 @@ private fun SettingsScreen(
                     enabled = !pagesBusy && pagesAccountId.isNotBlank() && pagesProject.isNotBlank() && pagesToken.isNotBlank(),
                 ) { Text("Deploy workspace") }
                 if (pagesStatus.isNotBlank()) Text(pagesStatus, style = MaterialTheme.typography.bodySmall)
-                LoopsSection(loops)
                 McpAndPluginsSection(agent, plugins, mcp)
             }
         }
@@ -2999,4 +3565,39 @@ private fun mobileToolActivityIcon(toolName: String?, failed: Boolean = false): 
         name.startsWith("web_") || name.startsWith("browser_") -> "↗"
         else -> "⋯"
     }
+}
+
+/** A long build or test shows its own clock, so a quiet model never looks like a hung app.
+ *  It counts from when the running row appeared, which is when the tool started. */
+@Composable
+private fun ToolClock() {
+    val start = remember { System.currentTimeMillis() }
+    var seconds by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            seconds = ((System.currentTimeMillis() - start) / 1000).toInt()
+            delay(1000)
+        }
+    }
+    if (seconds >= 10) {
+        Text(
+            if (seconds < 60) "${seconds}s" else "${seconds / 60}m ${"%02d".format(seconds % 60)}s",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+        )
+    }
+}
+
+/** Resolves the memory question keys MobileLessons uses against the app's strings. */
+private fun memoryText(context: Context): (String) -> String = { key ->
+    context.getString(
+        when (key) {
+            "memory.trust.prompt" -> R.string.memory_trust_prompt
+            "memory.trust.yes" -> R.string.memory_trust_yes
+            "memory.trust.no" -> R.string.memory_trust_no
+            "memory.lesson.prompt" -> R.string.memory_lesson_prompt
+            "memory.lesson.keep" -> R.string.memory_lesson_keep
+            else -> R.string.memory_lesson_forget
+        },
+    )
 }

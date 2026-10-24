@@ -89,6 +89,21 @@ extension AppModel {
         persistSettings()
     }
 
+    public func setMemoryEnabled(_ enabled: Bool) {
+        bridge.setMemoryEnabled(enabled)
+        if !enabled, section == .memory { section = .home }
+        objectWillChange.send()
+        host.settings.set(WorkspaceMemory.enabledSettingsKey, .bool(enabled))
+        persistSettings()
+    }
+
+    public func setMemoryScanInterval(_ interval: MemoryScanInterval) {
+        bridge.setMemoryScanInterval(interval)
+        objectWillChange.send()
+        host.settings.set(MemoryScanInterval.settingsKey, .string(interval.rawValue))
+        persistSettings()
+    }
+
     /// Empty returns the exploration subagent to the automatic choice.
     public func setExplorationModel(_ id: String) {
         router.explorationModelID = id
@@ -102,6 +117,16 @@ extension AppModel {
         router.subagentsPreference = value
         objectWillChange.send()
         host.settings.set(RouterController.subagentsKey, .bool(value))
+        persistSettings()
+    }
+
+    public func setAutoAccountFailoverAfterLimit(_ value: Bool) {
+        router.autoAccountFailoverAfterLimit = value
+        if !value {
+            bridge.cancelScheduledLimitResume()
+        }
+        objectWillChange.send()
+        host.settings.set(RouterController.autoAccountFailoverAfterLimitKey, .bool(value))
         persistSettings()
     }
 
@@ -133,8 +158,6 @@ extension AppModel {
         legalNeedsAcceptance = false
         persistSettings()
     }
-
-    public func legalConsent(_ key: LegalConsentKey) -> Bool { legal.consent(key) }
 
 
     public func setPermissionMode(_ value: AgentPermissionMode) {
@@ -168,11 +191,30 @@ extension AppModel {
     }
 
     public func enableRemoteCloudTunnel() async throws -> String {
-        try await remoteControl.enableCloudTunnel()
+        let endpoint = try await remoteControl.enableCloudTunnel()
+        host.settings.set("remote.cloudTunnel", .bool(true))
+        persistSettings()
+        return endpoint
     }
 
     public func disableRemoteCloudTunnel() {
         remoteControl.disableCloudTunnel()
+        host.settings.set("remote.cloudTunnel", .bool(false))
+        persistSettings()
+    }
+
+    /// The tunnel comes up on its own whenever the gateway runs, so a phone off
+    /// the LAN still reaches it; only an explicit "disable" keeps it down. It
+    /// carries sealed requests only (see `RemoteSealed`), never plaintext.
+    /// The quick-tunnel URL still changes; the phone learns it from
+    /// `tunnel.ready` or bootstrap `endpoints` once it reaches us.
+    func restoreRemoteCloudTunnel() {
+        guard host.settings.get("remote.cloudTunnel")?.bool != false else { return }
+        guard remoteControl.isEnabled, remoteControl.publicEndpoint == nil else { return }
+        Task {
+            do { _ = try await remoteControl.enableCloudTunnel() }
+            catch { remoteControl.publish("tunnel.failed", ["message": .string(error.localizedDescription)]) }
+        }
     }
 
     public func dismissFullAccessWarning() {
@@ -193,6 +235,25 @@ extension AppModel {
         AppCopy.setLanguage(value)
         appLanguage = value
         host.settings.set("ui.language", .string(value.rawValue))
+        persistSettings()
+        loadLanguagePack()
+    }
+
+    /// Fetches the active language when the release did not ship it, then re-renders.
+    /// ponytail: a failed download stays on English until the next launch or pick.
+    public func loadLanguagePack() {
+        let language = appLanguage
+        guard !LanguagePacks.isAvailable(language) else { return }
+        Task { @MainActor [weak self] in
+            try? await LanguagePacks.ensure(language)
+            if self?.appLanguage == language { self?.appLanguage = language }
+        }
+    }
+
+    public func setSkillSuggestionsEnabled(_ value: Bool) {
+        skillSuggestionsEnabled = value
+        skillSuggestions.enabled = value
+        host.settings.set("skills.suggestions.enabled", .bool(value))
         persistSettings()
     }
 
@@ -264,10 +325,6 @@ extension AppModel {
             messageID: message.id,
             feedbackType: feedbackType
         )
-    }
-
-    public func presentUsage() {
-        isUsagePresented = true
     }
 
     public func setAccountIdentity(_ identity: AccountIdentity) {

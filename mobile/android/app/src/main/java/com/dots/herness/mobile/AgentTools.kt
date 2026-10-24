@@ -1,7 +1,10 @@
 package com.dots.herness.mobile
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -10,6 +13,37 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
+
+/**
+ * One cancellable, app-process lease per canonical workspace. All local mobile
+ * workspace mutations share it, including editor tools, virtual terminal, SQL,
+ * and Git, so a read/check/write sequence cannot overlap another tool writer.
+ */
+internal object MobileWorkspaceWriteLease {
+    private class Entry(val mutex: Mutex = Mutex(), var users: Int = 0)
+    private val registryLock = Any()
+    private val entries = mutableMapOf<String, Entry>()
+
+    suspend fun <T> withLease(root: File, operation: suspend () -> T): T {
+        val key = root.canonicalPath
+        val entry = synchronized(registryLock) {
+            entries.getOrPut(key) { Entry() }.also { it.users++ }
+        }
+        var acquired = false
+        try {
+            entry.mutex.lock()
+            acquired = true
+            currentCoroutineContext().ensureActive()
+            return operation()
+        } finally {
+            if (acquired) entry.mutex.unlock()
+            synchronized(registryLock) {
+                entry.users--
+                if (entry.users == 0 && entries[key] === entry) entries.remove(key)
+            }
+        }
+    }
+}
 
 /**
  * Tools the on-phone agent gets over the local workspace mirror. Everything that
@@ -50,10 +84,10 @@ object AgentTools {
         val target = resolve(root, path)
         val bytes = target.readBytes()
         val text = String(bytes, Charsets.UTF_8)
-        if (!text.toByteArray(Charsets.UTF_8).contentEquals(bytes)) return "$path is not UTF-8 text (${bytes.size} bytes)."
+        if (!text.toByteArray(Charsets.UTF_8).contentEquals(bytes)) return "Tool error: $path is not UTF-8 text (${bytes.size} bytes)."
         val lines = text.split('\n')
         val start = offset.coerceAtLeast(1)
-        if (start > lines.size) return "Offset is past the end of the file; it has ${lines.size} lines."
+        if (start > lines.size) return "Tool error: Offset is past the end of the file; it has ${lines.size} lines."
         val count = (limit ?: DEFAULT_READ_LINES).coerceAtLeast(0).coerceAtMost(lines.size - start + 1)
         val end = start + count
         val maximum = if (limit == null) DEFAULT_READ_CHARACTERS else MAXIMUM_READ_CHARACTERS
@@ -70,10 +104,9 @@ object AgentTools {
         }
         reads.recordLines(target, bytes, start, line, lines.size)
         val body = emitted.joinToString("\n")
-        // A default page that stops before the end of the file says so; an explicit
-        // limit that was met in full is the answer that was asked for.
-        val more = if (limit == null) line <= lines.size else line < end
-        return if (more) body + "\n\n[truncated] Continue with offset: $line" else body
+        // Any page that stops before the end of the file says where to continue and how
+        // long the file is, so the model knows whether it has seen all of it.
+        return if (line <= lines.size) body + "\n\n[truncated] Continue with offset: $line (file has ${lines.size} lines)" else body
     }
 
     fun resolve(root: File, path: String): File {
@@ -106,7 +139,7 @@ object AgentTools {
         it.relativeTo(root.canonicalFile).invariantSeparatorsPath to sha256(it.readBytes())
     }
 
-    fun workspace(root: () -> File): List<AgentToolSpec> = listOf(
+    fun workspace(root: () -> File, userRoot: () -> File = { File(root().parentFile ?: root(), "herness-memory") }): List<AgentToolSpec> = listOf(
         AgentToolSpec(
             "list_files",
             "List files in the workspace. Optionally filter by a path prefix.",
@@ -133,7 +166,7 @@ object AgentTools {
                 readFile(root(), path,
                     if (input.has("offset")) input.optInt("offset", 1) else 1,
                     if (input.has("limit")) input.optInt("limit", DEFAULT_READ_LINES) else null
-                ) + MobileLessons.fileNotice(root(), path)
+                ) + MobileLessons.fileNotice(root(), path, userRoot = userRoot())
             }
         },
 
@@ -145,32 +178,47 @@ object AgentTools {
             withContext(Dispatchers.IO) {
                 val path = input.required("path", "write_file")
                 val content = input.optString("content")
-                val target = resolve(root(), path)
-                if (target.exists()) {
-                    when (reads.state(target, target.readBytes())) {
-                        ReadState.UNREAD -> return@withContext "write_file needs a complete prior read_file for $path. Read all pages first."
-                        ReadState.STALE -> return@withContext "write_file: $path changed since you last read it. Read it again."
-                        ReadState.FRESH -> Unit
+                val workspaceRoot = root().canonicalFile
+                val target = resolve(workspaceRoot, path)
+                MobileWorkspaceWriteLease.withLease(workspaceRoot) {
+                    if (root().canonicalFile != workspaceRoot) {
+                        return@withLease "Tool error: the selected workspace changed while this write was waiting. Retry the write."
                     }
+                    if (target.exists()) {
+                        when (reads.state(target, target.readBytes())) {
+                            ReadState.UNREAD -> return@withLease "write_file needs a complete prior read_file for $path. Read all pages first."
+                            ReadState.STALE -> return@withLease "write_file: $path changed since you last read it. Read it again."
+                            ReadState.FRESH -> Unit
+                        }
+                    }
+                    target.parentFile?.mkdirs()
+                    val bytes = content.toByteArray(Charsets.UTF_8)
+                    writeAtomically(target, bytes)
+                    reads.record(target, bytes)
+                    "Wrote ${bytes.size} bytes to $path." + MobileLessons.fileNotice(workspaceRoot, path, userRoot = userRoot())
                 }
-                target.parentFile?.mkdirs()
-                target.writeText(content)
-                reads.record(target, content.toByteArray())
-                "Wrote ${content.toByteArray().size} bytes to $path." + MobileLessons.fileNotice(root(), path)
             }
         },
 
         AgentToolSpec(
             "remember",
-            "Record something that must outlive this conversation: a lasting user preference, a settled project choice, or a standing fact about the project. One call per fact, with a short stable key so a later fact on the same subject replaces it. Never record a secret, a guess, or what only matters to the current request.",
+            "Record a lasting fact. Preferences default to scope user and stay on this device; use scope project only for a preference that applies to this project. Project facts and decisions always use project scope. Never record a secret or a guess.",
             schema(mapOf(
                 "kind" to "preference: how the user wants work done. decision: a settled project choice. project: a standing fact about the project.",
+                "scope" to "For preferences only: user (default) follows the user across projects and stays on this device; project keeps it device-local for this project only. Project facts and decisions always use project scope.",
                 "key" to "Short stable subject, e.g. \"language\", \"goal\", \"design-system\".",
                 "text" to "The fact itself, one sentence, written so it stands alone months later. The project keys \"architecture\", \"conventions\" and \"design-system\" may run to 1,200 characters.",
             ), listOf("kind", "text"))
         ) { input ->
             withContext(Dispatchers.IO) {
-                MobileFacts.record(root(), input.required("kind", "remember"), input.optString("key"), input.required("text", "remember"))
+                MobileFacts.record(
+                    root(),
+                    input.required("kind", "remember"),
+                    input.optString("key"),
+                    input.required("text", "remember"),
+                    input.optString("scope", "user"),
+                    userRoot(),
+                )
             }
         },
 
@@ -181,7 +229,15 @@ object AgentTools {
         ) { input ->
             withContext(Dispatchers.IO) {
                 val path = input.required("path", "edit_file")
-                edit(root(), path, jsonObjects(input.optJSONArray("edits")))
+                val workspaceRoot = root().canonicalFile
+                val edits = jsonObjects(input.optJSONArray("edits"))
+                MobileWorkspaceWriteLease.withLease(workspaceRoot) {
+                    if (root().canonicalFile != workspaceRoot) {
+                        "Tool error: the selected workspace changed while this edit was waiting. Retry the edit."
+                    } else {
+                        edit(workspaceRoot, path, edits)
+                    }
+                }
             }
         },
 
@@ -207,7 +263,14 @@ object AgentTools {
             schema(mapOf("path" to "Workspace-relative file path.", "reason" to "Why the old artifact is no longer part of the active architecture.", "referenceTerms" to "Old symbols or paths to search for, separated by commas, semicolons, or new lines."), listOf("path", "reason", "referenceTerms"))
         ) { input ->
             withContext(Dispatchers.IO) {
-                removeFile(root(), input.required("path", "remove_file"), input.required("reason", "remove_file"), input.required("referenceTerms", "remove_file"))
+                val workspaceRoot = root().canonicalFile
+                MobileWorkspaceWriteLease.withLease(workspaceRoot) {
+                    if (root().canonicalFile != workspaceRoot) {
+                        "[cleanup:preserved] The selected workspace changed while removal was waiting; the artifact was kept."
+                    } else {
+                        removeFile(workspaceRoot, input.required("path", "remove_file"), input.required("reason", "remove_file"), input.required("referenceTerms", "remove_file"))
+                    }
+                }
             }
         },
 
@@ -236,20 +299,48 @@ object AgentTools {
     fun runtime(shell: LocalShell, root: () -> File, git: MobileGitClient? = null, remote: RemoteClient? = null): List<AgentToolSpec> = listOf(
         AgentToolSpec(
             "run_command",
-            "Run a supported virtual command in the mobile runtime. When a desktop is paired, build-like commands are forwarded to that selected desktop project; arbitrary mobile shell processes remain unavailable.",
-            schema(mapOf("command" to "The command line to run."), listOf("command"))
+            "Run a supported virtual command in the mobile runtime. Build/test commands go to the paired desktop. Build-lock waiting counts toward timeout_seconds; use wait_command with a reported holder PID instead of polling.",
+            schema(mapOf("command" to "The command line to run."), listOf("command")).apply {
+                getJSONObject("properties").put("timeout_seconds", JSONObject().put("type", "integer")
+                    .put("description", "Maximum runtime in seconds on the paired desktop. Default 120, minimum 1, maximum 600; the desktop enforces this limit."))
+            }
         ) { input ->
             val command = input.required("command", "run_command")
+            if (isSleepPoll(command)) return@AgentToolSpec sleepPollRefusal
+            val timeout = input.optInt("timeout_seconds", 120).coerceIn(1, 600)
             if (remote?.paired == true && remote.remoteProjectMatchesSelectedProject && shouldTryRemote(command)) {
-                runRemote(command, remote)?.let { return@AgentToolSpec it.ifBlank { "(no output)" } }
+                runRemote(command, timeout, remote)?.let { return@AgentToolSpec it.ifBlank { "(no output)" } }
             }
             shell.execute(command).ifBlank { "(no output)" }
         },
 
         AgentToolSpec(
+            "wait_command",
+            "Wait for a process on the paired desktop by PID, including a SwiftPM build lock holder. Default and maximum wait: 600 seconds. Do not poll with sleep or kill -0 loops.",
+            schema(mapOf("pid" to "Process ID on the paired desktop."), listOf("pid")).apply {
+                val properties = getJSONObject("properties")
+                properties.put("log_path", JSONObject().put("type", "string").put("description", "Optional workspace-relative log file to include after the wait."))
+                properties.put("timeout_seconds", JSONObject().put("type", "integer").put("description", "Seconds to wait. Default and maximum 600."))
+            }
+        ) { input ->
+            val pid = input.optInt("pid", 0)
+            if (pid <= 1) return@AgentToolSpec "Tool error: pid must be a process id greater than 1."
+            val desktop = remote
+            if (desktop == null || !desktop.paired || !desktop.remoteProjectMatchesSelectedProject) {
+                return@AgentToolSpec "unsupported_on_mobile: wait_command requires a paired desktop with the same project selected."
+            }
+            val timeout = input.optInt("timeout_seconds", 600).coerceIn(1, 600)
+            waitRemote(pid, input.optString("log_path").takeIf { it.isNotBlank() }, timeout, desktop)
+        },
+
+        AgentToolSpec(MobilePlanSteps.NAME, MobilePlanSteps.DESCRIPTION, MobilePlanSteps.schema) { input ->
+            MobilePlanSteps.execute(input.optJSONArray("steps"))
+        },
+
+        AgentToolSpec(
             "ask_user",
-            "Ask only for material information the workspace cannot answer. A pre-existing dirty or staged worktree is not a reason to ask; preserve it without mentioning it. After the user answers, immediately continue the original request in the current mode and do not send a status-only reply while tools can proceed.",
-            schema(mapOf("question" to "The question to show the user."), listOf("question"))
+            "Ask only when the request is materially ambiguous and the workspace cannot settle it. Send every question already known in one call, with a short header and 3 or 4 concrete options per question; the user can write a different answer. Do not ask about a plain information request or a pre-existing dirty worktree. Do not guess an unanswered decision. After the user answers, immediately continue the original request in the current mode.",
+            askUserSchema
         ) { "The user answer is pending." },
 
         AgentToolSpec(
@@ -322,8 +413,16 @@ object AgentTools {
             schema(mapOf("database" to "Workspace-relative path to the .db file.", "statement" to "SQL to execute."), listOf("database", "statement"))
         ) { input ->
             withContext(Dispatchers.IO) {
-                val database = resolve(root(), input.required("database", "sql"))
-                LocalSql.run(database, input.required("statement", "sql")).ifBlank { "(no rows)" }
+                val workspaceRoot = root().canonicalFile
+                val database = resolve(workspaceRoot, input.required("database", "sql"))
+                val statement = input.required("statement", "sql")
+                MobileWorkspaceWriteLease.withLease(workspaceRoot) {
+                    if (root().canonicalFile != workspaceRoot) {
+                        "Tool error: the selected workspace changed while this SQL command was waiting. Retry it."
+                    } else {
+                        LocalSql.run(database, statement).ifBlank { "(no rows)" }
+                    }
+                }
             }
         },
 
@@ -436,8 +535,29 @@ object AgentTools {
             val newTotal = updated.split('\n').size
             for (range in covered) reads.recordLines(file, data, range.first, minOf(range.last + 1, newTotal + 1), newTotal)
         } else reads.record(file, data)
-        return "Edited ${relativePath(root, file)} (${summary.joinToString("; ")})."
+        return "Edited ${relativePath(root, file)} (${summary.joinToString("; ")})." + changedLines(text, updated)
     }
+
+    /**
+     * The edited region of the new file, numbered, with two lines of context: the
+     * model sees the result without a follow-up read_file. One span from the first
+     * to the last changed line; a span wider than [CHANGED_LINES_SHOWN] only names
+     * its line range.
+     */
+    internal fun changedLines(before: String, after: String): String {
+        val a = before.split('\n')
+        val b = after.split('\n')
+        var top = 0
+        while (top < a.size && top < b.size && a[top] == b[top]) top++
+        var bottom = 0
+        while (bottom < a.size - top && bottom < b.size - top && a[a.size - 1 - bottom] == b[b.size - 1 - bottom]) bottom++
+        val start = maxOf(0, top - 2)
+        val end = minOf(b.size, b.size - bottom + 2)
+        if (end - start > CHANGED_LINES_SHOWN) return "\nChanged lines ${top + 1}-${b.size - bottom}: too wide to show; read_file them if needed."
+        return "\n" + (start until end).joinToString("\n") { "${it + 1}: ${b[it]}" }
+    }
+
+    private const val CHANGED_LINES_SHOWN = 40
 
     /** Overlapping matches are counted left to right, the same way the subsequent
      * replacement consumes them — so a count of two never describes one rewrite. */
@@ -469,7 +589,7 @@ object AgentTools {
 
     /** Same directory, then a rename: a write that dies halfway must not leave a
      * truncated file where the text the model matched used to be. */
-    private fun writeAtomically(target: File, bytes: ByteArray) {
+    internal fun writeAtomically(target: File, bytes: ByteArray) {
         val temporary = File.createTempFile(".${target.name}.", ".herness", target.parentFile)
         try {
             temporary.writeBytes(bytes)
@@ -684,9 +804,13 @@ object AgentTools {
 
     private fun shouldTryRemote(command: String): Boolean = remoteHeavyPattern.containsMatchIn(command)
 
-    private suspend fun runRemote(command: String, remote: RemoteClient): String? {
+    private fun isSleepPoll(command: String): Boolean = Regex("^\\s*sleep\\s+[0-9.]+\\s*(?:;|&&|\\n)").containsMatchIn(command)
+
+    private val sleepPollRefusal = "Tool error: do not poll with sleep or kill -0. Call wait_command with the process PID (and optional log_path), or rerun the command with a larger timeout_seconds."
+
+    private suspend fun runRemote(command: String, timeout: Int, remote: RemoteClient): String? {
         return try {
-            val response = remote.command("run_command", mapOf("command" to command))
+            val response = remote.command("run_command", mapOf("command" to command, "timeout_seconds" to timeout))
             if (response.status == "approval-required") {
                 return "Remote desktop needs approval. Approve the command in desktop Access Mode before continuing."
             }
@@ -702,6 +826,27 @@ object AgentTools {
                 ?: response.result?.takeIf { it.isNotBlank() }
         } catch (_: Throwable) {
             null
+        }
+    }
+
+    private suspend fun waitRemote(pid: Int, logPath: String?, timeout: Int, remote: RemoteClient): String {
+        val payload = buildMap<String, Any?> {
+            put("pid", pid)
+            put("timeout_seconds", timeout)
+            if (!logPath.isNullOrBlank()) put("log_path", logPath)
+        }
+        return try {
+            val response = remote.command("wait_command", payload)
+            if (response.status == "approval-required") {
+                return "Remote desktop needs approval. Approve the wait request in desktop Access Mode, then retry wait_command."
+            }
+            val result = response.result?.let { runCatching { JSONObject(it) }.getOrNull() }
+            result?.optString("output")?.takeIf { it.isNotBlank() }
+                ?: result?.optString("outputPreview")?.takeIf { it.isNotBlank() }
+                ?: response.error?.takeIf { it.isNotBlank() }?.let { "Remote wait_command failed: $it" }
+                ?: "Remote wait_command returned no result (status: ${response.status})."
+        } catch (error: Throwable) {
+            "Remote wait_command failed: ${error.message ?: error::class.java.simpleName}"
         }
     }
 
@@ -774,6 +919,27 @@ object AgentTools {
         val fields = JSONObject()
         properties.forEach { (name, description) -> fields.put(name, JSONObject().put("type", "string").put("description", description)) }
         return JSONObject().put("type", "object").put("properties", fields).put("required", org.json.JSONArray(required))
+    }
+
+    private val askUserSchema: JSONObject = run {
+        val questionProperties = JSONObject()
+            .put("header", JSONObject().put("type", "string").put("description", "Short label for the question, at most 16 characters."))
+            .put("question", JSONObject().put("type", "string").put("description", "The question, written so one answer resolves it."))
+            .put("options", JSONObject()
+                .put("type", "array")
+                .put("description", "3 or 4 concrete answers, each written as a short title followed by an em dash and a one-line detail.")
+                .put("items", JSONObject().put("type", "string").put("description", "A suggested answer.")))
+        val questionItem = JSONObject()
+            .put("type", "object")
+            .put("properties", questionProperties)
+            .put("required", JSONArray().put("question").put("options"))
+        JSONObject()
+            .put("type", "object")
+            .put("properties", JSONObject().put("questions", JSONObject()
+                .put("type", "array")
+                .put("description", "Every clarification question needed now, ordered by importance.")
+                .put("items", questionItem)))
+            .put("required", JSONArray().put("questions"))
     }
 
     /// Mirrors the desktop `ComputerUseTools` schema so the model passes the
@@ -849,8 +1015,15 @@ class ReadLedger {
      */
     val scope = ThreadLocal<String?>()
 
-    @Synchronized fun state(file: File, current: ByteArray): ReadState {
-        val recorded = hashes[key(file)] ?: return ReadState.UNREAD
+    /**
+     * `partial` is for edit_file: any page of the current version is enough, because
+     * an edit replaces only text it matches exactly. write_file replaces the whole
+     * file and keeps the complete-read rule.
+     */
+    // ponytail: version hash only, not which lines were read; track line coverage if blind matches show up.
+    @Synchronized fun state(file: File, current: ByteArray, partial: Boolean = false): ReadState {
+        val path = key(file)
+        val recorded = hashes[path] ?: pages[path]?.hash?.takeIf { partial } ?: return ReadState.UNREAD
         return if (recorded == AgentTools.sha256(current)) ReadState.FRESH else ReadState.STALE
     }
 
@@ -901,5 +1074,43 @@ class ReadLedger {
         /** A run that has read this many files has lost the thread anyway; the
          * ledger restarts rather than growing for the life of the process. */
         const val MAX_TRACKED_FILES = 512
+    }
+}
+
+/** Progress ledger: the agent keeps a short, visible step list for multi-step work. */
+object MobilePlanSteps {
+    const val NAME = "update_plan"
+    const val DESCRIPTION = "Record or update the step list for the work in progress, so the user can follow it and you never re-derive what is already settled. Use it only for complex work that needs a plan; never for simple work, and never write a single-step plan. Send the complete list on every call: exactly one step may be in_progress, and steps already finished stay in the list as done. Call it again right after finishing a step, not in a separate turn of its own."
+    val schema: JSONObject = JSONObject("""{"type":"object","properties":{"steps":{"type":"array","description":"The full ordered step list, not just the changed entries.","items":{"type":"object","properties":{"title":{"type":"string","description":"Short imperative description of the step."},"status":{"type":"string","enum":["pending","in_progress","done"]}},"required":["title","status"]}}},"required":["steps"]}""")
+    private val markers = listOf("pending" to "☐", "in_progress" to "▸", "done" to "☑")
+
+    fun execute(steps: org.json.JSONArray?): String {
+        val invalid = "Tool error: the plan must be a list of steps, each with a title and a status of pending, in_progress, or done."
+        if (steps == null || steps.length() == 0) return invalid
+        val lines = mutableListOf<String>()
+        var done = 0
+        for (i in 0 until steps.length()) {
+            val step = steps.optJSONObject(i) ?: return invalid
+            val title = step.optString("title").trim()
+            val status = step.optString("status")
+            val marker = markers.firstOrNull { it.first == status }?.second
+            if (title.isEmpty() || marker == null) return invalid
+            if (status == "done") done++
+            lines += "$marker $title"
+        }
+        return "Plan updated: ${lines.size} steps, $done done.\n" + lines.joinToString("\n")
+    }
+
+    /** The plan the agent last recorded since the user's latest message, read back from the transcript. */
+    fun current(transcript: List<AgentTurn>): List<Pair<String, String>> {
+        for (turn in transcript.asReversed()) {
+            if (turn.role == "user") return emptyList()
+            if (turn.role != "tool" || turn.toolName != NAME || turn.failed || turn.isRunning) continue
+            val steps = turn.text.lines().mapNotNull { line ->
+                markers.firstOrNull { line.startsWith(it.second + " ") }?.let { line.drop(2) to it.first }
+            }
+            if (steps.isNotEmpty()) return steps
+        }
+        return emptyList()
     }
 }

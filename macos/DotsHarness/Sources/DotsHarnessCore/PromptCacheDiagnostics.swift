@@ -329,10 +329,13 @@ public struct AgentCacheTrace: Sendable, Codable, Equatable {
     public let fast: Bool
     public let accountFingerprint: String?
     public let endpointFingerprint: String?
+    /// Served from this machine (loopback): a RAM prompt cache with no
+    /// lifetime and no cost, lost to another chat or a server unload.
+    public let local: Bool?
 
     public init(toolFingerprint: String, policyRevision: Int, contextSegment: Int,
                 ttlSeconds: Int?, requestStartedAt: Date, fast: Bool,
-                accountFingerprint: String? = nil, endpointFingerprint: String? = nil) {
+                accountFingerprint: String? = nil, endpointFingerprint: String? = nil, local: Bool? = nil) {
         self.toolFingerprint = toolFingerprint
         self.policyRevision = policyRevision
         self.contextSegment = contextSegment
@@ -341,6 +344,11 @@ public struct AgentCacheTrace: Sendable, Codable, Equatable {
         self.fast = fast
         self.accountFingerprint = accountFingerprint
         self.endpointFingerprint = endpointFingerprint
+        self.local = local
+    }
+
+    static func isLoopback(_ baseURL: String) -> Bool {
+        ["127.0.0.1", "localhost", "::1", "[::1]"].contains(URLComponents(string: baseURL)?.host?.lowercased() ?? "")
     }
 
     static func fingerprint(_ value: String) -> String {
@@ -371,6 +379,85 @@ public struct AgentCacheTrace: Sendable, Codable, Equatable {
         }
         if new.measuredCacheHitRate == nil { reasons.append("cache_usage_not_reported") }
         return reasons
+    }
+}
+
+/// Automatic recovery may send a large conversation again. Keep it automatic only
+/// while recent provider usage supports a warm, working cache; an expired or lost
+/// cache leaves continuation in the user's hands.
+public enum AgentCacheResumePolicy {
+    private static let minimumTrackedPrefixTokens = 8_192
+
+    public static func isWarm(
+        conversationID: String,
+        events: [AgentContextUsageEvent],
+        now: Date = Date()
+    ) -> Bool {
+        let mainEvents = events
+            .filter { $0.conversationID == conversationID && $0.requestKind == .main && $0.errorKind == nil }
+            .sorted { $0.timestamp < $1.timestamp }
+        guard let latest = mainEvents.last else { return false }
+
+        let previous = mainEvents.filter { $0.timestamp < latest.timestamp }
+        guard droppedCachePrefixTokens(latest, previous: previous) == nil else { return false }
+        // A local server exposes no reliable retention clock; its cache can be
+        // evicted or cleared while the app is closed, so recovery stays manual.
+        guard latest.cacheTrace?.local != true else { return false }
+        if let evidence = latest.cacheReuseEvidence,
+           evidence.classification == "eligible",
+           let eligible = evidence.eligibleTokens,
+           let reused = evidence.reusedTokens,
+           eligible >= minimumTrackedPrefixTokens,
+           Double(reused) <= Double(eligible) * 0.05 {
+            return false
+        }
+
+        // A cache write only means a prefix was stored; it does not prove a hit.
+        // Require a recent, measured read before resuming an interrupted turn.
+        let confirmedHitTokens = max(latest.cachedTokens ?? 0, latest.cacheReuseEvidence?.reusedTokens ?? 0)
+        guard confirmedHitTokens >= minimumTrackedPrefixTokens else { return false }
+
+        let ttl: Double
+        if let ttlSeconds = latest.cacheTrace?.ttlSeconds {
+            guard ttlSeconds > 0 else { return false }
+            ttl = Double(ttlSeconds)
+        } else {
+            // Providers without a reported retention get the conservative one-hour ceiling.
+            ttl = 3_600
+        }
+        let startedAt = latest.cacheTrace?.requestStartedAt ?? latest.timestamp
+        let age = now.timeIntervalSince(startedAt)
+        return age >= 0 && age < min(ttl, 3_600)
+    }
+
+    /// A large prefix that was cached earlier came back almost entirely uncached.
+    /// A known rewrite is intentional; it is handled as a new cache epoch.
+    public static func droppedCachePrefixTokens(
+        _ latest: AgentContextUsageEvent,
+        previous: [AgentContextUsageEvent]
+    ) -> Int? {
+        guard let cached = latest.cachedTokens,
+              latest.totalInputTokens >= minimumTrackedPrefixTokens,
+              Double(cached) <= Double(latest.totalInputTokens) * 0.05,
+              latest.cacheReuseEvidence?.classification != "changed",
+              previous.contains(where: { ($0.cachedTokens ?? 0) >= minimumTrackedPrefixTokens })
+        else { return nil }
+        return latest.totalInputTokens
+    }
+
+    public static func localCachePrefixLost(
+        _ latest: AgentContextUsageEvent,
+        conversationID: String,
+        events: [AgentContextUsageEvent]
+    ) -> Int? {
+        guard latest.totalInputTokens >= minimumTrackedPrefixTokens,
+              let endpoint = latest.cacheTrace?.endpointFingerprint,
+              events.contains(where: {
+                  $0.timestamp > latest.timestamp && $0.cacheTrace?.endpointFingerprint == endpoint
+                      && ($0.conversationID != conversationID || $0.requestKind != .main)
+              })
+        else { return nil }
+        return latest.totalInputTokens
     }
 }
 

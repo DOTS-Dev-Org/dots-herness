@@ -38,6 +38,75 @@ public partial class MainWindow : Window
         Closed += (_, _) => ((App)Application.Current).ExitApplication();
         Loaded += OnLoaded;
         RefreshLocalization();
+        ShowSection();
+    }
+
+    private readonly Dictionary<string, FrameworkElement> _sections = [];
+
+    /// <summary>Builds the rail: one button per section, Settings at the foot. Mirrors macOS AppRailView.</summary>
+    private void BuildRail()
+    {
+        var model = ((App)Application.Current).Model;
+        Rail.Children.Clear();
+        Button RailButton(string glyph, string title, bool selected, Action click)
+        {
+            var stack = new StackPanel();
+            stack.Children.Add(new TextBlock { Text = glyph, FontSize = 17, HorizontalAlignment = HorizontalAlignment.Center });
+            stack.Children.Add(new TextBlock { Text = title, FontSize = 10, HorizontalAlignment = HorizontalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal });
+            var button = new Button
+            {
+                Content = stack, ToolTip = title, Width = 60, Height = 50, Margin = new Thickness(4, 2, 4, 2),
+                BorderThickness = new Thickness(0), Foreground = Ui.Brush(selected ? "TextPrimary" : "TextSecondary"),
+                Background = selected ? new SolidColorBrush(Color.FromArgb(0x30, 0x80, 0x80, 0x80)) : Brushes.Transparent,
+            };
+            button.Click += (_, _) => click();
+            return button;
+        }
+        var glyphs = new Dictionary<string, string> { ["home"] = "⌂", ["media"] = "🖼", ["tasks"] = "◷", ["bots"] = "💬", ["marketplace"] = "🛍", ["memory"] = "🧠" };
+        foreach (var section in AppModel.Sections.Where(s => s != "memory" || model.MemoryEnabled))
+        {
+            var button = RailButton(glyphs[section], model.L($"rail.{section}"), model.Section == section && Settings.Visibility != Visibility.Visible, () => OpenSection(section));
+            DockPanel.SetDock(button, Dock.Top);
+            Rail.Children.Add(button);
+        }
+        var settings = RailButton("⚙", model.L("rail.settings"), false, () => ShowSettings());
+        DockPanel.SetDock(settings, Dock.Bottom);
+        Rail.Children.Add(settings);
+    }
+
+    public void OpenSection(string section)
+    {
+        var model = ((App)Application.Current).Model;
+        model.Section = section;
+        if (section == "home") ShowConversation();
+        ShowSection();
+    }
+
+    /// <summary>Only Home keeps the project sidebar and chat; the rest own the whole area.</summary>
+    private void ShowSection()
+    {
+        var model = ((App)Application.Current).Model;
+        var home = model.Section == "home";
+        DesktopGrid.Visibility = home ? Visibility.Visible : Visibility.Collapsed;
+        SectionHost.Visibility = home ? Visibility.Collapsed : Visibility.Visible;
+        if (!home)
+        {
+            if (!_sections.TryGetValue(model.Section, out var view))
+            {
+                view = model.Section switch
+                {
+                    "media" => new MediaView(model),
+                    "bots" => new BotsView(model),
+                    "tasks" => new TasksSectionView(model),
+                    "marketplace" => new MarketplaceSectionView(model),
+                    _ => new MemorySectionView(model),
+                };
+                _sections[model.Section] = view;
+            }
+            SectionHost.Content = view;
+            (view as ISectionView)?.Activate();
+        }
+        BuildRail();
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -56,8 +125,9 @@ public partial class MainWindow : Window
     {
         var update = await CrossPlatformUpdateChecker.CheckOnStartupAsync("windows");
         if (update is null) return;
-        var msg = $"Yeni sürüm: {update.LatestVersion}\n\n{update.ReleaseNotes}\n\nİndirme sayfası açılsın mı?";
-        if (MessageBox.Show(this, msg, "Güncelleme", update.Mandatory ? MessageBoxButton.OK : MessageBoxButton.YesNo) is MessageBoxResult.Yes or MessageBoxResult.OK
+        var model = ((App)Application.Current).Model;
+        var msg = $"{model.L("settings.updates.available", update.LatestVersion)}\n\n{update.ReleaseNotes}\n\n{model.L("settings.updates.download")}?";
+        if (MessageBox.Show(this, msg, model.L("settings.updates.title"), update.Mandatory ? MessageBoxButton.OK : MessageBoxButton.YesNo) is MessageBoxResult.Yes or MessageBoxResult.OK
             && Uri.TryCreate(update.DownloadUrl, UriKind.Absolute, out var url) && url.Scheme == Uri.UriSchemeHttps)
             Process.Start(new ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true });
         if (update.Mandatory) Application.Current.Shutdown();
@@ -65,6 +135,8 @@ public partial class MainWindow : Window
 
     private void OnModel(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(AppModel.Section) or nameof(AppModel.MemoryEnabled))
+            Dispatcher.BeginInvoke(ShowSection);
         if (e.PropertyName is nameof(AppModel.Language) or nameof(AppModel.IsRightToLeft))
             Dispatcher.Invoke(RefreshLocalization);
         else if (e.PropertyName is nameof(AppModel.SelectedConversationId) or nameof(AppModel.WorkspacePath))
@@ -84,26 +156,37 @@ public partial class MainWindow : Window
         Title = model.L("app.title");
         WindowTitle.Text = model.L("app.title");
         TasksButton.Content = model.L("settings.tasks");
+        TasksButton.ToolTip = model.L("settings.tasks");
         PaneButton.Content = model.L("conversation.choosePane");
         SidebarToggle.ToolTip = model.L("sidebar.toggle");
         PaneButton.ToolTip = model.L("conversation.choosePane");
         FlowDirection = model.IsRightToLeft ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
         Sidebar.RefreshLocalization();
         Settings.RefreshLocalization();
+        if (IsLoaded)
+        {
+            // Sections are rebuilt in the new language the next time they open.
+            _sections.Clear();
+            ShowSection();
+        }
         RightDock.RefreshLocalization();
     }
 
     public void ShowSettings(string? tab = null)
     {
+        var model = ((App)Application.Current).Model;
+        if (model.Section != "home") { model.Section = "home"; ShowSection(); }
         Conversation.Visibility = Visibility.Collapsed;
         Settings.Visibility = Visibility.Visible;
         if (tab is not null) Settings.SelectTab(tab);
+        BuildRail();
     }
 
     private void ShowConversation()
     {
         Settings.Visibility = Visibility.Collapsed;
         Conversation.Visibility = Visibility.Visible;
+        BuildRail();
     }
 
     private bool _sidebarVisible = true;
@@ -281,7 +364,7 @@ public partial class MainWindow : Window
         UpdateResponsiveLayout();
     }
 
-    private void OnTasks(object sender, RoutedEventArgs e) => ShowSettings("tasks");
+    private void OnTasks(object sender, RoutedEventArgs e) => OpenSection("tasks");
 
     public void ShowBrowserPanel(string? url = null)
     {

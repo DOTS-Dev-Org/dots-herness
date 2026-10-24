@@ -1,7 +1,5 @@
 // Copyright (c) 2026 DOTS
-// Sidebar footer usage-limit badge: the account's binding rate limit instead
-// of the old help button. Tapping opens a limits-only popover; subscription
-// windows first, then per-account API.
+// Shared account-usage summary and compact ring for the avatar menu.
 
 import SwiftUI
 import DotsHarnessCore
@@ -12,18 +10,7 @@ struct SidebarUsageBadge: View {
 
     /// Current short-window usage across subscription accounts. The weekly
     /// window remains available in the expanded per-account detail.
-    private var displayedUsedPercent: Double? {
-        if case .loaded(let usage) = router.claudeUsage {
-            if let current = usage.windows.first(where: { $0.kind == .fiveHour })?.usedPercent { return current }
-            if let percent = usage.worstUsedPercent { return percent }
-        }
-        return router.accountUsage.values
-            .compactMap { snapshot in
-                snapshot.windows.first(where: { $0.kind == .fiveHour })?.usedPercent
-                    ?? snapshot.remainingFraction.map { min(max(1 - $0, 0), 1) }
-            }
-            .max()
-    }
+    private var displayedUsedPercent: Double? { accountUsageUsedFraction(router) }
 
     private var resetsAt: Date? {
         if case .loaded(let usage) = router.claudeUsage {
@@ -69,17 +56,8 @@ struct SidebarUsageBadge: View {
 
     @ViewBuilder
     private var gauge: some View {
-        let clamped = min(max(displayedUsedPercent ?? 0, 0), 1)
-        ZStack {
-            Circle()
-                .stroke(Color.primary.opacity(0.15), lineWidth: 3)
-            Circle()
-                .trim(from: 0, to: clamped)
-                .stroke(tint, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-        }
+        UsageRing(usedPercent: displayedUsedPercent)
         .frame(width: 14, height: 14)
-        .animation(.easeInOut(duration: 0.2), value: clamped)
     }
 
     private var percentLabel: String {
@@ -107,5 +85,36 @@ struct SidebarUsageBadge: View {
         case .weekday(let value): text += " · " + AppCopy.format("usage.resetsOn", value)
         }
         return text
+    }
+}
+
+@MainActor
+func accountUsageUsedFraction(_ router: RouterController) -> Double? {
+    if case .loaded(let usage) = router.claudeUsage {
+        if let current = usage.windows.first(where: { $0.kind == .fiveHour })?.usedPercent { return current }
+        if let percent = usage.worstUsedPercent { return percent }
+    }
+    return router.accountUsage.values
+        .compactMap { snapshot in
+            snapshot.windows.first(where: { $0.kind == .fiveHour })?.usedPercent
+                ?? snapshot.remainingFraction.map { min(max(1 - $0, 0), 1) }
+        }
+        .max()
+}
+
+struct UsageRing: View {
+    let usedPercent: Double?
+
+    var body: some View {
+        let clamped = min(max(usedPercent ?? 0, 0), 1)
+        ZStack {
+            Circle()
+                .stroke(Color.primary.opacity(0.15), lineWidth: 3)
+            Circle()
+                .trim(from: 0, to: clamped)
+                .stroke(usedPercent.map(usageHeatColor) ?? Color.secondary, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+        .animation(.easeInOut(duration: 0.2), value: clamped)
     }
 }

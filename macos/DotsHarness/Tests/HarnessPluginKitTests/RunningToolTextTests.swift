@@ -10,6 +10,10 @@ final class RunningToolTextTests: XCTestCase {
         XCTAssertTrue(NativeAgentHost.runningToolText(path).hasSuffix("\nlocales/tr.json"))
         let bare = AgentToolCall(id: "3", name: "list_files", arguments: "{}")
         XCTAssertFalse(NativeAgentHost.runningToolText(bare).contains("\n"))
+        let search = AgentToolCall(id: "4", name: "grep_files", arguments: #"{"pattern":"activity","path":"Sources"}"#)
+        XCTAssertTrue(NativeAgentHost.runningToolText(search).contains(#""pattern":"activity""#))
+        let invoke = AgentToolCall(id: "5", name: "invoke_tool", arguments: #"{"arguments":"{\"task\":\"x\"}","name":"explore"}"#)
+        XCTAssertTrue(NativeAgentHost.runningToolText(invoke).hasSuffix("\nexplore {\"task\":\"x\"}"))
     }
 
     func testOnlyPluginAndMCPToolsCountAsExtensions() {

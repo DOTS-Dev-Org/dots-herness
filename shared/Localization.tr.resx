@@ -8,6 +8,8 @@
   <data name="language.system" xml:space="preserve"><value>Sistem dili</value></data>
   <data name="settings.language" xml:space="preserve"><value>Uygulama dili</value></data>
   <data name="settings.general" xml:space="preserve"><value>Genel</value></data>
+  <data name="settings.autoAccountFailover" xml:space="preserve"><value>Limit dolunca başka hesabı otomatik dene</value></data>
+  <data name="settings.autoAccountFailover.hint" xml:space="preserve"><value>Kapalıyken sohbet duraklar; uyumlu başka bir hesabı denemek için Devam et'e basın. Açıkken uyumlu hesaplar otomatik denenir.</value></data>
   <data name="settings.shortcuts" xml:space="preserve"><value>Klavye kısayolları</value></data>
   <data name="settings.shortcuts.hint" xml:space="preserve"><value>Değiştirmek istediğiniz kısayolu seçin. En az bir değiştirici tuş içeren bir kombinasyona basın.</value></data>
   <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Kenar çubuğunu göster veya gizle</value></data>
@@ -132,6 +134,8 @@
   <data name="settings.createKey" xml:space="preserve"><value>Anahtar oluştur</value></data>
   <data name="settings.revealFolder" xml:space="preserve"><value>Klasörü göster</value></data>
   <data name="settings.reload" xml:space="preserve"><value>Yeniden yükle</value></data>
+  <data name="attachment.files" xml:space="preserve"><value>Dosya veya fotoğraf ekle</value></data>
+  <data name="attachment.project" xml:space="preserve"><value>Bir projede çalış</value></data>
   <data name="settings.plugins" xml:space="preserve"><value>Eklentiler</value></data>
   <data name="settings.pluginsHint" xml:space="preserve"><value>Native pluginler imzalı Marketplace üzerinden kurulur. JavaScript ve yalnızca manifest içeren pluginler yüklenmez; native kod açık Trust onayı gerektirir.</value></data>
   <data name="settings.lastMountFailed" xml:space="preserve"><value>Son bağlama başarısız oldu</value></data>
@@ -152,6 +156,7 @@
   <data name="conversation.title" xml:space="preserve"><value>Nokta Demeti</value></data>
   <data name="conversation.emptyNoProvider" xml:space="preserve"><value>Konuşmaya başlamak için bir sağlayıcı hesabı bağlayın.</value></data>
   <data name="conversation.emptySidebar" xml:space="preserve"><value>Kenar çubuğundan bir konuşma başlatın.</value></data>
+  <data name="conversation.loadOlderMessages" xml:space="preserve"><value>Daha eski mesajları yükle</value></data>
   <data name="conversation.allow" xml:space="preserve"><value>{0}'e izin verilsin mi?</value></data>
   <data name="vision.title" xml:space="preserve"><value>Görsel yedekleme</value></data>
   <data name="vision.installTitle" xml:space="preserve"><value>Bu sağlayıcı görseli okuyamıyor</value></data>
@@ -219,6 +224,7 @@
   <data name="conversation.dropFiles" xml:space="preserve"><value>Dosyaları buraya bırakın</value></data>
   <data name="conversation.send" xml:space="preserve"><value>Gönder</value></data>
   <data name="conversation.cacheExpired.notice" xml:space="preserve"><value>Önbellek süresi dolmuş olabilir; devam etmek token kullanımını ve maliyeti artırabilir. Kısa özetle yeni sohbet açın.</value></data>
+  <data name="conversation.cacheLocal.notice" xml:space="preserve"><value>Yerel modelin önbelleği temizlendi; tüm geçmiş yeniden işlenecek ve yanıt gecikebilir. Kısa özetle yeni sohbet açın.</value></data>
   <data name="conversation.cacheExpired.infoTitle" xml:space="preserve"><value>Bu uyarı neden görünüyor?</value></data>
   <data name="conversation.cacheExpired.explanation" xml:space="preserve"><value>Önbelleğin tahmini süresi doldu. Prompt cache, sağlayıcının geçici işlem belleğidir; sohbet geçmişiniz silinmez. Tüm geçmişi yeniden göndermek tokenları tekrar işletebilir ve maliyeti artırabilir. Gerçek cache isabeti ancak sonraki isteğin kullanım verisinden anlaşılır.</value></data>
   <data name="workspace.noProject" xml:space="preserve"><value>Projesiz devam et</value></data>
@@ -295,6 +301,8 @@
   <data name="conversation.activity.toolFailed" xml:space="preserve"><value>Araç başarısız oldu: {0}</value></data>
   <data name="status.pressContinue" xml:space="preserve"><value>Bu mesajı devam ettirmek için Devam'a basın.</value></data>
   <data name="media.generated" xml:space="preserve"><value>Görsel oluşturuldu.</value></data>
+  <data name="media.videoGenerated" xml:space="preserve"><value>Video oluşturuldu.</value></data>
+  <data name="media.audioGenerated" xml:space="preserve"><value>Konuşma oluşturuldu.</value></data>
   <data name="media.fallbackUsed" xml:space="preserve"><value>Seçili provider bu görseli üretemedi. Görsel {0}/{1} üzerinden tek seferlik fallback isteğiyle üretildi; ana sohbet provider'ı ve modeli değiştirilmedi, bu nedenle prompt cache'i korunuyor.</value></data>
   <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>Bu görseli {0} ile üretemiyorum. Görsel API'si/provider'ını fallback olarak yapılandırın. Yalnızca görsel üretmek için ana sohbet modelini değiştirmek provider prompt cache'ini bozabilir.</value></data>
   <data name="conversation.used" xml:space="preserve"><value>Kullanılmış</value></data>
@@ -370,13 +378,14 @@
   <data name="usage.resetsIn" xml:space="preserve"><value>{0} içinde yenilenir</value></data>
   <data name="usage.resetsOn" xml:space="preserve"><value>{0} yenilenir</value></data>
   <data name="usage.resetsAvailable" xml:space="preserve"><value>{0} yenileme hakkı</value></data>
-  <data name="usage.manageResets" xml:space="preserve"><value>Manage resets</value></data>
-  <data name="usage.useReset" xml:space="preserve"><value>Use reset</value></data>
-  <data name="usage.resetTitle" xml:space="preserve"><value>Use a Claude limit reset?</value></data>
-  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude's Usage page will open. Sign in to {0} and review the reset offered to that account. To use it, click Reset for free and confirm in Claude. Once used, a reset cannot be undone. Limits refresh when you return to HerNess.</value></data>
-  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Could not open Claude. Check that the account is still connected, then try again.</value></data>
-  <data name="usage.openClaude" xml:space="preserve"><value>Open Claude</value></data>
+  <data name="usage.manageResets" xml:space="preserve"><value>Sıfırlamaları yönet</value></data>
+  <data name="usage.useReset" xml:space="preserve"><value>Sıfırlamayı kullan</value></data>
+  <data name="usage.resetTitle" xml:space="preserve"><value>Claude limit sıfırlaması kullanılsın mı?</value></data>
+  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude'un Kullanım sayfası açılacak. {0} hesabına giriş yapın ve bu hesaba sunulan sıfırlamayı inceleyin. Kullanmak için Ücretsiz sıfırla'ya tıklayın ve Claude'da onaylayın. Kullanılan sıfırlama geri alınamaz. HerNess'e döndüğünüzde limitler yenilenir.</value></data>
+  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Claude açılamadı. Hesabın hâlâ bağlı olduğunu kontrol edip yeniden deneyin.</value></data>
+  <data name="usage.openClaude" xml:space="preserve"><value>Claude'u aç</value></data>
   <data name="usage.needLogin" xml:space="preserve"><value>Limitleri görmek için Claude ile giriş yapın</value></data>
+  <data name="agent.providerLimitTitle" xml:space="preserve"><value>Sağlayıcı limiti aşıldı</value></data>
   <data name="usage.noLimitInfo" xml:space="preserve"><value>Limit bilgisi yok</value></data>
   <data name="usage.loadFailed" xml:space="preserve"><value>Kullanım yüklenemedi</value></data>
   <data name="usage.loading" xml:space="preserve"><value>Kullanım yükleniyor…</value></data>
@@ -409,7 +418,7 @@
   <data name="conversation.runningTools" xml:space="preserve"><value>Araçlar çalışıyor…</value></data>
   <data name="conversation.thinkingPhase" xml:space="preserve"><value>Düşünüyor…</value></data>
   <data name="conversation.tokensCount" xml:space="preserve"><value>{0} token</value></data>
-  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} token</value></data>
+  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} yeni işlenen token</value></data>
   <data name="usage.context.window" xml:space="preserve"><value>Bağlam penceresi</value></data>
   <data name="usage.planLimits" xml:space="preserve"><value>Plan kullanım limitleri</value></data>
   <data name="composer.queue.one" xml:space="preserve"><value>1 mesaj kuyrukta</value></data>
@@ -486,7 +495,7 @@
   <data name="ssh.error.unavailable" xml:space="preserve"><value>Bu bilgisayarda OpenSSH bulunamadı.</value></data>
   <data name="ssh.error.notReachable" xml:space="preserve"><value>{0} sunucusuna erişilemedi.</value></data>
   <data name="settings.mcpServers" xml:space="preserve"><value>MCP sunucuları</value></data>
-  <data name="mcp.empty" xml:space="preserve"><value>Henüz MCP sunucusu yapılandırılmadı.</value></data>
+  <data name="mcp.empty" xml:space="preserve"><value>Yapılandırılmış MCP sunucusu yok.</value></data>
   <data name="mcp.addServer" xml:space="preserve"><value>Sunucu ekle</value></data>
   <data name="mcp.name" xml:space="preserve"><value>Ad</value></data>
   <data name="mcp.transport" xml:space="preserve"><value>Aktarım</value></data>
@@ -495,23 +504,31 @@
   <data name="mcp.url" xml:space="preserve"><value>URL</value></data>
   <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (isteğe bağlı)</value></data>
   <data name="mcp.executable" xml:space="preserve"><value>Çalıştırılabilir dosya</value></data>
-  <data name="mcp.arguments" xml:space="preserve"><value>Bağımsız değişkenler (boşlukla ayrılmış)</value></data>
+  <data name="mcp.arguments" xml:space="preserve"><value>Argümanlar (boşlukla ayrılmış)</value></data>
   <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Sunucunun salt okunur işaretlediği araçları otomatik çalıştır</value></data>
   <data name="mcp.autoRunHelp" xml:space="preserve"><value>Sunucu açıklamaları güvenilir sayılmaz. Bu seçenek yalnızca salt okunur ve yıkıcı olarak işaretlenmemiş araçlarda onayı atlar.</value></data>
   <data name="mcp.test" xml:space="preserve"><value>Dene</value></data>
-  <data name="mcp.add" xml:space="preserve"><value>Ekle</value></data>
+  <data name="mcp.add" xml:space="preserve"><value>Sunucu ekle</value></data>
   <data name="mcp.reconnect" xml:space="preserve"><value>Yeniden bağlan</value></data>
   <data name="mcp.remove" xml:space="preserve"><value>Kaldır</value></data>
   <data name="mcp.idle" xml:space="preserve"><value>Boşta</value></data>
   <data name="mcp.connecting" xml:space="preserve"><value>Bağlanıyor…</value></data>
   <data name="mcp.connected" xml:space="preserve"><value>Bağlandı · {0} araç</value></data>
   <data name="mcp.failed" xml:space="preserve"><value>Başarısız: {0}</value></data>
-  <data name="mcp.testing" xml:space="preserve"><value>Bağlantı deneniyor…</value></data>
+  <data name="mcp.testing" xml:space="preserve"><value>Test ediliyor…</value></data>
   <data name="mcp.testConnected" xml:space="preserve"><value>Bağlandı. {0} araç kullanılabilir.</value></data>
   <data name="conversation.toolInput" xml:space="preserve"><value>Araç girdisi</value></data>
   <data name="settings.tab.memory" xml:space="preserve"><value>Bellek</value></data>
   <data name="memory.vault.title" xml:space="preserve"><value>Bellek kasası</value></data>
   <data name="memory.refresh" xml:space="preserve"><value>Yenile</value></data>
+  <data name="memory.enabled" xml:space="preserve"><value>Hafıza açık</value></data>
+  <data name="memory.scanFrequency" xml:space="preserve"><value>Tarama sıklığı</value></data>
+  <data name="memory.scan.off" xml:space="preserve"><value>Kapalı</value></data>
+  <data name="memory.scan.hourly" xml:space="preserve"><value>Saatte bir</value></data>
+  <data name="memory.scan.daily" xml:space="preserve"><value>Günde bir</value></data>
+  <data name="memory.scan.weekly" xml:space="preserve"><value>Haftada bir</value></data>
+  <data name="memory.enabledHelp" xml:space="preserve"><value>Kapalıyken hiçbir görev not edilmez, hiçbir şey öğrenilmez ve modele bulgu verilmez; daha önce saklananlar diskte olduğu gibi kalır.</value></data>
+  <data name="memory.scanHelp" xml:space="preserve"><value>Kısa görev notları taramadan sonra da bulguların gerekçesini geri çağırmak için saklanır; tarama kapalıyken arka planda model çağrılmaz.</value></data>
   <data name="memory.reveal" xml:space="preserve"><value>.mem klasörünü aç</value></data>
   <data name="memory.refused" xml:space="preserve"><value>Kaydedilmedi. Girdi bir kimlik bilgisi içeriyor, sınırı aşıyor veya çalışma alanına yazılamıyor olabilir.</value></data>
   <data name="memory.noWorkspace" xml:space="preserve"><value>Belleği görüntülemek için yerel bir çalışma alanı seçin.</value></data>
@@ -534,36 +551,20 @@
   <data name="memory.pin" xml:space="preserve"><value>Sabitle</value></data>
   <data name="memory.edit" xml:space="preserve"><value>Düzenle</value></data>
   <data name="memory.cancel" xml:space="preserve"><value>Vazgeç</value></data>
-  <data name="settings.tab.access" xml:space="preserve"><value>Çalışma alanı erişimi</value></data>
-  <data name="access.currentActor" xml:space="preserve"><value>Geçerli aktör</value></data>
-  <data name="access.role" xml:space="preserve"><value>Rol</value></data>
-  <data name="access.notAuthorized" xml:space="preserve"><value>Yetkili değil</value></data>
-  <data name="access.score" xml:space="preserve"><value>Puan</value></data>
-  <data name="access.device" xml:space="preserve"><value>Cihaz</value></data>
-  <data name="access.publicKey" xml:space="preserve"><value>Açık anahtar</value></data>
-  <data name="access.memoryRevision" xml:space="preserve"><value>Bellek sürümü</value></data>
-  <data name="access.members" xml:space="preserve"><value>Üyeler</value></data>
-  <data name="access.noMembers" xml:space="preserve"><value>Henüz üye yok.</value></data>
-  <data name="access.revoke" xml:space="preserve"><value>Yetkiyi kaldır</value></data>
-  <data name="access.revoked" xml:space="preserve"><value>yetkisi kaldırıldı</value></data>
-  <data name="access.inviteDevice" xml:space="preserve"><value>Cihaz davet et</value></data>
-  <data name="access.displayName" xml:space="preserve"><value>Görünen ad</value></data>
-  <data name="access.newDevicePublicKey" xml:space="preserve"><value>Yeni cihaz açık anahtarı</value></data>
-  <data name="access.createInvitation" xml:space="preserve"><value>İmzalı davet oluştur</value></data>
-  <data name="access.acceptInvitation" xml:space="preserve"><value>Daveti kabul et</value></data>
-  <data name="access.signedInvitation" xml:space="preserve"><value>İmzalı davet</value></data>
+  <data name="settings.tab.memoryTransfer" xml:space="preserve"><value>Bellek aktarımı</value></data>
+  <data name="memory.transfer.title" xml:space="preserve"><value>Bellek aktarımı</value></data>
+  <data name="memory.transfer.description" xml:space="preserve"><value>Dışa veya içe aktarılabilir bellek dosyaları oluşturun. Kişisel bellek, siz dışa aktarmayı seçene kadar bu bilgisayarda kalır.</value></data>
+  <data name="memory.transfer.project" xml:space="preserve"><value>Proje belleği</value></data>
+  <data name="memory.transfer.projectHelp" xml:space="preserve"><value>Proje bilgilerini ve kararlarını içerir. Kişisel tercihleri, sohbetleri, görevleri, cihaz anahtarlarını ve erişim verilerini içermez.</value></data>
+  <data name="memory.transfer.personal" xml:space="preserve"><value>Kişisel bellek</value></data>
+  <data name="memory.transfer.personalHelp" xml:space="preserve"><value>Kaydedilmiş tercihlerinizi ve profilinizi içerir. Proje bilgilerini, sohbetleri ve görev geçmişini içermez.</value></data>
+  <data name="memory.transfer.export" xml:space="preserve"><value>Dışa aktar</value></data>
+  <data name="memory.transfer.import" xml:space="preserve"><value>İçe aktar</value></data>
+  <data name="memory.transfer.exported" xml:space="preserve"><value>Bellek dosyası kaydedildi.</value></data>
+  <data name="memory.transfer.imported" xml:space="preserve"><value>Bellek içe aktarıldı. Eşleşen kayıtlar güncellendi.</value></data>
+  <data name="memory.transfer.invalidArchive" xml:space="preserve"><value>Bu bellek dosyası geçersiz veya farklı bir kapsama ait.</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Bellek aktarımı</value></data>
   <data name="access.accept" xml:space="preserve"><value>Kabul et</value></data>
-  <data name="access.reject" xml:space="preserve"><value>Reddet</value></data>
-  <data name="access.pendingDecisions" xml:space="preserve"><value>Bekleyen kararlar</value></data>
-  <data name="access.noPendingDecisions" xml:space="preserve"><value>Bekleyen proje kararı yok.</value></data>
-  <data name="access.noWorkspace" xml:space="preserve"><value>Erişimi yönetmek için yerel bir çalışma alanı seçin.</value></data>
-  <data name="access.scoreValue" xml:space="preserve"><value>Puan: {0}</value></data>
-  <data name="access.initialize" xml:space="preserve"><value>Çalışma alanı belleğini başlat</value></data>
-  <data name="access.initializeHelp" xml:space="preserve"><value>Çalışma alanı erişimi imzalı bir bellek günlüğü kullanır. Başlatma, bu projenin .mem klasöründe sahip kimliği ve olay günlüğü oluşturur.</value></data>
-  <data name="access.role.owner" xml:space="preserve"><value>Sahip</value></data>
-  <data name="access.role.approver" xml:space="preserve"><value>Onaylayıcı</value></data>
-  <data name="access.role.contributor" xml:space="preserve"><value>Katılımcı</value></data>
-  <data name="access.role.observer" xml:space="preserve"><value>Gözlemci</value></data>
   <data name="settings.sandbox" xml:space="preserve"><value>Sandbox</value></data>
   <data name="settings.sandboxOff" xml:space="preserve"><value>Kapalı — ajan doğrudan mevcut çalışma ağacınızda çalışır.</value></data>
   <data name="settings.sandboxOn" xml:space="preserve"><value>Açık — ajan ayrı bir git worktree içinde çalışır.</value></data>
@@ -608,26 +609,26 @@
   <data name="context.overflowDeclined" xml:space="preserve"><value>Gönderim durduruldu: konuşma yeni modele sığmıyor.</value></data>
   <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>Başka bir sohbet aynı dosyayı yazıyorsa</value></data>
   <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Sormadan önce bekle</value></data>
-  <data name="settings.conflictWaitValue" xml:space="preserve"><value>{0} saniye bekle</value></data>
+  <data name="settings.conflictWaitValue" xml:space="preserve"><value>{0} saniye</value></data>
   <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Bekle, sonra sor</value></data>
-  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>Başka bir sohbetin yazdığı dosya için önce sessizce bekle; bekleme uzarsa sor.</value></data>
+  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>Diğer sohbeti sessizce bekler; bekleyiş uzarsa sorar.</value></data>
   <data name="conflict.policy.ask" xml:space="preserve"><value>Bana sor</value></data>
-  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>İki sohbet aynı dosyayı istediğinde hemen sor.</value></data>
+  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>İki sohbet aynı dosyayı ister istemez sorar.</value></data>
   <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Her zaman bekle</value></data>
-  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Sorma; dosyayı tutan sohbet bitene kadar bekle.</value></data>
-  <data name="conflict.title" xml:space="preserve"><value>Dosya kullanımda: {0}</value></data>
-  <data name="conflict.wholeProject" xml:space="preserve"><value>Proje komutu: {0}</value></data>
-  <data name="conflict.stillBusy" xml:space="preserve"><value>Yazma bekletildi: başka bir sohbet hâlâ {0} üzerinde çalışıyor.</value></data>
-  <data name="conflict.userSkipped" xml:space="preserve"><value>İstediğin gibi {0} yazılmadı; diğer sohbette bırakıldı ({1}).</value></data>
-  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Bu sohbetin yazabilmesi için {0} durduruldu.</value></data>
-  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Bu sohbetin yazabilmesi için diğer sohbetler durduruldu.</value></data>
+  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Sormaz: her yazma, dosyayı elinde tutan sohbeti bekler.</value></data>
+  <data name="conflict.title" xml:space="preserve"><value>{0} başka bir sohbette yazılıyor</value></data>
+  <data name="conflict.wholeProject" xml:space="preserve"><value>tüm proje (komut: {0})</value></data>
+  <data name="conflict.stillBusy" xml:space="preserve"><value>Yazma bekletildi: {0} hâlâ başka bir sohbet tarafından yazılıyor.</value></data>
+  <data name="conflict.userSkipped" xml:space="preserve"><value>Yazma atlandı: {0}, istediğin üzere diğer sohbette ({1}) kaldı.</value></data>
+  <data name="conflict.stoppedHolder" xml:space="preserve"><value>İstediğin üzere “{0}” sohbeti durduruldu ve bu yazma yapıldı.</value></data>
+  <data name="conflict.stoppedOthers" xml:space="preserve"><value>İstediğin üzere projenin diğer sohbetleri durduruldu ve bu yazma yapıldı.</value></data>
   <data name="conflict.banner.title" xml:space="preserve"><value>Başka bir sohbet bu dosyayı yazıyor</value></data>
-  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · “{1}” {2} saniyedir dosyayı tutuyor</value></data>
-  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Beklemeye devam et</value></data>
-  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>{0} sohbetini durdur</value></data>
-  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Diğer sohbetleri durdur</value></data>
-  <data name="conflict.banner.skip" xml:space="preserve"><value>Bu yazmayı atla</value></data>
-  <data name="conflict.waiting" xml:space="preserve"><value>“{0}” yazmayı bitirsin diye bekleniyor: {1}</value></data>
+  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · {1} sohbeti bunu {2} saniyedir elinde tutuyor</value></data>
+  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Beklemeye devam</value></data>
+  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>O sohbeti durdur</value></data>
+  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Diğer tüm sohbetleri durdur</value></data>
+  <data name="conflict.banner.skip" xml:space="preserve"><value>Bu yazmadan vazgeç</value></data>
+  <data name="conflict.waiting" xml:space="preserve"><value>“{0}” sohbetinin yazması bekleniyor: {1}</value></data>
   <data name="usage.context.button" xml:space="preserve"><value>Kullanım</value></data>
   <data name="usage.context.tooltip" xml:space="preserve"><value>Bağlam ve token kullanımı</value></data>
   <data name="usage.context.latestRequest" xml:space="preserve"><value>Son istek · bağlam penceresi</value></data>
@@ -655,4 +656,692 @@
   <data name="usage.context.latency" xml:space="preserve"><value>Ortalama istek gecikmesi: {0}</value></data>
   <data name="usage.context.prepare" xml:space="preserve"><value>Ortalama istek hazırlığı: {0}</value></data>
   <data name="usage.context.cacheLoss" xml:space="preserve"><value>En büyük önbellek kaybı: {0} ({1} token)</value></data>
+  <data name="settings.skillSuggestions" xml:space="preserve"><value>Beceri önerilerini göster</value></data>
+  <data name="settings.skillSuggestions.hint" xml:space="preserve"><value>Yalnızca bir ders üç kez öğrenildiğinde veya ajan tekrar ihtiyaç duyacağın bir iş akışını bitirdiğinde beceri önerir; haftada en fazla bir kart. Kapalı: öneri kartı çıkmaz, ajan da beceri önermez.</value></data>
+  <data name="skill.suggestion.title" xml:space="preserve"><value>Önerilen beceri: {0}</value></data>
+  <data name="skill.suggestion.create" xml:space="preserve"><value>Beceri oluştur</value></data>
+  <data name="skill.suggestion.dismiss" xml:space="preserve"><value>Şimdi değil</value></data>
+  <data name="tasks.menu" xml:space="preserve"><value>Görevler</value></data>
+  <data name="tasks.title" xml:space="preserve"><value>Zamanlanmış Görevler</value></data>
+  <data name="tasks.subtitle" xml:space="preserve"><value>Bir istemi cron zamanlamasıyla çalıştır.</value></data>
+  <data name="tasks.empty" xml:space="preserve"><value>Henüz görev yok.</value></data>
+  <data name="tasks.add" xml:space="preserve"><value>Görev Ekle</value></data>
+  <data name="tasks.edit" xml:space="preserve"><value>Görevi Düzenle</value></data>
+  <data name="tasks.delete" xml:space="preserve"><value>Sil</value></data>
+  <data name="tasks.runNow" xml:space="preserve"><value>Şimdi çalıştır</value></data>
+  <data name="tasks.enabled" xml:space="preserve"><value>Etkin</value></data>
+  <data name="tasks.field.name" xml:space="preserve"><value>Ad</value></data>
+  <data name="tasks.field.cron" xml:space="preserve"><value>Cron ifadesi</value></data>
+  <data name="tasks.field.prompt" xml:space="preserve"><value>İstem</value></data>
+  <data name="tasks.field.workspace" xml:space="preserve"><value>Çalışma alanı</value></data>
+  <data name="tasks.cron.invalid" xml:space="preserve"><value>Geçersiz cron ifadesi.</value></data>
+  <data name="tasks.cron.next" xml:space="preserve"><value>Sonraki çalıştırmalar</value></data>
+  <data name="tasks.close" xml:space="preserve"><value>Görevleri kapat</value></data>
+  <data name="tasks.back" xml:space="preserve"><value>Geri</value></data>
+  <data name="tasks.new" xml:space="preserve"><value>Yeni görev</value></data>
+  <data name="tasks.active" xml:space="preserve"><value>Görevlerin</value></data>
+  <data name="tasks.disabled" xml:space="preserve"><value>Devre dışı</value></data>
+  <data name="tasks.suggestions" xml:space="preserve"><value>Öneriler</value></data>
+  <data name="tasks.history" xml:space="preserve"><value>Son çalıştırmalar</value></data>
+  <data name="tasks.history.empty" xml:space="preserve"><value>Bu görev henüz çalıştırılmadı.</value></data>
+  <data name="tasks.field.target" xml:space="preserve"><value>Hedef dosya veya klasör</value></data>
+  <data name="tasks.field.targetHint" xml:space="preserve"><value>Çalışma alanı içindeki isteğe bağlı yol</value></data>
+  <data name="tasks.target.invalid" xml:space="preserve"><value>Hedef çalışma alanının içinde bulunmalıdır.</value></data>
+  <data name="tasks.field.model" xml:space="preserve"><value>Model</value></data>
+  <data name="tasks.field.fallback" xml:space="preserve"><value>Yedek model</value></data>
+  <data name="tasks.network" xml:space="preserve"><value>Ağ erişimine izin ver</value></data>
+  <data name="tasks.assistant.title" xml:space="preserve"><value>Görev asistanı</value></data>
+  <data name="tasks.assistant.placeholder" xml:space="preserve"><value>Görevi değiştirmesini iste…</value></data>
+  <data name="tasks.assistant.updated" xml:space="preserve"><value>Görev güncellendi.</value></data>
+  <data name="tasks.notification.title" xml:space="preserve"><value>Zamanlanmış görev</value></data>
+  <data name="tasks.notification.completed" xml:space="preserve"><value>Tamamlandı</value></data>
+  <data name="tasks.notification.failed" xml:space="preserve"><value>Başarısız</value></data>
+  <data name="tasks.notification.fallback" xml:space="preserve"><value>Yedek model kullanıldı</value></data>
+  <data name="tasks.suggestion.daily.title" xml:space="preserve"><value>Günlük özet</value></data>
+  <data name="tasks.suggestion.daily.detail" xml:space="preserve"><value>Son çalışmaları, öncelikleri ve çalışma alanı değişikliklerini özetle.</value></data>
+  <data name="tasks.suggestion.daily.schedule" xml:space="preserve"><value>Hafta içi 08:00</value></data>
+  <data name="tasks.suggestion.daily.prompt" xml:space="preserve"><value>Son konuşmaları ve çalışma alanı değişikliklerini incele. Bugünün en önemli önceliklerini özetle.</value></data>
+  <data name="tasks.suggestion.weekly.title" xml:space="preserve"><value>Haftalık inceleme</value></data>
+  <data name="tasks.suggestion.weekly.detail" xml:space="preserve"><value>Son çalışmaları her cuma kısa bir durum güncellemesine dönüştür.</value></data>
+  <data name="tasks.suggestion.weekly.schedule" xml:space="preserve"><value>Cuma günleri 16:00</value></data>
+  <data name="tasks.suggestion.weekly.prompt" xml:space="preserve"><value>Bu haftanın konuşmalarını ve çalışma alanı değişikliklerini incele. Tamamlanan işleri, riskleri ve sonraki adımları içeren kısa bir durum güncellemesi yaz.</value></data>
+  <data name="tasks.suggestion.followup.title" xml:space="preserve"><value>Takip monitörü</value></data>
+  <data name="tasks.suggestion.followup.detail" xml:space="preserve"><value>Son etkinliği incele ve dikkat gerektiren her şeyi işaretle.</value></data>
+  <data name="tasks.suggestion.followup.schedule" xml:space="preserve"><value>Hafta içi 09:00</value></data>
+  <data name="tasks.suggestion.followup.prompt" xml:space="preserve"><value>Son görev ve çalışma alanı etkinliğini incele. Tamamlanmamış işleri, başarısız çalıştırmaları ve dikkat gerektiren her şeyi işaretle.</value></data>
+  <data name="tasks.lastRun" xml:space="preserve"><value>Son çalışma</value></data>
+  <data name="tasks.state.never" xml:space="preserve"><value>Hiç çalışmadı</value></data>
+  <data name="tasks.state.running" xml:space="preserve"><value>Çalışıyor…</value></data>
+  <data name="tasks.state.ok" xml:space="preserve"><value>Başarılı</value></data>
+  <data name="tasks.state.failed" xml:space="preserve"><value>Başarısız</value></data>
+  <data name="tasks.openConversation" xml:space="preserve"><value>Konuşmayı aç</value></data>
+  <data name="tasks.save" xml:space="preserve"><value>Kaydet</value></data>
+  <data name="tasks.cancel" xml:space="preserve"><value>İptal</value></data>
+  <data name="tasks.background" xml:space="preserve"><value>Uygulama kapalıyken görevleri çalıştır</value></data>
+  <data name="tasks.background.hint" xml:space="preserve"><value>Dots Harness açık olmasa bile zamanı gelen görevleri çalıştıran bir arka plan yardımcısı (launchd) kurar.</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Harita</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Dizin</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Görevler</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Kararlar</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Tercihler</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Sohbetler</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Bağlantılı bahsetme yok.</value></data>
+  <data name="memory.graph" xml:space="preserve"><value>Grafik</value></data>
+  <data name="media.image" xml:space="preserve"><value>görsel</value></data>
+  <data name="media.video" xml:space="preserve"><value>video</value></data>
+  <data name="media.audio" xml:space="preserve"><value>ses</value></data>
+  <data name="media.promptMissing" xml:space="preserve"><value>Komuttan sonra ne üretilmesi gerektiğini yazın.</value></data>
+  <data name="media.promptMissingFor" xml:space="preserve"><value>Üretilecek {0} için komuttan sonra bir açıklama yazın.</value></data>
+  <data name="media.modelMissing" xml:space="preserve"><value>Medya provider modeli yapılandırılmamış.</value></data>
+  <data name="media.noOutput" xml:space="preserve"><value>Provider medya çıktısı döndürmedi.</value></data>
+  <data name="media.invalidOutput" xml:space="preserve"><value>Provider geçersiz medya verisi döndürdü.</value></data>
+  <data name="media.generationFailed" xml:space="preserve"><value>Provider medyayı üretemedi.</value></data>
+  <data name="media.videoTimeout" xml:space="preserve"><value>Video üretimi zaman aşımına uğradı.</value></data>
+  <data name="media.busy" xml:space="preserve"><value>Başka bir üretim veya ajan çalışması devam ediyor. Bittiğinde tekrar deneyin.</value></data>
+  <data name="media.unsupported" xml:space="preserve"><value>Bunu üretemiyorum. Seçili provider'ın bu yeteneği yok.</value></data>
+  <data name="media.unsupportedStatus" xml:space="preserve"><value>Seçili provider medya üretimini desteklemiyor.</value></data>
+  <data name="media.fileMissing" xml:space="preserve"><value>Üretilen dosya artık kullanılamıyor.</value></data>
+  <data name="media.openAudio" xml:space="preserve"><value>Üretilen sesi aç</value></data>
+  <data name="media.save" xml:space="preserve"><value>Kaydet</value></data>
+  <data name="media.showInFinder" xml:space="preserve"><value>Finder'da göster</value></data>
+  <data name="rail.home" xml:space="preserve"><value>Anasayfa</value></data>
+  <data name="rail.media" xml:space="preserve"><value>Medya</value></data>
+  <data name="rail.tasks" xml:space="preserve"><value>Görevler</value></data>
+  <data name="rail.bots" xml:space="preserve"><value>Botlar</value></data>
+  <data name="rail.marketplace" xml:space="preserve"><value>Mağaza</value></data>
+  <data name="rail.memory" xml:space="preserve"><value>Hafıza</value></data>
+  <data name="rail.settings" xml:space="preserve"><value>Ayarlar</value></data>
+  <data name="models.followApp" xml:space="preserve"><value>Uygulamanın modeli</value></data>
+  <data name="studio.preset.square" xml:space="preserve"><value>Kare gönderi</value></data>
+  <data name="studio.preset.story" xml:space="preserve"><value>Hikâye</value></data>
+  <data name="studio.preset.landscape" xml:space="preserve"><value>Yatay</value></data>
+  <data name="studio.preset.thumbnail" xml:space="preserve"><value>Video kapağı</value></data>
+  <data name="studio.preset.logo" xml:space="preserve"><value>Logo</value></data>
+  <data name="studio.preset.poster" xml:space="preserve"><value>Afiş</value></data>
+  <data name="studio.template.announcement" xml:space="preserve"><value>Duyuru</value></data>
+  <data name="studio.template.story" xml:space="preserve"><value>Hikâye</value></data>
+  <data name="studio.template.thumbnail" xml:space="preserve"><value>Video kapağı</value></data>
+  <data name="studio.template.slide" xml:space="preserve"><value>Başlık slaytı</value></data>
+  <data name="studio.template.logo" xml:space="preserve"><value>Logo</value></data>
+  <data name="studio.template.mobile" xml:space="preserve"><value>Mobil ekran</value></data>
+  <data name="studio.category.social" xml:space="preserve"><value>Sosyal Medya</value></data>
+  <data name="studio.category.uiux" xml:space="preserve"><value>UI/UX</value></data>
+  <data name="studio.category.presentation" xml:space="preserve"><value>Sunum &amp; İnfografik</value></data>
+  <data name="studio.category.other" xml:space="preserve"><value>Diğer tasarımlar</value></data>
+  <data name="studio.sample.title" xml:space="preserve"><value>Başlığınız</value></data>
+  <data name="studio.sample.detail" xml:space="preserve"><value>Biraz daha anlatan kısa bir satır</value></data>
+  <data name="studio.sample.brand" xml:space="preserve"><value>Marka</value></data>
+  <data name="studio.sample.text" xml:space="preserve"><value>Yazı</value></data>
+  <data name="studio.copyOf" xml:space="preserve"><value>{0} kopyası</value></data>
+  <data name="studio.untitled" xml:space="preserve"><value>Adsız proje</value></data>
+  <data name="studio.home.title" xml:space="preserve"><value>Fikrini anlat, hayata geçsin</value></data>
+  <data name="studio.home.search" xml:space="preserve"><value>Ara</value></data>
+  <data name="studio.home.sort.name" xml:space="preserve"><value>Ad</value></data>
+  <data name="studio.home.filter.all" xml:space="preserve"><value>Tüm zamanlar</value></data>
+  <data name="studio.home.filter.week" xml:space="preserve"><value>Son 7 gün</value></data>
+  <data name="studio.home.filter.month" xml:space="preserve"><value>Son 30 gün</value></data>
+  <data name="studio.home.starred" xml:space="preserve"><value>Yıldızlı</value></data>
+  <data name="studio.home.star" xml:space="preserve"><value>Yıldızla</value></data>
+  <data name="studio.home.unstar" xml:space="preserve"><value>Yıldızı kaldır</value></data>
+  <data name="studio.home.modified" xml:space="preserve"><value>Son düzenleme</value></data>
+  <data name="studio.home.canvases" xml:space="preserve"><value>Canvas</value></data>
+  <data name="studio.projects" xml:space="preserve"><value>Projeler</value></data>
+  <data name="studio.templates" xml:space="preserve"><value>Şablonlar</value></data>
+  <data name="studio.community" xml:space="preserve"><value>Topluluk</value></data>
+  <data name="studio.community.banner" xml:space="preserve"><value>Topluluğun yaptığı tasarımları keşfedin</value></data>
+  <data name="studio.community.saved" xml:space="preserve"><value>Kaydedilenler</value></data>
+  <data name="studio.community.share" xml:space="preserve"><value>Toplulukta paylaş</value></data>
+  <data name="studio.community.shared" xml:space="preserve"><value>İncelemeye gönderildi. Onaylanınca Topluluk'ta görünür.</value></data>
+  <data name="studio.community.signIn" xml:space="preserve"><value>Toplulukta paylaşmak için HerNess hesabınızla oturum açın.</value></data>
+  <data name="studio.community.empty" xml:space="preserve"><value>Burada henüz topluluk tasarımı yok.</value></data>
+  <data name="studio.projectName" xml:space="preserve"><value>Proje adı</value></data>
+  <data name="studio.newProject" xml:space="preserve"><value>Yeni proje</value></data>
+  <data name="studio.create" xml:space="preserve"><value>Projeyi oluştur</value></data>
+  <data name="studio.rename" xml:space="preserve"><value>Yeniden adlandır</value></data>
+  <data name="studio.duplicate" xml:space="preserve"><value>Çoğalt</value></data>
+  <data name="studio.deleteConfirm" xml:space="preserve"><value>“{0}” silinsin mi? Canvas'ları ve yüklenen dosyaları kaldırılır.</value></data>
+  <data name="studio.projectMeta" xml:space="preserve"><value>Canvas: {0}, {1} düzenlendi</value></data>
+  <data name="studio.empty.title" xml:space="preserve"><value>Henüz media projesi yok</value></data>
+  <data name="studio.empty.detail" xml:space="preserve"><value>Proje, canvas'lardan oluşan bir panodur. Yazı, şekil ve görselleri kendiniz ekleyin ya da ne istediğinizi yazın, model katman katman kursun.</value></data>
+  <data name="studio.addCanvas" xml:space="preserve"><value>Tuval</value></data>
+  <data name="studio.undo" xml:space="preserve"><value>Geri al</value></data>
+  <data name="studio.redo" xml:space="preserve"><value>Yinele</value></data>
+  <data name="studio.zoomOut" xml:space="preserve"><value>Uzaklaştır</value></data>
+  <data name="studio.zoomIn" xml:space="preserve"><value>Yakınlaştır</value></data>
+  <data name="studio.zoomFit" xml:space="preserve"><value>Tüm canvas'ları sığdır</value></data>
+  <data name="studio.layers" xml:space="preserve"><value>Katmanlar</value></data>
+  <data name="studio.layers.empty" xml:space="preserve"><value>Bu canvas'ta henüz katman yok.</value></data>
+  <data name="studio.layer.text" xml:space="preserve"><value>Yazı</value></data>
+  <data name="studio.layer.shape" xml:space="preserve"><value>Şekil</value></data>
+  <data name="studio.layer.upload" xml:space="preserve"><value>Yükle</value></data>
+  <data name="studio.layer.show" xml:space="preserve"><value>Katmanı göster</value></data>
+  <data name="studio.layer.hide" xml:space="preserve"><value>Katmanı gizle</value></data>
+  <data name="studio.shape.rectangle" xml:space="preserve"><value>Dikdörtgen</value></data>
+  <data name="studio.shape.ellipse" xml:space="preserve"><value>Elips</value></data>
+  <data name="studio.name" xml:space="preserve"><value>Ad</value></data>
+  <data name="studio.opacity" xml:space="preserve"><value>Opaklık</value></data>
+  <data name="studio.fontSize" xml:space="preserve"><value>Boyut</value></data>
+  <data name="studio.weight.regular" xml:space="preserve"><value>Normal</value></data>
+  <data name="studio.weight.medium" xml:space="preserve"><value>Orta</value></data>
+  <data name="studio.weight.bold" xml:space="preserve"><value>Kalın</value></data>
+  <data name="studio.fill" xml:space="preserve"><value>Dolgu</value></data>
+  <data name="studio.cornerRadius" xml:space="preserve"><value>Köşe yuvarlaklığı</value></data>
+  <data name="studio.playVideo" xml:space="preserve"><value>Videoyu oynat</value></data>
+  <data name="studio.size" xml:space="preserve"><value>Boyut</value></data>
+  <data name="studio.background" xml:space="preserve"><value>Arka plan</value></data>
+  <data name="studio.deleteCanvas" xml:space="preserve"><value>Canvas'ı sil</value></data>
+  <data name="studio.ai.kind.design" xml:space="preserve"><value>Tasarım</value></data>
+  <data name="studio.ai.kind.image" xml:space="preserve"><value>Görsel</value></data>
+  <data name="studio.ai.kind.video" xml:space="preserve"><value>Video</value></data>
+  <data name="studio.ai.placeholder.design" xml:space="preserve"><value>Bu canvas'ta kurulacak tasarımı anlatın</value></data>
+  <data name="studio.ai.placeholder.image" xml:space="preserve"><value>Üretilecek görseli anlatın</value></data>
+  <data name="studio.ai.placeholder.video" xml:space="preserve"><value>Üretilecek videoyu anlatın</value></data>
+  <data name="studio.ai.run" xml:space="preserve"><value>Üret</value></data>
+  <data name="studio.ai.planning" xml:space="preserve"><value>Katmanlar planlanıyor</value></data>
+  <data name="studio.ai.layerProgress" xml:space="preserve"><value>Katman {0} / {1}: {2}</value></data>
+  <data name="studio.ai.drawing" xml:space="preserve"><value>Görsel üretiliyor</value></data>
+  <data name="studio.ai.renderingVideo" xml:space="preserve"><value>Video üretiliyor. Birkaç dakika sürebilir.</value></data>
+  <data name="studio.ai.noPlan" xml:space="preserve"><value>Model katman döndürmedi. Yeniden deneyin ya da başka bir model seçin.</value></data>
+  <data name="studio.settings.title" xml:space="preserve"><value>Media modelleri</value></data>
+  <data name="studio.settings.design" xml:space="preserve"><value>Tasarım</value></data>
+  <data name="studio.settings.model" xml:space="preserve"><value>Model</value></data>
+  <data name="studio.settings.designHelp" xml:space="preserve"><value>İsteği katmanlara çeviren sohbet modeli.</value></data>
+  <data name="studio.settings.source" xml:space="preserve"><value>Kaynak</value></data>
+  <data name="studio.settings.source.provider" xml:space="preserve"><value>Sağlayıcı</value></data>
+  <data name="studio.settings.source.local" xml:space="preserve"><value>Yerel</value></data>
+  <data name="studio.settings.modelDefault" xml:space="preserve"><value>Sağlayıcı varsayılanı</value></data>
+  <data name="studio.settings.local" xml:space="preserve"><value>Yerel sunucu</value></data>
+  <data name="studio.settings.localURL" xml:space="preserve"><value>Temel URL</value></data>
+  <data name="studio.settings.localHelp" xml:space="preserve"><value>Bu makinedeki ya da ağdaki OpenAI uyumlu bir sunucu. Yukarıda kaynak Yerel seçildiğinde, oraya yazdığınız model adıyla kullanılır.</value></data>
+  <data name="studio.settings.music.connect" xml:space="preserve"><value>API bağla</value></data>
+  <data name="studio.settings.music.type.standard" xml:space="preserve"><value>Müzik sunucusu</value></data>
+  <data name="studio.settings.music.type.elevenlabs" xml:space="preserve"><value>ElevenLabs</value></data>
+  <data name="studio.settings.music.name" xml:space="preserve"><value>Ad</value></data>
+  <data name="studio.settings.music.key" xml:space="preserve"><value>API anahtarı</value></data>
+  <data name="studio.settings.music.help" xml:space="preserve"><value>Müzik sunucusu POST /audio/generations isteğini yanıtlar ve modellerini /models adresinde listeler; tools/music_server.py bunlardan biridir. API anahtarı Anahtar Zinciri'nde saklanır.</value></data>
+  <data name="studio.ai.kind.next" xml:space="preserve"><value>Sonraki ekran</value></data>
+  <data name="studio.ai.placeholder.next" xml:space="preserve"><value>Sonraki ekranı anlatın ya da akışı sürdürmek için boş bırakın</value></data>
+  <data name="studio.ai.noImages" xml:space="preserve"><value>Bağlı bir görsel üretici yok; görsel katmanları yer tutucu olarak bırakıldı. Bir üretici bağlayın, sonra her görseli kendi katmanından üretin.</value></data>
+  <data name="studio.screenNumber" xml:space="preserve"><value>Ekran {0}</value></data>
+  <data name="studio.layer.icon" xml:space="preserve"><value>Simge</value></data>
+  <data name="studio.layer.lock" xml:space="preserve"><value>Katmanı kilitle</value></data>
+  <data name="studio.layer.unlock" xml:space="preserve"><value>Katmanın kilidini aç</value></data>
+  <data name="studio.layer.front" xml:space="preserve"><value>En öne getir</value></data>
+  <data name="studio.layer.back" xml:space="preserve"><value>En arkaya gönder</value></data>
+  <data name="studio.position" xml:space="preserve"><value>Konum</value></data>
+  <data name="studio.rotation" xml:space="preserve"><value>Döndürme</value></data>
+  <data name="studio.appearance" xml:space="preserve"><value>Görünüm</value></data>
+  <data name="studio.gradient" xml:space="preserve"><value>Gradyan</value></data>
+  <data name="studio.stroke" xml:space="preserve"><value>Kontur</value></data>
+  <data name="studio.shadow" xml:space="preserve"><value>Gölge</value></data>
+  <data name="studio.symbol" xml:space="preserve"><value>Sembol adı</value></data>
+  <data name="studio.imagePrompt" xml:space="preserve"><value>Görsel açıklaması</value></data>
+  <data name="studio.generateImage" xml:space="preserve"><value>Görsel üret</value></data>
+  <data name="studio.export" xml:space="preserve"><value>Dışa aktar</value></data>
+  <data name="studio.exportAll" xml:space="preserve"><value>Tüm tuvalleri dışa aktar</value></data>
+  <data name="studio.font.default" xml:space="preserve"><value>Sans</value></data>
+  <data name="studio.font.rounded" xml:space="preserve"><value>Yuvarlak</value></data>
+  <data name="studio.font.serif" xml:space="preserve"><value>Serif</value></data>
+  <data name="studio.font.mono" xml:space="preserve"><value>Mono</value></data>
+  <data name="studio.tool.move" xml:space="preserve"><value>Taşı</value></data>
+  <data name="studio.tool.hand" xml:space="preserve"><value>El</value></data>
+  <data name="studio.tool.pen" xml:space="preserve"><value>Kalem</value></data>
+  <data name="studio.tool.pencil" xml:space="preserve"><value>Kurşun kalem</value></data>
+  <data name="studio.shape.line" xml:space="preserve"><value>Çizgi</value></data>
+  <data name="studio.shape.arrow" xml:space="preserve"><value>Ok</value></data>
+  <data name="studio.shape.polygon" xml:space="preserve"><value>Çokgen</value></data>
+  <data name="studio.shape.star" xml:space="preserve"><value>Yıldız</value></data>
+  <data name="studio.actions" xml:space="preserve"><value>Eylemler</value></data>
+  <data name="studio.unlockAll" xml:space="preserve"><value>Tüm katmanların kilidini aç</value></data>
+  <data name="studio.frames.phone" xml:space="preserve"><value>Telefon</value></data>
+  <data name="studio.frames.tablet" xml:space="preserve"><value>Tablet</value></data>
+  <data name="studio.frames.desktop" xml:space="preserve"><value>Masaüstü</value></data>
+  <data name="studio.frames.presentation" xml:space="preserve"><value>Sunum</value></data>
+  <data name="studio.frames.watch" xml:space="preserve"><value>Saat</value></data>
+  <data name="studio.frames.paper" xml:space="preserve"><value>Kâğıt</value></data>
+  <data name="studio.frames.social" xml:space="preserve"><value>Sosyal medya</value></data>
+  <data name="studio.tool.scale" xml:space="preserve"><value>Ölçekle</value></data>
+  <data name="studio.tool.section" xml:space="preserve"><value>Bölüm</value></data>
+  <data name="studio.tool.slice" xml:space="preserve"><value>Dilim</value></data>
+  <data name="studio.tool.textPath" xml:space="preserve"><value>Yol üzerinde metin</value></data>
+  <data name="studio.tool.comment" xml:space="preserve"><value>Yorum</value></data>
+  <data name="studio.search" xml:space="preserve"><value>Ara</value></data>
+  <data name="studio.cut" xml:space="preserve"><value>Kes</value></data>
+  <data name="studio.paste" xml:space="preserve"><value>Yapıştır</value></data>
+  <data name="bots.preset.assistant" xml:space="preserve"><value>Asistan</value></data>
+  <data name="bots.preset.researcher" xml:space="preserve"><value>Araştırmacı</value></data>
+  <data name="bots.preset.coder" xml:space="preserve"><value>Kodcu</value></data>
+  <data name="bots.new" xml:space="preserve"><value>Yeni bot</value></data>
+  <data name="bots.edit" xml:space="preserve"><value>Botu düzenle</value></data>
+  <data name="bots.clear" xml:space="preserve"><value>Sohbeti temizle</value></data>
+  <data name="bots.send" xml:space="preserve"><value>Mesajı gönder</value></data>
+  <data name="bots.deleteConfirm" xml:space="preserve"><value>“{0}” ve sohbeti silinsin mi?</value></data>
+  <data name="bots.empty.title" xml:space="preserve"><value>Henüz bot yok</value></data>
+  <data name="bots.empty.detail" xml:space="preserve"><value>Bot; kendi talimatları, modeli ve süren sohbeti olan bir asistandır. Bir klasör verirseniz orada ajan olarak çalışır.</value></data>
+  <data name="bots.greeting" xml:space="preserve"><value>Başlamak için {0} botuna bir mesaj gönderin.</value></data>
+  <data name="bots.placeholder" xml:space="preserve"><value>{0} botuna yazın</value></data>
+  <data name="bots.agentIn" xml:space="preserve"><value>{0} klasöründe ajan</value></data>
+  <data name="bots.name" xml:space="preserve"><value>Ad</value></data>
+  <data name="bots.icon" xml:space="preserve"><value>Simge</value></data>
+  <data name="bots.instructions" xml:space="preserve"><value>Talimatlar</value></data>
+  <data name="bots.instructionsHelp" xml:space="preserve"><value>Botun nasıl davranacağı, ne bildiği ve nasıl yanıt vereceği.</value></data>
+  <data name="bots.workspace" xml:space="preserve"><value>Ajan klasörü</value></data>
+  <data name="bots.workspace.none" xml:space="preserve"><value>Yok: yalnızca sohbet</value></data>
+  <data name="bots.workspace.choose" xml:space="preserve"><value>Klasör seç</value></data>
+  <data name="bots.workspace.clear" xml:space="preserve"><value>Kaldır</value></data>
+  <data name="bots.workspaceHelp" xml:space="preserve"><value>Klasör verildiğinde bot, sormadan o klasörde okuyabilir, yazabilir ve komut çalıştırabilir; ağ erişimi yoktur. Klasör yoksa yalnızca sohbet eder.</value></data>
+  <data name="bots.error.noReply" xml:space="preserve"><value>Bot yanıt vermedi.</value></data>
+  <data name="bots.status.delivered" xml:space="preserve"><value>Bota iletildi</value></data>
+  <data name="bots.status.waiting" xml:space="preserve"><value>Bot bekleniyor</value></data>
+  <data name="tasks.plan.title" xml:space="preserve"><value>Bir görev planla</value></data>
+  <data name="tasks.plan.subtitle" xml:space="preserve"><value>HerNess yinelenen işleri senin yerine çalıştırır.</value></data>
+  <data name="tasks.upcoming" xml:space="preserve"><value>Yaklaşanlar</value></data>
+  <data name="tasks.instructions" xml:space="preserve"><value>Talimatlar…</value></data>
+  <data name="tasks.repeat" xml:space="preserve"><value>Tekrar</value></data>
+  <data name="tasks.time" xml:space="preserve"><value>Saat</value></data>
+  <data name="tasks.day" xml:space="preserve"><value>Gün</value></data>
+  <data name="tasks.advanced" xml:space="preserve"><value>Gelişmiş</value></data>
+  <data name="tasks.create" xml:space="preserve"><value>Oluştur</value></data>
+  <data name="tasks.repeat.hourly" xml:space="preserve"><value>Saatlik</value></data>
+  <data name="tasks.repeat.daily" xml:space="preserve"><value>Günlük</value></data>
+  <data name="tasks.repeat.weekdays" xml:space="preserve"><value>Hafta içi</value></data>
+  <data name="tasks.repeat.weekly" xml:space="preserve"><value>Haftalık</value></data>
+  <data name="tasks.repeat.custom" xml:space="preserve"><value>Özel</value></data>
+  <data name="bots.preset.assistant.detail" xml:space="preserve"><value>Günlük işlerinde yardım al</value></data>
+  <data name="bots.preset.researcher.detail" xml:space="preserve"><value>Konuları araştır ve kaynakları karşılaştır</value></data>
+  <data name="bots.preset.coder.detail" xml:space="preserve"><value>Kod yaz ve sorunları çöz</value></data>
+  <data name="tasks.suggestion.email.title" xml:space="preserve"><value>E-posta takibi</value></data>
+  <data name="tasks.suggestion.email.detail" xml:space="preserve"><value>Önemli e-postaları kontrol et ve dikkat gerekenleri özetle.</value></data>
+  <data name="tasks.suggestion.reading.title" xml:space="preserve"><value>Hafta sonu okuması</value></data>
+  <data name="tasks.suggestion.reading.detail" xml:space="preserve"><value>Her hafta ilgi alanlarıma uygun bir yazı bul.</value></data>
+  <data name="tasks.suggestion.prices.title" xml:space="preserve"><value>Fiyat uyarıları</value></data>
+  <data name="tasks.suggestion.prices.detail" xml:space="preserve"><value>Takip ettiğim ürünlerin fiyatlarını kontrol et ve indirimleri bildir.</value></data>
+  <data name="tasks.suggestion.events.title" xml:space="preserve"><value>Etkinlik keşfi</value></data>
+  <data name="tasks.suggestion.events.detail" xml:space="preserve"><value>İlgi alanlarıma uygun konser ve etkinlikleri bul.</value></data>
+  <data name="tasks.suggestion.weekend.title" xml:space="preserve"><value>Hafta sonumu planla</value></data>
+  <data name="tasks.suggestion.weekend.detail" xml:space="preserve"><value>Tercihlerime göre hafta sonu etkinlikleri öner.</value></data>
+  <data name="tasks.suggestions.memory" xml:space="preserve"><value>Hafızana göre</value></data>
+  <data name="tasks.suggestions.personalizing" xml:space="preserve"><value>Hafızana göre öneriler hazırlanıyor…</value></data>
+  <data name="tasks.suggestions.unavailable" xml:space="preserve"><value>Örnek öneriler · kişiselleştirme kullanılamıyor</value></data>
+  <data name="tasks.suggestions.refresh" xml:space="preserve"><value>Önerileri yenile</value></data>
+  <data name="tasks.suggestions.instruction" xml:space="preserve"><value>Sonucu ilgi alanlarım ve tercihlerime göre hazırla. Bulduklarını özetle. Gerekli bilgi veya erişim eksikse neye ihtiyaç olduğunu belirt.</value></data>
+  <data name="media.music" xml:space="preserve"><value>müzik</value></data>
+  <data name="studio.music" xml:space="preserve"><value>Müzik</value></data>
+  <data name="studio.library" xml:space="preserve"><value>Kitaplık</value></data>
+  <data name="studio.music.composing" xml:space="preserve"><value>Müzik üretiliyor. Birkaç dakika sürebilir.</value></data>
+  <data name="studio.music.song" xml:space="preserve"><value>Şarkı</value></data>
+  <data name="studio.music.inspector" xml:space="preserve"><value>Ayrıntılar</value></data>
+  <data name="studio.music.section" xml:space="preserve"><value>Bölüm</value></data>
+  <data name="studio.music.section.delete" xml:space="preserve"><value>Bölümü sil</value></data>
+  <data name="studio.music.lyrics" xml:space="preserve"><value>Sözler</value></data>
+  <data name="studio.music.track" xml:space="preserve"><value>Parça</value></data>
+  <data name="studio.music.track.generate" xml:space="preserve"><value>Parçayı üret</value></data>
+  <data name="studio.music.track.empty" xml:space="preserve"><value>Henüz ses yok</value></data>
+  <data name="studio.music.track.delete" xml:space="preserve"><value>Parçayı sil</value></data>
+  <data name="studio.music.mix" xml:space="preserve"><value>Miks</value></data>
+  <data name="studio.music.tempo" xml:space="preserve"><value>Tempo ve ton</value></data>
+  <data name="studio.music.generating" xml:space="preserve"><value>{0} parça üretiliyor</value></data>
+  <data name="studio.music.placeholder" xml:space="preserve"><value>Şarkıyı anlatın: hava, hikâye, enstrümanlar, kim söylüyor</value></data>
+  <data name="studio.music.empty" xml:space="preserve"><value>Yukarıya bir şarkı tarif edin ya da boş bir şarkı açın. Önce plan çıkar: bölümler, sözler ve her enstrüman için bir parça. Ses üretilmeden önce hepsini değiştirebilirsiniz.</value></data>
+  <data name="studio.music.plan" xml:space="preserve"><value>Şarkıyı yaz</value></data>
+  <data name="studio.music.new" xml:space="preserve"><value>Boş şarkı</value></data>
+  <data name="studio.music.noPlan" xml:space="preserve"><value>Model bir şarkı planı döndürmedi. Yeniden deneyin ya da başka bir model seçin.</value></data>
+  <data name="studio.music.deleteConfirm" xml:space="preserve"><value>“{0}” silinsin mi? Parçaları ve ses dosyaları kaldırılır.</value></data>
+  <data name="studio.music.trackCount" xml:space="preserve"><value>{0} parça</value></data>
+  <data name="studio.music.bpm" xml:space="preserve"><value>{0} BPM</value></data>
+  <data name="studio.music.key" xml:space="preserve"><value>Ton</value></data>
+  <data name="studio.music.generateAll" xml:space="preserve"><value>Tümünü üret</value></data>
+  <data name="studio.music.regenerate" xml:space="preserve"><value>Bu parçayı yeniden üret</value></data>
+  <data name="studio.music.script" xml:space="preserve"><value>Senaryo</value></data>
+  <data name="studio.music.artists" xml:space="preserve"><value>Sanatçılar</value></data>
+  <data name="studio.music.artist.add" xml:space="preserve"><value>Sanatçı ekle</value></data>
+  <data name="studio.music.artist.default" xml:space="preserve"><value>Sanatçı {0}</value></data>
+  <data name="studio.music.artist.name" xml:space="preserve"><value>Ad</value></data>
+  <data name="studio.music.artist.style" xml:space="preserve"><value>Ses ve tarz</value></data>
+  <data name="studio.music.section.add" xml:space="preserve"><value>Bölüm ekle</value></data>
+  <data name="studio.music.section.default" xml:space="preserve"><value>Kıta</value></data>
+  <data name="studio.music.section.bars" xml:space="preserve"><value>{0} ölçü</value></data>
+  <data name="studio.music.line.add" xml:space="preserve"><value>Satır ekle</value></data>
+  <data name="studio.music.line.placeholder" xml:space="preserve"><value>Söz satırı</value></data>
+  <data name="studio.music.line.unsung" xml:space="preserve"><value>Kimse</value></data>
+  <data name="studio.music.track.add" xml:space="preserve"><value>Parça ekle</value></data>
+  <data name="studio.music.track.instrument" xml:space="preserve"><value>Enstrüman</value></data>
+  <data name="studio.music.track.prompt" xml:space="preserve"><value>Nasıl çalmalı</value></data>
+  <data name="studio.music.track.vocal" xml:space="preserve"><value>Vokal · {0}</value></data>
+  <data name="studio.music.mute" xml:space="preserve"><value>Sustur</value></data>
+  <data name="studio.music.solo" xml:space="preserve"><value>Solo</value></data>
+  <data name="library.all" xml:space="preserve"><value>Tümü</value></data>
+  <data name="library.kind.image" xml:space="preserve"><value>Görseller</value></data>
+  <data name="library.kind.video" xml:space="preserve"><value>Videolar</value></data>
+  <data name="library.kind.audio" xml:space="preserve"><value>Sesler</value></data>
+  <data name="library.kind.music" xml:space="preserve"><value>Müzik</value></data>
+  <data name="library.kind.document" xml:space="preserve"><value>Belgeler</value></data>
+  <data name="library.add" xml:space="preserve"><value>Dosya ekle</value></data>
+  <data name="library.addFailed" xml:space="preserve"><value>{0} dosya eklenemedi.</value></data>
+  <data name="library.open" xml:space="preserve"><value>Aç</value></data>
+  <data name="library.empty.title" xml:space="preserve"><value>Henüz bir şey yok</value></data>
+  <data name="library.empty.detail" xml:space="preserve"><value>Ürettiğiniz görsel, video, ses ve müzikler buraya kendiliğinden eklenir. Belgeleri ve diğer dosyaları siz ekleyin.</value></data>
+  <data name="backgroundTasks.title" xml:space="preserve"><value>Arka plan görevleri</value></data>
+  <data name="backgroundTasks.empty" xml:space="preserve"><value>Arka plan görevi yok</value></data>
+  <data name="backgroundTasks.finished" xml:space="preserve"><value>Bitenler</value></data>
+  <data name="backgroundTasks.failed" xml:space="preserve"><value>Başarısız (çıkış {0})</value></data>
+  <data name="backgroundTasks.stopped" xml:space="preserve"><value>Durduruldu</value></data>
+  <data name="backgroundTasks.clear" xml:space="preserve"><value>Bitenleri temizle</value></data>
+  <data name="backgroundTasks.runningCount" xml:space="preserve"><value>Çalışan görev: {0}</value></data>
+  <data name="backgroundTasks.wake" xml:space="preserve"><value>“{0}” arka plan görevi {1} çıkış koduyla bitti. Çıktısını terminal_session ile oku (oturum {2}) ve devam et.</value></data>
+  <data name="backgroundTasks.waitingInput" xml:space="preserve"><value>Girdi bekliyor</value></data>
+  <data name="local.installed" xml:space="preserve"><value>Yüklü</value></data>
+  <data name="marketplace.title" xml:space="preserve"><value>Eklenti mağazası</value></data>
+  <data name="marketplace.empty" xml:space="preserve"><value>Eklenti yok</value></data>
+  <data name="marketplace.emptyHint" xml:space="preserve"><value>Kayıt defterini yüklemek için Yenile'ye basın.</value></data>
+  <data name="marketplace.install" xml:space="preserve"><value>Yükle</value></data>
+  <data name="marketplace.search" xml:space="preserve"><value>Eklenti ara</value></data>
+  <data name="marketplace.update" xml:space="preserve"><value>v{0} sürümünden v{1} sürümüne güncelle</value></data>
+  <data name="marketplace.by" xml:space="preserve"><value>{0} tarafından</value></data>
+  <data name="market.tab.plugins" xml:space="preserve"><value>Eklentiler</value></data>
+  <data name="market.tab.skills" xml:space="preserve"><value>Beceriler</value></data>
+  <data name="market.tab.starters" xml:space="preserve"><value>Proje altyapıları</value></data>
+  <data name="starters.intro" xml:space="preserve"><value>Bir altyapı ve boş bir klasör seçin. İstem, okuyup göndermeniz için mesaj kutusuna yazılır.</value></data>
+  <data name="starters.use" xml:space="preserve"><value>Altyapıyı kullan</value></data>
+  <data name="starters.chooseFolder" xml:space="preserve"><value>Yeni proje için boş bir klasör seçin.</value></data>
+  <data name="starters.web.title" xml:space="preserve"><value>Web uygulaması</value></data>
+  <data name="starters.web.detail" xml:space="preserve"><value>TypeScript'li Next.js; düzen, örnek API rotası ve lint.</value></data>
+  <data name="starters.landing.title" xml:space="preserve"><value>Tanıtım sayfası</value></data>
+  <data name="starters.landing.detail" xml:space="preserve"><value>Statik HTML ve CSS; giriş, özellikler, fiyat ve iletişim bölümleri. Derleme adımı yok.</value></data>
+  <data name="starters.api.title" xml:space="preserve"><value>API servisi</value></data>
+  <data name="starters.api.detail" xml:space="preserve"><value>FastAPI; sağlık kontrolü, örnek kaynak, ayarlar ve testler.</value></data>
+  <data name="starters.ios.title" xml:space="preserve"><value>iOS uygulaması</value></data>
+  <data name="starters.ios.detail" xml:space="preserve"><value>SwiftUI; iki ekran, gözlemlenebilir model ve bir birim testi.</value></data>
+  <data name="starters.worker.title" xml:space="preserve"><value>Cloudflare Worker</value></data>
+  <data name="starters.worker.detail" xml:space="preserve"><value>Workers üzerinde TypeScript API; tipli bağlamalar ve test.</value></data>
+  <data name="starters.cli.title" xml:space="preserve"><value>Komut satırı aracı</value></data>
+  <data name="starters.cli.detail" xml:space="preserve"><value>Alt komutlu Python paketi; testler ve kurulum yönergeleri.</value></data>
+  <data name="common.cancel" xml:space="preserve"><value>İptal</value></data>
+  <data name="common.connect" xml:space="preserve"><value>Bağlan</value></data>
+  <data name="common.copied" xml:space="preserve"><value>Kopyalandı</value></data>
+  <data name="common.delete" xml:space="preserve"><value>Sil</value></data>
+  <data name="common.done" xml:space="preserve"><value>Tamam</value></data>
+  <data name="common.download" xml:space="preserve"><value>İndir</value></data>
+  <data name="common.idle" xml:space="preserve"><value>Boşta</value></data>
+  <data name="common.refresh" xml:space="preserve"><value>Yenile</value></data>
+  <data name="common.remove" xml:space="preserve"><value>Kaldır</value></data>
+  <data name="common.start" xml:space="preserve"><value>Başlat</value></data>
+  <data name="common.stop" xml:space="preserve"><value>Durdur</value></data>
+  <data name="common.test" xml:space="preserve"><value>Test et</value></data>
+  <data name="common.save" xml:space="preserve"><value>Kaydet</value></data>
+  <data name="common.view" xml:space="preserve"><value>Görüntüle</value></data>
+  <data name="composer.add" xml:space="preserve"><value>Ekle</value></data>
+  <data name="attachment.addApp" xml:space="preserve"><value>Dots Harness uygulamasını ekle</value></data>
+  <data name="attachment.projectDetail" xml:space="preserve"><value>Yeni konuşmalar için proje seç</value></data>
+  <data name="attachment.goal" xml:space="preserve"><value>Hedef</value></data>
+  <data name="attachment.goalDetail" xml:space="preserve"><value>Üzerinde çalışmak için bir hedef belirle</value></data>
+  <data name="attachment.plan" xml:space="preserve"><value>Plan modu</value></data>
+  <data name="attachment.planDetail" xml:space="preserve"><value>Plan modunu aç</value></data>
+  <data name="attachment.saveSkill" xml:space="preserve"><value>Beceri kaydet</value></data>
+  <data name="attachment.plugins" xml:space="preserve"><value>Eklentiler</value></data>
+  <data name="attachment.slashCommands" xml:space="preserve"><value>Slash komutları</value></data>
+  <data name="attachment.folder" xml:space="preserve"><value>Klasör ekle</value></data>
+  <data name="attachment.connectors" xml:space="preserve"><value>Bağlayıcılar</value></data>
+  <data name="attachment.documentsDetail" xml:space="preserve"><value>Belge çıktıları oluşturup düzenleyin</value></data>
+  <data name="attachment.pdfDetail" xml:space="preserve"><value>PDF dosyalarını okuyun, oluşturun ve doğrulayın</value></data>
+  <data name="attachment.spreadsheetsDetail" xml:space="preserve"><value>Hesap tablosu dosyaları oluşturup düzenleyin</value></data>
+  <data name="modelPicker.model" xml:space="preserve"><value>Modeli</value></data>
+  <data name="modelPicker.speed" xml:space="preserve"><value>Hız</value></data>
+  <data name="modelPicker.maximum" xml:space="preserve"><value>Maksimum</value></data>
+  <data name="modelPicker.standard" xml:space="preserve"><value>Standart</value></data>
+  <data name="modelPicker.fast" xml:space="preserve"><value>Hızlı</value></data>
+  <data name="modelPicker.auto" xml:space="preserve"><value>Otomatik</value></data>
+  <data name="modelPicker.autoHint" xml:space="preserve"><value>Her mesaj için modeli ve çabayı kendisi seçer</value></data>
+  <data name="settings.sshPassword" xml:space="preserve"><value>Parola (bir kez kullanılır)</value></data>
+  <data name="settings.sshRememberPassword" xml:space="preserve"><value>Parolayı hatırla</value></data>
+  <data name="settings.sshRememberPassword.hint" xml:space="preserve"><value>Gerekmez: parola yalnızca bir kez, anahtar kurmak için kullanılır. ~/.ssh/config dosyasına asla yazılmaz.</value></data>
+  <data name="ssh.continue" xml:space="preserve"><value>Devam</value></data>
+  <data name="ssh.enrolling" xml:space="preserve"><value>Anahtar kuruluyor…</value></data>
+  <data name="ssh.enrolled.hint" xml:space="preserve"><value>Sonraki bağlantılar anahtarı kullanır; parola artık gerekmez.</value></data>
+  <data name="ssh.retry" xml:space="preserve"><value>Yeniden dene</value></data>
+  <data name="ssh.retryHint" xml:space="preserve"><value>Adresi, kullanıcı adını ve parolayı kontrol edip yeniden dene.</value></data>
+  <data name="ssh.installKeyManually" xml:space="preserve"><value>Bu anahtarı sunucudaki ~/.ssh/authorized_keys dosyasına ekle, sonra yeniden dene.</value></data>
+  <data name="ssh.copyPublicKey" xml:space="preserve"><value>Anahtarı kopyala</value></data>
+  <data name="ssh.error.passwordAuthDisabled" xml:space="preserve"><value>Sunucu parolayla girişi kabul etmiyor.</value></data>
+  <data name="ssh.error.authFailed" xml:space="preserve"><value>{0} girişi reddetti.</value></data>
+  <data name="ssh.error.hostKeyChanged" xml:space="preserve"><value>{0} sunucusunun anahtarı değişti. Sunucu yeniden kurulmadıysa devam etme.</value></data>
+  <data name="ssh.error.invalidInput" xml:space="preserve"><value>Geçerli bir takma ad, sunucu adı, kullanıcı adı ve bağlantı noktası girin.</value></data>
+  <data name="sidebar.projects" xml:space="preserve"><value>Projeler</value></data>
+  <data name="sidebar.recent" xml:space="preserve"><value>Yakın zamanda</value></data>
+  <data name="sidebar.search" xml:space="preserve"><value>Sohbetlerde ara</value></data>
+  <data name="sidebar.sites" xml:space="preserve"><value>Siteler</value></data>
+  <data name="sidebar.scheduled" xml:space="preserve"><value>Zamanlananlar</value></data>
+  <data name="sidebar.addProject" xml:space="preserve"><value>Proje ekle</value></data>
+  <data name="settings.compactTrigger" xml:space="preserve"><value>Bağlamı otomatik sıkıştırma eşiği</value></data>
+  <data name="settings.compactTrigger.hint" xml:space="preserve"><value>Her modelin kendi bağlam penceresinin oranı. Sıkıştırma önbelleği yeniden yazdığı için yüksek değer istem önbelleğini daha uzun korur.</value></data>
+  <data name="settings.explore.subagents" xml:space="preserve"><value>Alt ajanları kullan</value></data>
+  <data name="settings.explore.hint" xml:space="preserve"><value>Açıkken ajan, zor ve uzun görevlerde çok dosyalı aramaları ve birbirinden bağımsız düzenleme parçalarını paralel alt ajanlara devreder; ana konuşmaya yalnızca özet girer. Düzenleyen her alt ajan yalnızca kendisine atanan dosyalara yazabilir, atamalar çakışamaz. Basit görevlerde çağırmaz. Her alt ajan ayrı model çağrısıdır; maliyeti düşürmek için kapatın.</value></data>
+  <data name="settings.responseStyle" xml:space="preserve"><value>Yanıt stili</value></data>
+  <data name="settings.responseStyle.hint" xml:space="preserve"><value>Bu ayar promptu değiştirmez. Kısa/Ultra tercihi best-effort'tur; kesin token sayısı, tamamlanma veya daha düşük maliyet garantisi vermez.</value></data>
+  <data name="responseStyle.balanced" xml:space="preserve"><value>Dengeli</value></data>
+  <data name="responseStyle.concise" xml:space="preserve"><value>Kısa</value></data>
+  <data name="responseStyle.ultra" xml:space="preserve"><value>Ultra kısa</value></data>
+  <data name="responseStyle.detailed" xml:space="preserve"><value>Detaylı</value></data>
+  <data name="settings.computerUse.enable" xml:space="preserve"><value>Bilgisayar kullanımını etkinleştir</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>Sürüm ve güncellemeler</value></data>
+  <data name="settings.updates.available" xml:space="preserve"><value>Yeni sürüm mevcut: v{0}</value></data>
+  <data name="settings.updates.download" xml:space="preserve"><value>Güncellemeyi indir</value></data>
+  <data name="dock.branch" xml:space="preserve"><value>Dal</value></data>
+  <data name="dock.refresh" xml:space="preserve"><value>Yenile</value></data>
+  <data name="dock.commit" xml:space="preserve"><value>İşle</value></data>
+  <data name="dock.push" xml:space="preserve"><value>Gönder</value></data>
+  <data name="dock.fetch" xml:space="preserve"><value>Getir</value></data>
+  <data name="dock.commitOrPush" xml:space="preserve"><value>Commit veya push</value></data>
+  <data name="dock.commitMessage" xml:space="preserve"><value>Commit mesajı</value></data>
+  <data name="dock.noChanges" xml:space="preserve"><value>Ajan değişiklik yapmadı.</value></data>
+  <data name="dock.whyRequest" xml:space="preserve"><value>İsteğin</value></data>
+  <data name="dock.whyAgent" xml:space="preserve"><value>Ajanın açıklaması</value></data>
+  <data name="dock.notRepo" xml:space="preserve"><value>Bu klasör bir git deposu değil.</value></data>
+  <data name="dock.gitMissing" xml:space="preserve"><value>Git kurulu değil. İnceleme, commit ve push için gerekli.</value></data>
+  <data name="dock.installGit" xml:space="preserve"><value>Git'i yükle</value></data>
+  <data name="dock.filterFiles" xml:space="preserve"><value>Dosyaları filtrele…</value></data>
+  <data name="dock.openFile" xml:space="preserve"><value>Dosya aç</value></data>
+  <data name="dock.selectFile" xml:space="preserve"><value>Çalışma alanı ağacından bir dosya seçin</value></data>
+  <data name="dock.binaryFile" xml:space="preserve"><value>İkili veya okunamayan dosya</value></data>
+  <data name="dock.expand" xml:space="preserve"><value>Genişlet</value></data>
+  <data name="dock.collapse" xml:space="preserve"><value>Küçült</value></data>
+  <data name="dock.split" xml:space="preserve"><value>Böl</value></data>
+  <data name="dock.unsplit" xml:space="preserve"><value>Tek sekme göster</value></data>
+  <data name="dock.newTab" xml:space="preserve"><value>Yeni sekme</value></data>
+  <data name="dock.address" xml:space="preserve"><value>Ara veya URL gir</value></data>
+  <data name="dock.invalidAddress" xml:space="preserve"><value>Geçerli bir web adresi veya arama yazın.</value></data>
+  <data name="dock.openExternal" xml:space="preserve"><value>Varsayılan tarayıcıda aç</value></data>
+  <data name="dock.bottomTerminal" xml:space="preserve"><value>Alt terminali aç</value></data>
+  <data name="dock.splitHorizontal" xml:space="preserve"><value>Yan yana böl</value></data>
+  <data name="dock.splitVertical" xml:space="preserve"><value>Alt alta böl</value></data>
+  <data name="dock.noWorkspace" xml:space="preserve"><value>Önce bir çalışma klasörü seçin.</value></data>
+  <data name="git.branchHelp" xml:space="preserve"><value>Git branch'i seç</value></data>
+  <data name="git.uncommitted" xml:space="preserve"><value>Commit edilmemiş: {0} dosya</value></data>
+  <data name="market.area.core" xml:space="preserve"><value>Ana Marketplace</value></data>
+  <data name="market.area.experimental" xml:space="preserve"><value>Deneysel</value></data>
+  <data name="market.area.community" xml:space="preserve"><value>Topluluk</value></data>
+  <data name="market.area.communityExperimental" xml:space="preserve"><value>Topluluk / Deneysel</value></data>
+  <data name="market.account" xml:space="preserve"><value>HerNess hesabı</value></data>
+  <data name="market.signIn" xml:space="preserve"><value>Giriş yap</value></data>
+  <data name="market.signIn.email" xml:space="preserve"><value>E-posta ve şifre</value></data>
+  <data name="market.signIn.title" xml:space="preserve"><value>HerNess hesabıyla giriş yap</value></data>
+  <data name="market.email" xml:space="preserve"><value>E-posta</value></data>
+  <data name="market.password" xml:space="preserve"><value>Şifre</value></data>
+  <data name="market.likeSignIn" xml:space="preserve"><value>Beğenmek için giriş yap</value></data>
+  <data name="market.customize" xml:space="preserve"><value>Özelleştir</value></data>
+  <data name="market.localForks" xml:space="preserve"><value>Yerel özelleştirmeler</value></data>
+  <data name="market.openFolder" xml:space="preserve"><value>Klasörü aç</value></data>
+  <data name="market.fork.compared" xml:space="preserve"><value>Karşılaştırıldı</value></data>
+  <data name="market.consent.title" xml:space="preserve"><value>Bu plugin native kod çalıştırır</value></data>
+  <data name="market.consent.accept" xml:space="preserve"><value>Kabul et ve etkinleştir</value></data>
+  <data name="market.consent.message" xml:space="preserve"><value>{0} üçüncü taraf native bir plugindir. Alan: {1}. İnceleme: {2}. Kategori: {3}. İzinlerini ve kaynak kodunu inceleyin. Kabul ederseniz plugin güvenilir olarak hemen çalıştırılır.</value></data>
+  <data name="market.review.verified" xml:space="preserve"><value>DOTS tarafından incelendi</value></data>
+  <data name="market.review.pending" xml:space="preserve"><value>İnceleme bekliyor</value></data>
+  <data name="market.community.empty" xml:space="preserve"><value>Toplulukta henüz plugin yok</value></data>
+  <data name="market.community.emptyHint" xml:space="preserve"><value>Topluluk pluginleri ayrı bir inceleme ve native kod çalıştırmak için açık onay gerektirir.</value></data>
+  <data name="market.report" xml:space="preserve"><value>Raporla</value></data>
+  <data name="market.report.title" xml:space="preserve"><value>Plugin'i raporla</value></data>
+  <data name="market.report.reason" xml:space="preserve"><value>Neden</value></data>
+  <data name="market.report.submit" xml:space="preserve"><value>Raporu gönder</value></data>
+  <data name="market.report.malware" xml:space="preserve"><value>Kötü amaçlı yazılım veya zararlı davranış</value></data>
+  <data name="market.report.credentialTheft" xml:space="preserve"><value>Kimlik bilgisi hırsızlığı</value></data>
+  <data name="market.report.exfiltration" xml:space="preserve"><value>Veri sızdırma</value></data>
+  <data name="market.report.deceptive" xml:space="preserve"><value>Yanıltıcı listeleme veya kimliğe bürünme</value></data>
+  <data name="market.report.spam" xml:space="preserve"><value>Spam veya boş sarmalayıcı</value></data>
+  <data name="market.report.copyright" xml:space="preserve"><value>Telif hakkı veya lisans ihlali</value></data>
+  <data name="market.publish" xml:space="preserve"><value>Plugin yayınla</value></data>
+  <data name="market.publish.title" xml:space="preserve"><value>Native plugin yayınla</value></data>
+  <data name="market.publish.hint" xml:space="preserve"><value>Plugin klasöründe plugin.yml, plugin.ir.json ve bir lisans bulunmalı. JavaScript ve declarative runtime kabul edilmez; platform buildleri CI'da oluşturulur.</value></data>
+  <data name="market.publish.noFolder" xml:space="preserve"><value>Plugin klasörü seçilmedi</value></data>
+  <data name="market.publish.chooseFolder" xml:space="preserve"><value>Klasör seç</value></data>
+  <data name="market.publish.irPreview" xml:space="preserve"><value>plugin.ir.json önizlemesi</value></data>
+  <data name="market.publish.sourcePreview" xml:space="preserve"><value>Native kaynak önizlemesi</value></data>
+  <data name="market.publish.version" xml:space="preserve"><value>Sürüm (SemVer)</value></data>
+  <data name="market.publish.license" xml:space="preserve"><value>SPDX lisansı (ör. MIT)</value></data>
+  <data name="market.publish.visibility" xml:space="preserve"><value>Kaynak görünürlüğü</value></data>
+  <data name="market.publish.public" xml:space="preserve"><value>Herkese açık — kaynak paketi listelenir</value></data>
+  <data name="market.publish.private" xml:space="preserve"><value>Özel — yalnızca sahibi ve CI erişebilir</value></data>
+  <data name="market.publish.targets" xml:space="preserve"><value>Platform hedefleri</value></data>
+  <data name="market.publish.footer" xml:space="preserve"><value>Yayından sonra yapay zeka kategori, alan ve risk sınıflandırması yapar. Plugin build tamamlansa bile insan incelemesi bitene kadar listelenmez.</value></data>
+  <data name="market.publish.submit" xml:space="preserve"><value>Yayınla</value></data>
+  <data name="market.publish.error.http" xml:space="preserve"><value>Marketplace yayınlama başarısız (HTTP {0}): {1}</value></data>
+  <data name="market.publish.error.license" xml:space="preserve"><value>Plugin yayınlamak için bir lisans seçin.</value></data>
+  <data name="market.publish.error.noManifest" xml:space="preserve"><value>Seçilen klasörde plugin.yml bulunamadı.</value></data>
+  <data name="market.publish.error.nativeOnly" xml:space="preserve"><value>Yalnızca native pluginler yayınlanabilir.</value></data>
+  <data name="market.publish.error.semver" xml:space="preserve"><value>Geçerli bir SemVer sürümü girin.</value></data>
+  <data name="market.publish.error.targets" xml:space="preserve"><value>En az bir platform hedefi ve geçerli bir kaynak görünürlüğü seçin.</value></data>
+  <data name="market.publish.error.package" xml:space="preserve"><value>Paket plugin.ir.json ve license dosyalarını içermeli.</value></data>
+  <data name="market.publish.error.irVersion" xml:space="preserve"><value>plugin.ir.json yalnızca version 1 olmalıdır.</value></data>
+  <data name="market.publish.error.releaseID" xml:space="preserve"><value>Marketplace yayın kimliği alınamadı.</value></data>
+  <data name="market.publish.error.noVersion" xml:space="preserve"><value>plugin.yml dosyasında version alanı eksik.</value></data>
+  <data name="market.publish.status.registering" xml:space="preserve"><value>Marketplace kaydı oluşturuluyor…</value></data>
+  <data name="market.publish.status.uploading" xml:space="preserve"><value>Native kaynak paketi yükleniyor…</value></data>
+  <data name="market.publish.status.aiUnavailable" xml:space="preserve"><value>Yapay zeka sınıflandırması kullanılamadı; geçici etiket: {0} · {1} · {2}. İnsan incelemesi zorunlu.</value></data>
+  <data name="market.publish.status.aiDone" xml:space="preserve"><value>Yapay zeka sınıflandırması: {0} · {1} · {2}. İnsan incelemesi bekleniyor.</value></data>
+  <data name="market.publish.status.aiFailed" xml:space="preserve"><value>Yapay zeka sınıflandırması tamamlanamadı; insan incelemesi bekleniyor.</value></data>
+  <data name="market.publish.status.queueing" xml:space="preserve"><value>Native platform buildleri kuyruğa alınıyor…</value></data>
+  <data name="market.publish.status.uploaded" xml:space="preserve"><value>Kaynak paketi yüklendi; native CI doğrulaması bekleniyor.</value></data>
+  <data name="market.error.notSignedIn" xml:space="preserve"><value>Marketplace'te yayınlamak için HerNess hesabı gerekir.</value></data>
+  <data name="market.error.invalidCallback" xml:space="preserve"><value>HerNess giriş geri çağrısı geçersizdi.</value></data>
+  <data name="market.error.stateMismatch" xml:space="preserve"><value>HerNess giriş durumu eşleşmedi.</value></data>
+  <data name="market.error.request" xml:space="preserve"><value>Marketplace isteği başarısız (HTTP {0}): {1}</value></data>
+  <data name="market.error.invalidResponse" xml:space="preserve"><value>Marketplace geçersiz bir yanıt döndürdü.</value></data>
+  <data name="market.error.credentials" xml:space="preserve"><value>E-posta ve şifre gerekli.</value></data>
+  <data name="remote.scan" xml:space="preserve"><value>Bu QR kodunu tarayın veya tek kullanımlık kodu HerNess Mobile'a girin.</value></data>
+  <data name="remote.newCode" xml:space="preserve"><value>Yeni eşleştirme kodu</value></data>
+  <data name="remote.copyLink" xml:space="preserve"><value>Eşleştirme bağlantısını kopyala</value></data>
+  <data name="remote.tunnel.enable" xml:space="preserve"><value>Cloudflare Quick Tunnel'ı etkinleştir</value></data>
+  <data name="remote.hint" xml:space="preserve"><value>Sağlayıcı anahtarları masaüstünde kalır. Dosya yazma, terminal, build, deploy ve PR işlemleri yine seçili onay modunu kullanır.</value></data>
+  <data name="settings.tab.mobile" xml:space="preserve"><value>Mobil kontrol</value></data>
+  <data name="settings.compaction.economyFixed" xml:space="preserve"><value>Ekonomi politikasında eşik sabit olarak %90'dır.</value></data>
+  <data name="settings.browser.title" xml:space="preserve"><value>Tercih edilen tarayıcı ve motor</value></data>
+  <data name="settings.browser.auto" xml:space="preserve"><value>Otomatik (uygulama içi veya adını verdiğiniz tarayıcı)</value></data>
+  <data name="settings.browser.managed" xml:space="preserve"><value>Yönetilen izole tarayıcı (Chrome)</value></data>
+  <data name="settings.browser.chrome" xml:space="preserve"><value>Chrome'um</value></data>
+  <data name="settings.browser.desktopHint" xml:space="preserve"><value>Uygulama içi tarayıcı sistem tarayıcı motorunu kullanır. Yönetilen Chrome ve mevcut Chrome profiliniz de kullanılabilir.</value></data>
+  <data name="settings.browser.inAppDesktop" xml:space="preserve"><value>Uygulama içi tarayıcı</value></data>
+  <data name="settings.computerUse.desktopHint" xml:space="preserve"><value>Ajan çalışan uygulamaları inceleyebilir, ekran görüntülerini görebilir, fare ve klavyeyi kullanıp sonucu doğrulayabilir. Masaüstü işlemleri için erişim onayı gerekir.</value></data>
+  <data name="settings.computerUse.linuxHint" xml:space="preserve"><value>Linux'ta bilgisayar kullanımı için X11, xdotool ve maim veya ImageMagick gerekir. Wayland desteklenmez.</value></data>
+  <data name="market.settings.hint" xml:space="preserve"><value>Ana Marketplace, incelenmiş Harness eklentilerini içerir. Community ve Experimental listeleri ayrıdır; native eklentiler çalışmadan önce onayınızı ister.</value></data>
+  <data name="market.registry.empty" xml:space="preserve"><value>Marketplace kaydı bulunamadı. Yeniden denemek için kayıt defterini yenileyin.</value></data>
+  <data name="market.signIn.hint" xml:space="preserve"><value>Google, GitHub veya HerNess e-posta ve şifrenizle giriş yapın. Oturum belirteçleri platformun kimlik bilgisi deposunda saklanır.</value></data>
+  <data name="dock.clean" xml:space="preserve"><value>Çalışma ağacı temiz.</value></data>
+  <data name="market.publish.folderPickerUnavailable" xml:space="preserve"><value>Bu masaüstü ortamı klasör seçiciyi desteklemiyor.</value></data>
+  <data name="market.publish.localFolderRequired" xml:space="preserve"><value>Bir eklenti yayımlamak için yerel bir klasör seçin.</value></data>
+  <data name="market.report.details" xml:space="preserve"><value>Ayrıntılar (isteğe bağlı, en fazla 5.000 karakter)</value></data>
+  <data name="dock.browser.webview2Unavailable" xml:space="preserve"><value>WebView2 başlatılamadı. Microsoft Edge WebView2 Runtime'ı yükleyin veya onarın.</value></data>
+  <data name="settings.marketplace" xml:space="preserve"><value>Eklenti mağazası</value></data>
+  <data name="workspace.use" xml:space="preserve"><value>Çalışma alanı olarak kullan</value></data>
+  <data name="market.fork.consent.title" xml:space="preserve"><value>Özelleştirilmiş plugin native kod çalıştırır</value></data>
+  <data name="market.fork.consent.message" xml:space="preserve"><value>{0} yerel bir fork'tur. Kaynağı upstream'den bağımsızdır; etkinleştirmeden önce değişiklikleri inceleyin.</value></data>
+  <data name="market.fork.newUpstream" xml:space="preserve"><value>Yeni upstream: v{0}; yerel değişiklikler korunuyor</value></data>
+  <data name="market.remove.confirmTitle" xml:space="preserve"><value>Marketplace eklentisi kaldırılsın mı?</value></data>
+  <data name="market.remove.confirmMessage" xml:space="preserve"><value>{0} bu cihazdan kaldırılsın mı?</value></data>
+  <data name="market.report.other" xml:space="preserve"><value>Diğer</value></data>
+  <data name="modelPicker.economy" xml:space="preserve"><value>Ekonomi</value></data>
+  <data name="conversation.toggleResponseEconomy" xml:space="preserve"><value>Yanıt token tasarrufunu aç/kapat</value></data>
+  <data name="market.unpublish.confirmMessage" xml:space="preserve"><value>{0} yayımdan kaldırılsın mı? Mevcut kurulumlar kaldırılmaz.</value></data>
+  <data name="market.permissions" xml:space="preserve"><value>İzinler</value></data>
+  <data name="market.risk" xml:space="preserve"><value>Risk: {0}</value></data>
+  <data name="market.category.coding" xml:space="preserve"><value>Kodlama</value></data>
+  <data name="market.category.git" xml:space="preserve"><value>Git</value></data>
+  <data name="market.category.qa" xml:space="preserve"><value>Test ve Kalite</value></data>
+  <data name="market.category.devops" xml:space="preserve"><value>DevOps</value></data>
+  <data name="market.category.browser" xml:space="preserve"><value>Tarayıcı</value></data>
+  <data name="market.category.web" xml:space="preserve"><value>Web</value></data>
+  <data name="market.category.backend" xml:space="preserve"><value>Backend</value></data>
+  <data name="market.category.mobile" xml:space="preserve"><value>Mobil</value></data>
+  <data name="market.category.models" xml:space="preserve"><value>Modeller</value></data>
+  <data name="market.category.integrations" xml:space="preserve"><value>Entegrasyonlar</value></data>
+  <data name="market.category.workspace" xml:space="preserve"><value>Çalışma alanı</value></data>
+  <data name="market.category.productivity" xml:space="preserve"><value>Üretkenlik</value></data>
+  <data name="market.category.tools" xml:space="preserve"><value>Araçlar</value></data>
+  <data name="market.category.design" xml:space="preserve"><value>Tasarım</value></data>
+  <data name="market.category.documents" xml:space="preserve"><value>Belgeler</value></data>
+  <data name="market.category.authoring" xml:space="preserve"><value>Beceri yazımı</value></data>
+  <data name="market.category.community" xml:space="preserve"><value>Topluluk</value></data>
+  <data name="market.category.other" xml:space="preserve"><value>Diğer</value></data>
+  <data name="navigation.back" xml:space="preserve"><value>Geri</value></data>
+  <data name="navigation.forward" xml:space="preserve"><value>İleri</value></data>
+  <data name="dock.restart" xml:space="preserve"><value>Yeniden başlat</value></data>
+  <data name="dock.go" xml:space="preserve"><value>Git</value></data>
+  <data name="terminal.sandboxUnavailable" xml:space="preserve"><value>Uçbirim yalıtımı kullanılamıyor: {0}</value></data>
+  <data name="remote.lan" xml:space="preserve"><value>Yerel ağ adresi</value></data>
+  <data name="remote.code" xml:space="preserve"><value>Kod</value></data>
+  <data name="remote.expires" xml:space="preserve"><value>Son geçerlilik: {0}</value></data>
+  <data name="remote.pairingLink" xml:space="preserve"><value>Eşleştirme bağlantısı</value></data>
+  <data name="custom.detected" xml:space="preserve"><value>Bu bilgisayarda çalışanlar</value></data>
+  <data name="custom.modelOptional" xml:space="preserve"><value>Model adı (opsiyonel)</value></data>
+  <data name="custom.contextOptional" xml:space="preserve"><value>Context window, token (opsiyonel)</value></data>
+  <data name="custom.prefix" xml:space="preserve"><value>Model ön eki</value></data>
+  <data name="local.tuning" xml:space="preserve"><value>Performans</value></data>
+  <data name="local.tuningHint" xml:space="preserve"><value>Boş veya auto bırakırsan runtime modeli GPU belleğine göre kendisi yerleştirir. Değişiklikler bir sonraki model başlatmada geçerli olur.</value></data>
+  <data name="local.contextSize" xml:space="preserve"><value>Context boyutu (token)</value></data>
+  <data name="local.gpuLayers" xml:space="preserve"><value>GPU katmanları (auto, all veya sayı)</value></data>
+  <data name="local.threads" xml:space="preserve"><value>CPU thread sayısı</value></data>
+  <data name="local.batchSize" xml:space="preserve"><value>Batch boyutu</value></data>
+  <data name="local.flashAttention" xml:space="preserve"><value>Flash attention</value></data>
+  <data name="local.kvCache" xml:space="preserve"><value>KV cache tipi</value></data>
+  <data name="local.extraArgs" xml:space="preserve"><value>Ek llama-server argümanları</value></data>
+  <data name="local.hardware" xml:space="preserve"><value>Donanım</value></data>
+  <data name="local.listen" xml:space="preserve"><value>Dinlenen adres</value></data>
+  <data name="local.importGGUF" xml:space="preserve"><value>GGUF dosyası ekle…</value></data>
+  <data name="local.tooLarge" xml:space="preserve"><value>Çok büyük</value></data>
+  <data name="local.backend" xml:space="preserve"><value>GPU arka ucu</value></data>
+  <data name="settings.compaction.autoRouted" xml:space="preserve"><value>Otomatik yönlendirilen modeller</value></data>
+  <data name="settings.compaction.effectiveThreshold" xml:space="preserve"><value>Etkin eşik</value></data>
+  <data name="sidebar.signOut" xml:space="preserve"><value>Çıkış yap</value></data>
+  <data name="market.unpublish" xml:space="preserve"><value>Yayından kaldır</value></data>
+  <data name="settings.sshHosts" xml:space="preserve"><value>Uzak bilgisayarlar (SSH)</value></data>
+  <data name="settings.sshHosts.hint" xml:space="preserve"><value>Sunucular ~/.ssh/config dosyasından gelir. Buradan eklenen sunucu oraya yazılır.</value></data>
+  <data name="settings.sshNoHosts" xml:space="preserve"><value>~/.ssh/config içinde sunucu yok.</value></data>
+  <data name="settings.sshAddHost" xml:space="preserve"><value>Bilgisayar ekle…</value></data>
+  <data name="settings.sshTest" xml:space="preserve"><value>Test et</value></data>
+  <data name="settings.sshManaged" xml:space="preserve"><value>buradan eklendi</value></data>
+  <data name="settings.sshFromConfig" xml:space="preserve"><value>~/.ssh/config dosyasından</value></data>
+  <data name="settings.sshRemove.handWritten" xml:space="preserve"><value>Bu sunucu ~/.ssh/config içine elle yazılmış. Oradan kaldır.</value></data>
+  <data name="settings.updates.current" xml:space="preserve"><value>Mevcut sürüm</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>Güncellemeler denetleniyor…</value></data>
+  <data name="settings.updates.checkAgain" xml:space="preserve"><value>Yeniden denetle</value></data>
+  <data name="settings.updates.upToDate" xml:space="preserve"><value>Uygulama güncel.</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>Güncellemeleri denetle</value></data>
+  <data name="settings.updates.retry" xml:space="preserve"><value>Tekrar dene</value></data>
+  <data name="settings.updates.hint" xml:space="preserve"><value>En son sürümü denetleyin.</value></data>
+  <data name="settings.updates.required" xml:space="preserve"><value>Zorunlu</value></data>
+  <data name="ssh.connected" xml:space="preserve"><value>{0} yanıt verdi.</value></data>
+  <data name="remote.enable" xml:space="preserve"><value>Uzaktan denetime izin ver</value></data>
+  <data name="remote.shareLan" xml:space="preserve"><value>Yerel ağ ile paylaş</value></data>
+  <data name="remote.enableHint" xml:space="preserve"><value>Uzak ağ geçidi kapalı. Bir telefon eşlemek için açın.</value></data>
+  <data name="plan.title" xml:space="preserve"><value>Planı</value></data>
+  <data name="plan.proposed" xml:space="preserve"><value>Bir plan önerildi</value></data>
+  <data name="plan.revise" xml:space="preserve"><value>Düzenle…</value></data>
+  <data name="plan.acceptAuto" xml:space="preserve"><value>Kabul et ve otomatik mod</value></data>
+  <data name="memory.trust.header" xml:space="preserve"><value>Proje hafızası</value></data>
+  <data name="memory.trust.prompt" xml:space="preserve"><value>Bu repo, HerNess'in burada yazmadığı bir hafızayla (.mem/facts.md) geldi. Güvenilsin mi? Güvenilen hafıza bu projede HerNess'i yönlendirebilir; aksi halde yalnızca doğrulanmamış bilgi olarak okunur.</value></data>
+  <data name="memory.trust.yes" xml:space="preserve"><value>Güven</value></data>
+  <data name="memory.trust.no" xml:space="preserve"><value>Güvenme</value></data>
+  <data name="memory.lesson.header" xml:space="preserve"><value>Öğrenilen ders</value></data>
+  <data name="memory.lesson.prompt" xml:space="preserve"><value>HerNess bunu önceki bir turdan çıkardı: “{0}” Doğru mu?</value></data>
+  <data name="memory.lesson.keep" xml:space="preserve"><value>Doğru, sakla</value></data>
+  <data name="memory.lesson.forget" xml:space="preserve"><value>Yanlış, unut</value></data>
 </root>

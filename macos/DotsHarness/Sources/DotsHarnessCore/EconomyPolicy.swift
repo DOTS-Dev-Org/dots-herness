@@ -84,8 +84,10 @@ public struct AgentOutputBudget: Sendable, Equatable {
             case .standard, .detailed: 4_096
             }
         }
-        let writeReserve = messages.flatMap(\.toolCalls).filter { $0.name == "write_file" }.reduce(0) { total, call in
-            guard let object = try? JSONCodec.parse(Data(call.arguments.utf8)).object,
+        let writeReserve = messages.flatMap(\.toolCalls).reduce(0) { total, call in
+            let unwrapped = EconomyToolOutputPolicy.unwrapCall(call)
+            guard unwrapped.name == "write_file",
+                  let object = try? JSONCodec.parse(Data(unwrapped.arguments.utf8)).object,
                   let content = object["content"]?.string else { return total }
             return max(total, Int(ceil(Double(content.utf8.count) / 4.0)) + 1_024)
         }
@@ -99,7 +101,9 @@ public struct AgentOutputBudget: Sendable, Equatable {
         let reasoning = max(effortReserve, recent.map { $0 + max(1_024, effortReserve / 4) } ?? 0)
         let raw = reasoning + visible + 1_024
         let maximum = providerMaximum(for: configuration)
-        let requestedHardLimit = detectedStyle == .strict
+        // A provider cap on a tool turn would cut tool calls and write_file payloads;
+        // the style limit still shapes the prose there.
+        let requestedHardLimit = detectedStyle == .strict && !codingLike
             ? selectedDecision.providerOutputTokenCap
             : nil
         let cap = requestedHardLimit.map { min(maximum, max(1, $0)) }
@@ -170,7 +174,7 @@ final class AgentOutputBudgetStore: @unchecked Sendable {
 }
 
 public enum EconomyToolOutputPolicy {
-    public static let tokenLimit = 2_048
+    public static let tokenLimit = 1_024
     public static let lineLimit = 160
     public static let marker = "[… tool output reduced for context economy …]"
         + "\nContinue with read_file offset or a narrower grep_files query."
@@ -180,12 +184,20 @@ public enum EconomyToolOutputPolicy {
         let name = toolName.lowercased()
         // read_file already bounds whole lines and records exactly those bytes.
         // Clipping it again invalidates the read ledger and prevents editing.
-        if name == "read_file" { return value }
+        if name == "read_file" || name == DeferredToolSession.searchName || name == DeferredToolSession.outputName { return value }
         if name == "grep_files" { return normalizeLines(value, arguments: arguments, includeNextOffset: false) }
         if name == "run_command" || name == "terminal_session" {
             return clipHeadTail(value, marker: marker)
         }
         return clipHeadTail(value, marker: marker)
+    }
+
+    static func unwrapCall(_ call: AgentToolCall) -> AgentToolCall {
+        guard call.name == DeferredToolSession.invokeName,
+              let input = (try? JSONCodec.parse(Data(call.arguments.utf8)))?.object,
+              let name = input["name"]?.string else { return call }
+        let arguments = input["arguments"]?.string ?? "{}"
+        return AgentToolCall(id: call.id, name: name, arguments: arguments)
     }
 
     public static func normalizeMessages(_ messages: [AgentMessage]) -> [AgentMessage] {
@@ -197,10 +209,17 @@ public enum EconomyToolOutputPolicy {
         return messages.enumerated().map { index, message in
             guard message.role == .tool else { return message }
             var copy = message
-            let arguments = messages[..<index].reversed().first(where: {
+            let matchedCall = messages[..<index].reversed().first(where: {
                 $0.role == .assistant && $0.toolCalls.contains(where: { $0.id == message.toolCallID })
-            })?.toolCalls.first(where: { $0.id == message.toolCallID })?.arguments ?? ""
-            let body = normalize(message.content, toolName: message.name ?? "tool", arguments: arguments)
+            })?.toolCalls.first(where: { $0.id == message.toolCallID }).map(unwrapCall)
+            let arguments = matchedCall?.arguments ?? ""
+            let toolName: String
+            if let name = message.name, !name.isEmpty, name != DeferredToolSession.invokeName {
+                toolName = name
+            } else {
+                toolName = matchedCall?.name ?? message.name ?? "tool"
+            }
+            let body = normalize(message.content, toolName: toolName, arguments: arguments)
             copy.content = body
             copy.providerItems = normalizeProviderItems(message.providerItems, output: body)
             return copy

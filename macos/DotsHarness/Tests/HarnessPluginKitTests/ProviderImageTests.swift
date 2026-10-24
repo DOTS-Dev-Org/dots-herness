@@ -40,7 +40,7 @@ final class ProviderImageTests: XCTestCase {
     func testBuiltInAdaptersMatchByWireProtocolWithoutProviderCapabilityMetadata() {
         let registry = ProviderImageAdapterRegistry()
         BuiltInProviderImageAdapters.register(on: registry)
-        let openAI = ProviderImageRoute(accountID: "1", providerID: "openai", baseURL: "https://api.openai.com/v1", api: "openai-compatible", model: "gpt-4.1-mini")
+        let openAI = ProviderImageRoute(accountID: "1", providerID: "openai", baseURL: "https://api.openai.com/v1", api: "openai-compatible", model: "gpt-5.6-luna")
         let chatGPT = ProviderImageRoute(accountID: "2", providerID: "gpt", baseURL: "https://chatgpt.com/backend-api/codex", api: RouterAPIKind.chatGPT.rawValue, model: "gpt-5.6")
         let other = ProviderImageRoute(accountID: "3", providerID: "deepseek", baseURL: "https://example.test/v1", api: "openai-compatible", model: "deepseek-chat")
 
@@ -108,7 +108,7 @@ final class ProviderImageTests: XCTestCase {
         let account = StoredProviderAccount(
             provider: "openai",
             name: "OpenAI",
-            model: "gpt-4.1-mini",
+            model: "gpt-5.6-luna",
             baseURL: "https://api.openai.com/v1",
             credentialID: "account.key"
         )
@@ -126,7 +126,7 @@ final class ProviderImageTests: XCTestCase {
             provider: provider,
             name: "OpenAI",
             secret: "key",
-            model: "gpt-4.1-mini"
+            model: "gpt-5.6-luna"
         )
         try router.store.setImageFallback(account.id, true)
         router.selectedModelID = account.model
@@ -148,7 +148,7 @@ final class ProviderImageTests: XCTestCase {
         XCTAssertEqual(generated.output.data, Data([1, 2, 3]))
         XCTAssertEqual(generated.provider, "OpenAI")
         XCTAssertEqual(generated.model, "gpt-image-1.5")
-        XCTAssertEqual(generated.fallbackFrom, "OpenAI/gpt-4.1-mini")
+        XCTAssertEqual(generated.fallbackFrom, "OpenAI/gpt-5.6-luna")
         XCTAssertNil(router.lastServedAccountID)
         XCTAssertNil(router.lastServedModelID)
         XCTAssertEqual(router.selectedModelID, account.model)
@@ -214,7 +214,7 @@ final class ProviderImageTests: XCTestCase {
         let paths = temporaryPaths()
         let router = RouterController(paths: paths)
         let provider = try XCTUnwrap(RouterCatalog.kind(for: "openai"))
-        let account = try router.store.addAccount(provider: provider, name: "OpenAI", secret: "key", model: "gpt-4.1-mini")
+        let account = try router.store.addAccount(provider: provider, name: "OpenAI", secret: "key", model: "gpt-5.6-luna")
         try router.store.setImageFallback(account.id, true)
         router.selectedModelID = account.model
         ImageRouterURLProtocol.paths = []
@@ -237,7 +237,7 @@ final class ProviderImageTests: XCTestCase {
         let paths = temporaryPaths()
         let router = RouterController(paths: paths)
         let provider = try XCTUnwrap(RouterCatalog.kind(for: "openai"))
-        let account = try router.store.addAccount(provider: provider, name: "OpenAI", secret: "key", model: "gpt-4.1-mini")
+        let account = try router.store.addAccount(provider: provider, name: "OpenAI", secret: "key", model: "gpt-5.6-luna")
         router.selectedModelID = account.model
         ImageRouterURLProtocol.paths = []
         ImageRouterURLProtocol.responses = [(400, Data(#"{"error":{"message":"image_generation unsupported"}}"#.utf8))]

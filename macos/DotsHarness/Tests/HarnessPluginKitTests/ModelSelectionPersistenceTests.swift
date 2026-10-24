@@ -7,11 +7,11 @@ import PluginRuntime
 @MainActor
 final class ModelSelectionPersistenceTests: XCTestCase {
     private let luna = RouterModel(
-        id: "gpt-6-luna", contextWindow: 1_048_576, efforts: ["low", "high", "max"],
+        id: "gpt-6-luna", contextWindow: 1_050_000, efforts: ["low", "high", "max"],
         displayName: "GPT-6-Luna", provider: "gpt", fast: true
     )
-    private let sol = RouterModel(id: "gpt-6-sol", contextWindow: 1_048_576, efforts: ["low", "high", "max"], provider: "gpt")
-    private let astra = RouterModel(id: "gpt-6-astra", contextWindow: 1_048_576, efforts: ["low", "high", "max"], provider: "gpt")
+    private let sol = RouterModel(id: "gpt-6-sol", contextWindow: 1_050_000, efforts: ["low", "high", "max"], provider: "gpt")
+    private let astra = RouterModel(id: "gpt-6-astra", contextWindow: 1_050_000, efforts: ["low", "high", "max"], provider: "gpt")
 
     func testModelPreferenceStaysWithConversationAcrossRelaunch() throws {
         let paths = try temporaryPaths()

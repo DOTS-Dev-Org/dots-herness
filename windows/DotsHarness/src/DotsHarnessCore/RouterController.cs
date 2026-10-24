@@ -48,6 +48,7 @@ public sealed class RouterController : ObservableObject, IDisposable
     private string _selectedModelID = "";
     private AgentUsageMode _usageMode = AgentUsageMode.Standard;
     private AgentResponseStylePreference _responseStylePreference = AgentResponseStylePreference.Ultra;
+    public bool AutoAccountFailoverAfterLimit { get; set; }
     private int _contextCompactionThresholdPercent = 90;
     private readonly Dictionary<string, int> _contextWindows = new(StringComparer.Ordinal);
     private DateTimeOffset? _lastModelRefreshUtc;
@@ -103,10 +104,17 @@ public sealed class RouterController : ObservableObject, IDisposable
             _router.UsageMode = value;
         }
     }
-    /// <summary>Whether a run may delegate. Delegation is opt-in because every side
-    /// run creates additional provider requests and context.</summary>
+    /// <summary>Whether a run may delegate. Off until the user opts in.</summary>
     public bool? SubagentsPreference { get; set; }
     public bool SubagentsEnabled => SubagentsPreference ?? false;
+    /// <summary>Fast mode may delegate even when the Settings preference is off.</summary>
+    public bool SubagentsActive => SubagentsEnabled || (FastMode && SupportsFast(SelectedModelID));
+    public bool FastMode
+    {
+        get => _router.Fast;
+        set { _router.Fast = value; OnPropertyChanged(); }
+    }
+    public bool SupportsFast(string? model) => NativeFastCatalog.Supports(model);
     public AgentResponseStylePreference ResponseStylePreference
     {
         get => _responseStylePreference;
@@ -674,13 +682,15 @@ public sealed class RouterController : ObservableObject, IDisposable
         bool allowAccountFailoverAfterLimit = false,
         string? excludedAccountId = null,
         string? cacheComparisonScope = null,
-        NativeCacheSession? cacheSession = null) =>
+        NativeCacheSession? cacheSession = null,
+        string? effortOverride = null) =>
         _router.CompleteAsync(
             messages,
             tools,
             string.IsNullOrWhiteSpace(model) ? SelectedModelID : model,
             ct,
             promptCacheKey,
+            effortOverride: effortOverride,
             contextWindow: ContextWindowFor(string.IsNullOrWhiteSpace(model) ? SelectedModelID : model),
             nativeCompactionDisabled: nativeCompactionDisabled,
             preferredAccountId: preferredAccountId,
@@ -731,6 +741,8 @@ public sealed class RouterController : ObservableObject, IDisposable
     public bool HasImageFallback => _imageRouter.HasFallback;
     public bool ImageGenerationCommandVisible => _imageRouter.CommandVisible(SelectedModelID);
     public Task<NativeImageGeneration> GenerateImageAsync(string prompt, CancellationToken ct = default) => _imageRouter.GenerateAsync(prompt, SelectedModelID, ct);
+    public Task<NativeGeneratedMedia> GenerateMediaAsync(NativeMediaKind kind, string prompt, string root, CancellationToken ct = default) =>
+        _imageRouter.GenerateMediaAsync(kind, prompt, root, ct);
     public bool HasActiveRoute => _store.State.Accounts.Any(a => a.Active);
     public string CurrentProvider => CurrentAccount is { } account ? RouterCatalog.LabelFor(account.Provider) : "Provider";
     public string CurrentProviderID => CurrentAccount?.Provider ?? "unknown-provider";
@@ -776,12 +788,41 @@ public sealed class RouterController : ObservableObject, IDisposable
         }
     }
 
-    private string? CheapestConnectedModelID() => _store.State.Accounts
-        .Where(account => account.Active)
-        .SelectMany(ModelsFor)
-        .Distinct(StringComparer.Ordinal)
-        .OrderBy(ModelTierRank)
-        .FirstOrDefault();
+    /// <summary>
+    /// The model an explore subagent runs on: the lightest model of the account that serves
+    /// the conversation's model, so a read-only search costs a compact model on the same
+    /// route. The conversation's model when that account has no lighter one.
+    /// </summary>
+    public string ExploreModelID(string? conversationModel)
+    {
+        var model = string.IsNullOrWhiteSpace(conversationModel) ? SelectedModelID : conversationModel;
+        var account = _store.State.Accounts.Where(item => item.Active).OrderBy(item => item.Priority)
+            .FirstOrDefault(item => CanServe(item, model));
+        return account is null || IsCompactModel(model)
+            ? model
+            : ModelsFor(account).Where(IsCompactModel).OrderBy(item => item, StringComparer.Ordinal).FirstOrDefault() ?? model;
+    }
+
+    // The picked model's provider first (in auto, the one with the most quota left):
+    // project text reaches another provider only when that one has no model left.
+    private string? CheapestConnectedModelID()
+    {
+        var active = _store.State.Accounts.Where(account => account.Active).ToList();
+        var usage = _router.RefreshUsage?.Invoke();
+        // Unknown quota counts as full.
+        double Room(NativeProviderAccount account) =>
+            usage is not null && usage.TryGetValue(account.Id, out var snapshot) && snapshot.UsedFraction is { } used
+                ? 1 - Math.Clamp(used, 0, 1)
+                : 1;
+        var provider = string.IsNullOrWhiteSpace(SelectedModelID) || SelectedModelID == "auto"
+            ? active.OrderByDescending(Room).ThenBy(account => account.Priority).FirstOrDefault()?.Provider
+            : CurrentAccount?.Provider;
+        var sameProvider = active.Where(account => account.Provider == provider).SelectMany(ModelsFor).ToList();
+        return (sameProvider.Count > 0 ? sameProvider : active.SelectMany(ModelsFor))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(ModelTierRank)
+            .FirstOrDefault();
+    }
 
     public string CurrentModel => CurrentAccount is { } account
         ? (CanServe(account, SelectedModelID) ? SelectedModelID : account.Model)
@@ -1177,6 +1218,8 @@ public sealed class RouterController : ObservableObject, IDisposable
             yield break;
         }
         if (!string.IsNullOrWhiteSpace(account.Model) && !NativeProviderAccount.IsPlaceholderModel(account.Model)) yield return account.Model;
+        // Before live discovery answers, offer the models the remote catalog publishes for this provider.
+        foreach (var published in RemoteModelCatalog.ModelIdsFor(account.Provider)) yield return published;
         if (RouterCatalog.KindFor(account.Provider) is { DefaultModel: { Length: > 0 } fallback }) yield return fallback;
     }
 

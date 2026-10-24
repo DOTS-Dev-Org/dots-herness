@@ -19,6 +19,12 @@ EXECUTABLE="DotsHarness"
 SCHEDULER_EXECUTABLE="DotsHarnessScheduler"
 VERSION="${VERSION:-0.1.0}"
 BUILD_NUMBER="${BUILD_NUMBER:-1}"
+ARCH="${ARCH:-$(uname -m)}"
+case "$ARCH" in
+    arm64|x86_64) ;;
+    *) echo "Unsupported architecture: $ARCH (use arm64 or x86_64)." >&2; exit 1 ;;
+esac
+TARGET_TRIPLE="$ARCH-apple-macosx"
 OPEN_RESULT=true
 
 # Yerel disk: harici volume'da binlerce küçük dosya yazmak dakikalar sürer
@@ -26,7 +32,7 @@ BUILD_PATH="${BUILD_PATH:-$HOME/Library/Caches/dots-harness-spm}"
 DIST_DIR="${OUTPUT_PATH:-$ROOT/dist}"
 STAGING="$DIST_DIR/dmg-staging"
 APP_BUNDLE="$DIST_DIR/${APP_NAME}.app"
-DMG_NAME="${APP_NAME}-${VERSION}"
+DMG_NAME="${APP_NAME}-${VERSION}-macos-${ARCH}"
 DMG_PATH="$DIST_DIR/${DMG_NAME}.dmg"
 VOLUME_NAME="$DISPLAY_NAME"
 # Finder icon-view backgrounds are rendered at their native point size. Keep
@@ -40,6 +46,13 @@ DMG_FORMAT="${DMG_FORMAT:-ULMO}"
 STRIP_SYMBOLS="${STRIP_SYMBOLS:-true}"
 SKIP_BUILD="${SKIP_BUILD:-false}"
 SWIFT_OPTIMIZATION="${SWIFT_OPTIMIZATION:-Osize}"
+SWIFT_BUILD_JOBS="${SWIFT_BUILD_JOBS:-1}"
+# SwiftPM's Release WMO uses one frontend with its own thread pool; --jobs alone
+# does not cap it. Bound both layers so packaging does not occupy every core.
+SWIFT_COMPILER_THREADS="${SWIFT_COMPILER_THREADS:-1}"
+# Tam LTO kurulu binary'yi ~%20 küçültür (13,2 → 10,5 MB), derlemeyi ~2x uzatır.
+# SwiftPM'de deneysel bayrak; bir araç zinciri bozarsa SWIFT_LTO=false ile kapatın.
+SWIFT_LTO="${SWIFT_LTO:-true}"
 
 usage() {
     cat <<'EOF'
@@ -57,7 +70,10 @@ Seçenekler:
 
 Ortam değişkenleri:
   VERSION, BUILD_NUMBER, BUNDLE_ID, BUILD_PATH, OUTPUT_PATH, STRIP_SYMBOLS, SKIP_BUILD,
-  SWIFT_OPTIMIZATION (varsayılan: Osize; O performans optimizasyonu), DMG_FORMAT, DMG_BACKGROUND
+  SWIFT_BUILD_JOBS, SWIFT_COMPILER_THREADS,
+  ARCH (arm64 veya x86_64; varsayılan: yerel mimari),
+  SWIFT_OPTIMIZATION (varsayılan: Osize; O performans optimizasyonu), SWIFT_LTO (varsayılan: true),
+  DMG_FORMAT, DMG_BACKGROUND
 EOF
 }
 
@@ -104,6 +120,8 @@ case "$SWIFT_OPTIMIZATION" in
     O|Osize) ;;
     *) fail "Geçersiz SWIFT_OPTIMIZATION değeri: $SWIFT_OPTIMIZATION (O veya Osize kullanın)." ;;
 esac
+[[ "$SWIFT_COMPILER_THREADS" =~ ^[1-9][0-9]*$ ]] \
+    || fail "Geçersiz SWIFT_COMPILER_THREADS değeri: pozitif bir tam sayı kullanın."
 if [[ "$STRIP_SYMBOLS" == true ]]; then
     command -v strip >/dev/null 2>&1 || fail "'strip' bulunamadı. Xcode Command Line Tools kurulu olmalı."
 fi
@@ -120,9 +138,8 @@ command -v osascript >/dev/null 2>&1 || fail "'osascript' bulunamadı. Finder ye
 resolve_bin() {
     local name="$1"
     local candidates=(
+        "$BUILD_PATH/$TARGET_TRIPLE/release/$name"
         "$BUILD_PATH/release/$name"
-        "$BUILD_PATH/arm64-apple-macosx/release/$name"
-        "$BUILD_PATH/x86_64-apple-macosx/release/$name"
     )
     local p
     for p in "${candidates[@]}"; do
@@ -140,13 +157,19 @@ resolve_bin() {
 swift_release() {
     local product=$1
     echo "==> Derleniyor: $product (release, yerel: $BUILD_PATH)"
-    echo "    SwiftPM adımları: planlama → derleme → bağlama"
-    swift build -c release \
+    echo "    SwiftPM adımları: planlama → derleme → bağlama (jobs=$SWIFT_BUILD_JOBS, compiler threads=$SWIFT_COMPILER_THREADS)"
+    local lto=()
+    [[ "$SWIFT_LTO" == true ]] && lto=(--experimental-lto-mode=full)
+    swift build --jobs "$SWIFT_BUILD_JOBS" -c release \
         -Xswiftc "-$SWIFT_OPTIMIZATION" \
+        -Xswiftc -num-threads \
+        -Xswiftc "$SWIFT_COMPILER_THREADS" \
+        ${lto[@]+"${lto[@]}"} \
         -Xlinker -dead_strip \
         --package-path "$ROOT" \
         --product "$product" \
-        --build-path "$BUILD_PATH"
+        --build-path "$BUILD_PATH" \
+        --triple "$TARGET_TRIPLE"
     echo "==> $product hazır"
 }
 
@@ -171,6 +194,8 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 echo "    Uygulama binary'si kopyalanıyor"
 cp "$EXEC_BIN" "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE"
 chmod +x "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE"
+
+# Whisper pakete girmez: ilk ses kullanımında mimariye uygun R2 arşivinden iner.
 
 # Zamanlayıcı ayrı binary değil: aynı executable'a sembolik link; main.swift
 # argv[0] adına bakıp headless daemon modunda açar (~30 MB tasarruf).
@@ -202,6 +227,7 @@ fi
 shopt -s nullglob
 echo "    SPM resource bundle'ları aranıyor ve kopyalanıyor"
 for bundle in \
+    "$BUILD_PATH/$TARGET_TRIPLE/release/"*.bundle \
     "$BUILD_PATH/arm64-apple-macosx/release/"*.bundle \
     "$BUILD_PATH/release/"*.bundle \
     "$BUILD_PATH/x86_64-apple-macosx/release/"*.bundle
@@ -214,6 +240,25 @@ do
     cp -R "$bundle" "$dest"
 done
 shopt -u nullglob
+
+# en ve tr dışındaki diller pakete girmez; seçilince R2'den iner (LanguagePacks).
+# Dosyalar içerik hash'iyle adlandırılır: dist/language-packs/ altındakileri
+# R2'de downloads/languages/ altına yükleyin.
+CORE_BUNDLE="$APP_BUNDLE/Contents/Resources/DotsHarness_DotsHarnessCore.bundle"
+PACKS_DIR="$DIST_DIR/language-packs"
+echo "    Dil paketleri ayrılıyor: $PACKS_DIR"
+rm -rf "$PACKS_DIR"
+mkdir -p "$PACKS_DIR"
+PACKS_JSON="{"
+for lproj in "$CORE_BUNDLE"/*.lproj; do
+    code="$(basename "$lproj" .lproj)"
+    [[ "$code" == en || "$code" == tr ]] && continue
+    sha="$(shasum -a 256 "$lproj/Localizable.strings" | awk '{print $1}')"
+    mv "$lproj/Localizable.strings" "$PACKS_DIR/$sha.strings"
+    rm -rf "$lproj"
+    PACKS_JSON+="\"$code\":\"$sha\","
+done
+printf '%s}\n' "${PACKS_JSON%,}" > "$CORE_BUNDLE/language-packs.json"
 
 ICON_SOURCE="$ROOT/Resources/AppIcon.icns"
 [[ -f "$ICON_SOURCE" ]] || fail "Uygulama ikonu bulunamadı: $ICON_SOURCE"
@@ -263,6 +308,8 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
 	<string>14.0</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>DOTS Harness, istediğinizde sayfaları kendi Safari veya Chrome tarayıcınızda açmak ve okumak için tarayıcıyı denetler.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>DOTS Harness, seçili proje ve sohbette sesli etkileşim için mikrofonu kullanır.</string>
 	<key>NSAudioCaptureUsageDescription</key>
@@ -283,6 +330,13 @@ if [[ -z "$SIGN_IDENTITY" ]]; then
 fi
 [[ -n "$SIGN_IDENTITY" ]] || fail "Kararlı bir codesign kimligi bulunamadi. CODE_SIGN_IDENTITY ayarlayin."
 printf '    Imzalama kimligi: %s\n' "$SIGN_IDENTITY"
+# Nested code (whisper dylib + framework) is signed first: signing the executable
+# or the bundle afterwards fails with "code object is not signed at all".
+shopt -s nullglob
+for nested in "$APP_BUNDLE/Contents/MacOS/"*.dylib "$APP_BUNDLE/Contents/MacOS/"*.framework; do
+    codesign --force --sign "$SIGN_IDENTITY" --timestamp=none "$nested"
+done
+shopt -u nullglob
 codesign --force --sign "$SIGN_IDENTITY" --timestamp=none \
     --identifier "$BUNDLE_ID" "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE"
 codesign --force --sign "$SIGN_IDENTITY" --timestamp=none \

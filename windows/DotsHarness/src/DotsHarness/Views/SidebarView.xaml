@@ -8,6 +8,8 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button x:Name="SearchButton" Content="⌕" Width="28" Height="26" Click="OnSearch"
                         ToolTip="Search" Margin="0,0,4,0"/>
+                <Button x:Name="NotificationsButton" Content="🔔" Width="36" Height="26" Click="OnNotifications"
+                        ToolTip="Notifications" Margin="0,0,4,0"/>
                 <Button x:Name="SettingsButton" Content="⚙" Width="28" Height="26" Click="OnSettings"
                         ToolTip="Settings"/>
             </StackPanel>
@@ -90,7 +92,7 @@
                 </StackPanel>
 
                 <DockPanel Margin="12,0,12,4">
-                    <TextBlock Text="Conversations" FontSize="11" FontWeight="SemiBold"
+                    <TextBlock x:Name="ConversationsHeader" Text="Conversations" FontSize="11" FontWeight="SemiBold"
                                Foreground="{DynamicResource TextSecondary}"/>
                     <Button x:Name="NewButton" DockPanel.Dock="Right" Content="+" Width="22" Height="20"
                             Padding="0" Click="OnNew" ToolTip="New conversation"/>

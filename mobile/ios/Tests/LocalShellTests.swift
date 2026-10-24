@@ -26,8 +26,8 @@ final class LocalShellTests: XCTestCase {
         let original = (1...240).map { "line-\($0):" + String(repeating: "x", count: 1_000) }.joined(separator: "\n")
         try store.write(relativePath: "notes/project.swift", data: Data(original.utf8))
         let file = try store.resolve("notes/project.swift")
-        for start in stride(from: 1, through: 240, by: 20) {
-            _ = try AgentTools.readFile(at: file, offset: start, limit: 20)
+        for start in stride(from: 1, through: 240, by: 10) {
+            _ = try AgentTools.readFile(at: file, offset: start, limit: 10)
             if start == 1 { XCTAssertEqual(ReadLedger.shared.state(for: file, data: Data(original.utf8)), .unread) }
         }
         XCTAssertEqual(ReadLedger.shared.state(for: file, data: Data(original.utf8)), .fresh)

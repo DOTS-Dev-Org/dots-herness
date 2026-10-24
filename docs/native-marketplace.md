@@ -2,12 +2,29 @@
 
 Marketplace registry ve artifact API'si Cloudflare Worker tarafından servis edilir:
 
-- Public registry: `GET https://dots.net.tr/harness/registry.json`
-- Community registry: `GET https://dots.net.tr/harness/community-registry.json`
+- Public registry: `GET <API_PUBLIC_URL>/harness/registry.json` (`dots.net.tr/harness/*` route'u worker'a bağlı değil)
+- Community registry: `GET <API_PUBLIC_URL>/harness/community-registry.json`
 - Public artifact download: Worker `/assets/*` route'u üzerinden R2
 - Authenticated publish: `/api/marketplace/*`
 - CI callbacks: `/api/marketplace/ci/*`
 - Admin moderation: `/api/admin/marketplace/reviews` ve `/api/admin/marketplace/reports`
+- Beğeni: `POST /api/marketplace/plugins/:id/like` `{ "liked": true }`, kullanıcının beğendikleri `GET /api/marketplace/me/likes`
+- Önerilenler: `PATCH /api/admin/marketplace/plugins/:id/featured` `{ "featured": true }`
+
+Registry her plugin için `downloads`, `likes`, `featured` ve `publishedAt` alanlarını D1'den verir.
+İndirme sayısı artifact `/assets/*` üzerinden servis edilirken artar; aynı IP aynı plugin için günde bir kez sayılır.
+Hiç plugin öne çıkarılmamışsa istemci Önerilenler'i en çok indirilenlerden doldurur.
+
+## Beceriler ve proje altyapıları
+
+Beceri ve proje altyapısı listeleri de D1'den (`marketplace_catalog_items`, migration `0007`) gelir; uygulamadaki gömülü kopya yalnızca çevrimdışı yedektir.
+
+- Liste: `GET <API_PUBLIC_URL>/harness/skills.json` ve `/harness/starters.json`
+- İndirme/kullanım bildirimi: `POST /harness/catalog/:kind/:id/download` (`kind`: `skill` | `starter`; IP başına günde bir sayılır)
+- Beğeni: `POST /api/marketplace/catalog/:kind/:id/like` `{ "liked": true }`; `GET /api/marketplace/me/likes` üç türü birlikte döner (`plugin_ids`, `skill_ids`, `starter_ids`)
+- Yönetim: `PUT /api/admin/marketplace/catalog/:kind/:id` `{ "payload"?, "featured"?, "sort_order"? }` (yeni id + `payload` kayıt oluşturur), `DELETE` aynı yol
+
+macOS, Windows ve Linux aynı uç noktaları kullanır (`Marketplace.swift`, `shared/NativeMarketplace.cs`, `shared/SkillCatalog.cs`).
 
 Ana Marketplace ile Community / Experimental alanı bilinçli olarak ayrıdır. Eğlence,
 novelty, lifestyle veya Harness'ın çekirdek geliştirici/agent iş akışına doğrudan

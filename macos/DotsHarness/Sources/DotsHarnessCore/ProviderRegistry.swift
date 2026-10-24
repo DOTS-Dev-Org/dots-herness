@@ -11,10 +11,13 @@ import PluginRuntime
 public struct ProviderMediaSpec: Codable, Sendable, Equatable {
     public var model: String
     public var path: String?
+    /// Request shape when it is not the default one for the kind; music knows "elevenlabs".
+    public var format: String?
 
-    public init(model: String, path: String? = nil) {
+    public init(model: String, path: String? = nil, format: String? = nil) {
         self.model = model
         self.path = path
+        self.format = format
     }
 }
 
@@ -22,15 +25,18 @@ public struct ProviderMediaCapabilities: Codable, Sendable, Equatable {
     public var image: ProviderMediaSpec?
     public var video: ProviderMediaSpec?
     public var audio: ProviderMediaSpec?
+    public var music: ProviderMediaSpec?
 
     public init(
         image: ProviderMediaSpec? = nil,
         video: ProviderMediaSpec? = nil,
-        audio: ProviderMediaSpec? = nil
+        audio: ProviderMediaSpec? = nil,
+        music: ProviderMediaSpec? = nil
     ) {
         self.image = image
         self.video = video
         self.audio = audio
+        self.music = music
     }
 
     public func spec(for kind: MediaKind) -> ProviderMediaSpec? {
@@ -38,6 +44,7 @@ public struct ProviderMediaCapabilities: Codable, Sendable, Equatable {
         case .image: return image
         case .video: return video
         case .audio: return audio
+        case .music: return music
         }
     }
 }
@@ -352,7 +359,16 @@ public final class ProviderRegistry: @unchecked Sendable {
     static func applyRemote(_ entries: [RemoteCatalogEntry], to specs: inout [ProviderSpec]) {
         for entry in entries {
             guard let index = specs.firstIndex(where: { $0.id == entry.id }) else { continue }
-            if let models = entry.models, !models.isEmpty { specs[index].models = models }
+            if let models = entry.models, !models.isEmpty {
+                // The published catalog may omit effort levels; keep the bundled ones.
+                let bundled = specs[index].models
+                specs[index].models = models.map { model in
+                    guard model.efforts.isEmpty, let known = bundled.first(where: { $0.id == model.id }) else { return model }
+                    var merged = model
+                    merged.efforts = known.efforts
+                    return merged
+                }
+            }
             if let userAgent = entry.userAgent, !userAgent.isEmpty,
                specs[index].transport.extraHeaders["user-agent"] != nil {
                 specs[index].transport.extraHeaders["user-agent"] = userAgent
@@ -425,7 +441,7 @@ public final class ProviderRegistry: @unchecked Sendable {
             id: "openai", name: "OpenAI", category: .apiKey, logoSymbol: "hexagon", hint: "API key",
             transport: .init(baseURL: "https://api.openai.com/v1", format: .openaiChat),
             apiKey: .init(header: "Authorization", scheme: .bearer),
-            models: [.init(id: "gpt-4.1-mini", name: nil)],
+            models: [.init(id: "gpt-5.6-luna", name: nil)],
             media: .init(
                 video: .init(model: "sora-2"),
                 audio: .init(model: "gpt-4o-mini-tts")

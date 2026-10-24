@@ -2,6 +2,11 @@ Dots Harness includes the following project dependencies and assets under
 their respective licenses:
 
 - Swift Package Manager runtime components included by this repository.
+- sherpa-onnx (Apache-2.0, see ThirdPartyNotices/sherpa-onnx-LICENSE). Its C API
+  header is vendored in Sources/PiperRuntimeC/vendor.
+- onnxruntime (MIT). Not bundled: downloaded with sherpa-onnx for Turkish TTS.
+- mlx-swift, mlx-swift-lm (MIT) and their Swift dependencies, built into the
+  `dotsmlx` helper downloaded for MLX models (see ThirdPartyNotices/MLX-server.txt).
 - The bundled speech/runtime assets retain their upstream license notices.
 
 Provider logos are packaged local UI assets. No provider credential or

@@ -59,13 +59,21 @@ public final class RouterController: ObservableObject {
     /// Economy keeps the selected model/effort but trims optional output and
     /// model-facing history deterministically.
     @Published public var usageMode: AgentUsageMode = .standard
+    /// Automatically try other compatible accounts when a provider reports a
+    /// limit. Off by default so a conversation only changes accounts after the
+    /// user presses Continue.
+    @Published public var autoAccountFailoverAfterLimit = false
+    public static let autoAccountFailoverAfterLimitKey = "agent.autoAccountFailoverAfterLimit"
     /// Persistent response prose preference. It is separate from Economy:
     /// changing this changes prose guidance, not the stable cache prefix.
     @Published public var responseStylePreference: AgentResponseStylePreference = .ultra
     /// The model the exploration subagent runs on; empty picks one automatically.
     @Published public var explorationModelID = ""
+    /// A working fallback is reused for the rest of the short side-task window,
+    /// keyed to the user's current exploration preference without changing it.
+    var explorationRouteFallback: (preference: String, model: String, until: Date)?
     public static let explorationModelKey = "agent.explorationModel"
-    /// Whether the run may delegate. Delegation is opt-in because every side
+    /// Whether the run may delegate. Off until the user opts in because every side
     /// run creates additional provider requests and context.
     @Published public var subagentsPreference: Bool?
     public static let subagentsKey = "agent.subagentsEnabled"
@@ -83,6 +91,8 @@ public final class RouterController: ObservableObject {
     @Published public var claudeUsage: ClaudeUsageState = .idle
     /// Per-account rate-limit picture keyed by account id. In-memory only.
     @Published public var accountUsage: [String: AccountUsageSnapshot] = [:]
+    /// When each account's usage was last read. Kept out of `accountUsage` so an unchanged reading does not publish.
+    var usageCheckedAt: [String: Date] = [:]
     /// The account and concrete model that actually served the most recent request.
     /// `AgentBridge` reads these to pin the conversation to that account.
     @Published public internal(set) var lastServedAccountID: String?

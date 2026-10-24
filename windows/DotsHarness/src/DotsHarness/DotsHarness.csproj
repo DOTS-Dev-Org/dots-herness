@@ -9,6 +9,8 @@
     <AssemblyName>DotsHarness</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Nullable>enable</Nullable>
+    <!-- Boyut: RID'li publish WebView2Loader.dll'i zaten köke koyar; runtimes\ altındaki ikinci kopya girmesin. -->
+    <WebView2NeverCopyLoaderDllToOutputDirectory Condition="'$(RuntimeIdentifier)' != ''">true</WebView2NeverCopyLoaderDllToOutputDirectory>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.WindowsDesktop.App" />
@@ -16,7 +18,9 @@
   <ItemGroup>
     <Resource Include="Resources\DotsHarness.ico" />
     <Resource Include="Resources\ProviderMarks\*.png" />
-    <PackageReference Include="NAudio" Version="2.2.1" />
+    <Resource Include="Resources\HerNessLoaderFrame*.png" />
+    <!-- Boyut: yalnız WaveInEvent kullanılıyor; NAudio meta paketi Asio/Midi/Wasapi/WinForms DLL'lerini de getirir. -->
+    <PackageReference Include="NAudio.WinMM" Version="2.2.1" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
     <PackageReference Include="QRCoder" Version="1.8.0" />
     <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
@@ -25,9 +29,15 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\presets\host.yml" />
-    <Content Include="Resources\skills\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Resources\skills\**\*" TargetPath="Resources\skills\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <!-- Cross-platform skills live once in shared/skills; only platform-specific ones stay in Resources\skills. -->
     <Content Include="..\..\..\..\shared\skills\**\*" Link="Resources\skills\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Resources\skillsmp-popular-200.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <!-- Boyut: WebView2 paketi WPF uygulamasına WinForms denetimini de referans ekler. -->
+  <Target Name="DropWebView2WinForms" BeforeTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <Reference Remove="@(Reference)" Condition="'%(Filename)' == 'Microsoft.Web.WebView2.WinForms'" />
+    </ItemGroup>
+  </Target>
 </Project>

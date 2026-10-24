@@ -7,8 +7,38 @@ import Foundation
 import WebKit
 
 @MainActor
-public final class NativeBrowserService: NSObject, ObservableObject, WKNavigationDelegate {
-    public static let shared = NativeBrowserService()
+public final class NativeBrowserService: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate {
+    /// Resolve the omnibox separately from agent URL navigation.
+    public static func addressURL(for input: String) -> URL? {
+        let value = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else { return nil }
+        let lower = value.lowercased()
+        if lower == "about:blank" { return URL(string: lower) }
+        if lower.hasPrefix("http://") || lower.hasPrefix("https://") {
+            guard let url = URL(string: value), url.host != nil else { return nil }
+            return url
+        }
+        // Never turn active/local schemes into executable navigation.
+        if lower.hasPrefix("javascript:") || lower.hasPrefix("file:") || lower.hasPrefix("data:") {
+            return nil
+        }
+        let host = value.split(separator: "/", maxSplits: 1).first.map { String($0).lowercased() } ?? lower
+        let local = host == "localhost" || host.hasPrefix("localhost:")
+            || host == "127.0.0.1" || host.hasPrefix("127.0.0.1:")
+            || host == "[::1]" || host.hasPrefix("[::1]:")
+        if !value.contains(where: { $0.isWhitespace }), local || host.contains(".") {
+            let url = URL(string: (local ? "http://" : "https://") + value)
+            if url?.host != nil { return url }
+        }
+        var search = URLComponents(string: "https://www.google.com/search")!
+        search.queryItems = [URLQueryItem(name: "q", value: value)]
+        return search.url
+    }
+
+    public private(set) static var shared = NativeBrowserService()
+
+    /// Agent tools follow the selected dock browser tab.
+    public static func activate(_ service: NativeBrowserService) { shared = service }
 
     public let engineName: String = "Apple WebKit (WKWebView)"
 
@@ -17,27 +47,94 @@ public final class NativeBrowserService: NSObject, ObservableObject, WKNavigatio
     @Published public var isLoading: Bool = false
     @Published public var canGoBack: Bool = false
     @Published public var canGoForward: Bool = false
+    @Published public var navigationError: String?
     @Published public var agentActivity: String? = nil
 
     /// Callback invoked when an agent or code requests navigation, allowing RightDock to open or focus.
     public var onNavigateRequested: ((_ urlString: String) -> Void)?
 
     private var navigationContinuation: CheckedContinuation<String, Error>?
-    private var isConfigured = false
+    private var pendingNavigation: WKNavigation?
+    private var navigationID = UUID()
+    private var observations: [NSKeyValueObservation] = []
 
     public private(set) lazy var webView: WKWebView = {
         let config = WKWebViewConfiguration()
         config.defaultWebpagePreferences.allowsContentJavaScript = true
+        // WebKit's bare embedded-view user agent makes some sites serve their
+        // legacy layout. Keep the engine's own UA and append Safari compatibility.
+        let safari = Bundle(url: URL(fileURLWithPath: "/Applications/Safari.app"))
+        let version = safari?.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        config.applicationNameForUserAgent = (version.map { "Version/\($0) " } ?? "") + "Safari/605.1.15 HerNess"
         let view = WKWebView(frame: CGRect(x: 0, y: 0, width: 1280, height: 800), configuration: config)
         view.navigationDelegate = self
+        view.uiDelegate = self
+        observations = [
+            view.observe(\.url, options: [.new]) { [weak self] _, _ in
+                Task { @MainActor in self?.updateState() }
+            },
+            view.observe(\.title, options: [.new]) { [weak self] _, _ in
+                Task { @MainActor in self?.updateState() }
+            },
+            view.observe(\.isLoading, options: [.new]) { [weak self] _, _ in
+                Task { @MainActor in self?.updateState() }
+            },
+            view.observe(\.canGoBack, options: [.new]) { [weak self] _, _ in
+                Task { @MainActor in self?.updateState() }
+            },
+            view.observe(\.canGoForward, options: [.new]) { [weak self] _, _ in
+                Task { @MainActor in self?.updateState() }
+            },
+        ]
         return view
     }()
 
-    override private init() {
+    public override init() {
         super.init()
     }
 
+    public func loadAddress(_ input: String) {
+        guard let url = Self.addressURL(for: input) else {
+            navigationError = AppCopy.text("dock.invalidAddress")
+            return
+        }
+        Self.activate(self)
+        onNavigateRequested?(url.absoluteString)
+        cancelPendingNavigation()
+        navigationError = nil
+        currentURLString = url.absoluteString
+        webView.load(URLRequest(url: url))
+    }
+
+    public func stop() {
+        webView.stopLoading()
+        cancelPendingNavigation()
+        updateState()
+    }
+
+    private func cancelPendingNavigation() {
+        navigationID = UUID()
+        pendingNavigation = nil
+        if let pending = navigationContinuation {
+            navigationContinuation = nil
+            pending.resume(throwing: CancellationError())
+        }
+        agentActivity = nil
+    }
+
     // MARK: - Navigation
+
+    /// An agent may only open an address that the web tools would accept:
+    /// a public one. `about:blank` is the single exception.
+    static func isAllowedAgentURL(_ url: URL) async -> Bool {
+        if url.scheme?.lowercased() == "about" { return url.absoluteString == "about:blank" }
+        do {
+            try await WebTools.requirePublicURL(url)
+            return true
+        } catch {
+            return false
+        }
+    }
 
     public func navigate(to candidate: String) async throws -> String {
         let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -51,9 +148,11 @@ public final class NativeBrowserService: NSObject, ObservableObject, WKNavigatio
         }
 
         let resolvedURLString: String
-        if trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://")
-            || trimmed.hasPrefix("about:") {
+        if trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") {
             resolvedURLString = trimmed
+        } else if trimmed.hasPrefix("about:") {
+            // Only the empty page; other about: URLs expose browser internals.
+            resolvedURLString = "about:blank"
         } else if trimmed.hasPrefix("localhost") || trimmed.hasPrefix("127.0.0.1") {
             resolvedURLString = "http://" + trimmed
         } else {
@@ -64,6 +163,17 @@ public final class NativeBrowserService: NSObject, ObservableObject, WKNavigatio
             throw NativeBrowserError("Invalid URL format: \(candidate)")
         }
 
+        // The browser runs with the user's cookies, so an agent that could
+        // reach a loopback or private address could read the services that
+        // run on this machine — the provider gateway and the remote-control
+        // port among them. The same policy the web tools use applies here.
+        guard await Self.isAllowedAgentURL(url) else {
+            throw NativeBrowserError("That address is not available to the agent.")
+        }
+
+        cancelPendingNavigation()
+        navigationError = nil
+        let requestID = navigationID
         agentActivity = "Navigating to \(resolvedURLString)..."
         onNavigateRequested?(resolvedURLString)
 
@@ -73,13 +183,14 @@ public final class NativeBrowserService: NSObject, ObservableObject, WKNavigatio
 
         return try await withCheckedThrowingContinuation { continuation in
             self.navigationContinuation = continuation
-            self.webView.load(request)
+            self.pendingNavigation = self.webView.load(request)
 
             // Fallback timeout in case navigation delegates take too long
             Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .seconds(12))
-                guard let self, let pending = self.navigationContinuation else { return }
+                guard let self, self.navigationID == requestID, let pending = self.navigationContinuation else { return }
                 self.navigationContinuation = nil
+                self.pendingNavigation = nil
                 self.isLoading = false
                 self.agentActivity = nil
                 self.updateState()
@@ -89,11 +200,13 @@ public final class NativeBrowserService: NSObject, ObservableObject, WKNavigatio
     }
 
     public func reload() {
+        Self.activate(self)
         webView.reload()
         updateState()
     }
 
     public func goBack() {
+        Self.activate(self)
         if webView.canGoBack {
             webView.goBack()
             updateState()
@@ -101,6 +214,7 @@ public final class NativeBrowserService: NSObject, ObservableObject, WKNavigatio
     }
 
     public func goForward() {
+        Self.activate(self)
         if webView.canGoForward {
             webView.goForward()
             updateState()
@@ -315,37 +429,51 @@ public final class NativeBrowserService: NSObject, ObservableObject, WKNavigatio
 
     // MARK: - WKNavigationDelegate
 
+    public func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
+                        for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+        // Links requesting another window remain usable inside the dock.
+        if navigationAction.targetFrame == nil { webView.load(navigationAction.request) }
+        return nil
+    }
+
+    public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        navigationError = nil
+        updateState()
+    }
+
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         isLoading = false
         agentActivity = nil
         updateState()
-        if let continuation = navigationContinuation {
+        if let continuation = navigationContinuation, navigation === pendingNavigation {
             navigationContinuation = nil
+            pendingNavigation = nil
             continuation.resume(returning: "Loaded page: \(pageTitle) (\(currentURLString))")
         }
     }
 
     public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        isLoading = false
-        agentActivity = nil
-        updateState()
-        if let continuation = navigationContinuation {
-            navigationContinuation = nil
-            continuation.resume(throwing: error)
-        }
+        finishFailedNavigation(navigation, error: error)
     }
 
     public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        finishFailedNavigation(navigation, error: error)
+    }
+
+    private func finishFailedNavigation(_ navigation: WKNavigation?, error: Error) {
         isLoading = false
         agentActivity = nil
+        if (error as NSError).code != NSURLErrorCancelled { navigationError = error.localizedDescription }
         updateState()
-        if let continuation = navigationContinuation {
+        if let continuation = navigationContinuation, navigation === pendingNavigation {
             navigationContinuation = nil
+            pendingNavigation = nil
             continuation.resume(throwing: error)
         }
     }
 
     private func updateState() {
+        isLoading = webView.isLoading
         currentURLString = webView.url?.absoluteString ?? currentURLString
         pageTitle = webView.title ?? ""
         canGoBack = webView.canGoBack

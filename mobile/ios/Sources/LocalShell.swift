@@ -42,7 +42,15 @@ final class LocalShell: ObservableObject {
     @discardableResult
     func run(_ line: String) async -> String {
         append("\(prompt) \(line)")
-        let output = execute(line)
+        let workspaceRoot = store.root
+        let output = (try? await MobileWorkspaceWriteLease.shared.withLease(for: workspaceRoot) {
+            await MainActor.run {
+                guard mobileWorkspaceRootIdentity(self.store.root) == mobileWorkspaceRootIdentity(workspaceRoot) else {
+                    return "Tool error: the selected workspace changed while this command was waiting. Retry it."
+                }
+                return self.execute(line)
+            }
+        }) ?? "Tool error: terminal command was cancelled."
         if !output.isEmpty { append(output) }
         return output
     }
@@ -66,13 +74,9 @@ final class LocalShell: ObservableObject {
         guard !clause.isEmpty else { return ("", false) }
 
         var redirect: (path: String, append: Bool)?
-        if let range = clause.range(of: ">>", options: .backwards) ?? clause.range(of: ">", options: .backwards) {
-            let isAppend = clause[range] == ">>"
-            let target = clause[range.upperBound...].trimmingCharacters(in: .whitespaces)
-            if !target.isEmpty, !target.contains(" ") {
-                redirect = (target, isAppend)
-                clause = String(clause[..<range.lowerBound])
-            }
+        if let parsed = splitRedirection(clause) {
+            redirect = (parsed.path, parsed.append)
+            clause = parsed.command
         }
 
         var input = ""
@@ -342,6 +346,46 @@ final class LocalShell: ObservableObject {
         }
         results.append(current)
         return results.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
+
+    /// Finds the final redirection operator outside quotes and escapes. The
+    /// target is tokenized separately so quoted paths with spaces remain valid.
+    private func splitRedirection(_ value: String) -> (command: String, path: String, append: Bool)? {
+        var quote: Character?
+        var escaped = false
+        var operatorRange: (start: String.Index, end: String.Index, append: Bool)?
+        var index = value.startIndex
+
+        while index < value.endIndex {
+            let character = value[index]
+            if escaped {
+                escaped = false
+            } else if character == "\\" {
+                escaped = true
+            } else if let active = quote {
+                if character == active { quote = nil }
+            } else if character == "\"" || character == "'" {
+                quote = character
+            } else if character == ">" {
+                let next = value.index(after: index)
+                let append = next < value.endIndex && value[next] == ">"
+                let end = append ? value.index(after: next) : next
+                operatorRange = (index, end, append)
+                index = end
+                continue
+            }
+            index = value.index(after: index)
+        }
+
+        guard let operatorRange else { return nil }
+        let target = String(value[operatorRange.end...])
+        let targetArguments = tokenize(target)
+        guard targetArguments.count == 1, !targetArguments[0].isEmpty else { return nil }
+        return (
+            String(value[..<operatorRange.start]),
+            targetArguments[0],
+            operatorRange.append
+        )
     }
 
     private func tokenize(_ value: String) -> [String] {

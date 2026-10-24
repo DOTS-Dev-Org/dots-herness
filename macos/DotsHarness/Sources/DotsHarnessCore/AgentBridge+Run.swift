@@ -11,6 +11,46 @@ private struct ToolOutputSnapshot: Sendable {
     let text: String
 }
 
+private struct PendingAssistantContinuation {
+    static let maximumContinuationRequests = 8
+    static let maximumContextExcerptCharacters = 12_000
+
+    let id: String
+    let originalPrompt: String
+    var content = ""
+    var thinking: String?
+    var continuationCount = 0
+
+    init(id: String, originalPrompt: String) {
+        self.id = id
+        self.originalPrompt = originalPrompt
+    }
+
+    mutating func append(_ message: AgentMessage) {
+        content += message.content
+        if let nextThinking = message.thinking?.trimmingCharacters(in: .whitespacesAndNewlines), !nextThinking.isEmpty {
+            thinking = [thinking, nextThinking].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: "\n\n")
+        }
+    }
+
+    func continuationPrompt() -> String {
+        """
+        Continue the assistant response from exactly where it stopped. Do not repeat text already written. Preserve the original request, language, formatting, and structure. Output only the continuation.
+
+        Original user request (verbatim):
+        \(originalPrompt)
+
+        The assistant message immediately following this instruction is the already delivered response, or its most recent ending excerpt if earlier text is omitted. Continue directly after its ending without repeating it.
+        """
+    }
+
+    func contextExcerpt() -> String {
+        guard content.count > Self.maximumContextExcerptCharacters else { return content }
+        return "[Earlier response text is already displayed in this answer. The excerpt below is its ending.]\n"
+            + content.suffix(Self.maximumContextExcerptCharacters)
+    }
+}
+
 private final class ToolOutputPreviewBuffer: @unchecked Sendable {
     private let lock = NSLock()
     private var output = ""
@@ -64,25 +104,36 @@ extension NativeAgentHost {
         planMode: Bool,
         approvedPlanID: String?,
         planGateOverride: Bool = false,
-        modelOverride: String?
+        modelOverride: String?,
+        allowAccountFailoverAfterLimit: Bool = false,
+        promptCPUMilliseconds: Int = 0,
+        promptPreparationMetrics: PromptPreparationMetrics? = nil
     ) async {
         // Whatever ends this run - a finished turn, a stop, a thrown error - its
         // write leases and its question to the user end with it, so no abandoned
         // run can hold a file hostage.
         defer {
             dropWorkspaceLeases(conversationID: conversationID)
+            WorkspaceLeases.shared.clearDeferredWrites(conversationID: conversationID)
             clearLiveReply(in: conversationID)
         }
         // The first step's preparation includes the run setup below; later
         // steps start their own clock at the top of the loop.
         var runStartedAt: Date? = Date()
+        var runStartedCPU: UInt64? = AgentStepCPUTrace.thread()
+        let preparationMetrics = promptPreparationMetrics ?? PromptPreparationMetrics()
         let client = NativeAgentClient(configuration: configuration)
-        let (rawTools, initialPluginNameMap) = agentTools(workspace: workspace)
+        var deferredTools = DeferredToolSession()
+        let initialCatalogStarted = AgentStepCPUTrace.thread()
+        let (rawTools, initialPluginNameMap) = agentTools(workspace: workspace, metrics: preparationMetrics)
+        preparationMetrics.record("tool_catalog_initial", since: initialCatalogStarted)
         // Tool order is part of the prompt prefix. Keep it deterministic across
         // plugin/MCP discovery order and across all provider transports.
         var pluginNameMap = initialPluginNameMap
-        var tools = prepareCacheEpoch(conversationID: conversationID, tools: rawTools,
+        let initialCacheEpochStarted = AgentStepCPUTrace.thread()
+        var tools = prepareCacheEpoch(conversationID: conversationID, tools: rawTools + DeferredToolSession.definitions,
             pluginNames: pluginNameMap, messages: context)
+        preparationMetrics.record("cache_epoch_initial", since: initialCacheEpochStarted)
         var messages = context
         var attachmentLedger = Self.latestAttachments(in: messages)
         saveModelContext(messages, in: conversationID)
@@ -90,11 +141,41 @@ extension NativeAgentHost {
         var restartPlanMode: Bool?
         var restartApprovedPlanID: String?
         var restartPlanGateOverride = false
+        var restartSubagentsOverride: Bool?
         var succeeded = true
         var failureMessage: String?
         var stoppedByUser = false
+        var backlogControlText = ""
+        // A provider limit or a thrown error ended the run, not the agent's own work.
+        var interruptedByError = false
         var visionFallbackAttempted = false
         var nativeCompactionDisabled = false
+        var contextOverflowRetryUsed = false
+        var forceDeterministicOverflowCompaction = false
+        var pendingAssistantContinuation: PendingAssistantContinuation?
+
+        func settlePendingAssistantContinuation() -> AgentMessage? {
+            guard let pending = pendingAssistantContinuation else { return nil }
+            let liveText = currentLiveReplyText(in: conversationID) ?? pending.content
+            let mergedText = liveText.hasPrefix(pending.content) ? liveText : pending.content + liveText
+            let assistant = AgentMessage(role: .assistant, content: mergedText, thinking: pending.thinking)
+            messages.removeAll { $0.responseContinuationID == pending.id }
+            messages.append(assistant)
+            pendingAssistantContinuation = nil
+            saveModelContext(messages, in: conversationID)
+            replaceLiveReply(mergedText, thinking: pending.thinking, in: conversationID)
+            return assistant
+        }
+        func appendPartialAnswer(_ partial: AgentMessage?, turn: FinishedTurn) {
+            guard let partial else { return }
+            backlogControlText = partial.content
+            append(
+                ChatMessage(kind: .assistant, text: partial.content, thinking: partial.thinking),
+                to: conversationID,
+                turnID: turn.turnID,
+                changedFiles: turn.changedFiles
+            )
+        }
         let resumesPlanExecution = !planMode && !planGateOverride
             && conversations.first(where: { $0.id == conversationID }).map {
                 $0.planGateActive && $0.continuation != nil
@@ -104,33 +185,80 @@ extension NativeAgentHost {
             conversationID: conversationID,
             runID: runID.uuidString
         )
-        var browserBackend: BrowserBackend = browserBackendSetting
-            ?? (nonInteractive ? .managed : BrowserBackendPolicy.resolveUserRule(promptFromContext(context)))
+        // No explicit setting and no browser named in the request: the in-app WebKit
+        // browser. It needs no download and no second browser process.
+        let requestedBackend = browserBackendSetting ?? BrowserBackendPolicy.resolveUserRule(promptFromContext(context))
+        let browserBackend: BrowserBackend = requestedBackend == .unknown ? .native : requestedBackend
 
         do {
             var toolSteps = 0
+            var wrapUpRequested = false
             var toolSignatures: [String: Int] = [:]
+            var fileEdits: [String: Int] = [:]
+
+            /// Takes a queued prompt into this run. False means it changes the
+            /// plan mode, so the run has to restart with it.
+            func absorb(_ next: PendingPrompt) -> Bool {
+                deferredTools.resetPlan()
+                let user = accept(next, in: conversationID, history: messages)
+                let nextSubagentsOverride = next.subagentsOverride
+                    ?? (next.notice != nil || next.approvedPlanID != nil
+                        ? subagentsEnabled
+                        : subagentsEnabledForNewPrompt)
+                if next.planMode == planMode,
+                   next.approvedPlanID == nil,
+                   nextSubagentsOverride == subagentsEnabled {
+                    messages.append(user)
+                    saveModelContext(messages, in: conversationID)
+                    toolSteps = 0
+                    wrapUpRequested = false
+                    return true
+                }
+                let nextContext = messages + [user]
+                saveModelContext(nextContext, in: conversationID)
+                restartContext = nextContext
+                restartPlanMode = next.planMode
+                restartApprovedPlanID = next.approvedPlanID
+                restartPlanGateOverride = next.bypassesPlanGate
+                restartSubagentsOverride = nextSubagentsOverride
+                return false
+            }
             while true {
                 try Task.checkCancellation()
                 let stepStartedAt = runStartedAt ?? Date()
                 runStartedAt = nil
-                if toolSteps >= Self.maxToolSteps {
+                var cpuStages = preparationMetrics.takeStages()
+                let initialCatalogMilliseconds = cpuStages.removeValue(forKey: "tool_catalog_initial") ?? 0
+                let initialCacheEpochMilliseconds = cpuStages.removeValue(forKey: "cache_epoch_initial") ?? 0
+                var cpuMark = AgentStepCPUTrace.thread()
+                if let runStartedCPU {
+                    // Built by the caller before the run starts, so it reaches this step by value.
+                    let promptStages = ["prompt_guidance", "prompt_activity", "prompt_rules", "prompt_memory",
+                        "prompt_sections", "prompt_assembly", "prompt_context"]
+                    let promptSubstages = promptStages.compactMap { cpuStages[$0] }.reduce(0, +)
+                    cpuStages["prompt_other"] = max(0, promptCPUMilliseconds - promptSubstages)
+                    let setupElapsed = AgentStepCPUTrace.milliseconds(since: runStartedCPU, to: cpuMark)
+                    cpuStages["setup"] = max(0, setupElapsed - initialCatalogMilliseconds - initialCacheEpochMilliseconds)
+                    cpuStages["tool_catalog", default: 0] += initialCatalogMilliseconds
+                    cpuStages["cache_epoch", default: 0] += initialCacheEpochMilliseconds
+                }
+                runStartedCPU = nil
+                func cpuLap(_ stage: String) {
+                    let now = AgentStepCPUTrace.thread()
+                    cpuStages[stage, default: 0] += AgentStepCPUTrace.milliseconds(since: cpuMark, to: now)
+                    cpuMark = now
+                }
+                if toolSteps >= Self.maxToolSteps, !wrapUpRequested {
+                    // One request without tool work, so the turn reports what it
+                    // found instead of ending silently.
+                    wrapUpRequested = true
+                    var notice = AgentMessage(role: .user, content: Self.toolStepLimitNotice)
+                    notice.promptContextCaptured = true
+                    messages.append(notice)
+                } else if toolSteps >= Self.maxToolSteps {
                     if let next = takeNextPrompt(in: conversationID, allowQueue: true) {
                         _ = await finishActiveTurn(conversationID: conversationID, workspace: workspace)
-                        let user = accept(next, in: conversationID, history: messages)
-                        if next.planMode == planMode && next.approvedPlanID == nil {
-                            messages.append(user)
-                            saveModelContext(messages, in: conversationID)
-                            toolSteps = 0
-                            continue
-                        }
-                        var nextContext = messages
-                        nextContext.append(user)
-                        saveModelContext(nextContext, in: conversationID)
-                        restartContext = nextContext
-                        restartPlanMode = next.planMode
-                        restartApprovedPlanID = next.approvedPlanID
-                        restartPlanGateOverride = next.bypassesPlanGate
+                        if absorb(next) { continue }
                         break
                     }
                     succeeded = false
@@ -141,7 +269,8 @@ extension NativeAgentHost {
                             reason: .toolStepLimit,
                             provider: configuration.provider,
                             model: configuration.model,
-                            message: failureMessage!
+                            message: failureMessage!,
+                            subagentsOverride: AgentRunScope.subagentsOverride
                         )
                     }
                     queuePausedAfterStop = true
@@ -153,7 +282,10 @@ extension NativeAgentHost {
                     )
                     break
                 }
-                let forcedCompaction = compactRequested.remove(conversationID) != nil
+                cpuLap("setup")
+                let overflowCompaction = forceDeterministicOverflowCompaction
+                forceDeterministicOverflowCompaction = false
+                let forcedCompaction = overflowCompaction || compactRequested.remove(conversationID) != nil
                 let requestedModel = modelOverride ?? router?.selectedModelID ?? configuration.model
                 let targetPreferredAccountID = router.flatMap {
                     preferredAccountID($0, conversationID: conversationID, modelOverride: modelOverride)
@@ -176,19 +308,18 @@ extension NativeAgentHost {
                     conversationID: conversationID
                 )
                 let targetRouteChanged = conversations.first(where: { $0.id == conversationID })?.contextRouteIdentity != targetRouteIdentity
-                // Context overflow is handled by compactIfNeeded below. Do not
-                // park the user's turn on a confirmation banner: local pruning
-                // and model-written summaries both preserve the visible chat
-                // history and let the requested work continue automatically.
+                // A model change that no longer fits is compacted without asking:
+                // pruning and summaries both keep the visible chat history.
                 let compactionOutcome = try await compactIfNeeded(
                     messages: messages,
                     conversationID: conversationID,
                     configuration: configuration,
-                    tools: tools,
+                    tools: DeferredToolSession.requestTools(tools),
                     modelOverride: modelOverride,
                     client: client,
                     nativeCompactionDisabled: nativeCompactionDisabled,
                     force: forcedCompaction,
+                    forceDeterministic: overflowCompaction,
                     contextConfiguration: targetContextConfiguration,
                     routeIdentityOverride: targetRouteIdentity,
                     router: router
@@ -202,17 +333,33 @@ extension NativeAgentHost {
                 // tracking. Merge the current canonical messages into the
                 // ledger instead of deriving it from only the compacted list.
                 Self.mergeLatestAttachments(messages, into: &attachmentLedger)
-                let liveCatalog = agentTools(workspace: workspace)
+                cpuLap("compaction")
+                let liveCatalog = agentTools(workspace: workspace, metrics: preparationMetrics)
                 pluginNameMap = liveCatalog.pluginNames
-                tools = prepareCacheEpoch(conversationID: conversationID, tools: liveCatalog.defs,
+                cpuLap("tool_catalog")
+                tools = prepareCacheEpoch(conversationID: conversationID, tools: liveCatalog.defs + DeferredToolSession.definitions,
                     pluginNames: pluginNameMap, messages: messages)
+                cpuLap("cache_epoch")
                 appendCacheNotices(messages: &messages, conversationID: conversationID,
                     attachments: Array(attachmentLedger.values), tools: tools, planMode: planMode)
                 saveModelContext(messages, in: conversationID)
+                cpuLap("save")
+                if let pendingAssistantContinuation {
+                    // Compaction and cache notices can clear the live bubble.
+                    // Restore the accumulated prefix before the next request.
+                    replaceLiveReply(
+                        pendingAssistantContinuation.content,
+                        thinking: pendingAssistantContinuation.thinking,
+                        in: conversationID
+                    )
+                }
                 let requestStartedAt = Date()
                 let prepareMilliseconds = Int(requestStartedAt.timeIntervalSince(stepStartedAt) * 1_000)
                 let requestContextSegment = conversations.first(where: { $0.id == conversationID })?.contextCompactionCount ?? 0
-                let requestTools = tools
+                deferredTools.restoreDiscovery(messages)
+                let requestTools = DeferredToolSession.requestTools(tools)
+                let selectedEffort = effortOverride ?? configuration.effort
+                let executionEffort = deferredTools.effort(selected: selectedEffort, planMode: planMode)
                 let request = messages
                 let requestCacheKey = cacheKey(
                     for: configuration,
@@ -221,13 +368,18 @@ extension NativeAgentHost {
                     tools: requestTools,
                     router: router
                 )
-                let response: AgentResponse
-                let advertisedBindings = cacheBindingIDs(tools: requestTools, pluginNames: pluginNameMap)
+                var response: AgentResponse
+                let advertisedBindings = cacheBindingIDs(tools: tools, pluginNames: pluginNameMap)
                 let priorStickyAccountID = conversations.first(where: { $0.id == conversationID })?.stickyAccountID
                 let requestCachePolicy = AgentCachePolicy(promptCacheKey: requestCacheKey,
                     comparisonScope: AgentCacheTrace.fingerprint("conversation|" + conversationID),
                     priorBoundary: conversations.first(where: { $0.id == conversationID })?.cacheEpoch?.priorBoundary)
-                clearLiveReply(in: conversationID)
+                if pendingAssistantContinuation == nil {
+                    clearLiveReply(in: conversationID)
+                }
+                cpuLap("build")
+                let requestMainCPU = AgentStepCPUTrace.thread()
+                let requestProcessCPU = AgentStepCPUTrace.process()
                 // ponytail: an account that fails over after it already wrote prose
                 // leaves that prose in front of the next account's; reset per attempt if seen.
                 let onDelta: NativeAgentClient.StreamDeltaHandler = { [weak self] delta in
@@ -242,7 +394,9 @@ extension NativeAgentHost {
                             model: modelOverride,
                             preferredAccountID: targetPreferredAccountID,
                             preferredModelID: targetPreferredModelID,
-                            disableNativeCompactionForRequest: targetRouteChanged,
+                            effort: executionEffort,
+                            allowAccountFailoverAfterLimit: allowAccountFailoverAfterLimit,
+                            disableNativeCompactionForRequest: targetRouteChanged || nativeCompactionDisabled,
                             onDelta: onDelta
                         )
                         if let served = response.servedAccountID,
@@ -256,7 +410,8 @@ extension NativeAgentHost {
                         Task { await router.refreshAccountUsage() }
                     } else {
                         var requestConfiguration = configuration
-                        if targetRouteChanged {
+                        requestConfiguration.effort = executionEffort
+                        if targetRouteChanged || nativeCompactionDisabled {
                             requestConfiguration.disableNativeCompactionForRequest = true
                         }
                         let requestClient = NativeAgentClient(configuration: requestConfiguration, session: client.session)
@@ -277,13 +432,29 @@ extension NativeAgentHost {
                         providerError: error
                     )
                     continue
+                } catch let error as NativeAgentError
+                    where error.isContextWindowExceeded && !contextOverflowRetryUsed {
+                    contextOverflowRetryUsed = true
+                    nativeCompactionDisabled = true
+                    forceDeterministicOverflowCompaction = true
+                    clearLiveReply(in: conversationID)
+                    continue
                 }
+                // The request fit again, so a later overflow in this long run
+                // earns its own compaction retry; two in a row still fail.
+                contextOverflowRetryUsed = false
                 if response.incompleteReason?.lowercased() == "max_output_tokens" {
-                    succeeded = false
                     let style = ResponseStyleResolver.resolve(
                         preference: configuration.responseStylePreference,
-                        prompt: request.last(where: { $0.role == .user })?.content
+                        prompt: AgentMessage.responseStylePrompt(in: request)
                     )
+                    let hasPlainPartialAnswer = response.message.toolCalls.isEmpty
+                        && response.media.isEmpty
+                        && !response.message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    let existingContinuationRequests = pendingAssistantContinuation?.continuationCount ?? 0
+                    let willContinue = hasPlainPartialAnswer
+                        && !style.isHardLimit
+                        && existingContinuationRequests < PendingAssistantContinuation.maximumContinuationRequests
                     recordContextUsage(
                         response,
                         conversationID: conversationID,
@@ -296,21 +467,84 @@ extension NativeAgentHost {
                         startedAt: requestStartedAt,
                         inputComposition: AgentContextInputComposition(messages: request, tools: requestTools, api: configuration.api),
                         effectiveOutputBudget: response.effectiveOutputBudget,
+                    requestedEffort: executionEffort,
                         responseStyle: style.style,
                         retryCount: response.retryCount,
                         retryUsage: response.retryUsage,
-                        errorKind: response.retryCount > 0
-                            ? "output_limit_after_retry"
-                            : "output_limit",
+                        errorKind: willContinue
+                            ? "output_limit_continuing"
+                            : response.retryCount > 0 ? "output_limit_after_retry" : "output_limit",
                         tools: requestTools,
-                        requestContextSegment: requestContextSegment
+                        requestContextSegment: requestContextSegment,
+                        compaction: compactionOutcome.trace
                     )
+                    if let index = conversations.firstIndex(where: { $0.id == conversationID }) {
+                        // The next continuation is still the same route. Record
+                        // its input so the next preflight applies that route's
+                        // trigger instead of treating it as a model switch.
+                        if let router,
+                           let servedAccountID = response.servedAccountID,
+                           let servedModelID = response.servedModelID,
+                           let servedAccount = router.store.state.accounts.first(where: { $0.id == servedAccountID }) {
+                            conversations[index].stickyAccountID = servedAccountID
+                            conversations[index].stickyModelID = servedModelID
+                            conversations[index].contextRouteIdentity = servedAccount.routeIdentity(model: servedModelID)
+                        } else {
+                            conversations[index].contextRouteIdentity = targetRouteIdentity
+                        }
+                        conversations[index].lastContextInputTokens = response.usage.map {
+                            $0.breakdown(forAPI: configuration.api).totalInputTokens
+                        }
+                            ?? AgentContextCompaction.estimateTokens(request)
+                        conversations[index].lastContextEstimatedTokens = response.usage == nil ? 0
+                            : requestEstimate(request, tools: requestTools, configuration: configuration, contextConfiguration: targetContextConfiguration)
+                        conversations[index].contextWindow = targetContextConfiguration?.contextWindow
+                            ?? configuration.contextWindow
+                    }
+                    var partialAnswer: AgentMessage?
+                    if hasPlainPartialAnswer {
+                        var pending = pendingAssistantContinuation ?? PendingAssistantContinuation(
+                            id: UUID().uuidString,
+                            originalPrompt: AgentMessage.responseStylePrompt(in: request) ?? ""
+                        )
+                        pending.append(response.message)
+                        if willContinue {
+                            pending.continuationCount += 1
+                            pendingAssistantContinuation = pending
+                            messages.removeAll { $0.responseContinuationID == pending.id }
+                            // Keep the continuation prompt and complete assistant
+                            // prefix in the same turn group. Context compaction
+                            // therefore retains the exact boundary and original
+                            // request together when it archives older turns.
+                            messages.append(AgentMessage(
+                                role: .user,
+                                content: pending.continuationPrompt(),
+                                responseContinuationID: pending.id
+                            ))
+                            messages.append(AgentMessage(
+                                role: .assistant,
+                                content: pending.contextExcerpt(),
+                                responseContinuationID: pending.id
+                            ))
+                            saveModelContext(messages, in: conversationID)
+                            replaceLiveReply(pending.content, thinking: pending.thinking, in: conversationID)
+                            continue
+                        }
+                        pendingAssistantContinuation = pending
+                        partialAnswer = settlePendingAssistantContinuation()
+                    } else {
+                        partialAnswer = settlePendingAssistantContinuation()
+                    }
+                    succeeded = false
                     failureMessage = style.isHardLimit
                         ? "The response reached the requested output limit."
-                        : response.retryCount > 0
-                            ? "The provider stopped before completing the response after one bounded output-budget retry."
-                            : "The provider stopped before completing the response at its output limit."
+                        : partialAnswer != nil
+                            ? "The response reached its output limit after the maximum number of automatic continuations. The partial answer is shown above."
+                            : response.retryCount > 0
+                                ? "The provider stopped before completing the response after one bounded output-budget retry."
+                                : "The provider stopped before completing the response at its output limit."
                     let turn = await finishActiveTurn(conversationID: conversationID, workspace: workspace, status: "failed")
+                    appendPartialAnswer(partialAnswer, turn: turn)
                     append(
                         ChatMessage(kind: .system, text: failureMessage!),
                         to: conversationID,
@@ -318,6 +552,19 @@ extension NativeAgentHost {
                         changedFiles: turn.changedFiles
                     )
                     break
+                }
+                if let pending = pendingAssistantContinuation {
+                    response.message.content = pending.content + response.message.content
+                    response.message.thinking = [pending.thinking, response.message.thinking]
+                        .compactMap { $0 }
+                        .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                        .joined(separator: "\n\n")
+                    // Provider-native items belong to only the final chunk;
+                    // the merged transcript must replay the complete answer.
+                    response.message.providerItems = []
+                    messages.removeAll { $0.responseContinuationID == pending.id }
+                    pendingAssistantContinuation = nil
+                    replaceLiveReply(response.message.content, thinking: response.message.thinking, in: conversationID)
                 }
                 // The provider call completed successfully. Only now is a
                 // snapshotted payload considered delivered; a failed request
@@ -327,6 +574,10 @@ extension NativeAgentHost {
                 // Keep a completed provider response in the steer snapshot before
                 // observing cancellation. This preserves the output that arrived
                 // just as the higher-priority instruction was submitted.
+                // Natural language accompanying a tool batch is visible
+                // progress. Its prose can be omitted on the next request;
+                // provider-native items and the tool-call structure stay intact.
+                response.message.markTransientProgressForToolCall()
                 messages.append(response.message)
                 let historyRewritten = historyRewrittenConversations.remove(conversationID) != nil
                 if let priorStickyAccountID,
@@ -347,22 +598,21 @@ extension NativeAgentHost {
                        let servedAccountID = response.servedAccountID,
                        let servedModelID = response.servedModelID,
                        let servedAccount = router.store.state.accounts.first(where: { $0.id == servedAccountID }) {
-                        conversations[index].contextRouteIdentity = [
-                            servedAccount.api,
-                            servedAccount.provider,
-                            servedAccount.id,
-                            servedAccount.baseURL.lowercased(),
-                            servedModelID,
-                        ].joined(separator: "|")
+                        conversations[index].contextRouteIdentity = servedAccount.routeIdentity(model: servedModelID)
                     } else {
                         conversations[index].contextRouteIdentity = targetRouteIdentity
                     }
                     conversations[index].lastContextInputTokens = response.usage.map { $0.breakdown(forAPI: configuration.api).totalInputTokens }
                         ?? AgentContextCompaction.estimateTokens(messages)
+                    conversations[index].lastContextEstimatedTokens = response.usage == nil ? 0
+                        : requestEstimate(request, tools: requestTools, configuration: configuration, contextConfiguration: targetContextConfiguration)
                     if response.nativeCompactionApplied {
                         // Native Responses compaction changes the serialized
                         // prefix even when the provider keeps the opaque item.
                         conversations[index].contextCompactionCount += 1
+                        conversations[index].lastContextEstimatedTokens = 0
+                        // Compaction drops read_file bodies; reads must not vouch for them.
+                        ReadLedger.shared.forgetConversation(conversationID)
                         append(
                             ChatMessage(
                                 kind: .system,
@@ -394,15 +644,24 @@ extension NativeAgentHost {
                     startedAt: requestStartedAt,
                     inputComposition: AgentContextInputComposition(messages: request, tools: requestTools, api: configuration.api),
                     effectiveOutputBudget: response.effectiveOutputBudget,
+                    requestedEffort: executionEffort,
                     responseStyle: ResponseStyleResolver.resolve(
                         preference: configuration.responseStylePreference,
-                        prompt: request.last(where: { $0.role == .user })?.content
+                        prompt: AgentMessage.responseStylePrompt(in: request)
                     ).style,
                     retryCount: response.retryCount,
                     retryUsage: response.retryUsage,
                     tools: requestTools,
                     requestContextSegment: requestContextSegment,
-                    prepareMilliseconds: prepareMilliseconds
+                    prepareMilliseconds: prepareMilliseconds,
+                    cpu: AgentStepCPUTrace(
+                        prepareStages: cpuStages,
+                        requestMainThread: AgentStepCPUTrace.milliseconds(since: requestMainCPU, to: AgentStepCPUTrace.thread()),
+                        requestProcess: AgentStepCPUTrace.milliseconds(since: requestProcessCPU, to: AgentStepCPUTrace.process()),
+                        prepareCacheHits: preparationMetrics.takeCacheHits(),
+                        prepareCacheMisses: preparationMetrics.takeCacheMisses()
+                    ),
+                    compaction: compactionOutcome.trace
                 )
                 saveModelContext(messages, in: conversationID)
 
@@ -415,6 +674,16 @@ extension NativeAgentHost {
                     continue
                 }
                 if response.message.toolCalls.isEmpty {
+                    let deferredPaths = WorkspaceLeases.shared.scheduleFinalChecks(conversationID: conversationID)
+                    if !deferredPaths.isEmpty {
+                        messages.append(AgentMessage(
+                            role: .user,
+                            content: "Before finishing, retry these deferred writes now. Their earlier writes were not run because another chat held the files. Finish independent work first, reread each file, and retry the intended change once. If a file is still held, the app will ask the user. Do not finish without attempting these rechecks:\n\(deferredPaths.map { "- \($0)" }.joined(separator: "\n"))"
+                        ))
+                        saveModelContext(messages, in: conversationID)
+                        continue
+                    }
+                    backlogControlText = response.message.content
                     let text = response.message.content.trimmingCharacters(in: .whitespacesAndNewlines)
                     let mediaItems = await materializeMedia(response.media)
                     let turn = await finishActiveTurn(conversationID: conversationID, workspace: workspace)
@@ -434,7 +703,8 @@ extension NativeAgentHost {
                                         text: AppCopy.text("plan.apply"),
                                         mode: .queue,
                                         planMode: false,
-                                        approvedPlanID: planID
+                                        approvedPlanID: planID,
+                                        subagentsOverride: AgentRunScope.subagentsOverride
                                     ),
                                     in: conversationID
                                 )
@@ -469,20 +739,7 @@ extension NativeAgentHost {
                     try Task.checkCancellation()
 
                     if let next = takeNextPrompt(in: conversationID, allowQueue: true) {
-                        let user = accept(next, in: conversationID, history: messages)
-                        if next.planMode == planMode && next.approvedPlanID == nil {
-                            messages.append(user)
-                            saveModelContext(messages, in: conversationID)
-                            toolSteps = 0
-                            continue
-                        }
-                        var nextContext = messages
-                        nextContext.append(user)
-                        saveModelContext(nextContext, in: conversationID)
-                        restartContext = nextContext
-                        restartPlanMode = next.planMode
-                        restartApprovedPlanID = next.approvedPlanID
-                        restartPlanGateOverride = next.bypassesPlanGate
+                        if absorb(next) { continue }
                         break
                     }
                     status = AppCopy.format("agent.ready", configuration.model)
@@ -502,7 +759,33 @@ extension NativeAgentHost {
                     try Task.checkCancellation()
                 }
 
-                let toolCalls = response.message.toolCalls
+                if wrapUpRequested, toolSteps >= Self.maxToolSteps {
+                    // The wrap-up request asked for more tools anyway. Drop it and
+                    // its notice: a resumed turn must not be told to stop.
+                    if let last = messages.lastIndex(where: { $0.role == .assistant }) { messages.remove(at: last) }
+                    messages.removeAll { $0.role == .user && $0.content == Self.toolStepLimitNotice }
+                    saveModelContext(messages, in: conversationID)
+                    continue
+                }
+                let toolCalls = response.message.toolCalls.map { deferredTools.resolve($0, catalog: tools) }
+                var scopedRulesNeedReview: Set<String> = []
+                if let workspace {
+                    // Resolve every path in the batch against the context the model
+                    // actually saw. A write that introduces new scoped rules is held
+                    // until the next request, after those rules have reached the model.
+                    let contextBeforeScopedRules = messages
+                    for call in toolCalls {
+                        guard let scope = ProjectRulePromptContext.scope(for: call, workspace: workspace) else { continue }
+                        let alreadyLoaded = ProjectRulePromptContext.contains(scope, in: contextBeforeScopedRules)
+                        ProjectRulePromptContext.apply(scope, to: &messages)
+                        if !planMode, ProjectRulePromptContext.isMutation(call), !alreadyLoaded {
+                            scopedRulesNeedReview.insert(call.id)
+                        }
+                    }
+                    if messages != contextBeforeScopedRules {
+                        saveModelContext(messages, in: conversationID)
+                    }
+                }
                 let preText = response.message.content.trimmingCharacters(in: .whitespacesAndNewlines)
                 let thinking = response.message.thinking
                 let hasThinking = !(thinking?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
@@ -537,16 +820,26 @@ extension NativeAgentHost {
                 // Explore subagents asked for in one turn are independent side runs:
                 // they start together, each in its own context, and only their
                 // findings come back into this conversation.
-                let exploreComplete: ExploreTool.Complete = { [router] messages, tools in
-                    if let router {
-                        return try await router.completeExploration(messages: messages, tools: tools)
+                // One cache key per workspace: every explore run shares its system prompt and tools.
+                let exploreCacheKey = workspace.map { "explore:" + AgentCacheTrace.fingerprint($0.standardizedFileURL.path) }
+                // A side run pays the quota cost of a pause twice over, so it
+                // fails over between providers instead of stopping to ask.
+                let exploreComplete: ExploreTool.Complete = { [router, weak self] messages, tools in
+                    let startedAt = Date()
+                    let response = if let router {
+                        try await router.completeExploration(messages: messages, tools: tools, cacheKey: exploreCacheKey)
+                    } else {
+                        try await client.complete(messages: messages, tools: tools)
                     }
-                    return try await client.complete(messages: messages, tools: tools)
+                    await self?.recordSubagentUsage(response, kind: .explore, conversationID: conversationID,
+                        configuration: configuration, cacheKey: exploreCacheKey, messages: messages, startedAt: startedAt)
+                    return response
                 }
                 let exploreOutcomes = Self.startExplore(
                     toolCalls.filter { cacheToolContractMatches($0.name, tools: tools, workspace: workspace, pluginNames: pluginNameMap, bindings: advertisedBindings) },
                     complete: exploreComplete,
-                    workspace: workspace
+                    workspace: workspace,
+                    hints: exploreHints(toolCalls, workspace: workspace)
                 )
                 // These are unstructured tasks, so an interrupted run does not
                 // reach them: cancel whatever the loop below never joins.
@@ -558,6 +851,7 @@ extension NativeAgentHost {
                 for call in toolCalls {
                     if !activeUsedTools.contains(call.name) { activeUsedTools.append(call.name) }
                     recordAttribution(call, workspace: workspace)
+                    defer { closeAttributionWindow(call) }
                     onRemoteEvent?("tool.started", [
                         "runId": runID.uuidString,
                         "callId": call.id,
@@ -588,7 +882,7 @@ extension NativeAgentHost {
                         to: conversationID,
                         turnID: activeTurnID
                     )
-                    let signature = call.name + "|" + call.arguments
+                    let signature = Self.toolSignature(call)
                     let repeats = (toolSignatures[signature] ?? 0) + 1
                     toolSignatures[signature] = repeats
 
@@ -601,10 +895,14 @@ extension NativeAgentHost {
                     var resultAttachment: ChatAttachment?
                     if !cacheToolContractMatches(call.name, tools: tools, workspace: workspace, pluginNames: pluginNameMap, bindings: advertisedBindings) {
                         result = "Tool error: the tool is unavailable or its advertised contract changed. Request the current catalog before trying again."
+                    } else if let control = deferredTools.control(call, catalog: tools, planMode: planMode) {
+                        result = control
                     } else if repeats > Self.maxIdenticalToolCalls {
                         result = AppCopy.text("agent.repeatedTool")
                     } else if planMode && Self.planWithholds(call.name) {
                         result = AppCopy.text("plan.toolBlocked")
+                    } else if scopedRulesNeedReview.contains(call.id) {
+                        result = "Tool error: no file change was made. HerNess has added the applicable directory rules to context. Review them, then retry the operation."
                     } else if call.name == Self.latestAttachmentName {
                         let outcome = latestAttachmentResult(for: call, in: attachmentLedger)
                         result = outcome.message
@@ -615,19 +913,12 @@ extension NativeAgentHost {
                     } else if call.name == PlanStepsTool.name {
                         result = PlanStepsTool.execute(call)
                     } else if call.name == ExploreTool.name, let workspace {
-                        // A side run pays the quota cost of a pause twice over, so it
-                        // fails over between providers instead of stopping to ask.
-                        let complete: ExploreTool.Complete = { [router] messages, tools in
-                            if let router {
-                                return try await router.completeExploration(messages: messages, tools: tools)
-                            }
-                            return try await client.complete(messages: messages, tools: tools)
-                        }
                         let outcome: ExploreTool.Outcome
                         if let started = exploreOutcomes[call.id] {
                             outcome = await started.value
                         } else {
-                            outcome = await ExploreTool.run(call, complete: complete, workspace: workspace)
+                            outcome = await ExploreTool.run(call, complete: exploreComplete, workspace: workspace,
+                                hints: exploreHints([call], workspace: workspace)[call.id] ?? "")
                         }
                         result = outcome.toolResult
                         append(
@@ -646,17 +937,45 @@ extension NativeAgentHost {
                         )
                     } else if call.name == DelegateTool.name, let workspace, remoteTarget == nil {
                         if workers == nil {
-                            let complete: ExploreTool.Complete = { [router] messages, tools in
-                                if let router {
-                                    return try await router.completeWithFailover(messages: messages, tools: tools)
+                            let delegateCacheKey = "delegate:" + AgentCacheTrace.fingerprint(workspace.standardizedFileURL.path)
+                            // The conversation's own model: the one the user picked, else
+                            // the one Auto is already holding for this chat. Left to routing,
+                            // the subagent's opening step would count as planning.
+                            let delegateModel: String? = router.flatMap { router in
+                                let requested = modelOverride ?? router.selectedModelID
+                                return requested.isEmpty || requested == ModelRouter.autoModelID
+                                    ? preferredModelID(router, conversationID: conversationID, modelOverride: modelOverride)
+                                    : requested
+                            }
+                            let complete: DelegateTool.Complete = { [router, weak self] messages, tools, effort, light in
+                                let startedAt = Date()
+                                let response = if let router {
+                                    try await router.completeWithFailover(
+                                        messages: messages,
+                                        tools: tools,
+                                        cacheKey: delegateCacheKey,
+                                        // The sweep's model is the lightest one routing offers.
+                                        preferredModelID: light ? await router.explorationModel?.id ?? delegateModel : delegateModel,
+                                        effort: effort
+                                    )
+                                } else {
+                                    try await client.complete(
+                                        messages: messages,
+                                        tools: tools,
+                                        cachePolicy: AgentCachePolicy(promptCacheKey: delegateCacheKey)
+                                    )
                                 }
-                                return try await client.complete(messages: messages, tools: tools)
+                                await self?.recordSubagentUsage(response, kind: .delegate, conversationID: conversationID,
+                                    configuration: configuration, cacheKey: delegateCacheKey, messages: messages, startedAt: startedAt)
+                                return response
                             }
                             workers = await startWorkers(
                                 toolCalls.filter { cacheToolContractMatches($0.name, tools: tools, workspace: workspace, pluginNames: pluginNameMap, bindings: advertisedBindings) },
                                 workspace: workspace,
                                 conversationID: conversationID,
                                 runID: runID,
+                                selectedEffort: router?.selectedEffort ?? "",
+                                economy: router?.usageMode == .economy,
                                 complete: complete
                             )
                         }
@@ -670,30 +989,23 @@ extension NativeAgentHost {
                         result = outcome.toolResult
                     } else if call.name == AskUserTool.name {
                         result = await askUser(call, conversationID: conversationID)
-                    } else if [BrowserTools.openName, BrowserTools.navigateName, BrowserTools.closeName, BrowserTools.screenshotName].contains(call.name) {
+                    } else if BrowserTools.names.contains(call.name) {
                         if planMode {
                             result = AppCopy.text("plan.toolBlocked")
                         } else if await requestApprovalIfNeeded(for: call, conversationID: conversationID) {
-                            if browserBackend == .unknown {
-                                let answer = await askUser(
-                                    BrowserTools.backendQuestionCall(call.id),
-                                    conversationID: conversationID
-                                )
-                                browserBackend = BrowserBackendPolicy.parseConfirmation(answer)
-                            }
-                            result = browserBackend == .unknown
-                                ? "Tool error: browser backend was not selected by the user."
-                                : await browserSessions.execute(
-                                    call,
-                                    scope: browserScope,
-                                    backend: browserBackend,
-                                    workspace: workspace
-                                )
+                            result = await browserSessions.execute(
+                                call,
+                                scope: browserScope,
+                                backend: browserBackend,
+                                workspace: workspace
+                            )
                         } else {
                             result = AppCopy.text("permission.rejected")
                         }
                     } else if call.name == Self.sandboxStatusName {
                         result = sandboxStatus()
+                    } else if call.name == RecallTool.name {
+                        result = recall(call, workspace: workspace)
                     } else if call.name == RememberTool.name {
                         if planMode {
                             result = AppCopy.text("plan.toolBlocked")
@@ -748,7 +1060,10 @@ extension NativeAgentHost {
                            let descriptor = skillCatalog.descriptor(for: id),
                            (try? skillCatalog.read(id: descriptor.id)) != nil {
                             activeUsedSkills.append(contentsOf: activeUsedSkills.contains(descriptor.id) ? [] : [descriptor.id])
+                            memory.recordSkill(runID: runID, skill: descriptor.id)
                         }
+                    } else if call.name == TerminalSessionTool.name, let refusal = sandboxDeployRefusal(for: call) {
+                        result = refusal
                     } else if call.name == TerminalSessionTool.name {
                         let action = Self.argument(call, key: "action") ?? ""
                         var proceed = true
@@ -818,6 +1133,8 @@ extension NativeAgentHost {
                         } else {
                             result = AppCopy.text("permission.rejected")
                         }
+                    } else if let refusal = sandboxDeployRefusal(for: call) {
+                        result = refusal
                     } else if let workspace {
                         if await requestApprovalIfNeeded(for: call, conversationID: conversationID) {
                             let lease = await acquireWorkspaceLease(
@@ -840,8 +1157,10 @@ extension NativeAgentHost {
                                     ? await memory.fileHash(for: call, workspace: workspace) : nil
                                 let beforeGit = tracksChanges
                                     ? await memory.changedGitPaths(workspace: workspace) : []
-                                let policy = (sandboxPolicy
-                                    ?? SandboxExecutionPolicy(workspaceURL: workspace)).strictAgentPolicy()
+                                // Only a sandbox worktree jails commands. In the
+                                // user's own checkout they run as the user, so
+                                // builds, package installs and dev servers work.
+                                let policy = sandboxPolicy?.agentCommandPolicy()
                                 let readRoots = searchFolders
                                 // `Task.detached` does not inherit cancellation, and
                                 // `run_command` blocks a runloop rather than
@@ -902,6 +1221,11 @@ extension NativeAgentHost {
                     } else {
                         result = AppCopy.text("agent.projectToolsUnavailable")
                     }
+                    if call.name == "edit_file" || call.name == "write_file", let path = Self.argument(call, key: "path") {
+                        let edits = (fileEdits[path] ?? 0) + 1
+                        fileEdits[path] = edits
+                        if edits > Self.maxEditsPerFile { result += String(format: Self.editChurnNotice, edits) }
+                    }
                     if call.name == "run_command", let snapshot = outputPreview.flush() {
                         updateToolProgress(
                             snapshot,
@@ -943,11 +1267,15 @@ extension NativeAgentHost {
                         "callId": call.id,
                         "name": call.name,
                     ])
+                    let repeatedRead = call.name == "read_file" ? deferredTools.repeatedRead(result, arguments: call.arguments) : nil
+                    deferredTools.record(result, callID: call.id, toolName: call.name, arguments: call.arguments)
                     var modelToolResult = EconomyToolOutputPolicy.normalize(
                         result,
                         toolName: call.name,
                         arguments: call.arguments
                     )
+                    if call.name == DeferredToolSession.searchName || call.name == DeferredToolSession.outputName { modelToolResult = result }
+                    else if modelToolResult != result { modelToolResult += "\nOriginal result: read_tool_output call_id=\(call.id)" }
                     if call.name == AskUserTool.name, AskUserTool.isAnsweredTranscript(result) {
                         modelToolResult += "\n\n" + AskUserTool.answeredDirective
                     }
@@ -965,6 +1293,8 @@ extension NativeAgentHost {
                             )
                         }
                     }
+                    // After the ledger check: the model already holds these exact lines.
+                    if let repeatedRead { modelToolResult = repeatedRead }
                     messages.append(AgentMessage(
                         role: .tool,
                         content: modelToolResult,
@@ -982,7 +1312,10 @@ extension NativeAgentHost {
             }
         } catch let error as NativeAgentError where error.isLimit {
             succeeded = false
+            interruptedByError = true
+            let partialAnswer = settlePendingAssistantContinuation()
             let turn = await finishActiveTurn(conversationID: conversationID, workspace: workspace, status: "paused")
+            appendPartialAnswer(partialAnswer, turn: turn)
             let autoDecision = router?.isAutoSelected == true ? router?.lastAutoDecision : nil
             let selectedModel = autoDecision?.model ?? configuration.model
             let selectedProvider = autoDecision
@@ -995,7 +1328,7 @@ extension NativeAgentHost {
                 selectedModel,
                 error.message
             )
-            if let retryAt = error.retryAt {
+            if router?.autoAccountFailoverAfterLimit == true, let retryAt = error.retryAt {
                 summary += "\n" + AppCopy.format("agent.limitResumesAt", Self.clock.string(from: retryAt))
             }
             if let index = conversations.firstIndex(where: { $0.id == conversationID }) {
@@ -1004,7 +1337,8 @@ extension NativeAgentHost {
                     provider: selectedProvider,
                     model: selectedModel,
                     message: summary,
-                    retryAt: error.retryAt
+                    retryAt: error.retryAt,
+                    subagentsOverride: AgentRunScope.subagentsOverride
                 )
                 append(
                     ChatMessage(kind: .system, text: summary),
@@ -1017,10 +1351,14 @@ extension NativeAgentHost {
             status = summary
             failureMessage = summary
             persist()
-            scheduleLimitResume(for: conversationID, at: error.retryAt)
+            if router?.autoAccountFailoverAfterLimit == true {
+                scheduleLimitResume(for: conversationID, at: error.retryAt)
+            }
         } catch {
             if Task.isCancelled {
+                let partialAnswer = settlePendingAssistantContinuation()
                 let turn = await finishActiveTurn(conversationID: conversationID, workspace: workspace, status: "cancelled")
+                appendPartialAnswer(partialAnswer, turn: turn)
                 attachTurnMetadata(toStopEvent: activeStopEventID, in: conversationID, turn: turn)
                 if !queuePausedAfterStop,
                    let steer = takeNextPrompt(in: conversationID, allowQueue: false) {
@@ -1031,14 +1369,18 @@ extension NativeAgentHost {
                     restartPlanMode = steer.planMode
                     restartApprovedPlanID = steer.approvedPlanID
                     restartPlanGateOverride = steer.bypassesPlanGate
+                    restartSubagentsOverride = steer.subagentsOverride ?? subagentsEnabledForNewPrompt
                 } else {
                     succeeded = false
                     stoppedByUser = true
                 }
             } else {
                 succeeded = false
+                interruptedByError = true
                 failureMessage = error.localizedDescription
+                let partialAnswer = settlePendingAssistantContinuation()
                 let turn = await finishActiveTurn(conversationID: conversationID, workspace: workspace, status: "failed")
+                appendPartialAnswer(partialAnswer, turn: turn)
                 if let approvedPlanID,
                    let conversationIndex = conversations.firstIndex(where: { $0.id == conversationID }),
                    let planIndex = conversations[conversationIndex].messages.firstIndex(where: { $0.id == approvedPlanID && $0.kind == .plan }) {
@@ -1050,6 +1392,17 @@ extension NativeAgentHost {
                     turnID: turn.turnID,
                     changedFiles: turn.changedFiles
                 )
+                if (error as? NativeAgentError)?.isNetworkFailure == true,
+                   let index = conversations.firstIndex(where: { $0.id == conversationID }) {
+                    conversations[index].continuation = ContinuationState(
+                        reason: .networkLost,
+                        provider: configuration.provider,
+                        model: configuration.model,
+                        message: AppCopy.text("agent.networkLost"),
+                        subagentsOverride: AgentRunScope.subagentsOverride
+                    )
+                    persist()
+                }
                 if conversations.first(where: { $0.id == conversationID })?.continuation != nil {
                     queuePausedAfterStop = true
                 }
@@ -1061,17 +1414,20 @@ extension NativeAgentHost {
         if let restartContext {
             // A cancelled Task remains cancelled, so steering always starts a
             // fresh Task. The new run inherits the old run's full model context.
-            _ = startRun(
-                runID: runID,
-                conversationID: conversationID,
-                configuration: configuration,
-                workspace: workspace,
-                context: restartContext,
-                planMode: restartPlanMode ?? planMode,
-                approvedPlanID: restartApprovedPlanID,
-                planGateOverride: restartPlanGateOverride,
-                modelOverride: modelOverride
-            )
+            let nextSubagentsOverride = restartSubagentsOverride ?? subagentsEnabledForNewPrompt
+            _ = AgentRunScope.$subagentsOverride.withValue(nextSubagentsOverride) {
+                startRun(
+                    runID: runID,
+                    conversationID: conversationID,
+                    configuration: configuration,
+                    workspace: workspace,
+                    context: restartContext,
+                    planMode: restartPlanMode ?? planMode,
+                    approvedPlanID: restartApprovedPlanID,
+                    planGateOverride: restartPlanGateOverride,
+                    modelOverride: modelOverride
+                )
+            }
             return
         }
 
@@ -1094,7 +1450,8 @@ extension NativeAgentHost {
             deletedCount: activeRunChangedFiles.filter { $0.operation == .deleted }.count,
             testStatus: activeRunTestStatus,
             browser: browserSummary,
-            undoAvailable: !activeRunChangedFiles.isEmpty && activeRunTrackingStatus == "complete"
+            undoAvailable: !activeRunChangedFiles.isEmpty && activeRunTrackingStatus == "complete",
+            attributionKnown: completedTurnSummaries[activeRunLastTurnID]?.attributionKnown
         )
         if let index = conversations.firstIndex(where: { $0.id == conversationID }),
            let messageIndex = conversations[index].messages.lastIndex(where: { $0.turnID == activeRunLastTurnID }) {
@@ -1114,18 +1471,24 @@ extension NativeAgentHost {
                 "conversationId": conversationID,
             ])
         }
-        if activeRunTestStatus == "failed",
-           let conversation = conversations.first(where: { $0.id == conversationID }) {
-            learnFromSignal(
-                .failure,
-                in: conversation,
-                assistantIndex: conversation.messages.lastIndex { $0.kind == .assistant || $0.kind == .plan }
-            )
+        // A run the user stopped is their choice, and one a provider limit or an
+        // error cut short has nothing to teach: neither is the agent's mistake. The
+        // answer must belong to this run: a run that failed before answering has
+        // none, and the previous turn's answer is not to blame for it.
+        if !stoppedByUser, !interruptedByError,
+           let conversation = conversations.first(where: { $0.id == conversationID }),
+           let answerIndex = conversation.messages.lastIndex(where: {
+               ($0.kind == .assistant || $0.kind == .plan) && $0.turnID == activeRunLastTurnID
+           }),
+           !succeeded || activeRunTestStatus == "failed"
+               || !memory.openItems(in: backlogControlText).isEmpty {
+            learnFromSignal(.failure, in: conversation, assistantIndex: answerIndex)
         }
         memory.finishTask(
             runID: runID,
             success: succeeded,
-            finalText: conversations.first(where: { $0.id == conversationID })?.messages.last(where: { $0.kind == .assistant || $0.kind == .plan })?.text ?? ""
+            finalText: conversations.first(where: { $0.id == conversationID })?.messages.last(where: { $0.kind == .assistant || $0.kind == .plan })?.text ?? "",
+            controlText: backlogControlText
         )
         if let index = conversations.firstIndex(where: { $0.id == conversationID }) {
             conversations[index].running = false
@@ -1156,6 +1519,9 @@ extension NativeAgentHost {
                 workspace: workspace
             )
         }
+        // The durable copy now lives on the conversation (and disk). Do not keep
+        // a second provider-context array in the run-state table after completion.
+        state(for: conversationID).activeContext = []
     }
 
     private func updateToolProgress(

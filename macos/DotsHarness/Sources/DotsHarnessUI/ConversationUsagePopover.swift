@@ -5,17 +5,9 @@ import SwiftUI
 import DotsHarnessCore
 
 struct ContextRingButton: View {
+    @Binding var isPresented: Bool
     let events: [AgentContextUsageEvent]
     let contextWindowForEvent: (AgentContextUsageEvent) -> Int?
-    @State private var isPresented = false
-
-    init(
-        events: [AgentContextUsageEvent],
-        contextWindowForEvent: @escaping (AgentContextUsageEvent) -> Int? = { $0.contextWindowTokens }
-    ) {
-        self.events = events
-        self.contextWindowForEvent = contextWindowForEvent
-    }
 
     private var latest: AgentContextUsageEvent? {
         events.sorted { $0.timestamp < $1.timestamp }.last(where: { $0.requestKind == .main })
@@ -36,22 +28,22 @@ struct ContextRingButton: View {
             isPresented.toggle()
         } label: {
             ZStack {
-                Circle().stroke(Color.primary.opacity(0.18), lineWidth: 2.5)
+                Circle().stroke(Color.primary.opacity(0.18), lineWidth: 1.875)
                 Circle()
                     .trim(from: 0, to: fraction)
                     .stroke(fraction > 0.9 ? Color.red : Color.primary.opacity(0.75),
-                            style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                            style: StrokeStyle(lineWidth: 1.875, lineCap: .round))
                     .rotationEffect(.degrees(-90))
             }
-            .frame(width: 16, height: 16)
+            .frame(width: 21, height: 21)
             .frame(width: 28, height: 28)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(AppCopy.text("usage.context.tooltip"))
         .help(AppCopy.text("usage.context.tooltip"))
-        .popover(isPresented: $isPresented, arrowEdge: .top) {
-            ContextUsagePopover(events: events, contextWindowTokens: latestWindow)
+        .inWindowPopover(isPresented: $isPresented, alignment: .trailing, width: 260) {
+            ContextUsagePopover(events: events, contextWindowForEvent: contextWindowForEvent)
         }
     }
 }
@@ -68,12 +60,20 @@ extension AgentContextUsageEvent {
     }
 }
 
-private struct ContextUsagePopover: View {
+/// Minimal by default: fill, input/output, cache hit and reuse. Estimates and
+/// cache diagnostics sit behind "Daha fazla göster".
+struct ContextUsagePopover: View {
     let events: [AgentContextUsageEvent]
-    let contextWindowTokens: Int?
+    let contextWindowForEvent: (AgentContextUsageEvent) -> Int?
+    @State private var showsDetails = false
 
     private var latest: AgentContextUsageEvent? {
         events.sorted { $0.timestamp < $1.timestamp }.last(where: { $0.requestKind == .main })
+    }
+
+    private var window: Int {
+        guard let latest else { return 0 }
+        return contextWindowForEvent(latest) ?? latest.contextWindowTokens ?? 0
     }
 
     private var cacheSummary: AgentContextCacheSummary { AgentContextCacheSummary(events: events) }
@@ -131,132 +131,185 @@ private struct ContextUsagePopover: View {
         rows.reduce(0) { $0 + $1.tokens }
     }
 
+    private var detailLines: [String] {
+        var lines: [String] = []
+        // The headline hit rate covers the whole conversation; the latest
+        // request's own rate shows whether the cache just broke.
+        if let rate = latest?.measuredCacheHitRate {
+            lines.append(AppCopy.format("usage.context.cacheHitLatest", percent(rate)))
+        }
+        if cacheWrite > 0 {
+            lines.append(AppCopy.format("usage.context.cacheWrite", compact(cacheWrite)))
+        }
+        if reuseSummary.freshInputTokens > 0 {
+            lines.append(AppCopy.format("usage.context.cacheFreshInput", compact(reuseSummary.freshInputTokens)))
+        }
+        if let milliseconds = reuseSummary.averageLatencyMilliseconds {
+            lines.append(AppCopy.format("usage.context.cacheLatency", "\(milliseconds)"))
+        }
+        if reuseSummary.averageFirstTokenMilliseconds != nil || reuseSummary.averagePrepareMilliseconds != nil {
+            // Abbreviations, not prose: the same in every language.
+            lines.append("TTFT \(reuseSummary.averageFirstTokenMilliseconds.map { "\($0) ms" } ?? "—") · prep \(reuseSummary.averagePrepareMilliseconds.map { "\($0) ms" } ?? "—")")
+        }
+        if let cpu = latest?.cpu {
+            let stages = cpu.prepareStages
+            let labels = [
+                ("prompt", stages.filter { $0.key.hasPrefix("prompt_") }.values.reduce(0, +)),
+                ("activity", stages["prompt_activity"] ?? 0),
+                ("rules", stages["prompt_rules"] ?? 0),
+                ("memory", stages["prompt_memory"] ?? 0),
+                ("catalog", stages["tool_catalog"] ?? 0),
+                ("epoch", stages["cache_epoch"] ?? 0),
+            ]
+            .filter { $0.1 > 0 }
+            .map { "\($0.0) \($0.1) ms" }
+            if !labels.isEmpty { lines.append("CPU · " + labels.joined(separator: " · ")) }
+
+            let hits = cpu.prepareCacheHits ?? [:]
+            let misses = cpu.prepareCacheMisses ?? [:]
+            let cacheNames = Set(hits.keys).union(misses.keys).sorted()
+            if !cacheNames.isEmpty {
+                lines.append("prep cache · " + cacheNames.map {
+                    "\($0) H\(hits[$0, default: 0]) M\(misses[$0, default: 0])"
+                }.joined(separator: " · "))
+            }
+        }
+        if let loss = reuseSummary.lostTokensByReason.max(by: { $0.value < $1.value }) {
+            lines.append(AppCopy.format("usage.context.cacheLoss", loss.key, compact(loss.value)))
+        }
+        if cacheSummary.unknownRequestCount > 0 {
+            lines.append("\(AppCopy.text("usage.context.notReported")): \(cacheSummary.unknownRequestCount) / \(cacheSummary.requestCount) · \(compact(cacheSummary.unknownInputTokens)) \(AppCopy.text("usage.context.tokens"))")
+        }
+        return lines
+    }
+
     var body: some View {
-        let input = latest?.contextInputTokens ?? 0
-        let output = latest?.outputTokens ?? 0
-        let used = latest?.contextTokens ?? 0
-        let window = contextWindowTokens ?? latest?.contextWindowTokens ?? 0
-        let estimatedWindowUse = latest.map { $0.totalInputTokens == 0 || $0.outputTokens == 0 } ?? true
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(AppCopy.text("usage.context.latestRequest"))
-                Spacer(minLength: 8)
-                let usedLabel = estimatedWindowUse ? "≈\(compact(used))" : compact(used)
-                if window > 0 {
-                    Text("\(usedLabel) / \(exact(window)) (\(percent(Double(used) / Double(window))))")
-                } else {
-                    Text(used > 0 ? usedLabel : "—")
+        VStack(alignment: .leading, spacing: 14) {
+            header
+            if latest != nil {
+                usageRows
+                cacheRows
+                if !rows.isEmpty || !detailLines.isEmpty {
+                    Button { showsDetails.toggle() } label: {
+                        Label(AppCopy.text("sidebar.showMore"), systemImage: showsDetails ? "chevron.down" : "chevron.right")
+                            .font(.caption)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { ($0 ? NSCursor.pointingHand : NSCursor.arrow).set() }
+                    if showsDetails { detailRows }
                 }
             }
-            .font(.callout)
-            .monospacedDigit()
+        }
+        .padding(14)
+    }
 
+    private var header: some View {
+        let used = latest?.contextTokens ?? 0
+        let estimated = latest.map { $0.totalInputTokens == 0 || $0.outputTokens == 0 } ?? true
+        let usedLabel = estimated ? "≈\(compact(used))" : compact(used)
+        return VStack(alignment: .leading, spacing: 6) {
+            Text(AppCopy.text("usage.context.latestRequest"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if let modelID = latest?.model.split(separator: "/").last.map(String.init) {
+                Text(modelID)
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+            }
             if window > 0 {
+                Text("\(usedLabel) / \(exact(window)) (\(percent(Double(used) / Double(window))))")
+                    .font(.title3.weight(.semibold))
+                    .monospacedDigit()
                 ProgressView(value: min(1, Double(used) / Double(window)))
                     .tint(.primary.opacity(0.75))
+            } else {
+                Text(used > 0 ? usedLabel : "—")
+                    .font(.title3.weight(.semibold))
+                    .monospacedDigit()
             }
+        }
+    }
 
-            if latest != nil {
-                HStack {
-                    Text(AppCopy.text((latest?.totalInputTokens ?? 0) > 0
-                        ? "usage.context.input" : "usage.context.estimatedInput"))
-                    Spacer(minLength: 8)
-                    let inputLabel = (latest?.totalInputTokens ?? 0) > 0 ? compact(input) : "≈\(compact(input))"
-                    Text(inputLabel).foregroundStyle(.secondary)
-                }
-                .font(.caption)
-                .monospacedDigit()
+    private var usageRows: some View {
+        let input = latest?.contextInputTokens ?? 0
+        let output = latest?.outputTokens ?? 0
+        let measured = (latest?.totalInputTokens ?? 0) > 0
+        return VStack(alignment: .leading, spacing: 5) {
+            row(AppCopy.text(measured ? "usage.context.input" : "usage.context.estimatedInput"),
+                measured ? compact(input) : "≈\(compact(input))")
+            row(AppCopy.text("usage.context.output"),
+                output > 0 ? compact(output) : AppCopy.text("usage.context.notReported"))
+        }
+    }
 
-                HStack {
-                    Text(AppCopy.text("usage.context.output"))
-                    Spacer(minLength: 8)
-                    Text(output > 0 ? compact(output) : AppCopy.text("usage.context.notReported"))
-                        .foregroundStyle(.secondary)
-                }
-                .font(.caption)
-                .monospacedDigit()
+    private var cacheRows: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            row(AppCopy.text("usage.context.cacheHit"),
+                cacheEligible > 0 ? percent(Double(cacheHit) / Double(cacheEligible)) : AppCopy.text("usage.context.notReported"))
+            // Exact reuse needs a proven cache boundary; routes that cannot prove
+            // one (no measured request) would only show an empty row.
+            if reuseSummary.measuredRequests > 0 {
+                row(AppCopy.text("usage.context.cacheReuse"),
+                    reuseSummary.reuseRate.map(percent) ?? AppCopy.text("usage.context.notReported"))
+                Text(AppCopy.format("usage.context.cacheCoverage", reuseSummary.coverage.map(percent) ?? "—",
+                    "\(reuseSummary.measuredRequests)", "\(reuseSummary.candidateRequests)"))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
+        }
+    }
 
+    private var detailRows: some View {
+        VStack(alignment: .leading, spacing: 6) {
             if !rows.isEmpty {
-                Text(AppCopy.text("usage.context.estimatedBreakdown"))
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-
-                ForEach(rows) { row in
-                    HStack(spacing: 8) {
-                        RoundedRectangle(cornerRadius: 3).fill(row.color).frame(width: 10, height: 10)
-                        Text(row.title).lineLimit(1)
+                Text(AppCopy.text("usage.context.estimatedBreakdown")).fontWeight(.medium)
+                ForEach(rows) { item in
+                    HStack(spacing: 6) {
+                        RoundedRectangle(cornerRadius: 2).fill(item.color).frame(width: 8, height: 8)
+                        Text(item.title)
                         Spacer(minLength: 8)
-                        Text("≈\(compact(row.tokens))").foregroundStyle(.secondary)
-                        Text(percent(breakdownTotal > 0 ? Double(row.tokens) / Double(breakdownTotal) : 0))
-                            .frame(width: 44, alignment: .trailing)
+                        Text("≈\(compact(item.tokens))")
+                        Text(percent(breakdownTotal > 0 ? Double(item.tokens) / Double(breakdownTotal) : 0))
+                            .frame(width: 40, alignment: .trailing)
                     }
-                    .font(.caption)
                     .monospacedDigit()
                 }
             }
-
-            Divider()
-
-            VStack(alignment: .leading, spacing: 5) {
-                HStack {
-                    Text(AppCopy.text("usage.context.cacheHit"))
-                    Spacer(minLength: 8)
-                    if cacheEligible > 0 {
-                        Text(percent(Double(cacheHit) / Double(cacheEligible)))
-                            .monospacedDigit()
-                    } else {
-                        Text(AppCopy.text("usage.context.notReported")).foregroundStyle(.secondary)
-                    }
-                }
-                .font(.caption)
-                if cacheEligible > 0 {
-                    ProgressView(value: min(1, Double(cacheHit) / Double(cacheEligible))).tint(.green)
-                }
-                if cacheWrite > 0 {
-                    Text(AppCopy.format("usage.context.cacheWrite", compact(cacheWrite)))
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                HStack {
-                    Text(AppCopy.text("usage.context.cacheReuse"))
-                    Spacer(minLength: 8)
-                    Text(reuseSummary.reuseRate.map(percent) ?? AppCopy.text("usage.context.notReported"))
-                        .monospacedDigit()
-                }
-                .font(.caption)
-                if reuseSummary.freshInputTokens > 0 {
-                    Text(AppCopy.format("usage.context.cacheFreshInput", compact(reuseSummary.freshInputTokens)))
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Text(AppCopy.format("usage.context.cacheCoverage", reuseSummary.coverage.map(percent) ?? "—",
-                    "\(reuseSummary.measuredRequests)", "\(reuseSummary.candidateRequests)"))
-                    .font(.caption).foregroundStyle(.secondary)
-                if let milliseconds = reuseSummary.averageLatencyMilliseconds {
-                    Text(AppCopy.format("usage.context.cacheLatency", "\(milliseconds)"))
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                if reuseSummary.averageFirstTokenMilliseconds != nil || reuseSummary.averagePrepareMilliseconds != nil {
-                    // Abbreviations, not prose: the same in every language.
-                    Text("TTFT \(reuseSummary.averageFirstTokenMilliseconds.map { "\($0) ms" } ?? "—") · prep \(reuseSummary.averagePrepareMilliseconds.map { "\($0) ms" } ?? "—")")
-                        .font(.caption).foregroundStyle(.secondary).monospacedDigit()
-                }
-                if let loss = reuseSummary.lostTokensByReason.max(by: { $0.value < $1.value }) {
-                    Text(AppCopy.format("usage.context.cacheLoss", loss.key, compact(loss.value)))
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                if cacheSummary.unknownRequestCount > 0 {
-                    Text("\(AppCopy.text("usage.context.notReported")): \(cacheSummary.unknownRequestCount) / \(cacheSummary.requestCount) · \(compact(cacheSummary.unknownInputTokens)) \(AppCopy.text("usage.context.tokens"))")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-
+            ForEach(detailLines, id: \.self) { Text($0) }
         }
-        .padding(16)
-        .frame(width: 340, alignment: .leading)
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+
+    private func row(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(label).foregroundStyle(.secondary)
+            Spacer(minLength: 8)
+            Text(value).monospacedDigit()
+        }
+        .font(.caption)
     }
 
     private func compact(_ n: Int) -> String {
-        n.formatted(.number.notation(.compactName).precision(.fractionLength(0...1)))
+        // Keep token suffixes stable across locales. Foundation's Turkish
+        // compact notation uses "B" for bin, which many users read as billion.
+        guard n >= 1_000 else { return "\(n)" }
+        let divisor: Double
+        let suffix: String
+        if n >= 1_000_000_000 {
+            divisor = 1_000_000_000
+            suffix = "B"
+        } else if n >= 1_000_000 {
+            divisor = 1_000_000
+            suffix = "M"
+        } else {
+            divisor = 1_000
+            suffix = "K"
+        }
+        let value = String(format: "%.1f", Double(n) / divisor)
+        return "\(value)\(suffix)"
     }
 
     private func exact(_ n: Int) -> String {

@@ -17,8 +17,8 @@ public enum VoiceAPITranscriber {
         let boundary = "DotsHarness-\(UUID().uuidString)"
         let audio = makeWAV(samples: samples, sampleRate: sampleRate)
         var body = Data()
-        appendField("model", value: configuration.model, boundary: boundary, to: &body)
-        appendField("response_format", value: "json", boundary: boundary, to: &body)
+        MultipartFormData.appendField("model", value: configuration.model, boundary: boundary, to: &body)
+        MultipartFormData.appendField("response_format", value: "json", boundary: boundary, to: &body)
         appendFile(
             name: "file",
             filename: "recording.wav",
@@ -70,12 +70,6 @@ public enum VoiceAPITranscriber {
             throw NativeAgentError(AppCopy.text("voice.invalidAPIURL"))
         }
         return url
-    }
-
-    private static func appendField(_ name: String, value: String, boundary: String, to data: inout Data) {
-        data.append(Data("--\(boundary)\r\n".utf8))
-        data.append(Data("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".utf8))
-        data.append(Data("\(value)\r\n".utf8))
     }
 
     private static func appendFile(
@@ -139,32 +133,12 @@ public final class VoiceAPIRealtimeClient: @unchecked Sendable {
         case text(String)
     }
 
-    private actor Sender {
-        let socket: SocketBox
-
-        init(socket: SocketBox) {
-            self.socket = socket
-        }
-
-        func send(_ message: Outgoing) async throws {
-            switch message {
-            case let .data(data):
-                try await socket.task.send(.data(data))
-            case let .text(text):
-                try await socket.task.send(.string(text))
-            }
-        }
-
-        func cancel() {
-            socket.task.cancel(with: .goingAway, reason: nil)
-        }
-    }
-
     private let configuration: VoiceAPIConfiguration
     private let onUpdate: UpdateHandler
     private let onError: ErrorHandler
     private let lock = NSLock()
-    private var sender: Sender?
+    // One ordered stream: audio chunks and the commit must reach the server in the order produced.
+    private var outbox: AsyncStream<Outgoing>.Continuation?
     private var socket: SocketBox?
     private var receiveTask: Task<Void, Never>?
     private var isCancelled = false
@@ -193,7 +167,6 @@ public final class VoiceAPIRealtimeClient: @unchecked Sendable {
 
         let task = URLSession.shared.webSocketTask(with: request)
         let box = SocketBox(task: task)
-        let sender = Sender(socket: box)
         task.resume()
 
         let first: URLSessionWebSocketTask.Message
@@ -208,7 +181,22 @@ public final class VoiceAPIRealtimeClient: @unchecked Sendable {
             throw NativeAgentError(AppCopy.text("voice.realtimeHandshakeFailed"))
         }
 
-        setConnection(box, sender: sender)
+        let (stream, continuation) = AsyncStream.makeStream(of: Outgoing.self)
+        setConnection(box, outbox: continuation)
+        // Single consumer: messages leave in the order they were enqueued.
+        Task { [weak self] in
+            for await message in stream {
+                do {
+                    switch message {
+                    case let .data(data): try await box.task.send(.data(data))
+                    case let .text(text): try await box.task.send(.string(text))
+                    }
+                } catch {
+                    self?.report(error)
+                    return
+                }
+            }
+        }
 
         let update: [String: Any] = [
             "type": "session.update",
@@ -219,12 +207,7 @@ public final class VoiceAPIRealtimeClient: @unchecked Sendable {
                 "endpointing_ms": 800,
             ],
         ]
-        do {
-            try await sender.send(.text(Self.json(update)))
-        } catch {
-            cancel()
-            throw error
-        }
+        enqueue(.text(Self.json(update)))
 
         receiveTask = Task { [weak self, box] in
             await self?.receiveLoop(box)
@@ -234,18 +217,7 @@ public final class VoiceAPIRealtimeClient: @unchecked Sendable {
     public func send(samples: [Float]) {
         let data = Self.makePCM16(samples)
         guard !data.isEmpty else { return }
-        lock.lock()
-        let sender = self.sender
-        let cancelled = isCancelled
-        lock.unlock()
-        guard let sender, !cancelled else { return }
-        Task {
-            do {
-                try await sender.send(.data(data))
-            } catch {
-                self.report(error)
-            }
-        }
+        enqueue(.data(data))
     }
 
     public func commit() {
@@ -255,30 +227,27 @@ public final class VoiceAPIRealtimeClient: @unchecked Sendable {
     public func cancel() {
         lock.lock()
         isCancelled = true
-        let sender = self.sender
+        let socket = self.socket
+        let outbox = self.outbox
         let receiveTask = self.receiveTask
-        self.sender = nil
         self.socket = nil
+        self.outbox = nil
         self.receiveTask = nil
         lock.unlock()
+        outbox?.finish()
         receiveTask?.cancel()
-        Task { await sender?.cancel() }
+        socket?.task.cancel(with: .goingAway, reason: nil)
+    }
+
+    private func enqueue(_ message: Outgoing) {
+        lock.lock()
+        let outbox = self.outbox
+        lock.unlock()
+        outbox?.yield(message)
     }
 
     private func sendJSON(_ object: [String: Any]) {
-        lock.lock()
-        let sender = self.sender
-        let cancelled = isCancelled
-        lock.unlock()
-        guard let sender, !cancelled else { return }
-        let payload = Self.json(object)
-        Task {
-            do {
-                try await sender.send(.text(payload))
-            } catch {
-                self.report(error)
-            }
-        }
+        enqueue(.text(Self.json(object)))
     }
 
     private func receiveLoop(_ box: SocketBox) async {
@@ -333,10 +302,10 @@ public final class VoiceAPIRealtimeClient: @unchecked Sendable {
         if !cancelled { onError(error) }
     }
 
-    private func setConnection(_ box: SocketBox, sender: Sender) {
+    private func setConnection(_ box: SocketBox, outbox: AsyncStream<Outgoing>.Continuation) {
         lock.lock()
         self.socket = box
-        self.sender = sender
+        self.outbox = outbox
         self.isCancelled = false
         lock.unlock()
     }

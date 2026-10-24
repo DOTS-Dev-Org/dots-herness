@@ -71,8 +71,6 @@ final class LoopScheduler: ObservableObject {
         }
     }
 
-    func stopTicking() { ticker?.cancel(); ticker = nil }
-
     func runDue() async {
         for loop in loops where loop.isDue { await run(loop) }
     }
@@ -83,6 +81,12 @@ final class LoopScheduler: ObservableObject {
         defer { running = nil }
         let agent = makeAgent()
         let result = await agent.sendAndWait(loop.prompt)
+        MobileNotificationInbox.shared.append(
+            kind: "scheduledTask",
+            title: loop.name,
+            detail: result,
+            conversationID: agent.activeConversationId,
+            projectID: agent.projectID)
         guard let index = loops.firstIndex(where: { $0.id == loop.id }) else { return }
         loops[index].lastRun = Date()
         loops[index].lastResult = result

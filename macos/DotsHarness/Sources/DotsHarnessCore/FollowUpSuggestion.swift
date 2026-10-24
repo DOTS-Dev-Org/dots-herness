@@ -15,7 +15,8 @@ func shouldGenerateFollowUp(
     succeeded: Bool,
     cancelled: Bool,
     paused: Bool,
-    pendingQueue: Bool
+    pendingQueue: Bool,
+    economy: Bool = false
 ) -> Bool {
-    succeeded && !cancelled && !paused && !pendingQueue
+    succeeded && !cancelled && !paused && !pendingQueue && !economy
 }

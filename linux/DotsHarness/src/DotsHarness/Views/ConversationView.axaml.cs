@@ -15,6 +15,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using DotsHarnessCore;
 using HarnessPluginKit;
@@ -33,6 +34,14 @@ public partial class ConversationView : UserControl
     private LinuxMicrophoneCapture? _microphone;
     private Guid _activeVoiceSessionId;
     private readonly DispatcherTimer _workingTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly DispatcherTimer _loadingAnimationTimer = new() { Interval = TimeSpan.FromMilliseconds(220) };
+    private bool _loadingAnimationActive;
+    private bool _composerLoadingAnimationVisible;
+    private bool _leaseWaitingLoadingAnimationVisible;
+    private int _loadingFrame;
+    private static readonly Bitmap[] LoadingFrames = Enumerable.Range(0, 4)
+        .Select(frame => new Bitmap(AssetLoader.Open(new Uri($"avares://DotsHarness/Resources/HerNessLoaderFrame{frame}.png"))))
+        .ToArray();
     private Conversation? _observedConversation;
     private INotifyCollectionChanged? _observedMessages;
     private INotifyCollectionChanged? _observedPending;
@@ -59,11 +68,17 @@ public partial class ConversationView : UserControl
         _workingTimer.Tick += (_, _) =>
         {
             BindWorkingIndicator();
+            BindProviderLimitNotice(Model?.Selected);
             if (++_gitTick % 15 == 0)
             {
                 BindGitBar();
                 BindCacheResumeNotice();
             }
+        };
+        _loadingAnimationTimer.Tick += (_, _) =>
+        {
+            _loadingFrame = (_loadingFrame + 1) % LoadingFrames.Length;
+            ApplyLoadingFrame();
         };
         DraftBox.TextChanged += (_, _) =>
         {
@@ -71,10 +86,17 @@ public partial class ConversationView : UserControl
             BindFollowUpSuggestion();
         };
         Scroller.ScrollChanged += OnScrollChanged;
+        Scroller.SizeChanged += OnTranscriptSizeChanged;
         Loaded += (_, _) => { _workingTimer.Start(); Bind(); };
         Unloaded += (_, _) =>
         {
             _workingTimer.Stop();
+            _loadingAnimationTimer.Stop();
+            _loadingAnimationActive = false;
+            _composerLoadingAnimationVisible = false;
+            _leaseWaitingLoadingAnimationVisible = false;
+            ComposerLoadingAnimation.IsVisible = false;
+            LeaseWaitingLoadingAnimation.IsVisible = false;
             StopVoiceInput();
             StopTerminal();
             ObserveConversation(null);
@@ -173,21 +195,41 @@ public partial class ConversationView : UserControl
 
     private void OnScrollChanged(object? sender, ScrollChangedEventArgs e)
     {
-        if (!ReferenceEquals(e.Source, Scroller) || _loadingOlder || _messageTail is not { HasOlder: true } tail) return;
-        var viewport = Scroller.Viewport.Height;
+        if (!ReferenceEquals(e.Source, Scroller) || _loadingOlder) return;
         var scrolledNearTop = e.OffsetDelta.Y < 0 && Scroller.Offset.Y < 200;
-        var cannotScroll = viewport > 0 && Scroller.Extent.Height <= viewport;
-        if (!scrolledNearTop && !cannotScroll) return;
-        _loadingOlder = true;
-        var extent = Scroller.Extent.Height;
-        var offset = Scroller.Offset.Y;
-        tail.LoadOlder();
-        // After layout: keep the message under the cursor in place while older ones appear above it.
-        Dispatcher.UIThread.Post(() =>
+        if (!scrolledNearTop) return;
+        if (_messageTail is { HasOlder: true } tail)
         {
-            Scroller.Offset = new Vector(Scroller.Offset.X, offset + Scroller.Extent.Height - extent);
-            _loadingOlder = false;
-        }, DispatcherPriority.Loaded);
+            _loadingOlder = true;
+            var extent = Scroller.Extent.Height;
+            var offset = Scroller.Offset.Y;
+            tail.LoadOlder();
+            Dispatcher.UIThread.Post(() =>
+            {
+                Scroller.Offset = new Vector(Scroller.Offset.X, offset + Scroller.Extent.Height - extent);
+                _loadingOlder = false;
+            }, DispatcherPriority.Loaded);
+            return;
+        }
+        if (Model?.Bridge.Selected is not { HasOlderMessages: true } conversation) return;
+        _loadingOlder = true;
+        var storeExtent = Scroller.Extent.Height;
+        var storeOffset = Scroller.Offset.Y;
+        _ = LoadOlderFromStoreAsync(conversation, storeOffset, storeExtent);
+    }
+
+    private async Task LoadOlderFromStoreAsync(Conversation conversation, double offset, double extent)
+    {
+        try
+        {
+            if (Model is null || !await Model.Bridge.LoadOlderMessagesAsync(conversation.Id)) return;
+            _messageTail?.LoadOlder();
+            Bind();
+            Dispatcher.UIThread.Post(() =>
+                Scroller.Offset = new Vector(Scroller.Offset.X, offset + Scroller.Extent.Height - extent),
+                DispatcherPriority.Loaded);
+        }
+        finally { _loadingOlder = false; }
     }
 
     private void TryScrollToEndIfNearBottom()
@@ -210,9 +252,16 @@ public partial class ConversationView : UserControl
         Dispatcher.UIThread.Post(() => Scroller.ScrollToEnd(), DispatcherPriority.Loaded);
     }
 
+    // Banners and a taller composer shrink the transcript without moving its offset, which slides the last message out of view.
+    private void OnTranscriptSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (e.NewSize.Height < e.PreviousSize.Height) QueueScrollToEndAfterLayout();
+    }
+
     private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         ObserveTailMessage(_observedConversation);
+        Dispatcher.UIThread.Post(BindPlan);
         QueueScrollToEndIfNearBottom();
     }
 
@@ -231,7 +280,13 @@ public partial class ConversationView : UserControl
             QueueScrollToEndAfterLayout();
         }
         else if (e.PropertyName is nameof(ChatMessage.Text) or nameof(ChatMessage.Streaming))
+        {
+            if (e.PropertyName == nameof(ChatMessage.Streaming) && _observedTailMessage?.Streaming == false)
+                Dispatcher.UIThread.Post(BindPlan);
             QueueScrollToEndIfNearBottom();
+        }
+        else if (e.PropertyName == nameof(ChatMessage.RawToolOutput))
+            Dispatcher.UIThread.Post(BindPlan);
     }
 
     private void ObserveConversation(Conversation? conversation)
@@ -315,6 +370,7 @@ public partial class ConversationView : UserControl
         ContextUsageProgress.IsVisible = contextWindow > 0;
         ContextUsageProgress.Value = contextWindow > 0 ? Math.Clamp((double)contextTokens / contextWindow, 0, 1) : 0;
         BindCacheResumeNotice();
+        BindProviderLimitNotice(conversation);
         BindWorkingIndicator();
         TerminalButton.Content = Model.L("conversation.terminal");
         ToolTip.SetTip(ModelPicker, Model.L("conversation.model"));
@@ -384,9 +440,11 @@ public partial class ConversationView : UserControl
         SkillSuggestionBanner.IsVisible = suggestion is not null;
         if (suggestion is not null)
         {
-            SkillSuggestionTitle.Text = $"Suggested skill: {suggestion.DraftName}";
-            SkillSuggestionDescription.Text = suggestion.DraftDescription;
+            SkillSuggestionTitle.Text = suggestion.CardTitle;
+            SkillSuggestionDescription.Text = suggestion.CardDescription;
         }
+        DismissSkillSuggestionButton.Content = Model.L("skill.suggestion.dismiss");
+        AcceptSkillSuggestionButton.Content = Model.L("skill.suggestion.create");
         AcceptFollowUpSuggestionButton.Content = Model.L("access.accept");
         DismissFollowUpSuggestionButton.Content = Model.L("vision.notNow");
         BindFollowUpSuggestion();
@@ -406,6 +464,7 @@ public partial class ConversationView : UserControl
         BindContextOverflow();
         BindQuestion();
         BindQueue();
+        BindPlan();
         var gitWorkspace = Model.WorkspacePath;
         if (!string.Equals(_boundGitWorkspace, gitWorkspace, StringComparison.Ordinal))
         {
@@ -535,8 +594,11 @@ public partial class ConversationView : UserControl
                 model.Router.ContextRouteIdentityFor(model.SelectedModelID, conversation.StickyAccountId),
                 StringComparison.Ordinal);
         var expiredTokens = routeMatches
-            ? conversation?.CacheSession?.ExpiredLargePrefixTokens(DateTimeOffset.UtcNow)
+            ? conversation?.CacheSession?.ExpiredLargePrefixTokens(DateTimeOffset.UtcNow,
+                others: model!.Conversations.Select(item => item.CacheSession).OfType<NativeCacheSession>())
             : null;
+        // A local model costs nothing; the loss is prefill time.
+        var localCache = expiredTokens is not null && conversation?.CacheSession?.Events.LastOrDefault()?.Local == true;
         // Every line names a reason the next request costs more than the last one.
         var notices = new List<string>();
         if (model is not null && conversation is not null)
@@ -553,21 +615,64 @@ public partial class ConversationView : UserControl
             var window = routeParts.Length >= 4
                 ? model.Router.ContextWindowFor(routeParts[^1], routeParts[1])
                 : model.Router.ContextWindowFor(model.SelectedModelID);
-            if (expiredTokens is not null) notices.Add(model.L("conversation.cacheExpired.notice"));
+            if (localCache) notices.Add(model.L("conversation.cacheLocal.notice"));
+            else if (expiredTokens is not null) notices.Add(model.L("conversation.cacheExpired.notice"));
             else if (window > 0 && conversation.LastContextInputTokens > window * 0.9)
                 notices.Add(model.L("conversation.contextFull.notice"));
         }
 
         CacheResumeWarning.IsVisible = notices.Count > 0;
-        CacheResumeInfoButton.IsVisible = expiredTokens is not null;
+        CacheResumeInfoButton.IsVisible = expiredTokens is not null && !localCache;
         CacheResumeText.Text = string.Join("\n", notices);
         CacheResumeInfoText.Text = model?.L("conversation.cacheExpired.explanation") ?? "";
         ToolTip.SetTip(CacheResumeInfoButton, model?.L("conversation.cacheExpired.infoTitle"));
     }
 
+    private void BindProviderLimitNotice(Conversation? conversation)
+    {
+        var model = Model;
+        if (model is null || conversation?.CanContinue != true
+            || conversation.Continuation is not { Reason: ContinuationPauseReason.ProviderLimit } continuation)
+        {
+            ProviderLimitWarning.IsVisible = false;
+            ProviderLimitTitle.Text = "";
+            ProviderLimitCountdown.Text = "";
+            return;
+        }
+
+        ProviderLimitTitle.Text = model.L("agent.providerLimitTitle");
+        var target = string.Join(" / ", new[] { continuation.Provider, continuation.Model }
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
+        var resetText = continuation.RetryAt is { } retryAt
+            ? model.L("usage.resetsIn", FormatLimitCountdown(retryAt, DateTimeOffset.UtcNow))
+            : model.L("usage.noLimitInfo");
+        ProviderLimitCountdown.Text = string.IsNullOrEmpty(target)
+            ? resetText
+            : $"{target} · {resetText}";
+        ProviderLimitWarning.IsVisible = true;
+        AutomationProperties.SetName(ProviderLimitWarning, $"{ProviderLimitTitle.Text}. {ProviderLimitCountdown.Text}");
+    }
+
+    private static string FormatLimitCountdown(DateTimeOffset retryAt, DateTimeOffset now)
+    {
+        var totalSeconds = Math.Max(0L, (long)Math.Ceiling((retryAt - now).TotalSeconds));
+        if (totalSeconds <= 10 * 60)
+        {
+            return $"{totalSeconds} s";
+        }
+
+        var totalMinutes = totalSeconds / 60;
+        var hours = totalMinutes / 60;
+        var minutes = totalMinutes % 60;
+        return hours > 0
+            ? string.Format(CultureInfo.InvariantCulture, "{0} h {1} min", hours, minutes)
+            : string.Format(CultureInfo.InvariantCulture, "{0} min", totalMinutes);
+    }
+
     private void BindWorkingIndicator()
     {
         var conversation = Model?.Selected;
+        SetComposerLoadingAnimationVisible(conversation?.Running == true);
         if (conversation?.Running != true || conversation.RunStartedAt is not { } started)
         {
             WorkingIndicator.IsVisible = false;
@@ -577,12 +682,54 @@ public partial class ConversationView : UserControl
 
         var elapsed = FormatElapsed(DateTimeOffset.UtcNow - started);
         var skills = Model!.Bridge.ActiveUsedSkills;
-        var status = LiveStatus(elapsed, conversation.Messages.LastOrDefault()?.Kind == ChatKind.Tool);
+        var last = conversation.Messages.LastOrDefault();
+        var status = LiveStatus(elapsed, last?.Kind == ChatKind.Tool);
+        // A long build or test shows its own clock, so a quiet model never looks like a hung app.
+        if (last is { Kind: ChatKind.Tool, RawToolOutput: null } && DateTimeOffset.UtcNow - last.CreatedAt >= TimeSpan.FromSeconds(10))
+            status += " · " + FormatElapsed(DateTimeOffset.UtcNow - last.CreatedAt);
         WorkingIndicator.Text = skills.Count == 0
             ? status
             : $"{status} · {string.Join(", ", skills)}";
         WorkingIndicator.IsVisible = true;
         AutomationProperties.SetName(WorkingIndicator, WorkingIndicator.Text);
+    }
+
+    private void SetComposerLoadingAnimationVisible(bool visible)
+    {
+        _composerLoadingAnimationVisible = visible;
+        ComposerLoadingAnimation.IsVisible = visible;
+        RefreshLoadingAnimation();
+    }
+
+    private void SetLeaseWaitingLoadingAnimationVisible(bool visible)
+    {
+        _leaseWaitingLoadingAnimationVisible = visible;
+        LeaseWaitingLoadingAnimation.IsVisible = visible;
+        RefreshLoadingAnimation();
+    }
+
+    private void RefreshLoadingAnimation()
+    {
+        var shouldAnimate = _composerLoadingAnimationVisible || _leaseWaitingLoadingAnimationVisible;
+        if (shouldAnimate && !_loadingAnimationActive)
+        {
+            _loadingAnimationActive = true;
+            _loadingFrame = 0;
+            ApplyLoadingFrame();
+            _loadingAnimationTimer.Start();
+        }
+        else if (!shouldAnimate && _loadingAnimationActive)
+        {
+            _loadingAnimationActive = false;
+            _loadingAnimationTimer.Stop();
+        }
+    }
+
+    private void ApplyLoadingFrame()
+    {
+        var frame = LoadingFrames[_loadingFrame];
+        if (_composerLoadingAnimationVisible) ComposerLoadingAnimation.Source = frame;
+        if (_leaseWaitingLoadingAnimationVisible) LeaseWaitingLoadingAnimation.Source = frame;
     }
 
     /// <summary>"2m 16s · 1.4k tokens · Running tools…"</summary>
@@ -697,6 +844,7 @@ public partial class ConversationView : UserControl
         {
             ConflictBar.IsVisible = true;
             LeaseWaitingBar.IsVisible = false;
+            SetLeaseWaitingLoadingAnimationVisible(false);
             ConflictTitle.Text = model.L("conflict.banner.title");
             ConflictBody.Text = model.L("conflict.banner.body", conflict.Path, conflict.HolderTitle, conflict.HeldSeconds);
             ConflictKeepWaitingButton.Content = model.L("conflict.banner.keepWaiting");
@@ -710,6 +858,7 @@ public partial class ConversationView : UserControl
         ConflictBar.IsVisible = false;
         var waiting = model?.Bridge.WaitingOnLease;
         LeaseWaitingBar.IsVisible = waiting is not null;
+        SetLeaseWaitingLoadingAnimationVisible(waiting is not null);
         LeaseWaitingText.Text = waiting is null
             ? ""
             : model!.L("conflict.waiting", waiting.ConversationTitle, waiting.Label);
@@ -960,8 +1109,14 @@ public partial class ConversationView : UserControl
         ToolTip.SetTip(EffortResetButton, Model.L("modelPicker.reset"));
         ModelListHeader.Text = "‹  " + (Model.Router.Models.Count == 0 ? Model.L("modelPicker.noModel") : Model.L("modelPicker.selectModel"));
         ToolTip.SetTip(EffortTitleButton, Model.L("modelPicker.selectModel"));
-        UsageModeButton.Content = Model.UsageMode == AgentUsageMode.Economy ? "Economy" : "Standard";
-        ToolTip.SetTip(UsageModeButton, "Toggle response token economy");
+        UsageModeButton.Content = Model.UsageMode == AgentUsageMode.Economy
+            ? Model.L("modelPicker.economy")
+            : Model.L("modelPicker.standard");
+        ToolTip.SetTip(UsageModeButton, Model.L("conversation.toggleResponseEconomy"));
+        var supportsFast = Model.Router.SupportsFast(selected);
+        FastModeButton.IsVisible = supportsFast;
+        FastModeButton.Content = (Model.Router.FastMode ? "⚡ " : "") + Model.L(Model.Router.FastMode ? "modelPicker.fast" : "modelPicker.standard");
+        ToolTip.SetTip(FastModeButton, Model.L("modelPicker.speed"));
         var pickerItems = Model.Router.Models.Select(id =>
         {
             var connection = Model.Router.Connections.FirstOrDefault(item => item.Active && item.Models.Contains(id, StringComparer.Ordinal))
@@ -969,8 +1124,12 @@ public partial class ConversationView : UserControl
             var providerKey = connection?.Provider ?? "";
             return new ModelPickerItem(id, RouterCatalog.LabelFor(providerKey), providerKey);
         }).ToList();
-        ModelList.ItemsSource = pickerItems;
-        ModelList.SelectedItem = pickerItems.FirstOrDefault(item => string.Equals(item.Model, selected, StringComparison.Ordinal));
+        // Every model notification lands here. Swapping in an equal list would tear
+        // down and rebuild each row of an open picker, so keep the bound one.
+        if (ModelList.ItemsSource is not List<ModelPickerItem> boundItems || !boundItems.SequenceEqual(pickerItems))
+            ModelList.ItemsSource = boundItems = pickerItems;
+        var selectedItem = boundItems.FirstOrDefault(item => string.Equals(item.Model, selected, StringComparison.Ordinal));
+        if (!Equals(ModelList.SelectedItem, selectedItem)) ModelList.SelectedItem = selectedItem;
         EffortTrack.IsEnabled = hasEfforts;
         EffortTrack.Opacity = hasEfforts ? 1 : 0.45;
         DrawEffortTrack();
@@ -1019,6 +1178,13 @@ public partial class ConversationView : UserControl
     private void OnEffortReset(object? sender, RoutedEventArgs e)
     {
         Model?.SetEffort("");
+        RefreshModelPicker();
+    }
+
+    private void OnFastMode(object? sender, RoutedEventArgs e)
+    {
+        if (Model is null) return;
+        Model.SetFast(!Model.Router.FastMode);
         RefreshModelPicker();
     }
 
@@ -1119,7 +1285,8 @@ public partial class ConversationView : UserControl
         DropHint.IsVisible = false;
         if (Model is not null && e.Data.GetFiles() is { } files)
         {
-            Model.AddDraftAttachments(files.Select(file => file.Path.LocalPath));
+            var paths = files.Select(file => file.Path.LocalPath).ToArray();
+            Model.AddDraftAttachments(paths);
         }
         e.Handled = true;
     }
@@ -1128,6 +1295,23 @@ public partial class ConversationView : UserControl
     {
         if (sender is Button { Tag: ChatAttachment attachment }) Model?.RemoveDraftAttachment(attachment);
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// Plays a generated audio file. Linux has no inline player in the shell, so
+    /// the file goes to the system's default player.
+    /// </summary>
+    private void OnPlayAudio(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: ChatAttachment attachment }) return;
+        AudioPlayback.OpenExternally(attachment.FilePath);
+    }
+
+    /// <summary>Plays a generated audio result.</summary>
+    private void OnPlayMedia(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: ChatMedia media }) return;
+        AudioPlayback.OpenExternally(media.FilePath);
     }
 
     private void OnStartVoiceIntro(object? sender, RoutedEventArgs e)
@@ -1147,6 +1331,46 @@ public partial class ConversationView : UserControl
 
     private void OnDismissSkillSuggestion(object? sender, RoutedEventArgs e) => Model?.DismissSkillSuggestion();
 
+    /// <summary>The composer's "+" menu: one line per action, with its shortcut on the trailing side.</summary>
+    private void OnAddMenu(object? sender, RoutedEventArgs e)
+    {
+        if (Model is not { } model) return;
+        var menu = new MenuFlyout { Placement = PlacementMode.TopEdgeAlignedLeft };
+        void Add(string key, Action action, KeyGesture? gesture = null)
+        {
+            var item = new MenuItem { Header = model.L(key), InputGesture = gesture };
+            item.Click += (_, _) => action();
+            menu.Items.Add(item);
+        }
+        Add("attachment.files", () => _ = ChooseFilesAsync(), new KeyGesture(Key.U, KeyModifiers.Control));
+        Add("attachment.project", () => _ = ChooseProjectAsync());
+        Add("settings.mcpServers", () => OpenSettings("mcp"));
+        Add("settings.plugins", () => OpenSettings("plugins"));
+        menu.ShowAt(AddButton);
+    }
+
+    private async Task ChooseFilesAsync()
+    {
+        if (TopLevel.GetTopLevel(this) is not { } top) return;
+        var files = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { AllowMultiple = true });
+        Model?.AddDraftAttachments(files.Select(file => file.Path.LocalPath));
+    }
+
+    private async Task ChooseProjectAsync()
+    {
+        if (TopLevel.GetTopLevel(this) is not { } top) return;
+        var folders = await top.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions());
+        if (folders.Count > 0) Model?.AddProject(folders[0].Path.LocalPath);
+    }
+
+    private void OpenSettings(string? tab = null)
+    {
+        if (Model is not { } model || TopLevel.GetTopLevel(this) is not Window owner) return;
+        var window = new SettingsWindow { DataContext = model };
+        if (tab is not null) window.Opened += (_, _) => window.SelectTab(tab);
+        window.Show(owner);
+    }
+
     private void OnVoice(object? sender, RoutedEventArgs e)
     {
         if (Model is not { } model) return;
@@ -1160,8 +1384,7 @@ public partial class ConversationView : UserControl
         {
             VoiceStatus.Text = model.L("voice.status.notReady");
             VoiceStatus.IsVisible = true;
-            if (TopLevel.GetTopLevel(this) is Window owner)
-                new SettingsWindow { DataContext = model }.Show(owner);
+            OpenSettings();
             return;
         }
         _ = StartVoiceInputAsync(model);
@@ -1356,6 +1579,61 @@ public partial class ConversationView : UserControl
         ToolTip.SetTip(button, tip);
         button.Click += click;
         return button;
+    }
+
+    /// <summary>Live checklist from the agent's latest update_plan, pinned above the composer.</summary>
+    private void BindPlan()
+    {
+        PlanRows.Children.Clear();
+        CompletedPlanRows.Children.Clear();
+        var steps = Model?.Selected is { } conversation ? PlanStepsTool.CurrentSteps(conversation.Messages) : Array.Empty<PlanStep>();
+        var selected = Model?.Selected;
+        var transcript = selected?.Messages.ToList() ?? new List<ChatMessage>();
+        var planName = PlanStepsTool.Name;
+        var latestPlanEventIndex = transcript.FindLastIndex(message => message.Kind == ChatKind.Tool
+            && (message.Text.StartsWith("→ " + planName, StringComparison.Ordinal)
+                || message.Text.StartsWith("✓ " + planName, StringComparison.Ordinal)
+                || message.Text.StartsWith("✕ " + planName, StringComparison.Ordinal)));
+        var latestPlanResultIndex = transcript.FindLastIndex(message => message.Kind == ChatKind.Tool
+            && message.Text.StartsWith("✓ " + planName, StringComparison.Ordinal)
+            && message.RawToolOutput is not null);
+        var lastToolIndex = transcript.FindLastIndex(message => message.Kind == ChatKind.Tool);
+        var lastAssistantIndex = transcript.FindLastIndex(message => message.Kind == ChatKind.Assistant && !message.Streaming);
+        var completed = selected is not null
+            && steps.Count > 0
+            && !selected.Running
+            && selected.Continuation is null
+            && selected.PendingPrompts.Count == 0
+            && latestPlanEventIndex >= 0
+            && latestPlanEventIndex == latestPlanResultIndex
+            && lastAssistantIndex > lastToolIndex;
+        PlanBar.IsVisible = steps.Count > 0 && !completed;
+        CompletedPlanSummary.IsVisible = completed;
+        if (Model is null || steps.Count == 0) return;
+        var rows = completed ? CompletedPlanRows : PlanRows;
+        rows.Children.Add(new TextBlock
+        {
+            Text = completed
+                ? $"✓ {Model.L("conversation.plan")} · {steps.Count}/{steps.Count}"
+                : $"{Model.L("conversation.plan")} · {steps.Count(step => step.Status == "done")}/{steps.Count}",
+            FontWeight = FontWeight.SemiBold,
+            FontSize = completed ? 11 : 12,
+            Margin = new Thickness(0, 0, 0, completed ? 3 : 6),
+        });
+        var secondary = (IBrush?)this.FindResource("TextSecondary") ?? Brushes.Gray;
+        foreach (var step in steps)
+        {
+            var row = new TextBlock
+            {
+                Text = (completed ? "✓  " : step.Status switch { "done" => "✓  ", "in_progress" => "◌  ", _ => "○  " }) + step.Title,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, completed ? 0 : 1, 0, completed ? 0 : 1),
+                FontWeight = step.Status == "in_progress" ? FontWeight.SemiBold : FontWeight.Normal,
+                FontSize = completed ? 11 : 12,
+            };
+            if (completed || step.Status == "pending") row.Foreground = secondary;
+            rows.Children.Add(row);
+        }
     }
 
     /// <summary>"1 message queued  text" rows above the composer; each with send-now, edit and remove.</summary>
@@ -1620,6 +1898,12 @@ public partial class ConversationView : UserControl
             && string.IsNullOrWhiteSpace(DraftBox.Text) && Model?.ActiveFollowUpSuggestion is not null)
         {
             AcceptFollowUpSuggestion();
+            e.Handled = true;
+            return;
+        }
+        if (e.Key == Key.U && e.KeyModifiers == KeyModifiers.Control)
+        {
+            _ = ChooseFilesAsync();
             e.Handled = true;
             return;
         }
@@ -1913,7 +2197,7 @@ public sealed class ContextCompactionVisibility : IValueConverter
 {
     public static readonly ContextCompactionVisibility Instance = new();
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        value is ChatMessage { ActivityCode: "context_compacted_auto" };
+        value is ChatMessage { ActivityCode: "context_compacted_auto" or "context_compacted" };
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }
@@ -1922,7 +2206,9 @@ public sealed class ContextCompactionLabel : IValueConverter
 {
     public static readonly ContextCompactionLabel Instance = new();
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        LocalizationService.Current.Get("conversation.contextCompactedAuto");
+        LocalizationService.Current.Get(value is ChatMessage { ActivityCode: "context_compacted" }
+            ? "status.contextCompacted"
+            : "conversation.contextCompactedAuto");
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }

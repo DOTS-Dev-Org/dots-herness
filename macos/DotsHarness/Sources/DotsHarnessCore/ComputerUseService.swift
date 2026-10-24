@@ -38,7 +38,7 @@ public enum ComputerUseService {
             urlString = "x-apple.systempreferences:com.apple.preference.security"
         }
         if let url = URL(string: urlString) {
-            NSWorkspace.shared.open(url)
+            SafeURL.openWeb(url)
         }
     }
 

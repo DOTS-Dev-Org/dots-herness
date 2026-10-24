@@ -17,14 +17,17 @@ public struct Lesson: Codable, Equatable, Sendable {
     public var paths: [String]
     public var sources: [String]
     public var lastSeen: Date
+    /// A dismissed one-turn review prompt should not return on every launch.
+    public var reviewPromptDismissed: Bool?
 
-    public init(when: String = "", rule: String, why: String = "", paths: [String] = [], sources: [String] = [], lastSeen: Date = Date()) {
+    public init(when: String = "", rule: String, why: String = "", paths: [String] = [], sources: [String] = [], lastSeen: Date = Date(), reviewPromptDismissed: Bool? = nil) {
         self.when = when
         self.rule = rule
         self.why = why
         self.paths = paths
         self.sources = sources
         self.lastSeen = lastSeen
+        self.reviewPromptDismissed = reviewPromptDismissed
     }
 
     static let signalPrefix = "signal:"
@@ -43,6 +46,11 @@ public struct Lesson: Codable, Equatable, Sendable {
     /// The user said it themselves, through feedback.
     public var isExplicit: Bool { sources.contains { !$0.hasPrefix(Self.signalPrefix) } }
 
+    /// Said by the user, or learned from more than one event. One inference may be
+    /// a misread failure, so until it is seen again it is a hint, not a rule.
+    public var isConfirmed: Bool { isExplicit || hits >= 2 }
+    static let unconfirmedNote = "A lesson marked unconfirmed was inferred from a single turn and may be wrong: treat it as a hint, check it against the current code and errors, and never avoid an API, library or approach only because of it."
+
     /// What the user said stays. What was only inferred from their behaviour
     /// stays while it is recent or has been learned more than once.
     public func isActive(at now: Date = Date()) -> Bool {
@@ -51,14 +59,14 @@ public struct Lesson: Codable, Equatable, Sendable {
 
     public var line: String {
         let situation = when.trimmingCharacters(in: CharacterSet(charactersIn: " .:"))
-        return (situation.isEmpty ? "" : "When \(situation): ") + rule + (why.isEmpty ? "" : " Why: \(why)")
+        return (situation.isEmpty ? "" : "\(situation): ") + rule + (why.isEmpty ? "" : " — \(why)")
     }
 
     /// The line as the model reads it: a short id it can cite, and whether the
     /// user said it or it was drawn from what they did.
     public var cited: String {
         let key = id.hasPrefix(Self.signalPrefix) ? String(id.dropFirst(Self.signalPrefix.count)) : id
-        return "[\(key.prefix(6)) \(isExplicit ? "user" : "inferred")] " + line
+        return "[\(key.prefix(6)) \(isExplicit ? "user" : isConfirmed ? "inferred" : "unconfirmed")] " + line
     }
 
     public func applies(to path: String) -> Bool {
@@ -85,8 +93,11 @@ public struct Lesson: Codable, Equatable, Sendable {
         if why.isEmpty { why = other.why }
     }
 
+    /// What the user said comes first, so an inferred lesson met often can never push one
+    /// out of the prompt's budget.
     static func ranked(_ lessons: [Lesson]) -> [Lesson] {
         lessons.sorted {
+            if $0.isExplicit != $1.isExplicit { return $0.isExplicit }
             if $0.hits != $1.hits { return $0.hits > $1.hits }
             if $0.lastSeen != $1.lastSeen { return $0.lastSeen > $1.lastSeen }
             return $0.id < $1.id
@@ -104,7 +115,7 @@ public enum LessonSignal: String, Sendable {
         case .correction: return "The user's next message, shown as the user comment, corrected or rejected this answer."
         case .rewind: return "The user undid this turn and the file changes it made."
         case .edit: return "The user discarded this turn and rewrote the request; the rewritten request is shown as the user comment."
-        case .failure: return "The turn ended while the project's tests were failing."
+        case .failure: return "The turn ended badly: the run failed, the project's tests were failing, or the answer left work unfinished."
         }
     }
 }
@@ -137,7 +148,7 @@ public enum LessonEvaluator {
 
     For a rejected, corrected, rewound, edited, or failed outcome, identify the concrete assumption or approach that was wrong and the reusable rule that prevents it next time. For an approved or adopted outcome, identify only a concrete, repeatable project approach that is explicitly supported by the user's comment or adoption request and by the assistant response, tool trace, or changed files. Do not turn generic praise, a task result, or a tag alone into a lesson.
 
-    Return exactly one JSON object with exactly these keys: "when" (the situation the lesson applies to, one short clause), "rule" (what to do or avoid, one or two imperative sentences), "why" (the cause or evidence, one sentence), "paths" (an array of the changed files or their directories that the lesson is specific to; empty when it holds for the whole project). Leave "rule" empty when the evidence does not show a concrete, reusable agent approach: a changed mind, a new request, an outside failure, generic approval, or a tag without supporting evidence is not a lesson. Write in English. Do not use Markdown, XML, or a code fence.
+    Return exactly one JSON object with exactly these keys: "when" (the situation the lesson applies to, one short clause), "rule" (what to do or avoid, one or two imperative sentences), "why" (the cause or evidence, one sentence), "paths" (an array of the changed files or their directories that the lesson is specific to; empty when it holds for the whole project). Leave "rule" empty when the evidence does not show a concrete, reusable agent approach: a changed mind, a new request, an outside failure, generic approval, or a tag without supporting evidence is not a lesson. When the user said nothing and the turn only failed, write a rule only when the trace shows the cause; never tell the agent to avoid an API, library, tool or approach unless the evidence shows that it, rather than how it was used, caused the failure. Write the human-readable values in the language of the user's original prompt. If that language is unclear, use the user's comment; if neither is clear, use the assistant response's main language. Do not default to English. Keep file paths, identifiers, API names, and quoted code unchanged. Do not use Markdown, XML, or a code fence.
     """
 
     public static func payload(for evidence: LessonEvidence) -> String {
@@ -219,6 +230,8 @@ public enum LessonEvaluator {
             "demedim", "soylemedim", "dedim ya", "hala ayni", "yine ayni", "that's not", "thats not", "not what i",
             "didn't work", "doesn't work", "does not work", "still broken", "still fails", "still failing", "undo that",
             "revert that", "you broke", "i said", "i told you", "i didn't ask", "i did not ask",
+            "yapmadin", "yapmamissin", "duzeltmedin", "yap diyorum", "sana diyorum", "diyorum sana", "sana dedim",
+            "sana soyledim", "why didn't you", "why did you not", "you didn't", "you did not",
         ]
         return opening.contains { lower.hasPrefix($0) } || anywhere.contains { lower.contains($0) }
     }
@@ -250,7 +263,6 @@ public enum LessonEvaluator {
 extension FeedbackStore {
     static let lessonsFile = "lessons.json"
     static let maxLessonCharacters = 4_000
-    static let maxManualRuleCharacters = 2_000
     static let maxAreaLessonCharacters = 1_500
     private static let defaultRulesHeader = "# Learned rules\n\nRules inferred from explicit user feedback."
 
@@ -264,7 +276,7 @@ extension FeedbackStore {
     @discardableResult
     public func setLesson(_ lesson: Lesson?, source: String, alsoRemoving stale: [String] = []) throws -> [Lesson] {
         try withLock {
-            guard workspaceURL != nil else { throw FeedbackError.unavailable }
+            guard directory != nil else { throw FeedbackError.unavailable }
             var all = lessonsUnlocked()
             let removed = Set(stale + [source])
             for index in all.indices { all[index].sources.removeAll { removed.contains($0) } }
@@ -302,8 +314,9 @@ extension FeedbackStore {
         withLock {
             let lines = projectWideUnlocked().map(\.line)
             return [
-                clip(manualRulesUnlocked(), to: Self.maxManualRuleCharacters),
-                lines.isEmpty ? "" : "## Lessons from the user's feedback and earlier work\n" + lines.joined(separator: "\n"),
+                // What the person wrote by hand goes whole: cutting it would drop their rules unseen.
+                manualRulesUnlocked(),
+                lines.isEmpty ? "" : "## Lessons from the user's feedback and earlier work\n\(Lesson.unconfirmedNote)\n" + lines.joined(separator: "\n"),
             ].filter { !$0.isEmpty }.joined(separator: "\n\n")
         }
     }
@@ -320,7 +333,7 @@ extension FeedbackStore {
     public func areaLessonsText(for areas: Set<PromptArea>) -> String {
         withLock {
             let lines = areaUnlocked(areas).map(\.line)
-            return lines.isEmpty ? "" : "## Lessons from the files this request is about\n" + lines.joined(separator: "\n")
+            return lines.isEmpty ? "" : "## Lessons from the files this request is about\n\(Lesson.unconfirmedNote)\n" + lines.joined(separator: "\n")
         }
     }
 
@@ -364,7 +377,7 @@ extension FeedbackStore {
     /// Rewrites the stored lessons and their readable copy together.
     private func mutateLessons(_ change: (inout [Lesson]) -> Void) throws {
         try withLock {
-            guard workspaceURL != nil else { throw FeedbackError.unavailable }
+            guard directory != nil else { throw FeedbackError.unavailable }
             var all = lessonsUnlocked()
             change(&all)
             do {
@@ -380,6 +393,15 @@ extension FeedbackStore {
         try mutateLessons { all in
             guard let index = all.firstIndex(where: { $0.id == id }) else { return }
             all[index].sources = Array(Set(all[index].sources + [Self.userPrefix + id])).sorted()
+        }
+    }
+
+    /// Records that the user skipped or answered a review prompt without choosing
+    /// keep/forget. The lesson stays an unconfirmed hint, but is not asked again.
+    public func dismissLessonPrompt(id: String) throws {
+        try mutateLessons { all in
+            guard let index = all.firstIndex(where: { $0.id == id }) else { return }
+            all[index].reviewPromptDismissed = true
         }
     }
 
@@ -404,7 +426,7 @@ extension FeedbackStore {
 
     public func setManualRules(_ text: String) throws {
         try withLock {
-            guard workspaceURL != nil else { throw FeedbackError.unavailable }
+            guard directory != nil else { throw FeedbackError.unavailable }
             let cleaned = text
                 .replacingOccurrences(of: Self.rulesStart, with: "")
                 .replacingOccurrences(of: Self.rulesEnd, with: "")
@@ -431,6 +453,8 @@ extension FeedbackStore {
         var model: String? = nil
         var runStatus: String? = nil
         var feedbackOutcome: String? = nil
+        /// What a lesson evaluation ended with; nil on every other entry.
+        var note: String? = nil
     }
 
     /// Ids of every lesson a prompt for these areas carries.
@@ -538,6 +562,24 @@ extension FeedbackStore {
         )
     }
 
+    /// What became of one lesson evaluation: "lesson", "none", or the error. Without
+    /// this row an evaluator that never answers looks the same as one with nothing to say.
+    func logEvaluation(_ evidence: LessonEvidence, result: String) {
+        appendLog(LearningLogEntry(
+            at: Date(),
+            records: nil,
+            signal: evidence.signal.rawValue,
+            event: "evaluation",
+            turnID: normalizedIdentifier(evidence.turnID),
+            runID: normalizedIdentifier(evidence.runID),
+            provider: normalizedIdentifier(evidence.provider),
+            model: normalizedIdentifier(evidence.model),
+            runStatus: "unknown",
+            feedbackOutcome: "unknown",
+            note: String(result.prefix(200))
+        ))
+    }
+
     /// The latest provider/model recorded for a turn. Missing history stays
     /// unknown instead of being inferred from the current provider selection.
     func metadata(forTurnID turnID: String?) -> (provider: String, model: String, runID: String) {
@@ -563,7 +605,7 @@ extension FeedbackStore {
     /// ponytail: one line per turn, cut back to the newest half past 2,000 lines.
     private func appendLog(_ entry: LearningLogEntry) {
         withLock {
-            guard workspaceURL != nil, let line = try? makeEncoder(prettyPrinted: false).encode(entry) else { return }
+            guard directory != nil, let line = try? makeEncoder(prettyPrinted: false).encode(entry) else { return }
             var lines = ((try? String(contentsOf: url(for: Self.injectionLog), encoding: .utf8)) ?? "")
                 .split(separator: "\n").map(String.init)
             lines.append(String(decoding: line, as: UTF8.self))
@@ -622,8 +664,12 @@ extension FeedbackStore {
     }
 
     func lessonsUnlocked() -> [Lesson] {
-        if let data = try? Data(contentsOf: url(for: Self.lessonsFile)),
+        let lessonsURL = url(for: Self.lessonsFile)
+        let stamp = FileStamp(lessonsURL, fileManager: fileManager)
+        if stamp.modified != nil, let lessonsCache, lessonsCache.stamp == stamp { return lessonsCache.lessons }
+        if let data = try? Data(contentsOf: lessonsURL),
            let stored = try? makeDecoder().decode([Lesson].self, from: data) {
+            lessonsCache = (stamp, stored)
             return stored
         }
         // Before lessons.json the rules lived only as lines in learned_rules.md.

@@ -88,31 +88,6 @@ public enum SSHError: LocalizedError, Equatable {
     }
 }
 
-/// Where a command runs. `.local` is the existing behaviour verbatim — the
-/// optional sandbox policy it carries is the same value the tool layer used
-/// before this type existed.
-///
-/// This is deliberately *not* an extra case on `SandboxExecutionPolicy`: that
-/// type canonicalises its workspace through `realpath(3)` and its non-nil-ness
-/// means "the agent is jailed" throughout MCP, plugins and the system prompt.
-/// A remote host is neither of those things.
-public enum ExecutionTarget: Sendable, Equatable {
-    case local(SandboxExecutionPolicy?)
-    case remote(SSHTarget)
-
-    public var sandboxPolicy: SandboxExecutionPolicy? {
-        if case .local(let policy) = self { return policy }
-        return nil
-    }
-
-    public var remoteTarget: SSHTarget? {
-        if case .remote(let target) = self { return target }
-        return nil
-    }
-
-    public var isRemote: Bool { remoteTarget != nil }
-}
-
 /// The composer's work-location selection, persisted in app settings.
 public enum WorkLocationSetting: Codable, Sendable, Equatable {
     case local

@@ -8,7 +8,11 @@
     "downloadURL": "https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md",
     "revision": "main",
     "sha256": null,
-    "snapshotDate": "2026-08-28"
+    "snapshotDate": "2026-08-28",
+    "category": "design",
+    "publisher": "Anthropic",
+    "publisherBadge": "official",
+    "featured": true
   },
   {
     "id": "skill-creator",
@@ -19,7 +23,11 @@
     "downloadURL": "https://raw.githubusercontent.com/anthropics/skills/main/skills/skill-creator/SKILL.md",
     "revision": "main",
     "sha256": null,
-    "snapshotDate": "2026-08-28"
+    "snapshotDate": "2026-08-28",
+    "category": "authoring",
+    "publisher": "Anthropic",
+    "publisherBadge": "official",
+    "featured": true
   },
   {
     "id": "vercel-react-best-practices",
@@ -30,7 +38,10 @@
     "downloadURL": "https://raw.githubusercontent.com/vercel-labs/agent-skills/main/skills/react-best-practices/SKILL.md",
     "revision": "main",
     "sha256": null,
-    "snapshotDate": "2026-08-28"
+    "snapshotDate": "2026-08-28",
+    "category": "coding",
+    "publisher": "Vercel Labs",
+    "featured": true
   },
   {
     "id": "ppt-generation",
@@ -41,6 +52,8 @@
     "downloadURL": "https://raw.githubusercontent.com/bytedance/deer-flow/main/skills/public/ppt-generation/SKILL.md",
     "revision": "main",
     "sha256": null,
-    "snapshotDate": "2026-08-28"
+    "snapshotDate": "2026-08-28",
+    "category": "documents",
+    "publisher": "ByteDance"
   }
 ]

@@ -74,7 +74,7 @@ public final class LocalRuntimeController: ObservableObject {
     public func installRuntime(_ engine: LocalEngine = .llama) async {
         error = nil
         let key = engine == .mlx ? "mlx" : "runtime"
-        status = AppCopy.text(engine == .mlx ? "local.installingMLX" : "local.downloadingRuntime")
+        status = AppCopy.text(engine == .mlx ? "local.installMLX" : "local.downloadingRuntime")
         downloads[key] = 0
         do {
             let report: @Sendable (FileDownloader.Progress) -> Void = { [weak self] progress in

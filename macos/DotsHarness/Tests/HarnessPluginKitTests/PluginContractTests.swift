@@ -72,6 +72,28 @@ final class PluginContractTests: XCTestCase {
         XCTAssertEqual(host.fibers.count, 1)
     }
 
+    func testHostPlaneIsolateKeepsNamedServicesPrivate() throws {
+        let catalog = PluginCatalog(paths: temporaryPaths())
+        catalog.registerBuiltin(PublishingPlugin.self)
+        let shared = PluginHost(catalog: catalog)
+        XCTAssertTrue(shared.mount(CompositionDocument(plane: .host, entries: [
+            CompositionEntry(id: "pub", plugin: "dots.test-publisher"),
+        ])).isEmpty)
+        XCTAssertEqual(shared.getService("demo", as: String.self), "value")
+
+        let isolated = PluginHost(catalog: catalog)
+        XCTAssertTrue(isolated.mount(CompositionDocument(plane: .host, entries: [
+            CompositionEntry(id: "pub", plugin: "dots.test-publisher", isolate: ["demo": true]),
+        ])).isEmpty)
+        XCTAssertNil(isolated.getService("demo", as: String.self))
+
+        // A key set to false is not isolation; on the session plane that is a global publish.
+        let session = PluginHost(catalog: catalog)
+        XCTAssertEqual(session.mount(CompositionDocument(plane: .session, entries: [
+            CompositionEntry(id: "pub", plugin: "dots.test-publisher", isolate: ["demo": false]),
+        ])).count, 1)
+    }
+
     func testManifestOnlyUserPluginIsRejected() throws {
         let paths = temporaryPaths()
         let folder = paths.plugins.appendingPathComponent("note")

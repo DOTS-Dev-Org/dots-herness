@@ -16,6 +16,9 @@
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.8" />
     <PackageReference Include="Avalonia.Controls.WebView" Version="11.4.1" />
     <PackageReference Include="QRCoder" Version="1.8.0" />
+    <!-- Boyut: Linux'ta yalnız X11 yüklenir; Avalonia.Desktop'un çektiği Win32/macOS DLL'leri pakete girmesin. -->
+    <PackageReference Include="Avalonia.Win32" Version="11.2.8" ExcludeAssets="runtime" />
+    <PackageReference Include="Avalonia.Native" Version="11.2.8" ExcludeAssets="runtime" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
@@ -27,8 +30,9 @@
     <AvaloniaResource Include="Resources\DotsHarness.png" />
     <AvaloniaResource Include="Resources\TrayIcon.png" />
     <AvaloniaResource Include="Resources\ProviderMarks\*.png" />
+    <AvaloniaResource Include="Resources\HerNessLoaderFrame*.png" />
     <AvaloniaResource Include="Resources\presets\host.yml" />
-    <Content Include="Resources\skills\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Resources\skills\**\*" TargetPath="Resources\skills\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <!-- Cross-platform skills live once in shared/skills; only platform-specific ones stay in Resources\skills. -->
     <Content Include="..\..\..\..\shared\skills\**\*" Link="Resources\skills\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Resources\skillsmp-popular-200.json" CopyToOutputDirectory="PreserveNewest" />

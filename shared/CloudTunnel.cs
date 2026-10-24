@@ -24,7 +24,9 @@ public sealed class CloudTunnelProcess : IDisposable
             : Path.Combine(paths.Runtime, Path.GetFileName(runtimeSubdirectory));
     }
 
-    public async Task<string> StartAsync(int gatewayPort, Action<FileDownloader.Progress>? progress = null, CancellationToken ct = default)
+    /// <param name="originTls">The local service speaks TLS with a self-signed
+    /// certificate (the remote-control gateway); cloudflared reaches it over loopback.</param>
+    public async Task<string> StartAsync(int gatewayPort, Action<FileDownloader.Progress>? progress = null, CancellationToken ct = default, bool originTls = false)
     {
         Stop();
         _paths.Ensure();
@@ -54,7 +56,8 @@ public sealed class CloudTunnelProcess : IDisposable
         process.StartInfo.ArgumentList.Add("tunnel");
         process.StartInfo.ArgumentList.Add("--no-autoupdate");
         process.StartInfo.ArgumentList.Add("--url");
-        process.StartInfo.ArgumentList.Add($"http://127.0.0.1:{gatewayPort}");
+        process.StartInfo.ArgumentList.Add($"{(originTls ? "https" : "http")}://127.0.0.1:{gatewayPort}");
+        if (originTls) process.StartInfo.ArgumentList.Add("--no-tls-verify");
         process.OutputDataReceived += OnLine;
         process.ErrorDataReceived += OnLine;
         process.Exited += (_, _) => _url?.TrySetException(new RouterException("The sharing process stopped before it produced a public URL."));

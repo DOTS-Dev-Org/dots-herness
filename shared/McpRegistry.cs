@@ -50,8 +50,6 @@ public sealed class McpRegistry : INotifyPropertyChanged, IAsyncDisposable
         bool ReadOnlyHint,
         bool DestructiveHint);
 
-    private sealed record TestResult(int? ToolCount, string? Error);
-
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true,

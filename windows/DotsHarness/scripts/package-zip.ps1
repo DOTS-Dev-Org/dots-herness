@@ -166,6 +166,19 @@ if (Test-Path -LiteralPath $RuntimesDir) {
         Remove-Item -Recurse -Force
 }
 
+# Metal shader is macOS-only; XML docs and PDBs are never loaded at runtime.
+Get-ChildItem -LiteralPath $PublishDir -Recurse -File |
+    Where-Object { $_.Extension -in '.metal', '.xml', '.pdb' } |
+    Remove-Item -Force
+
+# en ve tr dışındaki diller pakete girmez; seçilince indirilir (LanguagePacks).
+# Dosyalar içerik hash'iyle adlandırılır: dist\language-packs altındakileri
+# R2'de downloads/languages/ altına yükleyin.
+$python = Get-Command python3, python -ErrorAction SilentlyContinue | Select-Object -First 1
+if (-not $python) { Fail 'Dil paketlerini üretmek için Python gerekiyor.' }
+& $python.Source (Join-Path $NativeDir '..\..\tools\build_language_packs.py') $PublishDir (Join-Path $DistDir 'language-packs')
+if ($LASTEXITCODE -ne 0) { Fail 'Dil paketleri üretilemedi.' }
+
 if ($UseSelfContained) {
     @"
 Dots Harness $Version for Windows ($Runtime)
@@ -188,7 +201,8 @@ Write-Output '==> Zip oluştur'
 if (Test-Path -LiteralPath $ZipPath) {
     Remove-Item -LiteralPath $ZipPath -Force
 }
-Compress-Archive -Path (Join-Path $PublishDir '*') -DestinationPath $ZipPath -CompressionLevel Optimal
+$ZipScript = Join-Path $PSScriptRoot 'create-zip.ps1'
+& $ZipScript -Source $PublishDir -Destination $ZipPath
 
 Write-Output "==> Hazır: $ZipPath"
 Write-Output "    Uygulama: $appPath"

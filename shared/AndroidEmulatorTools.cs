@@ -94,13 +94,16 @@ public static class AndroidEmulatorService
             .Select(line => line.Trim()).Where(line => line.Length > 0).ToArray();
     }
 
-    public static void Boot(string avdName)
+    /// <summary>Starts an AVD; <paramref name="headless"/> skips the emulator window for panels that mirror it over gRPC.</summary>
+    public static void Boot(string avdName, bool headless = false)
     {
         if (string.IsNullOrWhiteSpace(avdName) || avdName.StartsWith('-'))
             throw new AndroidEmulatorException("Enter a valid AVD name.");
         var executable = AndroidSDKLocator.FindEmulator()
             ?? throw new AndroidEmulatorException("Android emulator tool not found. Install Android SDK Emulator or set ANDROID_HOME.");
-        AndroidShell.StartBackground(executable, ["-avd", avdName, "-no-snapshot-load", "-no-boot-anim"]);
+        AndroidShell.StartBackground(executable, headless
+            ? ["-avd", avdName, "-no-snapshot-load", "-no-boot-anim", "-no-window"]
+            : ["-avd", avdName, "-no-snapshot-load", "-no-boot-anim"]);
     }
 
     public static Task ShutdownAsync(string serial, CancellationToken ct = default) =>

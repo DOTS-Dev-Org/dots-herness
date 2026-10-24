@@ -259,30 +259,6 @@ export async function recordLegalConsents(
   }
 }
 
-export async function hasCurrentRequiredLegalAcceptance(env: Env, userId: string): Promise<boolean> {
-  const [terms, privacy] = await Promise.all([
-    db(env)
-      .prepare(
-        `SELECT action FROM legal_consent_events
-          WHERE user_id = ? AND purpose = 'terms.acceptance'
-            AND document_key = 'terms' AND document_version = ? AND locale = 'tr'
-          ORDER BY created_at DESC LIMIT 1`,
-      )
-      .bind(userId, LEGAL_DOCUMENT_VERSIONS.terms)
-      .first<{ action: LegalConsentAction }>(),
-    db(env)
-      .prepare(
-        `SELECT action FROM legal_consent_events
-          WHERE user_id = ? AND purpose = 'privacy.notice'
-            AND document_key = 'privacy_notice' AND document_version = ? AND locale = 'tr'
-          ORDER BY created_at DESC LIMIT 1`,
-      )
-      .bind(userId, LEGAL_DOCUMENT_VERSIONS.privacy_notice)
-      .first<{ action: LegalConsentAction }>(),
-  ]);
-  return terms?.action === "accepted" && privacy?.action === "acknowledged";
-}
-
 type AuthContext = Context<{ Bindings: Env; Variables: AppVariables }>;
 
 /** Resolve an optional session for the public cookie-consent endpoint. */

@@ -62,7 +62,17 @@ public enum PromptArea: String, CaseIterable, Sendable {
     }
 }
 
-/// A change a person makes to memory from the vault.
+/// Where a preference the person records applies.
+public enum MemoryPreferenceScope: String, Sendable, Equatable {
+    /// Every project; kept in the person's profile.
+    case everywhere
+    /// This project only; kept in the person's user layer for it.
+    case thisProject
+}
+
+/// A change a person makes to memory from the vault. Project entries and decisions
+/// change the repository's signed log, so they can only be taken out of the prompt.
+/// Everything else is the person's and is deleted for good.
 public enum MemoryEdit: Sendable, Equatable {
     case setProject(key: String, value: String)
     case forgetProject(key: String)
@@ -70,6 +80,14 @@ public enum MemoryEdit: Sendable, Equatable {
     case forgetLesson(id: String)
     case editLesson(id: String, rule: String)
     case setManualRules(String)
+    case addManualRule(String)
+    case setPreference(key: String, value: String, scope: MemoryPreferenceScope)
+    case deletePreference(key: String, scope: MemoryPreferenceScope)
+    case deleteTask(runID: String)
+    case deleteConversation(id: String)
+    case deleteInsight(id: String)
+    case addInsight(kind: MemoryInsight.Kind, text: String)
+    case editInsight(id: String, text: String)
 }
 
 public enum ProjectKnowledge {
@@ -86,7 +104,7 @@ public enum ProjectKnowledge {
     /// ponytail: an entry is refreshed when the agent notices the code disagrees
     /// with it (see the durable-memory guidance), not by hashing its source
     /// files; add the hash if entries are seen going stale unnoticed.
-    static func guidance(missing: [String], explore: Bool = true) -> String {
+    static func guidance(missing: [String]) -> String {
         guard !missing.isEmpty else { return "" }
         let wanted = [
             "architecture": "the modules and layers, and how a request flows through them.",
@@ -100,7 +118,8 @@ public enum ProjectKnowledge {
 
         Project knowledge
         - <project_memory> has no entry yet for: \(missing.joined(separator: ", ")).
-        - Before the first real change to this project, learn the missing ones from the code\(explore ? " - delegate the\n  sweep to explore -" : "") and record each with remember (kind "project", that key), in at most 1,200
+        - Before the first real change to this project, learn the missing ones from the project map and the
+          few files it names - not by sweeping the workspace - and record each with remember (kind "project", that key), in at most 1,200
           characters, naming the files it comes from.
         \(missing.map { "- \($0): \(wanted[$0] ?? "")" }.joined(separator: "\n"))
         - Skip this for a one-off question or a trivial edit.

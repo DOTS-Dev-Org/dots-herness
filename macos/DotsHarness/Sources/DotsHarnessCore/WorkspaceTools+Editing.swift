@@ -200,6 +200,26 @@ enum FileEditTools {
             ReadLedger.shared.record(file, data: data, conversationID: conversationID)
         }
         return "Edited \(WorkspaceTools.relativePath(file, workspace: workspace)) (\(summary.joined(separator: "; ")))."
+            + changedLines(before: text, after: updated)
+    }
+
+    static let changedLinesShown = 40
+
+    /// The edited region of the new file, numbered, with two lines of context: the
+    /// model sees the result without a follow-up read_file. One span from the first
+    /// to the last changed line; a span wider than `changedLinesShown` only names
+    /// its line range.
+    static func changedLines(before: String, after: String) -> String {
+        let a = before.components(separatedBy: "\n"), b = after.components(separatedBy: "\n")
+        var top = 0
+        while top < a.count, top < b.count, a[top] == b[top] { top += 1 }
+        var bottom = 0
+        while bottom < a.count - top, bottom < b.count - top, a[a.count - 1 - bottom] == b[b.count - 1 - bottom] { bottom += 1 }
+        let start = max(0, top - 2), end = min(b.count, b.count - bottom + 2)
+        if end - start > changedLinesShown {
+            return "\nChanged lines \(top + 1)-\(b.count - bottom): too wide to show; read_file them if needed."
+        }
+        return "\n" + (start..<end).map { "\($0 + 1): \(b[$0])" }.joined(separator: "\n")
     }
 
     /// Overlapping matches are counted left to right, the same way the subsequent
@@ -284,37 +304,17 @@ enum FileEditTools {
         workspace: URL
     ) -> [(relative: String, modified: Date)] {
         let root = base.standardizedFileURL.resolvingSymlinksInPath()
-        guard let enumerator = FileManager.default.enumerator(
-            at: root,
-            includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey, .contentModificationDateKey],
-            options: []
-        ) else { return [] }
         var found: [(relative: String, modified: Date)] = []
         var scanned = 0
-        while let candidate = enumerator.nextObject() as? URL {
-            let relative = WorkspaceTools.relativePath(candidate, workspace: root)
-            let components = relative.split(separator: "/").map(String.init)
-            if components.contains(where: { WorkspaceTools.ignoredScanDirectories.contains($0) }) {
-                if (try? candidate.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
-                    enumerator.skipDescendants()
-                }
-                continue
-            }
-            let values = try? candidate.resourceValues(
-                forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .isDirectoryKey, .contentModificationDateKey]
-            )
-            if values?.isSymbolicLink == true {
-                if (try? candidate.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
-                    enumerator.skipDescendants()
-                }
-                continue
-            }
-            guard values?.isRegularFile == true else { continue }
+        WorkspaceTools.scanFiles(root) { candidate in
             scanned += 1
-            if scanned > globScanLimit { break }
-            if isMatch(expression: expression, relative: relative, patternHasSlash: patternHasSlash, lastComponent: components.last ?? "") {
-                found.append((relative, values?.contentModificationDate ?? .distantPast))
+            if scanned > globScanLimit { return false }
+            let relative = WorkspaceTools.relativePath(candidate, workspace: root)
+            if isMatch(expression: expression, relative: relative, patternHasSlash: patternHasSlash, lastComponent: candidate.lastPathComponent) {
+                let modified = (try? candidate.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+                found.append((relative, modified ?? .distantPast))
             }
+            return true
         }
         return found.sorted { lhs, rhs in
             lhs.modified == rhs.modified ? lhs.relative < rhs.relative : lhs.modified > rhs.modified

@@ -17,7 +17,8 @@ struct TerminalView: View {
         TerminalTranscriptView(
             output: session.output.isEmpty ? AppCopy.text("conversation.startingShell") : session.output,
             isInputEnabled: session.isRunning,
-            onInput: session.sendInput
+            onInput: session.sendInput,
+            onSelection: { session.selectedText = $0 }
         )
         .background(Color(nsColor: .textBackgroundColor))
     }
@@ -27,6 +28,7 @@ struct TerminalTranscriptView: NSViewRepresentable {
     let output: String
     let isInputEnabled: Bool
     let onInput: (String) -> Void
+    var onSelection: (String) -> Void = { _ in }
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -37,6 +39,7 @@ struct TerminalTranscriptView: NSViewRepresentable {
 
         let editor = TerminalNSTextView()
         editor.onInput = onInput
+        editor.onSelection = onSelection
         editor.isInputEnabled = isInputEnabled
         editor.string = output
         editor.isEditable = true
@@ -61,6 +64,7 @@ struct TerminalTranscriptView: NSViewRepresentable {
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let editor = nsView.documentView as? TerminalNSTextView else { return }
         editor.onInput = onInput
+        editor.onSelection = onSelection
         editor.isInputEnabled = isInputEnabled
 
         guard editor.string != output else { return }
@@ -73,8 +77,15 @@ struct TerminalTranscriptView: NSViewRepresentable {
 final class TerminalNSTextView: NSTextView {
     var onInput: ((String) -> Void)?
     var isInputEnabled = false
+    var onSelection: ((String) -> Void)?
 
     override var acceptsFirstResponder: Bool { true }
+
+    override func setSelectedRanges(_ ranges: [NSValue], affinity: NSSelectionAffinity, stillSelecting: Bool) {
+        super.setSelectedRanges(ranges, affinity: affinity, stillSelecting: stillSelecting)
+        guard !stillSelecting else { return }
+        onSelection?((string as NSString).substring(with: selectedRange()))
+    }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -230,7 +241,8 @@ struct InlineAudioPlayer: View {
                     .frame(width: 24, height: 24)
             }
             .buttonStyle(.borderedProminent)
-            .accessibilityLabel(playback.isPlaying ? "Pause audio" : "Play audio")
+            .accessibilityLabel(AppCopy.text(playback.isPlaying ? "media.audio.pause" : "media.audio.play"))
+
 
             Slider(
                 value: Binding(

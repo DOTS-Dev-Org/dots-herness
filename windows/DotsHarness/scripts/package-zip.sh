@@ -244,6 +244,16 @@ fi
 
 echo "    Yalnızca $RUNTIME yerel varlıkları pakette tutuluyor"
 prune_foreign_runtime_assets "$PUBLISH_DIR" "$RUNTIME"
+# Metal shader is macOS-only; XML docs and PDBs are never loaded at runtime.
+find "$PUBLISH_DIR" -type f \( -name '*.metal' -o -name '*.xml' -o -name '*.pdb' \) -delete
+
+# en ve tr dışındaki diller pakete girmez; seçilince indirilir (LanguagePacks).
+# Dosyalar içerik hash'iyle adlandırılır: dist/language-packs/ altındakileri
+# R2'de downloads/languages/ altına yükleyin.
+PYTHON="$(command -v python3 || command -v python || true)"
+[[ -n "$PYTHON" ]] || fail "Dil paketlerini üretmek için Python gerekiyor."
+"$PYTHON" "$ROOT/../../tools/build_language_packs.py" "$PUBLISH_DIR" "$DIST_DIR/language-packs" \
+    || fail "Dil paketleri üretilemedi."
 
 if [[ "$SELF_CONTAINED" == true ]]; then
     cat > "$PUBLISH_DIR/README.txt" <<EOF
@@ -264,14 +274,15 @@ EOF
 fi
 
 echo "==> Zip oluştur"
-if command -v powershell.exe >/dev/null 2>&1; then
-    powershell.exe -NoProfile -Command \
-        "Compress-Archive -Path '$(to_native_path "$PUBLISH_DIR")\\*' -DestinationPath '$(to_native_path "$ZIP_PATH")' -CompressionLevel Optimal -Force"
-elif command -v zip >/dev/null 2>&1; then
+if command -v zip >/dev/null 2>&1; then
     (
         cd "$PUBLISH_DIR"
         zip -r -9 "$ZIP_PATH" .
     )
+elif command -v powershell.exe >/dev/null 2>&1; then
+    powershell.exe -NoProfile -File "$(to_native_path "$ROOT/scripts/create-zip.ps1")" \
+        -Source "$(to_native_path "$PUBLISH_DIR")" \
+        -Destination "$(to_native_path "$ZIP_PATH")"
 else
     fail "Zip oluşturmak için powershell.exe veya zip gerekli."
 fi

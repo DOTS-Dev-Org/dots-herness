@@ -222,9 +222,10 @@ export async function completeOrder(env: Env, merchantOid: string, status = "com
                 ELSE confirmation_email_status
               END,
               updated_at = NOW()
-        WHERE merchant_oid = ?`
+        WHERE merchant_oid = ?
+          AND (status = 'pending' OR (status = 'failed' AND ? = 'completed'))`
     )
-    .bind(status, status, status, status, merchantOid)
+    .bind(status, status, status, status, merchantOid, status)
     .run();
 }
 

@@ -13,7 +13,7 @@ BUNDLE_ID="${BUNDLE_ID:-com.dots.herness}"
 CONFIGURATION="${CONFIGURATION:-Release}"
 BUILD_MODE="${BUILD_MODE:-simulator}"
 SIMULATOR_NAME="${SIMULATOR_NAME-}"
-DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-$IOS_DIR/build/SimulatorDerivedData}"
+DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-$IOS_DIR/build/DerivedData}"
 ARCHIVE_PATH="${ARCHIVE_PATH:-$IOS_DIR/build/archives/${PROJECT_NAME}.xcarchive}"
 BUILD_ONLY=false
 
@@ -242,7 +242,7 @@ if [[ "$BUILD_MODE" == archive ]]; then
         -configuration "$CONFIGURATION" \
         -sdk iphoneos \
         -destination "generic/platform=iOS" \
-        -derivedDataPath "$IOS_DIR/build/DeviceDerivedData" \
+        -derivedDataPath "$DERIVED_DATA_PATH" \
         -archivePath "$ARCHIVE_PATH" \
         CODE_SIGNING_ALLOWED="${CODE_SIGNING_ALLOWED:-NO}" \
         CODE_SIGNING_REQUIRED="${CODE_SIGNING_REQUIRED:-NO}" \

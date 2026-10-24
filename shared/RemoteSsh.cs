@@ -39,7 +39,7 @@ public sealed record SshCommandResult(int ExitCode, string StandardOutput, strin
 
 /// <summary>
 /// Reads user host aliases and writes only DotsHarness-managed stanzas in
-/// ~/.ssh/config. Passwords and private keys are never copied or persisted.
+/// ~/.ssh/config. Passwords and private keys are never embedded in its stanzas.
 /// </summary>
 public static class RemoteSsh
 {
@@ -49,6 +49,9 @@ public static class RemoteSsh
     public static string ConfigFile => Path.Combine(SshDirectory, "config");
     public static string KnownHostsFile => Path.Combine(SshDirectory, "known_hosts");
     public static bool IsAvailable => FindExecutable("ssh") is not null;
+    public static bool IsValidHostInput(string hostName, string user, int port) =>
+        !string.IsNullOrWhiteSpace(hostName) && IsSingleConfigToken(hostName)
+        && IsSingleConfigToken(user) && port is >= 1 and <= 65535;
 
     public static IReadOnlyList<SshHost> ReadHosts()
     {
@@ -167,22 +170,39 @@ public static class RemoteSsh
         && !alias.StartsWith('-')
         && alias.All(character => char.IsAsciiLetterOrDigit(character) || character is '.' or '_' or '-');
 
-    public static void AddManagedHost(string alias, string hostName, string user, int port)
+    public static void AddManagedHost(string alias, string hostName, string user, int port, string? identityFile = null)
     {
-        if (!IsValidAlias(alias) || string.IsNullOrWhiteSpace(hostName) || !IsSingleConfigToken(hostName) || !IsSingleConfigToken(user)
-            || port is < 1 or > 65535)
+        if (!IsValidAlias(alias) || !IsValidHostInput(hostName, user, port))
             throw new InvalidOperationException("Enter a valid alias, host name, user name, and port.");
 
         Directory.CreateDirectory(SshDirectory);
         SetPrivateDirectoryMode();
         var text = File.Exists(ConfigFile) ? File.ReadAllText(ConfigFile) : "";
-        if (ReadHosts().Any(host => host.Alias.Equals(alias, StringComparison.OrdinalIgnoreCase)))
-            throw new InvalidOperationException($"The SSH alias '{alias}' already exists. Edit its existing Host entry instead.");
+        var existing = ReadHosts().FirstOrDefault(host => host.Alias.Equals(alias, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            if (!existing.ManagedByApp)
+                throw new InvalidOperationException($"The SSH alias '{alias}' already exists. Edit its existing Host entry instead.");
+            RemoveManagedHost(alias);
+            text = File.Exists(ConfigFile) ? File.ReadAllText(ConfigFile) : "";
+        }
+        if (!string.IsNullOrWhiteSpace(identityFile) && !IsSingleConfigToken(identityFile))
+            throw new InvalidOperationException("The SSH identity file path is invalid.");
         if (text.Length > 0 && !text.EndsWith('\n')) text += Environment.NewLine;
         if (text.Length > 0 && !text.EndsWith(Environment.NewLine + Environment.NewLine, StringComparison.Ordinal)) text += Environment.NewLine;
         text += $"{BeginMarker}{alias}{Environment.NewLine}Host {alias}{Environment.NewLine}    HostName {hostName}{Environment.NewLine}";
         if (!string.IsNullOrWhiteSpace(user)) text += $"    User {user}{Environment.NewLine}";
-        text += $"    Port {port}{Environment.NewLine}{EndMarker}{alias}{Environment.NewLine}";
+        text += $"    Port {port}{Environment.NewLine}";
+        if (!string.IsNullOrWhiteSpace(identityFile))
+            text += $"    IdentityFile {identityFile}{Environment.NewLine}    IdentitiesOnly yes{Environment.NewLine}";
+        text += $"{EndMarker}{alias}{Environment.NewLine}";
+        if (!string.IsNullOrWhiteSpace(identityFile))
+        {
+            if (!IsSingleConfigToken(identityFile)) throw new InvalidOperationException("The SSH identity file path is invalid.");
+            text = text.Replace($"    Port {port}{Environment.NewLine}{EndMarker}{alias}",
+                $"    Port {port}{Environment.NewLine}    IdentityFile {identityFile}{Environment.NewLine}    IdentitiesOnly yes{Environment.NewLine}{EndMarker}{alias}",
+                StringComparison.Ordinal);
+        }
         WritePrivateFile(ConfigFile, text);
     }
 
@@ -232,13 +252,6 @@ public static class RemoteSsh
     {
         var args = BuildSshArguments(target.Alias, interactive: true).ToList();
         args.Add($"cd -- {ShellQuote(target.RemotePath)} && exec ${{SHELL:-/bin/sh}} -l");
-        return args;
-    }
-
-    public static IReadOnlyList<string> BuildCommandArguments(SshTarget target, string command)
-    {
-        var args = BuildSshArguments(target.Alias, interactive: false).ToList();
-        args.Add(RemoteCommand(target.RemotePath, command));
         return args;
     }
 
@@ -423,7 +436,8 @@ public static class RemoteSsh
         return null;
     }
 
-    private static bool IsSingleConfigToken(string value) => !value.Any(character => char.IsControl(character) || char.IsWhiteSpace(character) || character is '#' or '"');
+    private static bool IsSingleConfigToken(string value) => !value.StartsWith("-", StringComparison.Ordinal)
+        && !value.Any(character => char.IsControl(character) || char.IsWhiteSpace(character) || character is '#' or '"');
 
     private static void WritePrivateFile(string path, string contents)
     {
@@ -431,13 +445,13 @@ public static class RemoteSsh
         SetPrivateMode(path);
     }
 
-    private static void SetPrivateMode(string path)
+    internal static void SetPrivateMode(string path)
     {
         if (OperatingSystem.IsWindows() || !File.Exists(path)) return;
         try { File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite); } catch { }
     }
 
-    private static void SetPrivateDirectoryMode()
+    internal static void SetPrivateDirectoryMode()
     {
         if (OperatingSystem.IsWindows() || !Directory.Exists(SshDirectory)) return;
         try { File.SetUnixFileMode(SshDirectory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute); } catch { }

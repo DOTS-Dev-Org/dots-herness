@@ -39,6 +39,7 @@ final class FollowUpSuggestionTests: XCTestCase {
 
     func testGenerationGateRequiresSuccessfulUnpausedRunWithoutPendingQueue() {
         XCTAssertTrue(shouldGenerateFollowUp(succeeded: true, cancelled: false, paused: false, pendingQueue: false))
+        XCTAssertFalse(shouldGenerateFollowUp(succeeded: true, cancelled: false, paused: false, pendingQueue: false, economy: true))
         XCTAssertFalse(shouldGenerateFollowUp(succeeded: false, cancelled: false, paused: false, pendingQueue: false))
         XCTAssertFalse(shouldGenerateFollowUp(succeeded: true, cancelled: true, paused: false, pendingQueue: false))
         XCTAssertFalse(shouldGenerateFollowUp(succeeded: true, cancelled: false, paused: true, pendingQueue: false))

@@ -102,7 +102,15 @@ class LoopScheduler(private val context: Context, private val makeAgent: () -> M
         if (running != null) return
         running = loop.id
         try {
-            val result = makeAgent().sendAndWait(loop.prompt)
+            val agent = makeAgent()
+            val result = agent.sendAndWait(loop.prompt)
+            MobileNotificationInbox.shared(context).append(
+                kind = "scheduledTask",
+                title = loop.name,
+                detail = result,
+                conversationId = agent.activeConversationId,
+                projectId = agent.projectId,
+            )
             loops = store.read().map { if (it.id == loop.id) it.copy(lastRun = System.currentTimeMillis(), lastResult = result) else it }
             store.write(loops)
             notify(context, loop.name, result)
@@ -156,6 +164,7 @@ class LoopWorker(context: Context, parameters: WorkerParameters) : CoroutineWork
         val projectStore = MobileProjectStore(context)
         val projectID = projectStore.selectedProjectId
         val projectRoot = File(projectStore.selected.localRoot).canonicalFile
+        val personalMemoryRoot = File(context.filesDir, "herness-memory")
         if (!projectRoot.isDirectory) return Result.success()
         val storedProvider = stateStore.setting("herness.agent.provider")
         val migrationProvider = storedProvider?.takeIf { MobileHarnessRuntime.definition(it)?.requiresApiKey == true } ?: "anthropic"
@@ -176,8 +185,9 @@ class LoopWorker(context: Context, parameters: WorkerParameters) : CoroutineWork
             ).apply {
                 selectProject(projectID)
                 register(WebTools.specs())
-                register(AgentTools.workspace(root))
-                learnedRules = { MobileLessons.rulesText(root()) }
+                register(AgentTools.workspace(root, { personalMemoryRoot }))
+                learnedRules = { MobileLessons.rulesText(root(), userRoot = personalMemoryRoot) }
+                personalMemory = { MobilePersonalMemory.text(personalMemoryRoot, root()) }
                 register(AgentTools.runtime(LocalShell(root), root))
                 replaceProjectTools(Plugins(root).reload())
             }

@@ -100,6 +100,25 @@ public struct RemoteBootstrap: Codable, Sendable {
     public let capabilities: [String]
     public let devices: [RemotePairingDevice]
     public let projectID: String?
+    /// Every address this desktop answers on, tunnel first: a phone keeps the
+    /// list and falls back to the LAN address when the tunnel URL is gone.
+    public var endpoints: [String] = []
+}
+
+/// The visible chat of one desktop conversation, so a phone that pairs or
+/// reconnects mid-session sees what came before the live event stream.
+public struct RemoteTranscript: Codable, Sendable {
+    public let conversationId: String
+    public let title: String
+    public let running: Bool
+    public let messages: [RemoteTranscriptMessage]
+}
+
+public struct RemoteTranscriptMessage: Codable, Sendable {
+    public let id: String
+    public let kind: String
+    public let text: String
+    public let createdAt: Date
 }
 
 public struct RemoteProjectDescriptor: Codable, Sendable, Equatable, Identifiable {
@@ -185,8 +204,10 @@ public final class RemoteEventHub: @unchecked Sendable {
     private let lock = NSLock()
     private let root: URL
     private var history: [RemoteControlEvent] = []
-    private var sequence: Int64 = 0
-    private var streams: [UUID: AsyncStream<RemoteControlEvent>.Continuation] = [:]
+    // Seeded from the clock so a restarted desktop keeps numbering above what a
+    // paired phone already saw; a phone resuming with ?after=<old> would
+    // otherwise get nothing until the new counter caught up.
+    private var sequence = Int64(Date().timeIntervalSince1970 * 1000)
 
     public init(root: URL) {
         self.root = root.appendingPathComponent("remote-artifacts", isDirectory: true)
@@ -218,7 +239,6 @@ public final class RemoteEventHub: @unchecked Sendable {
         )
         history.append(event)
         if history.count > 2_000 { history.removeFirst(history.count - 2_000) }
-        streams.values.forEach { _ = $0.yield(event) }
         return event
     }
 
@@ -257,6 +277,8 @@ public final class RemoteEventHub: @unchecked Sendable {
             || normalized.contains("credential")
     }
 
+    static func sanitizeForRemote(_ value: String) -> String { sanitizeText(value) }
+
     private static func sanitizeText(_ value: String) -> String {
         let pattern = #"(?i)(api[_ -]?key|access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|password|authorization)\s*[:=]\s*\S+|\bBearer\s+\S+|\b(?:sk|ghp|github_pat|xox[baprs])[-_][A-Za-z0-9_-]{12,}\b"#
         return value.range(of: pattern, options: .regularExpression) == nil ? value : "[redacted]"
@@ -281,19 +303,9 @@ public final class RemoteEventHub: @unchecked Sendable {
         return publish(kind, workspaceId: workspaceId, sessionId: sessionId, payload: data, artifactId: artifactId)
     }
 
-    public func stream(after: Int64, workspaceId: String) -> AsyncStream<RemoteControlEvent> {
-        let id = UUID()
-        return AsyncStream { continuation in
-            lock.lock()
-            history.filter { $0.sequence > after && $0.workspaceId == workspaceId }.forEach { _ = continuation.yield($0) }
-            streams[id] = continuation
-            lock.unlock()
-            continuation.onTermination = { [weak self] _ in
-                self?.lock.lock()
-                self?.streams.removeValue(forKey: id)
-                self?.lock.unlock()
-            }
-        }
+    public func since(after: Int64, workspaceId: String) -> [RemoteControlEvent] {
+        lock.lock(); defer { lock.unlock() }
+        return history.filter { $0.sequence > after && $0.workspaceId == workspaceId }
     }
 
     public func artifactURL(_ id: String) -> URL? {
@@ -322,7 +334,7 @@ public final class RemoteEventHub: @unchecked Sendable {
     private func saveArtifact(kind: String, text: String) -> String { saveArtifact(kind: kind, data: Data(text.utf8)) }
 }
 
-private final class RemoteKeychain: @unchecked Sendable {
+final class RemoteKeychain: @unchecked Sendable {
     private let service = "com.dots.herness.remote-control"
 
     func write(_ value: String, account: String) throws {
@@ -330,6 +342,7 @@ private final class RemoteKeychain: @unchecked Sendable {
         SecItemDelete(query as CFDictionary)
         var item = query
         item[kSecValueData as String] = Data(value.utf8)
+        item[kSecAttrAccessible as String] = KeychainAccess.whenUnlocked
         guard SecItemAdd(item as CFDictionary, nil) == errSecSuccess else { throw RouterTestError.message("The macOS Keychain is unavailable.") }
     }
 
@@ -359,7 +372,13 @@ private final class RemotePairingStore: @unchecked Sendable {
     private let keychain = RemoteKeychain()
     private var workspaceId: String
     private var devices: [Device]
-    private var challenge: (endpoint: String, code: String, expiresAt: Date)?
+    /// `secret` rides only in the QR (`k=`): it seals the pairing exchange, so
+    /// whoever relays it (the cloud tunnel) cannot read the device token.
+    private var challenge: (endpoint: String, code: String, secret: String, expiresAt: Date)?
+    /// Wrong codes entered against the current challenge. A typo must not cancel
+    /// the pairing, and a guesser gets too few tries to matter against 900k codes.
+    private var failedAttempts = 0
+    private static let maxFailedAttempts = 5
 
     init(root: URL, workspaceId: String) {
         file = root.appendingPathComponent("remote-control.json")
@@ -369,25 +388,44 @@ private final class RemotePairingStore: @unchecked Sendable {
 
     func setWorkspaceId(_ value: String) { lock.lock(); workspaceId = value; lock.unlock() }
 
-    func begin(endpoint: String) -> RemotePairingInfo {
+    func begin(endpoint: String, fingerprint: String?) -> RemotePairingInfo {
         let code = String(format: "%06d", Int.random(in: 100_000...999_999))
         let expires = Date().addingTimeInterval(300)
-        lock.lock(); challenge = (endpoint.trimmingCharacters(in: CharacterSet(charactersIn: "/")), code, expires); lock.unlock()
-        let payload = "herness://pair?endpoint=\(endpoint.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? endpoint)&code=\(code)"
+        let secret = Self.randomSecret()
+        lock.lock(); challenge = (endpoint.trimmingCharacters(in: CharacterSet(charactersIn: "/")), code, secret, expires); failedAttempts = 0; lock.unlock()
+        var payload = "herness://pair?endpoint=\(endpoint.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? endpoint)&code=\(code)&k=\(secret)"
+        if let fingerprint, !fingerprint.isEmpty { payload += "&fp=\(fingerprint)" }
         return RemotePairingInfo(endpoint: endpoint, code: code, payload: payload, expiresAt: expires)
     }
 
     func complete(code: String, name: String?) -> RemotePairingResult? {
         lock.lock(); defer { lock.unlock() }
-        guard let challenge, challenge.expiresAt > Date(), challenge.code == code.trimmingCharacters(in: .whitespacesAndNewlines) else { self.challenge = nil; return nil }
+        guard let challenge, challenge.expiresAt > Date() else { self.challenge = nil; return nil }
+        guard challenge.code == code.trimmingCharacters(in: .whitespacesAndNewlines) else {
+            failedAttempts += 1
+            if failedAttempts >= Self.maxFailedAttempts { self.challenge = nil }
+            return nil
+        }
         self.challenge = nil
         let id = UUID().uuidString.replacingOccurrences(of: "-", with: "")
-        let token = Data((0..<32).map { _ in UInt8.random(in: 0...255) }).base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
+        let token = Self.randomSecret()
         let safeName = String((name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? name! : "Phone").prefix(80))
         devices.append(Device(id: id, name: safeName, createdAt: Date(), revoked: false))
         try? keychain.write(token, account: "remote.device.\(id)")
         save()
         return RemotePairingResult(deviceId: id, deviceName: safeName, token: token, workspaceId: workspaceId)
+    }
+
+    /// The key material a sealed request names: the live QR secret for
+    /// `pair`, otherwise the token of a device that is still trusted.
+    func sealingSecret(for device: String) -> String? {
+        lock.lock(); defer { lock.unlock() }
+        if device == RemoteSealed.pairingDevice {
+            guard let challenge, challenge.expiresAt > Date() else { return nil }
+            return challenge.secret
+        }
+        guard devices.contains(where: { $0.id == device && !$0.revoked }) else { return nil }
+        return keychain.read(account: "remote.device.\(device)")
     }
 
     func authenticate(_ token: String) -> String? {
@@ -411,6 +449,7 @@ private final class RemotePairingStore: @unchecked Sendable {
     }
 
     private func save() { try? JSONEncoder.remote.encode(Persisted(devices: devices)).write(to: file, options: .atomic) }
+    private static func randomSecret() -> String { Data((0..<32).map { _ in UInt8.random(in: 0...255) }).base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "") }
     private static func digest(_ value: String) -> String { SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined() }
     private func digest(_ value: String) -> String { Self.digest(value) }
 }
@@ -425,13 +464,106 @@ private struct RemoteHTTPRequest {
     let method: String
     let target: String
     let path: String
-    let headers: [String: String]
+    var headers: [String: String]
     let body: Data
+}
+
+/// Sealed channel v1, the only way in for a phone, LAN and cloud tunnel alike.
+/// The tunnel ends TLS at Cloudflare, so the HTTP exchange itself is encrypted
+/// end to end with a key only this desktop and the paired phone hold:
+///   key     = SHA-256("herness.sealed.v1:" + secret); secret = device token, or the QR `k` while pairing
+///   request = POST /v3/sealed, `X-Herness-Device: <device id | pair>`, body =
+///             AES-256-GCM nonce | ciphertext | tag over (ms timestamp, 8 bytes BE) + raw HTTP/1.1 request; AAD = device
+///   reply   = 200 application/octet-stream; each line is base64(nonce | ciphertext | tag) of the next chunk of the raw
+///             HTTP reply, AAD = request nonce + frame counter (4 bytes BE); an empty chunk ends the reply.
+/// The iOS, Android and C# copies follow this exactly.
+enum RemoteSealed {
+    static let path = "/v3/sealed"
+    static let pairingDevice = "pair"
+    static let header = "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nCache-Control: no-cache, no-transform\r\nConnection: close\r\nX-Accel-Buffering: no\r\n\r\n"
+
+    static func key(_ secret: String) -> SymmetricKey { SymmetricKey(data: SHA256.hash(data: Data("herness.sealed.v1:\(secret)".utf8))) }
+
+    static func open(_ body: Data, key: SymmetricKey, device: String) -> (nonce: Data, timestamp: Int64, request: Data)? {
+        guard let box = try? AES.GCM.SealedBox(combined: body),
+              let plain = try? AES.GCM.open(box, using: key, authenticating: Data(device.utf8)), plain.count > 8 else { return nil }
+        return (Data(body.prefix(12)), plain.prefix(8).reduce(Int64(0)) { $0 << 8 | Int64($1) }, Data(plain.dropFirst(8)))
+    }
+
+    static func frame(_ chunk: Data, key: SymmetricKey, nonce: Data, counter: UInt32) throws -> Data {
+        var aad = nonce
+        withUnsafeBytes(of: counter.bigEndian) { aad.append(contentsOf: $0) }
+        guard let sealed = try AES.GCM.seal(chunk, using: key, authenticating: aad).combined else { throw RouterTestError.message("Sealing failed.") }
+        return Data((sealed.base64EncodedString() + "\n").utf8)
+    }
+}
+
+/// The router's side of one sealed exchange: whatever it writes leaves as
+/// encrypted frames, and closing sends the end frame first.
+@MainActor
+private final class RemoteChannel {
+    private let connection: NWConnection
+    private let key: SymmetricKey
+    private let nonce: Data
+    private var counter: UInt32 = 0
+    private var started = false
+    private var closed = false
+
+    init(_ connection: NWConnection, key: SymmetricKey, nonce: Data) {
+        self.connection = connection
+        self.key = key
+        self.nonce = nonce
+    }
+
+    func write(_ data: Data) async throws {
+        var out = Data()
+        for start in stride(from: 0, to: data.count, by: 65_536) { out += try next(data[start..<min(start + 65_536, data.count)]) }
+        guard !out.isEmpty else { return }
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            connection.send(content: out, completion: .contentProcessed { error in if let error { continuation.resume(throwing: error) } else { continuation.resume() } })
+        }
+    }
+
+    func cancel() {
+        guard !closed else { return }
+        closed = true
+        let connection = connection
+        guard let end = try? next(Data()) else { connection.cancel(); return }
+        connection.send(content: end, completion: .contentProcessed { _ in connection.cancel() })
+    }
+
+    private func next(_ chunk: Data) throws -> Data {
+        let frame = try RemoteSealed.frame(chunk, key: key, nonce: nonce, counter: counter)
+        counter += 1
+        defer { started = true }
+        return started ? frame : Data(RemoteSealed.header.utf8) + frame
+    }
 }
 
 @MainActor
 public final class RemoteControlHost {
     public static let port: UInt16 = 18_768
+    private static let enabledDefaultsKey = "remote.control.enabled"
+    private static let lanDefaultsKey = "remote.control.shareWithLAN"
+    /// The gateway only listens while the user has switched it on. Until then
+    /// nothing on the network can reach it, not even the paired phone.
+    public var isEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: Self.enabledDefaultsKey) }
+        set {
+            UserDefaults.standard.set(newValue, forKey: Self.enabledDefaultsKey)
+            if newValue { start() } else { stop() }
+        }
+    }
+    /// LAN sharing is a second, separate opt-in: the listener stays on
+    /// loopback otherwise, so a phone has to come in over the cloud tunnel.
+    public var sharesWithLAN: Bool {
+        get { UserDefaults.standard.bool(forKey: Self.lanDefaultsKey) }
+        set {
+            guard newValue != sharesWithLAN else { return }
+            UserDefaults.standard.set(newValue, forKey: Self.lanDefaultsKey)
+            if isEnabled { stop(); start() }
+        }
+    }
     /// Remote build/deploy commands run outside any chat, so their read/write
     /// ledger gets its own scope instead of borrowing the selected conversation.
     nonisolated static let ledgerScope = "remote-control"
@@ -439,8 +571,14 @@ public final class RemoteControlHost {
     public private(set) var pairing: RemotePairingInfo?
     public private(set) var publicEndpoint: String?
     public var accessMode: RemoteAccessMode { access }
-    public var localEndpoint: String { "http://127.0.0.1:\(Self.port)" }
-    public var preferredEndpoint: String { "http://\(Self.preferredHost()):\(Self.port)" }
+    public var preferredEndpoint: String {
+        guard sharesWithLAN else { return "https://127.0.0.1:\(Self.port)" }
+        // The phone resolves `<host>.local` over mDNS without a DNS server,
+        // and its transport policy only lets plain HTTP through for such a
+        // name — a raw LAN address would be refused.
+        let host = Self.preferredLocalHost()
+        return "https://\(host.isEmpty ? Self.preferredHost() : host):\(Self.port)"
+    }
     public var isRunning: Bool { listener != nil }
 
     private let bridge: AgentBridge
@@ -454,10 +592,13 @@ public final class RemoteControlHost {
     private var previewTunnelPort: Int?
     private var previewTunnelURL: String?
     private var listener: NWListener?
+    private var tls: RemoteTLS.Material?
     private var workspacePath: String
     private var revision: Int64 = 0
     private var access: RemoteAccessMode = .ask
     private var pending: [String: (command: RemoteCommand, deviceId: String)] = [:]
+    private var seenNonces: [Data: Date] = [:]
+    private var tunnelStart: Task<String, Error>?
 
     public init(bridge: AgentBridge, paths: SupportPaths, events: RemoteEventHub, workspacePath: String, projectsProvider: (() -> [RemoteProjectDescriptor])? = nil) {
         self.bridge = bridge
@@ -496,7 +637,20 @@ public final class RemoteControlHost {
         guard listener == nil else { return }
         do {
             guard let port = NWEndpoint.Port(rawValue: Self.port) else { throw RouterTestError.message("Invalid remote-control port") }
-            let listener = try NWListener(using: NWParameters.tcp, on: port)
+            // NWListener binds every interface unless a local endpoint is
+            // required, so pin it: loopback by default, the LAN only when the
+            // user explicitly shares this machine with it.
+            // TLS only: the bearer token and every command cross the LAN. No
+            // certificate, no gateway — never fall back to plain TCP.
+            let material = try tls ?? RemoteTLS.loadOrCreate(root: paths.root)
+            tls = material
+            let options = NWProtocolTLS.Options()
+            guard let identity = sec_identity_create(material.identity) else { throw RouterTestError.message("Remote-control certificate is unusable.") }
+            sec_protocol_options_set_local_identity(options.securityProtocolOptions, identity)
+            sec_protocol_options_set_min_tls_protocol_version(options.securityProtocolOptions, .TLSv12)
+            let parameters = NWParameters(tls: options)
+            parameters.requiredLocalEndpoint = .hostPort(host: sharesWithLAN ? "0.0.0.0" : "127.0.0.1", port: port)
+            let listener = try NWListener(using: parameters)
             listener.newConnectionHandler = { [weak self] (connection: NWConnection) in
                 connection.start(queue: DispatchQueue.global(qos: .userInitiated))
                 Task { @MainActor [weak self] in self?.receive(connection, buffer: Data()) }
@@ -508,7 +662,7 @@ public final class RemoteControlHost {
             }
             listener.start(queue: DispatchQueue.global(qos: .userInitiated))
             self.listener = listener
-            pairing = pairingStore.begin(endpoint: preferredEndpoint)
+            pairing = pairingStore.begin(endpoint: preferredEndpoint, fingerprint: tls?.fingerprint)
             publish("gateway.started", ["endpoint": .string(preferredEndpoint)])
         } catch {
             publish("gateway.failed", ["message": .string(error.localizedDescription)])
@@ -527,17 +681,23 @@ public final class RemoteControlHost {
     }
 
     public func beginPairing() -> RemotePairingInfo {
-        let value = pairingStore.begin(endpoint: publicEndpoint ?? preferredEndpoint)
+        let value = pairingStore.begin(endpoint: publicEndpoint ?? preferredEndpoint, fingerprint: tls?.fingerprint)
         pairing = value
         publish("pairing.ready", ["endpoint": .string(value.endpoint), "code": .string(value.code)])
         return value
     }
 
+    /// Calls made while a start is already under way share it, so the
+    /// automatic start and a click cannot race into two tunnels.
     public func enableCloudTunnel() async throws -> String {
         if listener == nil { start() }
-        let endpoint = try await tunnel.start(gatewayPort: Int(Self.port))
+        if let tunnelStart { return try await tunnelStart.value }
+        let task = Task { [tunnel] in try await tunnel.start(gatewayPort: Int(Self.port), originTLS: true) }
+        tunnelStart = task
+        defer { tunnelStart = nil }
+        let endpoint = try await task.value
         publicEndpoint = endpoint
-        pairing = pairingStore.begin(endpoint: endpoint)
+        pairing = pairingStore.begin(endpoint: endpoint, fingerprint: tls?.fingerprint)
         publish("tunnel.ready", ["endpoint": .string(endpoint)])
         return endpoint
     }
@@ -563,19 +723,38 @@ public final class RemoteControlHost {
         }
     }
 
+    /// Only sealed requests reach the router (see `RemoteSealed`); anything
+    /// else gets one fixed refusal that says nothing about why.
     private func handle(_ data: Data, on connection: NWConnection) {
-        guard let request = Self.parse(data) else {
-            Task { @MainActor [weak self] in
-                await self?.send(.init(status: 400, contentType: "application/json", body: Data(#"{"error":"Invalid HTTP request"}"#.utf8)), on: connection)
-            }
+        guard let outer = Self.parse(data), outer.method == "POST", outer.path == RemoteSealed.path,
+              let device = outer.headers["x-herness-device"],
+              let secret = pairingStore.sealingSecret(for: device),
+              let opened = RemoteSealed.open(outer.body, key: RemoteSealed.key(secret), device: device),
+              isFresh(opened.nonce, timestamp: opened.timestamp),
+              var request = Self.parse(opened.request) else {
+            let body = #"{"error":"This request is not sealed for this desktop. Scan its pairing QR code again."}"#
+            connection.send(content: Data("HTTP/1.1 401 Unauthorized\r\nContent-Type: application/json\r\nContent-Length: \(body.utf8.count)\r\nConnection: close\r\n\r\n\(body)".utf8), completion: .contentProcessed { _ in connection.cancel() })
             return
         }
+        // The sealing key is what proves the device; a token inside is ignored.
+        request.headers["authorization"] = device == RemoteSealed.pairingDevice ? nil : "Bearer \(secret)"
+        let channel = RemoteChannel(connection, key: RemoteSealed.key(secret), nonce: opened.nonce)
         Task { @MainActor [weak self] in
-            await self?.route(request, on: connection)
+            await self?.route(request, on: channel)
         }
     }
 
-    private func route(_ request: RemoteHTTPRequest, on connection: NWConnection) async {
+    /// Replay guard: a sealed request is accepted once, and only within five
+    /// minutes of the phone's clock.
+    private func isFresh(_ nonce: Data, timestamp: Int64) -> Bool {
+        let now = Date()
+        seenNonces = seenNonces.filter { now.timeIntervalSince($0.value) < 600 }
+        guard abs(now.timeIntervalSince1970 * 1000 - Double(timestamp)) < 300_000, seenNonces[nonce] == nil else { return false }
+        seenNonces[nonce] = now
+        return true
+    }
+
+    private func route(_ request: RemoteHTTPRequest, on connection: RemoteChannel) async {
         if request.path == "/v1/control/pair/complete", request.method == "POST" {
             guard let body = try? JSONDecoder.remote.decode(PairRequest.self, from: request.body), let result = pairingStore.complete(code: body.code, name: body.deviceName) else {
                 await send(RemoteHTTPResponse(status: 401, contentType: "application/json", body: Data(#"{"error":"Pairing code is invalid or expired."}"#.utf8)), on: connection)
@@ -616,6 +795,12 @@ public final class RemoteControlHost {
         switch (request.method, routePath) {
         case ("GET", "/v1/control/bootstrap"):
             await sendJSON(bootstrap(deviceID: deviceId, projectScoped: projectScoped), status: 200, on: connection)
+        case ("GET", "/v1/control/transcript"):
+            if let value = transcript(conversationId: Self.query(request.target, "conversationId"), limit: Int(Self.query(request.target, "limit")) ?? 200) {
+                await sendJSON(value, status: 200, on: connection)
+            } else {
+                await sendJSON(MessageResponse(error: "Conversation not found."), status: 404, on: connection)
+            }
         case ("GET", "/v1/control/events"):
             await streamEvents(request, deviceID: deviceId, projectScoped: projectScoped, on: connection)
         case ("GET", "/v1/control/file"):
@@ -705,7 +890,7 @@ public final class RemoteControlHost {
                 return .pending(command.id, approvalId)
             }
             return await startPreviewTunnel(command, workspace: targetWorkspace)
-        case "write_file", "run_command", "build", "deploy", "computer_use", "native_browser":
+        case "write_file", "run_command", "wait_command", "build", "deploy", "computer_use", "native_browser":
             guard access != .ask else {
                 let approvalId = UUID().uuidString
                 pending[approvalId] = (command, deviceId)
@@ -790,10 +975,30 @@ public final class RemoteControlHost {
                 publish("browser.action", ["commandId": .string(command.id), "action": .string(command.payload["action"]?.string ?? "")], workspaceOverride: workspace)
                 return .ok(command.id, ["output": .string(output), "outputPreview": .string(String(output.prefix(700)))])
             }
+            if command.kind == "wait_command" {
+                let call = AgentToolCall(
+                    id: command.id,
+                    name: WorkspaceTools.waitName,
+                    arguments: try JSONEncoder.remote.encodeToString(command.payload)
+                )
+                let policy = bridge.sandboxPolicy
+                let output = await Task.detached(priority: .userInitiated) {
+                    WorkspaceTools.execute(
+                        call,
+                        workspace: workspaceURL,
+                        conversationID: Self.ledgerScope,
+                        sandboxPolicy: policy
+                    )
+                }.value
+                return .ok(command.id, ["output": .string(output), "outputPreview": .string(String(output.prefix(700)))])
+            }
             let shell = command.payload["command"]?.string?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             guard !shell.isEmpty else { return .failed(400, "Command text is required.") }
             publish(command.kind == "deploy" ? "deploy.progress" : "build.started", ["commandId": .string(command.id), "kind": .string(command.kind), "phase": .string("started")], workspaceOverride: workspace)
-            let arguments: [String: RemoteJSONValue] = ["command": .string(shell)]
+            // A phone that sends no timeout_seconds waits 120 seconds for the reply, so its
+            // commands stop at 90; a newer phone sends the limit and waits that long.
+            let timeout = command.payload["timeout_seconds"]?.int.map { WorkspaceTools.commandTimeout(["timeout_seconds": $0]) } ?? 90
+            let arguments: [String: RemoteJSONValue] = ["command": .string(shell), "timeout_seconds": .number(Double(timeout))]
             let call = AgentToolCall(id: command.id, name: "run_command", arguments: try JSONEncoder.remote.encodeToString(arguments))
             let eventHub = events
             let workspaceId = Self.workspaceID(workspace)
@@ -913,7 +1118,23 @@ public final class RemoteControlHost {
         let selected = bridge.selected
         let project = projectScoped ? selectedProject(for: deviceID) : nil
         let path = project?.workspacePath ?? workspace
-        return RemoteBootstrap(protocolVersion: projectScoped ? 2 : 1, scope: "project", workspaceId: Self.workspaceID(path), workspace: path, revision: revision, conversationId: selected?.id, provider: bridge.connection?.provider, model: bridge.connection?.model, status: bridge.status, isBusy: bridge.isBusy, accessMode: access, capabilities: ["events", "prompt", "continue", "stop", "approval", "files", "snapshot", "artifacts", "write", "terminal", "terminal_sessions", "preview_tunnel", "native_browser", "build", "deploy"], devices: pairingStore.list(), projectID: project?.id)
+        return RemoteBootstrap(protocolVersion: projectScoped ? 2 : 1, scope: "project", workspaceId: Self.workspaceID(path), workspace: path, revision: revision, conversationId: selected?.id, provider: bridge.connection?.provider, model: bridge.connection?.model, status: bridge.status, isBusy: bridge.isBusy, accessMode: access, capabilities: ["events", "prompt", "continue", "stop", "approval", "files", "snapshot", "artifacts", "write", "terminal", "terminal_sessions", "preview_tunnel", "native_browser", "build", "deploy", "wait_command", "transcript"], devices: pairingStore.list(), projectID: project?.id, endpoints: [publicEndpoint, preferredEndpoint].compactMap { $0 })
+    }
+
+    private func transcript(conversationId: String, limit: Int) -> RemoteTranscript? {
+        guard let conversation = conversationId.isEmpty ? bridge.selected : bridge.conversations.first(where: { $0.id == conversationId }) else { return nil }
+        let boundedLimit = min(max(limit, 1), 500)
+        let transcript = conversation.transcriptComplete
+            ? conversation.messages
+            : bridge.store.loadRecentConversation(
+                id: conversation.id,
+                limit: boundedLimit,
+                includeModelContext: false
+            )?.messages ?? conversation.messages
+        let messages = transcript.suffix(boundedLimit).map {
+            RemoteTranscriptMessage(id: $0.id, kind: $0.kind.rawValue, text: RemoteEventHub.sanitizeForRemote(String($0.text.prefix(20_000))), createdAt: $0.createdAt)
+        }
+        return RemoteTranscript(conversationId: conversation.id, title: conversation.title, running: conversation.running, messages: Array(messages))
     }
 
     private func snapshot(deviceID: String, projectScoped: Bool) async -> RemoteWorkspaceSnapshot {
@@ -928,7 +1149,7 @@ public final class RemoteControlHost {
         return result
     }
 
-    private func readFile(_ request: RemoteHTTPRequest, deviceID: String, projectScoped: Bool, on connection: NWConnection) async {
+    private func readFile(_ request: RemoteHTTPRequest, deviceID: String, projectScoped: Bool, on connection: RemoteChannel) async {
         let path = Self.query(request.target, "path").isEmpty && request.path.hasPrefix("/v1/control/files/") ? String(request.path.dropFirst("/v1/control/files/".count).removingPercentEncoding ?? "") : Self.query(request.target, "path")
         let root = projectScoped ? selectedProject(for: deviceID).workspacePath : workspace
         // A 50 MB transfer limit is far too much to read on the thread that draws
@@ -943,7 +1164,7 @@ public final class RemoteControlHost {
         catch { await sendJSON(MessageResponse(error: error.localizedDescription), status: 400, on: connection) }
     }
 
-    private func readArtifact(_ request: RemoteHTTPRequest, on connection: NWConnection) async {
+    private func readArtifact(_ request: RemoteHTTPRequest, on connection: RemoteChannel) async {
         let id = Self.query(request.target, "id").isEmpty && request.path.hasPrefix("/v1/control/artifacts/") ? String(request.path.dropFirst("/v1/control/artifacts/".count).removingPercentEncoding ?? "") : Self.query(request.target, "id")
         guard let url = events.artifactURL(id) else { await sendJSON(MessageResponse(error: "Artifact not found."), status: 404, on: connection); return }
         let body = await Task.detached(priority: .userInitiated) { try? Data(contentsOf: url) }.value
@@ -951,26 +1172,36 @@ public final class RemoteControlHost {
         await send(RemoteHTTPResponse(status: 200, contentType: "application/octet-stream", body: data), on: connection)
     }
 
-    private func streamEvents(_ request: RemoteHTTPRequest, deviceID: String, projectScoped: Bool, on connection: NWConnection) async {
+    private func streamEvents(_ request: RemoteHTTPRequest, deviceID: String, projectScoped: Bool, on connection: RemoteChannel) async {
         let after = Int64(Self.query(request.target, "after")) ?? Int64(request.headers["last-event-id"] ?? "0") ?? 0
         let header = "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-cache\r\nConnection: keep-alive\r\nX-Accel-Buffering: no\r\n\r\n"
         do {
             try await sendData(Data(header.utf8), on: connection)
             let root = projectScoped ? selectedProject(for: deviceID).workspacePath : workspace
-            for await event in events.stream(after: after, workspaceId: Self.workspaceID(root)) {
+            // Long poll: Quick Tunnels do not stream (no SSE), so each reply
+            // carries one batch and ends; the phone asks again with `after`.
+            var batch: [RemoteControlEvent] = []
+            for _ in 0..<100 {
+                batch = events.since(after: after, workspaceId: Self.workspaceID(root))
+                if !batch.isEmpty { break }
+                try await Task.sleep(for: .milliseconds(250))
+            }
+            for event in batch {
                 let data = try JSONEncoder.remote.encode(event)
                 try await sendData(Data("id: \(event.sequence)\nevent: \(event.kind)\ndata: ".utf8) + data + Data("\n\n".utf8), on: connection)
             }
-        } catch { connection.cancel() }
+        } catch {}
+        connection.cancel()
     }
 
-    private func sendJSON<T: Encodable>(_ value: T, status: Int, on connection: NWConnection) async { guard let data = try? JSONEncoder.remote.encode(value) else { connection.cancel(); return }; await send(RemoteHTTPResponse(status: status, contentType: "application/json; charset=utf-8", body: data), on: connection) }
-    private func send(_ response: RemoteHTTPResponse, on connection: NWConnection) async { let reason = [200: "OK", 202: "Accepted", 400: "Bad Request", 401: "Unauthorized", 404: "Not Found", 409: "Conflict", 500: "Error"][response.status] ?? "Error"; let header = "HTTP/1.1 \(response.status) \(reason)\r\nContent-Type: \(response.contentType)\r\nContent-Length: \(response.body.count)\r\nConnection: close\r\n\r\n"; try? await sendData(Data(header.utf8) + response.body, on: connection); connection.cancel() }
-    private func sendData(_ data: Data, on connection: NWConnection) async throws { try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in connection.send(content: data, completion: .contentProcessed { error in if let error { continuation.resume(throwing: error) } else { continuation.resume() } }) } }
+    private func sendJSON<T: Encodable>(_ value: T, status: Int, on connection: RemoteChannel) async { guard let data = try? JSONEncoder.remote.encode(value) else { connection.cancel(); return }; await send(RemoteHTTPResponse(status: status, contentType: "application/json; charset=utf-8", body: data), on: connection) }
+    private func send(_ response: RemoteHTTPResponse, on connection: RemoteChannel) async { let reason = [200: "OK", 202: "Accepted", 400: "Bad Request", 401: "Unauthorized", 404: "Not Found", 409: "Conflict", 500: "Error"][response.status] ?? "Error"; let header = "HTTP/1.1 \(response.status) \(reason)\r\nContent-Type: \(response.contentType)\r\nContent-Length: \(response.body.count)\r\nConnection: close\r\n\r\n"; try? await sendData(Data(header.utf8) + response.body, on: connection); connection.cancel() }
+    private func sendData(_ data: Data, on connection: RemoteChannel) async throws { try await connection.write(data) }
 
     private func commandSummary(_ command: RemoteCommand) -> String {
         switch command.kind {
         case "write_file": return "Write \(command.payload["path"]?.string ?? ".")"
+        case "wait_command": return "Wait for process \(command.payload["pid"]?.int ?? 0)"
         case "terminal_session": return command.payload["action"]?.string == "start" ? "Start a mobile terminal session" : "Send input to the mobile terminal"
         case "preview_tunnel": return "Expose local development port \(command.payload["port"]?.int ?? 0)"
         case "native_browser": return "Native browser action: \(command.payload["action"]?.string ?? "")"
@@ -992,6 +1223,14 @@ public final class RemoteControlHost {
     private static func query(_ target: String, _ key: String) -> String { guard let components = URLComponents(string: target), let item = components.queryItems?.first(where: { $0.name == key }) else { return "" }; return item.value ?? "" }
     public nonisolated static func workspaceIDForProject(_ value: String) -> String { SHA256.hash(data: Data(URL(fileURLWithPath: value).standardizedFileURL.path.utf8)).map { String(format: "%02x", $0) }.joined().prefix(24).description }
     private static func workspaceID(_ value: String) -> String { workspaceIDForProject(value) }
+    /// The mDNS name of this machine (`<hostname>.local`). Phones resolve it
+    /// without a DNS server, and their transport policy only lets plain HTTP
+    /// through for such a name.
+    private static func preferredLocalHost() -> String {
+        let name = ProcessInfo.processInfo.hostName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return "" }
+        return name.lowercased().hasSuffix(".local") ? name : name + ".local"
+    }
     private static func preferredHost() -> String { var addresses: UnsafeMutablePointer<ifaddrs>?; guard getifaddrs(&addresses) == 0 else { return "127.0.0.1" }; defer { freeifaddrs(addresses) }; var current = addresses; while let item = current { if item.pointee.ifa_addr.pointee.sa_family == UInt8(AF_INET), let name = String(validatingCString: item.pointee.ifa_name), name != "lo0" { var buffer = [CChar](repeating: 0, count: Int(NI_MAXHOST)); getnameinfo(item.pointee.ifa_addr, socklen_t(item.pointee.ifa_addr.pointee.sa_len), &buffer, socklen_t(buffer.count), nil, 0, NI_NUMERICHOST); let bytes = buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }; let value = String(decoding: bytes, as: UTF8.self); if value != "127.0.0.1" { return value } }; current = item.pointee.ifa_next }; return "127.0.0.1" }
 }
 

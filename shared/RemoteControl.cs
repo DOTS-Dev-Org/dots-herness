@@ -3,14 +3,15 @@
 
 using System.Collections.Concurrent;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using System.Threading.Channels;
 using PluginRuntime;
 
 namespace DotsHarnessCore;
@@ -86,7 +87,15 @@ public sealed record RemoteBootstrap(
     RemoteAccessMode AccessMode,
     IReadOnlyList<string> Capabilities,
     IReadOnlyList<RemotePairingDevice> Devices,
-    string? ProjectID = null);
+    string? ProjectID = null,
+    // Every address this desktop answers on, tunnel first: a phone keeps the
+    // list and falls back to the LAN address when the tunnel URL is gone.
+    IReadOnlyList<string>? Endpoints = null);
+
+/// The visible chat of one desktop conversation, so a phone that pairs or
+/// reconnects mid-session sees what came before the live event stream.
+public sealed record RemoteTranscript(string ConversationId, string Title, bool Running, IReadOnlyList<RemoteTranscriptMessage> Messages);
+public sealed record RemoteTranscriptMessage(string Id, string Kind, string Text, DateTimeOffset CreatedAt);
 
 /// A project exposed to a paired device. WorkspacePath is intentionally never
 /// serialized: mobile clients need a stable identity and display name, not a
@@ -131,9 +140,11 @@ public sealed class RemoteControlEventHub : IDisposable
     private const int MaximumHistory = 2_000;
     private readonly object _gate = new();
     private readonly List<RemoteControlEvent> _history = [];
-    private readonly Dictionary<Guid, Channel<RemoteControlEvent>> _subscribers = [];
     private readonly RemoteArtifactStore _artifacts;
-    private long _sequence;
+    // Seeded from the clock so a restarted desktop keeps numbering above what a
+    // paired phone already saw; a phone resuming with ?after=<old> would
+    // otherwise get nothing until the new counter caught up.
+    private long _sequence = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     private bool _disposed;
 
     public RemoteControlEventHub(string root)
@@ -168,7 +179,6 @@ public sealed class RemoteControlEventHub : IDisposable
                 redacted || payloadRedacted);
             _history.Add(item);
             if (_history.Count > MaximumHistory) _history.RemoveRange(0, _history.Count - MaximumHistory);
-            foreach (var subscriber in _subscribers.Values) subscriber.Writer.TryWrite(item);
         }
         return item;
     }
@@ -217,6 +227,8 @@ public sealed class RemoteControlEventHub : IDisposable
             or "password" or "authorization" || normalized.Contains("credential", StringComparison.Ordinal);
     }
 
+    internal static string SanitizeForRemote(string value) => SanitizeText(value);
+
     private static string SanitizeText(string value)
     {
         if (System.Text.RegularExpressions.Regex.IsMatch(
@@ -259,52 +271,11 @@ public sealed class RemoteControlEventHub : IDisposable
         }
     }
 
-    public async IAsyncEnumerable<RemoteControlEvent> StreamAsync(
-        long sequence,
-        string? workspaceId,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        var channel = Channel.CreateUnbounded<RemoteControlEvent>();
-        var id = Guid.NewGuid();
-        var disposed = false;
-        lock (_gate)
-        {
-            disposed = _disposed;
-            if (!disposed)
-            {
-                foreach (var item in _history.Where(item => item.Sequence > sequence && (workspaceId is null || item.WorkspaceId == workspaceId)))
-                {
-                    channel.Writer.TryWrite(item);
-                }
-                _subscribers[id] = channel;
-            }
-        }
-        if (disposed) yield break;
-
-        try
-        {
-            await foreach (var item in channel.Reader.ReadAllAsync(cancellationToken))
-            {
-                if (workspaceId is null || item.WorkspaceId == workspaceId) yield return item;
-            }
-        }
-        finally
-        {
-            lock (_gate)
-            {
-                _subscribers.Remove(id);
-                channel.Writer.TryComplete();
-            }
-        }
-    }
-
     public void Dispose()
     {
         lock (_gate)
         {
             _disposed = true;
-            foreach (var channel in _subscribers.Values) channel.Writer.TryComplete();
-            _subscribers.Clear();
         }
     }
 }
@@ -382,7 +353,9 @@ public sealed class RemotePairingStore
         DateTimeOffset CreatedAt,
         bool Revoked = false);
 
-    private sealed record ChallengeState(string Endpoint, string Code, DateTimeOffset ExpiresAt);
+    /// Secret rides only in the QR (`k=`): it seals the pairing exchange, so
+    /// whoever relays it (the cloud tunnel) cannot read the device token.
+    private sealed record ChallengeState(string Endpoint, string Code, string Secret, DateTimeOffset ExpiresAt);
 
     public RemotePairingStore(string root, string workspaceId, IProviderSecretStore secrets)
     {
@@ -392,7 +365,7 @@ public sealed class RemotePairingStore
         _devices = Load();
     }
 
-    public RemotePairingInfo Begin(string endpoint)
+    public RemotePairingInfo Begin(string endpoint, string? fingerprint = null)
     {
         if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri)
             || uri.Scheme is not ("http" or "https")
@@ -405,8 +378,9 @@ public sealed class RemotePairingStore
         {
             var code = RandomNumberGenerator.GetInt32(100_000, 1_000_000).ToString();
             var expiresAt = DateTimeOffset.UtcNow.AddMinutes(ChallengeMinutes);
-            _challenge = new ChallengeState(endpoint.TrimEnd('/'), code, expiresAt);
-            var payload = $"herness://pair?endpoint={Uri.EscapeDataString(_challenge.Endpoint)}&code={code}";
+            _challenge = new ChallengeState(endpoint.TrimEnd('/'), code, Token(), expiresAt);
+            var payload = $"herness://pair?endpoint={Uri.EscapeDataString(_challenge.Endpoint)}&code={code}&k={_challenge.Secret}";
+            if (!string.IsNullOrEmpty(fingerprint)) payload += $"&fp={fingerprint}";
             return new RemotePairingInfo(_challenge.Endpoint, code, payload, expiresAt);
         }
     }
@@ -434,6 +408,18 @@ public sealed class RemotePairingStore
             Save();
             _challenge = null;
             return new RemotePairingResult(id, name, token, _workspaceId);
+        }
+    }
+
+    /// The key material a sealed request names: the live QR secret for
+    /// `pair`, otherwise the token of a device that is still trusted.
+    public string? SealingSecret(string device)
+    {
+        lock (_gate)
+        {
+            if (device == RemoteSealed.PairingDevice)
+                return _challenge is not null && _challenge.ExpiresAt > DateTimeOffset.UtcNow ? _challenge.Secret : null;
+            return _devices.Any(item => item.Id == device && !item.Revoked) ? _secrets.Read("remote.device." + device) : null;
         }
     }
 
@@ -503,7 +489,6 @@ public sealed class RemoteControlHost : IDisposable
     public const int DefaultPort = 18_768;
 
     private readonly AgentBridge _bridge;
-    private readonly SupportPaths _paths;
     private readonly Func<string> _workspaceProvider;
     private readonly RemoteControlEventHub _events;
     private readonly RemotePairingStore _pairing;
@@ -519,13 +504,36 @@ public sealed class RemoteControlHost : IDisposable
     private RemoteAccessMode _accessMode = RemoteAccessMode.Ask;
     private long _revision;
     private RemotePairingInfo? _pairingInfo;
+    private readonly RemoteSealed.ReplayGuard _replay = new();
+    private readonly object _tunnelGate = new();
+    private Task<string>? _tunnelStart;
 
     private sealed record PendingCommand(string Id, string Kind, JsonObject Payload, string Workspace, string DeviceId, DateTimeOffset CreatedAt);
 
     public RemoteControlEventHub Events => _events;
     public RemoteAccessMode AccessMode => _accessMode;
-    public string LocalEndpoint => $"http://127.0.0.1:{DefaultPort}";
-    public string PreferredEndpoint => $"http://{PreferredHost()}:{DefaultPort}";
+    public string LocalEndpoint => $"https://127.0.0.1:{DefaultPort}";
+    /// SHA-256 of the gateway certificate; the pairing QR carries it so the
+    /// phone pins this exact certificate on the LAN.
+    public string CertificateFingerprint { get; }
+    /// The LAN address is only offered when the user shares the gateway with
+    /// the network; otherwise the tunnel is the only way in. The endpoint uses
+    /// the machine's mDNS name: the phone resolves it without a DNS server,
+    /// and its transport policy only lets plain HTTP through for such a name.
+    public string PreferredEndpoint
+    {
+        get
+        {
+            if (!SharesWithLan) return LocalEndpoint;
+            var host = LocalHostName();
+            return $"https://{(string.IsNullOrEmpty(host) ? PreferredHost() : host)}:{DefaultPort}";
+        }
+    }
+    public bool SharesWithLan
+    {
+        get => _gateway.SharesWithLan;
+        set => _gateway.SharesWithLan = value;
+    }
     public RemotePairingInfo? Pairing => _pairingInfo;
     public string? PublicEndpoint { get; private set; }
     public bool Running => _gateway.Running;
@@ -538,13 +546,14 @@ public sealed class RemoteControlHost : IDisposable
         Func<IReadOnlyList<RemoteProjectDescriptor>>? projectsProvider = null)
     {
         _bridge = bridge;
-        _paths = paths;
         _events = events;
         _workspaceProvider = workspaceProvider;
         _projectsProvider = projectsProvider;
         var workspace = NormalizeWorkspace();
         _pairing = new RemotePairingStore(paths.Root, WorkspaceId(workspace), new PlatformProviderSecrets(paths.Root));
-        _gateway = new RemoteControlGateway(DefaultPort, HandleAsync);
+        var certificate = RemoteTls.LoadOrCreate(paths.Root);
+        CertificateFingerprint = RemoteTls.Fingerprint(certificate);
+        _gateway = new RemoteControlGateway(DefaultPort, HandleAsync, certificate);
         _tunnel = new CloudTunnelProcess(paths);
         _previewTunnel = new CloudTunnelProcess(paths, "preview-tunnel");
     }
@@ -575,38 +584,40 @@ public sealed class RemoteControlHost : IDisposable
     public RemotePairingInfo BeginPairing(string endpoint)
     {
         _ = CurrentWorkspace();
-        _pairingInfo = _pairing.Begin(endpoint);
+        _pairingInfo = _pairing.Begin(endpoint, CertificateFingerprint);
         Publish("pairing.ready", new JsonObject { ["endpoint"] = _pairingInfo.Endpoint, ["expiresAt"] = _pairingInfo.ExpiresAt });
         return _pairingInfo;
     }
 
-    public async Task<string> EnableCloudTunnelAsync(CancellationToken cancellationToken = default)
+    /// Calls made while a start is already under way share it, so the
+    /// automatic start and a click cannot race into two tunnels.
+    public Task<string> EnableCloudTunnelAsync(CancellationToken cancellationToken = default)
     {
-        if (!_gateway.Running) _gateway.Start();
-        PublicEndpoint = await _tunnel.StartAsync(DefaultPort, ct: cancellationToken);
-        BeginPairing(PublicEndpoint);
-        Publish("tunnel.ready", new JsonObject { ["endpoint"] = PublicEndpoint });
-        return PublicEndpoint;
+        lock (_tunnelGate) return _tunnelStart ??= StartTunnelAsync(cancellationToken);
     }
 
-    public void DisableCloudTunnel()
+    private async Task<string> StartTunnelAsync(CancellationToken cancellationToken)
     {
-        _tunnel.Stop();
-        PublicEndpoint = null;
-        BeginPairing(PreferredEndpoint);
+        await Task.Yield();
+        try
+        {
+            if (!_gateway.Running) _gateway.Start();
+            PublicEndpoint = await _tunnel.StartAsync(DefaultPort, ct: cancellationToken, originTls: true);
+            BeginPairing(PublicEndpoint);
+            Publish("tunnel.ready", new JsonObject { ["endpoint"] = PublicEndpoint });
+            return PublicEndpoint;
+        }
+        catch (Exception ex)
+        {
+            Publish("tunnel.failed", new JsonObject { ["message"] = ex.Message });
+            throw;
+        }
+        finally { lock (_tunnelGate) _tunnelStart = null; }
     }
 
     public IReadOnlyList<RemotePairingDevice> Devices() => _pairing.Devices();
 
-    public bool RevokeDevice(string id) => _pairing.Revoke(id);
-
     public void SetWorkspacePath(string workspace) => _pairing.SetWorkspaceId(WorkspaceId(NormalizeWorkspace(workspace)));
-
-    public void SetAccessMode(RemoteAccessMode mode)
-    {
-        _accessMode = mode;
-        Publish("access.changed", new JsonObject { ["mode"] = mode.ToString().ToLowerInvariant() });
-    }
 
     private IReadOnlyList<RemoteProjectDescriptor> Projects()
     {
@@ -641,7 +652,34 @@ public sealed class RemoteControlHost : IDisposable
 
     private string ProjectWorkspace(string deviceId, string? requestedID = null) => SelectedProject(deviceId, requestedID).WorkspacePath;
 
-    private async Task HandleAsync(RemoteHttpRequest request, Stream stream, CancellationToken cancellationToken)
+    /// Only sealed requests reach the router (see <see cref="RemoteSealed"/>);
+    /// anything else gets one fixed refusal that says nothing about why.
+    private async Task HandleAsync(RemoteHttpRequest outer, Stream stream, CancellationToken cancellationToken)
+    {
+        var device = outer.Headers.TryGetValue("x-herness-device", out var name) ? name : "";
+        var secret = outer.Method == "POST" && outer.Path == RemoteSealed.Path ? _pairing.SealingSecret(device) : null;
+        var opened = secret is null ? null : RemoteSealed.Open(outer.Body, RemoteSealed.Key(secret), device);
+        RemoteHttpRequest? request = null;
+        if (opened is not null && _replay.IsFresh(opened.Nonce, opened.Timestamp))
+        {
+            try { request = await RemoteControlGateway.ReadRequestAsync(new MemoryStream(opened.Request), cancellationToken); }
+            catch (Exception ex) when (ex is IOException or InvalidOperationException) { }
+        }
+        if (request is null)
+        {
+            await WriteJsonAsync(stream, 401, new { error = "This request is not sealed for this desktop. Scan its pairing QR code again." }, cancellationToken);
+            return;
+        }
+        // The sealing key is what proves the device; a token inside is ignored.
+        var headers = new Dictionary<string, string>(request.Headers, StringComparer.OrdinalIgnoreCase);
+        if (device == RemoteSealed.PairingDevice) headers.Remove("authorization"); else headers["authorization"] = "Bearer " + secret;
+        await using var channel = new RemoteSealedStream(stream, RemoteSealed.Key(secret!), opened!.Nonce);
+        // A failure is answered inside the channel too: its message must not cross the tunnel in the clear.
+        try { await RouteAsync(request with { Headers = headers }, channel, cancellationToken); }
+        catch (Exception ex) when (ex is not OperationCanceledException) { await WriteJsonAsync(channel, 500, new { error = ex.Message }, cancellationToken); }
+    }
+
+    private async Task RouteAsync(RemoteHttpRequest request, Stream stream, CancellationToken cancellationToken)
     {
         if (request.Path == "/v1/control/pair/complete" && request.Method == "POST")
         {
@@ -674,6 +712,13 @@ public sealed class RemoteControlHost : IDisposable
         if (request.Method == "GET" && routePath == "/v1/control/bootstrap")
         {
             await WriteJsonAsync(stream, 200, Bootstrap(deviceId, projectScoped), cancellationToken);
+            return;
+        }
+        if (request.Method == "GET" && routePath == "/v1/control/transcript")
+        {
+            var transcript = Transcript(Query(request.Target, "conversationId"), Query(request.Target, "limit"));
+            if (transcript is null) await WriteJsonAsync(stream, 404, new { error = "Conversation not found." }, cancellationToken);
+            else await WriteJsonAsync(stream, 200, transcript, cancellationToken);
             return;
         }
         if (request.Method == "GET" && routePath == "/v1/control/events")
@@ -811,7 +856,7 @@ public sealed class RemoteControlHost : IDisposable
                 "question" => await QuestionAsync(command),
             "permission" => Permission(command, workspace),
                 "write_file" => await SensitiveAsync(command, deviceId, workspace, cancellationToken),
-                "run_command" or "build" or "deploy" or "computer_use" => await SensitiveAsync(command, deviceId, workspace, cancellationToken),
+                "run_command" or "wait_command" or "build" or "deploy" or "computer_use" => await SensitiveAsync(command, deviceId, workspace, cancellationToken),
                 "terminal_session" => IsSafeTerminalAction(command)
                     ? TerminalSessionCommand(command, deviceId, workspace)
                     : await SensitiveAsync(command, deviceId, workspace, cancellationToken),
@@ -972,6 +1017,15 @@ public sealed class RemoteControlHost : IDisposable
             return RemoteCommandResponse.Ok(commandId, new { output = text, outputPreview = text.Length <= 700 ? text : text[..700] + "…" });
         }
 
+        if (kind == "wait_command")
+        {
+            var waitOutput = await NativeWorkspaceTools.ExecuteAsync(
+                new NativeToolCall(commandId, "wait_command", payload.ToJsonString()),
+                workspace,
+                cancellationToken).ConfigureAwait(false);
+            return RemoteCommandResponse.Ok(commandId, new { output = waitOutput, outputPreview = waitOutput.Length <= 700 ? waitOutput : waitOutput[..700] + "…" });
+        }
+
         var shellCommand = payload["command"]?.GetValue<string>()?.Trim() ?? "";
         if (shellCommand.Length == 0) return RemoteCommandResponse.Failed(400, "Command text is required.");
         Publish(kind == "deploy" ? "deploy.progress" : "build.started", new JsonObject { ["commandId"] = commandId, ["kind"] = kind, ["phase"] = "started" }, workspaceOverride: workspace);
@@ -983,7 +1037,8 @@ public sealed class RemoteControlHost : IDisposable
                 WorkspaceId(workspace),
                 _bridge.Selected?.Id,
                 ScopedPayload(new JsonObject { ["commandId"] = commandId, ["kind"] = kind }, workspace)),
-            cancellationToken);
+            cancellationToken,
+            timeoutSeconds: RemoteCommandTimeout(payload["timeout_seconds"]));
         var outputEvent = _events.PublishText(
             kind == "deploy" ? "deploy.progress" : "build.output",
             WorkspaceId(workspace),
@@ -1125,9 +1180,37 @@ public sealed class RemoteControlHost : IDisposable
             _bridge.Status,
             selected?.Running == true,
             _accessMode,
-            ["events", "prompt", "continue", "stop", "approval", "question", "files", "snapshot", "artifacts", "write", "terminal", "terminal_sessions", "preview_tunnel", "native_browser", "build", "deploy"],
+            ["events", "prompt", "continue", "stop", "approval", "question", "files", "snapshot", "artifacts", "write", "terminal", "terminal_sessions", "preview_tunnel", "native_browser", "build", "deploy", "wait_command", "transcript"],
             _pairing.Devices(),
-            project?.Id);
+            project?.Id,
+            new[] { PublicEndpoint, PreferredEndpoint }.OfType<string>().ToArray());
+    }
+
+    private RemoteTranscript? Transcript(string conversationId, string limitText)
+    {
+        var limit = int.TryParse(limitText, out var parsed) ? Math.Clamp(parsed, 1, 500) : 200;
+        // Messages belong to the UI thread; copy with a retry instead of
+        // marshalling, a collision only costs one more pass.
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                var conversation = string.IsNullOrWhiteSpace(conversationId)
+                    ? _bridge.Selected
+                    : _bridge.Conversations.ToArray().FirstOrDefault(item => item.Id == conversationId);
+                if (conversation is null) return null;
+                var messages = conversation.Messages.ToArray()
+                    .TakeLast(limit)
+                    .Select(item => new RemoteTranscriptMessage(
+                        item.Id,
+                        item.Kind.ToString().ToLowerInvariant(),
+                        RemoteControlEventHub.SanitizeForRemote(item.Text.Length > 20_000 ? item.Text[..20_000] : item.Text),
+                        item.CreatedAt))
+                    .ToArray();
+                return new RemoteTranscript(conversation.Id, conversation.Title, conversation.Running, messages);
+            }
+            catch (InvalidOperationException) when (attempt < 3) { }
+        }
     }
 
     private RemoteWorkspaceSnapshot Snapshot(string deviceId, bool projectScoped)
@@ -1174,8 +1257,16 @@ public sealed class RemoteControlHost : IDisposable
         var after = long.TryParse(Query(request.Target, "after"), out var querySequence) ? querySequence : 0;
         if (request.Headers.TryGetValue("last-event-id", out var last) && long.TryParse(last, out var headerSequence)) after = Math.Max(after, headerSequence);
         var workspaceId = WorkspaceId(projectScoped ? ProjectWorkspace(deviceId) : CurrentWorkspace());
-        await WriteAsciiAsync(stream, "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-cache\r\nConnection: keep-alive\r\nX-Accel-Buffering: no\r\n\r\n", cancellationToken);
-        await foreach (var item in _events.StreamAsync(after, workspaceId, cancellationToken))
+        await WriteAsciiAsync(stream, "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-cache\r\nConnection: close\r\nX-Accel-Buffering: no\r\n\r\n", cancellationToken);
+        // Long poll: Quick Tunnels do not stream (no SSE), so each reply
+        // carries one batch and ends; the phone asks again with `after`.
+        IReadOnlyList<RemoteControlEvent> batch = [];
+        for (var attempt = 0; attempt < 100 && batch.Count == 0; attempt++)
+        {
+            batch = _events.Since(after, workspaceId);
+            if (batch.Count == 0) await Task.Delay(250, cancellationToken);
+        }
+        foreach (var item in batch)
         {
             var json = JsonSerializer.Serialize(item, JsonOptions());
             await WriteAsciiAsync(stream, $"id: {item.Sequence}\nevent: {item.Kind}\ndata: {json}\n\n", cancellationToken);
@@ -1233,6 +1324,27 @@ public sealed class RemoteControlHost : IDisposable
         }
         catch { return "127.0.0.1"; }
     }
+
+    /// <summary>
+    /// The mDNS name of this machine (`&lt;hostname&gt;.local`). Phones resolve
+    /// it without a DNS server, and their transport policy only lets plain
+    /// HTTP through for such a name.
+    /// </summary>
+    public static string LocalHostName()
+    {
+        try
+        {
+            var name = Dns.GetHostName().Trim();
+            if (string.IsNullOrWhiteSpace(name)) return "";
+            return name.EndsWith(".local", StringComparison.OrdinalIgnoreCase) ? name : name + ".local";
+        }
+        catch { return ""; }
+    }
+    /// A phone that sends no timeout_seconds waits 120 seconds for the reply, so its
+    /// commands stop at 90; a newer phone sends the limit and waits that long.
+    internal static int RemoteCommandTimeout(JsonNode? node) =>
+        node is null ? 90 : NativeWorkspaceTools.CommandTimeout(node);
+
     private static string WorkspaceId(string workspace) => RemoteControlIdentity.WorkspaceId(workspace);
     private static string Summary(RemoteControlCommand command) => command.Kind switch
     {
@@ -1240,6 +1352,7 @@ public sealed class RemoteControlHost : IDisposable
         "terminal_session" => command.Payload["action"]?.GetValue<string>() == "start" ? "Start a mobile terminal session" : "Send input to the mobile terminal",
         "preview_tunnel" => $"Expose local development port {command.Payload["port"]?.GetValue<int>()}",
         "native_browser" => $"Native browser action: {command.Payload["action"]?.GetValue<string>()}",
+        "wait_command" => $"Wait for process {command.Payload["pid"]?.ToString() ?? "unknown"}",
         _ => command.Payload["command"]?.GetValue<string>() ?? command.Kind,
     };
     private static string Query(string target, string key)
@@ -1521,19 +1634,45 @@ public sealed class RemoteControlGateway : IDisposable
 {
     private const int MaximumHeaderBytes = 64 * 1024;
     private const int MaximumBodyBytes = 20 * 1024 * 1024;
-    private readonly int _port;
     private readonly Func<RemoteHttpRequest, Stream, CancellationToken, Task> _handler;
-    private readonly TcpListener _listener;
+    private readonly int _port;
+    private readonly X509Certificate2 _certificate;
+    private TcpListener _listener;
+    private bool _sharesWithLan;
     private CancellationTokenSource? _stop;
 
     public bool Running { get; private set; }
 
-    public RemoteControlGateway(int port, Func<RemoteHttpRequest, Stream, CancellationToken, Task> handler)
+    /// The address the listener is bound to. Loopback unless the user shared
+    /// the gateway with the local network.
+    public IPAddress BoundAddress => ((IPEndPoint)_listener.LocalEndpoint).Address;
+
+    public RemoteControlGateway(int port, Func<RemoteHttpRequest, Stream, CancellationToken, Task> handler, X509Certificate2 certificate)
     {
-        _port = port;
         _handler = handler;
-        _listener = new TcpListener(IPAddress.Any, port);
+        _port = port;
+        _certificate = certificate;
+        _listener = CreateListener();
     }
+
+    /// Sharing the control API with the LAN is opt-in. Loopback keeps it
+    /// unreachable from whatever network the machine happens to sit on.
+    public bool SharesWithLan
+    {
+        get => _sharesWithLan;
+        set
+        {
+            if (_sharesWithLan == value) return;
+            _sharesWithLan = value;
+            if (!Running) return;
+            Stop();
+            _listener = CreateListener();
+            Start();
+        }
+    }
+
+    private TcpListener CreateListener() =>
+        new(_sharesWithLan ? IPAddress.Any : IPAddress.Loopback, _port);
 
     public void Start()
     {
@@ -1571,9 +1710,19 @@ public sealed class RemoteControlGateway : IDisposable
     {
         using var ownedClient = client;
         using var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(serverCancellation);
+        // TLS only: the bearer token and every command cross the LAN.
+        await using var stream = new SslStream(client.GetStream(), leaveInnerStreamOpen: false);
         try
         {
-            await using var stream = client.GetStream();
+            using (var handshake = CancellationTokenSource.CreateLinkedTokenSource(requestCancellation.Token))
+            {
+                handshake.CancelAfter(TimeSpan.FromSeconds(10));
+                await stream.AuthenticateAsServerAsync(new SslServerAuthenticationOptions
+                {
+                    ServerCertificate = _certificate,
+                    EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
+                }, handshake.Token);
+            }
             var request = await ReadRequestAsync(stream, requestCancellation.Token);
             await _handler(request, stream, requestCancellation.Token);
         }
@@ -1583,13 +1732,14 @@ public sealed class RemoteControlGateway : IDisposable
             try
             {
                 var body = JsonSerializer.SerializeToUtf8Bytes(new { error = ex.Message });
-                await WriteErrorAsync(client.GetStream(), body, requestCancellation.Token);
+                // Never answer in the clear: no reply when the handshake failed.
+                if (stream.IsAuthenticated) await WriteErrorAsync(stream, body, requestCancellation.Token);
             }
             catch { }
         }
     }
 
-    private static async Task<RemoteHttpRequest> ReadRequestAsync(Stream stream, CancellationToken cancellationToken)
+    internal static async Task<RemoteHttpRequest> ReadRequestAsync(Stream stream, CancellationToken cancellationToken)
     {
         var bytes = new List<byte>(4096);
         var buffer = new byte[4096];
@@ -1648,4 +1798,127 @@ public sealed class RemoteControlGateway : IDisposable
     }
 
     public void Dispose() => Stop();
+}
+
+/// Sealed channel v1, the only way in for a phone, LAN and cloud tunnel alike.
+/// The tunnel ends TLS at Cloudflare, so the HTTP exchange itself is encrypted
+/// end to end with a key only this desktop and the paired phone hold:
+///   key     = SHA-256("herness.sealed.v1:" + secret); secret = device token, or the QR `k` while pairing
+///   request = POST /v3/sealed, `X-Herness-Device: &lt;device id | pair&gt;`, body =
+///             AES-256-GCM nonce | ciphertext | tag over (ms timestamp, 8 bytes BE) + raw HTTP/1.1 request; AAD = device
+///   reply   = 200 application/octet-stream; each line is base64(nonce | ciphertext | tag) of the next chunk of the raw
+///             HTTP reply, AAD = request nonce + frame counter (4 bytes BE); an empty chunk ends the reply.
+/// The macOS, iOS and Android copies follow this exactly.
+public static class RemoteSealed
+{
+    public const string Path = "/v3/sealed";
+    public const string PairingDevice = "pair";
+    public const string Header = "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nCache-Control: no-cache, no-transform\r\nConnection: close\r\nX-Accel-Buffering: no\r\n\r\n";
+
+    public sealed record Opened(byte[] Nonce, long Timestamp, byte[] Request);
+
+    public static byte[] Key(string secret) => SHA256.HashData(Encoding.UTF8.GetBytes("herness.sealed.v1:" + secret));
+
+    public static byte[] Seal(byte[] key, byte[] nonce, byte[] plain, byte[] aad)
+    {
+        var sealedBytes = new byte[12 + plain.Length + 16];
+        nonce.CopyTo(sealedBytes, 0);
+        using var aes = new AesGcm(key, 16);
+        aes.Encrypt(nonce, plain, sealedBytes.AsSpan(12, plain.Length), sealedBytes.AsSpan(12 + plain.Length), aad);
+        return sealedBytes;
+    }
+
+    public static byte[]? Unseal(byte[] key, byte[] sealedBytes, byte[] aad)
+    {
+        if (sealedBytes.Length < 28) return null;
+        var plain = new byte[sealedBytes.Length - 28];
+        try
+        {
+            using var aes = new AesGcm(key, 16);
+            aes.Decrypt(sealedBytes.AsSpan(0, 12), sealedBytes.AsSpan(12, plain.Length), sealedBytes.AsSpan(sealedBytes.Length - 16), plain, aad);
+            return plain;
+        }
+        catch (CryptographicException) { return null; }
+    }
+
+    public static Opened? Open(byte[] body, byte[] key, string device)
+    {
+        var plain = Unseal(key, body, Encoding.UTF8.GetBytes(device));
+        if (plain is null || plain.Length <= 8) return null;
+        return new Opened(body[..12], System.Buffers.Binary.BinaryPrimitives.ReadInt64BigEndian(plain), plain[8..]);
+    }
+
+    public static byte[] FrameAad(byte[] nonce, uint counter)
+    {
+        var aad = new byte[16];
+        nonce.CopyTo(aad, 0);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(aad.AsSpan(12), counter);
+        return aad;
+    }
+
+    /// A sealed request is accepted once, and only within five minutes of the phone's clock.
+    public sealed class ReplayGuard
+    {
+        private readonly Dictionary<string, DateTimeOffset> _seen = new(StringComparer.Ordinal);
+
+        public bool IsFresh(byte[] nonce, long timestamp)
+        {
+            var now = DateTimeOffset.UtcNow;
+            var key = Convert.ToBase64String(nonce);
+            lock (_seen)
+            {
+                foreach (var old in _seen.Where(item => now - item.Value > TimeSpan.FromMinutes(10)).Select(item => item.Key).ToArray()) _seen.Remove(old);
+                if (Math.Abs(now.ToUnixTimeMilliseconds() - timestamp) >= 300_000 || !_seen.TryAdd(key, now)) return false;
+                return true;
+            }
+        }
+    }
+}
+
+/// The router's side of one sealed exchange: whatever it writes leaves as
+/// encrypted frames, and disposing sends the end frame.
+public sealed class RemoteSealedStream(Stream inner, byte[] key, byte[] nonce) : Stream
+{
+    private uint _counter;
+    private bool _started;
+
+    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+    {
+        for (var start = 0; start < buffer.Length; start += 65_536)
+            await inner.WriteAsync(Next(buffer.Slice(start, Math.Min(65_536, buffer.Length - start)).ToArray()), cancellationToken);
+    }
+
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+        WriteAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+    public override void Write(byte[] buffer, int offset, int count) => WriteAsync(buffer, offset, count, CancellationToken.None).GetAwaiter().GetResult();
+    public override Task FlushAsync(CancellationToken cancellationToken) => inner.FlushAsync(cancellationToken);
+    public override void Flush() => inner.Flush();
+
+    public override async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await inner.WriteAsync(Next([]));
+            await inner.FlushAsync();
+        }
+        catch (IOException) { }
+        catch (ObjectDisposedException) { }
+    }
+
+    private byte[] Next(byte[] chunk)
+    {
+        var frame = Encoding.ASCII.GetBytes(Convert.ToBase64String(RemoteSealed.Seal(key, RandomNumberGenerator.GetBytes(12), chunk, RemoteSealed.FrameAad(nonce, _counter++))) + "\n");
+        if (_started) return frame;
+        _started = true;
+        return [.. Encoding.ASCII.GetBytes(RemoteSealed.Header), .. frame];
+    }
+
+    public override bool CanRead => false;
+    public override bool CanSeek => false;
+    public override bool CanWrite => true;
+    public override long Length => throw new NotSupportedException();
+    public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+    public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    public override void SetLength(long value) => throw new NotSupportedException();
 }

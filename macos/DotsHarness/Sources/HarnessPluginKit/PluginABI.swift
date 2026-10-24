@@ -53,7 +53,11 @@ public enum PluginDylib {
             dlclose(handle)
             throw PluginError.applyFailed("plugin factory returned nil")
         }
-        return Unmanaged<AnyObject>.fromOpaque(raw).takeRetainedValue() as! HarnessPlugin
+        guard let plugin = Unmanaged<AnyObject>.fromOpaque(raw).takeRetainedValue() as? HarnessPlugin else {
+            dlclose(handle)
+            throw PluginError.applyFailed("plugin factory did not return a HarnessPlugin")
+        }
+        return plugin
     }
 }
 #endif

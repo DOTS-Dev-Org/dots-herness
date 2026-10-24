@@ -188,36 +188,6 @@ final class LocalWorkspaceStore: ObservableObject {
         projects = projectStore.projects
     }
 
-    func renameProject(_ id: String, name: String) {
-        guard var project = projects.first(where: { $0.id == id }) else { return }
-        project.name = name
-        projectStore.update(project)
-        projects = projectStore.projects
-    }
-
-    func deleteProject(_ id: String) {
-        guard activeSandbox == nil,
-              projects.count > 1,
-              projects.contains(where: { $0.id == id }) else { return }
-        let wasSelected = id == selectedProjectID
-        if wasSelected, let next = projects.first(where: { $0.id != id }) {
-            projectStore.select(next.id)
-        }
-        projectStore.remove(id)
-        projects = projectStore.projects
-        selectedProjectID = projectStore.selectedProjectID
-        if wasSelected {
-            selectedPath = ""
-            selectedText = ""
-            snapshot = nil
-            try? FileManager.default.createDirectory(at: meta, withIntermediateDirectories: true)
-            if let data = try? Data(contentsOf: meta.appendingPathComponent("snapshot.json")) {
-                snapshot = try? decoder.decode(WorkspaceSnapshot.self, from: data)
-            }
-            refreshSelectedProjectAvailability()
-        }
-    }
-
     var hasMirror: Bool { snapshot != nil }
 
     func files() -> [WorkspaceFile] { (try? agentFiles()) ?? [] }

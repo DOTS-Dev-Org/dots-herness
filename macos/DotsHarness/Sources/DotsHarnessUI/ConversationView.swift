@@ -19,12 +19,15 @@ struct ConversationView: View {
     @State private var isDropTargeted = false
     @State private var draggedPromptID: String?
     @State private var expandedFileMessageIDs = Set<String>()
-    @State private var hoveredMessageID: String?
     @State private var translations: [String: String] = [:]
     @State private var translating: Set<String> = []
-    /// Keep long transcripts bounded until the user scrolls back for older messages.
-    @State private var pagedStartIndex: Int?
-    private static let messagePageSize = 50
+    @State private var isLoadingOlderMessages = false
+    @State private var olderPageAnchorID: String?
+    @State private var olderPageLoadID: UUID?
+    @State private var streamingScrollTask: Task<Void, Never>?
+    /// Full composer height; a change means the transcript just lost or gained room.
+    @State private var composerHeight: CGFloat = 0
+    private static let messagePageSize = 10
     private var bridge: AgentBridge { model.bridge }
 
     init(model: AppModel, isPanePickerVisible: Binding<Bool>) {
@@ -63,7 +66,12 @@ struct ConversationView: View {
                 isTerminalVisible = false
             }
         }
-        .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isDropTargeted, perform: handleDrop)
+        .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isDropTargeted) { providers in
+            handleFileDrop(providers) { model.addDraftAttachments($0) }
+        }
+        .environment(\.openURL, OpenURLAction { url in
+            model.openFileLink(url) ? .handled : .systemAction
+        })
         .sheet(item: $model.feedbackRequest) { target in
             FeedbackSheet(
                 target: target,
@@ -86,7 +94,10 @@ struct ConversationView: View {
             if !model.workspacePath.isEmpty && !model.activeProjectLocationAvailable {
                 missingProjectNotice
             }
+            runningTasksChip
+            planStepsCard
             composer
+                .onPreferenceChange(ComposerHeightKey.self) { composerHeight = $0 }
         }
     }
 
@@ -103,12 +114,12 @@ struct ConversationView: View {
                        !conversation.running,
                        conversation.continuation == nil,
                        conversation.pendingPrompts.isEmpty {
-                        emptyConversation
+                        scrollableWelcome
                     } else {
                         conversationBody(conversation)
                     }
                 } else {
-                    emptyConversation
+                    scrollableWelcome
                 }
             }
         }
@@ -119,7 +130,10 @@ struct ConversationView: View {
     private func conversationBody(_ conversation: Conversation) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 20) {
+                // Eager on purpose: a LazyVStack under a bottom scroll anchor re-estimated its
+                // variable row heights and re-anchored the offset every frame, pinning the main
+                // thread while a run was on screen. The transcript is paged, so it stays short.
+                VStack(alignment: .leading, spacing: 20) {
                     let hasActiveToolActivity = conversation.running
                         && conversation.messages.last?.kind == .tool
                         && conversation.messages.last?.rawToolOutput == nil
@@ -128,35 +142,50 @@ struct ConversationView: View {
                         : conversation.continuation != nil
                         ? (conversation.messages.reversed().first(where: { $0.kind == .system })?.id ?? conversation.messages.last?.id)
                         : nil
-                    let firstVisible = firstVisibleMessageIndex(in: conversation.messages)
-                    if firstVisible > 0 {
-                        ProgressView()
-                            .controlSize(.small)
+                    if conversation.hasOlderTranscriptMessages {
+                        Button {
+                            loadOlderMessages(conversation)
+                        } label: {
+                            Group {
+                                if isLoadingOlderMessages {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                } else {
+                                    Label(AppCopy.text("sidebar.showMore"), systemImage: "arrow.up")
+                                        .font(.callout)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                             .frame(maxWidth: .infinity)
-                            .onAppear { loadOlderMessages(conversation, firstVisible: firstVisible, proxy: proxy) }
+                            .contentShape(Rectangle())
+                            .padding(.vertical, 6)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isLoadingOlderMessages)
                     }
-                    ForEach(Array(conversation.messages.enumerated().dropFirst(firstVisible)), id: \.element.id) { index, message in
+                    if conversation.messages.isEmpty {
+                        ForEach(conversation.pendingPrompts.filter {
+                            $0.mode != .queue || bridge.isStartingPrompt($0.id, in: conversation.id)
+                        }) { prompt in
+                            pendingPromptBubble(prompt, in: conversation)
+                        }
+                    }
+                    ForEach(Array(conversation.messages.enumerated()), id: \.element.id) { index, message in
                         if message.id == conversation.messages.last?.id {
-                            ForEach(conversation.pendingPrompts.filter { $0.mode != .queue }) { prompt in
+                            ForEach(conversation.pendingPrompts.filter {
+                                $0.mode != .queue || bridge.isStartingPrompt($0.id, in: conversation.id)
+                            }) { prompt in
                                 pendingPromptBubble(prompt, in: conversation)
                             }
                         }
                         if message.kind == .tool {
                             if index == 0 || conversation.messages[index - 1].kind != .tool {
                                 let endIndex = activityEndIndex(startingAt: index, in: conversation.messages)
-                                let metadata = activityMetadata(
-                                    for: message.turnID,
-                                    in: conversation.messages
-                                )
                                 activitySummary(
                                     messages: conversation.messages[index..<endIndex],
-                                    completedAt: endIndex < conversation.messages.count
-                                        ? conversation.messages[endIndex].createdAt
-                                        : nil,
                                     isRunning: conversation.running
                                         && endIndex == conversation.messages.count
-                                        && conversation.messages[endIndex - 1].rawToolOutput == nil,
-                                    usedSkills: metadata.skills
+                                        && conversation.messages[endIndex - 1].rawToolOutput == nil
                                 )
                                 .id("activity-\(message.id)")
                             }
@@ -181,34 +210,69 @@ struct ConversationView: View {
                         LiveReplyView(bridge: bridge, conversationID: conversation.id)
                     }
                 }
-                .frame(maxWidth: 820)
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 28)
                 .padding(.vertical, 28)
+                .id("transcript")
             }
             .defaultScrollAnchor(.bottom)
             .softTopScrollEdgeEffect()
+            .scrollToBottomButton {
+                withAnimation(.easeOut(duration: 0.18)) { proxy.scrollTo("transcript", anchor: .bottom) }
+            }
             .id(conversation.id)
             .onAppear {
                 scrollToLast(using: proxy, conversation: conversation, animated: false)
             }
             .onChange(of: conversation.id) { _, _ in
-                pagedStartIndex = nil
+                isLoadingOlderMessages = false
+                olderPageAnchorID = nil
+                olderPageLoadID = nil
                 scrollToLast(using: proxy, conversation: conversation, animated: false)
             }
             .onChange(of: conversation.messages.count) { _, _ in
-                scrollToLast(using: proxy, conversation: conversation)
+                if let anchorID = olderPageAnchorID {
+                    DispatchQueue.main.async {
+                        if model.selected?.id == conversation.id {
+                            proxy.scrollTo(anchorID, anchor: .top)
+                        }
+                        if olderPageAnchorID == anchorID { olderPageAnchorID = nil }
+                    }
+                } else {
+                    scrollToLast(using: proxy, conversation: conversation)
+                }
             }
             .onChange(of: conversation.messages.last?.text) { _, _ in
-                scrollToLast(using: proxy, conversation: conversation)
+                if conversation.running {
+                    scheduleStreamingScroll(using: proxy, conversation: conversation)
+                } else {
+                    scrollToLast(using: proxy, conversation: conversation)
+                }
             }
-            .onChange(of: conversation.messages.last?.changedFiles.count) { _, _ in
-                // Turn metadata (including the changed-files card) is attached after
-                // the final message text, so keep the newly expanded transcript in view.
-                scrollToLast(using: proxy, conversation: conversation)
+            .onChange(of: conversation.running) { _, isRunning in
+                if !isRunning {
+                    scrollToLast(using: proxy, conversation: conversation)
+                }
+            }
+            // Count, not a per-message string array: this key is rebuilt on every redraw.
+            // Message additions are already covered by the messages.count handler above.
+            .onChange(of: conversation.messages.reduce(0) { $0 + $1.changedFiles.count }) { _, _ in
+                // A completed turn can attach its file list to an earlier stop event
+                // or a later assistant response; keep either card in view.
+                if olderPageAnchorID == nil {
+                    scrollToLast(using: proxy, conversation: conversation)
+                }
             }
             .onChange(of: conversation.pendingPrompts.count) { _, _ in
                 scrollToLast(using: proxy, conversation: conversation)
+            }
+            .onChange(of: composerHeight) { _, _ in
+                // The composer taking or giving back height resizes the transcript; keep its last message in view.
+                scrollToLast(using: proxy, conversation: conversation, animated: false)
+            }
+            .onDisappear {
+                streamingScrollTask?.cancel()
+                streamingScrollTask = nil
             }
         }
     }
@@ -218,15 +282,17 @@ struct ConversationView: View {
         return VStack(alignment: .leading, spacing: 10) {
             Label(
                 closedDuringRun
-                    ? "Tool sonucu doğrulanmalı"
+                    ? AppCopy.text("agent.applicationClosedTitle")
                     : continuation.reason == .providerLimit
                     ? AppCopy.text("agent.providerLimitTitle")
                     : continuation.reason == .toolStepLimit
                     ? AppCopy.text("agent.toolStepLimit")
+                    : continuation.reason == .networkLost
+                    ? AppCopy.text("agent.networkLostTitle")
                     : "\(AppCopy.text("agent.userStoppedTitle")) (\(continuation.model))",
                 systemImage: closedDuringRun || continuation.reason == .providerLimit
                     ? "exclamationmark.triangle"
-                    : "pause.circle"
+                    : continuation.reason == .networkLost ? "wifi.slash" : "pause.circle"
             )
             .font(.callout.weight(.semibold))
             .foregroundStyle(closedDuringRun || continuation.reason == .providerLimit ? Color.red : Color.orange)
@@ -246,12 +312,22 @@ struct ConversationView: View {
         }
     }
 
+    /// The welcome cards can scroll when a dock reduces the chat's height;
+    /// their intrinsic size must never push the composer below the window.
+    private var scrollableWelcome: some View {
+        GeometryReader { proxy in
+            ScrollView {
+                emptyConversation.frame(minHeight: proxy.size.height)
+            }
+        }
+    }
+
     @ViewBuilder
     private var emptyConversation: some View {
         WelcomeView(
             projectName: currentProjectName,
             showConnectHint: bridge.connectionResolved && bridge.connection == nil,
-            showCards: model.draft.isEmpty,
+            showCards: model.draftIsEmpty,
             cards: welcomeCards,
             onSelect: runWelcomeCard
         )
@@ -449,8 +525,65 @@ struct ConversationView: View {
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
+    /// Shown while the agent has background work going; opens the task list in the dock.
+    @ViewBuilder
+    private var runningTasksChip: some View {
+        let running = bridge.backgroundTasks(in: model.selected?.id).filter(\.isRunning).count
+        if running > 0 {
+            Button { model.tasksPaneRequestID &+= 1 } label: {
+                Text(AppCopy.format("backgroundTasks.runningCount", running))
+                    .font(.callout)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.accentColor.opacity(0.18), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.accentColor)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 6)
+        }
+    }
+
     private var composer: some View {
         ComposerView(model: model, bridge: bridge)
+    }
+
+    /// Live checklist from the agent's latest update_plan, pinned above the composer.
+    @ViewBuilder
+    private var planStepsCard: some View {
+        if let conversation = model.selected {
+            let steps = PlanStepsTool.currentSteps(in: conversation.messages)
+            if steps.contains(where: { $0.status != "done" }) {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("\(AppCopy.text("plan.title")) · \(steps.filter { $0.status == "done" }.count)/\(steps.count)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    ForEach(Array(steps.enumerated()), id: \.offset) { _, step in
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Group {
+                                switch step.status {
+                                case "done": Image(systemName: "checkmark.circle.fill").foregroundStyle(.secondary)
+                                case "in_progress": ProgressView().controlSize(.mini)
+                                default: Image(systemName: "circle.dashed").foregroundStyle(.tertiary)
+                                }
+                            }
+                            .frame(width: 14)
+                            Text(step.title)
+                                .foregroundStyle(step.status == "pending" ? .secondary : .primary)
+                                .lineLimit(2)
+                        }
+                        .font(.callout)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .padding(.horizontal, 20)
+                .padding(.bottom, 6)
+                .animation(.easeOut(duration: 0.18), value: steps)
+            }
+        }
     }
 
     private var missingProjectNotice: some View {
@@ -533,6 +666,7 @@ struct ConversationView: View {
     private func planCard(_ message: ChatMessage, in conversation: Conversation) -> some View {
         let isPending = conversation.pendingPlanMessageID == message.id
         return HStack {
+            HoverScope { hovering in
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
                     Image(systemName: "lightbulb.fill")
@@ -549,9 +683,11 @@ struct ConversationView: View {
                     .textSelection(.enabled)
                 usedItemsDisclosure(for: message)
                 runSummaryView(for: message)
-                changedFilesDisclosure(for: message)
                 translationText(message, alignment: .leading)
-                messageActions(message, in: conversation)
+                if shouldShowChangedFilesOnMessage(message, in: conversation) {
+                    changedFilesDisclosure(for: message)
+                }
+                messageActions(message, in: conversation, hovering: hovering)
                 Button {
                     model.requestPlanPane()
                 } label: {
@@ -567,15 +703,15 @@ struct ConversationView: View {
                     .stroke(Color.accentColor.opacity(0.25), lineWidth: 1)
             }
             .frame(maxWidth: 760, alignment: .leading)
-            .onHover { hovered in
-                hoveredMessageID = hovered ? message.id : nil
             }
             Spacer(minLength: 80)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func planStatus(_ message: ChatMessage, isPending: Bool, isRunning: Bool) -> String {
-        if let error = message.planError, !error.isEmpty { return "Error · " + error }
+        if let error = message.planError, !error.isEmpty { return AppCopy.format("plan.errorStatus", error) }
+
         if !isPending { return AppCopy.text("plan.applied") }
         return isRunning ? AppCopy.text("plan.applying") : AppCopy.text("plan.waitingApproval")
     }
@@ -593,14 +729,15 @@ struct ConversationView: View {
         let answerTranscript = questionAnswerTranscript(for: message)
         return HStack {
             if isUser { Spacer(minLength: 80) }
+            HoverScope { hovering in
             VStack(alignment: isUser ? .trailing : .leading, spacing: 7) {
                 if !message.attachments.isEmpty {
-                    attachmentViews(message.attachments)
+                    attachmentViews(message.attachments, isUser: isUser)
                 }
                 if isAssistant {
                     if message.streaming {
                         HStack(spacing: 8) {
-                            ProgressView().controlSize(.small)
+                            HerNessLoadingAnimation(size: 18)
                             Text(AppCopy.text("conversation.working"))
                         }
                         .foregroundStyle(.primary)
@@ -641,7 +778,7 @@ struct ConversationView: View {
                 if message.kind == .tool,
                    let rawToolOutput = message.rawToolOutput,
                    !rawToolOutput.isEmpty {
-                    DisclosureGroup(AppCopy.text("conversation.fullToolOutput")) {
+                    StillDisclosureGroup {
                         ScrollView([.horizontal, .vertical]) {
                             Text(rawToolOutput)
                                 .font(.caption.monospaced())
@@ -650,28 +787,31 @@ struct ConversationView: View {
                                 .padding(6)
                         }
                         .frame(maxHeight: 360)
+                    } label: {
+                        Text(AppCopy.text("conversation.fullToolOutput"))
                     }
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 }
                 usedItemsDisclosure(for: message)
                 runSummaryView(for: message)
-                changedFilesDisclosure(for: message)
                 if !message.mediaItems.isEmpty {
                     ForEach(message.mediaItems) { media in
                         mediaView(media)
                     }
                 }
                 translationText(message, alignment: isUser ? .trailing : .leading)
-                messageActions(message, in: conversation)
+                if shouldShowChangedFilesOnMessage(message, in: conversation) {
+                    changedFilesDisclosure(for: message)
+                }
+                messageActions(message, in: conversation, hovering: hovering)
             }
             .padding(.vertical, 4)
             .frame(maxWidth: isUser ? 600 : 760, alignment: isUser ? .trailing : .leading)
-            .onHover { hovered in
-                hoveredMessageID = hovered ? message.id : nil
             }
             if !isUser { Spacer(minLength: 80) }
         }
+        .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
     }
 
     private func questionAnswerTranscript(for message: ChatMessage) -> String? {
@@ -682,11 +822,12 @@ struct ConversationView: View {
     }
 
     @ViewBuilder
-    private func messageActions(_ message: ChatMessage, in conversation: Conversation) -> some View {
+    private func messageActions(_ message: ChatMessage, in conversation: Conversation, hovering: Bool) -> some View {
         if (message.kind == .user || message.kind == .assistant || message.kind == .plan),
            !message.streaming,
-           !replyIsStillRunning(message, in: conversation) {
-            let latestUser = conversation.messages.reversed().first(where: { $0.kind == .user })?.id == message.id
+           !replyIsStillRunning(message, in: conversation),
+           !isIntermediateReply(message, in: conversation) {
+            let latestUser = TranscriptIndex.of(conversation).latestUserID == message.id
             let canEdit = latestUser && bridge.canEdit(messageID: message.id, in: conversation.id)
             let canRewind = message.kind == .user && bridge.canRewind(messageID: message.id, in: conversation.id)
             let hasText = !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -695,7 +836,7 @@ struct ConversationView: View {
             let canFeedback = bridge.workspacePath?.isEmpty == false && message.kind != .user && hasOutput
             let feedback = canFeedback ? bridge.feedback(for: message.id, in: conversation.id) : nil
             HStack(spacing: 16) {
-                actionButton("doc.on.doc", AppCopy.text("conversation.copy")) { copyMessage(message) }
+                CopyFeedbackButton(text: message.text)
 
                 if message.kind == .user, latestUser {
                     actionButton("pencil", actionHelp("conversation.edit", available: canEdit)) {
@@ -708,6 +849,12 @@ struct ConversationView: View {
                         model.rewind(messageID: message.id)
                     }
                     .disabled(!canRewind)
+
+                    let canFork = bridge.canFork(messageID: message.id, in: conversation.id) && !model.isEditingMessage
+                    actionButton("arrow.triangle.branch", AppCopy.text("conversation.fork")) {
+                        model.forkConversation(beforeMessageID: message.id, in: conversation.id)
+                    }
+                    .disabled(!canFork)
                 }
                 if message.kind == .assistant, hasText {
                     let title = speaking
@@ -721,7 +868,9 @@ struct ConversationView: View {
                     if translating.contains(message.id) {
                         ProgressView().controlSize(.small)
                     } else {
-                        actionButton("globe", AppCopy.text("conversation.translate")) { toggleTranslation(message) }
+                        actionButton("globe", AppCopy.text("conversation.translate")) {
+                            toggleTranslation(id: message.id, text: message.text, model: model, translations: $translations, translating: $translating)
+                        }
                             .foregroundStyle(translations[message.id] == nil ? Color.secondary : Color.accentColor)
                     }
                 }
@@ -734,7 +883,7 @@ struct ConversationView: View {
             .font(.callout)
             .foregroundStyle(.secondary)
             .padding(.top, 2)
-            .opacity(hoveredMessageID == message.id ? 1 : 0.55)
+            .opacity(hovering ? 1 : 0.55)
         }
     }
 
@@ -756,24 +905,18 @@ struct ConversationView: View {
         if let runStartedAt = conversation.runStartedAt {
             return message.createdAt >= runStartedAt
         }
-        guard let messageIndex = conversation.messages.firstIndex(where: { $0.id == message.id }),
-              let latestUserIndex = conversation.messages.lastIndex(where: { $0.kind == .user }) else {
+        let index = TranscriptIndex.of(conversation)
+        guard let messageIndex = index.position[message.id],
+              let latestUserIndex = index.latestUserIndex else {
             return true
         }
         return messageIndex > latestUserIndex
     }
 
-    private func toggleTranslation(_ message: ChatMessage) {
-        if translations.removeValue(forKey: message.id) != nil { return }
-        translating.insert(message.id)
-        Task { @MainActor in
-            defer { translating.remove(message.id) }
-            do {
-                translations[message.id] = try await model.translate(message.text)
-            } catch {
-                translations[message.id] = error.localizedDescription
-            }
-        }
+    /// Narration between tool runs ("now verifying…") is not the answer: only the
+    /// turn's last reply carries the action bar, so one turn reads as one result.
+    private func isIntermediateReply(_ message: ChatMessage, in conversation: Conversation) -> Bool {
+        TranscriptIndex.of(conversation).intermediateReplyIDs.contains(message.id)
     }
 
     private func actionButton(_ icon: String, _ help: String, action: @escaping () -> Void) -> some View {
@@ -816,11 +959,6 @@ struct ConversationView: View {
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
-    private func copyMessage(_ message: ChatMessage) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(message.text, forType: .string)
-    }
-
     private static let relativeFormatter: RelativeDateTimeFormatter = {
         let f = RelativeDateTimeFormatter()
         f.unitsStyle = .full
@@ -842,8 +980,8 @@ struct ConversationView: View {
                 now: context.date,
                 toolsRunning: false
             )
-            HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
+            HStack(alignment: .center, spacing: 7) {
+                HerNessLoadingAnimation(size: 24)
                 Text(statusText)
                 if !skills.isEmpty {
                     Text("·")
@@ -871,7 +1009,7 @@ struct ConversationView: View {
         }
     }
 
-    /// "2m 16s · 1.4k tokens · Running tools…"
+    /// "2m 16s · 1.4K tokens · Running tools…"
     private func liveStatusText(start: Date?, now: Date, toolsRunning: Bool) -> String {
         var parts = [elapsedText(from: start, now: now)]
         let tokens = bridge.activeRunTokenCount
@@ -885,7 +1023,21 @@ struct ConversationView: View {
     }
 
     private func compactTokens(_ value: Int) -> String {
-        value < 1_000 ? "\(value)" : String(format: "%.1fk", Double(value) / 1_000)
+        guard value >= 1_000 else { return "\(value)" }
+        let divisor: Double
+        let suffix: String
+        if value >= 1_000_000_000 {
+            divisor = 1_000_000_000
+            suffix = "B"
+        } else if value >= 1_000_000 {
+            divisor = 1_000_000
+            suffix = "M"
+        } else {
+            divisor = 1_000
+            suffix = "K"
+        }
+        let count = String(format: "%.1f", Double(value) / divisor)
+        return "\(count)\(suffix)"
     }
 
     private func elapsedText(from start: Date?, now: Date = .now) -> String {
@@ -902,7 +1054,7 @@ struct ConversationView: View {
     private func usedItemsDisclosure(for message: ChatMessage) -> some View {
         let usedTools = message.usedTools.filter(NativeAgentHost.isExtensionTool)
         if !message.usedSkills.isEmpty || !usedTools.isEmpty {
-            DisclosureGroup {
+            StillDisclosureGroup {
                 VStack(alignment: .leading, spacing: 7) {
                     if !message.usedSkills.isEmpty {
                         Text(AppCopy.text("conversation.skills"))
@@ -938,7 +1090,7 @@ struct ConversationView: View {
     @ViewBuilder
     private func thinkingDisclosure(for message: ChatMessage) -> some View {
         if let thinking = message.thinking, !thinking.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            DisclosureGroup {
+            StillDisclosureGroup {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(thinking)
                         .font(.callout)
@@ -1010,8 +1162,19 @@ struct ConversationView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
+                        if message.summary?.attributionKnown == false {
+                            Label(AppCopy.text("conversation.filesAttributionUnknown"), systemImage: "questionmark.circle")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     Spacer(minLength: 8)
+                    Button { model.reviewPaneRequestID &+= 1 } label: {
+                        Image(systemName: "sidebar.right")
+                    }
+                    .buttonStyle(.plain)
+                    .help(KeyboardShortcutAction.review.title)
+                    .accessibilityLabel(KeyboardShortcutAction.review.title)
                     if message.summary?.undoAvailable == true {
                         Button {
                             model.undoTurn(messageID: message.id)
@@ -1023,10 +1186,8 @@ struct ConversationView: View {
                     }
                     if message.changedFiles.count > 3 {
                         Button {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                if expanded { expandedFileMessageIDs.remove(message.id) }
-                                else { expandedFileMessageIDs.insert(message.id) }
-                            }
+                            if expanded { expandedFileMessageIDs.remove(message.id) }
+                            else { expandedFileMessageIDs.insert(message.id) }
                         } label: {
                             Label(
                                 AppCopy.text(expanded ? "conversation.filesLess" : "conversation.viewChanges"),
@@ -1047,10 +1208,8 @@ struct ConversationView: View {
                     }
                     if message.changedFiles.count > 3 {
                         Button {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                if expanded { expandedFileMessageIDs.remove(message.id) }
-                                else { expandedFileMessageIDs.insert(message.id) }
-                            }
+                            if expanded { expandedFileMessageIDs.remove(message.id) }
+                            else { expandedFileMessageIDs.insert(message.id) }
                         } label: {
                             HStack(spacing: 6) {
                                 Text(expanded
@@ -1101,40 +1260,28 @@ struct ConversationView: View {
             }
         }
 
-        if let url, isAvailable {
-            Button {
-                NSWorkspace.shared.open(url)
-            } label: {
-                content
-            }
-            .buttonStyle(.plain)
-            .help(AppCopy.text("conversation.openFile"))
-            .accessibilityLabel(AppCopy.format("conversation.openFileNamed", file.path))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-        } else {
-            HStack(spacing: 8) {
-                content
-                Text(AppCopy.text("conversation.fileUnavailable"))
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-        }
-    }
-
-    private func changedFilesBinding(for id: String) -> Binding<Bool> {
-        Binding(
-            get: { expandedFileMessageIDs.contains(id) },
-            set: { expanded in
-                if expanded {
-                    expandedFileMessageIDs.insert(id)
-                } else {
-                    expandedFileMessageIDs.remove(id)
+        ChangedFileHoverPreview(file: file) {
+            if let url, isAvailable {
+                Button {
+                    NSWorkspace.shared.open(url)
+                } label: {
+                    content
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(AppCopy.format("conversation.openFileNamed", file.path))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+            } else {
+                HStack(spacing: 8) {
+                    content
+                    Text(AppCopy.text("conversation.fileUnavailable"))
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
             }
-        )
+        }
     }
 
     private func workspaceURL(for relativePath: String) -> URL? {
@@ -1164,89 +1311,81 @@ struct ConversationView: View {
     @ViewBuilder
     private func activitySummary(
         messages: ArraySlice<ChatMessage>,
-        completedAt: Date?,
-        isRunning: Bool,
-        usedSkills: [String]
+        isRunning: Bool
     ) -> some View {
-        if !messages.isEmpty {
-            let terminals = activityTerminalItems(messages)
-            PaginatedActivityDisclosure(items: terminals) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        if isRunning {
-                            TimelineView(.periodic(from: .now, by: 1)) { context in
-                                HStack(spacing: 8) {
-                                    ProgressView().controlSize(.small)
-                                    Text(liveStatusText(start: bridge.activeRunStartedAt, now: context.date, toolsRunning: true))
-                                    if let activeTool = messages.last(where: { $0.rawToolOutput == nil }) {
-                                        Text("·").foregroundStyle(.tertiary)
-                                        activityLabel(
-                                            for: ConversationActivityCategory(toolName: toolName(from: activeTool.text)),
-                                            running: true
-                                        )
-                                            .lineLimit(1)
-                                            .truncationMode(.middle)
-                                    }
-                                    if !bridge.activeUsedSkillIDs.isEmpty {
-                                        Text("·").foregroundStyle(.tertiary)
-                                        Text(AppCopy.format("conversation.using", bridge.activeUsedSkillIDs.joined(separator: ", ")))
-                                            .lineLimit(1)
-                                            .truncationMode(.middle)
+        // Harness plumbing (tool discovery, memory, plan) is noise to the user;
+        // it surfaces only when it fails.
+        let terminals = activityTerminalItems(messages).filter { !$0.isInternal || $0.isFailure }
+        if !messages.isEmpty && (isRunning || !terminals.isEmpty) {
+            VStack(alignment: .leading, spacing: 8) {
+                PaginatedActivityDisclosure(items: terminals) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            if isRunning {
+                                TimelineView(.periodic(from: .now, by: 1)) { context in
+                                    HStack(spacing: 8) {
+                                        HerNessLoadingAnimation(size: 24)
+                                        Text(liveStatusText(start: bridge.activeRunStartedAt, now: context.date, toolsRunning: true))
+                                        if let activeTool = messages.last(where: { $0.rawToolOutput == nil }) {
+                                            Text("·").foregroundStyle(.tertiary)
+                                            activityLabel(for: ConversationActivityCategory(toolName: toolName(from: activeTool.text)))
+                                                .lineLimit(1)
+                                                .truncationMode(.middle)
+                                            // A long build or test shows its own clock, so a quiet
+                                            // model never looks like a hung app.
+                                            if context.date.timeIntervalSince(activeTool.createdAt) >= 10 {
+                                                Text(elapsedText(from: activeTool.createdAt, now: context.date))
+                                                    .monospacedDigit()
+                                            }
+                                        }
+                                        if !bridge.activeUsedSkillIDs.isEmpty {
+                                            Text("·").foregroundStyle(.tertiary)
+                                            Text(AppCopy.format("conversation.using", bridge.activeUsedSkillIDs.joined(separator: ", ")))
+                                                .lineLimit(1)
+                                                .truncationMode(.middle)
+                                        }
                                     }
                                 }
-                            }
-                        } else {
-                            let summaries = activitySummaries(terminals)
-                            ForEach(Array(summaries.indices), id: \.self) { index in
-                                activityLabel(
-                                    for: summaries[index].category,
-                                    running: false,
-                                    failed: summaries[index].isFailure
-                                )
-                                if index < summaries.count - 1 {
-                                    Text("·").foregroundStyle(.tertiary)
-                                }
-                            }
-                            if !summaries.isEmpty {
-                                Text("·").foregroundStyle(.tertiary)
-                            }
-                            Text(activityDuration(messages, completedAt: completedAt))
-                            if !usedSkills.isEmpty {
-                                Text("·").foregroundStyle(.tertiary)
-                                Text(AppCopy.format("conversation.using", usedSkills.joined(separator: ", ")))
+                            } else {
+                                Text(activitySummaryText(terminals))
                                     .lineLimit(1)
-                                    .truncationMode(.middle)
+                                    .truncationMode(.tail)
+                                let failures = terminals.filter(\.isFailure).count
+                                if failures > 0 {
+                                    Text(AppCopy.format("conversation.activity.failedCount", failures))
+                                        .foregroundStyle(.red)
+                                }
                             }
                         }
-                        Spacer(minLength: 0)
-                    }
-                    .font(.callout)
+                        .font(.callout)
 
-                    if isRunning,
-                       let activeTool = messages.last(where: { $0.rawToolOutput == nil }),
-                       !activeTool.text.contains(AskUserTool.name) {
-                        let detail = activeToolDetail(activeTool.text)
-                        if !detail.isEmpty {
-                            Text(detail)
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .lineLimit(2)
-                                .truncationMode(.tail)
-                                .textSelection(.enabled)
+                        if isRunning,
+                           let activeTool = messages.last(where: { $0.rawToolOutput == nil }),
+                           !activeTool.text.contains(AskUserTool.name) {
+                            let detail = activeToolDetail(activeTool.text)
+                            if !detail.isEmpty {
+                                Text(detail)
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .lineLimit(2)
+                                    .truncationMode(.tail)
+                                    .textSelection(.enabled)
+                            }
                         }
                     }
+                } row: { item, _ in
+                    activityTerminalCard(item)
                 }
-            } row: { item, ordinal in
-                activityTerminalCard(item, ordinal: ordinal)
+                .foregroundStyle(.secondary)
+                .padding(.vertical, 6)
             }
-            .foregroundStyle(.secondary)
-            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    private func activityTerminalCard(_ item: ActivityTerminalItem, ordinal: Int) -> some View {
-        DisclosureGroup {
+    private func activityTerminalCard(_ item: ActivityTerminalItem) -> some View {
+        StillDisclosureGroup {
             VStack(alignment: .leading, spacing: 8) {
                 if let command = item.command {
                     HStack(alignment: .top, spacing: 8) {
@@ -1262,15 +1401,28 @@ struct ConversationView: View {
                 }
 
                 if let output = item.output ?? item.progressOutput, !output.isEmpty {
-                    ScrollView([.horizontal, .vertical]) {
-                        Text(output)
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(.primary)
-                            .textSelection(.enabled)
-                            .fixedSize(horizontal: true, vertical: false)
-                            .padding(10)
+                    let compactOutput = output.count <= 600 && output.split(whereSeparator: \.isNewline).count <= 8
+                    Group {
+                        if compactOutput {
+                            Text(output)
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(.primary)
+                                .textSelection(.enabled)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(10)
+                        } else {
+                            ScrollView([.horizontal, .vertical]) {
+                                Text(output)
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .foregroundStyle(.primary)
+                                    .textSelection(.enabled)
+                                    .fixedSize(horizontal: true, vertical: false)
+                                    .padding(10)
+                            }
+                            .frame(height: 220)
+                        }
                     }
-                    .frame(height: 220)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(nsColor: .textBackgroundColor).opacity(0.78), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .overlay {
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -1278,7 +1430,7 @@ struct ConversationView: View {
                     }
                 } else if item.isRunning {
                     HStack(spacing: 8) {
-                        ProgressView().controlSize(.small)
+                        HerNessLoadingAnimation(size: 18)
                         Text(AppCopy.text("conversation.working"))
                             .font(.callout)
                             .foregroundStyle(.secondary)
@@ -1289,48 +1441,51 @@ struct ConversationView: View {
             .padding(.leading, 26)
             .padding(.top, 8)
         } label: {
-            HStack(spacing: 9) {
-                Text(String(format: "%02d", ordinal))
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(.tertiary)
-                    .frame(width: 24, alignment: .trailing)
-
+            HStack(spacing: 8) {
                 Image(systemName: item.category.icon)
                     .font(.caption)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(item.isFailure ? Color.red : Color.secondary)
+                    .frame(width: 16)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.command ?? item.toolName)
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.primary)
+                Text(item.command ?? item.toolName)
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .layoutPriority(1)
+                if item.command == nil, let detail = item.detail {
+                    Text(detail)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
-                    if item.command != nil {
-                        Text(item.toolName)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Spacer(minLength: 8)
 
                 if item.isRunning {
-                    ProgressView().controlSize(.mini)
+                    HerNessLoadingAnimation(size: 14)
                 } else {
-                    Image(systemName: item.isFailure ? "xmark.circle.fill" : "checkmark.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(item.isFailure ? Color.red : Color.green)
+                    if item.isFailure {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                    // Instant tools need no clock; only slow ones earn one.
+                    if let end = item.completedAt, end.timeIntervalSince(item.startedAt) >= 1 {
+                        Text(elapsedText(from: item.startedAt, now: end))
+                            .font(.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(.tertiary)
+                            .help(end.formatted(date: .complete, time: .complete))
+                    }
                 }
-                messageTimestamp(item.completedAt ?? item.startedAt)
             }
             .contentShape(Rectangle())
         }
         .font(.callout)
-        .padding(10)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.62), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(Color.secondary.opacity(0.17), lineWidth: 1)
-        }
+        .padding(.vertical, 5)
+        .padding(.horizontal, 8)
     }
 
     private func activityTerminalItems(_ messages: ArraySlice<ChatMessage>) -> [ActivityTerminalItem] {
@@ -1342,30 +1497,45 @@ struct ConversationView: View {
                 pendingStart = message
                 continue
             }
+            // A finished tool row never changes; parsing its JSON arguments on every
+            // redraw was most of the transcript's per-frame cost during a run.
+            let cacheKey = "\(pendingStart?.id ?? "")|\(message.id)|\(output.utf8.count)"
+            if let cached = ActivityTerminalItem.finished[cacheKey] {
+                items.append(cached)
+                pendingStart = nil
+                continue
+            }
 
             let title = message.text.components(separatedBy: .newlines).first ?? message.text
-            let resolvedToolName = toolName(from: title)
             let startParts = pendingStart.map { runningToolParts($0.text) }
-            items.append(ActivityTerminalItem(
+            let (resolvedToolName, arguments) = unwrapInvoke(toolName(from: title), startParts?.command)
+            let item = ActivityTerminalItem(
                 id: message.id,
                 toolName: resolvedToolName,
                 command: resolvedToolName == "run_command" ? startParts?.command : nil,
+                detail: activityDetail(arguments),
                 output: output,
                 progressOutput: nil,
                 startedAt: pendingStart?.createdAt ?? message.createdAt,
                 completedAt: message.createdAt,
                 isFailure: title.hasPrefix("✕ ")
-            ))
+            )
+            // Bounded: rows hold tool output, so closed transcripts must not stay pinned in RAM.
+            if ActivityTerminalItem.finished.count > 600 { ActivityTerminalItem.finished.removeAll() }
+            ActivityTerminalItem.finished[cacheKey] = item
+            items.append(item)
             pendingStart = nil
         }
 
         if let pendingStart {
             let parts = runningToolParts(pendingStart.text)
             let title = pendingStart.text.components(separatedBy: .newlines).first ?? pendingStart.text
+            let (resolvedToolName, arguments) = unwrapInvoke(self.toolName(from: title), parts.command)
             items.append(ActivityTerminalItem(
                 id: pendingStart.id,
-                toolName: self.toolName(from: title),
+                toolName: resolvedToolName,
                 command: parts.command,
+                detail: activityDetail(arguments),
                 output: nil,
                 progressOutput: parts.progress,
                 startedAt: pendingStart.createdAt,
@@ -1377,26 +1547,56 @@ struct ConversationView: View {
         return items
     }
 
-    private func activitySummaries(_ items: [ActivityTerminalItem]) -> [ActivitySummaryEntry] {
-        var seen = Set<String>()
-        return items.compactMap { item in
-            let entry = ActivitySummaryEntry(category: item.category, isFailure: item.isFailure)
-            return seen.insert(entry.id).inserted ? entry : nil
+    /// invoke_tool is the deferred-tool gateway: show the tool it called, with that tool's arguments.
+    private func unwrapInvoke(_ name: String, _ raw: String?) -> (String, String?) {
+        guard name == DeferredToolSession.invokeName, let raw else { return (name, raw) }
+        if !raw.hasPrefix("{"), let space = raw.firstIndex(of: " ") {
+            return (String(raw[..<space]), String(raw[raw.index(after: space)...]))
         }
+        if let data = raw.data(using: .utf8),
+           let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+           let inner = object["name"] as? String {
+            return (inner, object["arguments"] as? String)
+        }
+        // Long arguments arrive clipped, so the JSON no longer parses; the name still leads.
+        if let match = raw.firstMatch(of: /"name"\s*:\s*"([^"]+)"/) { return (String(match.1), nil) }
+        return (name, nil)
     }
 
-    private func activityLabel(
-        for category: ConversationActivityCategory,
-        running: Bool,
-        failed: Bool = false
-    ) -> some View {
+    /// The one argument that says what a tool touched: path, pattern, query or URL.
+    private func activityDetail(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        guard let data = raw.data(using: .utf8),
+              let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            return raw.hasPrefix("{") ? nil : raw
+        }
+        for key in ["pattern", "query", "url", "path", "glob", "name"] {
+            if let value = object[key] as? String, !value.isEmpty { return value }
+        }
+        return nil
+    }
+
+    /// "Ran 4 commands · Read 2 files", categories in the order they first ran.
+    private func activitySummaryText(_ items: [ActivityTerminalItem]) -> String {
+        var order: [ConversationActivityCategory] = []
+        var counts: [ConversationActivityCategory: Int] = [:]
+        for item in items {
+            if counts[item.category] == nil { order.append(item.category) }
+            counts[item.category, default: 0] += 1
+        }
+        return order.map { category in
+            let count = counts[category] ?? 0
+            return AppCopy.format(category.countKey + (count == 1 ? ".one" : ".many"), count)
+        }
+        .joined(separator: " · ")
+    }
+
+    private func activityLabel(for category: ConversationActivityCategory) -> some View {
         HStack(spacing: 6) {
             Image(systemName: category.icon)
                 .font(.caption)
-                .foregroundStyle(failed ? Color.red : Color.accentColor.opacity(0.9))
-            Text(failed
-                ? AppCopy.format("conversation.activity.toolFailed", AppCopy.text(category.completedKey))
-                : AppCopy.text(running ? category.runningKey : category.completedKey))
+                .foregroundStyle(Color.accentColor.opacity(0.9))
+            Text(AppCopy.text(category.runningKey))
                 .foregroundStyle(.secondary)
         }
     }
@@ -1452,33 +1652,13 @@ struct ConversationView: View {
         return end
     }
 
-    private func activityDuration(
-        _ messages: ArraySlice<ChatMessage>,
-        completedAt: Date?
-    ) -> String {
-        guard let first = messages.first, let last = messages.last else { return "0s" }
-        let end = completedAt ?? last.createdAt
-        let seconds = max(1, Int(end.timeIntervalSince(first.createdAt).rounded()))
-        let formatter = DateComponentsFormatter()
-        formatter.unitsStyle = .abbreviated
-        formatter.zeroFormattingBehavior = .dropAll
-        formatter.allowedUnits = seconds >= 3600
-            ? [.hour, .minute]
-            : seconds >= 60 ? [.minute, .second] : [.second]
-        return formatter.string(from: TimeInterval(seconds)) ?? "\(seconds)s"
-    }
-
-    private func activityMetadata(
-        for turnID: String?,
-        in messages: [ChatMessage]
-    ) -> (skills: [String], tools: [String]) {
-        guard let turnID else { return ([], []) }
-        for message in messages.reversed() where message.turnID == turnID {
-            if !message.usedSkills.isEmpty || !message.usedTools.isEmpty {
-                return (message.usedSkills, message.usedTools)
-            }
-        }
-        return ([], [])
+    /// The card closes the turn: it sits on the turn's last message that carries
+    /// changed files, under the reply text, never above it.
+    private func shouldShowChangedFilesOnMessage(_ message: ChatMessage, in conversation: Conversation) -> Bool {
+        // Without files the disclosure is empty; skip the O(n) scan for every bubble.
+        guard !message.changedFiles.isEmpty else { return false }
+        guard let turnID = message.turnID else { return true }
+        return conversation.messages.last { $0.turnID == turnID && !$0.changedFiles.isEmpty }?.id == message.id
     }
 
     @ViewBuilder
@@ -1486,7 +1666,7 @@ struct ConversationView: View {
         VStack(alignment: .leading, spacing: 7) {
             switch media.kind {
             case .image:
-                if let image = NSImage(contentsOf: media.url) {
+                if let image = ImageFileCache.image(at: media.url) {
                     Image(nsImage: image)
                         .resizable()
                         .scaledToFit()
@@ -1503,7 +1683,7 @@ struct ConversationView: View {
                 } else {
                     missingMediaView
                 }
-            case .audio:
+            case .audio, .music:
                 if FileManager.default.fileExists(atPath: media.path) {
                     InlineAudioPlayer(url: media.url)
                 } else {
@@ -1556,73 +1736,81 @@ struct ConversationView: View {
     }
 
     @ViewBuilder
-    private func attachmentViews(_ attachments: [ChatAttachment]) -> some View {
-        ScrollView(.horizontal) {
-            HStack(alignment: .top, spacing: 10) {
-                ForEach(attachments) { attachment in
-                    Button {
-                        NSWorkspace.shared.open(attachment.url)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 0) {
-                            if attachment.kind == .image, let image = NSImage(contentsOf: attachment.url) {
-                                Image(nsImage: image)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 172, height: 96)
-                                    .clipped()
-                            } else {
-                                ZStack {
-                                    Color.accentColor.opacity(0.08)
-                                    Image(systemName: attachment.kind.systemImageName)
-                                        .font(.system(size: 30, weight: .regular))
-                                        .foregroundStyle(.secondary)
-                                }
-                                .frame(width: 172, height: 96)
-                            }
-                            HStack(spacing: 7) {
-                                Image(systemName: attachment.kind.systemImageName)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Text(attachment.name)
-                                    .lineLimit(1)
-                                    .font(.caption.weight(.medium))
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 9)
-                        }
-                        .frame(width: 172, alignment: .leading)
-                        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
-                        }
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    private func attachmentViews(_ attachments: [ChatAttachment], isUser: Bool = false) -> some View {
+        if isUser, attachments.count == 1, let attachment = attachments.first, attachment.kind == .image {
+            attachmentCard(attachment)
+                .frame(maxWidth: 600, alignment: .trailing)
+        } else {
+            ScrollView(.horizontal) {
+                HStack(alignment: .top, spacing: 10) {
+                    ForEach(attachments) { attachment in
+                        attachmentCard(attachment)
                     }
-                    .buttonStyle(.plain)
-                    .help(attachment.name)
-                    .accessibilityLabel(attachment.name)
                 }
+                .padding(.vertical, 2)
             }
-            .padding(.vertical, 2)
+            .scrollIndicators(.visible, axes: .horizontal)
+            .frame(maxWidth: 600, alignment: .leading)
         }
-        .scrollIndicators(.visible, axes: .horizontal)
-        .frame(maxWidth: 600, alignment: .leading)
     }
 
-    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
-        for provider in providers {
-            provider.loadDataRepresentation(forTypeIdentifier: UTType.fileURL.identifier) { data, _ in
-                guard let data, let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
-                Task { @MainActor in model.addDraftAttachments([url]) }
+    private func attachmentCard(_ attachment: ChatAttachment) -> some View {
+        Button {
+            NSWorkspace.shared.open(attachment.url)
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                if attachment.kind == .image, let image = ImageFileCache.image(at: attachment.url) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 172, height: 96)
+                        .clipped()
+                } else {
+                    ZStack {
+                        Color.accentColor.opacity(0.08)
+                        Image(systemName: attachment.kind.systemImageName)
+                            .font(.system(size: 30, weight: .regular))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(width: 172, height: 96)
+                }
+                HStack(spacing: 7) {
+                    Image(systemName: attachment.kind.systemImageName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(attachment.name)
+                        .lineLimit(1)
+                        .font(.caption.weight(.medium))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 9)
             }
+            .frame(width: 172, alignment: .leading)
+            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        return !providers.isEmpty
+        .buttonStyle(.plain)
+        .help(attachmentHoverText(attachment))
+        .accessibilityLabel(attachment.name)
+    }
+
+    private func attachmentHoverText(_ attachment: ChatAttachment) -> String {
+        [
+            attachment.name,
+            "\(attachment.kind.rawValue) · \(attachment.mimeType)",
+            attachment.url.path,
+        ].joined(separator: "\n")
     }
 
     @ViewBuilder
     private func pendingPromptBubble(_ prompt: PendingPrompt, in conversation: Conversation) -> some View {
-        if prompt.mode == .queue {
+        let isStarting = bridge.isStartingPrompt(prompt.id, in: conversation.id)
+        if prompt.mode == .queue && !isStarting {
             pendingBubble(prompt, in: conversation)
                 .contentShape(Rectangle())
                 .onDrag {
@@ -1646,39 +1834,45 @@ struct ConversationView: View {
     }
 
     private func pendingBubble(_ prompt: PendingPrompt, in conversation: Conversation) -> some View {
-        HStack {
+        let isStarting = bridge.isStartingPrompt(prompt.id, in: conversation.id)
+        return HStack {
             Spacer(minLength: 80)
             VStack(alignment: .leading, spacing: 7) {
                 HStack(spacing: 7) {
-                    Image(systemName: prompt.mode == .steer ? "bolt.fill" : "clock.fill")
-                        .font(.caption.weight(.semibold))
-                    if prompt.mode == .queue {
-                        Image(systemName: "line.3.horizontal")
+                    if isStarting {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: prompt.mode == .steer ? "bolt.fill" : "clock.fill")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                    Text(prompt.mode == .steer
-                        ? AppCopy.text("conversation.priorityInstruction")
-                        : AppCopy.text("conversation.queuedMessage"))
-                        .font(.caption.weight(.semibold))
-                    Text(prompt.mode == .steer
-                        ? AppCopy.text("conversation.interrupting")
-                        : conversation.pendingPlanMessageID != nil && prompt.approvedPlanID == nil
-                            ? AppCopy.text("queue.waitingForPlan")
-                            : AppCopy.text("conversation.waiting"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    if prompt.mode == .queue {
-                        Spacer(minLength: 8)
-                        Button {
-                            bridge.steerPendingPrompt(prompt.id, in: conversation.id)
-                        } label: {
-                            Label(AppCopy.text("conversation.steer"), systemImage: "arrow.turn.up.right")
+                        if prompt.mode == .queue {
+                            Image(systemName: "line.3.horizontal")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .accessibilityLabel(AppCopy.text("conversation.steer"))
-                        .help(AppCopy.text("conversation.steer"))
+                        Text(prompt.mode == .steer
+                            ? AppCopy.text("conversation.priorityInstruction")
+                            : AppCopy.text("conversation.queuedMessage"))
+                            .font(.caption.weight(.semibold))
+                        Text(prompt.mode == .steer
+                            ? AppCopy.text("conversation.interrupting")
+                            : conversation.pendingPlanMessageID != nil && prompt.approvedPlanID == nil
+                                ? AppCopy.text("queue.waitingForPlan")
+                                : AppCopy.text("conversation.waiting"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if prompt.mode == .queue {
+                            Spacer(minLength: 8)
+                            Button {
+                                bridge.steerPendingPrompt(prompt.id, in: conversation.id)
+                            } label: {
+                                Label(AppCopy.text("conversation.steer"), systemImage: "arrow.turn.up.right")
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .accessibilityLabel(AppCopy.text("conversation.steer"))
+                            .help(AppCopy.text("conversation.steer"))
+                        }
                     }
                 }
                 if !prompt.text.isEmpty {
@@ -1692,10 +1886,10 @@ struct ConversationView: View {
             }
             .padding(.horizontal, 15)
             .padding(.vertical, 12)
-            .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(Color.accentColor.opacity(isStarting ? 0.12 : 0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.accentColor.opacity(0.22), style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
+                    .stroke(Color.accentColor.opacity(0.22), style: StrokeStyle(lineWidth: 1, dash: isStarting ? [] : [5, 4]))
             }
             .frame(maxWidth: 600, alignment: .leading)
         }
@@ -1717,7 +1911,7 @@ struct ConversationView: View {
         } else {
             targetID = last.id
         }
-        // dispatch next runloop so LazyVStack layout is committed before scrolling
+        // dispatch next runloop so the transcript layout is committed before scrolling
         DispatchQueue.main.async {
             guard let selected = model.selected,
                   selected.id == conversation.id,
@@ -1729,25 +1923,58 @@ struct ConversationView: View {
         }
     }
 
-    /// Start of the visible transcript page, moved back so a tool activity group
-    /// is never split across pages.
-    private func firstVisibleMessageIndex(in messages: [ChatMessage]) -> Int {
-        var start = pagedStartIndex.map { min($0, max(0, messages.count - 1)) }
-            ?? max(0, messages.count - Self.messagePageSize)
-        while start > 0, messages[start].kind == .tool, messages[start - 1].kind == .tool {
-            start -= 1
+    /// Coalesce per-token transcript updates into at most one nonanimated scroll
+    /// every 120 ms. Animated scrolling for every text change can repeatedly
+    /// trigger expensive transcript layout work.
+    private func scheduleStreamingScroll(
+        using proxy: ScrollViewProxy,
+        conversation: Conversation
+    ) {
+        guard streamingScrollTask == nil else { return }
+        let conversationID = conversation.id
+        streamingScrollTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            defer { streamingScrollTask = nil }
+            guard !Task.isCancelled,
+                  model.selected?.id == conversationID,
+                  let selected = model.selected,
+                  selected.running else { return }
+            scrollToLast(using: proxy, conversation: selected, animated: false)
         }
-        return start
     }
 
-    private func loadOlderMessages(_ conversation: Conversation, firstVisible: Int, proxy: ScrollViewProxy) {
-        guard firstVisible > 0 else { return }
-        let anchor = conversation.messages[firstVisible]
-        let anchorID = anchor.kind == .tool ? "activity-\(anchor.id)" : anchor.id
-        pagedStartIndex = max(0, firstVisible - Self.messagePageSize)
-        DispatchQueue.main.async {
-            guard model.selected?.id == conversation.id else { return }
-            proxy.scrollTo(anchorID, anchor: .top)
+    private func loadOlderMessages(_ conversation: Conversation) {
+        guard !isLoadingOlderMessages,
+              conversation.hasOlderTranscriptMessages,
+              !conversation.messages.isEmpty else { return }
+        let requestID = UUID()
+        olderPageLoadID = requestID
+        isLoadingOlderMessages = true
+        let messages = conversation.messages
+        if let first = messages.first {
+            if first.kind == .tool {
+                let firstNonTool = messages.firstIndex { $0.kind != .tool }
+                if let firstNonTool {
+                    olderPageAnchorID = messages[firstNonTool].id
+                } else {
+                    olderPageAnchorID = "activity-\(first.id)"
+                }
+            } else {
+                olderPageAnchorID = first.id
+            }
+        }
+        Task { @MainActor in
+            let loaded = await bridge.loadOlderMessages(
+                in: conversation.id,
+                limit: Self.messagePageSize
+            )
+            guard olderPageLoadID == requestID,
+                  model.selected?.id == conversation.id else { return }
+            if !loaded {
+                olderPageAnchorID = nil
+            }
+            olderPageLoadID = nil
+            isLoadingOlderMessages = false
         }
     }
 
@@ -1786,7 +2013,7 @@ struct ConversationView: View {
         isPanePickerVisible = false
         isNewPaneMenuPresented = false
         guard let url = bridge.connection?.endpoint else { return }
-        NSWorkspace.shared.open(url)
+        SafeURL.openWeb(url)
     }
 
     private func openTerminal(createNew: Bool) {
@@ -1814,24 +2041,72 @@ struct ConversationView: View {
 
 }
 
+/// Positions the transcript helpers need, computed once per message list instead of
+/// once per bubble: each was an O(n) scan, so a long run's transcript cost O(n²) per redraw.
+@MainActor
+private enum TranscriptIndex {
+    struct Value {
+        var position: [String: Int] = [:]
+        var latestUserIndex: Int?
+        var latestUserID: String?
+        var intermediateReplyIDs: Set<String> = []
+    }
+
+    // ponytail: one slot; only the selected transcript renders. Keyed on shape, not content:
+    // a message's id and kind never change, and edits, rewinds and paging change the shape.
+    private static var key = ""
+    private static var value = Value()
+
+    static func of(_ conversation: Conversation) -> Value {
+        let messages = conversation.messages
+        let key = "\(conversation.id)|\(messages.count)|\(messages.first?.id ?? "")|\(messages.last?.id ?? "")"
+        if key == self.key { return value }
+        var next = Value()
+        // Walking backwards: was an assistant or plan reply seen before the next user message?
+        var laterReply = false
+        for (index, message) in messages.enumerated().reversed() {
+            next.position[message.id] = index
+            switch message.kind {
+            case .user:
+                if next.latestUserIndex == nil {
+                    next.latestUserIndex = index
+                    next.latestUserID = message.id
+                }
+                laterReply = false
+            case .assistant, .plan:
+                if message.kind == .assistant, laterReply { next.intermediateReplyIDs.insert(message.id) }
+                laterReply = true
+            default:
+                break
+            }
+        }
+        self.key = key
+        value = next
+        return next
+    }
+}
+
 private struct ActivityTerminalItem: Identifiable {
     let id: String
     let toolName: String
     let command: String?
+    let detail: String?
     let output: String?
     let progressOutput: String?
     let startedAt: Date
     let completedAt: Date?
     let isFailure: Bool
 
+    /// Parsed finished rows, keyed by start id, result id and output size.
+    @MainActor static var finished: [String: ActivityTerminalItem] = [:]
+
     var isRunning: Bool { completedAt == nil }
     var category: ConversationActivityCategory { ConversationActivityCategory(toolName: toolName) }
-}
-
-private struct ActivitySummaryEntry: Identifiable {
-    let category: ConversationActivityCategory
-    let isFailure: Bool
-    var id: String { "\(category.rawValue)-\(isFailure ? "failed" : "done")" }
+    /// Harness plumbing the user never asked for.
+    var isInternal: Bool {
+        [DeferredToolSession.searchName, DeferredToolSession.outputName, DeferredToolSession.planName,
+         RecallTool.name, RememberTool.name, PlanStepsTool.name].contains(toolName)
+    }
 }
 
 /// Expanding tool activity is isolated from the transcript view and reveals a
@@ -1843,7 +2118,6 @@ private struct PaginatedActivityDisclosure<Label: View, Row: View>: View {
     let label: Label
     let row: (ActivityTerminalItem, Int) -> Row
 
-    @State private var isExpanded = false
     @State private var visibleCount: Int
 
     init(
@@ -1858,8 +2132,8 @@ private struct PaginatedActivityDisclosure<Label: View, Row: View>: View {
     }
 
     var body: some View {
-        DisclosureGroup(isExpanded: $isExpanded) {
-            VStack(alignment: .leading, spacing: 8) {
+        StillDisclosureGroup(trailingChevron: true) {
+            VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(items.prefix(visibleCount).enumerated()), id: \.element.id) { index, item in
                     row(item, index + 1)
                 }
@@ -1871,7 +2145,7 @@ private struct PaginatedActivityDisclosure<Label: View, Row: View>: View {
                     .padding(.leading, 26)
                 }
             }
-            .padding(.leading, 22)
+            .padding(.leading, 4)
             .padding(.top, 8)
         } label: {
             label
@@ -1911,15 +2185,8 @@ private enum ConversationActivityCategory: String, Hashable {
         }
     }
 
-    var completedKey: String {
-        switch self {
-        case .filesRead: return "conversation.activity.filesRead"
-        case .filesChanged: return "conversation.activity.filesChanged"
-        case .commands: return "conversation.activity.commandsRun"
-        case .web: return "conversation.activity.webSearch"
-        case .other: return "conversation.activity.otherDone"
-        }
-    }
+    /// Prefix of the ".one" / ".many" count keys in the collapsed summary.
+    var countKey: String { "conversation.activity.count.\(rawValue)" }
 
     var runningKey: String {
         switch self {
@@ -1929,6 +2196,63 @@ private enum ConversationActivityCategory: String, Hashable {
         case .web: return "conversation.activity.webSearching"
         case .other: return "conversation.activity.otherRunning"
         }
+    }
+}
+
+/// A full-width header button makes each disclosure easy to collapse from its title.
+/// State changes stay instant in the lazy transcript, and collapsed content is not built.
+struct StillDisclosureGroup<Label: View, Content: View>: View {
+    /// Quiet one-line summaries read as "Ran 4 commands ›", chevron after the text.
+    var trailingChevron = false
+    @ViewBuilder let content: () -> Content
+    @ViewBuilder let label: () -> Label
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                var transaction = Transaction(animation: nil)
+                transaction.disablesAnimations = true
+                withTransaction(transaction) { isExpanded.toggle() }
+            } label: {
+                HStack(spacing: trailingChevron ? 5 : 8) {
+                    if !trailingChevron { chevron.frame(width: 14) }
+                    if trailingChevron {
+                        label()
+                        chevron
+                        Spacer(minLength: 0)
+                    } else {
+                        label()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if isExpanded { content() }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var chevron: some View {
+        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Hover state of one bubble. Held on the transcript it re-rendered every visible
+/// message each time the pointer crossed a bubble edge.
+private struct HoverScope<Content: View>: View {
+    @ViewBuilder let content: (Bool) -> Content
+    @State private var hovering = false
+
+    var body: some View {
+        content(hovering).onHover { hovering = $0 }
     }
 }
 
@@ -1944,10 +2268,17 @@ private struct LiveReplyView: View {
             // the entire accumulated Markdown document for every stream batch
             // gets quadratic as the reply grows; the completed bubble is
             // rendered as Markdown once the run stores it in the transcript.
-            Text(verbatim: text)
-                .font(.body)
-                .lineSpacing(3)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            // One Text per paragraph: finished paragraphs keep their cached
+            // layout, so each batch measures and draws only the last one.
+            let paragraphs = text.components(separatedBy: "\n\n")
+            VStack(alignment: .leading, spacing: 20) {
+                ForEach(paragraphs.indices, id: \.self) { index in
+                    Text(verbatim: paragraphs[index])
+                        .font(.body)
+                        .lineSpacing(3)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         } else if let thinking = bridge.liveThinking(for: conversationID), !thinking.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
                 Label(AppCopy.text("conversation.thinking"), systemImage: "brain.head.profile")
@@ -1976,5 +2307,85 @@ private extension View {
         } else {
             self
         }
+    }
+}
+
+/// Precomputed previews are shown in a native popover after a short hover delay.
+/// The card reads only the bounded diff stored with the message.
+private struct ChangedFileHoverPreview<Content: View>: View {
+    let file: ChangedFile
+    @ViewBuilder let content: () -> Content
+    @State private var isHoveringRow = false
+    @State private var isHoveringCard = false
+    @State private var isPresented = false
+
+    var body: some View {
+        content()
+            .onHover { hovering in
+                isHoveringRow = hovering
+                schedulePresentationUpdate(delay: hovering ? 0.28 : 0.18)
+            }
+            .popover(isPresented: $isPresented, arrowEdge: .leading) {
+                ChangedFileDiffPreviewCard(file: file)
+                    .onHover { hovering in
+                        isHoveringCard = hovering
+                        schedulePresentationUpdate(delay: hovering ? 0.05 : 0.18)
+                    }
+            }
+    }
+
+    private func schedulePresentationUpdate(delay: TimeInterval) {
+        guard let preview = file.preview, !preview.isEmpty else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            isPresented = isHoveringRow || isHoveringCard
+        }
+    }
+}
+
+private struct ChangedFileDiffPreviewCard: View {
+    let file: ChangedFile
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Text(file.path)
+                    .font(.system(.callout, design: .monospaced))
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if file.addedLines >= 0, file.deletedLines >= 0 {
+                    Text("+\(file.addedLines)")
+                        .foregroundStyle(.green)
+                        .font(.system(.callout, design: .monospaced).monospacedDigit())
+                    Text("−\(file.deletedLines)")
+                        .foregroundStyle(.red)
+                        .font(.system(.callout, design: .monospaced).monospacedDigit())
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+
+            Divider()
+
+            ScrollView([.horizontal, .vertical]) {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array((file.preview ?? "").split(separator: "\n", omittingEmptySubsequences: false).enumerated()), id: \.offset) { row in
+                        let line = String(row.element)
+                        Text(line.isEmpty ? " " : line)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(line.hasPrefix("+") ? Color.green : line.hasPrefix("−") ? Color.red : Color.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 1)
+                            .background(line.hasPrefix("+") ? Color.green.opacity(0.10) : line.hasPrefix("−") ? Color.red.opacity(0.10) : Color.clear)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxWidth: 720, maxHeight: 460, alignment: .topLeading)
+        }
+        .frame(width: 660, alignment: .topLeading)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.secondary.opacity(0.22), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }

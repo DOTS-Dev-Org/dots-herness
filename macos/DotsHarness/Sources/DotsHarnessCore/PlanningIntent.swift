@@ -92,7 +92,7 @@ public enum PlanningIntent {
 extension NativeAgentHost {
     /// Asks the configured model whether an ambiguous message requests a plan.
     /// Any failure or a slow answer counts as "no", so a send is never blocked.
-    func classifyPlanIntent(_ text: String) async -> Bool {
+    public func classifyPlanIntent(_ text: String) async -> Bool {
         if let classifier = planIntentClassifierOverride { return await classifier(text) }
         let messages = [
             AgentMessage(role: .system, content: """

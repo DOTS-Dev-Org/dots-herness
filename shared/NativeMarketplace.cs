@@ -41,7 +41,22 @@ public sealed record NativeMarketplaceEntry(
     double CategoryConfidence = 0,
     string RiskLevel = "unknown",
     IReadOnlyList<string>? Permissions = null,
-    string ModerationStatus = "pending_review");
+    string ModerationStatus = "pending_review",
+    string? PublishedAt = null,
+    int Downloads = 0,
+    int Likes = 0,
+    bool Featured = false);
+
+/// <summary>A project scaffold listing as the catalog serves it.</summary>
+public sealed record MarketStarter(
+    string Id,
+    string Prompt,
+    string? Title = null,
+    string? Detail = null,
+    string? Category = null,
+    int Downloads = 0,
+    int Likes = 0,
+    bool Featured = false);
 
 public sealed record NativeMarketplaceIndex(
     int Version,
@@ -272,8 +287,9 @@ public sealed class MarketplaceForkStore
 /// </summary>
 public sealed class NativeMarketplaceClient : ObservableObject
 {
-    public const string RegistryURL = "https://dots.net.tr/harness/registry.json";
-    public const string CommunityRegistryURL = "https://dots.net.tr/harness/community-registry.json";
+    // Read from the API host: the dots.net.tr/harness route does not reach the worker.
+    public const string RegistryURL = MarketplaceSession.DefaultApiBase + "harness/registry.json";
+    public const string CommunityRegistryURL = MarketplaceSession.DefaultApiBase + "harness/community-registry.json";
     private const string OfficialPublisherKey = "5BjXLUajc3JkmWmNHiBg5kmJoTFx2OVSe7BetYJEtCI=";
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(60) };
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -293,6 +309,110 @@ public sealed class NativeMarketplaceClient : ObservableObject
     private IReadOnlyList<NativeMarketplaceEntry> _communityEntries = Array.Empty<NativeMarketplaceEntry>();
     private IReadOnlyList<MarketplaceOwnedPlugin> _ownedPlugins = Array.Empty<MarketplaceOwnedPlugin>();
     private string? _ownedPluginsError;
+    private IReadOnlyList<MarketStarter> _starters = Array.Empty<MarketStarter>();
+    // Liked ids by kind: "plugin", "skill", "starter".
+    private Dictionary<string, HashSet<string>> _liked = new(StringComparer.Ordinal);
+
+    public IReadOnlyList<MarketStarter> Starters { get => _starters; private set => SetProperty(ref _starters, value); }
+    public bool IsLiked(string kind, string id) => _liked.TryGetValue(kind, out var ids) && ids.Contains(id);
+
+    /// <summary>One line of listing metrics, shared by plugins, skills and starters.</summary>
+    public static string MetricsLine(int downloads, int likes, bool featured) =>
+        (featured ? "★ Önerilen · " : string.Empty) + $"↓ {downloads:N0} · ♥ {likes:N0}";
+
+    /// <summary>Curated listings first, then by downloads: the order of the macOS "Önerilenler" strip.</summary>
+    public static IEnumerable<T> FeaturedFirst<T>(IEnumerable<T> items, Func<T, bool> featured, Func<T, int> downloads) =>
+        items.OrderByDescending(featured).ThenByDescending(downloads);
+
+    public async Task RefreshLikesAsync(CancellationToken cancellationToken = default)
+    {
+        if (_session is null || !_session.IsSignedIn)
+        {
+            _liked = new(StringComparer.Ordinal);
+            return;
+        }
+        var response = await _session.AuthorizedDataAsync("api/marketplace/me/likes", cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccess) return;
+        var payload = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(response.Data, JsonOptions) ?? new();
+        HashSet<string> Ids(string key) => new(payload.GetValueOrDefault(key) ?? new List<string>(), StringComparer.Ordinal);
+        _liked = new(StringComparer.Ordinal) { ["plugin"] = Ids("plugin_ids"), ["skill"] = Ids("skill_ids"), ["starter"] = Ids("starter_ids") };
+    }
+
+    /// <summary>Likes or unlikes a plugin, skill or starter and returns the server's count.</summary>
+    public async Task<int> SetLikedAsync(string kind, string id, bool liked, CancellationToken cancellationToken = default)
+    {
+        if (_session is null || !_session.IsSignedIn)
+            throw new InvalidOperationException("Sign in to your HerNess account before liking a listing.");
+        var path = kind == "plugin"
+            ? $"api/marketplace/plugins/{Uri.EscapeDataString(id)}/like"
+            : $"api/marketplace/catalog/{Uri.EscapeDataString(kind)}/{Uri.EscapeDataString(id)}/like";
+        var response = await _session.AuthorizedDataAsync(
+            path, HttpMethod.Post, JsonSerializer.SerializeToUtf8Bytes(new { liked }), "application/json", cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccess)
+            throw new InvalidOperationException($"Marketplace like failed (HTTP {(int)response.StatusCode}): {response.Text}");
+        var likes = JsonSerializer.Deserialize<Dictionary<string, int>>(response.Data, JsonOptions)?.GetValueOrDefault("likes") ?? 0;
+        if (!_liked.TryGetValue(kind, out var ids)) _liked[kind] = ids = new HashSet<string>(StringComparer.Ordinal);
+        if (liked) ids.Add(id); else ids.Remove(id);
+        Entries = Entries.Select(entry => entry.Id == id && kind == "plugin" ? entry with { Likes = likes } : entry).ToList();
+        CommunityEntries = CommunityEntries.Select(entry => entry.Id == id && kind == "plugin" ? entry with { Likes = likes } : entry).ToList();
+        Starters = Starters.Select(starter => starter.Id == id && kind == "starter" ? starter with { Likes = likes } : starter).ToList();
+        return likes;
+    }
+
+    /// <summary>Raw skills or starters catalog from the API host; null when offline.</summary>
+    public async Task<byte[]?> CatalogDataAsync(string name, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, MarketplaceSession.DefaultApiBase + $"harness/{name}.json");
+            request.Headers.UserAgent.ParseAdd("DotsHarness");
+            using var response = await Http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            return response.IsSuccessStatusCode ? await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false) : null;
+        }
+        catch (Exception error) when (error is HttpRequestException or TaskCanceledException) { return null; }
+    }
+
+    private string StartersCachePath => Path.Combine(_paths.Root, "marketplace-starters.json");
+
+    /// <summary>
+    /// The starters to show: the server's catalog when it answered, the shipped
+    /// one otherwise, so the Starters tab is never empty.
+    /// </summary>
+    public IReadOnlyList<MarketStarter> EffectiveStarters => ProjectStarters.Effective(Starters);
+
+    /// <summary>Loads project starters from the server, falling back to the last copy this device saw.</summary>
+    public async Task RefreshStartersAsync(CancellationToken cancellationToken = default)
+    {
+        var data = await CatalogDataAsync("starters", cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (data is null && File.Exists(StartersCachePath)) data = await File.ReadAllBytesAsync(StartersCachePath, cancellationToken).ConfigureAwait(false);
+            if (data is null) return;
+            Starters = JsonSerializer.Deserialize<List<MarketStarter>>(data, JsonOptions) ?? new List<MarketStarter>();
+            await File.WriteAllBytesAsync(StartersCachePath, data, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception error) when (error is JsonException or IOException or UnauthorizedAccessException) { }
+    }
+
+    /// <summary>Reports one skill install or starter use; returns the server's count, null when offline.</summary>
+    public async Task<int?> RecordCatalogDownloadAsync(string kind, string id, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                MarketplaceSession.DefaultApiBase + $"harness/catalog/{Uri.EscapeDataString(kind)}/{Uri.EscapeDataString(id)}/download");
+            request.Headers.UserAgent.ParseAdd("DotsHarness");
+            using var response = await Http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode) return null;
+            var body = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+            var downloads = JsonSerializer.Deserialize<Dictionary<string, int>>(body, JsonOptions)?.GetValueOrDefault("downloads");
+            if (downloads is { } count && kind == "starter")
+                Starters = Starters.Select(starter => starter.Id == id ? starter with { Downloads = count } : starter).ToList();
+            return downloads;
+        }
+        catch (Exception error) when (error is HttpRequestException or TaskCanceledException or JsonException) { return null; }
+    }
 
     public IReadOnlyList<NativeMarketplaceEntry> Entries { get => _entries; private set => SetProperty(ref _entries, value); }
     public IReadOnlyList<NativeMarketplaceEntry> CommunityEntries { get => _communityEntries; private set => SetProperty(ref _communityEntries, value); }

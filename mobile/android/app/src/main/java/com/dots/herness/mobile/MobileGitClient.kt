@@ -31,26 +31,31 @@ class MobileGitClient(private val root: () -> File, private val token: () -> Str
 
     suspend fun execute(operation: String, arguments: Map<String, String> = emptyMap()): MobileGitResult = withContext(Dispatchers.IO) {
         val workspace = root().canonicalFile
-        val requestedPath = arguments["repoPath"]
-        val repoPath = if (requestedPath == null) {
-            workspace.path
-        } else {
-            val value = requestedPath
-            val candidate = File(value).let { if (it.isAbsolute) it else File(workspace, value) }.canonicalFile
-            if (candidate.path != workspace.path && !candidate.path.startsWith(workspace.path + File.separator)) {
-                return@withContext MobileGitResult(1, "Git path is outside the workspace.")
+        MobileWorkspaceWriteLease.withLease(workspace) {
+            if (root().canonicalFile != workspace) {
+                return@withLease MobileGitResult(1, "The selected workspace changed while Git was waiting. Retry the operation.")
             }
-            candidate.path
+            val requestedPath = arguments["repoPath"]
+            val repoPath = if (requestedPath == null) {
+                workspace.path
+            } else {
+                val value = requestedPath
+                val candidate = File(value).let { if (it.isAbsolute) it else File(workspace, value) }.canonicalFile
+                if (candidate.path != workspace.path && !candidate.path.startsWith(workspace.path + File.separator)) {
+                    return@withLease MobileGitResult(1, "Git path is outside the workspace.")
+                }
+                candidate.path
+            }
+            NativeGit.execute(
+                operation,
+                repoPath,
+                arguments["argument"].orEmpty(),
+                arguments["second"].orEmpty(),
+                token(),
+                arguments["authorName"] ?: "HerNess Mobile",
+                arguments["authorEmail"] ?: "mobile@herness.local",
+            )
         }
-        NativeGit.execute(
-            operation,
-            repoPath,
-            arguments["argument"].orEmpty(),
-            arguments["second"].orEmpty(),
-            token(),
-            arguments["authorName"] ?: "HerNess Mobile",
-            arguments["authorEmail"] ?: "mobile@herness.local",
-        )
     }
 
     suspend fun clone(repositoryUrl: String, destination: File, branch: String) {

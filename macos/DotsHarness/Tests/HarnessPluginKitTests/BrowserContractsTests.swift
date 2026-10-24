@@ -7,9 +7,9 @@ final class BrowserContractsTests: XCTestCase {
         XCTAssertEqual(BrowserBackendPolicy.resolveUserRule("siteyi aç"), .unknown)
         XCTAssertEqual(BrowserBackendPolicy.resolveUserRule("mevcut Chrome profilimi kullan"), .extension)
         XCTAssertEqual(BrowserBackendPolicy.resolveUserRule("izole managed browser kullan"), .managed)
-        XCTAssertEqual(BrowserBackendPolicy.parseConfirmation("Managed isolated browser"), .managed)
-        XCTAssertEqual(BrowserBackendPolicy.parseConfirmation("Existing Chrome profile"), .extension)
-        XCTAssertEqual(BrowserBackendPolicy.parseConfirmation("release 12"), .unknown)
+        XCTAssertEqual(BrowserBackendPolicy.resolveUserRule("bunu Safari'de aç"), .safari)
+        XCTAssertEqual(BrowserBackendPolicy.resolveUserRule("open it in Chrome"), .extension)
+        XCTAssertEqual(BrowserBackendPolicy.resolveUserRule("safarihane sayfasını aç"), .unknown)
         XCTAssertEqual(BrowserBackend.unknown.rawValue, "Unknown")
         XCTAssertEqual(BrowserCleanupStatus.pendingRecovery.rawValue, "PendingRecovery")
     }

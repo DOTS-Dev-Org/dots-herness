@@ -54,6 +54,7 @@ public sealed class LegalWindow : Window
         CanResize = true;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         FlowDirection = model.IsRightToLeft ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+        Background = TryBrush("PanelBackground");
         Content = Build();
         RenderBody();
     }
@@ -61,6 +62,9 @@ public sealed class LegalWindow : Window
     private Control Build()
     {
         var root = new StackPanel { Spacing = 12, Margin = new Thickness(20) };
+
+        if (_gate)
+            root.Children.Add(BuildStartupControls());
 
         root.Children.Add(new TextBlock
         {
@@ -96,31 +100,37 @@ public sealed class LegalWindow : Window
 
         if (_gate)
         {
-            root.Children.Add(new TextBlock
+            var documents = new StackPanel { Spacing = 8 };
+            documents.Children.Add(new TextBlock
             {
                 Text = _model.L("legal.termsTab"),
                 FontWeight = FontWeight.SemiBold,
             });
-            root.Children.Add(new Border
+            documents.Children.Add(new Border
             {
                 BorderThickness = new Thickness(1),
                 BorderBrush = TryBrush("BorderSubtle"),
                 CornerRadius = new CornerRadius(8),
                 Child = new ScrollViewer { Content = _body, MaxHeight = 320 },
             });
-            AddConsentControls(root);
-            root.Children.Add(new TextBlock
+            documents.Children.Add(new TextBlock
             {
                 Text = _model.L("legal.privacyTab"),
                 FontWeight = FontWeight.SemiBold,
                 Margin = new Thickness(0, 8, 0, 0),
             });
-            root.Children.Add(new Border
+            documents.Children.Add(new Border
             {
                 BorderThickness = new Thickness(1),
                 BorderBrush = TryBrush("BorderSubtle"),
                 CornerRadius = new CornerRadius(8),
                 Child = new ScrollViewer { Content = _privacyBody, MaxHeight = 320 },
+            });
+            root.Children.Add(new Expander
+            {
+                Header = _model.L("legal.title"),
+                Content = documents,
+                IsExpanded = false,
             });
         }
         else
@@ -163,6 +173,85 @@ public sealed class LegalWindow : Window
         }
 
         return new ScrollViewer { Content = root };
+    }
+
+    private Control BuildStartupControls()
+    {
+        var controls = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Spacing = 6,
+        };
+        var language = new ComboBox
+        {
+            MinWidth = 132,
+            MaxWidth = 190,
+            Background = Brushes.Transparent,
+            BorderBrush = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(8, 6),
+            VerticalContentAlignment = VerticalAlignment.Center,
+        };
+        foreach (var item in AppLanguages.All)
+            language.Items.Add(item == AppLanguage.System ? _model.L("language.system") : item.NativeName());
+        language.SelectedIndex = Array.IndexOf(AppLanguages.All.ToArray(), _model.Language);
+        language.SelectionChanged += async (_, _) =>
+        {
+            if (language.SelectedIndex >= 0 && language.SelectedIndex < AppLanguages.All.Count)
+                await ChangeLanguageAsync(AppLanguages.All[language.SelectedIndex]);
+        };
+        controls.Children.Add(language);
+
+        var themeGlyph = new TextBlock
+        {
+            Text = IsCurrentThemeDark() ? "☼" : "☾",
+            FontSize = 18,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var theme = new Button
+        {
+            Content = themeGlyph,
+            Background = Brushes.Transparent,
+            BorderBrush = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(8),
+        };
+        ToolTip.SetTip(theme, _model.L("settings.theme"));
+        theme.Click += (_, _) =>
+        {
+            var next = IsCurrentThemeDark()
+                ? AppModel.AppearanceKind.Light
+                : AppModel.AppearanceKind.Dark;
+            _model.SetAppearance(next);
+            (Application.Current as App)?.ApplyAppearance(next);
+            Background = TryBrush("PanelBackground");
+            Content = Build();
+            RenderBody();
+        };
+        controls.Children.Add(theme);
+        return controls;
+    }
+
+    private async Task ChangeLanguageAsync(AppLanguage language)
+    {
+        if (_model.Language == language) return;
+        _model.SetAppLanguage(language);
+        Title = _model.L("legal.title");
+        FlowDirection = _model.IsRightToLeft ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+        Content = Build();
+        RenderBody();
+        await _model.LoadLegalAsync();
+        Content = Build();
+        RenderBody();
+    }
+
+    private bool IsCurrentThemeDark()
+    {
+        if (_model.Appearance == AppModel.AppearanceKind.Dark) return true;
+        if (_model.Appearance == AppModel.AppearanceKind.Light) return false;
+        return TryBrush("PanelBackground") is SolidColorBrush brush
+            && brush.Color.R + brush.Color.G + brush.Color.B < 384;
     }
 
     private void RenderBody()

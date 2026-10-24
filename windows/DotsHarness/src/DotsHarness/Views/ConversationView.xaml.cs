@@ -24,6 +24,11 @@ public partial class ConversationView : UserControl
     private TerminalSession? _terminal;
     private string? _terminalWorkspace;
     private readonly System.Windows.Threading.DispatcherTimer _workingTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly System.Windows.Threading.DispatcherTimer _loadingAnimationTimer = new() { Interval = TimeSpan.FromMilliseconds(220) };
+    private bool _composerLoadingAnimationVisible;
+    private bool _leaseWaitingLoadingAnimationVisible;
+    private int _loadingFrame;
+    private static readonly BitmapImage[] LoadingFrames = Enumerable.Range(0, 4).Select(CreateLoadingFrame).ToArray();
     private Conversation? _observedConversation;
     private INotifyCollectionChanged? _observedMessages;
     private INotifyCollectionChanged? _observedPending;
@@ -50,11 +55,17 @@ public partial class ConversationView : UserControl
         _workingTimer.Tick += (_, _) =>
         {
             BindWorkingIndicator();
+            BindProviderLimitNotice(Model?.Selected);
             if (++_gitTick % 15 == 0)
             {
                 BindGitBar();
                 BindCacheResumeNotice();
             }
+        };
+        _loadingAnimationTimer.Tick += (_, _) =>
+        {
+            _loadingFrame = (_loadingFrame + 1) % LoadingFrames.Length;
+            ApplyLoadingFrame();
         };
         DraftBox.TextChanged += (_, _) =>
         {
@@ -62,10 +73,17 @@ public partial class ConversationView : UserControl
             BindFollowUpSuggestion();
         };
         Scroller.ScrollChanged += OnScrollChanged;
+        Scroller.SizeChanged += OnTranscriptSizeChanged;
         Loaded += (_, _) => { _workingTimer.Start(); Bind(); };
         Unloaded += (_, _) =>
         {
             _workingTimer.Stop();
+            _loadingAnimationTimer.Stop();
+            _composerLoadingAnimationVisible = false;
+            _leaseWaitingLoadingAnimationVisible = false;
+            ComposerLoadingAnimation.Visibility = Visibility.Collapsed;
+            LeaseWaitingLoadingAnimation.Visibility = Visibility.Collapsed;
+            LeaseWaitingLoadingAnimation.Source = null;
             StopVoiceInput();
             StopTerminal();
             ObserveConversation(null);
@@ -165,20 +183,41 @@ public partial class ConversationView : UserControl
 
     private void OnScrollChanged(object sender, ScrollChangedEventArgs e)
     {
-        if (!ReferenceEquals(e.OriginalSource, Scroller) || _loadingOlder || _messageTail is not { HasOlder: true } tail) return;
+        if (!ReferenceEquals(e.OriginalSource, Scroller) || _loadingOlder) return;
         var scrolledNearTop = e.VerticalChange < 0 && e.VerticalOffset < 200;
-        var cannotScroll = e.ExtentHeight <= e.ViewportHeight && e.ViewportHeight > 0;
-        if (!scrolledNearTop && !cannotScroll) return;
-        _loadingOlder = true;
-        var extent = Scroller.ExtentHeight;
-        var offset = Scroller.VerticalOffset;
-        tail.LoadOlder();
-        // After layout: keep the message under the cursor in place while older ones appear above it.
-        Dispatcher.BeginInvoke(new Action(() =>
+        if (!scrolledNearTop) return;
+        if (_messageTail is { HasOlder: true } tail)
         {
-            Scroller.ScrollToVerticalOffset(offset + Scroller.ExtentHeight - extent);
-            _loadingOlder = false;
-        }), System.Windows.Threading.DispatcherPriority.Loaded);
+            _loadingOlder = true;
+            var extent = Scroller.ExtentHeight;
+            var offset = Scroller.VerticalOffset;
+            tail.LoadOlder();
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                Scroller.ScrollToVerticalOffset(offset + Scroller.ExtentHeight - extent);
+                _loadingOlder = false;
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
+            return;
+        }
+        if (Model?.Bridge.Selected is not { HasOlderMessages: true } conversation) return;
+        _loadingOlder = true;
+        var storeExtent = Scroller.ExtentHeight;
+        var storeOffset = Scroller.VerticalOffset;
+        _ = LoadOlderFromStoreAsync(conversation, storeOffset, storeExtent);
+    }
+
+    private async Task LoadOlderFromStoreAsync(Conversation conversation, double offset, double extent)
+    {
+        try
+        {
+            if (Model is null || !await Model.Bridge.LoadOlderMessagesAsync(conversation.Id)) return;
+            _messageTail?.LoadOlder();
+            Bind();
+            Dispatcher.BeginInvoke(new Action(() =>
+                Scroller.ScrollToVerticalOffset(offset + Scroller.ExtentHeight - extent)),
+                System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+        finally { _loadingOlder = false; }
     }
 
     private void TryScrollToEndIfNearBottom()
@@ -203,9 +242,16 @@ public partial class ConversationView : UserControl
             System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
+    // Banners and a taller composer shrink the transcript without moving its offset, which slides the last message out of view.
+    private void OnTranscriptSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (e.NewSize.Height < e.PreviousSize.Height) QueueScrollToEndAfterLayout();
+    }
+
     private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         ObserveTailMessage(_observedConversation);
+        Dispatcher.BeginInvoke(new Action(BindPlan));
         QueueScrollToEndIfNearBottom();
     }
 
@@ -224,7 +270,13 @@ public partial class ConversationView : UserControl
             QueueScrollToEndAfterLayout();
         }
         else if (e.PropertyName is nameof(ChatMessage.Text) or nameof(ChatMessage.Streaming))
+        {
+            if (e.PropertyName == nameof(ChatMessage.Streaming) && _observedTailMessage?.Streaming == false)
+                Dispatcher.BeginInvoke(new Action(BindPlan));
             QueueScrollToEndIfNearBottom();
+        }
+        else if (e.PropertyName == nameof(ChatMessage.RawToolOutput))
+            Dispatcher.BeginInvoke(new Action(BindPlan));
     }
 
     private void ObserveConversation(Conversation? conversation)
@@ -310,6 +362,7 @@ public partial class ConversationView : UserControl
         ContextUsageProgress.Visibility = contextWindow > 0 ? Visibility.Visible : Visibility.Collapsed;
         ContextUsageProgress.Value = contextWindow > 0 ? Math.Clamp((double)contextTokens / contextWindow, 0, 1) : 0;
         BindCacheResumeNotice();
+        BindProviderLimitNotice(conversation);
         BindWorkingIndicator();
         TerminalButton.Content = Model.L("conversation.terminal");
         ModelPicker.ToolTip = Model.L("conversation.model");
@@ -386,9 +439,11 @@ public partial class ConversationView : UserControl
         SkillSuggestionBanner.Visibility = suggestion is not null ? Visibility.Visible : Visibility.Collapsed;
         if (suggestion is not null)
         {
-            SkillSuggestionTitle.Text = $"Suggested skill: {suggestion.DraftName}";
-            SkillSuggestionDescription.Text = suggestion.DraftDescription;
+            SkillSuggestionTitle.Text = suggestion.CardTitle;
+            SkillSuggestionDescription.Text = suggestion.CardDescription;
         }
+        DismissSkillSuggestionButton.Content = Model.L("skill.suggestion.dismiss");
+        AcceptSkillSuggestionButton.Content = Model.L("skill.suggestion.create");
         AcceptFollowUpSuggestionButton.Content = Model.L("access.accept");
         DismissFollowUpSuggestionButton.Content = Model.L("vision.notNow");
         BindFollowUpSuggestion();
@@ -408,6 +463,7 @@ public partial class ConversationView : UserControl
         BindContextOverflow();
         BindQuestion();
         BindQueue();
+        BindPlan();
         var gitWorkspace = Model.WorkspacePath;
         if (!string.Equals(_boundGitWorkspace, gitWorkspace, StringComparison.Ordinal))
         {
@@ -472,7 +528,7 @@ public partial class ConversationView : UserControl
         var count = tokens < 1_000
             ? tokens.ToString("N0", CultureInfo.CurrentCulture)
             : tokens < 1_000_000
-                ? $"{tokens / 1_000.0:0.0}k"
+                ? $"{tokens / 1_000.0:0.0}K"
                 : $"{tokens / 1_000_000.0:0.0}M";
         return Model?.L("conversation.processedTokensCount", count) ?? count;
     }
@@ -539,8 +595,11 @@ public partial class ConversationView : UserControl
                 model.Router.ContextRouteIdentityFor(model.SelectedModelID, conversation.StickyAccountId),
                 StringComparison.Ordinal);
         var expiredTokens = routeMatches
-            ? conversation?.CacheSession?.ExpiredLargePrefixTokens(DateTimeOffset.UtcNow)
+            ? conversation?.CacheSession?.ExpiredLargePrefixTokens(DateTimeOffset.UtcNow,
+                others: model!.Conversations.Select(item => item.CacheSession).OfType<NativeCacheSession>())
             : null;
+        // A local model costs nothing; the loss is prefill time.
+        var localCache = expiredTokens is not null && conversation?.CacheSession?.Events.LastOrDefault()?.Local == true;
         // Every line names a reason the next request costs more than the last one.
         var notices = new List<string>();
         if (model is not null && conversation is not null)
@@ -557,17 +616,61 @@ public partial class ConversationView : UserControl
             var window = routeParts.Length >= 4
                 ? model.Router.ContextWindowFor(routeParts[^1], routeParts[1])
                 : model.Router.ContextWindowFor(model.SelectedModelID);
-            if (expiredTokens is not null) notices.Add(model.L("conversation.cacheExpired.notice"));
+            if (localCache) notices.Add(model.L("conversation.cacheLocal.notice"));
+            else if (expiredTokens is not null) notices.Add(model.L("conversation.cacheExpired.notice"));
             else if (window > 0 && conversation.LastContextInputTokens > window * 0.9)
                 notices.Add(model.L("conversation.contextFull.notice"));
         }
 
         CacheResumeWarning.Visibility = notices.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
-        CacheResumeInfoButton.Visibility = expiredTokens is null ? Visibility.Collapsed : Visibility.Visible;
+        CacheResumeInfoButton.Visibility = expiredTokens is null || localCache ? Visibility.Collapsed : Visibility.Visible;
         CacheResumeText.Text = string.Join("\n", notices);
         CacheResumeInfoText.Text = model?.L("conversation.cacheExpired.explanation") ?? "";
         CacheResumeInfoButton.ToolTip = model?.L("conversation.cacheExpired.infoTitle");
         if (expiredTokens is null) CacheResumeInfoPopup.IsOpen = false;
+    }
+
+    private void BindProviderLimitNotice(Conversation? conversation)
+    {
+        var model = Model;
+        if (model is null || conversation?.CanContinue != true
+            || conversation.Continuation is not { Reason: ContinuationPauseReason.ProviderLimit } continuation)
+        {
+            ProviderLimitWarning.Visibility = Visibility.Collapsed;
+            ProviderLimitTitle.Text = "";
+            ProviderLimitCountdown.Text = "";
+            return;
+        }
+
+        ProviderLimitTitle.Text = model.L("agent.providerLimitTitle");
+        var target = string.Join(" / ", new[] { continuation.Provider, continuation.Model }
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
+        var resetText = continuation.RetryAt is { } retryAt
+            ? model.L("usage.resetsIn", FormatLimitCountdown(retryAt, DateTimeOffset.UtcNow))
+            : model.L("usage.noLimitInfo");
+        ProviderLimitCountdown.Text = string.IsNullOrEmpty(target)
+            ? resetText
+            : $"{target} · {resetText}";
+        ProviderLimitWarning.Visibility = Visibility.Visible;
+        System.Windows.Automation.AutomationProperties.SetName(
+            ProviderLimitWarning,
+            $"{ProviderLimitTitle.Text}. {ProviderLimitCountdown.Text}");
+    }
+
+    private static string FormatLimitCountdown(DateTimeOffset retryAt, DateTimeOffset now)
+    {
+        var totalSeconds = Math.Max(0L, (long)Math.Ceiling((retryAt - now).TotalSeconds));
+        if (totalSeconds <= 10 * 60)
+        {
+            return $"{totalSeconds} s";
+        }
+
+        var totalMinutes = totalSeconds / 60;
+        var hours = totalMinutes / 60;
+        var minutes = totalMinutes % 60;
+        return hours > 0
+            ? string.Format(CultureInfo.InvariantCulture, "{0} h {1} min", hours, minutes)
+            : string.Format(CultureInfo.InvariantCulture, "{0} min", totalMinutes);
     }
 
     private void OnCacheResumeInfo(object sender, RoutedEventArgs e)
@@ -578,6 +681,7 @@ public partial class ConversationView : UserControl
     private void BindWorkingIndicator()
     {
         var conversation = Model?.Selected;
+        SetComposerLoadingAnimationVisible(conversation?.Running == true);
         if (conversation?.Running != true || conversation.RunStartedAt is not { } started)
         {
             WorkingIndicator.Visibility = Visibility.Collapsed;
@@ -587,7 +691,11 @@ public partial class ConversationView : UserControl
 
         var elapsed = FormatElapsed(DateTimeOffset.UtcNow - started);
         var skills = Model!.Bridge.ActiveUsedSkills;
-        var status = LiveStatus(elapsed, conversation.Messages.LastOrDefault()?.Kind == ChatKind.Tool);
+        var last = conversation.Messages.LastOrDefault();
+        var status = LiveStatus(elapsed, last?.Kind == ChatKind.Tool);
+        // A long build or test shows its own clock, so a quiet model never looks like a hung app.
+        if (last is { Kind: ChatKind.Tool, RawToolOutput: null } && DateTimeOffset.UtcNow - last.CreatedAt >= TimeSpan.FromSeconds(10))
+            status += " · " + FormatElapsed(DateTimeOffset.UtcNow - last.CreatedAt);
         WorkingIndicator.Text = skills.Count == 0
             ? status
             : $"{status} · {string.Join(", ", skills)}";
@@ -595,7 +703,54 @@ public partial class ConversationView : UserControl
         System.Windows.Automation.AutomationProperties.SetName(WorkingIndicator, WorkingIndicator.Text);
     }
 
-    /// <summary>"2m 16s · 1.4k tokens · Running tools…"</summary>
+    private void SetComposerLoadingAnimationVisible(bool visible)
+    {
+        _composerLoadingAnimationVisible = visible;
+        ComposerLoadingAnimation.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        RefreshLoadingAnimation();
+    }
+
+    private void SetLeaseWaitingLoadingAnimationVisible(bool visible)
+    {
+        _leaseWaitingLoadingAnimationVisible = visible;
+        LeaseWaitingLoadingAnimation.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        RefreshLoadingAnimation();
+    }
+
+    private void RefreshLoadingAnimation()
+    {
+        var shouldAnimate = _composerLoadingAnimationVisible || _leaseWaitingLoadingAnimationVisible;
+        if (shouldAnimate && !_loadingAnimationTimer.IsEnabled)
+        {
+            _loadingFrame = 0;
+            ApplyLoadingFrame();
+            _loadingAnimationTimer.Start();
+        }
+        else if (!shouldAnimate)
+        {
+            _loadingAnimationTimer.Stop();
+        }
+    }
+
+    private void ApplyLoadingFrame()
+    {
+        var frame = LoadingFrames[_loadingFrame];
+        if (_composerLoadingAnimationVisible) ComposerLoadingAnimation.Source = frame;
+        if (_leaseWaitingLoadingAnimationVisible) LeaseWaitingLoadingAnimation.Source = frame;
+    }
+
+    private static BitmapImage CreateLoadingFrame(int frame)
+    {
+        var image = new BitmapImage();
+        image.BeginInit();
+        image.UriSource = new Uri($"pack://application:,,,/DotsHarness;component/Resources/HerNessLoaderFrame{frame}.png", UriKind.Absolute);
+        image.CacheOption = BitmapCacheOption.OnLoad;
+        image.EndInit();
+        image.Freeze();
+        return image;
+    }
+
+    /// <summary>"2m 16s · 1.4K tokens · Running tools…"</summary>
     private string LiveStatus(string elapsed, bool toolsRunning)
     {
         var parts = new List<string> { elapsed };
@@ -714,6 +869,7 @@ public partial class ConversationView : UserControl
         {
             ConflictBar.Visibility = Visibility.Visible;
             LeaseWaitingBar.Visibility = Visibility.Collapsed;
+            SetLeaseWaitingLoadingAnimationVisible(false);
             ConflictTitle.Text = model.L("conflict.banner.title");
             ConflictBody.Text = model.L("conflict.banner.body", conflict.Path, conflict.HolderTitle, conflict.HeldSeconds);
             ConflictKeepWaitingButton.Content = model.L("conflict.banner.keepWaiting");
@@ -729,6 +885,7 @@ public partial class ConversationView : UserControl
         ConflictBar.Visibility = Visibility.Collapsed;
         var waiting = model?.Bridge.WaitingOnLease;
         LeaseWaitingBar.Visibility = waiting is null ? Visibility.Collapsed : Visibility.Visible;
+        SetLeaseWaitingLoadingAnimationVisible(waiting is not null);
         LeaseWaitingText.Text = waiting is null
             ? ""
             : model!.L("conflict.waiting", waiting.ConversationTitle, waiting.Label);
@@ -976,8 +1133,14 @@ public partial class ConversationView : UserControl
         EffortResetButton.ToolTip = Model.L("modelPicker.reset");
         ModelListHeader.Text = "‹  " + (Model.Router.Models.Count == 0 ? Model.L("modelPicker.noModel") : Model.L("modelPicker.selectModel"));
         EffortTitleButton.ToolTip = Model.L("modelPicker.selectModel");
-        UsageModeButton.Content = Model.UsageMode == AgentUsageMode.Economy ? "Economy" : "Standard";
-        UsageModeButton.ToolTip = "Toggle response token economy";
+        UsageModeButton.Content = Model.UsageMode == AgentUsageMode.Economy
+            ? Model.L("modelPicker.economy")
+            : Model.L("modelPicker.standard");
+        UsageModeButton.ToolTip = Model.L("conversation.toggleResponseEconomy");
+        var supportsFast = Model.Router.SupportsFast(selected);
+        FastModeButton.Visibility = supportsFast ? Visibility.Visible : Visibility.Collapsed;
+        FastModeButton.Content = (Model.Router.FastMode ? "⚡ " : "") + Model.L(Model.Router.FastMode ? "modelPicker.fast" : "modelPicker.standard");
+        FastModeButton.ToolTip = Model.L("modelPicker.speed");
         var pickerItems = Model.Router.Models.Select(id =>
         {
             var connection = Model.Router.Connections.FirstOrDefault(item => item.Active && item.Models.Contains(id, StringComparer.Ordinal))
@@ -985,8 +1148,12 @@ public partial class ConversationView : UserControl
             var providerKey = connection?.Provider ?? "";
             return new ModelPickerItem(id, RouterCatalog.LabelFor(providerKey), providerKey);
         }).ToList();
-        ModelList.ItemsSource = pickerItems;
-        ModelList.SelectedItem = pickerItems.FirstOrDefault(item => string.Equals(item.Model, selected, StringComparison.Ordinal));
+        // Every model notification lands here. Swapping in an equal list would tear
+        // down and rebuild each row of an open picker, so keep the bound one.
+        if (ModelList.ItemsSource is not List<ModelPickerItem> boundItems || !boundItems.SequenceEqual(pickerItems))
+            ModelList.ItemsSource = boundItems = pickerItems;
+        var selectedItem = boundItems.FirstOrDefault(item => string.Equals(item.Model, selected, StringComparison.Ordinal));
+        if (!Equals(ModelList.SelectedItem, selectedItem)) ModelList.SelectedItem = selectedItem;
         EffortTrack.IsEnabled = hasEfforts;
         EffortTrack.Opacity = hasEfforts ? 1 : 0.45;
         DrawEffortTrack();
@@ -1031,6 +1198,13 @@ public partial class ConversationView : UserControl
     private void OnEffortReset(object sender, RoutedEventArgs e)
     {
         Model?.SetEffort("");
+        RefreshModelPicker();
+    }
+
+    private void OnFastMode(object sender, RoutedEventArgs e)
+    {
+        if (Model is null) return;
+        Model.SetFast(!Model.Router.FastMode);
         RefreshModelPicker();
     }
 
@@ -1123,11 +1297,49 @@ public partial class ConversationView : UserControl
     private void OnDrop(object sender, DragEventArgs e)
     {
         DropHint.Visibility = Visibility.Collapsed;
-        if (Model is not null && e.Data.GetData(DataFormats.FileDrop) is string[] paths)
+        var droppedPaths = e.Data.GetData(DataFormats.FileDrop) switch
         {
-            Model.AddDraftAttachments(paths);
-        }
+            string[] paths => paths,
+            StringCollection paths => paths.Cast<string>().ToArray(),
+            _ => Array.Empty<string>(),
+        };
+        if (Model is not null && droppedPaths.Length > 0) Model.AddDraftAttachments(droppedPaths);
         e.Handled = true;
+    }
+
+    /// <summary>The composer's "+" menu: one line per action, with its shortcut on the trailing side.</summary>
+    private void OnAddMenu(object sender, RoutedEventArgs e)
+    {
+        if (Model is not { } model) return;
+        var menu = new ContextMenu { PlacementTarget = AddButton, Placement = System.Windows.Controls.Primitives.PlacementMode.Top };
+        void Add(string glyph, string key, Action action, string? gesture = null)
+        {
+            var item = new MenuItem
+            {
+                Header = model.L(key),
+                InputGestureText = gesture,
+                Icon = new TextBlock { Text = glyph, FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets") },
+            };
+            item.Click += (_, _) => action();
+            menu.Items.Add(item);
+        }
+        Add("\uE723", "attachment.files", ChooseFiles, "Ctrl+U");
+        Add("\uE8B7", "attachment.project", ChooseProject);
+        Add("\uE71B", "settings.mcpServers", () => (Window.GetWindow(this) as MainWindow)?.ShowSettings("mcp"));
+        Add("\uEA86", "settings.plugins", () => (Window.GetWindow(this) as MainWindow)?.ShowSettings("plugins"));
+        menu.IsOpen = true;
+    }
+
+    private void ChooseFiles()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog { Multiselect = true };
+        if (dialog.ShowDialog(Window.GetWindow(this)) == true) Model?.AddDraftAttachments(dialog.FileNames);
+    }
+
+    private void ChooseProject()
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog();
+        if (dialog.ShowDialog(Window.GetWindow(this)) == true) Model?.AddProject(dialog.FolderName);
     }
 
     private void OnRemoveAttachment(object sender, RoutedEventArgs e)
@@ -1364,6 +1576,60 @@ public partial class ConversationView : UserControl
         };
         button.Click += click;
         return button;
+    }
+
+    /// <summary>Live checklist from the agent's latest update_plan, pinned above the composer.</summary>
+    private void BindPlan()
+    {
+        PlanRows.Children.Clear();
+        CompletedPlanRows.Children.Clear();
+        var steps = Model?.Selected is { } conversation ? PlanStepsTool.CurrentSteps(conversation.Messages) : Array.Empty<PlanStep>();
+        var selected = Model?.Selected;
+        var transcript = selected?.Messages.ToList() ?? new List<ChatMessage>();
+        var planName = PlanStepsTool.Name;
+        var latestPlanEventIndex = transcript.FindLastIndex(message => message.Kind == ChatKind.Tool
+            && (message.Text.StartsWith("→ " + planName, StringComparison.Ordinal)
+                || message.Text.StartsWith("✓ " + planName, StringComparison.Ordinal)
+                || message.Text.StartsWith("✕ " + planName, StringComparison.Ordinal)));
+        var latestPlanResultIndex = transcript.FindLastIndex(message => message.Kind == ChatKind.Tool
+            && message.Text.StartsWith("✓ " + planName, StringComparison.Ordinal)
+            && message.RawToolOutput is not null);
+        var lastToolIndex = transcript.FindLastIndex(message => message.Kind == ChatKind.Tool);
+        var lastAssistantIndex = transcript.FindLastIndex(message => message.Kind == ChatKind.Assistant && !message.Streaming);
+        var completed = selected is not null
+            && steps.Count > 0
+            && !selected.Running
+            && selected.Continuation is null
+            && selected.PendingPrompts.Count == 0
+            && latestPlanEventIndex >= 0
+            && latestPlanEventIndex == latestPlanResultIndex
+            && lastAssistantIndex > lastToolIndex;
+        PlanBar.Visibility = steps.Count > 0 && !completed ? Visibility.Visible : Visibility.Collapsed;
+        CompletedPlanSummary.Visibility = completed ? Visibility.Visible : Visibility.Collapsed;
+        if (Model is null || steps.Count == 0) return;
+        var rows = completed ? CompletedPlanRows : PlanRows;
+        rows.Children.Add(new TextBlock
+        {
+            Text = completed
+                ? $"✓ {Model.L("conversation.plan")} · {steps.Count}/{steps.Count}"
+                : $"{Model.L("conversation.plan")} · {steps.Count(step => step.Status == "done")}/{steps.Count}",
+            FontWeight = FontWeights.SemiBold,
+            FontSize = completed ? 11 : 12,
+            Margin = new Thickness(0, 0, 0, completed ? 3 : 6),
+        });
+        foreach (var step in steps)
+        {
+            var row = new TextBlock
+            {
+                Text = (completed ? "✓  " : step.Status switch { "done" => "✓  ", "in_progress" => "◌  ", _ => "○  " }) + step.Title,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, completed ? 0 : 1, 0, completed ? 0 : 1),
+                FontWeight = step.Status == "in_progress" ? FontWeights.SemiBold : FontWeights.Normal,
+                FontSize = completed ? 11 : 12,
+            };
+            row.SetResourceReference(TextBlock.ForegroundProperty, completed || step.Status == "pending" ? "TextSecondary" : "TextPrimary");
+            rows.Children.Add(row);
+        }
     }
 
     /// <summary>"1 message queued  text" rows above the composer; each with send-now, edit and remove.</summary>
@@ -1632,6 +1898,12 @@ public partial class ConversationView : UserControl
             e.Handled = true;
             return;
         }
+        if (e.Key == Key.U && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            ChooseFiles();
+            e.Handled = true;
+            return;
+        }
         if (e.Key != Key.Enter) return;
         var steer = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
         if (steer || !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
@@ -1893,7 +2165,9 @@ public sealed class ContextCompactionVisibility : IValueConverter
 {
     public static readonly ContextCompactionVisibility Instance = new();
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
-        value is ChatMessage { ActivityCode: "context_compacted_auto" } ? Visibility.Visible : Visibility.Collapsed;
+        value is ChatMessage { ActivityCode: "context_compacted_auto" or "context_compacted" }
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }
 
@@ -1901,7 +2175,9 @@ public sealed class ContextCompactionLabel : IValueConverter
 {
     public static readonly ContextCompactionLabel Instance = new();
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
-        LocalizationService.Current.Get("conversation.contextCompactedAuto");
+        LocalizationService.Current.Get(value is ChatMessage { ActivityCode: "context_compacted" }
+            ? "status.contextCompacted"
+            : "conversation.contextCompactedAuto");
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }
 

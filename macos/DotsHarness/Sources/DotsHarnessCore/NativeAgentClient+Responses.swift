@@ -185,118 +185,11 @@ extension NativeAgentClient {
         if trimmed.hasPrefix("{") || trimmed.hasPrefix("[") {
             return try response(from: JSONCodec.parse(data))
         }
-        var finalResponse: JSONValue?
-        var textAcc = ""
-        var thinkingAcc = ""
-        var callOrder: [String] = []
-        var calls: [String: (name: String, args: String)] = [:]
-        var providerItems: [JSONObject] = []
-
-        for rawLine in text.split(separator: "\n", omittingEmptySubsequences: false) {
-            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard line.hasPrefix("data:") else { continue }
-            let payload = line.dropFirst(5).trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !payload.isEmpty, payload != "[DONE]",
-                  let event = try? JSONCodec.parse(Data(payload.utf8)) else { continue }
-            switch event["type"]?.string ?? "" {
-            case "response.output_text.delta":
-                textAcc += event["delta"]?.string ?? ""
-            case "response.reasoning_text.delta":
-                thinkingAcc += event["delta"]?.string ?? ""
-            case "response.completed", "response.incomplete":
-                finalResponse = event["response"]
-            case "response.output_item.done":
-                guard let item = event["item"]?.object else { break }
-                providerItems.append(item)
-                switch item["type"]?.string {
-                case "function_call":
-                    let id = item["call_id"]?.string ?? item["id"]?.string ?? UUID().uuidString
-                    if calls[id] == nil { callOrder.append(id) }
-                    calls[id] = (item["name"]?.string ?? "", item["arguments"]?.string ?? "{}")
-                case "reasoning":
-                    if case .array(let blocks) = item["content"] {
-                        let contentThinking = blocks.compactMap { $0["text"]?.string }.joined()
-                        if !contentThinking.isEmpty && thinkingAcc.isEmpty {
-                            thinkingAcc = contentThinking
-                        }
-                    }
-                case "message" where textAcc.isEmpty:
-                    // No text deltas arrived (some models emit the message whole).
-                    if case .array(let blocks) = item["content"] {
-                        textAcc = blocks.compactMap { $0["text"]?.string }.joined()
-                    }
-                default:
-                    break
-                }
-            case "response.failed", "error":
-                let message = event["message"]?.string
-                    ?? event["error"]?["message"]?.string
-                    ?? event["response"]?["error"]?["message"]?.string
-                    ?? "The Codex stream reported an error."
-                let status = event["status"]?.int
-                    ?? event["error"]?["status"]?.int
-                    ?? event["response"]?["status"]?.int
-                    ?? event["response"]?["error"]?["status"]?.int
-                    ?? 502
-                throw NativeAgentError(
-                    message,
-                    statusCode: status,
-                    isLimit: Self.limitKind(from: event, status: status) != nil
-                )
-            default:
-                break
-            }
+        var state = ResponseStreamState()
+        for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
+            _ = try state.consume(line: line)
         }
-
-        providerItems = mergeResponsesOutputItems(
-            streamed: providerItems,
-            terminalOutput: finalResponse?["output"]
-        )
-
-        let toolCalls = callOrder.compactMap { id in
-            calls[id].map { AgentToolCall(id: id, name: $0.name, arguments: $0.args) }
-        }
-        let usage = finalResponse?["usage"]?.object.map {
-            AgentUsage(
-                inputTokens: $0["input_tokens"]?.int
-                    ?? (($0["prompt_cache_hit_tokens"]?.int ?? 0) + ($0["prompt_cache_miss_tokens"]?.int ?? 0)),
-                outputTokens: $0["output_tokens"]?.int ?? 0,
-                cachedTokens: $0["input_tokens_details"]?["cached_tokens"]?.int
-                    ?? $0["prompt_cache_hit_tokens"]?.int,
-                cacheWriteTokens: $0["input_tokens_details"]?["cache_write_tokens"]?.int,
-                cacheMissTokens: $0["prompt_cache_miss_tokens"]?.int,
-                reasoningTokens: $0["output_tokens_details"]?["reasoning_tokens"]?.int
-                    ?? $0["completion_tokens_details"]?["reasoning_tokens"]?.int
-                    ?? $0["reasoning_tokens"]?.int
-                    ?? $0["thinking_tokens"]?.int
-            )
-        }
-
-        if textAcc.isEmpty, toolCalls.isEmpty, providerItems.isEmpty {
-            // Nothing in the stream — fall back to the terminal payload for
-            // backends that do populate `output` there.
-            if let finalResponse, case .array(let output) = finalResponse["output"], !output.isEmpty {
-                return try response(from: finalResponse)
-            }
-            if let reason = finalResponse?["incomplete_details"]?["reason"]?.string {
-                return AgentResponse(
-                    message: AgentMessage(role: .assistant, content: ""),
-                    usage: usage,
-                    incompleteReason: reason
-                )
-            }
-            throw NativeAgentError(AppCopy.text("agent.noMessage"))
-        }
-        let media = providerItems.flatMap { Self.mediaPayloads(from: .object($0)) }
-        return AgentResponse(
-            message: AgentMessage(role: .assistant, content: textAcc, thinking: thinkingAcc.isEmpty ? nil : thinkingAcc, toolCalls: toolCalls, providerItems: providerItems),
-            usage: usage,
-            media: media,
-            nativeCompactionApplied: providerItems.contains { $0["type"]?.string == "compaction" },
-            incompleteReason: finalResponse?["incomplete_details"]?["reason"]?.string,
-            providerResponseID: finalResponse?["id"]?.string,
-            cacheDiagnostics: AgentProviderCacheDiagnostics(value: finalResponse?["prompt_cache_diagnostics"])
-        )
+        return try state.response()
     }
 
     static func imageBase64FromResponse(_ data: Data) throws -> String {
@@ -326,15 +219,7 @@ extension NativeAgentClient {
                     ?? event["image_generation_call"]?["result"]?.string
                     ?? result
             case "response.failed", "error":
-                let message = event["message"]?.string
-                    ?? event["error"]?["message"]?.string
-                    ?? event["response"]?["error"]?["message"]?.string
-                    ?? "The image generation stream reported an error."
-                let status = event["status"]?.int
-                    ?? event["error"]?["status"]?.int
-                    ?? event["response"]?["status"]?.int
-                    ?? event["response"]?["error"]?["status"]?.int
-                    ?? 502
+                let (message, status) = NativeAgentClient.streamFailure(in: event, fallback: "The image generation stream reported an error.")
                 throw NativeAgentError(
                     message,
                     statusCode: status,
@@ -389,8 +274,11 @@ extension NativeAgentClient {
         let usage = payload["usageMetadata"]?.object.map {
             AgentUsage(
                 inputTokens: $0["promptTokenCount"]?.int ?? 0,
-                outputTokens: $0["candidatesTokenCount"]?.int ?? 0,
-                cachedTokens: $0["cachedContentTokenCount"]?.int
+                // Gemini bills thinking as output but reports it outside
+                // `candidatesTokenCount`; other routes already include it.
+                outputTokens: ($0["candidatesTokenCount"]?.int ?? 0) + ($0["thoughtsTokenCount"]?.int ?? 0),
+                cachedTokens: $0["cachedContentTokenCount"]?.int,
+                reasoningTokens: $0["thoughtsTokenCount"]?.int
             )
         }
         return AgentResponse(

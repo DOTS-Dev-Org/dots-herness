@@ -7,7 +7,7 @@ final class MobileStateStoreTests: XCTestCase {
 
     override func setUp() async throws {
         databaseURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("herness-state-(UUID().uuidString).sqlite")
+            .appendingPathComponent("herness-state-\(UUID().uuidString).sqlite")
     }
 
     override func tearDown() async throws {
@@ -36,6 +36,40 @@ final class MobileStateStoreTests: XCTestCase {
         XCTAssertEqual(reopened.recentEvents().count, 1)
     }
 
+    func testTranscriptPagesStartAtNewestTenAndWalkBackwards() {
+        let store = MobileStateStore(url: databaseURL)
+        let conversationID = store.startRun(mode: "agent", planMode: false, prompt: "message-00")
+        for index in 1..<25 {
+            store.appendMessage(conversationID: conversationID, role: "assistant", content: String(format: "message-%02d", index))
+        }
+
+        let latest = store.messagePage(conversationID: conversationID)
+        XCTAssertEqual(latest.messages.count, 10)
+        XCTAssertEqual(latest.messages.map(\.content), (15..<25).map { String(format: "message-%02d", $0) })
+        XCTAssertTrue(latest.hasOlder)
+
+        let middle = store.messagePage(conversationID: conversationID, beforeRowID: latest.beforeRowID)
+        XCTAssertEqual(middle.messages.map(\.content), (5..<15).map { String(format: "message-%02d", $0) })
+        XCTAssertTrue(middle.hasOlder)
+
+        let first = store.messagePage(conversationID: conversationID, beforeRowID: middle.beforeRowID)
+        XCTAssertEqual(first.messages.map(\.content), (0..<5).map { String(format: "message-%02d", $0) })
+        XCTAssertFalse(first.hasOlder)
+    }
+
+    func testPageLimitCountsConversationalMessagesOnly() {
+        let store = MobileStateStore(url: databaseURL)
+        let conversationID = store.startRun(mode: "agent", planMode: false, prompt: "apply 1 and 2")
+        store.appendMessage(conversationID: conversationID, role: "assistant", content: "on it")
+        for index in 0..<15 { store.appendMessage(conversationID: conversationID, role: "tool", content: "step \(index)") }
+        for _ in 0..<3 { store.appendMessage(conversationID: conversationID, role: "system", content: "timeout") }
+
+        let latest = store.messagePage(conversationID: conversationID)
+        XCTAssertEqual(latest.messages.count, 20)
+        XCTAssertEqual(latest.messages.first?.content, "apply 1 and 2")
+        XCTAssertFalse(latest.hasOlder)
+    }
+
     func testCredentialLikeContentIsRedactedBeforeSQLite() {
         let store = MobileStateStore(url: databaseURL)
         let conversationID = store.startRun(mode: "agent", planMode: false, prompt: "api_key=sk-proj-1234567890123456")
@@ -46,6 +80,26 @@ final class MobileStateStoreTests: XCTestCase {
         let messages = store.messages(conversationID: conversationID).map(\.content).joined(separator: "\n")
         XCTAssertFalse(messages.contains("sk-proj-1234567890123456"))
         XCTAssertFalse(messages.contains("ghp_1234567890123456"))
+    }
+
+    func testSecretInModelContextIsRedactedWithoutLosingTheSnapshot() throws {
+        let store = MobileStateStore(url: databaseURL)
+        let conversationID = store.startRun(mode: "agent", planMode: false, prompt: "read .env")
+        let snapshot: [String: Any] = ["version": 3, "messages": [
+            ["role": "tool", "content": "DB_PASSWORD=hunter2secret\nAPI_KEY: \"quoted-value\"\nurl=https://x/y"],
+            ["role": "assistant", "content": "Authorization: Bearer abc/def.ghi and ghp_1234567890123456"],
+        ]]
+        let text = String(decoding: try JSONSerialization.data(withJSONObject: snapshot), as: UTF8.self)
+        XCTAssertTrue(store.saveModelContext(conversationID: conversationID, content: text))
+
+        let stored = try XCTUnwrap(store.modelContext(conversationID: conversationID)?.content)
+        let parsed = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(stored.utf8)) as? [String: Any])
+        let messages = try XCTUnwrap(parsed["messages"] as? [[String: Any]])
+        XCTAssertEqual(messages.count, 2)
+        for secret in ["hunter2secret", "quoted-value", "abc", "def.ghi", "ghp_1234567890123456"] {
+            XCTAssertFalse(stored.contains(secret), secret)
+        }
+        XCTAssertTrue(stored.contains("url=https"))
     }
 
     func testLatestModelContextReturnsPersistedConversationSnapshot() {

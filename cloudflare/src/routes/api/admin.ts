@@ -584,6 +584,110 @@ admin.patch(
   },
 );
 
+admin.patch(
+  "/marketplace/plugins/:id/featured",
+  zValidator("json", z.object({ featured: z.boolean() }).strict()),
+  async (c) => {
+    const id = c.req.param("id");
+    const { featured } = c.req.valid("json");
+    const actor = c.get("user");
+    const updated = await db(c.env).prepare(
+      "UPDATE marketplace_plugins SET featured = ?, updated_at = ? WHERE id = ? RETURNING id",
+    ).bind(featured ? 1 : 0, nowIso(), id).first<{ id: string }>();
+    if (!updated) return c.json({ error: "plugin_not_found" }, 404);
+    await recordAudit(c.env, {
+      actorUserId: actor.id,
+      actorEmail: actor.email,
+      action: "admin.marketplace.featured",
+      entityType: "marketplace_plugin",
+      entityId: id,
+      metadata: { featured },
+      ip: clientIpFromRequest(c.req),
+      userAgent: c.req.header("User-Agent") ?? null,
+    });
+    return c.json({ ok: true, id, featured });
+  },
+);
+
+const catalogKindSchema = z.enum(["skill", "starter"]);
+const catalogItemSchema = z.object({
+  // The listing exactly as clients decode it; `id` and the counters are owned by the row.
+  payload: z.record(z.unknown()).optional(),
+  featured: z.boolean().optional(),
+  sort_order: z.number().int().min(0).max(100_000).optional(),
+}).strict().refine((value) => Object.values(value).some((item) => item !== undefined), {
+  message: "At least one of payload, featured or sort_order is required",
+});
+
+// Creates the listing when `payload` is given for a new id, otherwise edits it in place.
+admin.put(
+  "/marketplace/catalog/:kind/:id",
+  zValidator("json", catalogItemSchema),
+  async (c) => {
+    const kind = catalogKindSchema.safeParse(c.req.param("kind"));
+    const id = c.req.param("id");
+    if (!kind.success || !/^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/.test(id)) {
+      return c.json({ error: "catalog_item_invalid" }, 400);
+    }
+    const body = c.req.valid("json");
+    const payload = body.payload ? JSON.stringify({ ...body.payload, id }) : null;
+    if (payload && payload.length > 20_000) return c.json({ error: "catalog_payload_too_large" }, 413);
+    const now = nowIso();
+    const updated = await db(c.env).prepare(
+      `UPDATE marketplace_catalog_items
+          SET payload_json = COALESCE(?, payload_json),
+              featured = COALESCE(?, featured),
+              sort_order = COALESCE(?, sort_order),
+              updated_at = ?
+        WHERE kind = ? AND id = ?
+        RETURNING id`,
+    ).bind(payload, body.featured === undefined ? null : Number(body.featured), body.sort_order ?? null, now, kind.data, id)
+      .first<{ id: string }>();
+    if (!updated) {
+      if (!payload) return c.json({ error: "catalog_item_not_found" }, 404);
+      await db(c.env).prepare(
+        `INSERT INTO marketplace_catalog_items (kind, id, payload_json, featured, sort_order, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(kind.data, id, payload, Number(body.featured ?? false), body.sort_order ?? 0, now, now).run();
+    }
+    const actor = c.get("user");
+    await recordAudit(c.env, {
+      actorUserId: actor.id,
+      actorEmail: actor.email,
+      action: updated ? "admin.marketplace.catalog.update" : "admin.marketplace.catalog.create",
+      entityType: `marketplace_${kind.data}`,
+      entityId: id,
+      metadata: { featured: body.featured ?? null, sortOrder: body.sort_order ?? null, payloadChanged: payload !== null },
+      ip: clientIpFromRequest(c.req),
+      userAgent: c.req.header("User-Agent") ?? null,
+    });
+    return c.json({ ok: true, kind: kind.data, id, created: !updated }, updated ? 200 : 201);
+  },
+);
+
+admin.delete("/marketplace/catalog/:kind/:id", async (c) => {
+  const kind = catalogKindSchema.safeParse(c.req.param("kind"));
+  const id = c.req.param("id");
+  if (!kind.success) return c.json({ error: "catalog_item_invalid" }, 400);
+  const removed = await db(c.env)
+    .prepare("DELETE FROM marketplace_catalog_items WHERE kind = ? AND id = ? RETURNING id")
+    .bind(kind.data, id)
+    .first<{ id: string }>();
+  if (!removed) return c.json({ error: "catalog_item_not_found" }, 404);
+  const actor = c.get("user");
+  await recordAudit(c.env, {
+    actorUserId: actor.id,
+    actorEmail: actor.email,
+    action: "admin.marketplace.catalog.delete",
+    entityType: `marketplace_${kind.data}`,
+    entityId: id,
+    metadata: {},
+    ip: clientIpFromRequest(c.req),
+    userAgent: c.req.header("User-Agent") ?? null,
+  });
+  return c.json({ ok: true, kind: kind.data, id });
+});
+
 admin.get("/marketplace/reports", async (c) => {
   const requestedStatus = c.req.query("status")?.trim();
   const allowedStatuses = ["pending", "in_review", "resolved", "dismissed"];
@@ -688,5 +792,41 @@ admin.get("/stats", async (c) => {
     recent_users: recentUsers || [],
   });
 });
+
+admin.get("/media-community", async (c) => {
+  const { results } = await db(c.env).prepare(
+    `SELECT p.id, p.user_id, u.email, p.title, p.category, p.canvas_json, p.created_at
+       FROM media_community_posts p
+       JOIN users u ON u.id = p.user_id
+      WHERE p.status = 'pending_review'
+      ORDER BY p.created_at`,
+  ).all();
+  return c.json({ posts: results || [] });
+});
+
+admin.patch(
+  "/media-community/:id/review",
+  zValidator("json", z.object({ decision: z.enum(["approved", "rejected"]) }).strict()),
+  async (c) => {
+    const id = c.req.param("id");
+    const { decision } = c.req.valid("json");
+    const actor = c.get("user");
+    const updated = await db(c.env).prepare(
+      "UPDATE media_community_posts SET status = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ? RETURNING id",
+    ).bind(decision, actor.id, nowIso(), id).first<{ id: string }>();
+    if (!updated) return c.json({ error: "media_community_post_not_found" }, 404);
+    await recordAudit(c.env, {
+      actorUserId: actor.id,
+      actorEmail: actor.email,
+      action: "admin.media_community.review",
+      entityType: "media_community_post",
+      entityId: id,
+      metadata: { decision },
+      ip: clientIpFromRequest(c.req),
+      userAgent: c.req.header("User-Agent") ?? null,
+    });
+    return c.json({ ok: true, id, status: decision });
+  },
+);
 
 export default admin;

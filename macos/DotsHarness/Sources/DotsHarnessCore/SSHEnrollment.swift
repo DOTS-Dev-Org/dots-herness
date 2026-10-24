@@ -113,13 +113,6 @@ public enum SSHEnrollment {
         try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: knownHostsURL.path)
     }
 
-    /// Drops a host's remembered key so a genuinely reinstalled machine can be
-    /// re-trusted. Destructive enough that only an explicit user action calls it.
-    public static func forgetHostKey(hostName: String, port: Int) {
-        let target = port == 22 ? hostName : "[\(hostName)]:\(port)"
-        _ = try? runTool("/usr/bin/ssh-keygen", ["-R", target])
-    }
-
     // MARK: - Key installation
 
     /// Runs one password authentication over a pty and appends our public key

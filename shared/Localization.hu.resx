@@ -33,7 +33,7 @@
   <data name="settings.cancel" xml:space="preserve"><value>Mégse</value></data>
   <data name="settings.refresh" xml:space="preserve"><value>Frissítés</value></data>
   <data name="settings.browserLogin" xml:space="preserve"><value>Böngésző bejelentkezés</value></data>
-  <data name="settings.authUrl" xml:space="preserve"><value>Auth URL</value></data>
+  <data name="settings.authUrl" xml:space="preserve"><value>Hitelesítési URL</value></data>
   <data name="settings.pasteCallbackUrl" xml:space="preserve"><value>Illessze be a visszahívási URL-t</value></data>
   <data name="settings.finishLogin" xml:space="preserve"><value>Belépés befejezése</value></data>
   <data name="settings.deviceLogin" xml:space="preserve"><value>Eszköz bejelentkezés</value></data>
@@ -134,7 +134,7 @@
   <data name="conversation.planMode" xml:space="preserve"><value>Tervezési mód</value></data>
   <data name="conversation.applyPlan" xml:space="preserve"><value>Terv alkalmazása</value></data>
   <data name="conversation.applyPlanHelp" xml:space="preserve"><value>Alkalmazza ezt a tervet a munkaterületen</value></data>
-  <data name="conversation.steer" xml:space="preserve"><value>Steer</value></data>
+  <data name="conversation.steer" xml:space="preserve"><value>Irányítás</value></data>
   <data name="conversation.steerHelp" xml:space="preserve"><value>Vezérlősorba helyezett üzenet</value></data>
   <data name="conversation.terminal" xml:space="preserve"><value>Terminál</value></data>
   <data name="conversation.closeTerminal" xml:space="preserve"><value>Zárja be a terminált</value></data>
@@ -298,13 +298,14 @@
   <data name="usage.resetsIn" xml:space="preserve"><value>{0} múlva áll vissza</value></data>
   <data name="usage.resetsOn" xml:space="preserve"><value>{0} áll vissza</value></data>
   <data name="usage.resetsAvailable" xml:space="preserve"><value>{0} visszaállítás érhető el</value></data>
-  <data name="usage.manageResets" xml:space="preserve"><value>Manage resets</value></data>
-  <data name="usage.useReset" xml:space="preserve"><value>Use reset</value></data>
-  <data name="usage.resetTitle" xml:space="preserve"><value>Use a Claude limit reset?</value></data>
-  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude's Usage page will open. Sign in to {0} and review the reset offered to that account. To use it, click Reset for free and confirm in Claude. Once used, a reset cannot be undone. Limits refresh when you return to HerNess.</value></data>
-  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Could not open Claude. Check that the account is still connected, then try again.</value></data>
-  <data name="usage.openClaude" xml:space="preserve"><value>Open Claude</value></data>
+  <data name="usage.manageResets" xml:space="preserve"><value>Visszaállítások kezelése</value></data>
+  <data name="usage.useReset" xml:space="preserve"><value>Visszaállítás használata</value></data>
+  <data name="usage.resetTitle" xml:space="preserve"><value>Felhasználsz egy Claude-korlát-visszaállítást?</value></data>
+  <data name="usage.resetConfirmation" xml:space="preserve"><value>Megnyílik a Claude Használat oldala. Jelentkezz be ide: {0}, és tekintsd át a fióknak felajánlott visszaállítást. Használatához kattints a „Reset for free” gombra, és erősítsd meg a Claude-ban. A felhasznált visszaállítás nem vonható vissza. A korlátok frissülnek, amikor visszatérsz a HerNessbe.</value></data>
+  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Nem sikerült megnyitni a Claude-ot. Ellenőrizd, hogy a fiók még csatlakoztatva van-e, majd próbáld újra.</value></data>
+  <data name="usage.openClaude" xml:space="preserve"><value>Claude megnyitása</value></data>
   <data name="usage.needLogin" xml:space="preserve"><value>Jelentkezz be a Claude-ba a limitek megtekintéséhez</value></data>
+  <data name="agent.providerLimitTitle" xml:space="preserve"><value>Elérte a szolgáltatói korlátot</value></data>
   <data name="usage.noLimitInfo" xml:space="preserve"><value>Nincs információ a limitekről</value></data>
   <data name="usage.loadFailed" xml:space="preserve"><value>A használat betöltése nem sikerült</value></data>
   <data name="usage.loading" xml:space="preserve"><value>Használat betöltése…</value></data>
@@ -332,21 +333,21 @@
   <data name="project.missing.message" xml:space="preserve"><value>Előfordulhat, hogy a(z) „{0}” helyen lévő projektmappát áthelyezték vagy törölték. Válaszd ki az új helyét, vagy távolítsd el a projektet.</value></data>
   <data name="project.missing.locate" xml:space="preserve"><value>Hely kiválasztása…</value></data>
   <data name="project.missing.readOnly" xml:space="preserve"><value>Projektmappa nem érhető el. A korábbi beszélgetéseket megtekintheted; új beszélgetés és üzenet küldése az új hely kiválasztásáig le van tiltva.</value></data>
-  <data name="conversation.ranCommand" xml:space="preserve"><value>Ran 1 command</value></data>
-  <data name="conversation.ranCommands" xml:space="preserve"><value>Ran {0} commands</value></data>
-  <data name="conversation.runningTools" xml:space="preserve"><value>Running tools…</value></data>
-  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Thinking…</value></data>
-  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} tokens</value></data>
-  <data name="usage.context.window" xml:space="preserve"><value>Context window</value></data>
-  <data name="usage.planLimits" xml:space="preserve"><value>Plan usage limits</value></data>
-  <data name="composer.queue.one" xml:space="preserve"><value>1 message queued</value></data>
-  <data name="composer.queue.many" xml:space="preserve"><value>{0} messages queued</value></data>
-  <data name="composer.queue.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Clear the message box to edit</value></data>
-  <data name="composer.queue.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="git.createPR" xml:space="preserve"><value>Create PR</value></data>
-  <data name="git.hideBar" xml:space="preserve"><value>Hide</value></data>
-  <data name="composer.queue.next" xml:space="preserve"><value>Next: {0}</value></data>
+  <data name="conversation.ranCommand" xml:space="preserve"><value>1 parancs lefutott</value></data>
+  <data name="conversation.ranCommands" xml:space="preserve"><value>Lefutott parancsok: {0}</value></data>
+  <data name="conversation.runningTools" xml:space="preserve"><value>Eszközök futtatása…</value></data>
+  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Gondolkodik…</value></data>
+  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} token</value></data>
+  <data name="usage.context.window" xml:space="preserve"><value>Kontextusablak</value></data>
+  <data name="usage.planLimits" xml:space="preserve"><value>A csomag használati korlátai</value></data>
+  <data name="composer.queue.one" xml:space="preserve"><value>1 üzenet a sorban</value></data>
+  <data name="composer.queue.many" xml:space="preserve"><value>Sorban álló üzenetek: {0}</value></data>
+  <data name="composer.queue.edit" xml:space="preserve"><value>Szerkesztés</value></data>
+  <data name="composer.queue.editBlocked" xml:space="preserve"><value>A szerkesztéshez ürítsd ki az üzenetmezőt</value></data>
+  <data name="composer.queue.remove" xml:space="preserve"><value>Eltávolítás</value></data>
+  <data name="git.createPR" xml:space="preserve"><value>PR létrehozása</value></data>
+  <data name="git.hideBar" xml:space="preserve"><value>Elrejtés</value></data>
+  <data name="composer.queue.next" xml:space="preserve"><value>Következő: {0}</value></data>
   <data name="sidebar.pinProject" xml:space="preserve"><value>Projekt rögzítése</value></data>
   <data name="sidebar.unpinProject" xml:space="preserve"><value>Projekt rögzítésének feloldása</value></data>
   <data name="sidebar.sortLastUpdate" xml:space="preserve"><value>Legutóbbi frissítés</value></data>
@@ -357,6 +358,8 @@
   <data name="conversation.cancelPlan" xml:space="preserve"><value>Terv megszakítása</value></data>
   <data name="conversation.cancelPlanHelp" xml:space="preserve"><value>A terv megszakítása és a sorban álló üzenetek felszabadítása</value></data>
   <data name="media.generated" xml:space="preserve"><value>Kép létrehozva.</value></data>
+  <data name="media.videoGenerated" xml:space="preserve"><value>Videó elkészült.</value></data>
+  <data name="media.audioGenerated" xml:space="preserve"><value>Beszéd elkészült.</value></data>
   <data name="media.fallbackUsed" xml:space="preserve"><value>A kiválasztott szolgáltató nem tudta létrehozni ezt a képet. Egyszeri tartalék kéréssel készült ezen keresztül: {0}/{1}; a fő beszélgetés szolgáltatója és modellje nem változott, így a prompt-gyorsítótár érintetlen marad.</value></data>
   <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>Ezt a képet nem tudom létrehozni ezzel: {0}. Állíts be tartalékként egy kép-API-t vagy szolgáltatót. Ha csak a képgenerálás miatt váltasz fő csevegőmodellt, az tönkreteheti a szolgáltató prompt-gyorsítótárát.</value></data>
   <data name="feedback.close" xml:space="preserve"><value>Bezárás</value></data>
@@ -369,27 +372,27 @@
   <data name="feedback.persistenceFailed" xml:space="preserve"><value>A visszajelzés helyi mentése nem sikerült.</value></data>
   <data name="feedback.streamingMessage" xml:space="preserve"><value>Várd meg a válasz befejezését a visszajelzés elküldése előtt.</value></data>
   <data name="feedback.submit" xml:space="preserve"><value>Küldés</value></data>
-  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Apply it elsewhere</value></data>
-  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Broke an existing feature</value></data>
+  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Alkalmazd máshol is</value></data>
+  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Elrontott egy meglévő funkciót</value></data>
   <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>Nem követte az utasításaimat</value></data>
-  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Didn't follow project style</value></data>
+  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Nem követte a projekt stílusát</value></data>
   <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>Gyors és hatékony</value></data>
   <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>Követte az utasításaimat</value></data>
-  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Ignored project architecture</value></data>
+  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Figyelmen kívül hagyta a projekt architektúráját</value></data>
   <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>Hibás vagy hiányos</value></data>
-  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Keep the project style</value></data>
+  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Tartsd meg a projekt stílusát</value></data>
   <data name="feedback.tag.lost_context" xml:space="preserve"><value>Kontextus elvesztése</value></data>
   <data name="feedback.tag.negative_other" xml:space="preserve"><value>Egyéb</value></data>
   <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>Témán kívüli / hatókörön kívüli</value></data>
   <data name="feedback.tag.output_quality" xml:space="preserve"><value>Jó kód- / kimeneti minőség</value></data>
   <data name="feedback.tag.positive_other" xml:space="preserve"><value>Egyéb</value></data>
-  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Reuse this architecture</value></data>
-  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Reuse this token pattern</value></data>
+  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Használd újra ezt az architektúrát</value></data>
+  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Használd újra ezt a tokenmintát</value></data>
   <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>Biztonsági vagy jogi probléma</value></data>
   <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>Lassú vagy hibás</value></data>
   <data name="feedback.tag.task_completed" xml:space="preserve"><value>Megoldotta a feladatomat</value></data>
   <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>Hasznos önállóság</value></data>
-  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Wrong theme or token</value></data>
+  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Rossz téma vagy token</value></data>
   <data name="feedback.title" xml:space="preserve"><value>Visszajelzés megosztása</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>A visszajelzés csak a munkaterület csevegéseiben érhető el.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Visszajelzés csak az asszisztens válaszaihoz küldhető.</value></data>
@@ -398,12 +401,13 @@
   <data name="conversation.cacheExpired.explanation" xml:space="preserve"><value>A gyorsítótár becsült élettartama letelt. A promptgyorsítótár a szolgáltató oldalán lévő ideiglenes feldolgozási állapot; a csevegési előzmények továbbra is mentve maradnak. Ha a teljes előzménnyel folytatod, ezek a tokenek ismét új bemenetként számíthatnak. Csak a következő kérés használati adatai erősítik meg, hogy a szolgáltatónál megvolt-e még a gyorsítótár.</value></data>
   <data name="conversation.cacheExpired.infoTitle" xml:space="preserve"><value>Miért látom ezt?</value></data>
   <data name="conversation.cacheExpired.notice" xml:space="preserve"><value>Előfordulhat, hogy a gyorsítótár lejárt; a folytatás több tokent használhat, és többe kerülhet. Indíts új csevegést egy rövid összefoglalóval.</value></data>
+  <data name="conversation.cacheLocal.notice" xml:space="preserve"><value>A helyi modell gyorsítótára kiürült; a teljes előzmény újra feldolgozásra kerül, és a válasz késhet. Indíts új csevegést egy rövid összefoglalóval.</value></data>
   <data name="conversation.filesChangedCount" xml:space="preserve"><value>{0} fájl módosítva</value></data>
   <data name="conversation.filesLess" xml:space="preserve"><value>Kevesebb fájl megjelenítése</value></data>
   <data name="conversation.filesLineSummary" xml:space="preserve"><value>+{0} −{1}</value></data>
   <data name="conversation.filesMore" xml:space="preserve"><value>További {0} fájl megjelenítése</value></data>
   <data name="conversation.filesReverted" xml:space="preserve"><value>A fájlmódosítások vissza lettek vonva.</value></data>
-  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>The saved file version is unavailable, so the workspace was left unchanged.</value></data>
+  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>A mentett fájlverzió nem érhető el, ezért a munkaterület változatlan maradt.</value></data>
   <data name="conversation.undoChanges" xml:space="preserve"><value>Visszavonás</value></data>
   <data name="conversation.viewChanges" xml:space="preserve"><value>Módosítások megtekintése</value></data>
   <data name="settings.archive" xml:space="preserve"><value>Archívum</value></data>
@@ -434,9 +438,9 @@
   <data name="workLocation.remoteFolderUp" xml:space="preserve"><value>Szülőmappa</value></data>
   <data name="workLocation.remoteFolderEmpty" xml:space="preserve"><value>Itt nincsenek almappák</value></data>
   <data name="workLocation.remoteFolderUse" xml:space="preserve"><value>Mappa használata</value></data>
-  <data name="workLocation.connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="workLocation.connect" xml:space="preserve"><value>Csatlakozás</value></data>
   <data name="workLocation.addHost" xml:space="preserve"><value>Számítógép hozzáadása…</value></data>
-  <data name="workLocation.useLocal" xml:space="preserve"><value>Use this computer</value></data>
+  <data name="workLocation.useLocal" xml:space="preserve"><value>Ez a számítógép</value></data>
   <data name="settings.sshAlias" xml:space="preserve"><value>Alias</value></data>
   <data name="settings.sshHostName" xml:space="preserve"><value>Gép vagy IP</value></data>
   <data name="settings.sshUser" xml:space="preserve"><value>Felhasználónév</value></data>
@@ -444,126 +448,106 @@
   <data name="settings.sshRemove" xml:space="preserve"><value>Eltávolítás</value></data>
   <data name="ssh.busy" xml:space="preserve"><value>Várd meg a futó munka végét, mielőtt megváltoztatod a munkavégzés helyét.</value></data>
   <data name="ssh.connecting" xml:space="preserve"><value>Kapcsolódás a(z) {0} géphez…</value></data>
-  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Choose a remote folder before starting a task.</value></data>
+  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Feladat indítása előtt válassz távoli mappát.</value></data>
   <data name="ssh.scanning" xml:space="preserve"><value>Kiszolgálókulcs lekérése…</value></data>
   <data name="ssh.fingerprintTitle" xml:space="preserve"><value>Ez a(z) {0} ujjlenyomata?</value></data>
   <data name="ssh.fingerprintMessage" xml:space="preserve"><value>Vesd össze a kiszolgálóval, mielőtt megbízol benne. Csak egyezés esetén folytasd.</value></data>
   <data name="ssh.trustAndConnect" xml:space="preserve"><value>Megbízom és csatlakozom</value></data>
   <data name="ssh.error.unavailable" xml:space="preserve"><value>Ezen a Macen nem található ssh.</value></data>
   <data name="ssh.error.notReachable" xml:space="preserve"><value>A(z) {0} nem érhető el.</value></data>
-  <data name="conversation.choosePane" xml:space="preserve"><value>Choose a pane</value></data>
-  <data name="sidebar.toggle" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.mcpServers" xml:space="preserve"><value>MCP servers</value></data>
-  <data name="mcp.empty" xml:space="preserve"><value>No MCP servers configured.</value></data>
-  <data name="mcp.addServer" xml:space="preserve"><value>Add server</value></data>
-  <data name="mcp.name" xml:space="preserve"><value>Name</value></data>
-  <data name="mcp.transport" xml:space="preserve"><value>Transport</value></data>
+  <data name="conversation.choosePane" xml:space="preserve"><value>Válassz panelt</value></data>
+  <data name="sidebar.toggle" xml:space="preserve"><value>Oldalsáv megjelenítése vagy elrejtése</value></data>
+  <data name="settings.mcpServers" xml:space="preserve"><value>MCP-szerverek</value></data>
+  <data name="mcp.empty" xml:space="preserve"><value>Nincs beállított MCP-kiszolgáló.</value></data>
+  <data name="mcp.addServer" xml:space="preserve"><value>Szerver hozzáadása</value></data>
+  <data name="mcp.name" xml:space="preserve"><value>Név</value></data>
+  <data name="mcp.transport" xml:space="preserve"><value>Átvitel</value></data>
   <data name="mcp.http" xml:space="preserve"><value>HTTP</value></data>
   <data name="mcp.stdio" xml:space="preserve"><value>stdio</value></data>
   <data name="mcp.url" xml:space="preserve"><value>URL</value></data>
-  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (optional)</value></data>
-  <data name="mcp.executable" xml:space="preserve"><value>Executable path</value></data>
-  <data name="mcp.arguments" xml:space="preserve"><value>Arguments (space-separated)</value></data>
-  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Auto-run tools the server marks read-only</value></data>
-  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Server annotations are untrusted. Enabling this skips approval only for tools marked read-only and not destructive.</value></data>
-  <data name="mcp.test" xml:space="preserve"><value>Test</value></data>
-  <data name="mcp.add" xml:space="preserve"><value>Add</value></data>
-  <data name="mcp.reconnect" xml:space="preserve"><value>Reconnect</value></data>
-  <data name="mcp.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="mcp.idle" xml:space="preserve"><value>Idle</value></data>
-  <data name="mcp.connecting" xml:space="preserve"><value>Connecting…</value></data>
-  <data name="mcp.connected" xml:space="preserve"><value>Connected · {0} tool(s)</value></data>
-  <data name="mcp.failed" xml:space="preserve"><value>Failed: {0}</value></data>
-  <data name="mcp.testing" xml:space="preserve"><value>Testing…</value></data>
-  <data name="mcp.testConnected" xml:space="preserve"><value>Connected. {0} tool(s) available.</value></data>
-  <data name="conversation.toolInput" xml:space="preserve"><value>Tool input</value></data>
-  <data name="settings.tab.memory" xml:space="preserve"><value>Memory</value></data>
-  <data name="memory.vault.title" xml:space="preserve"><value>Memory vault</value></data>
-  <data name="memory.refresh" xml:space="preserve"><value>Refresh</value></data>
-  <data name="memory.reveal" xml:space="preserve"><value>Open .mem folder</value></data>
-  <data name="memory.refused" xml:space="preserve"><value>Not saved. The entry may contain a credential, exceed its limit, or the workspace may be unavailable.</value></data>
-  <data name="memory.noWorkspace" xml:space="preserve"><value>Select a local workspace to view its memory.</value></data>
-  <data name="memory.notInitialized" xml:space="preserve"><value>Memory starts after the first prompt in this workspace.</value></data>
-  <data name="memory.search" xml:space="preserve"><value>Search memory</value></data>
-  <data name="memory.selectNote" xml:space="preserve"><value>Select a note to view it.</value></data>
-  <data name="memory.save" xml:space="preserve"><value>Save</value></data>
-  <data name="memory.forget" xml:space="preserve"><value>Forget</value></data>
-  <data name="memory.ownRules" xml:space="preserve"><value>Your own rules</value></data>
-  <data name="memory.rulesHelp" xml:space="preserve"><value>These rules are added to every request in this project.</value></data>
-  <data name="memory.lessons" xml:space="preserve"><value>Learned lessons</value></data>
-  <data name="memory.learningStats" xml:space="preserve"><value>{0} turns logged; {1} were corrected or undone.</value></data>
-  <data name="memory.links" xml:space="preserve"><value>Links</value></data>
-  <data name="memory.backlinks" xml:space="preserve"><value>Linked mentions</value></data>
-  <data name="memory.userAuthored" xml:space="preserve"><value>user-authored</value></data>
-  <data name="memory.inferred" xml:space="preserve"><value>inferred</value></data>
-  <data name="memory.learnedCount" xml:space="preserve"><value>learned {0}×</value></data>
-  <data name="memory.usedCount" xml:space="preserve"><value>used {0}×</value></data>
-  <data name="memory.inactive" xml:space="preserve"><value>no longer applied</value></data>
-  <data name="memory.pin" xml:space="preserve"><value>Pin</value></data>
-  <data name="memory.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="memory.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="settings.tab.access" xml:space="preserve"><value>Workspace access</value></data>
-  <data name="access.currentActor" xml:space="preserve"><value>Current actor</value></data>
-  <data name="access.role" xml:space="preserve"><value>Role</value></data>
-  <data name="access.notAuthorized" xml:space="preserve"><value>Not authorized</value></data>
-  <data name="access.score" xml:space="preserve"><value>Score</value></data>
-  <data name="access.device" xml:space="preserve"><value>Device</value></data>
-  <data name="access.publicKey" xml:space="preserve"><value>Public key</value></data>
-  <data name="access.memoryRevision" xml:space="preserve"><value>Memory revision</value></data>
-  <data name="access.members" xml:space="preserve"><value>Members</value></data>
-  <data name="access.noMembers" xml:space="preserve"><value>No members yet.</value></data>
-  <data name="access.revoke" xml:space="preserve"><value>Revoke</value></data>
-  <data name="access.revoked" xml:space="preserve"><value>revoked</value></data>
-  <data name="access.inviteDevice" xml:space="preserve"><value>Invite device</value></data>
-  <data name="access.displayName" xml:space="preserve"><value>Display name</value></data>
-  <data name="access.newDevicePublicKey" xml:space="preserve"><value>New device public key</value></data>
-  <data name="access.createInvitation" xml:space="preserve"><value>Create signed invitation</value></data>
-  <data name="access.acceptInvitation" xml:space="preserve"><value>Accept invitation</value></data>
-  <data name="access.signedInvitation" xml:space="preserve"><value>Signed invitation</value></data>
-  <data name="access.accept" xml:space="preserve"><value>Accept</value></data>
-  <data name="access.reject" xml:space="preserve"><value>Reject</value></data>
-  <data name="access.pendingDecisions" xml:space="preserve"><value>Pending decisions</value></data>
-  <data name="access.noPendingDecisions" xml:space="preserve"><value>No pending project decisions.</value></data>
-  <data name="access.noWorkspace" xml:space="preserve"><value>Select a local workspace to manage access.</value></data>
-  <data name="access.scoreValue" xml:space="preserve"><value>Score: {0}</value></data>
-  <data name="access.initialize" xml:space="preserve"><value>Initialize workspace memory</value></data>
-  <data name="access.initializeHelp" xml:space="preserve"><value>Workspace access uses a signed memory log. Initializing creates the owner identity and event log in this project's .mem folder.</value></data>
-  <data name="access.role.owner" xml:space="preserve"><value>Owner</value></data>
-  <data name="access.role.approver" xml:space="preserve"><value>Approver</value></data>
-  <data name="access.role.contributor" xml:space="preserve"><value>Contributor</value></data>
-  <data name="access.role.observer" xml:space="preserve"><value>Observer</value></data>
+  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (nem kötelező)</value></data>
+  <data name="mcp.executable" xml:space="preserve"><value>Futtatható fájl útvonala</value></data>
+  <data name="mcp.arguments" xml:space="preserve"><value>Argumentumok (szóközzel elválasztva)</value></data>
+  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>A kiszolgáló által csak olvashatónak jelölt eszközök automatikus futtatása</value></data>
+  <data name="mcp.autoRunHelp" xml:space="preserve"><value>A szerver annotációi nem megbízhatók. Bekapcsolva csak az írásvédettnek és nem rombolónak jelölt eszközöknél marad el a jóváhagyás.</value></data>
+  <data name="mcp.test" xml:space="preserve"><value>Tesztelés</value></data>
+  <data name="mcp.add" xml:space="preserve"><value>Kiszolgáló hozzáadása</value></data>
+  <data name="mcp.reconnect" xml:space="preserve"><value>Újracsatlakozás</value></data>
+  <data name="mcp.remove" xml:space="preserve"><value>Eltávolítás</value></data>
+  <data name="mcp.idle" xml:space="preserve"><value>Tétlen</value></data>
+  <data name="mcp.connecting" xml:space="preserve"><value>Csatlakozás…</value></data>
+  <data name="mcp.connected" xml:space="preserve"><value>Csatlakozva · {0} eszköz</value></data>
+  <data name="mcp.failed" xml:space="preserve"><value>Sikertelen: {0}</value></data>
+  <data name="mcp.testing" xml:space="preserve"><value>Tesztelés…</value></data>
+  <data name="mcp.testConnected" xml:space="preserve"><value>Csatlakozva. {0} eszköz érhető el.</value></data>
+  <data name="conversation.toolInput" xml:space="preserve"><value>Eszköz bemenete</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Memória</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Memóriatrezor</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Frissítés</value></data>
+  <data name="memory.enabled" xml:space="preserve"><value>Memória bekapcsolva</value></data>
+  <data name="memory.scanFrequency" xml:space="preserve"><value>Vizsgálat gyakorisága</value></data>
+  <data name="memory.scan.off" xml:space="preserve"><value>Ki</value></data>
+  <data name="memory.scan.hourly" xml:space="preserve"><value>Óránként</value></data>
+  <data name="memory.scan.daily" xml:space="preserve"><value>Naponta</value></data>
+  <data name="memory.scan.weekly" xml:space="preserve"><value>Hetente</value></data>
+  <data name="memory.enabledHelp" xml:space="preserve"><value>Kikapcsolva egyetlen feladat sem kerül feljegyzésre, semmi sem tanulódik meg, és a modell nem kap megállapítást; a korábban mentett adatok a lemezen maradnak.</value></data>
+  <data name="memory.scanHelp" xml:space="preserve"><value>A rövid feladatjegyzetek megmaradnak, így a megállapítások indokai a vizsgálat után is visszakereshetők; kikapcsolt vizsgálatnál a háttérben nem hívódik modell.</value></data>
+  <data name="memory.reveal" xml:space="preserve"><value>.mem mappa megnyitása</value></data>
+  <data name="memory.refused" xml:space="preserve"><value>Nincs mentve. A bejegyzés hitelesítő adatot tartalmazhat, túllépheti a korlátját, vagy a munkaterület nem érhető el.</value></data>
+  <data name="memory.noWorkspace" xml:space="preserve"><value>Válassz helyi munkaterületet a memóriája megtekintéséhez.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>A memória a munkaterület első promptja után indul.</value></data>
+  <data name="memory.search" xml:space="preserve"><value>Keresés a memóriában</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Válassz jegyzetet a megtekintéshez.</value></data>
+  <data name="memory.save" xml:space="preserve"><value>Mentés</value></data>
+  <data name="memory.forget" xml:space="preserve"><value>Elfelejtés</value></data>
+  <data name="memory.ownRules" xml:space="preserve"><value>Saját szabályaid</value></data>
+  <data name="memory.rulesHelp" xml:space="preserve"><value>Ezek a szabályok a projekt minden kéréséhez hozzáadódnak.</value></data>
+  <data name="memory.lessons" xml:space="preserve"><value>Levont tanulságok</value></data>
+  <data name="memory.learningStats" xml:space="preserve"><value>{0} kör naplózva; ebből {1} javítva vagy visszavonva.</value></data>
+  <data name="memory.links" xml:space="preserve"><value>Hivatkozások</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Kapcsolódó említések</value></data>
+  <data name="memory.userAuthored" xml:space="preserve"><value>felhasználó által írt</value></data>
+  <data name="memory.inferred" xml:space="preserve"><value>kikövetkeztetett</value></data>
+  <data name="memory.learnedCount" xml:space="preserve"><value>{0}× tanulva</value></data>
+  <data name="memory.usedCount" xml:space="preserve"><value>{0}× használva</value></data>
+  <data name="memory.inactive" xml:space="preserve"><value>már nem érvényes</value></data>
+  <data name="memory.pin" xml:space="preserve"><value>Rögzítés</value></data>
+  <data name="memory.edit" xml:space="preserve"><value>Szerkesztés</value></data>
+  <data name="memory.cancel" xml:space="preserve"><value>Mégse</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Munkaterület-hozzáférés</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Elfogadás</value></data>
   <data name="settings.sandbox" xml:space="preserve"><value>Sandbox</value></data>
-  <data name="settings.sandboxOff" xml:space="preserve"><value>Off — the agent works directly in your checkout.</value></data>
-  <data name="settings.sandboxOn" xml:space="preserve"><value>On — the agent works in a separate git worktree.</value></data>
-  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Recovery is required before sandbox operations can continue.</value></data>
-  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Retry recovery</value></data>
-  <data name="settings.sandboxName" xml:space="preserve"><value>Name</value></data>
-  <data name="settings.sandboxEnter" xml:space="preserve"><value>Start sandbox</value></data>
-  <data name="settings.sandboxMerge" xml:space="preserve"><value>Merge and exit</value></data>
-  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Discard and exit</value></data>
-  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Origin</value></data>
-  <data name="settings.sandboxBranch" xml:space="preserve"><value>Branch</value></data>
-  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Allow network for new processes</value></data>
-  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>This applies only to new commands. Existing terminal sessions keep their current policy.</value></data>
-  <data name="settings.sandboxOpen" xml:space="preserve"><value>Open sandbox</value></data>
-  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Open origin</value></data>
-  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Conflicts</value></data>
-  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Prepare resolution</value></data>
-  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Ask agent</value></data>
-  <data name="settings.sandboxPreview" xml:space="preserve"><value>Refresh preview</value></data>
-  <data name="settings.sandboxApprove" xml:space="preserve"><value>Approve and merge</value></data>
-  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Cancel resolution</value></data>
-  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Retry cleanup</value></data>
-  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Discard this sandbox? Its branch will be kept for recovery, but its worktree will be removed.</value></data>
-  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Approval requires a complete preview with no unresolved files.</value></data>
-  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Resolution preview</value></data>
-  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Unresolved files</value></data>
-  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>Origin HEAD</value></data>
-  <data name="settings.sandboxHead" xml:space="preserve"><value>Sandbox HEAD</value></data>
-  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Preview fingerprint</value></data>
-  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Sandbox cleanup is still pending; the origin was not changed again.</value></data>
-  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Saved sandboxes</value></data>
-  <data name="settings.sandboxRecover" xml:space="preserve"><value>Recover</value></data>
+  <data name="settings.sandboxOff" xml:space="preserve"><value>Ki — az ügynök közvetlenül a munkapéldányodban dolgozik.</value></data>
+  <data name="settings.sandboxOn" xml:space="preserve"><value>Be — az ügynök külön git worktree-ben dolgozik.</value></data>
+  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>A sandboxműveletek folytatásához helyreállítás szükséges.</value></data>
+  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Helyreállítás újrapróbálása</value></data>
+  <data name="settings.sandboxName" xml:space="preserve"><value>Név</value></data>
+  <data name="settings.sandboxEnter" xml:space="preserve"><value>Sandbox indítása</value></data>
+  <data name="settings.sandboxMerge" xml:space="preserve"><value>Egyesítés és kilépés</value></data>
+  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Elvetés és kilépés</value></data>
+  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Eredet</value></data>
+  <data name="settings.sandboxBranch" xml:space="preserve"><value>Ág</value></data>
+  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Hálózat engedélyezése új folyamatoknak</value></data>
+  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>Csak az új parancsokra vonatkozik. A meglévő terminálmunkamenetek megtartják jelenlegi szabályukat.</value></data>
+  <data name="settings.sandboxOpen" xml:space="preserve"><value>Sandbox megnyitása</value></data>
+  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Eredeti megnyitása</value></data>
+  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Ütközések</value></data>
+  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Feloldás előkészítése</value></data>
+  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Kérdezd az ügynököt</value></data>
+  <data name="settings.sandboxPreview" xml:space="preserve"><value>Előnézet frissítése</value></data>
+  <data name="settings.sandboxApprove" xml:space="preserve"><value>Jóváhagyás és egyesítés</value></data>
+  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Feloldás megszakítása</value></data>
+  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Takarítás újrapróbálása</value></data>
+  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Elveted ezt a sandboxot? Az ága megmarad a helyreállításhoz, de a worktree-je törlődik.</value></data>
+  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>A jóváhagyáshoz teljes, feloldatlan fájloktól mentes előnézet szükséges.</value></data>
+  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Feloldás előnézete</value></data>
+  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Feloldatlan fájlok</value></data>
+  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>Eredeti HEAD</value></data>
+  <data name="settings.sandboxHead" xml:space="preserve"><value>Sandbox-HEAD</value></data>
+  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Előnézet ujjlenyomata</value></data>
+  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>A sandbox takarítása még függőben van; az eredeti nem módosult újra.</value></data>
+  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Mentett sandboxok</value></data>
+  <data name="settings.sandboxRecover" xml:space="preserve"><value>Helyreállítás</value></data>
   <data name="conversation.accountSwitched.notice" xml:space="preserve"><value>Ez a csevegés ugyanazzal a modellel egy másik fiókra váltott. A gyorsítótár ott a nulláról indul; a folytatás több tokent használhat, és többe kerülhet.</value></data>
   <data name="conversation.modelSwitched.notice" xml:space="preserve"><value>A modell megváltozott. A gyorsítótár nem kerül át az új modellre; a teljes előzmény újra feldolgozásra kerül, ami több tokent használhat, és többe kerülhet.</value></data>
   <data name="conversation.contextFull.notice" xml:space="preserve"><value>A kontextusablak majdnem megtelt; a folytatás több tokent használhat, és többe kerülhet. Indíts új csevegést egy rövid összefoglalóval.</value></data>
@@ -574,28 +558,28 @@
   <data name="context.overflowCompress" xml:space="preserve"><value>Tömörítés és folytatás</value></data>
   <data name="context.overflowNotNow" xml:space="preserve"><value>Most nem</value></data>
   <data name="context.overflowDeclined" xml:space="preserve"><value>Küldés leállítva: a beszélgetés nem fér bele az új modellbe.</value></data>
-  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>When another chat is writing the same file</value></data>
-  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Wait before asking</value></data>
-  <data name="settings.conflictWaitValue" xml:space="preserve"><value>Wait {0} seconds</value></data>
-  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Wait, then ask</value></data>
-  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>A chat that wants a file another chat is writing waits quietly, and asks only if the wait goes on too long.</value></data>
-  <data name="conflict.policy.ask" xml:space="preserve"><value>Ask me</value></data>
-  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Ask as soon as two chats want the same file.</value></data>
-  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Always wait</value></data>
-  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Never ask: a write waits for the chat that holds the file.</value></data>
-  <data name="conflict.title" xml:space="preserve"><value>A file is busy: {0}</value></data>
-  <data name="conflict.wholeProject" xml:space="preserve"><value>Project command: {0}</value></data>
-  <data name="conflict.stillBusy" xml:space="preserve"><value>Write held back: another chat is still writing {0}.</value></data>
-  <data name="conflict.userSkipped" xml:space="preserve"><value>Write skipped: {0} was left with the other chat ({1}), as you asked.</value></data>
-  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Stopped {0} so this chat could write.</value></data>
-  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Stopped other chats so this chat could write.</value></data>
-  <data name="conflict.banner.title" xml:space="preserve"><value>Another chat is writing this file</value></data>
-  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · held by “{1}” for {2} seconds</value></data>
-  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Keep waiting</value></data>
-  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Stop {0}</value></data>
-  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Stop all other chats</value></data>
-  <data name="conflict.banner.skip" xml:space="preserve"><value>Skip this write</value></data>
-  <data name="conflict.waiting" xml:space="preserve"><value>Waiting for “{0}” to finish writing: {1}</value></data>
+  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>Ha egy másik cset ugyanazt a fájlt írja</value></data>
+  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Várakozás kérdezés előtt</value></data>
+  <data name="settings.conflictWaitValue" xml:space="preserve"><value>{0} másodperc</value></data>
+  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Várj, majd kérdez</value></data>
+  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>Csendben megvárja a másik csetet, és csak akkor kérdez, ha a várakozás túl hosszú.</value></data>
+  <data name="conflict.policy.ask" xml:space="preserve"><value>Kérdezz tőlem</value></data>
+  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Azonnal kérdez, ha két cset ugyanazt a fájlt akarja.</value></data>
+  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Mindig várj</value></data>
+  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Nem kérdez: minden írás arra a csetre vár, amelyik birtokolja a fájlt.</value></data>
+  <data name="conflict.title" xml:space="preserve"><value>Egy másik cset írja: {0}</value></data>
+  <data name="conflict.wholeProject" xml:space="preserve"><value>az egész projekt (parancs: {0})</value></data>
+  <data name="conflict.stillBusy" xml:space="preserve"><value>Az írás félretéve: {0} még mindig egy másik cset írja.</value></data>
+  <data name="conflict.userSkipped" xml:space="preserve"><value>Az írás kihagyva: {0} a másik csetnél maradt ({1}), ahogy kérted.</value></data>
+  <data name="conflict.stoppedHolder" xml:space="preserve"><value>A(z) „{0}” csetet a kérésedre leállítottuk, és az írás lefutott.</value></data>
+  <data name="conflict.stoppedOthers" xml:space="preserve"><value>A kérésedre a projekt többi csetje leállt, és az írás lefutott.</value></data>
+  <data name="conflict.banner.title" xml:space="preserve"><value>Másik cset írja ezt a fájlt</value></data>
+  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · a „{1}” tartja {2} másodperce</value></data>
+  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Várj tovább</value></data>
+  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Állítsd le a csetet</value></data>
+  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Állítsd le az összes többi csetet</value></data>
+  <data name="conflict.banner.skip" xml:space="preserve"><value>Hagyd ki ezt az írást</value></data>
+  <data name="conflict.waiting" xml:space="preserve"><value>Várakozás „{0}” írására: {1}</value></data>
   <data name="usage.context.button" xml:space="preserve"><value>Használat</value></data>
   <data name="usage.context.tooltip" xml:space="preserve"><value>Kontextus- és tokenhasználat</value></data>
   <data name="usage.context.latestRequest" xml:space="preserve"><value>Legutóbbi kérés · kontextusablak</value></data>
@@ -605,34 +589,738 @@
   <data name="usage.context.notReported" xml:space="preserve"><value>A szolgáltató nem jelentette</value></data>
   <data name="usage.context.estimatedBreakdown" xml:space="preserve"><value>Becsült bemeneti bontás</value></data>
   <data name="usage.context.tokens" xml:space="preserve"><value>token</value></data>
-  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} tokens ({2})</value></data>
-  <data name="usage.context.notAvailable" xml:space="preserve"><value>Context usage is not available yet.</value></data>
-  <data name="usage.context.composition" xml:space="preserve"><value>Estimated input composition</value></data>
+  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} token ({2})</value></data>
+  <data name="usage.context.notAvailable" xml:space="preserve"><value>A kontextushasználat még nem érhető el.</value></data>
+  <data name="usage.context.composition" xml:space="preserve"><value>Becsült bemeneti összetétel</value></data>
   <data name="usage.context.estimatedRow" xml:space="preserve"><value>{0}: {1} ({2})</value></data>
   <data name="usage.context.conversation" xml:space="preserve"><value>Csevegési üzenetek</value></data>
   <data name="usage.context.systemPrompt" xml:space="preserve"><value>Rendszerutasítások</value></data>
   <data name="usage.context.toolDefinitions" xml:space="preserve"><value>Eszközdefiníciók</value></data>
   <data name="usage.context.mcpDefinitions" xml:space="preserve"><value>MCP-eszközdefiníciók</value></data>
-  <data name="usage.context.cacheHit" xml:space="preserve"><value>Measured cache hit</value></data>
-  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Verified prefix reuse: {0} · {1} / {2} tokens</value></data>
-  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Measurement coverage: {0} · {1} of {2} eligible requests</value></data>
-  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Cold: {0} · expired: {1} · changed: {2}</value></data>
-  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Cache writes: {0} tokens</value></data>
-  <data name="usage.context.freshInput" xml:space="preserve"><value>Fresh input: {0} tokens</value></data>
-  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Reuse not reported: {0} of {1} eligible requests</value></data>
-  <data name="usage.context.latency" xml:space="preserve"><value>Average request latency: {0}</value></data>
-  <data name="usage.context.prepare" xml:space="preserve"><value>Average request preparation: {0}</value></data>
-  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Largest cache loss: {0} ({1} tokens)</value></data>
-  <data name="settings.shortcuts" xml:space="preserve"><value>Keyboard shortcuts</value></data>
-  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Select a shortcut to change it. Press a key combination with at least one modifier.</value></data>
-  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Press keys…</value></data>
-  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Restore defaults</value></data>
-  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} is already assigned to {1}.</value></data>
-  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull requests</value></data>
-  <data name="conversation.review" xml:space="preserve"><value>Review</value></data>
-  <data name="conversation.files" xml:space="preserve"><value>Files</value></data>
-  <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
-  <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
-  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} token</value></data>
+  <data name="usage.context.cacheHit" xml:space="preserve"><value>Mért gyorsítótár-találatok</value></data>
+  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Ellenőrzött előtag-újrahasznosítás: {0} · {1} / {2} token</value></data>
+  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Mérési lefedettség: {0} · {1} / {2} jogosult kérés</value></data>
+  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Hideg: {0} · lejárt: {1} · módosult: {2}</value></data>
+  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Gyorsítótár-írások: {0} token</value></data>
+  <data name="usage.context.freshInput" xml:space="preserve"><value>Új bemenet: {0} token</value></data>
+  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Nem jelentett újrahasznosítás: {0} / {1} jogosult kérés</value></data>
+  <data name="usage.context.latency" xml:space="preserve"><value>Átlagos kéréskésleltetés: {0}</value></data>
+  <data name="usage.context.prepare" xml:space="preserve"><value>Átlagos kérés-előkészítés: {0}</value></data>
+  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Legnagyobb gyorsítótár-veszteség: {0} ({1} token)</value></data>
+  <data name="settings.shortcuts" xml:space="preserve"><value>Billentyűparancsok</value></data>
+  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Válassz egy billentyűparancsot a módosításhoz. Nyomj meg egy legalább egy módosítóbillentyűt tartalmazó kombinációt.</value></data>
+  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Oldalsáv megjelenítése vagy elrejtése</value></data>
+  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Nyomd meg a billentyűket…</value></data>
+  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Alapértelmezések visszaállítása</value></data>
+  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>A(z) {0} már hozzá van rendelve ehhez: {1}.</value></data>
+  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull requestek</value></data>
+  <data name="conversation.review" xml:space="preserve"><value>Áttekintés</value></data>
+  <data name="conversation.files" xml:space="preserve"><value>Fájlok</value></data>
+  <data name="conversation.browser" xml:space="preserve"><value>Böngésző</value></data>
+  <data name="conversation.newChat" xml:space="preserve"><value>Új beszélgetés</value></data>
+  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} újonnan feldolgozott token</value></data>
+  <data name="settings.skillSuggestions" xml:space="preserve"><value>Készségjavaslatok megjelenítése</value></data>
+  <data name="settings.skillSuggestions.hint" xml:space="preserve"><value>Csak akkor javasol készséget, ha egy tanulságot háromszor tanult meg, vagy az ügynök befejez egy munkafolyamatot, amelyre újra szükséged lesz; hetente legfeljebb egy kártya. Ki: nem jelennek meg javaslatkártyák, és az ügynök sem javasol készségeket.</value></data>
+  <data name="skill.suggestion.title" xml:space="preserve"><value>Javasolt készség: {0}</value></data>
+  <data name="skill.suggestion.create" xml:space="preserve"><value>Készség létrehozása</value></data>
+  <data name="skill.suggestion.dismiss" xml:space="preserve"><value>Most nem</value></data>
+  <data name="settings.autoAccountFailover" xml:space="preserve"><value>Korlát elérése után automatikusan próbáljon másik fiókot</value></data>
+  <data name="settings.autoAccountFailover.hint" xml:space="preserve"><value>Kikapcsolva a csevegés szünetel; nyomd meg a Folytatás gombot egy másik kompatibilis fiók kipróbálásához. Bekapcsolva a kompatibilis fiókok automatikusan kipróbálásra kerülnek.</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>Add meg a modellspecifikus környezeti méretet tokenekben. Az automatikus beállítás a modell jelentett vagy dokumentált méretét használja, ha elérhető, majd a fiókhoz beállított értéket.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>Modellek keresése</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>Automatikus érték: {0} token</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>A szolgáltató nem ad meg környezeti méretet.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>Még nem érhetők el modellek. Csatlakoztass egy szolgáltatót, vagy frissítsd a modellistát.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>Elmentve.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>Automatikus</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>Adj meg egy pozitív egész számú tokent.</value></data>
+  <data name="attachment.files" xml:space="preserve"><value>Fájlok vagy fényképek</value></data>
+  <data name="attachment.project" xml:space="preserve"><value>Munka egy projektben</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>A kontextus automatikusan tömörítve</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>Beolvasott fájlok</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>Módosított fájlok</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>Parancsok lefutottak</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>Keresés a weben</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>Fájlok beolvasása…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>Fájlok szerkesztése…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>Parancsok futtatása…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>Keresés a weben…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>Eszköz használva</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>Eszköz futtatása…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>Eszköz meghiúsult: {0}</value></data>
+  <data name="tasks.menu" xml:space="preserve"><value>Feladatok</value></data>
+  <data name="tasks.title" xml:space="preserve"><value>Ütemezett feladatok</value></data>
+  <data name="tasks.subtitle" xml:space="preserve"><value>Futtasson egy promptot a cron ütemezésében.</value></data>
+  <data name="tasks.empty" xml:space="preserve"><value>Még nincsenek feladatok.</value></data>
+  <data name="tasks.add" xml:space="preserve"><value>Feladat hozzáadása</value></data>
+  <data name="tasks.edit" xml:space="preserve"><value>Feladat szerkesztése</value></data>
+  <data name="tasks.delete" xml:space="preserve"><value>Törölje</value></data>
+  <data name="tasks.runNow" xml:space="preserve"><value>Futtatás most</value></data>
+  <data name="tasks.enabled" xml:space="preserve"><value>Engedélyezve</value></data>
+  <data name="tasks.field.name" xml:space="preserve"><value>Név</value></data>
+  <data name="tasks.field.cron" xml:space="preserve"><value>Cron kifejezés</value></data>
+  <data name="tasks.field.prompt" xml:space="preserve"><value>Prompt</value></data>
+  <data name="tasks.field.workspace" xml:space="preserve"><value>Munkaterület</value></data>
+  <data name="tasks.cron.invalid" xml:space="preserve"><value>Érvénytelen cron kifejezés.</value></data>
+  <data name="tasks.cron.next" xml:space="preserve"><value>Következő futtatások</value></data>
+  <data name="tasks.close" xml:space="preserve"><value>Feladatok bezárása</value></data>
+  <data name="tasks.back" xml:space="preserve"><value>Vissza</value></data>
+  <data name="tasks.new" xml:space="preserve"><value>Új feladat</value></data>
+  <data name="tasks.active" xml:space="preserve"><value>A feladataid</value></data>
+  <data name="tasks.disabled" xml:space="preserve"><value>Letiltva</value></data>
+  <data name="tasks.suggestions" xml:space="preserve"><value>Javaslatok</value></data>
+  <data name="tasks.history" xml:space="preserve"><value>Legutóbbi futtatások</value></data>
+  <data name="tasks.history.empty" xml:space="preserve"><value>Ez a feladat még nem futott le.</value></data>
+  <data name="tasks.field.target" xml:space="preserve"><value>Célfájl vagy mappa</value></data>
+  <data name="tasks.field.targetHint" xml:space="preserve"><value>Opcionális útvonal a munkaterületen</value></data>
+  <data name="tasks.target.invalid" xml:space="preserve"><value>A célnak a munkaterületen belül kell lennie.</value></data>
+  <data name="tasks.field.model" xml:space="preserve"><value>Modell</value></data>
+  <data name="tasks.field.fallback" xml:space="preserve"><value>Tartalékmodell</value></data>
+  <data name="tasks.network" xml:space="preserve"><value>Hálózati hozzáférés engedélyezése</value></data>
+  <data name="tasks.assistant.title" xml:space="preserve"><value>Feladatasszisztens</value></data>
+  <data name="tasks.assistant.placeholder" xml:space="preserve"><value>Kérd meg a módosítását…</value></data>
+  <data name="tasks.assistant.updated" xml:space="preserve"><value>Feladat frissítve.</value></data>
+  <data name="tasks.notification.title" xml:space="preserve"><value>Ütemezett feladat</value></data>
+  <data name="tasks.notification.completed" xml:space="preserve"><value>Befejezve</value></data>
+  <data name="tasks.notification.failed" xml:space="preserve"><value>Sikertelen</value></data>
+  <data name="tasks.notification.fallback" xml:space="preserve"><value>Tartalékmodell használva</value></data>
+  <data name="tasks.suggestion.daily.title" xml:space="preserve"><value>Napi összefoglaló</value></data>
+  <data name="tasks.suggestion.daily.detail" xml:space="preserve"><value>Foglald össze a legutóbbi munkát, a nyitott prioritásokat és a munkaterület változásait.</value></data>
+  <data name="tasks.suggestion.daily.schedule" xml:space="preserve"><value>Hétköznapokon 8:00-kor</value></data>
+  <data name="tasks.suggestion.daily.prompt" xml:space="preserve"><value>Tekintsd át a legutóbbi beszélgetéseket és a munkaterület változásait. Foglald össze a mai legfontosabb prioritásokat.</value></data>
+  <data name="tasks.suggestion.weekly.title" xml:space="preserve"><value>Heti áttekintés</value></data>
+  <data name="tasks.suggestion.weekly.detail" xml:space="preserve"><value>Alakítsd a legutóbbi munkát tömör állapotfrissítéssé minden pénteken.</value></data>
+  <data name="tasks.suggestion.weekly.schedule" xml:space="preserve"><value>Péntekenként 16:00-kor</value></data>
+  <data name="tasks.suggestion.weekly.prompt" xml:space="preserve"><value>Tekintsd át a heti beszélgetéseket és a munkaterület változásait. Írj tömör állapotfrissítést az elkészült munkáról, kockázatokról és a következő lépésekről.</value></data>
+  <data name="tasks.suggestion.followup.title" xml:space="preserve"><value>Utókövetési figyelő</value></data>
+  <data name="tasks.suggestion.followup.detail" xml:space="preserve"><value>Tekintsd át a legutóbbi tevékenységet, és jelöld meg, ami figyelmet igényel.</value></data>
+  <data name="tasks.suggestion.followup.schedule" xml:space="preserve"><value>Hétköznapokon 9:00-kor</value></data>
+  <data name="tasks.suggestion.followup.prompt" xml:space="preserve"><value>Tekintsd át a legutóbbi feladat- és munkaterület-aktivitást. Jelöld a befejezetlen munkát, a sikertelen futtatásokat és mindent, ami figyelmet igényel.</value></data>
+  <data name="tasks.lastRun" xml:space="preserve"><value>Utolsó futás</value></data>
+  <data name="tasks.state.never" xml:space="preserve"><value>Soha ne fuss</value></data>
+  <data name="tasks.state.running" xml:space="preserve"><value>Futás…</value></data>
+  <data name="tasks.state.ok" xml:space="preserve"><value>Sikerült</value></data>
+  <data name="tasks.state.failed" xml:space="preserve"><value>Sikertelen</value></data>
+  <data name="tasks.openConversation" xml:space="preserve"><value>Nyissa meg a beszélgetést</value></data>
+  <data name="tasks.save" xml:space="preserve"><value>Mentés</value></data>
+  <data name="tasks.cancel" xml:space="preserve"><value>Mégse</value></data>
+  <data name="tasks.background" xml:space="preserve"><value>Futtasson feladatokat, miközben az alkalmazás be van zárva</value></data>
+  <data name="tasks.background.hint" xml:space="preserve"><value>Telepít egy háttérsegítőt (launchd), amely akkor is futtatja az esedékes feladatokat, ha a Dots Harness nincs nyitva.</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Térkép</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Index</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Feladatok</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Döntések</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Beállítások</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Beszélgetések</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Nincs linkelt említés.</value></data>
+  <data name="memory.graph" xml:space="preserve"><value>Grafikon</value></data>
+  <data name="media.image" xml:space="preserve"><value>kép</value></data>
+  <data name="media.video" xml:space="preserve"><value>videót</value></data>
+  <data name="media.audio" xml:space="preserve"><value>hang</value></data>
+  <data name="media.promptMissing" xml:space="preserve"><value>Írja le, hogy mit kell generálni a parancs után.</value></data>
+  <data name="media.promptMissingFor" xml:space="preserve"><value>Ismertesse a parancs után generálandó {0}-et.</value></data>
+  <data name="media.modelMissing" xml:space="preserve"><value>A médiaszolgáltató modellje nincs konfigurálva.</value></data>
+  <data name="media.noOutput" xml:space="preserve"><value>A szolgáltató nem adott vissza médiakimenetet.</value></data>
+  <data name="media.invalidOutput" xml:space="preserve"><value>A szolgáltató érvénytelen médiaadatokat adott vissza.</value></data>
+  <data name="media.generationFailed" xml:space="preserve"><value>A szolgáltató nem tudta előállítani a médiát.</value></data>
+  <data name="media.videoTimeout" xml:space="preserve"><value>A videó generálása időtúllépést szenvedett.</value></data>
+  <data name="media.busy" xml:space="preserve"><value>Generálás vagy ügynök futtatása már folyamatban van. Próbálja újra, ha befejezte.</value></data>
+  <data name="media.unsupported" xml:space="preserve"><value>Ezt itt nem tudom generálni. A kiválasztott szolgáltató nem rendelkezik ezzel a képességgel.</value></data>
+  <data name="media.unsupportedStatus" xml:space="preserve"><value>A médiagenerálást a kiválasztott szolgáltató nem támogatja.</value></data>
+  <data name="media.fileMissing" xml:space="preserve"><value>A létrehozott fájl már nem érhető el.</value></data>
+  <data name="media.openAudio" xml:space="preserve"><value>Nyissa meg a generált hangot</value></data>
+  <data name="media.save" xml:space="preserve"><value>Mentés</value></data>
+  <data name="media.showInFinder" xml:space="preserve"><value>Megjelenítés a Finderben</value></data>
+  <data name="rail.home" xml:space="preserve"><value>Kezdőlap</value></data>
+  <data name="rail.media" xml:space="preserve"><value>Média</value></data>
+  <data name="rail.tasks" xml:space="preserve"><value>Feladatok</value></data>
+  <data name="rail.bots" xml:space="preserve"><value>Botok</value></data>
+  <data name="rail.marketplace" xml:space="preserve"><value>Piac</value></data>
+  <data name="rail.memory" xml:space="preserve"><value>Memória</value></data>
+  <data name="rail.settings" xml:space="preserve"><value>Beállítások</value></data>
+  <data name="models.followApp" xml:space="preserve"><value>Az alkalmazás modellje</value></data>
+  <data name="studio.preset.square" xml:space="preserve"><value>Négyzetes bejegyzés</value></data>
+  <data name="studio.preset.story" xml:space="preserve"><value>Történet</value></data>
+  <data name="studio.preset.landscape" xml:space="preserve"><value>Fekvő</value></data>
+  <data name="studio.preset.thumbnail" xml:space="preserve"><value>Videó bélyegkép</value></data>
+  <data name="studio.preset.logo" xml:space="preserve"><value>Logó</value></data>
+  <data name="studio.preset.poster" xml:space="preserve"><value>Poszter</value></data>
+  <data name="studio.template.announcement" xml:space="preserve"><value>Közlemény</value></data>
+  <data name="studio.template.story" xml:space="preserve"><value>Történet</value></data>
+  <data name="studio.template.thumbnail" xml:space="preserve"><value>Videó bélyegkép</value></data>
+  <data name="studio.template.slide" xml:space="preserve"><value>Címdia</value></data>
+  <data name="studio.template.logo" xml:space="preserve"><value>Logó</value></data>
+  <data name="studio.template.mobile" xml:space="preserve"><value>Mobil képernyő</value></data>
+  <data name="studio.category.social" xml:space="preserve"><value>Közösségi média</value></data>
+  <data name="studio.category.uiux" xml:space="preserve"><value>UI/UX</value></data>
+  <data name="studio.category.presentation" xml:space="preserve"><value>Prezentáció és infografika</value></data>
+  <data name="studio.category.other" xml:space="preserve"><value>Egyéb tervek</value></data>
+  <data name="studio.sample.title" xml:space="preserve"><value>A címed</value></data>
+  <data name="studio.sample.detail" xml:space="preserve"><value>Egy rövid sor, amely többet mond</value></data>
+  <data name="studio.sample.brand" xml:space="preserve"><value>Márka</value></data>
+  <data name="studio.sample.text" xml:space="preserve"><value>Szöveg</value></data>
+  <data name="studio.copyOf" xml:space="preserve"><value>{0} másolata</value></data>
+  <data name="studio.untitled" xml:space="preserve"><value>Névtelen projekt</value></data>
+  <data name="studio.home.title" xml:space="preserve"><value>Írd le az ötleted, és keltsd életre</value></data>
+  <data name="studio.home.search" xml:space="preserve"><value>Keresés</value></data>
+  <data name="studio.home.sort.name" xml:space="preserve"><value>Név</value></data>
+  <data name="studio.home.filter.all" xml:space="preserve"><value>Teljes időszak</value></data>
+  <data name="studio.home.filter.week" xml:space="preserve"><value>Elmúlt 7 nap</value></data>
+  <data name="studio.home.filter.month" xml:space="preserve"><value>Elmúlt 30 nap</value></data>
+  <data name="studio.home.starred" xml:space="preserve"><value>Csillagozott</value></data>
+  <data name="studio.home.star" xml:space="preserve"><value>Csillagozás</value></data>
+  <data name="studio.home.unstar" xml:space="preserve"><value>Csillag eltávolítása</value></data>
+  <data name="studio.home.modified" xml:space="preserve"><value>Utolsó módosítás</value></data>
+  <data name="studio.home.canvases" xml:space="preserve"><value>Vásznak</value></data>
+  <data name="studio.projects" xml:space="preserve"><value>Projektek</value></data>
+  <data name="studio.templates" xml:space="preserve"><value>Sablonok</value></data>
+  <data name="studio.community" xml:space="preserve"><value>Közösség</value></data>
+  <data name="studio.community.banner" xml:space="preserve"><value>Fedezd fel a közösség által készített terveket</value></data>
+  <data name="studio.community.saved" xml:space="preserve"><value>Mentettek</value></data>
+  <data name="studio.community.share" xml:space="preserve"><value>Megosztás a közösséggel</value></data>
+  <data name="studio.community.shared" xml:space="preserve"><value>Elküldve felülvizsgálatra. A jóváhagyás után megjelenik a közösségben.</value></data>
+  <data name="studio.community.signIn" xml:space="preserve"><value>Jelentkezz be HerNess-fiókodba a közösségi megosztáshoz.</value></data>
+  <data name="studio.community.empty" xml:space="preserve"><value>Itt még nincsenek közösségi tervek.</value></data>
+  <data name="studio.projectName" xml:space="preserve"><value>Projekt neve</value></data>
+  <data name="studio.newProject" xml:space="preserve"><value>Új projekt</value></data>
+  <data name="studio.create" xml:space="preserve"><value>Projekt létrehozása</value></data>
+  <data name="studio.rename" xml:space="preserve"><value>Átnevezés</value></data>
+  <data name="studio.duplicate" xml:space="preserve"><value>Kettőzés</value></data>
+  <data name="studio.deleteConfirm" xml:space="preserve"><value>Törlöd: „{0}”? A vásznai és feltöltött fájljai is törlődnek.</value></data>
+  <data name="studio.projectMeta" xml:space="preserve"><value>Vásznak: {0}, szerkesztve {1}</value></data>
+  <data name="studio.empty.title" xml:space="preserve"><value>Még nincsenek médiaprojektek</value></data>
+  <data name="studio.empty.detail" xml:space="preserve"><value>A projekt vásznakból álló tábla. Adj hozzá szöveget, alakzatokat és képeket magad, vagy írd le, mit szeretnél, és hagyd, hogy egy modell rétegről rétegre felépítse.</value></data>
+  <data name="studio.addCanvas" xml:space="preserve"><value>Vászon</value></data>
+  <data name="studio.undo" xml:space="preserve"><value>Visszavonás</value></data>
+  <data name="studio.redo" xml:space="preserve"><value>Mégis</value></data>
+  <data name="studio.zoomOut" xml:space="preserve"><value>Kicsinyítés</value></data>
+  <data name="studio.zoomIn" xml:space="preserve"><value>Nagyítás</value></data>
+  <data name="studio.zoomFit" xml:space="preserve"><value>Összes vászon igazítása</value></data>
+  <data name="studio.layers" xml:space="preserve"><value>Rétegek</value></data>
+  <data name="studio.layers.empty" xml:space="preserve"><value>Ezen a vásznon még nincsenek rétegek.</value></data>
+  <data name="studio.layer.text" xml:space="preserve"><value>Szöveg</value></data>
+  <data name="studio.layer.shape" xml:space="preserve"><value>Alakzat</value></data>
+  <data name="studio.layer.upload" xml:space="preserve"><value>Feltöltés</value></data>
+  <data name="studio.layer.show" xml:space="preserve"><value>Réteg megjelenítése</value></data>
+  <data name="studio.layer.hide" xml:space="preserve"><value>Réteg elrejtése</value></data>
+  <data name="studio.shape.rectangle" xml:space="preserve"><value>Téglalap</value></data>
+  <data name="studio.shape.ellipse" xml:space="preserve"><value>Ellipszis</value></data>
+  <data name="studio.name" xml:space="preserve"><value>Név</value></data>
+  <data name="studio.opacity" xml:space="preserve"><value>Átlátszatlanság</value></data>
+  <data name="studio.fontSize" xml:space="preserve"><value>Méret</value></data>
+  <data name="studio.weight.regular" xml:space="preserve"><value>Normál</value></data>
+  <data name="studio.weight.medium" xml:space="preserve"><value>Közepes</value></data>
+  <data name="studio.weight.bold" xml:space="preserve"><value>Félkövér</value></data>
+  <data name="studio.fill" xml:space="preserve"><value>Kitöltés</value></data>
+  <data name="studio.cornerRadius" xml:space="preserve"><value>Sarokkerekítés</value></data>
+  <data name="studio.playVideo" xml:space="preserve"><value>Videó lejátszása</value></data>
+  <data name="studio.size" xml:space="preserve"><value>Méret</value></data>
+  <data name="studio.background" xml:space="preserve"><value>Háttér</value></data>
+  <data name="studio.deleteCanvas" xml:space="preserve"><value>Vászon törlése</value></data>
+  <data name="studio.ai.kind.design" xml:space="preserve"><value>Terv</value></data>
+  <data name="studio.ai.kind.image" xml:space="preserve"><value>Kép</value></data>
+  <data name="studio.ai.kind.video" xml:space="preserve"><value>Videó</value></data>
+  <data name="studio.ai.placeholder.design" xml:space="preserve"><value>Írd le a vásznon elkészítendő tervet</value></data>
+  <data name="studio.ai.placeholder.image" xml:space="preserve"><value>Írd le a generálandó képet</value></data>
+  <data name="studio.ai.placeholder.video" xml:space="preserve"><value>Írd le a generálandó videót</value></data>
+  <data name="studio.ai.run" xml:space="preserve"><value>Generálás</value></data>
+  <data name="studio.ai.planning" xml:space="preserve"><value>Rétegek tervezése</value></data>
+  <data name="studio.ai.layerProgress" xml:space="preserve"><value>{0}/{1}. réteg: {2}</value></data>
+  <data name="studio.ai.drawing" xml:space="preserve"><value>Kép generálása</value></data>
+  <data name="studio.ai.renderingVideo" xml:space="preserve"><value>Videó generálása. Ez néhány percig is tarthat.</value></data>
+  <data name="studio.ai.noPlan" xml:space="preserve"><value>A modell nem adott vissza rétegeket. Próbáld újra, vagy válassz másik modellt.</value></data>
+  <data name="studio.settings.title" xml:space="preserve"><value>Médiamodellek</value></data>
+  <data name="studio.settings.design" xml:space="preserve"><value>Terv</value></data>
+  <data name="studio.settings.model" xml:space="preserve"><value>Modell</value></data>
+  <data name="studio.settings.designHelp" xml:space="preserve"><value>A csevegőmodell, amely a kérést rétegekké alakítja.</value></data>
+  <data name="studio.settings.source" xml:space="preserve"><value>Forrás</value></data>
+  <data name="studio.settings.source.provider" xml:space="preserve"><value>Szolgáltató</value></data>
+  <data name="studio.settings.source.local" xml:space="preserve"><value>Helyi</value></data>
+  <data name="studio.settings.modelDefault" xml:space="preserve"><value>Szolgáltató alapértelmezése</value></data>
+  <data name="studio.settings.local" xml:space="preserve"><value>Helyi szerver</value></data>
+  <data name="studio.settings.localURL" xml:space="preserve"><value>Alap URL</value></data>
+  <data name="studio.settings.localHelp" xml:space="preserve"><value>OpenAI-kompatibilis szerver ezen a gépen vagy a hálózaton. Akkor használatos, ha a fenti forrás Helyi értékre van állítva, az ott megadott modellnévvel.</value></data>
+  <data name="studio.settings.music.connect" xml:space="preserve"><value>API csatlakoztatása</value></data>
+  <data name="studio.settings.music.type.standard" xml:space="preserve"><value>Zeneszerver</value></data>
+  <data name="studio.settings.music.type.elevenlabs" xml:space="preserve"><value>ElevenLabs</value></data>
+  <data name="studio.settings.music.name" xml:space="preserve"><value>Név</value></data>
+  <data name="studio.settings.music.key" xml:space="preserve"><value>API-kulcs</value></data>
+  <data name="studio.settings.music.help" xml:space="preserve"><value>Egy zeneszerver a POST /audio/generations kérésre válaszol, és a /models címen listázza a modelljeit; a tools/music_server.py egy ilyen szerver. Az API-kulcs a Kulcskarikán tárolódik.</value></data>
+  <data name="studio.ai.kind.next" xml:space="preserve"><value>Következő képernyő</value></data>
+  <data name="studio.ai.placeholder.next" xml:space="preserve"><value>Írja le a következő képernyőt, vagy hagyja üresen a folyamat folytatásához</value></data>
+  <data name="studio.ai.noImages" xml:space="preserve"><value>Nincs csatlakoztatva képgenerátor, ezért a képrétegek helyőrzők maradtak. Csatlakoztasson egyet, majd hozza létre az egyes képeket a saját rétegükből.</value></data>
+  <data name="studio.screenNumber" xml:space="preserve"><value>Képernyő {0}</value></data>
+  <data name="studio.layer.icon" xml:space="preserve"><value>Ikon</value></data>
+  <data name="studio.layer.lock" xml:space="preserve"><value>Réteg zárolása</value></data>
+  <data name="studio.layer.unlock" xml:space="preserve"><value>Réteg feloldása</value></data>
+  <data name="studio.layer.front" xml:space="preserve"><value>Előre hozás</value></data>
+  <data name="studio.layer.back" xml:space="preserve"><value>Hátra küldés</value></data>
+  <data name="studio.position" xml:space="preserve"><value>Pozíció</value></data>
+  <data name="studio.rotation" xml:space="preserve"><value>Forgatás</value></data>
+  <data name="studio.appearance" xml:space="preserve"><value>Megjelenés</value></data>
+  <data name="studio.gradient" xml:space="preserve"><value>Színátmenet</value></data>
+  <data name="studio.stroke" xml:space="preserve"><value>Körvonal</value></data>
+  <data name="studio.shadow" xml:space="preserve"><value>Árnyék</value></data>
+  <data name="studio.symbol" xml:space="preserve"><value>Szimbólum neve</value></data>
+  <data name="studio.imagePrompt" xml:space="preserve"><value>Kép leírása</value></data>
+  <data name="studio.generateImage" xml:space="preserve"><value>Kép létrehozása</value></data>
+  <data name="studio.export" xml:space="preserve"><value>Exportálás</value></data>
+  <data name="studio.exportAll" xml:space="preserve"><value>Összes vászon exportálása</value></data>
+  <data name="studio.font.default" xml:space="preserve"><value>Talpatlan</value></data>
+  <data name="studio.font.rounded" xml:space="preserve"><value>Lekerekített</value></data>
+  <data name="studio.font.serif" xml:space="preserve"><value>Talpas</value></data>
+  <data name="studio.font.mono" xml:space="preserve"><value>Rögzített szélességű</value></data>
+  <data name="studio.tool.move" xml:space="preserve"><value>Mozgatás</value></data>
+  <data name="studio.tool.hand" xml:space="preserve"><value>Kéz</value></data>
+  <data name="studio.tool.pen" xml:space="preserve"><value>Toll</value></data>
+  <data name="studio.tool.pencil" xml:space="preserve"><value>Ceruza</value></data>
+  <data name="studio.shape.line" xml:space="preserve"><value>Vonal</value></data>
+  <data name="studio.shape.arrow" xml:space="preserve"><value>Nyíl</value></data>
+  <data name="studio.shape.polygon" xml:space="preserve"><value>Sokszög</value></data>
+  <data name="studio.shape.star" xml:space="preserve"><value>Csillag</value></data>
+  <data name="studio.actions" xml:space="preserve"><value>Műveletek</value></data>
+  <data name="studio.unlockAll" xml:space="preserve"><value>Minden réteg feloldása</value></data>
+  <data name="studio.frames.phone" xml:space="preserve"><value>Telefon</value></data>
+  <data name="studio.frames.tablet" xml:space="preserve"><value>Táblagép</value></data>
+  <data name="studio.frames.desktop" xml:space="preserve"><value>Asztali</value></data>
+  <data name="studio.frames.presentation" xml:space="preserve"><value>Bemutató</value></data>
+  <data name="studio.frames.watch" xml:space="preserve"><value>Óra</value></data>
+  <data name="studio.frames.paper" xml:space="preserve"><value>Papír</value></data>
+  <data name="studio.frames.social" xml:space="preserve"><value>Közösségi média</value></data>
+  <data name="studio.tool.scale" xml:space="preserve"><value>Méretezés</value></data>
+  <data name="studio.tool.section" xml:space="preserve"><value>Szakasz</value></data>
+  <data name="studio.tool.slice" xml:space="preserve"><value>Szelet</value></data>
+  <data name="studio.tool.textPath" xml:space="preserve"><value>Szöveg görbén</value></data>
+  <data name="studio.tool.comment" xml:space="preserve"><value>Megjegyzés</value></data>
+  <data name="studio.search" xml:space="preserve"><value>Keresés</value></data>
+  <data name="studio.cut" xml:space="preserve"><value>Kivágás</value></data>
+  <data name="studio.paste" xml:space="preserve"><value>Beillesztés</value></data>
+  <data name="bots.preset.assistant" xml:space="preserve"><value>Asszisztens</value></data>
+  <data name="bots.preset.researcher" xml:space="preserve"><value>Kutató</value></data>
+  <data name="bots.preset.coder" xml:space="preserve"><value>Programozó</value></data>
+  <data name="bots.new" xml:space="preserve"><value>Új bot</value></data>
+  <data name="bots.edit" xml:space="preserve"><value>Bot szerkesztése</value></data>
+  <data name="bots.clear" xml:space="preserve"><value>Csevegés törlése</value></data>
+  <data name="bots.send" xml:space="preserve"><value>Üzenet küldése</value></data>
+  <data name="bots.deleteConfirm" xml:space="preserve"><value>Törlöd: „{0}” és a csevegése?</value></data>
+  <data name="bots.empty.title" xml:space="preserve"><value>Még nincsenek botok</value></data>
+  <data name="bots.empty.detail" xml:space="preserve"><value>A bot egy asszisztens saját utasításokkal, modellel és folyamatos csevegéssel. Adj neki egy mappát, és ott ügynökként dolgozik.</value></data>
+  <data name="bots.greeting" xml:space="preserve"><value>Küldj üzenetet neki: {0}, hogy elkezdd.</value></data>
+  <data name="bots.placeholder" xml:space="preserve"><value>Üzenet: {0}</value></data>
+  <data name="bots.agentIn" xml:space="preserve"><value>Ügynök itt: {0}</value></data>
+  <data name="bots.name" xml:space="preserve"><value>Név</value></data>
+  <data name="bots.icon" xml:space="preserve"><value>Ikon</value></data>
+  <data name="bots.instructions" xml:space="preserve"><value>Utasítások</value></data>
+  <data name="bots.instructionsHelp" xml:space="preserve"><value>Hogyan viselkedjen a bot, mit tud és hogyan válaszol.</value></data>
+  <data name="bots.workspace" xml:space="preserve"><value>Ügynök mappája</value></data>
+  <data name="bots.workspace.none" xml:space="preserve"><value>Nincs: csak csevegés</value></data>
+  <data name="bots.workspace.choose" xml:space="preserve"><value>Mappa kiválasztása</value></data>
+  <data name="bots.workspace.clear" xml:space="preserve"><value>Eltávolítás</value></data>
+  <data name="bots.workspaceHelp" xml:space="preserve"><value>Mappával a bot kérdés nélkül olvashat, írhat és parancsokat futtathat benne, hálózati hozzáférés nélkül. Mappa nélkül csak csevegni tud.</value></data>
+  <data name="bots.error.noReply" xml:space="preserve"><value>A bot nem válaszolt.</value></data>
+  <data name="bots.status.delivered" xml:space="preserve"><value>Kézbesítve a botnak</value></data>
+  <data name="bots.status.waiting" xml:space="preserve"><value>Várakozás a botra</value></data>
+  <data name="tasks.plan.title" xml:space="preserve"><value>Feladat ütemezése</value></data>
+  <data name="tasks.plan.subtitle" xml:space="preserve"><value>A HerNess elvégzi helyetted az ismétlődő munkát.</value></data>
+  <data name="tasks.upcoming" xml:space="preserve"><value>Közelgő</value></data>
+  <data name="tasks.instructions" xml:space="preserve"><value>Utasítások…</value></data>
+  <data name="tasks.repeat" xml:space="preserve"><value>Ismétlés</value></data>
+  <data name="tasks.time" xml:space="preserve"><value>Időpont</value></data>
+  <data name="tasks.day" xml:space="preserve"><value>Nap</value></data>
+  <data name="tasks.advanced" xml:space="preserve"><value>Speciális</value></data>
+  <data name="tasks.create" xml:space="preserve"><value>Létrehozás</value></data>
+  <data name="tasks.repeat.hourly" xml:space="preserve"><value>Óránként</value></data>
+  <data name="tasks.repeat.daily" xml:space="preserve"><value>Naponta</value></data>
+  <data name="tasks.repeat.weekdays" xml:space="preserve"><value>Hétköznapokon</value></data>
+  <data name="tasks.repeat.weekly" xml:space="preserve"><value>Hetente</value></data>
+  <data name="tasks.repeat.custom" xml:space="preserve"><value>Egyéni</value></data>
+  <data name="bots.preset.assistant.detail" xml:space="preserve"><value>Segítség a mindennapi feladatokhoz</value></data>
+  <data name="bots.preset.researcher.detail" xml:space="preserve"><value>Témák kutatása és források összehasonlítása</value></data>
+  <data name="bots.preset.coder.detail" xml:space="preserve"><value>Kódírás és problémamegoldás</value></data>
+  <data name="tasks.suggestion.email.title" xml:space="preserve"><value>E-mailek követése</value></data>
+  <data name="tasks.suggestion.email.detail" xml:space="preserve"><value>Ellenőrizd a fontos e-maileket, és foglald össze, mi igényel figyelmet.</value></data>
+  <data name="tasks.suggestion.reading.title" xml:space="preserve"><value>Hétvégi olvasmány</value></data>
+  <data name="tasks.suggestion.reading.detail" xml:space="preserve"><value>Minden héten keress egy cikket az érdeklődési körömről.</value></data>
+  <data name="tasks.suggestion.prices.title" xml:space="preserve"><value>Árértesítések</value></data>
+  <data name="tasks.suggestion.prices.detail" xml:space="preserve"><value>Ellenőrizd a követett termékek árát, és jelezd az akciókat.</value></data>
+  <data name="tasks.suggestion.events.title" xml:space="preserve"><value>Események felfedezése</value></data>
+  <data name="tasks.suggestion.events.detail" xml:space="preserve"><value>Keress az érdeklődésemnek megfelelő koncerteket és eseményeket.</value></data>
+  <data name="tasks.suggestion.weekend.title" xml:space="preserve"><value>Tervezd meg a hétvégémet</value></data>
+  <data name="tasks.suggestion.weekend.detail" xml:space="preserve"><value>Javasolj hétvégi programokat a preferenciáim alapján.</value></data>
+  <data name="tasks.suggestions.memory" xml:space="preserve"><value>Az emlékeid alapján</value></data>
+  <data name="tasks.suggestions.personalizing" xml:space="preserve"><value>Javaslatok készítése az emlékeidből…</value></data>
+  <data name="tasks.suggestions.unavailable" xml:space="preserve"><value>Példajavaslatok · személyre szabás nem érhető el</value></data>
+  <data name="tasks.suggestions.refresh" xml:space="preserve"><value>Javaslatok frissítése</value></data>
+  <data name="tasks.suggestions.instruction" xml:space="preserve"><value>Igazítsd az eredményt az érdeklődésemhez és preferenciáimhoz. Foglald össze a találtakat. Jelezd, milyen információ vagy hozzáférés hiányzik.</value></data>
+  <data name="media.music" xml:space="preserve"><value>zene</value></data>
+  <data name="studio.music" xml:space="preserve"><value>Zene</value></data>
+  <data name="studio.library" xml:space="preserve"><value>Könyvtár</value></data>
+  <data name="studio.music.composing" xml:space="preserve"><value>Zeneszerzés folyamatban. Ez eltarthat néhány percig.</value></data>
+  <data name="studio.music.song" xml:space="preserve"><value>Dal</value></data>
+  <data name="studio.music.inspector" xml:space="preserve"><value>Részletek</value></data>
+  <data name="studio.music.section" xml:space="preserve"><value>Szakasz</value></data>
+  <data name="studio.music.section.delete" xml:space="preserve"><value>Szakasz törlése</value></data>
+  <data name="studio.music.lyrics" xml:space="preserve"><value>Dalszöveg</value></data>
+  <data name="studio.music.track" xml:space="preserve"><value>Sáv</value></data>
+  <data name="studio.music.track.generate" xml:space="preserve"><value>Sáv létrehozása</value></data>
+  <data name="studio.music.track.empty" xml:space="preserve"><value>Még nincs hang</value></data>
+  <data name="studio.music.track.delete" xml:space="preserve"><value>Sáv törlése</value></data>
+  <data name="studio.music.mix" xml:space="preserve"><value>Keverés</value></data>
+  <data name="studio.music.tempo" xml:space="preserve"><value>Tempó és hangnem</value></data>
+  <data name="studio.music.generating" xml:space="preserve"><value>{0} sáv létrehozása folyamatban</value></data>
+  <data name="studio.music.placeholder" xml:space="preserve"><value>Írd le a dalt: hangulat, történet, hangszerek, ki énekel</value></data>
+  <data name="studio.music.empty" xml:space="preserve"><value>Írj le egy dalt fent, vagy kezdj egy üres dallal. Először a terv készül el: szakaszok, dalszöveg és hangszerenként egy sáv, amelyeket a hang létrehozása előtt módosíthatsz.</value></data>
+  <data name="studio.music.plan" xml:space="preserve"><value>Dal írása</value></data>
+  <data name="studio.music.new" xml:space="preserve"><value>Üres dal</value></data>
+  <data name="studio.music.noPlan" xml:space="preserve"><value>A modell nem adott vissza daltervet. Próbáld újra, vagy válassz másik modellt.</value></data>
+  <data name="studio.music.deleteConfirm" xml:space="preserve"><value>Törlöd a(z) „{0}” elemet? A sávjai és hangfájljai törlésre kerülnek.</value></data>
+  <data name="studio.music.trackCount" xml:space="preserve"><value>{0} sáv</value></data>
+  <data name="studio.music.bpm" xml:space="preserve"><value>{0} BPM</value></data>
+  <data name="studio.music.key" xml:space="preserve"><value>Hangnem</value></data>
+  <data name="studio.music.generateAll" xml:space="preserve"><value>Összes létrehozása</value></data>
+  <data name="studio.music.regenerate" xml:space="preserve"><value>Sáv újragenerálása</value></data>
+  <data name="studio.music.script" xml:space="preserve"><value>Forgatókönyv</value></data>
+  <data name="studio.music.artists" xml:space="preserve"><value>Előadók</value></data>
+  <data name="studio.music.artist.add" xml:space="preserve"><value>Előadó hozzáadása</value></data>
+  <data name="studio.music.artist.default" xml:space="preserve"><value>Előadó {0}</value></data>
+  <data name="studio.music.artist.name" xml:space="preserve"><value>Név</value></data>
+  <data name="studio.music.artist.style" xml:space="preserve"><value>Hang és stílus</value></data>
+  <data name="studio.music.section.add" xml:space="preserve"><value>Szakasz hozzáadása</value></data>
+  <data name="studio.music.section.default" xml:space="preserve"><value>Versszak</value></data>
+  <data name="studio.music.section.bars" xml:space="preserve"><value>{0} ütem</value></data>
+  <data name="studio.music.line.add" xml:space="preserve"><value>Sor hozzáadása</value></data>
+  <data name="studio.music.line.placeholder" xml:space="preserve"><value>Dalszöveg sor</value></data>
+  <data name="studio.music.line.unsung" xml:space="preserve"><value>Senki</value></data>
+  <data name="studio.music.track.add" xml:space="preserve"><value>Sáv hozzáadása</value></data>
+  <data name="studio.music.track.instrument" xml:space="preserve"><value>Hangszer</value></data>
+  <data name="studio.music.track.prompt" xml:space="preserve"><value>Hogyan szóljon</value></data>
+  <data name="studio.music.track.vocal" xml:space="preserve"><value>Ének · {0}</value></data>
+  <data name="studio.music.mute" xml:space="preserve"><value>Némítás</value></data>
+  <data name="studio.music.solo" xml:space="preserve"><value>Szóló</value></data>
+  <data name="library.all" xml:space="preserve"><value>Mind</value></data>
+  <data name="library.kind.image" xml:space="preserve"><value>Képek</value></data>
+  <data name="library.kind.video" xml:space="preserve"><value>Videók</value></data>
+  <data name="library.kind.audio" xml:space="preserve"><value>Beszéd</value></data>
+  <data name="library.kind.music" xml:space="preserve"><value>Zene</value></data>
+  <data name="library.kind.document" xml:space="preserve"><value>Dokumentumok</value></data>
+  <data name="library.add" xml:space="preserve"><value>Fájlok hozzáadása</value></data>
+  <data name="library.addFailed" xml:space="preserve"><value>{0} fájlt nem sikerült hozzáadni.</value></data>
+  <data name="library.open" xml:space="preserve"><value>Megnyitás</value></data>
+  <data name="library.empty.title" xml:space="preserve"><value>Itt még nincs semmi</value></data>
+  <data name="library.empty.detail" xml:space="preserve"><value>A létrehozott képek, videók, hangfelvételek és zenék automatikusan ide kerülnek. A dokumentumokat és más fájlokat add hozzá te magad.</value></data>
+  <data name="backgroundTasks.title" xml:space="preserve"><value>Háttérfeladatok</value></data>
+  <data name="backgroundTasks.empty" xml:space="preserve"><value>Nincs háttérfeladat</value></data>
+  <data name="backgroundTasks.finished" xml:space="preserve"><value>Befejezettek</value></data>
+  <data name="backgroundTasks.failed" xml:space="preserve"><value>Sikertelen (kilépési kód: {0})</value></data>
+  <data name="backgroundTasks.stopped" xml:space="preserve"><value>Leállítva</value></data>
+  <data name="backgroundTasks.clear" xml:space="preserve"><value>Befejezettek törlése</value></data>
+  <data name="backgroundTasks.runningCount" xml:space="preserve"><value>Futó feladatok: {0}</value></data>
+  <data name="backgroundTasks.wake" xml:space="preserve"><value>A(z) „{0}” háttérfeladat {1} kilépési kóddal fejeződött be. Olvasd el a kimenetét a terminal_session eszközzel (munkamenet: {2}), és folytasd.</value></data>
+  <data name="backgroundTasks.waitingInput" xml:space="preserve"><value>Bevitelre vár</value></data>
+  <data name="local.installed" xml:space="preserve"><value>Telepítve</value></data>
+  <data name="marketplace.title" xml:space="preserve"><value>Piactér</value></data>
+  <data name="marketplace.empty" xml:space="preserve"><value>Nincs plugin</value></data>
+  <data name="marketplace.emptyHint" xml:space="preserve"><value>Nyomja meg a Frissítés gombot a beállításjegyzék betöltéséhez.</value></data>
+  <data name="marketplace.install" xml:space="preserve"><value>Telepítés</value></data>
+  <data name="marketplace.search" xml:space="preserve"><value>Bővítmények keresése</value></data>
+  <data name="marketplace.update" xml:space="preserve"><value>A v{0} → v{1} frissítése</value></data>
+  <data name="marketplace.by" xml:space="preserve"><value>készítette: {0}</value></data>
+  <data name="market.tab.plugins" xml:space="preserve"><value>Bővítmények</value></data>
+  <data name="market.tab.skills" xml:space="preserve"><value>Képességek</value></data>
+  <data name="market.tab.starters" xml:space="preserve"><value>Projektsablonok</value></data>
+  <data name="starters.intro" xml:space="preserve"><value>Válassz egy sablont és egy üres mappát. A prompt a szerkesztőmezőbe kerül, hogy elolvashasd és elküldhesd.</value></data>
+  <data name="starters.use" xml:space="preserve"><value>Sablon használata</value></data>
+  <data name="starters.chooseFolder" xml:space="preserve"><value>Válassz egy üres mappát az új projekthez.</value></data>
+  <data name="starters.web.title" xml:space="preserve"><value>Webalkalmazás</value></data>
+  <data name="starters.web.detail" xml:space="preserve"><value>Next.js TypeScripttel, elrendezéssel, egy példa API-útvonallal és lintinggel.</value></data>
+  <data name="starters.landing.title" xml:space="preserve"><value>Nyitóoldal</value></data>
+  <data name="starters.landing.detail" xml:space="preserve"><value>Statikus HTML és CSS nyitószekcióval, funkciókkal, árakkal és kapcsolattal. Nincs build lépés.</value></data>
+  <data name="starters.api.title" xml:space="preserve"><value>API-szolgáltatás</value></data>
+  <data name="starters.api.detail" xml:space="preserve"><value>FastAPI állapotellenőrzéssel, egy példa erőforrással, beállításokkal és tesztekkel.</value></data>
+  <data name="starters.ios.title" xml:space="preserve"><value>iOS-alkalmazás</value></data>
+  <data name="starters.ios.detail" xml:space="preserve"><value>SwiftUI két képernyővel, egy megfigyelhető modellel és egy egységteszttel.</value></data>
+  <data name="starters.worker.title" xml:space="preserve"><value>Cloudflare Worker</value></data>
+  <data name="starters.worker.detail" xml:space="preserve"><value>TypeScript API Workersön típusos kötésekkel és egy teszttel.</value></data>
+  <data name="starters.cli.title" xml:space="preserve"><value>Parancssori eszköz</value></data>
+  <data name="starters.cli.detail" xml:space="preserve"><value>Python-csomag alparancsokkal, tesztekkel és telepítési útmutatóval.</value></data>
+  <data name="common.cancel" xml:space="preserve"><value>Mégse</value></data>
+  <data name="common.connect" xml:space="preserve"><value>Csatlakozás</value></data>
+  <data name="common.copied" xml:space="preserve"><value>Másolva</value></data>
+  <data name="common.delete" xml:space="preserve"><value>Törölje</value></data>
+  <data name="common.done" xml:space="preserve"><value>Kész</value></data>
+  <data name="common.download" xml:space="preserve"><value>Letöltés</value></data>
+  <data name="common.idle" xml:space="preserve"><value>Tétlen</value></data>
+  <data name="common.refresh" xml:space="preserve"><value>Frissítés</value></data>
+  <data name="common.remove" xml:space="preserve"><value>Távolítsa el</value></data>
+  <data name="common.start" xml:space="preserve"><value>Indítsa el</value></data>
+  <data name="common.stop" xml:space="preserve"><value>Állj</value></data>
+  <data name="common.test" xml:space="preserve"><value>Teszt</value></data>
+  <data name="common.save" xml:space="preserve"><value>Mentés</value></data>
+  <data name="common.view" xml:space="preserve"><value>Megtekintés</value></data>
+  <data name="composer.add" xml:space="preserve"><value>Hozzáadás</value></data>
+  <data name="attachment.addApp" xml:space="preserve"><value>Adja hozzá a Dots Harness alkalmazást</value></data>
+  <data name="attachment.projectDetail" xml:space="preserve"><value>Válasszon projektet az új csevegéshez</value></data>
+  <data name="attachment.goal" xml:space="preserve"><value>Gól</value></data>
+  <data name="attachment.goalDetail" xml:space="preserve"><value>Tűzz ki egy célt, amiért dolgozol</value></data>
+  <data name="attachment.plan" xml:space="preserve"><value>Tervezési mód</value></data>
+  <data name="attachment.planDetail" xml:space="preserve"><value>Kapcsolja be a terv módot</value></data>
+  <data name="attachment.saveSkill" xml:space="preserve"><value>Mentsen el egy képességet</value></data>
+  <data name="attachment.plugins" xml:space="preserve"><value>Beépülő modulok</value></data>
+  <data name="attachment.slashCommands" xml:space="preserve"><value>Perjeles parancsok</value></data>
+  <data name="attachment.folder" xml:space="preserve"><value>Mappa hozzáadása</value></data>
+  <data name="attachment.connectors" xml:space="preserve"><value>Összekötők</value></data>
+  <data name="attachment.documentsDetail" xml:space="preserve"><value>Dokumentumműtermékek létrehozása és szerkesztése</value></data>
+  <data name="attachment.pdfDetail" xml:space="preserve"><value>PDF-fájlok olvasása, létrehozása és ellenőrzése</value></data>
+  <data name="attachment.spreadsheetsDetail" xml:space="preserve"><value>Táblázatfájlok létrehozása és szerkesztése</value></data>
+  <data name="modelPicker.model" xml:space="preserve"><value>Modell</value></data>
+  <data name="modelPicker.speed" xml:space="preserve"><value>Sebesség</value></data>
+  <data name="modelPicker.maximum" xml:space="preserve"><value>Maximum</value></data>
+  <data name="modelPicker.standard" xml:space="preserve"><value>Szabványos</value></data>
+  <data name="modelPicker.fast" xml:space="preserve"><value>Gyors</value></data>
+  <data name="modelPicker.auto" xml:space="preserve"><value>Auto</value></data>
+  <data name="modelPicker.autoHint" xml:space="preserve"><value>Üzenetenként választja ki a modellt és az erőfeszítést</value></data>
+  <data name="settings.sshPassword" xml:space="preserve"><value>Jelszó (egyszer használjuk)</value></data>
+  <data name="settings.sshRememberPassword" xml:space="preserve"><value>Jelszó megjegyzése</value></data>
+  <data name="settings.sshRememberPassword.hint" xml:space="preserve"><value>Nem szükséges: a jelszót csak egyszer, a kulcs telepítéséhez használjuk, és sosem írjuk a ~/.ssh/config fájlba.</value></data>
+  <data name="ssh.continue" xml:space="preserve"><value>Tovább</value></data>
+  <data name="ssh.enrolling" xml:space="preserve"><value>Kulcs telepítése…</value></data>
+  <data name="ssh.enrolled.hint" xml:space="preserve"><value>A további kapcsolatok a kulcsot használják; a jelszó többé nem kell.</value></data>
+  <data name="ssh.retry" xml:space="preserve"><value>Újra</value></data>
+  <data name="ssh.retryHint" xml:space="preserve"><value>Ellenőrizd a címet, a felhasználónevet és a jelszót, majd próbáld újra.</value></data>
+  <data name="ssh.installKeyManually" xml:space="preserve"><value>Add hozzá ezt a kulcsot a kiszolgáló ~/.ssh/authorized_keys fájljához, majd próbáld újra.</value></data>
+  <data name="ssh.copyPublicKey" xml:space="preserve"><value>Kulcs másolása</value></data>
+  <data name="ssh.error.passwordAuthDisabled" xml:space="preserve"><value>A kiszolgáló nem fogad el jelszavas bejelentkezést.</value></data>
+  <data name="ssh.error.authFailed" xml:space="preserve"><value>A(z) {0} elutasította a bejelentkezést.</value></data>
+  <data name="ssh.error.hostKeyChanged" xml:space="preserve"><value>A(z) {0} kiszolgálókulcsa megváltozott. Csak akkor folytasd, ha a kiszolgálót újratelepítették.</value></data>
+  <data name="ssh.error.invalidInput" xml:space="preserve"><value>Adjon meg egy érvényes aliast, gazda- és felhasználónevet, valamint portot.</value></data>
+  <data name="sidebar.projects" xml:space="preserve"><value>Projektek</value></data>
+  <data name="sidebar.recent" xml:space="preserve"><value>Legutóbbi</value></data>
+  <data name="sidebar.search" xml:space="preserve"><value>Keresés a csevegések között</value></data>
+  <data name="sidebar.sites" xml:space="preserve"><value>Webhelyek</value></data>
+  <data name="sidebar.scheduled" xml:space="preserve"><value>Ütemezett</value></data>
+  <data name="sidebar.addProject" xml:space="preserve"><value>Projekt hozzáadása</value></data>
+  <data name="settings.compactTrigger" xml:space="preserve"><value>Kontextus automatikus tömörítése itt:</value></data>
+  <data name="settings.compactTrigger.hint" xml:space="preserve"><value>Az egyes modellek kontextusablakának aránya. A magasabb érték tovább megőrzi a prompt-gyorsítótárat, mert a tömörítés újraírja azt.</value></data>
+  <data name="settings.explore.subagents" xml:space="preserve"><value>Alügynökök használata</value></data>
+  <data name="settings.explore.hint" xml:space="preserve"><value>Bekapcsolva az ügynök nehéz vagy hosszú feladatoknál a sok fájlt átfésülő kereséseket és egy nagy módosítás független részeit párhuzamos alügynököknek adja át; a fő beszélgetésbe csak az összefoglalójuk kerül. A szerkesztő alügynök csak a neki kiosztott fájlokat írhatja, és a kiosztások nem fedhetik egymást. Egyszerű feladatok soha nem hívnak alügynököt. Minden alügynök külön modellfuttatás; a költség csökkentéséhez kapcsolja ki.</value></data>
+  <data name="settings.responseStyle" xml:space="preserve"><value>Válaszstílus</value></data>
+  <data name="settings.responseStyle.hint" xml:space="preserve"><value>Ez a beállítás nem írja át a promptot. A Tömör/Ultra legjobb szándékú preferencia; nem garantál tokenszámot, befejezést vagy alacsonyabb költséget.</value></data>
+  <data name="responseStyle.balanced" xml:space="preserve"><value>Kiegyensúlyozott</value></data>
+  <data name="responseStyle.concise" xml:space="preserve"><value>Tömör</value></data>
+  <data name="responseStyle.ultra" xml:space="preserve"><value>Ultra</value></data>
+  <data name="responseStyle.detailed" xml:space="preserve"><value>Részletes</value></data>
+  <data name="settings.computerUse.enable" xml:space="preserve"><value>Számítógép-használat engedélyezése</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>Verzió és frissítések</value></data>
+  <data name="settings.updates.available" xml:space="preserve"><value>Új verzió érhető el: v{0}</value></data>
+  <data name="settings.updates.download" xml:space="preserve"><value>Frissítés letöltése</value></data>
+  <data name="dock.branch" xml:space="preserve"><value>Ág</value></data>
+  <data name="dock.refresh" xml:space="preserve"><value>Frissítés</value></data>
+  <data name="dock.commit" xml:space="preserve"><value>Commit</value></data>
+  <data name="dock.push" xml:space="preserve"><value>Push</value></data>
+  <data name="dock.fetch" xml:space="preserve"><value>Lekérés</value></data>
+  <data name="dock.commitOrPush" xml:space="preserve"><value>Commit vagy push</value></data>
+  <data name="dock.commitMessage" xml:space="preserve"><value>Commit üzenet</value></data>
+  <data name="dock.noChanges" xml:space="preserve"><value>Az ügynök nem módosított semmit.</value></data>
+  <data name="dock.whyRequest" xml:space="preserve"><value>A kérésed</value></data>
+  <data name="dock.whyAgent" xml:space="preserve"><value>Az ügynök magyarázata</value></data>
+  <data name="dock.notRepo" xml:space="preserve"><value>Ez a mappa nem git-tároló.</value></data>
+  <data name="dock.gitMissing" xml:space="preserve"><value>A Git nincs telepítve. Az áttekintéshez, commithoz és pushhoz szükséges.</value></data>
+  <data name="dock.installGit" xml:space="preserve"><value>Git telepítése</value></data>
+  <data name="dock.filterFiles" xml:space="preserve"><value>Fájlok szűrése…</value></data>
+  <data name="dock.openFile" xml:space="preserve"><value>Fájl megnyitása</value></data>
+  <data name="dock.selectFile" xml:space="preserve"><value>Válassz egy fájlt a munkaterület fájából</value></data>
+  <data name="dock.binaryFile" xml:space="preserve"><value>Bináris vagy nem olvasható fájl</value></data>
+  <data name="dock.expand" xml:space="preserve"><value>Kibontás</value></data>
+  <data name="dock.collapse" xml:space="preserve"><value>Összecsukás</value></data>
+  <data name="dock.split" xml:space="preserve"><value>Felosztás</value></data>
+  <data name="dock.unsplit" xml:space="preserve"><value>Egy lap megjelenítése</value></data>
+  <data name="dock.newTab" xml:space="preserve"><value>Új lap</value></data>
+  <data name="dock.address" xml:space="preserve"><value>Keresés vagy URL megadása</value></data>
+  <data name="dock.invalidAddress" xml:space="preserve"><value>Adj meg érvényes webcímet vagy keresést.</value></data>
+  <data name="dock.openExternal" xml:space="preserve"><value>Megnyitás az alapértelmezett böngészőben</value></data>
+  <data name="dock.bottomTerminal" xml:space="preserve"><value>Terminál megnyitása alul</value></data>
+  <data name="dock.splitHorizontal" xml:space="preserve"><value>Felosztás egymás mellé</value></data>
+  <data name="dock.splitVertical" xml:space="preserve"><value>Felosztás egymás alá</value></data>
+  <data name="dock.noWorkspace" xml:space="preserve"><value>Előbb válassz munkamappát.</value></data>
+  <data name="git.branchHelp" xml:space="preserve"><value>Git-ág kiválasztása</value></data>
+  <data name="git.uncommitted" xml:space="preserve"><value>Nem véglegesített: {0} fájlok</value></data>
+  <data name="market.area.core" xml:space="preserve"><value>Fő Marketplace</value></data>
+  <data name="market.area.experimental" xml:space="preserve"><value>Kísérleti</value></data>
+  <data name="market.area.community" xml:space="preserve"><value>Közösség</value></data>
+  <data name="market.area.communityExperimental" xml:space="preserve"><value>Közösség / Kísérleti</value></data>
+  <data name="market.account" xml:space="preserve"><value>HerNess-fiók</value></data>
+  <data name="market.signIn" xml:space="preserve"><value>Bejelentkezés</value></data>
+  <data name="market.signIn.email" xml:space="preserve"><value>E-mail és jelszó</value></data>
+  <data name="market.signIn.title" xml:space="preserve"><value>Bejelentkezés HerNess-fiókkal</value></data>
+  <data name="market.email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="market.password" xml:space="preserve"><value>Jelszó</value></data>
+  <data name="market.likeSignIn" xml:space="preserve"><value>Jelentkezzen be a kedveléshez</value></data>
+  <data name="market.customize" xml:space="preserve"><value>Testreszabás</value></data>
+  <data name="market.localForks" xml:space="preserve"><value>Helyi testreszabások</value></data>
+  <data name="market.openFolder" xml:space="preserve"><value>Mappa megnyitása</value></data>
+  <data name="market.fork.compared" xml:space="preserve"><value>Összehasonlítva</value></data>
+  <data name="market.consent.title" xml:space="preserve"><value>Ez a bővítmény natív kódot futtat</value></data>
+  <data name="market.consent.accept" xml:space="preserve"><value>Elfogadás és engedélyezés</value></data>
+  <data name="market.consent.message" xml:space="preserve"><value>A(z) {0} egy külső féltől származó natív bővítmény. Terület: {1}. Ellenőrzés: {2}. Kategória: {3}. Nézze át az engedélyeit és a forráskódját. Ha elfogadja, a bővítmény azonnal megbízhatóként fut.</value></data>
+  <data name="market.review.verified" xml:space="preserve"><value>A DOTS ellenőrizte</value></data>
+  <data name="market.review.pending" xml:space="preserve"><value>Ellenőrzésre vár</value></data>
+  <data name="market.community.empty" xml:space="preserve"><value>Még nincsenek közösségi bővítmények</value></data>
+  <data name="market.community.emptyHint" xml:space="preserve"><value>A közösségi bővítményekhez külön ellenőrzés és kifejezett hozzájárulás kell a natív kód futtatásához.</value></data>
+  <data name="market.report" xml:space="preserve"><value>Jelentés</value></data>
+  <data name="market.report.title" xml:space="preserve"><value>Bővítmény jelentése</value></data>
+  <data name="market.report.reason" xml:space="preserve"><value>Ok</value></data>
+  <data name="market.report.submit" xml:space="preserve"><value>Jelentés küldése</value></data>
+  <data name="market.report.malware" xml:space="preserve"><value>Kártevő vagy ártalmas viselkedés</value></data>
+  <data name="market.report.credentialTheft" xml:space="preserve"><value>Hitelesítő adatok ellopása</value></data>
+  <data name="market.report.exfiltration" xml:space="preserve"><value>Adatszivárogtatás</value></data>
+  <data name="market.report.deceptive" xml:space="preserve"><value>Félrevezető leírás vagy megszemélyesítés</value></data>
+  <data name="market.report.spam" xml:space="preserve"><value>Spam vagy üres burkoló</value></data>
+  <data name="market.report.copyright" xml:space="preserve"><value>Szerzői jogi vagy licencsértés</value></data>
+  <data name="market.publish" xml:space="preserve"><value>Bővítmény közzététele</value></data>
+  <data name="market.publish.title" xml:space="preserve"><value>Natív bővítmény közzététele</value></data>
+  <data name="market.publish.hint" xml:space="preserve"><value>A bővítmény mappájában kell lennie plugin.yml, plugin.ir.json fájlnak és licencnek. JavaScript és deklaratív futtatókörnyezet nem fogadható el; a platform-buildek CI-ban készülnek.</value></data>
+  <data name="market.publish.noFolder" xml:space="preserve"><value>Nincs kiválasztott bővítménymappa</value></data>
+  <data name="market.publish.chooseFolder" xml:space="preserve"><value>Mappa kiválasztása</value></data>
+  <data name="market.publish.irPreview" xml:space="preserve"><value>plugin.ir.json előnézete</value></data>
+  <data name="market.publish.sourcePreview" xml:space="preserve"><value>Natív forrás előnézete</value></data>
+  <data name="market.publish.version" xml:space="preserve"><value>Verzió (SemVer)</value></data>
+  <data name="market.publish.license" xml:space="preserve"><value>SPDX-licenc (pl. MIT)</value></data>
+  <data name="market.publish.visibility" xml:space="preserve"><value>Forrás láthatósága</value></data>
+  <data name="market.publish.public" xml:space="preserve"><value>Nyilvános — a forráscsomag listázva van</value></data>
+  <data name="market.publish.private" xml:space="preserve"><value>Privát — csak a tulajdonos és a CI fér hozzá</value></data>
+  <data name="market.publish.targets" xml:space="preserve"><value>Célplatformok</value></data>
+  <data name="market.publish.footer" xml:space="preserve"><value>Közzététel után az MI besorolja a kategóriát, a területet és a kockázatot. A bővítmény a build elkészülte után sem jelenik meg, amíg az emberi ellenőrzés be nem fejeződik.</value></data>
+  <data name="market.publish.submit" xml:space="preserve"><value>Közzététel</value></data>
+  <data name="market.publish.error.http" xml:space="preserve"><value>A Marketplace-közzététel sikertelen (HTTP {0}): {1}</value></data>
+  <data name="market.publish.error.license" xml:space="preserve"><value>Bővítmény közzétételéhez válasszon licencet.</value></data>
+  <data name="market.publish.error.noManifest" xml:space="preserve"><value>A kiválasztott mappában nincs plugin.yml.</value></data>
+  <data name="market.publish.error.nativeOnly" xml:space="preserve"><value>Csak natív bővítmények tehetők közzé.</value></data>
+  <data name="market.publish.error.semver" xml:space="preserve"><value>Adjon meg érvényes SemVer-verziót.</value></data>
+  <data name="market.publish.error.targets" xml:space="preserve"><value>Válasszon legalább egy célplatformot és érvényes forrásláthatóságot.</value></data>
+  <data name="market.publish.error.package" xml:space="preserve"><value>A csomagnak tartalmaznia kell a plugin.ir.json és a license fájlt.</value></data>
+  <data name="market.publish.error.irVersion" xml:space="preserve"><value>A plugin.ir.json csak 1-es verziójú lehet.</value></data>
+  <data name="market.publish.error.releaseID" xml:space="preserve"><value>Nem sikerült lekérni a Marketplace-kiadás azonosítóját.</value></data>
+  <data name="market.publish.error.noVersion" xml:space="preserve"><value>A plugin.yml-ből hiányzik a version mező.</value></data>
+  <data name="market.publish.status.registering" xml:space="preserve"><value>Marketplace-bejegyzés létrehozása…</value></data>
+  <data name="market.publish.status.uploading" xml:space="preserve"><value>Natív forráscsomag feltöltése…</value></data>
+  <data name="market.publish.status.aiUnavailable" xml:space="preserve"><value>Az MI-besorolás nem érhető el; ideiglenes címke: {0} · {1} · {2}. Emberi ellenőrzés szükséges.</value></data>
+  <data name="market.publish.status.aiDone" xml:space="preserve"><value>MI-besorolás: {0} · {1} · {2}. Emberi ellenőrzésre vár.</value></data>
+  <data name="market.publish.status.aiFailed" xml:space="preserve"><value>Az MI-besorolás nem fejeződött be; emberi ellenőrzésre vár.</value></data>
+  <data name="market.publish.status.queueing" xml:space="preserve"><value>Natív platform-buildek sorba állítása…</value></data>
+  <data name="market.publish.status.uploaded" xml:space="preserve"><value>Forráscsomag feltöltve; natív CI-ellenőrzésre vár.</value></data>
+  <data name="market.error.notSignedIn" xml:space="preserve"><value>A Marketplace-közzétételhez HerNess-fiók szükséges.</value></data>
+  <data name="market.error.invalidCallback" xml:space="preserve"><value>A HerNess bejelentkezési visszahívása érvénytelen volt.</value></data>
+  <data name="market.error.stateMismatch" xml:space="preserve"><value>A HerNess bejelentkezési állapota nem egyezett.</value></data>
+  <data name="market.error.request" xml:space="preserve"><value>A Marketplace-kérés sikertelen (HTTP {0}): {1}</value></data>
+  <data name="market.error.invalidResponse" xml:space="preserve"><value>A Marketplace érvénytelen választ adott.</value></data>
+  <data name="market.error.credentials" xml:space="preserve"><value>Az e-mail-cím és a jelszó kötelező.</value></data>
+  <data name="remote.scan" xml:space="preserve"><value>Olvassa be ezt a QR-kódot, vagy írja be az egyszer használatos kódot a HerNess Mobile-ban.</value></data>
+  <data name="remote.newCode" xml:space="preserve"><value>Új párosítási kód</value></data>
+  <data name="remote.copyLink" xml:space="preserve"><value>Párosítási hivatkozás másolása</value></data>
+  <data name="remote.tunnel.enable" xml:space="preserve"><value>Cloudflare Quick Tunnel engedélyezése</value></data>
+  <data name="remote.hint" xml:space="preserve"><value>A szolgáltatói kulcsok az asztali gépen maradnak. A fájlírás, a terminál, a build, a telepítés és a PR-műveletek továbbra is a kiválasztott jóváhagyási módot használják.</value></data>
+  <data name="settings.tab.mobile" xml:space="preserve"><value>Mobilvezérlés</value></data>
+  <data name="settings.compaction.economyFixed" xml:space="preserve"><value>A takarékos szabály rögzített 90%-os küszöböt használ.</value></data>
+  <data name="settings.browser.title" xml:space="preserve"><value>Előnyben részesített böngésző és motor</value></data>
+  <data name="settings.browser.auto" xml:space="preserve"><value>Automatikus (alkalmazáson belül vagy a megnevezett böngésző)</value></data>
+  <data name="settings.browser.managed" xml:space="preserve"><value>Felügyelt elkülönített böngésző (Chrome)</value></data>
+  <data name="settings.browser.chrome" xml:space="preserve"><value>Saját Chrome</value></data>
+  <data name="settings.browser.desktopHint" xml:space="preserve"><value>Az alkalmazáson belüli böngésző a rendszer böngészőmotorját használja. A kezelt Chrome és a meglévő Chrome-profil is elérhető.</value></data>
+  <data name="settings.browser.inAppDesktop" xml:space="preserve"><value>Alkalmazáson belüli böngésző</value></data>
+  <data name="settings.computerUse.desktopHint" xml:space="preserve"><value>Az ügynök ellenőrizheti a futó alkalmazásokat, képernyőképeket tekinthet meg, használhatja az egeret és a billentyűzetet, majd ellenőrizheti az eredményt. Az asztali műveletek hozzáférési jóváhagyást igényelnek.</value></data>
+  <data name="settings.computerUse.linuxHint" xml:space="preserve"><value>Linuxon a számítógép-vezérléshez X11, xdotool és maim vagy ImageMagick szükséges. A Wayland nem támogatott.</value></data>
+  <data name="market.settings.hint" xml:space="preserve"><value>A Main Marketplace ellenőrzött Harness-bővítményeket tartalmaz. A Community és Experimental külön jelenik meg; a natív bővítmények futtatásához előzetes jóváhagyás szükséges.</value></data>
+  <data name="market.registry.empty" xml:space="preserve"><value>Nem találhatók Marketplace-bejegyzések. A próbálkozáshoz frissítse a regisztert.</value></data>
+  <data name="market.signIn.hint" xml:space="preserve"><value>Jelentkezzen be Google-lel, GitHubbal vagy HerNess e-mail-címmel és jelszóval. A munkamenet-tokenek a platform hitelesítőadat-tárában maradnak.</value></data>
+  <data name="dock.clean" xml:space="preserve"><value>A munkafa tiszta.</value></data>
+  <data name="market.publish.folderPickerUnavailable" xml:space="preserve"><value>Ez az asztali környezet nem biztosít mappaválasztót.</value></data>
+  <data name="market.publish.localFolderRequired" xml:space="preserve"><value>Válasszon helyi mappát a bővítmény közzétételéhez.</value></data>
+  <data name="market.report.details" xml:space="preserve"><value>Részletek (nem kötelező, legfeljebb 5 000 karakter)</value></data>
+  <data name="dock.browser.webview2Unavailable" xml:space="preserve"><value>A WebView2 nem indult el. Telepítse vagy javítsa a Microsoft Edge WebView2 Runtime-ot.</value></data>
+  <data name="settings.marketplace" xml:space="preserve"><value>Piactér</value></data>
+  <data name="workspace.use" xml:space="preserve"><value>Munkaterület használata</value></data>
+  <data name="market.fork.consent.title" xml:space="preserve"><value>Ez a testreszabott bővítmény natív kódot futtat</value></data>
+  <data name="market.fork.consent.message" xml:space="preserve"><value>A(z) {0} helyi fork. Forrása független az upstreamtől; engedélyezés előtt nézze át a módosításokat.</value></data>
+  <data name="market.fork.newUpstream" xml:space="preserve"><value>Új upstream: v{0}; a helyi módosítások megmaradnak</value></data>
+  <data name="market.remove.confirmTitle" xml:space="preserve"><value>Eltávolítja a Marketplace-bővítményt?</value></data>
+  <data name="market.remove.confirmMessage" xml:space="preserve"><value>Eltávolítja a(z) {0} elemet erről az eszközről?</value></data>
+  <data name="market.report.other" xml:space="preserve"><value>Egyéb</value></data>
+  <data name="modelPicker.economy" xml:space="preserve"><value>Takarékos</value></data>
+  <data name="conversation.toggleResponseEconomy" xml:space="preserve"><value>Válasz-token takarékosság be- vagy kikapcsolása</value></data>
+  <data name="market.unpublish.confirmMessage" xml:space="preserve"><value>Visszavonja a(z) {0} közzétételét? A meglévő telepítések nem lesznek eltávolítva.</value></data>
+  <data name="market.permissions" xml:space="preserve"><value>Engedélyek</value></data>
+  <data name="market.risk" xml:space="preserve"><value>Kockázat: {0}</value></data>
+  <data name="market.category.coding" xml:space="preserve"><value>Programozás</value></data>
+  <data name="market.category.git" xml:space="preserve"><value>Git</value></data>
+  <data name="market.category.qa" xml:space="preserve"><value>Tesztelés és minőség</value></data>
+  <data name="market.category.devops" xml:space="preserve"><value>DevOps</value></data>
+  <data name="market.category.browser" xml:space="preserve"><value>Böngésző</value></data>
+  <data name="market.category.web" xml:space="preserve"><value>Web</value></data>
+  <data name="market.category.backend" xml:space="preserve"><value>Backend</value></data>
+  <data name="market.category.mobile" xml:space="preserve"><value>Mobil</value></data>
+  <data name="market.category.models" xml:space="preserve"><value>Modellek</value></data>
+  <data name="market.category.integrations" xml:space="preserve"><value>Integrációk</value></data>
+  <data name="market.category.workspace" xml:space="preserve"><value>Munkaterület</value></data>
+  <data name="market.category.productivity" xml:space="preserve"><value>Produktivitás</value></data>
+  <data name="market.category.tools" xml:space="preserve"><value>Eszközök</value></data>
+  <data name="market.category.design" xml:space="preserve"><value>Tervezés</value></data>
+  <data name="market.category.documents" xml:space="preserve"><value>Dokumentumok</value></data>
+  <data name="market.category.authoring" xml:space="preserve"><value>Képességek írása</value></data>
+  <data name="market.category.community" xml:space="preserve"><value>Közösség</value></data>
+  <data name="market.category.other" xml:space="preserve"><value>Egyéb</value></data>
+  <data name="navigation.back" xml:space="preserve"><value>Vissza</value></data>
+  <data name="navigation.forward" xml:space="preserve"><value>Előre</value></data>
+  <data name="dock.restart" xml:space="preserve"><value>Újraindítás</value></data>
+  <data name="dock.go" xml:space="preserve"><value>Ugrás</value></data>
+  <data name="terminal.sandboxUnavailable" xml:space="preserve"><value>A terminál-sandbox nem érhető el: {0}</value></data>
+  <data name="remote.lan" xml:space="preserve"><value>LAN-végpont</value></data>
+  <data name="remote.code" xml:space="preserve"><value>Kód</value></data>
+  <data name="remote.expires" xml:space="preserve"><value>Lejár: {0}</value></data>
+  <data name="remote.pairingLink" xml:space="preserve"><value>Párosítási hivatkozás</value></data>
+  <data name="custom.detected" xml:space="preserve"><value>Ezen a számítógépen fut</value></data>
+  <data name="custom.modelOptional" xml:space="preserve"><value>Modell neve (nem kötelező)</value></data>
+  <data name="custom.contextOptional" xml:space="preserve"><value>Kontextusablak tokenben (nem kötelező)</value></data>
+  <data name="custom.prefix" xml:space="preserve"><value>Modell előtag</value></data>
+  <data name="local.tuning" xml:space="preserve"><value>Teljesítmény</value></data>
+  <data name="local.tuningHint" xml:space="preserve"><value>Üresen vagy auto értéken a futtatókörnyezet a GPU memóriájához igazítja a modellt. A változások a modell következő indításakor lépnek életbe.</value></data>
+  <data name="local.contextSize" xml:space="preserve"><value>Kontextusméret (token)</value></data>
+  <data name="local.gpuLayers" xml:space="preserve"><value>GPU-rétegek (auto, all vagy egy szám)</value></data>
+  <data name="local.threads" xml:space="preserve"><value>CPU-szálak</value></data>
+  <data name="local.batchSize" xml:space="preserve"><value>Kötegméret</value></data>
+  <data name="local.flashAttention" xml:space="preserve"><value>Flash attention</value></data>
+  <data name="local.kvCache" xml:space="preserve"><value>KV-gyorsítótár típusa</value></data>
+  <data name="local.extraArgs" xml:space="preserve"><value>További llama-server argumentumok</value></data>
+  <data name="local.hardware" xml:space="preserve"><value>Hardver</value></data>
+  <data name="local.listen" xml:space="preserve"><value>Hallgatás</value></data>
+  <data name="local.importGGUF" xml:space="preserve"><value>GGUF-fájl hozzáadása…</value></data>
+  <data name="local.tooLarge" xml:space="preserve"><value>Túl nagy</value></data>
+  <data name="local.backend" xml:space="preserve"><value>GPU-háttér</value></data>
+  <data name="settings.compaction.autoRouted" xml:space="preserve"><value>Automatikusan irányított modellek</value></data>
+  <data name="settings.compaction.effectiveThreshold" xml:space="preserve"><value>Tényleges küszöb</value></data>
+  <data name="sidebar.signOut" xml:space="preserve"><value>Kijelentkezés</value></data>
+  <data name="market.unpublish" xml:space="preserve"><value>Közzététel visszavonása</value></data>
+  <data name="settings.sshHosts" xml:space="preserve"><value>Távoli számítógépek (SSH)</value></data>
+  <data name="settings.sshHosts.hint" xml:space="preserve"><value>A gépek a ~/.ssh/config fájlból származnak. Az itt hozzáadott gép oda íródik.</value></data>
+  <data name="settings.sshNoHosts" xml:space="preserve"><value>Nincs bejegyzés a ~/.ssh/config fájlban.</value></data>
+  <data name="settings.sshAddHost" xml:space="preserve"><value>Számítógép hozzáadása…</value></data>
+  <data name="settings.sshTest" xml:space="preserve"><value>Teszt</value></data>
+  <data name="settings.sshManaged" xml:space="preserve"><value>itt hozzáadva</value></data>
+  <data name="settings.sshFromConfig" xml:space="preserve"><value>a ~/.ssh/config fájlból</value></data>
+  <data name="settings.sshRemove.handWritten" xml:space="preserve"><value>Ezt a bejegyzést kézzel írták a ~/.ssh/config fájlba. Ott távolítsd el.</value></data>
+  <data name="settings.updates.current" xml:space="preserve"><value>Jelenlegi verzió</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>Frissítések keresése…</value></data>
+  <data name="settings.updates.checkAgain" xml:space="preserve"><value>Újraellenőrzés</value></data>
+  <data name="settings.updates.upToDate" xml:space="preserve"><value>Az alkalmazás naprakész.</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>Frissítések keresése</value></data>
+  <data name="settings.updates.retry" xml:space="preserve"><value>Újra</value></data>
+  <data name="settings.updates.hint" xml:space="preserve"><value>Keresse meg a legújabb elérhető kiadást.</value></data>
+  <data name="settings.updates.required" xml:space="preserve"><value>Kötelező</value></data>
+  <data name="ssh.connected" xml:space="preserve"><value>{0} válaszolt.</value></data>
+  <data name="remote.enable" xml:space="preserve"><value>Távoli vezérlés engedélyezése</value></data>
+  <data name="remote.shareLan" xml:space="preserve"><value>Megosztás a helyi hálózattal</value></data>
+  <data name="remote.enableHint" xml:space="preserve"><value>A távoli átjáró ki van kapcsolva. Kapcsold be a telefon párosításához.</value></data>
+  <data name="plan.title" xml:space="preserve"><value>Terv</value></data>
+  <data name="plan.proposed" xml:space="preserve"><value>A Claude tervet javasolt</value></data>
+  <data name="plan.revise" xml:space="preserve"><value>Átdolgozás…</value></data>
+  <data name="plan.acceptAuto" xml:space="preserve"><value>Elfogadás és automatikus mód</value></data>
 </root>

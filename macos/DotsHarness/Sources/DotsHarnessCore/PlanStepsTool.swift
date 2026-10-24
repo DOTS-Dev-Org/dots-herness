@@ -63,6 +63,31 @@ public enum PlanStepsTool {
         return AppCopy.format("plan.stepsUpdated", lines.count, done) + "\n" + lines.joined(separator: "\n")
     }
 
+    public struct Step: Equatable, Sendable {
+        public let title: String
+        public let status: String
+    }
+
+    /// The plan the agent last recorded since the user's latest message, read back from
+    /// the transcript so the live card needs no state of its own. Empty when there is none.
+    public static func currentSteps(in messages: [ChatMessage]) -> [Step] {
+        for message in messages.reversed() {
+            if message.kind == .user { return [] }
+            guard message.kind == .tool, message.text.hasPrefix("✓ \(name)"),
+                  let output = message.rawToolOutput else { continue }
+            let steps = steps(in: output)
+            if !steps.isEmpty { return steps }
+        }
+        return []
+    }
+
+    static func steps(in output: String) -> [Step] {
+        output.split(separator: "\n").compactMap { line in
+            let status = ["pending", "in_progress", "done"].first { line.hasPrefix(marker(for: $0)! + " ") }
+            return status.map { Step(title: String(line.dropFirst(2)), status: $0) }
+        }
+    }
+
     private static func marker(for status: String) -> String? {
         switch status {
         case "pending": return "☐"

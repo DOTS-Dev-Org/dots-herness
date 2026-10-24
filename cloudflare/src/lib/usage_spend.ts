@@ -25,9 +25,6 @@ export type SpendTrendResult = {
   points: SpendTrendPoint[];
 };
 
-/** @deprecated Use SpendTrendPoint */
-export type SpendTrendMonth = SpendTrendPoint;
-
 const TR_MONTH_LABELS = [
   "Oca", "Şub", "Mar", "Nis", "May", "Haz",
   "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara",
@@ -367,27 +364,6 @@ export async function getSpendTrend(
     unitLabel,
     points,
   };
-}
-
-/** Geriye dönük uyumluluk — aylık granülarite. */
-export async function getMonthlySpendTrend(
-  env: Env,
-  workspaceId: string,
-  userEmail: string,
-  currentMonthSpendUsdCents: number,
-  userId?: string,
-  membershipStartedAt?: string | null,
-  giftStartedAt?: string | null
-): Promise<SpendTrendPoint[]> {
-  const result = await getSpendTrend(env, {
-    workspaceId,
-    userId: userId ?? "",
-    userEmail,
-    membershipStartedAt: membershipStartedAt ?? null,
-    giftStartedAt: giftStartedAt ?? null,
-    granularity: "monthly",
-  });
-  return result.points;
 }
 
 /** Her abonelik sync/scrape'inde append-only fiyat geçmişi kaydı. */

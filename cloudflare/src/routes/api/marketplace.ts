@@ -5,12 +5,10 @@ import { z } from "zod";
 import type { Env, AppVariables } from "../../env";
 import { db, nowIso, uuid } from "../../db/client";
 import { requireAuth } from "../../middleware/auth";
-import { rateLimit } from "../../middleware/rate-limit";
+import { checkRateLimit, getClientIp, rateLimit } from "../../middleware/rate-limit";
 import { timingSafeEqual } from "../../lib/paytr";
 import { clientIpFromRequest, recordAudit } from "../../lib/audit";
 import {
-  MARKETPLACE_CATEGORIES,
-  MARKETPLACE_CATALOG_SCOPES,
   MARKETPLACE_REPORT_REASONS,
   moderateMarketplaceRelease,
   type MarketplaceCatalogScope,
@@ -152,6 +150,9 @@ type PluginRow = {
   created_at: string;
   updated_at: string;
   unpublished_at: string | null;
+  downloads: number;
+  likes: number;
+  featured: number;
 };
 
 type ReleaseRow = {
@@ -575,12 +576,78 @@ async function registry(env: Env, requestedScope: "core" | "community") {
       riskLevel: release.risk_level,
       permissions: jsonArray(release.permission_manifest_json),
       moderationStatus: release.moderation_status,
+      publishedAt: release.published_at,
+      downloads: plugin.downloads,
+      likes: plugin.likes,
+      featured: plugin.featured === 1,
       artifacts: artifacts.map((row) => publicArtifact(env, row)),
       screenshots: [],
     });
   }
   return { version: 3, scope: requestedScope, generatedAt: new Date().toISOString(), plugins: entries };
 }
+
+const ARTIFACT_KEY_PATTERN = /^marketplace\/plugins\/([^/]+)\/releases\/[^/]+\/[^/]+\/[^/]+\/plugin\.dotsplugin$/;
+
+/**
+ * Counts a served artifact as one download. The same address counts once per
+ * plugin per day, so retries, updates across architectures and refresh loops
+ * do not inflate the public number.
+ */
+export async function recordMarketplaceDownload(env: Env, assetKey: string, ip: string): Promise<void> {
+  const pluginID = assetKey.match(ARTIFACT_KEY_PATTERN)?.[1];
+  if (!pluginID) return;
+  const first = await checkRateLimit(env, `marketplace:download:${pluginID}:${ip}`, 1, 86_400);
+  if (!first.allowed) return;
+  await db(env).prepare("UPDATE marketplace_plugins SET downloads = downloads + 1 WHERE id = ?").bind(pluginID).run();
+}
+
+const CATALOG_KINDS = ["skill", "starter"] as const;
+type CatalogKind = (typeof CATALOG_KINDS)[number];
+
+function catalogKind(value: string): CatalogKind | null {
+  return (CATALOG_KINDS as readonly string[]).includes(value) ? (value as CatalogKind) : null;
+}
+
+/** Skills or project starters as clients decode them, with the live counters merged in. */
+async function catalog(env: Env, kind: CatalogKind) {
+  const { results } = await db(env).prepare(
+    `SELECT id, payload_json, downloads, likes, featured
+       FROM marketplace_catalog_items
+      WHERE kind = ?
+      ORDER BY sort_order, id`
+  ).bind(kind).all<{ id: string; payload_json: string; downloads: number; likes: number; featured: number }>();
+  return (results || []).map((row) => ({
+    ...jsonObject(row.payload_json),
+    id: row.id,
+    downloads: row.downloads,
+    likes: row.likes,
+    featured: row.featured === 1,
+  }));
+}
+
+const CATALOG_CACHE = { "Cache-Control": "public, max-age=5, s-maxage=5", "CDN-Cache-Control": "public, max-age=5" };
+
+marketplacePublic.get("/skills.json", async (c) => c.json(await catalog(c.env, "skill"), 200, CATALOG_CACHE));
+marketplacePublic.get("/starters.json", async (c) => c.json(await catalog(c.env, "starter"), 200, CATALOG_CACHE));
+
+// Skills download from their own source and starters are only a prompt, so the
+// app reports the install. Same once-per-address-per-day rule as plugin artifacts.
+marketplacePublic.post(
+  "/catalog/:kind/:id/download",
+  rateLimit({ limit: 120, windowSeconds: 3600, keyPrefix: "marketplace:catalog-download" }),
+  async (c) => {
+    const kind = catalogKind(c.req.param("kind"));
+    const id = c.req.param("id");
+    if (!kind) return c.json({ error: "catalog_kind_invalid" }, 400);
+    const first = await checkRateLimit(c.env, `marketplace:download:${kind}:${id}:${getClientIp(c)}`, 1, 86_400);
+    const row = await db(c.env).prepare(
+      `UPDATE marketplace_catalog_items SET downloads = downloads + ? WHERE kind = ? AND id = ? RETURNING downloads`
+    ).bind(first.allowed ? 1 : 0, kind, id).first<{ downloads: number }>();
+    if (!row) return c.json({ error: "catalog_item_not_found" }, 404);
+    return c.json({ downloads: row.downloads });
+  },
+);
 
 const GITHUB_OIDC_ISSUER = "https://token.actions.githubusercontent.com";
 let githubOIDCKeys: { expiresAt: number; keys: Record<string, JsonWebKey> } | null = null;
@@ -705,6 +772,7 @@ marketplaceApi.get("/community-registry", async (c) => c.json(await registry(c.e
 marketplaceApi.use("/plugins", requireAuth);
 marketplaceApi.use("/plugins/*", requireAuth);
 marketplaceApi.use("/me/*", requireAuth);
+marketplaceApi.use("/catalog/*", requireAuth);
 marketplaceApi.use("/releases/*", requireAuth);
 
 marketplaceApi.post(
@@ -990,6 +1058,73 @@ marketplaceApi.post(
       report_id: reportID,
       status: criticalReport ? "suspended_pending_review" : "pending",
     }, 201);
+  },
+);
+
+marketplaceApi.get("/me/likes", async (c) => {
+  const userID = c.get("user").id;
+  const [plugins, items] = await db(c.env).batch<{ kind: string; id: string }>([
+    db(c.env).prepare("SELECT 'plugin' AS kind, plugin_id AS id FROM marketplace_likes WHERE user_id = ?").bind(userID),
+    db(c.env).prepare("SELECT kind, item_id AS id FROM marketplace_catalog_likes WHERE user_id = ?").bind(userID),
+  ]);
+  const ids = (kind: string) => [...(plugins.results || []), ...(items.results || [])]
+    .filter((row) => row.kind === kind)
+    .map((row) => row.id);
+  return c.json({ plugin_ids: ids("plugin"), skill_ids: ids("skill"), starter_ids: ids("starter") });
+});
+
+marketplaceApi.post(
+  "/catalog/:kind/:id/like",
+  rateLimit({ limit: 120, windowSeconds: 3600, keyPrefix: "marketplace:like" }),
+  zValidator("json", z.object({ liked: z.boolean() }).strict()),
+  async (c) => {
+    const kind = catalogKind(c.req.param("kind"));
+    const id = c.req.param("id");
+    if (!kind) return c.json({ error: "catalog_kind_invalid" }, 400);
+    const item = await db(c.env)
+      .prepare("SELECT 1 AS found FROM marketplace_catalog_items WHERE kind = ? AND id = ?")
+      .bind(kind, id)
+      .first<{ found: number }>();
+    if (!item) return c.json({ error: "catalog_item_not_found" }, 404);
+    await db(c.env).prepare(
+      c.req.valid("json").liked
+        ? "INSERT OR IGNORE INTO marketplace_catalog_likes (kind, item_id, user_id) VALUES (?, ?, ?)"
+        : "DELETE FROM marketplace_catalog_likes WHERE kind = ? AND item_id = ? AND user_id = ?",
+    ).bind(kind, id, c.get("user").id).run();
+    const row = await db(c.env).prepare(
+      `UPDATE marketplace_catalog_items
+          SET likes = (SELECT COUNT(*) FROM marketplace_catalog_likes WHERE kind = ? AND item_id = ?)
+        WHERE kind = ? AND id = ?
+        RETURNING likes`,
+    ).bind(kind, id, kind, id).first<{ likes: number }>();
+    return c.json({ likes: row?.likes ?? 0 });
+  },
+);
+
+marketplaceApi.post(
+  "/plugins/:id/like",
+  rateLimit({ limit: 120, windowSeconds: 3600, keyPrefix: "marketplace:like" }),
+  zValidator("json", z.object({ liked: z.boolean() }).strict()),
+  async (c) => {
+    const id = c.req.param("id");
+    const plugin = await db(c.env)
+      .prepare("SELECT 1 AS found FROM marketplace_plugins WHERE id = ? AND unpublished_at IS NULL")
+      .bind(id)
+      .first<{ found: number }>();
+    if (!plugin) return c.json({ error: "plugin_not_found" }, 404);
+    await db(c.env).prepare(
+      c.req.valid("json").liked
+        ? "INSERT OR IGNORE INTO marketplace_likes (plugin_id, user_id) VALUES (?, ?)"
+        : "DELETE FROM marketplace_likes WHERE plugin_id = ? AND user_id = ?",
+    ).bind(id, c.get("user").id).run();
+    // Recount instead of +/-1 so the counter can never drift from the like rows.
+    const row = await db(c.env).prepare(
+      `UPDATE marketplace_plugins
+          SET likes = (SELECT COUNT(*) FROM marketplace_likes WHERE plugin_id = ?)
+        WHERE id = ?
+        RETURNING likes`,
+    ).bind(id, id).first<{ likes: number }>();
+    return c.json({ likes: row?.likes ?? 0 });
   },
 );
 

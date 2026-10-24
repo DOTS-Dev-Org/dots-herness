@@ -317,7 +317,6 @@ public sealed class NativeProviderStore
 
     public void SetActive(string id, bool active) { if (State.Accounts.FirstOrDefault(a => a.Id == id) is { } account) { account.Active = active; Save(); } }
     public void SetImageFallback(string id, bool enabled) { if (State.Accounts.FirstOrDefault(a => a.Id == id) is { } account) { account.ImageFallbackEnabled = enabled; Save(); } }
-    public void SetPriority(string id, int priority) { if (State.Accounts.FirstOrDefault(a => a.Id == id) is { } account) { account.Priority = priority; Save(); } }
     public void ReplaceCredential(NativeProviderAccount account, string value) => Secrets.Write(account.CredentialId, value);
     public void ReplaceRefreshCredential(NativeProviderAccount account, string value)
     {
@@ -431,7 +430,8 @@ public sealed record NativeMessage(
     IReadOnlyList<JsonObject>? ProviderItems = null,
     string? SystemKind = null,
     bool PromptContextCaptured = false,
-    string? Thinking = null);
+    string? Thinking = null,
+    bool IsTransientProgressText = false);
 
 /// Captures host context on a user turn before it is sent or persisted. Shared
 /// by Windows and Linux, independently of the selected provider protocol.
@@ -457,16 +457,69 @@ public static class NativePromptHistory
     {
         var current = Sections(context);
         if (!current.Complete) return context;
-        var captured = new Dictionary<string, string>(StringComparer.Ordinal);
+        var copies = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         foreach (var user in history.Where(message => message.Role == "user" && message.PromptContextCaptured))
-            foreach (var section in Sections(user.Content).Sections) captured[section.Tag] = section.Block;
+            foreach (var section in Sections(user.Content).Sections)
+            {
+                if (!copies.TryGetValue(section.Tag, out var list)) copies[section.Tag] = list = [];
+                list.Add(section.Block);
+            }
+        var captured = copies.ToDictionary(pair => pair.Key, pair => pair.Value[^1], StringComparer.Ordinal);
         var live = current.Sections.Select(section => section.Tag).ToHashSet(StringComparer.Ordinal);
-        static string Retired(string tag) => $"<{tag}>\nNo longer applies.\n</{tag}>";
         return string.Join("\n\n", current.Sections
-            .Where(section => !captured.TryGetValue(section.Tag, out var previous) || previous != section.Block)
-            .Select(section => section.Block)
+            .Select(section => section.Tag == "task_history"
+                ? TaskHistoryAdditions(section.Block, copies.GetValueOrDefault(section.Tag) ?? [])
+                : !captured.TryGetValue(section.Tag, out var previous) || previous != section.Block ? section.Block : null)
+            .OfType<string>()
             .Concat(captured.Keys.Order(StringComparer.Ordinal)
                 .Where(tag => !live.Contains(tag) && captured[tag] != Retired(tag)).Select(Retired)));
+    }
+
+    private static string Retired(string tag) => $"<{tag}>\nNo longer applies.\n</{tag}>";
+
+    public const string TaskHistoryAdditionsMarker =
+        "(Additions to the task_history captured earlier in this conversation; its earlier entries still hold.)";
+
+    /// task_history is recalled for each request, so its text moves every turn while
+    /// most entries repeat. Only entries the transcript has not seen since its last
+    /// full copy are captured. The backlog is state rather than recall: when it
+    /// changed, the section is captured whole. Null when nothing is new.
+    public static string? TaskHistoryAdditions(string block, IReadOnlyList<string> copies)
+    {
+        static string[] Body(string block) => block.Split('\n')[1..^1];
+        // An entry is a line plus its indented continuation lines ("  Files: …").
+        static List<string> Entries(IEnumerable<string> lines)
+        {
+            var result = new List<string>();
+            foreach (var line in lines.Where(line => line.Length > 0))
+                if (line.StartsWith(' ') && result.Count > 0) result[^1] += "\n" + line;
+                else result.Add(line);
+            return result;
+        }
+        static List<string> Backlog(IEnumerable<string> lines) => Entries(lines)
+            .SkipWhile(entry => !entry.StartsWith("## Unfinished work", StringComparison.Ordinal))
+            .TakeWhile((entry, index) => index == 0 || !entry.StartsWith("## ", StringComparison.Ordinal)).ToList();
+
+        if (copies.Count == 0 || copies[^1] == Retired("task_history")) return block;
+        var baseIndex = -1;
+        for (var index = copies.Count - 1; index >= 0 && baseIndex < 0; index--)
+            if (Body(copies[index]).FirstOrDefault() != TaskHistoryAdditionsMarker) baseIndex = index;
+        if (baseIndex < 0) return block;
+        var current = Body(block);
+        if (!Backlog(current).SequenceEqual(Backlog(Body(copies[baseIndex])))) return block;
+        var seen = copies.Skip(baseIndex).SelectMany(copy => Entries(Body(copy))).ToHashSet(StringComparer.Ordinal);
+        var kept = new List<string>();
+        string? heading = null;
+        foreach (var entry in Entries(current))
+        {
+            if (entry.StartsWith("## ", StringComparison.Ordinal)) { heading = entry; continue; }
+            if (seen.Contains(entry)) continue;
+            if (heading is not null) { kept.Add(heading); heading = null; }
+            kept.Add(entry);
+        }
+        if (kept.Count == 0) return null;
+        var lines = block.Split('\n');
+        return string.Join("\n", new[] { lines[0], TaskHistoryAdditionsMarker }.Concat(kept).Append(lines[^1]));
     }
 
     /// An opaque Responses checkpoint replaces the earlier provider history.
@@ -587,6 +640,16 @@ public sealed class NativeProviderException : Exception
     /// instant at which an automatic continuation may be attempted.
     public DateTimeOffset? RetryAt { get; }
     public bool IsImageInputUnsupported { get; }
+    public bool IsContextWindowExceeded => IndicatesContextWindowExceeded(Message);
+
+    public static bool IndicatesContextWindowExceeded(string message)
+    {
+        var normalized = message.ToLowerInvariant().Replace('_', ' ');
+        if (new[] { "prompt is too long", "prompt too long", "input is too long", "input too long" }.Any(normalized.Contains))
+            return true;
+        return new[] { "context window", "context length", "maximum context", "max context", "prompt length", "input length" }.Any(normalized.Contains)
+            && new[] { "exceed", "too long", "too large", "too many tokens", "maximum", "max tokens", "full", "limit" }.Any(normalized.Contains);
+    }
 
     public NativeProviderException(
         string message,
@@ -624,7 +687,8 @@ public sealed class NativeProviderException : Exception
 internal static class ClaudeOAuthHeaders
 {
     public const string Beta = "oauth-2025-04-20,claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14";
-    public const string UserAgent = "claude-cli/2.1.92 (external, sdk-cli)";
+    /// Replaced by the remote model catalog when it publishes a newer client user-agent.
+    public static string UserAgent { get; set; } = "claude-cli/2.1.92 (external, sdk-cli)";
     public const string AgentIdentity = "You are Claude Code, Anthropic's official CLI for Claude.";
     private const string Dot = "-dot-";
     private const string Suffix = "_cc";
@@ -693,6 +757,8 @@ public sealed class NativeProviderRouter
     /// Reasoning effort for requests. Empty = provider default; ignored for models
     /// that do not list the level in <see cref="NativeEffortCatalog"/>.
     public string Effort { get; set; } = "";
+    /// Fast (priority) output for models in <see cref="NativeFastCatalog"/>; off in Economy.
+    public bool Fast { get; set; }
     public string AnthropicCacheTTL { get; set; } = "1h";
     /// Standard preserves the existing transport policy; Economy adds only
     /// deterministic output/context reductions and keeps Effort unchanged.
@@ -762,8 +828,8 @@ public sealed class NativeProviderRouter
         List<NativeProviderAccount> routes;
         if (preferred is not null && !allowAccountFailoverAfterLimit)
         {
-            // A conversation stays on its account for every ordinary turn. The
-            // account-specific cache namespace is part of this continuity.
+            // A conversation stays on its account for ordinary requests. The
+            // limit catch below decides whether another account may be tried.
             routes = [preferred];
         }
         else if (preferred is not null)
@@ -797,6 +863,7 @@ public sealed class NativeProviderRouter
                     if (limitFailure is null || (limitFailure.RetryAt is null && ex.RetryAt is not null)) limitFailure = ex;
                     limitAccountId = route.Id;
                     failures.Add($"{route.ProviderName}: {ex.Message}");
+                    if (!allowAccountFailoverAfterLimit) break;
                     continue;
                 }
                 if (HasImageAttachments(messages)
@@ -820,6 +887,7 @@ public sealed class NativeProviderRouter
                                 if (limitFailure is null || (limitFailure.RetryAt is null && retry.RetryAt is not null)) limitFailure = retry;
                                 limitAccountId = route.Id;
                                 failures.Add($"{route.ProviderName}: {retry.Message}");
+                                if (!allowAccountFailoverAfterLimit) break;
                                 continue;
                             }
                             if (HasImageAttachments(messages)
@@ -905,12 +973,24 @@ public sealed class NativeProviderRouter
             responseStyle);
         if (expandedBudget && budget is not null)
             budget = budget.Expand(model ?? route.Model, route.Protocol, ContextCompaction.DefaultContextWindow);
+        // The wire names of the tools in this request. Anthropic and the OpenAI
+        // function protocols only carry ASCII identifiers, while the harness
+        // names its own tools `skill.read`.
+        var wireNames = ToolWireNames.Map(
+            orderedTools.Select(tool => tool.Name)
+                .Concat(requestMessages.SelectMany(message => message.ToolCalls?.Select(call => call.Name) ?? Array.Empty<string>())),
+            route.Protocol switch
+            {
+                NativeProviderProtocol.Anthropic => ToolWireNames.Anthropic,
+                NativeProviderProtocol.ChatGpt or NativeProviderProtocol.OpenAiResponses => ToolWireNames.Responses,
+                _ => ToolWireNames.OpenAi,
+            });
         var body = route.Protocol switch
         {
-            NativeProviderProtocol.Anthropic => AnthropicBody(route, requestMessages, orderedTools, model, UnsupportedExtendedCacheTtls.ContainsKey(CacheCapabilityKey(route, model ?? route.Model)) ? "5m" : AnthropicCacheTTL),
+            NativeProviderProtocol.Anthropic => AnthropicBody(route, requestMessages, orderedTools, model, UnsupportedExtendedCacheTtls.ContainsKey(CacheCapabilityKey(route, model ?? route.Model)) ? "5m" : AnthropicCacheTTL, wireNames),
             NativeProviderProtocol.ChatGpt or NativeProviderProtocol.OpenAiResponses => ResponsesBody(route, requestMessages, orderedTools, model, route.Protocol,
-                SupportsStaticBreakpoint(route, model ?? route.Model)),
-            _ => OpenAiBody(route, requestMessages, orderedTools, model),
+                SupportsStaticBreakpoint(route, model ?? route.Model), wireNames),
+            _ => OpenAiBody(route, requestMessages, orderedTools, model, wireNames),
         };
         var contextEditingRouteKey = CacheCapabilityKey(route, model ?? route.Model);
         if (route.Protocol == NativeProviderProtocol.Anthropic
@@ -926,6 +1006,10 @@ public sealed class NativeProviderRouter
                     ["type"] = "clear_tool_uses_20250919",
                     ["trigger"] = new JsonObject { ["type"] = "input_tokens", ["value"] = triggerTokens },
                     ["keep"] = new JsonObject { ["type"] = "tool_uses", ["value"] = 3 },
+                    // A cleared read_file body would leave the read ledger vouching for
+                    // bytes the model no longer sees; local compaction drops those and
+                    // forgets the reads together.
+                    ["exclude_tools"] = new JsonArray("read_file"),
                     ["clear_at_least"] = new JsonObject
                     {
                         ["type"] = "input_tokens",
@@ -953,6 +1037,9 @@ public sealed class NativeProviderRouter
             : routeCacheKey;
         ApplyPromptCacheKey(body, route.Protocol, effectivePromptCacheKey);
         ApplyEffort(body, route.Protocol, model ?? route.Model, effectiveEffort, budget);
+        if (Fast && UsageMode != AgentUsageMode.Economy && route.Protocol == NativeProviderProtocol.Anthropic
+            && NativeFastCatalog.Supports(model ?? route.Model))
+            body["speed"] = "fast";
         // Verbosity is a cached request setting. It follows the saved mode,
         // never one prompt's wording, so a short question keeps the prefix.
         if (UsageMode != AgentUsageMode.Economy
@@ -1017,6 +1104,8 @@ public sealed class NativeProviderRouter
             request.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
             if (body["context_management"]?["edits"] is JsonArray)
                 request.Headers.TryAddWithoutValidation("anthropic-beta", "context-management-2025-06-27");
+            if (body["speed"] is not null)
+                request.Headers.TryAddWithoutValidation("anthropic-beta", "fast-mode-2026-02-01");
             if (route.AuthType == "claudeOAuth")
             {
                 request.Headers.TryAddWithoutValidation("anthropic-beta", ClaudeOAuthHeaders.Beta);
@@ -1159,6 +1248,9 @@ public sealed class NativeProviderRouter
         };
         if (route.AuthType == "claudeOAuth" && result.Message.ToolCalls is { Count: > 0 } oauthCalls)
             result = result with { Message = result.Message with { ToolCalls = oauthCalls.Select(call => call with { Name = ClaudeOAuthHeaders.RestoreToolName(call.Name) }).ToList() } };
+        // The provider answered with the wire names; the app dispatches the real ones.
+        if (wireNames.Count > 0 && result.Message.ToolCalls is { Count: > 0 } wireCalls)
+            result = result with { Message = result.Message with { ToolCalls = wireCalls.Select(call => call with { Name = ToolWireNames.Restore(call.Name, wireNames) }).ToList() } };
         var eventId = Guid.NewGuid().ToString();
         var evidence = cacheRequest.Compare(baseline, result.Usage, requestStartedAt, effectiveTTL);
         if (evidence.Classification == "cold" && cacheSession is { LastEpochReason: not "new_session" } && cacheSession.Baselines.Count == 0)
@@ -1172,7 +1264,8 @@ public sealed class NativeProviderRouter
             var routeFingerprint = AgentCacheNamespace.Fingerprint(route.BaseUrl.ToLowerInvariant()
                 + "|" + route.Id + "|" + route.Protocol + "|" + effectiveModel);
             cacheSession.AppendEvent(new NativeCacheUsageEvent(eventId, requestStartedAt, usageScope, result.Usage,
-                evidence, latency, PrepareMilliseconds: prepareMilliseconds, RouteFingerprint: routeFingerprint));
+                evidence, latency, PrepareMilliseconds: prepareMilliseconds, RouteFingerprint: routeFingerprint,
+                Local: Uri.TryCreate(route.BaseUrl, UriKind.Absolute, out var baseUri) && baseUri.IsLoopback));
             var accepted = cacheRequest.Accepted(eventId, requestStartedAt, result.Usage, effectiveTTL, result.ResponseId);
             // A smaller extent cannot prove that the current terminal boundary was
             // written. Keep the last proven checkpoint without refreshing its expiry.
@@ -1410,12 +1503,14 @@ public sealed class NativeProviderRouter
         }
     }
 
-    private static JsonObject OpenAiBody(NativeProviderAccount route, IReadOnlyList<NativeMessage> messages, IReadOnlyList<NativeToolDefinition> tools, string? model)
+    private static JsonObject OpenAiBody(NativeProviderAccount route, IReadOnlyList<NativeMessage> messages, IReadOnlyList<NativeToolDefinition> tools, string? model,
+        IReadOnlyDictionary<string, string>? wireNames = null)
     {
+        messages = ContextCompaction.ProviderContextMessages(messages);
         var wireMessages = new JsonArray();
         foreach (var message in messages)
         {
-            wireMessages.Add(MessageNode(message));
+            wireMessages.Add(MessageNode(message, wireNames));
             if (message.Role == "tool" && message.Attachments is { Count: > 0 })
             {
                 wireMessages.Add(new JsonObject
@@ -1426,9 +1521,13 @@ public sealed class NativeProviderRouter
             }
         }
         var body = new JsonObject { ["model"] = model ?? route.Model, ["messages"] = wireMessages, ["temperature"] = 0.2 };
-        if (tools.Count > 0) body["tools"] = new JsonArray(tools.Select(tool => new JsonObject { ["type"] = "function", ["function"] = new JsonObject { ["name"] = tool.Name, ["description"] = tool.Description, ["parameters"] = tool.Parameters.DeepClone() } }).ToArray());
+        if (tools.Count > 0) body["tools"] = new JsonArray(tools.Select(tool => new JsonObject { ["type"] = "function", ["function"] = new JsonObject { ["name"] = WireName(tool.Name, wireNames), ["description"] = tool.Description, ["parameters"] = tool.Parameters.DeepClone() } }).ToArray());
         return body;
     }
+
+    /// <summary>The wire name of a tool, or the name itself when nothing had to change.</summary>
+    private static string WireName(string name, IReadOnlyDictionary<string, string>? wireNames) =>
+        wireNames is null || wireNames.Count == 0 ? name : ToolWireNames.For(name, wireNames);
 
     private static JsonObject ResponsesBody(
         NativeProviderAccount route,
@@ -1436,9 +1535,10 @@ public sealed class NativeProviderRouter
         IReadOnlyList<NativeToolDefinition> tools,
         string? model,
         NativeProviderProtocol protocol,
-        bool staticBreakpoint = false)
+        bool staticBreakpoint = false,
+        IReadOnlyDictionary<string, string>? wireNames = null)
     {
-        messages = NativePromptHistory.ResponsesReplay(messages);
+        messages = ContextCompaction.ProviderContextMessages(NativePromptHistory.ResponsesReplay(messages));
         var systemMessages = messages.Where(message => message.Role == "system"
             && !string.IsNullOrWhiteSpace(message.Content)).ToList();
         var system = systemMessages.Select(message => message.Content).ToList();
@@ -1464,7 +1564,18 @@ public sealed class NativeProviderRouter
                 && message.ProviderItems.All(item => Str(item["type"]) is "message" or "function_call"
                     or "function_call_output" or "reasoning" or "compaction"))
             {
-                foreach (var item in message.ProviderItems) input.Add(item.DeepClone());
+                foreach (var item in message.ProviderItems)
+                {
+                    var copy = item.DeepClone().AsObject();
+                    // A replayed function_call still carries the wire name it had
+                    // when the provider answered it.
+                    if (copy["type"]?.GetValue<string>() == "function_call"
+                        && copy["name"]?.GetValue<string>() is { } replayed)
+                    {
+                        copy["name"] = WireName(replayed, wireNames);
+                    }
+                    input.Add(copy);
+                }
             }
             else if (message.Role == "tool")
             {
@@ -1478,7 +1589,7 @@ public sealed class NativeProviderRouter
             {
                 if (!string.IsNullOrEmpty(message.Content)) input.Add(new JsonObject { ["role"] = "assistant", ["content"] = new JsonArray(new JsonObject { ["type"] = "output_text", ["text"] = message.Content }) });
                 foreach (var call in message.ToolCalls)
-                    input.Add(new JsonObject { ["type"] = "function_call", ["call_id"] = call.Id, ["name"] = call.Name, ["arguments"] = call.Arguments });
+                    input.Add(new JsonObject { ["type"] = "function_call", ["call_id"] = call.Id, ["name"] = WireName(call.Name, wireNames), ["arguments"] = call.Arguments });
             }
             else
             {
@@ -1504,25 +1615,27 @@ public sealed class NativeProviderRouter
         {
             body.Remove("instructions");
         }
-        if (tools.Count > 0) body["tools"] = new JsonArray(tools.Select(tool => new JsonObject { ["type"] = "function", ["name"] = tool.Name, ["description"] = tool.Description, ["parameters"] = tool.Parameters.DeepClone() }).ToArray());
+        if (tools.Count > 0) body["tools"] = new JsonArray(tools.Select(tool => new JsonObject { ["type"] = "function", ["name"] = WireName(tool.Name, wireNames), ["description"] = tool.Description, ["parameters"] = tool.Parameters.DeepClone() }).ToArray());
         return body;
     }
 
-    private static JsonNode MessageNode(NativeMessage message)
+    private static JsonNode MessageNode(NativeMessage message, IReadOnlyDictionary<string, string>? wireNames = null)
     {
         JsonNode content = message.Role != "tool" && message.Attachments is { Count: > 0 }
             ? OpenAiContent(message)
             : JsonNodeValue.Create(message.Content)!;
         var node = new JsonObject { ["role"] = message.Role, ["content"] = content };
         if (message.ToolCallId is not null) node["tool_call_id"] = message.ToolCallId;
-        if (message.ToolCalls is { Count: > 0 }) node["tool_calls"] = new JsonArray(message.ToolCalls.Select(call => new JsonObject { ["id"] = call.Id, ["type"] = "function", ["function"] = new JsonObject { ["name"] = call.Name, ["arguments"] = call.Arguments } }).ToArray());
+        if (message.ToolCalls is { Count: > 0 }) node["tool_calls"] = new JsonArray(message.ToolCalls.Select(call => new JsonObject { ["id"] = call.Id, ["type"] = "function", ["function"] = new JsonObject { ["name"] = WireName(call.Name, wireNames), ["arguments"] = call.Arguments } }).ToArray());
         return node;
     }
 
-    private static JsonObject AnthropicBody(NativeProviderAccount route, IReadOnlyList<NativeMessage> messages, IReadOnlyList<NativeToolDefinition> tools, string? model, string ttl = "1h")
+    private static JsonObject AnthropicBody(NativeProviderAccount route, IReadOnlyList<NativeMessage> messages, IReadOnlyList<NativeToolDefinition> tools, string? model, string ttl = "1h",
+        IReadOnlyDictionary<string, string>? wireNames = null)
     {
+        messages = ContextCompaction.ProviderContextMessages(messages);
         var converted = new JsonArray();
-        foreach (var message in messages.Where(m => m.Role != "system")) converted.Add(AnthropicMessageNode(message));
+        foreach (var message in messages.Where(m => m.Role != "system")) converted.Add(AnthropicMessageNode(message, wireNames));
         var body = new JsonObject { ["model"] = model ?? route.Model, ["max_tokens"] = 4096, ["messages"] = converted };
         var system = string.Join("\n\n", messages.Where(m => m.Role == "system").Select(m => m.Content).Where(content => !string.IsNullOrWhiteSpace(content)));
         if (route.AuthType == "claudeOAuth")
@@ -1535,10 +1648,41 @@ public sealed class NativeProviderRouter
             body["system"] = systemBlocks;
         }
         else if (!string.IsNullOrEmpty(system)) body["system"] = system;
-        if (tools.Count > 0) body["tools"] = new JsonArray(tools.Select(t => new JsonObject { ["name"] = t.Name, ["description"] = t.Description, ["input_schema"] = t.Parameters.DeepClone() }).ToArray());
+        if (tools.Count > 0) body["tools"] = new JsonArray(tools.Select(t => new JsonObject { ["name"] = WireName(t.Name, wireNames), ["description"] = t.Description, ["input_schema"] = t.Parameters.DeepClone() }).ToArray());
         if (route.AuthType == "claudeOAuth") ClaudeOAuthHeaders.CloakTools(body);
+        else CloakAnthropicToolNames(body, wireNames);
         ApplyAnthropicCacheBreakpoints(body, ttl);
         return body;
+    }
+
+    /// <summary>
+    /// Renames the dotted tool names in an Anthropic body, in the tool list and
+    /// in the tool_use blocks of the history. The OAuth cloak does this on its
+    /// own; the API-key path needs it too, because Anthropic only accepts
+    /// ASCII identifiers.
+    /// </summary>
+    private static void CloakAnthropicToolNames(JsonObject body, IReadOnlyDictionary<string, string>? wireNames)
+    {
+        if (wireNames is null || wireNames.Count == 0) return;
+        if (body["tools"] is JsonArray tools)
+        {
+            foreach (var tool in tools.OfType<JsonObject>())
+            {
+                if (tool["name"]?.GetValue<string>() is not { } name) continue;
+                tool["name"] = WireName(name, wireNames);
+            }
+        }
+        if (body["messages"] is not JsonArray messages) return;
+        foreach (var message in messages.OfType<JsonObject>())
+        {
+            if (message["content"] is not JsonArray content) continue;
+            foreach (var block in content.OfType<JsonObject>())
+            {
+                if (block["type"]?.GetValue<string>() != "tool_use") continue;
+                if (block["name"]?.GetValue<string>() is not { } name) continue;
+                block["name"] = WireName(name, wireNames);
+            }
+        }
     }
 
     /// Mirrors applyAnthropicCacheBreakpoints in NativeAgentClient.swift: one
@@ -1589,7 +1733,7 @@ public sealed class NativeProviderRouter
 
     private static JsonObject Ephemeral(string ttl) => new() { ["type"] = "ephemeral", ["ttl"] = ttl == "5m" ? "5m" : "1h" };
 
-    private static JsonObject AnthropicMessageNode(NativeMessage message)
+    private static JsonObject AnthropicMessageNode(NativeMessage message, IReadOnlyDictionary<string, string>? wireNames = null)
     {
         if (message.Role == "tool")
         {
@@ -1621,7 +1765,7 @@ public sealed class NativeProviderRouter
                 JsonNode input;
                 try { input = JsonNode.Parse(call.Arguments) ?? new JsonObject(); }
                 catch { input = new JsonObject(); }
-                blocks.Add(new JsonObject { ["type"] = "tool_use", ["id"] = call.Id, ["name"] = call.Name, ["input"] = input });
+                blocks.Add(new JsonObject { ["type"] = "tool_use", ["id"] = call.Id, ["name"] = WireName(call.Name, wireNames), ["input"] = input });
             }
             return new JsonObject { ["role"] = "assistant", ["content"] = blocks };
         }
@@ -2223,11 +2367,29 @@ public sealed class NativeProviderGateway : IDisposable
         finally { context.Response.Close(); }
     }
 
-    public void Dispose() { Stop(); _listener.Close(); }
+    public void Dispose()
+    {
+        Stop();
+        // Closing removes the prefix from the process-wide endpoint table. When
+        // another listener already owns that host and port, the removal fails
+        // with "Address already in use" — the listener is gone either way, so a
+        // teardown must not throw at the caller.
+        try { _listener.Close(); } catch { }
+    }
 }
 
 /// Effort levels per model, low to high. Keep in sync with the "efforts" fields in
 /// macos/DotsHarness/Sources/DotsHarnessCore/Resources/providers.json.
+/// Mirrors the `fast` flag in macOS providers.json.
+public static class NativeFastCatalog
+{
+    private static readonly HashSet<string> Models = new(StringComparer.OrdinalIgnoreCase)
+        { "claude-opus-5-5", "claude-opus-5", "claude-opus-4-8" };
+
+    public static bool Supports(string? model) =>
+        !string.IsNullOrEmpty(model) && Models.Contains(model[(model.LastIndexOf('/') + 1)..]);
+}
+
 public static class NativeEffortCatalog
 {
     private static readonly string[] GptMax = ["none", "low", "medium", "high", "xhigh", "max"];
@@ -2241,8 +2403,7 @@ public static class NativeEffortCatalog
     {
         ["gpt-6.1-sol"] = GptMax,
         ["gpt-5.6-terra"] = GptMax, ["gpt-5.6-sol"] = GptMax, ["gpt-5.6-luna"] = GptMax,
-        ["gpt-5.5"] = Gpt, ["gpt-5.4"] = Gpt, ["gpt-5.4-mini"] = Gpt,
-        ["claude-sonnet-5-5"] = ClaudeXhigh, ["claude-opus-5-5"] = ClaudeXhigh,
+        ["claude-sonnet-5-5"] = ClaudeXhigh, ["claude-opus-5-5"] = ClaudeXhigh, ["claude-haiku-5-5"] = ClaudeXhigh,
         ["claude-sonnet-5"] = ClaudeXhigh, ["claude-opus-5"] = ClaudeXhigh, ["claude-opus-4-8"] = ClaudeXhigh,
         ["claude-fable-5-1"] = ClaudeXhigh, ["claude-fable-5"] = ClaudeXhigh, ["claude-opus-4-7"] = ClaudeXhigh,
         ["claude-sonnet-4-6"] = ClaudeMax, ["claude-opus-4-6"] = ClaudeMax, ["claude-opus-4-6-thinking"] = ClaudeMax,
@@ -2256,20 +2417,25 @@ public static class NativeEffortCatalog
         ["gemini-pro-agent"] = TwoLevelEffort, ["gemini-3-flash-agent"] = StandardEffort, ["gemini-3-flash"] = StandardEffort,
         ["gemini-3.6-flash-low"] = StandardEffort,
         ["gpt-oss-120b"] = StandardEffort,
-        ["o1"] = StandardEffort, ["o3-mini"] = StandardEffort,
         ["deepseek-reasoner"] = StandardEffort,
     };
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string[]> Overlay = new(StringComparer.OrdinalIgnoreCase);
+
+    /// Levels published by the remote model catalog win over the built-in table for that model id.
+    public static void SetOverlay(string model, IReadOnlyList<string> levels) => Overlay[model] = levels.ToArray();
 
     public static IReadOnlyList<string> Levels(string? model)
     {
         if (string.IsNullOrEmpty(model)) return [];
         // Router ids may carry a provider prefix ("claude/claude-opus-5").
         var bare = model[(model.LastIndexOf('/') + 1)..];
+        if (Overlay.TryGetValue(bare, out var published)) return published;
         if (Table.TryGetValue(bare, out var levels)) return levels;
 
         // Dynamic heuristic fallback for newly released or unlisted models:
         var lower = bare.ToLowerInvariant();
-        if (lower.Contains("reasoner") || lower.Contains("thinking") || lower.StartsWith("o1") || lower.StartsWith("o3") || lower.StartsWith("o4") || lower.Contains("-r1") || lower.Contains("-r2"))
+        if (lower.Contains("reasoner") || lower.Contains("thinking") || lower.Contains("-r1") || lower.Contains("-r2"))
             return StandardEffort;
         if (lower.StartsWith("claude-") && !lower.Contains("haiku"))
             return ClaudeMax;

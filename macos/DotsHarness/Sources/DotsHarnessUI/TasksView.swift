@@ -1,5 +1,5 @@
 // Copyright (c) 2026 DOTS
-// Scheduled tasks trailing panel.
+// Tasks section: the scheduled task list beside a task's detail or the planner landing.
 
 import SwiftUI
 import DotsHarnessCore
@@ -10,6 +10,11 @@ struct TasksView: View {
 
     @State private var selectedTaskID: String?
     @State private var draftTask: ScheduledTask?
+    @State private var suggestions: [ScheduledTaskSuggestion] = []
+    @State private var isPersonalizing = false
+    @State private var suggestionRefresh = 0
+    @State private var loadedSuggestionRefresh = 0
+    @State private var suggestionRequestID = UUID()
 
     init(model: AppModel) {
         self.model = model
@@ -17,213 +22,524 @@ struct TasksView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if let task = detailTask {
+        HStack(spacing: 0) {
+            taskList
+                .frame(width: 230)
+            Divider()
+            if let task = scheduler.tasks.first(where: { $0.id == selectedTaskID }) {
                 TaskDetailView(
                     model: model,
                     task: task,
                     runs: scheduler.runs(for: task.id),
-                    onClose: closeDetail,
-                    onSave: { saved in
-                        scheduler.upsert(saved)
-                        draftTask = nil
-                        selectedTaskID = saved.id
-                    },
+                    onClose: { selectedTaskID = nil },
+                    onSave: { scheduler.upsert($0) },
                     onDelete: {
                         scheduler.delete(task.id)
-                        closeDetail()
+                        selectedTaskID = nil
                     }
                 )
+                .id(task.id)
             } else {
-                taskList
+                landing
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
+        .sheet(item: $draftTask) { draft in
+            NewTaskSheet(model: model, task: draft) { created in
+                scheduler.upsert(created)
+                selectedTaskID = created.id
+            }
+        }
+        .task(id: "\(model.workspacePath)|\(model.appLocale.identifier)|\(model.bridge.memoryRevision)|\(suggestionRefresh)") {
+            await loadSuggestions()
+        }
     }
 
-    private var detailTask: ScheduledTask? {
-        if let draftTask { return draftTask }
-        guard let selectedTaskID else { return nil }
-        return scheduler.tasks.first { $0.id == selectedTaskID }
+    // MARK: List
+
+    /// Soonest first; paused or unschedulable tasks sink to the bottom.
+    private var upcoming: [(task: ScheduledTask, next: Date?)] {
+        scheduler.tasks
+            .map { ($0, $0.enabled ? $0.nextRun() : nil) }
+            .sorted { ($0.next ?? .distantFuture) < ($1.next ?? .distantFuture) }
     }
 
     private var taskList: some View {
-        VStack(spacing: 0) {
-            panelHeader
-            Divider()
+        VStack(alignment: .leading, spacing: 0) {
+            Text(AppCopy.text("rail.tasks"))
+                .font(.title3.weight(.semibold))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    suggestions
-                    tasks
+            Button(action: startDraft) {
+                HStack(spacing: 9) {
+                    Image(systemName: "plus").frame(width: 20)
+                    Text(AppCopy.text("tasks.new"))
+                    Spacer(minLength: 0)
                 }
-                .padding(16)
-            }
-
-            Divider()
-            HStack {
-                Button {
-                    draftTask = ScheduledTask(
-                        name: "",
-                        cron: "0 */5 * * *",
-                        prompt: "",
-                        workspacePath: model.workspacePath
-                    )
-                } label: {
-                    Label(AppCopy.text("tasks.add"), systemImage: "plus")
-                }
-                .buttonStyle(.borderedProminent)
-
-                Spacer()
-
-                Button(AppCopy.text("common.done")) {
-                    model.isTasksPresented = false
-                }
-                .buttonStyle(.borderless)
-            }
-            .padding(12)
-        }
-    }
-
-    private var panelHeader: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "clock.arrow.circlepath")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(.orange)
-                .frame(width: 32, height: 32)
-                .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(AppCopy.text("tasks.title")).font(.headline)
-                Text(AppCopy.text("tasks.subtitle"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-
-            Spacer(minLength: 0)
-
-            Button {
-                model.isTasksPresented = false
-            } label: {
-                Image(systemName: "xmark")
-            }
-            .buttonStyle(.borderless)
-            .help(AppCopy.text("tasks.close"))
-        }
-        .padding(14)
-    }
-
-    private var suggestions: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(AppCopy.text("tasks.suggestions"))
-                .font(.subheadline.weight(.semibold))
-
-            ForEach(TaskSuggestion.all) { suggestion in
-                Button {
-                    let task = suggestion.task(workspacePath: model.workspacePath)
-                    scheduler.upsert(task)
-                    selectedTaskID = task.id
-                } label: {
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: suggestion.icon)
-                            .foregroundStyle(suggestion.color)
-                            .frame(width: 20)
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 6) {
-                                Text(AppCopy.text(suggestion.titleKey)).font(.callout.weight(.medium))
-                                Text(suggestion.schedule).font(.caption).foregroundStyle(.secondary)
-                            }
-                            Text(AppCopy.text(suggestion.detailKey))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.leading)
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    .padding(10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    private var tasks: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(AppCopy.text("tasks.active")).font(.subheadline.weight(.semibold))
-            if scheduler.tasks.isEmpty {
-                Text(AppCopy.text("tasks.empty"))
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 12)
-            } else {
-                ForEach(scheduler.tasks) { task in taskRow(task) }
-            }
-        }
-    }
-
-    private func taskRow(_ task: ScheduledTask) -> some View {
-        HStack(spacing: 10) {
-            Button {
-                draftTask = nil
-                selectedTaskID = task.id
-            } label: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(task.name.isEmpty ? task.cron : task.name)
-                        .font(.callout.weight(.semibold))
-                        .lineLimit(1)
-                    HStack(spacing: 6) {
-                        Text(task.cron).font(.caption.monospaced())
-                        Text(task.enabled ? AppCopy.text("tasks.enabled") : AppCopy.text("tasks.disabled"))
-                            .font(.caption)
-                    }
-                    .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 9)
+                .frame(height: 32)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .padding(.horizontal, 8)
 
-            Toggle("", isOn: Binding(
+            Text(AppCopy.text("tasks.upcoming"))
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 17)
+                .padding(.top, 16)
+                .padding(.bottom, 6)
+
+            if scheduler.tasks.isEmpty {
+                Text(AppCopy.text("tasks.empty"))
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 17)
+                Spacer(minLength: 0)
+            } else {
+                ScrollView {
+                    VStack(spacing: 2) {
+                        ForEach(upcoming, id: \.task.id) { entry in taskRow(entry.task, next: entry.next) }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 8)
+                }
+            }
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private func taskRow(_ task: ScheduledTask, next: Date?) -> some View {
+        Button { selectedTaskID = task.id } label: {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(task.name.isEmpty ? task.cron : task.name)
+                        .lineLimit(1)
+                    Text(next?.formatted(date: .abbreviated, time: .shortened) ?? AppCopy.text(task.enabled ? "tasks.cron.invalid" : "tasks.disabled"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if task.lastState == .running { ProgressView().controlSize(.small) }
+            }
+            .opacity(task.enabled ? 1 : 0.55)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 6)
+            .background(
+                Color.primary.opacity(task.id == selectedTaskID ? 0.1 : 0),
+                in: RoundedRectangle(cornerRadius: 7, style: .continuous)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button(AppCopy.text("tasks.runNow")) { scheduler.runNow(task.id) }
+                .disabled(task.lastState == .running)
+            Toggle(AppCopy.text("tasks.enabled"), isOn: Binding(
                 get: { task.enabled },
                 set: { scheduler.setEnabled(task.id, $0) }
             ))
-            .labelsHidden()
-            .toggleStyle(.switch)
+            Divider()
+            Button(AppCopy.text("tasks.delete"), role: .destructive) {
+                scheduler.delete(task.id)
+                if selectedTaskID == task.id { selectedTaskID = nil }
+            }
         }
-        .padding(10)
-        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 
-    private func closeDetail() {
-        draftTask = nil
-        selectedTaskID = nil
+    // MARK: Landing
+
+    private var landing: some View {
+        GeometryReader { geometry in
+            let layout = TaskSuggestionLayout(size: geometry.size)
+            VStack(spacing: layout.spacing) {
+                VStack(spacing: 8) {
+                    if layout.mascotHeight > 0 {
+                        clockMascot
+                            .frame(width: layout.mascotHeight * 1.3, height: layout.mascotHeight)
+                            .accessibilityHidden(true)
+                    }
+                    Text(AppCopy.text("tasks.plan.title"))
+                        .font(.title2.weight(.semibold))
+                        .lineLimit(1)
+                    Text(AppCopy.text("tasks.plan.subtitle"))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                }
+                .frame(height: layout.headerHeight)
+
+                HStack(spacing: 8) {
+                    if isPersonalizing { ProgressView().controlSize(.small) }
+                    Text(AppCopy.text("tasks.suggestions"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button { suggestionRefresh += 1 } label: { Image(systemName: "arrow.clockwise") }
+                        .buttonStyle(.borderless)
+                        .help(AppCopy.text("tasks.suggestions.refresh"))
+                        .disabled(isPersonalizing)
+                }
+                .frame(height: 24)
+
+                if layout.horizontal {
+                    DraggableTaskCards(contentSize: CGSize(
+                        width: CGFloat(displayedSuggestions.count) * (layout.cardWidth + 14) - 14,
+                        height: layout.cardHeight)) {
+                        HStack(spacing: 14) {
+                            ForEach(displayedSuggestions) { suggestion in
+                                suggestionCard(suggestion, layout: layout)
+                            }
+                        }
+                    }
+                    .frame(height: layout.cardsHeight)
+                } else {
+                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
+                        ForEach(displayedSuggestions) { suggestion in
+                            suggestionCard(suggestion, layout: layout)
+                        }
+                    }
+                    .frame(height: layout.cardsHeight)
+                }
+            }
+            .frame(width: layout.contentWidth)
+            .padding(.vertical, layout.padding)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var displayedSuggestions: [ScheduledTaskSuggestion] {
+        suggestions.isEmpty ? ScheduledTaskSuggestion.defaults : suggestions
+    }
+
+    private func suggestionCard(_ suggestion: ScheduledTaskSuggestion, layout: TaskSuggestionLayout) -> some View {
+        SuggestionCard(suggestion: suggestion) {
+            draftTask = suggestion.task(workspacePath: model.workspacePath)
+        }
+        .frame(width: layout.cardWidth, height: layout.cardHeight)
+    }
+
+    @ViewBuilder
+    private var clockMascot: some View {
+        if let url = Bundle.module.url(forResource: "HerNessClockMascot", withExtension: "png"),
+           let image = ImageFileCache.image(at: url) {
+            Image(nsImage: image).resizable().interpolation(.high).scaledToFit()
+        } else {
+            Image(systemName: "clock").font(.system(size: 36)).foregroundStyle(.secondary)
+        }
+    }
+
+    private func loadSuggestions() async {
+        let requestID = UUID()
+        suggestionRequestID = requestID
+        let force = loadedSuggestionRefresh != suggestionRefresh
+        loadedSuggestionRefresh = suggestionRefresh
+        let memory = model.bridge.taskSuggestionMemory
+        // Last saved cards stay up while personalization runs silently; only a
+        // manual refresh shows progress.
+        suggestions = ScheduledTaskSuggestions.stored(memory: memory, locale: model.appLocale.identifier,
+                                                      workspace: model.workspacePath) ?? ScheduledTaskSuggestion.defaults
+        isPersonalizing = false
+        guard !memory.isEmpty else { return }
+        isPersonalizing = force
+        defer { if suggestionRequestID == requestID { isPersonalizing = false } }
+        do {
+            let result = try await ScheduledTaskSuggestions.personalized(memory: memory,
+                locale: model.appLocale.identifier, workspace: model.workspacePath,
+                router: model.router, force: force)
+            try Task.checkCancellation()
+            guard suggestionRequestID == requestID else { return }
+            suggestions = result
+        } catch {
+            guard !Task.isCancelled, suggestionRequestID == requestID else { return }
+        }
+    }
+
+    private func startDraft() {
+        draftTask = ScheduledTask(name: "", cron: "0 9 * * *", prompt: "", workspacePath: model.workspacePath)
     }
 }
 
-private struct TaskSuggestion: Identifiable {
-    let id: String
-    let titleKey: String
-    let detailKey: String
-    let schedule: String
-    let cron: String
-    let promptKey: String
-    let icon: String
-    let color: Color
+/// A ready-made task. The dashed outline marks it as a template, not a task that exists yet.
+private struct SuggestionCard: View {
+    let suggestion: ScheduledTaskSuggestion
+    let action: () -> Void
+    @State private var isHovered = false
 
-    func task(workspacePath: String) -> ScheduledTask {
-        ScheduledTask(name: AppCopy.text(titleKey), cron: cron, prompt: AppCopy.text(promptKey), workspacePath: workspacePath)
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Image(systemName: suggestion.icon)
+                    .font(.system(size: 21, weight: .medium))
+                    .foregroundStyle(suggestion.color)
+                    .frame(width: 46, height: 50)
+                    .background(suggestion.color.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(suggestion.title)
+                        .font(.callout.weight(.semibold))
+                        .lineLimit(1)
+                    Text(suggestion.detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    Text(suggestion.schedule)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .background(Color.primary.opacity(isHovered ? 0.05 : 0), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.14), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+    }
+}
+
+/// Create form: instructions, a plain-language schedule, and the rarely needed settings folded away.
+private struct NewTaskSheet: View {
+    @ObservedObject var model: AppModel
+    let onCreate: (ScheduledTask) -> Void
+    @State private var task: ScheduledTask
+    @State private var recurrence: TaskRecurrence
+    @State private var showsAdvanced: Bool
+    @Environment(\.dismiss) private var dismiss
+
+    init(model: AppModel, task: ScheduledTask, onCreate: @escaping (ScheduledTask) -> Void) {
+        self.model = model
+        self.onCreate = onCreate
+        self._task = State(initialValue: task)
+        self._recurrence = State(initialValue: TaskRecurrence(cron: task.cron))
+        // Without a usable workspace the task cannot be created, so show where to fix it.
+        self._showsAdvanced = State(initialValue: task.resolvedTargetPath() == nil)
     }
 
-    static let all: [TaskSuggestion] = [
-        TaskSuggestion(id: "daily-brief", titleKey: "tasks.suggestion.daily.title", detailKey: "tasks.suggestion.daily.detail", schedule: AppCopy.text("tasks.suggestion.daily.schedule"), cron: "0 8 * * 1-5", promptKey: "tasks.suggestion.daily.prompt", icon: "bell", color: .blue),
-        TaskSuggestion(id: "weekly-review", titleKey: "tasks.suggestion.weekly.title", detailKey: "tasks.suggestion.weekly.detail", schedule: AppCopy.text("tasks.suggestion.weekly.schedule"), cron: "0 16 * * 5", promptKey: "tasks.suggestion.weekly.prompt", icon: "list.bullet.clipboard", color: .purple),
-        TaskSuggestion(id: "follow-up", titleKey: "tasks.suggestion.followup.title", detailKey: "tasks.suggestion.followup.detail", schedule: AppCopy.text("tasks.suggestion.followup.schedule"), cron: "0 9 * * 1-5", promptKey: "tasks.suggestion.followup.prompt", icon: "arrow.uturn.right.circle", color: .green),
-    ]
+    /// The task as it would be saved: schedule applied, name taken from the instructions if unset.
+    private var built: ScheduledTask {
+        var result = task
+        result.cron = recurrence.cron
+        if result.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let firstLine = result.prompt.trimmingCharacters(in: .whitespacesAndNewlines).prefix { !$0.isNewline }
+            result.name = String(firstLine.prefix(48))
+        }
+        return result
+    }
+
+    private var isValid: Bool {
+        let candidate = built
+        return !candidate.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && candidate.expression != nil
+            && candidate.resolvedTargetPath() != nil
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text(AppCopy.text("tasks.plan.title")).font(.headline)
+                Spacer()
+                Button { dismiss() } label: { Image(systemName: "xmark") }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel(AppCopy.text("tasks.cancel"))
+            }
+
+            TextEditor(text: $task.prompt)
+                .font(.body)
+                .scrollContentBackground(.hidden)
+                .padding(8)
+                .frame(height: 120)
+                .overlay(alignment: .topLeading) {
+                    if task.prompt.isEmpty {
+                        Text(AppCopy.text("tasks.instructions"))
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 13)
+                            .padding(.vertical, 8)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .modifier(FormGroup())
+                .accessibilityLabel(AppCopy.text("tasks.field.prompt"))
+
+            VStack(spacing: 0) {
+                formRow(AppCopy.text("tasks.repeat")) {
+                    Picker("", selection: $recurrence.kind) {
+                        ForEach(TaskRecurrence.Kind.allCases) { kind in
+                            Text(AppCopy.text("tasks.repeat.\(kind.rawValue)")).tag(kind)
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                if recurrence.kind == .weekly {
+                    Divider().padding(.horizontal, 14)
+                    formRow(AppCopy.text("tasks.day")) {
+                        Picker("", selection: $recurrence.weekday) {
+                            ForEach(Array(weekdayNames.enumerated()), id: \.offset) { index, name in
+                                Text(name).tag(index)
+                            }
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                    }
+                }
+                if recurrence.kind == .custom {
+                    Divider().padding(.horizontal, 14)
+                    formRow(AppCopy.text("tasks.field.cron")) {
+                        TextField("0 */5 * * *", text: $recurrence.custom)
+                            .font(.body.monospaced())
+                            .multilineTextAlignment(.trailing)
+                            .textFieldStyle(.plain)
+                            .frame(width: 160)
+                    }
+                } else if recurrence.kind != .hourly {
+                    Divider().padding(.horizontal, 14)
+                    formRow(AppCopy.text("tasks.time")) {
+                        DatePicker("", selection: time, displayedComponents: .hourAndMinute)
+                            .labelsHidden()
+                            .fixedSize()
+                    }
+                }
+            }
+            .modifier(FormGroup())
+            .onChange(of: recurrence.kind) { old, new in
+                // Start the raw expression from what the form was showing.
+                guard new == .custom else { return }
+                var previous = recurrence
+                previous.kind = old
+                recurrence.custom = previous.cron
+            }
+
+            if let next = built.nextRun() {
+                Text("\(AppCopy.text("tasks.cron.next")): \(next.formatted(date: .abbreviated, time: .shortened))")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                Text(AppCopy.text("tasks.cron.invalid")).font(.caption).foregroundStyle(.red)
+            }
+
+            Button { showsAdvanced.toggle() } label: {
+                HStack(spacing: 5) {
+                    Text(AppCopy.text("tasks.advanced"))
+                    Image(systemName: showsAdvanced ? "chevron.up" : "chevron.down").font(.caption2.weight(.semibold))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+
+            if showsAdvanced {
+                VStack(spacing: 0) {
+                    formRow(AppCopy.text("tasks.field.workspace")) {
+                        TextField("/path/to/workspace", text: $task.workspacePath)
+                            .multilineTextAlignment(.trailing)
+                            .textFieldStyle(.plain)
+                            .foregroundStyle(task.resolvedTargetPath() == nil ? Color.red : Color.primary)
+                    }
+                    Divider().padding(.horizontal, 14)
+                    formRow(AppCopy.text("tasks.field.model")) {
+                        ChatModelMenu(router: model.router, modelID: $task.modelID).fixedSize()
+                    }
+                    Divider().padding(.horizontal, 14)
+                    formRow(AppCopy.text("tasks.field.fallback")) {
+                        ChatModelMenu(router: model.router, modelID: $task.fallbackModelID).fixedSize()
+                    }
+                    Divider().padding(.horizontal, 14)
+                    formRow(AppCopy.text("tasks.network")) {
+                        Toggle("", isOn: $task.allowsNetwork).labelsHidden().toggleStyle(.switch)
+                    }
+                }
+                .modifier(FormGroup())
+            }
+
+            HStack {
+                Spacer()
+                Button(AppCopy.text("tasks.cancel")) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button(AppCopy.text("tasks.create")) {
+                    onCreate(built)
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                .disabled(!isValid)
+            }
+            .padding(.top, 4)
+        }
+        .padding(20)
+        .frame(width: 520)
+    }
+
+    private var weekdayNames: [String] {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = model.appLocale
+        return calendar.standaloneWeekdaySymbols
+    }
+
+    private var time: Binding<Date> {
+        Binding(
+            get: { Calendar.current.date(bySettingHour: recurrence.hour, minute: recurrence.minute, second: 0, of: Date()) ?? Date() },
+            set: {
+                let parts = Calendar.current.dateComponents([.hour, .minute], from: $0)
+                recurrence.hour = parts.hour ?? 9
+                recurrence.minute = parts.minute ?? 0
+            }
+        )
+    }
+
+    private func formRow<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(spacing: 12) {
+            Text(label)
+            Spacer(minLength: 0)
+            content()
+        }
+        .padding(.horizontal, 14)
+        .frame(minHeight: 44)
+    }
+}
+
+private struct FormGroup: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.primary.opacity(0.12)))
+    }
+}
+
+private extension ScheduledTaskSuggestion {
+    var icon: String {
+        switch id {
+        case "daily": "sun.max.fill"
+        case "email": "envelope.fill"
+        case "reading": "book.fill"
+        case "prices": "tag.fill"
+        case "events": "music.note"
+        case "weekend": "calendar"
+        case "weekly": "doc.text.fill"
+        default: "bell.fill"
+        }
+    }
+    var color: Color {
+        switch id {
+        case "daily", "weekend": .orange
+        case "email", "weekly": .blue
+        case "reading": .purple
+        case "prices": .green
+        case "events": .red
+        default: .pink
+        }
+    }
 }
 
 private struct TaskDetailView: View {
@@ -295,7 +611,9 @@ private struct TaskDetailView: View {
                     runHistory
                     TaskAssistantView(model: model, task: $task, onSave: onSave)
                 }
+                .frame(maxWidth: 680, alignment: .leading)
                 .padding(16)
+                .frame(maxWidth: .infinity)
             }
         }
     }

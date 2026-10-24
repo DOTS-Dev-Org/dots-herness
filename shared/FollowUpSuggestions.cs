@@ -12,6 +12,6 @@ public static class FollowUpSuggestions
         return normalized.Length == 0 ? null : normalized[..Math.Min(500, normalized.Length)];
     }
 
-    public static bool ShouldGenerate(bool succeeded, bool cancelled, bool paused, bool pendingQueue) =>
-        succeeded && !cancelled && !paused && !pendingQueue;
+    public static bool ShouldGenerate(bool succeeded, bool cancelled, bool paused, bool pendingQueue, bool economy = false) =>
+        succeeded && !cancelled && !paused && !pendingQueue && !economy;
 }

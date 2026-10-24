@@ -44,6 +44,9 @@ public sealed record WorkspaceLeaseTarget(string Root, string? FilePath, bool Wh
 /// </summary>
 public static class WorkspaceWriteLeases
 {
+    private readonly record struct DeferredWriteKey(string ConversationId, string TargetKey);
+    private sealed record DeferredWrite(string Label, bool FinalCheckRequested);
+
     private sealed class Entry(WorkspaceLeaseTarget target, WorkspaceLeaseHolder holder)
     {
         public WorkspaceLeaseTarget Target { get; } = target;
@@ -63,9 +66,63 @@ public static class WorkspaceWriteLeases
 
     private static readonly object Gate = new();
     private static readonly List<Entry> Active = [];
+    private static readonly Dictionary<DeferredWriteKey, DeferredWrite> Deferred = [];
     private static readonly StringComparer PathComparer = OperatingSystem.IsWindows()
         ? StringComparer.OrdinalIgnoreCase
         : StringComparer.Ordinal;
+
+    public static string KeyFor(WorkspaceLeaseTarget target)
+    {
+        var key = target.WholeWorkspace
+            ? "workspace:" + target.Root
+            : "file:" + target.Root + "\n" + target.FilePath;
+        return OperatingSystem.IsWindows() ? key.ToUpperInvariant() : key;
+    }
+
+    /// <summary>Records a first collision so the agent can finish independent work before rechecking.</summary>
+    public static bool DeferWrite(WorkspaceLeaseTarget target, string conversationId, string label)
+    {
+        lock (Gate)
+        {
+            var key = new DeferredWriteKey(conversationId, KeyFor(target));
+            if (Deferred.ContainsKey(key)) return false;
+            Deferred[key] = new DeferredWrite(label, FinalCheckRequested: false);
+            return true;
+        }
+    }
+
+    public static bool FinalCheckWasRequested(WorkspaceLeaseTarget target, string conversationId)
+    {
+        lock (Gate)
+            return Deferred.TryGetValue(new DeferredWriteKey(conversationId, KeyFor(target)), out var deferred)
+                && deferred.FinalCheckRequested;
+    }
+
+    /// <summary>Schedules unresolved writes for one final retry before a response is returned.</summary>
+    public static IReadOnlyList<string> ScheduleFinalChecks(string conversationId)
+    {
+        lock (Gate)
+        {
+            var pending = Deferred.Where(pair => pair.Key.ConversationId == conversationId
+                    && !pair.Value.FinalCheckRequested)
+                .ToArray();
+            foreach (var item in pending)
+                Deferred[item.Key] = item.Value with { FinalCheckRequested = true };
+            return pending.Select(item => item.Value.Label).OrderBy(label => label, StringComparer.Ordinal).ToArray();
+        }
+    }
+
+    public static void ClearDeferredWrite(WorkspaceLeaseTarget target, string conversationId)
+    {
+        lock (Gate) Deferred.Remove(new DeferredWriteKey(conversationId, KeyFor(target)));
+    }
+
+    public static void ClearDeferredWrites(string conversationId)
+    {
+        lock (Gate)
+            foreach (var key in Deferred.Keys.Where(key => key.ConversationId == conversationId).ToArray())
+                Deferred.Remove(key);
+    }
 
     /// <summary>Acquires a mutation lease, waiting until a conflicting chat releases or this run is cancelled.</summary>
     public static async Task<IDisposable?> AcquireAsync(
@@ -132,6 +189,7 @@ public static class WorkspaceWriteLeases
             }
             var entry = new Entry(target, holder);
             Active.Add(entry);
+            Deferred.Remove(new DeferredWriteKey(holder.ConversationId, KeyFor(target)));
             lease = new Lease(entry);
             conflict = null;
             return true;
@@ -205,6 +263,8 @@ public static class WorkspaceWriteLeases
         {
             released = Active.Where(entry => entry.Holder.ConversationId == conversationId).ToArray();
             foreach (var entry in released) Active.Remove(entry);
+            foreach (var key in Deferred.Keys.Where(key => key.ConversationId == conversationId).ToArray())
+                Deferred.Remove(key);
         }
         foreach (var entry in released) entry.Released.TrySetResult();
     }

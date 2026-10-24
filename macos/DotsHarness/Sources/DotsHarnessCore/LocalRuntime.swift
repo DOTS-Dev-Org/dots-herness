@@ -1,6 +1,6 @@
 // Copyright (c) 2026 DOTS
-// Installs a pinned llama.cpp (Metal) or MLX runtime and serves one local model
-// over OpenAI-compatible HTTP.
+// Installs a pinned llama.cpp (Metal) or native MLX server and serves one local
+// model over OpenAI-compatible HTTP.
 
 import Foundation
 import HarnessPluginKit
@@ -76,9 +76,12 @@ public final class LocalRuntime: @unchecked Sendable {
     /// with checksums because the binary is executed: `releases/latest` no
     /// longer carries binaries, and a moving tag would run unreviewed code.
     public static let llamaTag = "b11146"
-    public static let uvVersion = "0.12.23"
-    public static let mlxVersion = "0.32.0"
-    /// Model id `mlx_lm.server` answers to for the model it was started with.
+    public static let idleUnloadSeconds = 15
+    /// The mlx-swift-lm release `dotsmlx` is built against (Package.swift).
+    public static let mlxVersion = "3.32.3"
+    /// Names the downloaded `dotsmlx` archive; bump with every republished build.
+    public static let mlxServerBuild = "3.32.3-1"
+    /// Model id `dotsmlx` answers to for the model it was started with.
     public static let mlxModelID = "default_model"
 
     public struct PinnedAsset: Sendable, Equatable {
@@ -97,6 +100,8 @@ public final class LocalRuntime: @unchecked Sendable {
         self.paths = paths
         self.port = port
         paths.ensure()
+        // The private Python + mlx-lm install that served MLX before `dotsmlx`.
+        try? FileManager.default.removeItem(at: paths.runtime.appendingPathComponent("mlx", isDirectory: true))
     }
 
     public var serverURL: URL { URL(string: "http://127.0.0.1:\(port)/v1")! }
@@ -106,9 +111,14 @@ public final class LocalRuntime: @unchecked Sendable {
     public var archiveURL: URL { paths.runtime.appendingPathComponent("llama.cpp.tar.gz") }
     public var logURL: URL { paths.runtime.appendingPathComponent("local-server.log") }
     public var settingsURL: URL { paths.runtime.appendingPathComponent("local-runtime.json") }
-    public var mlxRoot: URL { paths.runtime.appendingPathComponent("mlx", isDirectory: true) }
-    public var uvURL: URL { mlxRoot.appendingPathComponent("uv") }
-    public var mlxPythonURL: URL { mlxRoot.appendingPathComponent("venv/bin/python") }
+    /// `dotsmlx` and its `mlx.metallib`. A development build carries them beside
+    /// the app executable (run.sh); a release downloads them on first use.
+    public var mlxDirectory: URL { paths.runtime.appendingPathComponent("dotsmlx-\(Self.mlxServerBuild)", isDirectory: true) }
+    public lazy var mlxServerURL: URL = {
+        let bundled = (Bundle.main.executableURL ?? URL(fileURLWithPath: CommandLine.arguments[0]))
+            .deletingLastPathComponent().appendingPathComponent("dotsmlx")
+        return FileManager.default.isExecutableFile(atPath: bundled.path) ? bundled : mlxDirectory.appendingPathComponent("dotsmlx")
+    }()
 
     public static var hostArch: String {
         #if arch(arm64)
@@ -133,10 +143,12 @@ public final class LocalRuntime: @unchecked Sendable {
         )
     }
 
-    static let uvAsset = PinnedAsset(
-        url: URL(string: "https://github.com/astral-sh/uv/releases/download/\(uvVersion)/uv-aarch64-apple-darwin.tar.gz")!,
-        size: 17_044_217,
-        sha256: "50487ae565ccd96e499056b4674d438f4c53170202617b4c759defe0c6a1b544"
+    /// Built by scripts/package-mlx-server.sh and stored in the `dotsherness-assets` R2
+    /// bucket; 27 MB unpacked, so it stays out of the app.
+    public static let mlxAsset = PinnedAsset(
+        url: URL(string: "https://dotsherness-unified-backend.dotsherness-unified-backend.workers.dev/assets/downloads/dotsmlx-\(mlxServerBuild)-macos-arm64.tar.gz")!,
+        size: 8_123_529,
+        sha256: "fc6e2df2fca8d04626eec8adf0f3f079939809b0acca3feb6edf563535230802"
     )
 
     // MARK: Settings
@@ -243,7 +255,7 @@ public final class LocalRuntime: @unchecked Sendable {
     // MARK: Runtimes
 
     public func runtimeInstalled(_ engine: LocalEngine = .llama) -> Bool {
-        FileManager.default.isExecutableFile(atPath: (engine == .mlx ? mlxPythonURL : binaryURL).path)
+        FileManager.default.isExecutableFile(atPath: (engine == .mlx ? mlxServerURL : binaryURL).path)
     }
 
     public func runningModelID() -> String? { runningModel }
@@ -264,43 +276,21 @@ public final class LocalRuntime: @unchecked Sendable {
         }
     }
 
-    /// Installs a private Python + `mlx-lm` under the app's support folder:
-    /// `uv` (pinned, checksummed) fetches both, nothing touches the system.
     public func ensureMLX(progress: (@Sendable (FileDownloader.Progress) -> Void)? = nil) async throws {
-        guard Self.mlxSupported else { throw RouterError(AppCopy.text("localRuntime.mlxUnsupported")) }
+        guard Self.mlxSupported else { throw RouterError(AppCopy.text("localRuntime.installFirst")) }
         if runtimeInstalled(.mlx) { return }
+        let archive = paths.runtime.appendingPathComponent("dotsmlx.tar.gz")
+        try await Self.retrying {
+            try await FileDownloader.download(from: Self.mlxAsset.url, to: archive, expected: Self.mlxAsset.size, sha256: Self.mlxAsset.sha256, progress: progress)
+        }
         let fm = FileManager.default
-        try fm.createDirectory(at: mlxRoot, withIntermediateDirectories: true)
-        if !fm.isExecutableFile(atPath: uvURL.path) {
-            let archive = mlxRoot.appendingPathComponent("uv.tar.gz")
-            try await Self.retrying {
-                try await FileDownloader.download(from: Self.uvAsset.url, to: archive, expected: Self.uvAsset.size, sha256: Self.uvAsset.sha256, progress: progress)
-            }
-            _ = try await run(URL(fileURLWithPath: "/usr/bin/tar"), ["-xzf", archive.path, "-C", mlxRoot.path, "--strip-components", "1"])
-            try? fm.removeItem(at: archive)
-        }
-        let venv = mlxRoot.appendingPathComponent("venv")
-        try? fm.removeItem(at: venv)
-        _ = try await run(uvURL, ["venv", "--python", "3.12", venv.path], environment: mlxEnvironment)
-        // Every package, direct or transitive, is pinned by hash in the bundled
-        // lock (regenerate with `uv pip compile --generate-hashes` when bumping mlx-lm).
-        guard let lock = Bundle.module.url(forResource: "mlx-requirements", withExtension: "txt") else {
-            throw RouterError(AppCopy.text("localRuntime.serverMissingAfterUnpack"))
-        }
-        _ = try await run(uvURL, ["pip", "install", "--python", mlxPythonURL.path, "--require-hashes", "-r", lock.path], environment: mlxEnvironment)
+        try? fm.removeItem(at: mlxDirectory)
+        try fm.createDirectory(at: mlxDirectory, withIntermediateDirectories: true)
+        _ = try await run(URL(fileURLWithPath: "/usr/bin/tar"), ["-xzf", archive.path, "-C", mlxDirectory.path])
+        try? fm.removeItem(at: archive)
         guard runtimeInstalled(.mlx) else {
             throw RouterError(AppCopy.text("localRuntime.serverMissingAfterUnpack"))
         }
-    }
-
-    private var mlxEnvironment: [String: String] {
-        [
-            "UV_CACHE_DIR": mlxRoot.appendingPathComponent("uv-cache").path,
-            "UV_PYTHON_INSTALL_DIR": mlxRoot.appendingPathComponent("python").path,
-            "HF_HOME": mlxRoot.appendingPathComponent("hf").path,
-            // Models are downloaded by the app; the server must never fetch one.
-            "HF_HUB_OFFLINE": "1",
-        ]
     }
 
     /// GPUs llama.cpp can offload to on this Mac. Empty until the runtime is installed.
@@ -344,6 +334,9 @@ public final class LocalRuntime: @unchecked Sendable {
             "--jinja",
             // One agent talks to this server; more slots would split the context.
             "--parallel", "1",
+            // Weights and KV cache leave memory after this long without a request;
+            // the next request reloads them. /health and /props do not count.
+            "--sleep-idle-seconds", String(idleUnloadSeconds),
             "--gpu-layers", settings.gpuLayers.isEmpty ? "auto" : settings.gpuLayers,
         ]
         if settings.threads > 0 { arguments += ["--threads", String(settings.threads)] }
@@ -366,17 +359,14 @@ public final class LocalRuntime: @unchecked Sendable {
 
         let process = Process()
         if spec.engine == .mlx {
-            process.executableURL = mlxPythonURL
+            process.executableURL = mlxServerURL
             process.arguments = [
-                "-m", "mlx_lm", "server",
                 "--model", modelURL(spec).path,
                 "--host", "127.0.0.1",
                 "--port", String(port),
-                // mlx_lm stops at 512 tokens unless told otherwise.
                 "--max-tokens", "8192",
+                "--idle-seconds", String(Self.idleUnloadSeconds),
             ] + settings.mlxExtraArgs.split(whereSeparator: \.isWhitespace).map(String.init)
-            process.environment = ProcessInfo.processInfo.environment.merging(mlxEnvironment) { $1 }
-            process.currentDirectoryURL = mlxRoot
         } else {
             process.executableURL = binaryURL
             process.arguments = Self.llamaArguments(
@@ -439,7 +429,7 @@ public final class LocalRuntime: @unchecked Sendable {
     }
 
     /// Runs a helper to completion off the caller's thread and returns its output.
-    private func run(_ executable: URL, _ arguments: [String], environment: [String: String] = [:]) async throws -> String {
+    private func run(_ executable: URL, _ arguments: [String]) async throws -> String {
         let output = paths.runtime.appendingPathComponent("helper-\(UUID().uuidString).log")
         FileManager.default.createFile(atPath: output.path, contents: nil)
         defer { try? FileManager.default.removeItem(at: output) }
@@ -447,7 +437,6 @@ public final class LocalRuntime: @unchecked Sendable {
         let process = Process()
         process.executableURL = executable
         process.arguments = arguments
-        process.environment = ProcessInfo.processInfo.environment.merging(environment) { $1 }
         process.standardOutput = handle
         process.standardError = handle
         let status: Int32 = try await withCheckedThrowingContinuation { continuation in

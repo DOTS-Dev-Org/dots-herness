@@ -86,6 +86,7 @@ struct WorkspaceSnapshotStore {
 
     private let root: URL
     private let fileManager: FileManager
+    private let filesystemLock = NSRecursiveLock()
 
     init(paths: SupportPaths, fileManager: FileManager = .default) {
         self.root = paths.root.appendingPathComponent("rewind", isDirectory: true)
@@ -93,6 +94,8 @@ struct WorkspaceSnapshotStore {
     }
 
     func begin(conversationID: String, turnID: String, workspace: URL) -> Bool {
+        filesystemLock.lock()
+        defer { filesystemLock.unlock() }
         // ponytail: synchronous full-tree snapshots keep ordering exact; move
         // capture off the main actor only if measured workspace size makes it
         // visible, then gate the turn on the completed snapshot.
@@ -148,6 +151,8 @@ struct WorkspaceSnapshotStore {
     }
 
     func finishResult(conversationID: String, turnID: String, workspace: URL) -> WorkspaceChangeResult {
+        filesystemLock.lock()
+        defer { filesystemLock.unlock() }
         let directory = snapshotDirectory(conversationID: conversationID, turnID: turnID)
         do {
             var snapshot = try read(from: manifestURL(in: directory))
@@ -187,6 +192,8 @@ struct WorkspaceSnapshotStore {
 
     /// The file as it was before the turn ran; nil when the turn created it.
     func beforeContent(conversationID: String, turnID: String, path: String) -> Data? {
+        filesystemLock.lock()
+        defer { filesystemLock.unlock() }
         let directory = snapshotDirectory(conversationID: conversationID, turnID: turnID)
         guard let snapshot = try? read(from: manifestURL(in: directory)),
               snapshot.before[path] != nil,
@@ -194,38 +201,30 @@ struct WorkspaceSnapshotStore {
         return try? Data(contentsOf: url)
     }
 
-    func hasCompleteSnapshot(
-        conversationID: String,
-        turnID: String,
-        workspace: URL
-    ) -> Bool {
-        guard let snapshot = try? read(from: manifestURL(in: snapshotDirectory(conversationID: conversationID, turnID: turnID))) else {
-            return false
-        }
-        return snapshot.conversationID == conversationID
-            && snapshot.turnID == turnID
-            && snapshot.complete
-            && snapshot.after != nil
-            && snapshot.workspacePath == workspace.standardizedFileURL.path
-            && beforeBackupsExist(for: snapshot)
+    func hasCompleteSnapshot(conversationID: String, turnID: String, workspace: URL) -> Bool {
+        filesystemLock.lock()
+        defer { filesystemLock.unlock() }
+        return completeSnapshot(conversationID: conversationID, turnID: turnID, workspace: workspace) != nil
     }
 
-    func hasUndoableSnapshot(
-        conversationID: String,
-        turnID: String,
-        workspace: URL
-    ) -> Bool {
-        guard let snapshot = try? read(from: manifestURL(in: snapshotDirectory(conversationID: conversationID, turnID: turnID))) else {
+    func hasUndoableSnapshot(conversationID: String, turnID: String, workspace: URL) -> Bool {
+        filesystemLock.lock()
+        defer { filesystemLock.unlock() }
+        guard let snapshot = completeSnapshot(conversationID: conversationID, turnID: turnID, workspace: workspace) else {
             return false
         }
-        return snapshot.conversationID == conversationID
-            && snapshot.turnID == turnID
-            && snapshot.complete
-            && snapshot.after != nil
-            && snapshot.undone != true
-            && !snapshot.changedFiles.isEmpty
-            && snapshot.workspacePath == workspace.standardizedFileURL.path
-            && beforeBackupsExist(for: snapshot)
+        return snapshot.undone != true && !snapshot.changedFiles.isEmpty
+    }
+
+    private func completeSnapshot(conversationID: String, turnID: String, workspace: URL) -> Snapshot? {
+        guard let snapshot = try? read(from: manifestURL(in: snapshotDirectory(conversationID: conversationID, turnID: turnID))),
+              snapshot.conversationID == conversationID,
+              snapshot.turnID == turnID,
+              snapshot.complete,
+              snapshot.after != nil,
+              snapshot.workspacePath == workspace.standardizedFileURL.path,
+              beforeBackupsExist(for: snapshot) else { return nil }
+        return snapshot
     }
 
     func restore(
@@ -234,6 +233,8 @@ struct WorkspaceSnapshotStore {
         workspace: URL,
         abortOnConflict: Bool
     ) throws -> RewindResult {
+        filesystemLock.lock()
+        defer { filesystemLock.unlock() }
         guard !turnIDs.isEmpty else { throw WorkspaceSnapshotError.unavailable }
         var snapshots = try turnIDs.map { turnID in
             let snapshot = try read(from: manifestURL(in: snapshotDirectory(conversationID: conversationID, turnID: turnID)))
@@ -351,17 +352,26 @@ struct WorkspaceSnapshotStore {
     }
 
     func removeConversation(_ conversationID: String) {
-        let component = safeComponent(conversationID)
-        materializeReferences(pointingInto: component)
-        try? fileManager.removeItem(at: root.appendingPathComponent(component, isDirectory: true))
+        removeConversations([conversationID])
+    }
+
+    func removeConversations(_ conversationIDs: [String]) {
+        filesystemLock.lock()
+        defer { filesystemLock.unlock() }
+        let components = Set(conversationIDs.map(safeComponent))
+        guard !components.isEmpty else { return }
+        materializeReferences(pointingInto: components)
+        for component in components {
+            try? fileManager.removeItem(at: root.appendingPathComponent(component, isDirectory: true))
+        }
     }
 
     /// Other turns may reference backups stored under this conversation. Before it is deleted
     /// those files are given to the turns that use them, so their rewind keeps working.
-    private func materializeReferences(pointingInto component: String) {
-        let prefix = component + "/"
+    /// Surviving conversations are scanned once for the whole deletion batch.
+    private func materializeReferences(pointingInto components: Set<String>) {
         guard let conversations = try? fileManager.contentsOfDirectory(atPath: root.path) else { return }
-        for other in conversations where other != component && !other.hasPrefix("_") {
+        for other in conversations where !components.contains(other) && !other.hasPrefix("_") {
             let otherDirectory = root.appendingPathComponent(other, isDirectory: true)
             guard let turns = try? fileManager.contentsOfDirectory(atPath: otherDirectory.path) else { continue }
             for turn in turns {
@@ -369,10 +379,15 @@ struct WorkspaceSnapshotStore {
                 let manifest = manifestURL(in: turnDirectory)
                 guard var snapshot = try? read(from: manifest),
                       let sources = snapshot.beforeSources,
-                      sources.values.contains(where: { $0.hasPrefix(prefix) }) else { continue }
+                      sources.values.contains(where: { source in
+                          guard let owner = source.split(separator: "/", maxSplits: 1).first else { return false }
+                          return components.contains(String(owner))
+                      }) else { continue }
                 let beforeDirectory = turnDirectory.appendingPathComponent("before", isDirectory: true)
                 var remaining = sources
-                for (path, reference) in sources where reference.hasPrefix(prefix) {
+                for (path, reference) in sources {
+                    guard let owner = reference.split(separator: "/", maxSplits: 1).first,
+                          components.contains(String(owner)) else { continue }
                     let source = root.appendingPathComponent(reference)
                     guard let destination = safeBackupURL(path: path, relativeTo: beforeDirectory) else { continue }
                     try? fileManager.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -573,6 +588,8 @@ struct WorkspaceSnapshotStore {
         // Regenerated by tooling, and often thousands of files.
         ".next", ".nuxt", ".turbo", ".gradle", ".dart_tool", ".venv", "venv", "__pycache__",
         ".pytest_cache", ".mypy_cache",
+        // HerNess's own tool cache (SandboxProfile.cacheEnvironment), never the user's change.
+        ".sandbox-cache",
     ]
 
     private func observe(path: String, workspace: URL) throws -> Observation {
@@ -690,11 +707,22 @@ struct WorkspaceSnapshotStore {
         before: Data?,
         after: Data?
     ) -> ChangedFile {
-        let (added, deleted) = lineChanges(before: before, after: after)
-        return ChangedFile(path: path, operation: operation, addedLines: added, deletedLines: deleted)
+        let diff = lineChanges(before: before, after: after)
+        return ChangedFile(
+            path: path,
+            operation: operation,
+            addedLines: diff.added,
+            deletedLines: diff.deleted,
+            preview: diff.preview
+        )
     }
 
-    private func lineChanges(before: Data?, after: Data?) -> (Int, Int) {
+    private struct LineEdit {
+        let kind: Character
+        let text: String
+    }
+
+    private func lineChanges(before: Data?, after: Data?) -> (added: Int, deleted: Int, preview: String?) {
         func lines(_ data: Data?) -> [String]? {
             guard let data, !data.isEmpty else { return [] }
             if data.prefix(8_192).contains(0) { return nil }
@@ -705,22 +733,24 @@ struct WorkspaceSnapshotStore {
             if result.last == "" { result.removeLast() }
             return result
         }
-        guard var oldLines = lines(before), var newLines = lines(after) else { return (-1, -1) }
+        guard var oldLines = lines(before), var newLines = lines(after) else { return (-1, -1, nil) }
         var prefix = 0
         while prefix < oldLines.count && prefix < newLines.count && oldLines[prefix] == newLines[prefix] { prefix += 1 }
         var suffix = 0
         while suffix < oldLines.count - prefix && suffix < newLines.count - prefix
             && oldLines[oldLines.count - 1 - suffix] == newLines[newLines.count - 1 - suffix] { suffix += 1 }
+        let allOldLines = oldLines
+        let allNewLines = newLines
         oldLines = Array(oldLines[prefix..<(oldLines.count - suffix)])
         newLines = Array(newLines[prefix..<(newLines.count - suffix)])
-        if oldLines.count + newLines.count > 4_096 { return (-1, -1) }
+        if oldLines.count + newLines.count > 4_096 { return (-1, -1, nil) }
         let maximum = oldLines.count + newLines.count
         let offset = maximum
         var frontier = Array(repeating: 0, count: maximum * 2 + 3)
         frontier[offset + 1] = 0
         var trace: [[Int]] = []
         for distance in 0...maximum {
-            if distance > 256 { return (-1, -1) }
+            if distance > 256 { return (-1, -1, nil) }
             trace.append(frontier)
             var diagonal = -distance
             while diagonal <= distance {
@@ -732,31 +762,35 @@ struct WorkspaceSnapshotStore {
                 while x < oldLines.count && y < newLines.count && oldLines[x] == newLines[y] { x += 1; y += 1 }
                 frontier[index] = x
                 if x >= oldLines.count && y >= newLines.count {
-                    return backtrackLineChanges(
+                    let edits = backtrackLineEdits(
                         trace,
                         distance: distance,
-                        oldCount: oldLines.count,
-                        newCount: newLines.count,
+                        oldLines: oldLines,
+                        newLines: newLines,
                         offset: offset
+                    )
+                    return (
+                        edits.filter { $0.kind == "+" }.count,
+                        edits.filter { $0.kind == "-" }.count,
+                        buildPreview(edits, oldLines: allOldLines, newLines: allNewLines, commonPrefix: prefix, commonSuffix: suffix)
                     )
                 }
                 diagonal += 2
             }
         }
-        return (-1, -1)
+        return (-1, -1, nil)
     }
 
-    private func backtrackLineChanges(
+    private func backtrackLineEdits(
         _ trace: [[Int]],
         distance: Int,
-        oldCount: Int,
-        newCount: Int,
+        oldLines: [String],
+        newLines: [String],
         offset: Int
-    ) -> (Int, Int) {
-        var x = oldCount
-        var y = newCount
-        var added = 0
-        var deleted = 0
+    ) -> [LineEdit] {
+        var x = oldLines.count
+        var y = newLines.count
+        var edits: [LineEdit] = []
         if distance > 0 {
             for d in stride(from: distance, through: 1, by: -1) {
                 let previous = trace[d]
@@ -766,15 +800,87 @@ struct WorkspaceSnapshotStore {
                     : diagonal - 1
                 let previousX = previous[offset + previousDiagonal]
                 let previousY = previousX - previousDiagonal
-                while x > previousX && y > previousY { x -= 1; y -= 1 }
-                if x == previousX { added += 1; y -= 1 }
-                else { deleted += 1; x -= 1 }
+                while x > previousX && y > previousY {
+                    x -= 1
+                    y -= 1
+                    edits.append(LineEdit(kind: " ", text: oldLines[x]))
+                }
+                if x == previousX {
+                    y -= 1
+                    edits.append(LineEdit(kind: "+", text: newLines[y]))
+                } else {
+                    x -= 1
+                    edits.append(LineEdit(kind: "-", text: oldLines[x]))
+                }
             }
         }
-        while x > 0 && y > 0 { x -= 1; y -= 1 }
-        added += y
-        deleted += x
-        return (added, deleted)
+        while x > 0 && y > 0 {
+            x -= 1
+            y -= 1
+            edits.append(LineEdit(kind: " ", text: oldLines[x]))
+        }
+        while x > 0 {
+            x -= 1
+            edits.append(LineEdit(kind: "-", text: oldLines[x]))
+        }
+        while y > 0 {
+            y -= 1
+            edits.append(LineEdit(kind: "+", text: newLines[y]))
+        }
+        return Array(edits.reversed())
+    }
+
+    private func buildPreview(
+        _ edits: [LineEdit],
+        oldLines: [String],
+        newLines: [String],
+        commonPrefix: Int,
+        commonSuffix: Int
+    ) -> String? {
+        let maximumRows = 42
+        let contextRows = 3
+        guard let firstChange = edits.firstIndex(where: { $0.kind == "+" || $0.kind == "-" }) else { return nil }
+
+        var rows: [String] = []
+        for index in max(0, commonPrefix - contextRows)..<commonPrefix {
+            rows.append("  \(String(format: "%4d", index + 1)) │ \(oldLines[index])")
+        }
+
+        let operationStart = max(0, firstChange - contextRows)
+        let preceding = edits.prefix(operationStart)
+        var oldLine = commonPrefix + 1 + preceding.filter { $0.kind != "+" }.count
+        var newLine = commonPrefix + 1 + preceding.filter { $0.kind != "-" }.count
+        let operationCapacity = max(1, maximumRows - rows.count - 1)
+        let operationCount = min(edits.count - operationStart, operationCapacity)
+        for edit in edits[operationStart..<(operationStart + operationCount)] {
+            let oldNumber = String(format: "%4d", oldLine)
+            let newNumber = String(format: "%4d", newLine)
+            switch edit.kind {
+            case " ":
+                rows.append("  \(newNumber) │ \(edit.text)")
+                oldLine += 1
+                newLine += 1
+            case "-":
+                rows.append("− \(oldNumber) │ \(edit.text)")
+                oldLine += 1
+            case "+":
+                rows.append("+ \(newNumber) │ \(edit.text)")
+                newLine += 1
+            default: break
+            }
+        }
+
+        if operationStart + operationCount < edits.count {
+            if rows.count < maximumRows { rows.append("  …") }
+        } else {
+            let suffixStart = newLines.count - commonSuffix
+            for index in 0..<min(contextRows, commonSuffix) where rows.count < maximumRows {
+                rows.append("  \(String(format: "%4d", suffixStart + index + 1)) │ \(newLines[suffixStart + index])")
+            }
+        }
+
+        let preview = rows.joined(separator: "\n")
+        return preview.count <= 12_000 ? preview : String(preview.prefix(12_000))
     }
 
     private func beforeBackupsExist(for snapshot: Snapshot) -> Bool {

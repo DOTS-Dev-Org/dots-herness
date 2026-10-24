@@ -15,7 +15,6 @@ import shutil
 from pathlib import Path
 
 
-PLATFORMS = ("macos", "windows", "linux")
 PANEL_SLOTS = {
     "conversation.composer.accessory",
     "shell.overlay",

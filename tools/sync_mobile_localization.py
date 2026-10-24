@@ -80,6 +80,23 @@ def android_value(value: str) -> str:
     return html.escape(value, quote=False).replace("'", "\\'").replace('"', "&quot;")
 
 
+def android_format(value: str) -> str:
+    """Translate Foundation printf placeholders into Java Formatter syntax."""
+    next_index = 1
+
+    def convert(match: re.Match[str]) -> str:
+        nonlocal next_index
+        explicit_index, conversion = match.groups()
+        if conversion == "%":
+            return "%%"
+        index = int(explicit_index) if explicit_index else next_index
+        next_index = max(next_index, index + 1)
+        conversion = {"@": "s", "lld": "d", "ld": "d"}.get(conversion, conversion)
+        return f"%{index}${conversion}"
+
+    return re.sub(r"%(?:(\d+)\$)?(lld|ld|@|d|s|%)", convert, value)
+
+
 # Translations for keys introduced by the mobile clients. Existing shared
 # keys are copied from the already translated macOS catalog.
 CORE_TRANSLATIONS: dict[str, dict[str, str]] = {
@@ -140,7 +157,7 @@ CORE_TRANSLATIONS: dict[str, dict[str, str]] = {
     "mobile.nav.settings": { "en": "Settings", "tr": "Ayarlar", "de": "Einstellungen", "es": "Ajustes", "fr": "Réglages", "it": "Impostazioni", "ja": "設定", "ko": "설정", "nl": "Instellingen", "pt": "Definições", "ru": "Настройки", "zh-Hans": "设置", "ar": "الإعدادات", "bn": "সেটিংস", "hi": "सेटिंग्स", "id": "Pengaturan", "vi": "Cài đặt", "ur": "ترتیبات", "mr": "सेटिंग्ज", "te": "సెట్టింగ్‌లు", "ta": "அமைப்புகள்", "fa": "تنظیمات", "pl": "Ustawienia", "uk": "Налаштування", "th": "การตั้งค่า", "ms": "Tetapan", "ro": "Setări", "el": "Ρυθμίσεις", "cs": "Nastavení", "hu": "Beállítások" },
     "settings.tab.general": { "en": "General", "tr": "Genel", "de": "Allgemein", "es": "General", "fr": "Général", "it": "Generale", "ja": "一般", "ko": "일반", "nl": "Algemeen", "pt": "Geral", "ru": "Общие", "zh-Hans": "通用", "ar": "عام", "bn": "সাধারণ", "hi": "सामान्य", "id": "Umum", "vi": "Chung", "ur": "عمومی", "mr": "सामान्य", "te": "సాధారణ", "ta": "பொது", "fa": "عمومی", "pl": "Ogólne", "uk": "Загальні", "th": "ทั่วไป", "ms": "Umum", "ro": "Generale", "el": "Γενικά", "cs": "Obecné", "hu": "Általános" },
     "settings.tab.accounts": { "en": "Accounts", "tr": "Hesaplar", "de": "Konten", "es": "Cuentas", "fr": "Comptes", "it": "Account", "ja": "アカウント", "ko": "계정", "nl": "Accounts", "pt": "Contas", "ru": "Аккаунты", "zh-Hans": "账户", "ar": "الحسابات", "bn": "অ্যাকাউন্ট", "hi": "खाते", "id": "Akun", "vi": "Tài khoản", "ur": "اکاؤنٹس", "mr": "खाती", "te": "ఖాతాలు", "ta": "கணக்குகள்", "fa": "حساب‌ها", "pl": "Konta", "uk": "Облікові записи", "th": "บัญชี", "ms": "Akaun", "ro": "Conturi", "el": "Λογαριασμοί", "cs": "Účty", "hu": "Fiókok" },
-    "settings.tab.repository": { "en": "Repo", "tr": "Depo", "de": "Repo", "es": "Repo", "fr": "Dépôt", "it": "Repo", "ja": "リポジトリ", "ko": "저장소", "nl": "Repo", "pt": "Repositório", "ru": "Репозиторий", "zh-Hans": "仓库", "ar": "المستودع", "bn": "রিপোজিটরি", "hi": "रिपॉज़िटरी", "id": "Repo", "vi": "Kho", "ur": "ریپوزٹری", "mr": "रेपॉझिटरी", "te": "రిపోజిటరీ", "ta": "களஞ்சியம்", "fa": "مخزن", "pl": "Repozytorium", "uk": "Репозиторій", "th": "คลังเก็บ", "ms": "Repositori", "ro": "Depozit", "el": "Αποθετήριο", "cs": "Repozitář", "hu": "Tároló" },
+    "settings.tab.repository": { "en": "Repo", "tr": "Depo", "de": "Repository", "es": "Repositorio", "fr": "Dépôt", "it": "Repository", "ja": "リポジトリ", "ko": "저장소", "nl": "Repo", "pt": "Repositório", "ru": "Репозиторий", "zh-Hans": "仓库", "ar": "المستودع", "bn": "রিপোজিটরি", "hi": "रिपॉज़िटरी", "id": "Repo", "vi": "Kho", "ur": "ریپوزٹری", "mr": "रेपॉझिटरी", "te": "రిపోజిటరీ", "ta": "களஞ்சியம்", "fa": "مخزن", "pl": "Repozytorium", "uk": "Репозиторій", "th": "คลังเก็บ", "ms": "Repositori", "ro": "Depozit", "el": "Αποθετήριο", "cs": "Repozitář", "hu": "Tároló" },
     "settings.tab.tools": { "en": "Tools", "tr": "Araçlar", "de": "Tools", "es": "Herramientas", "fr": "Outils", "it": "Strumenti", "ja": "ツール", "ko": "도구", "nl": "Tools", "pt": "Ferramentas", "ru": "Инструменты", "zh-Hans": "工具", "ar": "الأدوات", "bn": "টুল", "hi": "उपकरण", "id": "Alat", "vi": "Công cụ", "ur": "ٹولز", "mr": "साधने", "te": "సాధనాలు", "ta": "கருவிகள்", "fa": "ابزارها", "pl": "Narzędzia", "uk": "Інструменти", "th": "เครื่องมือ", "ms": "Alat", "ro": "Instrumente", "el": "Εργαλεία", "cs": "Nástroje", "hu": "Eszközök" },
     "mobile.workspace.local": { "en": "Local workspace", "tr": "Yerel çalışma alanı", "de": "Lokaler Arbeitsbereich", "es": "Espacio de trabajo local", "fr": "Espace de travail local", "it": "Spazio di lavoro locale", "ja": "ローカルワークスペース", "ko": "로컬 작업 공간", "nl": "Lokale werkruimte", "pt": "Espaço de trabalho local", "ru": "Локальное рабочее пространство", "zh-Hans": "本地工作区", "ar": "مساحة العمل المحلية", "bn": "স্থানীয় ওয়ার্কস্পেস", "hi": "स्थानीय कार्यक्षेत्र", "id": "Ruang kerja lokal", "vi": "Không gian làm việc cục bộ", "ur": "مقامی ورک اسپیس", "mr": "स्थानिक कार्यक्षेत्र", "te": "లోకల్ వర్క్‌స్పేస్", "ta": "உள்ளூர் பணியிடம்", "fa": "فضای کاری محلی", "pl": "Lokalna przestrzeń pracy", "uk": "Локальний робочий простір", "th": "เวิร์กสเปซในเครื่อง", "ms": "Ruang kerja setempat", "ro": "Spațiu de lucru local", "el": "Τοπικός χώρος εργασίας", "cs": "Místní pracovní prostor", "hu": "Helyi munkaterület" },
     "mobile.workspace.selectFile": { "en": "Select a file", "tr": "Bir dosya seç", "de": "Datei auswählen", "es": "Selecciona un archivo", "fr": "Sélectionner un fichier", "it": "Seleziona un file", "ja": "ファイルを選択", "ko": "파일 선택", "nl": "Selecteer een bestand", "pt": "Selecionar um ficheiro", "ru": "Выберите файл", "zh-Hans": "选择文件", "ar": "اختر ملفًا", "bn": "একটি ফাইল বেছে নিন", "hi": "फ़ाइल चुनें", "id": "Pilih file", "vi": "Chọn tệp", "ur": "فائل منتخب کریں", "mr": "फाइल निवडा", "te": "ఫైల్‌ను ఎంచుకోండి", "ta": "கோப்பைத் தேர்ந்தெடுக்கவும்", "fa": "یک فایل انتخاب کن", "pl": "Wybierz plik", "uk": "Виберіть файл", "th": "เลือกไฟล์", "ms": "Pilih fail", "ro": "Selectează un fișier", "el": "Επίλεξε αρχείο", "cs": "Vyber soubor", "hu": "Válassz fájlt" },
@@ -201,7 +218,7 @@ CORE_TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Apply a generated plan automatically while keeping tool approvals.", "tr": "Araç onaylarını korurken oluşturulan planı otomatik uygula.", "de": "Wendet einen generierten Plan automatisch an, während Tool-Genehmigungen beibehalten werden.", "es": "Aplica un plan generado automáticamente manteniendo las aprobaciones de herramientas.", "fr": "Applique automatiquement un plan généré tout en conservant les approbations des outils.", "it": "Applica automaticamente un piano generato mantenendo le approvazioni degli strumenti.", "ja": "ツールの承認を維持しながら、生成された計画を自動的に適用します。", "ko": "도구 승인을 유지하면서 생성된 계획을 자동으로 적용합니다.", "nl": "Pas een gegenereerd plan automatisch toe met behoud van toolgoedkeuringen.", "pt": "Aplica automaticamente um plano gerado mantendo as aprovações de ferramentas.", "ru": "Автоматически применять созданный план, сохраняя подтверждения инструментов.", "zh-Hans": "自动应用生成的计划，同时保留工具审批。", "ar": "تطبيق الخطة المنشأة تلقائيًا مع الاحتفاظ بموافقات الأدوات.", "bn": "টুল অনুমোদন বজায় রেখে উৎপন্ন পরিকল্পনা স্বয়ংক্রিয়ভাবে প্রয়োগ করুন।", "hi": "टूल अनुमोदनों को बनाए रखते हुए जनरेट की गई योजना स्वचालित रूप से लागू करें।", "id": "Terapkan rencana yang dibuat secara otomatis dengan tetap mempertahankan persetujuan alat.", "vi": "Tự động áp dụng kế hoạch đã tạo trong khi vẫn giữ phê duyệt công cụ.", "ur": "ٹول کی منظوری برقرار رکھتے ہوئے تیار کردہ منصوبہ خودکار طور پر لاگو کریں۔", "mr": "साधन मंजुरी कायम ठेवून तयार केलेली योजना आपोआप लागू करा.", "te": "టూల్ ఆమోదాలను కొనసాగిస్తూ రూపొందించిన ప్రణాళికను స్వయంచాలకంగా వర్తింపజేయండి.", "ta": "கருவி ஒப்புதல்களைப் பராமரிக்கும் போது உருவாக்கப்பட்ட திட்டத்தை தானாகவே பயன்படுத்தவும்.", "fa": "طرح ایجاد شده را ضمن حفظ تأییدیه‌های ابزار به‌طور خودکار اعمال کن.", "pl": "Automatycznie stosuj wygenerowany plan, zachowując zatwierdzenia narzędzi.", "uk": "Автоматично застосовувати створений план, зберігаючи схвалення інструментів.", "th": "ใช้แผนที่สร้างขึ้นโดยอัตโนมัติในขณะที่ยังคงการอนุมัติเครื่องมือไว้", "ms": "Gunakan pelan yang dijana secara automatik sambil mengekalkan kelulusan alat.", "ro": "Aplică automat un plan generat, păstrând aprobările instrumentelor.", "el": "Αυτόματη εφαρμογή ενός παραγόμενου σχεδίου διατηρώντας τις εγκρίσεις εργαλείων.", "cs": "Automaticky použije vygenerovaný plán při zachování schvalování nástrojů.", "hu": "Automatikusan alkalmazza a generált tervet az eszközjóváhagyások megtartása mellett."
     },
     "mobile.agent.subagentsSection": {
-        "en": "Subagents", "tr": "Alt ajanlar", "de": "Subagenten", "es": "Subagentes", "fr": "Sous-agents", "it": "Subagenti", "ja": "サブエージェント", "ko": "서브에이전트", "nl": "Subagents", "pt": "Subagentes", "ru": "Субагенты", "zh-Hans": "子代理", "ar": "الوكلاء الفرعيون", "bn": "সাব-এজেন্ট", "hi": "उप-एजेंट", "id": "Subagen", "vi": "Tác nhân phụ", "ur": "ذیلی ایجنٹ", "mr": "उप-एजंट", "te": "ఉప-ఏజెంట్లు", "ta": "துணை முகவர்கள்", "fa": "زیرعامل‌ها", "pl": "Subagenci", "uk": "Субагенти", "th": "เอเจนต์ย่อย", "ms": "Subejen", "ro": "Subagenți", "el": "Υποπράκτορες", "cs": "Subagenti", "hu": "Alügynökök"
+        "en": "Subagents", "tr": "Alt ajanlar", "de": "Subagenten", "es": "Subagentes", "fr": "Sous-agents", "it": "Subagenti", "ja": "サブエージェント", "ko": "서브에이전트", "nl": "Subagenten", "pt": "Subagentes", "ru": "Субагенты", "zh-Hans": "子代理", "ar": "الوكلاء الفرعيون", "bn": "সাব-এজেন্ট", "hi": "उप-एजेंट", "id": "Subagen", "vi": "Tác nhân phụ", "ur": "ذیلی ایجنٹ", "mr": "उप-एजंट", "te": "ఉప-ఏజెంట్లు", "ta": "துணை முகவர்கள்", "fa": "زیرعامل‌ها", "pl": "Subagenci", "uk": "Субагенти", "th": "เอเจนต์ย่อย", "ms": "Subejen", "ro": "Subagenți", "el": "Υποπράκτορες", "cs": "Subagenti", "hu": "Alügynökök"
     },
     "mobile.agent.subagents": {
         "en": "Use subagents", "tr": "Alt ajanları kullan", "de": "Subagenten verwenden", "es": "Usar subagentes", "fr": "Utiliser des sous-agents", "it": "Usa subagenti", "ja": "サブエージェントを使用", "ko": "서브에이전트 사용", "nl": "Subagents gebruiken", "pt": "Utilizar subagentes", "ru": "Использовать субагентов", "zh-Hans": "使用子代理", "ar": "استخدام الوكلاء الفرعيين", "bn": "সাব-এজেন্ট ব্যবহার করুন", "hi": "उप-एजेंट का उपयोग करें", "id": "Gunakan subagen", "vi": "Dùng tác nhân phụ", "ur": "ذیلی ایجنٹ استعمال کریں", "mr": "उप-एजंट वापरा", "te": "ఉప-ఏజెంట్లను ఉపయోగించు", "ta": "துணை முகவர்களைப் பயன்படுத்து", "fa": "استفاده از زیرعامل‌ها", "pl": "Używaj subagentów", "uk": "Використовувати субагентів", "th": "ใช้เอเจนต์ย่อย", "ms": "Guna subejen", "ro": "Folosește subagenți", "el": "Χρήση υποπρακτόρων", "cs": "Používat subagenty", "hu": "Alügynökök használata"
@@ -233,6 +250,13 @@ CORE_TRANSLATIONS: dict[str, dict[str, str]] = {
 # those strings are not part of the mobile UI and must not be shipped there.
 MOBILE_KEYS = set(CORE_TRANSLATIONS)
 MOBILE_KEYS.update({
+    "mobile.pairing.confirm.title", "mobile.pairing.confirm.message",
+    "rail.tasks", "rail.memory", "memory.vault.title",
+    "memory.trust.prompt", "memory.trust.yes", "memory.trust.no",
+    "memory.lesson.prompt", "memory.lesson.keep", "memory.lesson.forget",
+    "vault.new", "vault.new.projectEntry", "vault.new.preference", "vault.delete.confirm",
+    "vault.entry.keyLanguage", "vault.entry.value", "vault.entry.scope", "vault.entry.everywhere", "vault.entry.thisProject",
+    "vault.section.project", "vault.section.profile",
     "project.missing.title", "project.missing.message", "project.missing.locate", "project.missing.readOnly",
     "sidebar.recent", "sidebar.noChats", "sidebar.noRecent",
     "common.cancel", "common.connect", "common.delete", "common.done", "common.download", "common.refresh", "common.remove", "common.save", "common.start", "common.stop",
@@ -247,7 +271,7 @@ MOBILE_KEYS.update({
     "agent.continue", "agent.messageQueued", "agent.steeringQueued", "agent.runningTool", "agent.chooseWorkspace", "agent.chooseModel",
     "conversation.steer", "plan.title", "plan.waitingApproval",
     "loop.minutesLabel", "loop.instructionLabel", "tasks.runNow", "tasks.field.name", "tasks.field.prompt", "tasks.cancel", "tasks.save",
-    "modelPicker.model", "modelPicker.selectModel", "modelPicker.noModel",
+    "modelPicker.model", "modelPicker.selectModel", "modelPicker.noModel", "modelPicker.effort", "modelPicker.effort.default", "modelPicker.effort.none", "modelPicker.effort.low", "modelPicker.effort.medium", "modelPicker.effort.high", "modelPicker.effort.xhigh", "modelPicker.effort.max",
     "slash.mcp", "slash.loop", "settings.tab.plugins",
     "mobile.exit.title", "mobile.exit.message", "mobile.exit.action", "mobile.exit.confirm", "mobile.exit.remember", "mobile.exit.rememberAndExit", "mobile.exit.cancel",
     "mobile.exit.settingsSection", "mobile.exit.askBeforeExit", "mobile.exit.settingsHint", "mobile.exit.actionLabel",
@@ -272,14 +296,35 @@ MOBILE_KEYS.update({
     "mobile.settings.offlineRepository", "mobile.settings.loadRepositories", "mobile.settings.chooseRepository", "mobile.settings.ownerRepository", "mobile.settings.branch", "mobile.settings.clone", "mobile.settings.selectedBranchHint",
     "mobile.settings.githubChanges", "mobile.settings.owner", "mobile.settings.repository", "mobile.settings.baseBranch", "mobile.settings.newBranch", "mobile.settings.commitPR", "mobile.settings.noLocalChanges", "mobile.settings.repositoryInputError", "mobile.settings.requestFailed",
     "mobile.settings.remoteRunner", "mobile.settings.desktopPaired", "mobile.settings.noDesktop", "mobile.settings.remoteRunnerHint", "mobile.settings.accessModeHint", "mobile.settings.buildHint", "mobile.settings.preview", "mobile.settings.pagesURL", "mobile.settings.snapshotExclusions",
+    "rail.media", "rail.bots", "rail.marketplace",
+    "mobile.market.nativeUnavailable",
+    "media.image", "media.video", "media.audio", "media.music", "media.modelMissing", "media.noOutput", "media.generationFailed", "media.videoTimeout", "media.unsupported", "media.unsupportedStatus", "media.openAudio", "media.audio.play", "media.audio.pause",
+    "studio.preset.square", "studio.preset.story", "studio.preset.landscape", "studio.preset.thumbnail", "studio.preset.logo", "studio.preset.poster",
+    "studio.category.social", "studio.category.uiux", "studio.category.presentation", "studio.category.other", "studio.home.sort.name", "studio.home.starred", "studio.home.star", "studio.home.unstar", "sidebar.sortLastUpdate", "studio.sample.brand", "studio.sample.text",
+    "studio.projects", "studio.templates", "studio.music", "studio.library", "studio.home.search", "studio.projectName", "studio.newProject", "studio.rename", "studio.duplicate", "studio.deleteConfirm", "studio.copyOf", "studio.settings.title", "studio.imagePrompt", "studio.generateImage", "studio.export", "studio.music.track.generate",
+    "studio.layers", "studio.layers.empty", "studio.layer.text", "studio.layer.shape", "studio.layer.front", "studio.layer.back",
+    "studio.template.announcement", "studio.template.story", "studio.template.thumbnail", "studio.template.mobile", "studio.template.slide", "studio.template.logo", "studio.sample.title", "studio.sample.detail",
+    "studio.music.new", "studio.music.empty", "studio.music.mix", "studio.music.track", "studio.music.track.empty", "studio.music.trackCount", "studio.music.bpm", "studio.music.key", "studio.music.mute", "studio.music.solo", "studio.music.track.delete",
+    "bots.preset.assistant", "bots.preset.researcher", "bots.preset.coder", "bots.new", "bots.edit", "bots.clear", "bots.send", "bots.empty.title", "bots.empty.detail", "bots.placeholder", "bots.name", "bots.instructions", "bots.instructionsHelp", "bots.status.waiting", "bots.error.noReply", "bots.workspace", "bots.workspaceHelp", "bots.agentIn",
+    "market.tab.plugins", "market.tab.skills", "market.tab.starters", "market.review.verified", "market.review.pending", "market.permissions", "market.homepage", "market.sourceCode", "market.error.invalidResponse", "market.publish.error.nativeOnly", "market.field.type", "marketplace.empty", "local.installed",
+    "market.area.core", "market.area.community", "market.area.experimental", "market.area.communityExperimental", "market.featured", "market.stat.downloads", "market.risk", "market.signed", "market.field.version", "market.field.license", "market.field.source", "library.all", "permission.moreInfo",
+    "market.category.coding", "market.category.git", "market.category.qa", "market.category.devops", "market.category.browser", "market.category.web", "market.category.backend", "market.category.mobile", "market.category.models", "market.category.integrations", "market.category.workspace", "market.category.productivity", "market.category.tools", "market.category.design", "market.category.documents", "market.category.authoring", "market.category.community", "market.category.other",
+    "market.owned", "market.related", "market.source.private", "market.source.public", "market.unpublish", "market.unpublish.confirmMessage", "market.report", "market.report.title", "market.report.reason", "market.report.details", "market.report.submit", "market.report.malware", "market.report.credentialTheft", "market.report.exfiltration", "market.report.deceptive", "market.report.spam", "market.report.copyright", "sidebar.other",
+    "market.account", "market.signIn", "market.signIn.email", "market.signIn.title", "market.email", "market.password", "market.likeSignIn", "market.unlike", "sidebar.signOut", "common.cancel",
 })
 
 MOBILE_KEYS.update(MOBILE_NOTICE_KEYS)
 MOBILE_KEYS.update(NO_PROJECT_KEYS)
+# Copy button on chat code blocks; the macOS catalog already carries the translations.
+MOBILE_KEYS.add("conversation.copy")
+# Native clarification card; use the existing cross-platform translations.
+MOBILE_KEYS.update({"ask.defaultHeader", "ask.other", "ask.customPlaceholder", "ask.next", "ask.skipShort", "ask.submit"})
 
 # English source values for the mobile-only keys. Every non-English value is
 # supplied by MOBILE_TRANSLATIONS in translation_catalog.py before generation.
 MOBILE_DEFAULTS = {
+    "mobile.pairing.confirm.title": "Connect to %@?",
+    "mobile.pairing.confirm.message": "Pairing code %@. Only continue if this matches the code shown on your computer.",
     "mobile.exit.title": "Exit HerNess?",
     "mobile.exit.message": "Are you sure you want to exit the app?",
     "mobile.exit.action": "Exit",
@@ -386,6 +431,7 @@ MOBILE_DEFAULTS = {
     "mobile.settings.preview": "Preview",
     "mobile.settings.pagesURL": "Pages URL",
     "mobile.settings.snapshotExclusions": "Snapshot exclusions",
+    "mobile.market.nativeUnavailable": "Native desktop plugins cannot run on mobile.",
 }
 
 MOBILE_DEFAULTS.update(zip(MOBILE_NOTICE_KEYS, NOTICE_ENGLISH))
@@ -450,8 +496,10 @@ def write_android(locale: str, values: dict[str, str]) -> None:
         if name in seen:
             raise ValueError(f"Android resource name collision for {key}: {name}")
         seen.add(name)
-        formatted = "" if re.search(r"%\d+\$", values[key]) else ' formatted="false"' if "%" in values[key] else ""
-        lines.append(f'    <string name="{name}"{formatted}>{android_value(values[key])}</string>')
+        value = android_format(values[key])
+        has_formatter = re.search(r"%(?:\d+\$)?[sd]", value) is not None
+        formatted = "" if has_formatter else ' formatted="false"' if "%" in value else ""
+        lines.append(f'    <string name="{name}"{formatted}>{android_value(value)}</string>')
     lines.append("</resources>")
     (directory / "strings.xml").write_text("\n".join(lines) + "\n", encoding="utf-8")
 

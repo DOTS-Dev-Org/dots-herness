@@ -12,9 +12,12 @@ public sealed class PlatformProviderSecrets : IProviderSecretStore
     private const UnixFileMode PrivateDirectoryMode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
     private const UnixFileMode PrivateFileMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
     private readonly string _fallbackRoot;
-    // Resolved once per process from PATH; no shell spawn on the startup path.
-    private static readonly Lazy<bool> SecretToolAvailable = new(() => CommandExists("secret-tool"));
-    private readonly bool _available = SecretToolAvailable.Value;
+    /// Absolute location of the real secret-tool, resolved once per process.
+    /// Resolving it through PATH would let anything on the user's PATH steal
+    /// every provider key: the helper reads the plaintext secret from stdin.
+    private static readonly Lazy<string?> SecretToolPath = new(ResolveSecretTool);
+    private static readonly string? _secretTool = SecretToolPath.Value;
+    private static bool Available => _secretTool is not null;
 
     public PlatformProviderSecrets(string root)
     {
@@ -25,7 +28,7 @@ public sealed class PlatformProviderSecrets : IProviderSecretStore
 
     public string? Read(string id)
     {
-        if (!_available)
+        if (!Available)
         {
             var path = PathFor(id);
             if (!File.Exists(path)) return null;
@@ -45,7 +48,7 @@ public sealed class PlatformProviderSecrets : IProviderSecretStore
 
     public void Write(string id, string value)
     {
-        if (!_available)
+        if (!Available)
         {
             var path = PathFor(id);
             var temporary = path + ".part-" + Guid.NewGuid().ToString("N");
@@ -70,7 +73,7 @@ public sealed class PlatformProviderSecrets : IProviderSecretStore
 
     public void Delete(string id)
     {
-        if (!_available) { try { File.Delete(PathFor(id)); } catch { } return; }
+        if (!Available) { try { File.Delete(PathFor(id)); } catch { } return; }
         try { using var process = Start("clear", "service", "dots-harness", "account", id); process.WaitForExit(3000); } catch { }
     }
 
@@ -110,7 +113,8 @@ public sealed class PlatformProviderSecrets : IProviderSecretStore
 
     private static Process Start(params string[] args)
     {
-        var info = new ProcessStartInfo("secret-tool")
+        var tool = _secretTool ?? throw new InvalidOperationException("secret-tool is unavailable");
+        var info = new ProcessStartInfo(tool)
         {
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
@@ -121,18 +125,28 @@ public sealed class PlatformProviderSecrets : IProviderSecretStore
         return Process.Start(info) ?? throw new InvalidOperationException("secret-tool could not start");
     }
 
-    private static bool CommandExists(string command)
+    /// <summary>
+    /// Finds the system secret-tool without consulting PATH. Only the two
+    /// standard locations are accepted, and the binary and its directory must
+    /// not be writable by anyone but their owner — a helper the user can
+    /// replace is a helper that can read every secret this app stores.
+    /// </summary>
+    private static string? ResolveSecretTool()
     {
-        const UnixFileMode anyExecute = UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
-        foreach (var directory in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(':', StringSplitOptions.RemoveEmptyEntries))
+        const UnixFileMode worldWritable = UnixFileMode.GroupWrite | UnixFileMode.OtherWrite;
+        foreach (var path in new[] { "/usr/bin/secret-tool", "/bin/secret-tool" })
         {
             try
             {
-                var path = Path.Combine(directory, command);
-                if (File.Exists(path) && (File.GetUnixFileMode(path) & anyExecute) != 0) return true;
+                if (!File.Exists(path)) continue;
+                if ((File.GetUnixFileMode(path) & worldWritable) != 0) continue;
+                var directory = Path.GetDirectoryName(path);
+                if (string.IsNullOrEmpty(directory)) continue;
+                if ((File.GetUnixFileMode(directory) & worldWritable) != 0) continue;
+                return path;
             }
             catch { }
         }
-        return false;
+        return null;
     }
 }

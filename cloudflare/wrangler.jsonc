@@ -4,11 +4,7 @@
   "compatibility_date": "2025-06-14",
   "compatibility_flags": ["nodejs_compat"],
   "placement": { "mode": "smart" },
-  // API_PUBLIC_URL lives on workers.dev; wrangler disables it when "routes" is set unless explicit.
   "workers_dev": true,
-  "routes": [
-    { "pattern": "dots.net.tr/harness/*", "zone_name": "dots.net.tr" }
-  ],
   "d1_databases": [
     {
       "binding": "DOTSHERNESS_DB",

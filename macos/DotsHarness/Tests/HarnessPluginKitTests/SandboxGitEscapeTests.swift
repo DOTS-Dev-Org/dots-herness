@@ -10,7 +10,7 @@ final class SandboxGitEscapeTests: XCTestCase {
     private var sandbox: SandboxWorkspace!
 
     override func setUpWithError() throws {
-        origin = FileManager.default.temporaryDirectory
+        origin = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("sandbox-escape-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: origin, withIntermediateDirectories: true)
         run(["init", "--initial-branch=main"], in: origin)
@@ -86,7 +86,7 @@ final class SandboxGitEscapeTests: XCTestCase {
     }
 
     func testCannotWriteOutsideWorktreeAndMetadataRoots() throws {
-        let outside = FileManager.default.temporaryDirectory
+        let outside = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("sandbox-escape-outside-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: outside) }
         let result = try runCommand("printf escaped > \(quote(outside.path)) 2>&1; echo rc=$?")

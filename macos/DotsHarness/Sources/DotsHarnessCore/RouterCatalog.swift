@@ -75,15 +75,38 @@ public enum RouterCatalog {
 
     public static func spec(for id: String) -> ProviderSpec? { ProviderRegistry.shared.spec(id) }
 
-    /// Official GPT-6 API context capacities. Some subscription model catalogs
-    /// report 272K, which is a long-context pricing threshold, not the full window.
+    /// A live model catalog may report a narrower per-model capability. When it
+    /// omits that field, the registered chat transports all accept tool schemas;
+    /// the provider response still validates the specific model at call time.
+    public static func supportsToolCalling(for provider: String, reported: Bool? = nil) -> Bool {
+        if let reported { return reported }
+        guard let format = spec(for: provider)?.transport.format else { return false }
+        switch format {
+        case .openaiChat, .responses, .anthropic, .geminiCLI:
+            return true
+        }
+    }
+
+    /// Official capacities for documented models. For GPT-6, 272K is a long-context
+    /// pricing threshold, not the full context window.
     public static func documentedContextWindow(for modelID: String, provider: String) -> Int? {
-        guard ["gpt", "openai"].contains(provider.lowercased()) else { return nil }
+        let providerID = provider.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let model = modelID.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             .split(separator: "/").last.map(String.init) ?? modelID.lowercased()
-        let documentedModels = ["gpt-6-astra", "gpt-6-sol", "gpt-6.1-sol", "gpt-6-luna"]
-        guard documentedModels.contains(where: { model == $0 || model.hasPrefix($0 + "-") }) else { return nil }
-        return 1_050_000
+        if ["claude", "anthropic"].contains(providerID), model == "claude-haiku-5-5" {
+            return 1_000_000
+        }
+        guard ["gpt", "openai", "chatgpt"].contains(providerID) else { return nil }
+        return openAIContextWindow(for: model)
+    }
+
+    /// OpenAI API windows for GPT-5.6+. Mini/nano variants are smaller and stay undocumented.
+    static func openAIContextWindow(for model: String) -> Int? {
+        guard model.hasPrefix("gpt-"), !model.contains("-mini"), !model.contains("-nano") else { return nil }
+        let version = model.dropFirst(4).prefix { $0.isNumber || $0 == "." }.split(separator: ".").compactMap { Int($0) }
+        guard let major = version.first else { return nil }
+        let minor = version.count > 1 ? version[1] : 0
+        return major >= 6 || (major == 5 && minor >= 6) ? 1_050_000 : nil
     }
 
     /// Stable key shared with the Windows and Linux provider stores. Provider
@@ -159,7 +182,6 @@ public enum RouterCatalog {
         let lower = modelID.lowercased()
         let bare = lower.split(separator: "/").last.map(String.init) ?? lower
         if bare.contains("reasoner") || bare.contains("thinking")
-            || bare.hasPrefix("o1") || bare.hasPrefix("o3") || bare.hasPrefix("o4")
             || bare.contains("-r1") || bare.contains("-r2") {
             return ["low", "medium", "high"]
         }
@@ -342,6 +364,7 @@ public struct RouterModel: Identifiable, Codable, Sendable, Equatable {
         id: String,
         owner: String = "",
         contextWindow: Int? = nil,
+        tools: Bool = false,
         efforts: [String] = [],
         displayName: String? = nil,
         provider: String = "",
@@ -354,7 +377,7 @@ public struct RouterModel: Identifiable, Codable, Sendable, Equatable {
         self.id = id
         self.owner = owner
         self.contextWindow = contextWindow
-        tools = false
+        self.tools = tools
         self.efforts = efforts
         self.displayName = displayName
         self.provider = provider

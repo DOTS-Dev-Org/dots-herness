@@ -6,7 +6,7 @@ final class SandboxProfileTests: XCTestCase {
     func testRunCommandCanWriteOnlyWorkspaceAndTmp() throws {
         let workspace = FileManager.default.temporaryDirectory
             .appendingPathComponent("sandbox-profile-\(UUID().uuidString)", isDirectory: true)
-        let outside = FileManager.default.temporaryDirectory
+        let outside = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("sandbox-profile-outside-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
@@ -126,6 +126,22 @@ final class SandboxProfileTests: XCTestCase {
         )
     }
 
+    /// `mktemp`, Foundation and SwiftPM find the per-user temp dir through
+    /// `confstr`, not `$TMPDIR`; with it read-only `swift build` cannot run.
+    func testUserTemporaryDirectoryIsWritable() throws {
+        let workspace = FileManager.default.temporaryDirectory
+            .appendingPathComponent("sandbox-usertemp-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: workspace) }
+
+        let result = runCommand(
+            "f=$(mktemp) && printf ok > \"$f\" && cat \"$f\" && rm \"$f\"",
+            in: workspace,
+            policy: SandboxExecutionPolicy(workspaceURL: workspace).strictAgentPolicy()
+        )
+        XCTAssertEqual(result.trimmingCharacters(in: .whitespacesAndNewlines), "ok")
+    }
+
     func testNetworkOffRejectsOutboundConnection() throws {
         let workspace = FileManager.default.temporaryDirectory
             .appendingPathComponent("sandbox-network-\(UUID().uuidString)", isDirectory: true)
@@ -139,6 +155,26 @@ final class SandboxProfileTests: XCTestCase {
             policy: policy
         )
         XCTAssertTrue(result.contains("Operation not permitted") || result.contains("exit"), result)
+    }
+
+    func testAgentNetworkAllowsOutboundButNoServerSockets() throws {
+        let workspace = FileManager.default.temporaryDirectory
+            .appendingPathComponent("sandbox-outbound-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: workspace) }
+
+        // Outbound connects, loopback included, need network on. A listening socket
+        // stays denied either way: a wildcard listener would accept LAN peers.
+        let connect = "/usr/bin/python3 -c \"import socket; socket.create_connection(('127.0.0.1', 1), timeout=2)\""
+        let bind = "/usr/bin/python3 -c \"import socket; s = socket.socket(); s.bind(('127.0.0.1', 0)); print('bound')\""
+        let base = SandboxExecutionPolicy(workspaceURL: workspace, networkAccess: true)
+        XCTAssertTrue(runCommand(connect, in: workspace, policy: base.agentCommandPolicy())
+            .contains("Connection refused"))
+        XCTAssertTrue(runCommand(connect, in: workspace, policy: base.strictAgentPolicy())
+            .contains("Operation not permitted"))
+        let bound = runCommand(bind, in: workspace, policy: base.agentCommandPolicy())
+        XCTAssertTrue(bound.contains("Operation not permitted"), bound)
+        XCTAssertFalse(bound.contains("bound"))
     }
 
     func testProfileDoesNotEmbedWorkspaceInTheSBPLText() throws {

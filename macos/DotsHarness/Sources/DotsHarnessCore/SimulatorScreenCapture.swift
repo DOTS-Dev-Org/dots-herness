@@ -12,9 +12,9 @@ import ScreenCaptureKit
 /// A low-latency, single-window capture session for the standalone Simulator app.
 ///
 /// ScreenCaptureKit delivers IOSurface-backed sample buffers on a private queue.
-/// Those buffers are handed to the panel's `CALayer` as-is (zero copy): no
-/// per-frame `CIContext` render and no pixel copy. The device-screen crop is
-/// detected once and then applied by the layer via `contentsRect`.
+/// The device-screen crop is detected from the first frame, then pushed back into
+/// the stream as `sourceRect`, so later buffers are already the bare screen and go
+/// to the panel's `CALayer` as-is (zero copy): no per-frame `CIContext` render.
 @available(macOS 14.0, *)
 public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sendable {
     public typealias FrameHandler = @MainActor @Sendable (SimulatorDisplayFrame) -> Void
@@ -36,9 +36,14 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
     private let geometryHandler: GeometryHandler
     private let renderContext: CIContext
     private var stream: SCStream?
+    private var configuration: SCStreamConfiguration?
     private var failureHandler: FailureHandler?
     private var isStopping = false
     private var screenCropPixels: CGRect?
+    /// Output size once the stream crops to the screen itself; buffers of this
+    /// size skip the CGImage path.
+    private var croppedOutputSize: CGSize?
+    private var windowPointSize: CGSize = .zero
 
     private init(
         displayAspectRatio: CGFloat?,
@@ -62,6 +67,7 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
         latency: SimulatorController.CaptureLatency,
         quality: SimulatorController.CaptureQuality,
         displayAspectRatio: CGFloat?,
+        screenFillsWindowWidth: Bool = false,
         frameHandler: @escaping FrameHandler,
         geometryHandler: @escaping GeometryHandler,
         failureHandler: @escaping FailureHandler
@@ -89,8 +95,19 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
         let info = SCShareableContent.info(for: filter)
         let pointPixelScale = max(CGFloat(info.pointPixelScale), 1)
         let scale = quality.outputScale
-        var targetWidth = Double(selectedWindow.frame.width * pointPixelScale) * scale
-        var targetHeight = Double(selectedWindow.frame.height * pointPixelScale) * scale
+        // The Android emulator window is a title bar over the bare display, so its
+        // screen is known up front: no detection, every frame is zero copy.
+        var fixedCrop: CGRect?
+        if screenFillsWindowWidth, let aspect = displayAspectRatio, aspect > 0 {
+            let window = selectedWindow.frame.size
+            let height = min(window.width / aspect, window.height)
+            fixedCrop = CGRect(x: 0, y: (window.height - height) / window.height, width: 1, height: height / window.height)
+        }
+        let capturedPoints = fixedCrop.map {
+            CGSize(width: selectedWindow.frame.width * $0.width, height: selectedWindow.frame.height * $0.height)
+        } ?? selectedWindow.frame.size
+        var targetWidth = Double(capturedPoints.width * pointPixelScale) * scale
+        var targetHeight = Double(capturedPoints.height * pointPixelScale) * scale
         let longestEdge = max(targetWidth, targetHeight)
         if longestEdge > maxCapturedEdge {
             let clamp = maxCapturedEdge / longestEdge
@@ -118,6 +135,14 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
         configuration.shouldBeOpaque = true
         configuration.ignoreShadowsSingleWindow = true
         configuration.ignoreGlobalClipSingleWindow = true
+        if let fixedCrop {
+            configuration.sourceRect = CGRect(
+                x: 0,
+                y: fixedCrop.minY * selectedWindow.frame.height,
+                width: capturedPoints.width,
+                height: capturedPoints.height
+            )
+        }
 
         let session = SimulatorScreenCapture(
             displayAspectRatio: displayAspectRatio,
@@ -125,6 +150,13 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
             geometryHandler: geometryHandler,
             failureHandler: failureHandler
         )
+        session.windowPointSize = selectedWindow.frame.size
+        session.configuration = configuration
+        if let fixedCrop {
+            session.screenCropPixels = .zero
+            session.croppedOutputSize = CGSize(width: width, height: height)
+            Task { @MainActor in geometryHandler(fixedCrop) }
+        }
         let stream = SCStream(filter: filter, configuration: configuration, delegate: session)
         session.stream = stream
 
@@ -192,18 +224,17 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
 
     // MARK: - Frames
 
-    /// Renders the frame to a CGImage and crops the device screen out of the
-    /// Simulator window chrome. The crop rect is detected from the first frame
-    /// only; every frame after reuses the cached pixel rect.
-    ///
-    /// ponytail: this deliberately keeps a per-frame `createCGImage` + crop
-    /// instead of handing the raw IOSurface to the layer via `contentsRect`.
-    /// The zero-copy path mis-rendered the sub-rect crop (wrong band + overscan
-    /// zoom) on the embedded panel; a pre-cropped CGImage draws 1:1 and sharp.
+    /// Until the stream crops to the device screen itself, renders the frame to
+    /// a CGImage and crops the Simulator window chrome off. The crop is detected
+    /// from the first frame and handed to ScreenCaptureKit as `sourceRect`; from
+    /// then on buffers arrive pre-cropped and go to the layer as their IOSurface.
+    /// (Cropping the raw surface with the layer's `contentsRect` mis-rendered on
+    /// the embedded panel, so the crop is done by the stream, never the layer.)
     private func process(_ pixelBuffer: CVPixelBuffer) {
         stateLock.lock()
         let stopping = isStopping
         let cachedCrop = screenCropPixels
+        let croppedSize = croppedOutputSize
         stateLock.unlock()
         guard !stopping else { return }
 
@@ -212,6 +243,17 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
             height: CVPixelBufferGetHeight(pixelBuffer)
         )
         guard fullSize.width > 0, fullSize.height > 0 else { return }
+
+        if fullSize == croppedSize {
+            frameDelivery.submit(
+                SimulatorDisplayFrame(
+                    source: .buffer(pixelBuffer),
+                    fullPixelSize: fullSize,
+                    cropRect: CGRect(x: 0, y: 0, width: 1, height: 1)
+                )
+            )
+            return
+        }
 
         autoreleasepool {
             let ciImage = CIImage(cvImageBuffer: pixelBuffer)
@@ -232,6 +274,7 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
                     height: cropPixels.height / fullSize.height
                 )
                 Task { @MainActor [geometryHandler] in geometryHandler(normalized) }
+                cropStream(to: normalized, pixelSize: cropPixels.size)
             }
 
             let cropped = image.cropping(to: cropPixels) ?? image
@@ -242,6 +285,34 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
                     cropRect: CGRect(x: 0, y: 0, width: 1, height: 1)
                 )
             )
+        }
+    }
+
+    /// Narrows the stream to the device screen (`normalized` is relative to the
+    /// window) at the same pixel density. If the update fails, frames keep
+    /// taking the CGImage path.
+    private func cropStream(to normalized: CGRect, pixelSize: CGSize) {
+        guard let stream, let configuration, windowPointSize.width > 0 else { return }
+        let width = max(2, Int(pixelSize.width))
+        let height = max(2, Int(pixelSize.height))
+        configuration.sourceRect = CGRect(
+            x: normalized.minX * windowPointSize.width,
+            y: normalized.minY * windowPointSize.height,
+            width: normalized.width * windowPointSize.width,
+            height: normalized.height * windowPointSize.height
+        )
+        configuration.width = width
+        configuration.height = height
+        // Set before the update: the first cropped buffers can beat the completion
+        // handler. Old-size buffers still take the CGImage path, so sizes never mix.
+        stateLock.lock()
+        croppedOutputSize = CGSize(width: width, height: height)
+        stateLock.unlock()
+        stream.updateConfiguration(configuration) { [weak self] error in
+            guard let self, error != nil else { return }
+            self.stateLock.lock()
+            self.croppedOutputSize = nil
+            self.stateLock.unlock()
         }
     }
 
@@ -265,29 +336,7 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
             return fallbackScreenCrop(in: imageSize)
         }
 
-        let aspect = max(
-            displayAspectRatio ?? outer.width / max(outer.height, 1),
-            0.1
-        )
-        let inset = displayInset(for: outer, aspect: aspect)
-        let maximumWidth = max(2, outer.width - inset * 2)
-        let maximumHeight = max(2, outer.height - inset * 2)
-        var width = maximumWidth
-        var height = width / aspect
-        if height > maximumHeight {
-            height = maximumHeight
-            width = height * aspect
-        }
-
-        return integralCropRect(
-            CGRect(
-                x: outer.midX - width / 2,
-                y: outer.midY - height / 2,
-                width: width,
-                height: height
-            ),
-            in: imageSize
-        )
+        return screenCrop(within: outer, in: imageSize)
     }
 
     private func fallbackScreenCrop(in imageSize: CGSize) -> CGRect {
@@ -300,7 +349,12 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
             width: imageSize.width * 0.96,
             height: imageSize.height * 0.934
         )
-        let aspect = max(displayAspectRatio ?? outer.width / outer.height, 0.1)
+        return screenCrop(within: outer, in: imageSize)
+    }
+
+    /// The display's rectangle centered inside the device silhouette `outer`.
+    private func screenCrop(within outer: CGRect, in imageSize: CGSize) -> CGRect {
+        let aspect = max(displayAspectRatio ?? outer.width / max(outer.height, 1), 0.1)
         let inset = displayInset(for: outer, aspect: aspect)
         let maximumWidth = max(2, outer.width - inset * 2)
         let maximumHeight = max(2, outer.height - inset * 2)
@@ -311,12 +365,7 @@ public final class SimulatorScreenCapture: NSObject, SCStreamOutput, SCStreamDel
             width = height * aspect
         }
         return integralCropRect(
-            CGRect(
-                x: outer.midX - width / 2,
-                y: outer.midY - height / 2,
-                width: width,
-                height: height
-            ),
+            CGRect(x: outer.midX - width / 2, y: outer.midY - height / 2, width: width, height: height),
             in: imageSize
         )
     }

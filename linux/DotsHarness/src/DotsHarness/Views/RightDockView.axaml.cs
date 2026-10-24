@@ -24,7 +24,12 @@ public partial class RightDockView : UserControl
     private LinuxNativeBrowserBridge _browserBridge = null!;
     private bool _browserSubscribed;
 
+    private bool _gitBusy;
+    private bool _settingBranches;
+
     private AppModel? Model => DataContext as AppModel;
+
+    private static void Show(Control element, bool visible) => element.IsVisible = visible;
 
     public RightDockView()
     {
@@ -53,20 +58,38 @@ public partial class RightDockView : UserControl
         var model = Model;
         if (model is null) return;
 
-        ReviewTab.Header = "Review";
-        TerminalTab.Header = "Terminal";
-        FilesTab.Header = "Files";
-        BrowserTab.Header = "Browser";
-        ToolTip.SetTip(RefreshButton, "Refresh panel");
-        RestartTerminalButton.Content = "Restart";
-        OpenBrowserButton.Content = "Go";
-        ToolTip.SetTip(BrowserExternalButton, "Open externally");
-        FilesFilter.Watermark = "Filter files";
-        BrowserAddress.Watermark = "URL";
+        ReviewTab.Header = model.L("conversation.review");
+        TerminalTab.Header = model.L("conversation.terminal");
+        FilesTab.Header = model.L("conversation.files");
+        BrowserTab.Header = model.L("conversation.browser");
+        PlanTab.Header = model.L("plan.title");
+        TasksTab.Header = model.L("backgroundTasks.title");
+        PlanApplyButton.Content = model.L("conversation.applyPlan");
+        PlanCancelButton.Content = model.L("conversation.cancelPlan");
+        PlanReviseButton.Content = model.L("plan.revise");
+        PlanAutoButton.Content = model.L("plan.acceptAuto");
+        TaskStopButton.Content = model.L("common.stop");
+        ToolTip.SetTip(RefreshButton, model.L("dock.refresh"));
+        FetchButton.Content = model.L("dock.fetch");
+        PushButton.Content = model.L("dock.push");
+        ToolTip.SetTip(PushButton, model.L("dock.push"));
+        ToolTip.SetTip(BranchPicker, model.L("git.branchHelp"));
+        InstallGitButton.Content = model.L("dock.installGit");
+        CommitButton.Content = model.L("dock.commit");
+        ToolTip.SetTip(CommitButton, model.L("dock.commitOrPush"));
+        CommitMessage.Watermark = model.L("dock.commitMessage");
+        RestartTerminalButton.Content = model.L("dock.restart");
+        OpenBrowserButton.Content = model.L("dock.go");
+        ToolTip.SetTip(BrowserBackButton, model.L("navigation.back"));
+        ToolTip.SetTip(BrowserForwardButton, model.L("navigation.forward"));
+        ToolTip.SetTip(BrowserReloadButton, model.L("settings.reload"));
+        ToolTip.SetTip(BrowserExternalButton, model.L("dock.openExternal"));
+        FilesFilter.Watermark = model.L("dock.filterFiles");
+        BrowserAddress.Watermark = model.L("dock.address");
         WorkspaceLabel.Text = model.IsRemoteWorkLocation
             ? model.WorkLocationLabel
             : string.IsNullOrWhiteSpace(model.WorkspacePath)
-            ? "No workspace"
+            ? model.L("dock.noWorkspace")
             : model.WorkspacePath;
         ReviewTab.IsEnabled = !model.IsRemoteWorkLocation;
         FilesTab.IsEnabled = !model.IsRemoteWorkLocation;
@@ -74,9 +97,9 @@ public partial class RightDockView : UserControl
             && (Tabs.SelectedItem as TabItem)?.Tag is string selected
             && selected is "review" or "files")
             SelectTab("terminal");
-        BrowserStatus.Text = "In-app browser uses the system WebKit runtime.";
+        BrowserStatus.Text = model.L("settings.browser.desktopHint");
         TerminalStatus.Text = string.IsNullOrWhiteSpace(model.TerminalWorkspacePath)
-            ? "Select a project to start a terminal."
+            ? model.L("dock.noWorkspace")
             : model.TerminalWorkspacePath;
     }
 
@@ -108,6 +131,8 @@ public partial class RightDockView : UserControl
             case "review": await LoadReviewAsync(); break;
             case "files": await LoadFilesAsync(); break;
             case "terminal": StartTerminal(); break;
+            case "plan": LoadPlan(); break;
+            case "tasks": LoadTasks(); break;
         }
     }
 
@@ -118,35 +143,137 @@ public partial class RightDockView : UserControl
             case "review": await LoadReviewAsync(); break;
             case "files": await LoadFilesAsync(); break;
             case "terminal": StartTerminal(force: true); break;
+            case "plan": LoadPlan(); break;
+            case "tasks": LoadTasks(); break;
         }
+    }
+
+    /// <summary>The plan the agent proposed, with the same actions the conversation offers.</summary>
+    private void LoadPlan()
+    {
+        var model = Model;
+        if (model is null) return;
+        var conversation = model.Selected;
+        var plan = conversation?.PendingPlanMessageId is { } id
+            ? conversation?.Messages.FirstOrDefault(item => item.Kind == ChatKind.Plan && item.Id == id)
+            : conversation?.Messages.LastOrDefault(item => item.Kind == ChatKind.Plan);
+        PlanText.Text = plan?.Text ?? "";
+        var pending = plan is not null && conversation?.PendingPlanMessageId == plan.Id;
+        var canApply = pending
+            && conversation?.Running != true
+            && conversation?.Continuation is null
+            && model.Bridge.CanSendSelectedConversation
+            && model.Router.HasActiveRoute;
+        PlanProposedLabel.Text = pending ? model.L("plan.proposed") : "";
+        PlanApplyButton.IsEnabled = canApply;
+        PlanAutoButton.IsEnabled = canApply;
+        PlanCancelButton.IsEnabled = pending;
+        PlanReviseButton.IsEnabled = pending;
+    }
+
+    private void OnPlanApply(object? sender, RoutedEventArgs e) => Model?.ApplyPlan();
+
+    private void OnPlanCancel(object? sender, RoutedEventArgs e) => Model?.CancelPlan();
+
+    private void OnPlanRevise(object? sender, RoutedEventArgs e) => Model?.RevisePlan();
+
+    private void OnPlanApplyAuto(object? sender, RoutedEventArgs e) => Model?.ApplyPlanAndAutoApprove();
+
+    /// <summary>The agent's own shells: what the terminal_session tool started.</summary>
+    private void LoadTasks()
+    {
+        var model = Model;
+        if (model is null) return;
+        var sessions = model.Bridge.AgentTerminalSessions;
+        TaskList.ItemsSource = sessions.Count == 0
+            ? new[] { model.L("backgroundTasks.empty") }
+            : sessions.Select(TaskLabel).ToArray();
+        if (sessions.Count > 0 && TaskList.SelectedIndex < 0) TaskList.SelectedIndex = 0;
+        else ShowSelectedTask();
+    }
+
+    private static string TaskLabel(TerminalSessionTool.SessionInfo session)
+    {
+        var state = session.IsRunning
+            ? "running"
+            : session.ExitCode is { } code ? $"exited {code}" : "exited";
+        var elapsed = DateTime.Now - session.StartedAt;
+        return $"{session.Title} [{state}] {elapsed.TotalMinutes:F0}m";
+    }
+
+    private void OnTaskSelectionChanged(object? sender, SelectionChangedEventArgs e) => ShowSelectedTask();
+
+    private void ShowSelectedTask()
+    {
+        var model = Model;
+        if (model is null) return;
+        var sessions = model.Bridge.AgentTerminalSessions;
+        var index = TaskList.SelectedIndex;
+        TaskStopButton.IsEnabled = index >= 0 && index < sessions.Count && sessions[index].IsRunning;
+        TaskOutput.Text = index >= 0 && index < sessions.Count ? sessions[index].Output : "";
+    }
+
+    private void OnTaskStop(object? sender, RoutedEventArgs e)
+    {
+        var model = Model;
+        if (model is null) return;
+        var sessions = model.Bridge.AgentTerminalSessions;
+        var index = TaskList.SelectedIndex;
+        if (index < 0 || index >= sessions.Count) return;
+        model.Bridge.StopAgentTerminal(sessions[index].Id);
+        LoadTasks();
     }
 
     private async Task LoadReviewAsync()
     {
         var workspace = Model?.WorkspacePath;
+        Show(InstallGitButton, false);
+        ShowGitActions(false);
         if (string.IsNullOrWhiteSpace(workspace)
             || (Model?.IsRemoteWorkLocation != true && !Directory.Exists(workspace)))
         {
-            BranchText.Text = "No workspace";
+            BranchText.Text = Model?.L("dock.noWorkspace") ?? "";
             ReviewCount.Text = "";
             ReviewList.ItemsSource = Array.Empty<string>();
-            ReviewDiff.Text = "Select a project to review its working tree.";
+            ReviewDiff.Text = Model?.L("dock.noWorkspace") ?? "";
             return;
         }
 
         var branch = await RunGitAsync(workspace, "branch", "--show-current");
         var status = await RunGitAsync(workspace, "status", "--short", "--branch");
+        // ExitCode -1 means the process never started: git is not on PATH.
+        if (status.ExitCode == -1)
+        {
+            BranchText.Text = Model?.L("conversation.review") ?? "";
+            ReviewCount.Text = Model?.L("dock.gitMissing") ?? "";
+            ReviewList.ItemsSource = Array.Empty<string>();
+            ReviewDiff.Text = Model?.L("dock.gitMissing") ?? "";
+            Show(InstallGitButton, true);
+            return;
+        }
         BranchText.Text = branch.ExitCode == 0 && !string.IsNullOrWhiteSpace(branch.Output.Trim())
             ? branch.Output.Trim()
-            : "Git review";
+            : Model?.L("conversation.review") ?? "";
 
         if (status.ExitCode != 0)
         {
-            ReviewCount.Text = "Not a Git repository";
+            ReviewCount.Text = Model?.L("dock.notRepo") ?? "";
             ReviewList.ItemsSource = Array.Empty<string>();
-            ReviewDiff.Text = status.Output.Trim();
+            ReviewDiff.Text = Model?.L("dock.notRepo") ?? "";
             return;
         }
+
+        var heads = await RunGitAsync(workspace, "for-each-ref", "--format=%(refname:short)", "refs/heads");
+        var current = branch.ExitCode == 0 ? branch.Output.Trim() : "";
+        _settingBranches = true;
+        BranchPicker.ItemsSource = heads.ExitCode == 0
+            ? heads.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Order(StringComparer.OrdinalIgnoreCase).ToList()
+            : new List<string>();
+        // Detached HEAD leaves the picker empty; pushing then reports it.
+        BranchPicker.SelectedItem = current.Length == 0 ? null : current;
+        _settingBranches = false;
+        ShowGitActions(true);
 
         var lines = status.Output
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
@@ -154,10 +281,80 @@ public partial class RightDockView : UserControl
             .Where(line => !line.StartsWith("## ", StringComparison.Ordinal))
             .ToList();
         ReviewList.ItemsSource = lines;
-        ReviewCount.Text = lines.Count == 0 ? "Clean" : $"{lines.Count} change(s)";
+        ReviewCount.Text = lines.Count == 0 ? Model?.L("dock.clean") ?? "" : Model?.L("git.uncommitted", lines.Count) ?? "";
         ReviewDiff.Text = lines.Count == 0
-            ? "Working tree is clean."
-            : "Select a changed file to inspect its diff.";
+            ? Model?.L("dock.clean") ?? ""
+            : Model?.L("dock.selectFile") ?? "";
+    }
+
+    private void ShowGitActions(bool visible)
+    {
+        Show(BranchText, !visible);
+        Show(BranchPicker, visible);
+        Show(GitActions, visible);
+        Show(CommitBar, visible);
+    }
+
+    private void ShowGitError(string? text)
+    {
+        ReviewError.Text = text ?? "";
+        Show(ReviewError, !string.IsNullOrWhiteSpace(text));
+    }
+
+    private async void OnBranchSelected(object sender, SelectionChangedEventArgs e)
+    {
+        if (_settingBranches || BranchPicker.SelectedItem is not string name) return;
+        await RunGitStepsAsync(["switch", name]);
+    }
+
+    private void OnCommitMessageChanged(object sender, TextChangedEventArgs e)
+    {
+        var empty = string.IsNullOrWhiteSpace(CommitMessage.Text);
+        CommitButton.IsEnabled = !empty;
+    }
+
+    private async void OnCommit(object sender, RoutedEventArgs e)
+    {
+        var message = (CommitMessage.Text ?? "").Trim();
+        if (message.Length == 0) return;
+        if (await RunGitStepsAsync(["add", "-A"], ["commit", "-m", message])) CommitMessage.Text = "";
+    }
+
+    /// Sets upstream so a branch's first push works too.
+    private async void OnPush(object sender, RoutedEventArgs e)
+    {
+        var workspace = Model?.WorkspacePath;
+        if (_gitBusy || string.IsNullOrWhiteSpace(workspace)) return;
+        var current = (await RunGitAsync(workspace, "branch", "--show-current")).Output.Trim();
+        if (current.Length == 0)
+        {
+            ShowGitError(Model?.L("git.branchHelp"));
+            return;
+        }
+        await RunGitStepsAsync(["push", "--set-upstream", "origin", current]);
+    }
+
+    private async void OnFetch(object sender, RoutedEventArgs e) =>
+        await RunGitStepsAsync(["fetch", "--prune", "--all"]);
+
+    /// Runs the git commands in order, stops at the first failure, shows its output, then reloads.
+    private async Task<bool> RunGitStepsAsync(params string[][] steps)
+    {
+        var workspace = Model?.WorkspacePath;
+        if (_gitBusy || string.IsNullOrWhiteSpace(workspace)) return false;
+        _gitBusy = true;
+        GitActions.IsEnabled = CommitBar.IsEnabled = BranchPicker.IsEnabled = false;
+        ProcessResult? failed = null;
+        foreach (var step in steps)
+        {
+            var result = await RunGitAsync(workspace, step);
+            if (result.ExitCode != 0) { failed = result; break; }
+        }
+        _gitBusy = false;
+        GitActions.IsEnabled = CommitBar.IsEnabled = BranchPicker.IsEnabled = true;
+        await LoadReviewAsync();
+        ShowGitError(failed?.Output.Trim());
+        return failed is null;
     }
 
     private async void OnReviewSelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -184,7 +381,7 @@ public partial class RightDockView : UserControl
         if (string.IsNullOrWhiteSpace(workspace) || !Directory.Exists(workspace))
         {
             StopTerminal();
-            TerminalStatus.Text = "Select a project to start a terminal.";
+            TerminalStatus.Text = Model?.L("dock.noWorkspace") ?? "";
             return;
         }
         if (!force && _terminal is not null && string.Equals(_terminalWorkspace, workspace, StringComparison.Ordinal)) return;
@@ -199,7 +396,7 @@ public partial class RightDockView : UserControl
             try { writableRoots = SandboxWorkspaces.AgentWritableRoots(sandbox); }
             catch (Exception error)
             {
-                TerminalStatus.Text = "Terminal sandbox unavailable: " + error.Message;
+                TerminalStatus.Text = Model?.L("terminal.sandboxUnavailable", error.Message) ?? error.Message;
                 return;
             }
         }
@@ -257,13 +454,13 @@ public partial class RightDockView : UserControl
         if (string.IsNullOrWhiteSpace(workspace) || !Directory.Exists(workspace))
         {
             FilesList.ItemsSource = Array.Empty<FileEntry>();
-            FilePreview.Text = "Select a project to browse its files.";
+            FilePreview.Text = Model?.L("dock.noWorkspace") ?? "";
             return;
         }
         if (!string.Equals(_loadedFilesWorkspace, workspace, StringComparison.Ordinal))
         {
             _loadedFilesWorkspace = workspace;
-            FilePreview.Text = "Select a file to preview it.";
+            FilePreview.Text = Model?.L("dock.selectFile") ?? "";
         }
 
         var filter = FilesFilter.Text?.Trim() ?? "";
@@ -275,7 +472,7 @@ public partial class RightDockView : UserControl
     {
         if (FilesList.SelectedItem is not FileEntry entry)
         {
-            FilePreview.Text = "Select a file to preview it.";
+            FilePreview.Text = Model?.L("dock.selectFile") ?? "";
             return;
         }
         if (entry.IsDirectory)
@@ -291,7 +488,7 @@ public partial class RightDockView : UserControl
         var address = NormalizeAddress(BrowserAddress.Text);
         if (address is null)
         {
-            BrowserStatus.Text = "Enter a valid URL.";
+            BrowserStatus.Text = Model?.L("dock.invalidAddress") ?? "";
             return;
         }
         _ = NavigateBrowserFromUiAsync(address);
@@ -300,7 +497,7 @@ public partial class RightDockView : UserControl
     private async Task NavigateBrowserFromUiAsync(string address)
     {
         try { await _browserBridge.NavigateAsync(address); }
-        catch (Exception error) { BrowserStatus.Text = $"Could not open in-app browser: {error.Message}"; }
+        catch (Exception error) { BrowserStatus.Text = $"{Model?.L("settings.taskFailed")}: {error.Message}"; }
     }
 
     private void OnBrowserBack(object? sender, RoutedEventArgs e) => _browser.GoBack();
@@ -312,7 +509,7 @@ public partial class RightDockView : UserControl
         var address = NormalizeAddress(_browser.Source?.AbsoluteUri ?? BrowserAddress.Text);
         if (address is null) return;
         try { Process.Start(new ProcessStartInfo(address) { UseShellExecute = true }); }
-        catch (Exception error) { BrowserStatus.Text = $"Could not open system browser: {error.Message}"; }
+        catch (Exception error) { BrowserStatus.Text = $"{Model?.L("settings.taskFailed")}: {error.Message}"; }
     }
 
     private void OnBrowserNavigationCompleted(object? sender, WebViewNavigationCompletedEventArgs e)
@@ -322,7 +519,7 @@ public partial class RightDockView : UserControl
         BrowserAddress.Text = _browser.Source?.AbsoluteUri ?? "";
         BrowserStatus.Text = e.IsSuccess
             ? BrowserAddress.Text
-            : "Navigation failed in the system WebKit browser.";
+            : Model?.L("settings.taskFailed") ?? "";
         _browserBridge.CompleteNavigation(e.IsSuccess);
     }
 
@@ -364,6 +561,11 @@ public partial class RightDockView : UserControl
     {
         StopTerminal();
         UnsubscribeNativeBrowser();
+    }
+
+    private void OnInstallGit(object sender, RoutedEventArgs e)
+    {
+        try { Process.Start(new ProcessStartInfo("xdg-open", "https://git-scm.com/download/linux") { UseShellExecute = false }); } catch { }
     }
 
     private static async Task<ProcessResult> RunGitAsync(string workingDirectory, params string[] arguments)
@@ -425,7 +627,7 @@ public partial class RightDockView : UserControl
         return result.OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
-    private static async Task<string> ReadTextPreviewAsync(string path)
+    private async Task<string> ReadTextPreviewAsync(string path)
     {
         try
         {
@@ -433,7 +635,7 @@ public partial class RightDockView : UserControl
             if (bytes.Length > 200_000) bytes = bytes[..200_000];
             return Encoding.UTF8.GetString(bytes);
         }
-        catch (Exception error) { return $"Unable to preview file: {error.Message}"; }
+        catch (Exception error) { return $"{Model?.L("settings.taskFailed")}: {error.Message}"; }
     }
 
     private static string StatusPath(string line)

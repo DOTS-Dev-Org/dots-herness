@@ -13,6 +13,8 @@ namespace DotsHarnessCore;
 
 public sealed partial class AppModel : ObservableObject
 {
+    public event Action<InboxNotification>? ScheduledTaskNotificationRaised;
+
     private const string VoiceCredentialID = "voice.api.key";
     public enum AppearanceKind
     {
@@ -27,6 +29,7 @@ public sealed partial class AppModel : ObservableObject
     private bool _confirmBeforeExit = true;
     private bool _closeToTray = true;
     private bool _selfVerification = true;
+    private bool _skillSuggestionsEnabled = true;
     private bool _computerUseEnabled;
     private bool _seedProjectRules = true;
     private bool _autoApprovePlans;
@@ -54,6 +57,7 @@ public sealed partial class AppModel : ObservableObject
     public ObservableCollection<ChatAttachment> DraftAttachments => _draftAttachments;
 
     public PluginCatalog Catalog { get; }
+    public NotificationInboxStore NotificationInbox { get; }
     public SkillCatalog Skills { get; }
     public SkillSuggestionMonitor SkillSuggestions { get; }
     public PluginHost Host { get; }
@@ -123,6 +127,13 @@ public sealed partial class AppModel : ObservableObject
         private set => SetProperty(ref _selfVerification, value);
     }
 
+    /// <summary>Show skill-suggestion cards when a command or prompt repeats. Default on.</summary>
+    public bool SkillSuggestionsEnabled
+    {
+        get => _skillSuggestionsEnabled;
+        private set => SetProperty(ref _skillSuggestionsEnabled, value);
+    }
+
     public bool IsComputerUseEnabled
     {
         get => _computerUseEnabled;
@@ -137,6 +148,55 @@ public sealed partial class AppModel : ObservableObject
     {
         get => _seedProjectRules;
         private set => SetProperty(ref _seedProjectRules, value);
+    }
+
+    /// <summary>Top-level areas of the window, picked from the rail. Home is the chat shell.</summary>
+    public static readonly string[] Sections = ["home", "media", "tasks", "bots", "marketplace", "memory"];
+
+    private string _section = "home";
+    /// <summary>The rail section on display; mirrors macOS AppModel.section.</summary>
+    public string Section { get => _section; set => SetProperty(ref _section, Sections.Contains(value) ? value : "home"); }
+
+    private MediaStudioStore? _mediaStudio;
+    private MusicStudioStore? _musicStudio;
+    private BotStore? _bots;
+    public MediaStudioStore MediaStudio => _mediaStudio ??= new(Path.Combine(Paths.Root, "media-studio"));
+    public MusicStudioStore MusicStudio => _musicStudio ??= new(Path.Combine(Paths.Root, "music-studio"));
+    public BotStore Bots => _bots ??= new(Path.Combine(Paths.Root, "bots"), Router, Paths, Localization, () => EffectiveSystemPrompt());
+    public IProviderSecretStore Secrets => Router.Store.Secrets;
+
+    /// <summary>The person's switch for memory as a whole; see AgentBridge.MemoryEnabled.</summary>
+    public bool MemoryEnabled => Bridge.MemoryEnabled;
+
+    /// <summary>How often finished tasks are turned into findings: off, hourly, daily or weekly.</summary>
+    public string MemoryScanInterval { get; private set; } = "daily";
+
+    public static readonly string[] MemoryScanIntervals = ["off", "hourly", "daily", "weekly"];
+
+    private static TimeSpan? MemoryScanSpan(string interval) => interval switch
+    {
+        "off" => null,
+        "hourly" => TimeSpan.FromHours(1),
+        "weekly" => TimeSpan.FromDays(7),
+        _ => TimeSpan.FromDays(1),
+    };
+
+    public void SetMemoryEnabled(bool value)
+    {
+        Bridge.MemoryEnabled = value;
+        Host.Settings.Set("memory.enabled", JsonValue.Bool(value));
+        PersistSettings();
+        OnPropertyChanged(nameof(MemoryEnabled));
+    }
+
+    public void SetMemoryScanInterval(string interval)
+    {
+        if (!MemoryScanIntervals.Contains(interval)) return;
+        MemoryScanInterval = interval;
+        Bridge.MemoryScanInterval = MemoryScanSpan(interval);
+        Host.Settings.Set("memory.scanInterval", JsonValue.String(interval));
+        PersistSettings();
+        OnPropertyChanged(nameof(MemoryScanInterval));
     }
 
     /// <summary>Apply generated plans without waiting for a separate plan approval.</summary>
@@ -291,6 +351,7 @@ public sealed partial class AppModel : ObservableObject
     {
         Paths = paths ?? SupportPaths.Default();
         Paths.Ensure();
+        NotificationInbox = new NotificationInboxStore(Path.Combine(Paths.Root, "notifications.json"));
         SandboxStore = new SandboxWorkspaces(Paths.Root);
         SessionAreaMigration.Run(Paths);
         Voice = new VoiceInputController(Paths);
@@ -319,6 +380,7 @@ public sealed partial class AppModel : ObservableObject
         {
             Localization.SetLanguage(language);
         }
+        _ = Localization.LoadLanguagePackAsync();
         var credentialStore = providerSecrets ?? new PlatformProviderSecrets(Paths.Root);
         MarketplaceSession = new MarketplaceSession(credentialStore);
         MarketplacePublisher = new MarketplacePublisher(MarketplaceSession);
@@ -345,6 +407,10 @@ public sealed partial class AppModel : ObservableObject
             Paths.Root,
             credentialStore);
         Router = new RouterController(Paths, Host.ImageAdapters, credentialStore, providerStore);
+        // Cached catalog applies at once; the fetch refreshes it in the background and never blocks startup.
+        var remoteCatalogPath = Path.Combine(Paths.Root, "providers.remote.json");
+        RemoteModelCatalog.LoadCache(remoteCatalogPath);
+        _ = RemoteModelCatalog.RefreshAsync(remoteCatalogPath);
         Router.ContextCompactionThresholdPercent = Math.Clamp(
             settings.Get("agent.contextCompaction.thresholdPercent")?.AsInt() ?? 90,
             0,
@@ -357,7 +423,9 @@ public sealed partial class AppModel : ObservableObject
             ?? settings.Get("agent.usageMode")?.AsString());
         Router.ResponseStylePreference = ParseResponseStylePreference(
             settings.Get("agent.responseStyle")?.AsString());
+        Router.AutoAccountFailoverAfterLimit = settings.Get("agent.autoAccountFailoverAfterLimit")?.AsBool() ?? false;
         Router.SubagentsPreference = settings.Get("agent.subagentsEnabled")?.AsBool();
+        Router.FastMode = settings.Get("agent.fast")?.AsBool() ?? false;
         _workspaceConflictPolicy = Enum.TryParse<WorkspaceConflictPolicy>(
             settings.Get("agent.workspaceConflictPolicy")?.AsString(), ignoreCase: true, out var conflictPolicy)
             ? conflictPolicy
@@ -390,6 +458,9 @@ public sealed partial class AppModel : ObservableObject
         WireConnection(Router);
         Bridge = new AgentBridge(
             Router, Paths, Skills, Host, RemoteEvents, SkillSuggestions);
+        Bridge.AssistantResponseReceived += OnInboxAssistantResponse;
+        Bridge.RunSummaryReceived += OnInboxRunSummary;
+        Bridge.AttentionNeeded += OnInboxAttentionNeeded;
         Bridge.SetWorkspaceConflictPolicy(_workspaceConflictPolicy);
         Bridge.SetConflictWaitSeconds(_conflictWaitSeconds);
         McpRegistry = new McpRegistry(Paths, providerStore.Secrets);
@@ -413,6 +484,7 @@ public sealed partial class AppModel : ObservableObject
                     Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)),
                     RemoteControlIdentity.WorkspaceId(path)) { WorkspacePath = path })
                 .ToArray());
+        RemoteControl.SharesWithLan = Host.Settings.Get("remote.control.shareWithLAN")?.AsBool() ?? false;
         Local = new LocalRuntimeController(Paths, Router);
         var taskRunner = new ScheduledTaskRunner(Paths, Router);
         Scheduler = new HarnessScheduler(
@@ -437,6 +509,11 @@ public sealed partial class AppModel : ObservableObject
             SelfVerification = selfVerification;
         }
         Bridge.SelfVerification = SelfVerification;
+        if (settings.Get("skills.suggestions.enabled")?.AsBool() is { } skillSuggestionsEnabled)
+        {
+            SkillSuggestionsEnabled = skillSuggestionsEnabled;
+        }
+        SkillSuggestions.Enabled = SkillSuggestionsEnabled;
         IsComputerUseEnabled = settings.Get("agent.computerUseEnabled")?.AsBool() ?? false;
         Bridge.IsComputerUseEnabled = IsComputerUseEnabled;
         if (settings.Get("agent.seedProjectRules")?.AsBool() is { } seedProjectRules)
@@ -445,6 +522,13 @@ public sealed partial class AppModel : ObservableObject
         }
         // Set before Start() binds the workspace, so a disabled setting never seeds.
         Bridge.SeedProjectRules = SeedProjectRules;
+        // The same keys macOS stores them under.
+        Bridge.MemoryEnabled = settings.Get("memory.enabled")?.AsBool() ?? true;
+        if (settings.Get("memory.scanInterval")?.AsString() is { } scanInterval && MemoryScanIntervals.Contains(scanInterval))
+        {
+            MemoryScanInterval = scanInterval;
+        }
+        Bridge.MemoryScanInterval = MemoryScanSpan(MemoryScanInterval);
         if (settings.Get("agent.autoApprovePlans")?.AsBool() is { } autoApprovePlans)
         {
             AutoApprovePlans = autoApprovePlans;
@@ -547,12 +631,59 @@ public sealed partial class AppModel : ObservableObject
 
     public void Start()
     {
-        // Gateway bind + host DNS lookup can stall; keep them off the UI thread.
-        _ = Task.Run(RemoteControl.Start);
+        // The remote gateway stays closed until the user turns it on.
+        if (RemoteControlEnabled) _ = Task.Run(RemoteControl.Start);
+        RestoreRemoteCloudTunnel();
         _ = Bridge.StartAsync(WorkspacePath);
         Scheduler.RunsDueTasks = !IsBackgroundDaemonEnabled;
         Scheduler.Start();
         Router.StartUsagePolling();
+    }
+
+    /// <summary>
+    /// The remote-control gateway is opt-in: it only listens while the user
+    /// keeps it on, and only on loopback unless LAN sharing is allowed.
+    /// </summary>
+    public bool RemoteControlEnabled
+    {
+        get => Host.Settings.Get("remote.control.enabled")?.AsBool() ?? false;
+        set
+        {
+            Host.Settings.Set("remote.control.enabled", JsonValue.Bool(value));
+            PersistSettings();
+            if (value) _ = Task.Run(RemoteControl.Start); else RemoteControl.Stop();
+            RestoreRemoteCloudTunnel();
+        }
+    }
+
+    /// <summary>
+    /// The tunnel comes up on its own whenever the gateway runs, so a phone off
+    /// the LAN still reaches it; it carries sealed requests only (RemoteSealed),
+    /// never plaintext. The phone learns a new URL from tunnel.ready/bootstrap.
+    /// </summary>
+    private void RestoreRemoteCloudTunnel()
+    {
+        if (!RemoteControlEnabled || Host.Settings.Get("remote.cloudTunnel")?.AsBool() == false || RemoteControl.PublicEndpoint is not null) return;
+        _ = Task.Run(async () =>
+        {
+            try { await RemoteControl.EnableCloudTunnelAsync(); }
+            catch { } // published as tunnel.failed by the host
+        });
+    }
+
+    /// <summary>
+    /// Sharing the gateway with the local network is a second, separate
+    /// opt-in — the loopback default keeps it unreachable from the Wi-Fi.
+    /// </summary>
+    public bool RemoteControlSharesWithLAN
+    {
+        get => Host.Settings.Get("remote.control.shareWithLAN")?.AsBool() ?? false;
+        set
+        {
+            Host.Settings.Set("remote.control.shareWithLAN", JsonValue.Bool(value));
+            PersistSettings();
+            RemoteControl.SharesWithLan = value;
+        }
     }
 
     /// <summary>
@@ -562,7 +693,8 @@ public sealed partial class AppModel : ObservableObject
     /// </summary>
     public void StartHeadless()
     {
-        RemoteControl.Start();
+        // The remote gateway stays closed until the user turns it on.
+        if (RemoteControlEnabled) RemoteControl.Start();
         Remount();
         _ = Router.RefreshAsync();
         Scheduler.RunsDueTasks = true;
@@ -576,12 +708,12 @@ public sealed partial class AppModel : ObservableObject
         return pairing;
     }
 
-    public Task<string> EnableRemoteCloudTunnelAsync() => RemoteControl.EnableCloudTunnelAsync();
-
-    public void DisableRemoteCloudTunnel()
+    public async Task<string> EnableRemoteCloudTunnelAsync()
     {
-        RemoteControl.DisableCloudTunnel();
-        OnPropertyChanged(nameof(RemotePairing));
+        var endpoint = await RemoteControl.EnableCloudTunnelAsync();
+        Host.Settings.Set("remote.cloudTunnel", JsonValue.Bool(true));
+        PersistSettings();
+        return endpoint;
     }
 
     public bool IsBackgroundDaemonEnabled =>
@@ -620,6 +752,17 @@ public sealed partial class AppModel : ObservableObject
     private async Task<TaskRunResult> RunScheduledTaskAsync(ScheduledTask task, ScheduledTaskRunner runner)
     {
         var result = await runner.RunAsync(task).ConfigureAwait(false);
+        var conversation = result.ConversationId is null
+            ? null
+            : Bridge.Conversations.FirstOrDefault(item => item.Id == result.ConversationId);
+        var notification = NotificationInbox.Append(
+            "scheduledTask",
+            L("tasks.notification.title"),
+            task.Name,
+            $"{L(result.Ok ? "tasks.notification.completed" : "tasks.notification.failed")}: {result.Message}",
+            result.ConversationId,
+            conversation?.Cwd);
+        try { ScheduledTaskNotificationRaised?.Invoke(notification); } catch { }
         var workspace = ScheduledTaskRunner.NormalizeWorkspace(task.WorkspacePath);
         if (workspace is not null
             && ScheduledTaskRunner.NormalizeWorkspace(WorkspacePath) == workspace)
@@ -627,6 +770,56 @@ public sealed partial class AppModel : ObservableObject
             Bridge.MergeExternalConversations();
         }
         return result;
+    }
+
+    private void OnInboxAssistantResponse(object? sender, AssistantResponseEventArgs e)
+    {
+        var conversation = e.ConversationId is null
+            ? null
+            : Bridge.Conversations.FirstOrDefault(item => item.Id == e.ConversationId);
+        NotificationInbox.Append(
+            "completed",
+            L("notifications.responseReady"),
+            e.ConversationTitle,
+            e.Text,
+            e.ConversationId,
+            conversation?.Cwd,
+            isRead: e.ConversationId is not null && Bridge.SelectedId == e.ConversationId);
+    }
+
+    private void OnInboxRunSummary(object? sender, RunSummaryEventArgs e)
+    {
+        if (e.Outcome != "failed") return;
+        var conversation = e.ConversationId is null
+            ? null
+            : Bridge.Conversations.FirstOrDefault(item => item.Id == e.ConversationId);
+        NotificationInbox.Append(
+            "failed",
+            L("notifications.operationFailed"),
+            e.ConversationTitle,
+            e.FailureMessage ?? e.Summary.CleanupNote,
+            e.ConversationId,
+            conversation?.Cwd,
+            isRead: e.ConversationId is not null && Bridge.SelectedId == e.ConversationId);
+    }
+
+    private void OnInboxAttentionNeeded(object? sender, RunAttentionEventArgs e)
+    {
+        var title = e.Kind switch
+        {
+            "question" => L("notifications.question"),
+            "approval" => L("plan.waitingApproval"),
+            _ => L("notifications.actionRequired"),
+        };
+        var conversation = Bridge.Conversations.FirstOrDefault(item => item.Id == e.ConversationId);
+        NotificationInbox.Append(
+            e.Kind,
+            title,
+            e.ConversationTitle,
+            e.Detail,
+            e.ConversationId,
+            conversation?.Cwd,
+            isRead: Bridge.SelectedId == e.ConversationId);
     }
 
     public void Remount()
@@ -854,28 +1047,6 @@ public sealed partial class AppModel : ObservableObject
         catch { return path; }
     }
 
-    public void RemoveProject(string path)
-    {
-        var normalized = NormalizeProjectIdentity(path);
-        var existing = Projects.FirstOrDefault(item =>
-            string.Equals(item, normalized, OperatingSystem.IsWindows()
-                ? StringComparison.OrdinalIgnoreCase
-                : StringComparison.Ordinal));
-        if (existing is null) return;
-
-        var wasActive = string.Equals(existing, WorkspacePath,
-            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
-        Projects.Remove(existing);
-        PersistProjects();
-        PersistSettings();
-
-        if (wasActive)
-        {
-            SetWorkspace(Projects.FirstOrDefault() ?? "");
-        }
-        OnPropertyChanged(nameof(Projects));
-    }
-
     public void AddProject(string path) => SetWorkspace(path);
 
     /// <summary>Moves a queued prompt back into the composer; refused while the composer holds a draft.</summary>
@@ -1027,12 +1198,16 @@ public sealed partial class AppModel : ObservableObject
 
     public void AddDraftAttachments(IEnumerable<string> paths)
     {
-        foreach (var path in paths)
+        var pathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var knownPaths = new HashSet<string>(DraftAttachments.Select(item => item.FilePath), pathComparer);
+        var additions = new List<ChatAttachment>();
+        foreach (var path in paths.ToArray())
         {
-            if (!ChatAttachment.TryCreate(path, out var attachment)
-                || DraftAttachments.Any(item => string.Equals(item.FilePath, attachment.FilePath, StringComparison.OrdinalIgnoreCase))) continue;
-            DraftAttachments.Add(attachment);
+            if (!ChatAttachment.TryCreate(path, out var attachment) || !knownPaths.Add(attachment.FilePath)) continue;
+            additions.Add(attachment);
         }
+
+        foreach (var attachment in additions) DraftAttachments.Add(attachment);
     }
 
     public void RemoveDraftAttachment(ChatAttachment attachment) => DraftAttachments.Remove(attachment);
@@ -1107,12 +1282,6 @@ public sealed partial class AppModel : ObservableObject
         Draft = removed.Text;
         DraftAttachments.Clear();
         foreach (var attachment in removed.Attachments) DraftAttachments.Add(attachment);
-    }
-
-    public void SetFeedback(ChatMessage message, string type)
-    {
-        message.Feedback = message.Feedback == type ? null : type;
-        Bridge.SaveNow();
     }
 
     /// Shows or hides `message` translated into the UI language (English when it already is).
@@ -1213,6 +1382,23 @@ public sealed partial class AppModel : ObservableObject
 
     public void CancelPlan() => _ = Bridge.CancelPlanAsync();
 
+    /// <summary>
+    /// Drops the pending plan and reopens the composer in plan mode, so the
+    /// user's next message re-plans with their feedback. Mirrors macOS.
+    /// </summary>
+    public void RevisePlan()
+    {
+        _ = Bridge.CancelPlanAsync();
+        IsPlanMode = true;
+    }
+
+    /// <summary>Applies the plan and keeps approving the later plans automatically.</summary>
+    public void ApplyPlanAndAutoApprove()
+    {
+        SetAutoApprovePlans(true);
+        ApplyPlan();
+    }
+
     public void Cancel() => _ = Bridge.CancelAsync();
 
     public void Continue()
@@ -1226,6 +1412,7 @@ public sealed partial class AppModel : ObservableObject
         Host.Settings.Set("agent.model", JsonValue.String(Router.SelectedModelID));
         // Levels are model-specific; a level the new model rejects must not carry over.
         if (!Router.Efforts(value).Contains(Router.SelectedEffort)) SetEffort("");
+        if (Router.FastMode && !Router.SupportsFast(value)) SetFast(false);
         PersistSettings();
         OnPropertyChanged(nameof(SelectedModelID));
     }
@@ -1236,6 +1423,14 @@ public sealed partial class AppModel : ObservableObject
         Router.SelectedEffort = value;
         var stored = string.IsNullOrEmpty(value) ? JsonValue.Null : JsonValue.String(value);
         Host.Settings.Set("agent.effort", stored);
+        PersistSettings();
+    }
+
+    /// Fast (priority) response mode; only meaningful for models that support it.
+    public void SetFast(bool value)
+    {
+        Router.FastMode = value;
+        Host.Settings.Set("agent.fast", value ? JsonValue.Bool(true) : JsonValue.Null);
         PersistSettings();
     }
 
@@ -1288,6 +1483,16 @@ public sealed partial class AppModel : ObservableObject
 
     public bool SubagentsEnabled => Router.SubagentsEnabled;
 
+    public void SetAutoAccountFailoverAfterLimit(bool value)
+    {
+        Router.AutoAccountFailoverAfterLimit = value;
+        Host.Settings.Set("agent.autoAccountFailoverAfterLimit", JsonValue.Bool(value));
+        PersistSettings();
+        OnPropertyChanged(nameof(AutoAccountFailoverAfterLimit));
+    }
+
+    public bool AutoAccountFailoverAfterLimit => Router.AutoAccountFailoverAfterLimit;
+
     public void SetResponseStylePreference(AgentResponseStylePreference value)
     {
         Router.ResponseStylePreference = value;
@@ -1317,6 +1522,7 @@ public sealed partial class AppModel : ObservableObject
     public void SetAppLanguage(AppLanguage value)
     {
         Localization.SetLanguage(value);
+        _ = Localization.LoadLanguagePackAsync();
         Host.Settings.Set("ui.language", JsonValue.String(value.Code()));
         PersistSettings();
         OnPropertyChanged(nameof(Language));
@@ -1328,6 +1534,14 @@ public sealed partial class AppModel : ObservableObject
         SelfVerification = value;
         Bridge.SelfVerification = value;
         Host.Settings.Set("agent.selfVerification", JsonValue.Bool(value));
+        PersistSettings();
+    }
+
+    public void SetSkillSuggestionsEnabled(bool value)
+    {
+        SkillSuggestionsEnabled = value;
+        SkillSuggestions.Enabled = value;
+        Host.Settings.Set("skills.suggestions.enabled", JsonValue.Bool(value));
         PersistSettings();
     }
 
@@ -1480,13 +1694,6 @@ public sealed partial class AppModel : ObservableObject
 
     public bool AiTransferAllowed => Legal.AiTransferAllowed;
 
-    public void SetPreferredHost(string value)
-    {
-        PreferredHost = value;
-        Host.Settings.Set("agent.host", JsonValue.String(value));
-        PersistSettings();
-    }
-
     public void SetWorkspace(string value, bool addToProjects = true)
     {
         var normalized = NormalizeCodingWorkspace(value);
@@ -1524,10 +1731,94 @@ public sealed partial class AppModel : ObservableObject
         }
     }
 
-    public void AddSshHost(string alias, string hostName, string user, int port)
+    public void AddSshHost(string alias, string hostName, string user, int port, string? identityFile = null)
     {
-        RemoteSsh.AddManagedHost(alias.Trim(), hostName.Trim(), user.Trim(), port);
+        RemoteSsh.AddManagedHost(alias.Trim(), hostName.Trim(), user.Trim(), port, identityFile);
         RefreshSshHosts();
+    }
+
+    public async Task<SshHost> EnrollSshHostAsync(
+        string alias,
+        string hostName,
+        string user,
+        int port,
+        string password,
+        IReadOnlyList<SshHostKey> scannedKeys,
+        bool rememberPassword = false,
+        CancellationToken ct = default)
+    {
+        alias = alias.Trim();
+        hostName = hostName.Trim();
+        user = user.Trim();
+        if (!RemoteSsh.IsValidAlias(alias) || !RemoteSsh.IsValidHostInput(hostName, user, port))
+            throw new InvalidOperationException("Enter a valid alias, host name, user name, and port.");
+        if (SshHosts.Any(host => host.Alias.Equals(alias, StringComparison.OrdinalIgnoreCase) && !host.ManagedByApp))
+            throw new InvalidOperationException($"The SSH alias '{alias}' already exists. Edit its existing Host entry instead.");
+
+        SshEnrollment.TrustHostKeys(alias, hostName, user, port, scannedKeys);
+        var publicKey = await SshEnrollment.EnsureKeyPairAsync(ct);
+        await SshEnrollment.InstallPublicKeyAsync(hostName, user, port, password, publicKey, ct);
+        AddSshHost(alias, hostName, user, port, SshEnrollment.IdentityFileReference);
+        var passwordCredential = "ssh.password." + alias;
+        if (rememberPassword)
+        {
+            try { Secrets.Write(passwordCredential, password); } catch { }
+        }
+        else Secrets.Delete(passwordCredential);
+
+        var probe = await RemoteSsh.ProbeAsync(alias, ct);
+        if (probe.ExitCode != 0 || probe.TimedOut)
+            throw new InvalidOperationException(probe.CombinedOutput.Length > 0 ? probe.CombinedOutput : L("ssh.error.notReachable", alias));
+        return SshHosts.First(host => host.Alias.Equals(alias, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public async Task<SshHost> AddSshHostWithoutPasswordAsync(
+        string alias,
+        string hostName,
+        string user,
+        int port,
+        IReadOnlyList<SshHostKey> scannedKeys,
+        CancellationToken ct = default)
+    {
+        alias = alias.Trim();
+        hostName = hostName.Trim();
+        user = user.Trim();
+        if (!RemoteSsh.IsValidAlias(alias) || !RemoteSsh.IsValidHostInput(hostName, user, port))
+            throw new InvalidOperationException("Enter a valid alias, host name, user name, and port.");
+        if (SshHosts.Any(host => host.Alias.Equals(alias, StringComparison.OrdinalIgnoreCase) && !host.ManagedByApp))
+            throw new InvalidOperationException($"The SSH alias '{alias}' already exists. Edit its existing Host entry instead.");
+
+        SshEnrollment.TrustHostKeys(alias, hostName, user, port, scannedKeys);
+        AddSshHost(alias, hostName, user, port);
+        var probe = await RemoteSsh.ProbeAsync(alias, ct);
+        if (probe.ExitCode != 0 || probe.TimedOut)
+            throw new InvalidOperationException(probe.CombinedOutput.Length > 0 ? probe.CombinedOutput : L("ssh.error.notReachable", alias));
+        return SshHosts.First(host => host.Alias.Equals(alias, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public async Task<SshHost> AddSshHostUsingGeneratedKeyAsync(
+        string alias,
+        string hostName,
+        string user,
+        int port,
+        IReadOnlyList<SshHostKey> scannedKeys,
+        CancellationToken ct = default)
+    {
+        alias = alias.Trim();
+        hostName = hostName.Trim();
+        user = user.Trim();
+        if (!RemoteSsh.IsValidAlias(alias) || !RemoteSsh.IsValidHostInput(hostName, user, port))
+            throw new InvalidOperationException("Enter a valid alias, host name, user name, and port.");
+        if (SshHosts.Any(host => host.Alias.Equals(alias, StringComparison.OrdinalIgnoreCase) && !host.ManagedByApp))
+            throw new InvalidOperationException($"The SSH alias '{alias}' already exists. Edit its existing Host entry instead.");
+
+        SshEnrollment.TrustHostKeys(alias, hostName, user, port, scannedKeys);
+        _ = await SshEnrollment.EnsureKeyPairAsync(ct);
+        AddSshHost(alias, hostName, user, port, SshEnrollment.IdentityFileReference);
+        var probe = await RemoteSsh.ProbeAsync(alias, ct);
+        if (probe.ExitCode != 0 || probe.TimedOut)
+            throw new InvalidOperationException(probe.CombinedOutput.Length > 0 ? probe.CombinedOutput : L("ssh.error.notReachable", alias));
+        return SshHosts.First(host => host.Alias.Equals(alias, StringComparison.OrdinalIgnoreCase));
     }
 
     public void RemoveSshHost(string alias)
@@ -1538,6 +1829,7 @@ public sealed partial class AppModel : ObservableObject
         if (!host.ManagedByApp)
             throw new InvalidOperationException("Edit hand-written SSH hosts in ~/.ssh/config; DotsHarness only removes entries it created.");
         RemoteSsh.RemoveManagedHost(alias);
+        Secrets.Delete("ssh.password." + alias);
         if (string.Equals(_workLocationAlias, alias, StringComparison.OrdinalIgnoreCase)) SetLocalWorkLocation();
         RefreshSshHosts();
     }
@@ -1568,6 +1860,25 @@ public sealed partial class AppModel : ObservableObject
 
     public string RemotePathForHost(string alias) =>
         Host.Settings.Get(RemotePathSettingKey(alias))?.AsString() ?? "~";
+
+    /// <summary>Publishes an SSH notice to the Settings and work-location surfaces.</summary>
+    public void SetSshNotice(string? notice) => SshNotice = notice;
+
+    /// <summary>Probes a host so the Settings list can show whether it answers.</summary>
+    public async Task<string> TestSshHostAsync(string alias, CancellationToken ct = default)
+    {
+        if (!RemoteSsh.IsAvailable) return L("ssh.error.unavailable");
+        try
+        {
+            var probe = await RemoteSsh.ProbeAsync(alias, ct).ConfigureAwait(false);
+            if (probe.ExitCode == 0 && !probe.TimedOut) return L("ssh.connected", alias);
+            return probe.CombinedOutput.Length > 0 ? probe.CombinedOutput : L("ssh.error.notReachable", alias);
+        }
+        catch (Exception error)
+        {
+            return error.Message;
+        }
+    }
 
     public async Task SetRemoteWorkLocationAsync(string alias, string remotePath, CancellationToken ct = default)
     {
@@ -1602,18 +1913,12 @@ public sealed partial class AppModel : ObservableObject
     }
 
     /// <summary>
-    /// Re-scans recent user prompts for a repeated pattern worth turning into a
+    /// Looks for a lesson this project keeps relearning, worth turning into a
     /// skill. The active project owns the suggestion monitor; no other project's
     /// pending suggestion is exposed to the current conversation UI.
     /// </summary>
-    public void ScanSkillSuggestions()
-    {
-        var prompts = Selected?.Messages
-            .Where(m => m.Kind == ChatKind.User)
-            .Select(m => m.Text)
-            ?? Enumerable.Empty<string>();
-        ActiveSkillSuggestions.Scan(prompts);
-    }
+    public void ScanSkillSuggestions() =>
+        ActiveSkillSuggestions.Scan(WorkspaceLessons.Read(string.IsNullOrWhiteSpace(WorkspacePath) ? null : WorkspacePath, Paths.Root));
 
     public string AcceptSkillSuggestion(string name, string description, string? body = null) =>
         ActiveSkillSuggestions.AcceptCurrent(name, description, body);
@@ -1728,9 +2033,6 @@ public sealed partial class AppModel : ObservableObject
             try { File.SetUnixFileMode(Paths.Settings, UnixFileMode.UserRead | UnixFileMode.UserWrite); } catch { }
     }
 
-    /// <summary>Only the plugin/session prompt sections, fed back into <c>UpdateSystemPrompt</c>.</summary>
-    public string AssembledSystemPrompt() => Host.Prompt.AssembledText();
-
     /// <summary>
     /// Everything actually sent as the system prompt - core policy, plan rules,
     /// plugin text and skill metadata - broken out by section with sizes.
@@ -1825,8 +2127,8 @@ public static class CompositionLoader
         var entries = document.Entries.ToList();
         // Every catalog entry (builtin + installed) mounts by default. host.patch.yml is
         // only an override layer: ordering, config merge, explicit disable/enable.
-        // NOTE: an entry's `isolate:` key is inert here — PluginHost.Mount only honors it
-        // on a Session-plane document, and this path always builds a Host-plane one.
+        // An entry's `isolate: {service: true}` keeps those services private to that
+        // row (PluginHost.Mount gives it a child ServiceRealm) on this host plane too.
         foreach (var item in catalog.Entries.OrderBy(e => e.Manifest.Id, StringComparer.Ordinal))
         {
             if (entries.Any(entry => entry.Plugin == item.Manifest.Id))

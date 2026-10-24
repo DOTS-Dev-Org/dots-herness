@@ -14,15 +14,52 @@ public enum WorkspaceTools {
         "kt", "kts", "m", "mm", "php", "plist", "props", "py", "resx", "rs", "swift", "targets", "toml",
         "ts", "tsx", "xml", "xaml", "yaml", "yml",
     ]
+    /// The one list of build, dependency and runtime trees no search descends into, applied
+    /// even inside a repository: .sandbox-cache is written by HerNess and is in no .gitignore.
+    /// Mirrors NativeWorkspaceTools.IgnoredScanDirectories on Windows and Linux.
     static let ignoredScanDirectories: Set<String> = [
         ".git", ".mem", ".build", "build", "bin", "obj", "dist", "node_modules", "Pods", "DerivedData",
+        ".sandbox-cache", ".gradle", "target", "vendor", ".next", ".venv", "__pycache__", "coverage",
     ]
+
+    /// Calls `visit` with each file a search under `root` looks at, until it returns false.
+    /// Inside a repository that is git's own list - tracked plus untracked, minus whatever
+    /// .gitignore excludes - so a project's ignored output is never read; elsewhere a walk.
+    /// Both skip `ignoredScanDirectories` and symlinks.
+    /// ponytail: git runs once per call; cache by .git/index stamp if large repositories feel it.
+    static func scanFiles(_ root: URL, _ visit: (URL) -> Bool) {
+        let listed = WorkspaceMemory.gitLines(["-c", "core.quotePath=false", "ls-files", "--cached", "--others", "--exclude-standard"], workspace: root)
+        let keys: Set<URLResourceKey> = [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey]
+        if !listed.isEmpty {
+            for relative in listed {
+                // A path git had to quote is skipped, as the file index does.
+                guard !relative.hasPrefix("\""),
+                      !relative.split(separator: "/").contains(where: { ignoredScanDirectories.contains(String($0)) }) else { continue }
+                let url = root.appendingPathComponent(relative)
+                let values = try? url.resourceValues(forKeys: keys)
+                guard values?.isRegularFile == true, values?.isSymbolicLink != true else { continue }
+                if !visit(url) { return }
+            }
+            return
+        }
+        guard let enumerator = FileManager.default.enumerator(at: root, includingPropertiesForKeys: Array(keys)) else { return }
+        while let candidate = enumerator.nextObject() as? URL {
+            let values = try? candidate.resourceValues(forKeys: keys)
+            if values?.isDirectory == true {
+                if values?.isSymbolicLink == true || ignoredScanDirectories.contains(candidate.lastPathComponent) { enumerator.skipDescendants() }
+                continue
+            }
+            guard values?.isSymbolicLink != true, values?.isRegularFile == true else { continue }
+            if !visit(candidate) { return }
+        }
+    }
     private static let protectedNames: Set<String> = ["provider-state.json", "conversations.json", "state.sqlite", "state.db"]
     public static let definitions: [AgentToolDefinition] = workspaceDefinitions + FileEditTools.definitions + [generatedMediaDefinition, generatedMediaInspectionDefinition] + SimulatorTools.definitions + AndroidEmulatorTools.definitions
     public static let readOnlyDefinitions: [AgentToolDefinition] = (workspaceDefinitions + FileEditTools.definitions).filter {
         readOnlyNames.contains($0.name)
     }
-    static let readOnlyNames: Set<String> = ["list_files", "read_file", "grep_files", FileEditTools.globName, generatedMediaInspectionName]
+    static let readOnlyNames: Set<String> = ["list_files", "read_file", "grep_files", waitName, FileEditTools.globName, generatedMediaInspectionName]
+    static let waitName = "wait_command"
 
     static let generatedMediaName = "copy_generated_media"
     static let generatedMediaInspectionName = "inspect_generated_media"
@@ -70,7 +107,6 @@ public enum WorkspaceTools {
 
     public static func isVerifiedRemovalResult(_ result: String) -> Bool { result.hasPrefix(verifiedRemovalMarker) }
     public static func isPreservedRemovalResult(_ result: String) -> Bool { result.hasPrefix(preservedRemovalMarker) }
-    public static func isFailedRemovalResult(_ result: String) -> Bool { result.hasPrefix(failedRemovalMarker) }
     public static func mayDeleteFiles(_ command: String?) -> Bool {
         guard let command, !command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         let pattern = #"(?i)(^|[\s;&|])(rm|unlink|del|erase|rmdir|remove-item|git\s+clean)([\s;&|]|$)"#
@@ -89,6 +125,17 @@ public enum WorkspaceTools {
     public static func mayAccessNetwork(_ command: String?) -> Bool {
         guard let command, !command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         let pattern = #"(?i)(^|[\s;&|])(curl|wget|nc|ncat|netcat|telnet|scp|sftp|ssh)([\s;&|]|$)"#
+        return command.range(of: pattern, options: .regularExpression) != nil
+    }
+
+    /// A command that publishes the tree to a remote: a push, a deploy, a file
+    /// transfer. A sandbox worktree exists so nothing leaves it until the user
+    /// merges, so these are refused there (see AgentBridge's `sandboxDeployRefusal`).
+    // ponytail: name match only — a script that pushes slips past. The sandbox
+    // profile denying ~/.ssh, ~/.config, ~/.netrc and the keychain is the real wall.
+    public static func mayDeploy(_ command: String?) -> Bool {
+        guard let command, !command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        let pattern = #"(?i)(^|[\s;&|])(scp|sftp|ssh|rsync|ftp|lftp|wrangler|vercel|netlify|git\s+push|(npm|pnpm|yarn)\s+publish|firebase\s+deploy)([\s;&|]|$)"#
         return command.range(of: pattern, options: .regularExpression) != nil
     }
 
@@ -235,7 +282,7 @@ public enum WorkspaceTools {
         ),
         AgentToolDefinition(
             name: "run_command",
-            description: "Run a shell command with the workspace as its current directory.",
+            description: "Run a shell command with the workspace as its current directory. Before a command aimed at a subproject, call list_files for that directory to load its scoped project rules. It is stopped after timeout_seconds (default 120, maximum 600); raise it for a build or test suite instead of backgrounding the command and polling. A backgrounded job is awaited with wait_command. If SwiftPM reports a lock holder PID, wait_command that PID, then rerun the original command; never poll with sleep or kill -0, start a second build or test run in the same project, or evade the lock with --scratch-path.",
             parameters: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -243,8 +290,31 @@ public enum WorkspaceTools {
                         "type": .string("string"),
                         "description": .string("Command to run with /bin/zsh."),
                     ]),
+                    "timeout_seconds": .object([
+                        "type": .string("integer"),
+                        "description": .string("Seconds before the command is stopped. Default 120, maximum 600."),
+                    ]),
                 ]),
                 "required": .array([.string("command")]),
+            ])
+        ),
+        AgentToolDefinition(
+            name: waitName,
+            description: "Block until a process exits, then return the tail of its log. Use it for a backgrounded build or test, or for the PID holding a build lock, instead of polling with run_command.",
+            parameters: .object([
+                "type": .string("object"),
+                "properties": .object([
+                    "pid": .object(["type": .string("integer")]),
+                    "log_path": .object([
+                        "type": .string("string"),
+                        "description": .string("Optional log file to tail when the wait ends."),
+                    ]),
+                    "timeout_seconds": .object([
+                        "type": .string("integer"),
+                        "description": .string("Default and maximum 600."),
+                    ]),
+                ]),
+                "required": .array([.string("pid")]),
             ])
         ),
     ]
@@ -272,8 +342,9 @@ public enum WorkspaceTools {
             return AppCopy.format("tool.error", AppCopy.text("tool.pathUnavailable"))
         }
         do {
-            let output = try SSHRunner.run(target: target, command: command, onOutput: onOutput)
-            if output.timedOut { return AppCopy.text("tool.timedOut") }
+            let timeout = commandTimeout(object)
+            let output = try SSHRunner.run(target: target, command: command, timeout: TimeInterval(timeout), onOutput: onOutput)
+            if output.timedOut { return AppCopy.format("tool.timedOut", timeout) + "\n" + keepHeadAndTail(output.text) }
             let text = String(output.text.prefix(24_000))
             if output.status != 0, SSHRunner.isTransportFailure(text) {
                 // Told apart from an ordinary non-zero exit so the agent does
@@ -349,13 +420,20 @@ public enum WorkspaceTools {
                 return FileEditTools.glob(pattern: pattern, path: object["path"] as? String ?? ".", workspace: workspace)
             case "run_command":
                 guard let command = object["command"] as? String else { return AppCopy.text("tool.missingCommand") }
+                if isSleepPoll(command) { return sleepPollRefusal }
                 return try run(
                     command: command,
                     workspace: workspace,
+                    timeout: commandTimeout(object),
                     sandboxPolicy: sandboxPolicy,
                     isCancelled: isCancelled,
                     onOutput: onOutput
                 )
+            case waitName:
+                guard let pid = (object["pid"] as? NSNumber)?.int32Value, pid > 1 else { return "Tool error: pid must be a process id." }
+                let log = try (object["log_path"] as? String).map { try resolveRead($0, workspace: workspace, readRoots: readRoots) }
+                let timeout = (object["timeout_seconds"] as? NSNumber).map { min(max($0.intValue, 1), maxCommandTimeout) } ?? maxCommandTimeout
+                return waitFor(pid: pid, log: log, timeout: timeout, isCancelled: isCancelled)
             case "ios_simulator":
                 return SimulatorTools.execute(object, workspace: workspace)
             case AndroidEmulatorTools.toolName:
@@ -366,15 +444,6 @@ public enum WorkspaceTools {
         } catch {
             return AppCopy.format("tool.error", error.localizedDescription)
         }
-    }
-
-    private static func isContained(_ path: String, in root: URL, allowFileRoot: Bool) -> Bool {
-        let candidate = URL(fileURLWithPath: path, relativeTo: root)
-            .standardizedFileURL
-            .resolvingSymlinksInPath()
-        let rootPath = root.path.hasSuffix("/") ? root.path : root.path + "/"
-        if allowFileRoot { return candidate.path == root.deletingLastPathComponent().path || candidate.path == root.path }
-        return candidate.path == root.path || candidate.path.hasPrefix(rootPath)
     }
 
     private static func listFiles(at path: String, workspace: URL, readRoots: [URL]) throws -> String {
@@ -388,16 +457,18 @@ public enum WorkspaceTools {
             includingPropertiesForKeys: [.isDirectoryKey, .isHiddenKey],
             options: [.skipsPackageDescendants]
         )
-        let names = try urls
+        let visible = try urls
             .filter { $0.lastPathComponent != ".mem" }
             .filter { try $0.resourceValues(forKeys: [.isHiddenKey]).isHidden != true }
+        let names = try visible
             .sorted { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }
             .prefix(200)
             .map { url -> String in
                 let isDirectory = try url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory == true
                 return isDirectory ? "\(url.lastPathComponent)/" : url.lastPathComponent
             }
-        return names.isEmpty ? AppCopy.text("tool.empty") : names.joined(separator: "\n")
+        let more = visible.count > 200 ? "\n[\(visible.count - 200) more entries not shown; use glob or a narrower path]" : ""
+        return names.isEmpty ? AppCopy.text("tool.empty") : names.joined(separator: "\n") + more
     }
 
     private static let grepMaxMatches = 100
@@ -414,26 +485,14 @@ public enum WorkspaceTools {
                 .split(whereSeparator: { ", \n".contains($0) })
                 .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased() }
         )
-        guard let enumerator = fileManager().enumerator(
-            at: root,
-            includingPropertiesForKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey]
-        ) else { return AppCopy.text("tool.empty") }
-
         var matches: [String] = []
         var scanned = 0
         var truncated = false
-        while let candidate = enumerator.nextObject() as? URL {
-            let values = try candidate.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey])
-            if values.isDirectory == true {
-                let name = candidate.lastPathComponent
-                if ignoredScanDirectories.contains(name) || name == ".mem" { enumerator.skipDescendants() }
-                continue
-            }
-            guard values.isSymbolicLink != true, values.isRegularFile == true else { continue }
-            if !filter.isEmpty, !filter.contains(candidate.pathExtension.lowercased()) { continue }
+        scanFiles(root) { candidate in
+            if !filter.isEmpty, !filter.contains(candidate.pathExtension.lowercased()) { return true }
             scanned += 1
-            if scanned > grepMaxFiles { truncated = true; break }
-            guard let text = try? String(contentsOf: candidate, encoding: .utf8) else { continue }
+            if scanned > grepMaxFiles { truncated = true; return false }
+            guard let text = try? String(contentsOf: candidate, encoding: .utf8) else { return true }
             let relative = relativePath(candidate, workspace: workspace.standardizedFileURL)
             for (offset, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
                 let value = String(line)
@@ -443,9 +502,9 @@ public enum WorkspaceTools {
                     ? String(value.prefix(grepMaxLineCharacters)) + "…"
                     : value
                 matches.append("\(relative):\(offset + 1):\(shown)")
-                if matches.count >= grepMaxMatches { truncated = true; break }
+                if matches.count >= grepMaxMatches { truncated = true; return false }
             }
-            if truncated { break }
+            return true
         }
         if matches.isEmpty { return AppCopy.text("tool.noMatches") }
         return matches.joined(separator: "\n") + (truncated ? "\n\n" + AppCopy.text("tool.truncated") : "")
@@ -464,12 +523,12 @@ public enum WorkspaceTools {
         let file = try resolveRead(path, workspace: workspace, readRoots: readRoots)
         let data = try Data(contentsOf: file)
         guard let text = String(data: data, encoding: .utf8) else {
-            return AppCopy.format("tool.notUTF8", path)
+            return "Tool error: " + AppCopy.format("tool.notUTF8", path)
         }
         let lines = text.components(separatedBy: "\n")
         let start = max(1, offset ?? 1)
         guard start <= lines.count else {
-            return AppCopy.format("tool.offsetPastEnd", lines.count)
+            return "Tool error: " + AppCopy.format("tool.offsetPastEnd", lines.count)
         }
         let end = min(lines.count, start + max(0, limit ?? defaultReadLines) - 1)
         let maxBytes = limit == nil ? defaultReadMaxBytes : readMaxBytes
@@ -489,11 +548,10 @@ public enum WorkspaceTools {
         // Pages from the same on-disk version together authorize a complete read.
         ReadLedger.shared.recordLines(file, data: data, lines: start..<line,
                                       totalLines: lines.count, conversationID: conversationID)
-        // A default page that stops before the end of the file says so; an explicit
-        // limit that was met in full is the answer that was asked for.
-        let more = limit == nil ? line <= lines.count : line <= end
-        return more
-            ? body + "\n\n" + AppCopy.format("tool.truncatedAt", line)
+        // Any page that stops before the end of the file says where to continue and how
+        // long the file is, so the model knows whether it has seen all of it.
+        return line <= lines.count
+            ? body + "\n\n" + AppCopy.format("tool.truncatedAt", line) + " (file has \(lines.count) lines)"
             : body
     }
 
@@ -586,9 +644,26 @@ public enum WorkspaceTools {
 
     private static func fileManager() -> FileManager { .default }
 
+    /// `sleep 30; tail log` loops resend the whole context every round for nothing:
+    /// wait_command blocks on the process instead.
+    static func isSleepPoll(_ command: String) -> Bool {
+        command.range(of: #"^\s*sleep\s+[0-9.]+\s*(?:;|&&|\n)"#, options: .regularExpression) != nil
+    }
+    static let sleepPollRefusal = "Tool error: do not poll with sleep. Call wait_command with the PID (and log_path) to block until the process exits, or rerun the command in the foreground with a larger timeout_seconds."
+
+    static let defaultCommandTimeout = 120
+    static let maxCommandTimeout = 600
+
+    /// The model's `timeout_seconds`, clamped; anything missing or invalid is the default.
+    static func commandTimeout(_ object: [String: Any]) -> Int {
+        guard let seconds = (object["timeout_seconds"] as? NSNumber)?.intValue, seconds > 0 else { return defaultCommandTimeout }
+        return min(seconds, maxCommandTimeout)
+    }
+
     private static func run(
         command: String,
         workspace: URL,
+        timeout: Int = defaultCommandTimeout,
         sandboxPolicy: SandboxExecutionPolicy? = nil,
         isCancelled: @Sendable () -> Bool = { false },
         onOutput: (@Sendable (String) -> Void)? = nil,
@@ -619,6 +694,9 @@ public enum WorkspaceTools {
         process.currentDirectoryURL = workspace
         process.standardOutput = output
         process.standardError = output
+        // Inherited by the whole tree (zsh → swift build → swift-frontend): builds land on
+        // efficiency cores instead of competing with the window for the performance ones.
+        process.qualityOfService = .utility
 
         // Drain the pipe concurrently: a poll-then-read approach deadlocks once the
         // child fills the ~64KB pipe buffer and blocks on write before it can exit.
@@ -633,6 +711,9 @@ public enum WorkspaceTools {
                 if let text = String(data: chunk, encoding: .utf8) { onOutput?(text) }
             }
         }
+        // Wakes the wait below the moment the child exits, so it need not poll often.
+        let exited = DispatchSemaphore(value: 0)
+        process.terminationHandler = { _ in exited.signal() }
         try process.run()
 
         let pid = process.processIdentifier
@@ -647,38 +728,67 @@ public enum WorkspaceTools {
         // ignored it, and reap the direct child so it cannot linger as a zombie.
         func halt() {
             kill(group, SIGTERM)
-            var waited = 0.0
-            while process.isRunning, waited < 2.0 {
-                RunLoop.current.run(until: Date().addingTimeInterval(0.05))
-                waited += 0.05
-            }
-            if process.isRunning { kill(group, SIGKILL) }
+            if exited.wait(timeout: .now() + 2) == .timedOut { kill(group, SIGKILL) }
             process.waitUntilExit()
             reader.readabilityHandler = nil
         }
 
-        let deadline = Date().addingTimeInterval(45)
-        while process.isRunning {
+        let deadline = Date().addingTimeInterval(TimeInterval(timeout))
+        // Exit wakes this at once; the 0.25s step only bounds how late a cancel or timeout is noticed.
+        while exited.wait(timeout: .now() + 0.25) == .timedOut {
             if isCancelled() {
                 halt()
                 return "Command canceled after user interrupt."
             }
             if Date() >= deadline {
                 halt()
-                return AppCopy.text("tool.timedOut")
+                // Keep what it printed: where a build stopped, or a lock it was waiting on.
+                let partial = String(data: sink.drain(), encoding: .utf8).map { keepHeadAndTail($0) } ?? ""
+                return AppCopy.format("tool.timedOut", timeout) + Self.lockNotice(partial) + "\n" + partial
             }
-            try awaitRunLoop()
         }
         process.waitUntilExit()
         reader.readabilityHandler = nil
 
         onExit?(process.terminationStatus)
         let data = sink.drain()
-        let text = String(data: data.prefix(24_000), encoding: .utf8) ?? AppCopy.text("tool.binaryOutput")
+        let text = String(data: data, encoding: .utf8).map { keepHeadAndTail($0) } ?? AppCopy.text("tool.binaryOutput")
         let suffix = process.terminationStatus == 0
             ? ""
             : "\n" + AppCopy.format("tool.exitStatus", process.terminationStatus)
-        return text.isEmpty ? AppCopy.text("tool.noOutput") + suffix : text + suffix
+        return text.isEmpty ? AppCopy.text("tool.noOutput") + suffix : text + suffix + lockNotice(text)
+    }
+
+    /// SwiftPM waits silently while another process (often another agent or a
+    /// terminal) builds in the same `.build`; say so instead of letting the run guess.
+    static func lockNotice(_ output: String) -> String {
+        guard let match = output.range(of: #"Another instance of SwiftPM (?:\(PID: (\d+)\) )?is already running"#, options: .regularExpression) else { return "" }
+        let holder = output[match].firstMatch(of: /PID: (\d+)/).map { " (PID \($0.1))" } ?? ""
+        return "\nNote: another process\(holder) is building in this package's .build directory. Call wait_command with that PID, then rerun. Do not pass a new --scratch-path: it rebuilds every dependency from scratch. If the holder stays at 0% CPU for minutes it is stuck; tell the user instead of working around it."
+    }
+
+    /// Waits on a process this tool may not own (a backgrounded job, a lock holder),
+    /// so it can only see that it is gone, not its exit status; the log says how it ended.
+    static func waitFor(pid: pid_t, log: URL?, timeout: Int, isCancelled: @Sendable () -> Bool = { false }) -> String {
+        let startedAt = Date()
+        func alive() -> Bool { kill(pid, 0) == 0 || errno == EPERM }
+        while alive(), Date().timeIntervalSince(startedAt) < Double(timeout), !isCancelled() {
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        let seconds = Int(Date().timeIntervalSince(startedAt))
+        var result = alive() ? "Process \(pid) is still running after \(seconds)s." : "Process \(pid) exited after \(seconds)s."
+        if let log {
+            let text = (try? String(contentsOf: log, encoding: .utf8)).map { String($0.suffix(8_000)) } ?? "(log unreadable)"
+            result += "\n" + text
+        }
+        return result
+    }
+
+    /// Long command output keeps its start and its end, where build and test
+    /// failures land; the middle is rarely what the next step needs.
+    static func keepHeadAndTail(_ text: String, head: Int = 2_000, tail: Int = 14_000) -> String {
+        guard text.count > head + tail else { return text }
+        return String(text.prefix(head)) + "\n[... \(text.count - head - tail) characters omitted ...]\n" + String(text.suffix(tail))
     }
 
     /// Runs a verification command and says whether it exited zero. The exit
@@ -693,17 +803,13 @@ public enum WorkspaceTools {
         var status: Int32?
         do {
             let output = try run(
-                command: command, workspace: workspace, sandboxPolicy: sandboxPolicy,
+                command: command, workspace: workspace, timeout: 45, sandboxPolicy: sandboxPolicy,
                 isCancelled: isCancelled, onExit: { status = $0 }
             )
             return (output, status == 0)
         } catch {
             return (AppCopy.format("tool.error", error.localizedDescription), false)
         }
-    }
-
-    private static func awaitRunLoop() throws {
-        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
     }
 
     /// The path a write lease is keyed by. It resolves exactly like the write
@@ -899,9 +1005,10 @@ final class ReadLedger: @unchecked Sendable {
         return (.unread, IndexSet())
     }
 
-    func state(for file: URL, data: Data, conversationID: String) -> State {
+    func state(for file: URL, data: Data, conversationID: String, partial: Bool = false) -> State {
         lock.lock()
-        let known = scopes[conversationID]?.hashes[file.path]
+        let scope = scopes[conversationID]
+        let known = scope?.hashes[file.path] ?? (partial ? scope?.pages[file.path]?.hash : nil)
         lock.unlock()
         guard let known else { return .unread }
         return known == Self.hash(data) ? .fresh : .stale

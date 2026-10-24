@@ -704,7 +704,6 @@ class WebToolError internal constructor(message: String) : Exception(message) {
 
         fun httpStatus(status: Int, url: String) = WebToolError("$url answered HTTP $status.")
         fun unexpectedResponse() = WebToolError("the server response was not HTTP.")
-        fun invalidURL(value: String) = WebToolError("not a valid URL: $value.")
         fun timedOut() = WebToolError("the request timed out.")
         fun searchNeedsKey(backend: String) = WebToolError(
             "the $backend search backend needs an API key. Set HERNESS_SEARCH_KEY, " +

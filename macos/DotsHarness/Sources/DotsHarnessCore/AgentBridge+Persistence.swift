@@ -9,99 +9,213 @@ import PluginRuntime
 extension NativeAgentHost {
     /// Loads one archived transcript only when the user opens it from Archive.
     public func loadArchivedConversation(_ id: String) -> Conversation? {
-        guard let conversation = store.loadAll().first(where: { $0.id == id && $0.archived && !$0.blank }) else {
+        guard store.loadHeaders().contains(where: { $0.id == id && $0.archived && !$0.blank }),
+              let conversation = store.loadRecentConversation(id: id, includeModelContext: false) else {
             return nil
         }
         return Self.recover(conversation)
+    }
+
+    /// Reads an older archive page without loading the conversation into the
+    /// active workspace or retaining the page in the host's conversation list.
+    public func loadArchivedMessagePage(
+        id: String,
+        endingBefore offset: Int,
+        limit: Int = 10
+    ) async -> ConversationTranscriptPage? {
+        guard store.loadHeaders().contains(where: { $0.id == id && $0.archived && !$0.blank }) else { return nil }
+        let store = self.store
+        return await Task.detached(priority: .userInitiated) {
+            store.loadMessagePage(id: id, endingBefore: offset, limit: limit)
+        }.value
     }
 
     /// Loads retained history without restoring its removed project's workspace.
     /// The original conversation record and its project path remain unchanged.
     public func openRecentConversation(_ id: String) {
         guard workspaceURL == nil,
-              let conversation = store.loadAll().first(where: { $0.id == id }) else { return }
+              let conversation = store.loadRecentConversation(id: id) else { return }
         loadGeneration += 1
         contentTask?.cancel()
         contentTask = nil
-        conversations = [Self.recover(conversation)]
         selectedID = nil
+        conversations = [recoverForContext(conversation)]
         clearFollowUpSuggestion()
         select(id)
     }
 
-    /// Staged: titles show at once from headers; transcripts decode off the main
-    /// thread and replace the headers when ready. Sends wait for that (see `send`).
+    /// Keep only headers for the workspace in memory. Selecting a conversation
+    /// loads its newest visible page and provider context on a background task.
     func loadConversations(workspacePath: String?) {
         loadGeneration += 1
-        let generation = loadGeneration
+        contentTask?.cancel()
         contentTask = nil
-        guard let workspacePath else {
-            let stored = store.load(workspacePath: nil)
-            conversations = stored.map(recoverForContext)
-            if conversations != stored { persist() }
-            selectedID = initialSelection()
-            return
-        }
-        guard ConversationStore.normalizedPath(workspacePath) != nil else {
+        if workspacePath != nil, ConversationStore.normalizedPath(workspacePath) == nil {
             conversations = []
             selectedID = nil
             return
         }
-        // A small history decodes in a few milliseconds: load it whole, no header stage.
-        guard store.fileSize > Self.stagedLoadThreshold else {
-            let stored = store.load(workspacePath: workspacePath)
-            let recovered = stored.map(recoverForContext)
-            conversations = recovered
-            if recovered != stored { store.save(recovered) }
-            selectedID = initialSelection()
+        let previousSelection = selectedID
+        conversations = store.loadHeaders(workspacePath: workspacePath).map(Self.recoverListed)
+        let nextSelection = initialSelection()
+        selectedID = nextSelection
+        // Reloading the same workspace replaces its rows with headers but does not
+        // change selectedID, so its selected transcript still needs a fresh read.
+        if previousSelection == nextSelection, let nextSelection {
+            selectionDidChange(to: nextSelection)
+        }
+    }
+
+    /// Called by selectedID whenever the visible conversation changes.
+    func selectionDidChange(to id: String?) {
+        if let id { publishLiveReply(in: id) }
+        trimInactiveConversationContent()
+        loadGeneration += 1
+        let generation = loadGeneration
+        contentTask?.cancel()
+        contentTask = nil
+        guard let id,
+              let conversation = conversations.first(where: { $0.id == id }) else { return }
+        if conversation.contentLoaded {
+            activateLoadedConversation(id)
             return
         }
-        conversations = store.loadHeaders(workspacePath: workspacePath).map(Self.recoverListed)
-        selectedID = initialSelection()
+
         let store = self.store
-        // Started here, not inside the main-actor task: that task only gets the main
-        // thread once the first frame is out, and the decode should be done by then.
         let decode = Task.detached(priority: .userInitiated) {
-            store.load(workspacePath: workspacePath)
+            store.loadRecentConversation(id: id)
         }
         contentTask = Task { @MainActor [weak self] in
-            let full = await decode.value
-            guard let self, self.loadGeneration == generation else { return }
-            self.hydrateConversations(full)
+            let stored = await decode.value
+            guard let self,
+                  self.loadGeneration == generation else { return }
+            self.contentTask = nil
+            guard self.selectedID == id,
+                  let stored,
+                  let index = self.conversations.firstIndex(where: { $0.id == id }) else { return }
+            let header = self.conversations[index]
+            var loaded = self.recoverForContext(stored)
+            loaded.applyMetadata(from: header)
+            self.conversations[index] = loaded
+            self.contentTask = nil
+            if loaded != stored { _ = self.store.save([loaded]) }
+            self.activateLoadedConversation(id)
         }
     }
 
-    private func hydrateConversations(_ full: [Conversation]) {
-        let byID = Dictionary(full.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        // Walk the in-memory list so chats created or removed meanwhile stay that way;
-        // sidebar edits made to a header (rename, pin, ...) win over the decoded copy.
-        conversations = conversations.compactMap { current in
-            guard !current.contentLoaded else { return current }
-            guard let stored = byID[current.id] else { return nil }
-            var loaded = recoverForContext(stored)
-            loaded.applyMetadata(from: current)
-            return loaded
-        }
-        let recovered = conversations
-        let stored = full.filter { current in conversations.contains(where: { $0.id == current.id }) }
-        if recovered != stored { persist() }
-        if let selectedID, !conversations.contains(where: { $0.id == selectedID }) {
-            self.selectedID = initialSelection()
+    func activateLoadedConversation(_ id: String) {
+        resolvePendingPlanIntents(in: id)
+        guard selectedID == id else { return }
+        if conversations.first(where: { $0.id == id })?.continuation?.reason == .applicationClosed {
+            Task { @MainActor [weak self] in
+                await self?.resumeRecoveredConversationIfNeeded(for: id)
+            }
+        } else if !state(for: id).queuePausedAfterStop {
+            startQueuedPromptIfReleased(in: id)
         }
     }
 
-    private static let stagedLoadThreshold = 256 << 10
-
-    /// Sync callers that read transcripts (rewind, edit, feedback) must never see a
-    /// header: finish the load now instead of waiting for the background decode.
-    func ensureContentLoaded() {
-        guard conversations.contains(where: { !$0.contentLoaded }) else { return }
-        loadGeneration += 1
-        contentTask = nil
-        hydrateConversations(store.load(workspacePath: workspaceURL?.path))
+    /// Only the selected chat and in-flight runs keep message content resident.
+    /// Inactive records are saved and replaced with metadata-only headers.
+    func trimInactiveConversationContent() {
+        guard !historyMutationBusy else { return }
+        var changed = false
+        for index in conversations.indices {
+            let id = conversations[index].id
+            guard id != selectedID,
+                  conversations[index].contentLoaded,
+                  runStates[id]?.isBusy != true,
+                  runStates[id]?.pendingPromptStartID == nil else { continue }
+            let full = conversations[index]
+            // Leaving a chat must not re-encode its provider context (MBs) on the
+            // main thread: write only what changed since the last persist, if anything.
+            if store.revision != persistedRevision || persistedConversations[id] != full {
+                let revision = persistedRevision
+                guard store.save([full], previous: persistedConversations, revision: revision) else { continue }
+                if store.revision == revision + 1 { persistedRevision = store.revision }
+            }
+            persistedConversations[id] = full.headerCopy()
+            conversations[index] = full.headerCopy()
+            runStates[id]?.activeContext = []
+            clearLiveReply(in: id)
+            changed = true
+        }
+        if changed { touchLists() }
     }
 
-    /// Resolves once the current workspace's transcripts are in memory.
+    /// Sync callers that read one transcript never hydrate the rest of the list.
+    func ensureContentLoaded(_ conversationID: String? = nil) {
+        guard let id = conversationID ?? selectedID,
+              let index = conversations.firstIndex(where: { $0.id == id }),
+              !conversations[index].contentLoaded || !conversations[index].transcriptComplete else { return }
+        // Only a sync load of the selected chat supersedes its background load. A stale
+        // row of the previous chat must not cancel it: nothing would restart it.
+        if id == selectedID {
+            loadGeneration += 1
+            contentTask?.cancel()
+            contentTask = nil
+        }
+        guard let stored = store.load(id: id),
+              let currentIndex = conversations.firstIndex(where: { $0.id == id }) else { return }
+        let header = conversations[currentIndex]
+        var loaded = recoverForContext(stored)
+        loaded.applyMetadata(from: header)
+        conversations[currentIndex] = loaded
+        if loaded != stored { _ = store.save([loaded]) }
+        if id != selectedID {
+            Task { @MainActor [weak self] in
+                await Task.yield()
+                self?.trimInactiveConversationContent()
+            }
+        }
+    }
+
+    /// Ensures the provider context is ready without hydrating older visible
+    /// transcript pages. Normal prompt submission only needs modelContext.
+    @discardableResult
+    func ensurePromptContextLoaded(_ conversationID: String? = nil) -> Bool {
+        guard let id = conversationID ?? selectedID,
+              let index = conversations.firstIndex(where: { $0.id == id }) else { return true }
+        if conversations[index].contentLoaded {
+            return conversations[index].transcriptComplete || !conversations[index].modelContext.isEmpty
+        }
+        guard let stored = store.loadRecentConversation(id: id) else { return false }
+        let header = conversations[index]
+        var loaded = recoverForContext(stored)
+        guard loaded.transcriptComplete || !loaded.modelContext.isEmpty else { return false }
+        loaded.applyMetadata(from: header)
+        conversations[index] = loaded
+        if loaded != stored { _ = store.save([loaded]) }
+        return true
+    }
+
+    /// Loads another visible page from disk while keeping the full provider
+    /// context and all previously requested pages intact.
+    @discardableResult
+    public func loadOlderMessages(in conversationID: String, limit: Int = 10) async -> Bool {
+        guard selectedID == conversationID,
+              let index = conversations.firstIndex(where: { $0.id == conversationID }),
+              conversations[index].hasOlderTranscriptMessages else { return false }
+        let endIndex = conversations[index].messageStartIndex
+        let store = self.store
+        let page = await Task.detached(priority: .userInitiated) {
+            store.loadMessagePage(id: conversationID, endingBefore: endIndex, limit: limit)
+        }.value
+        guard let page,
+              selectedID == conversationID,
+              let currentIndex = conversations.firstIndex(where: { $0.id == conversationID }),
+              conversations[currentIndex].messageStartIndex == endIndex else { return false }
+
+        let currentIDs = Set(conversations[currentIndex].messages.map(\.id))
+        let older = page.messages.filter { !currentIDs.contains($0.id) }
+        conversations[currentIndex].messages.insert(contentsOf: older, at: 0)
+        conversations[currentIndex].loadedTranscriptMessageIDs.formUnion(page.messages.map(\.id))
+        conversations[currentIndex].messageStartIndex = page.startIndex
+        conversations[currentIndex].transcriptComplete = page.startIndex == 0
+        return !older.isEmpty
+    }
+
+    /// Resolves when the selected transcript has finished loading.
     public func waitForContent() async {
         await contentTask?.value
     }
@@ -114,7 +228,7 @@ extension NativeAgentHost {
         router: RouterController? = nil
     ) -> String? {
         let stablePromptRevision = AgentCacheNamespace.promptContextRevision(
-            systemPromptSections(workspace: workspaceURL, planMode: false, prompt: "")
+            [corePolicySection(workspace: workspaceURL)]
         )
         return AgentCacheNamespace.key(
             projectID: memory.projectID,
@@ -134,9 +248,33 @@ extension NativeAgentHost {
 
     @discardableResult
     func persist() -> Bool {
-        guard store.save(conversations) else { return false }
-        touchLists()
+        // Rewriting every loaded chat re-encoded each one's provider context (MBs) on
+        // every append, so parallel runs cost N² on the main thread. Write what changed;
+        // another writer bumping the revision makes the snapshots untrustworthy.
+        if store.revision != persistedRevision { persistedConversations = [:] }
+        let changed = conversations.filter { persistedConversations[$0.id] != $0 }
+        if !changed.isEmpty {
+            guard store.save(changed, previous: persistedConversations, revision: persistedRevision) else { return false }
+            persistedRevision = store.revision
+        }
+        // Rebuilt, not merged: chats that left `conversations` must not stay resident here.
+        persistedConversations = Dictionary(conversations.map { ($0.id, $0) }, uniquingKeysWith: { $1 })
+        // Every list and the composer read `listTick`: an unchanged save must not re-render them.
+        if !changed.isEmpty { touchLists() }
         return true
+    }
+
+    /// `persist()` for the per-tool-call path: a call's start, result and model context land
+    /// in one main-actor turn, and each write diffed and re-encoded the conversation.
+    /// They collapse into one write on the next turn.
+    func persistSoon() {
+        guard !persistScheduled else { return }
+        persistScheduled = true
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.persistScheduled = false
+            self.persist()
+        }
     }
 
     func skillID(from call: AgentToolCall) -> String? {
@@ -151,8 +289,34 @@ extension NativeAgentHost {
 
     func recoverForContext(_ conversation: Conversation) -> Conversation {
         var recovered = Self.recover(conversation)
+        if recovered.modelContext.isEmpty, !recovered.transcriptComplete {
+            let visibleMessages = recovered.messages
+            let visibleStartIndex = recovered.messageStartIndex
+            let visibleMessageIDs = recovered.loadedTranscriptMessageIDs
+            if let full = store.load(id: recovered.id) {
+                recovered = Self.recover(full)
+                _ = Self.synchronizeGeneratedMediaContext(&recovered)
+                if recovered.modelContext.isEmpty, !recovered.messages.isEmpty {
+                    recovered.modelContext = makeAgentContext(
+                        for: recovered,
+                        workspace: workspaceURL
+                    )
+                }
+                // Legacy sessions may need their full transcript once to rebuild
+                // the provider context. Keep only the requested visible page in
+                // the long-lived conversation after that recovery completes.
+                recovered.messages = visibleMessages
+                recovered.transcriptComplete = false
+                recovered.messageStartIndex = visibleStartIndex
+                recovered.loadedTranscriptMessageIDs = visibleMessageIDs
+                return recovered
+            }
+            // A partial visible page cannot safely stand in for missing provider
+            // context. Leave it empty so prompt submission can fail closed.
+            return recovered
+        }
         _ = Self.synchronizeGeneratedMediaContext(&recovered)
-        if recovered.modelContext.isEmpty, !recovered.messages.isEmpty {
+        if recovered.modelContext.isEmpty, recovered.transcriptComplete, !recovered.messages.isEmpty {
             recovered.modelContext = makeAgentContext(
                 for: recovered,
                 workspace: workspaceURL
@@ -172,9 +336,7 @@ extension NativeAgentHost {
     func journalToolBatch(_ calls: [AgentToolCall], in conversationID: String) {
         guard !calls.isEmpty,
               let index = conversations.firstIndex(where: { $0.id == conversationID }) else { return }
-        conversations[index].inFlightToolCalls = calls.map {
-            InFlightToolCall(id: $0.id, name: $0.name, arguments: $0.arguments)
-        }
+        conversations[index].inFlightToolCalls = calls
         conversations[index].requiresToolOutcomeRecovery = false
         persist()
     }
@@ -191,15 +353,6 @@ extension NativeAgentHost {
         conversations[index].requiresToolOutcomeRecovery = false
         conversations[index].inFlightToolCalls = []
         persist()
-    }
-
-    func invalidatePendingPlan(in conversationID: String?) {
-        guard let conversationID,
-              conversations.first(where: { $0.id == conversationID })?.pendingPlanMessageID != nil else { return }
-        updateConversation(conversationID) {
-            $0.pendingPlanMessageID = nil
-            $0.planGateActive = false
-        }
     }
 
     func turnIDs(in messages: [ChatMessage], from index: Int) -> [String]? {
@@ -249,14 +402,23 @@ extension NativeAgentHost {
 
     }
 
+    /// A model pick is metadata only; its write happens off the main thread.
+    func setConversationModelPreference(_ modelID: String?, for id: String) {
+        guard let index = conversations.firstIndex(where: { $0.id == id }),
+              conversations[index].modelPreferenceID != modelID else { return }
+        conversations[index].modelPreferenceID = modelID
+        store.saveInBackground([conversations[index].headerCopy()])
+        touchLists()
+    }
+
     /// Fold in conversations written to the store by another host (e.g. a
     /// scheduled-task run) without disturbing the active run or selection.
     public func mergeExternalConversations() {
         guard let path = workspaceURL?.path else { return }
         let known = Set(conversations.map(\.id))
-        let extras = store.load(workspacePath: path)
+        let extras = store.loadHeaders(workspacePath: path)
             .filter { !known.contains($0.id) }
-            .map(Self.recover)
+            .map(Self.recoverListed)
         guard !extras.isEmpty else { return }
         conversations.append(contentsOf: extras)
         conversations.sort { $0.id < $1.id }
@@ -279,7 +441,8 @@ extension NativeAgentHost {
         let wasRunning = recovered.running
         recovered.running = false
         sanitizeVisibleSkillPreviews(&recovered)
-        if let planID = recovered.pendingPlanMessageID,
+        if recovered.transcriptComplete,
+           let planID = recovered.pendingPlanMessageID,
            !recovered.messages.contains(where: { $0.id == planID && $0.kind == .plan }) {
             recovered.pendingPlanMessageID = nil
         }
@@ -302,19 +465,21 @@ extension NativeAgentHost {
             if recovered.continuation?.reason != .applicationClosed, !recovered.turnFinished {
                 recovered.continuation = ContinuationState(
                     reason: .applicationClosed,
-                    message: "The application closed while this plan was active. Recovery will continue automatically when possible; tool results are not assumed and no tool call will be replayed."
+                    message: AppCopy.text("agent.applicationClosedMessage")
                 )
             }
         }
-        if let firstUserMessage = recovered.messages.first(where: { $0.kind == .user }) {
-            let titleText = firstUserMessage.text.isEmpty
-                ? firstUserMessage.attachments.map { $0.name }.joined(separator: ", ")
-                : firstUserMessage.text
-            recovered.title = Self.title(for: titleText)
-            recovered.blank = false
-        } else if recovered.messages.isEmpty,
-                  recovered.title == "New conversation" || recovered.title == "New chat" {
-            recovered.blank = true
+        if recovered.transcriptComplete {
+            if let firstUserMessage = recovered.messages.first(where: { $0.kind == .user }) {
+                let titleText = firstUserMessage.text.isEmpty
+                    ? firstUserMessage.attachments.map { $0.name }.joined(separator: ", ")
+                    : firstUserMessage.text
+                recovered.title = Self.title(for: titleText)
+                recovered.blank = false
+            } else if recovered.messages.isEmpty,
+                      recovered.title == "New conversation" || recovered.title == "New chat" {
+                recovered.blank = true
+            }
         }
         return recovered
     }
@@ -438,21 +603,6 @@ extension NativeAgentHost {
         return notices.sorted().joined(separator: "\n\n")
     }
 
-    /// Legacy callers append a notice after complete tool groups. The run loop
-    /// deduplicates and persists these notices through its cache epoch.
-    static func requestMessages(
-        _ messages: [AgentMessage],
-        attachmentRevisionNotice: String?
-    ) -> [AgentMessage] {
-        guard let attachmentRevisionNotice,
-              !attachmentRevisionNotice.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return messages }
-        var result = messages
-        var notice = AgentMessage(role: .user, content: attachmentRevisionNotice)
-        notice.promptContextCaptured = true
-        result.append(notice)
-        return result
-    }
-
     func latestAttachmentResult(
         for call: AgentToolCall,
         in ledger: [String: ChatAttachment]
@@ -559,7 +709,8 @@ extension NativeAgentHost {
     static func startExplore(
         _ calls: [AgentToolCall],
         complete: @escaping ExploreTool.Complete,
-        workspace: URL?
+        workspace: URL?,
+        hints: [String: String] = [:]
     ) -> [String: Task<ExploreTool.Outcome, Never>] {
         guard let workspace else { return [:] }
         let explores = calls.filter { $0.name == ExploreTool.name }
@@ -576,10 +727,20 @@ extension NativeAgentHost {
         }
         for call in explores.prefix(ExploreTool.maxPerTurn) {
             pending[call.id] = Task(priority: .userInitiated) {
-                await ExploreTool.run(call, complete: complete, workspace: workspace)
+                await ExploreTool.run(call, complete: complete, workspace: workspace, hints: hints[call.id] ?? "")
             }
         }
         return pending
+    }
+
+    /// The files named like each explore question, keyed by call id.
+    func exploreHints(_ calls: [AgentToolCall], workspace: URL?) -> [String: String] {
+        guard memory.enabled, let workspace, workspaceURL?.standardizedFileURL == workspace.standardizedFileURL else { return [:] }
+        var hints: [String: String] = [:]
+        for call in calls where call.name == ExploreTool.name {
+            if let task = ExploreTool.task(of: call) { hints[call.id] = memory.filesText(for: task, lessons: feedbackStore?.lessons() ?? []) }
+        }
+        return hints
     }
 
     /// Runs explore subagents side by side, bounded by maxPerTurn, and collects outcomes.

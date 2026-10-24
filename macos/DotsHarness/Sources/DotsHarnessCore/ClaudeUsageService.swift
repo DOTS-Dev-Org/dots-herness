@@ -47,24 +47,19 @@ public struct AccountUsageSnapshot: Equatable, Sendable {
     public var resetsAt: Date?
     /// Per-window detail (5h / weekly) when the provider reports it.
     public var windows: [ClaudeUsageWindow]
-    public var fetchedAt: Date
     public var resetsAvailable: Int?
 
     public init(
         remainingFraction: Double?,
         resetsAt: Date? = nil,
         windows: [ClaudeUsageWindow] = [],
-        fetchedAt: Date = Date(),
         resetsAvailable: Int? = nil
     ) {
         self.remainingFraction = remainingFraction
         self.resetsAt = resetsAt
         self.windows = windows
-        self.fetchedAt = fetchedAt
         self.resetsAvailable = resetsAvailable
     }
-
-    public var isFresh: Bool { Date().timeIntervalSince(fetchedAt) < 60 }
 }
 
 public enum ClaudeUsageState: Equatable, Sendable {
@@ -287,31 +282,44 @@ extension RouterController {
         guard let account = store.state.accounts.first(where: {
             $0.active && $0.provider == "claude" && $0.authType == "oauth"
         }) else {
-            claudeUsage = .failed(.noAccount)
+            setClaudeUsage(.failed(.noAccount))
             return
         }
         if usageBackedOff(account) {
-            if accountUsage[account.id]?.isFresh != true { claudeUsage = .failed(.network) }
+            if !usageIsFresh(account.id) { setClaudeUsage(.failed(.network)) }
             return
         }
-        if case .loaded = claudeUsage {} else { claudeUsage = .loading }
+        if case .loaded = claudeUsage {} else { setClaudeUsage(.loading) }
 
         do {
             let usage = try await claudeUsage(for: account)
-            accountUsage[account.id] = AccountUsageSnapshot(
-                remainingFraction: usage.worstUsedPercent.map { max(0, 1 - $0) },
-                resetsAt: usage.windows.compactMap(\.resetsAt).min(),
-                windows: usage.windows,
-                resetsAvailable: usage.resetsAvailable
-            )
-            claudeUsage = .loaded(usage)
+            storeClaudeUsage(usage, for: account)
+            setClaudeUsage(.loaded(usage))
         } catch is CancellationError {
             // View disappeared mid-flight; keep whatever state we had.
         } catch ClaudeUsageError.unauthorized {
-            claudeUsage = .failed(.needsLogin)
+            setClaudeUsage(.failed(.needsLogin))
         } catch {
-            claudeUsage = .failed(.network)
+            setClaudeUsage(.failed(.network))
         }
+    }
+
+    /// Every write to a published usage property re-renders each view that observes the
+    /// router, and the poll runs every two minutes. Writes therefore happen only when the
+    /// figures change; the read time is kept apart so freshness still works.
+    fileprivate func storeAccountUsage(_ id: String, _ snapshot: AccountUsageSnapshot) {
+        usageCheckedAt[id] = Date()
+        if accountUsage[id] != snapshot { accountUsage[id] = snapshot }
+    }
+
+    fileprivate func setClaudeUsage(_ state: ClaudeUsageState) {
+        if claudeUsage != state { claudeUsage = state }
+    }
+
+    /// Read within the last minute: a refresh in that window reuses the reading.
+    fileprivate func usageIsFresh(_ id: String) -> Bool {
+        guard let checked = usageCheckedAt[id] else { return false }
+        return Date().timeIntervalSince(checked) < 60
     }
 
     private func usageBackedOff(_ account: StoredProviderAccount) -> Bool {
@@ -321,6 +329,15 @@ extension RouterController {
     /// One fetch for both refresh paths. A degraded or failed fetch parks the
     /// account for five minutes, so a rate-limited usage endpoint is not hammered
     /// and the 1-token header probe is not re-sent on every poll.
+    private func storeClaudeUsage(_ usage: ClaudeUsage, for account: StoredProviderAccount) {
+        storeAccountUsage(account.id, AccountUsageSnapshot(
+            remainingFraction: usage.worstUsedPercent.map { max(0, 1 - $0) },
+            resetsAt: usage.windows.compactMap(\.resetsAt).min(),
+            windows: usage.windows,
+            resetsAvailable: usage.resetsAvailable
+        ))
+    }
+
     private func claudeUsage(for account: StoredProviderAccount) async throws -> ClaudeUsage {
         let headers = RouterCatalog.spec(for: account.provider)?.transport.extraHeaders ?? [:]
         do {
@@ -374,42 +391,37 @@ extension RouterController {
     }
 
     private func refreshAccountUsage(of account: StoredProviderAccount, force: Bool) async {
-        if !force, let snapshot = accountUsage[account.id], snapshot.isFresh { return }
+        if !force, usageIsFresh(account.id) { return }
         if !force, usageBackedOff(account) {
             // Do not keep presenting an old successful value as live while the
             // provider endpoint is in backoff.
-            if accountUsage[account.id]?.isFresh != true {
-                accountUsage[account.id] = AccountUsageSnapshot(remainingFraction: nil)
+            if !usageIsFresh(account.id) {
+                storeAccountUsage(account.id, AccountUsageSnapshot(remainingFraction: nil))
             }
             return
         }
         guard account.provider == "claude" || account.authType == "chatgpt" else {
             if accountUsage[account.id] == nil {
-                accountUsage[account.id] = AccountUsageSnapshot(remainingFraction: nil)
+                storeAccountUsage(account.id, AccountUsageSnapshot(remainingFraction: nil))
             }
             return
         }
         do {
             if account.provider == "claude" {
                 let usage = try await claudeUsage(for: account)
-                accountUsage[account.id] = AccountUsageSnapshot(
-                    remainingFraction: usage.worstUsedPercent.map { max(0, 1 - $0) },
-                    resetsAt: usage.windows.compactMap(\.resetsAt).min(),
-                    windows: usage.windows,
-                    resetsAvailable: usage.resetsAvailable
-                )
+                storeClaudeUsage(usage, for: account)
             } else {
                 let usage = try await loadChatGPTUsage(account: account, allowRefresh: true)
-                accountUsage[account.id] = AccountUsageSnapshot(
+                storeAccountUsage(account.id, AccountUsageSnapshot(
                     remainingFraction: usage.worstUsedPercent.map { max(0, 1 - $0) },
                     resetsAt: usage.windows.compactMap(\.resetsAt).min(),
                     windows: usage.windows
-                )
+                ))
             }
         } catch is CancellationError {
             return
         } catch {
-            accountUsage[account.id] = AccountUsageSnapshot(remainingFraction: nil)
+            storeAccountUsage(account.id, AccountUsageSnapshot(remainingFraction: nil))
         }
     }
 

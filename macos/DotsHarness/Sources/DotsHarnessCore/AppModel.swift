@@ -90,6 +90,13 @@ public final class AppModelReference {
     }
 }
 
+/// The composer's text, published apart from AppModel so a keystroke only
+/// invalidates the composer. Written by `AppModel.draft`; read-only for views.
+@MainActor
+public final class DraftBox: ObservableObject {
+    @Published public internal(set) var text = ""
+}
+
 /// Navigation-only state shared by the window and its menu commands.
 /// Keeping this out of AppModel's large published state prevents a sidebar
 /// toggle from invalidating every view that observes the application model.
@@ -112,6 +119,7 @@ public final class AppModel: ObservableObject {
 
     public let catalog: PluginCatalog
     public let skills: SkillCatalog
+    public let promptTemplates: PromptTemplateCatalog
     public let skillSuggestions: SkillSuggestionMonitor
     public let host: PluginHost
     public let paths: SupportPaths
@@ -123,6 +131,7 @@ public final class AppModel: ObservableObject {
     public let remoteControl: RemoteControlHost
     public let terminalManager: TerminalManager
     public let navigationState: SidebarVisibilityState
+    public let notificationInbox = NotificationInbox()
     let desktopNotifications: DesktopNotificationService
     public lazy var updateChecker = UpdateChecker()
     public lazy var marketplaceSession = MarketplaceSession()
@@ -131,7 +140,12 @@ public final class AppModel: ObservableObject {
         let url = URL(string: raw) ?? URL(string: MarketplaceClient.defaultIndex)!
         return MarketplaceClient(indexURL: url, catalog: catalog, session: marketplaceSession)
     }()
-    public lazy var local: LocalRuntimeController = LocalRuntimeController(paths: paths, router: router)
+    private var createdLocalRuntime: LocalRuntimeController?
+    public lazy var local: LocalRuntimeController = {
+        let controller = LocalRuntimeController(paths: paths, router: router)
+        createdLocalRuntime = controller
+        return controller
+    }()
     public lazy var voice: LocalVoiceTranscriber = LocalVoiceTranscriber(paths: paths)
     public lazy var nemotron: NemotronRuntime = NemotronRuntime(paths: paths)
     public lazy var localSpeech: LocalPiperSpeechSynthesizer = LocalPiperSpeechSynthesizer(paths: paths)
@@ -145,6 +159,10 @@ public final class AppModel: ObservableObject {
     public func isSpeaking(messageID: String) -> Bool {
         createdSpeech?.activeMessageID == messageID
     }
+    public func shutdownLocalModelRuntime() {
+        guard let createdLocalRuntime, createdLocalRuntime.runtime.isServing() else { return }
+        createdLocalRuntime.runtime.stop()
+    }
     public lazy var simulator = SimulatorController()
     public lazy var scheduler: TaskScheduler = TaskScheduler(
         store: TaskStore(paths: paths),
@@ -157,17 +175,24 @@ public final class AppModel: ObservableObject {
         }
     )
 
-    @Published public var draft: String = "" {
+    /// Not `@Published`: ~50 views observe AppModel, and republishing it per keystroke
+    /// re-ran every one of them. The composer observes `draftBox`; everyone else only
+    /// needs `draftIsEmpty`, which changes on the first and last character.
+    public var draft: String = "" {
         didSet {
+            draftBox.text = draft
+            if oldValue.isEmpty != draft.isEmpty { draftIsEmpty = draft.isEmpty }
             if oldValue.isEmpty, !draft.isEmpty { warmProviderModels() }
             guard editingMessageID == nil, let id = bridge.selectedID else { return }
             draftsByConversation[draftKey(for: id)] = draft
         }
     }
+    @Published public private(set) var draftIsEmpty = true
+    public let draftBox = DraftBox()
 
-    /// The first send waits for every provider's model listing. Starting it when the
-    /// user begins typing (not at launch: it reads credentials) hides that round trip
-    /// behind the time it takes to write the message. Idempotent; sends join it.
+    /// A send without a cached catalog waits for every provider's model listing. Starting
+    /// it when the user begins typing (not at launch: it reads credentials) hides that round
+    /// trip behind the time it takes to write the message. Idempotent; sends join it.
     private func warmProviderModels() {
         let router = router
         Task { @MainActor in await router.refreshModelsIfNeeded() }
@@ -183,6 +208,11 @@ public final class AppModel: ObservableObject {
     @Published public var composerFocusRequestID = 0
     /// Bumped to ask the UI to open the plan in the right dock.
     @Published public var planPaneRequestID = 0
+    @Published public var reviewPaneRequestID = 0
+    @Published public var tasksPaneRequestID = 0
+    /// Bumped with `requestedFile` set to show that file in the dock's Files pane.
+    @Published public var filesPaneRequestID = 0
+    @Published public var requestedFile: URL?
     @Published public var appearance: Appearance = .system
     @Published public var appLanguage: AppLanguage = .system
     @Published public internal(set) var permissionMode: AgentPermissionMode
@@ -196,6 +226,8 @@ public final class AppModel: ObservableObject {
     @Published public var selfVerification = true
     /// Seed AGENTS.md and CLAUDE.md into a workspace that ships neither. Default on.
     @Published public var seedProjectRules = true
+    /// Show skill-suggestion cards when a command or prompt repeats. Default on.
+    @Published public var skillSuggestionsEnabled = true
     /// Apply generated plans without waiting for a separate plan approval. Default off.
     @Published public var autoApprovePlans = false
     /// What a run does when another chat of the same project is writing the file it wants.
@@ -240,6 +272,16 @@ public final class AppModel: ObservableObject {
     /// sending what it can read (workspace contents) to a remote host. Turn
     /// it on per-sandbox when a build genuinely needs the network.
     @Published public var sandboxNetworkAccess = false
+    /// The remote-control gateway is opt-in: it only listens while the user
+    /// keeps it on, and only on loopback unless LAN sharing is allowed.
+    @Published public var remoteControlEnabled: Bool = false {
+        didSet { remoteControl.isEnabled = remoteControlEnabled; restoreRemoteCloudTunnel() }
+    }
+    /// Sharing the gateway with the local network is a second, separate
+    /// opt-in — the loopback default keeps it unreachable from the Wi-Fi.
+    @Published public var remoteControlSharesWithLAN: Bool = false {
+        didSet { remoteControl.sharesWithLAN = remoteControlSharesWithLAN }
+    }
     @Published public internal(set) var sandboxConflict: SandboxConflict?
     @Published public internal(set) var sandboxResolutionPreview: SandboxResolutionPreview?
     @Published public internal(set) var sandboxResolutionBusy = false
@@ -251,11 +293,28 @@ public final class AppModel: ObservableObject {
     @Published public var isSettingsPresented = false
     @Published public var feedbackRequest: FeedbackTarget? = nil
     @Published public var isUsagePresented = false
-    /// Sidebar "Usage" dropdown expanded state. In-memory only.
-    @Published public var isUsageExpanded = false
-    @Published public var isTasksPresented = false {
+    /// The rail section on display. Home is the chat shell.
+    @Published public var section: AppSection = .home {
         didSet { commitNavigationDestination() }
     }
+    /// Leaving Tasks always lands on Home: every caller that clears this wants the chat.
+    public var isTasksPresented: Bool {
+        get { section == .tasks }
+        set { section = newValue ? .tasks : .home }
+    }
+    public lazy var mediaStudio = MediaStudioStore(
+        root: paths.root.appendingPathComponent("media-studio", isDirectory: true)
+    )
+    public lazy var musicStudio = MusicStudioStore(
+        root: paths.root.appendingPathComponent("music-studio", isDirectory: true)
+    )
+    public lazy var mediaLibrary = MediaLibraryStore(root: paths.root)
+    public lazy var bots = BotStore(
+        root: paths.root.appendingPathComponent("bots", isDirectory: true),
+        router: router,
+        paths: paths,
+        systemPrompt: { [weak self] in self?.bridge.effectiveSystemPromptReport() ?? "" }
+    )
     @Published public var isSimulatorPresented = false
     /// Screens the toolbar's back/forward buttons walk. `navigationIndex` is the
     /// one on display; -1 means nothing has been navigated to yet.
@@ -337,18 +396,9 @@ public final class AppModel: ObservableObject {
     }
     public var isVoiceModelInstalled: Bool { voiceModelState.isInstalled }
     public var isVoiceModelDownloading: Bool { voiceModelState == .downloading }
-    public var voiceModelDownloadProgress: FileDownloader.Progress? {
-        voiceModelProgress[voiceProvider.rawValue]
-    }
-    public var voiceModelStatusText: String { voiceModelState.title }
     public var speechModelState: LocalVoiceModelState {
         voiceModelStates[LocalSpeechModel.turkishPiper.id] ?? .notInstalled
     }
-    public var speechModelDownloadProgress: FileDownloader.Progress? {
-        voiceModelProgress[LocalSpeechModel.turkishPiper.id]
-    }
-    public var isSpeechModelInstalled: Bool { speechModelState.isInstalled }
-    public var isSpeechModelDownloading: Bool { speechModelState == .downloading }
     public var isVoiceReady: Bool {
         switch voiceProvider {
         case .whisperTinyQ5, .whisperLargeV3Turbo, .customLocal:
@@ -395,6 +445,9 @@ public final class AppModel: ObservableObject {
 
     public init(paths: SupportPaths = .default(), builtins: [any DefaultPlugin.Type] = []) {
         self.paths = paths
+        self.promptTemplates = PromptTemplateCatalog(
+            globalDirectory: paths.root.appendingPathComponent("prompts", isDirectory: true)
+        )
         self.terminalManager = TerminalManager()
         self.navigationState = SidebarVisibilityState()
         self.desktopNotifications = DesktopNotificationService()
@@ -466,10 +519,11 @@ public final class AppModel: ObservableObject {
         // first so stale coding-scoped values cannot reset the latest choice.
         router.select(modelID: settings.get("agent.model")?.string ?? settings.get("agent.model.coding")?.string ?? legacyModel)
         router.selectedEffort = settings.get("agent.effort")?.string ?? settings.get("agent.effort.coding")?.string ?? legacyEffort
-        router.fastMode = settings.get("agent.fast.coding")?.bool ?? false
+        router.fastMode = settings.get("agent.fast")?.bool ?? settings.get("agent.fast.coding")?.bool ?? false
         router.usageMode = AgentUsageMode(rawValue: settings.get("agent.usageMode")?.string
             ?? settings.get("agent.usageMode.coding")?.string
             ?? "") ?? .standard
+        router.autoAccountFailoverAfterLimit = settings.get(RouterController.autoAccountFailoverAfterLimitKey)?.bool ?? false
         router.responseStylePreference = Self.parseResponseStylePreference(
             settings.get(AgentResponseStylePreference.settingsKey)?.string
         )
@@ -493,11 +547,27 @@ public final class AppModel: ObservableObject {
             skillSuggestions: skillSuggestions
         )
         self.bridge = bridge
+        bridge.startNetworkWatch()
+        bridge.setMemoryEnabled(settings.get(WorkspaceMemory.enabledSettingsKey)?.bool ?? true)
+        bridge.setMemoryScanInterval(
+            settings.get(MemoryScanInterval.settingsKey)?.string.flatMap(MemoryScanInterval.init(rawValue:)) ?? .daily
+        )
+        bridge.userTerminalManager = terminalManager
         bridge.setBrowserBackend(storedBrowserBackend)
         bridge.setComputerUseEnabled(storedComputerUseEnabled)
         let mcpRegistry = MCPRegistry(paths: paths)
         self.mcpRegistry = mcpRegistry
         self.bridge.mcpRegistry = mcpRegistry
+        // Server-initiated sampling runs on the user's selected model, only after
+        // the user approves it in the MCP interaction sheet.
+        // ponytail: `maxTokens` and modelPreferences are not forwarded; the
+        // router's own output budget applies.
+        mcpRegistry.sampler = { [weak router] system, messages, _ in
+            guard let router else { throw MCPError.notConnected }
+            let prompt = system.isEmpty ? messages : [AgentMessage(role: .system, content: system)] + messages
+            let response = try await router.complete(messages: prompt)
+            return (response.message.content, router.selectedModelID)
+        }
         // Connect MCP servers in background utility priority after the startup phase
         Task.detached(priority: .utility) {
             try? await Task.sleep(for: .seconds(4))
@@ -525,6 +595,10 @@ public final class AppModel: ObservableObject {
         }
         if let stored = settings.get("agent.autoApprovePlans")?.bool {
             self.autoApprovePlans = stored
+        }
+        if let stored = settings.get("skills.suggestions.enabled")?.bool {
+            self.skillSuggestionsEnabled = stored
+            self.skillSuggestions.enabled = stored
         }
         self.workspaceConflictPolicy = settings.get("agent.workspaceConflictPolicy")?.string
             .flatMap(WorkspaceConflictPolicy.init(rawValue:)) ?? .waitThenAsk
@@ -658,6 +732,8 @@ public final class AppModel: ObservableObject {
             events: remoteEvents,
             workspacePath: restoreNotice == nil ? initialWorkspace : ""
         )
+        self.remoteControlEnabled = remoteControl.isEnabled
+        self.remoteControlSharesWithLAN = remoteControl.sharesWithLAN
         self.remoteControl.setProjectsProvider { [weak self] in
                 guard let self else { return [] }
                 var result: [RemoteProjectDescriptor] = []
@@ -697,18 +773,16 @@ public final class AppModel: ObservableObject {
         migrateVoiceAPIKey(legacy: legacyVoiceAPIKey)
         if migratedFableSetting { persistSettings() }
         let assistantResponse: (AssistantResponseEvent) -> Void = { [weak self] event in
-            self?.desktopNotifications.showAssistantResponse(event)
+            self?.receiveAssistantResponse(event)
         }
         bridge.onAssistantResponse = assistantResponse
         bridge.onRunSummary = { [weak self] event in
-            self?.desktopNotifications.showRunSummary(event)
+            self?.receiveRunSummary(event)
             self?.scanSkillSuggestions()
         }
         // Only chats the user cannot see right now: the visible one shows its own card.
         let attentionNeeded: (RunAttentionEvent) -> Void = { [weak self] event in
-            guard let self else { return }
-            let visible = NSApplication.shared.isActive && self.bridge.selectedID == event.conversationID
-            if !visible { self.desktopNotifications.showAttention(event) }
+            self?.receiveAttention(event)
         }
         bridge.onAttentionNeeded = attentionNeeded
         bridge.onPlanAutoApproved = { [weak self] in self?.endPlanMode() }
@@ -749,7 +823,6 @@ public final class AppModel: ObservableObject {
     var hasStarted = false
     var hasPreparedFirstFrame = false
     var hasBootstrapped = false
-    private var activeOptionalPluginIDs = Set<String>()
     // ponytail: keep unsent drafts in memory; persist only if restart recovery is required.
     var draftsByConversation: [String: String] = [:]
     var draftAttachmentsByConversation: [String: [ChatAttachment]] = [:]
@@ -773,12 +846,6 @@ public final class AppModel: ObservableObject {
     }
 
     var hasStartedBridge = false
-
-    /// Only the plugin/session prompt sections. The scheduler feeds this back
-    /// into `updateSystemPrompt`, so it must stay the additional text alone.
-    public func assembledSystemPrompt() -> String {
-        host.prompt.assembledText()
-    }
 
     /// Everything actually sent as the system prompt - core policy, plan rules,
     /// plugin text and skill metadata - broken out by section with sizes.
@@ -876,11 +943,8 @@ public enum CompositionLoader {
         var entries = document.entries
         // Every catalog entry (builtin + installed) mounts by default. host.patch.yml is
         // only an override layer: ordering, config merge, explicit disable/enable.
-        // ponytail: an entry's `isolate:` key is INERT here. PluginHost only honors it
-        // on a `plane: session` document (PluginHost.mount), and this path always builds
-        // a `.host` document, so `isolate` in host.patch.yml parses but does nothing.
-        // Upgrade path: give each conversation its own `plane: session` PluginHost and
-        // move the isolate-eligible entries there.
+        // An entry's `isolate: {service: true}` keeps those services private to that
+        // row (PluginHost.mount gives it a child ServiceRealm) on this host plane too.
         for item in catalog.entries.sorted(by: { $0.manifest.id < $1.manifest.id }) {
             guard !entries.contains(where: { $0.plugin == item.manifest.id }) else { continue }
             entries.append(CompositionEntry(id: item.manifest.id, plugin: item.manifest.id))

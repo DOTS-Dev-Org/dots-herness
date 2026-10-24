@@ -119,7 +119,8 @@ struct ModelPickerPopover: View {
                 .disabled(!enabled)
                 .opacity(enabled ? 1 : 0.45)
 
-            Picker(AppCopy.language == .tr ? "Bağlam ekonomisi" : "Context economy", selection: Binding(
+            Picker(AppCopy.text("modelPicker.contextEconomy"), selection
+: Binding(
                 get: { router.usageMode },
                 set: { model.setUsageMode($0) }
             )) {
@@ -240,11 +241,11 @@ struct ModelPickerPopover: View {
 
     @ViewBuilder
     private func providerLogo(for group: RouterModelGroup) -> some View {
-        let resource = Self.providerMarkResources[group.provider]
+        let resource = ProviderLogoSource.mark(for: group.provider)
         if let resource,
            let url = Bundle.module.url(forResource: resource, withExtension: "svg")
                 ?? Bundle.module.url(forResource: resource, withExtension: "png"),
-           let image = NSImage(contentsOf: url) {
+           let image = ImageFileCache.image(at: url) {
             if Self.adaptiveMonochromeMarks.contains(resource) {
                 Image(nsImage: image)
                     .resizable()
@@ -265,25 +266,6 @@ struct ModelPickerPopover: View {
     }
 
     private static let adaptiveMonochromeMarks: Set<String> = ["OpenAIMark", "AnthropicMark", "OpenRouterMark"]
-
-    /// Provider IDs share marks only when they belong to the same company.
-    /// Claude uses Anthropic's corporate A mark rather than Claude's starburst.
-    private static let providerMarkResources: [String: String] = [
-        "gpt": "OpenAIMark", "openai": "OpenAIMark",
-        "claude": "AnthropicMark", "anthropic": "AnthropicMark",
-        "grok-cli": "GrokMark", "grok": "GrokMark", "xai": "SpaceXAIMark",
-        "gemini-cli": "GeminiMark", "gemini": "GeminiMark",
-        "antigravity": "AntigravityMark",
-        "opencode": "OpenCodeMark", "opencode-go": "OpenCodeMark",
-        "iflow": "IFlowMark", "github": "GitHubMark", "kiro": "KiroMark",
-        "nvidia": "NvidiaMark", "zai": "ZaiMark", "glm": "ZaiMark",
-        "deepseek": "DeepSeekMark", "openrouter": "OpenRouterMark", "qwen": "QwenMark",
-        "kimi": "KimiMark", "minimax": "MiniMaxMark", "groq": "GroqMark",
-        "mistral": "MistralMark", "perplexity": "PerplexityMark", "together": "TogetherAIMark",
-        "fireworks": "FireworksMark", "cerebras": "CerebrasMark", "deepinfra": "DeepInfraMark",
-        "cohere": "CohereMark", "siliconflow": "SiliconFlowMark", "nebius": "NebiusMark",
-        "chutes": "ChutesMark", "hyperbolic": "HyperbolicMark", "vertex": "GoogleCloudMark"
-    ]
 
     private func pickerRow(
         title: String,

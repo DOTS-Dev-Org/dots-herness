@@ -81,6 +81,31 @@ final class NavigationHistoryTests: XCTestCase {
         XCTAssertTrue(model.isTasksPresented)
     }
 
+    @MainActor
+    func testRailSectionsJoinTheHistoryAndOpeningAChatReturnsHome() throws {
+        let (model, paths, workspace) = try makeModel()
+        ConversationStore(paths: paths).save([
+            chat("first", in: workspace.path),
+            chat("second", in: workspace.path),
+        ])
+        model.setWorkspace(workspace.path)
+        model.selectedConversationID = "first"
+
+        model.open(.media)
+        XCTAssertEqual(model.section, .media)
+        XCTAssertFalse(model.isTasksPresented)
+
+        model.navigateBack()
+        XCTAssertEqual(model.section, .home)
+        XCTAssertEqual(model.selectedConversationID, "first")
+
+        model.navigateForward()
+        XCTAssertEqual(model.section, .media)
+
+        model.selectedConversationID = "second"
+        XCTAssertEqual(model.section, .home)
+    }
+
     /// A chat deleted since it was visited can never open again, so the step
     /// skips it instead of leaving the buttons dead.
     @MainActor
@@ -104,6 +129,22 @@ final class NavigationHistoryTests: XCTestCase {
         XCTAssertTrue(model.canNavigateForward)
         model.navigateForward()
         XCTAssertEqual(model.selectedConversationID, "third")
+    }
+
+    /// A model pick is written off the main thread; a save requested after it must win.
+    @MainActor
+    func testBackgroundSaveNeverReplacesALaterSave() throws {
+        let (_, paths, workspace) = try makeModel()
+        let store = ConversationStore(paths: paths)
+        var conversation = chat("first", in: workspace.path)
+        for round in 0..<20 {
+            conversation.title = "stale \(round)"
+            store.saveInBackground([conversation])
+            conversation.title = "current \(round)"
+            store.save([conversation])
+        }
+        Thread.sleep(forTimeInterval: 0.5)
+        XCTAssertEqual(ConversationStore(paths: paths).loadAll().first?.title, "current 19")
     }
 
     @MainActor

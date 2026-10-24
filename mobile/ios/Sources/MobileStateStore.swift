@@ -11,11 +11,18 @@ struct MobileRuntimeEvent: Identifiable, Equatable, Sendable {
 
 struct StoredMobileMessage: Identifiable, Equatable, Sendable {
     let id: String
+    let rowID: Int64
     let conversationID: String
     let role: String
     let content: String
     let toolName: String?
     let createdAt: Date
+}
+
+struct StoredMobileMessagePage: Equatable, Sendable {
+    let messages: [StoredMobileMessage]
+    let beforeRowID: Int64?
+    let hasOlder: Bool
 }
 
 struct StoredMobileConversation: Identifiable, Equatable, Sendable {
@@ -49,9 +56,13 @@ final class MobileStateStore {
         }
         do {
             try execute("PRAGMA journal_mode = WAL")
+            // WAL with NORMAL stays consistent after a crash; FULL fsynced every
+            // commit, and this store commits on the main actor at every agent step.
+            try execute("PRAGMA synchronous = NORMAL")
             try execute("PRAGMA foreign_keys = ON")
             try migrate()
             recoverInterruptedRuns()
+            pruneEvents()
         } catch {
             // A broken state file must not prevent the app from opening. The
             // next write will surface the failure through the runtime event.
@@ -331,25 +342,43 @@ final class MobileStateStore {
         return result.reversed()
     }
 
-    func messages(conversationID: String, limit: Int = 500) -> [StoredMobileMessage] {
-        guard let database else { return [] }
+    func messages(conversationID: String, limit: Int = 10) -> [StoredMobileMessage] {
+        messagePage(conversationID: conversationID, limit: limit).messages
+    }
+
+    func messagePage(conversationID: String, beforeRowID: Int64? = nil, limit: Int = 10) -> StoredMobileMessagePage {
+        guard let database else { return StoredMobileMessagePage(messages: [], beforeRowID: nil, hasOlder: false) }
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
-        guard sqlite3_prepare_v2(database, "SELECT id, conversation_id, role, content, tool_name, created_at FROM messages WHERE conversation_id = ? ORDER BY rowid ASC LIMIT ?", -1, &statement, nil) == SQLITE_OK,
-              let statement else { return [] }
+        let pageSize = max(1, min(limit, 2_000))
+        let sql = beforeRowID == nil
+            ? "SELECT rowid, id, conversation_id, role, content, tool_name, created_at FROM messages WHERE conversation_id = ? ORDER BY rowid DESC"
+            : "SELECT rowid, id, conversation_id, role, content, tool_name, created_at FROM messages WHERE conversation_id = ? AND rowid < ? ORDER BY rowid DESC"
+        guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK,
+              let statement else { return StoredMobileMessagePage(messages: [], beforeRowID: nil, hasOlder: false) }
         sqlite3_bind_text(statement, 1, conversationID, -1, transient)
-        sqlite3_bind_int(statement, 2, Int32(max(1, min(limit, 2_000))))
-        var result: [StoredMobileMessage] = []
+        if let beforeRowID { sqlite3_bind_int64(statement, 2, beforeRowID) }
+        // The limit counts conversational messages only: tool steps and notices ride
+        // along, otherwise a tool-heavy turn fills the page and hides the user's messages.
+        // ponytail: 2,000-row cap so a run of thousands of tool steps can't stall the read.
+        var newestFirst: [StoredMobileMessage] = []
+        var counted = 0
+        var hasOlder = false
         while sqlite3_step(statement) == SQLITE_ROW {
-            result.append(StoredMobileMessage(
-                id: String(cString: sqlite3_column_text(statement, 0)),
-                conversationID: String(cString: sqlite3_column_text(statement, 1)),
-                role: String(cString: sqlite3_column_text(statement, 2)),
-                content: String(cString: sqlite3_column_text(statement, 3)),
-                toolName: optionalText(statement, column: 4),
-                createdAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 5))))
+            if counted == pageSize || newestFirst.count == 2_000 { hasOlder = true; break }
+            let role = String(cString: sqlite3_column_text(statement, 3))
+            newestFirst.append(StoredMobileMessage(
+                id: String(cString: sqlite3_column_text(statement, 1)),
+                rowID: sqlite3_column_int64(statement, 0),
+                conversationID: String(cString: sqlite3_column_text(statement, 2)),
+                role: role,
+                content: String(cString: sqlite3_column_text(statement, 4)),
+                toolName: optionalText(statement, column: 5),
+                createdAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 6))))
+            if role != "tool" && role != "system" { counted += 1 }
         }
-        return result
+        let page = Array(newestFirst.reversed())
+        return StoredMobileMessagePage(messages: Array(page), beforeRowID: page.first?.rowID, hasOlder: hasOlder)
     }
 
     /// Every project conversation except the caller's own, newest first. The transcript itself is
@@ -396,6 +425,14 @@ final class MobileStateStore {
         }
     }
 
+    /// The event log is append-only and read newest-first at most 2,000 rows per
+    /// project; older rows only grew the file and every scan of it.
+    private func pruneEvents() {
+        try? execute("DELETE FROM events WHERE rowid <= (SELECT rowid FROM events ORDER BY rowid DESC LIMIT 1 OFFSET \(Self.retainedEvents))")
+    }
+
+    static let retainedEvents = 10_000
+
     private func migrate() throws {
         try execute("BEGIN IMMEDIATE")
         do {
@@ -407,6 +444,7 @@ final class MobileStateStore {
             try execute("CREATE TABLE IF NOT EXISTS repositories(id TEXT PRIMARY KEY, provider TEXT, owner TEXT, name TEXT, branch TEXT, local_path TEXT, base_commit TEXT, created_at REAL NOT NULL, updated_at REAL NOT NULL)")
             try execute("CREATE TABLE IF NOT EXISTS conversations(id TEXT PRIMARY KEY, project_id TEXT NOT NULL DEFAULT 'local-default', status TEXT NOT NULL, mode TEXT NOT NULL, plan_mode INTEGER NOT NULL DEFAULT 0, created_at REAL NOT NULL, updated_at REAL NOT NULL)")
             try execute("CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, tool_name TEXT, created_at REAL NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
+            try execute("CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id)")
             try execute("CREATE TABLE IF NOT EXISTS model_context(conversation_id TEXT PRIMARY KEY, project_id TEXT NOT NULL DEFAULT 'local-default', content_json TEXT NOT NULL, updated_at REAL NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
             try execute("CREATE TABLE IF NOT EXISTS queued_prompts(id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, position INTEGER NOT NULL, payload_json TEXT NOT NULL, created_at REAL NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
             try execute("CREATE TABLE IF NOT EXISTS pending_actions(id TEXT PRIMARY KEY, conversation_id TEXT, kind TEXT NOT NULL, payload_json TEXT NOT NULL, status TEXT NOT NULL, created_at REAL NOT NULL, updated_at REAL NOT NULL)")
@@ -414,6 +452,8 @@ final class MobileStateStore {
             try addColumnIfMissing(table: "conversations", column: "project_id", definition: "TEXT NOT NULL DEFAULT 'local-default'")
             try addColumnIfMissing(table: "model_context", column: "project_id", definition: "TEXT NOT NULL DEFAULT 'local-default'")
             try addColumnIfMissing(table: "events", column: "project_id", definition: "TEXT NOT NULL DEFAULT 'local-default'")
+            try execute("CREATE INDEX IF NOT EXISTS idx_events_project ON events(project_id)")
+            try execute("CREATE INDEX IF NOT EXISTS idx_model_context_project ON model_context(project_id, updated_at)")
             try execute("COMMIT")
         } catch {
             try? execute("ROLLBACK")
@@ -474,11 +514,41 @@ final class MobileStateStore {
 private enum MobileEventPayloadSanitizer {
     static func sanitize(_ payload: [String: String]) -> [String: String] {
         payload.reduce(into: [:]) { result, item in
-            result[item.key] = isSensitiveKey(item.key) ? "[redacted]" : redact(item.value)
+            result[item.key] = isSensitiveKey(item.key) || containsSecret(item.value) ? "[redacted]" : item.value
         }
     }
 
-    static func redact(_ value: String) -> String { containsSecret(value) ? "[redacted]" : value }
+    /// Masks credential values in persisted text while retaining JSON structure.
+    /// Event payloads use `sanitize` and discard the entire field when it contains a secret.
+    static func redact(_ value: String) -> String {
+        let quotedRedacted = redactQuotedValues(in: value)
+        let range = NSRange(quotedRedacted.startIndex..., in: quotedRedacted)
+        guard secretPattern.firstMatch(in: quotedRedacted, range: range) != nil else { return quotedRedacted }
+        return secretPattern.stringByReplacingMatches(in: quotedRedacted, range: range, withTemplate: "[redacted]")
+    }
+
+    private static func containsSecret(_ value: String) -> Bool {
+        let range = NSRange(value.startIndex..., in: value)
+        return quotedSecretPattern.firstMatch(in: value, range: range) != nil
+            || secretPattern.firstMatch(in: value, range: range) != nil
+    }
+
+    private static func redactQuotedValues(in value: String) -> String {
+        let source = value as NSString
+        let range = NSRange(location: 0, length: source.length)
+        let matches = quotedSecretPattern.matches(in: value, range: range)
+        var result = value as NSString
+        for match in matches.reversed() {
+            let prefix = source.substring(with: match.range(at: 1))
+            let quotedValue = source.substring(with: match.range(at: 2))
+            let delimiter = quotedValue.hasPrefix("\\\"") ? "\\\"" : "\""
+            result = result.replacingCharacters(
+                in: match.range,
+                with: prefix + delimiter + "[redacted]" + delimiter
+            ) as NSString
+        }
+        return result as String
+    }
 
     private static func isSensitiveKey(_ key: String) -> Bool {
         let normalized = key.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: "_", with: "").lowercased()
@@ -486,9 +556,13 @@ private enum MobileEventPayloadSanitizer {
             || normalized.contains("credential")
     }
 
-    private static func containsSecret(_ value: String) -> Bool {
-        value.range(of: #"(?i)(api[_ -]?key|access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|password|authorization)\s*[:=]\s*\S+|\bBearer\s+\S+|\b(?:sk|ghp|github_pat|xox[baprs])[-_][A-Za-z0-9_-]{12,}\b"#, options: .regularExpression) != nil
-    }
+    private static let secretPattern = try! NSRegularExpression(
+        pattern: #"(?i)(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|secret|password|authorization)\s*[:=]\s*(?:bearer\s+)?(?:[^\s"\\]|\\/)+|\bBearer\s+(?:[^\s"\\]|\\/)+|\b(?:sk|ghp|github_pat|xox[baprs])[-_][A-Za-z0-9_-]{12,}\b"#
+    )
+
+    private static let quotedSecretPattern = try! NSRegularExpression(
+        pattern: #"(?i)((?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|secret|password|authorization)(?:\\")?"?\s*[:=]\s*(?:bearer\s+)?)(?:"(?:\\.|[^"\\])*"|\\"(?:\\.|[^\\"])*\\")"#
+    )
 }
 
 enum StateStoreError: LocalizedError {

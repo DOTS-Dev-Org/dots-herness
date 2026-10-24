@@ -56,68 +56,15 @@ private struct UsageWindowRow: View {
                 if let percent = window.usedPercent {
                     Text("\(Int((percent * 100).rounded()))%")
                         .font(.caption.weight(.semibold).monospacedDigit())
-                        .foregroundStyle(heatColor(percent))
+                        .foregroundStyle(usageHeatColor(percent))
                 }
             }
             if let percent = window.usedPercent {
-                ProgressView(value: min(max(percent, 0), 1)).tint(heatColor(percent))
+                ProgressView(value: min(max(percent, 0), 1)).tint(usageHeatColor(percent))
             }
             if let reset = window.resetsAt {
-                Text(resetLabel(reset)).font(.caption2).foregroundStyle(.secondary)
+                Text(usageResetLabel(reset)).font(.caption2).foregroundStyle(.secondary)
             }
         }
-    }
-
-    private func heatColor(_ percent: Double) -> Color {
-        switch ClaudeUsageService.heatLevel(percent) {
-        case 0: return .green
-        case 1: return .yellow
-        case 2: return .orange
-        default: return .red
-        }
-    }
-
-    private func resetLabel(_ date: Date) -> String {
-        switch ClaudeUsageService.resetText(date) {
-        case .relative(let text): return AppCopy.format("usage.resetsIn", text)
-        case .weekday(let text): return AppCopy.format("usage.resetsOn", text)
-        }
-    }
-}
-
-/// Sidebar account-footer dropdown. Reproduces the sidebar's chevron/animation
-/// pattern inline so it carries no dependency on `SidebarView` internals.
-struct SidebarUsageDropdown: View {
-    @ObservedObject var model: AppModel
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Button {
-                withAnimation(.easeOut(duration: 0.16)) { model.isUsageExpanded.toggle() }
-            } label: {
-                HStack(spacing: 7) {
-                    Text(AppCopy.text("sidebar.usage"))
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 0)
-                    Image(systemName: model.isUsageExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 16, height: 20)
-                }
-                .frame(height: 26)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            if model.isUsageExpanded {
-                ClaudeUsagePanel(router: model.router)
-                    .padding(.top, 4)
-                    .padding(.bottom, 8)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.top, 6)
     }
 }

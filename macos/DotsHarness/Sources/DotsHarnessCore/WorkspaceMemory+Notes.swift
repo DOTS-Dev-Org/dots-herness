@@ -1,9 +1,37 @@
 // Copyright (c) 2026 DOTS
-// Task, decision and conversation notes.
+// Task, decision and chat notes. Task and chat notes are the person's and live in
+// the user layer; decision notes are project memory and live in the repository.
 
 import CryptoKit
 import Foundation
 import PluginRuntime
+
+public enum WorkspaceBacklogText {
+    public static func visibleText(_ text: String, hidePartialMarkerTail: Bool = false) -> String {
+        // Runs on the whole live reply ten times a second. Without "backlog" anywhere no
+        // line is a marker, and only a last line that may be starting one can be hidden.
+        if text.range(of: "backlog", options: .caseInsensitive) == nil {
+            guard hidePartialMarkerTail else { return text }
+            // Scalars, not Characters: "\r\n" is one Character and would hide the newline.
+            let scalars = text.unicodeScalars
+            let newline = scalars.lastIndex(of: "\n")
+            let tail = String(scalars[(newline.map(scalars.index(after:)) ?? scalars.startIndex)...])
+            let value = tail.trimmingCharacters(in: CharacterSet(charactersIn: " \t\r")).lowercased()
+            guard !value.isEmpty, "backlog:".hasPrefix(value) || "backlog-done:".hasPrefix(value) else { return text }
+            return newline.map { String(scalars[..<$0]) } ?? ""
+        }
+        let lines = text.components(separatedBy: "\n")
+        let visible = lines.enumerated().compactMap { index, line -> String? in
+            let value = line.trimmingCharacters(in: CharacterSet(charactersIn: " \t\r"))
+            let lower = value.lowercased()
+            if lower.hasPrefix("backlog:") || lower.hasPrefix("backlog-done:") { return nil }
+            if hidePartialMarkerTail, index == lines.count - 1, !value.isEmpty,
+               ("backlog:".hasPrefix(lower) || "backlog-done:".hasPrefix(lower)) { return nil }
+            return line
+        }
+        return visible.joined(separator: "\n")
+    }
+}
 
 extension WorkspaceMemory {
     func beginTask(runID: UUID, prompt: String, provider: String, model: String) {
@@ -17,10 +45,8 @@ extension WorkspaceMemory {
             model: model
         )
         tasks[runID.uuidString] = task
-        _ = try? writeEvent(type: "task.started", scope: "task", payload: [
+        recordActivity(type: "task.started", payload: [
             "runId": task.runID,
-            "promptSummary": task.promptSummary,
-            "promptHash": task.promptHash,
             "startedAt": task.startedAt,
             "provider": sanitize(provider, limit: 80),
             "model": sanitize(model, limit: 120),
@@ -29,7 +55,7 @@ extension WorkspaceMemory {
     }
 
     func writeTaskNote(_ task: TaskRecord, status: String, finalText: String, openItems: [String] = []) {
-        guard let root = memoryDirectory else { return }
+        guard let root = userMemoryDirectory else { return }
         let changedPaths = task.changedFiles.compactMap { $0["path"] as? String }
         let fileLinks = changedPaths.map { "file:\($0)" }
         let decisionLinks = (state["acceptedDecisions"] as? [[String: Any]] ?? [])
@@ -87,8 +113,10 @@ extension WorkspaceMemory {
         ].joined(separator: "\n")
         try? fileManager.createDirectory(at: root.appendingPathComponent("tasks"), withIntermediateDirectories: true)
         try? note.write(to: root.appendingPathComponent("tasks").appendingPathComponent("\(task.runID).md"), atomically: true, encoding: .utf8)
-        writeIndexNote()
-        writePreferencesNote()
+        // The files this task changed are now found by its words; see `taskFileTerms()`.
+        // Marked stale, not dropped: dropping it rebuilt the index on the main actor at the
+        // next prompt. The symbol cache is keyed by file date, so it stays valid.
+        fileIndex?.stamp = .distantPast
     }
 
     func writeDecisionNotes() {
@@ -107,9 +135,9 @@ extension WorkspaceMemory {
         let payload = decision["payload"] as? [String: Any] ?? [:]
         let summary = payload["summary"] as? String ?? payload["value"] as? String ?? "Accepted project decision"
         let supersedes = (decision["supersedes"] as? [String] ?? []).map { "decision-\($0)" }
-        let runID = decisionRunID(decision)
-        let taskLink = runID.map { "task-\($0)" }
-        let links = ["index"] + supersedes + (taskLink.map { [$0] } ?? [])
+        // No link to the task that proposed it: that note is the person's, and a
+        // repository file must not name one. The run id stays in the event payload.
+        let links = ["index"] + supersedes
         let front = frontmatter([
             "id": "decision-\(eventID)",
             "type": "decision",
@@ -119,7 +147,6 @@ extension WorkspaceMemory {
             "actor": (decision["actor"] as? [String: Any])?["personId"] as? String ?? "unknown",
         ], tags: ["decision", "accepted"], links: links)
         let related = supersedes.isEmpty ? "" : "\n## Supersedes\n\n" + supersedes.map { "- [[\($0)]]" }.joined(separator: "\n") + "\n"
-        let origin = taskLink.map { "\n## Origin\n\n- [[\($0)]]\n" } ?? ""
         let note = [
             front,
             "# Decision: \(eventID)",
@@ -134,24 +161,16 @@ extension WorkspaceMemory {
             "",
             sanitize(summary, limit: 600),
             related,
-            origin,
         ].joined(separator: "\n")
         let directory = root.appendingPathComponent("decisions", isDirectory: true)
         try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         try? note.write(to: directory.appendingPathComponent("\(eventID).md"), atomically: true, encoding: .utf8)
     }
 
-    func writeConversationNotes() {
-        guard memoryDirectory != nil else { return }
-        let conversations = state["conversationStates"] as? [String: Any] ?? [:]
-        for conversationID in conversations.keys.sorted() {
-            guard let record = conversations[conversationID] as? [String: Any] else { continue }
-            writeConversationNote(conversationID: conversationID, record: record)
-        }
-    }
-
+    /// Writes the lifecycle note of one chat. Chats are the person's, so the note goes
+    /// to the user layer; the repository never learns which chats exist.
     func writeConversationNote(conversationID: String, record: [String: Any]) {
-        guard let root = memoryDirectory else { return }
+        guard let root = userMemoryDirectory else { return }
         let directory = root.appendingPathComponent("conversations", isDirectory: true)
         try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         let title = sanitize(record["title"] as? String ?? conversationID, limit: 120)
@@ -201,14 +220,6 @@ extension WorkspaceMemory {
         )
     }
 
-    /// Refreshes just the conversation a lifecycle event touched.
-    func writeConversationNote(for event: [String: Any]) {
-        guard let conversationID = (event["payload"] as? [String: Any])?["conversationId"] as? String,
-              let record = (state["conversationStates"] as? [String: Any])?[conversationID] as? [String: Any]
-        else { return }
-        writeConversationNote(conversationID: conversationID, record: record)
-    }
-
     private func conversationNoteID(_ conversationID: String) -> String {
         "conversation-\(String(digest(Data(conversationID.utf8)).prefix(16)))"
     }
@@ -216,6 +227,11 @@ extension WorkspaceMemory {
     private func decisionRunID(_ event: [String: Any]) -> String? {
         let payload = event["payload"] as? [String: Any] ?? [:]
         return payload["runId"] as? String ?? payload["runID"] as? String
+    }
+
+    /// Backlog directives are internal control text, so never show their lines to people.
+    func visibleText(in text: String, hidePartialMarkerTail: Bool = false) -> String {
+        WorkspaceBacklogText.visibleText(text, hidePartialMarkerTail: hidePartialMarkerTail)
     }
 
     /// Backlog markers the model writes into its final reply. Frees the note
@@ -230,10 +246,41 @@ extension WorkspaceMemory {
     }
 
     private func taskNoteURLs() -> [URL] {
-        guard let root = memoryDirectory,
+        guard let root = userMemoryDirectory,
               let files = try? fileManager.contentsOfDirectory(at: root.appendingPathComponent("tasks"), includingPropertiesForKeys: nil)
         else { return [] }
         return files.filter { $0.pathExtension == "md" }
+    }
+
+    /// Deletes one task note and every activity record of that task, for good. The
+    /// person asked for it to be gone, so nothing of it is kept here.
+    public func deleteTaskNote(runID: String) throws {
+        guard let root = userMemoryDirectory else { throw WorkspaceMemoryError.noWorkspace }
+        try? fileManager.removeItem(at: root.appendingPathComponent("tasks", isDirectory: true).appendingPathComponent("\(runID).md"))
+        purgeActivity { ($0["payload"] as? [String: Any])?["runId"] as? String == runID }
+        forgetInsights(ofRun: runID)
+    }
+
+    /// Deletes one chat's lifecycle note, and the activity records of that chat.
+    /// `noteID` is the note's id, which is also its file name.
+    public func deleteConversationNote(noteID: String) throws {
+        guard let root = userMemoryDirectory else { throw WorkspaceMemoryError.noWorkspace }
+        try? fileManager.removeItem(at: root.appendingPathComponent("conversations", isDirectory: true).appendingPathComponent("\(noteID).md"))
+        purgeActivity { object in
+            guard let conversationID = (object["payload"] as? [String: Any])?["conversationId"] as? String else { return false }
+            return conversationNoteID(conversationID) == noteID
+        }
+    }
+
+    /// Rewrites the activity log without the records that match.
+    func purgeActivity(where matches: ([String: Any]) -> Bool) {
+        guard let url = userMemoryDirectory?.appendingPathComponent("activity.jsonl"),
+              let text = try? String(contentsOf: url, encoding: .utf8) else { return }
+        let kept = text.split(separator: "\n").filter { line in
+            guard let object = (try? JSONSerialization.jsonObject(with: Data(line.utf8))) as? [String: Any] else { return true }
+            return !matches(object)
+        }
+        try? kept.map { $0 + "\n" }.joined().write(to: url, atomically: true, encoding: .utf8)
     }
 
     /// `BACKLOG-DONE: <run id>` in a reply flips that note out of the backlog.
@@ -253,7 +300,7 @@ extension WorkspaceMemory {
 
     func backlogText() -> String {
         taskNoteURLs().sorted { $0.lastPathComponent > $1.lastPathComponent }.compactMap { url -> String? in
-            guard let note = try? String(contentsOf: url, encoding: .utf8),
+            guard let note = MemoryFileCache.text(at: url),
                   note.contains("status: unfinished") || note.contains("status: failed") else { return nil }
             let title = note.split(whereSeparator: \.isNewline)
                 .first { $0.hasPrefix("title:") }
@@ -268,44 +315,134 @@ extension WorkspaceMemory {
     }
 
     /// Up to three earlier tasks, best term overlap first and newest first among
-    /// equals; with no overlap, the three newest. Each is one compact entry - the
+    /// equals. Only tasks sharing a word are included. Each is one compact entry - the
     /// request, the files and the outcome - not the whole note: this text is
     /// captured again whenever the selection changes.
     func relevantTasks(for prompt: String) -> String {
         let terms = FeedbackStore.tokens(prompt)
         let scored = taskNoteURLs().compactMap { url -> (score: Int, completed: String, entry: String)? in
-            guard let note = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+            // Score first: only the few notes sharing a word need their sections parsed.
+            guard let noteTerms = MemoryFileCache.tokens(at: url),
+                  !terms.isDisjoint(with: noteTerms),
+                  let note = MemoryFileCache.text(at: url) else { return nil }
             let lines = note.split(whereSeparator: \.isNewline).map(String.init)
-            func field(_ name: String) -> String {
-                lines.first { $0.hasPrefix("\(name):") }
-                    .map { String($0.dropFirst(name.count + 1)).trimmingCharacters(in: CharacterSet(charactersIn: " \"")) } ?? ""
-            }
             func section(_ title: String) -> [String] {
                 guard let start = lines.firstIndex(of: "## \(title)") else { return [] }
                 return Array(lines[(start + 1)...].prefix { !$0.hasPrefix("## ") })
             }
             let files = section("Changed files")
                 .compactMap { $0.firstMatch(of: #/\[\[file:(.+?)\]\]/#).map { String($0.1) } }
-            let result = sanitize(section("Result").joined(separator: " "), limit: 300)
-            let completed = field("completed")
-            var entry = "- \(completed.prefix(10)) [\(field("status"))] \(field("title"))"
+            let result = sanitize(section("Result").joined(separator: " "), limit: 600)
+            let completed = taskNoteField("completed", in: lines)
+            let runID = url.deletingPathExtension().lastPathComponent
+            var entry = "- \(completed.prefix(10)) [\(taskNoteField("status", in: lines))] \(taskNoteField("title", in: lines)) (task \(runID))"
             if !files.isEmpty { entry += "\n  Files: \(files.prefix(8).joined(separator: ", "))" }
             if !result.isEmpty { entry += "\n  Result: \(result)" }
-            let score = terms.intersection(FeedbackStore.tokens(note)).count
+            let score = terms.intersection(noteTerms).count
             return (score, completed, entry)
         }
         let matched = scored.filter { $0.score > 0 }
-        return (matched.isEmpty ? scored : matched)
+        return matched
             .sorted { $0.score != $1.score ? $0.score > $1.score : $0.completed > $1.completed }
             .prefix(3)
             .map(\.entry)
             .joined(separator: "\n")
     }
 
+    /// The repository's files named like the request, so the agent opens them instead
+    /// of sweeping the workspace for where to start.
+    /// ponytail: the list follows git's index, so a workspace that is not a repository
+    /// root gets none and a file not yet added is missed until the index moves.
+    func relevantFiles(for prompt: String) -> String {
+        guard let workspaceURL,
+              let stamp = (try? fileManager.attributesOfItem(atPath: workspaceURL.appendingPathComponent(".git/index").path))?[.modificationDate] as? Date
+        else { return "" }
+        if fileIndex?.workspace != workspaceURL {
+            // First request in this workspace: it needs an index now.
+            let paths = Self.gitLines(["ls-files", "--cached", "--others", "--exclude-standard"], workspace: workspaceURL)
+            let learned = Self.taskFileTerms(taskNoteURLs())
+            let changes = Self.lastChanges(workspace: workspaceURL)
+            fileIndex = (workspaceURL, stamp, FileIndex(paths: paths, learned: learned, symbols: symbolCache.mapValues(\.names)), changes)
+            scheduleFileIndexRebuild(workspaceURL, stamp: stamp, paths: paths, learned: learned, changes: changes)
+        } else if fileIndex?.stamp != stamp, fileIndexRebuildStamp != stamp {
+            // Git's index moves on nearly every turn: answer from the previous index and
+            // rebuild off the main actor (two git runs, every task note, 20k paths).
+            scheduleFileIndexRebuild(workspaceURL, stamp: stamp, paths: nil, learned: nil, changes: nil)
+        }
+        guard let fileIndex else { return "" }
+        return fileIndex.index.hits(prompt).map { hit in
+            var line = "- `\(hit.path)`"
+            if !hit.symbols.isEmpty { line += " (\(hit.symbols.joined(separator: ", ")))" }
+            if let change = fileIndex.changes[hit.path] { line += " - last changed \(sanitize(change, limit: 100))" }
+            return line
+        }.joined(separator: "\n")
+    }
+
+    /// Replaces `fileIndex` with one built off the main actor, symbols included. Reading
+    /// every source file would hold a request up, so the current index answers until then.
+    private func scheduleFileIndexRebuild(
+        _ workspaceURL: URL, stamp: Date,
+        paths: [String]?, learned: [String: Set<String>]?, changes: [String: String]?
+    ) {
+        fileIndexRebuildStamp = stamp
+        let known = symbolCache
+        let noteURLs = taskNoteURLs()
+        symbolScan?.cancel()
+        symbolScan = Task.detached(priority: .utility) { [weak self] in
+            let paths = paths ?? Self.gitLines(["ls-files", "--cached", "--others", "--exclude-standard"], workspace: workspaceURL)
+            let learned = learned ?? Self.taskFileTerms(noteURLs)
+            let changes = changes ?? Self.lastChanges(workspace: workspaceURL)
+            let scanned = FileIndex.scanSymbols(paths: paths, workspace: workspaceURL, known: known)
+            let index = FileIndex(paths: paths, learned: learned, symbols: scanned.mapValues(\.names))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard let self, self.workspaceURL == workspaceURL else { return }
+                self.symbolCache = scanned
+                if self.fileIndexRebuildStamp == stamp { self.fileIndexRebuildStamp = nil }
+                self.fileIndex = (workspaceURL, stamp, index, changes)
+            }
+        }
+    }
+
+    /// Each file's latest commit, as "date subject", so the agent knows when and why a
+    /// file last moved without running `git log` itself.
+    /// ponytail: the last 300 commits, read when git's index moves; an older file has
+    /// no line, and uncommitted work shows only in the task history beside this list.
+    nonisolated static func lastChanges(workspace: URL) -> [String: String] {
+        var changes: [String: String] = [:]
+        var commit = ""
+        for line in gitLines(["log", "-n", "300", "--name-only", "--format=%x01%cs %s"], workspace: workspace) {
+            if line.hasPrefix("\u{1}") { commit = String(line.dropFirst()) } else if changes[line] == nil { changes[line] = commit }
+        }
+        return changes
+    }
+
+    /// The words of each earlier request, by the files that request changed: "the payment
+    /// flow" then finds `paytr.ts`, which its name alone never would.
+    func taskFileTerms() -> [String: Set<String>] { Self.taskFileTerms(taskNoteURLs()) }
+
+    nonisolated static func taskFileTerms(_ noteURLs: [URL]) -> [String: Set<String>] {
+        var terms: [String: Set<String>] = [:]
+        for url in noteURLs {
+            guard let note = MemoryFileCache.text(at: url),
+                  let summary = note.components(separatedBy: "\n## Request summary\n").dropFirst().first?
+                      .components(separatedBy: "\n## Changed files\n").first else { continue }
+            let words = FeedbackStore.tokens(summary)
+            for match in note.matches(of: #/\[\[file:(.+?)\]\]/#) {
+                terms[String(match.1), default: []].formUnion(words)
+            }
+        }
+        return terms
+    }
+
+    /// The person's preferences for this project. Preferences that hold everywhere
+    /// are in `UserProfile.text`, so they are not repeated here.
     public func preferencesText() -> String {
-        let own = identity.flatMap { (state["activePreferences"] as? [String: Any])?[$0.personID] as? [String: Any] } ?? [:]
-        // What another client recorded in the facts file counts too.
-        return markdownDictionary(own.merging(foreignFacts("preference", knownKeys: Set(own.keys))) { own, _ in own })
+        guard let projectID else { return "" }
+        let projectKeys = Set(projectMemoryFacts().map { $0.key.lowercased() })
+        let preferences = profile.projectPreferences(projectID: projectID)
+            .filter { !projectKeys.contains($0.key.lowercased()) }
+        return markdownDictionary(preferences.mapValues { $0 as Any })
     }
 
     func markdownList(_ list: [[String: Any]], prefix: String = "Decision") -> String {
@@ -323,19 +460,9 @@ extension WorkspaceMemory {
     }
 
     func eventWins(_ candidate: [String: Any], over current: [String: Any]) -> Bool {
-        func authority(_ event: [String: Any]) -> (Int, Int, Int, String) {
-            let deviceID = (event["actor"] as? [String: Any])?["deviceId"] as? String ?? ""
-            let member = member(deviceID: deviceID)
-            let role = MemoryRole(rawValue: member?["role"] as? String ?? "observer")?.rank ?? 0
-            let score = member?["score"] as? Int ?? 0
-            return (role, score, event["lamport"] as? Int ?? 0, event["eventId"] as? String ?? "")
-        }
-        let left = authority(candidate)
-        let right = authority(current)
-        if left.0 != right.0 { return left.0 > right.0 }
-        if left.1 != right.1 { return left.1 > right.1 }
-        if left.2 != right.2 { return left.2 > right.2 }
-        return left.3 > right.3
+        let left = (candidate["lamport"] as? Int ?? 0, candidate["eventId"] as? String ?? "")
+        let right = (current["lamport"] as? Int ?? 0, current["eventId"] as? String ?? "")
+        return left.0 == right.0 ? left.1 > right.1 : left.0 > right.0
     }
 
     func markdownDictionary(_ dictionary: [String: Any]) -> String {
@@ -368,5 +495,158 @@ extension WorkspaceMemory {
         guard markers.contains(where: { lower.contains($0) }) else { return nil }
         let value = text.replacingOccurrences(of: "\n", with: " ")
         return sanitize(value, limit: 240)
+    }
+}
+
+/// File paths by the words of their names and of what they declare.
+/// ponytail: declarations are found by keyword, not parsed, and word overlap, not
+/// embeddings; a request in other words than the code's own ("hafıza penceresi" for
+/// MemoryVaultView) finds nothing. Add embeddings when that is seen sending the agent
+/// searching.
+/// Task notes, facts and decisions are re-read for every prompt and grow without
+/// limit. Keyed by date and size, so an edit (ours or the person's) is seen at once.
+/// ponytail: one process-wide table, cleared past 4,000 files.
+enum MemoryFileCache {
+    private struct Entry {
+        let stamp: FeedbackStore.FileStamp
+        let text: String
+        var tokens: Set<String>?
+    }
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var entries: [String: Entry] = [:]
+
+    static func text(at url: URL) -> String? {
+        entry(at: url)?.text
+    }
+
+    /// `FeedbackStore.tokens` of the whole file, computed once per version.
+    static func tokens(at url: URL) -> Set<String>? {
+        guard let entry = entry(at: url) else { return nil }
+        if let tokens = entry.tokens { return tokens }
+        let tokens = FeedbackStore.tokens(entry.text)
+        lock.lock()
+        if entries[url.path]?.stamp == entry.stamp { entries[url.path]?.tokens = tokens }
+        lock.unlock()
+        return tokens
+    }
+
+    private static func entry(at url: URL) -> Entry? {
+        let stamp = FeedbackStore.FileStamp(url, fileManager: .default)
+        guard stamp.modified != nil else { return nil }
+        lock.lock()
+        if let entry = entries[url.path], entry.stamp == stamp {
+            lock.unlock()
+            return entry
+        }
+        lock.unlock()
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        let entry = Entry(stamp: stamp, text: text)
+        lock.lock()
+        if entries.count > 4_000 { entries.removeAll() }
+        entries[url.path] = entry
+        lock.unlock()
+        return entry
+    }
+}
+
+struct FileIndex {
+    typealias Symbols = (modified: Date, names: [String])
+
+    /// ponytail: the first 20,000 files; a larger repository is indexed in part.
+    static let limit = 20_000
+    let names: [(path: String, tokens: Set<String>, symbols: [String], symbolTokens: Set<String>)]
+    let frequency: [String: Int]
+    let symbolFrequency: [String: Int]
+
+    /// `learned` adds, per path, the words of the requests that changed that file;
+    /// `symbols`, per path, the names it declares.
+    /// ponytail: a word counts the same from a request as from the name, and a request
+    /// that changed more than 30 files teaches none of them (the frequency cut below).
+    init(paths: [String], learned: [String: Set<String>] = [:], symbols: [String: [String]] = [:]) {
+        // Git quotes a path it had to escape; such a name is not worth showing a model.
+        names = paths.lazy.filter { !$0.hasPrefix("\"") && $0.count <= 200 }.prefix(Self.limit).map { path in
+            let name = URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
+            let declared = symbols[path] ?? []
+            return (path, Self.words(name).union(learned[path] ?? []), declared, declared.reduce(into: []) { $0.formUnion(Self.words($1)) })
+        }
+        frequency = names.reduce(into: [:]) { counts, entry in entry.tokens.forEach { counts[$0, default: 0] += 1 } }
+        symbolFrequency = names.reduce(into: [:]) { counts, entry in entry.symbolTokens.forEach { counts[$0, default: 0] += 1 } }
+    }
+
+    /// "MemoryVaultView" is found by "memory", "vault" and by its whole name.
+    static func words(_ name: String) -> Set<String> {
+        var spaced = ""
+        var previous: Character = " "
+        for character in name {
+            if character.isUppercase, previous.isLowercase || previous.isNumber { spaced.append(" ") }
+            spaced.append(character)
+            previous = character
+        }
+        return FeedbackStore.tokens(name).union(FeedbackStore.tokens(spaced))
+    }
+
+    func matching(_ prompt: String, limit: Int = 12) -> [String] {
+        hits(prompt, limit: limit).map(\.path)
+    }
+
+    /// The best files for a request, each with the declarations the request names.
+    func hits(_ prompt: String, limit: Int = 12) -> [(path: String, symbols: [String])] {
+        let terms = FeedbackStore.tokens(prompt)
+        guard !terms.isEmpty else { return [] }
+        return names.compactMap { entry -> (score: Double, path: String, symbols: [String])? in
+            // A word many files are named after ("view", "tests") points nowhere.
+            var score = entry.tokens.intersection(terms).reduce(0.0) { total, token in
+                let count = frequency[token] ?? 1
+                return count > 30 ? total : total + 1 + 1 / Double(count)
+            }
+            // A declaration says less about a file than its name does: half the weight.
+            score += entry.symbolTokens.intersection(terms).subtracting(entry.tokens).reduce(0.0) { total, token in
+                let count = symbolFrequency[token] ?? 1
+                return count > 30 ? total : total + 0.5 + 1 / Double(count)
+            }
+            return score > 0 ? (score, entry.path, entry.symbols) : nil
+        }
+        .sorted { $0.score != $1.score ? $0.score > $1.score : $0.path < $1.path }
+        .prefix(limit)
+        .map { hit in (hit.path, Array(hit.symbols.filter { !Self.words($0).isDisjoint(with: terms) }.prefix(4))) }
+    }
+
+    static let sourceExtensions: Set<String> = [
+        "swift", "ts", "tsx", "js", "jsx", "cs", "py", "go", "rs", "kt", "java", "dart", "c", "h", "cpp", "m", "mm", "rb", "php",
+    ]
+    private static let declaration = try! NSRegularExpression(
+        pattern: #"\b(?:class|struct|enum|protocol|extension|interface|trait|actor|func|fun|fn|def|function|type|record|namespace)\s+([A-Za-z_]\w{2,})"#
+    )
+
+    /// The names a source text declares, in order, each once.
+    /// ponytail: a keyword followed by a name; a C# or Java method has no keyword and is
+    /// missed, and a keyword inside a comment or a string is taken. Parse when it matters.
+    static func symbols(in text: String) -> [String] {
+        var seen = Set<String>()
+        let source = text as NSString
+        return declaration.matches(in: text, range: NSRange(location: 0, length: source.length))
+            .map { source.substring(with: $0.range(at: 1)) }
+            .filter { seen.insert($0).inserted }
+            .prefix(200).map { $0 }
+    }
+
+    /// Reads what each source file declares; a file whose date has not moved keeps what
+    /// was read before.
+    /// ponytail: the first 5,000 source files, none over 300 KB.
+    static func scanSymbols(paths: [String], workspace: URL, known: [String: Symbols]) -> [String: Symbols] {
+        var result: [String: Symbols] = [:]
+        for path in paths.lazy.filter({ sourceExtensions.contains(($0 as NSString).pathExtension.lowercased()) }).prefix(5_000) {
+            if Task.isCancelled { break }
+            let url = workspace.appendingPathComponent(path)
+            guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+                  let modified = attributes[.modificationDate] as? Date,
+                  (attributes[.size] as? Int ?? .max) <= 300_000 else { continue }
+            if let kept = known[path], kept.modified == modified {
+                result[path] = kept
+            } else if let text = try? String(contentsOf: url, encoding: .utf8) {
+                result[path] = (modified, symbols(in: text))
+            }
+        }
+        return result
     }
 }

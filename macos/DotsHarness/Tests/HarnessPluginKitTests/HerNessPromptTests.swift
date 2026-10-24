@@ -111,7 +111,7 @@ final class HerNessPromptTests: XCTestCase {
         XCTAssertFalse(offered.contains("write_file"))
         XCTAssertFalse(offered.contains("remove_file"))
         XCTAssertTrue(offered.contains("run_command"))
-        for name in offered {
+        for name in DeferredToolSession.definitions.map(\.name) {
             XCTAssertTrue(prompt.contains(name), "plan prompt does not mention \(name)")
         }
     }
@@ -157,42 +157,41 @@ final class HerNessPromptTests: XCTestCase {
         let core = HerNessPrompt.core(scope: "scope line", toolGuidance: "tool line")
         XCTAssertTrue(core.contains("scope line"))
         XCTAssertTrue(core.contains("tool line"))
-        XCTAssertTrue(core.contains("tagged with a trust level"))
+        XCTAssertTrue(core.contains("Instruction priority"))
         XCTAssertFalse(core.contains("Clarification"))
         // Rules files are followed, data is not: the two never share a trust level.
         XCTAssertTrue(core.contains("trust=\"rules\""))
-        XCTAssertTrue(core.contains("trust=\"data\""))
     }
 
     func testCorePlansComplexWorkWithoutTheApprovalGate() {
         let core = HerNessPrompt.core(scope: "scope line", toolGuidance: "tool line")
         let normalized = core.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-        XCTAssertTrue(normalized.contains("Simple work is done directly, with no plan"))
-        XCTAssertTrue(normalized.contains("Complex work gets a plan first"))
+        XCTAssertTrue(normalized.contains("A simple task needs no user-facing plan"))
+        XCTAssertTrue(normalized.contains("For dependent, complex work"))
         // The model judges complexity; the prompt sets no file-count threshold.
-        XCTAssertTrue(normalized.contains("How many files change is not the test"))
-        XCTAssertTrue(normalized.contains("When in doubt, do the work directly"))
-        XCTAssertTrue(normalized.contains("a plan you chose to write needs no approval"))
-        XCTAssertTrue(normalized.contains("While a <plan_mode> section is current it replaces this section"))
+        XCTAssertTrue(normalized.contains("concrete steps"))
+        XCTAssertTrue(normalized.contains("Finish authorized work"))
+        XCTAssertTrue(normalized.contains("choosing a plan does not require approval"))
+        XCTAssertTrue(normalized.contains("<plan_mode> section and is read-only"))
     }
 
     func testCoreUsesQuestionToolForMissingTaskDetailsButAnswersInformationDirectly() {
         let core = HerNessPrompt.core(scope: "scope line", toolGuidance: "tool line")
         let normalized = core.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("Direct informational questions"))
-        XCTAssertTrue(normalized.contains("call ask_user"))
-        XCTAssertTrue(normalized.contains("Do not stop with a question in plain chat text"))
+        XCTAssertTrue(normalized.contains("Answer ordinary chat"))
+        XCTAssertTrue(normalized.contains("through ask_user"))
+        XCTAssertTrue(normalized.contains("A user's answer resumes the original task"))
     }
 
     func testCoreIncludesCompactResponseEconomyWithoutDroppingTechnicalContent() {
         let core = HerNessPrompt.core(scope: "scope line", toolGuidance: "tool line")
         XCTAssertTrue(core.contains("Response economy"))
-        XCTAssertTrue(core.contains("shortens prose only, never required work"))
-        XCTAssertTrue(core.contains("exact errors, negative qualifiers, tests, and evidence stay complete"))
-        XCTAssertTrue(core.contains("never claim completion"))
-        XCTAssertTrue(core.contains("security warnings, irreversible confirmations"))
-        XCTAssertTrue(core.contains("generated code, comments, commits, docs, PR text"))
+        XCTAssertTrue(core.contains("shorten prose, not required work"))
+        XCTAssertTrue(core.contains("commands, errors, tests or evidence"))
+        XCTAssertTrue(core.contains("state what remains"))
+        XCTAssertTrue(core.contains("Destructive/irreversible actions"))
+        XCTAssertTrue(core.contains("exact code"))
         // Said once: the per-turn style sections no longer restate the disclaimer.
         XCTAssertFalse(core.contains("billing guarantee"))
     }
@@ -201,26 +200,25 @@ final class HerNessPromptTests: XCTestCase {
         let core = HerNessPrompt.core(scope: "scope line", toolGuidance: "tool line")
         let normalized = core.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("Response language"))
-        XCTAssertTrue(normalized.contains("latest human-authored user request"))
-        XCTAssertTrue(normalized.contains("in this conversation only"))
-        XCTAssertTrue(normalized.contains("memory text"))
-        XCTAssertTrue(normalized.contains("application's interface language"))
-        XCTAssertTrue(normalized.contains("explicitly asks for a response in a named language"))
-        XCTAssertTrue(normalized.contains("for that response only"))
+        XCTAssertTrue(normalized.contains("Accuracy and language"))
+        XCTAssertTrue(normalized.contains("latest human request's language"))
+        XCTAssertTrue(normalized.contains("this conversation's last reliable response language"))
+        XCTAssertTrue(normalized.contains("UI language, memory, tools and other chats"))
+        XCTAssertTrue(normalized.contains("Explicit language requests win"))
+        XCTAssertTrue(normalized.contains("for that response"))
         XCTAssertTrue(normalized.contains("last reliable response language"))
-        XCTAssertTrue(normalized.contains("answer in English"))
+        XCTAssertTrue(normalized.contains("use English"))
 
         func position(_ phrase: String) -> String.Index {
             normalized.range(of: phrase)?.lowerBound ?? normalized.endIndex
         }
         XCTAssertLessThan(
-            position("latest human-authored user request"),
-            position("explicitly asks for a response in a named language")
+            position("latest human request's language"),
+            position("Explicit language requests win")
         )
         XCTAssertLessThan(
-            position("explicitly asks for a response in a named language"),
-            position("latest request is mixed")
+            position("Explicit language requests win"),
+            position("If the request is mixed")
         )
     }
 
@@ -232,7 +230,7 @@ final class HerNessPromptTests: XCTestCase {
 
         let after = HerNessPrompt.core(scope: "scope line", toolGuidance: "tool line")
         XCTAssertEqual(after, before)
-        XCTAssertTrue(after.contains("application's interface language"))
+        XCTAssertTrue(after.contains("UI language, memory, tools and other chats"))
     }
 
     @MainActor

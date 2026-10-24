@@ -22,6 +22,15 @@ final class CacheEpochAndReuseTests: XCTestCase {
         XCTAssertEqual(epoch.lastChangeReason, "catalog_changed")
     }
 
+    /// A transient empty read must not replace the catalog the prefix was cached with.
+    func testEmptyCatalogNeverReplacesAKnownCatalog() {
+        var epoch = AgentConversationCacheEpoch(tools: [tool("a")], bindingsFingerprint: "one", policyFingerprint: "policy", contextSegment: 0)
+        let id = epoch.id
+        epoch.reconcile(tools: [], bindings: "one", policy: "policy", segment: 0)
+        XCTAssertEqual(epoch.id, id)
+        XCTAssertEqual(epoch.tools.map(\.name), ["a"])
+    }
+
     func testRevisionNoticesAppendOnceAndDoNotRewriteToolGroupOrOldUser() {
         let call = AgentToolCall(id: "call", name: "read_file", arguments: "{}")
         let prefix: [AgentMessage] = [.init(role: .user, content: "original"),

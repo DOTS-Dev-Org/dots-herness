@@ -32,14 +32,17 @@ struct ResponseLanguage {
         "The latest user request is in \(name) (\(code)). Write the suggested follow-up in \(name). Never infer its language from the assistant result, attachments, or tool output. If the user explicitly requests another language, follow that request."
     }
 
+    /// Code, inline code, URLs, paths and link targets, in this order; compiled once.
+    nonisolated(unsafe) private static let nonLanguagePatterns: [(NSRegularExpression, String)] = [
+        (#"(?s)```.*?```"#, " "),
+        (#"`[^`]*`"#, " "),
+        (#"https?://\S+"#, " "),
+        (#"(?:~?/|[A-Za-z]:\\)[^\s]+"#, " "),
+        (#"\]\([^)]+\)"#, "]"),
+    ].map { (try! NSRegularExpression(pattern: $0.0), $0.1) }
+
     private static func naturalLanguageText(from text: String) -> String {
-        let withoutCode = text
-            .replacingOccurrences(of: #"(?s)```.*?```"#, with: " ", options: .regularExpression)
-            .replacingOccurrences(of: #"`[^`]*`"#, with: " ", options: .regularExpression)
-        let withoutArtifacts = withoutCode
-            .replacingOccurrences(of: #"https?://\S+"#, with: " ", options: .regularExpression)
-            .replacingOccurrences(of: #"(?:~?/|[A-Za-z]:\\)[^\s]+"#, with: " ", options: .regularExpression)
-            .replacingOccurrences(of: #"\]\([^)]+\)"#, with: "]", options: .regularExpression)
+        let withoutArtifacts = nonLanguagePatterns.reduce(text) { $0.replacingMatches(of: $1.0, with: $1.1) }
 
         return withoutArtifacts
             .split(whereSeparator: { $0.isNewline })

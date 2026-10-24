@@ -10,6 +10,7 @@ PACKAGE_FILE="$NATIVE_DIR/Package.swift"
 PRODUCT="${PRODUCT:-$PROJECT_NAME}"
 CONFIGURATION="${CONFIGURATION:-Debug}"
 BUILD_PATH="${BUILD_PATH:-$NATIVE_DIR/.build}"
+SWIFT_BUILD_JOBS="${SWIFT_BUILD_JOBS:-4}"
 ARCH="${ARCH:-${SWIFT_ARCH:-}}"
 BUILD_ONLY=false
 PACKAGE=false
@@ -39,7 +40,8 @@ Secenekler:
   -h, --help                Bu yardim metnini goster.
 
 Ortam degiskenleri:
-  CONFIGURATION, PRODUCT, ARCH, SWIFT_ARCH, BUILD_PATH, FOREGROUND, VERSION
+  CONFIGURATION, PRODUCT, ARCH, SWIFT_ARCH, BUILD_PATH, SWIFT_BUILD_JOBS,
+  FOREGROUND, VERSION
   ayni ayarlari argumansiz yapmak icin kullanilabilir.
 
 -- sonrasindaki argumanlar dogrudan DotsHarness surecine iletilir.
@@ -135,7 +137,7 @@ if [[ "$PACKAGE" == true ]]; then
     PACKAGE_SCRIPT="$NATIVE_DIR/scripts/package-dmg.sh"
     [[ -x "$PACKAGE_SCRIPT" ]] || fail "Paket scripti bulunamadi: $PACKAGE_SCRIPT"
 
-    "$PACKAGE_SCRIPT" --no-open
+    ARCH="${ARCH:-$(uname -m)}" "$PACKAGE_SCRIPT" --no-open
     APP_BUNDLE="$NATIVE_DIR/dist/$PROJECT_NAME.app"
     [[ -d "$APP_BUNDLE" ]] || fail "Paketlenen uygulama bulunamadi: $APP_BUNDLE"
 
@@ -210,19 +212,21 @@ fi
 
 printf 'Urun: %s\n' "$PRODUCT"
 printf 'Yapilandirma: %s\n' "$SWIFT_CONFIG"
+printf 'Paralel Swift isi: %s\n' "$SWIFT_BUILD_JOBS"
 if [[ -n "$ARCH" ]]; then
     printf 'Mimari: %s\n' "$ARCH"
 fi
 
 SWIFT_BUILD=(
     swift build
+    --jobs "$SWIFT_BUILD_JOBS"
     --package-path "$NATIVE_DIR"
     --product "$PRODUCT"
     -c "$SWIFT_CONFIG"
     --scratch-path "$BUILD_PATH"
 )
 if [[ -n "$ARCH" ]]; then
-    SWIFT_BUILD+=(--arch "$ARCH")
+    SWIFT_BUILD+=(--triple "$ARCH-apple-macosx")
 fi
 if [[ "$SWIFT_CONFIG" == "release" ]]; then
     SWIFT_BUILD+=(-Xlinker -dead_strip)
@@ -241,6 +245,18 @@ if [[ "$PRODUCT" == "DotsHarness" ]]; then
     run_with_progress 'WhisperVoice derlemesi' "${WHISPER_BUILD[@]}"
 fi
 
+# Yerel MLX sunucusu (dotsmlx) ayri surec olarak calisir; yalniz Apple Silicon.
+BUILD_MLX=false
+if [[ "$PRODUCT" == "DotsHarness" && "${ARCH:-$(uname -m)}" == "arm64" ]]; then
+    BUILD_MLX=true
+    MLX_BUILD=("${SWIFT_BUILD[@]}")
+    for i in "${!MLX_BUILD[@]}"; do
+        [[ "${MLX_BUILD[$i]}" == "$PRODUCT" ]] && MLX_BUILD[$i]="dotsmlx"
+    done
+    printf 'Yerel MLX sunucusu derleniyor...\n'
+    run_with_progress 'dotsmlx derlemesi' "${MLX_BUILD[@]}"
+fi
+
 SHOW_BIN=("${SWIFT_BUILD[@]}" --show-bin-path)
 BIN_DIR="$("${SHOW_BIN[@]}")"
 APP_PATH="$BIN_DIR/$PRODUCT"
@@ -254,6 +270,12 @@ rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources"
 cp "$APP_PATH" "$APP_BUNDLE/Contents/MacOS/$PRODUCT"
 chmod +x "$APP_BUNDLE/Contents/MacOS/$PRODUCT"
+if [[ "$BUILD_MLX" == true ]]; then
+    # MLX, Metal shader kutuphanesini (mlx.metallib) binary'nin yaninda arar.
+    cp "$BIN_DIR/dotsmlx" "$APP_BUNDLE/Contents/MacOS/dotsmlx"
+    "$NATIVE_DIR/scripts/build-mlx-metallib.sh" "$BUILD_PATH" "$APP_BUNDLE/Contents/MacOS"
+    [[ "$SWIFT_CONFIG" == "release" ]] && strip -x "$APP_BUNDLE/Contents/MacOS/dotsmlx"
+fi
 
 shopt -s nullglob
 for bundle in "$BIN_DIR"/*.bundle; do
@@ -389,7 +411,8 @@ fi
 printf 'Imzalama kimligi: %s\n' "$SIGN_IDENTITY"
 
 shopt -s nullglob
-for nested in "$APP_BUNDLE/Contents/MacOS/"*.dylib "$APP_BUNDLE/Contents/MacOS/"*.framework; do
+for nested in "$APP_BUNDLE/Contents/MacOS/"*.dylib "$APP_BUNDLE/Contents/MacOS/"*.framework "$APP_BUNDLE/Contents/MacOS/dotsmlx" "$APP_BUNDLE/Contents/MacOS/"*.metallib; do
+    [[ -e "$nested" ]] || continue
     codesign --force --sign "$SIGN_IDENTITY" --timestamp=none "$nested"
 done
 shopt -u nullglob

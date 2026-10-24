@@ -34,7 +34,7 @@ public static class RouterCatalog
         // Subscription login exposed by the macOS registry as Grok Build. This is
         // separate from xAI's API-key endpoint and uses its Responses transport.
         new RouterProviderKind("grok-cli", "Grok Build", RouterAuthKind.OauthDevice, "Sign in with your xAI subscription", "https://cli-chat-proxy.grok.com/v1", "grok-build", NativeProviderProtocol.OpenAiResponses, "grok"),
-        new RouterProviderKind("openrouter", "OpenRouter", RouterAuthKind.ApiKey, "API key", "https://openrouter.ai/api/v1", "openai/gpt-4.1-mini", LogoKey: "openrouter"),
+        new RouterProviderKind("openrouter", "OpenRouter", RouterAuthKind.ApiKey, "API key", "https://openrouter.ai/api/v1", "openai/gpt-5.6-luna", LogoKey: "openrouter"),
         new RouterProviderKind("openai", "OpenAI", RouterAuthKind.ApiKey, "API key · Responses API", "https://api.openai.com/v1", "gpt-5.6-terra", NativeProviderProtocol.OpenAiResponses, "openai"),
         new RouterProviderKind("anthropic", "Anthropic", RouterAuthKind.ApiKey, "API key", "https://api.anthropic.com/v1", "claude-sonnet-5", NativeProviderProtocol.Anthropic, "anthropic"),
         new RouterProviderKind("glm", "GLM", RouterAuthKind.ApiKey, "API key", LogoKey: "glm"),
@@ -65,19 +65,37 @@ public static class RouterCatalog
     public static string LabelFor(string id) => id.StartsWith("custom:", StringComparison.Ordinal) ? "Custom API" : KindFor(id)?.Name ?? "Provider";
     public static string HintFor(RouterProviderKind kind) => string.IsNullOrWhiteSpace(kind.BaseUrl) ? "Custom API endpoint" : kind.Hint;
 
-    /// <summary>Official GPT-6 API context capacities. 272K is a long-context pricing threshold.</summary>
+    /// <summary>Official model capacities. For GPT-6, 272K is a long-context pricing threshold.</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, int> ContextWindowOverlay = new(StringComparer.Ordinal);
+
+    /// Context windows published by the remote model catalog, keyed like the stored overrides.
+    public static void SetContextWindowOverlay(string provider, string model, int window) =>
+        ContextWindowOverlay[ModelContextOverrideKey(provider, model)] = window;
+
     public static int? DocumentedContextWindow(string? provider, string? model)
     {
-        if ((!string.Equals(provider, "gpt", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(provider, "openai", StringComparison.OrdinalIgnoreCase))
-            || string.IsNullOrWhiteSpace(model)) return null;
+        if (string.IsNullOrWhiteSpace(provider) || string.IsNullOrWhiteSpace(model)) return null;
         var bareModel = model.Trim().ToLowerInvariant();
         var separator = bareModel.LastIndexOf('/');
         if (separator >= 0) bareModel = bareModel[(separator + 1)..];
-        var documented = new[] { "gpt-6-astra", "gpt-6-sol", "gpt-6.1-sol", "gpt-6-luna" };
-        return documented.Any(id => bareModel == id || bareModel.StartsWith(id + "-", StringComparison.Ordinal))
-            ? 1_050_000
-            : null;
+        var isClaudeProvider = string.Equals(provider, "claude", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(provider, "anthropic", StringComparison.OrdinalIgnoreCase);
+        if (isClaudeProvider && bareModel == "claude-haiku-5-5") return 1_000_000;
+        if (ContextWindowOverlay.TryGetValue(ModelContextOverrideKey(provider, model), out var published)) return published;
+        if (!string.Equals(provider, "gpt", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(provider, "openai", StringComparison.OrdinalIgnoreCase)) return null;
+        return OpenAIContextWindow(bareModel);
+    }
+
+    // OpenAI API windows for GPT-5.6+. Mini/nano variants are smaller and stay undocumented.
+    internal static int? OpenAIContextWindow(string model)
+    {
+        if (!model.StartsWith("gpt-", StringComparison.Ordinal) || model.Contains("-mini") || model.Contains("-nano")) return null;
+        var version = new string(model[4..].TakeWhile(c => char.IsDigit(c) || c == '.').ToArray())
+            .Split('.', StringSplitOptions.RemoveEmptyEntries);
+        if (version.Length == 0 || !int.TryParse(version[0], out var major)) return null;
+        var minor = version.Length > 1 && int.TryParse(version[1], out var parsed) ? parsed : 0;
+        return major >= 6 || (major == 5 && minor >= 6) ? 1_050_000 : null;
     }
 
     public static NativeProviderDescriptor Descriptor(RouterProviderKind kind) => new(kind.Id, kind.Name, kind.BaseUrl, kind.DefaultModel, kind.Protocol, kind.Kind switch
@@ -152,7 +170,6 @@ public sealed class RouterTunnel
 public enum CustomApiKind { OpenaiCompatible, AnthropicCompatible }
 public static class CustomApiKindExtensions
 {
-    public static string Wire(this CustomApiKind kind) => kind == CustomApiKind.AnthropicCompatible ? "anthropic-compatible" : "openai-compatible";
     public static NativeProviderProtocol Protocol(this CustomApiKind kind) => kind == CustomApiKind.AnthropicCompatible ? NativeProviderProtocol.Anthropic : NativeProviderProtocol.OpenAiCompatible;
 }
 public enum CustomOpenAiApiType { Chat, Responses }

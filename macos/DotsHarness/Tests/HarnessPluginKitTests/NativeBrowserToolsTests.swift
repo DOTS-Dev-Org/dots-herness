@@ -52,10 +52,6 @@ final class NativeBrowserToolsTests: XCTestCase {
         XCTAssertEqual(BrowserBackendPolicy.resolveUserRule("canlı tarayıcıyı kullan"), .native)
         XCTAssertEqual(BrowserBackendPolicy.resolveUserRule("use webkit"), .native)
         XCTAssertEqual(BrowserBackendPolicy.resolveUserRule("dock browser"), .native)
-
-        XCTAssertEqual(BrowserBackendPolicy.parseConfirmation("Native"), .native)
-        XCTAssertEqual(BrowserBackendPolicy.parseConfirmation("In-App Live Browser"), .native)
-        XCTAssertEqual(BrowserBackendPolicy.parseConfirmation("dahili"), .native)
     }
 
     @MainActor

@@ -2,6 +2,156 @@ import SwiftUI
 import AVFAudio
 import Speech
 
+private struct HerNessLoadingAnimation: View {
+    let size: CGFloat
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 0.22, paused: reduceMotion)) { context in
+            let frame = reduceMotion
+                ? 0
+                : Int(context.date.timeIntervalSinceReferenceDate / 0.22) % 4
+            Image("HerNessLoaderFrame\(frame)")
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .frame(width: size, height: size)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+struct MobileAskUserCard: View {
+    @EnvironmentObject private var localization: MobileLocalization
+    let questions: [MobileAskUserQuestion]
+    let enabled: Bool
+    let onSubmit: ([String]) -> Void
+    let onSkip: () -> Void
+
+    @State private var selections: [String: String] = [:]
+    @State private var customAnswers: [String: String] = [:]
+    @State private var page = 0
+
+    private var current: MobileAskUserQuestion { questions[min(page, questions.count - 1)] }
+    private var isLast: Bool { page >= questions.count - 1 }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(localization.text("mobile.agent.clarification"))
+                .font(.headline)
+
+            HStack(spacing: 8) {
+                Text("\(page + 1)/\(questions.count)")
+                    .font(.caption.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(.orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.orange.opacity(0.16), in: Capsule())
+                Text(current.header.isEmpty ? localization.format("ask.defaultHeader", page + 1) : current.header)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+            }
+
+            Text(current.prompt)
+                .font(.subheadline.weight(.medium))
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(spacing: 6) {
+                ForEach(current.options, id: \.self) { option in
+                    let detail = optionDetail(option)
+                    let selected = selections[current.id] == option
+                    Button {
+                        selections[current.id] = selected ? nil : option
+                        customAnswers[current.id] = ""
+                    } label: {
+                        HStack(spacing: 9) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(detail.title).font(.callout)
+                                if let subtitle = detail.subtitle {
+                                    Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            .multilineTextAlignment(.leading)
+                            Spacer(minLength: 4)
+                            Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(selected ? Color.accentColor : .secondary)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 9)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!enabled)
+                }
+
+                let hasCustomAnswer = !(customAnswers[current.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(localization.text("ask.other")).font(.callout)
+                        Spacer()
+                        Image(systemName: hasCustomAnswer ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(hasCustomAnswer ? Color.accentColor : .secondary)
+                    }
+                    TextField(
+                        localization.text("ask.customPlaceholder"),
+                        text: Binding(
+                            get: { customAnswers[current.id] ?? "" },
+                            set: { value in
+                                customAnswers[current.id] = value
+                                if !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    selections[current.id] = nil
+                                }
+                            }
+                        ),
+                        axis: .vertical
+                    )
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(1...4)
+                    .disabled(!enabled)
+                }
+                .padding(11)
+                .background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+
+            HStack(spacing: 8) {
+                Button(localization.text("ask.skipShort"), action: onSkip)
+                    .buttonStyle(.bordered)
+                    .disabled(!enabled)
+                Spacer(minLength: 0)
+                if isLast {
+                    Button(localization.text("ask.submit")) {
+                        onSubmit(questions.map { answer(for: $0) })
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!enabled)
+                } else {
+                    Button(localization.text("ask.next")) { page += 1 }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!enabled)
+                }
+            }
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.primary.opacity(0.12)))
+        .accessibilityElement(children: .contain)
+    }
+
+    private func optionDetail(_ option: String) -> (title: String, subtitle: String?) {
+        guard let range = option.range(of: " — ") ?? option.range(of: ": ") else { return (option, nil) }
+        return (String(option[..<range.lowerBound]), String(option[range.upperBound...]))
+    }
+
+    private func answer(for question: MobileAskUserQuestion) -> String {
+        let custom = (customAnswers[question.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return custom.isEmpty ? (selections[question.id] ?? "") : custom
+    }
+}
+
 @MainActor
 private final class MobileSpeechInput: ObservableObject {
     @Published private(set) var isListening = false
@@ -232,12 +382,68 @@ struct LocalAgentView: View {
     @State private var showingFileImporter = false
     @State private var isSelectingProjectFolder = false
     @State private var showingConversationHistory = false
+    @State private var isLoadingOlderTranscript = false
+    @State private var didPositionTranscriptAtLatest = false
     @State private var projectImportError: String?
     @State private var showingCacheUsage = false
     @State private var showingCacheResumeInfo = false
     @State private var cacheNoticeClock = Date()
     @State private var expandedToolActivityIDs = Set<UUID>()
     @StateObject private var speechInput = MobileSpeechInput()
+
+    private var completedPlanSteps: [(title: String, status: String)] {
+        let steps = MobilePlanSteps.current(in: agent.transcript)
+        let latestPlanIndex = agent.transcript.lastIndex {
+            $0.role == .tool && $0.toolName == MobilePlanSteps.name
+        }
+        let lastToolIndex = agent.transcript.lastIndex { $0.role == .tool }
+        let lastAssistantIndex = agent.transcript.lastIndex { $0.role == .assistant }
+        guard !steps.isEmpty,
+              !agent.isRunning,
+              agent.queuedPromptItems.isEmpty,
+              let latestPlanIndex,
+              !agent.transcript[latestPlanIndex].failed,
+              !agent.transcript[latestPlanIndex].isRunning,
+              let lastToolIndex,
+              let lastAssistantIndex,
+              lastAssistantIndex > lastToolIndex else { return [] }
+        return steps
+    }
+
+    private var completedPlanSummaryID: String { "completed-plan-\(agent.activeConversationId ?? "none")" }
+
+    /// Live checklist from the agent's latest update_plan, pinned above the composer.
+    @ViewBuilder private var planStepsCard: some View {
+        let steps = MobilePlanSteps.current(in: agent.transcript)
+        if !steps.isEmpty && completedPlanSteps.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("\(steps.filter { $0.status == "done" }.count)/\(steps.count)", systemImage: "checklist")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                ForEach(Array(steps.enumerated()), id: \.offset) { _, step in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Group {
+                            switch step.status {
+                            case "done": Image(systemName: "checkmark.circle.fill").foregroundStyle(.secondary)
+                            case "in_progress": ProgressView().controlSize(.mini)
+                            default: Image(systemName: "circle.dashed").foregroundStyle(.tertiary)
+                            }
+                        }
+                        .frame(width: 16)
+                        Text(step.title)
+                            .foregroundStyle(step.status == "pending" ? .secondary : .primary)
+                            .lineLimit(2)
+                    }
+                    .font(.footnote)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .padding(.horizontal)
+            .padding(.vertical, 4)
+        }
+    }
 
     /// Every row names a reason the next request costs more than the last one.
     @ViewBuilder private var composerNotices: some View {
@@ -308,7 +514,14 @@ struct LocalAgentView: View {
                     MobileAgentWelcomeView(prompt: $prompt, isNoProject: agent.isNoProjectMode)
                 } else {
                     ScrollViewReader { proxy in
-                        List(agent.transcript) { turn in
+                        List {
+                            if agent.hasOlderTranscriptMessages {
+                                ProgressView()
+                                    .frame(maxWidth: .infinity)
+                                    .listRowSeparator(.hidden)
+                                    .onAppear { loadOlderTranscriptIfNeeded(using: proxy) }
+                            }
+                            ForEach(agent.transcript) { turn in
                             Group {
                                 if turn.role == .activity {
                                     HStack(spacing: 9) {
@@ -330,14 +543,14 @@ struct LocalAgentView: View {
                                     if turn.isRunning {
                                         VStack(alignment: .leading, spacing: 4) {
                                             HStack(spacing: 10) {
-                                                ProgressView()
-                                                    .controlSize(.small)
+                                                HerNessLoadingAnimation(size: 18)
                                                 Label(
                                                     toolActivityLabel(turn.toolName, running: true),
                                                     systemImage: toolActivityIcon(turn.toolName)
                                                 )
                                                 .font(.callout)
                                                 .foregroundStyle(.secondary)
+                                                ToolClock()
                                                 Spacer(minLength: 0)
                                             }
                                             if let detail = turn.activityDetail, !detail.isEmpty {
@@ -383,16 +596,54 @@ struct LocalAgentView: View {
                                 } else {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(label(for: turn)).font(.caption.bold()).foregroundStyle(color(for: turn))
-                                        Text(turn.text)
-                                            .font(.body)
-                                            .textSelection(.enabled)
+                                        MarkdownBodyView(text: turn.text)
                                     }
                                 }
                             }
                             .id(turn.id)
+                            }
+                            if !completedPlanSteps.isEmpty {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("✓ \(localization.text("plan.title")) · \(completedPlanSteps.count)/\(completedPlanSteps.count)")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                    ForEach(Array(completedPlanSteps.enumerated()), id: \.offset) { _, step in
+                                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                            Text(step.title)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                                .lineLimit(2)
+                                        }
+                                    }
+                                }
+                                .padding(9)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                                .id(completedPlanSummaryID)
+                            }
                         }
                         .listStyle(.plain)
-                        .onChange(of: agent.transcript.count) { _, _ in
+                        .task(id: agent.activeConversationId) {
+                            didPositionTranscriptAtLatest = false
+                            isLoadingOlderTranscript = false
+                            await Task.yield()
+                            if !completedPlanSteps.isEmpty {
+                                proxy.scrollTo(completedPlanSummaryID, anchor: .bottom)
+                            } else if let last = agent.transcript.last {
+                                proxy.scrollTo(last.id, anchor: .bottom)
+                            }
+                            didPositionTranscriptAtLatest = true
+                        }
+                        .onChange(of: agent.isRunning) { _, isRunning in
+                            if !isRunning, !completedPlanSteps.isEmpty {
+                                withAnimation { proxy.scrollTo(completedPlanSummaryID, anchor: .bottom) }
+                            }
+                        }
+                        .onChange(of: agent.transcript.last?.id) { _, _ in
                             if let last = agent.transcript.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
                         }
                     }
@@ -413,19 +664,40 @@ struct LocalAgentView: View {
                     .padding(.vertical, 8)
                 }
                 if let question = agent.questionRequest {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(localization.text("mobile.agent.clarification")).font(.headline)
-                        Text(question.question).font(.subheadline)
-                        TextField(localization.text("mobile.agent.answer"), text: $questionAnswer)
-                        Button(localization.text("mobile.agent.answer")) {
-                            let answer = questionAnswer
-                            questionAnswer = ""
-                            agent.answerQuestion(question.id, answers: [answer])
+                    if !question.askUserQuestions.isEmpty {
+                        MobileAskUserCard(
+                            questions: question.askUserQuestions,
+                            enabled: local.selectedProjectLocationAvailable,
+                            onSubmit: { agent.answerQuestion(question.id, answers: $0) },
+                            onSkip: { agent.answerQuestion(question.id, answers: []) }
+                        )
+                        .id(question.id)
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(localization.text("mobile.agent.clarification")).font(.headline)
+                            Text(question.question).font(.subheadline)
+                            if !question.options.isEmpty {
+                                HStack {
+                                    ForEach(question.options, id: \.self) { option in
+                                        Button(option) { agent.answerQuestion(question.id, answers: [option]) }
+                                            .buttonStyle(.bordered)
+                                            .disabled(!local.selectedProjectLocationAvailable)
+                                    }
+                                }
+                            }
+                            TextField(localization.text("mobile.agent.answer"), text: $questionAnswer)
+                            Button(localization.text("mobile.agent.answer")) {
+                                let answer = questionAnswer
+                                questionAnswer = ""
+                                agent.answerQuestion(question.id, answers: [answer])
+                            }
+                            .disabled(!local.selectedProjectLocationAvailable || questionAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         }
-                        .disabled(!local.selectedProjectLocationAvailable || questionAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
                     }
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
                 }
                 if !draftAttachments.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -450,7 +722,7 @@ struct LocalAgentView: View {
                 }
                 if agent.requiresToolOutcomeRecovery {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(agent.toolOutcomeRecoveryMessage ?? "Tool sonucu doğrulanmalı")
+                        Text(agent.toolOutcomeRecoveryMessage ?? "Çalışma kesintiye uğradı")
                             .font(.caption)
                             .foregroundStyle(.red)
                         HStack {
@@ -537,6 +809,7 @@ struct LocalAgentView: View {
                     .padding(.horizontal)
                     .padding(.vertical, 6)
                 }
+                planStepsCard
                 composerNotices
                 HStack {
                     Button { showingFileImporter = true } label: { Image(systemName: "paperclip") }
@@ -557,6 +830,9 @@ struct LocalAgentView: View {
                             .foregroundStyle(speechInput.isListening ? Color.red : Color.accentColor)
                     }
                     .accessibilityLabel(localization.text("mobile.agent.ask"))
+                    if agent.isRunning {
+                        HerNessLoadingAnimation(size: 18)
+                    }
                     if agent.isRunning {
                         Button(localization.text("mobile.agent.queue")) { send(mode: "queue") }
                             .disabled(!canSendPrompt || (prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && draftAttachments.isEmpty))
@@ -758,6 +1034,20 @@ struct LocalAgentView: View {
             }
         )
     }
+
+    private func loadOlderTranscriptIfNeeded(using proxy: ScrollViewProxy) {
+        guard didPositionTranscriptAtLatest,
+              !isLoadingOlderTranscript,
+              agent.hasOlderTranscriptMessages,
+              let anchorID = agent.transcript.first?.id else { return }
+        isLoadingOlderTranscript = true
+        agent.loadOlderTranscriptMessages()
+        Task { @MainActor in
+            await Task.yield()
+            proxy.scrollTo(anchorID, anchor: .top)
+            isLoadingOlderTranscript = false
+        }
+    }
 }
 
 private struct MobileConversationHistorySheet: View {
@@ -775,16 +1065,9 @@ private struct MobileConversationHistorySheet: View {
                 } else {
                     ForEach(conversations) { conversation in
                         NavigationLink {
-                            ScrollView {
-                                LazyVStack(alignment: .leading, spacing: 14) {
-                                    ForEach(agent.storedMessages(for: conversation.id)) { message in
-                                        storedMessageView(message)
-                                    }
-                                }
-                                .padding()
-                            }
-                            .navigationTitle(conversation.updatedAt.formatted(date: .abbreviated, time: .shortened))
-                            .navigationBarTitleDisplayMode(.inline)
+                            MobileConversationHistoryTranscript(agent: agent, conversationID: conversation.id)
+                                .navigationTitle(conversation.updatedAt.formatted(date: .abbreviated, time: .shortened))
+                                .navigationBarTitleDisplayMode(.inline)
                         } label: {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(conversation.updatedAt.formatted(date: .abbreviated, time: .shortened))
@@ -850,10 +1133,91 @@ private struct MobileConversationHistorySheet: View {
                 Text(roleLabel(message.role, toolName: message.toolName))
                     .font(.caption.bold())
                     .foregroundStyle(message.role == "error" ? Color.red : Color.secondary)
-                Text(message.content)
-                    .textSelection(.enabled)
+                MarkdownBodyView(text: message.content)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+private struct MobileConversationHistoryTranscript: View {
+    @EnvironmentObject private var localization: MobileLocalization
+    @ObservedObject var agent: MobileAgent
+    let conversationID: String
+    @State private var messages: [StoredMobileMessage] = []
+    @State private var beforeRowID: Int64?
+    @State private var hasOlder = false
+    @State private var isLoadingOlder = false
+    @State private var didPositionAtLatest = false
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 14) {
+                    if hasOlder {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .id("older-history-messages")
+                            .onAppear {
+                                guard didPositionAtLatest else { return }
+                                loadOlder(using: proxy)
+                            }
+                    }
+                    ForEach(messages) { message in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(label(for: message))
+                                .font(.caption.bold())
+                                .foregroundStyle(.secondary)
+                            MarkdownBodyView(text: message.content)
+                        }
+                    }
+                }
+                .padding()
+            }
+            .task(id: conversationID) {
+                didPositionAtLatest = false
+                isLoadingOlder = false
+                let page = agent.storedMessagePage(for: conversationID)
+                messages = page.messages
+                beforeRowID = page.beforeRowID
+                hasOlder = page.hasOlder
+                await Task.yield()
+                if let latest = messages.last { proxy.scrollTo(latest.id, anchor: .bottom) }
+                didPositionAtLatest = true
+            }
+        }
+    }
+
+    private func loadOlder(using proxy: ScrollViewProxy) {
+        guard didPositionAtLatest,
+              !isLoadingOlder,
+              hasOlder,
+              let beforeRowID,
+              let anchorID = messages.first?.id else { return }
+        isLoadingOlder = true
+        let page = agent.storedMessagePage(for: conversationID, beforeRowID: beforeRowID)
+        guard !page.messages.isEmpty else {
+            hasOlder = false
+            isLoadingOlder = false
+            return
+        }
+        messages = page.messages + messages
+        self.beforeRowID = page.beforeRowID
+        hasOlder = page.hasOlder
+        Task { @MainActor in
+            await Task.yield()
+            proxy.scrollTo(anchorID, anchor: .top)
+            isLoadingOlder = false
+        }
+    }
+
+    private func label(for message: StoredMobileMessage) -> String {
+        switch message.role {
+        case "user": return localization.text("mobile.agent.user")
+        case "assistant": return localization.text("conversation.assistant")
+        case "tool": return message.toolName ?? localization.text("conversation.tool")
+        case "error": return localization.text("mobile.agent.error")
+        default: return message.toolName ?? localization.text("conversation.tool")
         }
     }
 }
@@ -884,4 +1248,21 @@ private struct ComposerNotice<Trailing: View>: View {
 
 private extension ComposerNotice where Trailing == EmptyView {
     init(text: String) { self.init(text: text) { EmptyView() } }
+}
+
+/// A long build or test shows its own clock, so a quiet model never looks like a hung app.
+/// It counts from when the running row appeared, which is when the tool started.
+private struct ToolClock: View {
+    @State private var start = Date()
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let seconds = max(0, Int(context.date.timeIntervalSince(start)))
+            if seconds >= 10 {
+                Text(seconds < 60 ? "\(seconds)s" : "\(seconds / 60)m \(String(format: "%02ds", seconds % 60))")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
 }

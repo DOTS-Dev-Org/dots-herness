@@ -128,6 +128,51 @@ public struct ScheduledTask: Identifiable, Sendable, Equatable, Codable {
     }
 }
 
+/// The "repeat + time" a task form edits, mapped onto a cron expression.
+/// Anything the form cannot express stays a raw `custom` expression.
+public struct TaskRecurrence: Equatable, Sendable {
+    public enum Kind: String, CaseIterable, Identifiable, Sendable {
+        case hourly, daily, weekdays, weekly, custom
+        public var id: String { rawValue }
+    }
+
+    public var kind: Kind
+    public var hour = 9
+    public var minute = 0
+    /// Cron day of week, 0 = Sunday. Used by `weekly`.
+    public var weekday = 1
+    public var custom: String
+
+    public init(cron: String) {
+        custom = cron
+        let fields = cron.split(separator: " ").map(String.init)
+        guard fields.count == 5, fields[2] == "*", fields[3] == "*",
+              let minute = Int(fields[0]), (0..<60).contains(minute) else { kind = .custom; return }
+        if fields[1] == "*", fields[4] == "*", minute == 0 { kind = .hourly; return }
+        guard let hour = Int(fields[1]), (0..<24).contains(hour) else { kind = .custom; return }
+        self.hour = hour
+        self.minute = minute
+        switch fields[4] {
+        case "*": kind = .daily
+        case "1-5": kind = .weekdays
+        default:
+            guard let day = Int(fields[4]), (0...7).contains(day) else { kind = .custom; return }
+            weekday = day % 7
+            kind = .weekly
+        }
+    }
+
+    public var cron: String {
+        switch kind {
+        case .hourly: return "0 * * * *"
+        case .daily: return "\(minute) \(hour) * * *"
+        case .weekdays: return "\(minute) \(hour) * * 1-5"
+        case .weekly: return "\(minute) \(hour) * * \(weekday)"
+        case .custom: return custom
+        }
+    }
+}
+
 public struct ScheduledTaskRun: Identifiable, Codable, Sendable, Equatable {
     public let id: String
     public let taskID: String

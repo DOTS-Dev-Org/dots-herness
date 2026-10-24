@@ -45,6 +45,7 @@ public sealed record ChangedFile(string Path, ChangedFileOperation Operation)
 {
     public int AddedLines { get; init; } = -1;
     public int DeletedLines { get; init; } = -1;
+    public string? Preview { get; init; }
 }
 
 public sealed record WorkspaceRunSummary(
@@ -89,6 +90,9 @@ public sealed class ChatAttachment
 
     [JsonIgnore]
     public bool IsImage => Kind == ChatAttachmentKind.Image;
+
+    [JsonIgnore]
+    public bool IsAudio => Kind == ChatAttachmentKind.Audio;
 
     [JsonIgnore]
     public string ProviderFilePath => SnapshotPath is null
@@ -302,6 +306,10 @@ public sealed class ChatMedia
 
     [JsonIgnore]
     public string Name => Path.GetFileName(FilePath);
+
+    /// <summary>An audio result plays; an image is shown.</summary>
+    [JsonIgnore]
+    public bool IsAudio => AudioPlayback.IsPlayable(FilePath);
 }
 
 public enum PromptMode
@@ -408,10 +416,15 @@ public sealed class ChatMessage : PluginRuntime.ObservableObject
     private bool _isSpeaking;
     private string? _feedback;
     private List<ChatAttachment> _attachments = [];
+    private string? _rawStreamText;
 
     public string Id { get => _id; set => SetProperty(ref _id, value); }
     public ChatKind Kind { get => _kind; set => SetProperty(ref _kind, value); }
-    public string Text { get => _text; set => SetProperty(ref _text, value); }
+    public string Text
+    {
+        get => Kind is ChatKind.Assistant or ChatKind.Plan ? WorkspaceBacklog.VisibleText(_text) : _text;
+        set => SetProperty(ref _text, value);
+    }
     /// A UI-only conversation event; never serialized into the provider context.
     public string? ActivityCode { get; set; }
     /// Complete tool result kept with the visible transcript. Text may be a
@@ -419,6 +432,8 @@ public sealed class ChatMessage : PluginRuntime.ObservableObject
     public string? RawToolOutput { get => _rawToolOutput; set => SetProperty(ref _rawToolOutput, value); }
     public DateTimeOffset CreatedAt { get => _createdAt; set => SetProperty(ref _createdAt, value); }
     public bool Streaming { get => _streaming; set => SetProperty(ref _streaming, value); }
+    [JsonIgnore]
+    internal string? RawStreamText { get => _rawStreamText; set => _rawStreamText = value; }
     public string? TurnId { get; set; }
     public List<ChangedFile> ChangedFiles
     {
@@ -523,6 +538,8 @@ public sealed class Conversation : PluginRuntime.ObservableObject
     public int ContextCompactionCount { get; set; }
     public int LastContextInputTokens { get; set; }
     public bool LastContextInputTokensIsEstimated { get; set; } = true;
+    /// Local estimate of the request LastContextInputTokens counted.
+    public int LastContextEstimatedTokens { get; set; }
     public int? LastContextOutputTokens { get; set; }
     public int ContextWindow { get; set; }
     public string ContextRouteIdentity { get; set; } = "";
@@ -590,7 +607,28 @@ public sealed class Conversation : PluginRuntime.ObservableObject
         }
     }
     public string? Cwd { get; set; }
+    /// <summary>True only for conversations explicitly created in the No project scope.
+    /// Legacy Chat records without a cwd stay excluded during migration unless they carry this flag.</summary>
+    public bool Projectless { get; set; }
     public string? AgentPreset { get; set; }
+
+    /// <summary>False when this object is only a sidebar header from SQLite.</summary>
+    [JsonIgnore]
+    public bool TranscriptLoaded { get; set; } = true;
+    /// <summary>False while only a visible message window is resident.</summary>
+    [JsonIgnore]
+    public bool TranscriptComplete { get; set; } = true;
+    /// <summary>Absolute ordinal of the first loaded transcript message.</summary>
+    [JsonIgnore]
+    public int MessageStartIndex { get; set; }
+    /// <summary>Total message rows currently stored for this conversation.</summary>
+    [JsonIgnore]
+    public int StoredMessageCount { get; set; }
+    /// <summary>Message IDs whose rows are resident and may be edited or removed.</summary>
+    [JsonIgnore]
+    public HashSet<string> LoadedMessageIds { get; set; } = new(StringComparer.Ordinal);
+    [JsonIgnore]
+    public bool HasOlderMessages => TranscriptLoaded && MessageStartIndex > 0;
 }
 
 public sealed record PendingApproval(
@@ -617,14 +655,6 @@ public static class SessionProjector
         var firstLine = text.Split(new[] { '\r', '\n' }, StringSplitOptions.None).FirstOrDefault() ?? text;
         var compact = firstLine.Trim();
         return compact.Length > 42 ? compact[..42] : compact;
-    }
-
-    public static void ApplyFirstUserTitle(Conversation conversation)
-    {
-        var firstUserMessage = conversation.Messages.FirstOrDefault(m => m.Kind == ChatKind.User);
-        if (firstUserMessage is null || string.IsNullOrWhiteSpace(firstUserMessage.Text)) return;
-        conversation.Title = TitleFor(firstUserMessage.Text);
-        conversation.Blank = false;
     }
 
     public static string? Title(JsonValue? projections)
@@ -749,14 +779,20 @@ public static class SessionProjector
     private static void AppendStream(Conversation conversation, string delta, DateTimeOffset time)
     {
         var last = conversation.Messages.LastOrDefault(m => m.Kind == ChatKind.Assistant && m.Streaming);
-        if (last is not null) last.Text += delta;
+        if (last is not null)
+        {
+            last.RawStreamText = (last.RawStreamText ?? last.Text) + delta;
+            last.Text = WorkspaceBacklog.VisibleText(last.RawStreamText, hidePartialMarkerTail: true);
+        }
         else
         {
+            var raw = delta;
             conversation.Messages.Add(new ChatMessage
             {
                 Id = $"stream-{Guid.NewGuid()}",
                 Kind = ChatKind.Assistant,
-                Text = delta,
+                Text = WorkspaceBacklog.VisibleText(raw, hidePartialMarkerTail: true),
+                RawStreamText = raw,
                 CreatedAt = time,
                 Streaming = true,
             });
@@ -769,13 +805,18 @@ public static class SessionProjector
         if (last is not null)
         {
             last.Id = id;
-            last.Text = string.IsNullOrEmpty(text) ? last.Text : text;
+            var raw = string.IsNullOrEmpty(text) ? last.RawStreamText ?? last.Text : text;
+            last.Text = WorkspaceBacklog.VisibleText(raw);
+            last.RawStreamText = null;
             last.CreatedAt = time;
             last.Streaming = false;
         }
         else if (!string.IsNullOrEmpty(text))
         {
-            Upsert(conversation, new ChatMessage { Id = id, Kind = ChatKind.Assistant, Text = text, CreatedAt = time });
+            Upsert(conversation, new ChatMessage
+            {
+                Id = id, Kind = ChatKind.Assistant, Text = WorkspaceBacklog.VisibleText(text), CreatedAt = time,
+            });
         }
     }
 }

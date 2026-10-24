@@ -1,5 +1,7 @@
 # HerNess Sistem Promptu — Mevcut Durum, Öneri, Güvenlik
 
+2026-10-12 güncellemesi: yürürlükteki araç keşfi, effort geçişi, prompt sadeleştirmesi ve ölçüm yöntemi [token ekonomisi belgesinde](token-economy.md) açıklanır. Aşağıdaki tarihsel taslaklarda farklılaşan kurallar yerine kanonik `shared/prompts/` ve bu güncelleme geçerlidir.
+
 Bu belge iki şey içerir: (1) önerilen yeni çekirdek sistem promptu, (2) modele
 ne gidip ne geldiğinin, güvenlik sınırlarının, okuma ve yazma süreçlerinin
 Türkçe açıklaması.
@@ -54,8 +56,9 @@ bölümlerini enjekte ediyor.
 
 Dört metin zamanla birbirinden ayrışıyordu. Yürürlükteki metin burada
 kopyalanmaz (kopya bayatlıyordu); tek kaynak `shared/prompts/core.txt`.
-Bölümleri: Scope, Implementation loop, Migrations and deletion,
-Accuracy, Response language, Response economy, Non-negotiable.
+Bölümleri: Instruction priority, Scope and intent, Tools and planning,
+Implementation and verification, Accuracy and language,
+Response economy and formatting, Non-negotiable.
 
 Güncel tarih (`- Current date: YYYY-MM-DD`) çekirdek metne değil, platform
 eklerine yazılır: macOS/Windows `<runtime_context>`, mobil "On this device".
@@ -208,8 +211,8 @@ biniyor.
 
 `shared/CodexInstructions.cs` eklendi. Codex gövdesi macOS'takiyle birebir aynı
 (backend bu metni kontrol ediyor); **harness overrides bölümü kasıtlı olarak
-farklı** — bu platformda `update_plan`, `grep_files` ve `explore` yok, override
-gerçekten kayıtlı araçları saymak zorunda.
+farklı** — bu platformda `install_plugin` yok; `grep_files` ve
+`explore` var, override gerçekten kayıtlı araçları saymak zorunda.
 
 **`stream` de eşitlendi.** C# artık `stream: true` + `Accept: text/event-stream`
 gönderiyor ve cevabı `NativeProviderRouter.ParseResponsesStream()` ile okuyor —
@@ -315,9 +318,13 @@ sessizce kaybolabilir. `ReadLedger` (`WorkspaceTools.swift`,
 | kayıt var, hash tutmuyor | reddedilir: "changed on disk since you read it" |
 | kayıt var, hash tutuyor | yazılır, kayıt tazelenir |
 
-Kısmi okuma (`offset`/`limit` ile veya 60 KB'de kesilen) kayıt **üretmez** —
+Kısmi okuma (`offset`/`limit` ile veya 20 KB'de kesilen) tam okuma kaydı **üretmez** —
 görülmeyen içeriği üstüne yazma hakkı vermez. Ledger oturum ömürlü, 512 dosyayla
 sınırlı; düşen kaydın maliyeti bir ekstra okuma.
+
+`edit_file` daha gevşek: dosyanın güncel sürümünden okunmuş tek bir sayfa yeterli,
+çünkü düzenleme yalnızca birebir eşleşen metni değiştirir. Kısmi okumayla yapılan
+düzenleme tam okuma kaydı üretmez; `write_file` yine tam okuma ister.
 
 ### Silme koruması
 
@@ -353,10 +360,10 @@ Skill (`skill_metadata` `untrusted`), plugin (`plugin_guidance` `untrusted`) ve 
 | Araç | Davranış | Sınır |
 |---|---|---|
 | `list_files` | dizin listesi | workspace içi |
-| `read_file` | UTF-8 metin, `offset`/`limit` ile satır bazlı sayfalama | **60 KB**, satır ortasından kesmez; kesilen cevap devam edilecek satırı söyler (`[truncated] Continue with offset: N`) |
+| `read_file` | UTF-8 metin, `offset`/`limit` ile satır bazlı sayfalama | **20 KB**, satır ortasından kesmez; kesilen cevap devam edilecek satırı söyler ve dosyanın toplam satır sayısını (`[truncated] Continue with offset: N (file has M lines)`) |
 | `grep_files` | içerik araması | eşleşme listesi, kesilebilir |
 | `skill.list` / `skill.read` | skill metadata + SKILL.md | içerik untrusted |
-| `skill.suggest` | ajanın fark ettiği bir kalıbı skill olarak önermesi | sadece kullanıcıya öneri kartı gösterir, hiçbir şey yazmaz — kabul kullanıcının tıklamasıyla olur |
+| `skill.suggest` | kullanıcı isterse ya da tekrar gerekecek çok adımlı bir iş akışı bitince skill önermesi (haftada en fazla 1 kart) | sadece kullanıcıya öneri kartı gösterir, hiçbir şey yazmaz — kabul kullanıcının tıklamasıyla olur |
 | `explore` (macOS) | çok dosyalı taramayı alt-ajana devreder | yalnızca sonuç döner, dosya içerikleri ana bağlama girmez |
 
 `grep_files` masaüstünde var (`WorkspaceTools.grepFiles`,
@@ -430,6 +437,9 @@ scheduler onu `UpdateSystemPrompt`'a geri besliyor, anlamı değişemezdi. Yanı
 `EffectiveSystemPrompt()` / `effectiveSystemPrompt()` eklendi; Settings artık
 bunu gösteriyor:
 
+Bu sayılar tarihsel bir örnek çıktıdır; güncel `core.txt` ölçümü olarak
+kullanılmamalıdır. Güncel kaynak ölçümü [token ekonomisi belgesindedir](token-economy.md).
+
 ```text
 ── <core_policy> · trust=core · 2413 chars · ~604 tokens
 ...
@@ -479,10 +489,14 @@ sabitlendi.
     olabilecekse yeniden oku" oldu.
 
 17. Planlama iki katman. **Plan modu** (kullanıcı/uygulama açar): yalnız plan,
-    onay kapısı, sonra Apply. **Kendiliğinden plan** (çekirdekte `Planning`):
+    onay kapısı, sonra Apply. **Kendiliğinden plan** (çekirdekte `Tools and planning`):
     plan modu kapalıyken karmaşık işlerde (migration, geniş refactor, birbirine
-    bağımlı parçalı özellik) model önce inceler, adımları `update_plan` ile yazar, onay beklemeden aynı
-    turda uygular. `<plan_mode>` bölümü güncelken `Planning` devre dışıdır.
+    bağımlı parçalı özellik) model önce inceler, sıralı planı yazar ve onay
+    beklemeden aynı turda uygular. Görünür planı tutan araç platforma özgüdür:
+    tüm platformlarda `update_plan`dır (masaüstünde platform bloğunda anlatılır,
+    mobilde doğrudan araç); arayüz son `update_plan` sonucunu composer üstünde canlı
+    kontrol listesi olarak gösterir. `execution_plan` ayrıca iç kayıt olarak kalır —
+    araç adı yine de `core.txt`'te geçmez. `<plan_mode>` bölümü güncelken bu katman devre dışıdır.
     Eşik yok: basit/karmaşık kararı modele ait (dosya sayısı ölçüt değil,
     parçaların birbirine bağımlılığı ölçüt; şüphede doğrudan uygula). Run loop'ta
     kilit yok; bir ara eklenen "ikinci dosyada plan şartı" kaldırıldı.
@@ -490,6 +504,24 @@ sabitlendi.
 18. macOS: dinamik bölümler artık her user turn'e kopyalanmıyor. Yalnız son
     yakalanan kopyadan farklı olan bölüm yazılır; kalkan bölüm
     `No longer applies.` ile kapatılır (`foldingDynamicPrompt`).
+
+19. Grafik kuralı çekirdekte (`Diagrams`): ```flow, ```diagram ve ```chart
+    fence'leri beş istemcide de renkli çizilir — macOS `ConversationDiagram`,
+    Windows/Linux `shared/MarkdownDiagrams.cs` + `MarkdownBody.cs`, iOS/Android
+    `MarkdownDiagrams` + `MarkdownBody`. Fence'lerin kuramadığı şekiller düz
+    code block içinde box-drawing diyagram olarak çizilir; düz code block'lar beş
+    platformda yatay kaydırılır ve sağ üstte kopyalama düğmesi taşır.
+
+20. Yanıt stili: dark cockpit metni tek kanonik dosyada (`shared/prompts/response-style.txt`);
+    `tools/sync_prompts.py` onu Swift ve C# literal'lerine yazar. Aynı dosya "anlatma, çiz"
+    cümlesini de taşır ve iOS/Android telefon prompt'una sabit olarak yazılır (mobilde stil ayarı yok). Kural istenen sonuçları
+    (cevap, değişen dosyalar, istenen kontrolün sonucu) geçse bile söyler; sessizlik yalnız
+    adım anlatımı ve beklenen ara durumlar için. Sayısal limit yalnız yanında limit ifadesi
+    varsa uygulanır (`en fazla 200 token`, `max 50 words`, `100 kelimeyi geçme`); "Add 2 words
+    to the commit message" gibi görev cümleleri limit olmaz. Kelime limiti yalnız prompt'ta
+    kalır, sağlayıcı tavanı yalnız token limitinden gelir. Araç içeren turlarda sağlayıcı tavanı
+    uygulanmaz; yazma ve araç çağrısı kesilmez. `tools/eval_prompt.py` `style` alanıyla
+    `<response_style>` bölümünü gerçekten ekler.
 
 Yeni bir "prompt orchestration" katmanı gerekmez; mevcut `AgentBridge`
 birleşim noktaları yeterli.

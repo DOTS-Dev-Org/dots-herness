@@ -341,33 +341,39 @@ export type StoreFulfillment = {
 };
 
 async function syncStoreExtraSeats(env: Env, workspaceId: string): Promise<number> {
-  const workspace = await db(env)
-    .prepare(`SELECT plan_slug FROM workspaces WHERE id = ?`)
-    .bind(workspaceId)
-    .first<{ plan_slug: string | null }>();
-  const isTeamWorkspace = planDefForSlug(workspace?.plan_slug).slug === "team";
-  const row = await db(env)
-    .prepare(
-      `SELECT COALESCE(SUM(quantity), 0) AS seats
-         FROM billing_orders
-        WHERE workspace_id = ?
-          AND kind = 'extra_seat'
-          AND payment_provider IN ('apple', 'google')
-          AND store_status = 'active'
-          AND (store_expires_at IS NULL OR julianday(store_expires_at) > julianday('now'))`,
-    )
-    .bind(workspaceId)
-    .first<{ seats: number }>();
-  const seats = isTeamWorkspace ? Math.max(0, Number(row?.seats) || 0) : 0;
+  // Recompute and write the snapshot in one SQLite statement. Separate SUM and
+  // UPDATE calls can interleave across simultaneous purchases and let an older
+  // total overwrite the newer one.
   await db(env)
     .prepare(
       `UPDATE workspaces
-          SET store_extra_seats = ?, updated_at = datetime('now')
+          SET store_extra_seats = CASE
+                WHEN (CASE
+                  WHEN lower(COALESCE(plan_slug, 'free')) LIKE 'token-%'
+                    THEN substr(lower(COALESCE(plan_slug, 'free')), 7)
+                  ELSE lower(COALESCE(plan_slug, 'free'))
+                END) IN ('team', 'plus', 'business')
+                  THEN (
+                    SELECT COALESCE(SUM(quantity), 0)
+                      FROM billing_orders
+                     WHERE workspace_id = workspaces.id
+                       AND kind = 'extra_seat'
+                       AND payment_provider IN ('apple', 'google')
+                       AND store_status = 'active'
+                       AND (store_expires_at IS NULL OR julianday(store_expires_at) > julianday('now'))
+                  )
+                ELSE 0
+              END,
+              updated_at = datetime('now')
         WHERE id = ?`,
     )
-    .bind(seats, workspaceId)
+    .bind(workspaceId)
     .run();
-  return seats;
+  const row = await db(env)
+    .prepare(`SELECT store_extra_seats FROM workspaces WHERE id = ?`)
+    .bind(workspaceId)
+    .first<{ store_extra_seats: number | null }>();
+  return Math.max(0, Number(row?.store_extra_seats) || 0);
 }
 
 async function applyStorePlan(

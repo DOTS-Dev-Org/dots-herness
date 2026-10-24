@@ -62,6 +62,18 @@ public sealed class TerminalSession : IDisposable
 
     public event EventHandler? Changed;
 
+    /// <summary>
+    /// Factory shared with the Windows terminal so the agent tool can start a session
+    /// the same way on both desktops.
+    /// </summary>
+    public static TerminalSession Create(
+        string workingDirectory,
+        SshTarget? remoteTarget = null,
+        bool sandboxed = false,
+        IReadOnlyList<string>? sandboxWritableRoots = null,
+        bool sandboxNetworkAccess = false) =>
+        new(workingDirectory, remoteTarget, sandboxed, sandboxWritableRoots, sandboxNetworkAccess);
+
     public string Output
     {
         get { lock (_gate) return _renderedOutput ??= RenderTranscript(); }
@@ -71,6 +83,12 @@ public sealed class TerminalSession : IDisposable
     {
         get { lock (_gate) return _isRunning; }
     }
+
+    /// <summary>When the session started; the Tasks tab shows the elapsed time.</summary>
+    public DateTime StartedAt { get; private set; } = DateTime.Now;
+
+    /// <summary>The shell's exit code, once it has exited.</summary>
+    public int? ExitCode { get; private set; }
 
     public void Start()
     {
@@ -162,6 +180,8 @@ public sealed class TerminalSession : IDisposable
                 _master = master;
                 _childPid = childPid;
                 _isRunning = true;
+                StartedAt = DateTime.Now;
+                ExitCode = null;
                 ResetTranscript();
                 generation = ++_generation;
                 cancellation = new CancellationTokenSource();
@@ -260,7 +280,13 @@ public sealed class TerminalSession : IDisposable
 
     private async Task ReapChildAsync(int childPid, long generation)
     {
-        await Task.Run(() => waitpid(childPid, out _, 0)).ConfigureAwait(false);
+        var status = 0;
+        await Task.Run(() => waitpid(childPid, out status, 0)).ConfigureAwait(false);
+        lock (_gate)
+        {
+            // The shell's exit status; a signalled child reports its signal.
+            if (_generation == generation) ExitCode = (status & 0x7F) == 0 ? (status >> 8) & 0xFF : 128 + (status & 0x7F);
+        }
         Complete(childPid, generation);
     }
 

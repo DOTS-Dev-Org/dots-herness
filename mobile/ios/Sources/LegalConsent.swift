@@ -1,5 +1,5 @@
 // Copyright (c) 2026 DOTS
-// Live-fetched legal documents + first-run acceptance gate for the iOS client.
+// Live-fetched legal documents for the optional Settings viewer.
 // Canonical Markdown is versioned in the Herness Worker D1/R2 pipeline; see
 // docs/legal/README.md.
 
@@ -16,7 +16,6 @@ struct LegalDocuments: Equatable {
     let privacyHash: String
     let termsURL: URL?
     let privacyURL: URL?
-    let hash: String
     var isEmpty: Bool { termsMarkdown.isEmpty && privacyMarkdown.isEmpty }
     var isComplete: Bool { !termsMarkdown.isEmpty && !privacyMarkdown.isEmpty }
 }
@@ -29,18 +28,9 @@ enum LegalConsentKey: String, CaseIterable {
 final class LegalModel: ObservableObject {
     static let apiURL = URL(string: "https://dotsherness-unified-backend.dotsherness-unified-backend.workers.dev/api/legal/documents")!
 
-    private let acceptedHashKey = "legal.acceptedHash"
-    private let acceptedAtKey = "legal.acceptedAt"
-    private let defaults = UserDefaults.standard
-
     @Published private(set) var documents: LegalDocuments?
-    @Published private(set) var needsAcceptance: Bool
     @Published private(set) var loadFailed = false
     @Published private(set) var languageCode = "en"
-
-    init() {
-        needsAcceptance = (UserDefaults.standard.string(forKey: "legal.acceptedHash") ?? "").isEmpty
-    }
 
     func setLanguage(_ language: MobileLanguage) {
         guard languageCode != language.rawValue else { return }
@@ -70,11 +60,9 @@ final class LegalModel: ObservableObject {
     func load() async {
         if let docs = await fetch() {
             documents = docs
-            needsAcceptance = defaults.string(forKey: acceptedHashKey) != docs.hash
             loadFailed = false
         } else {
             loadFailed = true
-            needsAcceptance = (defaults.string(forKey: acceptedHashKey) ?? "").isEmpty
         }
     }
 
@@ -122,7 +110,6 @@ final class LegalModel: ObservableObject {
             SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined()
         }
         guard digest(termsMarkdown) == termsHash, digest(privacyMarkdown) == privacyHash else { return nil }
-        let acceptanceHash = digest("\(version)|\(locale)|\(termsHash)|\(privacyHash)")
         return LegalDocuments(
             version: version,
             locale: locale,
@@ -131,16 +118,8 @@ final class LegalModel: ObservableObject {
             termsHash: termsHash,
             privacyHash: privacyHash,
             termsURL: (terms["r2_url"] as? String).flatMap(URL.init(string:)),
-            privacyURL: (privacy["r2_url"] as? String).flatMap(URL.init(string:)),
-            hash: acceptanceHash,
+            privacyURL: (privacy["r2_url"] as? String).flatMap(URL.init(string:))
         )
-    }
-
-    func accept() {
-        guard let docs = documents else { return }
-        defaults.set(docs.hash, forKey: acceptedHashKey)
-        defaults.set(ISO8601DateFormatter().string(from: Date()), forKey: acceptedAtKey)
-        needsAcceptance = false
     }
 
     /// These are not opt-in toggles: using the app means these are already
@@ -200,197 +179,6 @@ private struct ConsentStatements: View {
             Text(localization.text("legal.consent.\(key.rawValue)"))
                 .font(.footnote)
         }
-    }
-}
-
-struct LegalGateView: View {
-    @EnvironmentObject private var localization: MobileLocalization
-    @EnvironmentObject private var theme: MobileTheme
-    @ObservedObject var legal: LegalModel
-    @State private var termsAccepted = false
-    @State private var privacyAccepted = false
-    @State private var documentToShow: LegalDoc?
-    @State private var isLanguageDropdownOpen = false
-
-    private var currentDocuments: LegalDocuments? {
-        guard let documents = legal.documents,
-              documents.locale == localization.effective.rawValue else { return nil }
-        return documents
-    }
-
-    var body: some View {
-        NavigationStack {
-            GeometryReader { geometry in
-                ZStack(alignment: .topLeading) {
-                    (theme.isDark ? Color.black : Color.white)
-                        .ignoresSafeArea()
-
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 14) {
-                            HStack {
-                                if localization.isRTL {
-                                    themeToggleButton
-                                    Spacer(minLength: 0)
-                                    languagePicker
-                                } else {
-                                    languagePicker
-                                    Spacer(minLength: 0)
-                                    themeToggleButton
-                                }
-                            }
-
-                            Text(localization.text("legal.title"))
-                                .font(.headline)
-                                .foregroundStyle(.secondary)
-                            Text(localization.text("legal.gateHeading"))
-                                .font(.title3.weight(.semibold))
-                            Text(localization.text("legal.gateIntro"))
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-
-                            if currentDocuments != nil {
-                                Text(localization.text("legal.acceptRequired"))
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.top, 2)
-
-                                legalDocumentRow(
-                                    .terms,
-                                    title: localization.text("legal.termsTab"),
-                                    accepted: $termsAccepted
-                                )
-                                legalDocumentRow(
-                                    .privacy,
-                                    title: localization.text("legal.privacyTab"),
-                                    accepted: $privacyAccepted
-                                )
-                            } else if legal.loadFailed {
-                                Text(localization.text("legal.loadError"))
-                                    .foregroundStyle(.secondary)
-                                Button(localization.text("legal.retry")) { Task { await legal.load() } }
-                            } else {
-                                ProgressView()
-                                    .frame(maxWidth: .infinity)
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                    }
-
-                    if isLanguageDropdownOpen {
-                        CustomLanguageDropdown(
-                            isPresented: $isLanguageDropdownOpen,
-                            darkAppearance: theme.isDark
-                        )
-                        .padding(.top, max(geometry.safeAreaInsets.top, 54) + 48)
-                        .padding(.leading, localization.isRTL ? 0 : 20)
-                        .padding(.trailing, localization.isRTL ? 20 : 0)
-                        .frame(
-                            maxWidth: .infinity,
-                            maxHeight: .infinity,
-                            alignment: localization.isRTL ? .topTrailing : .topLeading
-                        )
-                        .zIndex(999)
-                    }
-                }
-            }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if currentDocuments != nil {
-                    Button { legal.accept() } label: {
-                        Text(localization.text("legal.accept"))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 48)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!(termsAccepted && privacyAccepted))
-                    .padding(.horizontal, 20)
-                    .padding(.top, 6)
-                    .padding(.bottom, 4)
-                    .background(theme.isDark ? Color.black : Color.white)
-                }
-            }
-            .toolbar(.hidden, for: .navigationBar)
-            .sheet(item: $documentToShow) { document in
-                if let documents = currentDocuments {
-                    NavigationStack {
-                        LegalDocumentPanel(documents: documents, initialSelection: document)
-                            .padding(.horizontal)
-                            .navigationTitle(localization.text("legal.title"))
-                            .navigationBarTitleDisplayMode(.inline)
-                    }
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-                }
-            }
-            .preferredColorScheme(theme.isDark ? .dark : .light)
-        }
-    }
-
-    private var languagePicker: some View {
-        MobileLanguagePicker(
-            isDropdownOpen: $isLanguageDropdownOpen,
-            darkAppearance: theme.isDark
-        )
-    }
-
-    private var themeToggleButton: some View {
-        Button { theme.toggle() } label: {
-            Image(systemName: theme.isDark ? "sun.max.fill" : "moon.fill")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(theme.isDark ? Color.white : Color(red: 0.12, green: 0.12, blue: 0.14))
-                .frame(width: 34, height: 34)
-                .background(theme.isDark ? Color.white.opacity(0.14) : Color.black.opacity(0.08))
-                .clipShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(theme.isDark ? "Switch to light theme" : "Switch to dark theme")
-    }
-
-    private func legalDocumentRow(
-        _ document: LegalDoc,
-        title: String,
-        accepted: Binding<Bool>
-    ) -> some View {
-        HStack(spacing: 8) {
-            Button { documentToShow = document } label: {
-                HStack(spacing: 8) {
-                    Text(title)
-                        .font(.subheadline.weight(.medium))
-                    Spacer(minLength: 4)
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
-                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            Toggle(isOn: accepted) { EmptyView() }
-                .labelsHidden()
-                .toggleStyle(CheckboxToggleStyle())
-                .accessibilityLabel(title)
-                .frame(minWidth: 44, minHeight: 44)
-        }
-        .padding(.leading, 14)
-        .padding(.trailing, 8)
-        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 12))
-        .overlay {
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.primary.opacity(0.09), lineWidth: 1)
-        }
-    }
-}
-
-private struct CheckboxToggleStyle: ToggleStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        Button { configuration.isOn.toggle() } label: {
-            HStack(alignment: .top) {
-                Image(systemName: configuration.isOn ? "checkmark.square.fill" : "square")
-                configuration.label.multilineTextAlignment(.leading)
-            }
-        }
-        .buttonStyle(.plain)
     }
 }
 

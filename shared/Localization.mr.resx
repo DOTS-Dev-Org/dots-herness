@@ -298,13 +298,14 @@
   <data name="usage.resetsIn" xml:space="preserve"><value>{0} मध्ये रीसेट होईल</value></data>
   <data name="usage.resetsOn" xml:space="preserve"><value>{0} ला रीसेट होईल</value></data>
   <data name="usage.resetsAvailable" xml:space="preserve"><value>{0} रीसेट उपलब्ध</value></data>
-  <data name="usage.manageResets" xml:space="preserve"><value>Manage resets</value></data>
-  <data name="usage.useReset" xml:space="preserve"><value>Use reset</value></data>
-  <data name="usage.resetTitle" xml:space="preserve"><value>Use a Claude limit reset?</value></data>
-  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude's Usage page will open. Sign in to {0} and review the reset offered to that account. To use it, click Reset for free and confirm in Claude. Once used, a reset cannot be undone. Limits refresh when you return to HerNess.</value></data>
-  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Could not open Claude. Check that the account is still connected, then try again.</value></data>
-  <data name="usage.openClaude" xml:space="preserve"><value>Open Claude</value></data>
+  <data name="usage.manageResets" xml:space="preserve"><value>रीसेट व्यवस्थापित करा</value></data>
+  <data name="usage.useReset" xml:space="preserve"><value>रीसेट वापरा</value></data>
+  <data name="usage.resetTitle" xml:space="preserve"><value>Claude मर्यादा रीसेट वापरायचा?</value></data>
+  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude चे वापर पृष्ठ उघडेल. {0} मध्ये साइन इन करा आणि त्या खात्याला दिलेल्या रीसेटचे पुनरावलोकन करा. तो वापरण्यासाठी Reset for free वर क्लिक करा आणि Claude मध्ये पुष्टी करा. वापरलेला रीसेट पूर्ववत करता येत नाही. HerNess वर परत आल्यावर मर्यादा रिफ्रेश होतात.</value></data>
+  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Claude उघडता आले नाही. खाते अजूनही कनेक्ट आहे का ते तपासा, नंतर पुन्हा प्रयत्न करा.</value></data>
+  <data name="usage.openClaude" xml:space="preserve"><value>Claude उघडा</value></data>
   <data name="usage.needLogin" xml:space="preserve"><value>मर्यादा पाहण्यासाठी Claude मध्ये साइन इन करा</value></data>
+  <data name="agent.providerLimitTitle" xml:space="preserve"><value>प्रदाता मर्यादा गाठली</value></data>
   <data name="usage.noLimitInfo" xml:space="preserve"><value>मर्यादेची माहिती नाही</value></data>
   <data name="usage.loadFailed" xml:space="preserve"><value>वापर लोड करता आला नाही</value></data>
   <data name="usage.loading" xml:space="preserve"><value>वापर लोड होत आहे…</value></data>
@@ -332,21 +333,21 @@
   <data name="project.missing.message" xml:space="preserve"><value>'{0}' येथील प्रकल्प फोल्डर हलवले किंवा हटवले असू शकते. त्याचे नवीन स्थान निवडा किंवा प्रकल्प काढा.</value></data>
   <data name="project.missing.locate" xml:space="preserve"><value>स्थान शोधा…</value></data>
   <data name="project.missing.readOnly" xml:space="preserve"><value>प्रकल्प फोल्डर उपलब्ध नाही. तुम्ही मागील संभाषणे पाहू शकता; नवीन स्थान निवडेपर्यंत नवीन संभाषण सुरू करणे आणि संदेश पाठवणे बंद राहील.</value></data>
-  <data name="conversation.ranCommand" xml:space="preserve"><value>Ran 1 command</value></data>
-  <data name="conversation.ranCommands" xml:space="preserve"><value>Ran {0} commands</value></data>
-  <data name="conversation.runningTools" xml:space="preserve"><value>Running tools…</value></data>
-  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Thinking…</value></data>
-  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} tokens</value></data>
-  <data name="usage.context.window" xml:space="preserve"><value>Context window</value></data>
-  <data name="usage.planLimits" xml:space="preserve"><value>Plan usage limits</value></data>
-  <data name="composer.queue.one" xml:space="preserve"><value>1 message queued</value></data>
-  <data name="composer.queue.many" xml:space="preserve"><value>{0} messages queued</value></data>
-  <data name="composer.queue.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Clear the message box to edit</value></data>
-  <data name="composer.queue.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="git.createPR" xml:space="preserve"><value>Create PR</value></data>
-  <data name="git.hideBar" xml:space="preserve"><value>Hide</value></data>
-  <data name="composer.queue.next" xml:space="preserve"><value>Next: {0}</value></data>
+  <data name="conversation.ranCommand" xml:space="preserve"><value>1 कमांड चालवली</value></data>
+  <data name="conversation.ranCommands" xml:space="preserve"><value>{0} कमांड चालवल्या</value></data>
+  <data name="conversation.runningTools" xml:space="preserve"><value>टूल्स चालू आहेत…</value></data>
+  <data name="conversation.thinkingPhase" xml:space="preserve"><value>विचार करत आहे…</value></data>
+  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} टोकन</value></data>
+  <data name="usage.context.window" xml:space="preserve"><value>संदर्भ विंडो</value></data>
+  <data name="usage.planLimits" xml:space="preserve"><value>प्लॅन वापर मर्यादा</value></data>
+  <data name="composer.queue.one" xml:space="preserve"><value>1 संदेश रांगेत</value></data>
+  <data name="composer.queue.many" xml:space="preserve"><value>{0} संदेश रांगेत</value></data>
+  <data name="composer.queue.edit" xml:space="preserve"><value>संपादित करा</value></data>
+  <data name="composer.queue.editBlocked" xml:space="preserve"><value>संपादित करण्यासाठी संदेश बॉक्स रिकामा करा</value></data>
+  <data name="composer.queue.remove" xml:space="preserve"><value>काढा</value></data>
+  <data name="git.createPR" xml:space="preserve"><value>PR तयार करा</value></data>
+  <data name="git.hideBar" xml:space="preserve"><value>लपवा</value></data>
+  <data name="composer.queue.next" xml:space="preserve"><value>पुढील: {0}</value></data>
   <data name="sidebar.pinProject" xml:space="preserve"><value>प्रकल्प पिन करा</value></data>
   <data name="sidebar.unpinProject" xml:space="preserve"><value>प्रकल्प अनपिन करा</value></data>
   <data name="sidebar.sortLastUpdate" xml:space="preserve"><value>शेवटचे अद्यतन</value></data>
@@ -357,6 +358,8 @@
   <data name="conversation.cancelPlan" xml:space="preserve"><value>प्लॅन रद्द करा</value></data>
   <data name="conversation.cancelPlanHelp" xml:space="preserve"><value>हा प्लॅन रद्द करा आणि रांगेतील संदेश मोकळे करा</value></data>
   <data name="media.generated" xml:space="preserve"><value>प्रतिमा तयार झाली.</value></data>
+  <data name="media.videoGenerated" xml:space="preserve"><value>व्हिडिओ तयार झाला.</value></data>
+  <data name="media.audioGenerated" xml:space="preserve"><value>भाषण तयार झाले.</value></data>
   <data name="media.fallbackUsed" xml:space="preserve"><value>निवडलेला प्रदाता ही प्रतिमा तयार करू शकला नाही. ती {0}/{1} द्वारे एकदाच केलेल्या फॉलबॅक विनंतीने तयार केली; मुख्य संभाषणाचा प्रदाता आणि मॉडेल बदलले नाहीत, त्यामुळे त्याचा प्रॉम्प्ट कॅशे तसाच आहे.</value></data>
   <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>मी {0} वापरून ही प्रतिमा तयार करू शकत नाही. फॉलबॅक म्हणून एखादा इमेज API किंवा प्रदाता कॉन्फिगर करा. फक्त प्रतिमेसाठी मुख्य चॅट मॉडेल बदलल्यास प्रदात्याचा प्रॉम्प्ट कॅशे बिघडू शकतो.</value></data>
   <data name="feedback.close" xml:space="preserve"><value>बंद करा</value></data>
@@ -369,27 +372,27 @@
   <data name="feedback.persistenceFailed" xml:space="preserve"><value>अभिप्राय स्थानिकरित्या जतन करता आला नाही.</value></data>
   <data name="feedback.streamingMessage" xml:space="preserve"><value>अभिप्राय पाठवण्यापूर्वी उत्तर पूर्ण होईपर्यंत प्रतीक्षा करा.</value></data>
   <data name="feedback.submit" xml:space="preserve"><value>सबमिट करा</value></data>
-  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Apply it elsewhere</value></data>
-  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Broke an existing feature</value></data>
+  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>इतरत्र लागू करा</value></data>
+  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>विद्यमान वैशिष्ट्य बिघडवले</value></data>
   <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>माझ्या सूचनांचे पालन केले नाही</value></data>
-  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Didn't follow project style</value></data>
+  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>प्रकल्प शैलीचे पालन केले नाही</value></data>
   <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>जलद आणि कार्यक्षम</value></data>
   <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>माझ्या सूचनांचे पालन केले</value></data>
-  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Ignored project architecture</value></data>
+  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>प्रकल्प आर्किटेक्चरकडे दुर्लक्ष केले</value></data>
   <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>चुकीचे किंवा अपूर्ण</value></data>
-  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Keep the project style</value></data>
+  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>प्रकल्प शैली राखा</value></data>
   <data name="feedback.tag.lost_context" xml:space="preserve"><value>संदर्भ हरवला</value></data>
   <data name="feedback.tag.negative_other" xml:space="preserve"><value>इतर</value></data>
   <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>विषयाबाहेर / कक्षेबाहेर</value></data>
   <data name="feedback.tag.output_quality" xml:space="preserve"><value>चांगली कोड / आउटपुट गुणवत्ता</value></data>
   <data name="feedback.tag.positive_other" xml:space="preserve"><value>इतर</value></data>
-  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Reuse this architecture</value></data>
-  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Reuse this token pattern</value></data>
+  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>हे आर्किटेक्चर पुन्हा वापरा</value></data>
+  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>हा टोकन पॅटर्न पुन्हा वापरा</value></data>
   <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>सुरक्षा किंवा कायदेशीर समस्या</value></data>
   <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>मंद किंवा सदोष</value></data>
   <data name="feedback.tag.task_completed" xml:space="preserve"><value>माझे काम पूर्ण केले</value></data>
   <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>उपयुक्त स्वायत्तता</value></data>
-  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Wrong theme or token</value></data>
+  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>चुकीची थीम किंवा टोकन</value></data>
   <data name="feedback.title" xml:space="preserve"><value>अभिप्राय शेअर करा</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>अभिप्राय फक्त वर्कस्पेस चॅटमध्ये उपलब्ध आहे.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>अभिप्राय फक्त असिस्टंटच्या उत्तरांसाठी पाठवता येतो.</value></data>
@@ -398,12 +401,13 @@
   <data name="conversation.cacheExpired.explanation" xml:space="preserve"><value>कॅशची अंदाजित मुदत संपली आहे. प्रॉम्प्ट कॅश ही प्रदात्याकडील तात्पुरती प्रक्रिया स्थिती आहे; तुमचा चॅट इतिहास जतन केलेलाच राहतो. संपूर्ण इतिहासासह पुढे सुरू ठेवल्यास ते टोकन पुन्हा नवीन इनपुट म्हणून मोजले जाऊ शकतात. प्रदात्याकडे कॅश अजूनही होता की नाही, याची खात्री पुढील विनंतीच्या वापर डेटावरूनच होते.</value></data>
   <data name="conversation.cacheExpired.infoTitle" xml:space="preserve"><value>मला हे का दिसत आहे?</value></data>
   <data name="conversation.cacheExpired.notice" xml:space="preserve"><value>कॅशची मुदत संपली असू शकते; पुढे सुरू ठेवल्यास अधिक टोकन वापरले जाऊ शकतात आणि खर्च वाढू शकतो. छोट्या सारांशासह नवीन चॅट सुरू करा.</value></data>
+  <data name="conversation.cacheLocal.notice" xml:space="preserve"><value>लोकल मॉडेलचा कॅशे साफ झाला आहे; संपूर्ण इतिहास पुन्हा प्रक्रिया केला जाईल आणि उत्तराला उशीर होऊ शकतो. छोट्या सारांशासह नवीन चॅट सुरू करा.</value></data>
   <data name="conversation.filesChangedCount" xml:space="preserve"><value>{0} फाइल बदलल्या</value></data>
   <data name="conversation.filesLess" xml:space="preserve"><value>कमी फाइल दाखवा</value></data>
   <data name="conversation.filesLineSummary" xml:space="preserve"><value>+{0} −{1}</value></data>
   <data name="conversation.filesMore" xml:space="preserve"><value>आणखी {0} फाइल दाखवा</value></data>
   <data name="conversation.filesReverted" xml:space="preserve"><value>फाइलमधील बदल पूर्ववत केले.</value></data>
-  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>The saved file version is unavailable, so the workspace was left unchanged.</value></data>
+  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>जतन केलेली फाइल आवृत्ती उपलब्ध नाही, त्यामुळे वर्कस्पेसमध्ये बदल केला नाही.</value></data>
   <data name="conversation.undoChanges" xml:space="preserve"><value>पूर्ववत करा</value></data>
   <data name="conversation.viewChanges" xml:space="preserve"><value>बदल पाहा</value></data>
   <data name="settings.archive" xml:space="preserve"><value>संग्रह</value></data>
@@ -434,9 +438,9 @@
   <data name="workLocation.remoteFolderUp" xml:space="preserve"><value>वरचे फोल्डर</value></data>
   <data name="workLocation.remoteFolderEmpty" xml:space="preserve"><value>इथे उपफोल्डर नाहीत</value></data>
   <data name="workLocation.remoteFolderUse" xml:space="preserve"><value>हे फोल्डर वापरा</value></data>
-  <data name="workLocation.connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="workLocation.connect" xml:space="preserve"><value>कनेक्ट करा</value></data>
   <data name="workLocation.addHost" xml:space="preserve"><value>संगणक जोडा…</value></data>
-  <data name="workLocation.useLocal" xml:space="preserve"><value>Use this computer</value></data>
+  <data name="workLocation.useLocal" xml:space="preserve"><value>हा संगणक वापरा</value></data>
   <data name="settings.sshAlias" xml:space="preserve"><value>उपनाव</value></data>
   <data name="settings.sshHostName" xml:space="preserve"><value>यजमान किंवा IP</value></data>
   <data name="settings.sshUser" xml:space="preserve"><value>वापरकर्तानाव</value></data>
@@ -444,126 +448,106 @@
   <data name="settings.sshRemove" xml:space="preserve"><value>काढा</value></data>
   <data name="ssh.busy" xml:space="preserve"><value>कामाची जागा बदलण्यापूर्वी सुरू असलेले काम संपण्याची वाट पाहा.</value></data>
   <data name="ssh.connecting" xml:space="preserve"><value>{0} शी जोडत आहे…</value></data>
-  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Choose a remote folder before starting a task.</value></data>
+  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>कार्य सुरू करण्यापूर्वी रिमोट फोल्डर निवडा.</value></data>
   <data name="ssh.scanning" xml:space="preserve"><value>यजमान किल्ली आणत आहे…</value></data>
   <data name="ssh.fingerprintTitle" xml:space="preserve"><value>हा {0} चा फिंगरप्रिंट आहे का?</value></data>
   <data name="ssh.fingerprintMessage" xml:space="preserve"><value>विश्वास ठेवण्याआधी सर्व्हरशी ताळमेळ पाहा. जुळल्यासच पुढे जा.</value></data>
   <data name="ssh.trustAndConnect" xml:space="preserve"><value>विश्वास ठेवून जोडा</value></data>
   <data name="ssh.error.unavailable" xml:space="preserve"><value>या Mac वर ssh सापडला नाही.</value></data>
   <data name="ssh.error.notReachable" xml:space="preserve"><value>{0} पर्यंत पोहोचता आले नाही.</value></data>
-  <data name="conversation.choosePane" xml:space="preserve"><value>Choose a pane</value></data>
-  <data name="sidebar.toggle" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.mcpServers" xml:space="preserve"><value>MCP servers</value></data>
-  <data name="mcp.empty" xml:space="preserve"><value>No MCP servers configured.</value></data>
-  <data name="mcp.addServer" xml:space="preserve"><value>Add server</value></data>
-  <data name="mcp.name" xml:space="preserve"><value>Name</value></data>
-  <data name="mcp.transport" xml:space="preserve"><value>Transport</value></data>
+  <data name="conversation.choosePane" xml:space="preserve"><value>एक पेन निवडा</value></data>
+  <data name="sidebar.toggle" xml:space="preserve"><value>साइडबार दाखवा किंवा लपवा</value></data>
+  <data name="settings.mcpServers" xml:space="preserve"><value>MCP सर्व्हर</value></data>
+  <data name="mcp.empty" xml:space="preserve"><value>कोणतेही MCP सर्व्हर कॉन्फिगर केलेले नाहीत.</value></data>
+  <data name="mcp.addServer" xml:space="preserve"><value>सर्व्हर जोडा</value></data>
+  <data name="mcp.name" xml:space="preserve"><value>नाव</value></data>
+  <data name="mcp.transport" xml:space="preserve"><value>ट्रान्सपोर्ट</value></data>
   <data name="mcp.http" xml:space="preserve"><value>HTTP</value></data>
   <data name="mcp.stdio" xml:space="preserve"><value>stdio</value></data>
   <data name="mcp.url" xml:space="preserve"><value>URL</value></data>
-  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (optional)</value></data>
-  <data name="mcp.executable" xml:space="preserve"><value>Executable path</value></data>
-  <data name="mcp.arguments" xml:space="preserve"><value>Arguments (space-separated)</value></data>
-  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Auto-run tools the server marks read-only</value></data>
-  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Server annotations are untrusted. Enabling this skips approval only for tools marked read-only and not destructive.</value></data>
-  <data name="mcp.test" xml:space="preserve"><value>Test</value></data>
-  <data name="mcp.add" xml:space="preserve"><value>Add</value></data>
-  <data name="mcp.reconnect" xml:space="preserve"><value>Reconnect</value></data>
-  <data name="mcp.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="mcp.idle" xml:space="preserve"><value>Idle</value></data>
-  <data name="mcp.connecting" xml:space="preserve"><value>Connecting…</value></data>
-  <data name="mcp.connected" xml:space="preserve"><value>Connected · {0} tool(s)</value></data>
-  <data name="mcp.failed" xml:space="preserve"><value>Failed: {0}</value></data>
-  <data name="mcp.testing" xml:space="preserve"><value>Testing…</value></data>
-  <data name="mcp.testConnected" xml:space="preserve"><value>Connected. {0} tool(s) available.</value></data>
-  <data name="conversation.toolInput" xml:space="preserve"><value>Tool input</value></data>
-  <data name="settings.tab.memory" xml:space="preserve"><value>Memory</value></data>
-  <data name="memory.vault.title" xml:space="preserve"><value>Memory vault</value></data>
-  <data name="memory.refresh" xml:space="preserve"><value>Refresh</value></data>
-  <data name="memory.reveal" xml:space="preserve"><value>Open .mem folder</value></data>
-  <data name="memory.refused" xml:space="preserve"><value>Not saved. The entry may contain a credential, exceed its limit, or the workspace may be unavailable.</value></data>
-  <data name="memory.noWorkspace" xml:space="preserve"><value>Select a local workspace to view its memory.</value></data>
-  <data name="memory.notInitialized" xml:space="preserve"><value>Memory starts after the first prompt in this workspace.</value></data>
-  <data name="memory.search" xml:space="preserve"><value>Search memory</value></data>
-  <data name="memory.selectNote" xml:space="preserve"><value>Select a note to view it.</value></data>
-  <data name="memory.save" xml:space="preserve"><value>Save</value></data>
-  <data name="memory.forget" xml:space="preserve"><value>Forget</value></data>
-  <data name="memory.ownRules" xml:space="preserve"><value>Your own rules</value></data>
-  <data name="memory.rulesHelp" xml:space="preserve"><value>These rules are added to every request in this project.</value></data>
-  <data name="memory.lessons" xml:space="preserve"><value>Learned lessons</value></data>
-  <data name="memory.learningStats" xml:space="preserve"><value>{0} turns logged; {1} were corrected or undone.</value></data>
-  <data name="memory.links" xml:space="preserve"><value>Links</value></data>
-  <data name="memory.backlinks" xml:space="preserve"><value>Linked mentions</value></data>
-  <data name="memory.userAuthored" xml:space="preserve"><value>user-authored</value></data>
-  <data name="memory.inferred" xml:space="preserve"><value>inferred</value></data>
-  <data name="memory.learnedCount" xml:space="preserve"><value>learned {0}×</value></data>
-  <data name="memory.usedCount" xml:space="preserve"><value>used {0}×</value></data>
-  <data name="memory.inactive" xml:space="preserve"><value>no longer applied</value></data>
-  <data name="memory.pin" xml:space="preserve"><value>Pin</value></data>
-  <data name="memory.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="memory.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="settings.tab.access" xml:space="preserve"><value>Workspace access</value></data>
-  <data name="access.currentActor" xml:space="preserve"><value>Current actor</value></data>
-  <data name="access.role" xml:space="preserve"><value>Role</value></data>
-  <data name="access.notAuthorized" xml:space="preserve"><value>Not authorized</value></data>
-  <data name="access.score" xml:space="preserve"><value>Score</value></data>
-  <data name="access.device" xml:space="preserve"><value>Device</value></data>
-  <data name="access.publicKey" xml:space="preserve"><value>Public key</value></data>
-  <data name="access.memoryRevision" xml:space="preserve"><value>Memory revision</value></data>
-  <data name="access.members" xml:space="preserve"><value>Members</value></data>
-  <data name="access.noMembers" xml:space="preserve"><value>No members yet.</value></data>
-  <data name="access.revoke" xml:space="preserve"><value>Revoke</value></data>
-  <data name="access.revoked" xml:space="preserve"><value>revoked</value></data>
-  <data name="access.inviteDevice" xml:space="preserve"><value>Invite device</value></data>
-  <data name="access.displayName" xml:space="preserve"><value>Display name</value></data>
-  <data name="access.newDevicePublicKey" xml:space="preserve"><value>New device public key</value></data>
-  <data name="access.createInvitation" xml:space="preserve"><value>Create signed invitation</value></data>
-  <data name="access.acceptInvitation" xml:space="preserve"><value>Accept invitation</value></data>
-  <data name="access.signedInvitation" xml:space="preserve"><value>Signed invitation</value></data>
-  <data name="access.accept" xml:space="preserve"><value>Accept</value></data>
-  <data name="access.reject" xml:space="preserve"><value>Reject</value></data>
-  <data name="access.pendingDecisions" xml:space="preserve"><value>Pending decisions</value></data>
-  <data name="access.noPendingDecisions" xml:space="preserve"><value>No pending project decisions.</value></data>
-  <data name="access.noWorkspace" xml:space="preserve"><value>Select a local workspace to manage access.</value></data>
-  <data name="access.scoreValue" xml:space="preserve"><value>Score: {0}</value></data>
-  <data name="access.initialize" xml:space="preserve"><value>Initialize workspace memory</value></data>
-  <data name="access.initializeHelp" xml:space="preserve"><value>Workspace access uses a signed memory log. Initializing creates the owner identity and event log in this project's .mem folder.</value></data>
-  <data name="access.role.owner" xml:space="preserve"><value>Owner</value></data>
-  <data name="access.role.approver" xml:space="preserve"><value>Approver</value></data>
-  <data name="access.role.contributor" xml:space="preserve"><value>Contributor</value></data>
-  <data name="access.role.observer" xml:space="preserve"><value>Observer</value></data>
-  <data name="settings.sandbox" xml:space="preserve"><value>Sandbox</value></data>
-  <data name="settings.sandboxOff" xml:space="preserve"><value>Off — the agent works directly in your checkout.</value></data>
-  <data name="settings.sandboxOn" xml:space="preserve"><value>On — the agent works in a separate git worktree.</value></data>
-  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Recovery is required before sandbox operations can continue.</value></data>
-  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Retry recovery</value></data>
-  <data name="settings.sandboxName" xml:space="preserve"><value>Name</value></data>
-  <data name="settings.sandboxEnter" xml:space="preserve"><value>Start sandbox</value></data>
-  <data name="settings.sandboxMerge" xml:space="preserve"><value>Merge and exit</value></data>
-  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Discard and exit</value></data>
-  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Origin</value></data>
-  <data name="settings.sandboxBranch" xml:space="preserve"><value>Branch</value></data>
-  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Allow network for new processes</value></data>
-  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>This applies only to new commands. Existing terminal sessions keep their current policy.</value></data>
-  <data name="settings.sandboxOpen" xml:space="preserve"><value>Open sandbox</value></data>
-  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Open origin</value></data>
-  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Conflicts</value></data>
-  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Prepare resolution</value></data>
-  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Ask agent</value></data>
-  <data name="settings.sandboxPreview" xml:space="preserve"><value>Refresh preview</value></data>
-  <data name="settings.sandboxApprove" xml:space="preserve"><value>Approve and merge</value></data>
-  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Cancel resolution</value></data>
-  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Retry cleanup</value></data>
-  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Discard this sandbox? Its branch will be kept for recovery, but its worktree will be removed.</value></data>
-  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Approval requires a complete preview with no unresolved files.</value></data>
-  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Resolution preview</value></data>
-  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Unresolved files</value></data>
-  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>Origin HEAD</value></data>
-  <data name="settings.sandboxHead" xml:space="preserve"><value>Sandbox HEAD</value></data>
-  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Preview fingerprint</value></data>
-  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Sandbox cleanup is still pending; the origin was not changed again.</value></data>
-  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Saved sandboxes</value></data>
-  <data name="settings.sandboxRecover" xml:space="preserve"><value>Recover</value></data>
+  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer टोकन (पर्यायी)</value></data>
+  <data name="mcp.executable" xml:space="preserve"><value>एक्झिक्युटेबल पथ</value></data>
+  <data name="mcp.arguments" xml:space="preserve"><value>आर्ग्युमेंट्स (स्पेसने वेगळे)</value></data>
+  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>सर्व्हरने फक्त-वाचन म्हणून चिन्हांकित केलेली साधने आपोआप चालवा</value></data>
+  <data name="mcp.autoRunHelp" xml:space="preserve"><value>सर्व्हर भाष्ये विश्वसनीय नाहीत. हे सुरू केल्यास फक्त केवळ-वाचन आणि विनाशकारी नसलेल्या चिन्हांकित टूल्ससाठी मंजुरी वगळली जाते.</value></data>
+  <data name="mcp.test" xml:space="preserve"><value>चाचणी</value></data>
+  <data name="mcp.add" xml:space="preserve"><value>सर्व्हर जोडा</value></data>
+  <data name="mcp.reconnect" xml:space="preserve"><value>पुन्हा कनेक्ट करा</value></data>
+  <data name="mcp.remove" xml:space="preserve"><value>काढा</value></data>
+  <data name="mcp.idle" xml:space="preserve"><value>निष्क्रिय</value></data>
+  <data name="mcp.connecting" xml:space="preserve"><value>कनेक्ट होत आहे…</value></data>
+  <data name="mcp.connected" xml:space="preserve"><value>कनेक्ट झाले · {0} टूल</value></data>
+  <data name="mcp.failed" xml:space="preserve"><value>अयशस्वी: {0}</value></data>
+  <data name="mcp.testing" xml:space="preserve"><value>चाचणी सुरू…</value></data>
+  <data name="mcp.testConnected" xml:space="preserve"><value>कनेक्ट झाले. {0} टूल उपलब्ध.</value></data>
+  <data name="conversation.toolInput" xml:space="preserve"><value>टूल इनपुट</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>मेमरी</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>मेमरी व्हॉल्ट</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>रिफ्रेश करा</value></data>
+  <data name="memory.enabled" xml:space="preserve"><value>मेमरी चालू</value></data>
+  <data name="memory.scanFrequency" xml:space="preserve"><value>स्कॅन वारंवारता</value></data>
+  <data name="memory.scan.off" xml:space="preserve"><value>बंद</value></data>
+  <data name="memory.scan.hourly" xml:space="preserve"><value>दर तासाला</value></data>
+  <data name="memory.scan.daily" xml:space="preserve"><value>दररोज</value></data>
+  <data name="memory.scan.weekly" xml:space="preserve"><value>दर आठवड्याला</value></data>
+  <data name="memory.enabledHelp" xml:space="preserve"><value>बंद असताना कोणतेही काम नोंदवले जात नाही, काहीही शिकले जात नाही आणि मॉडेलला कोणताही निष्कर्ष पाठवला जात नाही; आधी जतन केलेले डिस्कवर तसेच राहते.</value></data>
+  <data name="memory.scanHelp" xml:space="preserve"><value>संक्षिप्त कामाच्या नोंदी जतन केल्या जातात, त्यामुळे स्कॅननंतरही निष्कर्षांची कारणे पाहता येतात; स्कॅन बंद असताना पार्श्वभूमीत कोणतेही मॉडेल बोलावले जात नाही.</value></data>
+  <data name="memory.reveal" xml:space="preserve"><value>.mem फोल्डर उघडा</value></data>
+  <data name="memory.refused" xml:space="preserve"><value>जतन झाले नाही. नोंदीत क्रेडेन्शियल असू शकते, तिची मर्यादा ओलांडली असू शकते, किंवा वर्कस्पेस अनुपलब्ध असू शकते.</value></data>
+  <data name="memory.noWorkspace" xml:space="preserve"><value>मेमरी पाहण्यासाठी स्थानिक वर्कस्पेस निवडा.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>या वर्कस्पेसमधील पहिल्या प्रॉम्प्टनंतर मेमरी सुरू होते.</value></data>
+  <data name="memory.search" xml:space="preserve"><value>मेमरीमध्ये शोधा</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>पाहण्यासाठी एक नोट निवडा.</value></data>
+  <data name="memory.save" xml:space="preserve"><value>जतन करा</value></data>
+  <data name="memory.forget" xml:space="preserve"><value>विसरा</value></data>
+  <data name="memory.ownRules" xml:space="preserve"><value>तुमचे स्वतःचे नियम</value></data>
+  <data name="memory.rulesHelp" xml:space="preserve"><value>हे नियम या प्रकल्पातील प्रत्येक विनंतीत जोडले जातात.</value></data>
+  <data name="memory.lessons" xml:space="preserve"><value>शिकलेले धडे</value></data>
+  <data name="memory.learningStats" xml:space="preserve"><value>{0} फेऱ्या लॉग केल्या; {1} दुरुस्त किंवा पूर्ववत केल्या.</value></data>
+  <data name="memory.links" xml:space="preserve"><value>दुवे</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>लिंक केलेले उल्लेख</value></data>
+  <data name="memory.userAuthored" xml:space="preserve"><value>वापरकर्त्याने लिहिलेले</value></data>
+  <data name="memory.inferred" xml:space="preserve"><value>अनुमानित</value></data>
+  <data name="memory.learnedCount" xml:space="preserve"><value>{0}× शिकले</value></data>
+  <data name="memory.usedCount" xml:space="preserve"><value>{0}× वापरले</value></data>
+  <data name="memory.inactive" xml:space="preserve"><value>आता लागू नाही</value></data>
+  <data name="memory.pin" xml:space="preserve"><value>पिन करा</value></data>
+  <data name="memory.edit" xml:space="preserve"><value>संपादित करा</value></data>
+  <data name="memory.cancel" xml:space="preserve"><value>रद्द करा</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>वर्कस्पेस प्रवेश</value></data>
+  <data name="access.accept" xml:space="preserve"><value>स्वीकारा</value></data>
+  <data name="settings.sandbox" xml:space="preserve"><value>सँडबॉक्स</value></data>
+  <data name="settings.sandboxOff" xml:space="preserve"><value>बंद — एजंट थेट तुमच्या चेकआउटमध्ये काम करतो.</value></data>
+  <data name="settings.sandboxOn" xml:space="preserve"><value>चालू — एजंट वेगळ्या git worktree मध्ये काम करतो.</value></data>
+  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>सँडबॉक्स क्रिया सुरू ठेवण्यापूर्वी पुनर्प्राप्ती आवश्यक आहे.</value></data>
+  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>पुनर्प्राप्ती पुन्हा करा</value></data>
+  <data name="settings.sandboxName" xml:space="preserve"><value>नाव</value></data>
+  <data name="settings.sandboxEnter" xml:space="preserve"><value>सँडबॉक्स सुरू करा</value></data>
+  <data name="settings.sandboxMerge" xml:space="preserve"><value>मर्ज करा आणि बाहेर पडा</value></data>
+  <data name="settings.sandboxDiscard" xml:space="preserve"><value>टाकून द्या आणि बाहेर पडा</value></data>
+  <data name="settings.sandboxOrigin" xml:space="preserve"><value>मूळ</value></data>
+  <data name="settings.sandboxBranch" xml:space="preserve"><value>ब्रँच</value></data>
+  <data name="settings.sandboxNetwork" xml:space="preserve"><value>नवीन प्रक्रियांसाठी नेटवर्कला परवानगी द्या</value></data>
+  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>हे फक्त नवीन कमांडना लागू होते. विद्यमान टर्मिनल सत्रे त्यांचे सध्याचे धोरण ठेवतात.</value></data>
+  <data name="settings.sandboxOpen" xml:space="preserve"><value>सँडबॉक्स उघडा</value></data>
+  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>ओरिजिन उघडा</value></data>
+  <data name="settings.sandboxConflicts" xml:space="preserve"><value>संघर्ष</value></data>
+  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>निराकरण तयार करा</value></data>
+  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>एजंटला विचारा</value></data>
+  <data name="settings.sandboxPreview" xml:space="preserve"><value>पूर्वावलोकन रिफ्रेश करा</value></data>
+  <data name="settings.sandboxApprove" xml:space="preserve"><value>मंजूर करा आणि मर्ज करा</value></data>
+  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>निराकरण रद्द करा</value></data>
+  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>साफसफाई पुन्हा करा</value></data>
+  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>हा सँडबॉक्स टाकून द्यायचा? त्याची ब्रँच पुनर्प्राप्तीसाठी ठेवली जाईल, पण त्याचे worktree काढले जाईल.</value></data>
+  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>मंजुरीसाठी निराकरण न झालेल्या फायलींशिवाय पूर्ण पूर्वावलोकन आवश्यक आहे.</value></data>
+  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>निराकरण पूर्वावलोकन</value></data>
+  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>निराकरण न झालेल्या फायली</value></data>
+  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>ओरिजिन HEAD</value></data>
+  <data name="settings.sandboxHead" xml:space="preserve"><value>सँडबॉक्स HEAD</value></data>
+  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>पूर्वावलोकन फिंगरप्रिंट</value></data>
+  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>सँडबॉक्स साफसफाई अजून प्रलंबित आहे; ओरिजिन पुन्हा बदलले नाही.</value></data>
+  <data name="settings.sandboxRecovery" xml:space="preserve"><value>जतन केलेले सँडबॉक्स</value></data>
+  <data name="settings.sandboxRecover" xml:space="preserve"><value>पुनर्प्राप्त करा</value></data>
   <data name="conversation.accountSwitched.notice" xml:space="preserve"><value>ही चॅट त्याच मॉडेलवर दुसऱ्या खात्यावर गेली आहे. तिथे कॅश शून्यापासून सुरू होतो; पुढे सुरू ठेवल्यास अधिक टोकन वापरले जाऊ शकतात आणि खर्च वाढू शकतो.</value></data>
   <data name="conversation.modelSwitched.notice" xml:space="preserve"><value>मॉडेल बदलले आहे. कॅश नवीन मॉडेलकडे जात नाही; संपूर्ण इतिहासावर पुन्हा प्रक्रिया होते, त्यामुळे अधिक टोकन वापरले जाऊ शकतात आणि खर्च वाढू शकतो.</value></data>
   <data name="conversation.contextFull.notice" xml:space="preserve"><value>कॉन्टेक्स्ट विंडो जवळजवळ भरली आहे; पुढे सुरू ठेवल्यास अधिक टोकन वापरले जाऊ शकतात आणि खर्च वाढू शकतो. छोट्या सारांशासह नवीन चॅट सुरू करा.</value></data>
@@ -574,28 +558,28 @@
   <data name="context.overflowCompress" xml:space="preserve"><value>संकुचित करून सुरू ठेवा</value></data>
   <data name="context.overflowNotNow" xml:space="preserve"><value>आत्ता नाही</value></data>
   <data name="context.overflowDeclined" xml:space="preserve"><value>पाठवणे थांबले: संभाषण नवीन मॉडेलमध्ये बसत नाही.</value></data>
-  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>When another chat is writing the same file</value></data>
-  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Wait before asking</value></data>
-  <data name="settings.conflictWaitValue" xml:space="preserve"><value>Wait {0} seconds</value></data>
-  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Wait, then ask</value></data>
-  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>A chat that wants a file another chat is writing waits quietly, and asks only if the wait goes on too long.</value></data>
-  <data name="conflict.policy.ask" xml:space="preserve"><value>Ask me</value></data>
-  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Ask as soon as two chats want the same file.</value></data>
-  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Always wait</value></data>
-  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Never ask: a write waits for the chat that holds the file.</value></data>
-  <data name="conflict.title" xml:space="preserve"><value>A file is busy: {0}</value></data>
-  <data name="conflict.wholeProject" xml:space="preserve"><value>Project command: {0}</value></data>
-  <data name="conflict.stillBusy" xml:space="preserve"><value>Write held back: another chat is still writing {0}.</value></data>
-  <data name="conflict.userSkipped" xml:space="preserve"><value>Write skipped: {0} was left with the other chat ({1}), as you asked.</value></data>
-  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Stopped {0} so this chat could write.</value></data>
-  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Stopped other chats so this chat could write.</value></data>
-  <data name="conflict.banner.title" xml:space="preserve"><value>Another chat is writing this file</value></data>
-  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · held by “{1}” for {2} seconds</value></data>
-  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Keep waiting</value></data>
-  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Stop {0}</value></data>
-  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Stop all other chats</value></data>
-  <data name="conflict.banner.skip" xml:space="preserve"><value>Skip this write</value></data>
-  <data name="conflict.waiting" xml:space="preserve"><value>Waiting for “{0}” to finish writing: {1}</value></data>
+  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>दुसरा चॅट तीच फाइल लिहितो असल्यास</value></data>
+  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>विचारण्याआधी थांबा</value></data>
+  <data name="settings.conflictWaitValue" xml:space="preserve"><value>{0} सेकंद</value></data>
+  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>थांबा, मग विचारा</value></data>
+  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>दुसऱ्या चॅटची शांतपणे वाट पाहतो; उशीर झाल्यास विचारतो.</value></data>
+  <data name="conflict.policy.ask" xml:space="preserve"><value>मला विचारा</value></data>
+  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>दोन चॅट एकाच फाइलसाठी हवं असताच विचारतो.</value></data>
+  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>नेहमी थांबा</value></data>
+  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>प्रश्न नसतो: प्रत्येक लेखन त्या फाइल धरणाऱ्या चॅटची वाट पाहतो.</value></data>
+  <data name="conflict.title" xml:space="preserve"><value>दुसरा चॅट {0} लिहितोय</value></data>
+  <data name="conflict.wholeProject" xml:space="preserve"><value>संपूर्ण प्रकल्प (आदेश: {0})</value></data>
+  <data name="conflict.stillBusy" xml:space="preserve"><value>लेखन थांबवले: {0} अजून दुसरा चॅट लिहितोय.</value></data>
+  <data name="conflict.userSkipped" xml:space="preserve"><value>लेखन वगळले: {0} तुमच्या म्हणण्याने दुसऱ्या चॅटकडे ({1}) राहिले.</value></data>
+  <data name="conflict.stoppedHolder" xml:space="preserve"><value>तुमच्या म्हणण्याने “{0}” चॅट थांबवले आणि हे लेखन झाले.</value></data>
+  <data name="conflict.stoppedOthers" xml:space="preserve"><value>तुमच्या म्हणण्याने या प्रकल्पातील इतर चॅट थांबवले आणि हे लेखन झाले.</value></data>
+  <data name="conflict.banner.title" xml:space="preserve"><value>दुसरा चॅट ही फाइल लिहितोय</value></data>
+  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · “{1}” कडे {2} सेकंदांपासून आहे</value></data>
+  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>थांबत रहा</value></data>
+  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>तो चॅट थांबवा</value></data>
+  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>इतर सर्व चॅट थांबवा</value></data>
+  <data name="conflict.banner.skip" xml:space="preserve"><value>हे लेखन वगळा</value></data>
+  <data name="conflict.waiting" xml:space="preserve"><value>“{0}” च्या लेखनाची वाट: {1}</value></data>
   <data name="usage.context.button" xml:space="preserve"><value>वापर</value></data>
   <data name="usage.context.tooltip" xml:space="preserve"><value>संदर्भ आणि टोकन वापर</value></data>
   <data name="usage.context.latestRequest" xml:space="preserve"><value>नवीनतम विनंती · कॉन्टेक्स्ट विंडो</value></data>
@@ -605,34 +589,738 @@
   <data name="usage.context.notReported" xml:space="preserve"><value>प्रदात्याने कळवले नाही</value></data>
   <data name="usage.context.estimatedBreakdown" xml:space="preserve"><value>अंदाजे इनपुट तपशील</value></data>
   <data name="usage.context.tokens" xml:space="preserve"><value>टोकन</value></data>
-  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} tokens ({2})</value></data>
-  <data name="usage.context.notAvailable" xml:space="preserve"><value>Context usage is not available yet.</value></data>
-  <data name="usage.context.composition" xml:space="preserve"><value>Estimated input composition</value></data>
+  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} टोकन ({2})</value></data>
+  <data name="usage.context.notAvailable" xml:space="preserve"><value>संदर्भ वापर अद्याप उपलब्ध नाही.</value></data>
+  <data name="usage.context.composition" xml:space="preserve"><value>अंदाजे इनपुट रचना</value></data>
   <data name="usage.context.estimatedRow" xml:space="preserve"><value>{0}: {1} ({2})</value></data>
   <data name="usage.context.conversation" xml:space="preserve"><value>चॅट संदेश</value></data>
   <data name="usage.context.systemPrompt" xml:space="preserve"><value>सिस्टम सूचना</value></data>
   <data name="usage.context.toolDefinitions" xml:space="preserve"><value>टूल व्याख्या</value></data>
   <data name="usage.context.mcpDefinitions" xml:space="preserve"><value>MCP टूल व्याख्या</value></data>
-  <data name="usage.context.cacheHit" xml:space="preserve"><value>Measured cache hit</value></data>
-  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Verified prefix reuse: {0} · {1} / {2} tokens</value></data>
-  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Measurement coverage: {0} · {1} of {2} eligible requests</value></data>
-  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Cold: {0} · expired: {1} · changed: {2}</value></data>
-  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Cache writes: {0} tokens</value></data>
-  <data name="usage.context.freshInput" xml:space="preserve"><value>Fresh input: {0} tokens</value></data>
-  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Reuse not reported: {0} of {1} eligible requests</value></data>
-  <data name="usage.context.latency" xml:space="preserve"><value>Average request latency: {0}</value></data>
-  <data name="usage.context.prepare" xml:space="preserve"><value>Average request preparation: {0}</value></data>
-  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Largest cache loss: {0} ({1} tokens)</value></data>
-  <data name="settings.shortcuts" xml:space="preserve"><value>Keyboard shortcuts</value></data>
-  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Select a shortcut to change it. Press a key combination with at least one modifier.</value></data>
-  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Press keys…</value></data>
-  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Restore defaults</value></data>
-  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} is already assigned to {1}.</value></data>
-  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull requests</value></data>
-  <data name="conversation.review" xml:space="preserve"><value>Review</value></data>
-  <data name="conversation.files" xml:space="preserve"><value>Files</value></data>
-  <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
-  <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
-  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} टोकन</value></data>
+  <data name="usage.context.cacheHit" xml:space="preserve"><value>मोजलेले कॅशे हिट</value></data>
+  <data name="usage.context.cacheReuse" xml:space="preserve"><value>सत्यापित प्रीफिक्स पुनर्वापर: {0} · {1} / {2} टोकन</value></data>
+  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>मापन व्याप्ती: {0} · {2} पात्र विनंत्यांपैकी {1}</value></data>
+  <data name="usage.context.cacheStatus" xml:space="preserve"><value>कोल्ड: {0} · कालबाह्य: {1} · बदललेले: {2}</value></data>
+  <data name="usage.context.cacheWrite" xml:space="preserve"><value>कॅशे लेखन: {0} टोकन</value></data>
+  <data name="usage.context.freshInput" xml:space="preserve"><value>नवीन इनपुट: {0} टोकन</value></data>
+  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>पुनर्वापर नोंदवला नाही: {1} पात्र विनंत्यांपैकी {0}</value></data>
+  <data name="usage.context.latency" xml:space="preserve"><value>सरासरी विनंती विलंब: {0}</value></data>
+  <data name="usage.context.prepare" xml:space="preserve"><value>सरासरी विनंती तयारी: {0}</value></data>
+  <data name="usage.context.cacheLoss" xml:space="preserve"><value>सर्वात मोठे कॅशे नुकसान: {0} ({1} टोकन)</value></data>
+  <data name="settings.shortcuts" xml:space="preserve"><value>कीबोर्ड शॉर्टकट</value></data>
+  <data name="settings.shortcuts.hint" xml:space="preserve"><value>बदलण्यासाठी शॉर्टकट निवडा. किमान एक मॉडिफायर असलेले की संयोजन दाबा.</value></data>
+  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>साइडबार दाखवा किंवा लपवा</value></data>
+  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>की दाबा…</value></data>
+  <data name="settings.shortcuts.reset" xml:space="preserve"><value>डीफॉल्ट पुनर्संचयित करा</value></data>
+  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} आधीच {1} ला नियुक्त आहे.</value></data>
+  <data name="sidebar.pullRequests" xml:space="preserve"><value>पुल रिक्वेस्ट</value></data>
+  <data name="conversation.review" xml:space="preserve"><value>पुनरावलोकन</value></data>
+  <data name="conversation.files" xml:space="preserve"><value>फायली</value></data>
+  <data name="conversation.browser" xml:space="preserve"><value>ब्राउझर</value></data>
+  <data name="conversation.newChat" xml:space="preserve"><value>नवीन संभाषण</value></data>
+  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} नवीन प्रक्रिया केलेले टोकन</value></data>
+  <data name="settings.skillSuggestions" xml:space="preserve"><value>कौशल्य सूचना दाखवा</value></data>
+  <data name="settings.skillSuggestions.hint" xml:space="preserve"><value>एखादा धडा तीनदा शिकला गेला किंवा एजंटने पुन्हा लागणारा वर्कफ्लो पूर्ण केला तरच कौशल्य सुचवते; आठवड्यातून जास्तीत जास्त एक कार्ड. बंद: कोणतेही सूचना कार्ड दिसत नाही आणि एजंटही कौशल्य सुचवत नाही.</value></data>
+  <data name="skill.suggestion.title" xml:space="preserve"><value>सुचवलेले कौशल्य: {0}</value></data>
+  <data name="skill.suggestion.create" xml:space="preserve"><value>कौशल्य तयार करा</value></data>
+  <data name="skill.suggestion.dismiss" xml:space="preserve"><value>आत्ता नको</value></data>
+  <data name="settings.autoAccountFailover" xml:space="preserve"><value>मर्यादा संपल्यावर स्वयंचलितपणे दुसरे खाते वापरून पहा</value></data>
+  <data name="settings.autoAccountFailover.hint" xml:space="preserve"><value>बंद असताना चॅट थांबते; दुसरे सुसंगत खाते वापरून पाहण्यासाठी पुढे जा दाबा. चालू असताना सुसंगत खाती आपोआप वापरून पाहिली जातात.</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>टोकनमध्ये मॉडेल-विशिष्ट संदर्भ आकार प्रविष्ट करा. स्वयंचलित पर्याय उपलब्ध असल्यास मॉडेलचा अहवाल दिलेला किंवा दस्तऐवजीकरण केलेला आकार वापरतो, नंतर खात्याचे कॉन्फिगर केलेले मूल्य.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>मॉडेल्स शोधा</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>स्वयंचलित मूल्य: {0} टोकन</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>प्रदाता संदर्भ आकाराचा अहवाल देत नाही.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>अजून मॉडेल उपलब्ध नाही. प्रदाता कनेक्ट करा किंवा मॉडेल सूची रीफ्रेश करा.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>जतन केले.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>स्वयंचलित</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>टोकनची धन पूर्णांक संख्या प्रविष्ट करा.</value></data>
+  <data name="attachment.files" xml:space="preserve"><value>फाइल्स किंवा फोटो</value></data>
+  <data name="attachment.project" xml:space="preserve"><value>प्रकल्पात काम करा</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>संदर्भ आपोआप कॉम्पॅक्ट झाला</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>फाइल्स वाचल्या</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>फाइल्स बदलल्या</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>कमांड चालवल्या</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>वेबवर शोध घेतला</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>फाइल्स वाचत आहे…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>फाइल्स संपादित करत आहे…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>कमांड चालवत आहे…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>वेबवर शोधत आहे…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>साधन वापरले</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>साधन चालवत आहे…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>साधन अयशस्वी झाले: {0}</value></data>
+  <data name="tasks.menu" xml:space="preserve"><value>कार्ये</value></data>
+  <data name="tasks.title" xml:space="preserve"><value>अनुसूचित कार्ये</value></data>
+  <data name="tasks.subtitle" xml:space="preserve"><value>क्रॉन शेड्यूलवर प्रॉम्प्ट चालवा.</value></data>
+  <data name="tasks.empty" xml:space="preserve"><value>अद्याप कोणतीही कार्ये नाहीत.</value></data>
+  <data name="tasks.add" xml:space="preserve"><value>कार्य जोडा</value></data>
+  <data name="tasks.edit" xml:space="preserve"><value>कार्य संपादित करा</value></data>
+  <data name="tasks.delete" xml:space="preserve"><value>हटवा</value></data>
+  <data name="tasks.runNow" xml:space="preserve"><value>आता चालवा</value></data>
+  <data name="tasks.enabled" xml:space="preserve"><value>सक्षम केले</value></data>
+  <data name="tasks.field.name" xml:space="preserve"><value>नाव</value></data>
+  <data name="tasks.field.cron" xml:space="preserve"><value>क्रॉन अभिव्यक्ती</value></data>
+  <data name="tasks.field.prompt" xml:space="preserve"><value>प्रॉम्प्ट</value></data>
+  <data name="tasks.field.workspace" xml:space="preserve"><value>कार्यक्षेत्र</value></data>
+  <data name="tasks.cron.invalid" xml:space="preserve"><value>अवैध क्रॉन अभिव्यक्ती.</value></data>
+  <data name="tasks.cron.next" xml:space="preserve"><value>पुढील रन</value></data>
+  <data name="tasks.close" xml:space="preserve"><value>कामे बंद करा</value></data>
+  <data name="tasks.back" xml:space="preserve"><value>मागे</value></data>
+  <data name="tasks.new" xml:space="preserve"><value>नवीन काम</value></data>
+  <data name="tasks.active" xml:space="preserve"><value>तुमची कामे</value></data>
+  <data name="tasks.disabled" xml:space="preserve"><value>अक्षम</value></data>
+  <data name="tasks.suggestions" xml:space="preserve"><value>सूचना</value></data>
+  <data name="tasks.history" xml:space="preserve"><value>अलीकडील रन</value></data>
+  <data name="tasks.history.empty" xml:space="preserve"><value>हे काम अजून चालवलेले नाही.</value></data>
+  <data name="tasks.field.target" xml:space="preserve"><value>लक्ष्य फाइल किंवा फोल्डर</value></data>
+  <data name="tasks.field.targetHint" xml:space="preserve"><value>वर्कस्पेसमधील पर्यायी मार्ग</value></data>
+  <data name="tasks.target.invalid" xml:space="preserve"><value>लक्ष्य कार्यक्षेत्राच्या आत असणे आवश्यक आहे.</value></data>
+  <data name="tasks.field.model" xml:space="preserve"><value>मॉडेल</value></data>
+  <data name="tasks.field.fallback" xml:space="preserve"><value>फॉलबॅक मॉडेल</value></data>
+  <data name="tasks.network" xml:space="preserve"><value>नेटवर्क प्रवेशाची अनुमती द्या</value></data>
+  <data name="tasks.assistant.title" xml:space="preserve"><value>कामाचा सहाय्यक</value></data>
+  <data name="tasks.assistant.placeholder" xml:space="preserve"><value>हे काम बदलण्यास सांगा…</value></data>
+  <data name="tasks.assistant.updated" xml:space="preserve"><value>काम अपडेट केले.</value></data>
+  <data name="tasks.notification.title" xml:space="preserve"><value>शेड्यूल केलेले काम</value></data>
+  <data name="tasks.notification.completed" xml:space="preserve"><value>पूर्ण झाले</value></data>
+  <data name="tasks.notification.failed" xml:space="preserve"><value>अयशस्वी</value></data>
+  <data name="tasks.notification.fallback" xml:space="preserve"><value>फॉलबॅक मॉडेल वापरले</value></data>
+  <data name="tasks.suggestion.daily.title" xml:space="preserve"><value>दैनिक संक्षेप</value></data>
+  <data name="tasks.suggestion.daily.detail" xml:space="preserve"><value>अलीकडील काम, प्रलंबित प्राधान्ये आणि कार्यक्षेत्रातील बदलांचा सारांश द्या.</value></data>
+  <data name="tasks.suggestion.daily.schedule" xml:space="preserve"><value>आठवड्याच्या दिवशी सकाळी ८:००</value></data>
+  <data name="tasks.suggestion.daily.prompt" xml:space="preserve"><value>अलीकडील संभाषणे आणि कार्यक्षेत्रातील बदल तपासा. आजच्या सर्वात महत्त्वाच्या प्राधान्यांचा सारांश द्या.</value></data>
+  <data name="tasks.suggestion.weekly.title" xml:space="preserve"><value>साप्ताहिक आढावा</value></data>
+  <data name="tasks.suggestion.weekly.detail" xml:space="preserve"><value>दर शुक्रवारी अलीकडील कामाचे संक्षिप्त स्थिती अपडेटमध्ये रूपांतर करा.</value></data>
+  <data name="tasks.suggestion.weekly.schedule" xml:space="preserve"><value>शुक्रवारी संध्याकाळी ४:००</value></data>
+  <data name="tasks.suggestion.weekly.prompt" xml:space="preserve"><value>या आठवड्यातील संभाषणे आणि कार्यक्षेत्रातील बदल तपासा. पूर्ण केलेले काम, जोखीम आणि पुढील टप्प्यांसह संक्षिप्त स्थिती अपडेट लिहा.</value></data>
+  <data name="tasks.suggestion.followup.title" xml:space="preserve"><value>फॉलो-अप मॉनिटर</value></data>
+  <data name="tasks.suggestion.followup.detail" xml:space="preserve"><value>अलीकडील क्रियाकलाप तपासा आणि लक्ष देण्याची गरज असलेल्या गोष्टी चिन्हांकित करा.</value></data>
+  <data name="tasks.suggestion.followup.schedule" xml:space="preserve"><value>आठवड्याच्या दिवशी सकाळी ९:००</value></data>
+  <data name="tasks.suggestion.followup.prompt" xml:space="preserve"><value>अलीकडील कामे आणि कार्यक्षेत्रातील क्रियाकलाप तपासा. अपूर्ण काम, अयशस्वी रन आणि लक्ष देण्यासारख्या गोष्टी चिन्हांकित करा.</value></data>
+  <data name="tasks.lastRun" xml:space="preserve"><value>शेवटची धाव</value></data>
+  <data name="tasks.state.never" xml:space="preserve"><value>कधीही धावू नका</value></data>
+  <data name="tasks.state.running" xml:space="preserve"><value>धावत आहे...</value></data>
+  <data name="tasks.state.ok" xml:space="preserve"><value>यशस्वी झाले</value></data>
+  <data name="tasks.state.failed" xml:space="preserve"><value>अयशस्वी</value></data>
+  <data name="tasks.openConversation" xml:space="preserve"><value>संभाषण उघडा</value></data>
+  <data name="tasks.save" xml:space="preserve"><value>जतन करा</value></data>
+  <data name="tasks.cancel" xml:space="preserve"><value>रद्द करा</value></data>
+  <data name="tasks.background" xml:space="preserve"><value>ॲप बंद असताना कार्ये चालवा</value></data>
+  <data name="tasks.background.hint" xml:space="preserve"><value>पार्श्वभूमी मदतनीस (लाँच) स्थापित करते जे डॉट्स हार्नेस उघडलेले नसतानाही योग्य कार्ये चालवते.</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>नकाशा</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>निर्देशांक</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>कार्ये</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>निर्णय</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>प्राधान्ये</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>संभाषणे</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>कोणतेही लिंक केलेले उल्लेख नाहीत.</value></data>
+  <data name="memory.graph" xml:space="preserve"><value>आलेख</value></data>
+  <data name="media.image" xml:space="preserve"><value>प्रतिमा</value></data>
+  <data name="media.video" xml:space="preserve"><value>व्हिडिओ</value></data>
+  <data name="media.audio" xml:space="preserve"><value>ऑडिओ</value></data>
+  <data name="media.promptMissing" xml:space="preserve"><value>आदेशानंतर काय निर्माण करायचे याचे वर्णन करा.</value></data>
+  <data name="media.promptMissingFor" xml:space="preserve"><value>कमांड नंतर व्युत्पन्न करण्यासाठी {0} चे वर्णन करा.</value></data>
+  <data name="media.modelMissing" xml:space="preserve"><value>मीडिया प्रदाता मॉडेल कॉन्फिगर केलेले नाही.</value></data>
+  <data name="media.noOutput" xml:space="preserve"><value>प्रदात्याने कोणतेही मीडिया आउटपुट परत केले नाही.</value></data>
+  <data name="media.invalidOutput" xml:space="preserve"><value>प्रदात्याने अवैध मीडिया डेटा परत केला.</value></data>
+  <data name="media.generationFailed" xml:space="preserve"><value>प्रदाता मीडिया जनरेट करू शकला नाही.</value></data>
+  <data name="media.videoTimeout" xml:space="preserve"><value>व्हिडिओ निर्मिती कालबाह्य झाली.</value></data>
+  <data name="media.busy" xml:space="preserve"><value>एक पिढी किंवा एजंट रन आधीच प्रगतीपथावर आहे. ते पूर्ण झाल्यावर पुन्हा प्रयत्न करा.</value></data>
+  <data name="media.unsupported" xml:space="preserve"><value>मी हे येथे निर्माण करू शकत नाही. निवडलेल्या प्रदात्याकडे ही क्षमता नाही.</value></data>
+  <data name="media.unsupportedStatus" xml:space="preserve"><value>मीडिया जनरेशन निवडलेल्या प्रदात्याद्वारे समर्थित नाही.</value></data>
+  <data name="media.fileMissing" xml:space="preserve"><value>व्युत्पन्न केलेली फाइल यापुढे उपलब्ध नाही.</value></data>
+  <data name="media.openAudio" xml:space="preserve"><value>व्युत्पन्न केलेला ऑडिओ उघडा</value></data>
+  <data name="media.save" xml:space="preserve"><value>जतन करा</value></data>
+  <data name="media.showInFinder" xml:space="preserve"><value>Finder मध्ये दाखवा</value></data>
+  <data name="rail.home" xml:space="preserve"><value>मुख्यपृष्ठ</value></data>
+  <data name="rail.media" xml:space="preserve"><value>मीडिया</value></data>
+  <data name="rail.tasks" xml:space="preserve"><value>कार्ये</value></data>
+  <data name="rail.bots" xml:space="preserve"><value>बॉट</value></data>
+  <data name="rail.marketplace" xml:space="preserve"><value>मार्केट</value></data>
+  <data name="rail.memory" xml:space="preserve"><value>मेमरी</value></data>
+  <data name="rail.settings" xml:space="preserve"><value>सेटिंग्ज</value></data>
+  <data name="models.followApp" xml:space="preserve"><value>अ‍ॅपचे मॉडेल</value></data>
+  <data name="studio.preset.square" xml:space="preserve"><value>चौरस पोस्ट</value></data>
+  <data name="studio.preset.story" xml:space="preserve"><value>स्टोरी</value></data>
+  <data name="studio.preset.landscape" xml:space="preserve"><value>लँडस्केप</value></data>
+  <data name="studio.preset.thumbnail" xml:space="preserve"><value>व्हिडिओ थंबनेल</value></data>
+  <data name="studio.preset.logo" xml:space="preserve"><value>लोगो</value></data>
+  <data name="studio.preset.poster" xml:space="preserve"><value>पोस्टर</value></data>
+  <data name="studio.template.announcement" xml:space="preserve"><value>घोषणा</value></data>
+  <data name="studio.template.story" xml:space="preserve"><value>स्टोरी</value></data>
+  <data name="studio.template.thumbnail" xml:space="preserve"><value>व्हिडिओ थंबनेल</value></data>
+  <data name="studio.template.slide" xml:space="preserve"><value>शीर्षक स्लाइड</value></data>
+  <data name="studio.template.logo" xml:space="preserve"><value>लोगो</value></data>
+  <data name="studio.template.mobile" xml:space="preserve"><value>मोबाइल स्क्रीन</value></data>
+  <data name="studio.category.social" xml:space="preserve"><value>सोशल मीडिया</value></data>
+  <data name="studio.category.uiux" xml:space="preserve"><value>UI/UX</value></data>
+  <data name="studio.category.presentation" xml:space="preserve"><value>सादरीकरण आणि इन्फोग्राफिक</value></data>
+  <data name="studio.category.other" xml:space="preserve"><value>इतर डिझाइन</value></data>
+  <data name="studio.sample.title" xml:space="preserve"><value>तुमचे शीर्षक</value></data>
+  <data name="studio.sample.detail" xml:space="preserve"><value>अधिक सांगणारी एक छोटी ओळ</value></data>
+  <data name="studio.sample.brand" xml:space="preserve"><value>ब्रँड</value></data>
+  <data name="studio.sample.text" xml:space="preserve"><value>मजकूर</value></data>
+  <data name="studio.copyOf" xml:space="preserve"><value>{0} ची प्रत</value></data>
+  <data name="studio.untitled" xml:space="preserve"><value>शीर्षक नसलेला प्रकल्प</value></data>
+  <data name="studio.home.title" xml:space="preserve"><value>तुमची कल्पना सांगा आणि ती साकार करा</value></data>
+  <data name="studio.home.search" xml:space="preserve"><value>शोधा</value></data>
+  <data name="studio.home.sort.name" xml:space="preserve"><value>नाव</value></data>
+  <data name="studio.home.filter.all" xml:space="preserve"><value>सर्व काळ</value></data>
+  <data name="studio.home.filter.week" xml:space="preserve"><value>मागील 7 दिवस</value></data>
+  <data name="studio.home.filter.month" xml:space="preserve"><value>मागील 30 दिवस</value></data>
+  <data name="studio.home.starred" xml:space="preserve"><value>तारांकित</value></data>
+  <data name="studio.home.star" xml:space="preserve"><value>तारांकितमध्ये जोडा</value></data>
+  <data name="studio.home.unstar" xml:space="preserve"><value>तारांकितमधून काढा</value></data>
+  <data name="studio.home.modified" xml:space="preserve"><value>शेवटचा बदल</value></data>
+  <data name="studio.home.canvases" xml:space="preserve"><value>कॅनव्हास</value></data>
+  <data name="studio.projects" xml:space="preserve"><value>प्रकल्प</value></data>
+  <data name="studio.templates" xml:space="preserve"><value>टेम्पलेट</value></data>
+  <data name="studio.community" xml:space="preserve"><value>समुदाय</value></data>
+  <data name="studio.community.banner" xml:space="preserve"><value>समुदायाने तयार केलेल्या डिझाइन्स एक्सप्लोर करा</value></data>
+  <data name="studio.community.saved" xml:space="preserve"><value>जतन केलेले</value></data>
+  <data name="studio.community.share" xml:space="preserve"><value>समुदायात शेअर करा</value></data>
+  <data name="studio.community.shared" xml:space="preserve"><value>पुनरावलोकनासाठी पाठवले. मंजूर झाल्यावर समुदायात दिसेल.</value></data>
+  <data name="studio.community.signIn" xml:space="preserve"><value>समुदायात शेअर करण्यासाठी तुमच्या HerNess खात्यात साइन इन करा.</value></data>
+  <data name="studio.community.empty" xml:space="preserve"><value>येथे अजून कोणतेही समुदाय डिझाइन नाही.</value></data>
+  <data name="studio.projectName" xml:space="preserve"><value>प्रकल्पाचे नाव</value></data>
+  <data name="studio.newProject" xml:space="preserve"><value>नवीन प्रकल्प</value></data>
+  <data name="studio.create" xml:space="preserve"><value>प्रकल्प तयार करा</value></data>
+  <data name="studio.rename" xml:space="preserve"><value>नाव बदला</value></data>
+  <data name="studio.duplicate" xml:space="preserve"><value>डुप्लिकेट</value></data>
+  <data name="studio.deleteConfirm" xml:space="preserve"><value>“{0}” हटवायचे? त्याचे कॅनव्हास आणि अपलोड केलेल्या फायली काढल्या जातील.</value></data>
+  <data name="studio.projectMeta" xml:space="preserve"><value>कॅनव्हास: {0}, संपादित {1}</value></data>
+  <data name="studio.empty.title" xml:space="preserve"><value>अद्याप कोणतेही मीडिया प्रकल्प नाहीत</value></data>
+  <data name="studio.empty.detail" xml:space="preserve"><value>प्रकल्प म्हणजे कॅनव्हासचा बोर्ड. मजकूर, आकार आणि प्रतिमा स्वतः जोडा, किंवा तुम्हाला काय हवे ते वर्णन करा आणि मॉडेलला लेयर-दर-लेयर तयार करू द्या.</value></data>
+  <data name="studio.addCanvas" xml:space="preserve"><value>कॅनव्हास</value></data>
+  <data name="studio.undo" xml:space="preserve"><value>पूर्ववत करा</value></data>
+  <data name="studio.redo" xml:space="preserve"><value>पुन्हा करा</value></data>
+  <data name="studio.zoomOut" xml:space="preserve"><value>झूम आउट</value></data>
+  <data name="studio.zoomIn" xml:space="preserve"><value>झूम इन</value></data>
+  <data name="studio.zoomFit" xml:space="preserve"><value>सर्व कॅनव्हास बसवा</value></data>
+  <data name="studio.layers" xml:space="preserve"><value>लेयर</value></data>
+  <data name="studio.layers.empty" xml:space="preserve"><value>या कॅनव्हासवर अद्याप कोणतेही लेयर नाहीत.</value></data>
+  <data name="studio.layer.text" xml:space="preserve"><value>मजकूर</value></data>
+  <data name="studio.layer.shape" xml:space="preserve"><value>आकृती</value></data>
+  <data name="studio.layer.upload" xml:space="preserve"><value>अपलोड</value></data>
+  <data name="studio.layer.show" xml:space="preserve"><value>लेयर दाखवा</value></data>
+  <data name="studio.layer.hide" xml:space="preserve"><value>लेयर लपवा</value></data>
+  <data name="studio.shape.rectangle" xml:space="preserve"><value>आयत</value></data>
+  <data name="studio.shape.ellipse" xml:space="preserve"><value>लंबवर्तुळ</value></data>
+  <data name="studio.name" xml:space="preserve"><value>नाव</value></data>
+  <data name="studio.opacity" xml:space="preserve"><value>अपारदर्शकता</value></data>
+  <data name="studio.fontSize" xml:space="preserve"><value>आकार</value></data>
+  <data name="studio.weight.regular" xml:space="preserve"><value>सामान्य</value></data>
+  <data name="studio.weight.medium" xml:space="preserve"><value>मध्यम</value></data>
+  <data name="studio.weight.bold" xml:space="preserve"><value>ठळक</value></data>
+  <data name="studio.fill" xml:space="preserve"><value>भरण</value></data>
+  <data name="studio.cornerRadius" xml:space="preserve"><value>कोपऱ्याची त्रिज्या</value></data>
+  <data name="studio.playVideo" xml:space="preserve"><value>व्हिडिओ प्ले करा</value></data>
+  <data name="studio.size" xml:space="preserve"><value>आकार</value></data>
+  <data name="studio.background" xml:space="preserve"><value>पार्श्वभूमी</value></data>
+  <data name="studio.deleteCanvas" xml:space="preserve"><value>कॅनव्हास हटवा</value></data>
+  <data name="studio.ai.kind.design" xml:space="preserve"><value>डिझाइन</value></data>
+  <data name="studio.ai.kind.image" xml:space="preserve"><value>प्रतिमा</value></data>
+  <data name="studio.ai.kind.video" xml:space="preserve"><value>व्हिडिओ</value></data>
+  <data name="studio.ai.placeholder.design" xml:space="preserve"><value>या कॅनव्हासवर तयार करायच्या डिझाइनचे वर्णन करा</value></data>
+  <data name="studio.ai.placeholder.image" xml:space="preserve"><value>तयार करायच्या प्रतिमेचे वर्णन करा</value></data>
+  <data name="studio.ai.placeholder.video" xml:space="preserve"><value>तयार करायच्या व्हिडिओचे वर्णन करा</value></data>
+  <data name="studio.ai.run" xml:space="preserve"><value>तयार करा</value></data>
+  <data name="studio.ai.planning" xml:space="preserve"><value>लेयरचे नियोजन होत आहे</value></data>
+  <data name="studio.ai.layerProgress" xml:space="preserve"><value>लेयर {0}/{1}: {2}</value></data>
+  <data name="studio.ai.drawing" xml:space="preserve"><value>प्रतिमा तयार होत आहे</value></data>
+  <data name="studio.ai.renderingVideo" xml:space="preserve"><value>व्हिडिओ तयार होत आहे. याला काही मिनिटे लागू शकतात.</value></data>
+  <data name="studio.ai.noPlan" xml:space="preserve"><value>मॉडेलने कोणतेही लेयर परत केले नाहीत. पुन्हा प्रयत्न करा किंवा दुसरे मॉडेल निवडा.</value></data>
+  <data name="studio.settings.title" xml:space="preserve"><value>मीडिया मॉडेल</value></data>
+  <data name="studio.settings.design" xml:space="preserve"><value>डिझाइन</value></data>
+  <data name="studio.settings.model" xml:space="preserve"><value>मॉडेल</value></data>
+  <data name="studio.settings.designHelp" xml:space="preserve"><value>विनंतीचे लेयरमध्ये रूपांतर करणारे चॅट मॉडेल.</value></data>
+  <data name="studio.settings.source" xml:space="preserve"><value>स्रोत</value></data>
+  <data name="studio.settings.source.provider" xml:space="preserve"><value>प्रदाता</value></data>
+  <data name="studio.settings.source.local" xml:space="preserve"><value>स्थानिक</value></data>
+  <data name="studio.settings.modelDefault" xml:space="preserve"><value>प्रदात्याचे डीफॉल्ट</value></data>
+  <data name="studio.settings.local" xml:space="preserve"><value>स्थानिक सर्व्हर</value></data>
+  <data name="studio.settings.localURL" xml:space="preserve"><value>बेस URL</value></data>
+  <data name="studio.settings.localHelp" xml:space="preserve"><value>या मशीनवर किंवा नेटवर्कवरील OpenAI-सुसंगत सर्व्हर. वरील एखादा स्रोत स्थानिक वर सेट असताना, तिथे टाकलेल्या मॉडेल नावासह वापरला जातो.</value></data>
+  <data name="studio.settings.music.connect" xml:space="preserve"><value>API कनेक्ट करा</value></data>
+  <data name="studio.settings.music.type.standard" xml:space="preserve"><value>संगीत सर्व्हर</value></data>
+  <data name="studio.settings.music.type.elevenlabs" xml:space="preserve"><value>ElevenLabs</value></data>
+  <data name="studio.settings.music.name" xml:space="preserve"><value>नाव</value></data>
+  <data name="studio.settings.music.key" xml:space="preserve"><value>API की</value></data>
+  <data name="studio.settings.music.help" xml:space="preserve"><value>संगीत सर्व्हर POST /audio/generations ला प्रतिसाद देतो आणि /models वर त्याचे मॉडेल सूचीबद्ध करतो; tools/music_server.py यापैकी एक आहे. API की कीचेनमध्ये ठेवली जाते.</value></data>
+  <data name="studio.ai.kind.next" xml:space="preserve"><value>पुढील स्क्रीन</value></data>
+  <data name="studio.ai.placeholder.next" xml:space="preserve"><value>पुढील स्क्रीनचे वर्णन करा, किंवा प्रवाह सुरू ठेवण्यासाठी रिकामे ठेवा</value></data>
+  <data name="studio.ai.noImages" xml:space="preserve"><value>कोणताही प्रतिमा जनरेटर जोडलेला नाही, म्हणून प्रतिमा लेयर प्लेसहोल्डर म्हणून ठेवले आहेत. एक जोडा, मग प्रत्येक प्रतिमा तिच्या लेयरमधून तयार करा.</value></data>
+  <data name="studio.screenNumber" xml:space="preserve"><value>स्क्रीन {0}</value></data>
+  <data name="studio.layer.icon" xml:space="preserve"><value>चिन्ह</value></data>
+  <data name="studio.layer.lock" xml:space="preserve"><value>लेयर लॉक करा</value></data>
+  <data name="studio.layer.unlock" xml:space="preserve"><value>लेयर अनलॉक करा</value></data>
+  <data name="studio.layer.front" xml:space="preserve"><value>सर्वात पुढे आणा</value></data>
+  <data name="studio.layer.back" xml:space="preserve"><value>सर्वात मागे पाठवा</value></data>
+  <data name="studio.position" xml:space="preserve"><value>स्थान</value></data>
+  <data name="studio.rotation" xml:space="preserve"><value>फिरवणे</value></data>
+  <data name="studio.appearance" xml:space="preserve"><value>स्वरूप</value></data>
+  <data name="studio.gradient" xml:space="preserve"><value>ग्रेडियंट</value></data>
+  <data name="studio.stroke" xml:space="preserve"><value>स्ट्रोक</value></data>
+  <data name="studio.shadow" xml:space="preserve"><value>सावली</value></data>
+  <data name="studio.symbol" xml:space="preserve"><value>चिन्हाचे नाव</value></data>
+  <data name="studio.imagePrompt" xml:space="preserve"><value>प्रतिमेचे वर्णन</value></data>
+  <data name="studio.generateImage" xml:space="preserve"><value>प्रतिमा तयार करा</value></data>
+  <data name="studio.export" xml:space="preserve"><value>एक्सपोर्ट</value></data>
+  <data name="studio.exportAll" xml:space="preserve"><value>सर्व कॅनव्हास एक्सपोर्ट करा</value></data>
+  <data name="studio.font.default" xml:space="preserve"><value>सॅन्स</value></data>
+  <data name="studio.font.rounded" xml:space="preserve"><value>गोलाकार</value></data>
+  <data name="studio.font.serif" xml:space="preserve"><value>सेरिफ</value></data>
+  <data name="studio.font.mono" xml:space="preserve"><value>मोनो</value></data>
+  <data name="studio.tool.move" xml:space="preserve"><value>हलवा</value></data>
+  <data name="studio.tool.hand" xml:space="preserve"><value>हात</value></data>
+  <data name="studio.tool.pen" xml:space="preserve"><value>पेन</value></data>
+  <data name="studio.tool.pencil" xml:space="preserve"><value>पेन्सिल</value></data>
+  <data name="studio.shape.line" xml:space="preserve"><value>रेषा</value></data>
+  <data name="studio.shape.arrow" xml:space="preserve"><value>बाण</value></data>
+  <data name="studio.shape.polygon" xml:space="preserve"><value>बहुभुज</value></data>
+  <data name="studio.shape.star" xml:space="preserve"><value>तारा</value></data>
+  <data name="studio.actions" xml:space="preserve"><value>क्रिया</value></data>
+  <data name="studio.unlockAll" xml:space="preserve"><value>सर्व लेयर अनलॉक करा</value></data>
+  <data name="studio.frames.phone" xml:space="preserve"><value>फोन</value></data>
+  <data name="studio.frames.tablet" xml:space="preserve"><value>टॅबलेट</value></data>
+  <data name="studio.frames.desktop" xml:space="preserve"><value>डेस्कटॉप</value></data>
+  <data name="studio.frames.presentation" xml:space="preserve"><value>सादरीकरण</value></data>
+  <data name="studio.frames.watch" xml:space="preserve"><value>घड्याळ</value></data>
+  <data name="studio.frames.paper" xml:space="preserve"><value>कागद</value></data>
+  <data name="studio.frames.social" xml:space="preserve"><value>सोशल मीडिया</value></data>
+  <data name="studio.tool.scale" xml:space="preserve"><value>स्केल</value></data>
+  <data name="studio.tool.section" xml:space="preserve"><value>विभाग</value></data>
+  <data name="studio.tool.slice" xml:space="preserve"><value>स्लाइस</value></data>
+  <data name="studio.tool.textPath" xml:space="preserve"><value>पाथवरील मजकूर</value></data>
+  <data name="studio.tool.comment" xml:space="preserve"><value>टिप्पणी</value></data>
+  <data name="studio.search" xml:space="preserve"><value>शोधा</value></data>
+  <data name="studio.cut" xml:space="preserve"><value>कट करा</value></data>
+  <data name="studio.paste" xml:space="preserve"><value>पेस्ट करा</value></data>
+  <data name="bots.preset.assistant" xml:space="preserve"><value>सहाय्यक</value></data>
+  <data name="bots.preset.researcher" xml:space="preserve"><value>संशोधक</value></data>
+  <data name="bots.preset.coder" xml:space="preserve"><value>कोडर</value></data>
+  <data name="bots.new" xml:space="preserve"><value>नवीन बॉट</value></data>
+  <data name="bots.edit" xml:space="preserve"><value>बॉट संपादित करा</value></data>
+  <data name="bots.clear" xml:space="preserve"><value>चॅट साफ करा</value></data>
+  <data name="bots.send" xml:space="preserve"><value>संदेश पाठवा</value></data>
+  <data name="bots.deleteConfirm" xml:space="preserve"><value>“{0}” आणि त्याची चॅट हटवायची?</value></data>
+  <data name="bots.empty.title" xml:space="preserve"><value>अद्याप कोणतेही बॉट नाहीत</value></data>
+  <data name="bots.empty.detail" xml:space="preserve"><value>बॉट हा स्वतःच्या सूचना, मॉडेल आणि चालू चॅट असलेला सहाय्यक आहे. त्याला एक फोल्डर द्या आणि तो तिथे एजंट म्हणून काम करेल.</value></data>
+  <data name="bots.greeting" xml:space="preserve"><value>सुरू करण्यासाठी {0} ला संदेश पाठवा.</value></data>
+  <data name="bots.placeholder" xml:space="preserve"><value>{0} ला संदेश</value></data>
+  <data name="bots.agentIn" xml:space="preserve"><value>{0} मधील एजंट</value></data>
+  <data name="bots.name" xml:space="preserve"><value>नाव</value></data>
+  <data name="bots.icon" xml:space="preserve"><value>आयकॉन</value></data>
+  <data name="bots.instructions" xml:space="preserve"><value>सूचना</value></data>
+  <data name="bots.instructionsHelp" xml:space="preserve"><value>बॉटने कसे वागावे, त्याला काय माहीत आहे आणि तो कसे उत्तर देतो.</value></data>
+  <data name="bots.workspace" xml:space="preserve"><value>एजंट फोल्डर</value></data>
+  <data name="bots.workspace.none" xml:space="preserve"><value>काहीही नाही: फक्त चॅट</value></data>
+  <data name="bots.workspace.choose" xml:space="preserve"><value>फोल्डर निवडा</value></data>
+  <data name="bots.workspace.clear" xml:space="preserve"><value>काढा</value></data>
+  <data name="bots.workspaceHelp" xml:space="preserve"><value>फोल्डर असल्यास बॉट न विचारता त्यात वाचू, लिहू आणि कमांड चालवू शकतो, आणि त्याला नेटवर्क प्रवेश नसतो. फोल्डरशिवाय तो फक्त चॅट करतो.</value></data>
+  <data name="bots.error.noReply" xml:space="preserve"><value>बॉटने उत्तर दिले नाही.</value></data>
+  <data name="bots.status.delivered" xml:space="preserve"><value>बॉटपर्यंत पोहोचले</value></data>
+  <data name="bots.status.waiting" xml:space="preserve"><value>बॉटची प्रतीक्षा</value></data>
+  <data name="tasks.plan.title" xml:space="preserve"><value>कार्य शेड्यूल करा</value></data>
+  <data name="tasks.plan.subtitle" xml:space="preserve"><value>HerNess तुमच्यासाठी आवर्ती काम चालवते.</value></data>
+  <data name="tasks.upcoming" xml:space="preserve"><value>आगामी</value></data>
+  <data name="tasks.instructions" xml:space="preserve"><value>सूचना…</value></data>
+  <data name="tasks.repeat" xml:space="preserve"><value>पुनरावृत्ती</value></data>
+  <data name="tasks.time" xml:space="preserve"><value>वेळ</value></data>
+  <data name="tasks.day" xml:space="preserve"><value>दिवस</value></data>
+  <data name="tasks.advanced" xml:space="preserve"><value>प्रगत</value></data>
+  <data name="tasks.create" xml:space="preserve"><value>तयार करा</value></data>
+  <data name="tasks.repeat.hourly" xml:space="preserve"><value>दर तासाला</value></data>
+  <data name="tasks.repeat.daily" xml:space="preserve"><value>दररोज</value></data>
+  <data name="tasks.repeat.weekdays" xml:space="preserve"><value>आठवड्याचे कामाचे दिवस</value></data>
+  <data name="tasks.repeat.weekly" xml:space="preserve"><value>साप्ताहिक</value></data>
+  <data name="tasks.repeat.custom" xml:space="preserve"><value>सानुकूल</value></data>
+  <data name="bots.preset.assistant.detail" xml:space="preserve"><value>दैनंदिन कामांमध्ये मदत मिळवा</value></data>
+  <data name="bots.preset.researcher.detail" xml:space="preserve"><value>विषयांचा अभ्यास करा आणि स्रोतांची तुलना करा</value></data>
+  <data name="bots.preset.coder.detail" xml:space="preserve"><value>कोड लिहा आणि समस्या सोडवा</value></data>
+  <data name="tasks.suggestion.email.title" xml:space="preserve"><value>ईमेलचा आढावा</value></data>
+  <data name="tasks.suggestion.email.detail" xml:space="preserve"><value>महत्त्वाचे ईमेल तपासून लक्ष देण्याच्या गोष्टींचा सारांश दे.</value></data>
+  <data name="tasks.suggestion.reading.title" xml:space="preserve"><value>आठवडाअखेरचे वाचन</value></data>
+  <data name="tasks.suggestion.reading.detail" xml:space="preserve"><value>दर आठवड्याला माझ्या आवडीचा एक लेख शोध.</value></data>
+  <data name="tasks.suggestion.prices.title" xml:space="preserve"><value>किमतीची सूचना</value></data>
+  <data name="tasks.suggestion.prices.detail" xml:space="preserve"><value>मी पाहत असलेल्या उत्पादनांच्या किमती तपासून सवलती कळव.</value></data>
+  <data name="tasks.suggestion.events.title" xml:space="preserve"><value>कार्यक्रम शोध</value></data>
+  <data name="tasks.suggestion.events.detail" xml:space="preserve"><value>माझ्या आवडीचे संगीत कार्यक्रम आणि इतर कार्यक्रम शोध.</value></data>
+  <data name="tasks.suggestion.weekend.title" xml:space="preserve"><value>आठवडाअखेरचे नियोजन</value></data>
+  <data name="tasks.suggestion.weekend.detail" xml:space="preserve"><value>माझ्या आवडीनुसार आठवडाअखेरच्या उपक्रमांचा सल्ला दे.</value></data>
+  <data name="tasks.suggestions.memory" xml:space="preserve"><value>तुझ्या स्मृतीवर आधारित</value></data>
+  <data name="tasks.suggestions.personalizing" xml:space="preserve"><value>तुझ्या स्मृतीतून सूचना तयार होत आहेत…</value></data>
+  <data name="tasks.suggestions.unavailable" xml:space="preserve"><value>नमुना सूचना · वैयक्तिकरण उपलब्ध नाही</value></data>
+  <data name="tasks.suggestions.refresh" xml:space="preserve"><value>सूचना पुन्हा मिळव</value></data>
+  <data name="tasks.suggestions.instruction" xml:space="preserve"><value>माझ्या आवडी आणि पसंतीनुसार निकाल तयार कर. सापडलेल्या गोष्टींचा सारांश दे. माहिती किंवा प्रवेश कमी असल्यास सांग.</value></data>
+  <data name="media.music" xml:space="preserve"><value>संगीत</value></data>
+  <data name="studio.music" xml:space="preserve"><value>संगीत</value></data>
+  <data name="studio.library" xml:space="preserve"><value>लायब्ररी</value></data>
+  <data name="studio.music.composing" xml:space="preserve"><value>संगीत तयार केले जात आहे. यास काही मिनिटे लागू शकतात.</value></data>
+  <data name="studio.music.song" xml:space="preserve"><value>गाणे</value></data>
+  <data name="studio.music.inspector" xml:space="preserve"><value>तपशील</value></data>
+  <data name="studio.music.section" xml:space="preserve"><value>विभाग</value></data>
+  <data name="studio.music.section.delete" xml:space="preserve"><value>विभाग हटवा</value></data>
+  <data name="studio.music.lyrics" xml:space="preserve"><value>बोल</value></data>
+  <data name="studio.music.track" xml:space="preserve"><value>ट्रॅक</value></data>
+  <data name="studio.music.track.generate" xml:space="preserve"><value>ट्रॅक तयार करा</value></data>
+  <data name="studio.music.track.empty" xml:space="preserve"><value>अजून ऑडिओ नाही</value></data>
+  <data name="studio.music.track.delete" xml:space="preserve"><value>ट्रॅक हटवा</value></data>
+  <data name="studio.music.mix" xml:space="preserve"><value>मिक्स</value></data>
+  <data name="studio.music.tempo" xml:space="preserve"><value>टेम्पो आणि सूर</value></data>
+  <data name="studio.music.generating" xml:space="preserve"><value>{0} ट्रॅक तयार करत आहे</value></data>
+  <data name="studio.music.placeholder" xml:space="preserve"><value>गाण्याचे वर्णन करा: मूड, कथा, वाद्ये, कोण गाते</value></data>
+  <data name="studio.music.empty" xml:space="preserve"><value>वर गाण्याचे वर्णन करा किंवा रिकामे गाणे सुरू करा. योजना आधी येते: विभाग, बोल आणि प्रत्येक वाद्यासाठी एक ट्रॅक, जो ऑडिओ तयार करण्यापूर्वी तुम्ही बदलू शकता.</value></data>
+  <data name="studio.music.plan" xml:space="preserve"><value>गाणे लिहा</value></data>
+  <data name="studio.music.new" xml:space="preserve"><value>रिकामे गाणे</value></data>
+  <data name="studio.music.noPlan" xml:space="preserve"><value>मॉडेलने गाण्याची योजना परत केली नाही. पुन्हा प्रयत्न करा किंवा दुसरे मॉडेल निवडा.</value></data>
+  <data name="studio.music.deleteConfirm" xml:space="preserve"><value>“{0}” हटवायचे? त्याचे ट्रॅक आणि ऑडिओ फाइल्स काढल्या जातील.</value></data>
+  <data name="studio.music.trackCount" xml:space="preserve"><value>{0} ट्रॅक</value></data>
+  <data name="studio.music.bpm" xml:space="preserve"><value>{0} BPM</value></data>
+  <data name="studio.music.key" xml:space="preserve"><value>सूर</value></data>
+  <data name="studio.music.generateAll" xml:space="preserve"><value>सर्व तयार करा</value></data>
+  <data name="studio.music.regenerate" xml:space="preserve"><value>हा ट्रॅक पुन्हा तयार करा</value></data>
+  <data name="studio.music.script" xml:space="preserve"><value>स्क्रिप्ट</value></data>
+  <data name="studio.music.artists" xml:space="preserve"><value>कलाकार</value></data>
+  <data name="studio.music.artist.add" xml:space="preserve"><value>कलाकार जोडा</value></data>
+  <data name="studio.music.artist.default" xml:space="preserve"><value>कलाकार {0}</value></data>
+  <data name="studio.music.artist.name" xml:space="preserve"><value>नाव</value></data>
+  <data name="studio.music.artist.style" xml:space="preserve"><value>आवाज आणि शैली</value></data>
+  <data name="studio.music.section.add" xml:space="preserve"><value>विभाग जोडा</value></data>
+  <data name="studio.music.section.default" xml:space="preserve"><value>कडवे</value></data>
+  <data name="studio.music.section.bars" xml:space="preserve"><value>{0} बार</value></data>
+  <data name="studio.music.line.add" xml:space="preserve"><value>ओळ जोडा</value></data>
+  <data name="studio.music.line.placeholder" xml:space="preserve"><value>गीताची ओळ</value></data>
+  <data name="studio.music.line.unsung" xml:space="preserve"><value>कोणीही नाही</value></data>
+  <data name="studio.music.track.add" xml:space="preserve"><value>ट्रॅक जोडा</value></data>
+  <data name="studio.music.track.instrument" xml:space="preserve"><value>वाद्य</value></data>
+  <data name="studio.music.track.prompt" xml:space="preserve"><value>कसे वाजवावे</value></data>
+  <data name="studio.music.track.vocal" xml:space="preserve"><value>गायन · {0}</value></data>
+  <data name="studio.music.mute" xml:space="preserve"><value>म्यूट करा</value></data>
+  <data name="studio.music.solo" xml:space="preserve"><value>सोलो</value></data>
+  <data name="library.all" xml:space="preserve"><value>सर्व</value></data>
+  <data name="library.kind.image" xml:space="preserve"><value>प्रतिमा</value></data>
+  <data name="library.kind.video" xml:space="preserve"><value>व्हिडिओ</value></data>
+  <data name="library.kind.audio" xml:space="preserve"><value>व्हॉइस</value></data>
+  <data name="library.kind.music" xml:space="preserve"><value>संगीत</value></data>
+  <data name="library.kind.document" xml:space="preserve"><value>दस्तऐवज</value></data>
+  <data name="library.add" xml:space="preserve"><value>फाइल्स जोडा</value></data>
+  <data name="library.addFailed" xml:space="preserve"><value>{0} फाइल्स जोडता आल्या नाहीत.</value></data>
+  <data name="library.open" xml:space="preserve"><value>उघडा</value></data>
+  <data name="library.empty.title" xml:space="preserve"><value>येथे अजून काहीही नाही</value></data>
+  <data name="library.empty.detail" xml:space="preserve"><value>तुम्ही तयार केलेल्या प्रतिमा, व्हिडिओ, व्हॉइस आणि संगीत येथे आपोआप सेव्ह होतात. दस्तऐवज आणि इतर फाइल्स तुम्ही स्वतः जोडा.</value></data>
+  <data name="backgroundTasks.title" xml:space="preserve"><value>पार्श्वभूमी कार्ये</value></data>
+  <data name="backgroundTasks.empty" xml:space="preserve"><value>पार्श्वभूमी कार्ये नाहीत</value></data>
+  <data name="backgroundTasks.finished" xml:space="preserve"><value>पूर्ण झालेली</value></data>
+  <data name="backgroundTasks.failed" xml:space="preserve"><value>अयशस्वी (एक्झिट {0})</value></data>
+  <data name="backgroundTasks.stopped" xml:space="preserve"><value>थांबवले</value></data>
+  <data name="backgroundTasks.clear" xml:space="preserve"><value>पूर्ण झालेली काढा</value></data>
+  <data name="backgroundTasks.runningCount" xml:space="preserve"><value>चालू कार्ये: {0}</value></data>
+  <data name="backgroundTasks.wake" xml:space="preserve"><value>पार्श्वभूमी कार्य “{0}” एक्झिट कोड {1} सह संपले. terminal_session (सत्र {2}) वापरून त्याचे आउटपुट वाचा आणि पुढे चला.</value></data>
+  <data name="backgroundTasks.waitingInput" xml:space="preserve"><value>इनपुटची प्रतीक्षा</value></data>
+  <data name="local.installed" xml:space="preserve"><value>स्थापित केले</value></data>
+  <data name="marketplace.title" xml:space="preserve"><value>बाजारपेठ</value></data>
+  <data name="marketplace.empty" xml:space="preserve"><value>कोणतेही प्लगइन नाहीत</value></data>
+  <data name="marketplace.emptyHint" xml:space="preserve"><value>रेजिस्ट्री लोड करण्यासाठी रिफ्रेश दाबा.</value></data>
+  <data name="marketplace.install" xml:space="preserve"><value>स्थापित करा</value></data>
+  <data name="marketplace.search" xml:space="preserve"><value>प्लगइन शोधा</value></data>
+  <data name="marketplace.update" xml:space="preserve"><value>v{0} → v{1} अपडेट करा</value></data>
+  <data name="marketplace.by" xml:space="preserve"><value>{0} द्वारे</value></data>
+  <data name="market.tab.plugins" xml:space="preserve"><value>प्लगइन</value></data>
+  <data name="market.tab.skills" xml:space="preserve"><value>कौशल्ये</value></data>
+  <data name="market.tab.starters" xml:space="preserve"><value>प्रकल्प स्टार्टर</value></data>
+  <data name="starters.intro" xml:space="preserve"><value>एक स्टार्टर आणि रिकामा फोल्डर निवडा. प्रॉम्प्ट कंपोझरमध्ये येईल जेणेकरून तुम्ही तो वाचून पाठवू शकाल.</value></data>
+  <data name="starters.use" xml:space="preserve"><value>स्टार्टर वापरा</value></data>
+  <data name="starters.chooseFolder" xml:space="preserve"><value>नवीन प्रकल्पासाठी रिकामा फोल्डर निवडा.</value></data>
+  <data name="starters.web.title" xml:space="preserve"><value>वेब अ‍ॅप</value></data>
+  <data name="starters.web.detail" xml:space="preserve"><value>TypeScript, एक लेआउट, एक उदाहरण API रूट आणि लिंटिंगसह Next.js.</value></data>
+  <data name="starters.landing.title" xml:space="preserve"><value>लँडिंग पेज</value></data>
+  <data name="starters.landing.detail" xml:space="preserve"><value>हिरो, वैशिष्ट्ये, किंमत आणि संपर्कासह स्थिर HTML आणि CSS. बिल्ड पायरी नाही.</value></data>
+  <data name="starters.api.title" xml:space="preserve"><value>API सेवा</value></data>
+  <data name="starters.api.detail" xml:space="preserve"><value>हेल्थ चेक, एक उदाहरण संसाधन, सेटिंग्ज आणि चाचण्यांसह FastAPI.</value></data>
+  <data name="starters.ios.title" xml:space="preserve"><value>iOS अ‍ॅप</value></data>
+  <data name="starters.ios.detail" xml:space="preserve"><value>दोन स्क्रीन, एक निरीक्षणीय मॉडेल आणि एक युनिट चाचणीसह SwiftUI.</value></data>
+  <data name="starters.worker.title" xml:space="preserve"><value>Cloudflare Worker</value></data>
+  <data name="starters.worker.detail" xml:space="preserve"><value>टाइप केलेल्या बाइंडिंग्ज आणि एका चाचणीसह Workers वरील TypeScript API.</value></data>
+  <data name="starters.cli.title" xml:space="preserve"><value>कमांड-लाइन टूल</value></data>
+  <data name="starters.cli.detail" xml:space="preserve"><value>सबकमांड, चाचण्या आणि इन्स्टॉल सूचनांसह Python पॅकेज.</value></data>
+  <data name="common.cancel" xml:space="preserve"><value>रद्द करा</value></data>
+  <data name="common.connect" xml:space="preserve"><value>जोडा</value></data>
+  <data name="common.copied" xml:space="preserve"><value>कॉपी केले</value></data>
+  <data name="common.delete" xml:space="preserve"><value>हटवा</value></data>
+  <data name="common.done" xml:space="preserve"><value>झाले</value></data>
+  <data name="common.download" xml:space="preserve"><value>डाउनलोड करा</value></data>
+  <data name="common.idle" xml:space="preserve"><value>निष्क्रिय</value></data>
+  <data name="common.refresh" xml:space="preserve"><value>रीफ्रेश</value></data>
+  <data name="common.remove" xml:space="preserve"><value>काढा</value></data>
+  <data name="common.start" xml:space="preserve"><value>सुरू करा</value></data>
+  <data name="common.stop" xml:space="preserve"><value>थांबा</value></data>
+  <data name="common.test" xml:space="preserve"><value>चाचणी</value></data>
+  <data name="common.save" xml:space="preserve"><value>जतन करा</value></data>
+  <data name="common.view" xml:space="preserve"><value>पहा</value></data>
+  <data name="composer.add" xml:space="preserve"><value>ॲड</value></data>
+  <data name="attachment.addApp" xml:space="preserve"><value>डॉट्स हार्नेस ॲप जोडा</value></data>
+  <data name="attachment.projectDetail" xml:space="preserve"><value>नवीन चॅटसाठी प्रोजेक्ट निवडा</value></data>
+  <data name="attachment.goal" xml:space="preserve"><value>ध्येय</value></data>
+  <data name="attachment.goalDetail" xml:space="preserve"><value>कार्य करण्यासाठी एक ध्येय सेट करा</value></data>
+  <data name="attachment.plan" xml:space="preserve"><value>योजना मोड</value></data>
+  <data name="attachment.planDetail" xml:space="preserve"><value>योजना मोड चालू करा</value></data>
+  <data name="attachment.saveSkill" xml:space="preserve"><value>एक कौशल्य जतन करा</value></data>
+  <data name="attachment.plugins" xml:space="preserve"><value>प्लगइन</value></data>
+  <data name="attachment.slashCommands" xml:space="preserve"><value>स्लॅश कमांड्स</value></data>
+  <data name="attachment.folder" xml:space="preserve"><value>फोल्डर जोडा</value></data>
+  <data name="attachment.connectors" xml:space="preserve"><value>कनेक्टर्स</value></data>
+  <data name="attachment.documentsDetail" xml:space="preserve"><value>दस्तऐवज कलाकृती तयार करा आणि संपादित करा</value></data>
+  <data name="attachment.pdfDetail" xml:space="preserve"><value>PDF फायली वाचा, तयार करा आणि सत्यापित करा</value></data>
+  <data name="attachment.spreadsheetsDetail" xml:space="preserve"><value>स्प्रेडशीट फाइल्स तयार करा आणि संपादित करा</value></data>
+  <data name="modelPicker.model" xml:space="preserve"><value>मॉडेल</value></data>
+  <data name="modelPicker.speed" xml:space="preserve"><value>गती</value></data>
+  <data name="modelPicker.maximum" xml:space="preserve"><value>कमाल</value></data>
+  <data name="modelPicker.standard" xml:space="preserve"><value>मानक</value></data>
+  <data name="modelPicker.fast" xml:space="preserve"><value>जलद</value></data>
+  <data name="modelPicker.auto" xml:space="preserve"><value>ऑटो</value></data>
+  <data name="modelPicker.autoHint" xml:space="preserve"><value>प्रति संदेश मॉडेल आणि प्रयत्न निवडतो</value></data>
+  <data name="settings.sshPassword" xml:space="preserve"><value>पासवर्ड (एकदाच वापरला जातो)</value></data>
+  <data name="settings.sshRememberPassword" xml:space="preserve"><value>पासवर्ड लक्षात ठेवा</value></data>
+  <data name="settings.sshRememberPassword.hint" xml:space="preserve"><value>गरज नाही: पासवर्ड फक्त एकदा, किल्ली बसवण्यासाठी वापरला जातो. तो ~/.ssh/config मध्ये कधीच लिहिला जात नाही.</value></data>
+  <data name="ssh.continue" xml:space="preserve"><value>सुरू ठेवा</value></data>
+  <data name="ssh.enrolling" xml:space="preserve"><value>किल्ली बसवत आहे…</value></data>
+  <data name="ssh.enrolled.hint" xml:space="preserve"><value>पुढील जोडण्या किल्ली वापरतील; पासवर्डची गरज उरणार नाही.</value></data>
+  <data name="ssh.retry" xml:space="preserve"><value>पुन्हा प्रयत्न</value></data>
+  <data name="ssh.retryHint" xml:space="preserve"><value>पत्ता, वापरकर्तानाव आणि पासवर्ड तपासून पुन्हा प्रयत्न करा.</value></data>
+  <data name="ssh.installKeyManually" xml:space="preserve"><value>सर्व्हरवरील ~/.ssh/authorized_keys मध्ये ही किल्ली जोडा, मग पुन्हा प्रयत्न करा.</value></data>
+  <data name="ssh.copyPublicKey" xml:space="preserve"><value>किल्ली कॉपी करा</value></data>
+  <data name="ssh.error.passwordAuthDisabled" xml:space="preserve"><value>सर्व्हर पासवर्डने लॉगिन स्वीकारत नाही.</value></data>
+  <data name="ssh.error.authFailed" xml:space="preserve"><value>{0} ने लॉगिन नाकारले.</value></data>
+  <data name="ssh.error.hostKeyChanged" xml:space="preserve"><value>{0} ची यजमान किल्ली बदलली आहे. सर्व्हर पुन्हा बसवला असेल तरच पुढे जा.</value></data>
+  <data name="ssh.error.invalidInput" xml:space="preserve"><value>वैध उपनाम, होस्ट नाव, वापरकर्ता नाव आणि पोर्ट प्रविष्ट करा.</value></data>
+  <data name="sidebar.projects" xml:space="preserve"><value>प्रकल्प</value></data>
+  <data name="sidebar.recent" xml:space="preserve"><value>अलीकडील</value></data>
+  <data name="sidebar.search" xml:space="preserve"><value>गप्पा शोधा</value></data>
+  <data name="sidebar.sites" xml:space="preserve"><value>साइट्स</value></data>
+  <data name="sidebar.scheduled" xml:space="preserve"><value>अनुसूचित</value></data>
+  <data name="sidebar.addProject" xml:space="preserve"><value>प्रकल्प जोडा</value></data>
+  <data name="settings.compactTrigger" xml:space="preserve"><value>संदर्भ आपोआप संक्षिप्त करण्याची मर्यादा</value></data>
+  <data name="settings.compactTrigger.hint" xml:space="preserve"><value>प्रत्येक मॉडेलच्या संदर्भ विंडोचे प्रमाण. संक्षेपण प्रॉम्प्ट कॅश पुन्हा लिहिते, त्यामुळे जास्त मूल्य कॅश जास्त काळ टिकवते.</value></data>
+  <data name="settings.explore.subagents" xml:space="preserve"><value>उप-एजंट वापरा</value></data>
+  <data name="settings.explore.hint" xml:space="preserve"><value>चालू असताना कठीण किंवा दीर्घ कामांत एजंट अनेक फाइल्समधील शोध आणि मोठ्या बदलाचे स्वतंत्र भाग समांतर उप-एजंटना देतो; मुख्य संभाषणात फक्त त्यांचा सारांश येतो. संपादन करणारा उप-एजंट फक्त त्याला दिलेल्या फाइल्समध्ये लिहू शकतो आणि वाटप एकमेकांवर येऊ शकत नाही. सोप्या कामांत तो कधीही बोलावला जात नाही. प्रत्येक उप-एजंट हा स्वतंत्र मॉडेल रन आहे; खर्च कमी करण्यासाठी हे बंद करा.</value></data>
+  <data name="settings.responseStyle" xml:space="preserve"><value>उत्तराची शैली</value></data>
+  <data name="settings.responseStyle.hint" xml:space="preserve"><value>ही सेटिंग प्रॉम्प्ट पुन्हा लिहीत नाही. संक्षिप्त/अल्ट्रा या शक्य तितक्या प्रयत्नाच्या पसंती आहेत; त्या टोकन संख्या, पूर्णता किंवा कमी खर्चाची हमी देत नाहीत.</value></data>
+  <data name="responseStyle.balanced" xml:space="preserve"><value>संतुलित</value></data>
+  <data name="responseStyle.concise" xml:space="preserve"><value>संक्षिप्त</value></data>
+  <data name="responseStyle.ultra" xml:space="preserve"><value>अल्ट्रा</value></data>
+  <data name="responseStyle.detailed" xml:space="preserve"><value>तपशीलवार</value></data>
+  <data name="settings.computerUse.enable" xml:space="preserve"><value>संगणक वापर सक्षम करा</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>आवृत्ती आणि अपडेट</value></data>
+  <data name="settings.updates.available" xml:space="preserve"><value>नवीन आवृत्ती उपलब्ध: v{0}</value></data>
+  <data name="settings.updates.download" xml:space="preserve"><value>अपडेट डाउनलोड करा</value></data>
+  <data name="dock.branch" xml:space="preserve"><value>ब्रांच</value></data>
+  <data name="dock.refresh" xml:space="preserve"><value>रीफ्रेश</value></data>
+  <data name="dock.commit" xml:space="preserve"><value>कमिट</value></data>
+  <data name="dock.push" xml:space="preserve"><value>पुश</value></data>
+  <data name="dock.fetch" xml:space="preserve"><value>फेच</value></data>
+  <data name="dock.commitOrPush" xml:space="preserve"><value>Commit किंवा Push</value></data>
+  <data name="dock.commitMessage" xml:space="preserve"><value>Commit संदेश</value></data>
+  <data name="dock.noChanges" xml:space="preserve"><value>एजंटने कोणतेही बदल केले नाहीत.</value></data>
+  <data name="dock.whyRequest" xml:space="preserve"><value>तुमची विनंती</value></data>
+  <data name="dock.whyAgent" xml:space="preserve"><value>एजंटचे स्पष्टीकरण</value></data>
+  <data name="dock.notRepo" xml:space="preserve"><value>हे फोल्डर git रिपॉझिटरी नाही.</value></data>
+  <data name="dock.gitMissing" xml:space="preserve"><value>Git इंस्टॉल केलेले नाही. पुनरावलोकन, commit आणि push साठी ते आवश्यक आहे.</value></data>
+  <data name="dock.installGit" xml:space="preserve"><value>Git इंस्टॉल करा</value></data>
+  <data name="dock.filterFiles" xml:space="preserve"><value>फाइल्स फिल्टर करा…</value></data>
+  <data name="dock.openFile" xml:space="preserve"><value>फाइल उघडा</value></data>
+  <data name="dock.selectFile" xml:space="preserve"><value>वर्कस्पेस ट्रीमधून फाइल निवडा</value></data>
+  <data name="dock.binaryFile" xml:space="preserve"><value>बायनरी किंवा वाचता न येणारी फाइल</value></data>
+  <data name="dock.expand" xml:space="preserve"><value>विस्तारा</value></data>
+  <data name="dock.collapse" xml:space="preserve"><value>संकुचित करा</value></data>
+  <data name="dock.split" xml:space="preserve"><value>विभागा</value></data>
+  <data name="dock.unsplit" xml:space="preserve"><value>एक टॅब दाखवा</value></data>
+  <data name="dock.newTab" xml:space="preserve"><value>नवीन टॅब</value></data>
+  <data name="dock.address" xml:space="preserve"><value>शोधा किंवा URL टाका</value></data>
+  <data name="dock.invalidAddress" xml:space="preserve"><value>वैध वेब पत्ता किंवा शोध लिहा.</value></data>
+  <data name="dock.openExternal" xml:space="preserve"><value>डीफॉल्ट ब्राउझरमध्ये उघडा</value></data>
+  <data name="dock.bottomTerminal" xml:space="preserve"><value>खाली टर्मिनल उघडा</value></data>
+  <data name="dock.splitHorizontal" xml:space="preserve"><value>शेजारी शेजारी विभागा</value></data>
+  <data name="dock.splitVertical" xml:space="preserve"><value>वर खाली विभागा</value></data>
+  <data name="dock.noWorkspace" xml:space="preserve"><value>आधी वर्कस्पेस फोल्डर निवडा.</value></data>
+  <data name="git.branchHelp" xml:space="preserve"><value>Git ब्रांच निवडा</value></data>
+  <data name="git.uncommitted" xml:space="preserve"><value>अप्रतिबंधित: {0} फायली</value></data>
+  <data name="market.area.core" xml:space="preserve"><value>मुख्य मार्केटप्लेस</value></data>
+  <data name="market.area.experimental" xml:space="preserve"><value>प्रायोगिक</value></data>
+  <data name="market.area.community" xml:space="preserve"><value>समुदाय</value></data>
+  <data name="market.area.communityExperimental" xml:space="preserve"><value>समुदाय / प्रायोगिक</value></data>
+  <data name="market.account" xml:space="preserve"><value>HerNess खाते</value></data>
+  <data name="market.signIn" xml:space="preserve"><value>साइन इन करा</value></data>
+  <data name="market.signIn.email" xml:space="preserve"><value>ईमेल आणि पासवर्ड</value></data>
+  <data name="market.signIn.title" xml:space="preserve"><value>तुमच्या HerNess खात्याने साइन इन करा</value></data>
+  <data name="market.email" xml:space="preserve"><value>ईमेल</value></data>
+  <data name="market.password" xml:space="preserve"><value>पासवर्ड</value></data>
+  <data name="market.likeSignIn" xml:space="preserve"><value>आवडण्यासाठी साइन इन करा</value></data>
+  <data name="market.customize" xml:space="preserve"><value>सानुकूलित करा</value></data>
+  <data name="market.localForks" xml:space="preserve"><value>स्थानिक सानुकूलने</value></data>
+  <data name="market.openFolder" xml:space="preserve"><value>फोल्डर उघडा</value></data>
+  <data name="market.fork.compared" xml:space="preserve"><value>तुलना केली</value></data>
+  <data name="market.consent.title" xml:space="preserve"><value>हे प्लगइन नेटिव्ह कोड चालवते</value></data>
+  <data name="market.consent.accept" xml:space="preserve"><value>स्वीकारा आणि सक्षम करा</value></data>
+  <data name="market.consent.message" xml:space="preserve"><value>{0} हे तृतीय-पक्ष नेटिव्ह प्लगइन आहे. क्षेत्र: {1}. पुनरावलोकन: {2}. श्रेणी: {3}. त्याच्या परवानग्या आणि सोर्स कोड तपासा. स्वीकारल्यास प्लगइन लगेच विश्वसनीय म्हणून चालेल.</value></data>
+  <data name="market.review.verified" xml:space="preserve"><value>DOTS द्वारे पुनरावलोकित</value></data>
+  <data name="market.review.pending" xml:space="preserve"><value>पुनरावलोकनाच्या प्रतीक्षेत</value></data>
+  <data name="market.community.empty" xml:space="preserve"><value>अद्याप समुदाय प्लगइन नाहीत</value></data>
+  <data name="market.community.emptyHint" xml:space="preserve"><value>समुदाय प्लगइनसाठी स्वतंत्र पुनरावलोकन आणि नेटिव्ह कोड चालवण्याची स्पष्ट संमती आवश्यक आहे.</value></data>
+  <data name="market.report" xml:space="preserve"><value>तक्रार करा</value></data>
+  <data name="market.report.title" xml:space="preserve"><value>प्लगइनची तक्रार करा</value></data>
+  <data name="market.report.reason" xml:space="preserve"><value>कारण</value></data>
+  <data name="market.report.submit" xml:space="preserve"><value>तक्रार पाठवा</value></data>
+  <data name="market.report.malware" xml:space="preserve"><value>मालवेअर किंवा हानिकारक वर्तन</value></data>
+  <data name="market.report.credentialTheft" xml:space="preserve"><value>क्रेडेन्शियल चोरी</value></data>
+  <data name="market.report.exfiltration" xml:space="preserve"><value>डेटा बाहेर पाठवणे</value></data>
+  <data name="market.report.deceptive" xml:space="preserve"><value>दिशाभूल करणारी नोंद किंवा तोतयेगिरी</value></data>
+  <data name="market.report.spam" xml:space="preserve"><value>स्पॅम किंवा रिकामे रॅपर</value></data>
+  <data name="market.report.copyright" xml:space="preserve"><value>कॉपीराइट किंवा परवाना उल्लंघन</value></data>
+  <data name="market.publish" xml:space="preserve"><value>प्लगइन प्रकाशित करा</value></data>
+  <data name="market.publish.title" xml:space="preserve"><value>नेटिव्ह प्लगइन प्रकाशित करा</value></data>
+  <data name="market.publish.hint" xml:space="preserve"><value>प्लगइन फोल्डरमध्ये plugin.yml, plugin.ir.json आणि परवाना असणे आवश्यक आहे. JavaScript आणि डिक्लेरेटिव्ह रनटाइम स्वीकारले जात नाहीत; प्लॅटफॉर्म बिल्ड CI मध्ये तयार होतात.</value></data>
+  <data name="market.publish.noFolder" xml:space="preserve"><value>प्लगइन फोल्डर निवडलेले नाही</value></data>
+  <data name="market.publish.chooseFolder" xml:space="preserve"><value>फोल्डर निवडा</value></data>
+  <data name="market.publish.irPreview" xml:space="preserve"><value>plugin.ir.json पूर्वावलोकन</value></data>
+  <data name="market.publish.sourcePreview" xml:space="preserve"><value>नेटिव्ह सोर्स पूर्वावलोकन</value></data>
+  <data name="market.publish.version" xml:space="preserve"><value>आवृत्ती (SemVer)</value></data>
+  <data name="market.publish.license" xml:space="preserve"><value>SPDX परवाना (उदा. MIT)</value></data>
+  <data name="market.publish.visibility" xml:space="preserve"><value>सोर्स दृश्यता</value></data>
+  <data name="market.publish.public" xml:space="preserve"><value>सार्वजनिक — सोर्स पॅकेज सूचीबद्ध होते</value></data>
+  <data name="market.publish.private" xml:space="preserve"><value>खाजगी — फक्त मालक आणि CI प्रवेश करू शकतात</value></data>
+  <data name="market.publish.targets" xml:space="preserve"><value>लक्ष्य प्लॅटफॉर्म</value></data>
+  <data name="market.publish.footer" xml:space="preserve"><value>प्रकाशनानंतर AI श्रेणी, क्षेत्र आणि जोखीम वर्गीकृत करते. प्लगइन बिल्ड पूर्ण झाल्यावरही मानवी पुनरावलोकन पूर्ण होईपर्यंत ते सूचीबद्ध होत नाही.</value></data>
+  <data name="market.publish.submit" xml:space="preserve"><value>प्रकाशित करा</value></data>
+  <data name="market.publish.error.http" xml:space="preserve"><value>मार्केटप्लेसवर प्रकाशन अयशस्वी (HTTP {0}): {1}</value></data>
+  <data name="market.publish.error.license" xml:space="preserve"><value>प्लगइन प्रकाशित करण्यासाठी परवाना निवडा.</value></data>
+  <data name="market.publish.error.noManifest" xml:space="preserve"><value>निवडलेल्या फोल्डरमध्ये plugin.yml आढळले नाही.</value></data>
+  <data name="market.publish.error.nativeOnly" xml:space="preserve"><value>फक्त नेटिव्ह प्लगइन प्रकाशित करता येतात.</value></data>
+  <data name="market.publish.error.semver" xml:space="preserve"><value>वैध SemVer आवृत्ती टाका.</value></data>
+  <data name="market.publish.error.targets" xml:space="preserve"><value>किमान एक लक्ष्य प्लॅटफॉर्म आणि वैध सोर्स दृश्यता निवडा.</value></data>
+  <data name="market.publish.error.package" xml:space="preserve"><value>पॅकेजमध्ये plugin.ir.json आणि license फाइल्स असणे आवश्यक आहे.</value></data>
+  <data name="market.publish.error.irVersion" xml:space="preserve"><value>plugin.ir.json ची आवृत्ती 1 असणे आवश्यक आहे.</value></data>
+  <data name="market.publish.error.releaseID" xml:space="preserve"><value>मार्केटप्लेस रिलीज ID मिळू शकला नाही.</value></data>
+  <data name="market.publish.error.noVersion" xml:space="preserve"><value>plugin.yml मध्ये version फील्ड नाही.</value></data>
+  <data name="market.publish.status.registering" xml:space="preserve"><value>मार्केटप्लेस नोंद तयार होत आहे…</value></data>
+  <data name="market.publish.status.uploading" xml:space="preserve"><value>नेटिव्ह सोर्स पॅकेज अपलोड होत आहे…</value></data>
+  <data name="market.publish.status.aiUnavailable" xml:space="preserve"><value>AI वर्गीकरण उपलब्ध नाही; तात्पुरते लेबल: {0} · {1} · {2}. मानवी पुनरावलोकन अनिवार्य आहे.</value></data>
+  <data name="market.publish.status.aiDone" xml:space="preserve"><value>AI वर्गीकरण: {0} · {1} · {2}. मानवी पुनरावलोकनाची प्रतीक्षा.</value></data>
+  <data name="market.publish.status.aiFailed" xml:space="preserve"><value>AI वर्गीकरण पूर्ण होऊ शकले नाही; मानवी पुनरावलोकनाची प्रतीक्षा.</value></data>
+  <data name="market.publish.status.queueing" xml:space="preserve"><value>नेटिव्ह प्लॅटफॉर्म बिल्ड रांगेत टाकत आहे…</value></data>
+  <data name="market.publish.status.uploaded" xml:space="preserve"><value>सोर्स पॅकेज अपलोड झाले; नेटिव्ह CI पडताळणीची प्रतीक्षा.</value></data>
+  <data name="market.error.notSignedIn" xml:space="preserve"><value>मार्केटप्लेसवर प्रकाशनासाठी HerNess खाते आवश्यक आहे.</value></data>
+  <data name="market.error.invalidCallback" xml:space="preserve"><value>HerNess साइन-इन कॉलबॅक अवैध होता.</value></data>
+  <data name="market.error.stateMismatch" xml:space="preserve"><value>HerNess साइन-इन स्थिती जुळली नाही.</value></data>
+  <data name="market.error.request" xml:space="preserve"><value>मार्केटप्लेस विनंती अयशस्वी (HTTP {0}): {1}</value></data>
+  <data name="market.error.invalidResponse" xml:space="preserve"><value>मार्केटप्लेसने अवैध प्रतिसाद दिला.</value></data>
+  <data name="market.error.credentials" xml:space="preserve"><value>ईमेल आणि पासवर्ड आवश्यक आहेत.</value></data>
+  <data name="remote.scan" xml:space="preserve"><value>हा QR कोड स्कॅन करा किंवा HerNess Mobile मध्ये एकवेळचा कोड टाका.</value></data>
+  <data name="remote.newCode" xml:space="preserve"><value>नवीन पेअरिंग कोड</value></data>
+  <data name="remote.copyLink" xml:space="preserve"><value>पेअरिंग लिंक कॉपी करा</value></data>
+  <data name="remote.tunnel.enable" xml:space="preserve"><value>Cloudflare Quick Tunnel सक्षम करा</value></data>
+  <data name="remote.hint" xml:space="preserve"><value>प्रोव्हायडर की डेस्कटॉपवरच राहतात. फाइल लेखन, टर्मिनल, बिल्ड, डिप्लॉय आणि PR क्रिया अजूनही निवडलेला मंजुरी मोड वापरतात.</value></data>
+  <data name="settings.tab.mobile" xml:space="preserve"><value>मोबाइल नियंत्रण</value></data>
+  <data name="settings.compaction.economyFixed" xml:space="preserve"><value>इकॉनॉमी धोरण 90% ची निश्चित मर्यादा वापरते.</value></data>
+  <data name="settings.browser.title" xml:space="preserve"><value>पसंतीचा ब्राउझर आणि इंजिन</value></data>
+  <data name="settings.browser.auto" xml:space="preserve"><value>स्वयंचलित (ॲपमध्ये, किंवा तुम्ही सांगितलेला ब्राउझर)</value></data>
+  <data name="settings.browser.managed" xml:space="preserve"><value>व्यवस्थापित वेगळा ब्राउझर (Chrome)</value></data>
+  <data name="settings.browser.chrome" xml:space="preserve"><value>माझे Chrome</value></data>
+  <data name="settings.browser.desktopHint" xml:space="preserve"><value>अॅपमधील ब्राउझर सिस्टम ब्राउझर इंजिन वापरतो. Managed Chrome आणि तुमची सध्याची Chrome प्रोफाइलही उपलब्ध आहे.</value></data>
+  <data name="settings.browser.inAppDesktop" xml:space="preserve"><value>अॅपमधील ब्राउझर</value></data>
+  <data name="settings.computerUse.desktopHint" xml:space="preserve"><value>एजंट चालू अॅप्स तपासू शकतो, स्क्रीनशॉट पाहू शकतो, माउस व कीबोर्ड वापरून परिणाम पडताळू शकतो. डेस्कटॉप कृतींसाठी प्रवेश मंजुरी आवश्यक आहे.</value></data>
+  <data name="settings.computerUse.linuxHint" xml:space="preserve"><value>Linux मध्ये संगणक वापरासाठी X11, xdotool आणि maim किंवा ImageMagick आवश्यक आहे. Wayland समर्थित नाही.</value></data>
+  <data name="market.settings.hint" xml:space="preserve"><value>Main Marketplace मध्ये तपासलेले Harness प्लगइन असतात. Community आणि Experimental वेगळे दाखवले जातात; नेटिव्ह प्लगइन चालवण्यापूर्वी तुमची मंजुरी आवश्यक आहे.</value></data>
+  <data name="market.registry.empty" xml:space="preserve"><value>Marketplace नोंदी सापडल्या नाहीत. पुन्हा प्रयत्न करण्यासाठी रजिस्ट्री रीफ्रेश करा.</value></data>
+  <data name="market.signIn.hint" xml:space="preserve"><value>Google, GitHub किंवा तुमचा HerNess ईमेल आणि पासवर्ड वापरून साइन इन करा. सत्र टोकन तुमच्या प्लॅटफॉर्मच्या क्रेडेन्शियल स्टोअरमध्ये राहतात.</value></data>
+  <data name="dock.clean" xml:space="preserve"><value>वर्किंग ट्री स्वच्छ आहे.</value></data>
+  <data name="market.publish.folderPickerUnavailable" xml:space="preserve"><value>या डेस्कटॉप वातावरणात फोल्डर निवडण्याची सुविधा उपलब्ध नाही.</value></data>
+  <data name="market.publish.localFolderRequired" xml:space="preserve"><value>प्लगइन प्रकाशित करण्यासाठी स्थानिक फोल्डर निवडा.</value></data>
+  <data name="market.report.details" xml:space="preserve"><value>तपशील (ऐच्छिक, कमाल 5,000 अक्षरे)</value></data>
+  <data name="dock.browser.webview2Unavailable" xml:space="preserve"><value>WebView2 सुरू होऊ शकले नाही. Microsoft Edge WebView2 Runtime स्थापित करा किंवा दुरुस्त करा.</value></data>
+  <data name="settings.marketplace" xml:space="preserve"><value>बाजारपेठ</value></data>
+  <data name="workspace.use" xml:space="preserve"><value>कार्यक्षेत्र वापरा</value></data>
+  <data name="market.fork.consent.title" xml:space="preserve"><value>हे सानुकूलित प्लगइन नेटिव्ह कोड चालवते</value></data>
+  <data name="market.fork.consent.message" xml:space="preserve"><value>{0} हा लोकल फोर्क आहे. त्याचा सोर्स अपस्ट्रीमपासून स्वतंत्र आहे; सक्षम करण्यापूर्वी बदल तपासा.</value></data>
+  <data name="market.fork.newUpstream" xml:space="preserve"><value>नवीन अपस्ट्रीम: v{0}; स्थानिक बदल जपले जातात</value></data>
+  <data name="market.remove.confirmTitle" xml:space="preserve"><value>Marketplace प्लगइन काढायचे?</value></data>
+  <data name="market.remove.confirmMessage" xml:space="preserve"><value>या डिव्हाइसवरून {0} काढायचे?</value></data>
+  <data name="market.report.other" xml:space="preserve"><value>इतर</value></data>
+  <data name="modelPicker.economy" xml:space="preserve"><value>बचत</value></data>
+  <data name="conversation.toggleResponseEconomy" xml:space="preserve"><value>उत्तरांमधील टोकन बचत चालू किंवा बंद करा</value></data>
+  <data name="market.unpublish.confirmMessage" xml:space="preserve"><value>{0} अप्रकाशित करायचे? विद्यमान स्थापना काढल्या जाणार नाहीत.</value></data>
+  <data name="market.permissions" xml:space="preserve"><value>परवानग्या</value></data>
+  <data name="market.risk" xml:space="preserve"><value>जोखीम: {0}</value></data>
+  <data name="market.category.coding" xml:space="preserve"><value>कोडिंग</value></data>
+  <data name="market.category.git" xml:space="preserve"><value>Git</value></data>
+  <data name="market.category.qa" xml:space="preserve"><value>चाचणी आणि गुणवत्ता</value></data>
+  <data name="market.category.devops" xml:space="preserve"><value>DevOps</value></data>
+  <data name="market.category.browser" xml:space="preserve"><value>ब्राउझर</value></data>
+  <data name="market.category.web" xml:space="preserve"><value>वेब</value></data>
+  <data name="market.category.backend" xml:space="preserve"><value>बॅकएंड</value></data>
+  <data name="market.category.mobile" xml:space="preserve"><value>मोबाइल</value></data>
+  <data name="market.category.models" xml:space="preserve"><value>मॉडेल्स</value></data>
+  <data name="market.category.integrations" xml:space="preserve"><value>इंटिग्रेशन्स</value></data>
+  <data name="market.category.workspace" xml:space="preserve"><value>कार्यक्षेत्र</value></data>
+  <data name="market.category.productivity" xml:space="preserve"><value>उत्पादकता</value></data>
+  <data name="market.category.tools" xml:space="preserve"><value>साधने</value></data>
+  <data name="market.category.design" xml:space="preserve"><value>डिझाइन</value></data>
+  <data name="market.category.documents" xml:space="preserve"><value>दस्तऐवज</value></data>
+  <data name="market.category.authoring" xml:space="preserve"><value>कौशल लेखन</value></data>
+  <data name="market.category.community" xml:space="preserve"><value>समुदाय</value></data>
+  <data name="market.category.other" xml:space="preserve"><value>इतर</value></data>
+  <data name="navigation.back" xml:space="preserve"><value>मागे</value></data>
+  <data name="navigation.forward" xml:space="preserve"><value>पुढे</value></data>
+  <data name="dock.restart" xml:space="preserve"><value>पुन्हा सुरू करा</value></data>
+  <data name="dock.go" xml:space="preserve"><value>जा</value></data>
+  <data name="terminal.sandboxUnavailable" xml:space="preserve"><value>टर्मिनल सँडबॉक्स उपलब्ध नाही: {0}</value></data>
+  <data name="remote.lan" xml:space="preserve"><value>LAN एंडपॉइंट</value></data>
+  <data name="remote.code" xml:space="preserve"><value>कोड</value></data>
+  <data name="remote.expires" xml:space="preserve"><value>कालबाह्य: {0}</value></data>
+  <data name="remote.pairingLink" xml:space="preserve"><value>पेअरिंग लिंक</value></data>
+  <data name="custom.detected" xml:space="preserve"><value>या संगणकावर चालू आहेत</value></data>
+  <data name="custom.modelOptional" xml:space="preserve"><value>मॉडेलचे नाव (ऐच्छिक)</value></data>
+  <data name="custom.contextOptional" xml:space="preserve"><value>टोकनमध्ये कॉन्टेक्स्ट विंडो (ऐच्छिक)</value></data>
+  <data name="custom.prefix" xml:space="preserve"><value>मॉडेल उपसर्ग</value></data>
+  <data name="local.tuning" xml:space="preserve"><value>कार्यक्षमता</value></data>
+  <data name="local.tuningHint" xml:space="preserve"><value>रिकामे किंवा auto ठेवल्यास रनटाइम मॉडेल तुमच्या GPU मेमरीनुसार बसवतो. बदल पुढच्या वेळी मॉडेल सुरू झाल्यावर लागू होतात.</value></data>
+  <data name="local.contextSize" xml:space="preserve"><value>कॉन्टेक्स्ट आकार (टोकन)</value></data>
+  <data name="local.gpuLayers" xml:space="preserve"><value>GPU लेयर (auto, all किंवा संख्या)</value></data>
+  <data name="local.threads" xml:space="preserve"><value>CPU थ्रेड</value></data>
+  <data name="local.batchSize" xml:space="preserve"><value>बॅच आकार</value></data>
+  <data name="local.flashAttention" xml:space="preserve"><value>Flash attention</value></data>
+  <data name="local.kvCache" xml:space="preserve"><value>KV कॅशे प्रकार</value></data>
+  <data name="local.extraArgs" xml:space="preserve"><value>अतिरिक्त llama-server आर्ग्युमेंट</value></data>
+  <data name="local.hardware" xml:space="preserve"><value>हार्डवेअर</value></data>
+  <data name="local.listen" xml:space="preserve"><value>ऐकत आहे</value></data>
+  <data name="local.importGGUF" xml:space="preserve"><value>GGUF फाइल जोडा…</value></data>
+  <data name="local.tooLarge" xml:space="preserve"><value>खूप मोठे</value></data>
+  <data name="local.backend" xml:space="preserve"><value>GPU बॅकएंड</value></data>
+  <data name="settings.compaction.autoRouted" xml:space="preserve"><value>स्वयंचलित रूटिंग केलेली मॉडेल</value></data>
+  <data name="settings.compaction.effectiveThreshold" xml:space="preserve"><value>प्रभावी मर्यादा</value></data>
+  <data name="sidebar.signOut" xml:space="preserve"><value>साइन आउट</value></data>
+  <data name="market.unpublish" xml:space="preserve"><value>प्रकाशन मागे घ्या</value></data>
+  <data name="settings.sshHosts" xml:space="preserve"><value>दूरस्थ संगणक (SSH)</value></data>
+  <data name="settings.sshHosts.hint" xml:space="preserve"><value>यजमान ~/.ssh/config मधून येतात. इथे जोडलेला यजमान तिथेच लिहिला जातो.</value></data>
+  <data name="settings.sshNoHosts" xml:space="preserve"><value>~/.ssh/config मध्ये कोणताही यजमान नाही.</value></data>
+  <data name="settings.sshAddHost" xml:space="preserve"><value>संगणक जोडा…</value></data>
+  <data name="settings.sshTest" xml:space="preserve"><value>तपासा</value></data>
+  <data name="settings.sshManaged" xml:space="preserve"><value>इथे जोडलेला</value></data>
+  <data name="settings.sshFromConfig" xml:space="preserve"><value>~/.ssh/config मधून</value></data>
+  <data name="settings.sshRemove.handWritten" xml:space="preserve"><value>हा यजमान ~/.ssh/config मध्ये हाताने लिहिला आहे. तिथूनच काढा.</value></data>
+  <data name="settings.updates.current" xml:space="preserve"><value>सध्याची आवृत्ती</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>अपडेट तपासत आहे…</value></data>
+  <data name="settings.updates.checkAgain" xml:space="preserve"><value>पुन्हा तपासा</value></data>
+  <data name="settings.updates.upToDate" xml:space="preserve"><value>ॲप अद्ययावत आहे.</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>अपडेट तपासा</value></data>
+  <data name="settings.updates.retry" xml:space="preserve"><value>पुन्हा प्रयत्न करा</value></data>
+  <data name="settings.updates.hint" xml:space="preserve"><value>नवीनतम उपलब्ध रिलीज तपासा.</value></data>
+  <data name="settings.updates.required" xml:space="preserve"><value>अनिवार्य</value></data>
+  <data name="ssh.connected" xml:space="preserve"><value>{0} ने उत्तर दिले.</value></data>
+  <data name="remote.enable" xml:space="preserve"><value>रिमोट कंट्रोलला परवानगी द्या</value></data>
+  <data name="remote.shareLan" xml:space="preserve"><value>स्थानिक नेटवर्कसोबत सामायिक करा</value></data>
+  <data name="remote.enableHint" xml:space="preserve"><value>रिमोट गेटवे बंद आहे. फोन जोडण्यासाठी सुरू करा.</value></data>
+  <data name="plan.title" xml:space="preserve"><value>योजना</value></data>
+  <data name="plan.proposed" xml:space="preserve"><value>Claude ने एक प्लॅन सुचवला</value></data>
+  <data name="plan.revise" xml:space="preserve"><value>सुधारा…</value></data>
+  <data name="plan.acceptAuto" xml:space="preserve"><value>स्वीकारा आणि ऑटो मोड</value></data>
 </root>

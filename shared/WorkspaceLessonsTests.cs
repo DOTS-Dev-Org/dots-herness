@@ -24,7 +24,7 @@ public sealed class WorkspaceLessonsTests : IDisposable
             """{"when":"deleting files","rule":"Ask for confirmation before deleting files.","why":"A deletion cannot be undone.","paths":["Sources/App","made/up.swift"]}""",
             ["Sources/App/Login.swift"]);
         Assert.NotNull(lesson);
-        Assert.Equal("When deleting files: Ask for confirmation before deleting files. Why: A deletion cannot be undone.", lesson!.Line);
+        Assert.Equal("deleting files: Ask for confirmation before deleting files. — A deletion cannot be undone.", lesson!.Line);
         Assert.Equal(new[] { "Sources/App" }, lesson.Paths.ToArray());
         Assert.Equal("Do not drift.", WorkspaceLessons.Parse("```json\n{\"rule\":\"Do not drift.\"}\n```")?.Rule);
         Assert.Equal(
@@ -68,6 +68,23 @@ public sealed class WorkspaceLessonsTests : IDisposable
         var stored = WorkspaceLessons.Read(_workspace);
         Assert.Equal(2, stored.Count);
         Assert.Contains("\"lastSeen\"", File.ReadAllText(Path.Combine(_workspace, ".mem", "lessons.json")));
+    }
+
+    /// The budget drops the weakest lessons, never one the user said, and what the user wrote
+    /// by hand reaches the prompt whole.
+    [Fact]
+    public void WhatTheUserSaidOutranksAnOftenInferredLessonAndHandWrittenRulesGoWhole()
+    {
+        WorkspaceLessons.Set(_workspace, Make("Prefer small pure functions."), "signal:a");
+        WorkspaceLessons.Set(_workspace, Make("Prefer small pure functions."), "signal:b");
+        WorkspaceLessons.Set(_workspace, Make("Never push to main."), "feedbackkey");
+        var rules = WorkspaceLessons.RulesText(_workspace);
+        Assert.True(rules.IndexOf("Never push to main", StringComparison.Ordinal)
+            < rules.IndexOf("Prefer small pure functions", StringComparison.Ordinal));
+
+        Assert.True(WorkspaceLessons.SetManualRules(_workspace,
+            string.Join("\n", Enumerable.Range(0, 200).Select(index => $"- Rule {index}: keep this one too."))));
+        Assert.Contains("- Rule 199: keep this one too.", WorkspaceLessons.RulesText(_workspace));
     }
 
     [Fact]

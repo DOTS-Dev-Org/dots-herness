@@ -85,10 +85,16 @@ public struct MarketplaceEntry: Codable, Sendable, Identifiable, Equatable {
     public var riskLevel: String
     public var permissions: [String]
     public var moderationStatus: String
+    /// Listing metrics; nil until the registry serves them.
+    public var publishedAt: String?
+    public var downloads: Int?
+    public var likes: Int?
+    public var featured: Bool
 
     enum CodingKeys: String, CodingKey {
         case id, releaseID, name, version, description, author, tier, homepage, license, verificationStatus, sourceVisibility, sourceURL, downloadURL, sha256, signature, artifacts, screenshots
         case catalogScope, category, categoryConfidence, riskLevel, permissions, moderationStatus
+        case publishedAt, downloads, likes, featured
     }
 
     public init(from decoder: Decoder) throws {
@@ -116,6 +122,10 @@ public struct MarketplaceEntry: Codable, Sendable, Identifiable, Equatable {
         riskLevel = try c.decodeIfPresent(String.self, forKey: .riskLevel) ?? "unknown"
         permissions = try c.decodeIfPresent([String].self, forKey: .permissions) ?? []
         moderationStatus = try c.decodeIfPresent(String.self, forKey: .moderationStatus) ?? "pending_review"
+        publishedAt = try c.decodeIfPresent(String.self, forKey: .publishedAt)
+        downloads = try c.decodeIfPresent(Int.self, forKey: .downloads)
+        likes = try c.decodeIfPresent(Int.self, forKey: .likes)
+        featured = try c.decodeIfPresent(Bool.self, forKey: .featured) ?? false
     }
 
     public var currentArtifact: MarketplaceArtifact? {
@@ -272,10 +282,25 @@ public enum MarketplaceStatus: Sendable, Equatable {
     case updateAvailable(installed: String)
 }
 
+/// A project scaffold listing as the catalog serves it.
+public struct MarketStarter: Codable, Sendable, Identifiable, Equatable {
+    public var id: String
+    public var systemImage: String?
+    public var category: String?
+    public var title: String?
+    public var detail: String?
+    /// Sent to the agent as written.
+    public var prompt: String
+    public var downloads: Int?
+    public var likes: Int?
+    public var featured: Bool?
+}
+
 @MainActor
 public final class MarketplaceClient: ObservableObject {
-    public static let defaultIndex = "https://dots.net.tr/harness/registry.json"
-    public static let defaultCommunityIndex = "https://dots.net.tr/harness/community-registry.json"
+    // Read from the API host: the dots.net.tr/harness route does not reach the worker.
+    public static let defaultIndex = MarketplaceSession.defaultAPIBase.absoluteString + "/harness/registry.json"
+    public static let defaultCommunityIndex = MarketplaceSession.defaultAPIBase.absoluteString + "/harness/community-registry.json"
 
     @Published public private(set) var entries: [MarketplaceEntry] = []
     @Published public private(set) var communityEntries: [MarketplaceEntry] = []
@@ -283,6 +308,10 @@ public final class MarketplaceClient: ObservableObject {
     @Published public private(set) var lastError: String?
     @Published public private(set) var busyIDs: Set<String> = []
     @Published public private(set) var ownedPlugins: [MarketplaceOwnedPlugin] = []
+    @Published public private(set) var likedIDs: Set<String> = []
+    /// Liked skills and starters, keyed by catalog kind ("skill", "starter").
+    @Published public private(set) var likedCatalog: [String: Set<String>] = [:]
+    @Published public private(set) var starters: [MarketStarter] = []
 
     public var indexURL: URL
     public var communityIndexURL: URL
@@ -310,6 +339,10 @@ public final class MarketplaceClient: ObservableObject {
         catalog.paths.runtime.appendingPathComponent("marketplace.json")
     }
 
+    private var startersCacheURL: URL {
+        catalog.paths.runtime.appendingPathComponent("marketplace-starters.json")
+    }
+
     private var communityCacheURL: URL {
         catalog.paths.runtime.appendingPathComponent("marketplace-community.json")
     }
@@ -325,6 +358,57 @@ public final class MarketplaceClient: ObservableObject {
            index.version >= 3 {
             communityEntries = index.plugins
         }
+        if let data = try? Data(contentsOf: startersCacheURL),
+           let cached = try? JSONDecoder().decode([MarketStarter].self, from: data) {
+            starters = cached
+        }
+    }
+
+    /// Raw skills or starters catalog from the API host; nil when offline or malformed upstream.
+    public func catalogData(_ name: String) async -> Data? {
+        var request = URLRequest(url: session.apiBase.appendingPathComponent("harness/\(name).json"), timeoutInterval: 30)
+        request.setValue("DotsHarness", forHTTPHeaderField: "User-Agent")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        return data
+    }
+
+    public func refreshStarters() async {
+        guard let data = await catalogData("starters"),
+              let fresh = try? JSONDecoder().decode([MarketStarter].self, from: data) else { return }
+        starters = fresh
+        persist(data, at: startersCacheURL)
+    }
+
+    /// Reports one install of a skill or one use of a starter; returns the server's count.
+    @discardableResult
+    public func recordCatalogDownload(kind: String, id: String) async -> Int? {
+        var request = URLRequest(url: session.apiBase.appendingPathComponent("harness/catalog/\(kind)/\(id)/download"))
+        request.httpMethod = "POST"
+        request.setValue("DotsHarness", forHTTPHeaderField: "User-Agent")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let downloads = (try? JSONDecoder().decode([String: Int].self, from: data))?["downloads"] else { return nil }
+        if kind == "starter", let index = starters.firstIndex(where: { $0.id == id }) { starters[index].downloads = downloads }
+        return downloads
+    }
+
+    /// Likes a skill or starter; returns the server's count.
+    @discardableResult
+    public func setCatalogLiked(_ liked: Bool, kind: String, id: String) async throws -> Int {
+        let (data, response) = try await session.authorizedData(
+            path: "api/marketplace/catalog/\(kind)/\(id)/like",
+            method: "POST",
+            body: try JSONEncoder().encode(["liked": liked]),
+            contentType: "application/json"
+        )
+        guard (200..<300).contains(response.statusCode),
+              let likes = (try? JSONDecoder().decode([String: Int].self, from: data))?["likes"] else {
+            throw MarketplaceSessionError.requestFailed(response.statusCode, String(decoding: data, as: UTF8.self))
+        }
+        if liked { likedCatalog[kind, default: []].insert(id) } else { likedCatalog[kind]?.remove(id) }
+        if kind == "starter", let index = starters.firstIndex(where: { $0.id == id }) { starters[index].likes = likes }
+        return likes
     }
 
     public func refresh() async {
@@ -399,6 +483,36 @@ public final class MarketplaceClient: ObservableObject {
         } catch {
             lastError = error.localizedDescription
         }
+    }
+
+    public func refreshLikes() async {
+        guard session.isSignedIn else {
+            likedIDs = []
+            likedCatalog = [:]
+            return
+        }
+        guard let (data, response) = try? await session.authorizedData(path: "api/marketplace/me/likes"),
+              response.statusCode == 200,
+              let ids = try? JSONDecoder().decode([String: [String]].self, from: data) else { return }
+        likedIDs = Set(ids["plugin_ids"] ?? [])
+        likedCatalog = ["skill": Set(ids["skill_ids"] ?? []), "starter": Set(ids["starter_ids"] ?? [])]
+    }
+
+    /// The server owns the count: the listing shows whatever it answers, never a local guess.
+    public func setLiked(_ liked: Bool, id: String) async throws {
+        let (data, response) = try await session.authorizedData(
+            path: "api/marketplace/plugins/\(id)/like",
+            method: "POST",
+            body: try JSONEncoder().encode(["liked": liked]),
+            contentType: "application/json"
+        )
+        guard (200..<300).contains(response.statusCode),
+              let likes = (try? JSONDecoder().decode([String: Int].self, from: data))?["likes"] else {
+            throw MarketplaceSessionError.requestFailed(response.statusCode, String(decoding: data, as: UTF8.self))
+        }
+        if liked { likedIDs.insert(id) } else { likedIDs.remove(id) }
+        if let index = entries.firstIndex(where: { $0.id == id }) { entries[index].likes = likes }
+        if let index = communityEntries.firstIndex(where: { $0.id == id }) { communityEntries[index].likes = likes }
     }
 
     public func report(

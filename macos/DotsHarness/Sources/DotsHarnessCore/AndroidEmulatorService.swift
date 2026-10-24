@@ -1,6 +1,7 @@
 // Copyright (c) 2026 DOTS
 // Android emulator and ADB management service for native tools.
 
+import CoreGraphics
 import Foundation
 
 public struct AndroidDevice: Identifiable, Hashable, Sendable {
@@ -82,43 +83,16 @@ public enum AndroidSDKLocator {
 
 public enum AndroidShell {
     public static func run(executable: URL, arguments: [String], timeout: TimeInterval = 60) throws -> Data {
-        let process = Process()
-        let output = Pipe()
-        let errors = Pipe()
-        process.executableURL = executable
-        process.arguments = arguments
-        process.standardOutput = output
-        process.standardError = errors
-
-        do {
-            try process.run()
-        } catch {
-            throw AndroidEmulatorError("Failed to execute \(executable.lastPathComponent): \(error.localizedDescription)")
+        try ProcessRunner.run(executable: executable, arguments: arguments, timeout: timeout) { failure in
+            switch failure {
+            case .launch(let message):
+                return AndroidEmulatorError("Failed to execute \(executable.lastPathComponent): \(message)")
+            case .timedOut:
+                return AndroidEmulatorError("\(executable.lastPathComponent) timed out after \(Int(timeout))s.")
+            case .nonzero(let status, let stderr):
+                return AndroidEmulatorError(stderr.isEmpty ? "Exit status \(status)" : stderr)
+            }
         }
-
-        var stdoutData = Data()
-        var stderrData = Data()
-        let stdoutHandle = output.fileHandleForReading
-        let stderrHandle = errors.fileHandleForReading
-        let deadline = Date().addingTimeInterval(timeout)
-
-        while process.isRunning, Date() < deadline {
-            stdoutData.append(stdoutHandle.availableData)
-            stderrData.append(stderrHandle.availableData)
-        }
-        if process.isRunning {
-            process.terminate()
-            throw AndroidEmulatorError("\(executable.lastPathComponent) timed out after \(Int(timeout))s.")
-        }
-        stdoutData.append(stdoutHandle.readDataToEndOfFile())
-        stderrData.append(stderrHandle.readDataToEndOfFile())
-
-        guard process.terminationStatus == 0 else {
-            let text = String(data: stderrData.prefix(4_000), encoding: .utf8) ?? ""
-            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            throw AndroidEmulatorError(trimmed.isEmpty ? "Exit status \(process.terminationStatus)" : trimmed)
-        }
-        return stdoutData
     }
 
     public static func adb(_ arguments: [String], timeout: TimeInterval = 60) throws -> Data {
@@ -133,6 +107,51 @@ public enum AndroidShell {
             throw AndroidEmulatorError("Android emulator tool not found. Install Android SDK Emulator or set ANDROID_HOME.")
         }
         return try run(executable: emulator, arguments: arguments, timeout: timeout)
+    }
+}
+
+/// A running emulator as announced in its discovery file (avd/running/pid_*.ini).
+public struct AndroidRunningEmulator: Sendable, Hashable {
+    public let processID: pid_t
+    public let serial: String
+    public let avdName: String
+    /// Device display in pixels, from the AVD's config.ini; adb input uses these coordinates.
+    public let screenSize: CGSize
+
+    public static func running() -> [AndroidRunningEmulator] {
+        let directory = URL(fileURLWithPath: NSHomeDirectory())
+            .appendingPathComponent("Library/Caches/TemporaryItems/avd/running", isDirectory: true)
+        let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
+        return files.compactMap { file in
+            let name = file.deletingPathExtension().lastPathComponent
+            guard name.hasPrefix("pid_"), let pid = pid_t(name.dropFirst(4)),
+                  kill(pid, 0) == 0, // the emulator leaves the file behind if it crashes
+                  let values = ini(file) else { return nil }
+            var width = 1080.0, height = 2400.0
+            if let avdDirectory = values["avd.dir"],
+               let config = ini(URL(fileURLWithPath: avdDirectory).appendingPathComponent("config.ini")) {
+                width = Double(config["hw.lcd.width"] ?? "") ?? width
+                height = Double(config["hw.lcd.height"] ?? "") ?? height
+            }
+            return AndroidRunningEmulator(
+                processID: pid,
+                serial: "emulator-" + (values["port.serial"] ?? "5554"),
+                avdName: values["avd.name"] ?? name,
+                screenSize: CGSize(width: width, height: height)
+            )
+        }
+    }
+
+    private static func ini(_ url: URL) -> [String: String]? {
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        var values: [String: String] = [:]
+        for line in text.split(separator: "\n") {
+            let parts = line.split(separator: "=", maxSplits: 1)
+            guard parts.count == 2 else { continue }
+            let key = parts[0].trimmingCharacters(in: .whitespaces)
+            if values[key] == nil { values[key] = parts[1].trimmingCharacters(in: .whitespaces) }
+        }
+        return values
     }
 }
 
@@ -180,9 +199,29 @@ public enum AndroidEmulatorService {
         let process = Process()
         process.executableURL = emulator
         process.arguments = ["-avd", avdName, "-no-snapshot-load", "-no-boot-anim"]
-        process.standardOutput = Pipe()
-        process.standardError = Pipe()
+        // Never read; a Pipe would fill up and stall the chatty emulator.
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
         try process.run()
+    }
+
+    /// One key press, e.g. 3 home, 4 back, 26 power, 187 recent apps.
+    public static func keyEvent(serial: String, code: Int) throws {
+        _ = try AndroidShell.adb(["-s", serial, "shell", "input", "keyevent", "\(code)"], timeout: 10)
+    }
+
+    /// The size `adb shell input` coordinates refer to: the `wm size` override if set, else the panel size.
+    public static func inputSize(serial: String) throws -> CGSize? {
+        let data = try AndroidShell.adb(["-s", serial, "shell", "wm", "size"], timeout: 10)
+        let lines = String(decoding: data, as: UTF8.self).split(separator: "\n")
+        let line = lines.first { $0.hasPrefix("Override size:") } ?? lines.first { $0.hasPrefix("Physical size:") }
+        guard let value = line?.split(separator: ":").last?.trimmingCharacters(in: .whitespaces) else { return nil }
+        let parts = value.split(separator: "x").compactMap { Double($0) }
+        return parts.count == 2 ? CGSize(width: parts[0], height: parts[1]) : nil
+    }
+
+    public static func setNightMode(serial: String, dark: Bool) throws {
+        _ = try AndroidShell.adb(["-s", serial, "shell", "cmd", "uimode", "night", dark ? "yes" : "no"], timeout: 10)
     }
 
     public static func shutdown(serial: String) throws {

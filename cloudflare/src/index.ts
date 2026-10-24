@@ -9,7 +9,9 @@ import { apiApp, aitrackApp } from "./client-types";
 import { createOpenApiRoutes } from "./openapi";
 import mobileGithubOAuth from "./routes/mobile/github-oauth";
 import { qrRoutes } from "./routes/api/auth";
-import { marketplacePublic } from "./routes/api/marketplace";
+import { marketplacePublic, recordMarketplaceDownload } from "./routes/api/marketplace";
+import { getClientIp } from "./middleware/rate-limit";
+import { mediaCommunityPublic } from "./routes/api/media-community";
 import { versionRoutes } from "./routes/api/version";
 import { harnessHelp } from "./routes/harness-help";
 import { db } from "./db/client";
@@ -24,6 +26,7 @@ import {
   purgeExpiredTransientState,
 } from "./lib/retention";
 import { syncClaudeCatalog } from "./lib/model_catalog";
+import { processDuePaidEntitlements } from "./lib/billing_fulfill";
 
 function assetCacheControl(key: string): string {
   // User/provider uploads keep stable keys and may be replaced; keep their
@@ -88,6 +91,7 @@ async function serveAsset(c: AppContext) {
   if (sourceAccess === "denied") return new Response("Not Found", { status: 404 });
   const obj = await c.env.DOTSHERNESS_ASSETS.get(key);
   if (!obj) return new Response("Not Found", { status: 404 });
+  c.executionCtx.waitUntil(recordMarketplaceDownload(c.env, key, getClientIp(c)));
   const headers = new Headers();
   obj.writeHttpMetadata(headers);
   const cacheControl = sourceAccess === "private" ? "private, no-store" : assetCacheControl(key);
@@ -127,6 +131,7 @@ const app = new Hono<{ Bindings: Env; Variables: AppVariables }>()
   .route("/aitrack", aitrackApp)
   .route("/harness", harnessHelp)
   .route("/harness", marketplacePublic)
+  .route("/harness", mediaCommunityPublic)
   .route("/harness", versionRoutes)
   .route("/api/version", versionRoutes)
   .route("/", createOpenApiRoutes())
@@ -139,9 +144,10 @@ export default {
     // Purge 15 dakikada bir calisir; eski kayitlar AE'nin invocation basina
     // 250 data point limitine takilmadan kademeli tasinir. Gunluk abonelik
     // temizligi yalnizca 03:00 UTC turunda yapilir.
-    // ponytail: skeleton cron only runs auth/security retention. Billing and
-    // subscription-cleanup jobs from aiwatcher_web were dropped with their tables.
+    // The 15-minute schedule retries due paid entitlements. The daily pass
+    // handles auth/security retention; legacy subscription cleanup is separate.
     const now = new Date();
+    ctx.waitUntil(processDuePaidEntitlements(env));
     if (now.getUTCMinutes() === 0) ctx.waitUntil(syncClaudeCatalog(env));
     if (now.getUTCHours() === 3 && now.getUTCMinutes() === 0) {
       ctx.waitUntil(purgeStaleQrSessions(env));

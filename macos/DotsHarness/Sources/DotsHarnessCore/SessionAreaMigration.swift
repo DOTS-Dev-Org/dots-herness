@@ -92,7 +92,7 @@ public enum SessionAreaMigration {
         try? fileManager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         let temporary = url.appendingPathExtension("tmp")
         try? data.write(to: temporary, options: .atomic)
-        try? fileManager.replaceItemAt(url, withItemAt: temporary)
+        _ = try? fileManager.replaceItemAt(url, withItemAt: temporary)
         if !fileManager.fileExists(atPath: url.path) {
             try? fileManager.moveItem(at: temporary, to: url)
         }

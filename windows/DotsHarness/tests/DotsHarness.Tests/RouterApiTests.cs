@@ -14,6 +14,15 @@ namespace DotsHarness.Tests;
 public sealed class RouterApiTests
 {
     [Fact]
+    public void OpenAIDocumentedWindowsCoverCurrentModels()
+    {
+        foreach (var model in new[] { "gpt-5.6-luna", "gpt-6-sol", "gpt-6.1-sol", "openai/gpt-5.6-terra" })
+            Assert.Equal(1_050_000, RouterCatalog.DocumentedContextWindow("openai", model));
+        foreach (var model in new[] { "gpt-5.6-mini" })
+            Assert.Null(RouterCatalog.DocumentedContextWindow("openai", model));
+    }
+
+    [Fact]
     public void CacheAccountingIncludesWritesAndDistinguishesUnknownFromZero()
     {
         Assert.Equal(7834d / 8605, new NativeUsage(2, 0, 7834, 769, InputExcludesCache: true).CacheHitRate);
@@ -377,6 +386,8 @@ public sealed class RouterApiTests
                 Assert.Null(body["prompt_cache_key"]);
                 Assert.Equal("ephemeral", body["messages"]![0]!["content"]![0]!["cache_control"]!["type"]!.GetValue<string>());
                 Assert.Equal("1h", body["messages"]![0]!["content"]![0]!["cache_control"]!["ttl"]!.GetValue<string>());
+                // Server-side clearing must never drop a read_file body the ledger still vouches for.
+                Assert.Equal("read_file", body["context_management"]!["edits"]![0]!["exclude_tools"]![0]!.GetValue<string>());
             }
             else
             {
@@ -386,6 +397,38 @@ public sealed class RouterApiTests
                 Assert.StartsWith(cacheKey + ":route-", wire, StringComparison.Ordinal);
                 Assert.Matches("^[A-Za-z0-9:_-]+$", wire);
             }
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("claude-opus-5", AgentUsageMode.Standard, true)]
+    [InlineData("claude-opus-5", AgentUsageMode.Economy, false)]
+    [InlineData("claude-sonnet-5", AgentUsageMode.Standard, false)]
+    public async Task FastModeAsksForTheFastSpeedOnlyWhereSupported(string model, AgentUsageMode mode, bool fast)
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"DotsHarnessFastTests-{Guid.NewGuid()}");
+        try
+        {
+            var secrets = new MemoryProviderSecretStore();
+            var store = new NativeProviderStore(root, secrets);
+            var account = new NativeProviderAccount
+            {
+                Provider = "fast-test", ProviderName = "Anthropic", Name = "Fast test", AuthType = "apiKey",
+                Model = model, Models = [model], BaseUrl = "https://anthropic.example",
+                Protocol = NativeProviderProtocol.Anthropic, CredentialId = "fast-test",
+            };
+            store.State.Accounts.Add(account);
+            secrets.Write(account.CredentialId, "test-secret");
+            var handler = new LanguagePolicyRecordingHandler(NativeProviderProtocol.Anthropic);
+            var router = new NativeProviderRouter(store, http: new HttpClient(handler)) { Fast = true, UsageMode = mode };
+            await router.CompleteAsync([new NativeMessage("user", "hello")], [], model);
+
+            Assert.Equal(fast ? "fast" : null, JsonNode.Parse(handler.Body)!["speed"]?.GetValue<string>());
+            Assert.Equal(fast, handler.Beta.Contains("fast-mode-2026-02-01", StringComparison.Ordinal));
         }
         finally
         {
@@ -473,7 +516,11 @@ public sealed class RouterApiTests
 
             var handler = new LimitThenSuccessHandler();
             var router = new NativeProviderRouter(store, http: new HttpClient(handler));
-            var response = await router.CompleteAsync([new NativeMessage("user", "hello")], [], "test-model");
+            var response = await router.CompleteAsync(
+                [new NativeMessage("user", "hello")],
+                [],
+                "test-model",
+                allowAccountFailoverAfterLimit: true);
 
             Assert.Equal(2, handler.CallCount);
             Assert.Equal("ready", response.Message.Content);
@@ -503,10 +550,12 @@ public sealed class RouterApiTests
     private sealed class LanguagePolicyRecordingHandler(NativeProviderProtocol protocol) : HttpMessageHandler
     {
         public string Body { get; private set; } = "";
+        public string Beta { get; private set; } = "";
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, System.Threading.CancellationToken cancellationToken)
         {
             Body = await request.Content!.ReadAsStringAsync(cancellationToken);
+            Beta = request.Headers.TryGetValues("anthropic-beta", out var beta) ? string.Join(",", beta) : "";
             var response = protocol switch
             {
                 NativeProviderProtocol.Anthropic => "{\"content\":[{\"type\":\"text\",\"text\":\"ready\"}]}",

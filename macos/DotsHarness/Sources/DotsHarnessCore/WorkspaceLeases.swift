@@ -128,6 +128,16 @@ private final class LeaseGate: @unchecked Sendable {
 public final class WorkspaceLeases: @unchecked Sendable {
     static let shared = WorkspaceLeases()
 
+    private struct DeferredWriteKey: Hashable {
+        let conversationID: String
+        let targetKey: String
+    }
+
+    private struct DeferredWrite {
+        let label: String
+        var finalCheckRequested: Bool
+    }
+
     /// How long one look at a contested lease blocks before it re-checks the
     /// registry and the caller's cancellation. Half a second is what a stopped run
     /// waits at worst before it lets go of the file it was parked on.
@@ -143,6 +153,7 @@ public final class WorkspaceLeases: @unchecked Sendable {
 
     private let lock = NSLock()
     private var entries: [String: Entry] = [:]
+    private var deferredWrites: [DeferredWriteKey: DeferredWrite] = [:]
     private var ticketCounter: UInt64 = 0
 
     /// Which paths a tool call would write. A call that cannot be mapped to a path
@@ -194,7 +205,52 @@ public final class WorkspaceLeases: @unchecked Sendable {
             ),
             gate: LeaseGate()
         )
+        deferredWrites[DeferredWriteKey(conversationID: conversationID, targetKey: target.key)] = nil
         return .granted(ticket: ticketCounter)
+    }
+
+    /// Remembers a contested write so the agent can finish other work before its
+    /// final recheck. Returns true only for the first deferral of this target.
+    @discardableResult
+    func deferWrite(
+        _ target: WorkspaceLeaseTarget,
+        conversationID: String,
+        label: String
+    ) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        let key = DeferredWriteKey(conversationID: conversationID, targetKey: target.key)
+        guard deferredWrites[key] == nil else { return false }
+        deferredWrites[key] = DeferredWrite(label: label, finalCheckRequested: false)
+        return true
+    }
+
+    func isFinalCheckRequested(_ target: WorkspaceLeaseTarget, conversationID: String) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return deferredWrites[DeferredWriteKey(conversationID: conversationID, targetKey: target.key)]?.finalCheckRequested == true
+    }
+
+    func clearDeferredWrite(_ target: WorkspaceLeaseTarget, conversationID: String) {
+        lock.lock(); defer { lock.unlock() }
+        deferredWrites[DeferredWriteKey(conversationID: conversationID, targetKey: target.key)] = nil
+    }
+
+    /// Marks deferred writes for a final retry before the agent returns its answer.
+    func scheduleFinalChecks(conversationID: String) -> [String] {
+        lock.lock(); defer { lock.unlock() }
+        let keys = deferredWrites.keys.filter { $0.conversationID == conversationID }
+        var labels: [String] = []
+        for key in keys {
+            guard var write = deferredWrites[key], !write.finalCheckRequested else { continue }
+            write.finalCheckRequested = true
+            deferredWrites[key] = write
+            labels.append(write.label)
+        }
+        return labels.sorted()
+    }
+
+    func clearDeferredWrites(conversationID: String) {
+        lock.lock(); defer { lock.unlock() }
+        deferredWrites = deferredWrites.filter { $0.key.conversationID != conversationID }
     }
 
     /// Releases only its own lease, so a late release from a finished call cannot
@@ -216,6 +272,7 @@ public final class WorkspaceLeases: @unchecked Sendable {
         lock.lock()
         let owned = entries.filter { $0.value.holder.conversationID == conversationID }
         for key in owned.keys { entries[key] = nil }
+        deferredWrites = deferredWrites.filter { $0.key.conversationID != conversationID }
         lock.unlock()
         owned.values.forEach { $0.gate.complete() }
     }

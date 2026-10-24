@@ -34,7 +34,7 @@ final class SandboxPluginAndMCPEscapeTests: XCTestCase {
 
     func testPluginShellActionIsUnsandboxedWithNoActiveSandbox() throws {
         DeclarativeShell.activeSandbox = nil
-        let outside = FileManager.default.temporaryDirectory
+        let outside = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("sandbox-tool-escape-plain-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: outside) }
         _ = try DeclarativeShell.shell(["/bin/sh", "-c", "printf escaped > {path}"], ["path": outside.path])
@@ -43,7 +43,7 @@ final class SandboxPluginAndMCPEscapeTests: XCTestCase {
 
     func testPluginShellActionCannotEscapeTheSandbox() throws {
         DeclarativeShell.activeSandbox = try shellSandbox()
-        let outside = FileManager.default.temporaryDirectory
+        let outside = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("sandbox-tool-escape-plugin-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: outside) }
         XCTAssertThrowsError(
@@ -64,7 +64,7 @@ final class SandboxPluginAndMCPEscapeTests: XCTestCase {
     // MARK: MCP stdio server
 
     func testMCPStdioServerCannotEscapeTheSandbox() async throws {
-        let outside = FileManager.default.temporaryDirectory
+        let outside = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("sandbox-tool-escape-mcp-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: outside) }
 
@@ -95,7 +95,11 @@ final class SandboxPluginAndMCPEscapeTests: XCTestCase {
         let policy = SandboxExecutionPolicy(workspaceURL: workspace)
         let transport = MCPStdioTransport(config: config, sandboxPolicy: policy)
         _ = try? await transport.send(Data("{}".utf8), expectsResponse: false)
-        try await Task.sleep(nanoseconds: 500_000_000)
+        // Poll instead of a fixed sleep: a loaded machine can take longer than any fixed delay to start the shell.
+        let deadline = Date().addingTimeInterval(10)
+        while !FileManager.default.fileExists(atPath: target.path), Date() < deadline {
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
         transport.close()
         XCTAssertEqual(try String(contentsOf: target), "ok")
     }

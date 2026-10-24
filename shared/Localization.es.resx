@@ -299,13 +299,14 @@
   <data name="usage.resetsIn" xml:space="preserve"><value>se restablece en {0}</value></data>
   <data name="usage.resetsOn" xml:space="preserve"><value>se restablece {0}</value></data>
   <data name="usage.resetsAvailable" xml:space="preserve"><value>Quedan {0} restablecimientos</value></data>
-  <data name="usage.manageResets" xml:space="preserve"><value>Manage resets</value></data>
-  <data name="usage.useReset" xml:space="preserve"><value>Use reset</value></data>
-  <data name="usage.resetTitle" xml:space="preserve"><value>Use a Claude limit reset?</value></data>
-  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude's Usage page will open. Sign in to {0} and review the reset offered to that account. To use it, click Reset for free and confirm in Claude. Once used, a reset cannot be undone. Limits refresh when you return to HerNess.</value></data>
-  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Could not open Claude. Check that the account is still connected, then try again.</value></data>
-  <data name="usage.openClaude" xml:space="preserve"><value>Open Claude</value></data>
+  <data name="usage.manageResets" xml:space="preserve"><value>Gestionar reinicios</value></data>
+  <data name="usage.useReset" xml:space="preserve"><value>Usar reinicio</value></data>
+  <data name="usage.resetTitle" xml:space="preserve"><value>¿Usar un reinicio de límite de Claude?</value></data>
+  <data name="usage.resetConfirmation" xml:space="preserve"><value>Se abrirá la página de uso de Claude. Inicia sesión en {0} y revisa el reinicio ofrecido a esa cuenta. Para usarlo, haz clic en «Reset for free» y confirma en Claude. Un reinicio usado no se puede deshacer. Los límites se actualizan cuando vuelves a HerNess.</value></data>
+  <data name="usage.resetOpenFailed" xml:space="preserve"><value>No se pudo abrir Claude. Comprueba que la cuenta sigue conectada y vuelve a intentarlo.</value></data>
+  <data name="usage.openClaude" xml:space="preserve"><value>Abrir Claude</value></data>
   <data name="usage.needLogin" xml:space="preserve"><value>Inicia sesión en Claude para ver los límites</value></data>
+  <data name="agent.providerLimitTitle" xml:space="preserve"><value>Límite del proveedor alcanzado</value></data>
   <data name="usage.noLimitInfo" xml:space="preserve"><value>No hay información sobre los límites</value></data>
   <data name="usage.loadFailed" xml:space="preserve"><value>No se ha podido cargar el uso</value></data>
   <data name="usage.loading" xml:space="preserve"><value>Cargando el uso…</value></data>
@@ -333,21 +334,21 @@
   <data name="project.missing.message" xml:space="preserve"><value>Es posible que la carpeta del proyecto en '{0}' se haya movido o eliminado. Elige su nueva ubicación o elimina el proyecto.</value></data>
   <data name="project.missing.locate" xml:space="preserve"><value>Buscar ubicación…</value></data>
   <data name="project.missing.readOnly" xml:space="preserve"><value>La carpeta del proyecto no está disponible. Puedes ver las conversaciones anteriores; no se pueden crear conversaciones ni enviar mensajes hasta que elijas una nueva ubicación.</value></data>
-  <data name="conversation.ranCommand" xml:space="preserve"><value>Ran 1 command</value></data>
-  <data name="conversation.ranCommands" xml:space="preserve"><value>Ran {0} commands</value></data>
-  <data name="conversation.runningTools" xml:space="preserve"><value>Running tools…</value></data>
-  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Thinking…</value></data>
+  <data name="conversation.ranCommand" xml:space="preserve"><value>Se ejecutó 1 comando</value></data>
+  <data name="conversation.ranCommands" xml:space="preserve"><value>Se ejecutaron {0} comandos</value></data>
+  <data name="conversation.runningTools" xml:space="preserve"><value>Ejecutando herramientas…</value></data>
+  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Pensando…</value></data>
   <data name="conversation.tokensCount" xml:space="preserve"><value>{0} tokens</value></data>
-  <data name="usage.context.window" xml:space="preserve"><value>Context window</value></data>
-  <data name="usage.planLimits" xml:space="preserve"><value>Plan usage limits</value></data>
-  <data name="composer.queue.one" xml:space="preserve"><value>1 message queued</value></data>
-  <data name="composer.queue.many" xml:space="preserve"><value>{0} messages queued</value></data>
-  <data name="composer.queue.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Clear the message box to edit</value></data>
-  <data name="composer.queue.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="git.createPR" xml:space="preserve"><value>Create PR</value></data>
-  <data name="git.hideBar" xml:space="preserve"><value>Hide</value></data>
-  <data name="composer.queue.next" xml:space="preserve"><value>Next: {0}</value></data>
+  <data name="usage.context.window" xml:space="preserve"><value>Ventana de contexto</value></data>
+  <data name="usage.planLimits" xml:space="preserve"><value>Límites de uso del plan</value></data>
+  <data name="composer.queue.one" xml:space="preserve"><value>1 mensaje en cola</value></data>
+  <data name="composer.queue.many" xml:space="preserve"><value>{0} mensajes en cola</value></data>
+  <data name="composer.queue.edit" xml:space="preserve"><value>Editar</value></data>
+  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Vacía el cuadro de mensaje para editar</value></data>
+  <data name="composer.queue.remove" xml:space="preserve"><value>Quitar</value></data>
+  <data name="git.createPR" xml:space="preserve"><value>Crear PR</value></data>
+  <data name="git.hideBar" xml:space="preserve"><value>Ocultar</value></data>
+  <data name="composer.queue.next" xml:space="preserve"><value>Siguiente: {0}</value></data>
   <data name="sidebar.pinProject" xml:space="preserve"><value>Fijar proyecto</value></data>
   <data name="sidebar.unpinProject" xml:space="preserve"><value>Desfijar proyecto</value></data>
   <data name="sidebar.sortLastUpdate" xml:space="preserve"><value>Última actualización</value></data>
@@ -358,6 +359,8 @@
   <data name="conversation.cancelPlan" xml:space="preserve"><value>Cancelar plan</value></data>
   <data name="conversation.cancelPlanHelp" xml:space="preserve"><value>Cancelar este plan y liberar los mensajes en cola</value></data>
   <data name="media.generated" xml:space="preserve"><value>Imagen generada.</value></data>
+  <data name="media.videoGenerated" xml:space="preserve"><value>Vídeo generado.</value></data>
+  <data name="media.audioGenerated" xml:space="preserve"><value>Voz generada.</value></data>
   <data name="media.fallbackUsed" xml:space="preserve"><value>El proveedor seleccionado no pudo generar esta imagen. Se generó mediante una solicitud de respaldo única a través de {0}/{1}; el proveedor y el modelo de la conversación principal no cambiaron, así que su caché de prompts sigue intacta.</value></data>
   <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>No puedo generar esta imagen con {0}. Configura una API o un proveedor de imágenes como respaldo. Cambiar el modelo principal del chat solo para generar imágenes puede romper la caché de prompts del proveedor.</value></data>
   <data name="feedback.close" xml:space="preserve"><value>Cerrar</value></data>
@@ -370,27 +373,27 @@
   <data name="feedback.persistenceFailed" xml:space="preserve"><value>No se han podido guardar localmente los comentarios.</value></data>
   <data name="feedback.streamingMessage" xml:space="preserve"><value>Espera a que termine la respuesta antes de enviar comentarios.</value></data>
   <data name="feedback.submit" xml:space="preserve"><value>Enviar</value></data>
-  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Apply it elsewhere</value></data>
-  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Broke an existing feature</value></data>
+  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Aplicarlo en otro sitio</value></data>
+  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Rompió una función existente</value></data>
   <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>No siguió mis instrucciones</value></data>
-  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Didn't follow project style</value></data>
+  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>No siguió el estilo del proyecto</value></data>
   <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>Rápido y eficiente</value></data>
   <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>Siguió mis instrucciones</value></data>
-  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Ignored project architecture</value></data>
+  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Ignoró la arquitectura del proyecto</value></data>
   <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>Incorrecto o incompleto</value></data>
-  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Keep the project style</value></data>
+  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Mantener el estilo del proyecto</value></data>
   <data name="feedback.tag.lost_context" xml:space="preserve"><value>Pérdida de contexto</value></data>
   <data name="feedback.tag.negative_other" xml:space="preserve"><value>Otro</value></data>
   <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>Fuera de tema o de alcance</value></data>
   <data name="feedback.tag.output_quality" xml:space="preserve"><value>Buena calidad del código o del resultado</value></data>
   <data name="feedback.tag.positive_other" xml:space="preserve"><value>Otro</value></data>
-  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Reuse this architecture</value></data>
-  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Reuse this token pattern</value></data>
+  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Reutilizar esta arquitectura</value></data>
+  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Reutilizar este patrón de tokens</value></data>
   <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>Problema de seguridad o legal</value></data>
   <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>Lento o con errores</value></data>
   <data name="feedback.tag.task_completed" xml:space="preserve"><value>Resolvió mi tarea</value></data>
   <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>Autonomía útil</value></data>
-  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Wrong theme or token</value></data>
+  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Tema o token incorrecto</value></data>
   <data name="feedback.title" xml:space="preserve"><value>Compartir comentarios</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Los comentarios solo están disponibles en chats del espacio de trabajo.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Los comentarios solo se pueden enviar para respuestas del asistente.</value></data>
@@ -399,12 +402,13 @@
   <data name="conversation.cacheExpired.explanation" xml:space="preserve"><value>Ha pasado la duración estimada de la caché. La caché de prompts es un estado temporal de procesamiento del proveedor; tu historial de chat sigue guardado. Continuar con todo el historial puede hacer que esos tokens vuelvan a contar como entrada nueva. Hacen falta los datos de uso de la siguiente solicitud para confirmar si el proveedor aún tenía un acierto de caché.</value></data>
   <data name="conversation.cacheExpired.infoTitle" xml:space="preserve"><value>¿Por qué veo esto?</value></data>
   <data name="conversation.cacheExpired.notice" xml:space="preserve"><value>Es posible que la caché haya caducado; continuar puede consumir más tokens y costar más. Inicia un chat nuevo con un resumen breve.</value></data>
+  <data name="conversation.cacheLocal.notice" xml:space="preserve"><value>Se vació la caché del modelo local; se volverá a procesar todo el historial y la respuesta puede tardar. Inicia un chat nuevo con un resumen breve.</value></data>
   <data name="conversation.filesChangedCount" xml:space="preserve"><value>{0} archivos modificados</value></data>
   <data name="conversation.filesLess" xml:space="preserve"><value>Mostrar menos archivos</value></data>
   <data name="conversation.filesLineSummary" xml:space="preserve"><value>+{0} −{1}</value></data>
   <data name="conversation.filesMore" xml:space="preserve"><value>Mostrar {0} archivos más</value></data>
   <data name="conversation.filesReverted" xml:space="preserve"><value>Se deshicieron los cambios en los archivos.</value></data>
-  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>The saved file version is unavailable, so the workspace was left unchanged.</value></data>
+  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>La versión guardada del archivo no está disponible, así que el espacio de trabajo no se modificó.</value></data>
   <data name="conversation.undoChanges" xml:space="preserve"><value>Deshacer</value></data>
   <data name="conversation.viewChanges" xml:space="preserve"><value>Ver cambios</value></data>
   <data name="settings.archive" xml:space="preserve"><value>Archivo</value></data>
@@ -435,9 +439,9 @@
   <data name="workLocation.remoteFolderUp" xml:space="preserve"><value>Carpeta superior</value></data>
   <data name="workLocation.remoteFolderEmpty" xml:space="preserve"><value>Aquí no hay subcarpetas</value></data>
   <data name="workLocation.remoteFolderUse" xml:space="preserve"><value>Usar carpeta</value></data>
-  <data name="workLocation.connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="workLocation.connect" xml:space="preserve"><value>Conectar</value></data>
   <data name="workLocation.addHost" xml:space="preserve"><value>Añadir un ordenador…</value></data>
-  <data name="workLocation.useLocal" xml:space="preserve"><value>Use this computer</value></data>
+  <data name="workLocation.useLocal" xml:space="preserve"><value>Usar este ordenador</value></data>
   <data name="settings.sshAlias" xml:space="preserve"><value>Alias</value></data>
   <data name="settings.sshHostName" xml:space="preserve"><value>Host o IP</value></data>
   <data name="settings.sshUser" xml:space="preserve"><value>Usuario</value></data>
@@ -445,126 +449,106 @@
   <data name="settings.sshRemove" xml:space="preserve"><value>Quitar</value></data>
   <data name="ssh.busy" xml:space="preserve"><value>Espera a que termine la ejecución actual antes de cambiar dónde trabaja.</value></data>
   <data name="ssh.connecting" xml:space="preserve"><value>Conectando con {0}…</value></data>
-  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Choose a remote folder before starting a task.</value></data>
+  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Elige una carpeta remota antes de iniciar una tarea.</value></data>
   <data name="ssh.scanning" xml:space="preserve"><value>Obteniendo la clave del host…</value></data>
   <data name="ssh.fingerprintTitle" xml:space="preserve"><value>¿Es esta la huella de {0}?</value></data>
   <data name="ssh.fingerprintMessage" xml:space="preserve"><value>Compárala con el servidor antes de confiar en ella. Continúa solo si coincide.</value></data>
   <data name="ssh.trustAndConnect" xml:space="preserve"><value>Confiar y conectar</value></data>
   <data name="ssh.error.unavailable" xml:space="preserve"><value>No se encontró ssh en este Mac.</value></data>
   <data name="ssh.error.notReachable" xml:space="preserve"><value>No se pudo contactar con {0}.</value></data>
-  <data name="conversation.choosePane" xml:space="preserve"><value>Choose a pane</value></data>
-  <data name="sidebar.toggle" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.mcpServers" xml:space="preserve"><value>MCP servers</value></data>
-  <data name="mcp.empty" xml:space="preserve"><value>No MCP servers configured.</value></data>
-  <data name="mcp.addServer" xml:space="preserve"><value>Add server</value></data>
-  <data name="mcp.name" xml:space="preserve"><value>Name</value></data>
-  <data name="mcp.transport" xml:space="preserve"><value>Transport</value></data>
+  <data name="conversation.choosePane" xml:space="preserve"><value>Elige un panel</value></data>
+  <data name="sidebar.toggle" xml:space="preserve"><value>Mostrar u ocultar la barra lateral</value></data>
+  <data name="settings.mcpServers" xml:space="preserve"><value>Servidores MCP</value></data>
+  <data name="mcp.empty" xml:space="preserve"><value>No hay servidores MCP configurados.</value></data>
+  <data name="mcp.addServer" xml:space="preserve"><value>Añadir servidor</value></data>
+  <data name="mcp.name" xml:space="preserve"><value>Nombre</value></data>
+  <data name="mcp.transport" xml:space="preserve"><value>Transporte</value></data>
   <data name="mcp.http" xml:space="preserve"><value>HTTP</value></data>
   <data name="mcp.stdio" xml:space="preserve"><value>stdio</value></data>
   <data name="mcp.url" xml:space="preserve"><value>URL</value></data>
-  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (optional)</value></data>
-  <data name="mcp.executable" xml:space="preserve"><value>Executable path</value></data>
-  <data name="mcp.arguments" xml:space="preserve"><value>Arguments (space-separated)</value></data>
-  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Auto-run tools the server marks read-only</value></data>
-  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Server annotations are untrusted. Enabling this skips approval only for tools marked read-only and not destructive.</value></data>
-  <data name="mcp.test" xml:space="preserve"><value>Test</value></data>
-  <data name="mcp.add" xml:space="preserve"><value>Add</value></data>
-  <data name="mcp.reconnect" xml:space="preserve"><value>Reconnect</value></data>
-  <data name="mcp.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="mcp.idle" xml:space="preserve"><value>Idle</value></data>
-  <data name="mcp.connecting" xml:space="preserve"><value>Connecting…</value></data>
-  <data name="mcp.connected" xml:space="preserve"><value>Connected · {0} tool(s)</value></data>
-  <data name="mcp.failed" xml:space="preserve"><value>Failed: {0}</value></data>
-  <data name="mcp.testing" xml:space="preserve"><value>Testing…</value></data>
-  <data name="mcp.testConnected" xml:space="preserve"><value>Connected. {0} tool(s) available.</value></data>
-  <data name="conversation.toolInput" xml:space="preserve"><value>Tool input</value></data>
-  <data name="settings.tab.memory" xml:space="preserve"><value>Memory</value></data>
-  <data name="memory.vault.title" xml:space="preserve"><value>Memory vault</value></data>
-  <data name="memory.refresh" xml:space="preserve"><value>Refresh</value></data>
-  <data name="memory.reveal" xml:space="preserve"><value>Open .mem folder</value></data>
-  <data name="memory.refused" xml:space="preserve"><value>Not saved. The entry may contain a credential, exceed its limit, or the workspace may be unavailable.</value></data>
-  <data name="memory.noWorkspace" xml:space="preserve"><value>Select a local workspace to view its memory.</value></data>
-  <data name="memory.notInitialized" xml:space="preserve"><value>Memory starts after the first prompt in this workspace.</value></data>
-  <data name="memory.search" xml:space="preserve"><value>Search memory</value></data>
-  <data name="memory.selectNote" xml:space="preserve"><value>Select a note to view it.</value></data>
-  <data name="memory.save" xml:space="preserve"><value>Save</value></data>
-  <data name="memory.forget" xml:space="preserve"><value>Forget</value></data>
-  <data name="memory.ownRules" xml:space="preserve"><value>Your own rules</value></data>
-  <data name="memory.rulesHelp" xml:space="preserve"><value>These rules are added to every request in this project.</value></data>
-  <data name="memory.lessons" xml:space="preserve"><value>Learned lessons</value></data>
-  <data name="memory.learningStats" xml:space="preserve"><value>{0} turns logged; {1} were corrected or undone.</value></data>
-  <data name="memory.links" xml:space="preserve"><value>Links</value></data>
-  <data name="memory.backlinks" xml:space="preserve"><value>Linked mentions</value></data>
-  <data name="memory.userAuthored" xml:space="preserve"><value>user-authored</value></data>
-  <data name="memory.inferred" xml:space="preserve"><value>inferred</value></data>
-  <data name="memory.learnedCount" xml:space="preserve"><value>learned {0}×</value></data>
-  <data name="memory.usedCount" xml:space="preserve"><value>used {0}×</value></data>
-  <data name="memory.inactive" xml:space="preserve"><value>no longer applied</value></data>
-  <data name="memory.pin" xml:space="preserve"><value>Pin</value></data>
-  <data name="memory.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="memory.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="settings.tab.access" xml:space="preserve"><value>Workspace access</value></data>
-  <data name="access.currentActor" xml:space="preserve"><value>Current actor</value></data>
-  <data name="access.role" xml:space="preserve"><value>Role</value></data>
-  <data name="access.notAuthorized" xml:space="preserve"><value>Not authorized</value></data>
-  <data name="access.score" xml:space="preserve"><value>Score</value></data>
-  <data name="access.device" xml:space="preserve"><value>Device</value></data>
-  <data name="access.publicKey" xml:space="preserve"><value>Public key</value></data>
-  <data name="access.memoryRevision" xml:space="preserve"><value>Memory revision</value></data>
-  <data name="access.members" xml:space="preserve"><value>Members</value></data>
-  <data name="access.noMembers" xml:space="preserve"><value>No members yet.</value></data>
-  <data name="access.revoke" xml:space="preserve"><value>Revoke</value></data>
-  <data name="access.revoked" xml:space="preserve"><value>revoked</value></data>
-  <data name="access.inviteDevice" xml:space="preserve"><value>Invite device</value></data>
-  <data name="access.displayName" xml:space="preserve"><value>Display name</value></data>
-  <data name="access.newDevicePublicKey" xml:space="preserve"><value>New device public key</value></data>
-  <data name="access.createInvitation" xml:space="preserve"><value>Create signed invitation</value></data>
-  <data name="access.acceptInvitation" xml:space="preserve"><value>Accept invitation</value></data>
-  <data name="access.signedInvitation" xml:space="preserve"><value>Signed invitation</value></data>
-  <data name="access.accept" xml:space="preserve"><value>Accept</value></data>
-  <data name="access.reject" xml:space="preserve"><value>Reject</value></data>
-  <data name="access.pendingDecisions" xml:space="preserve"><value>Pending decisions</value></data>
-  <data name="access.noPendingDecisions" xml:space="preserve"><value>No pending project decisions.</value></data>
-  <data name="access.noWorkspace" xml:space="preserve"><value>Select a local workspace to manage access.</value></data>
-  <data name="access.scoreValue" xml:space="preserve"><value>Score: {0}</value></data>
-  <data name="access.initialize" xml:space="preserve"><value>Initialize workspace memory</value></data>
-  <data name="access.initializeHelp" xml:space="preserve"><value>Workspace access uses a signed memory log. Initializing creates the owner identity and event log in this project's .mem folder.</value></data>
-  <data name="access.role.owner" xml:space="preserve"><value>Owner</value></data>
-  <data name="access.role.approver" xml:space="preserve"><value>Approver</value></data>
-  <data name="access.role.contributor" xml:space="preserve"><value>Contributor</value></data>
-  <data name="access.role.observer" xml:space="preserve"><value>Observer</value></data>
+  <data name="mcp.bearerToken" xml:space="preserve"><value>Token Bearer (opcional)</value></data>
+  <data name="mcp.executable" xml:space="preserve"><value>Ruta del ejecutable</value></data>
+  <data name="mcp.arguments" xml:space="preserve"><value>Argumentos (separados por espacios)</value></data>
+  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Ejecutar automáticamente las herramientas que el servidor marca como de solo lectura</value></data>
+  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Las anotaciones del servidor no son de confianza. Al activarlo solo se omite la aprobación para herramientas marcadas como de solo lectura y no destructivas.</value></data>
+  <data name="mcp.test" xml:space="preserve"><value>Probar</value></data>
+  <data name="mcp.add" xml:space="preserve"><value>Añadir servidor</value></data>
+  <data name="mcp.reconnect" xml:space="preserve"><value>Volver a conectar</value></data>
+  <data name="mcp.remove" xml:space="preserve"><value>Quitar</value></data>
+  <data name="mcp.idle" xml:space="preserve"><value>Inactivo</value></data>
+  <data name="mcp.connecting" xml:space="preserve"><value>Conectando…</value></data>
+  <data name="mcp.connected" xml:space="preserve"><value>Conectado · {0} herramienta(s)</value></data>
+  <data name="mcp.failed" xml:space="preserve"><value>Error: {0}</value></data>
+  <data name="mcp.testing" xml:space="preserve"><value>Probando…</value></data>
+  <data name="mcp.testConnected" xml:space="preserve"><value>Conectado. {0} herramienta(s) disponible(s).</value></data>
+  <data name="conversation.toolInput" xml:space="preserve"><value>Entrada de la herramienta</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Memoria</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Bóveda de memoria</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Actualizar</value></data>
+  <data name="memory.enabled" xml:space="preserve"><value>Memoria activada</value></data>
+  <data name="memory.scanFrequency" xml:space="preserve"><value>Frecuencia de análisis</value></data>
+  <data name="memory.scan.off" xml:space="preserve"><value>Desactivado</value></data>
+  <data name="memory.scan.hourly" xml:space="preserve"><value>Cada hora</value></data>
+  <data name="memory.scan.daily" xml:space="preserve"><value>Diario</value></data>
+  <data name="memory.scan.weekly" xml:space="preserve"><value>Semanal</value></data>
+  <data name="memory.enabledHelp" xml:space="preserve"><value>Si está desactivada, no se anota ninguna tarea, no se aprende nada y no se envía ningún hallazgo a un modelo; lo ya guardado permanece en el disco.</value></data>
+  <data name="memory.scanHelp" xml:space="preserve"><value>Las notas breves de las tareas se conservan para recuperar los motivos de los hallazgos incluso después del análisis; con el análisis desactivado no se llama a ningún modelo en segundo plano.</value></data>
+  <data name="memory.reveal" xml:space="preserve"><value>Abrir carpeta .mem</value></data>
+  <data name="memory.refused" xml:space="preserve"><value>No se guardó. La entrada puede contener una credencial, superar su límite o el espacio de trabajo puede no estar disponible.</value></data>
+  <data name="memory.noWorkspace" xml:space="preserve"><value>Selecciona un espacio de trabajo local para ver su memoria.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>La memoria empieza tras el primer prompt en este espacio de trabajo.</value></data>
+  <data name="memory.search" xml:space="preserve"><value>Buscar en la memoria</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Selecciona una nota para verla.</value></data>
+  <data name="memory.save" xml:space="preserve"><value>Guardar</value></data>
+  <data name="memory.forget" xml:space="preserve"><value>Olvidar</value></data>
+  <data name="memory.ownRules" xml:space="preserve"><value>Tus propias reglas</value></data>
+  <data name="memory.rulesHelp" xml:space="preserve"><value>Estas reglas se añaden a cada petición en este proyecto.</value></data>
+  <data name="memory.lessons" xml:space="preserve"><value>Lecciones aprendidas</value></data>
+  <data name="memory.learningStats" xml:space="preserve"><value>{0} turnos registrados; {1} fueron corregidos o deshechos.</value></data>
+  <data name="memory.links" xml:space="preserve"><value>Enlaces</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Menciones enlazadas</value></data>
+  <data name="memory.userAuthored" xml:space="preserve"><value>escrito por el usuario</value></data>
+  <data name="memory.inferred" xml:space="preserve"><value>inferido</value></data>
+  <data name="memory.learnedCount" xml:space="preserve"><value>aprendido {0}×</value></data>
+  <data name="memory.usedCount" xml:space="preserve"><value>usado {0}×</value></data>
+  <data name="memory.inactive" xml:space="preserve"><value>ya no se aplica</value></data>
+  <data name="memory.pin" xml:space="preserve"><value>Fijar</value></data>
+  <data name="memory.edit" xml:space="preserve"><value>Editar</value></data>
+  <data name="memory.cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Acceso al espacio de trabajo</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Aceptar</value></data>
   <data name="settings.sandbox" xml:space="preserve"><value>Sandbox</value></data>
-  <data name="settings.sandboxOff" xml:space="preserve"><value>Off — the agent works directly in your checkout.</value></data>
-  <data name="settings.sandboxOn" xml:space="preserve"><value>On — the agent works in a separate git worktree.</value></data>
-  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Recovery is required before sandbox operations can continue.</value></data>
-  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Retry recovery</value></data>
-  <data name="settings.sandboxName" xml:space="preserve"><value>Name</value></data>
-  <data name="settings.sandboxEnter" xml:space="preserve"><value>Start sandbox</value></data>
-  <data name="settings.sandboxMerge" xml:space="preserve"><value>Merge and exit</value></data>
-  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Discard and exit</value></data>
-  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Origin</value></data>
-  <data name="settings.sandboxBranch" xml:space="preserve"><value>Branch</value></data>
-  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Allow network for new processes</value></data>
-  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>This applies only to new commands. Existing terminal sessions keep their current policy.</value></data>
-  <data name="settings.sandboxOpen" xml:space="preserve"><value>Open sandbox</value></data>
-  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Open origin</value></data>
-  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Conflicts</value></data>
-  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Prepare resolution</value></data>
-  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Ask agent</value></data>
-  <data name="settings.sandboxPreview" xml:space="preserve"><value>Refresh preview</value></data>
-  <data name="settings.sandboxApprove" xml:space="preserve"><value>Approve and merge</value></data>
-  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Cancel resolution</value></data>
-  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Retry cleanup</value></data>
-  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Discard this sandbox? Its branch will be kept for recovery, but its worktree will be removed.</value></data>
-  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Approval requires a complete preview with no unresolved files.</value></data>
-  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Resolution preview</value></data>
-  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Unresolved files</value></data>
-  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>Origin HEAD</value></data>
-  <data name="settings.sandboxHead" xml:space="preserve"><value>Sandbox HEAD</value></data>
-  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Preview fingerprint</value></data>
-  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Sandbox cleanup is still pending; the origin was not changed again.</value></data>
-  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Saved sandboxes</value></data>
-  <data name="settings.sandboxRecover" xml:space="preserve"><value>Recover</value></data>
+  <data name="settings.sandboxOff" xml:space="preserve"><value>Desactivado: el agente trabaja directamente en tu copia de trabajo.</value></data>
+  <data name="settings.sandboxOn" xml:space="preserve"><value>Activado: el agente trabaja en un worktree de git separado.</value></data>
+  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Se requiere una recuperación antes de continuar con las operaciones del sandbox.</value></data>
+  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Reintentar recuperación</value></data>
+  <data name="settings.sandboxName" xml:space="preserve"><value>Nombre</value></data>
+  <data name="settings.sandboxEnter" xml:space="preserve"><value>Iniciar sandbox</value></data>
+  <data name="settings.sandboxMerge" xml:space="preserve"><value>Fusionar y salir</value></data>
+  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Descartar y salir</value></data>
+  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Origen</value></data>
+  <data name="settings.sandboxBranch" xml:space="preserve"><value>Rama</value></data>
+  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Permitir red para procesos nuevos</value></data>
+  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>Solo se aplica a comandos nuevos. Las sesiones de terminal existentes mantienen su política actual.</value></data>
+  <data name="settings.sandboxOpen" xml:space="preserve"><value>Abrir sandbox</value></data>
+  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Abrir origen</value></data>
+  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Conflictos</value></data>
+  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Preparar resolución</value></data>
+  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Preguntar al agente</value></data>
+  <data name="settings.sandboxPreview" xml:space="preserve"><value>Actualizar vista previa</value></data>
+  <data name="settings.sandboxApprove" xml:space="preserve"><value>Aprobar y fusionar</value></data>
+  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Cancelar resolución</value></data>
+  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Reintentar limpieza</value></data>
+  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>¿Descartar este sandbox? Su rama se conservará para recuperarla, pero se eliminará su worktree.</value></data>
+  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>La aprobación requiere una vista previa completa sin archivos sin resolver.</value></data>
+  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Vista previa de la resolución</value></data>
+  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Archivos sin resolver</value></data>
+  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>HEAD del origen</value></data>
+  <data name="settings.sandboxHead" xml:space="preserve"><value>HEAD del sandbox</value></data>
+  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Huella de la vista previa</value></data>
+  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>La limpieza del sandbox sigue pendiente; el origen no se volvió a modificar.</value></data>
+  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Sandboxes guardados</value></data>
+  <data name="settings.sandboxRecover" xml:space="preserve"><value>Recuperar</value></data>
   <data name="conversation.accountSwitched.notice" xml:space="preserve"><value>Este chat ha pasado a otra cuenta con el mismo modelo. Allí la caché empieza desde cero; continuar puede consumir más tokens y costar más.</value></data>
   <data name="conversation.modelSwitched.notice" xml:space="preserve"><value>El modelo ha cambiado. La caché no se traslada al nuevo modelo; se vuelve a procesar todo el historial, lo que puede consumir más tokens y costar más.</value></data>
   <data name="conversation.contextFull.notice" xml:space="preserve"><value>La ventana de contexto está casi llena; continuar puede consumir más tokens y costar más. Inicia un chat nuevo con un resumen breve.</value></data>
@@ -575,28 +559,28 @@
   <data name="context.overflowCompress" xml:space="preserve"><value>Comprimir y continuar</value></data>
   <data name="context.overflowNotNow" xml:space="preserve"><value>Ahora no</value></data>
   <data name="context.overflowDeclined" xml:space="preserve"><value>Envío detenido: la conversación no cabe en el nuevo modelo.</value></data>
-  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>When another chat is writing the same file</value></data>
-  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Wait before asking</value></data>
-  <data name="settings.conflictWaitValue" xml:space="preserve"><value>Wait {0} seconds</value></data>
-  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Wait, then ask</value></data>
-  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>A chat that wants a file another chat is writing waits quietly, and asks only if the wait goes on too long.</value></data>
-  <data name="conflict.policy.ask" xml:space="preserve"><value>Ask me</value></data>
-  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Ask as soon as two chats want the same file.</value></data>
-  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Always wait</value></data>
-  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Never ask: a write waits for the chat that holds the file.</value></data>
-  <data name="conflict.title" xml:space="preserve"><value>A file is busy: {0}</value></data>
-  <data name="conflict.wholeProject" xml:space="preserve"><value>Project command: {0}</value></data>
-  <data name="conflict.stillBusy" xml:space="preserve"><value>Write held back: another chat is still writing {0}.</value></data>
-  <data name="conflict.userSkipped" xml:space="preserve"><value>Write skipped: {0} was left with the other chat ({1}), as you asked.</value></data>
-  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Stopped {0} so this chat could write.</value></data>
-  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Stopped other chats so this chat could write.</value></data>
-  <data name="conflict.banner.title" xml:space="preserve"><value>Another chat is writing this file</value></data>
-  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · held by “{1}” for {2} seconds</value></data>
-  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Keep waiting</value></data>
-  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Stop {0}</value></data>
-  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Stop all other chats</value></data>
-  <data name="conflict.banner.skip" xml:space="preserve"><value>Skip this write</value></data>
-  <data name="conflict.waiting" xml:space="preserve"><value>Waiting for “{0}” to finish writing: {1}</value></data>
+  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>Si otro chat está escribiendo el mismo archivo</value></data>
+  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Esperar antes de preguntar</value></data>
+  <data name="settings.conflictWaitValue" xml:space="preserve"><value>{0} segundos</value></data>
+  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Esperar y después preguntar</value></data>
+  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>Espera en silencio al otro chat y solo pregunta si la espera se alarga.</value></data>
+  <data name="conflict.policy.ask" xml:space="preserve"><value>Pregúntame</value></data>
+  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Pregunta en cuanto dos chats quieren el mismo archivo.</value></data>
+  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Esperar siempre</value></data>
+  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>No pregunta: cada escritura espera al chat que sostiene el archivo.</value></data>
+  <data name="conflict.title" xml:space="preserve"><value>{0} está siendo escrito por otro chat</value></data>
+  <data name="conflict.wholeProject" xml:space="preserve"><value>todo el proyecto (comando: {0})</value></data>
+  <data name="conflict.stillBusy" xml:space="preserve"><value>Escritura retenida: {0} lo escribe aún otro chat.</value></data>
+  <data name="conflict.userSkipped" xml:space="preserve"><value>Escritura omitida: {0} quedó con el otro chat ({1}), como pediste.</value></data>
+  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Se detuvo el chat “{0}”, como pediste, y esta escritura se realizó.</value></data>
+  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Se detuvieron, como pediste, los otros chats de este proyecto y esta escritura se realizó.</value></data>
+  <data name="conflict.banner.title" xml:space="preserve"><value>Otro chat está escribiendo este archivo</value></data>
+  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · lo retiene «{1}» desde hace {2} s</value></data>
+  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Seguir esperando</value></data>
+  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Detener ese chat</value></data>
+  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Detener todos los demás chats</value></data>
+  <data name="conflict.banner.skip" xml:space="preserve"><value>Omitir esta escritura</value></data>
+  <data name="conflict.waiting" xml:space="preserve"><value>Esperando a “{0}” al escribir: {1}</value></data>
   <data name="usage.context.button" xml:space="preserve"><value>Uso</value></data>
   <data name="usage.context.tooltip" xml:space="preserve"><value>Uso de contexto y tokens</value></data>
   <data name="usage.context.latestRequest" xml:space="preserve"><value>Última solicitud · ventana de contexto</value></data>
@@ -607,33 +591,737 @@
   <data name="usage.context.estimatedBreakdown" xml:space="preserve"><value>Desglose estimado de la entrada</value></data>
   <data name="usage.context.tokens" xml:space="preserve"><value>tokens</value></data>
   <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} tokens ({2})</value></data>
-  <data name="usage.context.notAvailable" xml:space="preserve"><value>Context usage is not available yet.</value></data>
-  <data name="usage.context.composition" xml:space="preserve"><value>Estimated input composition</value></data>
+  <data name="usage.context.notAvailable" xml:space="preserve"><value>El uso del contexto aún no está disponible.</value></data>
+  <data name="usage.context.composition" xml:space="preserve"><value>Composición estimada de la entrada</value></data>
   <data name="usage.context.estimatedRow" xml:space="preserve"><value>{0}: {1} ({2})</value></data>
   <data name="usage.context.conversation" xml:space="preserve"><value>Mensajes de la conversación</value></data>
   <data name="usage.context.systemPrompt" xml:space="preserve"><value>Instrucciones del sistema</value></data>
   <data name="usage.context.toolDefinitions" xml:space="preserve"><value>Definiciones de herramientas</value></data>
   <data name="usage.context.mcpDefinitions" xml:space="preserve"><value>Definiciones de herramientas MCP</value></data>
-  <data name="usage.context.cacheHit" xml:space="preserve"><value>Measured cache hit</value></data>
-  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Verified prefix reuse: {0} · {1} / {2} tokens</value></data>
-  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Measurement coverage: {0} · {1} of {2} eligible requests</value></data>
-  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Cold: {0} · expired: {1} · changed: {2}</value></data>
-  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Cache writes: {0} tokens</value></data>
-  <data name="usage.context.freshInput" xml:space="preserve"><value>Fresh input: {0} tokens</value></data>
-  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Reuse not reported: {0} of {1} eligible requests</value></data>
-  <data name="usage.context.latency" xml:space="preserve"><value>Average request latency: {0}</value></data>
-  <data name="usage.context.prepare" xml:space="preserve"><value>Average request preparation: {0}</value></data>
-  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Largest cache loss: {0} ({1} tokens)</value></data>
-  <data name="settings.shortcuts" xml:space="preserve"><value>Keyboard shortcuts</value></data>
-  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Select a shortcut to change it. Press a key combination with at least one modifier.</value></data>
-  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Press keys…</value></data>
-  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Restore defaults</value></data>
-  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} is already assigned to {1}.</value></data>
-  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull requests</value></data>
-  <data name="conversation.review" xml:space="preserve"><value>Review</value></data>
-  <data name="conversation.files" xml:space="preserve"><value>Files</value></data>
-  <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
-  <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
-  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} tokens</value></data>
+  <data name="usage.context.cacheHit" xml:space="preserve"><value>Aciertos de caché medidos</value></data>
+  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Reutilización de prefijo verificada: {0} · {1} / {2} tokens</value></data>
+  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Cobertura de medición: {0} · {1} de {2} peticiones aptas</value></data>
+  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Frías: {0} · caducadas: {1} · cambiadas: {2}</value></data>
+  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Escrituras en caché: {0} tokens</value></data>
+  <data name="usage.context.freshInput" xml:space="preserve"><value>Entrada nueva: {0} tokens</value></data>
+  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Reutilización no informada: {0} de {1} peticiones aptas</value></data>
+  <data name="usage.context.latency" xml:space="preserve"><value>Latencia media de petición: {0}</value></data>
+  <data name="usage.context.prepare" xml:space="preserve"><value>Preparación media de petición: {0}</value></data>
+  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Mayor pérdida de caché: {0} ({1} tokens)</value></data>
+  <data name="settings.shortcuts" xml:space="preserve"><value>Atajos de teclado</value></data>
+  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Selecciona un atajo para cambiarlo. Pulsa una combinación de teclas con al menos un modificador.</value></data>
+  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Mostrar u ocultar la barra lateral</value></data>
+  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Pulsa las teclas…</value></data>
+  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Restaurar valores predeterminados</value></data>
+  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} ya está asignado a {1}.</value></data>
+  <data name="sidebar.pullRequests" xml:space="preserve"><value>Solicitudes de extracción</value></data>
+  <data name="conversation.review" xml:space="preserve"><value>Revisar</value></data>
+  <data name="conversation.files" xml:space="preserve"><value>Archivos</value></data>
+  <data name="conversation.browser" xml:space="preserve"><value>Navegador</value></data>
+  <data name="conversation.newChat" xml:space="preserve"><value>Nueva conversación</value></data>
+  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} tokens procesados</value></data>
+  <data name="settings.skillSuggestions" xml:space="preserve"><value>Mostrar sugerencias de habilidades</value></data>
+  <data name="settings.skillSuggestions.hint" xml:space="preserve"><value>Sugiere una habilidad solo cuando una lección se aprende tres veces o el agente termina un flujo que volverás a necesitar; como máximo una tarjeta por semana. Desactivado: no aparecen tarjetas de sugerencia y el agente no propone habilidades.</value></data>
+  <data name="skill.suggestion.title" xml:space="preserve"><value>Habilidad sugerida: {0}</value></data>
+  <data name="skill.suggestion.create" xml:space="preserve"><value>Crear habilidad</value></data>
+  <data name="skill.suggestion.dismiss" xml:space="preserve"><value>Ahora no</value></data>
+  <data name="settings.autoAccountFailover" xml:space="preserve"><value>Probar otra cuenta automáticamente tras el límite</value></data>
+  <data name="settings.autoAccountFailover.hint" xml:space="preserve"><value>Si está desactivado, el chat se pausa al alcanzar el límite; pulsa Continuar para probar otra cuenta compatible. Si está activado, se prueban cuentas compatibles automáticamente.</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>Introduce un tamaño de contexto específico para el modelo en tokens. Automático usa el tamaño notificado o documentado del modelo si está disponible, y luego el valor configurado de la cuenta.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>Buscar modelos</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>Valor automático: {0} tokens</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>El proveedor no informa del tamaño del contexto.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>Aún no hay modelos disponibles. Conecta un proveedor o actualiza la lista de modelos.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>Guardado.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>Automático</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>Introduce un número entero positivo de tokens.</value></data>
+  <data name="attachment.files" xml:space="preserve"><value>Archivos o fotos</value></data>
+  <data name="attachment.project" xml:space="preserve"><value>Trabajar en un proyecto</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>Contexto compactado automáticamente</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>Archivos leídos</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>Archivos modificados</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>Comandos ejecutados</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>Búsqueda en la web</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>Leyendo archivos…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>Editando archivos…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>Ejecutando comandos…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>Buscando en la web…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>Herramienta utilizada</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>Ejecutando herramienta…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>La herramienta falló: {0}</value></data>
+  <data name="tasks.menu" xml:space="preserve"><value>Tareas</value></data>
+  <data name="tasks.title" xml:space="preserve"><value>Tareas programadas</value></data>
+  <data name="tasks.subtitle" xml:space="preserve"><value>Ejecute un mensaje en una programación cron.</value></data>
+  <data name="tasks.empty" xml:space="preserve"><value>Aún no hay tareas.</value></data>
+  <data name="tasks.add" xml:space="preserve"><value>Agregar tarea</value></data>
+  <data name="tasks.edit" xml:space="preserve"><value>Editar tarea</value></data>
+  <data name="tasks.delete" xml:space="preserve"><value>Eliminar</value></data>
+  <data name="tasks.runNow" xml:space="preserve"><value>Ejecutar ahora</value></data>
+  <data name="tasks.enabled" xml:space="preserve"><value>Habilitado</value></data>
+  <data name="tasks.field.name" xml:space="preserve"><value>Nombre</value></data>
+  <data name="tasks.field.cron" xml:space="preserve"><value>expresión cron</value></data>
+  <data name="tasks.field.prompt" xml:space="preserve"><value>Prompt</value></data>
+  <data name="tasks.field.workspace" xml:space="preserve"><value>Espacio de trabajo</value></data>
+  <data name="tasks.cron.invalid" xml:space="preserve"><value>Expresión cron no válida.</value></data>
+  <data name="tasks.cron.next" xml:space="preserve"><value>Próximas ejecuciones</value></data>
+  <data name="tasks.close" xml:space="preserve"><value>Cerrar tareas</value></data>
+  <data name="tasks.back" xml:space="preserve"><value>Atrás</value></data>
+  <data name="tasks.new" xml:space="preserve"><value>Nueva tarea</value></data>
+  <data name="tasks.active" xml:space="preserve"><value>Tus tareas</value></data>
+  <data name="tasks.disabled" xml:space="preserve"><value>Desactivada</value></data>
+  <data name="tasks.suggestions" xml:space="preserve"><value>Sugerencias</value></data>
+  <data name="tasks.history" xml:space="preserve"><value>Ejecuciones recientes</value></data>
+  <data name="tasks.history.empty" xml:space="preserve"><value>Esta tarea aún no se ha ejecutado.</value></data>
+  <data name="tasks.field.target" xml:space="preserve"><value>Archivo o carpeta de destino</value></data>
+  <data name="tasks.field.targetHint" xml:space="preserve"><value>Ruta opcional dentro del espacio de trabajo</value></data>
+  <data name="tasks.target.invalid" xml:space="preserve"><value>El destino debe estar dentro del espacio de trabajo.</value></data>
+  <data name="tasks.field.model" xml:space="preserve"><value>Modelo</value></data>
+  <data name="tasks.field.fallback" xml:space="preserve"><value>Modelo de respaldo</value></data>
+  <data name="tasks.network" xml:space="preserve"><value>Permitir acceso a la red</value></data>
+  <data name="tasks.assistant.title" xml:space="preserve"><value>Asistente de tareas</value></data>
+  <data name="tasks.assistant.placeholder" xml:space="preserve"><value>Pide cambiar esta tarea…</value></data>
+  <data name="tasks.assistant.updated" xml:space="preserve"><value>Tarea actualizada.</value></data>
+  <data name="tasks.notification.title" xml:space="preserve"><value>Tarea programada</value></data>
+  <data name="tasks.notification.completed" xml:space="preserve"><value>Completada</value></data>
+  <data name="tasks.notification.failed" xml:space="preserve"><value>Fallida</value></data>
+  <data name="tasks.notification.fallback" xml:space="preserve"><value>Se usó el modelo de respaldo</value></data>
+  <data name="tasks.suggestion.daily.title" xml:space="preserve"><value>Resumen diario</value></data>
+  <data name="tasks.suggestion.daily.detail" xml:space="preserve"><value>Resume el trabajo reciente, las prioridades abiertas y los cambios del espacio de trabajo.</value></data>
+  <data name="tasks.suggestion.daily.schedule" xml:space="preserve"><value>Días laborables a las 8:00</value></data>
+  <data name="tasks.suggestion.daily.prompt" xml:space="preserve"><value>Revisa las conversaciones recientes y los cambios del espacio de trabajo. Resume las prioridades más importantes para hoy.</value></data>
+  <data name="tasks.suggestion.weekly.title" xml:space="preserve"><value>Revisión semanal</value></data>
+  <data name="tasks.suggestion.weekly.detail" xml:space="preserve"><value>Convierte el trabajo reciente en un resumen de estado conciso cada viernes.</value></data>
+  <data name="tasks.suggestion.weekly.schedule" xml:space="preserve"><value>Viernes a las 16:00</value></data>
+  <data name="tasks.suggestion.weekly.prompt" xml:space="preserve"><value>Revisa las conversaciones y los cambios del espacio de trabajo de esta semana. Escribe un resumen de estado conciso con el trabajo completado, los riesgos y los próximos pasos.</value></data>
+  <data name="tasks.suggestion.followup.title" xml:space="preserve"><value>Monitor de seguimiento</value></data>
+  <data name="tasks.suggestion.followup.detail" xml:space="preserve"><value>Revisa la actividad reciente y señala todo lo que necesite atención.</value></data>
+  <data name="tasks.suggestion.followup.schedule" xml:space="preserve"><value>Días laborables a las 9:00</value></data>
+  <data name="tasks.suggestion.followup.prompt" xml:space="preserve"><value>Revisa la actividad reciente de tareas y del espacio de trabajo. Señala el trabajo sin terminar, las ejecuciones fallidas y todo lo que necesite atención.</value></data>
+  <data name="tasks.lastRun" xml:space="preserve"><value>última ejecución</value></data>
+  <data name="tasks.state.never" xml:space="preserve"><value>nunca corras</value></data>
+  <data name="tasks.state.running" xml:space="preserve"><value>Corriendo…</value></data>
+  <data name="tasks.state.ok" xml:space="preserve"><value>Tuvo éxito</value></data>
+  <data name="tasks.state.failed" xml:space="preserve"><value>Fallido</value></data>
+  <data name="tasks.openConversation" xml:space="preserve"><value>Conversacion abierta</value></data>
+  <data name="tasks.save" xml:space="preserve"><value>Guardar</value></data>
+  <data name="tasks.cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="tasks.background" xml:space="preserve"><value>Ejecutar tareas mientras la aplicación está cerrada</value></data>
+  <data name="tasks.background.hint" xml:space="preserve"><value>Instala un asistente en segundo plano (launchd) que ejecuta las tareas pendientes incluso cuando Dots Harness no está abierto.</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Mapa</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Índice</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Tareas</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Decisiones</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Preferencias</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Conversaciones</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Sin menciones vinculadas.</value></data>
+  <data name="memory.graph" xml:space="preserve"><value>Gráfico</value></data>
+  <data name="media.image" xml:space="preserve"><value>imagen</value></data>
+  <data name="media.video" xml:space="preserve"><value>vídeo</value></data>
+  <data name="media.audio" xml:space="preserve"><value>sonido</value></data>
+  <data name="media.promptMissing" xml:space="preserve"><value>Describe qué generar después del comando.</value></data>
+  <data name="media.promptMissingFor" xml:space="preserve"><value>Describe el {0} que se generará después del comando.</value></data>
+  <data name="media.modelMissing" xml:space="preserve"><value>El modelo del proveedor de medios no está configurado.</value></data>
+  <data name="media.noOutput" xml:space="preserve"><value>El proveedor no devolvió ningún resultado multimedia.</value></data>
+  <data name="media.invalidOutput" xml:space="preserve"><value>El proveedor devolvió datos multimedia no válidos.</value></data>
+  <data name="media.generationFailed" xml:space="preserve"><value>El proveedor no pudo generar los medios.</value></data>
+  <data name="media.videoTimeout" xml:space="preserve"><value>Se agotó el tiempo de espera para la generación de video.</value></data>
+  <data name="media.busy" xml:space="preserve"><value>Ya hay una generación o ejecución de agente en curso. Inténtalo de nuevo cuando termine.</value></data>
+  <data name="media.unsupported" xml:space="preserve"><value>No puedo generar esto aquí. El proveedor seleccionado no tiene esta capacidad.</value></data>
+  <data name="media.unsupportedStatus" xml:space="preserve"><value>El proveedor seleccionado no admite la generación de medios.</value></data>
+  <data name="media.fileMissing" xml:space="preserve"><value>El archivo generado ya no está disponible.</value></data>
+  <data name="media.openAudio" xml:space="preserve"><value>Abrir audio generado</value></data>
+  <data name="media.save" xml:space="preserve"><value>Guardar</value></data>
+  <data name="media.showInFinder" xml:space="preserve"><value>Mostrar en Finder</value></data>
+  <data name="rail.home" xml:space="preserve"><value>Inicio</value></data>
+  <data name="rail.media" xml:space="preserve"><value>Multimedia</value></data>
+  <data name="rail.tasks" xml:space="preserve"><value>Tareas</value></data>
+  <data name="rail.bots" xml:space="preserve"><value>Bots</value></data>
+  <data name="rail.marketplace" xml:space="preserve"><value>Mercado</value></data>
+  <data name="rail.memory" xml:space="preserve"><value>Memoria</value></data>
+  <data name="rail.settings" xml:space="preserve"><value>Ajustes</value></data>
+  <data name="models.followApp" xml:space="preserve"><value>Modelo de la app</value></data>
+  <data name="studio.preset.square" xml:space="preserve"><value>Publicación cuadrada</value></data>
+  <data name="studio.preset.story" xml:space="preserve"><value>Historia</value></data>
+  <data name="studio.preset.landscape" xml:space="preserve"><value>Horizontal</value></data>
+  <data name="studio.preset.thumbnail" xml:space="preserve"><value>Miniatura de vídeo</value></data>
+  <data name="studio.preset.logo" xml:space="preserve"><value>Logotipo</value></data>
+  <data name="studio.preset.poster" xml:space="preserve"><value>Póster</value></data>
+  <data name="studio.template.announcement" xml:space="preserve"><value>Anuncio</value></data>
+  <data name="studio.template.story" xml:space="preserve"><value>Historia</value></data>
+  <data name="studio.template.thumbnail" xml:space="preserve"><value>Miniatura de vídeo</value></data>
+  <data name="studio.template.slide" xml:space="preserve"><value>Diapositiva de título</value></data>
+  <data name="studio.template.logo" xml:space="preserve"><value>Logotipo</value></data>
+  <data name="studio.template.mobile" xml:space="preserve"><value>Pantalla móvil</value></data>
+  <data name="studio.category.social" xml:space="preserve"><value>Redes sociales</value></data>
+  <data name="studio.category.uiux" xml:space="preserve"><value>UI/UX</value></data>
+  <data name="studio.category.presentation" xml:space="preserve"><value>Presentación e infografía</value></data>
+  <data name="studio.category.other" xml:space="preserve"><value>Otros diseños</value></data>
+  <data name="studio.sample.title" xml:space="preserve"><value>Tu título</value></data>
+  <data name="studio.sample.detail" xml:space="preserve"><value>Una línea breve que dice más</value></data>
+  <data name="studio.sample.brand" xml:space="preserve"><value>Marca</value></data>
+  <data name="studio.sample.text" xml:space="preserve"><value>Texto</value></data>
+  <data name="studio.copyOf" xml:space="preserve"><value>Copia de {0}</value></data>
+  <data name="studio.untitled" xml:space="preserve"><value>Proyecto sin título</value></data>
+  <data name="studio.home.title" xml:space="preserve"><value>Describe tu idea y hazla realidad</value></data>
+  <data name="studio.home.search" xml:space="preserve"><value>Buscar</value></data>
+  <data name="studio.home.sort.name" xml:space="preserve"><value>Nombre</value></data>
+  <data name="studio.home.filter.all" xml:space="preserve"><value>Todo el tiempo</value></data>
+  <data name="studio.home.filter.week" xml:space="preserve"><value>Últimos 7 días</value></data>
+  <data name="studio.home.filter.month" xml:space="preserve"><value>Últimos 30 días</value></data>
+  <data name="studio.home.starred" xml:space="preserve"><value>Destacados</value></data>
+  <data name="studio.home.star" xml:space="preserve"><value>Añadir a destacados</value></data>
+  <data name="studio.home.unstar" xml:space="preserve"><value>Quitar de destacados</value></data>
+  <data name="studio.home.modified" xml:space="preserve"><value>Última modificación</value></data>
+  <data name="studio.home.canvases" xml:space="preserve"><value>Lienzos</value></data>
+  <data name="studio.projects" xml:space="preserve"><value>Proyectos</value></data>
+  <data name="studio.templates" xml:space="preserve"><value>Plantillas</value></data>
+  <data name="studio.community" xml:space="preserve"><value>Comunidad</value></data>
+  <data name="studio.community.banner" xml:space="preserve"><value>Descubre diseños creados por la comunidad</value></data>
+  <data name="studio.community.saved" xml:space="preserve"><value>Guardados</value></data>
+  <data name="studio.community.share" xml:space="preserve"><value>Compartir en la comunidad</value></data>
+  <data name="studio.community.shared" xml:space="preserve"><value>Enviado para revisión. Aparecerá en la comunidad tras su aprobación.</value></data>
+  <data name="studio.community.signIn" xml:space="preserve"><value>Inicia sesión con tu cuenta de HerNess para compartir en la comunidad.</value></data>
+  <data name="studio.community.empty" xml:space="preserve"><value>Aún no hay diseños de la comunidad aquí.</value></data>
+  <data name="studio.projectName" xml:space="preserve"><value>Nombre del proyecto</value></data>
+  <data name="studio.newProject" xml:space="preserve"><value>Nuevo proyecto</value></data>
+  <data name="studio.create" xml:space="preserve"><value>Crear proyecto</value></data>
+  <data name="studio.rename" xml:space="preserve"><value>Renombrar</value></data>
+  <data name="studio.duplicate" xml:space="preserve"><value>Duplicar</value></data>
+  <data name="studio.deleteConfirm" xml:space="preserve"><value>¿Eliminar «{0}»? Se quitarán sus lienzos y archivos subidos.</value></data>
+  <data name="studio.projectMeta" xml:space="preserve"><value>Lienzos: {0}, editado {1}</value></data>
+  <data name="studio.empty.title" xml:space="preserve"><value>Aún no hay proyectos multimedia</value></data>
+  <data name="studio.empty.detail" xml:space="preserve"><value>Un proyecto es un tablero de lienzos. Añade texto, formas e imágenes tú mismo, o describe lo que quieres y deja que un modelo lo construya capa a capa.</value></data>
+  <data name="studio.addCanvas" xml:space="preserve"><value>Lienzo</value></data>
+  <data name="studio.undo" xml:space="preserve"><value>Deshacer</value></data>
+  <data name="studio.redo" xml:space="preserve"><value>Rehacer</value></data>
+  <data name="studio.zoomOut" xml:space="preserve"><value>Alejar</value></data>
+  <data name="studio.zoomIn" xml:space="preserve"><value>Acercar</value></data>
+  <data name="studio.zoomFit" xml:space="preserve"><value>Ajustar todos los lienzos</value></data>
+  <data name="studio.layers" xml:space="preserve"><value>Capas</value></data>
+  <data name="studio.layers.empty" xml:space="preserve"><value>Este lienzo aún no tiene capas.</value></data>
+  <data name="studio.layer.text" xml:space="preserve"><value>Texto</value></data>
+  <data name="studio.layer.shape" xml:space="preserve"><value>Forma</value></data>
+  <data name="studio.layer.upload" xml:space="preserve"><value>Subida</value></data>
+  <data name="studio.layer.show" xml:space="preserve"><value>Mostrar capa</value></data>
+  <data name="studio.layer.hide" xml:space="preserve"><value>Ocultar capa</value></data>
+  <data name="studio.shape.rectangle" xml:space="preserve"><value>Rectángulo</value></data>
+  <data name="studio.shape.ellipse" xml:space="preserve"><value>Elipse</value></data>
+  <data name="studio.name" xml:space="preserve"><value>Nombre</value></data>
+  <data name="studio.opacity" xml:space="preserve"><value>Opacidad</value></data>
+  <data name="studio.fontSize" xml:space="preserve"><value>Tamaño</value></data>
+  <data name="studio.weight.regular" xml:space="preserve"><value>Normal</value></data>
+  <data name="studio.weight.medium" xml:space="preserve"><value>Media</value></data>
+  <data name="studio.weight.bold" xml:space="preserve"><value>Negrita</value></data>
+  <data name="studio.fill" xml:space="preserve"><value>Relleno</value></data>
+  <data name="studio.cornerRadius" xml:space="preserve"><value>Radio de esquina</value></data>
+  <data name="studio.playVideo" xml:space="preserve"><value>Reproducir vídeo</value></data>
+  <data name="studio.size" xml:space="preserve"><value>Tamaño</value></data>
+  <data name="studio.background" xml:space="preserve"><value>Fondo</value></data>
+  <data name="studio.deleteCanvas" xml:space="preserve"><value>Eliminar lienzo</value></data>
+  <data name="studio.ai.kind.design" xml:space="preserve"><value>Diseño</value></data>
+  <data name="studio.ai.kind.image" xml:space="preserve"><value>Imagen</value></data>
+  <data name="studio.ai.kind.video" xml:space="preserve"><value>Vídeo</value></data>
+  <data name="studio.ai.placeholder.design" xml:space="preserve"><value>Describe el diseño que se creará en este lienzo</value></data>
+  <data name="studio.ai.placeholder.image" xml:space="preserve"><value>Describe la imagen que se generará</value></data>
+  <data name="studio.ai.placeholder.video" xml:space="preserve"><value>Describe el vídeo que se generará</value></data>
+  <data name="studio.ai.run" xml:space="preserve"><value>Generar</value></data>
+  <data name="studio.ai.planning" xml:space="preserve"><value>Planificando capas</value></data>
+  <data name="studio.ai.layerProgress" xml:space="preserve"><value>Capa {0} de {1}: {2}</value></data>
+  <data name="studio.ai.drawing" xml:space="preserve"><value>Generando imagen</value></data>
+  <data name="studio.ai.renderingVideo" xml:space="preserve"><value>Generando vídeo. Puede tardar unos minutos.</value></data>
+  <data name="studio.ai.noPlan" xml:space="preserve"><value>El modelo no devolvió capas. Inténtalo de nuevo o elige otro modelo.</value></data>
+  <data name="studio.settings.title" xml:space="preserve"><value>Modelos multimedia</value></data>
+  <data name="studio.settings.design" xml:space="preserve"><value>Diseño</value></data>
+  <data name="studio.settings.model" xml:space="preserve"><value>Modelo</value></data>
+  <data name="studio.settings.designHelp" xml:space="preserve"><value>El modelo de chat que convierte una petición en capas.</value></data>
+  <data name="studio.settings.source" xml:space="preserve"><value>Origen</value></data>
+  <data name="studio.settings.source.provider" xml:space="preserve"><value>Proveedor</value></data>
+  <data name="studio.settings.source.local" xml:space="preserve"><value>Local</value></data>
+  <data name="studio.settings.modelDefault" xml:space="preserve"><value>Predeterminado del proveedor</value></data>
+  <data name="studio.settings.local" xml:space="preserve"><value>Servidor local</value></data>
+  <data name="studio.settings.localURL" xml:space="preserve"><value>URL base</value></data>
+  <data name="studio.settings.localHelp" xml:space="preserve"><value>Un servidor compatible con OpenAI en este equipo o en la red. Se usa cuando una fuente de arriba está en Local, con el nombre de modelo que indiques allí.</value></data>
+  <data name="studio.settings.music.connect" xml:space="preserve"><value>Conectar API</value></data>
+  <data name="studio.settings.music.type.standard" xml:space="preserve"><value>Servidor de música</value></data>
+  <data name="studio.settings.music.type.elevenlabs" xml:space="preserve"><value>ElevenLabs</value></data>
+  <data name="studio.settings.music.name" xml:space="preserve"><value>Nombre</value></data>
+  <data name="studio.settings.music.key" xml:space="preserve"><value>Clave de API</value></data>
+  <data name="studio.settings.music.help" xml:space="preserve"><value>Un servidor de música responde a POST /audio/generations y lista sus modelos en /models; tools/music_server.py es un ejemplo. La clave de API se guarda en el Llavero.</value></data>
+  <data name="studio.ai.kind.next" xml:space="preserve"><value>Pantalla siguiente</value></data>
+  <data name="studio.ai.placeholder.next" xml:space="preserve"><value>Describe la pantalla siguiente o déjalo vacío para continuar el flujo</value></data>
+  <data name="studio.ai.noImages" xml:space="preserve"><value>No hay ningún generador de imágenes conectado, así que las capas de imagen quedaron como marcadores. Conecta uno y genera cada imagen desde su capa.</value></data>
+  <data name="studio.screenNumber" xml:space="preserve"><value>Pantalla {0}</value></data>
+  <data name="studio.layer.icon" xml:space="preserve"><value>Icono</value></data>
+  <data name="studio.layer.lock" xml:space="preserve"><value>Bloquear capa</value></data>
+  <data name="studio.layer.unlock" xml:space="preserve"><value>Desbloquear capa</value></data>
+  <data name="studio.layer.front" xml:space="preserve"><value>Traer al frente</value></data>
+  <data name="studio.layer.back" xml:space="preserve"><value>Enviar al fondo</value></data>
+  <data name="studio.position" xml:space="preserve"><value>Posición</value></data>
+  <data name="studio.rotation" xml:space="preserve"><value>Rotación</value></data>
+  <data name="studio.appearance" xml:space="preserve"><value>Apariencia</value></data>
+  <data name="studio.gradient" xml:space="preserve"><value>Degradado</value></data>
+  <data name="studio.stroke" xml:space="preserve"><value>Trazo</value></data>
+  <data name="studio.shadow" xml:space="preserve"><value>Sombra</value></data>
+  <data name="studio.symbol" xml:space="preserve"><value>Nombre del símbolo</value></data>
+  <data name="studio.imagePrompt" xml:space="preserve"><value>Descripción de la imagen</value></data>
+  <data name="studio.generateImage" xml:space="preserve"><value>Generar imagen</value></data>
+  <data name="studio.export" xml:space="preserve"><value>Exportar</value></data>
+  <data name="studio.exportAll" xml:space="preserve"><value>Exportar todos los lienzos</value></data>
+  <data name="studio.font.default" xml:space="preserve"><value>Sin serifas</value></data>
+  <data name="studio.font.rounded" xml:space="preserve"><value>Redondeada</value></data>
+  <data name="studio.font.serif" xml:space="preserve"><value>Con serifas</value></data>
+  <data name="studio.font.mono" xml:space="preserve"><value>Monoespaciada</value></data>
+  <data name="studio.tool.move" xml:space="preserve"><value>Mover</value></data>
+  <data name="studio.tool.hand" xml:space="preserve"><value>Mano</value></data>
+  <data name="studio.tool.pen" xml:space="preserve"><value>Pluma</value></data>
+  <data name="studio.tool.pencil" xml:space="preserve"><value>Lápiz</value></data>
+  <data name="studio.shape.line" xml:space="preserve"><value>Línea</value></data>
+  <data name="studio.shape.arrow" xml:space="preserve"><value>Flecha</value></data>
+  <data name="studio.shape.polygon" xml:space="preserve"><value>Polígono</value></data>
+  <data name="studio.shape.star" xml:space="preserve"><value>Estrella</value></data>
+  <data name="studio.actions" xml:space="preserve"><value>Acciones</value></data>
+  <data name="studio.unlockAll" xml:space="preserve"><value>Desbloquear todas las capas</value></data>
+  <data name="studio.frames.phone" xml:space="preserve"><value>Teléfono</value></data>
+  <data name="studio.frames.tablet" xml:space="preserve"><value>Tableta</value></data>
+  <data name="studio.frames.desktop" xml:space="preserve"><value>Escritorio</value></data>
+  <data name="studio.frames.presentation" xml:space="preserve"><value>Presentación</value></data>
+  <data name="studio.frames.watch" xml:space="preserve"><value>Reloj</value></data>
+  <data name="studio.frames.paper" xml:space="preserve"><value>Papel</value></data>
+  <data name="studio.frames.social" xml:space="preserve"><value>Redes sociales</value></data>
+  <data name="studio.tool.scale" xml:space="preserve"><value>Escalar</value></data>
+  <data name="studio.tool.section" xml:space="preserve"><value>Sección</value></data>
+  <data name="studio.tool.slice" xml:space="preserve"><value>Sector</value></data>
+  <data name="studio.tool.textPath" xml:space="preserve"><value>Texto en trazado</value></data>
+  <data name="studio.tool.comment" xml:space="preserve"><value>Comentario</value></data>
+  <data name="studio.search" xml:space="preserve"><value>Buscar</value></data>
+  <data name="studio.cut" xml:space="preserve"><value>Cortar</value></data>
+  <data name="studio.paste" xml:space="preserve"><value>Pegar</value></data>
+  <data name="bots.preset.assistant" xml:space="preserve"><value>Asistente</value></data>
+  <data name="bots.preset.researcher" xml:space="preserve"><value>Investigador</value></data>
+  <data name="bots.preset.coder" xml:space="preserve"><value>Programador</value></data>
+  <data name="bots.new" xml:space="preserve"><value>Nuevo bot</value></data>
+  <data name="bots.edit" xml:space="preserve"><value>Editar bot</value></data>
+  <data name="bots.clear" xml:space="preserve"><value>Borrar chat</value></data>
+  <data name="bots.send" xml:space="preserve"><value>Enviar mensaje</value></data>
+  <data name="bots.deleteConfirm" xml:space="preserve"><value>¿Eliminar «{0}» y su chat?</value></data>
+  <data name="bots.empty.title" xml:space="preserve"><value>Aún no hay bots</value></data>
+  <data name="bots.empty.detail" xml:space="preserve"><value>Un bot es un asistente con sus propias instrucciones, modelo y chat continuo. Dale una carpeta y trabajará allí como agente.</value></data>
+  <data name="bots.greeting" xml:space="preserve"><value>Envía un mensaje a {0} para empezar.</value></data>
+  <data name="bots.placeholder" xml:space="preserve"><value>Mensaje para {0}</value></data>
+  <data name="bots.agentIn" xml:space="preserve"><value>Agente en {0}</value></data>
+  <data name="bots.name" xml:space="preserve"><value>Nombre</value></data>
+  <data name="bots.icon" xml:space="preserve"><value>Icono</value></data>
+  <data name="bots.instructions" xml:space="preserve"><value>Instrucciones</value></data>
+  <data name="bots.instructionsHelp" xml:space="preserve"><value>Cómo debe comportarse el bot, qué sabe y cómo responde.</value></data>
+  <data name="bots.workspace" xml:space="preserve"><value>Carpeta del agente</value></data>
+  <data name="bots.workspace.none" xml:space="preserve"><value>Ninguna: solo chat</value></data>
+  <data name="bots.workspace.choose" xml:space="preserve"><value>Elegir carpeta</value></data>
+  <data name="bots.workspace.clear" xml:space="preserve"><value>Quitar</value></data>
+  <data name="bots.workspaceHelp" xml:space="preserve"><value>Con una carpeta, el bot puede leer, escribir y ejecutar comandos en ella sin preguntar, y no tiene acceso a la red. Sin carpeta solo chatea.</value></data>
+  <data name="bots.error.noReply" xml:space="preserve"><value>El bot no respondió.</value></data>
+  <data name="bots.status.delivered" xml:space="preserve"><value>Entregado al bot</value></data>
+  <data name="bots.status.waiting" xml:space="preserve"><value>Esperando al bot</value></data>
+  <data name="tasks.plan.title" xml:space="preserve"><value>Programar una tarea</value></data>
+  <data name="tasks.plan.subtitle" xml:space="preserve"><value>HerNess realiza trabajo recurrente por ti.</value></data>
+  <data name="tasks.upcoming" xml:space="preserve"><value>Próximas</value></data>
+  <data name="tasks.instructions" xml:space="preserve"><value>Instrucciones…</value></data>
+  <data name="tasks.repeat" xml:space="preserve"><value>Repetir</value></data>
+  <data name="tasks.time" xml:space="preserve"><value>Hora</value></data>
+  <data name="tasks.day" xml:space="preserve"><value>Día</value></data>
+  <data name="tasks.advanced" xml:space="preserve"><value>Avanzado</value></data>
+  <data name="tasks.create" xml:space="preserve"><value>Crear</value></data>
+  <data name="tasks.repeat.hourly" xml:space="preserve"><value>Cada hora</value></data>
+  <data name="tasks.repeat.daily" xml:space="preserve"><value>Diario</value></data>
+  <data name="tasks.repeat.weekdays" xml:space="preserve"><value>Días laborables</value></data>
+  <data name="tasks.repeat.weekly" xml:space="preserve"><value>Semanal</value></data>
+  <data name="tasks.repeat.custom" xml:space="preserve"><value>Personalizado</value></data>
+  <data name="bots.preset.assistant.detail" xml:space="preserve"><value>Recibe ayuda con tareas cotidianas</value></data>
+  <data name="bots.preset.researcher.detail" xml:space="preserve"><value>Investiga temas y compara fuentes</value></data>
+  <data name="bots.preset.coder.detail" xml:space="preserve"><value>Escribe código y resuelve problemas</value></data>
+  <data name="tasks.suggestion.email.title" xml:space="preserve"><value>Seguimiento del correo</value></data>
+  <data name="tasks.suggestion.email.detail" xml:space="preserve"><value>Revisa correos importantes y resume lo que requiere atención.</value></data>
+  <data name="tasks.suggestion.reading.title" xml:space="preserve"><value>Lectura de fin de semana</value></data>
+  <data name="tasks.suggestion.reading.detail" xml:space="preserve"><value>Encuentra cada semana un artículo sobre mis intereses.</value></data>
+  <data name="tasks.suggestion.prices.title" xml:space="preserve"><value>Alertas de precios</value></data>
+  <data name="tasks.suggestion.prices.detail" xml:space="preserve"><value>Comprueba los precios de los productos que sigo y avisa de descuentos.</value></data>
+  <data name="tasks.suggestion.events.title" xml:space="preserve"><value>Descubrir eventos</value></data>
+  <data name="tasks.suggestion.events.detail" xml:space="preserve"><value>Busca conciertos y eventos acordes con mis intereses.</value></data>
+  <data name="tasks.suggestion.weekend.title" xml:space="preserve"><value>Planificar mi fin de semana</value></data>
+  <data name="tasks.suggestion.weekend.detail" xml:space="preserve"><value>Sugiere actividades de fin de semana según mis preferencias.</value></data>
+  <data name="tasks.suggestions.memory" xml:space="preserve"><value>Según tu memoria</value></data>
+  <data name="tasks.suggestions.personalizing" xml:space="preserve"><value>Preparando sugerencias a partir de tu memoria…</value></data>
+  <data name="tasks.suggestions.unavailable" xml:space="preserve"><value>Sugerencias de ejemplo · personalización no disponible</value></data>
+  <data name="tasks.suggestions.refresh" xml:space="preserve"><value>Actualizar sugerencias</value></data>
+  <data name="tasks.suggestions.instruction" xml:space="preserve"><value>Adapta el resultado a mis intereses y preferencias. Resume lo que encuentres. Indica qué información o acceso falta.</value></data>
+  <data name="media.music" xml:space="preserve"><value>música</value></data>
+  <data name="studio.music" xml:space="preserve"><value>Música</value></data>
+  <data name="studio.library" xml:space="preserve"><value>Biblioteca</value></data>
+  <data name="studio.music.composing" xml:space="preserve"><value>Componiendo música. Esto puede tardar unos minutos.</value></data>
+  <data name="studio.music.song" xml:space="preserve"><value>Canción</value></data>
+  <data name="studio.music.inspector" xml:space="preserve"><value>Detalles</value></data>
+  <data name="studio.music.section" xml:space="preserve"><value>Sección</value></data>
+  <data name="studio.music.section.delete" xml:space="preserve"><value>Eliminar sección</value></data>
+  <data name="studio.music.lyrics" xml:space="preserve"><value>Letra</value></data>
+  <data name="studio.music.track" xml:space="preserve"><value>Pista</value></data>
+  <data name="studio.music.track.generate" xml:space="preserve"><value>Generar pista</value></data>
+  <data name="studio.music.track.empty" xml:space="preserve"><value>Aún no hay audio</value></data>
+  <data name="studio.music.track.delete" xml:space="preserve"><value>Eliminar pista</value></data>
+  <data name="studio.music.mix" xml:space="preserve"><value>Mezcla</value></data>
+  <data name="studio.music.tempo" xml:space="preserve"><value>Tempo y tonalidad</value></data>
+  <data name="studio.music.generating" xml:space="preserve"><value>Generando {0} pistas</value></data>
+  <data name="studio.music.placeholder" xml:space="preserve"><value>Describe la canción: ambiente, historia, instrumentos, quién canta</value></data>
+  <data name="studio.music.empty" xml:space="preserve"><value>Describe una canción arriba o crea una vacía. Primero surge el plan: secciones, letra y una pista por instrumento, que puedes modificar antes de generar el audio.</value></data>
+  <data name="studio.music.plan" xml:space="preserve"><value>Escribir canción</value></data>
+  <data name="studio.music.new" xml:space="preserve"><value>Canción vacía</value></data>
+  <data name="studio.music.noPlan" xml:space="preserve"><value>El modelo no devolvió ningún plan de canción. Inténtalo de nuevo o elige otro modelo.</value></data>
+  <data name="studio.music.deleteConfirm" xml:space="preserve"><value>¿Eliminar “{0}”? Sus pistas y archivos de audio se eliminarán.</value></data>
+  <data name="studio.music.trackCount" xml:space="preserve"><value>{0} pistas</value></data>
+  <data name="studio.music.bpm" xml:space="preserve"><value>{0} BPM</value></data>
+  <data name="studio.music.key" xml:space="preserve"><value>Tonalidad</value></data>
+  <data name="studio.music.generateAll" xml:space="preserve"><value>Generar todo</value></data>
+  <data name="studio.music.regenerate" xml:space="preserve"><value>Volver a generar esta pista</value></data>
+  <data name="studio.music.script" xml:space="preserve"><value>Guion</value></data>
+  <data name="studio.music.artists" xml:space="preserve"><value>Artistas</value></data>
+  <data name="studio.music.artist.add" xml:space="preserve"><value>Añadir artista</value></data>
+  <data name="studio.music.artist.default" xml:space="preserve"><value>Artista {0}</value></data>
+  <data name="studio.music.artist.name" xml:space="preserve"><value>Nombre</value></data>
+  <data name="studio.music.artist.style" xml:space="preserve"><value>Voz y estilo</value></data>
+  <data name="studio.music.section.add" xml:space="preserve"><value>Añadir sección</value></data>
+  <data name="studio.music.section.default" xml:space="preserve"><value>Verso</value></data>
+  <data name="studio.music.section.bars" xml:space="preserve"><value>{0} compases</value></data>
+  <data name="studio.music.line.add" xml:space="preserve"><value>Añadir línea</value></data>
+  <data name="studio.music.line.placeholder" xml:space="preserve"><value>Línea de letra</value></data>
+  <data name="studio.music.line.unsung" xml:space="preserve"><value>Nadie</value></data>
+  <data name="studio.music.track.add" xml:space="preserve"><value>Añadir pista</value></data>
+  <data name="studio.music.track.instrument" xml:space="preserve"><value>Instrumento</value></data>
+  <data name="studio.music.track.prompt" xml:space="preserve"><value>Cómo debe sonar</value></data>
+  <data name="studio.music.track.vocal" xml:space="preserve"><value>Voz · {0}</value></data>
+  <data name="studio.music.mute" xml:space="preserve"><value>Silenciar</value></data>
+  <data name="studio.music.solo" xml:space="preserve"><value>Solo</value></data>
+  <data name="library.all" xml:space="preserve"><value>Todo</value></data>
+  <data name="library.kind.image" xml:space="preserve"><value>Imágenes</value></data>
+  <data name="library.kind.video" xml:space="preserve"><value>Vídeos</value></data>
+  <data name="library.kind.audio" xml:space="preserve"><value>Audio</value></data>
+  <data name="library.kind.music" xml:space="preserve"><value>Música</value></data>
+  <data name="library.kind.document" xml:space="preserve"><value>Documentos</value></data>
+  <data name="library.add" xml:space="preserve"><value>Añadir archivos</value></data>
+  <data name="library.addFailed" xml:space="preserve"><value>No se pudieron añadir {0} archivos.</value></data>
+  <data name="library.open" xml:space="preserve"><value>Abrir</value></data>
+  <data name="library.empty.title" xml:space="preserve"><value>No hay nada aquí todavía</value></data>
+  <data name="library.empty.detail" xml:space="preserve"><value>Las imágenes, vídeos, audios y música que generes se guardan aquí automáticamente. Añade documentos y otros archivos tú mismo.</value></data>
+  <data name="backgroundTasks.title" xml:space="preserve"><value>Tareas en segundo plano</value></data>
+  <data name="backgroundTasks.empty" xml:space="preserve"><value>No hay tareas en segundo plano</value></data>
+  <data name="backgroundTasks.finished" xml:space="preserve"><value>Finalizadas</value></data>
+  <data name="backgroundTasks.failed" xml:space="preserve"><value>Falló (salida {0})</value></data>
+  <data name="backgroundTasks.stopped" xml:space="preserve"><value>Detenida</value></data>
+  <data name="backgroundTasks.clear" xml:space="preserve"><value>Borrar finalizadas</value></data>
+  <data name="backgroundTasks.runningCount" xml:space="preserve"><value>Tareas en ejecución: {0}</value></data>
+  <data name="backgroundTasks.wake" xml:space="preserve"><value>La tarea en segundo plano «{0}» terminó con el código de salida {1}. Lee su salida con terminal_session (sesión {2}) y continúa.</value></data>
+  <data name="backgroundTasks.waitingInput" xml:space="preserve"><value>Esperando entrada</value></data>
+  <data name="local.installed" xml:space="preserve"><value>Instalado</value></data>
+  <data name="marketplace.title" xml:space="preserve"><value>Mercado</value></data>
+  <data name="marketplace.empty" xml:space="preserve"><value>Sin complementos</value></data>
+  <data name="marketplace.emptyHint" xml:space="preserve"><value>Presione Actualizar para cargar el registro.</value></data>
+  <data name="marketplace.install" xml:space="preserve"><value>Instalar</value></data>
+  <data name="marketplace.search" xml:space="preserve"><value>Complementos de búsqueda</value></data>
+  <data name="marketplace.update" xml:space="preserve"><value>Actualizar v{0} → v{1}</value></data>
+  <data name="marketplace.by" xml:space="preserve"><value>por {0}</value></data>
+  <data name="market.tab.plugins" xml:space="preserve"><value>Complementos</value></data>
+  <data name="market.tab.skills" xml:space="preserve"><value>Habilidades</value></data>
+  <data name="market.tab.starters" xml:space="preserve"><value>Plantillas de proyecto</value></data>
+  <data name="starters.intro" xml:space="preserve"><value>Elige una plantilla y una carpeta vacía. El prompt aparecerá en el editor para que lo leas y lo envíes.</value></data>
+  <data name="starters.use" xml:space="preserve"><value>Usar plantilla</value></data>
+  <data name="starters.chooseFolder" xml:space="preserve"><value>Elige una carpeta vacía para el nuevo proyecto.</value></data>
+  <data name="starters.web.title" xml:space="preserve"><value>App web</value></data>
+  <data name="starters.web.detail" xml:space="preserve"><value>Next.js con TypeScript, un layout, una ruta de API de ejemplo y linting.</value></data>
+  <data name="starters.landing.title" xml:space="preserve"><value>Página de aterrizaje</value></data>
+  <data name="starters.landing.detail" xml:space="preserve"><value>HTML y CSS estáticos con portada, funciones, precios y contacto. Sin paso de compilación.</value></data>
+  <data name="starters.api.title" xml:space="preserve"><value>Servicio API</value></data>
+  <data name="starters.api.detail" xml:space="preserve"><value>FastAPI con comprobación de estado, un recurso de ejemplo, configuración y pruebas.</value></data>
+  <data name="starters.ios.title" xml:space="preserve"><value>App de iOS</value></data>
+  <data name="starters.ios.detail" xml:space="preserve"><value>SwiftUI con dos pantallas, un modelo observable y una prueba unitaria.</value></data>
+  <data name="starters.worker.title" xml:space="preserve"><value>Cloudflare Worker</value></data>
+  <data name="starters.worker.detail" xml:space="preserve"><value>API en TypeScript sobre Workers con bindings tipados y una prueba.</value></data>
+  <data name="starters.cli.title" xml:space="preserve"><value>Herramienta de línea de comandos</value></data>
+  <data name="starters.cli.detail" xml:space="preserve"><value>Paquete de Python con subcomandos, pruebas e instrucciones de instalación.</value></data>
+  <data name="common.cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="common.connect" xml:space="preserve"><value>Conectar</value></data>
+  <data name="common.copied" xml:space="preserve"><value>Copiado</value></data>
+  <data name="common.delete" xml:space="preserve"><value>Eliminar</value></data>
+  <data name="common.done" xml:space="preserve"><value>Listo</value></data>
+  <data name="common.download" xml:space="preserve"><value>Descargar</value></data>
+  <data name="common.idle" xml:space="preserve"><value>Inactivo</value></data>
+  <data name="common.refresh" xml:space="preserve"><value>Actualizar</value></data>
+  <data name="common.remove" xml:space="preserve"><value>Quitar</value></data>
+  <data name="common.start" xml:space="preserve"><value>Iniciar</value></data>
+  <data name="common.stop" xml:space="preserve"><value>Detener</value></data>
+  <data name="common.test" xml:space="preserve"><value>Probar</value></data>
+  <data name="common.save" xml:space="preserve"><value>Guardar</value></data>
+  <data name="common.view" xml:space="preserve"><value>Ver</value></data>
+  <data name="composer.add" xml:space="preserve"><value>Añadir</value></data>
+  <data name="attachment.addApp" xml:space="preserve"><value>Añadir la aplicación Dots Harness</value></data>
+  <data name="attachment.projectDetail" xml:space="preserve"><value>Elegir un proyecto para chats nuevos</value></data>
+  <data name="attachment.goal" xml:space="preserve"><value>Objetivo</value></data>
+  <data name="attachment.goalDetail" xml:space="preserve"><value>Establecer un objetivo de trabajo</value></data>
+  <data name="attachment.plan" xml:space="preserve"><value>Modo de planificación</value></data>
+  <data name="attachment.planDetail" xml:space="preserve"><value>Activar el modo de planificación</value></data>
+  <data name="attachment.saveSkill" xml:space="preserve"><value>Guardar una habilidad</value></data>
+  <data name="attachment.plugins" xml:space="preserve"><value>Complementos</value></data>
+  <data name="attachment.slashCommands" xml:space="preserve"><value>Comandos barra</value></data>
+  <data name="attachment.folder" xml:space="preserve"><value>Añadir carpeta</value></data>
+  <data name="attachment.connectors" xml:space="preserve"><value>Conectores</value></data>
+  <data name="attachment.documentsDetail" xml:space="preserve"><value>Crear y editar documentos</value></data>
+  <data name="attachment.pdfDetail" xml:space="preserve"><value>Leer, crear y verificar archivos PDF</value></data>
+  <data name="attachment.spreadsheetsDetail" xml:space="preserve"><value>Crear y editar hojas de cálculo</value></data>
+  <data name="modelPicker.model" xml:space="preserve"><value>Modelo</value></data>
+  <data name="modelPicker.speed" xml:space="preserve"><value>Velocidad</value></data>
+  <data name="modelPicker.maximum" xml:space="preserve"><value>Máximo</value></data>
+  <data name="modelPicker.standard" xml:space="preserve"><value>Estándar</value></data>
+  <data name="modelPicker.fast" xml:space="preserve"><value>Rápido</value></data>
+  <data name="modelPicker.auto" xml:space="preserve"><value>Automático</value></data>
+  <data name="modelPicker.autoHint" xml:space="preserve"><value>Elige el modelo y el esfuerzo por mensaje.</value></data>
+  <data name="settings.sshPassword" xml:space="preserve"><value>Contraseña (se usa una vez)</value></data>
+  <data name="settings.sshRememberPassword" xml:space="preserve"><value>Recordar contraseña</value></data>
+  <data name="settings.sshRememberPassword.hint" xml:space="preserve"><value>No hace falta: la contraseña solo se usa una vez, para instalar una clave. Nunca se escribe en ~/.ssh/config.</value></data>
+  <data name="ssh.continue" xml:space="preserve"><value>Continuar</value></data>
+  <data name="ssh.enrolling" xml:space="preserve"><value>Instalando la clave…</value></data>
+  <data name="ssh.enrolled.hint" xml:space="preserve"><value>Las conexiones siguientes usan la clave; la contraseña ya no hace falta.</value></data>
+  <data name="ssh.retry" xml:space="preserve"><value>Reintentar</value></data>
+  <data name="ssh.retryHint" xml:space="preserve"><value>Revisa la dirección, el usuario y la contraseña, y vuelve a intentarlo.</value></data>
+  <data name="ssh.installKeyManually" xml:space="preserve"><value>Añade esta clave a ~/.ssh/authorized_keys en el servidor y vuelve a intentarlo.</value></data>
+  <data name="ssh.copyPublicKey" xml:space="preserve"><value>Copiar clave</value></data>
+  <data name="ssh.error.passwordAuthDisabled" xml:space="preserve"><value>El servidor no acepta inicio de sesión con contraseña.</value></data>
+  <data name="ssh.error.authFailed" xml:space="preserve"><value>{0} rechazó el inicio de sesión.</value></data>
+  <data name="ssh.error.hostKeyChanged" xml:space="preserve"><value>La clave del host {0} ha cambiado. No continúes salvo que el servidor se haya reinstalado.</value></data>
+  <data name="ssh.error.invalidInput" xml:space="preserve"><value>Introduce un alias, un nombre de host, un nombre de usuario y un puerto válidos.</value></data>
+  <data name="sidebar.projects" xml:space="preserve"><value>Proyectos</value></data>
+  <data name="sidebar.recent" xml:space="preserve"><value>Recientes</value></data>
+  <data name="sidebar.search" xml:space="preserve"><value>Buscar chats</value></data>
+  <data name="sidebar.sites" xml:space="preserve"><value>Sitios</value></data>
+  <data name="sidebar.scheduled" xml:space="preserve"><value>Programados</value></data>
+  <data name="sidebar.addProject" xml:space="preserve"><value>Añadir proyecto</value></data>
+  <data name="settings.compactTrigger" xml:space="preserve"><value>Compactar contexto automáticamente al llegar a</value></data>
+  <data name="settings.compactTrigger.hint" xml:space="preserve"><value>Porcentaje de la ventana de contexto de cada modelo. Un valor más alto conserva más tiempo la caché del prompt, porque la compactación la reescribe.</value></data>
+  <data name="settings.explore.subagents" xml:space="preserve"><value>Usar subagentes</value></data>
+  <data name="settings.explore.hint" xml:space="preserve"><value>Si está activado, en tareas difíciles o largas el agente delega en subagentes paralelos las búsquedas que recorren muchos archivos y las partes independientes de un cambio grande; solo su resumen entra en la conversación principal. Un subagente de edición solo puede escribir los archivos que se le asignan, y las asignaciones no pueden solaparse. Las tareas sencillas nunca lo usan. Cada subagente es una ejecución aparte del modelo; desactívalo para reducir el coste.</value></data>
+  <data name="settings.responseStyle" xml:space="preserve"><value>Estilo de respuesta</value></data>
+  <data name="settings.responseStyle.hint" xml:space="preserve"><value>Este ajuste no reescribe el prompt. Conciso/Ultra son preferencias de mejor esfuerzo; no garantizan un número de tokens, que se complete ni un coste menor.</value></data>
+  <data name="responseStyle.balanced" xml:space="preserve"><value>Equilibrado</value></data>
+  <data name="responseStyle.concise" xml:space="preserve"><value>Conciso</value></data>
+  <data name="responseStyle.ultra" xml:space="preserve"><value>Ultra</value></data>
+  <data name="responseStyle.detailed" xml:space="preserve"><value>Detallado</value></data>
+  <data name="settings.computerUse.enable" xml:space="preserve"><value>Activar el uso del ordenador</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>Versión y actualizaciones</value></data>
+  <data name="settings.updates.available" xml:space="preserve"><value>Nueva versión disponible: v{0}</value></data>
+  <data name="settings.updates.download" xml:space="preserve"><value>Descargar actualización</value></data>
+  <data name="dock.branch" xml:space="preserve"><value>Rama</value></data>
+  <data name="dock.refresh" xml:space="preserve"><value>Actualizar</value></data>
+  <data name="dock.commit" xml:space="preserve"><value>Commit</value></data>
+  <data name="dock.push" xml:space="preserve"><value>Enviar</value></data>
+  <data name="dock.fetch" xml:space="preserve"><value>Obtener</value></data>
+  <data name="dock.commitOrPush" xml:space="preserve"><value>Commit o push</value></data>
+  <data name="dock.commitMessage" xml:space="preserve"><value>Mensaje del commit</value></data>
+  <data name="dock.noChanges" xml:space="preserve"><value>Sin cambios del agente.</value></data>
+  <data name="dock.whyRequest" xml:space="preserve"><value>Tu solicitud</value></data>
+  <data name="dock.whyAgent" xml:space="preserve"><value>Explicación del agente</value></data>
+  <data name="dock.notRepo" xml:space="preserve"><value>Esta carpeta no es un repositorio git.</value></data>
+  <data name="dock.gitMissing" xml:space="preserve"><value>Git no está instalado. Revisión, commit y push lo necesitan.</value></data>
+  <data name="dock.installGit" xml:space="preserve"><value>Instalar Git</value></data>
+  <data name="dock.filterFiles" xml:space="preserve"><value>Filtrar archivos…</value></data>
+  <data name="dock.openFile" xml:space="preserve"><value>Abrir archivo</value></data>
+  <data name="dock.selectFile" xml:space="preserve"><value>Selecciona un archivo del árbol del espacio de trabajo</value></data>
+  <data name="dock.binaryFile" xml:space="preserve"><value>Archivo binario o ilegible</value></data>
+  <data name="dock.expand" xml:space="preserve"><value>Expandir</value></data>
+  <data name="dock.collapse" xml:space="preserve"><value>Contraer</value></data>
+  <data name="dock.split" xml:space="preserve"><value>Dividir</value></data>
+  <data name="dock.unsplit" xml:space="preserve"><value>Mostrar una pestaña</value></data>
+  <data name="dock.newTab" xml:space="preserve"><value>Nueva pestaña</value></data>
+  <data name="dock.address" xml:space="preserve"><value>Buscar o introducir URL</value></data>
+  <data name="dock.invalidAddress" xml:space="preserve"><value>Introduce una dirección web o búsqueda válida.</value></data>
+  <data name="dock.openExternal" xml:space="preserve"><value>Abrir en el navegador predeterminado</value></data>
+  <data name="dock.bottomTerminal" xml:space="preserve"><value>Abrir terminal inferior</value></data>
+  <data name="dock.splitHorizontal" xml:space="preserve"><value>Dividir lado a lado</value></data>
+  <data name="dock.splitVertical" xml:space="preserve"><value>Dividir arriba y abajo</value></data>
+  <data name="dock.noWorkspace" xml:space="preserve"><value>Primero elige una carpeta de trabajo.</value></data>
+  <data name="git.branchHelp" xml:space="preserve"><value>Elegir una rama de Git</value></data>
+  <data name="git.uncommitted" xml:space="preserve"><value>No confirmado: archivos {0}</value></data>
+  <data name="market.area.core" xml:space="preserve"><value>Marketplace principal</value></data>
+  <data name="market.area.experimental" xml:space="preserve"><value>Experimental</value></data>
+  <data name="market.area.community" xml:space="preserve"><value>Comunidad</value></data>
+  <data name="market.area.communityExperimental" xml:space="preserve"><value>Comunidad / Experimental</value></data>
+  <data name="market.account" xml:space="preserve"><value>Cuenta de HerNess</value></data>
+  <data name="market.signIn" xml:space="preserve"><value>Iniciar sesión</value></data>
+  <data name="market.signIn.email" xml:space="preserve"><value>Correo y contraseña</value></data>
+  <data name="market.signIn.title" xml:space="preserve"><value>Inicia sesión con tu cuenta de HerNess</value></data>
+  <data name="market.email" xml:space="preserve"><value>Correo electrónico</value></data>
+  <data name="market.password" xml:space="preserve"><value>Contraseña</value></data>
+  <data name="market.likeSignIn" xml:space="preserve"><value>Inicia sesión para dar me gusta</value></data>
+  <data name="market.customize" xml:space="preserve"><value>Personalizar</value></data>
+  <data name="market.localForks" xml:space="preserve"><value>Personalizaciones locales</value></data>
+  <data name="market.openFolder" xml:space="preserve"><value>Abrir carpeta</value></data>
+  <data name="market.fork.compared" xml:space="preserve"><value>Comparado</value></data>
+  <data name="market.consent.title" xml:space="preserve"><value>Este plugin ejecuta código nativo</value></data>
+  <data name="market.consent.accept" xml:space="preserve"><value>Aceptar y activar</value></data>
+  <data name="market.consent.message" xml:space="preserve"><value>{0} es un plugin nativo de terceros. Área: {1}. Revisión: {2}. Categoría: {3}. Revisa sus permisos y su código fuente. Si aceptas, el plugin se ejecutará de inmediato como de confianza.</value></data>
+  <data name="market.review.verified" xml:space="preserve"><value>Revisado por DOTS</value></data>
+  <data name="market.review.pending" xml:space="preserve"><value>Pendiente de revisión</value></data>
+  <data name="market.community.empty" xml:space="preserve"><value>Aún no hay plugins de la comunidad</value></data>
+  <data name="market.community.emptyHint" xml:space="preserve"><value>Los plugins de la comunidad requieren una revisión aparte y tu consentimiento explícito para ejecutar código nativo.</value></data>
+  <data name="market.report" xml:space="preserve"><value>Denunciar</value></data>
+  <data name="market.report.title" xml:space="preserve"><value>Denunciar plugin</value></data>
+  <data name="market.report.reason" xml:space="preserve"><value>Motivo</value></data>
+  <data name="market.report.submit" xml:space="preserve"><value>Enviar denuncia</value></data>
+  <data name="market.report.malware" xml:space="preserve"><value>Malware o comportamiento dañino</value></data>
+  <data name="market.report.credentialTheft" xml:space="preserve"><value>Robo de credenciales</value></data>
+  <data name="market.report.exfiltration" xml:space="preserve"><value>Exfiltración de datos</value></data>
+  <data name="market.report.deceptive" xml:space="preserve"><value>Anuncio engañoso o suplantación</value></data>
+  <data name="market.report.spam" xml:space="preserve"><value>Spam o envoltorio vacío</value></data>
+  <data name="market.report.copyright" xml:space="preserve"><value>Infracción de derechos de autor o de licencia</value></data>
+  <data name="market.publish" xml:space="preserve"><value>Publicar plugin</value></data>
+  <data name="market.publish.title" xml:space="preserve"><value>Publicar plugin nativo</value></data>
+  <data name="market.publish.hint" xml:space="preserve"><value>La carpeta del plugin debe contener plugin.yml, plugin.ir.json y una licencia. No se aceptan JavaScript ni runtimes declarativos; las compilaciones de plataforma se crean en CI.</value></data>
+  <data name="market.publish.noFolder" xml:space="preserve"><value>No se seleccionó ninguna carpeta de plugin</value></data>
+  <data name="market.publish.chooseFolder" xml:space="preserve"><value>Elegir carpeta</value></data>
+  <data name="market.publish.irPreview" xml:space="preserve"><value>Vista previa de plugin.ir.json</value></data>
+  <data name="market.publish.sourcePreview" xml:space="preserve"><value>Vista previa del código nativo</value></data>
+  <data name="market.publish.version" xml:space="preserve"><value>Versión (SemVer)</value></data>
+  <data name="market.publish.license" xml:space="preserve"><value>Licencia SPDX (p. ej., MIT)</value></data>
+  <data name="market.publish.visibility" xml:space="preserve"><value>Visibilidad del código</value></data>
+  <data name="market.publish.public" xml:space="preserve"><value>Público: el paquete de código se muestra</value></data>
+  <data name="market.publish.private" xml:space="preserve"><value>Privado: solo el propietario y la CI tienen acceso</value></data>
+  <data name="market.publish.targets" xml:space="preserve"><value>Plataformas de destino</value></data>
+  <data name="market.publish.footer" xml:space="preserve"><value>Tras publicarlo, la IA clasifica la categoría, el área y el riesgo. Aunque termine la compilación, el plugin no se muestra hasta completar la revisión humana.</value></data>
+  <data name="market.publish.submit" xml:space="preserve"><value>Publicar</value></data>
+  <data name="market.publish.error.http" xml:space="preserve"><value>Error al publicar en Marketplace (HTTP {0}): {1}</value></data>
+  <data name="market.publish.error.license" xml:space="preserve"><value>Elige una licencia para publicar un plugin.</value></data>
+  <data name="market.publish.error.noManifest" xml:space="preserve"><value>No se encontró plugin.yml en la carpeta seleccionada.</value></data>
+  <data name="market.publish.error.nativeOnly" xml:space="preserve"><value>Solo se pueden publicar plugins nativos.</value></data>
+  <data name="market.publish.error.semver" xml:space="preserve"><value>Introduce una versión SemVer válida.</value></data>
+  <data name="market.publish.error.targets" xml:space="preserve"><value>Elige al menos una plataforma de destino y una visibilidad de código válida.</value></data>
+  <data name="market.publish.error.package" xml:space="preserve"><value>El paquete debe contener los archivos plugin.ir.json y license.</value></data>
+  <data name="market.publish.error.irVersion" xml:space="preserve"><value>plugin.ir.json debe ser la versión 1.</value></data>
+  <data name="market.publish.error.releaseID" xml:space="preserve"><value>No se pudo obtener el ID de versión de Marketplace.</value></data>
+  <data name="market.publish.error.noVersion" xml:space="preserve"><value>Falta el campo version en plugin.yml.</value></data>
+  <data name="market.publish.status.registering" xml:space="preserve"><value>Creando la entrada en Marketplace…</value></data>
+  <data name="market.publish.status.uploading" xml:space="preserve"><value>Subiendo el paquete de código nativo…</value></data>
+  <data name="market.publish.status.aiUnavailable" xml:space="preserve"><value>Clasificación por IA no disponible; etiqueta provisional: {0} · {1} · {2}. Se requiere revisión humana.</value></data>
+  <data name="market.publish.status.aiDone" xml:space="preserve"><value>Clasificación por IA: {0} · {1} · {2}. Pendiente de revisión humana.</value></data>
+  <data name="market.publish.status.aiFailed" xml:space="preserve"><value>La clasificación por IA no pudo completarse; pendiente de revisión humana.</value></data>
+  <data name="market.publish.status.queueing" xml:space="preserve"><value>Poniendo en cola las compilaciones nativas…</value></data>
+  <data name="market.publish.status.uploaded" xml:space="preserve"><value>Paquete de código subido; pendiente de verificación en la CI nativa.</value></data>
+  <data name="market.error.notSignedIn" xml:space="preserve"><value>Para publicar en Marketplace necesitas una cuenta de HerNess.</value></data>
+  <data name="market.error.invalidCallback" xml:space="preserve"><value>La devolución de llamada de inicio de sesión de HerNess no era válida.</value></data>
+  <data name="market.error.stateMismatch" xml:space="preserve"><value>El estado de inicio de sesión de HerNess no coincidía.</value></data>
+  <data name="market.error.request" xml:space="preserve"><value>Error en la solicitud a Marketplace (HTTP {0}): {1}</value></data>
+  <data name="market.error.invalidResponse" xml:space="preserve"><value>Marketplace devolvió una respuesta no válida.</value></data>
+  <data name="market.error.credentials" xml:space="preserve"><value>Se requieren el correo y la contraseña.</value></data>
+  <data name="remote.scan" xml:space="preserve"><value>Escanea este código QR o introduce el código de un solo uso en HerNess Mobile.</value></data>
+  <data name="remote.newCode" xml:space="preserve"><value>Nuevo código de vinculación</value></data>
+  <data name="remote.copyLink" xml:space="preserve"><value>Copiar enlace de vinculación</value></data>
+  <data name="remote.tunnel.enable" xml:space="preserve"><value>Activar Cloudflare Quick Tunnel</value></data>
+  <data name="remote.hint" xml:space="preserve"><value>Las claves de proveedor permanecen en el escritorio. Las escrituras de archivos, la terminal, la compilación, el despliegue y las acciones de PR siguen usando el modo de aprobación seleccionado.</value></data>
+  <data name="settings.tab.mobile" xml:space="preserve"><value>Control móvil</value></data>
+  <data name="settings.compaction.economyFixed" xml:space="preserve"><value>La política de ahorro usa un umbral fijo del 90 %.</value></data>
+  <data name="settings.browser.title" xml:space="preserve"><value>Navegador y motor preferidos</value></data>
+  <data name="settings.browser.auto" xml:space="preserve"><value>Automático (integrado o el navegador que indiques)</value></data>
+  <data name="settings.browser.managed" xml:space="preserve"><value>Navegador aislado gestionado (Chrome)</value></data>
+  <data name="settings.browser.chrome" xml:space="preserve"><value>Mi Chrome</value></data>
+  <data name="settings.browser.desktopHint" xml:space="preserve"><value>El navegador integrado usa el motor del sistema. También puedes usar Chrome administrado y tu perfil de Chrome existente.</value></data>
+  <data name="settings.browser.inAppDesktop" xml:space="preserve"><value>Navegador integrado</value></data>
+  <data name="settings.computerUse.desktopHint" xml:space="preserve"><value>El agente puede inspeccionar las aplicaciones abiertas, ver capturas, usar el ratón y el teclado y comprobar el resultado. Las acciones de escritorio requieren aprobación.</value></data>
+  <data name="settings.computerUse.linuxHint" xml:space="preserve"><value>En Linux, el uso del ordenador requiere X11, xdotool y maim o ImageMagick. Wayland no es compatible.</value></data>
+  <data name="market.settings.hint" xml:space="preserve"><value>El Marketplace principal incluye plugins de Harness revisados. Community y Experimental aparecen por separado; los plugins nativos requieren tu aprobación antes de ejecutarse.</value></data>
+  <data name="market.registry.empty" xml:space="preserve"><value>No se encontraron entradas de Marketplace. Actualiza el registro para intentarlo de nuevo.</value></data>
+  <data name="market.signIn.hint" xml:space="preserve"><value>Inicia sesión con Google, GitHub o tu correo y contraseña de HerNess. Los tokens de sesión se guardan en el almacén de credenciales de tu plataforma.</value></data>
+  <data name="dock.clean" xml:space="preserve"><value>El árbol de trabajo está limpio.</value></data>
+  <data name="market.publish.folderPickerUnavailable" xml:space="preserve"><value>Este entorno de escritorio no ofrece un selector de carpetas.</value></data>
+  <data name="market.publish.localFolderRequired" xml:space="preserve"><value>Elige una carpeta local para publicar un plugin.</value></data>
+  <data name="market.report.details" xml:space="preserve"><value>Detalles (opcional, hasta 5.000 caracteres)</value></data>
+  <data name="dock.browser.webview2Unavailable" xml:space="preserve"><value>No se pudo iniciar WebView2. Instala o repara Microsoft Edge WebView2 Runtime.</value></data>
+  <data name="settings.marketplace" xml:space="preserve"><value>Mercado</value></data>
+  <data name="workspace.use" xml:space="preserve"><value>Usar espacio de trabajo</value></data>
+  <data name="market.fork.consent.title" xml:space="preserve"><value>Este plugin personalizado ejecuta código nativo</value></data>
+  <data name="market.fork.consent.message" xml:space="preserve"><value>{0} es un fork local. Su código es independiente del upstream; revisa los cambios antes de activarlo.</value></data>
+  <data name="market.fork.newUpstream" xml:space="preserve"><value>Nuevo upstream: v{0}; se conservan los cambios locales</value></data>
+  <data name="market.remove.confirmTitle" xml:space="preserve"><value>¿Quitar el plugin de Marketplace?</value></data>
+  <data name="market.remove.confirmMessage" xml:space="preserve"><value>¿Quitar {0} de este dispositivo?</value></data>
+  <data name="market.report.other" xml:space="preserve"><value>Otro</value></data>
+  <data name="modelPicker.economy" xml:space="preserve"><value>Ahorro</value></data>
+  <data name="conversation.toggleResponseEconomy" xml:space="preserve"><value>Activar o desactivar el ahorro de tokens en las respuestas</value></data>
+  <data name="market.unpublish.confirmMessage" xml:space="preserve"><value>¿Retirar {0}? No se eliminarán las instalaciones existentes.</value></data>
+  <data name="market.permissions" xml:space="preserve"><value>Permisos</value></data>
+  <data name="market.risk" xml:space="preserve"><value>Riesgo: {0}</value></data>
+  <data name="market.category.coding" xml:space="preserve"><value>Programación</value></data>
+  <data name="market.category.git" xml:space="preserve"><value>Git</value></data>
+  <data name="market.category.qa" xml:space="preserve"><value>Pruebas y calidad</value></data>
+  <data name="market.category.devops" xml:space="preserve"><value>DevOps</value></data>
+  <data name="market.category.browser" xml:space="preserve"><value>Navegador</value></data>
+  <data name="market.category.web" xml:space="preserve"><value>Web</value></data>
+  <data name="market.category.backend" xml:space="preserve"><value>Backend</value></data>
+  <data name="market.category.mobile" xml:space="preserve"><value>Móvil</value></data>
+  <data name="market.category.models" xml:space="preserve"><value>Modelos</value></data>
+  <data name="market.category.integrations" xml:space="preserve"><value>Integraciones</value></data>
+  <data name="market.category.workspace" xml:space="preserve"><value>Espacio de trabajo</value></data>
+  <data name="market.category.productivity" xml:space="preserve"><value>Productividad</value></data>
+  <data name="market.category.tools" xml:space="preserve"><value>Herramientas</value></data>
+  <data name="market.category.design" xml:space="preserve"><value>Diseño</value></data>
+  <data name="market.category.documents" xml:space="preserve"><value>Documentos</value></data>
+  <data name="market.category.authoring" xml:space="preserve"><value>Creación de habilidades</value></data>
+  <data name="market.category.community" xml:space="preserve"><value>Comunidad</value></data>
+  <data name="market.category.other" xml:space="preserve"><value>Otros</value></data>
+  <data name="navigation.back" xml:space="preserve"><value>Atrás</value></data>
+  <data name="navigation.forward" xml:space="preserve"><value>Adelante</value></data>
+  <data name="dock.restart" xml:space="preserve"><value>Reiniciar</value></data>
+  <data name="dock.go" xml:space="preserve"><value>Los</value></data>
+  <data name="terminal.sandboxUnavailable" xml:space="preserve"><value>El entorno aislado de la terminal no está disponible: {0}</value></data>
+  <data name="remote.lan" xml:space="preserve"><value>Punto de conexión LAN</value></data>
+  <data name="remote.code" xml:space="preserve"><value>Código</value></data>
+  <data name="remote.expires" xml:space="preserve"><value>Caduca: {0}</value></data>
+  <data name="remote.pairingLink" xml:space="preserve"><value>Enlace de emparejamiento</value></data>
+  <data name="custom.detected" xml:space="preserve"><value>En ejecución en este equipo</value></data>
+  <data name="custom.modelOptional" xml:space="preserve"><value>Nombre del modelo (opcional)</value></data>
+  <data name="custom.contextOptional" xml:space="preserve"><value>Ventana de contexto en tokens (opcional)</value></data>
+  <data name="custom.prefix" xml:space="preserve"><value>Prefijo del modelo</value></data>
+  <data name="local.tuning" xml:space="preserve"><value>Rendimiento</value></data>
+  <data name="local.tuningHint" xml:space="preserve"><value>Vacío o auto deja que el runtime ajuste el modelo a la memoria de tu GPU. Los cambios se aplican la próxima vez que se inicie un modelo.</value></data>
+  <data name="local.contextSize" xml:space="preserve"><value>Tamaño de contexto (tokens)</value></data>
+  <data name="local.gpuLayers" xml:space="preserve"><value>Capas en GPU (auto, all o un número)</value></data>
+  <data name="local.threads" xml:space="preserve"><value>Hilos de CPU</value></data>
+  <data name="local.batchSize" xml:space="preserve"><value>Tamaño de lote</value></data>
+  <data name="local.flashAttention" xml:space="preserve"><value>Flash attention</value></data>
+  <data name="local.kvCache" xml:space="preserve"><value>Tipo de caché KV</value></data>
+  <data name="local.extraArgs" xml:space="preserve"><value>Argumentos adicionales de llama-server</value></data>
+  <data name="local.hardware" xml:space="preserve"><value>Hardware</value></data>
+  <data name="local.listen" xml:space="preserve"><value>Escuchando</value></data>
+  <data name="local.importGGUF" xml:space="preserve"><value>Añadir un archivo GGUF…</value></data>
+  <data name="local.tooLarge" xml:space="preserve"><value>Demasiado grande</value></data>
+  <data name="local.backend" xml:space="preserve"><value>Backend de GPU</value></data>
+  <data name="settings.compaction.autoRouted" xml:space="preserve"><value>Modelos con enrutamiento automático</value></data>
+  <data name="settings.compaction.effectiveThreshold" xml:space="preserve"><value>Umbral efectivo</value></data>
+  <data name="sidebar.signOut" xml:space="preserve"><value>Cerrar sesión</value></data>
+  <data name="market.unpublish" xml:space="preserve"><value>Retirar publicación</value></data>
+  <data name="settings.sshHosts" xml:space="preserve"><value>Ordenadores remotos (SSH)</value></data>
+  <data name="settings.sshHosts.hint" xml:space="preserve"><value>Los hosts vienen de ~/.ssh/config. Un host añadido aquí se escribe allí.</value></data>
+  <data name="settings.sshNoHosts" xml:space="preserve"><value>No hay hosts en ~/.ssh/config.</value></data>
+  <data name="settings.sshAddHost" xml:space="preserve"><value>Añadir ordenador…</value></data>
+  <data name="settings.sshTest" xml:space="preserve"><value>Probar</value></data>
+  <data name="settings.sshManaged" xml:space="preserve"><value>añadido aquí</value></data>
+  <data name="settings.sshFromConfig" xml:space="preserve"><value>de ~/.ssh/config</value></data>
+  <data name="settings.sshRemove.handWritten" xml:space="preserve"><value>Este host se escribió a mano en ~/.ssh/config. Quítalo allí.</value></data>
+  <data name="settings.updates.current" xml:space="preserve"><value>Versión actual</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>Buscando actualizaciones…</value></data>
+  <data name="settings.updates.checkAgain" xml:space="preserve"><value>Volver a comprobar</value></data>
+  <data name="settings.updates.upToDate" xml:space="preserve"><value>La app está actualizada.</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>Buscar actualizaciones</value></data>
+  <data name="settings.updates.retry" xml:space="preserve"><value>Reintentar</value></data>
+  <data name="settings.updates.hint" xml:space="preserve"><value>Comprueba si hay una versión más reciente.</value></data>
+  <data name="settings.updates.required" xml:space="preserve"><value>Obligatoria</value></data>
+  <data name="ssh.connected" xml:space="preserve"><value>{0} respondió.</value></data>
+  <data name="remote.enable" xml:space="preserve"><value>Permitir el control remoto</value></data>
+  <data name="remote.shareLan" xml:space="preserve"><value>Compartir con la red local</value></data>
+  <data name="remote.enableHint" xml:space="preserve"><value>La pasarela remota está desactivada. Actívala para vincular un teléfono.</value></data>
+  <data name="plan.title" xml:space="preserve"><value>Planificar</value></data>
+  <data name="plan.proposed" xml:space="preserve"><value>Claude propuso un plan</value></data>
+  <data name="plan.revise" xml:space="preserve"><value>Revisar…</value></data>
+  <data name="plan.acceptAuto" xml:space="preserve"><value>Aceptar y modo automático</value></data>
 </root>

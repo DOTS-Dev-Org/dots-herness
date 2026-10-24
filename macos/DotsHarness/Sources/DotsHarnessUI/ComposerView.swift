@@ -7,16 +7,28 @@ import UniformTypeIdentifiers
 import DotsHarnessCore
 import HarnessPluginKit
 
+/// Full composer height, reported up so the transcript can stay bottom-aligned while the composer grows or shrinks.
+struct ComposerHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 struct ComposerView: View {
     @ObservedObject var model: AppModel
     // AppModel does not forward its nested router's change notifications.
     @ObservedObject private var router: RouterController
+    @ObservedObject private var promptTemplates: PromptTemplateCatalog
+    // `model.draft` is not published on AppModel; this redraws the composer per keystroke.
+    @ObservedObject private var draftBox: DraftBox
     @ObservedObject var skillSuggestions: SkillSuggestionMonitor
     @StateObject private var voiceInput: LiveVoiceInput
 
-    @State private var showAttachmentMenu = false
     @State private var showPermissionMenu = false
     @State private var showModelMenu = false
+    @State private var showContextUsage = false
     @State private var showProjectMenu = false
     @State private var showWorkLocationMenu = false
     @State private var showRemoteFolderPicker = false
@@ -32,6 +44,7 @@ struct ComposerView: View {
     @State private var planPillHovered = false
     @State private var showCacheResumeInfo = false
     @State private var cacheNoticeClock = Date()
+    @State private var composerTextWidth: CGFloat = 0
     @FocusState private var composerFocused: Bool
 
     private var bridge: AgentBridge { model.bridge }
@@ -70,6 +83,8 @@ struct ComposerView: View {
     init(model: AppModel, bridge: AgentBridge) {
         self.model = model
         self.router = model.router
+        self.promptTemplates = model.promptTemplates
+        self.draftBox = model.draftBox
         self.skillSuggestions = model.activeSkillSuggestions
         self._voiceInput = StateObject(
             wrappedValue: LiveVoiceInput(model: model) { text in
@@ -85,6 +100,7 @@ struct ComposerView: View {
                 SlashCommandPalette(
                     settings: slashSettings,
                     media: slashMedia,
+                    templates: slashTemplates,
                     skills: slashSkills,
                     highlightedID: $highlightedSlashCommandID,
                     onSelect: selectSlashCommand
@@ -148,21 +164,14 @@ struct ComposerView: View {
                     .padding(.bottom, 8)
             }
 
-            if let overflow = bridge.pendingContextOverflow,
-               overflow.conversationID == model.selectedConversationID {
-                contextOverflowBanner(overflow)
-                    .padding(.horizontal, 18)
-                    .padding(.bottom, 8)
-            }
-
+            providerLimitNotice
             queueBar
+            cacheResumeNotice
             gitBar
 
             if !(gitSnapshot.isRepository && !gitBarHidden) {
                 composerContext
             }
-
-            cacheResumeNotice
 
             VStack(spacing: 0) {
                 if model.isEditingMessage {
@@ -182,25 +191,34 @@ struct ComposerView: View {
                 growingEditor
                 composerControls
             }
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-            }
+            .composerOutline()
             .padding(.horizontal, 18)
             .padding(.bottom, 14)
+        }
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(key: ComposerHeightKey.self, value: proxy.size.height)
+            }
         }
         .animation(.easeOut(duration: 0.16), value: slashMenuIsVisible)
         .onChange(of: slashMenuIsVisible) { _, isVisible in
             highlightedSlashCommandID = isVisible ? visibleSlashCommands.first?.id : nil
+            if isVisible { promptTemplates.refresh(workspacePath: bridge.workspacePath) }
         }
-        .onAppear { refreshGit() }
+        .onAppear {
+            refreshGit()
+            promptTemplates.refresh(workspacePath: bridge.workspacePath)
+        }
         .task(id: model.selectedConversationID) {
             while !Task.isCancelled {
                 cacheNoticeClock = Date()
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
             }
         }
-        .onChange(of: model.workspacePath) { _, _ in refreshGit() }
+        .onChange(of: model.workspacePath) { _, _ in
+            refreshGit()
+            promptTemplates.refresh(workspacePath: bridge.workspacePath)
+        }
         .onChange(of: model.composerFocusRequestID) { _, _ in composerFocused = true }
         .onChange(of: composerFocused) { _, focused in if focused { bridge.prewarmProvider() } }
         .onChange(of: model.draft.isEmpty) { _, isEmpty in if !isEmpty { bridge.prewarmProvider() } }
@@ -210,7 +228,9 @@ struct ComposerView: View {
         .sheet(isPresented: $showRemoteFolderPicker) {
             RemoteFolderPickerView(model: model)
         }
-        .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isDropTargeted, perform: handleDrop)
+        .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isDropTargeted) { providers in
+            handleFileDrop(providers) { model.addDraftAttachments($0) }
+        }
         .overlay {
             if isDropTargeted {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -231,20 +251,97 @@ struct ComposerView: View {
         }
     }
 
+    @ViewBuilder
+    private var providerLimitNotice: some View {
+        if let conversation = model.selected,
+           conversation.canContinue,
+           let continuation = conversation.continuation,
+           continuation.reason == .providerLimit {
+            let target = [continuation.provider, continuation.model]
+                .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                .joined(separator: " / ")
+            ComposerBanner(verticalPadding: 11) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+                            .accessibilityHidden(true)
+                        Text(AppCopy.text("agent.providerLimitTitle"))
+                            .font(.callout.weight(.semibold))
+                            .foregroundStyle(.red)
+                        Spacer(minLength: 0)
+                    }
+                    HStack(spacing: 8) {
+                        if !target.isEmpty {
+                            Text(target)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 4)
+                        HStack(spacing: 5) {
+                            Image(systemName: "clock")
+                                .accessibilityHidden(true)
+                            if let retryAt = continuation.retryAt {
+                                TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                                    Text(AppCopy.format(
+                                        "usage.resetsIn",
+                                        Self.limitCountdown(until: retryAt, now: timeline.date)
+                                    ))
+                                    .monospacedDigit()
+                                }
+                            } else {
+                                Text(AppCopy.text("usage.noLimitInfo"))
+                            }
+                        }
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: true, vertical: false)
+                    }
+                    Text(AppCopy.text("router.continueAfterLimit.hint"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .overlay(alignment: .leading) {
+                Capsule()
+                    .fill(Color.red.opacity(0.8))
+                    .frame(width: 3)
+                    .padding(.vertical, 12)
+            }
+            .padding(.horizontal, 18)
+            .padding(.bottom, 8)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
+    private static func limitCountdown(until reset: Date, now: Date) -> String {
+        let totalSeconds = max(0, Int(ceil(reset.timeIntervalSince(now))))
+        if totalSeconds <= 10 * 60 {
+            return "\(totalSeconds) s"
+        }
+
+        let totalMinutes = totalSeconds / 60
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        return hours > 0
+            ? "\(hours) h \(minutes) min"
+            : "\(totalMinutes) min"
+    }
+
     private var cacheResumeNotice: some View {
         let accountSwitched = bridge.accountSwitched(in: model.selectedConversationID)
-        let modelSwitched = modelSwitched
         let cacheExpired = expiredCachePrefixTokens != nil
+        let cacheLocal = cacheExpired && latestServedLocally
         let contextFull = contextNearlyFull
-        // Every row names a reason the next request costs more than the last one.
+        // Surface only the strongest active warning, with context pressure first.
         return VStack(spacing: 0) {
-            if accountSwitched {
-                composerNotice(AppCopy.text("composer.accountSwitched.notice"))
-            }
-            if modelSwitched {
-                composerNotice(AppCopy.text("composer.modelSwitched.notice"))
-            }
-            if cacheExpired {
+            if contextFull {
+                composerNotice(AppCopy.text("composer.contextFull.notice"))
+            } else if cacheLocal {
+                // A local model costs nothing; the loss is prefill time.
+                composerNotice(AppCopy.text("composer.cacheLocal.notice"))
+            } else if cacheExpired {
                 composerNotice(AppCopy.text("composer.cacheExpired.notice")) {
                     Button {
                         showCacheResumeInfo = true
@@ -268,12 +365,17 @@ struct ComposerView: View {
                         .frame(width: 320, alignment: .leading)
                     }
                 }
-            } else if contextFull {
-                // Both notices give the same new-chat advice; one is enough.
-                composerNotice(AppCopy.text("composer.contextFull.notice"))
+            } else if accountSwitched {
+                composerNotice(AppCopy.text("composer.accountSwitched.notice"))
             }
         }
-        .animation(.easeOut(duration: 0.16), value: [accountSwitched, modelSwitched, cacheExpired, contextFull])
+        .animation(.easeOut(duration: 0.16), value: [accountSwitched, cacheExpired, cacheLocal, contextFull])
+    }
+
+    private var latestServedLocally: Bool {
+        bridge.contextUsageEvents()
+            .filter { $0.conversationID == model.selectedConversationID && $0.requestKind == .main && $0.errorKind == nil }
+            .max { $0.timestamp < $1.timestamp }?.cacheTrace?.local == true
     }
 
     private func composerNotice(
@@ -306,22 +408,19 @@ struct ComposerView: View {
             .max { $0.timestamp < $1.timestamp }
     }
 
-    /// Same 90% mark at which the context ring turns red and the conversation compacts.
+    /// Align with the 90% mark at which the context ring turns red.
     private var contextNearlyFull: Bool {
         guard let latest = latestMainUsage else { return false }
-        let window = model.router.contextWindow(for: latest.model, provider: latest.provider)
+        if !router.isAutoSelected, model.selectedModelID != latest.model {
+            // The last usage count came from a different model and tokenizer.
+            // Wait for a usage event on the selected model before warning.
+            return false
+        }
+        let window = router.isAutoSelected
+            ? router.contextWindow(for: latest.model, provider: latest.provider)
+            : router.contextWindow(for: model.selectedModelID)
         guard window > 0 else { return false }
         return Double(latest.contextTokens) / Double(window) > 0.9
-    }
-
-    /// The picked model differs from the one that served this conversation's last turn;
-    /// the same comparison `affinityAccountID` uses to drop the warm account.
-    private var modelSwitched: Bool {
-        let picked = model.selectedModelID
-        guard !router.isAutoSelected, !picked.isEmpty,
-              let conversation = model.selected, !conversation.messages.isEmpty,
-              let served = conversation.stickyModelID, !served.isEmpty else { return false }
-        return served != picked
     }
 
     private var expiredCachePrefixTokens: Int? {
@@ -332,10 +431,28 @@ struct ComposerView: View {
         guard let currentModel else { return nil }
 
         let mainEvents = bridge.contextUsageEvents().filter {
+            // A failed request carries no TTL or cache usage; it must not hide
+            // the warning computed from the last request that actually ran.
             $0.conversationID == conversationID && $0.requestKind == .main && $0.model == currentModel
+                && $0.errorKind == nil
         }
-        guard let latest = mainEvents.max(by: { $0.timestamp < $1.timestamp }),
-              let trace = latest.cacheTrace,
+        guard let latest = mainEvents.max(by: { $0.timestamp < $1.timestamp }) else { return nil }
+        let previous = mainEvents.filter { $0.timestamp < latest.timestamp }
+        if latest.cacheTrace?.local == true {
+            return Self.localCachePrefixLost(latest, conversationID: conversationID, events: bridge.contextUsageEvents())
+                ?? Self.droppedCachePrefixTokens(latest, previous: previous)
+        }
+        // Routes without a known retention (ChatGPT subscription): after an hour
+        // the cache is gone on any OpenAI route, so that is the upper bound;
+        // before it, warn from the measured miss on the last request.
+        guard latest.cacheTrace?.ttlSeconds != nil else {
+            let startedAt = latest.cacheTrace?.requestStartedAt ?? latest.timestamp
+            if cacheNoticeClock.timeIntervalSince(startedAt) >= 3_600, latest.totalInputTokens >= 8_192 {
+                return latest.totalInputTokens
+            }
+            return Self.droppedCachePrefixTokens(latest, previous: previous)
+        }
+        guard let trace = latest.cacheTrace,
               let ttl = trace.ttlSeconds,
               ttl > 0,
               cacheNoticeClock.timeIntervalSince(trace.requestStartedAt) >= Double(ttl)
@@ -352,6 +469,20 @@ struct ComposerView: View {
             (latest.cachedTokens ?? 0) + (latest.cacheWriteTokens ?? 0)
         )
         return tokenCount >= 8_192 ? tokenCount : nil
+    }
+
+    /// A large prefix that was cached earlier came back almost entirely uncached.
+    /// Known prefix rewrites (compaction, settings) are expected misses, not breaks.
+    static func droppedCachePrefixTokens(_ latest: AgentContextUsageEvent, previous: [AgentContextUsageEvent]) -> Int? {
+        AgentCacheResumePolicy.droppedCachePrefixTokens(latest, previous: previous)
+    }
+
+    /// A local server keeps one prompt's KV cache (llama-server `--parallel 1`,
+    /// dotsmlx): idle time says nothing, but any later request on the same
+    /// server from another chat or a subagent has replaced it.
+    static func localCachePrefixLost(_ latest: AgentContextUsageEvent, conversationID: String,
+                                     events: [AgentContextUsageEvent]) -> Int? {
+        AgentCacheResumePolicy.localCachePrefixLost(latest, conversationID: conversationID, events: events)
     }
 
     private var projectPopover: some View {
@@ -456,13 +587,19 @@ struct ComposerView: View {
     }
 
     private func queueSummary(_ prompt: PendingPrompt) -> String {
-        prompt.text.isEmpty ? "…" : prompt.text.replacingOccurrences(of: "\n", with: " ")
+        let text = prompt.notice ?? prompt.text
+        return text.isEmpty ? "…" : text.replacingOccurrences(of: "\n", with: " ")
     }
 
     @ViewBuilder
     private var queueBar: some View {
-        let queued = (model.selected?.pendingPrompts ?? []).filter { $0.mode == .queue }
-        if let conversationID = model.selected?.id, !queued.isEmpty {
+        let conversation = model.selected
+        let queued = (conversation?.pendingPrompts ?? []).filter { prompt in
+            prompt.mode == .queue
+                && !(conversation.map { bridge.isStartingPrompt(prompt.id, in: $0.id) } ?? false)
+        }
+        if let conversation, !queued.isEmpty {
+            let conversationID = conversation.id
             // Editing pulls the text into the composer, so it is blocked until the box is empty.
             let draftBusy = !model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 || !model.draftAttachments.isEmpty
@@ -551,22 +688,20 @@ struct ComposerView: View {
     private var gitContextControls: some View {
         Group {
             Button { showProjectMenu.toggle() } label: {
-                Text(model.projectTitle(for: model.workspacePath))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .frame(maxWidth: 130, alignment: .leading)
+                contextPill(icon: currentProjectIcon, title: currentProjectTitle)
+                    .frame(maxWidth: 220, alignment: .leading)
             }
             .buttonStyle(.plain)
             .popover(isPresented: $showProjectMenu, arrowEdge: .bottom) { projectPopover }
+            .help(AppCopy.text("composer.projectPickerHelp"))
             Button { showBranchMenu.toggle() } label: {
-                Text(gitSnapshot.currentBranch ?? AppCopy.text("git.detached"))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .frame(maxWidth: 110, alignment: .leading)
+                contextPill(icon: "arrow.triangle.branch", title: gitSnapshot.currentBranch ?? AppCopy.text("git.detached"))
+                    .frame(maxWidth: 180, alignment: .leading)
             }
             .buttonStyle(.plain)
             .disabled(bridge.isBusy)
             .popover(isPresented: $showBranchMenu, arrowEdge: .bottom) { branchPopover }
+            .help(AppCopy.text("git.branchHelp"))
             Button { showWorkLocationMenu.toggle() } label: {
                 Image(systemName: workLocationIcon)
                     .frame(width: 24, height: 24)
@@ -638,6 +773,7 @@ struct ComposerView: View {
                 .font(.system(size: 13, weight: .medium))
             Text(title)
                 .lineLimit(1)
+                .truncationMode(.middle)
             Image(systemName: "chevron.down")
                 .font(.system(size: 8, weight: .bold))
                 .foregroundStyle(.secondary)
@@ -662,7 +798,9 @@ struct ComposerView: View {
                     },
                     onAcceptSlashCommand: acceptSlashCommand,
                     onMoveSlashCommand: moveSlashCommand,
-                    followUpSuggestion: visibleFollowUpSuggestion
+                    followUpSuggestion: visibleFollowUpSuggestion,
+                    onDropFiles: { model.addDraftAttachments($0) },
+                    onPasteImage: { model.addDraftImageData($0) }
                 )
                     .frame(height: editorHeight)
                     .padding(.horizontal, 9)
@@ -687,16 +825,20 @@ struct ComposerView: View {
                         .allowsHitTesting(false)
                 }
             }
-
-            if !voiceInput.transcript.isEmpty {
-                Text(voiceInput.transcript)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .padding(.horizontal, 15)
-                    .padding(.bottom, 7)
-                    .allowsHitTesting(false)
+            .background {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: ComposerEditorWidthKey.self,
+                        value: max(1, proxy.size.width - 28)
+                    )
+                }
             }
+
+            VoiceTranscriptPreview(text: voiceInput.transcript)
+        }
+        .onPreferenceChange(ComposerEditorWidthKey.self) { width in
+            guard width > 0 else { return }
+            composerTextWidth = width
         }
     }
 
@@ -705,7 +847,7 @@ struct ComposerView: View {
             HStack(spacing: 8) {
                 ForEach(model.draftAttachments) { attachment in
                     ZStack(alignment: .topTrailing) {
-                        if attachment.kind == .image, let image = NSImage(contentsOf: attachment.url) {
+                        if attachment.kind == .image, let image = ImageFileCache.image(at: attachment.url) {
                             Image(nsImage: image)
                                 .resizable()
                                 .scaledToFill()
@@ -787,12 +929,7 @@ struct ComposerView: View {
             Button(AppCopy.text("permission.fullWarningDismiss")) {
                 model.dismissFullAccessWarning()
             }
-            .font(.callout.weight(.medium))
-            .foregroundStyle(.primary)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(Color.primary.opacity(0.16), in: Capsule())
-            .buttonStyle(.plain)
+            .buttonStyle(BannerButtonStyle())
 
             Button {
                 model.dismissFullAccessWarning()
@@ -823,9 +960,9 @@ struct ComposerView: View {
                 .frame(width: 38, height: 38)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Suggested skill: \(suggestion.draftName)")
+                Text(suggestion.cardTitle)
                     .font(.headline)
-                Text(suggestion.draftDescription)
+                Text(suggestion.cardDescription)
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -833,22 +970,17 @@ struct ComposerView: View {
 
             Spacer(minLength: 12)
 
-            Button("Not now") {
+            Button(AppCopy.text("skill.suggestion.dismiss")) {
                 model.dismissSkillSuggestion()
             }
             .font(.callout.weight(.medium))
             .foregroundStyle(.secondary)
             .buttonStyle(.plain)
 
-            Button("Create Skill") {
+            Button(AppCopy.text("skill.suggestion.create")) {
                 _ = try? model.acceptSkillSuggestion(name: suggestion.draftName, description: suggestion.draftDescription)
             }
-            .font(.callout.weight(.medium))
-            .foregroundStyle(.primary)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(Color.primary.opacity(0.16), in: Capsule())
-            .buttonStyle(.plain)
+            .buttonStyle(BannerButtonStyle())
         }
         }
     }
@@ -876,12 +1008,7 @@ struct ComposerView: View {
                 model.dismissVoiceIntro()
                 voiceInput.startListening()
             }
-            .font(.callout.weight(.medium))
-            .foregroundStyle(.primary)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(Color.primary.opacity(0.16), in: Capsule())
-            .buttonStyle(.plain)
+            .buttonStyle(BannerButtonStyle())
 
             Button {
                 model.dismissVoiceIntro()
@@ -922,12 +1049,7 @@ struct ComposerView: View {
             Button(AppCopy.text("permission.allowOnce")) {
                 bridge.answerApproval("allowed-once")
             }
-            .font(.callout.weight(.medium))
-            .foregroundStyle(.primary)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(Color.primary.opacity(0.16), in: Capsule())
-            .buttonStyle(.plain)
+            .buttonStyle(BannerButtonStyle())
         }
         }
     }
@@ -982,9 +1104,7 @@ struct ComposerView: View {
     private func leaseWaitingBanner(_ holder: WorkspaceLeaseHolder) -> some View {
         ComposerBanner(verticalPadding: 10) {
             HStack(alignment: .center, spacing: 12) {
-                ProgressView()
-                    .controlSize(.small)
-                    .frame(width: 20)
+                HerNessLoadingAnimation(size: 20)
                 Text(AppCopy.format("conflict.waiting", holder.conversationTitle, holder.label))
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -1038,115 +1158,47 @@ struct ComposerView: View {
             Button(AppCopy.text("vision.downloadAndContinue")) {
                 bridge.answerVisionInstall(true)
             }
-            .font(.callout.weight(.medium))
-            .foregroundStyle(.primary)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(Color.primary.opacity(0.16), in: Capsule())
-            .buttonStyle(.plain)
+            .buttonStyle(BannerButtonStyle())
         }
         }
     }
 
-    /// The run is parked on this banner; nothing has been sent to the model yet.
-    /// Declining keeps the message in the chat and stops the run.
-    private func contextOverflowBanner(_ pending: PendingContextOverflow) -> some View {
-        ComposerBanner {
-        HStack(alignment: .center, spacing: 12) {
-            Image(systemName: "arrow.down.right.and.arrow.up.left")
-                .font(.system(size: 20, weight: .medium))
-                .frame(width: 28)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(AppCopy.text("context.overflowTitle"))
-                    .font(.headline)
-                Text(AppCopy.format(
-                    "context.overflowReason",
-                    pending.targetModel,
-                    pending.requiredTokens,
-                    pending.usableTokens
-                ))
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
-                Text(pending.summarizerModel.map {
-                    AppCopy.format("context.overflowByModel", $0)
-                } ?? AppCopy.text("context.overflowLocally"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-
-            Spacer(minLength: 12)
-
-            Button(AppCopy.text("context.overflowNotNow")) {
-                bridge.answerContextCompaction(false)
-            }
-            .buttonStyle(.plain)
-
-            Button(AppCopy.text("context.overflowCompress")) {
-                bridge.answerContextCompaction(true)
-            }
-            .font(.callout.weight(.medium))
-            .foregroundStyle(.primary)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(Color.primary.opacity(0.16), in: Capsule())
-            .buttonStyle(.plain)
-        }
-        }
+    private var contextEvents: [AgentContextUsageEvent] {
+        bridge.contextUsageEvents().filter { $0.conversationID == model.selectedConversationID }
     }
 
-    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
-        for provider in providers {
-            provider.loadDataRepresentation(forTypeIdentifier: UTType.fileURL.identifier) { data, _ in
-                guard let data, let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
-                Task { @MainActor in
-                    model.addDraftAttachments([url])
-                }
-            }
+    private func contextWindow(for event: AgentContextUsageEvent) -> Int? {
+        let providerID = RouterCatalog.providers.first {
+            $0.id.caseInsensitiveCompare(event.provider) == .orderedSame
+                || $0.name.caseInsensitiveCompare(event.provider) == .orderedSame
+        }?.id ?? event.provider
+        if let override = model.router.modelContextWindowOverride(for: event.model, provider: providerID) {
+            return override
         }
-        return !providers.isEmpty
+        // contextWindow() always supplies a generic fallback (32K, 128K, etc.).
+        // That fallback can be smaller than the model that served the saved event,
+        // so use only a resolved capacity here, then the event's request-time value.
+        return model.router.detectedContextWindow(for: event.model, provider: providerID)
+            ?? event.contextWindowTokens
     }
 
     private var composerControls: some View {
         GeometryReader { proxy in
             HStack(spacing: proxy.size.width < Self.compactComposerWidth ? 4 : 9) {
-            Button {
-                showAttachmentMenu.toggle()
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 17, weight: .regular))
-                    .frame(width: 28, height: 28)
-            }
-            .buttonStyle(.plain)
-            .contentShape(Rectangle())
-            .popover(isPresented: $showAttachmentMenu, arrowEdge: .bottom) {
-                AttachmentMenu(
-                    onChooseFiles: chooseFiles,
-                    onChooseWorkspace: model.chooseWorkspace,
-                    showsWorkspace: true,
-                    onOpenSkills: openSkillsFromAttachmentMenu,
-                    onSetGoal: {
-                        showAttachmentMenu = false
-                        promptForGoal()
-                    }
-                )
-            }
-            .help(AppCopy.text("composer.add"))
+            ComposerAddButton(rows: [
+                .init(icon: "paperclip", title: AppCopy.text("attachment.files"), shortcut: "⌘U", action: chooseFiles),
+                .init(icon: "folder", title: AppCopy.text("attachment.project"), action: model.chooseWorkspace),
+                .init(icon: "slash.circle", title: AppCopy.text("attachment.slashCommands"), action: openSkillsFromAttachmentMenu),
+                .init(icon: "scope", title: AppCopy.text("attachment.goal"), action: promptForGoal),
+                .init(icon: "point.3.connected.trianglepath.dotted", title: AppCopy.text("attachment.connectors"), opensElsewhere: true) {
+                    model.presentSettings(tab: "mcp")
+                },
+                .init(icon: "puzzlepiece.extension", title: AppCopy.text("attachment.plugins"), opensElsewhere: true) {
+                    model.presentSettings(tab: "plugins")
+                }
+            ], onShortcut: chooseFiles)
 
-            Button {
-                voiceInput.toggle()
-            } label: {
-                Image(systemName: voiceInput.state.icon)
-                    .font(.system(size: 15, weight: .medium))
-                    .frame(width: 25, height: 28)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(model.isVoiceReady ? voiceInput.state.tint : .secondary)
-            .opacity(model.isVoiceModelDownloading ? 0.55 : (model.isVoiceReady ? 1 : 0.7))
-            .disabled(voiceInput.state == .transcribing || voiceInput.state == .sending || model.isVoiceModelDownloading)
-            .help(voiceInput.isListening ? AppCopy.text("composer.stopListening") : model.voiceInputHelp)
+            ComposerVoiceButton(model: model, voiceInput: voiceInput)
 
                 Button {
                     showPermissionMenu.toggle()
@@ -1220,17 +1272,7 @@ struct ComposerView: View {
             Button {
                 showModelMenu.toggle()
             } label: {
-                HStack(spacing: 4) {
-                    Text(modelName)
-                        .lineLimit(1)
-                    Text(reasoningEffort)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(.secondary)
-                }
-                .font(.callout)
+                ComposerModelLabel(name: modelName, effort: reasoningEffort)
             }
             .buttonStyle(.plain)
             .layoutPriority(-1)
@@ -1240,86 +1282,34 @@ struct ComposerView: View {
             }
 
             ContextRingButton(
-                events: bridge.contextUsageEvents().filter { $0.conversationID == model.selectedConversationID },
-                contextWindowForEvent: { event in
-                    model.router.contextWindow(for: event.model, provider: event.provider)
-                }
+                isPresented: $showContextUsage,
+                events: contextEvents,
+                contextWindowForEvent: contextWindow(for:)
             )
 
             if bridge.isBusy {
                 HStack(spacing: 5) {
-                    Button {
-                        model.stop()
-                    } label: {
-                        Image(systemName: "stop.fill")
-                            .font(.system(size: 12, weight: .bold))
-                            .frame(width: 30, height: 30)
-                            .foregroundStyle(Color(nsColor: .windowBackgroundColor))
-                            .background(Color.primary, in: Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(AppCopy.text("common.stop"))
-                    .help(AppCopy.text("common.stop"))
+                    ComposerRoundButton(icon: "stop.fill", label: AppCopy.text("common.stop"), action: model.stop)
 
-                    if model.selected?.planGateActive == true {
-                        Button {
-                            model.cancelPlan()
-                        } label: {
-                            Image(systemName: "xmark.circle")
-                                .font(.system(size: 15, weight: .medium))
-                                .frame(width: 30, height: 30)
-                                .foregroundStyle(.red)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(AppCopy.text("conversation.cancelPlanHelp"))
-                        .help(AppCopy.text("conversation.cancelPlanHelp"))
-                    }
+                    cancelPlanButton
                 }
             } else if bridge.canContinue {
                 HStack(spacing: 5) {
-                    Button {
+                    ComposerRoundButton(icon: "play.fill", label: AppCopy.text("agent.continue")) {
                         if canSubmit { model.send(mode: .queue) } else { model.continueCurrentRun() }
-                    } label: {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 12, weight: .bold))
-                            .frame(width: 30, height: 30)
-                            .foregroundStyle(Color(nsColor: .windowBackgroundColor))
-                            .background(Color.primary, in: Circle())
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(AppCopy.text("agent.continue"))
-                    .help(AppCopy.text("agent.continue"))
                     .disabled(!model.canSend)
                     .opacity(model.canSend ? 1 : 0.7)
 
-                    if model.selected?.planGateActive == true {
-                        Button {
-                            model.cancelPlan()
-                        } label: {
-                            Image(systemName: "xmark.circle")
-                                .font(.system(size: 15, weight: .medium))
-                                .frame(width: 30, height: 30)
-                                .foregroundStyle(.red)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(AppCopy.text("conversation.cancelPlanHelp"))
-                        .help(AppCopy.text("conversation.cancelPlanHelp"))
-                    }
+                    cancelPlanButton
                 }
             } else {
-                Button {
-                    model.send(mode: .queue)
-                } label: {
-                    Image(systemName: sendIcon)
-                        .font(.system(size: 14, weight: .bold))
-                        .frame(width: 30, height: 30)
-                        .foregroundStyle(Color(nsColor: .windowBackgroundColor))
-                        .background(Color.primary, in: Circle())
-                }
-                .buttonStyle(.plain)
+                ComposerRoundButton(
+                    icon: sendIcon, size: 14, label: AppCopy.text("bots.send"),
+                    help: AppCopy.text("composer.keyboardHelp")
+                ) { model.send(mode: .queue) }
                 .disabled(!canSubmit)
                 .opacity(canSubmit ? 1 : 0.7)
-                .help(AppCopy.text("composer.keyboardHelp"))
             }
             }
             .padding(.horizontal, proxy.size.width < Self.compactComposerWidth ? 8 : 12)
@@ -1329,8 +1319,21 @@ struct ComposerView: View {
         .frame(height: 46)
     }
 
-    private var workspaceName: String {
-        URL(fileURLWithPath: model.workspacePath).lastPathComponent
+    @ViewBuilder
+    private var cancelPlanButton: some View {
+        if model.selected?.planGateActive == true {
+            Button {
+                model.cancelPlan()
+            } label: {
+                Image(systemName: "xmark.circle")
+                    .font(.system(size: 15, weight: .medium))
+                    .frame(width: 30, height: 30)
+                    .foregroundStyle(.red)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(AppCopy.text("conversation.cancelPlanHelp"))
+            .help(AppCopy.text("conversation.cancelPlanHelp"))
+        }
     }
 
     private var currentProjectTitle: String {
@@ -1362,17 +1365,8 @@ struct ComposerView: View {
         return router.modelLabel(forID: model.selectedModelID)
     }
 
-    private var draftLineCount: Int {
-        max(1, model.draft.components(separatedBy: .newlines).count)
-    }
-
-    private var draftNeedsScroll: Bool {
-        draftLineCount > 10
-    }
-
     private var editorHeight: CGFloat {
-        let visibleLines = min(max(draftLineCount, 1), 10)
-        return min(238, max(44, CGFloat(visibleLines) * 22 + 18))
+        composerEditorHeight(for: model.draft, width: composerTextWidth)
     }
 
     private var canSubmit: Bool {
@@ -1389,11 +1383,12 @@ struct ComposerView: View {
     }
 
     private var visibleSlashCommands: [SlashCommand] {
-        slashSettings + slashMedia + slashSkills
+        slashSettings + slashMedia + slashTemplates + slashSkills
     }
 
     private var slashToken: String? {
         let lastLine = model.draft.components(separatedBy: .newlines).last ?? ""
+        guard let lastCharacter = lastLine.last, !lastCharacter.isWhitespace else { return nil }
         guard let token = lastLine.split(whereSeparator: { $0 == " " || $0 == "\t" }).last,
               token.first == "/" else {
             return nil
@@ -1416,6 +1411,7 @@ struct ComposerView: View {
             SlashCommand(id: "speed", title: AppCopy.text("slash.speed"), detail: AppCopy.text("slash.speedDetail"), icon: "bolt", kind: .setting),
             SlashCommand(id: "billing", title: AppCopy.text("slash.billing"), detail: AppCopy.text("slash.billingDetail"), icon: "chart.bar", kind: .setting),
             SlashCommand(id: "mcp", title: AppCopy.text("slash.mcp"), detail: AppCopy.text("slash.mcpDetail"), icon: "point.3.connected.trianglepath.dotted", kind: .setting),
+            SlashCommand(id: "prompt-templates-folder", title: AppCopy.text("slash.promptTemplates"), detail: "/prompt-templates-folder · \(AppCopy.text("slash.promptTemplatesDetail"))", icon: "text.book.closed", kind: .setting),
             SlashCommand(id: "model", title: AppCopy.text("slash.model"), detail: modelName, icon: "cube", kind: .setting),
             SlashCommand(
                 id: "plan",
@@ -1438,24 +1434,26 @@ struct ComposerView: View {
     }
 
     private var slashSkills: [SlashCommand] {
-        let installed = model.catalog.entries
-            .filter { $0.enabled && $0.broken == nil }
+        let installed = model.skills.entries
+            .filter(\.enabled)
             .map {
                 SlashCommand(
-                    id: "skill-\($0.manifest.id)",
-                    title: $0.manifest.name,
-                    detail: $0.manifest.description.isEmpty ? AppCopy.text("composer.installedSkill") : $0.manifest.description,
+                    id: "skill-\($0.id)",
+                    title: $0.name,
+                    detail: $0.description.isEmpty ? AppCopy.text("composer.installedSkill") : $0.description,
                     icon: "cube.transparent",
-                    kind: .skill
+                    kind: .skill,
+                    command: $0.id
                 )
             }
 
         let fallback = [
-            SlashCommand(id: "skill-documents", title: "Documents", detail: AppCopy.text("skill.documentsDetail"), icon: "doc.text", kind: .skill),
+            SlashCommand(id: "skill-documents", title: AppCopy.text("library.kind.document"), detail: AppCopy.text("skill.documentsDetail"), icon: "doc.text", kind: .skill),
             SlashCommand(id: "skill-pdf", title: "PDF", detail: AppCopy.text("skill.pdfDetail"), icon: "doc.richtext", kind: .skill),
-            SlashCommand(id: "skill-spreadsheets", title: "Spreadsheets", detail: AppCopy.text("skill.spreadsheetsDetail"), icon: "tablecells", kind: .skill),
-            SlashCommand(id: "skill-browser", title: "Browser", detail: AppCopy.text("skill.browserDetail"), icon: "globe", kind: .skill),
-            SlashCommand(id: "skill-imagegen", title: "Image Gen", detail: AppCopy.text("skill.imageGenDetail"), icon: "photo", kind: .skill),
+            SlashCommand(id: "skill-spreadsheets", title: AppCopy.text("skill.spreadsheets"), detail: AppCopy.text("skill.spreadsheetsDetail"), icon: "tablecells", kind: .skill),
+            SlashCommand(id: "skill-browser", title: AppCopy.text("conversation.browser"), detail: AppCopy.text("skill.browserDetail"), icon: "globe", kind: .skill),
+            SlashCommand(id: "skill-imagegen", title: AppCopy.text("slash.imagegen"), detail
+: AppCopy.text("skill.imageGenDetail"), icon: "photo", kind: .skill),
         ]
 
         var seen = Set<String>()
@@ -1495,6 +1493,23 @@ struct ComposerView: View {
         return filterCommands(commands)
     }
 
+    private var slashTemplates: [SlashCommand] {
+        filterCommands(promptTemplates.templates.map { template in
+            let info = [template.argumentHint, template.description]
+                .filter { !$0.isEmpty }
+                .joined(separator: " · ")
+            let invocation = "/template-\(template.id)"
+            return SlashCommand(
+                id: "template-\(template.id)",
+                title: template.title,
+                detail: info.isEmpty ? invocation : "\(invocation) · \(info)",
+                icon: "text.quote",
+                kind: .template,
+                command: template.id
+            )
+        })
+    }
+
     private func filterCommands(_ commands: [SlashCommand]) -> [SlashCommand] {
         guard !slashQuery.isEmpty else { return commands }
         return commands.filter {
@@ -1508,8 +1523,11 @@ struct ComposerView: View {
         let replacement: String
         switch command.kind {
         case .setting: replacement = ""
-        case .skill: replacement = "/\(command.title) "
+        case .skill:
+            let skillID = command.command ?? String(command.id.dropFirst("skill-".count))
+            replacement = "/\(skillID) "
         case .media: replacement = "/\(command.command ?? command.id) "
+        case .template: replacement = "/template-\(command.command ?? command.id) "
         }
         replaceSlashToken(with: replacement)
         composerFocused = true
@@ -1542,6 +1560,13 @@ struct ComposerView: View {
             composerFocused = true
         case "mcp":
             model.presentSettings(tab: "mcp")
+        case "prompt-templates-folder":
+            do {
+                let directory = try promptTemplates.directoryToOpen(workspacePath: bridge.workspacePath)
+                NSWorkspace.shared.open(directory)
+            } catch {
+                model.reportHistoryError(error.localizedDescription)
+            }
         default:
             if command.kind == .setting {
                 model.presentSettings()
@@ -1635,7 +1660,6 @@ struct ComposerView: View {
     }
 
     private func openSkillsFromAttachmentMenu() {
-        showAttachmentMenu = false
         model.draft = "/"
         composerFocused = true
     }
@@ -1653,7 +1677,6 @@ struct ComposerView: View {
                 model.addDraftAttachments(panel.urls)
             }
         }
-        showAttachmentMenu = false
     }
 
     /// Reads the repository off the main thread: it spawns several `git` processes, and

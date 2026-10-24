@@ -25,22 +25,45 @@
                 <Grid Margin="8">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="34"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*" MinHeight="100"/>
                         <RowDefinition Height="5"/>
                         <RowDefinition Height="*" MinHeight="120"/>
                     </Grid.RowDefinitions>
                     <DockPanel Grid.Row="0">
+                        <StackPanel x:Name="GitActions" DockPanel.Dock="Right" Orientation="Horizontal"
+                                    Margin="8,0,0,0" VerticalAlignment="Center" Visibility="Collapsed">
+                            <Button x:Name="FetchButton" Content="Fetch" Padding="10,2" Click="OnFetch"/>
+                            <Button x:Name="PushButton" Content="Push" Padding="10,2" Margin="6,0,0,0" Click="OnPush"/>
+                        </StackPanel>
+                        <ComboBox x:Name="BranchPicker" Width="160" VerticalAlignment="Center" Visibility="Collapsed"
+                                  SelectionChanged="OnBranchSelected" ToolTip="Switch branch"/>
                         <TextBlock x:Name="BranchText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                    Foreground="{DynamicResource TextPrimary}"/>
+                        <Button x:Name="InstallGitButton" DockPanel.Dock="Right" Content="Install Git"
+                                Margin="8,0,0,0" Padding="10,2" VerticalAlignment="Center"
+                                Visibility="Collapsed" Click="OnInstallGit"/>
                         <TextBlock x:Name="ReviewCount" DockPanel.Dock="Right" VerticalAlignment="Center"
                                    Foreground="{DynamicResource TextSecondary}"/>
                     </DockPanel>
-                    <ListBox x:Name="ReviewList" Grid.Row="1" SelectionChanged="OnReviewSelectionChanged"
+                    <DockPanel x:Name="CommitBar" Grid.Row="1" Margin="0,0,0,6" Visibility="Collapsed">
+                        <Button x:Name="CommitButton" DockPanel.Dock="Right" Content="Commit" Padding="12,2"
+                                Margin="6,0,0,0" IsEnabled="False" Click="OnCommit" ToolTip="Stage all changes and commit"/>
+                        <Grid>
+                            <TextBox x:Name="CommitMessage" Padding="6,4" TextChanged="OnCommitMessageChanged"/>
+                            <TextBlock x:Name="CommitHint" Text="Commit message" Margin="9,0,0,0" VerticalAlignment="Center"
+                                       IsHitTestVisible="False" Foreground="{DynamicResource TextSecondary}"/>
+                        </Grid>
+                    </DockPanel>
+                    <TextBlock x:Name="ReviewError" Grid.Row="2" Foreground="#E5534B" TextWrapping="Wrap"
+                               MaxHeight="90" Margin="0,0,0,6" Visibility="Collapsed"/>
+                    <ListBox x:Name="ReviewList" Grid.Row="3" SelectionChanged="OnReviewSelectionChanged"
                              Background="Transparent" BorderThickness="0"/>
-                    <GridSplitter Grid.Row="2" Height="5" HorizontalAlignment="Stretch"
+                    <GridSplitter Grid.Row="4" Height="5" HorizontalAlignment="Stretch"
                                   Background="{DynamicResource BorderSubtle}"
                                   ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" ShowsPreview="False"/>
-                    <TextBox x:Name="ReviewDiff" Grid.Row="3" IsReadOnly="True" AcceptsReturn="True"
+                    <TextBox x:Name="ReviewDiff" Grid.Row="5" IsReadOnly="True" AcceptsReturn="True"
                              TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                              FontFamily="Consolas" Background="{DynamicResource PanelBackground}"
                              Foreground="{DynamicResource TextPrimary}" BorderThickness="0"/>
@@ -120,6 +143,54 @@
                     <Grid x:Name="BrowserHost" Grid.Row="1" Margin="0,6,0,0"/>
                     <TextBlock x:Name="BrowserStatus" Grid.Row="2" Margin="2,4,0,0" TextTrimming="CharacterEllipsis"
                                Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"/>
+                </Grid>
+            </TabItem>
+
+            <TabItem x:Name="PlanTab" Header="Plan" Tag="plan">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock x:Name="PlanProposedLabel" Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,6"
+                               FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBox x:Name="PlanText" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True"
+                             TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                             Background="{DynamicResource PanelBackground}"
+                             Foreground="{DynamicResource TextPrimary}" BorderThickness="0"/>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <Button x:Name="PlanCancelButton" Content="Cancel" Padding="12,4" Click="OnPlanCancel"/>
+                        <Button x:Name="PlanReviseButton" Content="Revise" Padding="12,4" Margin="6,0,0,0" Click="OnPlanRevise"/>
+                        <Button x:Name="PlanApplyButton" Content="Apply" Padding="12,4" Margin="6,0,0,0" Click="OnPlanApply"/>
+                        <Button x:Name="PlanAutoButton" Content="Apply and auto" Padding="12,4" Margin="6,0,0,0" Click="OnPlanApplyAuto"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <TabItem x:Name="EmulatorTab" Header="Emulator" Tag="emulator">
+                <views:AndroidEmulatorPanel/>
+            </TabItem>
+
+            <TabItem x:Name="TasksTab" Header="Tasks" Tag="tasks">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="5"/>
+                        <RowDefinition Height="*" MinHeight="100"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel Grid.Row="0">
+                        <Button x:Name="TaskStopButton" DockPanel.Dock="Right" Content="Stop" Padding="10,3" Click="OnTaskStop"/>
+                        <ListBox x:Name="TaskList" SelectionChanged="OnTaskSelectionChanged"
+                                 Background="Transparent" BorderThickness="0"/>
+                    </DockPanel>
+                    <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch"
+                                  Background="{DynamicResource BorderSubtle}"
+                                  ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" ShowsPreview="False"/>
+                    <TextBox x:Name="TaskOutput" Grid.Row="2" IsReadOnly="True" AcceptsReturn="True"
+                             TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto"
+                             FontFamily="Consolas" Background="{DynamicResource PanelBackground}"
+                             Foreground="{DynamicResource TextPrimary}" BorderThickness="0"/>
                 </Grid>
             </TabItem>
         </TabControl>

@@ -2,6 +2,14 @@ import XCTest
 @testable import HerNessMobile
 
 final class MobilePromptHistoryTests: XCTestCase {
+    func testCompactCommandKeepsTheMessageThatFollowsIt() {
+        XCTAssertEqual(MobilePromptHistory.compactCommand("/compact"), "")
+        XCTAssertEqual(MobilePromptHistory.compactCommand("/compact fix the login bug"), "fix the login bug")
+        XCTAssertEqual(MobilePromptHistory.compactCommand("/compact\nsecond line"), "second line")
+        XCTAssertNil(MobilePromptHistory.compactCommand("/compactor"))
+        XCTAssertNil(MobilePromptHistory.compactCommand("please /compact"))
+    }
+
     func testOnlyTheLatestReadOfTheSameLinesKeepsItsBody() {
         func call(_ id: String, _ input: [String: Any]) -> [String: Any] {
             ["role": "assistant", "content": [["type": "tool_use", "id": id, "name": "read_file", "input": input]]]
@@ -217,7 +225,7 @@ final class MobilePromptHistoryTests: XCTestCase {
         XCTAssertNil(MobilePromptCache.rejectedFeature(status: 400, message: "invalid unrelated setting"))
         XCTAssertEqual(MobilePromptCache.rejectedFeature(status: 422, message: "previous_message_id not supported"), "claude_diagnostics")
         XCTAssertTrue(MobilePromptCache.supportsDiagnostics(model: "gpt-5.6-luna"))
-        XCTAssertFalse(MobilePromptCache.supportsDiagnostics(model: "gpt-4.1"))
+        XCTAssertFalse(MobilePromptCache.supportsDiagnostics(model: "gpt-5.2"))
     }
 
     func testResponsesCacheFieldsAreGatedByActualRouteAndModel() throws {
@@ -237,7 +245,7 @@ final class MobilePromptHistoryTests: XCTestCase {
         XCTAssertNil((codex["prompt_cache_options"] as? [String: Any])?["ttl"])
         XCTAssertEqual((codex["prompt_cache_options"] as? [String: Any])?["comparison_response_id"] as? String, "resp_previous")
         var legacy = original
-        MobilePromptCache.configureResponsesCache(to: &legacy, endpoint: "https://api.openai.com/v1/responses", model: "gpt-4.1", state: state, scope: "a", capability: "api")
+        MobilePromptCache.configureResponsesCache(to: &legacy, endpoint: "https://api.openai.com/v1/responses", model: "gpt-5.2", state: state, scope: "a", capability: "api")
         XCTAssertEqual(MobilePromptCache.canonicalJSON(legacy), MobilePromptCache.canonicalJSON(original))
         var proxy = original
         MobilePromptCache.configureResponsesCache(to: &proxy, endpoint: "https://proxy.example/responses", model: "gpt-5.6-luna", state: state, scope: "a", capability: "api")
@@ -317,7 +325,7 @@ final class MobilePromptHistoryTests: XCTestCase {
 
     func testPromptCacheKeyIsSharedByConversationsAndSeparatesAccountsAndTools() {
         func key(account: String = "openai", tools: String = "tools") -> String {
-            MobilePromptCache.key(provider: "openai", route: "openai-chat", model: "gpt-4.1", accountScope: account, toolFingerprint: tools)
+            MobilePromptCache.key(provider: "openai", route: "openai-chat", model: "gpt-5.6-terra", accountScope: account, toolFingerprint: tools)
         }
         // No conversation or compaction input: a new chat reuses the stable prefix.
         XCTAssertEqual(key(), key())
@@ -330,7 +338,7 @@ final class MobilePromptHistoryTests: XCTestCase {
         let messages: [[String: Any]] = [
             ["role": "system", "content": "stable policy"],
             ["role": "user", "content": [["type": "text", "text": "Inspect the project files."]]],
-            ["role": "assistant", "content": [["type": "tool_use", "id": "read-1", "name": "read_file", "input": ["path": "Sources/App.swift"]]]],
+            ["role": "assistant", "content": [["type": "tool_use", "id": "read-1", "name": "invoke_tool", "input": ["name": "read_file", "arguments": #"{"path":"Sources/App.swift"}"#]]]],
             ["role": "user", "content": [["type": "tool_result", "tool_use_id": "read-1", "content": "PRIVATE_FILE_BODY_SHOULD_NOT_BE_REPLAYED"]]],
             ["role": "assistant", "content": [["type": "text", "text": "The file defines the app entry point."]]],
             ["role": "user", "content": [["type": "text", "text": "Now update the launch screen."]]],
@@ -375,5 +383,13 @@ final class MobilePromptHistoryTests: XCTestCase {
         XCTAssertFalse(selection.archiveText.contains("ARCHIVE_TAIL_15"))
         XCTAssertLessThanOrEqual(selection.archiveText.utf8.count, MobileContextCompaction.maximumArchiveCharacters)
         XCTAssertTrue(MobileContextCompaction.fallbackSummary(previousSummary: nil, archiveText: selection.archiveText).contains("atlandı"))
+    }
+
+    func testProviderContextOverflowIsDistinctFromQuotaLimits() {
+        XCTAssertTrue(AgentError.server("prompt is too long: 210000 tokens > 200000 maximum").isContextWindowExceeded)
+        XCTAssertTrue(AgentError.server("This model's maximum context length is 128000 tokens.").isContextWindowExceeded)
+        XCTAssertTrue(AgentError.server("context_length_exceeded").isContextWindowExceeded)
+        XCTAssertFalse(AgentError.server("Rate limit reached for requests").isContextWindowExceeded)
+        XCTAssertFalse(AgentError.providerLimit("prompt is too long", retryAt: nil).isContextWindowExceeded)
     }
 }

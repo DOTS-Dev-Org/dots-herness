@@ -27,7 +27,16 @@ public static class DelegateTool
     /// Concurrent editing subagents per turn. Each runs on the conversation's own
     /// model, so this is also the cost ceiling of one turn.
     public const int MaxPerTurn = 3;
+    /// The parent plans at the selected effort; a part it hands out is already
+    /// specified, so it runs at medium at most, and at low in Economy.
+    public static string? Effort(string? selected, bool economy)
+    {
+        if (economy) return "low";
+        return selected?.ToLowerInvariant() is "high" or "xhigh" or "max" or "ultra" ? "medium" : selected;
+    }
     public const string CheckName = "run_check";
+    /// Consecutive failed checks that prove the light model is not up to the part.
+    private const int FailuresBeforeLeavingLight = 2;
     public const int MaxChecks = 3;
 
     private static readonly StringComparison PathComparison =
@@ -35,11 +44,13 @@ public static class DelegateTool
 
     public static NativeToolDefinition Definition { get; } = new(
         Name,
-        "Hand one self-contained part of a change to a separate agent that reads and edits files, and get back "
-        + "only its report. Use it when a task splits into parts that touch different files and do not depend on "
-        + "each other's edits - then call delegate once per part in the same turn (maximum 3) and they run in "
-        + "parallel. Do not use it for a change that fits in a few edits, or for parts that must be written in "
-        + "order: do those yourself, since each subagent costs a whole extra run on this conversation's model. "
+        "Hand one self-contained implementation assignment to a separate agent that reads and edits files, then "
+        + "get back its report. The parent must inspect relevant code and plan the change first. Do not delegate "
+        + "a small or single-file edit: make it yourself with edit_file, since a subagent re-reads the files and "
+        + "costs a whole extra run. Delegate when the change splits into independent parts with non-overlapping "
+        + "files that can run in parallel (maximum 3), or one large part spanning many files you have not read. "
+        + "The parent owns design, integration, review and whole-change "
+        + "verification. Do not use explore to read implementation files on the parent's behalf. "
         + "`files` is the subagent's assignment: the only paths it may create or change. A directory covers "
         + "everything under it. Assignments given in one turn must not overlap; an overlapping call is refused. "
         + "`checks` are the commands that prove the part works (a build, one test class, a linter): the subagent "
@@ -47,14 +58,19 @@ public static class DelegateTool
         + "passed. Give the narrowest check that covers the part - each run is stopped after 45 seconds and sees "
         + "the other subagents' unfinished edits - and never one that rewrites sources, deletes files or uses "
         + "the network. Without checks the subagent cannot run anything. It cannot run other commands, delete "
-        + "files or write elsewhere, and it sees nothing of this conversation, so state the task in full: what "
-        + "to change, the interfaces it must keep, and the conventions to follow. Run the full build and tests "
-        + "yourself after the subagents finish, and re-read a file a subagent changed before editing it.",
+        + "files or write elsewhere, and it sees nothing of this conversation. Pass the parent's implementation "
+        + "plan in `plan`; include findings, interfaces, constraints and acceptance criteria in `task`. Run the "
+        + "full relevant build/check yourself after the subagent finishes, and review its changed files.",
         new JsonObject
         {
             ["type"] = "object",
             ["properties"] = new JsonObject
             {
+                ["plan"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "The implementation plan the parent formed after inspecting relevant code. Passed to the subagent as design context.",
+                },
                 ["task"] = new JsonObject
                 {
                     ["type"] = "string",
@@ -72,8 +88,14 @@ public static class DelegateTool
                     ["items"] = new JsonObject { ["type"] = "string" },
                     ["description"] = "Optional. Up to 3 shell commands the subagent may run to verify its work, run from the workspace root exactly as written, e.g. `dotnet test --filter ParserTests`.",
                 },
+                ["model"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["enum"] = new JsonArray("conversation", "light"),
+                    ["description"] = "Optional, default conversation. light runs this part on a cheaper model: only for a small mechanical edit (a rename, a string or config value, a copy of an existing pattern) and never for new logic, a refactor or a bug fix. light needs at least one check; when checks fail twice in a row the part moves to the conversation's model.",
+                },
             },
-            ["required"] = new JsonArray("task", "files"),
+            ["required"] = new JsonArray("plan", "task", "files"),
         });
 
     private static NativeToolDefinition CheckDefinition { get; } = new(
@@ -105,13 +127,23 @@ public static class DelegateTool
         quote its decisive lines under Unresolved.
         """;
 
-    private static string SystemPrompt(IReadOnlyList<string> claims, IReadOnlyList<string> checks) => $"""
+    private static string SystemPrompt(string plan, IReadOnlyList<string> claims, IReadOnlyList<string> checks) => $"""
         You are an editing agent working inside one workspace on one assigned part of a larger change.
         Other agents are editing other files of the same project at the same time.
+        Follow the parent's plan as the design source. Keep the assignment within that plan; do not
+        independently redesign the architecture or broaden the work. If it conflicts with the code
+        or leaves a necessary decision open, report that under Unresolved.
+        Parent plan:
+        {plan}
         You may create or change only these paths (a directory covers everything under it):
         {string.Join("\n", claims.Select(claim => "- " + claim))}
-        You may read any file. A write outside the assignment is refused: do not look for another way,
-        report what was needed under Unresolved instead. {CheckRules(checks)}
+        Use the parent's findings and assigned paths. Read those files and only directly referenced code
+        needed to implement the assignment; do not conduct a broad workspace search. If another file
+        is necessary, report its exact path and why under Unresolved instead of widening the assignment.
+        A write outside the assignment is refused: do not look for another way. {CheckRules(checks)}
+        If a write is deferred because another chat holds the file, finish the other independent work
+        in your assignment first, then reread and retry that write once at the end. If it is still
+        held, report it under Unresolved so the parent can make the final user-facing decision.
         Read a file before you change it. Prefer edit_file for an existing file and write_file for a
         new one. Keep to the task: no unrelated refactors, no new files beyond what it needs.
         When you are done, reply with the report only, in exactly this shape:
@@ -131,7 +163,14 @@ public static class DelegateTool
 
     /// <summary>The validated request: what to do and which workspace-relative paths it owns.</summary>
     /// <param name="Checks">The only commands the subagent may run, exactly as the caller wrote them.</param>
-    public sealed record Assignment(string Task, IReadOnlyList<string> Claims, IReadOnlyList<string>? Checks = null);
+    /// <param name="Light">The parent asked for the light model.</param>
+    public sealed record Assignment(string Plan, string Task, IReadOnlyList<string> Claims, IReadOnlyList<string>? Checks = null, bool Light = false)
+    {
+        // Keep source compatibility for local callers that construct an assignment
+        // directly. The exposed tool parser still requires an explicit parent plan.
+        public Assignment(string task, IReadOnlyList<string> claims, IReadOnlyList<string>? checks = null)
+            : this("Parent plan not supplied by caller.", task, claims, checks) { }
+    }
 
     /// <summary>One declared check and what the host saw it do.</summary>
     /// <param name="Passed">The last run's verdict; null when it never ran or a file changed since.</param>
@@ -143,7 +182,8 @@ public static class DelegateTool
 
     /// <param name="Written">Workspace-relative paths whose bytes actually changed, checked on disk
     /// rather than taken from the subagent's report.</param>
-    public sealed record Outcome(string Answer, IReadOnlyList<string> Written, int Steps, bool HitStepLimit, bool Done, IReadOnlyList<CheckResult>? Checks = null)
+    /// <param name="LeftLight">Repeated check failures moved the part off the light model.</param>
+    public sealed record Outcome(string Answer, IReadOnlyList<string> Written, int Steps, bool HitStepLimit, bool Done, IReadOnlyList<CheckResult>? Checks = null, bool RanLight = false, bool LeftLight = false)
     {
         public static Outcome Refused(string message) => new(message, [], 0, false, false);
 
@@ -162,6 +202,7 @@ public static class DelegateTool
                 {
                     if (!Done) parts.Add("[Partial: the subagent did not finish. Check the files before relying on it.]");
                     if (HitStepLimit) parts.Add("[The subagent reached its step limit.]");
+                    if (LeftLight) parts.Add("[The light model failed its checks twice; the conversation's model finished the part.]");
                     parts.Add(Written.Count == 0
                         ? "[No file was changed.]"
                         : "Files changed (verified on disk): " + string.Join(", ", Written)
@@ -192,6 +233,8 @@ public static class DelegateTool
         JsonObject? input = null;
         try { input = JsonNode.Parse(call.Arguments) as JsonObject; }
         catch { }
+        var plan = (input?["plan"] as JsonValue)?.TryGetValue<string>(out var planText) == true ? planText.Trim() : "";
+        if (plan.Length == 0) return (null, "Tool error: delegate needs the parent's implementation plan formed after code inspection.");
         var task = (input?["task"] as JsonValue)?.TryGetValue<string>(out var text) == true ? text.Trim() : "";
         if (task.Length == 0) return (null, "Tool error: delegate needs a task - the complete instructions for the subagent.");
         var claims = new List<string>();
@@ -214,9 +257,13 @@ public static class DelegateTool
                 return (null, $"Tool error: a check may only build or test. `{command}` could delete files; run it yourself after the subagents finish.");
             if (!checks.Contains(command)) checks.Add(command);
         }
-        return checks.Count > MaxChecks
-            ? (null, $"Tool error: at most {MaxChecks} checks per subagent.")
-            : (new Assignment(task, claims, checks), null);
+        if (checks.Count > MaxChecks) return (null, $"Tool error: at most {MaxChecks} checks per subagent.");
+        var model = (input?["model"] as JsonValue)?.TryGetValue<string>(out var modelText) == true ? modelText.Trim().ToLowerInvariant() : "conversation";
+        if (model is not ("conversation" or "light")) return (null, "Tool error: model must be one of conversation, light.");
+        // An edit nobody checked is a guess; on a cheaper model it is a worse one.
+        if (model == "light" && checks.Count == 0)
+            return (null, "Tool error: model light needs at least one check that proves the edit, or use the conversation model.");
+        return (new Assignment(plan, task, claims, checks, model == "light"), null);
     }
 
     private static StringComparer PathComparer =>
@@ -261,11 +308,19 @@ public static class DelegateTool
         ReadLedger.Scope = scope;
         // A host that cannot run commands offers none, whatever was asked for.
         IReadOnlyList<string> checks = check is null ? [] : assignment.Checks ?? [];
+        // Light runs only where a check can catch what it breaks.
+        var route = new SubagentRoute { Light = assignment.Light && checks.Count > 0 };
+        SubagentRoute.Current = route;
+        var ranLight = false;
+        var leftLight = false;
+        var failures = 0;
         var tools = NativeWorkspaceTools.Definitions
             .Where(tool => NativeWorkspaceTools.IsReadOnly(tool.Name) || IsWrite(tool.Name))
             .Concat(checks.Count == 0 ? Array.Empty<NativeToolDefinition>() : new[] { CheckDefinition })
             .ToArray();
-        var messages = new List<NativeMessage> { new("system", SystemPrompt(assignment.Claims, checks)), new("user", assignment.Task) };
+        var requestTools = DeferredToolSession.RequestTools(tools);
+        var deferred = new DeferredToolSession();
+        var messages = new List<NativeMessage> { new("system", SystemPrompt(assignment.Plan, assignment.Claims, checks) + "\nCall provided tools directly. Discover other required tools with discover_tools, then call them via invoke_tool. Record an execution_plan before implementation. Read original long results with read_tool_output."), new("user", assignment.Task) };
         var written = new List<string>();
         var steps = 0;
         var runs = new int[checks.Count];
@@ -273,7 +328,8 @@ public static class DelegateTool
 
         Outcome Finish(string answer, bool hitStepLimit, bool done) => new(
             answer, written, steps, hitStepLimit, done,
-            checks.Select((command, index) => new CheckResult(command, runs[index], passed[index])).ToArray());
+            checks.Select((command, index) => new CheckResult(command, runs[index], passed[index])).ToArray(),
+            ranLight, leftLight);
 
         string Report() => string.Join("\n", messages
             .Where(message => message.Role == "assistant" && !string.IsNullOrWhiteSpace(message.Content))
@@ -282,9 +338,11 @@ public static class DelegateTool
         for (var i = 0; i < MaxSteps; i++)
         {
             ct.ThrowIfCancellationRequested();
+            if (steps > 0) messages = ContextCompaction.SupersedeRepeatedReads(messages);
             steps++;
             NativeResponse response;
-            try { response = await complete(messages, tools, ct).ConfigureAwait(false); }
+            ranLight |= route.Light;
+            try { response = await complete(messages, requestTools, ct).ConfigureAwait(false); }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex)
             {
@@ -301,13 +359,16 @@ public static class DelegateTool
                 return Finish(text.Length == 0 ? "The subagent returned no report." : text, false, Finished(text));
             }
             // One after another: an edit may depend on the read just before it.
-            foreach (var call in calls)
+            foreach (var wireCall in calls)
             {
+                var call = deferred.Resolve(wireCall, tools);
                 string result;
-                if (NativeWorkspaceTools.IsReadOnly(call.Name))
+                if (deferred.Control(call, tools, false) is { } control)
+                    result = control;
+                else if (NativeWorkspaceTools.IsReadOnly(call.Name))
                     result = await NativeWorkspaceTools.ExecuteAsync(call, workspace, ct, AgentCommandSandboxMode.StrictNoDesktop).ConfigureAwait(false);
                 else if (IsWrite(call.Name))
-                    result = await WriteAsync(call, assignment.Claims, workspace, conversationId, written, passed, ct).ConfigureAwait(false);
+                    result = await WriteAsync(call, assignment.Claims, workspace, scope, conversationId, written, passed, ct).ConfigureAwait(false);
                 else if (call.Name == CheckName && check is not null && checks.Count > 0)
                 {
                     // Picked by number, so the subagent cannot reword the command line.
@@ -320,19 +381,29 @@ public static class DelegateTool
                         runs[number - 1]++;
                         passed[number - 1] = ok;
                         result = $"[check {number} {(ok ? "passed" : "FAILED")}]\n{output}";
+                        failures = ok ? 0 : failures + 1;
+                        if (failures == FailuresBeforeLeavingLight && route.Light)
+                        {
+                            route.Light = false;
+                            leftLight = true;
+                            failures = 0;
+                        }
                     }
                 }
                 else
                     result = $"blocked: this subagent can only read and edit files; it has no {call.Name} tool.";
-                messages.Add(new("tool", result, call.Id));
+                deferred.Record(result, call.Id, call.Name);
+                var excerpt = EconomyPolicy.NormalizeToolOutput(result, call.Name, call.Arguments);
+                messages.Add(new("tool", excerpt == result ? result : excerpt + $"\nOriginal result: read_tool_output call_id={call.Id}", call.Id));
             }
         }
 
-        // Out of steps with edits possibly half done: one tool-free call for an honest
-        // report beats leaving the parent to guess what state the files are in.
+        // Out of steps with edits possibly half done: one last call for an honest report
+        // beats leaving the parent to guess what state the files are in. It keeps the
+        // same tools so the cached prefix still matches.
         messages.Add(new("user", "Your step budget is spent. Report now in the required shape, with Status: partial, naming exactly what is finished and what is not."));
         var final = "";
-        try { final = (await complete(messages, [], ct).ConfigureAwait(false)).Message.Content.Trim(); }
+        try { final = (await complete(messages, requestTools, ct).ConfigureAwait(false)).Message.Content.Trim(); }
         catch (OperationCanceledException) { throw; }
         catch { }
         return Finish(final.Length == 0 ? "The subagent reached its step limit without a report." : final, true, false);
@@ -354,7 +425,7 @@ public static class DelegateTool
 
     /// One write, allowed only inside the assignment. Whether it changed anything is
     /// read back from disk, so `written` never depends on the wording of a message.
-    private static async Task<string> WriteAsync(NativeToolCall call, IReadOnlyList<string> claims, string workspace, string conversationId, List<string> written, bool?[] passed, CancellationToken ct)
+    private static async Task<string> WriteAsync(NativeToolCall call, IReadOnlyList<string> claims, string workspace, string scope, string conversationId, List<string> written, bool?[] passed, CancellationToken ct)
     {
         string? path = null;
         try { path = JsonNode.Parse(call.Arguments)?["path"]?.GetValue<string>(); }
@@ -364,7 +435,26 @@ public static class DelegateTool
         if (!Covers(claims, relative))
             return $"refused: {relative} is not in your assignment ({string.Join(", ", claims)}). "
                 + "Another agent may own it. Do not work around this; report it under Unresolved.";
-        using var workspaceWriteLease = await WorkspaceWriteLeases.AcquireAsync(call, workspace, conversationId, ct).ConfigureAwait(false);
+        var target = WorkspaceWriteLeases.TargetFor(call, workspace);
+        IDisposable? lease = null;
+        if (target is not null)
+        {
+            var holder = new WorkspaceLeaseHolder(
+                conversationId,
+                conversationId,
+                scope,
+                call.Name,
+                relative,
+                target.Root,
+                DateTimeOffset.UtcNow);
+            if (!WorkspaceWriteLeases.TryAcquire(target, holder, out lease, out var conflict))
+            {
+                if (WorkspaceWriteLeases.DeferWrite(target, conversationId, relative))
+                    return $"WRITE NOT RUN: {conflict?.ConversationTitle ?? "another chat"} is using {relative}. Finish the other independent assignment work, then reread and retry this exact write once at the end.";
+                return $"Still blocked: {conflict?.ConversationTitle ?? "another chat"} is using {relative}. Do not retry again in this subagent; finish the assignment and report {relative} under Unresolved so the parent can do the final recheck and ask the user if needed.";
+            }
+        }
+        using var workspaceWriteLease = lease;
         var file = NativeWorkspaceTools.Resolve(relative, workspace);
         var before = File.Exists(file) ? File.ReadAllBytes(file) : null;
         var result = await NativeWorkspaceTools.ExecuteAsync(call, workspace, ct, AgentCommandSandboxMode.StrictNoDesktop).ConfigureAwait(false);

@@ -269,9 +269,21 @@ enum WebTools {
     }
 
     static func searchAPIKey() -> String {
-        if let value = ProcessInfo.processInfo.environment["HERNESS_SEARCH_KEY"]?
-            .trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty { return value }
-        return UserDefaults.standard.string(forKey: "web.search.apiKey")?
+        // The search key is a paid API credential: it belongs in the
+        // Keychain, not in a preferences plist that ends up in backups.
+        // Anything still in UserDefaults is moved over once.
+        let store = SecureStore()
+        if let stored = store.read("web.search.apiKey"),
+           !stored.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return stored.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if let legacy = UserDefaults.standard.string(forKey: "web.search.apiKey"),
+           !legacy.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            store.write(legacy, key: "web.search.apiKey")
+            UserDefaults.standard.removeObject(forKey: "web.search.apiKey")
+            return legacy.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return ProcessInfo.processInfo.environment["HERNESS_SEARCH_KEY"]?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 

@@ -85,7 +85,7 @@ public sealed class HerNessPromptTests
         var core = HerNessPrompt.Core("scope line", "tool line");
         Assert.Contains("scope line", core);
         Assert.Contains("tool line", core);
-        Assert.Contains("tagged with a trust level", core);
+        Assert.Contains("Instruction priority", core);
         Assert.DoesNotContain("Clarification", core);
     }
 
@@ -95,12 +95,12 @@ public sealed class HerNessPromptTests
         var core = HerNessPrompt.Core("scope line", "tool line");
 
         Assert.Contains("Response economy", core);
-        Assert.Contains("shortens prose only, never required work", core);
-        Assert.Contains("exact errors, negative qualifiers, tests, and evidence stay complete", core);
-        Assert.Contains("never claim completion", core);
+        Assert.Contains("shorten prose, not required work", core);
+        Assert.Contains("commands, errors, tests or evidence", core);
+        Assert.Contains("state what remains", core);
         Assert.DoesNotContain("billing guarantee", core);
-        Assert.Contains("security warnings, irreversible confirmations", core);
-        Assert.Contains("generated code, comments, commits, docs, PR text", core);
+        Assert.Contains("Destructive/irreversible actions", core);
+        Assert.Contains("exact code", core);
     }
 
     [Fact]
@@ -109,19 +109,18 @@ public sealed class HerNessPromptTests
         var core = HerNessPrompt.Core("scope line", "tool line");
         var normalized = string.Join(" ", core.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
-        Assert.Contains("Response language", normalized);
-        Assert.Contains("latest human-authored user request", normalized);
-        Assert.Contains("in this conversation only", normalized);
-        Assert.Contains("memory text", normalized);
-        Assert.Contains("application's interface language", normalized);
-        Assert.Contains("explicitly asks for a response in a named language", normalized);
-        Assert.Contains("for that response only", normalized);
+        Assert.Contains("Accuracy and language", normalized);
+        Assert.Contains("latest human request's language", normalized);
+        Assert.Contains("this conversation's last reliable response language", normalized);
+        Assert.Contains("UI language, memory, tools and other chats", normalized);
+        Assert.Contains("Explicit language requests win", normalized);
+        Assert.Contains("for that response", normalized);
         Assert.Contains("last reliable response language", normalized);
-        Assert.Contains("answer in English", normalized);
+        Assert.Contains("use English", normalized);
 
-        var detected = normalized.IndexOf("latest human-authored user request", StringComparison.Ordinal);
-        var explicitRequest = normalized.IndexOf("explicitly asks for a response in a named language", StringComparison.Ordinal);
-        var fallback = normalized.IndexOf("latest request is mixed", StringComparison.Ordinal);
+        var detected = normalized.IndexOf("latest human request's language", StringComparison.Ordinal);
+        var explicitRequest = normalized.IndexOf("Explicit language requests win", StringComparison.Ordinal);
+        var fallback = normalized.IndexOf("If the request is mixed", StringComparison.Ordinal);
         Assert.True(detected >= 0 && detected < explicitRequest && explicitRequest < fallback,
             "response-language priority order is not represented in the core prompt");
     }
@@ -139,5 +138,31 @@ public sealed class HerNessPromptTests
         Assert.Contains("update_plan", prompt);
         Assert.Contains("explore", prompt);
         Assert.Contains("install_plugin", prompt);
+    }
+
+    [Fact]
+    public void CoreUsesQuestionToolForMissingTaskDetailsButAnswersInformationDirectly()
+    {
+        var core = HerNessPrompt.Core("scope line", "tool line");
+        var normalized = System.Text.RegularExpressions.Regex.Replace(core, @"\s+", " ");
+
+        Assert.Contains("Answer ordinary chat", normalized, StringComparison.Ordinal);
+        Assert.Contains("through ask_user", normalized, StringComparison.Ordinal);
+        Assert.Contains("A user's answer resumes the original task", normalized, StringComparison.Ordinal);
+    }
+
+    /// The canonical text ships to every platform, so it may not name a tool only one of
+    /// them offers; a platform names its own tools in its own block.
+    [Fact]
+    public void CoreNamesNoPlatformOnlyTool()
+    {
+        var core = HerNessPrompt.Core("scope line", "tool line");
+
+        foreach (var name in new[]
+        {
+            "update_plan", "install_plugin", "terminal_session",
+            "ios_simulator", "computer_use", "browser_open",
+        })
+            Assert.DoesNotContain(name, core, StringComparison.Ordinal);
     }
 }

@@ -11,16 +11,12 @@ import HarnessPluginKit
 @MainActor
 extension AppModel {
     public func newConversation() {
+        if section != .home { section = .home }
         commitNavigationDestination()
         guard let targetPath = Self.canonicalExistingWorkspacePath(workspacePath) else {
             if workspacePath.isEmpty {
                 if isNoProjectScope {
-                    cancelEditing()
-                    saveDraftState()
-                    bridge.newConversation()
-                    restoreDraftState()
-                    objectWillChange.send()
-                    commitNavigationDestination()
+                    startBlankConversation()
                 } else {
                     chooseWorkspace()
                 }
@@ -39,6 +35,10 @@ extension AppModel {
         guard workspacePath == targetPath,
               ConversationStore.normalizedPath(bridge.workspacePath)
                   == ConversationStore.normalizedPath(targetPath) else { return }
+        startBlankConversation()
+    }
+
+    private func startBlankConversation() {
         cancelEditing()
         saveDraftState()
         bridge.newConversation()
@@ -98,12 +98,25 @@ extension AppModel {
         }
     }
 
-    public func removeDraftAttachment(_ attachment: ChatAttachment) {
-        draftAttachments.removeAll { $0 == attachment }
+    public func addDraftImageData(_ data: Data) {
+        guard !data.isEmpty else { return }
+        let directory = paths.runtime.appendingPathComponent("pasted-images", isDirectory: true)
+        let url = directory.appendingPathComponent("\(UUID().uuidString).png")
+        do {
+            try FileManager.default.createDirectory(
+                at: directory,
+                withIntermediateDirectories: true,
+                attributes: [.posixPermissions: 0o700]
+            )
+            try data.write(to: url, options: .atomic)
+            addDraftAttachments([url])
+        } catch {
+            historyError = error.localizedDescription
+        }
     }
 
-    public func removeDraftImage(_ url: URL) {
-        draftAttachments.removeAll { $0.url == url }
+    public func removeDraftAttachment(_ attachment: ChatAttachment) {
+        draftAttachments.removeAll { $0 == attachment }
     }
 
     public func reportHistoryError(_ message: String) {
@@ -124,14 +137,15 @@ extension AppModel {
 
     public func send(mode: PromptMode = .queue) {
         guard ensureActiveProjectLocation() else { return }
-        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty || !draftAttachments.isEmpty else {
+        let rawText = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !rawText.isEmpty || !draftAttachments.isEmpty else {
             if bridge.canContinue { Task { await bridge.continueCurrentRun() } }
             return
         }
 
         if let messageID = editingMessageID,
            let conversationID = selected?.id {
+            let text = rawText
             let attachments = draftAttachments
             if PlanningIntent.shouldEnterPlanMode(text) { isPlanMode = true }
             historyError = nil
@@ -154,6 +168,7 @@ extension AppModel {
 
         historyError = nil
         guard canSend else { return }
+        let text = promptTemplates.expand(rawText, workspacePath: bridge.workspacePath) ?? rawText
         let attachments = draftAttachments
         let isApproval = attachments.isEmpty
             && selected?.pendingPlanMessageID.flatMap { planID in
@@ -179,7 +194,7 @@ extension AppModel {
             draft = ""
             draftAttachments = []
         } else {
-            draft = text
+            draft = rawText
             draftAttachments = attachments
             isPlanMode = previousPlanMode
             historyError = bridge.status
@@ -188,10 +203,11 @@ extension AppModel {
 
     @discardableResult
     public func send(text: String, attachments: [ChatAttachment] = [], mode: PromptMode = .queue) -> Bool {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty || !attachments.isEmpty,
+        let rawText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !rawText.isEmpty || !attachments.isEmpty,
               ensureActiveProjectLocation(),
               canSend else { return false }
+        let trimmed = promptTemplates.expand(rawText, workspacePath: bridge.workspacePath) ?? rawText
         let isApproval = attachments.isEmpty
             && selected?.pendingPlanMessageID.flatMap { planID in
                 selected?.messages.first(where: { $0.id == planID && $0.kind == .plan })
@@ -214,6 +230,21 @@ extension AppModel {
         )
         if !accepted { isPlanMode = previousPlanMode }
         return accepted
+    }
+
+    public func forkConversation(beforeMessageID messageID: String, in conversationID: String) {
+        guard !isEditingMessage else { return }
+        historyError = nil
+        saveDraftState()
+        do {
+            let result = try bridge.forkConversation(conversationID: conversationID, beforeMessageID: messageID)
+            selectConversation(result.conversationID)
+            draft = result.prompt.text
+            draftAttachments = result.prompt.attachments
+            composerFocusRequestID += 1
+        } catch {
+            historyError = error.localizedDescription
+        }
     }
 
     func endPlanMode() {
@@ -261,6 +292,32 @@ extension AppModel {
 
     public func requestPlanPane() {
         planPaneRequestID &+= 1
+    }
+
+    /// Shows a workspace file a reply links to in the Files pane. False for web
+    /// links and paths that are not there, which the system then handles.
+    public func openFileLink(_ url: URL) -> Bool {
+        guard let path = Self.fileLinkPath(url), !workspacePath.isEmpty, remoteWorkspace == nil else { return false }
+        let file = path.hasPrefix("/")
+            ? URL(fileURLWithPath: path)
+            : URL(fileURLWithPath: workspacePath).appendingPathComponent(path)
+        guard FileManager.default.fileExists(atPath: file.path) else { return false }
+        requestedFile = file.standardizedFileURL
+        filesPaneRequestID &+= 1
+        return true
+    }
+
+    /// The path a reply's file link names, without `:line[:column]` or `#L` suffixes;
+    /// nil for web links. `README.md:42` parses with scheme "readme.md", hence the dot check.
+    public nonisolated static func fileLinkPath(_ url: URL) -> String? {
+        if let scheme = url.scheme?.lowercased(), scheme != "file", !scheme.contains(".") { return nil }
+        var path = url.isFileURL ? url.path : (url.relativeString.removingPercentEncoding ?? url.relativeString)
+        if let hash = path.firstIndex(of: "#") { path = String(path[..<hash]) }
+        while let colon = path.lastIndex(of: ":"), colon != path.startIndex,
+              path[path.index(after: colon)...].allSatisfy(\.isNumber) {
+            path = String(path[..<colon])
+        }
+        return path.isEmpty ? nil : path
     }
 
     public func stop() {
@@ -367,6 +424,7 @@ extension AppModel {
     }
 
     func selectConversation(_ id: String) {
+        if section != .home { section = .home }
         guard id != bridge.selectedID else { return }
         commitNavigationDestination()
         cancelEditing()

@@ -22,40 +22,19 @@ struct ContextAdmission {
     var fits: Bool { budget.fits(normalizedTokens) }
 }
 
-/// A model change that would not fit: the user decides whether the conversation
-/// may be compressed to make it fit.
-public struct PendingContextOverflow: Sendable, Equatable, Identifiable {
-    public let conversationID: String
-    /// Route the check was computed for, so a run asks once per route.
-    public let routeIdentity: String
-    public let targetModel: String
-    /// Tokens the transcript needs, and the room the target model actually has.
-    public let requiredTokens: Int
-    public let usableTokens: Int
-    /// Small model that will write the summary, or nil when no account can hold
-    /// the transcript and the app trims it without calling anyone.
-    public let summarizerModel: String?
-
-    public var id: String { "\(conversationID)|\(routeIdentity)" }
-
-    public init(
-        conversationID: String,
-        routeIdentity: String,
-        targetModel: String,
-        requiredTokens: Int,
-        usableTokens: Int,
-        summarizerModel: String?
-    ) {
-        self.conversationID = conversationID
-        self.routeIdentity = routeIdentity
-        self.targetModel = targetModel
-        self.requiredTokens = requiredTokens
-        self.usableTokens = usableTokens
-        self.summarizerModel = summarizerModel
-    }
-}
-
 extension NativeAgentHost {
+    /// The admission estimate of a sent request, on the same basis
+    /// `compactIfNeeded` compares against the provider's count.
+    func requestEstimate(
+        _ messages: [AgentMessage],
+        tools: [AgentToolDefinition],
+        configuration: AgentConfiguration,
+        contextConfiguration: AgentConfiguration?
+    ) -> Int {
+        let admission = contextAdmission(messages: messages, configuration: configuration, tools: tools, contextConfiguration: contextConfiguration)
+        return admission.normalizedTokens + admission.budget.toolDefinitionTokens
+    }
+
     func contextAdmission(
         messages: [AgentMessage],
         configuration: AgentConfiguration,
@@ -65,7 +44,7 @@ extension NativeAgentHost {
         let budgetConfiguration = contextConfiguration ?? configuration
         let responseStyle = ResponseStyleResolver.resolve(
             preference: configuration.responseStylePreference,
-            prompt: messages.last(where: { $0.role == .user })?.content
+            prompt: AgentMessage.responseStylePrompt(in: messages)
         )
         // Admission must reserve the same bounded output ceiling every
         // transport request now sends, including Standard mode.
@@ -98,55 +77,6 @@ extension NativeAgentHost {
         )
     }
 
-    /// Whether the route about to serve this run would have to compress the
-    /// conversation, and what it would use to do it.
-    ///
-    /// Only a route change is questioned: a long conversation on the model it has
-    /// been using all along compacts on its own at the threshold, which is the
-    /// behaviour the user already accepted when starting the chat.
-    func contextOverflow(
-        messages: [AgentMessage],
-        conversationID: String,
-        configuration: AgentConfiguration,
-        tools: [AgentToolDefinition],
-        contextConfiguration: AgentConfiguration?,
-        routeIdentity: String
-    ) -> PendingContextOverflow? {
-        guard let conversation = conversations.first(where: { $0.id == conversationID }),
-              !routeIdentity.isEmpty,
-              conversation.contextRouteIdentity != routeIdentity else { return nil }
-        let admission = contextAdmission(
-            messages: messages,
-            configuration: configuration,
-            tools: tools,
-            contextConfiguration: contextConfiguration
-        )
-        guard !admission.fits else { return nil }
-        // Promising a summary that cannot be produced would be worse than saying
-        // nothing: below two turn groups there is nothing to archive, and the
-        // existing trim-only path handles it.
-        guard AgentContextCompaction.select(
-            Self.durableContext(messages),
-            previousSummary: conversation.contextSummary,
-            budget: admission.budget
-        ) != nil else { return nil }
-        // Economy and short-answer runs prune tool output locally and never pay
-        // for a second model call, so the banner must not promise one.
-        let summarizer = admission.deterministic ? nil : routeSummarizer(
-            conversation: conversation,
-            targetConfiguration: admission.configuration,
-            routeIdentity: routeIdentity
-        )
-        return PendingContextOverflow(
-            conversationID: conversationID,
-            routeIdentity: routeIdentity,
-            targetModel: contextModelLabel(admission.configuration.model),
-            requiredTokens: admission.normalizedTokens,
-            usableTokens: admission.budget.usableInputTokens,
-            summarizerModel: summarizer.map { contextModelLabel($0.model) }
-        )
-    }
-
     /// The cheapest model that should write a compaction summary for a route
     /// change: the small model of the account that just served the conversation,
     /// then the destination account's, then nobody. `nil` keeps compaction
@@ -174,38 +104,6 @@ extension NativeAgentHost {
             ))
         }
         return limit
-    }
-
-    /// Blocks on the composer banner. Declining stops the run before any request
-    /// leaves the app, so an unattended run must not be able to stall: it gets the
-    /// compression it would have got anyway.
-    func requestContextCompaction(_ pending: PendingContextOverflow) async -> Bool {
-        guard !nonInteractive else { return true }
-        pendingContextOverflow = pending
-        notifyAttention(
-            .contextCompaction,
-            in: pending.conversationID,
-            detail: AppCopy.format("context.overflowReason", pending.targetModel, pending.requiredTokens, pending.usableTokens)
-        )
-        return await withTaskCancellationHandler(operation: {
-            await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-                guard !Task.isCancelled, pendingContextOverflow?.id == pending.id else {
-                    continuation.resume(returning: false)
-                    return
-                }
-                contextOverflowContinuation = continuation
-            }
-        }, onCancel: { [weak self] in
-            Task { @MainActor [weak self] in self?.finishContextCompaction(false) }
-        })
-    }
-
-    func finishContextCompaction(_ allow: Bool) {
-        guard pendingContextOverflow != nil else { return }
-        pendingContextOverflow = nil
-        let continuation = contextOverflowContinuation
-        contextOverflowContinuation = nil
-        continuation?.resume(returning: allow)
     }
 
     /// `api|provider|account|baseURL|model` as `contextRouteIdentity` records it,

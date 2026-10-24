@@ -27,6 +27,19 @@ public struct SandboxExecutionPolicy: Sendable, Equatable {
         self.browserSafe = browserSafe
     }
 
+    /// A command the agent runs in a sandbox worktree. The policy's own
+    /// `networkAccess` (Settings, or a scheduled task's `allowsNetwork`) decides
+    /// whether it may reach the network; the IPC services denied by
+    /// `browserSafe` stay denied either way.
+    public func agentCommandPolicy() -> SandboxExecutionPolicy {
+        SandboxExecutionPolicy(
+            workspaceURL: workspaceURL,
+            networkAccess: networkAccess,
+            additionalWritableRoots: additionalWritableRoots,
+            browserSafe: true
+        )
+    }
+
     public func strictAgentPolicy() -> SandboxExecutionPolicy {
         SandboxExecutionPolicy(
             workspaceURL: workspaceURL,
@@ -37,8 +50,18 @@ public struct SandboxExecutionPolicy: Sendable, Equatable {
     }
 }
 
-public enum SandboxProfileError: LocalizedError, Equatable {
-    case unavailable
+/// A path inside a writable root that the sandbox must keep read-only.
+public struct SandboxProtectedPath: Sendable, Equatable {
+    public let path: String
+    public let isDirectory: Bool
+
+    public init(path: String, isDirectory: Bool) {
+        self.path = path
+        self.isDirectory = isDirectory
+    }
+}
+
+public enum SandboxProfileError: LocalizedError, Equatable {    case unavailable
     case invalidWritableRoot(String)
 
     public var errorDescription: String? {
@@ -66,6 +89,17 @@ enum SandboxProfile {
             fileURLWithPath: String(cString: resolved),
             isDirectory: standardized.hasDirectoryPath
         )
+    }
+
+    /// The per-user temp directory (`/var/folders/…/T`). Foundation, `mktemp`
+    /// and SwiftPM resolve it through `confstr`, not `$TMPDIR`, so it cannot be
+    /// redirected into the workspace: `swift build` fails unless it is writable.
+    static var userTemporaryDirectory: URL {
+        var buffer = [CChar](repeating: 0, count: Int(PATH_MAX))
+        guard confstr(_CS_DARWIN_USER_TEMP_DIR, &buffer, buffer.count) > 0 else {
+            return canonicalURL(FileManager.default.temporaryDirectory)
+        }
+        return canonicalURL(URL(fileURLWithPath: String(cString: buffer), isDirectory: true))
     }
 
     static var isAvailable: Bool {
@@ -138,8 +172,10 @@ enum SandboxProfile {
             .standardizedFileURL
             .resolvingSymlinksInPath()
         let memory = workspace.appendingPathComponent(".mem", isDirectory: true)
+        let protectedPaths = protectedWritePaths(in: roots)
         let profile = makeProfile(
             writableRootCount: roots.count,
+            protectedWritePaths: protectedPaths,
             networkAccess: networkAccess,
             browserSafe: browserSafe
         )
@@ -148,6 +184,7 @@ enum SandboxProfile {
             "-D", "WORKSPACE=\(workspace.path)",
             "-D", "HOME=\(home.path)",
             "-D", "MEMORY=\(memory.path)",
+            "-D", "USERTEMP=\(userTemporaryDirectory.path)",
             "-D", "SSH=\(home.appendingPathComponent(".ssh").path)",
             "-D", "AWS=\(home.appendingPathComponent(".aws").path)",
             "-D", "KEYCHAINS=\(home.appendingPathComponent("Library/Keychains").path)",
@@ -159,9 +196,26 @@ enum SandboxProfile {
             "-D", "APPSUPPORT=\(home.appendingPathComponent("Library/Application Support").path)",
             "-D", "NETRC=\(home.appendingPathComponent(".netrc").path)",
             "-D", "NPMRC=\(home.appendingPathComponent(".npmrc").path)",
+            // More places where a credential sits in plain text: the git
+            // credential helper's file, the docker and kubernetes configs,
+            // GPG and package-manager keys, and the shell history that
+            // records every `TOKEN=…` that was typed.
+            "-D", "GITCREDENTIALS=\(home.appendingPathComponent(".git-credentials").path)",
+            "-D", "DOCKER=\(home.appendingPathComponent(".docker").path)",
+            "-D", "KUBE=\(home.appendingPathComponent(".kube").path)",
+            "-D", "GNUPG=\(home.appendingPathComponent(".gnupg").path)",
+            "-D", "CARGO=\(home.appendingPathComponent(".cargo").path)",
+            "-D", "GEM=\(home.appendingPathComponent(".gem").path)",
+            "-D", "MAVEN=\(home.appendingPathComponent(".m2").path)",
+            "-D", "ZSHHISTORY=\(home.appendingPathComponent(".zsh_history").path)",
+            "-D", "BASHHISTORY=\(home.appendingPathComponent(".bash_history").path)",
+            "-D", "LOCALSHARE=\(home.appendingPathComponent(".local/share").path)",
         ]
         for (index, root) in roots.enumerated() {
             result += ["-D", "WRITE_ROOT_\(index)=\(root.path)"]
+        }
+        for (index, path) in protectedPaths.enumerated() {
+            result += ["-D", "PROTECTED_\(index)=\(path.path)"]
         }
         result += ["-p", profile]
         if let executable { result.append(executable) }
@@ -188,6 +242,37 @@ enum SandboxProfile {
         ]
     }
 
+    /// Git metadata a sandboxed agent must not be able to rewrite. `hooks/`
+    /// would run on the user's next git command, and `config` can point git at
+    /// another pager, hook path or ssh command — both are ways out of the
+    /// sandbox that need no code to run in here.
+    ///
+    /// A writable root is a git metadata directory when it holds a `HEAD`
+    /// file. A linked worktree's own `.git` is a *file* pointing at the real
+    /// directory, so only the origin's `.git` and its `worktrees/<name>`
+    /// entries are picked up — never the agent's own workspace.
+    static func protectedWritePaths(in roots: [URL]) -> [SandboxProtectedPath] {
+        let manager = FileManager.default
+        var result: [SandboxProtectedPath] = []
+        for root in roots {
+            var headIsDirectory: ObjCBool = false
+            guard manager.fileExists(atPath: root.appendingPathComponent("HEAD").path, isDirectory: &headIsDirectory),
+                  !headIsDirectory.boolValue else { continue }
+            let hooks = root.appendingPathComponent("hooks", isDirectory: true)
+            var hooksIsDirectory: ObjCBool = false
+            if manager.fileExists(atPath: hooks.path, isDirectory: &hooksIsDirectory), hooksIsDirectory.boolValue {
+                result.append(SandboxProtectedPath(path: hooks.path, isDirectory: true))
+            }
+            for name in ["config", "config.worktree"] {
+                let file = root.appendingPathComponent(name)
+                if manager.fileExists(atPath: file.path) {
+                    result.append(SandboxProtectedPath(path: file.path, isDirectory: false))
+                }
+            }
+        }
+        return result
+    }
+
     private static func uniqueRoots(_ roots: [URL]) throws -> [URL] {
         var seen = Set<String>()
         var result: [URL] = []
@@ -204,6 +289,7 @@ enum SandboxProfile {
 
     private static func makeProfile(
         writableRootCount: Int,
+        protectedWritePaths: [SandboxProtectedPath],
         networkAccess: Bool,
         browserSafe: Bool
     ) -> String {
@@ -227,8 +313,9 @@ enum SandboxProfile {
         }
         lines.append("(allow file-write* (subpath \"/tmp\"))")
         lines.append("(allow file-write* (subpath \"/private/tmp\"))")
+        lines.append("(allow file-write* (subpath (param \"USERTEMP\")))")
 
-        if networkAccess && !browserSafe {
+        if networkAccess {
             lines.append("(system-network)")
             lines.append("(allow network-outbound)")
         } else {
@@ -245,7 +332,9 @@ enum SandboxProfile {
         // specific roots so a root nested inside one of them still works,
         // then deny MEMORY last so `.mem` — nested inside the workspace root
         // — stays blocked even though the roots were just re-granted.
-        for parameter in ["SSH", "AWS", "KEYCHAINS", "DOTCONFIG", "APPSUPPORT", "NETRC", "NPMRC"] {
+        for parameter in ["SSH", "AWS", "KEYCHAINS", "DOTCONFIG", "APPSUPPORT", "NETRC", "NPMRC",
+                          "GITCREDENTIALS", "DOCKER", "KUBE", "GNUPG", "CARGO", "GEM", "MAVEN",
+                          "ZSHHISTORY", "BASHHISTORY", "LOCALSHARE"] {
             lines.append("(deny file-read* (subpath (param \"\(parameter)\")))")
             lines.append("(deny file-write* (subpath (param \"\(parameter)\")))")
         }
@@ -256,6 +345,13 @@ enum SandboxProfile {
         }
         lines.append("(deny file-read* (subpath (param \"MEMORY\")))")
         lines.append("(deny file-write* (subpath (param \"MEMORY\")))")
+
+        // Git metadata stays read-only even though its directory is writable:
+        // the deny comes last so it wins over the write roots granted above.
+        for (index, path) in protectedWritePaths.enumerated() {
+            let rule = path.isDirectory ? "subpath" : "literal"
+            lines.append("(deny file-write* (\(rule) (param \"PROTECTED_\(index)\")))")
+        }
 
         for service in [
             "com.apple.SecurityServer",

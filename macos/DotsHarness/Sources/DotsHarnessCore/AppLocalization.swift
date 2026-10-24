@@ -2,6 +2,7 @@
 // Application-wide localized copy shared by the native core and SwiftUI shell.
 
 import Foundation
+import PluginRuntime
 
 public enum AppLanguage: String, CaseIterable, Codable, Identifiable, Sendable {
     case system
@@ -170,13 +171,57 @@ public enum AppLocalization {
 
     fileprivate static func bundle(for language: AppLanguage) -> Bundle {
         let effective = language == .system ? effectiveLanguage : language
-        let path = Bundle.module.path(forResource: effective.rawValue, ofType: "lproj")
-            ?? Bundle.module.path(forResource: effective.rawValue.lowercased(), ofType: "lproj")
-        guard let path,
-              let bundle = Bundle(path: path) else {
+        guard let path = LanguagePacks.lproj(effective), let bundle = Bundle(path: path) else {
             return Bundle.module
         }
         return bundle
+    }
+}
+
+/// A release ships only en and tr. scripts/package-dmg.sh moves the other
+/// languages out of the app and writes `language-packs.json` (code → sha256);
+/// each one downloads from R2 the first time it is needed. A development
+/// build has every language bundled and no manifest, so nothing downloads.
+public enum LanguagePacks {
+    static let baseURL = URL(string: "https://dotsherness-unified-backend.dotsherness-unified-backend.workers.dev/assets/downloads/languages/")!
+    static let directory = SupportPaths.default().root.appendingPathComponent("languages", isDirectory: true)
+    private static let pinned: [String: String] = {
+        guard let url = Bundle.module.url(forResource: "language-packs", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let packs = try? JSONDecoder().decode([String: String].self, from: data) else { return [:] }
+        return packs
+    }()
+
+    private static func bundled(_ code: String) -> String? {
+        Bundle.module.path(forResource: code, ofType: "lproj")
+            ?? Bundle.module.path(forResource: code.lowercased(), ofType: "lproj")
+    }
+
+    /// Keyed by content hash, so an app update with new copy fetches its own file.
+    private static func downloaded(_ code: String) -> (lproj: URL, remote: URL, sha256: String)? {
+        guard let sha = pinned[code] ?? pinned[code.lowercased()] else { return nil }
+        return (directory.appendingPathComponent("\(sha)/\(code).lproj", isDirectory: true),
+                baseURL.appendingPathComponent("\(sha).strings"), sha)
+    }
+
+    static func lproj(_ language: AppLanguage) -> String? {
+        if let path = bundled(language.rawValue) { return path }
+        guard let pack = downloaded(language.rawValue),
+              FileManager.default.fileExists(atPath: pack.lproj.appendingPathComponent("Localizable.strings").path) else { return nil }
+        return pack.lproj.path
+    }
+
+    public static func isAvailable(_ language: AppLanguage) -> Bool {
+        let effective = language == .system ? AppLocalization.effectiveLanguage : language
+        return lproj(effective) != nil || downloaded(effective.rawValue) == nil
+    }
+
+    public static func ensure(_ language: AppLanguage) async throws {
+        let effective = language == .system ? AppLocalization.effectiveLanguage : language
+        guard lproj(effective) == nil, let pack = downloaded(effective.rawValue) else { return }
+        try await FileDownloader.download(
+            from: pack.remote, to: pack.lproj.appendingPathComponent("Localizable.strings"), sha256: pack.sha256
+        )
     }
 }
 

@@ -1,5 +1,70 @@
 import Foundation
 
+/// App-process workspace gate shared by agent tools, the mobile terminal, and Git.
+/// Waiting is asynchronous so a blocked writer never holds the main actor.
+actor MobileWorkspaceWriteLease {
+    static let shared = MobileWorkspaceWriteLease()
+
+    private var heldWorkspaces: Set<String> = []
+    private struct Waiter {
+        let id: UUID
+        let continuation: CheckedContinuation<Void, Error>
+    }
+    private var waiters: [String: [Waiter]] = [:]
+
+    func withLease<T: Sendable>(for root: URL, operation: @Sendable () async throws -> T) async throws -> T {
+        let key = mobileWorkspaceRootIdentity(root)
+        try await acquire(key)
+        do {
+            try Task.checkCancellation()
+            let result = try await operation()
+            release(key)
+            return result
+        } catch {
+            release(key)
+            throw error
+        }
+    }
+
+    private func acquire(_ key: String) async throws {
+        guard heldWorkspaces.contains(key) else {
+            heldWorkspaces.insert(key)
+            return
+        }
+        let id = UUID()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                waiters[key, default: []].append(Waiter(id: id, continuation: continuation))
+            }
+        } onCancel: {
+            Task { await self.cancelWaiter(key, id: id) }
+        }
+    }
+
+    private func release(_ key: String) {
+        if var queue = waiters[key], !queue.isEmpty {
+            let next = queue.removeFirst()
+            if queue.isEmpty { waiters.removeValue(forKey: key) }
+            else { waiters[key] = queue }
+            next.continuation.resume()
+        } else {
+            heldWorkspaces.remove(key)
+        }
+    }
+
+    private func cancelWaiter(_ key: String, id: UUID) {
+        guard var queue = waiters[key], let index = queue.firstIndex(where: { $0.id == id }) else { return }
+        let waiter = queue.remove(at: index)
+        if queue.isEmpty { waiters.removeValue(forKey: key) }
+        else { waiters[key] = queue }
+        waiter.continuation.resume(throwing: CancellationError())
+    }
+}
+
+func mobileWorkspaceRootIdentity(_ root: URL) -> String {
+    root.standardizedFileURL.resolvingSymlinksInPath().path
+}
+
 /// Tools the on-phone agent gets over the local workspace mirror. Every path is
 /// resolved through `LocalWorkspaceStore.resolve`, so a traversal in a model's
 /// tool call fails the same way a bad snapshot path does.
@@ -13,10 +78,10 @@ enum AgentTools {
 
     static func readFile(at url: URL, offset: Int? = nil, limit: Int? = nil) throws -> String {
         let data = try Data(contentsOf: url)
-        guard let text = String(data: data, encoding: .utf8) else { return "File is not UTF-8 text: \(url.lastPathComponent)" }
+        guard let text = String(data: data, encoding: .utf8) else { return "Tool error: File is not UTF-8 text: \(url.lastPathComponent)" }
         let lines = text.components(separatedBy: "\n")
         let start = max(1, offset ?? 1)
-        guard start <= lines.count else { return "Offset is past the end of the file; it has \(lines.count) lines." }
+        guard start <= lines.count else { return "Tool error: Offset is past the end of the file; it has \(lines.count) lines." }
         let count = min(lines.count - start + 1, max(0, limit ?? defaultReadLines))
         let end = start + count
         let maximum = limit == nil ? defaultReadCharacters : maximumReadCharacters
@@ -33,10 +98,9 @@ enum AgentTools {
         }
         ReadLedger.shared.recordLines(url, data: data, lines: start..<line, totalLines: lines.count)
         let body = emitted.joined(separator: "\n")
-        // A default page that stops before the end of the file says so; an explicit
-        // limit that was met in full is the answer that was asked for.
-        let more = limit == nil ? line <= lines.count : line < end
-        return more ? body + "\n\n[truncated] Continue with offset: \(line)" : body
+        // Any page that stops before the end of the file says where to continue and how
+        // long the file is, so the model knows whether it has seen all of it.
+        return line <= lines.count ? body + "\n\n[truncated] Continue with offset: \(line) (file has \(lines.count) lines)" : body
     }
     static let askUserAnsweredDirective = """
     The user answered your clarification. Continue the original request now in the current mode: perform the
@@ -91,23 +155,26 @@ enum AgentTools {
             ) { input in
                 let path = try input.required("path", tool: "write_file")
                 let content = input.string("content") ?? ""
-                let result: String = try await MainActor.run {
-                    let target = try store.resolve(path)
-                    if let current = try? Data(contentsOf: target) {
-                        switch ReadLedger.shared.state(for: target, data: current) {
-                        case .unread: return "write_file needs a prior read_file for \(path). Read it first."
-                        case .stale: return "write_file: \(path) changed since you last read it. Read it again."
-                        case .fresh: break
+                let (workspaceRoot, target) = try await MainActor.run { (store.root, try store.resolve(path)) }
+                return try await MobileWorkspaceWriteLease.shared.withLease(for: workspaceRoot) {
+                    try await MainActor.run {
+                        guard mobileWorkspaceRootIdentity(store.root) == mobileWorkspaceRootIdentity(workspaceRoot) else {
+                            return "Tool error: the selected workspace changed while this write was waiting. Retry the write."
                         }
+                        if let current = try? Data(contentsOf: target) {
+                            switch ReadLedger.shared.state(for: target, data: current) {
+                            case .unread: return "write_file needs a prior read_file for \(path). Read it first."
+                            case .stale: return "write_file: \(path) changed since you last read it. Read it again."
+                            case .fresh: break
+                            }
+                        }
+                        try store.write(relativePath: path, data: Data(content.utf8))
+                        // Record the just-written hash so a second write without re-read still passes,
+                        // matching `WorkspaceTools.writeFile:341`.
+                        ReadLedger.shared.record(target, data: Data(content.utf8))
+                        return "Wrote \(content.utf8.count) bytes to \(path)." + MobileLessons.fileNotice(root: store.root, path: path)
                     }
-                    try store.write(relativePath: path, data: Data(content.utf8))
-                    // Record the just-written hash so a second write without re-read still passes,
-                    // matching `WorkspaceTools.writeFile:341`.
-                    if let written = try? Data(contentsOf: target) { ReadLedger.shared.record(target, data: written) }
-                    else { ReadLedger.shared.record(target, data: Data(content.utf8)) }
-                    return "Wrote \(content.utf8.count) bytes to \(path)." + MobileLessons.fileNotice(root: store.root, path: path)
                 }
-                return result
             },
 
             AgentToolSpec(
@@ -149,8 +216,16 @@ enum AgentTools {
                 guard let edits = input.objectArray("edits") else {
                     return "Tool error: edits must be an array of {old_text, new_text} objects."
                 }
-                return await FileEditTools.edit(path: path, edits: edits) { relative in
-                    try await MainActor.run { try store.resolve(relative) }
+                let editsData = try JSONSerialization.data(withJSONObject: edits, options: [.sortedKeys])
+                let (workspaceRoot, target) = try await MainActor.run { (store.root, try store.resolve(path)) }
+                return try await MobileWorkspaceWriteLease.shared.withLease(for: workspaceRoot) {
+                    guard mobileWorkspaceRootIdentity(await MainActor.run { store.root }) == mobileWorkspaceRootIdentity(workspaceRoot) else {
+                        return "Tool error: the selected workspace changed while this edit was waiting. Retry the edit."
+                    }
+                    guard let edits = (try? JSONSerialization.jsonObject(with: editsData)) as? [[String: Any]] else {
+                        return "Tool error: edits could not be restored after waiting for the workspace. Retry the edit."
+                    }
+                    return await FileEditTools.edit(path: path, edits: edits) { _ in target }
                 }
             },
 
@@ -192,7 +267,15 @@ enum AgentTools {
                 let path = try input.required("path", tool: "remove_file")
                 let reason = try input.required("reason", tool: "remove_file")
                 let referenceTerms = try input.required("referenceTerms", tool: "remove_file")
-                return await MainActor.run { Self.removeFile(path: path, reason: reason, referenceTerms: referenceTerms, store: store) }
+                let workspaceRoot = await MainActor.run { store.root }
+                return try await MobileWorkspaceWriteLease.shared.withLease(for: workspaceRoot) {
+                    await MainActor.run {
+                        guard mobileWorkspaceRootIdentity(store.root) == mobileWorkspaceRootIdentity(workspaceRoot) else {
+                            return "\(Self.preservedMarker) The selected workspace changed while removal was waiting; the artifact was kept."
+                        }
+                        return Self.removeFile(path: path, reason: reason, referenceTerms: referenceTerms, store: store)
+                    }
+                }
             },
 
             AgentToolSpec(
@@ -232,25 +315,65 @@ enum AgentTools {
         [
             AgentToolSpec(
                 name: "run_command",
-                description: "Run a command. Virtual commands (\(LocalShell.commands.joined(separator: ", "))) run on-phone; build/test commands (npm, swift, dotnet, cargo, pytest, gradle, xcodebuild) are forwarded to the paired desktop when available, otherwise they return a remote-unavailable hint.",
-                schema: object(["command": string("The command line to run.")], required: ["command"])
+                description: "Run a command. Virtual commands (\(LocalShell.commands.joined(separator: ", "))) run on-phone; build/test commands are forwarded to the paired desktop. Build-lock waiting counts toward timeout_seconds; use wait_command with a reported holder PID instead of polling.",
+                schema: object([
+                    "command": string("The command line to run."),
+                    "timeout_seconds": ["type": "integer", "description": "Maximum runtime in seconds on the paired desktop. Default 120, minimum 1, maximum 600; the desktop enforces this limit."],
+                ], required: ["command"])
             ) { input in
                 let command = try input.required("command", tool: "run_command")
+                if Self.isSleepPoll(command) { return Self.sleepPollRefusal }
+                let timeout = min(max(input.int("timeout_seconds") ?? 120, 1), 600)
                 // Try remote runner for heavy commands when a desktop is paired.
                 if let remote, Self.shouldTryRemote(command), await MainActor.run(body: {
                     remote.isPaired && store.selectedProject.remoteProjectID != nil && store.selectedProject.remoteProjectID == remote.remoteSelectedProjectID
                 }) {
-                    if let remoteOutput = await Self.runRemote(command, remote: remote) {
+                    if let remoteOutput = await Self.runRemote(command, timeout: timeout, remote: remote) {
                         return remoteOutput.ifEmpty("(no output)")
                     }
                 }
-                return await MainActor.run { shell.execute(command) }.ifEmpty("(no output)")
+                let workspaceRoot = await MainActor.run { store.root }
+                return try await MobileWorkspaceWriteLease.shared.withLease(for: workspaceRoot) {
+                    await MainActor.run {
+                        guard mobileWorkspaceRootIdentity(store.root) == mobileWorkspaceRootIdentity(workspaceRoot) else {
+                            return "Tool error: the selected workspace changed while this command was waiting. Retry it."
+                        }
+                        return shell.execute(command)
+                    }
+                }.ifEmpty("(no output)")
+            },
+
+            AgentToolSpec(
+                name: "wait_command",
+                description: "Wait for a process on the paired desktop by PID, including a SwiftPM build lock holder. Default and maximum wait: 600 seconds. Do not poll with sleep or kill -0 loops.",
+                schema: object([
+                    "pid": ["type": "integer", "description": "Process ID on the paired desktop."],
+                    "log_path": string("Optional workspace-relative log file to include after the wait."),
+                    "timeout_seconds": ["type": "integer", "description": "Seconds to wait. Default and maximum 600."],
+                ], required: ["pid"])
+            ) { input in
+                guard let pid = input.int("pid"), pid > 1 else { return "Tool error: pid must be a process id greater than 1." }
+                guard let remote, await MainActor.run(body: {
+                    remote.isPaired && store.selectedProject.remoteProjectID != nil && store.selectedProject.remoteProjectID == remote.remoteSelectedProjectID
+                }) else {
+                    return "unsupported_on_mobile: wait_command requires a paired desktop with the same project selected."
+                }
+                let timeout = min(max(input.int("timeout_seconds") ?? 600, 1), 600)
+                return await Self.waitRemote(pid: pid, logPath: input.string("log_path"), timeout: timeout, remote: remote)
+            },
+
+            AgentToolSpec(
+                name: MobilePlanSteps.name,
+                description: MobilePlanSteps.description,
+                schema: MobilePlanSteps.schema
+            ) { input in
+                MobilePlanSteps.execute(input.objectArray("steps") ?? [])
             },
 
             AgentToolSpec(
                 name: "ask_user",
-                description: "Ask only for material information the workspace cannot answer. A pre-existing dirty or staged worktree is not a reason to ask; preserve it without mentioning it. After the user answers, immediately continue the original request in the current mode and do not send a status-only reply while tools can proceed.",
-                schema: object(["question": string("The question to show the user.")], required: ["question"])
+                description: "Ask only when the request is materially ambiguous and the workspace cannot settle it. Send every question already known in one call, with a short header and 3 or 4 concrete options per question; the user can write a different answer. Do not ask about a plain information request or a pre-existing dirty worktree. Do not guess an unanswered decision. After the user answers, immediately continue the original request in the current mode.",
+                schema: Self.askUserSchema
             ) { _ in
                 "The user answer is pending."
             },
@@ -329,15 +452,21 @@ enum AgentTools {
             ) { input in
                 let database = try input.required("database", tool: "sql")
                 let statement = try input.required("statement", tool: "sql")
-                let url = try await MainActor.run { try store.resolve(database) }
-                return try LocalSQL(path: url).run(statement).ifEmpty("(no rows)")
+                let (workspaceRoot, url) = try await MainActor.run { (store.root, try store.resolve(database)) }
+                return try await MobileWorkspaceWriteLease.shared.withLease(for: workspaceRoot) {
+                    guard mobileWorkspaceRootIdentity(await MainActor.run { store.root }) == mobileWorkspaceRootIdentity(workspaceRoot) else {
+                        return "Tool error: the selected workspace changed while this SQL command was waiting. Retry it."
+                    }
+                    return try LocalSQL(path: url).run(statement).ifEmpty("(no rows)")
+                }
             },
 
             AgentToolSpec(
                 name: "remember",
-                description: "Record something that must outlive this conversation: a lasting user preference, a settled project choice, or a standing fact about the project. One call per fact, with a short stable key so a later fact on the same subject replaces it. Never record a secret, a guess, or what only matters to the current request.",
+                description: "Record a lasting fact. Preferences default to scope user and stay on this device; use scope project only for a preference that applies to this project. Project facts and decisions always use project scope. Never record a secret or a guess.",
                 schema: object([
                     "kind": string("preference: how the user wants work done. decision: a settled project choice. project: a standing fact about the project."),
+                    "scope": string("For preferences only: user (default) follows the user across projects and stays on this device; project keeps it device-local for this project only. Project facts and decisions always use project scope."),
                     "key": string("Short stable subject, e.g. \"language\", \"goal\", \"design-system\"."),
                     "text": string("The fact itself, one sentence, written so it stands alone months later. The project keys \"architecture\", \"conventions\" and \"design-system\" may run to 1,200 characters."),
                 ], required: ["kind", "text"])
@@ -345,7 +474,10 @@ enum AgentTools {
                 let kind = try input.required("kind", tool: "remember")
                 let text = try input.required("text", tool: "remember")
                 let key = input.string("key") ?? ""
-                return await MainActor.run { MobileFacts.record(root: store.root, kind: kind, key: key, text: text) }
+                let scope = input.string("scope") ?? "user"
+                return await MainActor.run {
+                    MobileFacts.record(root: store.root, kind: kind, key: key, text: text, scope: scope)
+                }
             },
 
             AgentToolSpec(
@@ -403,12 +535,23 @@ enum AgentTools {
         command.range(of: remoteHeavyPattern, options: .regularExpression) != nil
     }
 
-    private static func runRemote(_ command: String, remote: RemoteControlClient) async -> String? {
+    private static let sleepPollPattern = #"^\s*sleep\s+[0-9.]+\s*(?:;|&&|\n)"#
+    private static let sleepPollRefusal = "Tool error: do not poll with sleep or kill -0. Call wait_command with the process PID (and optional log_path), or rerun the command with a larger timeout_seconds."
+
+    private static func isSleepPoll(_ command: String) -> Bool {
+        command.range(of: sleepPollPattern, options: .regularExpression) != nil
+    }
+
+    private static func runRemote(_ command: String, timeout: Int, remote: RemoteControlClient) async -> String? {
         // Check pairing on main actor
         let isPaired = await MainActor.run { remote.isPaired }
         guard isPaired else { return nil }
         do {
-            let response = try await remote.command(kind: "run_command", payload: ["command": .string(command)])
+            let response = try await remote.command(
+                kind: "run_command",
+                payload: ["command": .string(command), "timeout_seconds": .number(Double(timeout))],
+                timeout: 630
+            )
             // Desktop may require approval
             if response.status == "approval-required", let approvalId = response.approvalId {
                 return "Remote desktop needs approval (id \(approvalId)). Approve on desktop Settings → Access Mode, or run a virtual command."
@@ -431,6 +574,28 @@ enum AgentTools {
         } catch {
             // Network / pairing error → fallback
             return nil
+        }
+    }
+
+    private static func waitRemote(pid: Int, logPath: String?, timeout: Int, remote: RemoteControlClient) async -> String {
+        var payload: [String: RemoteJSONValue] = [
+            "pid": .number(Double(pid)),
+            "timeout_seconds": .number(Double(timeout)),
+        ]
+        if let logPath, !logPath.isEmpty { payload["log_path"] = .string(logPath) }
+        do {
+            let response = try await remote.command(kind: "wait_command", payload: payload, timeout: 630)
+            if response.status == "approval-required", let approvalId = response.approvalId {
+                return "Remote desktop needs approval (id \(approvalId)). Approve the request on desktop Settings → Access Mode, then retry wait_command."
+            }
+            if case .object(let result) = response.result {
+                if let output = result["output"]?.string, !output.isEmpty { return output }
+                if let preview = result["outputPreview"]?.string, !preview.isEmpty { return preview }
+            }
+            if let error = response.error, !error.isEmpty { return "Remote wait_command failed: \(error)" }
+            return "Remote wait_command returned no result (status: \(response.status))."
+        } catch {
+            return "Remote wait_command failed: \(error.localizedDescription)"
         }
     }
 
@@ -507,8 +672,75 @@ enum AgentTools {
     ], required: ["action"])
 
     static func string(_ description: String) -> [String: Any] { ["type": "string", "description": description] }
+
+    @MainActor
+    private static let askUserSchema: [String: Any] = object([
+        "questions": [
+            "type": "array",
+            "description": "Every clarification question needed now, ordered by importance.",
+            "items": object([
+                "header": string("Short label for the question, at most 16 characters."),
+                "question": string("The question, written so one answer resolves it."),
+                "options": [
+                    "type": "array",
+                    "description": "3 or 4 concrete answers, each written as a short title followed by an em dash and a one-line detail.",
+                    "items": string("A suggested answer."),
+                ],
+            ], required: ["question", "options"]),
+        ],
+    ], required: ["questions"])
 }
 
 private extension String {
     func ifEmpty(_ fallback: String) -> String { trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? fallback : self }
+}
+
+/// Progress ledger: the agent keeps a short, visible step list for multi-step work.
+enum MobilePlanSteps {
+    static let name = "update_plan"
+    static let description = "Record or update the step list for the work in progress, so the user can follow it and you never re-derive what is already settled. Use it only for complex work that needs a plan; never for simple work, and never write a single-step plan. Send the complete list on every call: exactly one step may be in_progress, and steps already finished stay in the list as done. Call it again right after finishing a step, not in a separate turn of its own."
+    nonisolated(unsafe) static let schema: [String: Any] = [
+        "type": "object",
+        "properties": ["steps": [
+            "type": "array",
+            "description": "The full ordered step list, not just the changed entries.",
+            "items": [
+                "type": "object",
+                "properties": [
+                    "title": ["type": "string", "description": "Short imperative description of the step."],
+                    "status": ["type": "string", "enum": ["pending", "in_progress", "done"]],
+                ],
+                "required": ["title", "status"],
+            ],
+        ]],
+        "required": ["steps"],
+    ]
+    private static let markers = [("pending", "☐"), ("in_progress", "▸"), ("done", "☑")]
+
+    static func execute(_ steps: [[String: Any]]) -> String {
+        let invalid = "Tool error: the plan must be a list of steps, each with a title and a status of pending, in_progress, or done."
+        guard !steps.isEmpty else { return invalid }
+        var lines: [String] = []
+        for step in steps {
+            guard let title = (step["title"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty,
+                  let marker = markers.first(where: { $0.0 == step["status"] as? String })?.1 else { return invalid }
+            lines.append("\(marker) \(title)")
+        }
+        let done = steps.filter { $0["status"] as? String == "done" }.count
+        return "Plan updated: \(lines.count) steps, \(done) done.\n" + lines.joined(separator: "\n")
+    }
+
+    /// The plan the agent last recorded since the user's latest message, read back from
+    /// the transcript so the live card needs no state of its own. Empty when there is none.
+    static func current(in transcript: [AgentTurn]) -> [(title: String, status: String)] {
+        for turn in transcript.reversed() {
+            if turn.role == .user { return [] }
+            guard turn.role == .tool, turn.toolName == name, !turn.failed, !turn.isRunning else { continue }
+            let steps = turn.text.split(separator: "\n").compactMap { line in
+                markers.first { line.hasPrefix($0.1 + " ") }.map { (title: String(line.dropFirst(2)), status: $0.0) }
+            }
+            if !steps.isEmpty { return steps }
+        }
+        return []
+    }
 }

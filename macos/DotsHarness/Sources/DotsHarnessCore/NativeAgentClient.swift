@@ -5,67 +5,14 @@ import Foundation
 import HarnessPluginKit
 import PluginRuntime
 
-/// Remembers an endpoint that explicitly rejected `prompt_cache_key` so a
-/// compatible route does not pay for the same failed request on every turn.
+/// Remembers an endpoint that explicitly rejected an optional request field so
+/// a compatible route does not pay for the same failed request on every turn.
 /// This is process-local capability memory, not prompt or credential storage.
-private final class PromptCacheCapabilityMemory: @unchecked Sendable {
-    static let shared = PromptCacheCapabilityMemory()
-    /// Same shape, other optional field: endpoints that rejected `stream_options`.
-    static let streamUsage = PromptCacheCapabilityMemory()
-
-    private let lock = NSLock()
-    private var unsupportedEndpoints = Set<String>()
-
-    func isUnsupported(for configuration: AgentConfiguration) -> Bool {
-        let key = Self.key(for: configuration)
-        lock.lock()
-        defer { lock.unlock() }
-        return unsupportedEndpoints.contains(key)
-    }
-
-    func markUnsupported(for configuration: AgentConfiguration) {
-        let key = Self.key(for: configuration)
-        lock.lock()
-        unsupportedEndpoints.insert(key)
-        lock.unlock()
-    }
-
-    private static func key(for configuration: AgentConfiguration) -> String {
-        configuration.api + "|" + configuration.baseURL
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-    }
-}
-
-final class NativeCompactionCapabilityMemory: @unchecked Sendable {
-    static let shared = NativeCompactionCapabilityMemory()
-
-    private let lock = NSLock()
-    private var unsupportedEndpoints = Set<String>()
-
-    func isUnsupported(for configuration: AgentConfiguration) -> Bool {
-        let key = Self.key(for: configuration)
-        lock.lock()
-        defer { lock.unlock() }
-        return unsupportedEndpoints.contains(key)
-    }
-
-    func markUnsupported(for configuration: AgentConfiguration) {
-        let key = Self.key(for: configuration)
-        lock.lock()
-        unsupportedEndpoints.insert(key)
-        lock.unlock()
-    }
-
-    private static func key(for configuration: AgentConfiguration) -> String {
-        configuration.api + "|" + configuration.baseURL
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-    }
-}
-
-final class AnthropicContextEditingCapabilityMemory: @unchecked Sendable {
-    static let shared = AnthropicContextEditingCapabilityMemory()
+final class EndpointCapabilityMemory: @unchecked Sendable {
+    static let promptCache = EndpointCapabilityMemory()
+    static let streamUsage = EndpointCapabilityMemory()
+    static let nativeCompaction = EndpointCapabilityMemory()
+    static let contextEditing = EndpointCapabilityMemory()
 
     private let lock = NSLock()
     private var unsupportedEndpoints = Set<String>()
@@ -134,7 +81,7 @@ public struct NativeAgentClient: Sendable {
         }
         let responseStyle = ResponseStyleResolver.resolve(
             preference: configuration.responseStylePreference,
-            prompt: messages.last(where: { $0.role == .user })?.content
+            prompt: AgentMessage.responseStylePrompt(in: messages)
         )
         // Every request gets an output ceiling, including Standard mode. A
         // maximum reasoning setting without max_output_tokens can otherwise
@@ -146,7 +93,7 @@ public struct NativeAgentClient: Sendable {
             decision: responseStyle
         )
         var effectiveCachePolicy = cachePolicy
-        if PromptCacheCapabilityMemory.shared.isUnsupported(for: configuration) {
+        if EndpointCapabilityMemory.promptCache.isUnsupported(for: configuration) {
             effectiveCachePolicy.promptCacheKey = nil
         }
         // The cache key is shared by conversations; boundaries are per conversation.
@@ -180,7 +127,7 @@ public struct NativeAgentClient: Sendable {
         let streamsChat = onDelta != nil && !streamsAnthropic && !streamsGemini && api != RouterAPIKind.chatGPT.rawValue
         if streamsAnthropic || streamsChat { body["stream"] = true }
         // Without this a streamed chat completion carries no usage at all.
-        if streamsChat, !PromptCacheCapabilityMemory.streamUsage.isUnsupported(for: configuration) {
+        if streamsChat, !EndpointCapabilityMemory.streamUsage.isUnsupported(for: configuration) {
             body["stream_options"] = ["include_usage": true]
         }
         // Prompt caches match the prefix byte for byte; sorted keys keep tool
@@ -201,6 +148,12 @@ public struct NativeAgentClient: Sendable {
             anthropicContextEditing: api == RouterAPIKind.anthropic.rawValue
                 && body["context_management"] != nil
         )
+
+        // One more attempt after an optional request field was marked unsupported.
+        func retry(_ cachePolicy: AgentCachePolicy) async throws -> AgentResponse {
+            try await complete(messages: messages, tools: tools, cachePolicy: cachePolicy,
+                               outputBudget: outputBudget, retryCount: retryCount, onDelta: onDelta)
+        }
 
         do {
             let (responseData, response, firstTokenMilliseconds) = try await Self.dataTimingFirstDelta(for: request, session: session, api: api, onDelta: onDelta)
@@ -236,20 +189,17 @@ public struct NativeAgentClient: Sendable {
                    lowerMessage.contains("prompt_cache_breakpoint"),
                    AgentPromptCacheComparisons.shared.supportsExplicitBreakpoint(configuration) {
                     AgentPromptCacheComparisons.shared.rejectExplicitBreakpoint(configuration)
-                    return try await complete(messages: messages, tools: tools, cachePolicy: cachePolicy,
-                                              outputBudget: outputBudget, retryCount: retryCount, onDelta: onDelta)
+                    return try await retry(cachePolicy)
                 }
                 if [400, 422].contains(status), body["stream_options"] != nil, lowerMessage.contains("stream_options") {
-                    PromptCacheCapabilityMemory.streamUsage.markUnsupported(for: configuration)
-                    return try await complete(messages: messages, tools: tools, cachePolicy: cachePolicy,
-                                              outputBudget: outputBudget, retryCount: retryCount, onDelta: onDelta)
+                    EndpointCapabilityMemory.streamUsage.markUnsupported(for: configuration)
+                    return try await retry(cachePolicy)
                 }
                 if [400, 422].contains(status), configuration.api == RouterAPIKind.anthropic.rawValue,
                    body["diagnostics"] != nil,
                    (lowerMessage.contains("diagnostics") || lowerMessage.contains("previous_message_id")) {
                     AgentPromptCacheComparisons.shared.rejectAnthropicDiagnostics(configuration)
-                    return try await complete(messages: messages, tools: tools, cachePolicy: cachePolicy,
-                                              outputBudget: outputBudget, retryCount: retryCount, onDelta: onDelta)
+                    return try await retry(cachePolicy)
                 }
                 if [400, 422].contains(status), body["prompt_cache_options"] != nil,
                    (lowerMessage.contains("prompt_cache_options") || lowerMessage.contains("comparison_response_id")) {
@@ -265,8 +215,7 @@ public struct NativeAgentClient: Sendable {
                     if !AgentPromptCacheComparisons.shared.supports(configuration) {
                         fallbackPolicy.comparisonResponseID = nil
                     }
-                    return try await complete(messages: messages, tools: tools, cachePolicy: fallbackPolicy,
-                                              outputBudget: outputBudget, retryCount: retryCount, onDelta: onDelta)
+                    return try await retry(fallbackPolicy)
                 }
                 if [400, 422].contains(status), configuration.api == RouterAPIKind.anthropic.rawValue,
                    configuration.anthropicCacheTTL == .oneHour,
@@ -280,34 +229,20 @@ public struct NativeAgentClient: Sendable {
                 if [400, 422].contains(status),
                    body["prompt_cache_key"] != nil,
                    message.lowercased().contains("prompt_cache_key") {
-                    PromptCacheCapabilityMemory.shared.markUnsupported(for: configuration)
-                    return try await complete(
-                        messages: messages,
-                        tools: tools,
-                        cachePolicy: cachePolicy,
-                        outputBudget: outputBudget,
-                        retryCount: retryCount,
-                        onDelta: onDelta
-                    )
+                    EndpointCapabilityMemory.promptCache.markUnsupported(for: configuration)
+                    return try await retry(cachePolicy)
                 }
                 if [400, 422].contains(status),
                    api == RouterAPIKind.anthropic.rawValue,
                    body["context_management"] != nil,
                    Self.isAnthropicContextEditingRejection(message) {
-                    AnthropicContextEditingCapabilityMemory.shared.markUnsupported(for: configuration)
-                    return try await complete(
-                        messages: messages,
-                        tools: tools,
-                        cachePolicy: cachePolicy,
-                        outputBudget: outputBudget,
-                        retryCount: retryCount,
-                        onDelta: onDelta
-                    )
+                    EndpointCapabilityMemory.contextEditing.markUnsupported(for: configuration)
+                    return try await retry(cachePolicy)
                 }
                 if [400, 422].contains(status),
                    configuration.supportsNativeCompaction,
                    Self.isNativeCompactionRejection(message) {
-                    NativeCompactionCapabilityMemory.shared.markUnsupported(for: configuration)
+                    EndpointCapabilityMemory.nativeCompaction.markUnsupported(for: configuration)
                     var fallback = configuration
                     fallback.supportsNativeCompaction = false
                     var result = try await NativeAgentClient(configuration: fallback, session: session).complete(
@@ -324,7 +259,8 @@ public struct NativeAgentClient: Sendable {
                     statusCode: status,
                     retryable: Self.isRetryable(status),
                     isLimit: Self.limitKind(from: value, status: status) != nil,
-                    retryAt: NativeAgentError.retryAt(from: response)
+                    retryAt: NativeAgentError.retryAt(from: response),
+                    isContextWindowExceeded: Self.contextWindowOverflow(from: value)
                 )
             }
             var result: AgentResponse
@@ -401,18 +337,18 @@ public struct NativeAgentClient: Sendable {
             result.effectiveCacheTTLSeconds = cacheSnapshot.effectiveTTLSeconds
             AgentPromptCacheComparisons.shared.recordBoundary(configuration, key: boundaryScope, boundary: boundary)
             return result
-        } catch let error as NativeAgentError {
-            throw error
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch let error as URLError where error.code == .cancelled {
-            throw CancellationError()
         } catch {
-            if Task.isCancelled {
-                throw CancellationError()
-            }
-            throw NativeAgentError(error.localizedDescription, retryable: Self.isRetryable(error))
+            throw Self.requestError(error)
         }
+    }
+
+    /// Cancellation stays cancellation; anything else becomes a `NativeAgentError`.
+    private static func requestError(_ error: Error) -> Error {
+        if error is NativeAgentError { return error }
+        if error is CancellationError || (error as? URLError)?.code == .cancelled || Task.isCancelled {
+            return CancellationError()
+        }
+        return NativeAgentError(error.localizedDescription, retryable: isRetryable(error), isNetworkFailure: isRetryable(error))
     }
 
     private static func isNativeCompactionRejection(_ message: String) -> Bool {
@@ -470,15 +406,8 @@ public struct NativeAgentClient: Sendable {
                 throw NativeAgentError(AppCopy.text("media.invalidOutput"))
             }
             return try MediaGenerationClient.save(imageData, kind: .image, paths: paths)
-        } catch let error as NativeAgentError {
-            throw error
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch let error as URLError where error.code == .cancelled {
-            throw CancellationError()
         } catch {
-            if Task.isCancelled { throw CancellationError() }
-            throw NativeAgentError(error.localizedDescription, retryable: Self.isRetryable(error))
+            throw Self.requestError(error)
         }
     }
 }

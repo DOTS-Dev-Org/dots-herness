@@ -108,13 +108,38 @@ public struct SupportPaths: Sendable {
     public var publishers: URL { root.appendingPathComponent("publishers.json") }
 
     public func ensure(fileManager: FileManager = .default) {
-        try? fileManager.createDirectory(at: plugins, withIntermediateDirectories: true)
-        try? fileManager.createDirectory(at: presets, withIntermediateDirectories: true)
-        try? fileManager.createDirectory(at: models, withIntermediateDirectories: true)
-        try? fileManager.createDirectory(at: runtime, withIntermediateDirectories: true)
+        // The support directory holds the trust file and the plugin folder.
+        // Both decide what may run inside this process, so neither may be
+        // writable by another user on the machine.
+        try? fileManager.createDirectory(
+            at: root,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700]
+        )
+        try? fileManager.createDirectory(
+            at: plugins,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700]
+        )
+        try? fileManager.createDirectory(
+            at: presets,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700]
+        )
+        try? fileManager.createDirectory(
+            at: models,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700]
+        )
+        try? fileManager.createDirectory(
+            at: runtime,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700]
+        )
         try? fileManager.createDirectory(
             at: root.appendingPathComponent("skills", isDirectory: true),
-            withIntermediateDirectories: true
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700]
         )
     }
 }
@@ -133,10 +158,10 @@ public final class PluginCatalog: ObservableObject {
         self.paths = paths
     }
 
-    public func registerBuiltin(_ plugin: HarnessPlugin.Type, refresh: Bool = true) {
+    public func registerBuiltin(_ plugin: any DefaultPlugin.Type, refresh: Bool = true) {
         let manifest = plugin.manifest
         builtinManifests[manifest.id] = manifest
-        builtins[manifest.id] = { plugin.initForCatalog() }
+        builtins[manifest.id] = { plugin.create() }
         if !entries.contains(where: { $0.manifest.id == manifest.id }) {
             entries.append(CatalogEntry(
                 manifest: manifest,
@@ -268,6 +293,9 @@ public final class PluginCatalog: ObservableObject {
         let file = TrustFile(trust: trustOverrides, disabled: Array(disabled).sorted())
         if let data = try? JSONEncoder().encode(file) {
             try? data.write(to: paths.trust, options: .atomic)
+            // The trust file decides which native plugin may run inside this
+            // process; it must not be readable or writable by anyone else.
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: paths.trust.path)
         }
     }
 }
@@ -275,13 +303,4 @@ public final class PluginCatalog: ObservableObject {
 private struct TrustFile: Codable {
     var trust: [String: PluginTrust]
     var disabled: [String]
-}
-
-private extension HarnessPlugin {
-    static func initForCatalog() -> HarnessPlugin {
-        if let type = self as? any DefaultPlugin.Type {
-            return type.create()
-        }
-        fatalError("Built-in plugin \(manifest.id) must conform to DefaultPlugin")
-    }
 }

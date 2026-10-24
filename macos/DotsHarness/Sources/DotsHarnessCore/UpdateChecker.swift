@@ -118,7 +118,7 @@ public final class UpdateChecker: ObservableObject {
         components?.queryItems = queryItems
 
         guard let targetURL = components?.url else {
-            state = .failed(message: "Geçersiz güncelleme sunucu URL'si")
+            state = .failed(message: AppCopy.text("updates.error.url"))
             return
         }
 
@@ -129,12 +129,12 @@ public final class UpdateChecker: ObservableObject {
         do {
             let (data, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse else {
-                state = .failed(message: "Sunucudan beklenmeyen yanıt alındı")
+                state = .failed(message: AppCopy.text("updates.error.response"))
                 return
             }
 
             guard (200...299).contains(http.statusCode) else {
-                state = .failed(message: "Güncelleme servisi hatası (\(http.statusCode))")
+                state = .failed(message: AppCopy.format("updates.error.status", http.statusCode))
                 return
             }
 
@@ -169,8 +169,24 @@ public final class UpdateChecker: ObservableObject {
             }
         }
 
-        if let url = targetURL {
-            NSWorkspace.shared.open(url)
+        // The download address comes from the update server. Opening it
+        // unchecked would let a hijacked endpoint run anything in the user's
+        // name (`file://`, `x-apple-...`), so only the release hosts we publish
+        // on are allowed.
+        guard let url = targetURL, Self.isAllowedDownloadURL(url) else {
+            state = .failed(message: AppCopy.text("updates.error.url"))
+            return
         }
+        NSWorkspace.shared.open(url)
+    }
+
+    /// Hosts that may serve an update, and nothing else.
+    nonisolated static let allowedDownloadHosts = ["dots.net.tr", "github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com"]
+
+    /// True for an HTTPS address on a host that publishes our releases.
+    nonisolated public static func isAllowedDownloadURL(_ url: URL) -> Bool {
+        guard url.scheme?.lowercased() == "https", url.user == nil, url.password == nil,
+              let host = url.host?.lowercased(), !host.isEmpty else { return false }
+        return allowedDownloadHosts.contains { host == $0 || host.hasSuffix("." + $0) }
     }
 }

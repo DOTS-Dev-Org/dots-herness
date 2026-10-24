@@ -20,10 +20,13 @@ public static class NativeWorkspaceTools
         ".json", ".kts", ".kt", ".m", ".mm", ".php", ".plist", ".props", ".py", ".resx", ".rs", ".swift",
         ".targets", ".toml", ".ts", ".tsx", ".xml", ".xaml", ".yaml", ".yml",
     };
-    // Shared with the glob walk in NativeFileEdit, which has to skip the same trees.
+    // The one list of build, dependency and runtime trees no search descends into, applied
+    // even inside a repository: .sandbox-cache is written by HerNess and is in no .gitignore.
+    // Mirrors WorkspaceTools.ignoredScanDirectories on macOS.
     internal static readonly HashSet<string> IgnoredScanDirectories = new(StringComparer.OrdinalIgnoreCase)
     {
         ".git", ".mem", ".build", "build", "bin", "obj", "dist", "node_modules", "Pods", "DerivedData",
+        ".sandbox-cache", ".gradle", "target", "vendor", ".next", ".venv", "__pycache__", "coverage",
     };
     private static readonly HashSet<string> ProtectedNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -45,7 +48,13 @@ public static class NativeWorkspaceTools
             ("pattern", "Regular expression to match against each line.", true),
             ("path", "Relative directory to search. Defaults to the workspace root.", false),
             ("extensions", "Optional comma-separated file extensions to limit the search, e.g. cs,json.", false))),
-        new("run_command", "Run a shell command with the workspace as its current directory.", Schema(("command", "Command to run in the workspace.", true))),
+        new("run_command", "Run a shell command in the workspace. The timeout is enforced as requested (default 120 seconds, maximum 600). If a build lock times out the command, use wait_command with its holder PID and rerun instead of polling.", Schema(
+            ("command", "Command to run in the workspace.", true),
+            ("timeout_seconds", "Seconds before the command is stopped. Default 120, maximum 600.", false))),
+        new("wait_command", "Wait for a process by PID, including a SwiftPM build lock holder. Default and maximum wait: 600 seconds. Do not poll with sleep or kill -0 loops.", Schema(
+            ("pid", "Process ID to wait for.", true),
+            ("log_path", "Optional workspace-relative log file to include after the wait.", false),
+            ("timeout_seconds", "Seconds to wait. Default and maximum 600.", false))),
         .. NativeFileEdit.Definitions,
         new(GeneratedMediaName, "Copy a generated image from the current conversation into the current coding workspace. Use this before editing project files that should reference the asset.", Schema(
             ("source_path", "Exact absolute path from the Generated media artifact context.", true),
@@ -61,7 +70,7 @@ public static class NativeWorkspaceTools
         Definitions.Where(tool => !IsWorkspaceMutation(tool.Name)).ToArray();
 
     public static bool IsReadOnly(string name) =>
-        name is "list_files" or "read_file" or "grep_files" or NativeFileEdit.GlobName or GeneratedMediaInspectionName;
+        name is "list_files" or "read_file" or "grep_files" or "wait_command" or NativeFileEdit.GlobName or GeneratedMediaInspectionName;
 
     public static bool IsWorkspaceMutation(string name) =>
         name is "write_file" or NativeFileEdit.EditName or "remove_file" or GeneratedMediaName;
@@ -106,13 +115,21 @@ public static class NativeWorkspaceTools
                 "write_file" => WriteFile(input["path"]?.GetValue<string>(), input["content"]?.GetValue<string>(), workspace),
                 NativeFileEdit.EditName or NativeFileEdit.GlobName => NativeFileEdit.Execute(call, workspace),
                 "remove_file" => RemoveFile(input["path"]?.GetValue<string>(), input["reason"]?.GetValue<string>(), input["referenceTerms"]?.GetValue<string>(), workspace),
+                "run_command" when IsSleepPoll(input["command"]?.GetValue<string>() ?? "") => SleepPollRefusal,
                 "run_command" => await RunCommandAsync(
                     input["command"]?.GetValue<string>(),
                     workspace,
                     ct,
+                    timeoutSeconds: CommandTimeout(input["timeout_seconds"]),
                     commandSandbox: commandSandbox,
                     additionalWritableRoots: additionalWritableRoots,
                     networkAccess: networkAccess),
+                "wait_command" => await WaitForProcessAsync(
+                    Count(input["pid"]),
+                    input["log_path"]?.GetValue<string>(),
+                    input["timeout_seconds"],
+                    workspace,
+                    ct),
                 _ => $"Unknown tool: {call.Name}",
             };
         }
@@ -127,8 +144,44 @@ public static class NativeWorkspaceTools
         CancellationToken ct = default,
         AgentCommandSandboxMode commandSandbox = AgentCommandSandboxMode.Legacy,
         IReadOnlyList<string>? additionalWritableRoots = null,
-        bool networkAccess = false) =>
-        RunCommandAsync(command, workspace, ct, onOutput, commandSandbox, additionalWritableRoots, networkAccess);
+        bool networkAccess = false,
+        int timeoutSeconds = DefaultCommandTimeout) =>
+        RunCommandAsync(command, workspace, ct, onOutput, commandSandbox, additionalWritableRoots, networkAccess, timeoutSeconds);
+
+    /// `sleep 30; tail log` loops resend the whole context every round for nothing.
+    internal static bool IsSleepPoll(string command) =>
+        System.Text.RegularExpressions.Regex.IsMatch(command, @"^\s*sleep\s+[0-9.]+\s*(?:;|&&|\n)");
+    internal const string SleepPollRefusal = "Tool error: do not poll with sleep or kill -0. Call wait_command with the process PID (and optional log_path), or rerun the command in the foreground with a larger timeout_seconds (maximum 600).";
+
+    public const int DefaultCommandTimeout = 120;
+    public const int MaxCommandTimeout = 600;
+
+    /// The model's timeout_seconds, clamped; anything missing or invalid is the default.
+    public static int CommandTimeout(JsonNode? node) =>
+        Count(node) is int seconds and > 0 ? Math.Min(seconds, MaxCommandTimeout) : DefaultCommandTimeout;
+
+    public static int WaitCommandTimeout(JsonNode? node) =>
+        Count(node) is int seconds and > 0 ? Math.Min(seconds, MaxCommandTimeout) : MaxCommandTimeout;
+
+    private static readonly System.Text.RegularExpressions.Regex SwiftPmLockPattern = new(
+        @"Another instance of SwiftPM(?: \(PID: (?<pid>\d+)\))? is already running",
+        System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    internal static bool IsSwiftPmLockMessage(string? output) =>
+        !string.IsNullOrEmpty(output) && SwiftPmLockPattern.IsMatch(output);
+
+    /// SwiftPM waits silently while another process builds in the same directory;
+    /// report its PID so the model can block on it, then retry the original command.
+    internal static string LockNotice(string output)
+    {
+        var match = SwiftPmLockPattern.Match(output);
+        if (!match.Success) return "";
+        var pid = match.Groups["pid"].Value;
+        var wait = pid.Length > 0
+            ? $"Call wait_command with pid {pid} and timeout_seconds up to {MaxCommandTimeout}, then rerun the build."
+            : "SwiftPM did not report a holder PID, so wait_command cannot target this lock.";
+        return $"\nNote: another process is building in this package's .build directory. {wait} Do not pass a new --scratch-path because it rebuilds every dependency from scratch. If the holder stays at 0% CPU for minutes, tell the user instead of working around it.";
+    }
 
     public static string CopyGeneratedMedia(
         string? sourcePath,
@@ -164,12 +217,15 @@ public static class NativeWorkspaceTools
     {
         var directory = Resolve(path, workspace);
         if (!Directory.Exists(directory)) return $"Not a directory: {path}";
-        var names = Directory.EnumerateFileSystemEntries(directory)
+        var entries = Directory.EnumerateFileSystemEntries(directory)
             .Where(item => !Path.GetFileName(item).Equals(".mem", StringComparison.Ordinal) && !Path.GetFileName(item).StartsWith(".", StringComparison.Ordinal))
+            .ToList();
+        var names = entries
             .OrderBy(item => Path.GetFileName(item), StringComparer.OrdinalIgnoreCase)
             .Take(200)
             .Select(item => Directory.Exists(item) ? Path.GetFileName(item) + Path.DirectorySeparatorChar : Path.GetFileName(item));
         var result = string.Join('\n', names);
+        if (entries.Count > 200) result += $"\n[{entries.Count - 200} more entries not shown; use glob or a narrower path]";
         return result.Length == 0 ? "Directory is empty." : result;
     }
 
@@ -212,10 +268,9 @@ public static class NativeWorkspaceTools
         }
         var body = string.Join('\n', emitted);
         ReadLedger.RecordLines(file, bytes, start, line, lines.Length);
-        // A default page that stops before the end of the file says so; an explicit
-        // limit that was met in full is the answer that was asked for.
-        var more = limit is null ? line <= lines.Length : line <= end;
-        return more ? body + $"\n\n[truncated] Continue with offset: {line}" : body;
+        // Any page that stops before the end of the file says where to continue and how
+        // long the file is, so the model knows whether it has seen all of it.
+        return line <= lines.Length ? body + $"\n\n[truncated] Continue with offset: {line} (file has {lines.Length} lines)" : body;
     }
 
     private static int? Count(JsonNode? node)
@@ -234,6 +289,44 @@ public static class NativeWorkspaceTools
     private const int GrepMaxMatches = 100;
     private const int GrepMaxFiles = 5_000;
     private const int GrepMaxLineCharacters = 240;
+
+    /// <summary>
+    /// The files a search under `root` looks at. Inside a repository that is git's own list -
+    /// tracked plus untracked, minus whatever .gitignore excludes - so a project's ignored
+    /// output is never read; elsewhere a walk. Both skip IgnoredScanDirectories and symlinks.
+    /// </summary>
+    internal static IEnumerable<string> ScanFiles(string root)
+    {
+        // ponytail: git runs once per call; cache by .git/index stamp if large repositories feel it.
+        var listed = WorkspaceFileIndex.Git(root, "-c", "core.quotePath=false", "ls-files", "--cached", "--others", "--exclude-standard");
+        if (listed.Count > 0)
+        {
+            foreach (var relative in listed)
+            {
+                // A path git had to quote is skipped, as FileIndex does.
+                if (relative.StartsWith('"') || relative.Split('/').Any(IgnoredScanDirectories.Contains)) continue;
+                var entry = Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));
+                if (File.Exists(entry) && !IsSymlink(entry)) yield return entry;
+            }
+            yield break;
+        }
+        var pending = new Stack<string>();
+        pending.Push(root);
+        while (pending.Count > 0)
+        {
+            IEnumerable<string> entries;
+            try { entries = Directory.EnumerateFileSystemEntries(pending.Pop()); } catch { continue; }
+            foreach (var entry in entries)
+            {
+                if (IsSymlink(entry)) continue;
+                if (Directory.Exists(entry))
+                {
+                    if (!IgnoredScanDirectories.Contains(Path.GetFileName(entry))) pending.Push(entry);
+                }
+                else if (File.Exists(entry)) yield return entry;
+            }
+        }
+    }
 
     /// Line-level regex search, bounded on three axes so one call can never flood
     /// the context: files scanned, matches returned, and characters per line.
@@ -261,42 +354,27 @@ public static class NativeWorkspaceTools
         var matches = new List<string>();
         var scanned = 0;
         var truncated = false;
-        var pending = new Stack<string>();
-        pending.Push(root);
-        while (pending.Count > 0 && !truncated)
+        foreach (var entry in ScanFiles(root))
         {
-            IEnumerable<string> entries;
-            try { entries = Directory.EnumerateFileSystemEntries(pending.Pop()); } catch { continue; }
-            foreach (var entry in entries)
-            {
-                if (IsSymlink(entry)) continue;
-                if (Directory.Exists(entry))
-                {
-                    var name = Path.GetFileName(entry);
-                    if (!IgnoredScanDirectories.Contains(name)) pending.Push(entry);
-                    continue;
-                }
-                if (!File.Exists(entry)) continue;
-                if (filter.Count > 0 && !filter.Contains(Path.GetExtension(entry))) continue;
-                if (++scanned > GrepMaxFiles) { truncated = true; break; }
+            if (filter.Count > 0 && !filter.Contains(Path.GetExtension(entry))) continue;
+            if (++scanned > GrepMaxFiles) { truncated = true; break; }
 
-                string[] lines;
-                try { lines = File.ReadAllLines(entry, new UTF8Encoding(false, true)); }
-                catch { continue; }
-                var relative = Path.GetRelativePath(workspaceRoot, entry).Replace(Path.DirectorySeparatorChar, '/');
-                for (var index = 0; index < lines.Length; index++)
-                {
-                    try { if (!regex.IsMatch(lines[index])) continue; }
-                    catch (System.Text.RegularExpressions.RegexMatchTimeoutException) { continue; }
-                    var line = lines[index];
-                    var shown = line.Length > GrepMaxLineCharacters
-                        ? line[..GrepMaxLineCharacters] + "\u2026"
-                        : line;
-                    matches.Add($"{relative}:{index + 1}:{shown}");
-                    if (matches.Count >= GrepMaxMatches) { truncated = true; break; }
-                }
-                if (truncated) break;
+            string[] lines;
+            try { lines = File.ReadAllLines(entry, new UTF8Encoding(false, true)); }
+            catch { continue; }
+            var relative = Path.GetRelativePath(workspaceRoot, entry).Replace(Path.DirectorySeparatorChar, '/');
+            for (var index = 0; index < lines.Length; index++)
+            {
+                try { if (!regex.IsMatch(lines[index])) continue; }
+                catch (System.Text.RegularExpressions.RegexMatchTimeoutException) { continue; }
+                var line = lines[index];
+                var shown = line.Length > GrepMaxLineCharacters
+                    ? line[..GrepMaxLineCharacters] + "\u2026"
+                    : line;
+                matches.Add($"{relative}:{index + 1}:{shown}");
+                if (matches.Count >= GrepMaxMatches) { truncated = true; break; }
             }
+            if (truncated) break;
         }
 
         if (matches.Count == 0) return "No matches.";
@@ -321,6 +399,11 @@ public static class NativeWorkspaceTools
             }
         }
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        // A symlinked component would let the write land somewhere the
+        // prefix check never saw. remove_file already refuses those.
+        var canonicalRoot = RealPath(Path.GetFullPath(workspace));
+        if (HasSymlinkComponentBelowRoot(canonicalRoot, path) || IsExistingSymlink(file))
+            return $"Symlinked paths cannot be written: {path}";
         var temporary = file + "." + Guid.NewGuid().ToString("N") + ".part";
         try
         {
@@ -451,7 +534,8 @@ public static class NativeWorkspaceTools
         Action<string>? onOutput = null,
         AgentCommandSandboxMode commandSandbox = AgentCommandSandboxMode.Legacy,
         IReadOnlyList<string>? additionalWritableRoots = null,
-        bool networkAccess = false)
+        bool networkAccess = false,
+        int timeoutSeconds = DefaultCommandTimeout)
     {
         if (string.IsNullOrWhiteSpace(command)) return "A command is required.";
         var info = new ProcessStartInfo
@@ -462,6 +546,23 @@ public static class NativeWorkspaceTools
             WorkingDirectory = Path.GetFullPath(workspace),
             CreateNoWindow = true,
         };
+        if (commandSandbox == AgentCommandSandboxMode.StrictNoDesktop && !AgentCommandSandbox.IsAvailable && AgentCommandIsolation.Current is { } isolation)
+        {
+            // Windows isolates through a registered runner; it fails closed when the runner cannot prove isolation.
+            var roots = additionalWritableRoots ?? [];
+            if (isolation.Unavailable(workspace, roots, networkAccess) is { } reason) return $"Tool error: {reason}";
+            var isolated = await isolation.RunAsync(command, workspace, roots, onOutput, TimeSpan.FromSeconds(timeoutSeconds), ct);
+            if (isolated.Error is not null) return $"Tool error: {isolated.Error}";
+            if (isolated.TimedOut)
+            {
+                var partial = KeepHeadAndTail((isolated.Stdout + isolated.Stderr).Trim());
+                return $"Command timed out after {timeoutSeconds} seconds." + LockNotice(partial) + "\n" + partial;
+            }
+            var isolatedText = (isolated.Stdout + isolated.Stderr).Trim();
+            if (isolatedText.Length > 100_000) isolatedText = isolatedText[..100_000] + "\n[truncated]";
+            var status = isolated.ExitCode ?? -1;
+            return string.IsNullOrEmpty(isolatedText) ? $"Command exited with status {status}." : isolatedText + (status == 0 ? "" : $"\nCommand exited with status {status}.") + LockNotice(isolatedText);
+        }
         if (commandSandbox == AgentCommandSandboxMode.StrictNoDesktop)
         {
             if (!AgentCommandSandbox.TryConfigure(info, workspace, out var error, additionalWritableRoots, networkAccess))
@@ -476,7 +577,7 @@ public static class NativeWorkspaceTools
         }
         using var process = Process.Start(info) ?? throw new InvalidOperationException("The command could not start.");
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(TimeSpan.FromSeconds(45));
+        timeout.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
         var stdout = new StringBuilder();
         var stderr = new StringBuilder();
         var output = ReadLinesAsync(process.StandardOutput, stdout, onOutput, timeout.Token);
@@ -490,7 +591,10 @@ public static class NativeWorkspaceTools
         {
             try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { }
             try { await Task.WhenAll(output, errors); } catch { }
-            return "Command timed out after 45 seconds.";
+            // Keep what it printed: where a build stopped, or a lock it was waiting on.
+            string partial;
+            lock (stdout) lock (stderr) partial = KeepHeadAndTail((stdout.ToString() + stderr.ToString()).Trim());
+            return $"Command timed out after {timeoutSeconds} seconds." + LockNotice(partial) + "\n" + partial;
         }
         catch
         {
@@ -499,9 +603,69 @@ public static class NativeWorkspaceTools
             throw;
         }
         var text = (stdout.ToString() + stderr.ToString()).Trim();
-        if (text.Length > 100_000) text = text[..100_000] + "\n[truncated]";
-        return string.IsNullOrEmpty(text) ? $"Command exited with status {process.ExitCode}." : text + (process.ExitCode == 0 ? "" : $"\nCommand exited with status {process.ExitCode}.");
+        text = KeepHeadAndTail(text);
+        return string.IsNullOrEmpty(text) ? $"Command exited with status {process.ExitCode}." : text + (process.ExitCode == 0 ? "" : $"\nCommand exited with status {process.ExitCode}.") + LockNotice(text);
     }
+
+    private static async Task<string> WaitForProcessAsync(
+        int? processId,
+        string? logPath,
+        JsonNode? timeoutNode,
+        string workspace,
+        CancellationToken ct)
+    {
+        if (processId is not int pid || pid <= 1) return "Tool error: pid must be a process id greater than 1.";
+        string? resolvedLog = null;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(logPath)) resolvedLog = Resolve(logPath, workspace);
+        }
+        catch (Exception error) { return $"Tool error: {error.Message}"; }
+
+        Process process;
+        try { process = Process.GetProcessById(pid); }
+        catch (ArgumentException) { return $"Process {pid} is not running."; }
+
+        var timeoutSeconds = WaitCommandTimeout(timeoutNode);
+        var started = Stopwatch.StartNew();
+        using (process)
+        using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct))
+        {
+            timeout.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
+            try { await process.WaitForExitAsync(timeout.Token); }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                var stillRunning = $"Process {pid} is still running after {Math.Floor(started.Elapsed.TotalSeconds):0}s.";
+                return AppendLogTail(stillRunning, resolvedLog);
+            }
+        }
+
+        var completed = $"Process {pid} exited after {Math.Floor(started.Elapsed.TotalSeconds):0}s.";
+        return AppendLogTail(completed, resolvedLog);
+    }
+
+    private static string AppendLogTail(string result, string? path)
+    {
+        if (path is null) return result;
+        try
+        {
+            const int maxCharacters = 8_000;
+            using var stream = File.OpenRead(path);
+            if (stream.Length > maxCharacters * 4L) stream.Seek(-maxCharacters * 4L, SeekOrigin.End);
+            using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+            var text = reader.ReadToEnd();
+            if (text.Length > maxCharacters) text = text[^maxCharacters..];
+            return result + "\n" + text;
+        }
+        catch { return result + "\n(log unreadable)"; }
+    }
+
+    /// Long command output keeps its start and its end, where build and test
+    /// failures land; the middle is rarely what the next step needs.
+    internal static string KeepHeadAndTail(string text, int head = 2_000, int tail = 14_000) =>
+        text.Length <= head + tail
+            ? text
+            : text[..head] + $"\n[... {text.Length - head - tail} characters omitted ...]\n" + text[^tail..];
 
     /// Whether a run_command result reports exit status 0.
     // ponytail: read from RunCommandAsync's fixed English wording; return the exit
@@ -552,7 +716,20 @@ public static class NativeWorkspaceTools
                 var link = Directory.Exists(result)
                     ? new DirectoryInfo(result).ResolveLinkTarget(true)
                     : File.Exists(result) ? new FileInfo(result).ResolveLinkTarget(true) : null;
-                if (link is not null) result = link.FullName;
+                if (link is not null)
+                {
+                    result = link.FullName;
+                    continue;
+                }
+                // A broken symlink has no target to follow, but a write through
+                // it still lands on the raw target — which may sit outside the
+                // workspace. The syntactic path cannot be trusted, so the raw
+                // target is what the prefix check has to judge.
+                var raw = new FileInfo(result).LinkTarget;
+                if (string.IsNullOrEmpty(raw)) continue;
+                result = Path.IsPathRooted(raw)
+                    ? Path.GetFullPath(raw)
+                    : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(result) ?? root, raw));
             }
             catch
             {
@@ -573,13 +750,45 @@ public static class NativeWorkspaceTools
         catch { return true; }
     }
 
+    /// True when the path exists and is a symbolic link. A path that does not
+    /// exist yet cannot be one, and a broken link still counts: a write
+    /// through it would land on its target.
+    private static bool IsExistingSymlink(string path)
+    {
+        try
+        {
+            if (new FileInfo(path).LinkTarget is not null) return true;
+            if (new DirectoryInfo(path).LinkTarget is not null) return true;
+            return false;
+        }
+        catch { return false; }
+    }
+
+    /// True when a component strictly below the workspace root is a symlink.
+    /// The root's own ancestors are ignored: on macOS `/var` is a symlink to
+    /// `/private/var`, and every temporary workspace lives under it.
+    private static bool HasSymlinkComponentBelowRoot(string root, string path)
+    {
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var basePath = Path.GetFullPath(root);
+        var current = Path.GetFullPath(Path.Combine(basePath, path));
+        while (!current.Equals(basePath, comparison))
+        {
+            if (IsExistingSymlink(current)) return true;
+            var parent = Directory.GetParent(current)?.FullName;
+            if (string.IsNullOrEmpty(parent) || parent.Equals(current, comparison)) return false;
+            current = parent;
+        }
+        return false;
+    }
+
     private static JsonNode Schema(params (string Name, string Description, bool Required)[] fields)
     {
         var properties = new JsonObject();
         var required = new JsonArray();
         foreach (var field in fields)
         {
-            var type = field.Name is "offset" or "limit" ? "integer" : "string";
+            var type = field.Name is "offset" or "limit" or "timeout_seconds" ? "integer" : "string";
             properties[field.Name] = new JsonObject { ["type"] = type, ["description"] = field.Description };
             if (field.Required) required.Add(field.Name);
         }
@@ -685,6 +894,24 @@ public static class ReadLedger
     }
 
     /// <summary>
+    /// Drops every read made under <paramref name="scope"/>. Context compaction calls
+    /// this: once the file bodies are out of the model's context, a recorded read no
+    /// longer means the model has seen those bytes.
+    /// </summary>
+    public static void ForgetScope(string scope)
+    {
+        var prefix = scope + "\n";
+        lock (Gate)
+        {
+            foreach (var key in Hashes.Keys.Concat(Pages.Keys).Where(key => key.StartsWith(prefix, StringComparison.Ordinal)).ToList())
+            {
+                Hashes.Remove(key);
+                Pages.Remove(key);
+            }
+        }
+    }
+
+    /// <summary>
     /// Line ranges (1-based, end exclusive) the agent read from exactly this version.
     /// A complete read is one range over the whole file. Stale when an older version
     /// was read; Unread when nothing was.
@@ -703,11 +930,15 @@ public static class ReadLedger
         }
     }
 
-    public static ReadState StateOf(string file, byte[] content)
+    public static ReadState StateOf(string file, byte[] content, bool partial = false)
     {
         file = Key(file);
         string? known;
-        lock (Gate) Hashes.TryGetValue(file, out known);
+        lock (Gate)
+        {
+            if (!Hashes.TryGetValue(file, out known) && partial && Pages.TryGetValue(file, out var page))
+                known = page.Hash;
+        }
         if (known is null) return ReadState.Unread;
         return known == Hash(content) ? ReadState.Fresh : ReadState.Stale;
     }

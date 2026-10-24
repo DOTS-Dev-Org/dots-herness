@@ -105,7 +105,7 @@ public enum FileDownloader {
         progress?(Progress(received: size, expected: max(expected, size), bytesPerSecond: lastSpeed))
     }
 
-    private static func checksum(of url: URL) throws -> String {
+    static func checksum(of url: URL) throws -> String {
         let data = try Data(contentsOf: url, options: .mappedIfSafe)
         return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }

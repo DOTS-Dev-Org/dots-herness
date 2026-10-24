@@ -58,10 +58,10 @@ final class MobileLocalizationTests: XCTestCase {
     func testProviderCatalogScopesModelsAndCredentials() {
         XCTAssertEqual(MobileAgent.providerDefinitions.map(\.id), ["anthropic", "openai", "openai-responses", "gpt"])
         XCTAssertEqual(MobileAgent.definition(for: "gpt")?.authKind, .oauth)
-        XCTAssertTrue(MobileAgent.models(for: "openai").contains("gpt-4.1"))
-        XCTAssertFalse(MobileAgent.models(for: "anthropic").contains("gpt-4.1"))
+        XCTAssertTrue(MobileAgent.models(for: "openai").contains("gpt-5.6-luna"))
+        XCTAssertFalse(MobileAgent.models(for: "anthropic").contains("gpt-5.6-luna"))
         XCTAssertNil(MobileAgent.definition(for: "unknown"))
         XCTAssertEqual(MobileAgent.credentialKey(for: "openai"), "phone.provider.openai")
-        XCTAssertEqual(MobileAgent.credentialReference(for: "gpt"), "keychain:oauth.openai.access")
+        XCTAssertEqual(MobileAgent.credentialReference(for: "gpt"), "keychain:oauth.openai.accounts")
     }
 }

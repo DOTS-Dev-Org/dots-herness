@@ -241,7 +241,50 @@ public sealed class PluginCatalog : ObservableObject
         var file = new TrustFile(
             new Dictionary<string, PluginTrust>(_trustOverrides, StringComparer.Ordinal),
             _disabled.OrderBy(x => x, StringComparer.Ordinal).ToList());
-        File.WriteAllText(Paths.Trust, JsonSerializer.Serialize(file, TrustJson.Options));
+        // The trust file decides which native plugin may run inside this
+        // process. It must not be writable by anyone else.
+        var temporary = Paths.Trust + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        File.WriteAllText(temporary, JsonSerializer.Serialize(file, TrustJson.Options));
+        RestrictToUser(temporary);
+        File.Move(temporary, Paths.Trust, overwrite: true);
+        RestrictToUser(Paths.Trust);
+    }
+
+    /// User-only permissions: 0600 on Linux, a user-only DACL on Windows.
+    private static void RestrictToUser(string path)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                var info = new FileInfo(path);
+                var security = info.GetAccessControl();
+                security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+                var identity = System.Security.Principal.WindowsIdentity.GetCurrent().User;
+                if (identity is not null)
+                {
+                    security.SetOwner(identity);
+                    security.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
+                        identity,
+                        System.Security.AccessControl.FileSystemRights.FullControl,
+                        System.Security.AccessControl.AccessControlType.Allow));
+                }
+                info.SetAccessControl(security);
+            }
+            catch
+            {
+                // Best effort: the file stays in the user's own profile.
+            }
+            return;
+        }
+        try
+        {
+            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+        catch
+        {
+            // Best effort: the file stays in the user's own data directory.
+        }
     }
 
     private sealed record TrustFile(Dictionary<string, PluginTrust> Trust, List<string> Disabled);

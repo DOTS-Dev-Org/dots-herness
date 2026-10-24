@@ -19,7 +19,6 @@ import {
   upsertProviderUsage,
   upsertProviderUsageBatch,
   usageWindowSchema,
-  userHasProviderConnection,
   type UsageUpsertInput,
 } from "../../lib/users";
 import { detectImageType, MAX_AVATAR_BYTES } from "../../middleware/cors";

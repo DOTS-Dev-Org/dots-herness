@@ -148,19 +148,19 @@ final class FileEditToolsTests: XCTestCase {
         let written = try await edit("README.md", [
             ["old_text": "# Old title", "new_text": "# New title"],
         ], body: "# Old title\n\nBody stays.\n")
-        XCTAssertEqual(written, "Edited README.md (replaced 1 occurrence).")
+        XCTAssertTrue(written.hasPrefix("Edited README.md (replaced 1 occurrence)."), written)
         XCTAssertEqual(try text("README.md"), "# New title\n\nBody stays.\n")
         // The write is recorded, so a follow-up edit needs no fresh read.
         let second = await FileEditTools.edit(path: "README.md", edits: [
             ["old_text": "Body stays", "new_text": "Body moved"],
         ], resolve: resolver())
-        XCTAssertEqual(second, "Edited README.md (replaced 1 occurrence).")
+        XCTAssertTrue(second.hasPrefix("Edited README.md (replaced 1 occurrence)."), second)
         XCTAssertEqual(try text("README.md"), "# New title\n\nBody moved.\n")
     }
 
     func testEmptyNewTextDeletesTheMatch() async throws {
         let answer = try await edit("keep.txt", [["old_text": "drop-me ", "new_text": ""]], body: "drop-me keep\n")
-        XCTAssertEqual(answer, "Edited keep.txt (replaced 1 occurrence).")
+        XCTAssertTrue(answer.hasPrefix("Edited keep.txt (replaced 1 occurrence)."), answer)
         XCTAssertEqual(try text("keep.txt"), "keep\n")
     }
 
@@ -168,7 +168,7 @@ final class FileEditToolsTests: XCTestCase {
         let answer = try await edit("count.txt", [
             ["old_text": "cat", "new_text": "dog", "replace_all": true],
         ], body: "cat and cat and cat\n")
-        XCTAssertEqual(answer, "Edited count.txt (replaced 3 occurrences).")
+        XCTAssertTrue(answer.hasPrefix("Edited count.txt (replaced 3 occurrences)."), answer)
         XCTAssertEqual(try text("count.txt"), "dog and dog and dog\n")
     }
 
@@ -179,7 +179,7 @@ final class FileEditToolsTests: XCTestCase {
             ["old_text": "alpha", "new_text": "beta"],
             ["old_text": "beta beta", "new_text": "gamma"],
         ], body: "alpha beta\n")
-        XCTAssertEqual(answer, "Edited order.txt (replaced 1 occurrence; replaced 1 occurrence).")
+        XCTAssertTrue(answer.hasPrefix("Edited order.txt (replaced 1 occurrence; replaced 1 occurrence)."), answer)
         XCTAssertEqual(try text("order.txt"), "gamma\n")
     }
 
@@ -234,6 +234,20 @@ final class FileEditToolsTests: XCTestCase {
         try Data([0xff, 0xfe, 0xff]).write(to: base.appendingPathComponent("binary.bin"))
         let binary = await FileEditTools.edit(path: "binary.bin", edits: [["old_text": "a", "new_text": "b"]], resolve: resolver())
         XCTAssertEqual(binary, "Tool error: binary.bin is not valid UTF-8 text.")
+    }
+
+    func testOnePageAuthorizesAnEditButNeverAWholeFileRewrite() async throws {
+        try seed(["part.txt": "one\ntwo\nthree\nfour"])
+        let url = base.appendingPathComponent("part.txt")
+        _ = try AgentTools.readFile(at: url, offset: 2, limit: 1)
+        let first = await FileEditTools.edit(path: "part.txt", edits: [["old_text": "two", "new_text": "2"]], resolve: resolver())
+        XCTAssertTrue(first.hasPrefix("Edited"), first)
+        let second = await FileEditTools.edit(path: "part.txt", edits: [["old_text": "2", "new_text": "zwei"]], resolve: resolver())
+        XCTAssertTrue(second.hasPrefix("Edited"), second)
+        XCTAssertEqual(ReadLedger.shared.state(for: url, data: try Data(contentsOf: url)), .unread)
+        try Data("changed outside".utf8).write(to: url)
+        let stale = await FileEditTools.edit(path: "part.txt", edits: [["old_text": "changed", "new_text": "bad"]], resolve: resolver())
+        XCTAssertEqual(stale, "Tool error: part.txt changed since it was read. Read it again before editing.")
     }
 
     func testTooManyEditsInOneCallAreRefusedBeforeTheFileIsOpened() async {

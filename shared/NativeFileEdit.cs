@@ -111,8 +111,6 @@ public static class NativeFileEdit
     // after the two definitions it holds.
     public static IReadOnlyList<NativeToolDefinition> Definitions { get; } = [EditDefinition, GlobDefinition];
 
-    public static bool IsFileEditTool(string name) => name == EditName || name == GlobName;
-
     public sealed record EditOperation(string? OldText, string? NewText, bool ReplaceAll);
 
     public static string Execute(NativeToolCall call, string workspace)
@@ -266,7 +264,28 @@ public static class NativeFileEdit
                 ReadLedger.RecordLines(file, data, range.Start, Math.Min(range.End, newTotal + 1), newTotal);
         }
         else ReadLedger.Record(file, data);
-        return $"Edited {RelativePath(WorkspaceRoot(workspace), file)} ({string.Join("; ", summary)}).";
+        return $"Edited {RelativePath(WorkspaceRoot(workspace), file)} ({string.Join("; ", summary)})." + ChangedLines(text, updated);
+    }
+
+    internal const int ChangedLinesShown = 40;
+
+    /// The edited region of the new file, numbered, with two lines of context: the
+    /// model sees the result without a follow-up read_file. One span from the first
+    /// to the last changed line; a span wider than <see cref="ChangedLinesShown"/>
+    /// only names its line range.
+    internal static string ChangedLines(string before, string after)
+    {
+        var a = before.Split('\n');
+        var b = after.Split('\n');
+        var top = 0;
+        while (top < a.Length && top < b.Length && a[top] == b[top]) top++;
+        var bottom = 0;
+        while (bottom < a.Length - top && bottom < b.Length - top && a[^(bottom + 1)] == b[^(bottom + 1)]) bottom++;
+        var start = Math.Max(0, top - 2);
+        var end = Math.Min(b.Length, b.Length - bottom + 2);
+        if (end - start > ChangedLinesShown)
+            return $"\nChanged lines {top + 1}-{b.Length - bottom}: too wide to show; read_file them if needed.";
+        return "\n" + string.Join('\n', Enumerable.Range(start, end - start).Select(index => $"{index + 1}: {b[index]}"));
     }
 
     /// The workspace as the resolver sees it: reported paths have to be relative to the
@@ -361,37 +380,14 @@ public static class NativeFileEdit
     {
         var found = new List<(string Relative, DateTime Modified)>();
         var scanned = 0;
-        var pending = new Stack<string>();
-        pending.Push(baseDirectory);
-        while (pending.Count > 0)
+        foreach (var entry in NativeWorkspaceTools.ScanFiles(baseDirectory))
         {
-            var directory = pending.Pop();
-            IEnumerable<string> entries;
-            try { entries = Directory.EnumerateFileSystemEntries(directory); }
-            catch { continue; }
-            var limitReached = false;
-            foreach (var entry in entries)
-            {
-                var name = Path.GetFileName(entry);
-                // An ignored or symlinked directory is never descended into: skipping
-                // descendants is what the reference does, and a stack walk simply refuses
-                // to queue them.
-                if (NativeWorkspaceTools.IgnoredScanDirectories.Contains(name)
-                    || NativeWorkspaceTools.IsSymlink(entry)) continue;
-                if (Directory.Exists(entry))
-                {
-                    pending.Push(entry);
-                    continue;
-                }
-                if (!File.Exists(entry)) continue;
-                if (++scanned > GlobScanLimit) { limitReached = true; break; }
-                var relative = RelativePath(baseDirectory, entry);
-                var separator = relative.LastIndexOf('/');
-                var lastComponent = separator < 0 ? relative : relative[(separator + 1)..];
-                if (IsMatch(expression, relative, patternHasSlash, lastComponent))
-                    found.Add((relative, LastWrite(entry)));
-            }
-            if (limitReached) break;
+            if (++scanned > GlobScanLimit) break;
+            var relative = RelativePath(baseDirectory, entry);
+            var separator = relative.LastIndexOf('/');
+            var lastComponent = separator < 0 ? relative : relative[(separator + 1)..];
+            if (IsMatch(expression, relative, patternHasSlash, lastComponent))
+                found.Add((relative, LastWrite(entry)));
         }
         found.Sort((left, right) => left.Modified == right.Modified
             ? StringComparer.Ordinal.Compare(left.Relative, right.Relative)

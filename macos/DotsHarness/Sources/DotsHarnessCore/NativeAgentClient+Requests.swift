@@ -137,14 +137,15 @@ extension NativeAgentClient {
         // Tool schemas are part of the provider prefix. Plugin discovery order
         // is not, so canonicalize it before every transport body is built.
         let canonicalTools = tools.sorted { AgentCacheNamespace.toolSortKey($0) < AgentCacheNamespace.toolSortKey($1) }
+        let providerMessages = AgentContextCompaction.providerContextMessages(messages)
         let replay = configuration.api == RouterAPIKind.chatGPT.rawValue
-            ? AgentContextCompaction.responsesReplayMessages(messages) : messages
-        let normalizedMessages = EconomyToolOutputPolicy.normalizeMessages(messages)
+            ? AgentContextCompaction.responsesReplayMessages(providerMessages) : providerMessages
+        let normalizedMessages = EconomyToolOutputPolicy.normalizeMessages(providerMessages)
         let normalizedReplay = EconomyToolOutputPolicy.normalizeMessages(replay)
         let messages = Self.foldingDynamicPrompt(into: normalizedReplay)
         let responseStyle = ResponseStyleResolver.resolve(
             preference: configuration.responseStylePreference,
-            prompt: normalizedMessages.last(where: { $0.role == .user })?.content
+            prompt: AgentMessage.responseStylePrompt(in: normalizedMessages)
         )
         // Keep model effort user-selected, but always bound the total output
         // tokens so a long reasoning response cannot consume the whole run.
@@ -237,13 +238,16 @@ extension NativeAgentClient {
             "max_tokens": budget?.maxOutputTokens ?? Self.maxTokens(forEffort: configuration.effort),
             "messages": converted,
         ]
-        if !AnthropicContextEditingCapabilityMemory.shared.isUnsupported(for: configuration) {
+        if !EndpointCapabilityMemory.contextEditing.isUnsupported(for: configuration) {
             let triggerTokens = configuration.compactionPolicy.triggerTokens(window: configuration.contextWindow)
             body["context_management"] = [
                 "edits": [[
                     "type": "clear_tool_uses_20250919",
                     "trigger": ["type": "input_tokens", "value": triggerTokens],
                     "keep": ["type": "tool_uses", "value": 3],
+                    // A cleared read_file body would leave the read ledger vouching
+                    // for bytes the model no longer sees.
+                    "exclude_tools": ["read_file"],
                     "clear_at_least": [
                         "type": "input_tokens",
                         "value": max(1, min(8_192, triggerTokens / 4)),
@@ -390,17 +394,59 @@ extension NativeAgentClient {
     private static func changedPromptSections(_ dynamic: String, since history: ArraySlice<AgentMessage>) -> [String]? {
         let current = leadingPromptSections(dynamic)
         guard current.complete, !current.sections.isEmpty else { return nil }
-        var captured: [String: String] = [:]
+        var copies: [String: [String]] = [:]
         for message in history where message.role == .user && message.promptContextCaptured {
             for section in leadingPromptSections(message.content).sections {
-                captured[section.tag] = section.block
+                copies[section.tag, default: []].append(section.block)
             }
         }
+        let captured = copies.compactMapValues(\.last)
         let live = Set(current.sections.map(\.tag))
         let retired = captured.keys.sorted()
             .filter { !live.contains($0) && captured[$0] != retiredPromptSection($0) }
             .map(retiredPromptSection)
-        return current.sections.filter { captured[$0.tag] != $0.block }.map(\.block) + retired
+        return current.sections.compactMap { section in
+            if section.tag == "task_history" { return taskHistoryAdditions(section.block, captured: copies[section.tag] ?? []) }
+            return captured[section.tag] != section.block ? section.block : nil
+        } + retired
+    }
+
+    static let taskHistoryAdditionsMarker =
+        "(Additions to the task_history captured earlier in this conversation; its earlier entries still hold.)"
+
+    /// task_history is recalled for each request, so its text moves every turn while
+    /// most entries repeat. Only entries the transcript has not seen since its last
+    /// full copy are captured. The backlog is state rather than recall: when it
+    /// changed, the section is captured whole. nil when nothing is new.
+    static func taskHistoryAdditions(_ block: String, captured copies: [String]) -> String? {
+        func body(_ block: String) -> [String] { Array(block.components(separatedBy: "\n").dropFirst().dropLast()) }
+        // An entry is a line plus its indented continuation lines ("  Files: …").
+        func entries(_ lines: [String]) -> [String] {
+            var result: [String] = []
+            for line in lines where !line.isEmpty {
+                if line.hasPrefix(" "), !result.isEmpty { result[result.count - 1] += "\n" + line } else { result.append(line) }
+            }
+            return result
+        }
+        func backlog(_ lines: [String]) -> [String] {
+            Array(entries(lines).drop { !$0.hasPrefix("## Unfinished work") }.prefix { !$0.hasPrefix("## ") || $0.hasPrefix("## Unfinished work") })
+        }
+        guard copies.last != retiredPromptSection("task_history"),
+              let base = copies.lastIndex(where: { body($0).first != taskHistoryAdditionsMarker }) else { return block }
+        let current = body(block)
+        guard backlog(current) == backlog(body(copies[base])) else { return block }
+        let seen = Set(copies[base...].flatMap { entries(body($0)) })
+        var kept: [String] = []
+        var heading: String?
+        for entry in entries(current) {
+            if entry.hasPrefix("## ") { heading = entry; continue }
+            guard !seen.contains(entry) else { continue }
+            if let pending = heading { kept.append(pending); heading = nil }
+            kept.append(entry)
+        }
+        guard !kept.isEmpty else { return nil }
+        let lines = block.components(separatedBy: "\n")
+        return ([lines[0], taskHistoryAdditionsMarker] + kept + [lines[lines.count - 1]]).joined(separator: "\n")
     }
 
     /// At most four distinct markers: tools, invariant system, last accepted
@@ -676,7 +722,7 @@ extension NativeAgentClient {
         if !cacheOptions.isEmpty { body["prompt_cache_options"] = cacheOptions }
         if configuration.supportsNativeCompaction,
            !configuration.disableNativeCompactionForRequest,
-           !NativeCompactionCapabilityMemory.shared.isUnsupported(for: configuration),
+           !EndpointCapabilityMemory.nativeCompaction.isUnsupported(for: configuration),
            configuration.api == RouterAPIKind.chatGPT.rawValue {
             let threshold = configuration.compactionPolicy.triggerTokens(window: configuration.contextWindow)
             body["context_management"] = [[

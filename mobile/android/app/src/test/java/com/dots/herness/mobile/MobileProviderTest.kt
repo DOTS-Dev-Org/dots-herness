@@ -11,10 +11,10 @@ class MobileProviderTest {
     fun `provider catalog scopes models and credentials`() {
         assertEquals(listOf("anthropic", "openai", "openai-responses", "gpt"), MobileHarnessRuntime.PROVIDER_DEFINITIONS.map { it.id })
         assertEquals(MobileProviderDefinition.AuthKind.OAUTH, MobileHarnessRuntime.definition("gpt")?.authKind)
-        assertTrue(MobileHarnessRuntime.modelsFor("openai").contains("gpt-4.1"))
-        assertFalse(MobileHarnessRuntime.modelsFor("anthropic").contains("gpt-4.1"))
+        assertTrue(MobileHarnessRuntime.modelsFor("openai").contains("gpt-5.6-luna"))
+        assertFalse(MobileHarnessRuntime.modelsFor("anthropic").contains("gpt-5.6-luna"))
         assertNull(MobileHarnessRuntime.definition("unknown"))
         assertEquals("phone.provider.openai", MobileHarnessRuntime.credentialKey("openai"))
-        assertEquals("keystore:oauth.openai.access", MobileHarnessRuntime.credentialReference("gpt"))
+        assertEquals("keystore:oauth.openai.accounts", MobileHarnessRuntime.credentialReference("gpt"))
     }
 }

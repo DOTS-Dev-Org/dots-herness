@@ -22,6 +22,7 @@
             <ListBoxItem Content="Custom API" Tag="custom"/>
             <ListBoxItem Content="Local models" Tag="local"/>
             <ListBoxItem x:Name="VoiceTab" Content="Voice input" Tag="voice"/>
+            <ListBoxItem x:Name="MediaTab" Content="Media" Tag="media"/>
             <ListBoxItem Content="Share" Tag="share"/>
             <ListBoxItem Content="Mobile control" Tag="mobile"/>
             <ListBoxItem Content="Tasks" Tag="tasks"/>
@@ -29,7 +30,7 @@
             <ListBoxItem Content="Plugins" Tag="plugins"/>
             <ListBoxItem x:Name="McpTab" Content="MCP servers" Tag="mcp"/>
             <ListBoxItem x:Name="MemoryTab" Content="Memory" Tag="memory"/>
-            <ListBoxItem x:Name="AccessTab" Content="Workspace access" Tag="access"/>
+            <ListBoxItem x:Name="MemoryTransferTab" Content="Memory transfer" Tag="memory-transfer"/>
             <ListBoxItem x:Name="SandboxTab" Content="Sandbox" Tag="sandbox"/>
             <ListBoxItem Content="Prompt" Tag="prompt"/>
             <ListBoxItem Content="Legal" Tag="legal"/>

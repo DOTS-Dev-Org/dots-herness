@@ -13,9 +13,8 @@ struct SidebarView: View {
 
     private var bridge: AgentBridge { model.bridge }
 
-    @State private var showSignOutConfirmation = false
-    @State private var isAccountMenuPresented = false
     @State private var isSearchVisible = false
+    @State private var isNotificationPopoverPresented = false
     @State private var searchText = ""
     @State private var isProjectsExpanded = true
     @State private var isRecentExpanded = true
@@ -39,14 +38,9 @@ struct SidebarView: View {
             ?? ProcessInfo.processInfo.processName
     }()
 
-    /// Sidebar-owned voice session. No `onTranscript` closure, so a finished
-    /// transcript is sent straight as a message.
-    @StateObject private var voiceInput: LiveVoiceInput
-
     init(model: AppModel, logo: Image? = nil) {
         self.model = model
         self.logo = logo
-        _voiceInput = StateObject(wrappedValue: LiveVoiceInput(model: model))
     }
 
     var body: some View {
@@ -79,7 +73,7 @@ struct SidebarView: View {
                             sectionHeader(
                                 title: AppCopy.text("sidebar.recent"),
                                 isExpanded: $isRecentExpanded,
-                                showsStatusDot: bridge.anyRunBusy
+                                showsStatusDot: recentHasRunningConversation
                             ) {
                                 EmptyView()
                             }
@@ -95,30 +89,9 @@ struct SidebarView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
-                accountFooter
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
-        .navigationSplitViewColumnWidth(min: 250, ideal: 280, max: 340)
-        .task {
-            while !Task.isCancelled {
-                model.refreshProjectLocationAvailability()
-                try? await Task.sleep(for: .seconds(1))
-            }
-        }
-        .onExitCommand {
-            if isAccountMenuPresented {
-                isAccountMenuPresented = false
-            }
-        }
-        .alert(AppCopy.text("sidebar.signOutQuestion"), isPresented: $showSignOutConfirmation) {
-            Button(AppCopy.text("common.cancel"), role: .cancel) {}
-            Button(AppCopy.text("sidebar.signOut"), role: .destructive) {
-                model.signOut()
-            }
-        } message: {
-            Text(AppCopy.text("sidebar.signOutMessage"))
-        }
         .confirmationDialog(
             AppCopy.text("sidebar.removeProjectQuestion"),
             isPresented: Binding(
@@ -152,12 +125,6 @@ struct SidebarView: View {
             // Opening a project reveals its chats. Nothing is ever removed here:
             // switching or adding a project must leave the other open lists open.
             if !value.isEmpty { model.setProjectChatsExpanded(true, for: value) }
-        }
-    }
-
-    private func dismissAccountMenu() {
-        withAnimation(.easeInOut(duration: 0.18)) {
-            isAccountMenuPresented = false
         }
     }
 
@@ -196,25 +163,56 @@ struct SidebarView: View {
             .contentShape(Rectangle())
             .help(AppCopy.text("sidebar.search"))
 
-            ZStack(alignment: .topTrailing) {
-                Image(systemName: bridge.anyRunBusy ? "bell.badge.fill" : "bell")
-                    .font(.system(size: 13, weight: .medium))
-                    .frame(width: 22, height: 22)
+            Button {
+                isNotificationPopoverPresented.toggle()
+            } label: {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: bridge.anyRunBusy ? "bell.badge.fill" : "bell")
+                        .font(.system(size: 13, weight: .medium))
+                        .frame(width: 22, height: 22)
 
-                if bridge.connection != nil {
-                    Circle()
-                        .fill(Color.accentColor)
-                        .frame(width: 6, height: 6)
-                        .offset(x: -2, y: 2)
+                    if model.notificationInbox.unreadCount > 0 {
+                        Text(model.notificationInbox.unreadCount > 9 ? "9+" : "\(model.notificationInbox.unreadCount)")
+                            .font(.system(size: 7, weight: .bold).monospacedDigit())
+                            .foregroundStyle(.white)
+                            .frame(minWidth: 12, minHeight: 12)
+                            .background(Color.accentColor, in: Capsule())
+                            .offset(x: 4, y: -3)
+                    } else if bridge.connection != nil {
+                        Circle()
+                            .fill(Color.accentColor)
+                            .frame(width: 6, height: 6)
+                            .offset(x: -2, y: 2)
+                    }
+                }
+                .foregroundStyle(.secondary)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(AppCopy.text("notifications.title"))
+            .accessibilityLabel(Text(model.notificationInbox.unreadCount > 0
+                ? AppCopy.format("notifications.unreadCount", model.notificationInbox.unreadCount)
+                : AppCopy.text("notifications.title")))
+            .inWindowPopover(
+                isPresented: $isNotificationPopoverPresented,
+                alignment: .trailing,
+                width: 340,
+                cornerRadius: 18,
+                verticalEdge: .bottom
+            ) {
+                NotificationInboxPopover(inbox: model.notificationInbox) { item in
+                    model.notificationInbox.markRead(item.id)
+                    if item.conversationID != nil {
+                        _ = model.openNotificationConversation(item)
+                    }
+                    isNotificationPopoverPresented = false
                 }
             }
-            .foregroundStyle(.secondary)
-            .contentShape(Rectangle())
-            .help(AppCopy.text("sidebar.status"))
         }
         .padding(.horizontal, 12)
         .padding(.top, 10)
         .padding(.bottom, 7)
+        .zIndex(isNotificationPopoverPresented ? 2 : 0)
     }
 
     private var searchField: some View {
@@ -273,17 +271,6 @@ struct SidebarView: View {
                 title: AppCopy.text("sidebar.sites"),
                 systemImage: "square.grid.2x2",
                 action: model.openSites
-            )
-            SidebarNavigationRow(
-                title: AppCopy.text("sidebar.scheduled"),
-                systemImage: "clock",
-                shortcut: model.shortcut(for: .scheduled).displayValue,
-                action: model.presentTasks
-            )
-            SidebarNavigationRow(
-                title: AppCopy.text("sidebar.plugins"),
-                systemImage: "circle.dotted",
-                action: { model.presentSettings(tab: "plugins") }
             )
         }
         .padding(.bottom, 10)
@@ -574,15 +561,6 @@ struct SidebarView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .popover(
-                isPresented: Binding(
-                    get: { projectPreviewPath == path },
-                    set: { if !$0, projectPreviewPath == path { projectPreviewPath = nil } }
-                ),
-                arrowEdge: .leading
-            ) {
-                projectPreview(path)
-            }
             .onHover { hovering in
                 hoveredProjectTitlePath = hovering ? path : (hoveredProjectTitlePath == path ? nil : hoveredProjectTitlePath)
                 if hovering {
@@ -626,6 +604,17 @@ struct SidebarView: View {
                 .fill(isActive && isNewChat ? Color.primary.opacity(0.105) : Color.clear)
         }
         .opacity(isAvailable ? 1 : 0.48)
+        // Anchored on the whole row, trailing edge: the card opens over the
+        // window's own content instead of spilling out past the sidebar.
+        .popover(
+            isPresented: Binding(
+                get: { projectPreviewPath == path },
+                set: { if !$0, projectPreviewPath == path { projectPreviewPath = nil } }
+            ),
+            arrowEdge: .trailing
+        ) {
+            projectPreview(path)
+        }
         .contextMenu {
             projectMenuItems(path)
         }
@@ -814,7 +803,7 @@ struct SidebarView: View {
                     model.selectedConversationID = conversation.id
                 }
             } label: {
-                Text(conversation.title)
+                Text(conversation.displayTitle)
                     .font(.system(size: 14))
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -890,6 +879,17 @@ struct SidebarView: View {
             ) {
                 bridge.togglePinned(conversation.id)
             }
+            Picker(selection: Binding(
+                get: { conversation.priority },
+                set: { bridge.setPriority(conversation.id, $0) }
+            )) {
+                Text(AppCopy.text("sidebar.priorityHigh")).tag(3)
+                Text(AppCopy.text("sidebar.priorityMedium")).tag(2)
+                Text(AppCopy.text("sidebar.priorityLow")).tag(1)
+                Text(AppCopy.text("sidebar.priorityNone")).tag(0)
+            } label: {
+                Label(AppCopy.text("sidebar.priority"), systemImage: "flag")
+            }
             Button(AppCopy.text("sidebar.archiveChat"), systemImage: "archivebox") {
                 bridge.setArchived(conversation.id, archived: true)
             }
@@ -915,107 +915,6 @@ struct SidebarView: View {
                 .frame(width: 7, height: 7)
                 .frame(width: 16, height: 16)
                 .accessibilityLabel(AppCopy.text("sidebar.chatCompleted"))
-        }
-    }
-
-    private var accountFooter: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 4) {
-                Button {
-                    isAccountMenuPresented.toggle()
-                } label: {
-                    HStack(spacing: 9) {
-                        AccountBadge(initials: model.account.initials, size: 28)
-                        Text(model.account.displayName)
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.horizontal, 6)
-                    .frame(maxWidth: .infinity, minHeight: 42, alignment: .leading)
-                    .contentShape(Rectangle())
-                    .background(
-                        isAccountMenuPresented ? Color.primary.opacity(0.12) : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    )
-                }
-                .buttonStyle(.plain)
-                .help(AppCopy.text("sidebar.accountOptions"))
-                .popover(isPresented: $isAccountMenuPresented, attachmentAnchor: .rect(.bounds)) {
-                    AccountMenuPopover(
-                        account: model.account,
-                        model: model,
-                        onSettings: {
-                            dismissAccountMenu()
-                            model.presentSettings()
-                        },
-                        onSignOut: {
-                            dismissAccountMenu()
-                            showSignOutConfirmation = true
-                        }
-                    )
-                    .frame(width: 280)
-                }
-
-                voiceControl
-
-                SidebarUsageBadge(router: model.router)
-                    .padding(.trailing, 10)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 7)
-        }
-        .background(Color(nsColor: .windowBackgroundColor))
-    }
-
-    /// Footer voice control. Idle: a menu to pick the project the voice chat runs
-    /// in. Listening: a stop button. No `onTranscript` on `voiceInput`, so a final
-    /// transcript is sent straight into the new conversation.
-    @ViewBuilder
-    private var voiceControl: some View {
-        if voiceInput.isListening {
-            Button {
-                voiceInput.cancelListening()
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: voiceInput.state.icon)
-                        .font(.system(size: 14, weight: .medium))
-                    Text(AppCopy.text("sidebar.voice"))
-                        .font(.system(size: 13, weight: .medium))
-                }
-                .frame(height: 34)
-                .foregroundStyle(voiceInput.state.tint)
-            }
-            .buttonStyle(.plain)
-            .help(AppCopy.text("sidebar.voice"))
-        } else {
-            Menu {
-                if model.projectPaths.isEmpty {
-                    Button(AppCopy.text("sidebar.addProject"), action: model.addProject)
-                } else {
-                    ForEach(model.projectPaths, id: \.self) { path in
-                        Button(model.projectTitle(for: path)) {
-                            model.newConversation(in: path)
-                            voiceInput.startListening()
-                        }
-                    }
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "waveform")
-                        .font(.system(size: 14, weight: .medium))
-                    Text(AppCopy.text("sidebar.voice"))
-                        .font(.system(size: 13, weight: .medium))
-                }
-                .padding(.horizontal, 6)
-                .frame(height: 34)
-                .foregroundStyle(.secondary)
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .help(AppCopy.text("sidebar.voice"))
         }
     }
 
@@ -1075,37 +974,13 @@ struct SidebarView: View {
             }
             Label("\(tasks.count) \(AppCopy.text("sidebar.tasks")) · \(active) \(AppCopy.text("sidebar.active"))", systemImage: "bubble.left.and.bubble.right")
                 .foregroundStyle(.secondary)
-            if let remote = projectRemote(path) {
-                Label(remote, systemImage: "arrow.triangle.branch")
-                    .lineLimit(1)
-            }
+            ProjectRemoteLabel(path: path)
             Label(path, systemImage: "folder")
                 .lineLimit(2)
                 .textSelection(.enabled)
         }
         .padding(16)
         .frame(width: 330, alignment: .leading)
-    }
-
-    private func projectRemote(_ path: String) -> String? {
-        let process = Process()
-        let output = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        process.arguments = ["-C", path, "config", "--get", "remote.origin.url"]
-        process.standardOutput = output
-        process.standardError = Pipe()
-        guard (try? process.run()) != nil else { return nil }
-        process.waitUntilExit()
-        guard let value = String(data: output.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { return nil }
-        let clean = value.hasSuffix(".git") ? String(value.dropLast(4)) : value
-        if let scheme = clean.range(of: "://") {
-            return String(clean[scheme.upperBound...]).split(separator: "/").suffix(2).joined(separator: "/")
-        }
-        if let colon = clean.firstIndex(of: ":") {
-            return String(clean[clean.index(after: colon)...]).split(separator: "/").suffix(2).joined(separator: "/")
-        }
-        return clean.split(separator: "/").suffix(2).joined(separator: "/")
     }
 
     private func promptForText(
@@ -1131,6 +1006,11 @@ struct SidebarView: View {
         orderedConversations(recentProjectConversations, forProject: nil)
             .prefix(visibleConversationLimit)
             .map { $0 }
+    }
+
+    private var recentHasRunningConversation: Bool {
+        let runningIDs = bridge.runningConversationIDs
+        return recentConversations.contains { runningIDs.contains($0.id) }
     }
 
     /// "Recent" holds retained conversations whose original project no longer
@@ -1172,11 +1052,10 @@ extension AppModel {
         case .lastUpdate:
             return byActivity()
         case .priority:
-            // ponytail: Conversation has no explicit priority field yet; approximate
-            // priority as pinned-first, then title, until a real priority field exists.
             return conversations.sorted {
                 if $0.pinned != $1.pinned { return $0.pinned }
-                return $0.title.localizedStandardCompare($1.title) == .orderedAscending
+                if $0.priority != $1.priority { return $0.priority > $1.priority }
+                return $0.activityDate > $1.activityDate
             }
         case .manual:
             guard let path else { return byActivity() }
@@ -1190,5 +1069,46 @@ extension AppModel {
                 return $0.activityDate > $1.activityDate
             }
         }
+    }
+}
+
+/// `owner/repo` of the project's origin. Git runs off the main thread, so the
+/// preview renders without waiting for it.
+private struct ProjectRemoteLabel: View {
+    let path: String
+    @State private var remote: String?
+
+    var body: some View {
+        Group {
+            if let remote {
+                Label(remote, systemImage: "arrow.triangle.branch")
+                    .lineLimit(1)
+            }
+        }
+        .task(id: path) {
+            remote = await Task.detached(priority: .utility) { Self.remote(at: path) }.value
+        }
+    }
+
+    private nonisolated static func remote(at path: String) -> String? {
+        guard GitInstall.isAvailable() else { return nil }
+        let process = Process()
+        let output = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["-C", path, "config", "--get", "remote.origin.url"]
+        process.standardOutput = output
+        process.standardError = Pipe()
+        guard (try? process.run()) != nil else { return nil }
+        process.waitUntilExit()
+        guard let value = String(data: output.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { return nil }
+        let clean = value.hasSuffix(".git") ? String(value.dropLast(4)) : value
+        if let scheme = clean.range(of: "://") {
+            return String(clean[scheme.upperBound...]).split(separator: "/").suffix(2).joined(separator: "/")
+        }
+        if let colon = clean.firstIndex(of: ":") {
+            return String(clean[clean.index(after: colon)...]).split(separator: "/").suffix(2).joined(separator: "/")
+        }
+        return clean.split(separator: "/").suffix(2).joined(separator: "/")
     }
 }

@@ -89,10 +89,14 @@ public sealed class ServiceRealm
 {
     private readonly Dictionary<string, object> _values = new(StringComparer.Ordinal);
     private readonly ServiceRealm? _parent;
+    private readonly HashSet<string> _isolated;
 
-    public ServiceRealm(ServiceRealm? parent = null, IReadOnlyDictionary<string, object>? seed = null)
+    /// A child realm keeps the names its row marked `isolate: {name: true}` private;
+    /// every other name it provides is published through to the parent.
+    public ServiceRealm(ServiceRealm? parent = null, IReadOnlyDictionary<string, object>? seed = null, IEnumerable<string>? isolated = null)
     {
         _parent = parent;
+        _isolated = new HashSet<string>(isolated ?? Array.Empty<string>(), StringComparer.Ordinal);
         if (seed is null) return;
         foreach (var (key, value) in seed) _values[key] = value;
     }
@@ -100,9 +104,17 @@ public sealed class ServiceRealm
     public object? Get(string name) =>
         _values.TryGetValue(name, out var value) ? value : _parent?.Get(name);
 
-    public void Provide(string name, object value) => _values[name] = value;
+    public void Provide(string name, object value)
+    {
+        if (_parent is not null && !_isolated.Contains(name)) _parent.Provide(name, value);
+        else _values[name] = value;
+    }
 
-    public void Retract(string name) => _values.Remove(name);
+    public void Retract(string name)
+    {
+        if (_parent is not null && !_isolated.Contains(name)) _parent.Retract(name);
+        else _values.Remove(name);
+    }
 
     public IReadOnlyList<string> PublishedNames => _values.Keys.ToList();
 }
@@ -195,9 +207,9 @@ public sealed class PluginHost : ObservableObject
                 }
                 var plugin = resolved.Make();
                 var isolate = entry.Isolate;
-                var realm = document.Plane == PluginPlane.Session && isolate.Count > 0
-                    ? new ServiceRealm(_root)
-                    : _root;
+                var privateNames = isolate.Where(pair => pair.Value).Select(pair => pair.Key).ToList();
+                // Honored on both planes: isolated names never reach the shared root.
+                var realm = privateNames.Count == 0 ? _root : new ServiceRealm(_root, isolated: privateNames);
                 foreach (var name in resolved.Manifest.Inject)
                 {
                     if (realm.Get(name) is null) throw PluginException.MissingService(name);
@@ -222,7 +234,7 @@ public sealed class PluginHost : ObservableObject
                     if (document.Plane == PluginPlane.Session)
                     {
                         var published = _root.PublishedNames.Where(n => !publishedBefore.Contains(n)).ToList();
-                        if (isolate.Count == 0 && published.Count > 0)
+                        if (published.Count > 0)
                         {
                             throw PluginException.GlobalService(string.Join(", ", published.OrderBy(x => x)));
                         }

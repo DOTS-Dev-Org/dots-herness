@@ -2,6 +2,7 @@
 // Read-only network research tools for the native agent loop.
 
 import Foundation
+import WebKit
 import HarnessPluginKit
 
 /// `web_fetch` and `web_search`.
@@ -273,8 +274,20 @@ public enum WebTools {
     }
 
     static func searchAPIKey() -> String {
-        if let stored = UserDefaults.standard.string(forKey: "web.search.apiKey"),
-           !stored.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return stored.trimmingCharacters(in: .whitespacesAndNewlines) }
+        // The search key is a paid API credential. It belongs in the
+        // Keychain; a preferences plist is world-readable and ends up in
+        // backups. Anything still in UserDefaults is moved over once.
+        let vault = ProviderVault()
+        if let value = try? vault.get("web.search.apiKey"),
+           !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return value.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if let legacy = UserDefaults.standard.string(forKey: "web.search.apiKey"),
+           !legacy.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            try? vault.set(legacy, for: "web.search.apiKey")
+            UserDefaults.standard.removeObject(forKey: "web.search.apiKey")
+            return legacy.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
         return ProcessInfo.processInfo.environment["HERNESS_SEARCH_KEY"]?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
@@ -330,26 +343,16 @@ public enum WebTools {
         }
     }
 
+    /// Keyless search runs in WebKit, the engine of the in-app browser and of Safari,
+    /// so the results page loads the way it does for a person. A bare HTTP client is
+    /// what search engines block first.
     private static func duckduckgoResults(query: String, maxResults: Int) async throws -> [SearchResult] {
-        var request = URLRequest(url: URL(string: "https://html.duckduckgo.com/html/")!, timeoutInterval: requestTimeout)
-        request.httpMethod = "POST"
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
-        var form = "q=\(query.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? query)"
-        form += "&kl=us-en"
-        request.httpBody = Data(form.utf8)
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.timeoutIntervalForRequest = requestTimeout
-        configuration.urlCache = nil
-        let session = URLSession(configuration: configuration, delegate: RedirectStopper(), delegateQueue: nil)
-        defer { session.finishTasksAndInvalidate() }
-        try await requirePublicURL(request.url!)
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw WebToolError.unexpectedResponse }
-        guard http.statusCode == 200 else {
-            throw WebToolError.httpStatus(http.statusCode, url: "html.duckduckgo.com")
-        }
-        return parseDuckDuckGo(html: String(decoding: data, as: UTF8.self), maxResults: maxResults)
+        var components = URLComponents(string: "https://html.duckduckgo.com/html/")!
+        components.queryItems = [URLQueryItem(name: "q", value: query), URLQueryItem(name: "kl", value: "us-en")]
+        guard let url = components.url else { throw WebToolError.invalidURL(query) }
+        try await requirePublicURL(url)
+        let html = try await HiddenWebPage.html(of: url, timeout: requestTimeout)
+        return parseDuckDuckGo(html: html, maxResults: maxResults)
     }
 
     static func parseDuckDuckGo(html: String, maxResults: Int) -> [SearchResult] {
@@ -428,7 +431,7 @@ public enum WebTools {
             guard isPublicIPv6(bytes) else { throw WebToolError.blockedHost(host) }
             return
         }
-        let addresses = try await lookupAddresses(host: host)
+        let addresses = await lookupAddresses(host: host)
         guard !addresses.isEmpty else { throw WebToolError.unknownHost(host) }
         for address in addresses {
             if let bytes = ipv4Bytes(address) {
@@ -518,8 +521,8 @@ public enum WebTools {
 
     /// Blocking resolution would pin the caller's thread on a slow or black-holed
     /// DNS server, so it runs detached and only the answer comes back.
-    static func lookupAddresses(host: String) async throws -> [String] {
-        try await Task.detached(priority: .userInitiated) {
+    static func lookupAddresses(host: String) async -> [String] {
+        await Task.detached(priority: .userInitiated) {
             var hints = addrinfo(
                 ai_flags: AI_ADDRCONFIG,
                 ai_family: AF_UNSPEC,
@@ -770,4 +773,31 @@ enum HTMLText {
         // Nested tags collapse onto one line; trim the whitespace that leaves behind.
         return output.replacingOccurrences(of: "[ \\t]+\n", with: "\n", options: .regularExpression)
     }
+}
+
+/// One page loaded off screen, read back as HTML. Never shown and never the Right
+/// Dock browser, so a search does not replace the page the user is looking at.
+@MainActor
+private final class HiddenWebPage: NSObject, WKNavigationDelegate {
+    private let view = WKWebView(frame: CGRect(x: 0, y: 0, width: 1280, height: 800))
+    private var loaded: CheckedContinuation<Void, Error>?
+
+    static func html(of url: URL, timeout: TimeInterval) async throws -> String {
+        let page = HiddenWebPage()
+        page.view.navigationDelegate = page
+        try await withCheckedThrowingContinuation { continuation in
+            page.loaded = continuation
+            page.view.load(URLRequest(url: url, timeoutInterval: timeout))
+        }
+        return try await page.view.evaluateJavaScript("document.documentElement.outerHTML") as? String ?? ""
+    }
+
+    private func finish(_ result: Result<Void, Error>) {
+        loaded?.resume(with: result)
+        loaded = nil
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { finish(.success(())) }
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { finish(.failure(error)) }
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { finish(.failure(error)) }
 }

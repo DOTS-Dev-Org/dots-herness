@@ -14,7 +14,7 @@ MAC_RESOURCES = ROOT / "macos" / "DotsHarness" / "Sources" / "DotsHarnessCore" /
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_localization import MAC_LOCALES, SHARED_LOCALES, read_resx, read_strings  # noqa: E402
-from translation_catalog import MAC_TRANSLATIONS, SHARED_TRANSLATIONS  # noqa: E402
+from translation_catalog import MAC_ENGLISH, MAC_TRANSLATIONS, SHARED_KEYS, SHARED_TRANSLATIONS  # noqa: E402
 
 STRINGS_ENTRY = re.compile(r'^(\s*)"((?:\\.|[^"\\])*)"\s*=\s*"((?:\\.|[^"\\])*)"\s*;\s*$')
 RESX_DATA = re.compile(
@@ -22,6 +22,7 @@ RESX_DATA = re.compile(
     re.DOTALL,
 )
 PLACEHOLDER = re.compile(r"%(?:(\d+)\$)?(?:lld|[dfs@])")
+UNTRANSLATED_KEYS: set[str] = set()
 
 
 def escape_strings(value: str) -> str:
@@ -39,6 +40,33 @@ def resx_value(value: str) -> str:
         return "{" + str(index) + "}"
 
     return html.escape(PLACEHOLDER.sub(replace, value), quote=False)
+
+
+def update_english() -> int:
+    """Append English source values for keys moved out of the native code."""
+    mac_path = MAC_RESOURCES / "en.lproj" / "Localizable.strings"
+    mac_existing = read_strings(mac_path)
+    mac_missing = [key for key in MAC_ENGLISH if key not in mac_existing]
+    if mac_missing:
+        lines = ["", "// UI copy moved out of the native shells (tools/ui_catalog.py)."]
+        lines.extend(f'"{key}" = "{escape_strings(MAC_ENGLISH[key])}";' for key in mac_missing)
+        mac_path.write_text(mac_path.read_text(encoding="utf-8").rstrip("\n") + "\n" + "\n".join(lines) + "\n", encoding="utf-8")
+    resx_path = SHARED / "Localization.resx"
+    text = resx_path.read_text(encoding="utf-8")
+    shared_existing = read_resx(resx_path)
+    resx_missing = [key for key in SHARED_KEYS if key not in shared_existing]
+    if resx_missing:
+        additions = []
+        for key in resx_missing:
+            # Existing macOS strings are reused by the desktop shells even when
+            # they were not part of the generated MAC_UI catalog.
+            english = MAC_ENGLISH.get(key) or mac_existing.get(key)
+            if english is None:
+                raise ValueError(f"{resx_path}: no English source supplied for {key}")
+            additions.append(f'  <data name="{key}" xml:space="preserve"><value>{resx_value(english)}</value></data>')
+        additions = "\n".join(additions)
+        resx_path.write_text(text.replace("</root>", additions + "\n</root>"), encoding="utf-8")
+    return len(mac_missing) + len(resx_missing)
 
 
 def update_strings(locale: str) -> int:
@@ -63,13 +91,13 @@ def update_strings(locale: str) -> int:
             lines.append(replacement)
         else:
             lines.append(line)
-    if locale != "en" and missing:
+    missing_translations = [key for key in missing if key in MAC_TRANSLATIONS]
+    UNTRANSLATED_KEYS.update(key for key in missing if key not in MAC_TRANSLATIONS)
+    if locale != "en" and missing_translations:
         lines.extend(["", "// Completed translations for keys added to the desktop catalog."])
-        for key in missing:
-            if key not in MAC_TRANSLATIONS:
-                raise ValueError(f"{path}: no translation supplied for {key}")
+        for key in missing_translations:
             lines.append(f'"{key}" = "{escape_strings(MAC_TRANSLATIONS[key][locale])}";')
-        changed += len(missing)
+        changed += len(missing_translations)
     if changed:
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return changed
@@ -100,8 +128,8 @@ def update_resx(locale: str) -> int:
     mac_base = read_strings(MAC_RESOURCES / "en.lproj" / "Localizable.strings")
     mac_values = read_strings(MAC_RESOURCES / f"{locale}.lproj" / "Localizable.strings")
     missing = [key for key in base if key not in existing]
+    additions: list[str] = []
     if missing:
-        additions: list[str] = []
         for key in missing:
             if key in translations:
                 raw_value = translations[key][locale]
@@ -110,20 +138,25 @@ def update_resx(locale: str) -> int:
                 # both English sources are identical.
                 raw_value = mac_values[key]
             else:
-                raise ValueError(f"{path}: no translation supplied for {key}")
+                UNTRANSLATED_KEYS.add(key)
+                continue
             value = resx_value(raw_value)
             additions.append(f'  <data name="{key}" xml:space="preserve"><value>{value}</value></data>')
+    if additions:
         updated = updated.replace("</root>", "\n".join(additions) + "\n</root>")
-        changed += len(missing)
+        changed += len(additions)
     if changed:
         path.write_text(updated, encoding="utf-8")
     return changed
 
 
 def main() -> None:
+    english_changed = update_english()
     mac_changed = sum(update_strings(locale) for locale in MAC_LOCALES if locale != "en")
     shared_changed = sum(update_resx(locale) for locale in SHARED_LOCALES)
-    print(f"updated {mac_changed} macOS entries and {shared_changed} shared entries")
+    print(f"added {english_changed} English entries, updated {mac_changed} macOS entries and {shared_changed} shared entries")
+    if UNTRANSLATED_KEYS:
+        print(f"skipped keys without reviewed translations: {', '.join(sorted(UNTRANSLATED_KEYS))}", file=sys.stderr)
 
 
 if __name__ == "__main__":

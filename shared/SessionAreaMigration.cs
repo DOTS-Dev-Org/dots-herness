@@ -41,6 +41,9 @@ public static class SessionAreaMigration
         {
             foreach (var conversation in Read(source))
             {
+                // Mirrors macOS: legacy Chat records without a workspace are not re-imported. The canonical
+                // store is trusted as-is, because projectless chats it holds predate the flag.
+                if (source != canonicalPath && string.IsNullOrWhiteSpace(conversation.Cwd) && !conversation.Projectless) continue;
                 // The transcript with the most messages is the useful copy when
                 // an interrupted previous migration left duplicates behind.
                 if (!selected.TryGetValue(conversation.Id, out var existing)

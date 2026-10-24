@@ -40,7 +40,6 @@ export const MARKETPLACE_REPORT_REASONS = [
   "copyright",
   "other",
 ] as const;
-export type MarketplaceReportReason = (typeof MARKETPLACE_REPORT_REASONS)[number];
 
 export type MarketplaceModerationInput = {
   id: string;

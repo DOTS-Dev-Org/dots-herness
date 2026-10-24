@@ -72,15 +72,6 @@ public sealed class WorkspaceVersionStore
         }
     }
 
-    public bool HasCompleteTurnSnapshot(string conversationId, string turnId, string workspace)
-    {
-        var manifest = ReadManifest(conversationId, turnId);
-        return manifest is { Complete: true }
-            && SameWorkspace(manifest.WorkspacePath, workspace)
-            && manifest.ChangedFiles.Count > 0
-            && !manifest.Undone;
-    }
-
     public WorkspaceRestoreResult RestoreTurn(
         string conversationId,
         string turnId,
@@ -322,30 +313,35 @@ public sealed class WorkspaceVersionStore
     {
         var oldBytes = before is null ? null : ReadBlob(before.Hash);
         var newBytes = after is null ? null : ReadBlob(after.Hash);
-        var (added, deleted) = TextLineChanges(oldBytes, newBytes);
+        var diff = TextLineChanges(oldBytes, newBytes);
         var operation = before is null ? ChangedFileOperation.Added
             : after is null ? ChangedFileOperation.Deleted
             : ChangedFileOperation.Modified;
         return new ChangedFile(path, operation)
         {
-            AddedLines = added,
-            DeletedLines = deleted,
+            AddedLines = diff.Added,
+            DeletedLines = diff.Deleted,
+            Preview = diff.Preview,
         };
     }
 
-    private static (int Added, int Deleted) TextLineChanges(byte[]? before, byte[]? after)
+    private readonly record struct LineEdit(char Kind, string Text);
+
+    private static (int Added, int Deleted, string? Preview) TextLineChanges(byte[]? before, byte[]? after)
     {
         var oldLines = DecodeLines(before);
         var newLines = DecodeLines(after);
-        if (oldLines is null || newLines is null) return (-1, -1);
+        if (oldLines is null || newLines is null) return (-1, -1, null);
         var prefix = 0;
         while (prefix < oldLines.Length && prefix < newLines.Length && oldLines[prefix] == newLines[prefix]) prefix++;
         var suffix = 0;
         while (suffix < oldLines.Length - prefix && suffix < newLines.Length - prefix
             && oldLines[oldLines.Length - 1 - suffix] == newLines[newLines.Length - 1 - suffix]) suffix++;
+        var allOldLines = oldLines;
+        var allNewLines = newLines;
         oldLines = oldLines[prefix..(oldLines.Length - suffix)];
         newLines = newLines[prefix..(newLines.Length - suffix)];
-        if (oldLines.Length + newLines.Length > MaximumDiffLines) return (-1, -1);
+        if (oldLines.Length + newLines.Length > MaximumDiffLines) return (-1, -1, null);
 
         var max = oldLines.Length + newLines.Length;
         var offset = max;
@@ -354,7 +350,7 @@ public sealed class WorkspaceVersionStore
         var trace = new List<int[]>();
         for (var distance = 0; distance <= max; distance++)
         {
-            if (distance > MaximumEditDistance) return (-1, -1);
+            if (distance > MaximumEditDistance) return (-1, -1, null);
             trace.Add((int[])v.Clone());
             for (var diagonal = -distance; diagonal <= distance; diagonal += 2)
             {
@@ -366,23 +362,27 @@ public sealed class WorkspaceVersionStore
                 while (x < oldLines.Length && y < newLines.Length && oldLines[x] == newLines[y]) { x++; y++; }
                 v[index] = x;
                 if (x >= oldLines.Length && y >= newLines.Length)
-                    return BacktrackLineChanges(trace, distance, oldLines.Length, newLines.Length, offset);
+                {
+                    var edits = BacktrackLineEdits(trace, distance, oldLines, newLines, offset);
+                    var added = edits.Count(edit => edit.Kind == '+');
+                    var deleted = edits.Count(edit => edit.Kind == '-');
+                    return (added, deleted, BuildPreview(edits, allOldLines, allNewLines, prefix, suffix));
+                }
             }
         }
-        return (-1, -1);
+        return (-1, -1, null);
     }
 
-    private static (int Added, int Deleted) BacktrackLineChanges(
+    private static List<LineEdit> BacktrackLineEdits(
         IReadOnlyList<int[]> trace,
         int distance,
-        int oldLength,
-        int newLength,
+        string[] oldLines,
+        string[] newLines,
         int offset)
     {
-        var x = oldLength;
-        var y = newLength;
-        var added = 0;
-        var deleted = 0;
+        var x = oldLines.Length;
+        var y = newLines.Length;
+        var edits = new List<LineEdit>(x + y);
         for (var d = distance; d > 0; d--)
         {
             var previous = trace[d];
@@ -393,14 +393,80 @@ public sealed class WorkspaceVersionStore
                     : diagonal - 1;
             var previousX = previous[offset + previousDiagonal];
             var previousY = previousX - previousDiagonal;
-            while (x > previousX && y > previousY) { x--; y--; }
-            if (x == previousX) { added++; y--; }
-            else { deleted++; x--; }
+            while (x > previousX && y > previousY)
+            {
+                edits.Add(new LineEdit(' ', oldLines[--x]));
+                y--;
+            }
+            if (x == previousX) edits.Add(new LineEdit('+', newLines[--y]));
+            else edits.Add(new LineEdit('-', oldLines[--x]));
         }
-        while (x > 0 && y > 0) { x--; y--; }
-        added += y;
-        deleted += x;
-        return (added, deleted);
+        while (x > 0 && y > 0)
+        {
+            edits.Add(new LineEdit(' ', oldLines[--x]));
+            y--;
+        }
+        while (x > 0) edits.Add(new LineEdit('-', oldLines[--x]));
+        while (y > 0) edits.Add(new LineEdit('+', newLines[--y]));
+        edits.Reverse();
+        return edits;
+    }
+
+    private static string? BuildPreview(
+        IReadOnlyList<LineEdit> edits,
+        string[] oldLines,
+        string[] newLines,
+        int commonPrefix,
+        int commonSuffix)
+    {
+        const int maximumRows = 42;
+        const int contextRows = 3;
+        var firstChange = -1;
+        for (var index = 0; index < edits.Count; index++)
+        {
+            if (edits[index].Kind is '+' or '-') { firstChange = index; break; }
+        }
+        if (firstChange < 0) return null;
+
+        var rows = new List<string>(maximumRows);
+        for (var index = Math.Max(0, commonPrefix - contextRows); index < commonPrefix; index++)
+            rows.Add($"  {index + 1,4} │ {oldLines[index]}");
+
+        var operationStart = Math.Max(0, firstChange - contextRows);
+        var oldLine = commonPrefix + 1 + edits.Take(operationStart).Count(edit => edit.Kind != '+');
+        var newLine = commonPrefix + 1 + edits.Take(operationStart).Count(edit => edit.Kind != '-');
+        var operationCapacity = Math.Max(1, maximumRows - rows.Count - 1);
+        var operationCount = Math.Min(edits.Count - operationStart, operationCapacity);
+        for (var index = operationStart; index < operationStart + operationCount; index++)
+        {
+            var edit = edits[index];
+            switch (edit.Kind)
+            {
+                case ' ':
+                    rows.Add($"  {newLine++,4} │ {edit.Text}");
+                    oldLine++;
+                    break;
+                case '-': rows.Add($"− {oldLine++,4} │ {edit.Text}"); break;
+                case '+': rows.Add($"+ {newLine++,4} │ {edit.Text}"); break;
+            }
+        }
+
+        if (operationStart + operationCount < edits.Count)
+        {
+            if (rows.Count < maximumRows) rows.Add("  …");
+        }
+        else
+        {
+            var suffixRows = Math.Min(contextRows, commonSuffix);
+            for (var index = 0; index < suffixRows && rows.Count < maximumRows; index++)
+            {
+                var lineNumber = newLines.Length - commonSuffix + index + 1;
+                rows.Add($"  {lineNumber,4} │ {newLines[newLines.Length - commonSuffix + index]}");
+            }
+        }
+
+        var preview = string.Join('\n', rows);
+        return preview.Length <= 12_000 ? preview : preview[..12_000];
     }
 
     private static string[]? DecodeLines(byte[]? bytes)

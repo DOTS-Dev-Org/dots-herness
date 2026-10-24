@@ -2,11 +2,22 @@
 
 import XCTest
 import Foundation
+import AppKit
 import HarnessPluginKit
 import PluginRuntime
+@testable import DotsHarnessUI
 @testable import DotsHarnessCore
 
 final class AgentBridgeTests: XCTestCase {
+    @MainActor
+    func testToolSignatureIgnoresKeyOrderAndWhitespace() {
+        let a = AgentToolCall(id: "1", name: "edit_file", arguments: "{\"path\":\"a.txt\",\"old\":\"x\"}")
+        let b = AgentToolCall(id: "2", name: "edit_file", arguments: "{ \"old\": \"x\", \"path\": \"a.txt\" }")
+        let c = AgentToolCall(id: "3", name: "edit_file", arguments: "{\"path\":\"b.txt\",\"old\":\"x\"}")
+        XCTAssertEqual(AgentBridge.toolSignature(a), AgentBridge.toolSignature(b))
+        XCTAssertNotEqual(AgentBridge.toolSignature(a), AgentBridge.toolSignature(c))
+    }
+
     @MainActor
     func testMediaCommandsStayOutOfContextButGeneratedAssetRemainsAvailable() {
         let mediaTurnID = UUID().uuidString
@@ -312,6 +323,44 @@ final class AgentBridgeTests: XCTestCase {
     }
 
     @MainActor
+    func testPastedImageDataBecomesPersistentDraftAttachment() throws {
+        let paths = temporaryPaths()
+        let model = AppModel(paths: paths)
+        let imageData = Data([0x89, 0x50, 0x4E, 0x47])
+
+        model.addDraftImageData(imageData)
+
+        let attachment = try XCTUnwrap(model.draftAttachments.first)
+        XCTAssertEqual(attachment.kind, .image)
+        XCTAssertEqual(attachment.mimeType, "image/png")
+        XCTAssertTrue(attachment.path.hasPrefix(paths.runtime.appendingPathComponent("pasted-images").path))
+        XCTAssertEqual(try Data(contentsOf: attachment.url), imageData)
+    }
+
+    @MainActor
+    func testPromptEditorDecodesPastedImageFromPasteboard() throws {
+        let representation = try XCTUnwrap(NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: 1,
+            pixelsHigh: 1,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ))
+        let image = NSImage(size: NSSize(width: 1, height: 1))
+        image.addRepresentation(representation)
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name(UUID().uuidString))
+        XCTAssertTrue(pasteboard.writeObjects([image]))
+
+        let pastedData = try XCTUnwrap(PromptNSTextView.pngImageData(from: pasteboard))
+        XCTAssertNotNil(NSBitmapImageRep(data: pastedData))
+    }
+
+    @MainActor
     func testUnsentDraftReturnsWithNewChat() throws {
         let paths = temporaryPaths()
         let workspace = paths.root.appendingPathComponent("project", isDirectory: true)
@@ -526,6 +575,36 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertEqual(conversation.id, "legacy-chat")
         XCTAssertNil(conversation.messages.first?.turnID)
         XCTAssertTrue(conversation.messages.first?.changedFiles.isEmpty == true)
+    }
+
+    @MainActor
+    func testStaleQueryForPreviousChatDoesNotStrandSelectedLoad() async throws {
+        let paths = temporaryPaths()
+        let workspace = paths.root.appendingPathComponent("switch-project", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        let messages = (0..<20).map { ChatMessage(kind: .assistant, text: "m\($0)") }
+        ConversationStore(paths: paths).save([
+            Conversation(id: "a", title: "A", messages: messages, blank: false, cwd: workspace.path),
+            Conversation(id: "b", title: "B", messages: messages, blank: false, cwd: workspace.path),
+        ])
+        let bridge = AgentBridge(paths: paths, router: RouterController(baseURL: "http://127.0.0.1:1"))
+        bridge.start(workspacePath: workspace.path)
+        func waitLoaded() async throws {
+            for _ in 0..<200 where bridge.selected?.contentLoaded != true {
+                try await Task.sleep(nanoseconds: 10_000_000)
+            }
+        }
+        bridge.select("a")
+        try await waitLoaded()
+        let messageID = try XCTUnwrap(bridge.selected?.messages.first?.id)
+
+        bridge.select("b")
+        // The previous chat's rows render once more with their own id.
+        _ = bridge.canRewind(messageID: messageID, in: "a")
+        try await waitLoaded()
+
+        XCTAssertEqual(bridge.selected?.id, "b")
+        XCTAssertTrue(bridge.selected?.contentLoaded == true)
     }
 
     @MainActor
@@ -809,6 +888,59 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertTrue(try XCTUnwrap(stored.first?.pendingPrompts.first).isPlanIntentResolved)
     }
 
+    /// A message held without an endpoint must not leave a blank chat that a later "New chat" reuses.
+    @MainActor
+    func testHeldMessageMakesChatRealSoNewChatDoesNotReuseIt() throws {
+        let paths = temporaryPaths()
+        let workspace = paths.root.appendingPathComponent("project", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        let host = NativeAgentHost(paths: paths, endpoint: AgentEndpointController())
+        host.start(workspacePath: workspace.path)
+
+        host.newConversation()
+        let draft = try XCTUnwrap(host.selectedID)
+        host.submitPrompt(text: "What does this app do?", attachments: [], mode: .queue, planMode: false, needsPlanIntentResolution: false)
+
+        let chat = try XCTUnwrap(host.conversations.first(where: { $0.id == draft }))
+        XCTAssertFalse(chat.blank)
+        XCTAssertEqual(chat.title, "What does this app do?")
+        XCTAssertEqual(chat.pendingPrompts.map(\.text), ["What does this app do?"])
+        let stored = try XCTUnwrap(ConversationStore(paths: paths).load(workspacePath: workspace.path).first(where: { $0.id == draft }))
+        XCTAssertFalse(stored.blank)
+        XCTAssertEqual(stored.pendingPrompts.map(\.text), ["What does this app do?"])
+
+        host.newConversation()
+        XCTAssertNotEqual(host.selectedID, draft)
+    }
+
+    /// Reselecting a chat whose start was refused gives its held message another start attempt.
+    @MainActor
+    func testSelectingChatRetriesItsHeldMessage() async throws {
+        let paths = temporaryPaths()
+        let workspace = paths.root.appendingPathComponent("project", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        let host = NativeAgentHost(paths: paths, endpoint: AgentEndpointController())
+        host.start(workspacePath: workspace.path)
+
+        host.newConversation()
+        let draft = try XCTUnwrap(host.selectedID)
+        host.submitPrompt(text: "What does this app do?", attachments: [], mode: .queue, planMode: false, needsPlanIntentResolution: false)
+        // Let the first start attempt finish while the chat is still selected: without an endpoint it is refused.
+        for _ in 0..<100 where host.state(for: draft).pendingPromptStartID != nil {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        host.newConversation()
+        XCTAssertNotEqual(host.selectedID, draft)
+        host.status = "sentinel"
+        host.select(draft)
+        for _ in 0..<100 where host.status == "sentinel" {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertEqual(host.status, AppCopy.text("agent.configureEndpoint"))
+        XCTAssertEqual(host.conversations.first(where: { $0.id == draft })?.pendingPrompts.count, 1)
+    }
+
     @MainActor
     func testQueueWaitsForPlanApprovalAndThenContinues() {
         let host = NativeAgentHost(paths: temporaryPaths(), endpoint: AgentEndpointController())
@@ -920,7 +1052,7 @@ final class AgentBridgeTests: XCTestCase {
         URLProtocol.registerClass(ApprovalURLProtocol.self)
         defer { ApprovalURLProtocol.reset(); URLProtocol.unregisterClass(ApprovalURLProtocol.self) }
 
-        for reason in [ContinuationPauseReason.userStopped, .providerLimit, .applicationClosed] {
+        for reason in [ContinuationPauseReason.userStopped, .providerLimit, .applicationClosed, .networkLost] {
             for hasPlan in [false, true] {
                 let paths = temporaryPaths()
                 let workspace = paths.root.appendingPathComponent("continue-project", isDirectory: true)
@@ -959,6 +1091,31 @@ final class AgentBridgeTests: XCTestCase {
                 XCTAssertFalse(NativeAgentHost.recover(restored).canContinue)
             }
         }
+    }
+
+    @MainActor
+    func testDroppedConnectionPausesAndResumesWhenNetworkReturns() async throws {
+        URLProtocol.registerClass(ApprovalURLProtocol.self)
+        defer { ApprovalURLProtocol.reset(); URLProtocol.unregisterClass(ApprovalURLProtocol.self) }
+        let paths = temporaryPaths()
+        let workspace = paths.root.appendingPathComponent("offline-project", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        let host = NativeAgentHost(
+            paths: paths,
+            endpoint: AgentEndpointController(baseURL: "http://approval.test", modelID: "test-model")
+        )
+        host.start(workspacePath: workspace.path)
+        await host.refreshConnection()
+
+        ApprovalURLProtocol.failure = .notConnectedToInternet
+        await host.send(text: "inspect", mode: .queue)
+        XCTAssertEqual(host.selected?.continuation?.reason, .networkLost)
+        XCTAssertTrue(host.canContinue)
+
+        ApprovalURLProtocol.failure = nil
+        await host.resumeAfterNetworkIfNeeded()
+        XCTAssertEqual(host.selected?.messages.last(where: { $0.kind == .assistant })?.text, "done")
+        XCTAssertNil(host.selected?.continuation)
     }
 
     @MainActor
@@ -1150,7 +1307,7 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertEqual(object["role"] as? String, "assistant")
         let toolCalls = object["tool_calls"] as? [[String: Any]]
         XCTAssertEqual(toolCalls?.first?["id"] as? String, "call-1")
-        XCTAssertEqual(WorkspaceTools.definitions.map(\.name), ["list_files", "read_file", "write_file", "remove_file", "grep_files", "run_command", "edit_file", "glob", "copy_generated_media", "inspect_generated_media", "ios_simulator", "android_emulator"])
+        XCTAssertEqual(WorkspaceTools.definitions.map(\.name), ["list_files", "read_file", "write_file", "remove_file", "grep_files", "run_command", "wait_command", "edit_file", "glob", "copy_generated_media", "inspect_generated_media", "ios_simulator", "android_emulator"])
     }
 
     func testGrepFilesMatchesLinesAndRespectsFilters() throws {
@@ -1215,71 +1372,81 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertEqual(blank.answer, AppCopy.text("explore.missingTask"))
     }
 
-    func testExploreCondensesPastTheTargetButNeverCuts() async {
-        let long = String(repeating: "b", count: ExploreTool.condenseTrigger + 500)
-        let complete: ExploreTool.Complete = { _, tools in
-            // The retry carries no tools: that is the condensing call.
-            AgentResponse(message: AgentMessage(
-                role: .assistant,
-                content: tools.isEmpty ? "tight answer with Sources/A.swift:12\nStatus: answered" : long
-            ))
-        }
-        let outcome = await ExploreTool.run(
-            AgentToolCall(id: "e3", name: "explore", arguments: "{\"task\":\"where is the loop\"}"),
-            complete: complete,
-            workspace: FileManager.default.temporaryDirectory
-        )
-        XCTAssertEqual(outcome.answer, "tight answer with Sources/A.swift:12\nStatus: answered")
-        XCTAssertTrue(outcome.answered)
-    }
-
-    func testExploreAsksToCondenseAtMostOnce() async {
+    func testExploreKeepsALongAnswerInOneRequest() async {
+        // A retry to shorten the answer resends the whole transcript: the answer is
+        // kept as it came, whatever its length, and costs no second request.
         let counter = CallCounter()
-        let long = String(repeating: "d", count: ExploreTool.condenseTrigger + 400)
+        let long = String(repeating: "c", count: ExploreTool.answerTarget * 3) + "\nStatus: answered"
         let complete: ExploreTool.Complete = { _, _ in
             _ = await counter.next()
-            // Never shrinks: the loop must still stop after one retry.
-            return AgentResponse(message: AgentMessage(role: .assistant, content: long + "\nStatus: answered"))
-        }
-        let outcome = await ExploreTool.run(
-            AgentToolCall(id: "e7", name: "explore", arguments: "{\"task\":\"map the loop\"}"),
-            complete: complete,
-            workspace: FileManager.default.temporaryDirectory
-        )
-        let calls = await counter.value
-        XCTAssertEqual(calls, 2, "one answer plus one condense attempt, never more")
-        XCTAssertTrue(outcome.answer.hasSuffix("Status: answered"))
-    }
-
-    func testExploreLeavesAnAnswerJustOverTheTargetAlone() async {
-        let counter = CallCounter()
-        let slightlyLong = String(repeating: "e", count: ExploreTool.condenseThreshold + 200)
-        XCTAssertLessThan(slightlyLong.count, ExploreTool.condenseTrigger)
-        let complete: ExploreTool.Complete = { _, _ in
-            _ = await counter.next()
-            return AgentResponse(message: AgentMessage(role: .assistant, content: slightlyLong))
-        }
-        _ = await ExploreTool.run(
-            AgentToolCall(id: "e8", name: "explore", arguments: "{\"task\":\"where is the store\"}"),
-            complete: complete,
-            workspace: FileManager.default.temporaryDirectory
-        )
-        let calls = await counter.value
-        XCTAssertEqual(calls, 1, "a little over target must not cost a second full request")
-    }
-
-    func testExploreKeepsALongAnswerThatWillNotCondense() async {
-        // The findings genuinely need the room: refusing to shrink must not cost text.
-        let long = String(repeating: "c", count: ExploreTool.condenseTrigger + 900) + "\nStatus: answered"
-        let complete: ExploreTool.Complete = { _, _ in
-            AgentResponse(message: AgentMessage(role: .assistant, content: long))
+            return AgentResponse(message: AgentMessage(role: .assistant, content: long))
         }
         let outcome = await ExploreTool.run(
             AgentToolCall(id: "e6", name: "explore", arguments: "{\"task\":\"map the router\"}"),
             complete: complete,
             workspace: FileManager.default.temporaryDirectory
         )
+        let calls = await counter.value
+        XCTAssertEqual(calls, 1)
         XCTAssertEqual(outcome.answer, long, "no ceiling means no silent loss")
+    }
+
+    func testExploreWrapUpKeepsTheToolsSoTheCachedPrefixHolds() async {
+        let empty = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try? FileManager.default.createDirectory(at: empty, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: empty) }
+        let toolCounts = ToolCountRecorder()
+        let looping: ExploreTool.Complete = { messages, tools in
+            await toolCounts.add(tools.count)
+            return messages.last?.content == AppCopy.text("explore.wrapUp")
+                ? AgentResponse(message: AgentMessage(role: .assistant, content: "wrapped\nStatus: partial"))
+                : AgentResponse(message: AgentMessage(
+                    role: .assistant, content: "",
+                    toolCalls: [AgentToolCall(id: "l", name: "list_files", arguments: "{\"path\":\".\"}")]
+                ))
+        }
+        let outcome = await ExploreTool.run(
+            AgentToolCall(id: "e9", name: "explore", arguments: "{\"task\":\"wrap \(UUID().uuidString)\"}"),
+            complete: looping,
+            workspace: empty
+        )
+        XCTAssertEqual(outcome.answer, "wrapped\nStatus: partial")
+        let counts = await toolCounts.values
+        XCTAssertEqual(Set(counts).count, 1, "every request, the wrap-up included, sends the same tools")
+    }
+
+    func testEachExploreRunHasItsOwnRouteForAllItsSteps() async {
+        let scopes = ScopeRecorder()
+        let complete: ExploreTool.Complete = { messages, _ in
+            let route = SubagentRoute.current
+            await scopes.add(route?.scope)
+            if messages.contains(where: { $0.role == .tool }) {
+                return AgentResponse(message: AgentMessage(role: .assistant, content: "done\nStatus: answered"))
+            }
+            route?.pin("account-a")
+            return AgentResponse(message: AgentMessage(
+                role: .assistant, content: "",
+                toolCalls: [AgentToolCall(id: "r", name: "list_files", arguments: "{\"path\":\".\"}")]
+            ))
+        }
+        for id in ["ra", "rb"] {
+            _ = await ExploreTool.run(
+                AgentToolCall(id: id, name: "explore", arguments: "{\"task\":\"route \(UUID().uuidString)\"}"),
+                complete: complete,
+                workspace: FileManager.default.temporaryDirectory
+            )
+        }
+        let seen = await scopes.values
+        XCTAssertEqual(seen.count, 4)
+        XCTAssertFalse(seen.contains(nil))
+        XCTAssertEqual(seen[0], seen[1], "one run keeps one route")
+        XCTAssertNotEqual(seen[1], seen[2], "a second run never shares the first one's route")
+        XCTAssertNil(SubagentRoute.current)
+        let route = SubagentRoute()
+        route.pin("account-a")
+        route.pin(nil)
+        XCTAssertEqual(route.accountID, "account-a", "a response without an account keeps the pin")
+        XCTAssertNotEqual(route.comparisonScope("explore:x"), SubagentRoute().comparisonScope("explore:x"))
     }
 
     func testExploreKeepsFindingsWhenTheProviderFails() async {
@@ -1308,6 +1475,50 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertNotNil(stored, "the partial findings must survive for the next attempt")
     }
 
+    func testExploreStepBudgetIsATargetNotACeiling() async {
+        let empty = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try? FileManager.default.createDirectory(at: empty, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: empty) }
+        // Fresh calls past the budget keep going; the checkpoint is sent once.
+        let counter = CallCounter()
+        let progressing: ExploreTool.Complete = { messages, _ in
+            let n = await counter.next()
+            if n > 20 {
+                let checkpoints = messages.filter { $0.content == ExploreTool.checkpoint }.count
+                return AgentResponse(message: AgentMessage(role: .assistant, content: "checkpoints \(checkpoints)\nStatus: answered"))
+            }
+            return AgentResponse(message: AgentMessage(
+                role: .assistant, content: "",
+                toolCalls: [AgentToolCall(id: "p\(n)", name: "list_files", arguments: "{\"path\":\"d\(n)\"}")]
+            ))
+        }
+        let long = await ExploreTool.run(
+            AgentToolCall(id: "e7", name: "explore", arguments: "{\"task\":\"long \(UUID().uuidString)\"}"),
+            complete: progressing,
+            workspace: empty
+        )
+        XCTAssertEqual(long.steps, 21)
+        XCTAssertFalse(long.hitStepLimit)
+        XCTAssertTrue(long.answer.hasPrefix("checkpoints 1"))
+
+        // Past the budget, a step that only repeats earlier calls ends the run.
+        let looping: ExploreTool.Complete = { messages, _ in
+            messages.last?.content == AppCopy.text("explore.wrapUp")
+                ? AgentResponse(message: AgentMessage(role: .assistant, content: "wrapped\nStatus: partial"))
+                : AgentResponse(message: AgentMessage(
+                    role: .assistant, content: "",
+                    toolCalls: [AgentToolCall(id: "l", name: "list_files", arguments: "{\"path\":\".\"}")]
+                ))
+        }
+        let stuck = await ExploreTool.run(
+            AgentToolCall(id: "e8", name: "explore", arguments: "{\"task\":\"loop \(UUID().uuidString)\"}"),
+            complete: looping,
+            workspace: empty
+        )
+        XCTAssertEqual(stuck.steps, ExploreTool.stepBudget)
+        XCTAssertTrue(stuck.hitStepLimit)
+    }
+
     func testExploreOutcomeSurfacesEveryReasonToDistrustIt() {
         let partial = ExploreTool.Outcome(
             answer: "## Findings\n- Sources/A.swift:4 the loop\n\nStatus: partial",
@@ -1332,6 +1543,15 @@ final class AgentBridgeTests: XCTestCase {
             answer: "found it", readPaths: [], steps: 0, hitStepLimit: false, answered: true, searches: 0
         )
         XCTAssertEqual(clean.toolResult, "found it")
+
+        func outcome(searches: Int, files: Int) -> ExploreTool.Outcome {
+            .init(answer: "Status: answered", readPaths: (0..<files).map { "f\($0)" }, steps: 3,
+                  hitStepLimit: false, answered: true, searches: searches)
+        }
+        XCTAssertTrue(outcome(searches: 1, files: 2).toolResult.contains(ExploreTool.Outcome.unneededNote),
+                      "a lookup the caller could have done itself is called out")
+        XCTAssertFalse(outcome(searches: 4, files: 6).toolResult.contains(ExploreTool.Outcome.unneededNote))
+        XCTAssertFalse(outcome(searches: 0, files: 3).unneeded)
     }
 
     func testExploreStatusLineDecidesWhetherTheAnswerIsTrusted() {
@@ -1339,6 +1559,51 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertFalse(ExploreTool.answeredFully("## Findings\n- a\n\nStatus: partial"))
         XCTAssertFalse(ExploreTool.answeredFully("## Findings\n- a"), "a missing status line is not a claim")
         XCTAssertTrue(ExploreTool.answeredFully("Status: partial\nlater\nStatus: answered"), "the last line wins")
+    }
+
+    /// What the subagent reads stays in its own transcript: the caller's context
+    /// grows by the findings and the paths, never by the file contents.
+    func testExploreReturnsFindingsNotWhatItRead() async throws {
+        let workspace = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: workspace) }
+        let body = (1...200).map { "line \($0) RAW-FILE-CONTENT" }.joined(separator: "\n")
+        try body.write(to: workspace.appendingPathComponent("a.txt"), atomically: true, encoding: .utf8)
+
+        let counter = CallCounter()
+        let transcripts = Transcripts()
+        let findings = "## Findings\n- a.txt:1 holds the marker\n\n## Unresolved\nNone\n\nStatus: answered"
+        let complete: ExploreTool.Complete = { messages, _ in
+            await transcripts.add(messages)
+            func call(_ id: String, _ name: String, _ arguments: [String: String]) -> AgentResponse {
+                let encoded = String(decoding: try! JSONSerialization.data(withJSONObject: arguments), as: UTF8.self)
+                return AgentResponse(message: AgentMessage(role: .assistant, content: "",
+                    toolCalls: [AgentToolCall(id: id, name: name, arguments: encoded)]))
+            }
+            switch await counter.next() {
+            // The read-only tools go out with their schemas: no discover round.
+            case 1: return call("r1", "read_file", ["path": "a.txt"])
+            default: return AgentResponse(message: AgentMessage(role: .assistant, content: findings))
+            }
+        }
+        let outcome = await ExploreTool.run(
+            AgentToolCall(id: "e9", name: "explore", arguments: #"{"task":"where is the marker \#(UUID().uuidString)"}"#),
+            complete: complete,
+            workspace: workspace
+        )
+        let seen = await transcripts.all
+        XCTAssertEqual(seen.first?.map(\.role), [.system, .user], "the subagent starts from its task alone")
+        XCTAssertTrue(seen.last?.contains { $0.role == .tool && $0.content.contains("RAW-FILE-CONTENT") } == true,
+                      "the file was read into the subagent's own transcript")
+        XCTAssertEqual(outcome.readPaths, ["a.txt"])
+        XCTAssertFalse(outcome.toolResult.contains("RAW-FILE-CONTENT"), "file contents must not reach the caller")
+        XCTAssertLessThan(outcome.toolResult.count, 400)
+    }
+
+    private actor Transcripts {
+        private(set) var all: [[AgentMessage]] = []
+        func add(_ messages: [AgentMessage]) { all.append(messages) }
     }
 
     @MainActor
@@ -1366,16 +1631,17 @@ final class AgentBridgeTests: XCTestCase {
         let host = NativeAgentHost(paths: temporaryPaths(), router: router)
         func offered() -> Bool { host.agentTools(workspace: workspace).defs.contains { $0.name == "explore" } }
 
-        XCTAssertTrue(offered(), "unset preference in standard mode offers explore")
+        XCTAssertTrue(offered(), "an unset preference offers explore outside Economy")
         router.usageMode = .economy
-        XCTAssertFalse(offered(), "unset preference follows Economy and withholds explore")
+        XCTAssertFalse(offered(), "an unset preference withholds explore in Economy")
         router.subagentsPreference = true
         XCTAssertTrue(offered(), "an explicit on outlives Economy")
         router.usageMode = .standard
         router.subagentsPreference = false
         XCTAssertFalse(offered(), "an explicit off outlives standard mode")
-        XCTAssertFalse(ProjectKnowledge.guidance(missing: ["architecture"], explore: false).contains("explore"))
-        XCTAssertTrue(ProjectKnowledge.guidance(missing: ["architecture"]).contains("sweep to explore - and record"))
+        // The map answers the layout; the prompt must not send the run sweeping for it.
+        XCTAssertFalse(ProjectKnowledge.guidance(missing: ["architecture"]).contains("explore"))
+        XCTAssertTrue(ProjectKnowledge.guidance(missing: ["architecture"]).contains("from the project map"))
     }
 
     func testPrefetchExploreCapsToMaxPerTurnAndRejectsExcess() async {
@@ -1397,7 +1663,7 @@ final class AgentBridgeTests: XCTestCase {
             let outcome = outcomes["call-\(index)"]
             XCTAssertNotNil(outcome)
             XCTAssertFalse(outcome?.answered == true)
-            XCTAssertTrue(outcome?.answer.contains("Tool error: maximum of 3 explore subagents per turn exceeded") == true)
+            XCTAssertTrue(outcome?.answer.contains("Tool error: maximum of \(ExploreTool.maxPerTurn) explore subagents per turn exceeded") == true)
         }
     }
 
@@ -1555,6 +1821,13 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertTrue(result.contains("0123456789"))
     }
 
+    func testSleepPollingIsRefused() {
+        XCTAssertTrue(WorkspaceTools.isSleepPoll("sleep 30; if kill -0 18546; then echo RUNNING; fi"))
+        XCTAssertTrue(WorkspaceTools.isSleepPoll("  sleep 10 && tail -n 12 test.log"))
+        XCTAssertFalse(WorkspaceTools.isSleepPoll("swift test && sleep 1"))
+        XCTAssertFalse(WorkspaceTools.isSleepPoll("sleepwatcher --help"))
+    }
+
     func testRunCommandRejectsSymlinkEscape() throws {
         let workspace = FileManager.default.temporaryDirectory
             .appendingPathComponent("DotsHarnessTools-\(UUID().uuidString)", isDirectory: true)
@@ -1572,10 +1845,10 @@ final class AgentBridgeTests: XCTestCase {
     func testNativeAgentConfigurationIsIndependentOfSessionIDs() {
         let configuration = AgentConfiguration(
             baseURL: "https://api.openai.com/v1",
-            model: "gpt-4.1-mini",
+            model: "gpt-5.6-luna",
             provider: "GPT"
         )
-        XCTAssertEqual(configuration.model, "gpt-4.1-mini")
+        XCTAssertEqual(configuration.model, "gpt-5.6-luna")
         let connection = AgentConnection(
             endpoint: URL(string: configuration.baseURL)!,
             provider: configuration.provider,
@@ -1636,7 +1909,7 @@ final class AgentBridgeTests: XCTestCase {
         let client = NativeAgentClient(
             configuration: AgentConfiguration(
                 baseURL: "http://example.test/backend-api/codex",
-                model: "gpt-4.1-mini",
+                model: "gpt-5.6-luna",
                 apiKey: "session-token",
                 provider: "GPT",
                 api: RouterAPIKind.chatGPT.rawValue,
@@ -1714,7 +1987,7 @@ final class AgentBridgeTests: XCTestCase {
             providerID: "openai",
             baseURL: "http://example.test/v1",
             api: RouterAPIKind.openAICompatible.rawValue,
-            model: "gpt-4.1-mini"
+            model: "gpt-5.6-luna"
         )
         let request = try adapter.prepareImageRequest(prompt: "a red fox", model: route.model, route: route)
         XCTAssertEqual(request.url.path, "/v1/images/generations")
@@ -1743,7 +2016,7 @@ final class AgentBridgeTests: XCTestCase {
             prompt: "Merhaba, bugün nasılsın?",
             configuration: AgentConfiguration(
                 baseURL: "http://example.test/v1",
-                model: "gpt-4.1-mini",
+                model: "gpt-5.6-luna",
                 apiKey: "key",
                 specID: "openai"
             ),
@@ -1758,6 +2031,76 @@ final class AgentBridgeTests: XCTestCase {
         let body = try XCTUnwrap(JSONSerialization.jsonObject(with: try XCTUnwrap(MockURLProtocol.lastBody)) as? [String: Any])
         XCTAssertEqual(body["voice"] as? String, "marin")
         XCTAssertTrue((body["instructions"] as? String)?.contains("natural") == true)
+    }
+
+    func testMusicRequestFollowsTheEndpointFormat() async throws {
+        MockURLProtocol.response = Data(#"{"data":[{"b64_json":"AQID"}]}"#.utf8)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [MockURLProtocol.self]
+        let client = URLSession(configuration: configuration)
+        let paths = temporaryPaths()
+        let drums = MusicStemRequest(instrument: "drums", bpm: 100, key: "A minor")
+        func send(_ base: String, _ spec: ProviderMediaSpec, _ stem: MusicStemRequest) async throws -> [String: Any] {
+            let media = try await MediaGenerationClient.generate(
+                kind: .music, prompt: "funk groove",
+                configuration: AgentConfiguration(baseURL: base, model: spec.model, apiKey: "key"),
+                provider: spec, paths: paths, session: client, seconds: 2, stem: stem
+            )
+            XCTAssertEqual(try Data(contentsOf: media.url), Data([1, 2, 3]))
+            return try XCTUnwrap(JSONSerialization.jsonObject(with: try XCTUnwrap(MockURLProtocol.lastBody)) as? [String: Any])
+        }
+
+        var body = try await send("http://example.test/v1", ProviderMediaSpec(model: "musicgen-small"), drums)
+        XCTAssertEqual(MockURLProtocol.lastRequest?.url?.path, "/v1/audio/generations")
+        XCTAssertEqual(MockURLProtocol.lastRequest?.value(forHTTPHeaderField: "Authorization"), "Bearer key")
+        XCTAssertEqual(body["model"] as? String, "musicgen-small")
+        XCTAssertEqual(body["duration"] as? Int, 2)
+        XCTAssertEqual(body["instrument"] as? String, "drums")
+        XCTAssertEqual(body["bpm"] as? Int, 100)
+        XCTAssertNil(body["lyrics"])
+
+        let eleven = ProviderMediaSpec(model: "music_v1", format: "elevenlabs")
+        body = try await send("https://api.elevenlabs.io/v1", eleven, drums)
+        XCTAssertEqual(MockURLProtocol.lastRequest?.url?.path, "/v1/music")
+        XCTAssertEqual(MockURLProtocol.lastRequest?.value(forHTTPHeaderField: "xi-api-key"), "key")
+        XCTAssertNil(MockURLProtocol.lastRequest?.value(forHTTPHeaderField: "Authorization"))
+        XCTAssertEqual(body["model_id"] as? String, "music_v1")
+        XCTAssertEqual(body["music_length_ms"] as? Int, 3000)
+        XCTAssertEqual(body["force_instrumental"] as? Bool, true)
+        XCTAssertNil(body["model"])
+
+        body = try await send(
+            "https://api.elevenlabs.io/v1", eleven,
+            MusicStemRequest(instrument: "vocals", bpm: 100, key: "A minor", lyrics: "la")
+        )
+        XCTAssertNil(body["force_instrumental"])
+    }
+
+    /// Against a running `tools/music_server.py`; skipped when none answers on its default port.
+    func testMusicServerRendersAStemAndRefusesVocals() async throws {
+        let base = MusicEndpoint.Format.standard.defaultBaseURL
+        let models = await MusicStudioAI.models(baseURL: base, apiKey: nil)
+        guard let model = models.first else { throw XCTSkip("no music server at \(base)") }
+        func render(_ stem: MusicStemRequest) async throws -> ChatMedia {
+            try await MediaGenerationClient.generate(
+                kind: .music, prompt: "Isolated \(stem.instrument) stem only. 100 BPM, A minor.",
+                configuration: AgentConfiguration(baseURL: base, model: model),
+                provider: ProviderMediaSpec(model: model), paths: temporaryPaths(), seconds: 2, stem: stem
+            )
+        }
+
+        let media = try await render(MusicStemRequest(instrument: "drums", bpm: 100, key: "A minor"))
+        XCTAssertEqual(media.url.pathExtension, "wav")
+        XCTAssertEqual(media.mimeType, "audio/wav")
+        // Two seconds of 16-bit mono at 32 kHz, plus the header.
+        XCTAssertEqual(try Data(contentsOf: media.url).count, 2 * 32_000 * 2 + 44)
+
+        do {
+            _ = try await render(MusicStemRequest(instrument: "vocals", bpm: 100, key: "A minor", lyrics: "la la"))
+            XCTFail("a model that cannot sing must refuse lyrics")
+        } catch let error as NativeAgentError {
+            XCTAssertTrue(error.message.contains("cannot sing"), error.message)
+        }
     }
 
     @MainActor
@@ -1780,56 +2123,17 @@ final class AgentBridgeTests: XCTestCase {
 
         let memoryRoot = workspace.appendingPathComponent(".mem")
         XCTAssertTrue(FileManager.default.fileExists(atPath: memoryRoot.appendingPathComponent("manifest.json").path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: memoryRoot.appendingPathComponent("state.json").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: memoryRoot.appendingPathComponent("state.json").path), "the projection is derived, never committed")
         XCTAssertTrue(FileManager.default.fileExists(atPath: memoryRoot.appendingPathComponent("map.md").path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: paths.root.appendingPathComponent("memory-identity.json").path))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: memoryRoot.appendingPathComponent("memory-identity.json").path))
-        XCTAssertEqual(memory.accessStatus().role, .owner)
         XCTAssertTrue(memory.snapshot(for: "Package.swift").text.contains("Project map"))
 
         let second = WorkspaceMemory(paths: paths)
         second.setWorkspace(workspace)
         XCTAssertEqual(second.projectID, memory.projectID)
-        XCTAssertEqual(second.accessStatus().role, .owner)
-
-        let invite = try memory.createInvite(
-            displayName: "Review device",
-            role: .observer,
-            score: 10,
-            publicKey: "new-device-public-key"
-        )
-        XCTAssertFalse(invite.isEmpty)
-        XCTAssertTrue(memory.pendingDecisions().isEmpty)
     }
 
     @MainActor
-    func testWorkspaceMemoryRejectsTamperedEvent() throws {
-        let paths = temporaryPaths()
-        let workspace = paths.root.appendingPathComponent("tamper-project", isDirectory: true)
-        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
-        let memory = WorkspaceMemory(paths: paths)
-        memory.setWorkspace(workspace)
-        memory.prepareForPrompt(prompt: "initialize", runID: UUID(), provider: "Direct", model: "test/model")
-
-        let eventsURL = workspace.appendingPathComponent(".mem/events")
-        let event = try XCTUnwrap(FileManager.default.contentsOfDirectory(at: eventsURL, includingPropertiesForKeys: nil)
-            .filter { $0.pathExtension == "json" }
-            .first { url in
-                guard let object = try? JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any] else { return false }
-                return object["type"] as? String == "workspace.initialized"
-            })
-        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: event)) as? [String: Any])
-        var payload = try XCTUnwrap(object["payload"] as? [String: Any])
-        payload["tampered"] = true
-        object["payload"] = payload
-        try JSONSerialization.data(withJSONObject: object).write(to: event, options: .atomic)
-
-        memory.reload()
-        XCTAssertNil(memory.accessStatus().role)
-    }
-
-    @MainActor
-    func testExplicitLanguagePreferenceIsProjectedAfterTask() async throws {
+    func testExplicitLanguagePreferenceIsKeptInTheProfileNotTheRepository() async throws {
         let paths = temporaryPaths()
         let workspace = paths.root.appendingPathComponent("preference-project", isDirectory: true)
         try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
@@ -1839,7 +2143,12 @@ final class AgentBridgeTests: XCTestCase {
         memory.prepareForPrompt(prompt: "Artık İngilizce cevap ver", runID: runID, provider: "Direct", model: "test/model")
         memory.finishTask(runID: runID, success: true, finalText: "Done")
         for _ in 0..<3 { await Task.yield() }
-        XCTAssertTrue(memory.snapshot(for: "next").text.contains("English"))
+        XCTAssertEqual(memory.profile.preferences()["language"], "English")
+        // The person's language is theirs in every project; nothing of it goes into .mem.
+        let repository = workspace.appendingPathComponent(".mem", isDirectory: true)
+        let leaked = (FileManager.default.enumerator(at: repository, includingPropertiesForKeys: nil)?.allObjects as? [URL] ?? [])
+            .filter { (try? String(contentsOf: $0, encoding: .utf8))?.contains("English") == true }
+        XCTAssertTrue(leaked.isEmpty, "a preference reached the repository: \(leaked)")
     }
 
     @MainActor
@@ -1870,14 +2179,17 @@ final class AgentBridgeTests: XCTestCase {
         )
         memory.finishTask(runID: runID, success: true, finalText: "done")
 
+        // The repository keeps the project's notes; the task note is the person's and lives in their layer.
         let memoryRoot = workspace.appendingPathComponent(".mem")
-        let taskNoteURL = memoryRoot.appendingPathComponent("tasks/\(runID.uuidString).md")
-        for relative in ["map.md", "index.md", "preferences.md", "tasks/\(runID.uuidString).md"] {
+        let taskNoteURL = try XCTUnwrap(memory.userMemoryDirectory).appendingPathComponent("tasks/\(runID.uuidString).md")
+        for relative in ["map.md", "index.md"] {
             XCTAssertTrue(
                 FileManager.default.fileExists(atPath: memoryRoot.appendingPathComponent(relative).path),
                 "expected .mem/\(relative) to be written"
             )
         }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: memoryRoot.appendingPathComponent("preferences.md").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: taskNoteURL.path), "expected the task note in the user layer")
 
         func frontmatter(of url: URL) throws -> String {
             let lines = try String(contentsOf: url, encoding: .utf8).components(separatedBy: "\n")
@@ -1894,8 +2206,10 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertTrue(indexFront.contains("type:"))
         XCTAssertTrue(indexFront.contains("tags: ["))
         XCTAssertTrue(indexFront.contains("links: ["))
+        // The repository's index names the project's notes only, never the person's tasks.
         let indexBody = try String(contentsOf: memoryRoot.appendingPathComponent("index.md"), encoding: .utf8)
-        XCTAssertTrue(indexBody.contains("[[task-\(runID.uuidString)]]"))
+        XCTAssertFalse(indexBody.contains("task-"))
+        XCTAssertTrue(indexBody.contains("[[map]]"))
 
         let taskFront = try frontmatter(of: taskNoteURL)
         XCTAssertTrue(taskFront.contains("id: task-\(runID.uuidString)"))
@@ -2097,10 +2411,9 @@ final class AgentBridgeTests: XCTestCase {
     }
 
     private func installApprovalResponses() {
-        ApprovalURLProtocol.responses = [
-            Data(#"{"choices":[{"message":{"role":"assistant","content":"","tool_calls":[{"id":"write-1","type":"function","function":{"name":"write_file","arguments":"{\"path\":\"created.txt\",\"content\":\"changed\"}"}}]}}]}"#.utf8),
-            Data(#"{"choices":[{"message":{"role":"assistant","content":"done"}}]}"#.utf8),
-        ]
+        ApprovalURLProtocol.responses = DeferredToolScript.replies(
+            id: "write-1", name: "write_file", arguments: #"{"path":"created.txt","content":"changed"}"#
+        )
         URLProtocol.registerClass(ApprovalURLProtocol.self)
     }
 }
@@ -2144,6 +2457,7 @@ private final class MockURLProtocol: URLProtocol {
 
 private final class ApprovalURLProtocol: URLProtocol {
     nonisolated(unsafe) static var responses: [Data] = []
+    nonisolated(unsafe) static var failure: URLError.Code?
     private static let lock = NSLock()
 
     override class func canInit(with request: URLRequest) -> Bool {
@@ -2153,6 +2467,10 @@ private final class ApprovalURLProtocol: URLProtocol {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
+        if let failure = Self.failure {
+            client?.urlProtocol(self, didFailWithError: URLError(failure))
+            return
+        }
         Self.lock.lock()
         let data = Self.responses.isEmpty
             ? Data(#"{"choices":[{"message":{"role":"assistant","content":"done"}}]}"#.utf8)
@@ -2175,6 +2493,7 @@ private final class ApprovalURLProtocol: URLProtocol {
     static func reset() {
         lock.lock()
         responses = []
+        failure = nil
         lock.unlock()
     }
 }
@@ -2187,4 +2506,14 @@ actor CallCounter {
         count += 1
         return count
     }
+}
+
+private actor ToolCountRecorder {
+    private(set) var values: [Int] = []
+    func add(_ count: Int) { values.append(count) }
+}
+
+private actor ScopeRecorder {
+    private(set) var values: [String?] = []
+    func add(_ scope: String?) { values.append(scope) }
 }

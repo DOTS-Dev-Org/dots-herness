@@ -41,11 +41,11 @@ public enum MarketplaceSessionError: LocalizedError, Sendable {
 
     public var errorDescription: String? {
         switch self {
-        case .notSignedIn: return "Marketplace publishing requires a HerNess account."
-        case .invalidCallback: return "The HerNess sign-in callback was invalid."
-        case .stateMismatch: return "The HerNess sign-in state did not match."
-        case let .requestFailed(status, message): return "Marketplace request failed (HTTP \(status)): \(message)"
-        case .invalidResponse: return "The Marketplace returned an invalid response."
+        case .notSignedIn: return AppCopy.text("market.error.notSignedIn")
+        case .invalidCallback: return AppCopy.text("market.error.invalidCallback")
+        case .stateMismatch: return AppCopy.text("market.error.stateMismatch")
+        case let .requestFailed(status, message): return AppCopy.format("market.error.request", status, message)
+        case .invalidResponse: return AppCopy.text("market.error.invalidResponse")
         }
     }
 }
@@ -108,13 +108,13 @@ public final class MarketplaceSession: ObservableObject {
             lastError = MarketplaceSessionError.invalidCallback.localizedDescription
             return
         }
-        NSWorkspace.shared.open(url)
+        SafeURL.openWeb(url)
     }
 
     public func signIn(email: String, password: String) async throws {
         let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !normalizedEmail.isEmpty, !password.isEmpty else {
-            throw MarketplaceSessionError.requestFailed(400, "Email ve şifre gerekli.")
+            throw MarketplaceSessionError.requestFailed(400, AppCopy.text("market.error.credentials"))
         }
         let payload = try JSONEncoder().encode([
             "email": normalizedEmail,
@@ -259,6 +259,9 @@ public final class MarketplaceSession: ObservableObject {
         guard let value, !value.isEmpty else { return }
         var item = query
         item[kSecValueData as String] = Data(value.utf8)
+        // A background refresh has to read the refresh token while the screen
+        // is locked, so this one uses the "after first unlock" class.
+        item[kSecAttrAccessible as String] = KeychainAccess.afterFirstUnlock
         SecItemAdd(item as CFDictionary, nil)
     }
 

@@ -34,6 +34,18 @@ mobile/ios/build/
 **/.smoke-credentials.local
 **/d1_dump*.sql
 
-# Raw user feedback is local training data; derived project memory stays tracked.
+# A person's memory lives in the user layer on their Mac (app support), never in the
+# repository. Project memory - the manifest, facts.md (project facts and decisions), the
+# legacy signed events and the map - stays tracked.
+# These stay ignored in case an older build writes them into the repository.
+**/.mem/tasks/
+**/.mem/conversations/
 **/.mem/feedback.jsonl
 **/.mem/injections.jsonl
+**/.mem/gold_examples.json
+**/.mem/lessons.json
+**/.mem/learned_rules.md
+**/.mem/preferences.md
+# Derived from the signed events on every load; a committed copy only conflicts.
+**/.mem/state.json
+**/.mem/code-graph/

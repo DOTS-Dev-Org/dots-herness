@@ -42,11 +42,14 @@ public final class InMemoryToolRegistry: ToolRegistry {
     }
 
     private var items: [String: Stored] = [:]
+    public private(set) var revision: UInt64 = 0
 
     public init() {}
 
     public func retractOwner(_ owner: String) {
+        let priorCount = items.count
         items = items.filter { $0.value.meta.owner != owner }
+        if items.count != priorCount { revision &+= 1 }
     }
 
     @discardableResult
@@ -61,16 +64,19 @@ public final class InMemoryToolRegistry: ToolRegistry {
             meta: RegisteredTool(name: name, description: description, parameters: parameters, owner: owner),
             execute: execute
         )
+        revision &+= 1
         return { [weak self] in
-            if self?.items[name]?.meta.owner == owner {
-                self?.items.removeValue(forKey: name)
-            }
+            guard let self, self.items[name]?.meta.owner == owner else { return }
+            self.items.removeValue(forKey: name)
+            self.revision &+= 1
         }
     }
 
     public func tools() -> [RegisteredTool] {
         items.values.map(\.meta).sorted { $0.name < $1.name }
     }
+
+    public func contains(_ name: String) -> Bool { items[name] != nil }
 
     public func call(_ name: String, arguments: [String: String]) async throws -> String {
         guard let stored = items[name] else {

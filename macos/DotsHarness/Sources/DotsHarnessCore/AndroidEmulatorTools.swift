@@ -212,13 +212,7 @@ public enum AndroidEmulatorTools {
         workspace: URL,
         allowAbsolute: Bool = false
     ) throws -> URL {
-        if allowAbsolute, path.hasPrefix("/") {
-            return URL(fileURLWithPath: path).standardizedFileURL
-        }
-        let url = workspace.appendingPathComponent(path).standardizedFileURL.resolvingSymlinksInPath()
-        let root = workspace.standardizedFileURL.resolvingSymlinksInPath().path
-        let rootPath = root.hasSuffix("/") ? root : root + "/"
-        guard url.path == root || url.path.hasPrefix(rootPath) else {
+        guard let url = WorkspacePathResolver.resolve(path, workspace: workspace, allowAbsolute: allowAbsolute) else {
             throw AndroidEmulatorError("Path outside workspace: \(path)")
         }
         return url

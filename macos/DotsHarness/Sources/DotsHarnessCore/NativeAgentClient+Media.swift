@@ -91,6 +91,40 @@ extension NativeAgentClient {
         return AppCopy.format("agent.requestFailed", status)
     }
 
+    static func contextWindowOverflow(from value: JSONValue) -> Bool {
+        let fields = [
+            value["error"]?["message"]?.string,
+            value["error"]?["type"]?.string,
+            value["error"]?["code"]?.string,
+            value["error"]?["param"]?.string,
+            value["response"]?["error"]?["message"]?.string,
+            value["response"]?["error"]?["type"]?.string,
+            value["response"]?["error"]?["code"]?.string,
+            value["response"]?["error"]?["param"]?.string,
+            value["message"]?.string,
+            value["type"]?.string,
+            value["code"]?.string,
+            value["param"]?.string,
+        ]
+        .compactMap { $0 }
+        .joined(separator: " ")
+        return NativeAgentError.indicatesContextWindowExceeded(fields)
+    }
+
+    /// Message and HTTP-like status of a Responses stream `error` / `response.failed` event.
+    static func streamFailure(in event: JSONValue, fallback: String) -> (message: String, status: Int) {
+        let message = event["message"]?.string
+            ?? event["error"]?["message"]?.string
+            ?? event["response"]?["error"]?["message"]?.string
+            ?? fallback
+        let status = event["status"]?.int
+            ?? event["error"]?["status"]?.int
+            ?? event["response"]?["status"]?.int
+            ?? event["response"]?["error"]?["status"]?.int
+            ?? 502
+        return (message, status)
+    }
+
     static func limitKind(from value: JSONValue, status: Int) -> String? {
         if status == 429 { return "rate" }
         if status == 402 { return "balance" }

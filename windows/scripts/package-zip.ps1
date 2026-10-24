@@ -6,5 +6,5 @@ param(
     [string[]]$Remaining
 )
 
-$script = Join-Path $PSScriptRoot 'DotsHarness\scripts\package-zip.ps1'
+$script = Join-Path $PSScriptRoot '..\DotsHarness\scripts\package-zip.ps1'
 & $script @Remaining

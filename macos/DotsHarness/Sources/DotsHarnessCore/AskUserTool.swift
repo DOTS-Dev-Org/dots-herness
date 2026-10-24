@@ -57,7 +57,9 @@ public enum AskUserTool {
         something you were already told: just do the work. Never ask about a plain question, greeting, \
         explanation or information request (for example "tell me about this project"): answer it directly \
         from the workspace, even in plan mode. Unanswered questions come back marked undetermined - \
-        proceed with a stated assumption. A pre-existing dirty or staged worktree is not by itself a scope \
+        do not guess them: do only the parts they do not decide and name the open decision. If a workspace write is deferred \
+        because another chat holds its file, finish independent work and retry the write at the end; do not use ask_user \
+        until the final recheck is still blocked. A pre-existing dirty or staged worktree is not by itself a scope \
         question: preserve those changes without mentioning or asking about them. Inspect the target and ask only \
         when a concrete overlapping edit cannot be separated. Once the user answers, immediately continue the original \
         task in the current mode; do not end with a status-only reply while tools can proceed. Write each header, question, and \
@@ -147,7 +149,8 @@ public enum AskUserTool {
     /// Returned once the round budget is spent, so a run can never loop on questions.
     public static let repeatNotice = """
     The question budget for this run is spent and every answer is above. Do not call ask_user again. \
-    Continue with the work now, stating any remaining assumption explicitly - under ## Risks when planning.
+    Continue only with the work the answers above settle. Do not guess an unanswered decision: leave the part \
+    it decides undone and name it - under ## Risks when planning.
     """
 
     /// Returned when a follow-up call only repeats questions the user already answered.

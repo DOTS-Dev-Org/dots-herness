@@ -2,6 +2,7 @@
 // Git snapshot + command helpers used by the composer's branch popover.
 
 import AppKit
+import os
 import SwiftUI
 import UniformTypeIdentifiers
 import DotsHarnessCore
@@ -59,9 +60,45 @@ final class GitOutputs: @unchecked Sendable {
     }
 }
 
+/// `/usr/bin/git` is an xcrun shim: without Xcode or the Command Line Tools every call
+/// fails and pops Apple's installer, so callers check here before running git.
+enum GitInstall {
+    private static let found = OSAllocatedUnfairLock(initialState: false)
+
+    static func isAvailable() -> Bool {
+        if found.withLock({ $0 }) { return true }
+        let process = Process()
+        let output = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcode-select")
+        process.arguments = ["-p"]
+        process.standardOutput = output
+        process.standardError = FileHandle.nullDevice
+        guard (try? process.run()) != nil else { return false }
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        let developer = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        let ok = process.terminationStatus == 0
+            && FileManager.default.isExecutableFile(atPath: developer + "/usr/bin/git")
+        // Only a positive answer is cached, so installing while the app runs is picked up.
+        if ok { found.withLock { $0 = true } }
+        return ok
+    }
+
+    /// Opens Apple's Command Line Tools installer, which ships git.
+    static func install() {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcode-select")
+        process.arguments = ["--install"]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try? process.run()
+    }
+}
+
 enum GitRepository {
     static func snapshot(at path: String) -> GitSnapshot {
         guard !path.isEmpty,
+              GitInstall.isAvailable(),
               let marker = run(["rev-parse", "--is-inside-work-tree"], at: path),
               marker.trimmingCharacters(in: .whitespacesAndNewlines) == "true" else {
             return .empty

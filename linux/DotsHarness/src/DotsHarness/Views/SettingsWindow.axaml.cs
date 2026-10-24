@@ -33,6 +33,7 @@ public partial class SettingsWindow : Window
     private string _modelContextSearch = "";
     private string? _pendingArchiveDeleteID;
     private string? _archiveStatus;
+    private bool _archiveDeleteInProgress;
     private Conversation? _archivePreview;
     private readonly HashSet<string> _expandedArchiveToolIDs = new(StringComparer.Ordinal);
     private AppModel? _observedModel;
@@ -57,28 +58,32 @@ public partial class SettingsWindow : Window
     private ListBox? _memoryList;
     private ContentControl? _memoryDetail;
     private Canvas? _memoryGraph;
-    private string _accessDisplayName = "";
-    private string _accessPublicKey = "";
-    private string _accessInvite = "";
-    private string _accessToken = "";
-    private string? _accessError;
     private string _sandboxName = "agent-work";
-    private MemoryRole _accessInviteRole = MemoryRole.Contributor;
-    private double _accessInviteScore = 50;
     private KeyboardShortcutAction? _recordingShortcut;
     private TextBlock? _shortcutStatus;
     private readonly Dictionary<KeyboardShortcutAction, Button> _shortcutButtons = new();
     private static readonly IReadOnlyDictionary<string, string> LegacyKeys = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         ["Providers"] = "settings.providers", ["Provider"] = "settings.provider", ["Connected accounts"] = "settings.connectedAccounts",
-        ["Name"] = "settings.name", ["API key"] = "settings.apiKeyOptional", ["API key (optional for local)"] = "settings.apiKeyOptional", ["Browser login"] = "settings.browserLogin",
+        ["LAN endpoint"] = "remote.lan", ["One-time code"] = "remote.code", ["Pairing link"] = "remote.pairingLink",
+        ["Public endpoint"] = "settings.publicUrl",
+        ["Name"] = "settings.name", ["API key"] = "voice.api.key", ["API key (optional for local)"] = "settings.apiKeyOptional", ["Browser login"] = "settings.browserLogin",
         ["Auth URL"] = "settings.authUrl", ["Paste callback URL"] = "settings.pasteCallbackUrl",
         ["Finish login"] = "settings.finishLogin", ["Device login"] = "settings.deviceLogin", ["Verify"] = "settings.verify",
-        ["Add a custom endpoint"] = "settings.addCustomEndpoint", ["Prefix (model id, e.g. local)"] = "settings.prefix",
+        ["Add a custom endpoint"] = "settings.addCustomEndpoint", ["Running on this computer"] = "custom.detected",
+        ["Model name (optional)"] = "custom.modelOptional", ["Context window in tokens (optional; empty reads it from the server)"] = "custom.contextOptional",
+        ["Prefix (model id, e.g. local)"] = "custom.prefix",
         ["Base URL"] = "settings.baseUrl", ["API"] = "settings.api", ["Custom providers"] = "settings.customProviders",
         ["Local models"] = "settings.localModels", ["Listen"] = "settings.listen", ["Serving"] = "settings.serving",
         ["Voice input"] = "settings.voice",
         ["Download and run"] = "settings.downloadRun", ["Sharing"] = "settings.sharing", ["Status"] = "settings.status",
+        ["Performance"] = "local.tuning", ["Empty or auto lets llama.cpp fit the model to your GPU memory. Changes apply the next time a model starts."] = "local.tuningHint",
+        ["GPU backend: auto, Cuda13, Cuda12, Rocm, Vulkan or Cpu (reinstall the runtime to apply)"] = "local.backend",
+        ["Hardware"] = "local.hardware", ["Context size in tokens"] = "local.contextSize",
+        ["GPU layers: auto, all or a number"] = "local.gpuLayers", ["CPU threads"] = "local.threads", ["Batch size"] = "local.batchSize",
+        ["Flash attention: auto, on or off"] = "local.flashAttention", ["KV cache type: empty (f16), q8_0, q5_1 or q4_0"] = "local.kvCache",
+        ["Extra llama-server arguments"] = "local.extraArgs", ["Add your own GGUF (full file path)"] = "local.importGGUF",
+        ["Too large for this GPU / RAM"] = "local.tooLarge",
         ["Short id"] = "settings.shortId", ["Public URL"] = "settings.publicUrl", ["Endpoint"] = "settings.endpoint",
         ["Give this to a client"] = "settings.client", ["Plugins"] = "settings.plugins", ["Last mount failed"] = "settings.lastMountFailed",
         ["Scheduled Tasks"] = "settings.scheduledTasks", ["New task"] = "settings.newTask", ["Cron expression"] = "settings.cronExpression",
@@ -122,6 +127,37 @@ public partial class SettingsWindow : Window
             _observedBridge = null;
             _observedMcpRegistry = null;
         };
+    }
+
+    private Control? _host;
+
+    /// <summary>Dialogs need a shown window: the main window while a page is embedded in a rail section.</summary>
+    private Window DialogOwner => _host is not null && TopLevel.GetTopLevel(_host) is Window window ? window : this;
+
+    /// <summary>
+    /// Lifts one page out of this (never shown) window, without the tab list: how the rail
+    /// sections reuse a settings page.
+    /// </summary>
+    public Control Embed(string tab)
+    {
+        var content = (Grid)Content!;
+        Content = null;
+        content.ColumnDefinitions[0].Width = new GridLength(0);
+        _host = new ContentControl { Content = content };
+        SelectTab(tab);
+        return _host;
+    }
+
+    /// <summary>Shows the project starters alone: the Marketplace section's own tab.</summary>
+    public Control EmbedStarters()
+    {
+        var content = (Grid)Content!;
+        Content = null;
+        content.ColumnDefinitions[0].Width = new GridLength(0);
+        _host = new ContentControl { Content = content };
+        _tab = "starters";
+        ShowCurrentTab();
+        return _host;
     }
 
     /// <summary>Opens a settings section from the desktop shell.</summary>
@@ -188,14 +224,16 @@ public partial class SettingsWindow : Window
             case "custom": ShowCustom(); break;
             case "local": ShowLocal(); break;
             case "voice": ShowVoice(); break;
+            case "media": Body.Content = new MediaSettingsPanel(Model); break;
             case "share": ShowShare(); break;
             case "mobile": ShowMobile(); break;
             case "tasks": ShowTasks(); break;
             case "skills": ShowSkills(); break;
             case "plugins": ShowPlugins(); break;
+            case "starters": ShowStarters(); break;
             case "mcp": ShowMcp(); break;
             case "memory": ShowMemory(); break;
-            case "access": ShowAccess(); break;
+            case "memory-transfer": ShowMemoryTransfer(); break;
             case "sandbox": ShowSandbox(); break;
             case "prompt": ShowPrompt(); break;
             case "legal": ShowLegal(); break;
@@ -214,19 +252,48 @@ public partial class SettingsWindow : Window
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "providers"))!.Content = model.L("settings.providers");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "custom"))!.Content = model.L("settings.custom");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "local"))!.Content = model.L("settings.localModels");
+        MediaTab.Content = model.L("rail.media");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "voice"))!.Content = model.L("settings.voice");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "share"))!.Content = model.L("settings.share");
-        Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "mobile"))!.Content = "Mobile control";
+        Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "mobile"))!.Content = model.L("settings.tab.mobile");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "tasks"))!.Content = model.L("settings.tasks");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "skills"))!.Content = model.L("conversation.skills");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "plugins"))!.Content = model.L("settings.plugins");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "mcp"))!.Content = model.L("settings.mcpServers");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "memory"))!.Content = model.L("settings.tab.memory");
-        Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "access"))!.Content = model.L("settings.tab.access");
+        // With memory off there is nothing to show: the switch itself is under General.
+        Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "memory"))!.IsVisible = model.MemoryEnabled;
+        MemoryTransferTab.Content = model.L("settings.tab.memoryTransfer");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "sandbox"))!.Content = model.L("settings.sandbox");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "prompt"))!.Content = model.L("settings.systemPrompt");
         Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "legal"))!.Content = model.L("legal.title");
         ShowCurrentTab();
+    }
+
+    private async void DeleteArchivedConversation(string id)
+    {
+        if (_archiveDeleteInProgress) return;
+        _archiveDeleteInProgress = true;
+        _archiveStatus = null;
+        if (_tab == "archive") ShowArchive();
+
+        try
+        {
+            _archiveStatus = await Model.Bridge.DeleteConversationAsync(id)
+                ? null
+                : Model.L("archive.deleteFailed");
+        }
+        catch
+        {
+            _archiveStatus = Model.L("archive.deleteFailed");
+        }
+        finally
+        {
+            if (_archivePreview?.Id == id) _archivePreview = null;
+            _pendingArchiveDeleteID = null;
+            _archiveDeleteInProgress = false;
+            if (_tab == "archive") ShowArchive();
+        }
     }
 
     private void ShowArchive()
@@ -246,6 +313,13 @@ public partial class SettingsWindow : Window
             FontWeight = FontWeight.SemiBold,
             Margin = new Avalonia.Thickness(0, 0, 0, 16),
         });
+        if (_archiveDeleteInProgress)
+            panel.Children.Add(new ProgressBar
+            {
+                IsIndeterminate = true,
+                Height = 3,
+                Margin = new Avalonia.Thickness(0, 0, 0, 12),
+            });
         if (!string.IsNullOrWhiteSpace(_archiveStatus))
             panel.Children.Add(new TextBlock
             {
@@ -301,21 +375,15 @@ public partial class SettingsWindow : Window
                     Content = Model.L("archive.deletePermanently"),
                     Margin = new Avalonia.Thickness(0, 0, 6, 0),
                     Padding = new Avalonia.Thickness(10, 4, 10, 4),
+                    IsEnabled = !_archiveDeleteInProgress,
                 };
-                confirmDelete.Click += (_, _) =>
-                {
-                    _archiveStatus = Model.Bridge.DeleteConversation(conversation.Id)
-                        ? null
-                        : Model.L("archive.deleteFailed");
-                    if (_archivePreview?.Id == conversation.Id) _archivePreview = null;
-                    _pendingArchiveDeleteID = null;
-                    ShowArchive();
-                };
+                confirmDelete.Click += (_, _) => DeleteArchivedConversation(conversation.Id);
                 actions.Children.Add(confirmDelete);
                 var cancelDelete = new Button
                 {
                     Content = Model.L("archive.cancel"),
                     Padding = new Avalonia.Thickness(10, 4, 10, 4),
+                    IsEnabled = !_archiveDeleteInProgress,
                 };
                 cancelDelete.Click += (_, _) => { _pendingArchiveDeleteID = null; ShowArchive(); };
                 actions.Children.Add(cancelDelete);
@@ -354,6 +422,7 @@ public partial class SettingsWindow : Window
                 {
                     Content = Model.L("archive.delete"),
                     Padding = new Avalonia.Thickness(10, 4, 10, 4),
+                    IsEnabled = !_archiveDeleteInProgress,
                 };
                 delete.Click += (_, _) => { _archiveStatus = null; _pendingArchiveDeleteID = conversation.Id; ShowArchive(); };
                 actions.Children.Add(delete);
@@ -582,9 +651,25 @@ public partial class SettingsWindow : Window
         };
         panel.Children.Add(appearance);
         AddKeyboardShortcutEditor(panel);
+        var autoAccountFailover = new CheckBox
+        {
+            Content = Model.L("settings.autoAccountFailover"),
+            IsChecked = Model.AutoAccountFailoverAfterLimit,
+            Margin = new Thickness(0, 0, 0, 4),
+        };
+        autoAccountFailover.IsCheckedChanged += (_, _) => Model.SetAutoAccountFailoverAfterLimit(autoAccountFailover.IsChecked == true);
+        panel.Children.Add(autoAccountFailover);
+        panel.Children.Add(new TextBlock
+        {
+            Text = Model.L("settings.autoAccountFailover.hint"),
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 12),
+        });
         var subagents = new CheckBox
         {
-            Content = Model.Language == AppLanguage.Turkish ? "Alt ajanları kullan" : "Use subagents",
+            Content = Model.L("settings.explore.subagents"),
             IsChecked = Model.SubagentsEnabled,
             Margin = new Thickness(0, 0, 0, 4),
         };
@@ -592,15 +677,13 @@ public partial class SettingsWindow : Window
         panel.Children.Add(subagents);
         panel.Children.Add(new TextBlock
         {
-            Text = Model.Language == AppLanguage.Turkish
-                ? "Açıkken ajan, zor ve uzun görevlerde çok dosyalı aramaları ve birbirinden bağımsız düzenleme parçalarını paralel alt ajanlara devreder; ana konuşmaya yalnızca özet girer. Düzenleyen her alt ajan yalnızca kendisine atanan dosyalara yazabilir, atamalar çakışamaz. Basit görevlerde çağırmaz. Her alt ajan ayrı model çağrısıdır; maliyeti düşürmek için kapatın. Seçim yapılmadıysa Ekonomi modunda kapalıdır."
-                : "When on, the agent hands searches that sweep many files, and independent parts of a large change, to parallel subagents on hard or long tasks; only their summary enters the main conversation. An editing subagent can write only the files assigned to it, and assignments cannot overlap. Simple tasks never call one. Each subagent is a separate model run; turn this off to lower cost. Until you choose, it is off in Economy mode.",
+            Text = Model.L("settings.explore.hint"),
             FontSize = 11,
             Foreground = TryBrush("TextSecondary"),
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 0, 0, 12),
         });
-        panel.Children.Add(Label(ResponseStyleTitle()));
+        panel.Children.Add(Label("settings.responseStyle"));
         var responseStyle = new ComboBox { Margin = new Thickness(0, 0, 0, 4) };
         var responseStyles = Enum.GetValues<AgentResponseStylePreference>();
         foreach (var preference in responseStyles) responseStyle.Items.Add(ResponseStyleLabel(preference));
@@ -613,9 +696,7 @@ public partial class SettingsWindow : Window
         panel.Children.Add(responseStyle);
         panel.Children.Add(new TextBlock
         {
-            Text = Model.Language == AppLanguage.Turkish
-                ? "Bu ayar promptu değiştirmez. Kısa/ultra tercihi best-effort'tur; kesin token, tamamlanma veya maliyet garantisi vermez."
-                : "This setting does not rewrite the prompt. Concise/Ultra are best-effort preferences; they do not guarantee a token count, completion, or lower cost.",
+            Text = Model.L("settings.responseStyle.hint"),
             FontSize = 11,
             Foreground = TryBrush("TextSecondary"),
             TextWrapping = TextWrapping.Wrap,
@@ -623,7 +704,7 @@ public partial class SettingsWindow : Window
         });
         panel.Children.Add(new TextBlock
         {
-            Text = Model.Language == AppLanguage.Turkish ? "Bağlamı otomatik sıkıştırma eşiği" : "Auto-compact context at",
+            Text = Model.L("settings.compactTrigger"),
             Margin = new Thickness(0, 0, 0, 4),
         });
         var compactValue = new TextBox
@@ -642,18 +723,14 @@ public partial class SettingsWindow : Window
             var compactPercentForModel = Model.UsageMode == AgentUsageMode.Economy ? 90 : Model.ContextCompactionThresholdPercent;
             if (isAutoModel)
             {
-                return Model.Language == AppLanguage.Turkish
-                    ? $"Otomatik modelde her modelin penceresinin %{compactPercentForModel}'i"
-                    : $"Auto-routed models: {compactPercentForModel}% of each model's window";
+                var percentage = (compactPercentForModel / 100d).ToString("P0", Model.Localization.Culture);
+                return $"{Model.L("settings.compaction.autoRouted")}: {percentage}";
             }
             var compactThreshold = ContextCompaction.NativeThreshold(
                 Model.Router.ContextWindowFor(selectedModel),
                 compactPercentForModel);
-            var compactCount = compactThreshold.ToString("N0", CultureInfo.GetCultureInfo(
-                Model.Language == AppLanguage.Turkish ? "tr-TR" : "en-US"));
-            return Model.Language == AppLanguage.Turkish
-                ? $"Etkin eşik: {compactCount} token"
-                : $"Effective threshold: {compactCount} tokens";
+            var compactCount = compactThreshold.ToString("N0", Model.Localization.Culture);
+            return $"{Model.L("settings.compaction.effectiveThreshold")}: {Model.L("conversation.tokensCount", compactCount)}";
         }
         void RefreshCompactThresholdLabel()
         {
@@ -684,15 +761,11 @@ public partial class SettingsWindow : Window
         panel.Children.Add(compactControls);
         if (Model.UsageMode == AgentUsageMode.Economy)
         {
-            ToolTip.SetTip(compactControls, Model.Language == AppLanguage.Turkish
-                ? "Ekonomi politikasında eşik sabit olarak %90'dır."
-                : "Economy policy uses a fixed 90% threshold.");
+            ToolTip.SetTip(compactControls, Model.L("settings.compaction.economyFixed"));
         }
         panel.Children.Add(new TextBlock
         {
-            Text = Model.Language == AppLanguage.Turkish
-                ? "Her modelin kendi bağlam penceresinin yüzdesi. Daha yüksek değer, sıkıştırmayı ve önbellek önekinin yeniden yazılmasını geciktirir."
-                : "Percentage of the selected model's context window. Higher values delay compaction and rewriting the cache prefix.",
+            Text = Model.L("settings.compactTrigger.hint"),
             FontSize = 11,
             Foreground = TryBrush("TextSecondary"),
             TextWrapping = TextWrapping.Wrap,
@@ -751,13 +824,13 @@ public partial class SettingsWindow : Window
                 Model.SetConflictWaitSeconds(waitChoices[conflictWait.SelectedIndex]);
         };
         panel.Children.Add(conflictWait);
-        panel.Children.Add(Label("Browser backend"));
+        panel.Children.Add(Label("settings.browser.title"));
         var browserBackends = new (string Label, BrowserBackend? Value)[]
         {
-            ("In-App Native Live Browser (WebKit)", BrowserBackend.Native),
-            ("Automatic (ask when unclear)", null),
-            ("Managed isolated browser", BrowserBackend.Managed),
-            ("Existing Chrome profile", BrowserBackend.Extension),
+            (Model.L("settings.browser.inAppDesktop"), BrowserBackend.Native),
+            (Model.L("settings.browser.auto"), null),
+            (Model.L("settings.browser.managed"), BrowserBackend.Managed),
+            (Model.L("settings.browser.chrome"), BrowserBackend.Extension),
         };
         var browser = new ComboBox { Margin = new Thickness(0, 0, 0, 4) };
         foreach (var choice in browserBackends) browser.Items.Add(choice.Label);
@@ -776,7 +849,7 @@ public partial class SettingsWindow : Window
         panel.Children.Add(browser);
         panel.Children.Add(new TextBlock
         {
-            Text = "The selected backend is fixed for each run. The in-app browser uses the system WebKit runtime; the managed Chrome and extension backends remain available.",
+            Text = Model.L("settings.browser.desktopHint"),
             FontSize = 11,
             Foreground = TryBrush("TextSecondary"),
             TextWrapping = TextWrapping.Wrap,
@@ -814,9 +887,25 @@ public partial class SettingsWindow : Window
         };
         selfVerification.IsCheckedChanged += (_, _) => Model.SetSelfVerification(selfVerification.IsChecked == true);
         panel.Children.Add(selfVerification);
+        var skillSuggestions = new CheckBox
+        {
+            Content = Model.L("settings.skillSuggestions"),
+            IsChecked = Model.SkillSuggestionsEnabled,
+            Margin = new Thickness(0, 0, 0, 4),
+        };
+        skillSuggestions.IsCheckedChanged += (_, _) => Model.SetSkillSuggestionsEnabled(skillSuggestions.IsChecked == true);
+        panel.Children.Add(skillSuggestions);
+        panel.Children.Add(new TextBlock
+        {
+            Text = Model.L("settings.skillSuggestions.hint"),
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 12),
+        });
         var computerUse = new CheckBox
         {
-            Content = Model.Language == AppLanguage.Turkish ? "Uygulamaları ekran üzerinden kontrol et (Computer Use)" : "Inspect and control desktop applications (Computer Use)",
+            Content = Model.L("settings.computerUse.enable"),
             IsChecked = Model.IsComputerUseEnabled,
             Margin = new Thickness(0, 0, 0, 4),
         };
@@ -824,9 +913,7 @@ public partial class SettingsWindow : Window
         panel.Children.Add(computerUse);
         panel.Children.Add(new TextBlock
         {
-            Text = Model.Language == AppLanguage.Turkish
-                ? "Ajan ekranı inceleyebilir, fare ve klavyeyle işlem yapıp sonucu kontrol edebilir. X11, xdotool ve maim veya ImageMagick gerekir; Wayland desteklenmez. Masaüstü işlemleri erişim onayına tabidir."
-                : "The agent can view screenshots, use the mouse and keyboard, and verify results. Requires X11, xdotool and maim or ImageMagick; Wayland is unavailable. Desktop actions require access approval.",
+            Text = Model.L("settings.computerUse.linuxHint"),
             TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 0, 0, 12),
         });
         var seedProjectRules = new CheckBox
@@ -837,6 +924,25 @@ public partial class SettingsWindow : Window
         };
         seedProjectRules.IsCheckedChanged += (_, _) => Model.SetSeedProjectRules(seedProjectRules.IsChecked == true);
         panel.Children.Add(seedProjectRules);
+        var memoryEnabled = new CheckBox { Content = Model.L("memory.enabled"), IsChecked = Model.MemoryEnabled, Margin = new Thickness(0, 0, 0, 4) };
+        var memoryScanRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 0, 0, 4), IsEnabled = Model.MemoryEnabled };
+        memoryEnabled.IsCheckedChanged += (_, _) =>
+        {
+            Model.SetMemoryEnabled(memoryEnabled.IsChecked == true);
+            memoryScanRow.IsEnabled = Model.MemoryEnabled;
+            Tabs.Items.OfType<ListBoxItem>().FirstOrDefault(item => Equals(item.Tag, "memory"))!.IsVisible = Model.MemoryEnabled;
+        };
+        panel.Children.Add(memoryEnabled);
+        panel.Children.Add(new TextBlock { Text = Model.L("memory.enabledHelp"), FontSize = 11, Foreground = TryBrush("TextSecondary"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
+        memoryScanRow.Children.Add(new TextBlock { Text = Model.L("memory.scanFrequency"), VerticalAlignment = VerticalAlignment.Center });
+        var memoryScan = new ComboBox { MinWidth = 140 };
+        foreach (var interval in AppModel.MemoryScanIntervals)
+            memoryScan.Items.Add(new ComboBoxItem { Content = Model.L("memory.scan." + interval), Tag = interval });
+        memoryScan.SelectedIndex = Array.IndexOf(AppModel.MemoryScanIntervals, Model.MemoryScanInterval);
+        memoryScan.SelectionChanged += (_, _) => { if (memoryScan.SelectedItem is ComboBoxItem { Tag: string interval }) Model.SetMemoryScanInterval(interval); };
+        memoryScanRow.Children.Add(memoryScan);
+        panel.Children.Add(memoryScanRow);
+        panel.Children.Add(new TextBlock { Text = Model.L("memory.scanHelp"), FontSize = 11, Foreground = TryBrush("TextSecondary"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12) });
         var autoApprovePlans = new CheckBox
         {
             Content = Model.L("settings.autoApprovePlans"),
@@ -856,6 +962,8 @@ public partial class SettingsWindow : Window
         }
         panel.Children.Add(Readonly("settings.supportFolder", Model.Paths.Root));
         panel.Children.Add(Readonly("settings.userPlugins", Model.Paths.Plugins));
+        AddSshHostsSection(panel);
+        AddUpdatesSection(panel);
         panel.Children.Add(new TextBlock
         {
             Text = Model.L("copyright"),
@@ -866,6 +974,181 @@ public partial class SettingsWindow : Window
         });
         panel.Children.Add(new SlotHost { Slot = WellKnownSlot.SettingsSections, Registry = Model.Host.Slots });
         Body.Content = panel;
+    }
+
+    /// <summary>The SSH host list, the same block the macOS Settings window carries.</summary>
+    private void AddSshHostsSection(Panel parent)
+    {
+        parent.Children.Add(Label("settings.sshHosts"));
+        parent.Children.Add(new TextBlock
+        {
+            Text = Model.L("settings.sshHosts.hint"),
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 8),
+        });
+        if (!RemoteSsh.IsAvailable)
+        {
+            parent.Children.Add(new TextBlock
+            {
+                Text = Model.L("ssh.error.unavailable"),
+                FontSize = 11,
+                Foreground = TryBrush("TextSecondary"),
+                Margin = new Thickness(0, 0, 0, 8),
+            });
+        }
+        else if (Model.SshHosts.Count == 0)
+        {
+            parent.Children.Add(new TextBlock
+            {
+                Text = Model.L("settings.sshNoHosts"),
+                FontSize = 11,
+                Foreground = TryBrush("TextSecondary"),
+                Margin = new Thickness(0, 0, 0, 8),
+            });
+        }
+        else
+        {
+            foreach (var host in Model.SshHosts)
+            {
+                var row = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
+                var actions = new StackPanel { Orientation = Orientation.Horizontal };
+                var test = Ui.Button(Model.L("settings.sshTest"), async () => await TestSshHostAsync(host.Alias));
+                var remove = Ui.Button(Model.L("settings.sshRemove"), () => RemoveSshHost(host.Alias));
+                remove.IsEnabled = host.ManagedByApp;
+                ToolTip.SetTip(remove, host.ManagedByApp ? "" : Model.L("settings.sshRemove.handWritten"));
+                actions.Children.Add(test);
+                actions.Children.Add(remove);
+                DockPanel.SetDock(actions, Dock.Right);
+                row.Children.Add(actions);
+                var names = new StackPanel();
+                names.Children.Add(new TextBlock { Text = host.Alias, Foreground = TryBrush("TextPrimary") });
+                names.Children.Add(new TextBlock
+                {
+                    Text = host.DisplayDestination,
+                    FontSize = 11,
+                    Foreground = TryBrush("TextSecondary"),
+                });
+                names.Children.Add(new TextBlock
+                {
+                    Text = host.ManagedByApp ? Model.L("settings.sshManaged") : Model.L("settings.sshFromConfig"),
+                    FontSize = 10,
+                    Foreground = TryBrush("TextSecondary"),
+                });
+                row.Children.Add(names);
+                parent.Children.Add(row);
+            }
+        }
+
+        var add = Ui.Button(Model.L("settings.sshAddHost"), AddSshHost);
+        add.IsEnabled = RemoteSsh.IsAvailable;
+        add.HorizontalAlignment = HorizontalAlignment.Left;
+        parent.Children.Add(add);
+        if (Model.SshNotice is { Length: > 0 } notice)
+        {
+            parent.Children.Add(new TextBlock
+            {
+                Text = notice,
+                FontSize = 11,
+                Foreground = TryBrush("TextSecondary"),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 6, 0, 12),
+            });
+        }
+    }
+
+    private void AddSshHost()
+    {
+        var dialog = new SshHostEntryWindow(Model);
+        dialog.Show();
+    }
+
+    private async Task TestSshHostAsync(string alias)
+    {
+        Model.SetSshNotice(await Model.TestSshHostAsync(alias));
+        ShowGeneral();
+    }
+
+    private void RemoveSshHost(string alias)
+    {
+        try
+        {
+            Model.RemoveSshHost(alias);
+        }
+        catch (Exception error) { Model.SetSshNotice(error.Message); }
+        ShowGeneral();
+    }
+
+    /// <summary>The version block with a manual update check, as on macOS.</summary>
+    private void AddUpdatesSection(Panel parent)
+    {
+        parent.Children.Add(Label("settings.updates.title"));
+        var version = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version ?? new Version(0, 1, 0);
+        parent.Children.Add(Readonly("settings.updates.current", $"v{version.Major}.{version.Minor}.{Math.Max(version.Build, 0)}"));
+        var status = new TextBlock
+        {
+            Text = Model.L("settings.updates.hint"),
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 4, 0, 6),
+        };
+        parent.Children.Add(status);
+        var check = new Button
+        {
+            Content = Model.L("settings.updates.check"),
+            Padding = new Thickness(12, 4, 12, 4),
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        check.Click += async (_, _) =>
+        {
+            check.IsEnabled = false;
+            status.Text = Model.L("settings.updates.checking");
+            try
+            {
+                var result = await new CrossPlatformUpdateChecker().CheckForUpdatesAsync(
+                    OperatingSystem.IsWindows() ? "windows" : "linux",
+                    $"{version.Major}.{version.Minor}.{Math.Max(version.Build, 0)}");
+                if (result is null) status.Text = Model.L("settings.updates.retry");
+                else if (result.UpdateAvailable)
+                {
+                    status.Text = Model.L("settings.updates.available", result.LatestVersion)
+                        + (result.Mandatory ? " · " + Model.L("settings.updates.required") : "");
+                    if (!string.IsNullOrWhiteSpace(result.ReleaseNotes))
+                    {
+                        parent.Children.Insert(parent.Children.Count - 1, new TextBlock
+                        {
+                            Text = result.ReleaseNotes,
+                            FontSize = 11,
+                            TextWrapping = TextWrapping.Wrap,
+                            Foreground = TryBrush("TextSecondary"),
+                            Background = TryBrush("ChromeBackground"),
+                            Padding = new Thickness(8, 6, 8, 6),
+                            Margin = new Thickness(0, 6, 0, 0),
+                        });
+                    }
+                    if (!string.IsNullOrWhiteSpace(result.DownloadUrl))
+                    {
+                        var download = Ui.Button(Model.L("settings.updates.download"), () =>
+                        {
+                            try
+                            {
+                                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(result.DownloadUrl) { UseShellExecute = true });
+                            }
+                            catch { }
+                        });
+                        download.HorizontalAlignment = HorizontalAlignment.Left;
+                        download.Margin = new Thickness(0, 6, 0, 0);
+                        parent.Children.Insert(parent.Children.Count - 1, download);
+                    }
+                }
+                else status.Text = Model.L("settings.updates.upToDate");
+            }
+            catch (Exception error) { status.Text = error.Message; }
+            finally { check.IsEnabled = true; }
+        };
+        parent.Children.Add(check);
     }
 
     private void AddKeyboardShortcutEditor(Panel parent)
@@ -1317,7 +1600,7 @@ public partial class SettingsWindow : Window
             Padding = new Thickness(0),
             Margin = new Thickness(12, 0, 0, 0),
         };
-        ToolTip.SetTip(test, "Test");
+        ToolTip.SetTip(test, Model.L("settings.test"));
         AutomationProperties.SetName(test, "Test");
         test.Click += (_, _) => _ = router.TestAsync(connection);
         row.Children.Add(test);
@@ -1329,8 +1612,8 @@ public partial class SettingsWindow : Window
             Padding = new Thickness(0),
             Margin = new Thickness(8, 0, 0, 0),
         };
-        ToolTip.SetTip(remove, "Remove");
-        AutomationProperties.SetName(remove, "Remove");
+        ToolTip.SetTip(remove, Model.L("settings.remove"));
+        AutomationProperties.SetName(remove, Model.L("settings.remove"));
         remove.Click += (_, _) => _ = router.RemoveAsync(connection);
         row.Children.Add(remove);
         stack.Children.Add(row);
@@ -1432,8 +1715,9 @@ public partial class SettingsWindow : Window
             Height = 26,
             Padding = new Thickness(0),
         };
-        ToolTip.SetTip(add, "Add account");
-        AutomationProperties.SetName(add, "Add account");
+        var addAccountLabel = LocalizationService.Current.Get("settings.addAccount");
+        ToolTip.SetTip(add, addAccountLabel);
+        AutomationProperties.SetName(add, addAccountLabel);
         add.Click += (_, _) =>
         {
             router.SelectedKind = provider;
@@ -1615,7 +1899,7 @@ public partial class SettingsWindow : Window
         Tune("Extra llama-server arguments", tuning.ExtraArgs, v => tuning.ExtraArgs = v);
         panel.Children.Add(Heading("Download and run"));
         panel.Children.Add(BoundField("Add your own GGUF (full file path)", _ggufPath, v => _ggufPath = v));
-        var import = new Button { Content = "Add GGUF", Padding = new Thickness(12, 4, 12, 4), Margin = new Thickness(0, 0, 0, 12) };
+        var import = new Button { Content = Model.L("local.importGGUF"), Padding = new Thickness(12, 4, 12, 4), Margin = new Thickness(0, 0, 0, 12) };
         import.Click += (_, _) => { local.ImportModel(_ggufPath.Trim().Trim('"')); _ggufPath = ""; ShowLocal(); };
         panel.Children.Add(import);
         foreach (var spec in local.Models)
@@ -1647,7 +1931,7 @@ public partial class SettingsWindow : Window
             {
                 name.Children.Add(new TextBlock
                 {
-                    Text = "Too large for this GPU / RAM",
+                    Text = Model.L("local.tooLarge"),
                     FontSize = 10,
                     Margin = new Thickness(8, 0, 0, 0),
                     VerticalAlignment = VerticalAlignment.Center,
@@ -1843,7 +2127,13 @@ public partial class SettingsWindow : Window
     private void ShowMobile()
     {
         var panel = new StackPanel();
-        panel.Children.Add(Heading("Mobile control"));
+        panel.Children.Add(Heading(Model.L("settings.tab.mobile")));
+        var remoteEnabled = new CheckBox { Content = Model.L("remote.enable"), IsChecked = Model.RemoteControlEnabled, Margin = new Thickness(0, 0, 0, 4) };
+        remoteEnabled.IsCheckedChanged += (_, _) => { Model.RemoteControlEnabled = remoteEnabled.IsChecked == true; ShowMobile(); };
+        panel.Children.Add(remoteEnabled);
+        var shareLan = new CheckBox { Content = Model.L("remote.shareLan"), IsChecked = Model.RemoteControlSharesWithLAN, IsEnabled = Model.RemoteControlEnabled, Margin = new Thickness(0, 0, 0, 8) };
+        shareLan.IsCheckedChanged += (_, _) => { Model.RemoteControlSharesWithLAN = shareLan.IsChecked == true; ShowMobile(); };
+        panel.Children.Add(shareLan);
         panel.Children.Add(Readonly("LAN endpoint", Model.RemoteControl.PreferredEndpoint));
         var pairing = Model.RemotePairing is { } current && current.ExpiresAt > DateTimeOffset.UtcNow
             ? current
@@ -1862,20 +2152,20 @@ public partial class SettingsWindow : Window
             });
         }
         panel.Children.Add(Readonly("One-time code", pairing.Code));
-        panel.Children.Add(Readonly("Expires", pairing.ExpiresAt.ToLocalTime().ToString("g")));
+        panel.Children.Add(new TextBlock { Text = Model.L("remote.expires", pairing.ExpiresAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)), Margin = new Avalonia.Thickness(0, 0, 0, 8) });
         panel.Children.Add(Readonly("Pairing link", pairing.Payload));
-        panel.Children.Add(new TextBlock { Text = "Enter this link/code in HerNess Mobile. It expires in five minutes and is consumed once.", TextWrapping = TextWrapping.Wrap, FontSize = 11, Foreground = TryBrush("TextSecondary"), Margin = new Avalonia.Thickness(0, 0, 0, 12) });
+        panel.Children.Add(new TextBlock { Text = Model.L("remote.scan"), TextWrapping = TextWrapping.Wrap, FontSize = 11, Foreground = TryBrush("TextSecondary"), Margin = new Avalonia.Thickness(0, 0, 0, 12) });
         var row = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Margin = new Avalonia.Thickness(0, 0, 0, 12) };
-        var renew = new Button { Content = "New pairing code", Padding = new Avalonia.Thickness(12, 4) };
+        var renew = new Button { Content = Model.L("remote.newCode"), Padding = new Avalonia.Thickness(12, 4) };
         renew.Click += (_, _) => { Model.BeginRemotePairing(); ShowMobile(); };
-        var copy = new Button { Content = "Copy pairing link", Padding = new Avalonia.Thickness(12, 4), Margin = new Avalonia.Thickness(8, 0, 0, 0) };
+        var copy = new Button { Content = Model.L("remote.copyLink"), Padding = new Avalonia.Thickness(12, 4), Margin = new Avalonia.Thickness(8, 0, 0, 0) };
         copy.Click += (_, _) => NativeClipboard.SetText(pairing.Payload);
         row.Children.Add(renew); row.Children.Add(copy); panel.Children.Add(row);
-        var tunnel = new Button { Content = "Enable Cloudflare Quick Tunnel", Padding = new Avalonia.Thickness(12, 4) };
+        var tunnel = new Button { Content = Model.L("remote.tunnel.enable"), Padding = new Avalonia.Thickness(12, 4) };
         tunnel.Click += async (_, _) => { tunnel.IsEnabled = false; try { await Model.EnableRemoteCloudTunnelAsync(); } finally { ShowMobile(); } };
         panel.Children.Add(tunnel);
         if (Model.RemoteControl.PublicEndpoint is { } publicEndpoint) panel.Children.Add(Readonly("Public endpoint", publicEndpoint));
-        panel.Children.Add(new TextBlock { Text = "Provider keys stay on this computer; remote commands use the same ask / approve me / full access rules.", TextWrapping = TextWrapping.Wrap, FontSize = 11, Foreground = TryBrush("TextSecondary"), Margin = new Avalonia.Thickness(0, 12, 0, 0) });
+        panel.Children.Add(new TextBlock { Text = Model.L("remote.hint"), TextWrapping = TextWrapping.Wrap, FontSize = 11, Foreground = TryBrush("TextSecondary"), Margin = new Avalonia.Thickness(0, 12, 0, 0) });
         Body.Content = panel;
     }
 
@@ -1887,8 +2177,39 @@ public partial class SettingsWindow : Window
         return new Bitmap(new MemoryStream(bytes));
     }
 
+    private bool _skillCatalogRequested;
+
+    // The skill catalog and its counters come from the server; the shipped JSON is only the offline copy.
+    private async Task RefreshSkillCatalogAsync()
+    {
+        var data = await Model.Marketplace.CatalogDataAsync("skills");
+        try { await Model.Marketplace.RefreshLikesAsync(); } catch { }
+        if (data is not null) Model.ActiveSkills.UpdateMarketplace(data);
+        if (_tab == "skills") ShowSkills();
+    }
+
+    // Heart toggle shared by plugins, skills and starters; liking needs a HerNess account.
+    private Button LikeButton(string kind, string id, Action rerender, Action<int>? applied = null)
+    {
+        var liked = Model.Marketplace.IsLiked(kind, id);
+        var button = new Button { Content = liked ? "♥" : "♡", Padding = new Thickness(8, 3), IsEnabled = Model.MarketplaceSession.IsSignedIn };
+        button.Click += async (_, _) =>
+        {
+            button.IsEnabled = false;
+            try { applied?.Invoke(await Model.Marketplace.SetLikedAsync(kind, id, !liked)); }
+            catch (Exception error) { Model.Bridge.Status = error.Message; }
+            rerender();
+        };
+        return button;
+    }
+
     private void ShowSkills()
     {
+        if (!_skillCatalogRequested)
+        {
+            _skillCatalogRequested = true;
+            _ = RefreshSkillCatalogAsync();
+        }
         var tabs = new TabControl();
         var catalog = new StackPanel();
         catalog.Children.Add(Heading("SkillsMP Popular snapshot"));
@@ -1900,7 +2221,7 @@ public partial class SettingsWindow : Window
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 0, 0, 12),
         });
-        foreach (var entry in Model.ActiveSkills.MarketplaceEntries)
+        foreach (var entry in NativeMarketplaceClient.FeaturedFirst(Model.ActiveSkills.MarketplaceEntries, item => item.Featured, item => item.Downloads))
         {
             var card = new Border
             {
@@ -1915,7 +2236,12 @@ public partial class SettingsWindow : Window
             var title = new StackPanel();
             title.Children.Add(new TextBlock { Text = entry.Name, FontWeight = FontWeight.SemiBold });
             title.Children.Add(new TextBlock { Text = entry.Id, FontSize = 11, FontFamily = new FontFamily("monospace"), Foreground = TryBrush("TextSecondary") });
+            title.Children.Add(new TextBlock { Text = NativeMarketplaceClient.MetricsLine(entry.Downloads, entry.Likes, entry.Featured), FontSize = 10, Foreground = TryBrush("TextSecondary") });
             top.Children.Add(title);
+            var like = LikeButton("skill", entry.Id, ShowSkills, likes => Model.ActiveSkills.SetMetrics(entry.Id, likes: likes));
+            like.Margin = new Thickness(6, 0, 0, 0);
+            DockPanel.SetDock(like, Dock.Right);
+            top.Children.Add(like);
             if (Model.ActiveSkills.IsInstalled(entry))
             {
                 var installedLabel = new TextBlock { Text = Model.L("settings.installed"), FontSize = 11, Foreground = TryBrush("TextSecondary"), HorizontalAlignment = HorizontalAlignment.Right };
@@ -1928,7 +2254,9 @@ public partial class SettingsWindow : Window
                 download.Click += async (_, _) =>
                 {
                     download.IsEnabled = false;
-                    try { await Model.ActiveSkills.InstallAsync(entry); }
+                    try { await Model.ActiveSkills.InstallAsync(entry);
+                        Model.ActiveSkills.SetMetrics(entry.Id, downloads: await Model.Marketplace.RecordCatalogDownloadAsync("skill", entry.Id));
+                    }
                     catch (Exception error) { Model.Bridge.Status = error.Message; }
                     ShowSkills();
                 };
@@ -2037,7 +2365,7 @@ public partial class SettingsWindow : Window
             Height = 560,
             Content = viewer,
         };
-        window.Show(this);
+        window.Show(DialogOwner);
     }
 
     private void ShowPlugins()
@@ -2148,6 +2476,67 @@ public partial class SettingsWindow : Window
         Body.Content = panel;
     }
 
+    /// <summary>
+    /// Project starters: a folder the user picks plus a first message that scaffolds it.
+    /// The same list fills the Marketplace section's Starters tab.
+    /// </summary>
+    private void ShowStarters()
+    {
+        var panel = new StackPanel();
+        var list = new StackPanel();
+        panel.Children.Add(Heading("market.tab.starters"));
+        panel.Children.Add(list);
+        AddStarters(list, ShowStarters);
+        Body.Content = panel;
+    }
+
+    private void AddStarters(Panel list, Action render)
+    {
+        var starters = Model.Marketplace.EffectiveStarters;
+        if (starters.Count == 0) return;
+        list.Children.Add(new TextBlock { Text = Model.L("market.tab.starters"), FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 12, 0, 2) });
+        foreach (var starter in NativeMarketplaceClient.FeaturedFirst(starters, item => item.Featured, item => item.Downloads))
+        {
+            var row = new DockPanel { Margin = new Thickness(0, 4, 0, 4) };
+            // The prompt is what the agent receives, so it is one hover away.
+            ToolTip.SetTip(row, new TextBlock
+            {
+                Text = starter.Prompt,
+                TextWrapping = TextWrapping.Wrap,
+                MaxWidth = 460,
+                FontFamily = new FontFamily("monospace"),
+            });
+            var text = new StackPanel();
+            text.Children.Add(new TextBlock { Text = starter.Title ?? starter.Id, FontWeight = FontWeight.SemiBold });
+            text.Children.Add(new TextBlock { Text = starter.Detail ?? string.Empty, FontSize = 11, TextWrapping = TextWrapping.Wrap });
+            text.Children.Add(new TextBlock { Text = NativeMarketplaceClient.MetricsLine(starter.Downloads, starter.Likes, starter.Featured), FontSize = 10, Foreground = TryBrush("TextSecondary") });
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            actions.Children.Add(LikeButton("starter", starter.Id, render));
+            var use = new Button { Content = Model.L("workspace.use"), Padding = new Thickness(8, 3), Margin = new Thickness(6, 0, 0, 0) };
+            use.Click += async (_, _) =>
+            {
+                var folders = await DialogOwner.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = Model.L("market.publish.chooseFolder"), AllowMultiple = false });
+                var folder = folders.FirstOrDefault()?.TryGetLocalPath();
+                if (folder is null) return;
+                try
+                {
+                    // The prompt lands in the composer so the user reads it before anything is written.
+                    Model.SetWorkspace(folder);
+                    Model.NewConversation();
+                    Model.Draft = starter.Prompt;
+                }
+                catch (Exception error) { Model.Bridge.Status = error.Message; return; }
+                await Model.Marketplace.RecordCatalogDownloadAsync("starter", starter.Id);
+                render();
+            };
+            actions.Children.Add(use);
+            DockPanel.SetDock(actions, Dock.Right);
+            row.Children.Add(actions);
+            row.Children.Add(text);
+            list.Children.Add(row);
+        }
+    }
+
     private void AddMarketplaceSettings(Panel panel)
     {
         var card = new Border
@@ -2160,14 +2549,14 @@ public partial class SettingsWindow : Window
         };
         var content = new StackPanel();
         var header = new DockPanel();
-        header.Children.Add(new TextBlock { Text = "Native Marketplace", FontWeight = FontWeight.SemiBold });
-        var refresh = new Button { Content = "Registry yenile", Padding = new Thickness(8, 3) };
+        header.Children.Add(new TextBlock { Text = Model.L("settings.marketplace"), FontWeight = FontWeight.SemiBold });
+        var refresh = new Button { Content = Model.L("common.refresh"), Padding = new Thickness(8, 3) };
         DockPanel.SetDock(refresh, Dock.Right);
         header.Children.Add(refresh);
         content.Children.Add(header);
         content.Children.Add(new TextBlock
         {
-            Text = "Ana Marketplace yalnızca incelenmiş, Harness kapsamındaki pluginleri gösterir. Community / Experimental alanı ayrı tutulur; tüm native pluginler açık onayınızdan sonra etkinleştirilir.",
+            Text = Model.L("market.settings.hint"),
             FontSize = 11,
             Foreground = TryBrush("TextSecondary"),
             TextWrapping = TextWrapping.Wrap,
@@ -2184,23 +2573,26 @@ public partial class SettingsWindow : Window
         {
             RenderAccount();
             list.Children.Clear();
-            list.Children.Add(new TextBlock { Text = "Ana Marketplace", FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 8, 0, 2) });
+            list.Children.Add(new TextBlock { Text = Model.L("market.area.core"), FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 8, 0, 2) });
             AddEntries(Model.Marketplace.Entries);
-            list.Children.Add(new TextBlock { Text = "Community / Experimental", FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 12, 0, 2) });
+            list.Children.Add(new TextBlock { Text = Model.L("market.area.communityExperimental"), FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 12, 0, 2) });
             AddEntries(Model.Marketplace.CommunityEntries);
             if (Model.Marketplace.Entries.Count == 0 && Model.Marketplace.CommunityEntries.Count == 0)
-                list.Children.Add(new TextBlock { Text = "Marketplace kaydı yok veya henüz yenilenmedi.", FontSize = 11, Foreground = TryBrush("TextSecondary") });
+                list.Children.Add(new TextBlock { Text = Model.L("market.registry.empty"), FontSize = 11, Foreground = TryBrush("TextSecondary") });
             AddForks();
+            AddStarters(list, Render);
 
             void AddEntries(IReadOnlyList<NativeMarketplaceEntry> entries)
             {
-                foreach (var entry in entries)
+                foreach (var entry in NativeMarketplaceClient.FeaturedFirst(entries, item => item.Featured, item => item.Downloads))
                 {
                     var row = new DockPanel { Margin = new Thickness(0, 4) };
                     var text = new StackPanel();
                     text.Children.Add(new TextBlock { Text = $"{entry.Name} v{entry.Version}", FontWeight = FontWeight.SemiBold });
                     text.Children.Add(new TextBlock { Text = $"{entry.Id} · {entry.CatalogScope} · {entry.Category} · {entry.VerificationStatus} · moderation:{entry.ModerationStatus} · risk:{entry.RiskLevel} · {string.Join(", ", (entry.Artifacts ?? Array.Empty<NativeMarketplaceArtifact>()).Select(a => $"{a.Platform}/{a.Architecture}:{a.Status}"))}", FontSize = 10, Foreground = TryBrush("TextSecondary") });
                     var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Spacing = 6 };
+                    text.Children.Add(new TextBlock { Text = NativeMarketplaceClient.MetricsLine(entry.Downloads, entry.Likes, entry.Featured), FontSize = 10, Foreground = TryBrush("TextSecondary") });
+                    actions.Children.Add(LikeButton("plugin", entry.Id, Render));
                     var installed = Model.Catalog.Entries.FirstOrDefault(candidate => candidate.Id == entry.Id && candidate.Kind == PluginKind.Dylib);
                     var updateAvailable = installed is not null
                         && SemVer.TryParse(installed.Manifest.Version, out var installedVersion)
@@ -2210,13 +2602,13 @@ public partial class SettingsWindow : Window
                     {
                         var install = new Button
                         {
-                            Content = updateAvailable ? "Update and enable" : "Accept and enable",
+                            Content = Model.L("market.consent.accept"),
                             Padding = new Thickness(8, 3),
                             IsEnabled = Model.Marketplace.CanInstall(entry),
                         };
                         install.Click += async (_, _) =>
                         {
-                            var consent = await new NativeMarketplaceConsentWindow(entry).ShowDialog<bool>(this);
+                            var consent = await new NativeMarketplaceConsentWindow(entry).ShowDialog<bool>(DialogOwner);
                             if (!consent) return;
                             try
                             {
@@ -2230,10 +2622,10 @@ public partial class SettingsWindow : Window
                     }
                     else
                     {
-                        actions.Children.Add(new TextBlock { Text = "Installed", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4) });
+                        actions.Children.Add(new TextBlock { Text = Model.L("settings.installed"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4) });
                         if (!Model.Marketplace.Forks.HasFork(entry.Id))
                         {
-                            var customize = new Button { Content = "Customize", Padding = new Thickness(8, 3) };
+                            var customize = new Button { Content = Model.L("market.customize"), Padding = new Thickness(8, 3) };
                             customize.Click += (_, _) =>
                             {
                                 try { Model.Marketplace.Forks.CreateFork(entry.Id, entry.Version); Model.Remount(); ShowPlugins(); }
@@ -2241,14 +2633,14 @@ public partial class SettingsWindow : Window
                             };
                             actions.Children.Add(customize);
                         }
-                        var remove = new Button { Content = "Remove", Padding = new Thickness(8, 3) };
+                        var remove = new Button { Content = Model.L("settings.remove"), Padding = new Thickness(8, 3) };
                         remove.Click += async (_, _) =>
                         {
                             var confirmed = await new SandboxDiscardWindow(
-                                "Remove Marketplace plugin?",
-                                $"Remove {entry.Name} from this device?",
-                                "Cancel",
-                                "Remove").ShowDialog<bool>(this);
+                                Model.L("market.remove.confirmTitle"),
+                                Model.L("market.remove.confirmMessage", entry.Name),
+                                Model.L("common.cancel"),
+                                Model.L("settings.remove")).ShowDialog<bool>(DialogOwner);
                             if (!confirmed) return;
                             try { Model.Marketplace.RemoveInstalled(entry.Id); ShowPlugins(); }
                             catch (Exception error) { list.Children.Add(ErrorText(error.Message)); }
@@ -2257,10 +2649,10 @@ public partial class SettingsWindow : Window
                     }
                     if (Model.MarketplaceSession.IsSignedIn)
                     {
-                        var report = new Button { Content = "Report", Padding = new Thickness(8, 3) };
+                        var report = new Button { Content = Model.L("market.report"), Padding = new Thickness(8, 3) };
                         report.Click += async (_, _) =>
                         {
-                            var sent = await new MarketplaceReportWindow(Model.Marketplace, entry).ShowDialog<bool>(this);
+                            var sent = await new MarketplaceReportWindow(Model.Marketplace, entry).ShowDialog<bool>(DialogOwner);
                             if (sent) Render();
                         };
                         actions.Children.Add(report);
@@ -2276,15 +2668,15 @@ public partial class SettingsWindow : Window
             {
                 var forks = Model.Marketplace.Forks.Forks;
                 if (forks.Count == 0) return;
-                list.Children.Add(new TextBlock { Text = "Local customizations", FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 12, 0, 4) });
+                list.Children.Add(new TextBlock { Text = Model.L("market.localForks"), FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 12, 0, 4) });
                 foreach (var fork in forks)
                 {
                     var card = new StackPanel { Spacing = 3, Margin = new Thickness(0, 3, 0, 8) };
                     card.Children.Add(new TextBlock { Text = $"{fork.Id} · upstream {fork.UpstreamId} · v{fork.UpstreamVersion}", FontFamily = new FontFamily("monospace") });
                     if (fork.UpstreamVersionAvailable is { } available)
-                        card.Children.Add(new TextBlock { Text = $"New upstream v{available}; local changes are preserved.", Foreground = TryBrush("TextSecondary"), FontSize = 10 });
+                        card.Children.Add(new TextBlock { Text = Model.L("market.fork.newUpstream", available), Foreground = TryBrush("TextSecondary"), FontSize = 10 });
                     var actions = new WrapPanel();
-                    var open = new Button { Content = "Open folder", Padding = new Thickness(7, 2), Margin = new Thickness(0, 0, 5, 4) };
+                    var open = new Button { Content = Model.L("market.openFolder"), Padding = new Thickness(7, 2), Margin = new Thickness(0, 0, 5, 4) };
                     open.Click += (_, _) =>
                     {
                         try
@@ -2295,14 +2687,14 @@ public partial class SettingsWindow : Window
                         }
                         catch (Exception error) { list.Children.Add(ErrorText(error.Message)); }
                     };
-                    var export = new Button { Content = "Export", Padding = new Thickness(7, 2), Margin = new Thickness(0, 0, 5, 4) };
+                    var export = new Button { Content = Model.L("studio.export"), Padding = new Thickness(7, 2), Margin = new Thickness(0, 0, 5, 4) };
                     export.Click += async (_, _) =>
                     {
                         try
                         {
-                            var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+                            var file = await DialogOwner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
                             {
-                                Title = "Export local plugin fork",
+                                Title = Model.L("market.localForks"),
                                 SuggestedFileName = fork.Id + ".dotsplugin",
                                 FileTypeChoices = [new FilePickerFileType("DOTS plugin package") { Patterns = ["*.dotsplugin"] }],
                             });
@@ -2312,14 +2704,14 @@ public partial class SettingsWindow : Window
                         }
                         catch (Exception error) { list.Children.Add(ErrorText(error.Message)); }
                     };
-                    var enable = new Button { Content = "Review and enable", Padding = new Thickness(7, 2), Margin = new Thickness(0, 0, 5, 4) };
+                    var enable = new Button { Content = Model.L("market.consent.accept"), Padding = new Thickness(7, 2), Margin = new Thickness(0, 0, 5, 4) };
                     enable.Click += async (_, _) =>
                     {
                         var consent = await new SandboxDiscardWindow(
-                            "Custom native plugin consent",
-                            $"{fork.Id} is a local native-code fork of {fork.UpstreamId}. Its source may have changed and it is not signed by the Marketplace. Enabling it grants native execution. Review its source first?",
-                            "Cancel",
-                            "I reviewed the source").ShowDialog<bool>(this);
+                            Model.L("market.fork.consent.title"),
+                            Model.L("market.fork.consent.message", fork.Id),
+                            Model.L("common.cancel"),
+                            Model.L("market.consent.accept")).ShowDialog<bool>(DialogOwner);
                         if (!consent) return;
                         try { Model.Marketplace.Forks.AcceptAndEnable(fork); Model.Remount(); ShowPlugins(); }
                         catch (Exception error) { list.Children.Add(ErrorText(error.Message)); }
@@ -2329,18 +2721,18 @@ public partial class SettingsWindow : Window
                     actions.Children.Add(enable);
                     if (fork.UpstreamVersionAvailable is { } newer)
                     {
-                        var compared = new Button { Content = "Compared", Padding = new Thickness(7, 2), Margin = new Thickness(0, 0, 5, 4) };
+                        var compared = new Button { Content = Model.L("market.fork.compared"), Padding = new Thickness(7, 2), Margin = new Thickness(0, 0, 5, 4) };
                         compared.Click += (_, _) => { Model.Marketplace.Forks.AcknowledgeUpstream(fork, newer); Render(); };
                         actions.Children.Add(compared);
                     }
-                    var delete = new Button { Content = "Delete", Padding = new Thickness(7, 2), Margin = new Thickness(0, 0, 5, 4) };
+                    var delete = new Button { Content = Model.L("common.delete"), Padding = new Thickness(7, 2), Margin = new Thickness(0, 0, 5, 4) };
                     delete.Click += async (_, _) =>
                     {
                         var confirmed = await new SandboxDiscardWindow(
-                            "Delete local plugin fork?",
-                            $"Delete local fork {fork.Id}?",
-                            "Cancel",
-                            "Delete").ShowDialog<bool>(this);
+                            Model.L("common.delete"),
+                            Model.L("market.remove.confirmMessage", fork.Id),
+                            Model.L("common.cancel"),
+                            Model.L("common.delete")).ShowDialog<bool>(DialogOwner);
                         if (!confirmed) return;
                         try { Model.Marketplace.DeleteFork(fork); ShowPlugins(); }
                         catch (Exception error) { list.Children.Add(ErrorText(error.Message)); }
@@ -2360,25 +2752,25 @@ public partial class SettingsWindow : Window
                 var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
                 row.Children.Add(new TextBlock
                 {
-                    Text = "HerNess: " + (Model.MarketplaceSession.Profile?.Email ?? "Signed in"),
+                    Text = Model.L("market.account") + (string.IsNullOrWhiteSpace(Model.MarketplaceSession.Profile?.Email) ? "" : ": " + Model.MarketplaceSession.Profile!.Email),
                     VerticalAlignment = VerticalAlignment.Center,
                     Margin = new Thickness(0, 0, 8, 0),
                 });
-                var publish = new Button { Content = "Publish native plugin", Padding = new Thickness(8, 3) };
+                var publish = new Button { Content = Model.L("market.publish.title"), Padding = new Thickness(8, 3) };
                 publish.Click += async (_, _) =>
                 {
                     var dialog = new MarketplacePublishWindow(Model.MarketplacePublisher);
-                    if (!await dialog.ShowDialog<bool>(this)) return;
+                    if (!await dialog.ShowDialog<bool>(DialogOwner)) return;
                     try { await Model.Marketplace.RefreshOwnedPluginsAsync(); Render(); }
                     catch (Exception error) { account.Children.Add(ErrorText(error.Message)); }
                 };
-                var refreshOwned = new Button { Content = "Refresh my plugins", Padding = new Thickness(8, 3) };
+                var refreshOwned = new Button { Content = Model.L("common.refresh"), Padding = new Thickness(8, 3) };
                 refreshOwned.Click += async (_, _) =>
                 {
                     try { await Model.Marketplace.RefreshOwnedPluginsAsync(); Render(); }
                     catch (Exception error) { account.Children.Add(ErrorText(error.Message)); }
                 };
-                var signOut = new Button { Content = "Sign out", Padding = new Thickness(8, 3) };
+                var signOut = new Button { Content = Model.L("sidebar.signOut"), Padding = new Thickness(8, 3) };
                 signOut.Click += async (_, _) => { await Model.MarketplaceSession.SignOutAsync(); Render(); };
                 row.Children.Add(publish);
                 row.Children.Add(refreshOwned);
@@ -2397,15 +2789,15 @@ public partial class SettingsWindow : Window
                         FontWeight = FontWeight.SemiBold,
                         VerticalAlignment = VerticalAlignment.Center,
                     });
-                    var unpublish = new Button { Content = "Unpublish", Padding = new Thickness(7, 2) };
+                    var unpublish = new Button { Content = Model.L("market.unpublish"), Padding = new Thickness(7, 2) };
                     DockPanel.SetDock(unpublish, Dock.Right);
                     unpublish.Click += async (_, _) =>
                     {
                         var confirmed = await new SandboxDiscardWindow(
-                            "Unpublish plugin?",
-                            $"Unpublish {plugin.Name}? Existing installations will not be removed.",
-                            "Cancel",
-                            "Unpublish").ShowDialog<bool>(this);
+                            Model.L("market.unpublish"),
+                            Model.L("market.unpublish.confirmMessage", plugin.Name),
+                            Model.L("common.cancel"),
+                            Model.L("market.unpublish")).ShowDialog<bool>(DialogOwner);
                         if (!confirmed) return;
                         try { await Model.Marketplace.UnpublishAsync(plugin.Id); Render(); }
                         catch (Exception error) { account.Children.Add(ErrorText(error.Message)); }
@@ -2430,14 +2822,14 @@ public partial class SettingsWindow : Window
             else
             {
                 var login = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-                var email = new TextBox { Width = 210, Watermark = "HerNess account email" };
-                var password = new TextBox { Width = 180, Watermark = "Password", PasswordChar = '●' };
+                var email = new TextBox { Width = 210, Watermark = Model.L("market.email") };
+                var password = new TextBox { Width = 180, Watermark = Model.L("market.password"), PasswordChar = '●' };
                 var status = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 0) };
-                var signIn = new Button { Content = "Sign in to publish", Padding = new Thickness(8, 3) };
+                var signIn = new Button { Content = Model.L("market.signIn"), Padding = new Thickness(8, 3) };
                 signIn.Click += async (_, _) =>
                 {
                     signIn.IsEnabled = false;
-                    status.Text = "Signing in…";
+                    status.Text = Model.L("settings.waitingAuthorization");
                     try
                     {
                         await Model.MarketplaceSession.SignInAsync(email.Text ?? "", password.Text ?? "");
@@ -2457,16 +2849,16 @@ public partial class SettingsWindow : Window
                 account.Children.Add(login);
                 account.Children.Add(status);
                 var oauth = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(0, 2, 0, 4) };
-                var google = new Button { Content = "Continue with Google", Padding = new Thickness(8, 3) };
+                var google = new Button { Content = "Google", Padding = new Thickness(8, 3) };
                 google.Click += (_, _) =>
                 {
-                    try { Model.MarketplaceSession.BeginOAuth(MarketplaceProvider.Google); status.Text = "Google sign-in opened in your browser…"; }
+                    try { Model.MarketplaceSession.BeginOAuth(MarketplaceProvider.Google); status.Text = Model.L("settings.signInBrowser"); }
                     catch (Exception error) { status.Text = error.Message; }
                 };
-                var github = new Button { Content = "Continue with GitHub", Padding = new Thickness(8, 3) };
+                var github = new Button { Content = "GitHub", Padding = new Thickness(8, 3) };
                 github.Click += (_, _) =>
                 {
-                    try { Model.MarketplaceSession.BeginOAuth(MarketplaceProvider.GitHub); status.Text = "GitHub sign-in opened in your browser…"; }
+                    try { Model.MarketplaceSession.BeginOAuth(MarketplaceProvider.GitHub); status.Text = Model.L("settings.signInBrowser"); }
                     catch (Exception error) { status.Text = error.Message; }
                 };
                 oauth.Children.Add(google);
@@ -2474,7 +2866,7 @@ public partial class SettingsWindow : Window
                 account.Children.Add(oauth);
                 account.Children.Add(new TextBlock
                 {
-                    Text = "Sign in with Google, GitHub, or your HerNess email and password. Session tokens are stored by the platform credential service.",
+                    Text = Model.L("market.signIn.hint"),
                     FontSize = 10,
                     Foreground = TryBrush("TextSecondary"),
                     TextWrapping = TextWrapping.Wrap,
@@ -2531,6 +2923,7 @@ public partial class SettingsWindow : Window
             {
                 try { await Model.Marketplace.RefreshOwnedPluginsAsync(); } catch { }
             }
+            try { await Model.Marketplace.RefreshLikesAsync(); await Model.Marketplace.RefreshStartersAsync(); } catch { }
             Dispatcher.UIThread.Post(Render);
         });
     }
@@ -2982,7 +3375,7 @@ public partial class SettingsWindow : Window
             Foreground = TryBrush("TextSecondary"),
         });
         var open = new Button { Content = Model.L("legal.openWeb") };
-        open.Click += (_, _) => new LegalWindow(Model, gate: false).Show(this);
+        open.Click += (_, _) => new LegalWindow(Model, gate: false).Show(DialogOwner);
         panel.Children.Add(open);
         panel.Children.Add(new TextBlock
         {
@@ -3057,7 +3450,7 @@ public partial class SettingsWindow : Window
         DrawMemoryGraph();
     }
 
-    private static readonly string[] MemoryKindOrder = ["map", "index", "profile", "project", "rule", "preference", "task", "conversation", "decision", "file", "missing", "note"];
+    private static readonly string[] MemoryKindOrder = ["map", "index", "profile", "project", "rule", "insight", "preference", "task", "conversation", "decision", "tool", "file", "missing", "note"];
 
     private List<MemoryNote> FilteredMemoryNotes() => _memoryVault.Notes
         .Where(note => string.IsNullOrWhiteSpace(_memorySearch)
@@ -3105,6 +3498,18 @@ public partial class SettingsWindow : Window
             forget.Click += (_, _) => SaveMemory(new MemoryEdit(MemoryEditKind.ForgetProject, Key: note.Title), clearSelection: true);
             actions.Children.Add(save); actions.Children.Add(forget); panel.Children.Add(actions);
             panel.Children.Add(new TextBlock { Text = $"{editor.Text?.Length ?? 0} / {editor.MaxLength}", FontSize = 10, Foreground = TryBrush("TextSecondary") });
+        }
+        else if (note.Kind == "insight")
+        {
+            var id = note.Id[WorkspaceMemoryVault.InsightPrefix.Length..];
+            var editor = new TextBox { Text = note.Body, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 90, MaxLength = 240 };
+            panel.Children.Add(editor);
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(0, 8, 0, 0) };
+            var save = new Button { Content = Model.L("memory.save"), Padding = new Thickness(10, 4) };
+            save.Click += (_, _) => SaveMemory(new MemoryEdit(MemoryEditKind.EditInsight, Id: id, Value: editor.Text ?? ""));
+            var forget = new Button { Content = Model.L("memory.forget"), Padding = new Thickness(10, 4) };
+            forget.Click += (_, _) => SaveMemory(new MemoryEdit(MemoryEditKind.ForgetInsight, Id: id), clearSelection: true);
+            actions.Children.Add(save); actions.Children.Add(forget); panel.Children.Add(actions);
         }
         else if (note.Id == "learned_rules")
         {
@@ -3217,150 +3622,70 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private void ShowAccess()
+    private string? _memoryTransferStatus;
+
+    private void ShowMemoryTransfer()
     {
         var workspace = MemoryWorkspace();
-        var panel = new StackPanel();
-        panel.Children.Add(new TextBlock { Text = Model.L("settings.tab.access"), FontSize = 22, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, 0, 12) });
-        if (workspace is null)
-        {
-            panel.Children.Add(new TextBlock { Text = Model.L("access.noWorkspace"), TextWrapping = TextWrapping.Wrap, Foreground = TryBrush("TextSecondary") });
-            Body.Content = panel;
-            return;
-        }
-        WorkspaceAccessStore store;
-        WorkspaceAccessSnapshot access;
-        try { store = new WorkspaceAccessStore(workspace, Model.Paths.Root); access = store.Snapshot(); }
-        catch (Exception error)
-        {
-            panel.Children.Add(new TextBlock { Text = error.Message, Foreground = Brushes.IndianRed, TextWrapping = TextWrapping.Wrap });
-            Body.Content = panel;
-            return;
-        }
+        var panel = new StackPanel { Spacing = 6 };
+        panel.Children.Add(new TextBlock { Text = Model.L("memory.transfer.title"), FontSize = 22, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, 0, 6) });
+        panel.Children.Add(new TextBlock { Text = Model.L("memory.transfer.description"), TextWrapping = TextWrapping.Wrap, Foreground = TryBrush("TextSecondary"), Margin = new Thickness(0, 0, 0, 10) });
 
-        var actor = AccessSection("access.currentActor");
-        AddAccessValue(actor, "access.role", access.Role is { } actorRole ? AccessRole(actorRole) : Model.L("access.notAuthorized"));
-        AddAccessValue(actor, "access.score", access.Score.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        AddAccessValue(actor, "access.device", access.DeviceId.Length == 0 ? "—" : access.DeviceId[..Math.Min(20, access.DeviceId.Length)]);
-        AddAccessValue(actor, "access.publicKey", access.PublicKey);
-        AddAccessValue(actor, "access.memoryRevision", access.Revision.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        if (!access.MemoryReady)
-        {
-            actor.Children.Add(new TextBlock { Text = Model.L("access.initializeHelp"), FontSize = 11, TextWrapping = TextWrapping.Wrap, Foreground = TryBrush("TextSecondary"), Margin = new Thickness(0, 8, 0, 6) });
-            var initialize = new Button { Content = Model.L("access.initialize"), Padding = new Thickness(10, 4) };
-            initialize.Click += (_, _) => RunAccess(() => store.Initialize());
-            actor.Children.Add(initialize);
-        }
-        panel.Children.Add(actor);
+        panel.Children.Add(new TextBlock { Text = Model.L("memory.transfer.project"), FontSize = 16, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 6, 0, 0) });
+        panel.Children.Add(new TextBlock { Text = Model.L("memory.transfer.projectHelp"), TextWrapping = TextWrapping.Wrap, Foreground = TryBrush("TextSecondary") });
+        var projectButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(0, 2, 0, 10) };
+        var exportProject = new Button { Content = Model.L("memory.transfer.export"), Padding = new Thickness(10, 4), IsEnabled = workspace is not null };
+        exportProject.Click += async (_, _) => await ExportMemory("project", workspace);
+        var importProject = new Button { Content = Model.L("memory.transfer.import"), Padding = new Thickness(10, 4), IsEnabled = workspace is not null };
+        importProject.Click += async (_, _) => await ImportMemory("project", workspace);
+        projectButtons.Children.Add(exportProject); projectButtons.Children.Add(importProject); panel.Children.Add(projectButtons);
 
-        if (access.MemoryReady)
-        {
-            var members = AccessSection("access.members");
-            if (access.Members.Count == 0) members.Children.Add(new TextBlock { Text = Model.L("access.noMembers"), Foreground = TryBrush("TextSecondary") });
-            foreach (var member in access.Members)
-            {
-                var row = new DockPanel { Margin = new Thickness(0, 0, 0, 8), LastChildFill = false };
-                if (member.DeviceId != access.DeviceId && access.Role == MemoryRole.Owner && !member.Revoked)
-                {
-                    var revoke = new Button { Content = Model.L("access.revoke"), Padding = new Thickness(8, 3), Margin = new Thickness(8, 0, 0, 0) };
-                    revoke.Click += (_, _) => RunAccess(() => store.Revoke(member.DeviceId));
-                    DockPanel.SetDock(revoke, Dock.Right); row.Children.Add(revoke);
-                }
-                var summary = new StackPanel();
-                summary.Children.Add(new TextBlock { Text = member.DisplayName.Length > 0 ? member.DisplayName : member.PersonId, FontWeight = FontWeight.SemiBold });
-                var detail = $"{AccessRoleName(member.Role)} · {member.Score} · {member.DeviceId[..Math.Min(12, member.DeviceId.Length)]}" + (member.Revoked ? " · " + Model.L("access.revoked") : "");
-                summary.Children.Add(new TextBlock { Text = detail, FontSize = 11, Foreground = TryBrush("TextSecondary"), TextWrapping = TextWrapping.Wrap });
-                row.Children.Add(summary); members.Children.Add(row);
-            }
-            panel.Children.Add(members);
+        panel.Children.Add(new TextBlock { Text = Model.L("memory.transfer.personal"), FontSize = 16, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 6, 0, 0) });
+        panel.Children.Add(new TextBlock { Text = Model.L("memory.transfer.personalHelp"), TextWrapping = TextWrapping.Wrap, Foreground = TryBrush("TextSecondary") });
+        var personalButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(0, 2, 0, 10) };
+        var exportPersonal = new Button { Content = Model.L("memory.transfer.export"), Padding = new Thickness(10, 4) };
+        exportPersonal.Click += async (_, _) => await ExportMemory("personal", workspace);
+        var importPersonal = new Button { Content = Model.L("memory.transfer.import"), Padding = new Thickness(10, 4) };
+        importPersonal.Click += async (_, _) => await ImportMemory("personal", workspace);
+        personalButtons.Children.Add(exportPersonal); personalButtons.Children.Add(importPersonal); panel.Children.Add(personalButtons);
 
-            var invite = AccessSection("access.inviteDevice");
-            Button? create = null;
-            void RefreshInviteEnabled()
-            {
-                if (create is not null) create.IsEnabled = access.Role == MemoryRole.Owner && _accessDisplayName.Length > 0 && _accessPublicKey.Length > 0;
-            }
-            invite.Children.Add(AccessField("access.displayName", _accessDisplayName, value => { _accessDisplayName = value; RefreshInviteEnabled(); }));
-            invite.Children.Add(AccessField("access.newDevicePublicKey", _accessPublicKey, value => { _accessPublicKey = value; RefreshInviteEnabled(); }, true));
-            invite.Children.Add(new TextBlock { Text = Model.L("access.role"), FontWeight = FontWeight.SemiBold, FontSize = 12 });
-            var roleBox = new ComboBox { Margin = new Thickness(0, 2, 0, 8) };
-            foreach (var role in Enum.GetValues<MemoryRole>()) roleBox.Items.Add(new ComboBoxItem { Content = AccessRole(role), Tag = role });
-            roleBox.SelectedIndex = Array.IndexOf(Enum.GetValues<MemoryRole>(), _accessInviteRole);
-            roleBox.SelectionChanged += (_, _) => { if (roleBox.SelectedItem is ComboBoxItem { Tag: MemoryRole selectedRole }) _accessInviteRole = selectedRole; };
-            invite.Children.Add(roleBox);
-            invite.Children.Add(new TextBlock { Text = Model.L("access.score"), FontWeight = FontWeight.SemiBold, FontSize = 12 });
-            var score = new TextBox { Text = ((int)_accessInviteScore).ToString(System.Globalization.CultureInfo.InvariantCulture), MaxLength = 3, Margin = new Thickness(0, 2, 0, 8) };
-            score.TextChanged += (_, _) => { if (int.TryParse(score.Text, out var value)) _accessInviteScore = Math.Clamp(value, 0, 100); };
-            invite.Children.Add(score);
-            create = new Button { Content = Model.L("access.createInvitation"), Padding = new Thickness(10, 4), IsEnabled = access.Role == MemoryRole.Owner && _accessDisplayName.Length > 0 && _accessPublicKey.Length > 0 };
-            create.Click += (_, _) =>
-            {
-                try { _accessToken = store.CreateInvite(_accessDisplayName, _accessInviteRole, (int)_accessInviteScore, _accessPublicKey); _accessError = null; }
-                catch (Exception error) { _accessError = error.Message; }
-                ShowAccess();
-            };
-            invite.Children.Add(create);
-            if (_accessToken.Length > 0) invite.Children.Add(new TextBox { Text = _accessToken, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 70, Margin = new Thickness(0, 8, 0, 0) });
-            panel.Children.Add(invite);
-
-            var accept = AccessSection("access.acceptInvitation");
-            var token = new TextBox { Text = _accessInvite, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 65, Watermark = Model.L("access.signedInvitation") };
-            var acceptButton = new Button { Content = Model.L("access.accept"), Padding = new Thickness(10, 4), Margin = new Thickness(0, 6, 0, 0), IsEnabled = !string.IsNullOrWhiteSpace(_accessInvite) };
-            token.TextChanged += (_, _) => { _accessInvite = token.Text ?? ""; acceptButton.IsEnabled = !string.IsNullOrWhiteSpace(_accessInvite); };
-            accept.Children.Add(token);
-            acceptButton.Click += (_, _) => RunAccess(() => { store.AcceptInvite(_accessInvite); _accessInvite = ""; });
-            accept.Children.Add(acceptButton);
-            panel.Children.Add(accept);
-
-            var decisions = AccessSection("access.pendingDecisions");
-            if (access.PendingDecisions.Count == 0) decisions.Children.Add(new TextBlock { Text = Model.L("access.noPendingDecisions"), Foreground = TryBrush("TextSecondary") });
-            foreach (var proposal in access.PendingDecisions)
-            {
-                var row = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
-                row.Children.Add(new TextBlock { Text = proposal.Summary.Length > 0 ? proposal.Summary : proposal.EventId, TextWrapping = TextWrapping.Wrap });
-                var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(0, 5, 0, 0) };
-                var allowed = access.Role is { } actual && actual.Rank() >= MemoryRole.Approver.Rank();
-                var approve = new Button { Content = Model.L("access.accept"), Padding = new Thickness(8, 3), IsEnabled = allowed };
-                approve.Click += (_, _) => RunAccess(() => store.ResolveDecision(proposal.EventId, accept: true));
-                var reject = new Button { Content = Model.L("access.reject"), Padding = new Thickness(8, 3), IsEnabled = allowed };
-                reject.Click += (_, _) => RunAccess(() => store.ResolveDecision(proposal.EventId, accept: false));
-                actions.Children.Add(approve); actions.Children.Add(reject); row.Children.Add(actions); decisions.Children.Add(row);
-            }
-            panel.Children.Add(decisions);
-        }
-        if (_accessError is not null) panel.Children.Add(new TextBlock { Text = _accessError, Foreground = Brushes.IndianRed, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) });
+        if (!string.IsNullOrEmpty(_memoryTransferStatus))
+            panel.Children.Add(new TextBlock { Text = _memoryTransferStatus, TextWrapping = TextWrapping.Wrap, Foreground = TryBrush("TextSecondary"), Margin = new Thickness(0, 6, 0, 0) });
         Body.Content = panel;
+    }
 
-        void RunAccess(Action operation)
+    private async Task ExportMemory(string scope, string? workspace)
+    {
+        try
         {
-            try { operation(); _accessError = null; }
-            catch (Exception error) { _accessError = error.Message; }
-            ShowAccess();
+            var contents = scope == "project"
+                ? MemoryTransfer.ExportProject(workspace)
+                : MemoryTransfer.ExportPersonal(Model.Paths.Root);
+            var path = await Ui.SaveFile(this, scope + "-memory.dotsmemory.json");
+            if (path is null) return;
+            File.WriteAllText(path, contents);
+            _memoryTransferStatus = Model.L("memory.transfer.exported");
         }
+        catch (Exception error) { _memoryTransferStatus = error.Message; }
+        ShowMemoryTransfer();
     }
 
-    private StackPanel AccessSection(string titleKey)
+    private async Task ImportMemory(string scope, string? workspace)
     {
-        var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 14), Spacing = 4 };
-        panel.Children.Add(new TextBlock { Text = Model.L(titleKey), FontSize = 15, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, 0, 8) });
-        return panel;
+        try
+        {
+            var files = await Ui.OpenFiles(this);
+            var path = files.FirstOrDefault();
+            if (path is null) return;
+            var contents = File.ReadAllText(path);
+            var count = scope == "project"
+                ? MemoryTransfer.ImportProject(workspace, contents)
+                : MemoryTransfer.ImportPersonal(Model.Paths.Root, contents);
+            _memoryTransferStatus = Model.L("memory.transfer.imported") + " (" + count.ToString(System.Globalization.CultureInfo.InvariantCulture) + ")";
+        }
+        catch (Exception error) { _memoryTransferStatus = error.Message; }
+        ShowMemoryTransfer();
     }
-
-    private void AddAccessValue(StackPanel section, string key, string value) =>
-        section.Children.Add(new TextBlock { Text = Model.L(key) + ": " + value, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2), FontSize = key == "access.publicKey" ? 10 : 12, FontFamily = key is "access.publicKey" or "access.device" ? new FontFamily("monospace") : new FontFamily("sans-serif") });
-
-    private Control AccessField(string labelKey, string value, Action<string> changed, bool monospaced = false)
-    {
-        var field = new StackPanel { Margin = new Thickness(0, 0, 0, 8), Spacing = 3 };
-        field.Children.Add(new TextBlock { Text = Model.L(labelKey), FontSize = 12, FontWeight = FontWeight.SemiBold });
-        var input = new TextBox { Text = value, TextWrapping = TextWrapping.Wrap, AcceptsReturn = monospaced };
-        input.TextChanged += (_, _) => changed(input.Text ?? "");
-        field.Children.Add(input);
-        return field;
-    }
-
-    private string AccessRole(MemoryRole role) => Model.L("access.role." + role.Value());
-    private string AccessRoleName(string raw) => MemoryRoleRules.TryParse(raw, out var role) ? AccessRole(role) : raw;
 
     private void ShowPrompt()
     {
@@ -3383,23 +3708,15 @@ public partial class SettingsWindow : Window
         _ => Model.L("settings.appearanceSystem"),
     };
 
-    private string ResponseStyleTitle() => Model.Language == AppLanguage.Turkish ? "Yanıt stili" : "Response style";
+    private string ResponseStyleTitle() => Model.L("settings.responseStyle");
 
-    private string ResponseStyleLabel(AgentResponseStylePreference preference) => Model.Language == AppLanguage.Turkish
-        ? preference switch
-        {
-            AgentResponseStylePreference.Balanced => "Dengeli",
-            AgentResponseStylePreference.Concise => "Kısa",
-            AgentResponseStylePreference.Ultra => "Ultra kısa",
-            _ => "Detaylı",
-        }
-        : preference switch
-        {
-            AgentResponseStylePreference.Balanced => "Balanced",
-            AgentResponseStylePreference.Concise => "Concise",
-            AgentResponseStylePreference.Ultra => "Ultra",
-            _ => "Detailed",
-        };
+    private string ResponseStyleLabel(AgentResponseStylePreference preference) => Model.L(preference switch
+    {
+        AgentResponseStylePreference.Balanced => "responseStyle.balanced",
+        AgentResponseStylePreference.Concise => "responseStyle.concise",
+        AgentResponseStylePreference.Ultra => "responseStyle.ultra",
+        _ => "responseStyle.detailed",
+    });
 
     private string LocalizedTaskState(TaskRunKind state) => state switch
     {
@@ -3607,7 +3924,7 @@ public partial class SettingsWindow : Window
             var discard = new Button { Content = model.L("settings.sandboxDiscard"), Padding = new Thickness(10, 4), Margin = new Thickness(0, 0, 6, 6), IsEnabled = !model.Bridge.AnyRunBusy && !model.SandboxRecoveryRequired };
             discard.Click += async (_, _) =>
             {
-                var confirmed = await new SandboxDiscardWindow(model.L("settings.sandbox"), model.L("settings.sandboxDiscardConfirm"), model.L("settings.cancel"), model.L("settings.sandboxDiscard")).ShowDialog<bool>(this);
+                var confirmed = await new SandboxDiscardWindow(model.L("settings.sandbox"), model.L("settings.sandboxDiscardConfirm"), model.L("settings.cancel"), model.L("settings.sandboxDiscard")).ShowDialog<bool>(DialogOwner);
                 if (confirmed) await model.ExitSandboxAsync(merge: false);
             };
             actions.Children.Add(merge); actions.Children.Add(discard); panel.Children.Add(actions);
@@ -3752,7 +4069,7 @@ internal sealed class NativeMarketplaceConsentWindow : Window
 {
     public NativeMarketplaceConsentWindow(NativeMarketplaceEntry entry)
     {
-        Title = "Marketplace native plugin onayı";
+        Title = LocalizationService.Current.Get("market.consent.title");
         Width = 500;
         SizeToContent = SizeToContent.Height;
         CanResize = false;
@@ -3760,14 +4077,14 @@ internal sealed class NativeMarketplaceConsentWindow : Window
 
         var accept = new Button
         {
-            Content = "Kabul et ve etkinleştir",
+            Content = LocalizationService.Current.Get("market.consent.accept"),
             Padding = new Thickness(12, 7),
         };
         accept.Click += (_, _) => Close(true);
 
         var cancel = new Button
         {
-            Content = "İptal",
+            Content = LocalizationService.Current.Get("common.cancel"),
             Padding = new Thickness(12, 7),
         };
         cancel.Click += (_, _) => Close(false);
@@ -3787,7 +4104,18 @@ internal sealed class NativeMarketplaceConsentWindow : Window
                 },
                 new TextBlock
                 {
-                    Text = $"Alan: {(entry.CatalogScope == "core" ? "Ana Marketplace" : entry.CatalogScope == "experimental" ? "Experimental" : "Community")} · Kategori: {entry.Category} · Risk: {entry.RiskLevel}\n\nBu işlem DOTS imzalı bir native kütüphane indirir ve çalıştırır. AI sınıflandırması yayın alanını ve kategori etiketini belirler; bu, güvenlik garantisi değildir. İzinler: {string.Join(", ", entry.Permissions ?? Array.Empty<string>())}. Kaynak kodunu ve lisansını inceledikten sonra açıkça kabul etmeden plugin etkinleştirilmeyecektir.",
+                    Text = LocalizationService.Current.Get(
+                        "market.consent.message",
+                        entry.Name,
+                        LocalizationService.Current.Get("market.area." + (entry.CatalogScope == "experimental" ? "experimental" : entry.CatalogScope == "core" ? "core" : "community")),
+                        LocalizationService.Current.Get(entry.VerificationStatus == "verified" ? "market.review.verified" : "market.review.pending"),
+                        LocalizationService.Current.Get("market.category." + (entry.Category ?? "other").ToLowerInvariant()))
+                        + "\n\n"
+                        + LocalizationService.Current.Get("market.risk", entry.RiskLevel)
+                        + " · "
+                        + LocalizationService.Current.Get("market.permissions")
+                        + ": "
+                        + string.Join(", ", entry.Permissions ?? Array.Empty<string>()),
                     TextWrapping = TextWrapping.Wrap,
                     Foreground = TryBrush("TextSecondary"),
                 },

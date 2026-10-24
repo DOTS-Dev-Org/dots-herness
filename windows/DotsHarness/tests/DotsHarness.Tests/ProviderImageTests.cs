@@ -139,7 +139,7 @@ public sealed class ProviderImageTests
         {
             var secrets = new MemoryProviderSecretStore();
             var store = new NativeProviderStore(root, secrets);
-            var primary = Account("primary", "openai", "OpenAI", "gpt-4.1-mini", "https://primary.test/v1", 0, true);
+            var primary = Account("primary", "openai", "OpenAI", "gpt-5.6-luna", "https://primary.test/v1", 0, true);
             store.State.Accounts.Add(primary);
             secrets.Write(primary.CredentialId, "key");
             var adapters = new ProviderImageAdapterRegistry();
@@ -170,7 +170,7 @@ public sealed class ProviderImageTests
         {
             var secrets = new MemoryProviderSecretStore();
             var store = new NativeProviderStore(root, secrets);
-            var primary = Account("primary", "openai", "OpenAI", "gpt-4.1-mini", "https://primary.test/v1", 0, false);
+            var primary = Account("primary", "openai", "OpenAI", "gpt-5.6-luna", "https://primary.test/v1", 0, false);
             store.State.Accounts.Add(primary);
             secrets.Write(primary.CredentialId, "key");
             var adapters = new ProviderImageAdapterRegistry();
@@ -199,7 +199,7 @@ public sealed class ProviderImageTests
         {
             var secrets = new MemoryProviderSecretStore();
             var store = new NativeProviderStore(root, secrets);
-            var primary = Account("primary", "openai", "OpenAI", "gpt-4.1-mini", "https://primary.test/v1", 0, false);
+            var primary = Account("primary", "openai", "OpenAI", "gpt-5.6-luna", "https://primary.test/v1", 0, false);
             store.State.Accounts.Add(primary);
             secrets.Write(primary.CredentialId, "key");
             var adapters = new ProviderImageAdapterRegistry();

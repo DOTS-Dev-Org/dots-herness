@@ -37,6 +37,17 @@ private final class WhisperContextCache: @unchecked Sendable {
         return body(context)
     }
 
+    /// Frees the weights and KV buffers (574 MB for large-v3-turbo). The next call reloads.
+    func unload() {
+        lock.lock()
+        defer { lock.unlock() }
+
+        if let context { whisper_free(context) }
+        context = nil
+        modelPath = ""
+        modelFingerprint = nil
+    }
+
     private static func fingerprint(for path: String) -> String? {
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: path),
               let size = attributes[.size] as? NSNumber,
@@ -46,6 +57,11 @@ private final class WhisperContextCache: @unchecked Sendable {
 }
 
 private let whisperContextCache = WhisperContextCache()
+
+@_cdecl("dots_whisper_unload")
+public func dots_whisper_unload() {
+    whisperContextCache.unload()
+}
 
 @_cdecl("dots_whisper_transcribe")
 public func dots_whisper_transcribe(
@@ -67,7 +83,9 @@ public func dots_whisper_transcribe(
         params.print_progress = false
         params.print_timestamps = false
         params.print_special = false
-        params.detect_language = true
+        // detect_language = true makes whisper_full return right after detection,
+        // with zero segments. nil language already auto-detects and then transcribes.
+        params.detect_language = false
         params.language = nil
         params.temperature = 0
 

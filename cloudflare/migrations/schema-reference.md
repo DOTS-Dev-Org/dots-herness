@@ -31,6 +31,9 @@ entitlements) were intentionally left out.
 | `marketplace_releases` | immutable SemVer releases, IR/manifest metadata, source hash, license, AI classification and review state |
 | `marketplace_artifacts` | per-platform/architecture R2 object, hash, signature and build status |
 | `marketplace_reports` | user abuse reports and admin resolution/takedown state |
+| `marketplace_likes` | one row per user like; `marketplace_plugins.likes/downloads/featured` (0006) carry the listing counters and the curated flag |
+| `marketplace_catalog_items` | skills and project starters (0007): listing payload plus downloads/likes/featured; `marketplace_catalog_likes` holds one row per user like |
+| `media_community_posts`, `media_community_likes` | canvases shared from the Media studio (hidden until an admin approves) and their per-user likes |
 
 ## Apply
 

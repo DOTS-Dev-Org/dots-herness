@@ -6,7 +6,6 @@ import { resolveEffectivePriceUsdCents, type SubscriptionPacketRow } from "./pro
 import { vpsCacheBust } from "./vps_usage";
 import {
   alertThresholdsToJson,
-  loadWorkspaceUsage,
   normalizeAlertThresholds,
   parseAlertThresholds,
   type ProviderSubscriptionPayload,

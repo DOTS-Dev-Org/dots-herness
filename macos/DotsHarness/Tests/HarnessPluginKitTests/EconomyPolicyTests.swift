@@ -22,6 +22,32 @@ final class EconomyPolicyTests: XCTestCase {
         XCTAssertEqual(budget.maxOutputTokens % 512, 0)
     }
 
+    func testStrictTokenLimitCapsOnlyProseTurns() {
+        let configuration = AgentConfiguration(
+            baseURL: "https://example.test",
+            model: "gpt-6-astra",
+            provider: "GPT",
+            api: RouterAPIKind.chatGPT.rawValue,
+            effort: "low"
+        )
+        let limit = ResponseStyleDecision(style: .strict, maxOutputTokens: 200)
+        let prose = AgentOutputBudget.resolve(
+            configuration: configuration,
+            messages: [AgentMessage(role: .user, content: "explain a mutex")],
+            tools: [],
+            decision: limit
+        )
+        let coding = AgentOutputBudget.resolve(
+            configuration: configuration,
+            messages: [AgentMessage(role: .user, content: "edit the project")],
+            tools: [AgentToolDefinition(name: "write_file", description: "write", parameters: .object([:]))],
+            decision: limit
+        )
+
+        XCTAssertEqual(prose.maxOutputTokens, 200)
+        XCTAssertGreaterThan(coding.maxOutputTokens, 200)
+    }
+
     func testReadOutputIsNotClippedAgain() {
         let output = (1...500).map { "line-\($0)" }.joined(separator: "\n")
         let result = EconomyToolOutputPolicy.normalize(

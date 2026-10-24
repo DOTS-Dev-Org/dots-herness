@@ -12,8 +12,8 @@ public enum SimulatorTools {
             Control the iOS Simulator. Before any verification, call list_devices and reuse a \
             compatible Booted simulator by its exact UDID. Do not boot another simulator while a \
             compatible one is already Booted, unless the user explicitly asks for a different device. \
-            Only boot a compatible device if none is running. Supports install/launch, URLs, appearance, \
-            and screenshots.
+            Only boot a compatible device if none is running, and never assume a specific iPhone model \
+            exists. Supports install/launch, URLs, appearance, and screenshots.
             """,
             parameters: .object([
                 "type": .string("object"),
@@ -156,16 +156,7 @@ public enum SimulatorTools {
         workspace: URL,
         allowAbsolute: Bool = false
     ) throws -> URL {
-        if allowAbsolute, path.hasPrefix("/") {
-            return URL(fileURLWithPath: path).standardizedFileURL
-        }
-        // appendingPathComponent, not URL(fileURLWithPath:relativeTo:): the latter
-        // drops the last base component unless the base is a directory URL.
-        // resolvingSymlinksInPath keeps /var and /private/var comparable.
-        let url = workspace.appendingPathComponent(path).standardizedFileURL.resolvingSymlinksInPath()
-        let root = workspace.standardizedFileURL.resolvingSymlinksInPath().path
-        let rootPath = root.hasSuffix("/") ? root : root + "/"
-        guard url.path == root || url.path.hasPrefix(rootPath) else {
+        guard let url = WorkspacePathResolver.resolve(path, workspace: workspace, allowAbsolute: allowAbsolute) else {
             throw SimulatorError(AppCopy.format("tool.pathOutside", path))
         }
         return url

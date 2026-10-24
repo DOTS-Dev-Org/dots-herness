@@ -22,19 +22,6 @@ export function isTeamRole(role: string): role is TeamRole {
   return role in ROLE_RANK;
 }
 
-export async function getMemberRole(
-  env: Env,
-  workspaceId: string,
-  userId: string
-): Promise<TeamRole | null> {
-  const row = await db(env)
-    .prepare("SELECT role FROM workspace_members WHERE workspace_id = ? AND user_id = ?")
-    .bind(workspaceId, userId)
-    .first<{ role: string }>();
-  if (!row || !isTeamRole(row.role)) return null;
-  return row.role;
-}
-
 export type ResolvedTeamAccount = {
   workspace_id: string;
   role: TeamRole;
@@ -97,6 +84,160 @@ export async function hasSeatAvailable(
   const limit = await getEffectiveSeats(env, workspaceId);
   const used = await countSeatsUsed(env, workspaceId);
   return { available: limit === -1 ? true : used < limit, used, limit };
+}
+
+function seatLimitSql(workspaceAlias: string): string {
+  const plan = `CASE
+    WHEN lower(COALESCE(${workspaceAlias}.plan_slug, 'free')) LIKE 'token-%'
+      THEN substr(lower(COALESCE(${workspaceAlias}.plan_slug, 'free')), 7)
+    ELSE lower(COALESCE(${workspaceAlias}.plan_slug, 'free'))
+  END`;
+  return `(CASE WHEN ${plan} IN ('team', 'plus', 'business') THEN 3 ELSE 1 END
+    + COALESCE(${workspaceAlias}.extra_seats, 0)
+    + COALESCE(${workspaceAlias}.store_extra_seats, 0))`;
+}
+
+function seatsUsedSql(workspaceAlias: string, excludedInviteId?: string): string {
+  const excluded = excludedInviteId ? "AND ti.id <> ?" : "";
+  return `((SELECT COUNT(*) FROM workspace_members wm WHERE wm.workspace_id = ${workspaceAlias}.id)
+    + (SELECT COUNT(*) FROM team_invites ti
+        WHERE ti.workspace_id = ${workspaceAlias}.id
+          AND ti.accepted_at IS NULL
+          AND datetime(ti.expires_at) > CURRENT_TIMESTAMP
+          ${excluded}))`;
+}
+
+type TeamInviteInsert = {
+  id: string;
+  workspaceId: string;
+  email: string;
+  role: string;
+  token: string;
+  invitedBy: string | null;
+  expiresAt: string;
+};
+
+/** Insert an invitation only if a seat is still free at write time. */
+export async function createTeamInviteWithinSeatLimit(env: Env, invite: TeamInviteInsert): Promise<boolean> {
+  const used = seatsUsedSql("w");
+  const limit = seatLimitSql("w");
+  const result = await db(env)
+    .prepare(
+      `INSERT INTO team_invites (id, workspace_id, email, role, token, invited_by, expires_at)
+       SELECT ?, ?, ?, ?, ?, ?, ?
+         FROM workspaces w
+        WHERE w.id = ?
+          AND ${used} < ${limit}
+          AND NOT EXISTS (
+            SELECT 1 FROM team_invites ti
+             WHERE ti.workspace_id = w.id AND lower(trim(ti.email)) = ?
+               AND ti.accepted_at IS NULL AND datetime(ti.expires_at) > CURRENT_TIMESTAMP
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM workspace_members wm JOIN users u ON u.id = wm.user_id
+             WHERE wm.workspace_id = w.id AND lower(trim(u.email)) = ?
+          )`,
+    )
+    .bind(
+      invite.id,
+      invite.workspaceId,
+      invite.email,
+      invite.role,
+      invite.token,
+      invite.invitedBy,
+      invite.expiresAt,
+      invite.workspaceId,
+      invite.email,
+      invite.email,
+    )
+    .run();
+  return (result.meta?.changes ?? 0) === 1;
+}
+
+/**
+ * Accept an invite by transferring its reserved seat to the new member in one
+ * D1 batch. The capacity check excludes that invite, so a full workspace can
+ * still accept the seat it already reserved.
+ */
+export async function acceptTeamInviteWithinSeatLimit(
+  env: Env,
+  input: { inviteId: string; workspaceId: string; userId: string; role: string; tokenHash: string },
+): Promise<boolean> {
+  const database = db(env);
+  const used = seatsUsedSql("w", "excludedInviteId");
+  const limit = seatLimitSql("w");
+  const results = await database.batch([
+    database
+      .prepare(
+        `INSERT INTO workspace_members (workspace_id, user_id, role, joined_at)
+         SELECT ?, ?, ?, CURRENT_TIMESTAMP
+          WHERE EXISTS (
+            SELECT 1 FROM team_invites ti JOIN users u ON u.id = ?
+             WHERE ti.id = ? AND ti.workspace_id = ?
+               AND ti.accepted_at IS NULL AND datetime(ti.expires_at) > CURRENT_TIMESTAMP
+               AND lower(trim(ti.email)) = lower(trim(u.email))
+          )
+            AND EXISTS (
+              SELECT 1 FROM workspaces w
+               WHERE w.id = ?
+                 AND ${used} < ${limit}
+            )
+         ON CONFLICT (workspace_id, user_id) DO NOTHING`,
+      )
+      .bind(
+        input.workspaceId,
+        input.userId,
+        input.role || "member",
+        input.userId,
+        input.inviteId,
+        input.workspaceId,
+        input.workspaceId,
+        input.inviteId,
+      ),
+    database
+      .prepare(
+        `UPDATE team_invites
+            SET token = ?, accepted_at = CURRENT_TIMESTAMP
+          WHERE id = ? AND workspace_id = ?
+            AND accepted_at IS NULL AND datetime(expires_at) > CURRENT_TIMESTAMP
+            AND EXISTS (
+              SELECT 1 FROM workspace_members wm JOIN users u ON u.id = wm.user_id
+               WHERE wm.workspace_id = team_invites.workspace_id
+                 AND wm.user_id = ?
+                 AND lower(trim(team_invites.email)) = lower(trim(u.email))
+            )`,
+      )
+      .bind(input.tokenHash, input.inviteId, input.workspaceId, input.userId),
+  ]);
+  return (results[1]?.meta?.changes ?? 0) === 1;
+}
+
+/** Guard generic REST member inserts with the same atomic seat calculation. */
+export async function insertWorkspaceMemberWithinSeatLimit(
+  env: Env,
+  input: { columns: string[]; values: unknown[]; workspaceId: string },
+): Promise<Record<string, unknown>[]> {
+  const allowedColumns = new Set(["workspace_id", "user_id", "role", "created_at", "joined_at", "note"]);
+  if (
+    input.columns.length !== input.values.length ||
+    !input.columns.includes("workspace_id") ||
+    !input.columns.includes("user_id") ||
+    input.columns.some((column) => !allowedColumns.has(column))
+  ) {
+    throw new Error("Invalid workspace member fields");
+  }
+  const used = seatsUsedSql("w");
+  const limit = seatLimitSql("w");
+  const sql = `INSERT INTO workspace_members (${input.columns.join(", ")})
+               SELECT ${input.columns.map(() => "?").join(", ")}
+                WHERE EXISTS (
+                  SELECT 1 FROM workspaces w
+                   WHERE w.id = ? AND ${used} < ${limit}
+                )
+               ON CONFLICT (workspace_id, user_id) DO NOTHING
+               RETURNING *`;
+  const result = await db(env).prepare(sql).bind(...input.values, input.workspaceId).all<Record<string, unknown>>();
+  return result.results || [];
 }
 
 /**

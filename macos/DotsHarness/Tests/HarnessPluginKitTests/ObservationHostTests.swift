@@ -79,7 +79,7 @@ final class ObservationHostTests: XCTestCase {
     private func settle() async throws { try await Task.sleep(nanoseconds: 60_000_000) }
 
     func testCodingRunReadsEditsAndRereadsPastEightToolRounds() async throws {
-        let host = await makeHost(steps: 14)
+        let host = await makeHost(steps: 15)
         let original = (1...240).map { "line-\($0):" + String(repeating: "x", count: 60) }.joined(separator: "\n")
         let file = workspace.appendingPathComponent("project.swift")
         try original.write(to: file, atomically: true, encoding: .utf8)
@@ -93,7 +93,7 @@ final class ObservationHostTests: XCTestCase {
         await host.send(text: "read the project, change line-180 to fixed-180 and reread it", mode: .queue)
         let conversation = try XCTUnwrap(host.selected)
         XCTAssertEqual(conversation.messages.last(where: { $0.kind == .assistant })?.text, "done")
-        XCTAssertEqual(conversation.modelContext.filter { $0.role == .tool }.count, 14)
+        XCTAssertEqual(conversation.modelContext.filter { $0.role == .tool }.count, 15)
         XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), original.replacingOccurrences(of: "line-180:", with: "fixed-180:"))
         XCTAssertTrue(conversation.modelContext.last(where: { $0.role == .tool })?.content.hasPrefix("fixed-180:") == true)
         XCTAssertEqual(conversation.messages.last(where: { $0.kind == .assistant })?.changedFiles.map(\.path), ["project.swift"])
@@ -124,6 +124,15 @@ final class ObservationHostTests: XCTestCase {
         let restored = try JSONDecoder().decode(Conversation.self, from: JSONEncoder().encode(conversation))
         XCTAssertEqual(restored.continuation?.reason, .toolStepLimit)
         XCTAssertTrue(restored.canContinue)
+    }
+
+    func testToolStepLimitStillGetsAFinalAnswer() async throws {
+        let host = await makeHost(steps: NativeAgentHost.maxToolSteps)
+        await host.send(text: "inspect the project", mode: .queue)
+        let conversation = try XCTUnwrap(host.selected)
+        XCTAssertNil(conversation.continuation)
+        XCTAssertEqual(conversation.messages.last(where: { $0.kind == .assistant })?.text, "done")
+        XCTAssertTrue(conversation.modelContext.contains { $0.content == NativeAgentHost.toolStepLimitNotice })
     }
 
     /// Everything the window shows about a run changes while it runs.
@@ -204,13 +213,13 @@ final class ObservationHostTests: XCTestCase {
         let permission = Watch { _ = host.permissionMode }
         let backend = Watch { _ = host.browserBackendSetting }
         let connection = Watch { _ = host.connection }
-        let access = Watch { _ = host.accessRevision }
+        let memory = Watch { _ = host.memoryRevision }
         await host.send(text: "list files", mode: .queue)
         try await settle()
         XCTAssertEqual(permission.fires, 0)
         XCTAssertEqual(backend.fires, 0)
         XCTAssertEqual(connection.fires, 0)
-        XCTAssertEqual(access.fires, 0)
+        XCTAssertEqual(memory.fires, 0)
     }
 
     /// A conversation that starts running after the reader looked still wakes it.
@@ -238,7 +247,7 @@ final class ObservationHostTests: XCTestCase {
 
     /// A run waiting for permission is visible to the reader of `pendingApproval`.
     func testPendingApprovalNotifies() async throws {
-        let host = await makeHost(steps: 1, permission: .ask)
+        let host = await makeHost(steps: 2, permission: .ask)
         let approval = Watch { _ = host.pendingApproval }
         let send = Task { @MainActor in await host.send(text: "list files", mode: .queue) }
         for _ in 0..<200 where host.pendingApproval == nil { try await Task.sleep(nanoseconds: 10_000_000) }
@@ -300,26 +309,23 @@ final class ObservationHostTests: XCTestCase {
         XCTAssertTrue(host.conversations(inProject: other.path).allSatisfy(\.archived))
     }
 
-    /// Workspace memory is not a tracked property; its readers follow `accessRevision`.
-    func testMemoryDerivedReadersFollowAccessRevision() async throws {
+    /// Workspace memory is not a tracked property; its readers follow `memoryRevision`.
+    func testMemoryDerivedReadersFollowMemoryRevision() async throws {
         let host = await makeHost()
-        let access = Watch { _ = host.workspaceAccess }
-        let members = Watch { _ = host.workspaceMembers }
-        let decisions = Watch { _ = host.pendingWorkspaceDecisions }
+        let memory = Watch { _ = host.memoryRevision }
         let ready = Watch { _ = host.memoryReady }
         let other = root.appendingPathComponent("elsewhere", isDirectory: true)
         try FileManager.default.createDirectory(at: other, withIntermediateDirectories: true)
         host.setWorkspace(other.path)               // re-binds workspace memory and bumps the revision
         try await settle()
-        XCTAssertGreaterThan(host.accessRevision, 0)
-        XCTAssertGreaterThan(access.fires, 0)
-        XCTAssertGreaterThan(members.fires, 0)
-        XCTAssertGreaterThan(decisions.fires, 0)
+        XCTAssertGreaterThan(host.memoryRevision, 0)
+        XCTAssertGreaterThan(memory.fires, 0)
         XCTAssertGreaterThan(ready.fires, 0)
     }
 }
 
-/// Answers each chat completion after a short delay: `steps` list_files calls, then text.
+/// Answers each chat completion after a short delay: `steps` tool rounds (one discovery,
+/// then list_files or the scripted calls), then text.
 private final class ToolStepsURLProtocol: URLProtocol {
     nonisolated(unsafe) static var steps = 2
     nonisolated(unsafe) static var scriptedCalls: [[String: String]] = []
@@ -336,14 +342,17 @@ private final class ToolStepsURLProtocol: URLProtocol {
         if done == 1, let file = Self.externalFile {
             try? "changed by another writer".write(to: file, atomically: true, encoding: .utf8)
         }
-        let function: [String: String] = done < Self.scriptedCalls.count
-            ? Self.scriptedCalls[done]
-            : ["name": "list_files", "arguments": "{\"path\":\".\",\"n\":\(done)}"]
+        // Round 0 discovers every tool the script uses; each later round invokes one.
+        let scripted = done >= 1 && done <= Self.scriptedCalls.count ? Self.scriptedCalls[done - 1] : nil
+        let toolCall = done == 0
+            ? DeferredToolScript.discover(Array(Set(Self.scriptedCalls.compactMap { $0["name"] } + ["list_files"])).sorted())
+            : DeferredToolScript.invoke(
+                id: "call\(done)",
+                name: scripted?["name"] ?? "list_files",
+                arguments: scripted?["arguments"] ?? "{\"path\":\".\",\"n\":\(done)}"
+            )
         let message: [String: Any] = done < Self.steps
-            ? ["role": "assistant", "content": "", "tool_calls": [[
-                "id": "call\(done)", "type": "function",
-                "function": function,
-            ]]]
+            ? ["role": "assistant", "content": "", "tool_calls": [toolCall]]
             : ["role": "assistant", "content": "done"]
         let payload: [String: Any] = Self.failsWithLimit
             ? ["error": ["message": "quota exceeded"]]

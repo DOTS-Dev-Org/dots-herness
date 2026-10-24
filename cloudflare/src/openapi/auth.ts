@@ -1,6 +1,6 @@
 import { createRoute, z, type OpenAPIHono } from "@hono/zod-openapi";
 import type { Env, AppVariables } from "../env";
-import { accountHeader, authedSecurity, errorSchema, tokensSchema } from "./schemas";
+import { authedSecurity, errorSchema, tokensSchema } from "./schemas";
 
 type Stub = () => (c: unknown) => Response;
 

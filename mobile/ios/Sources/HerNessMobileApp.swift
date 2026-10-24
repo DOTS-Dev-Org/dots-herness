@@ -53,6 +53,13 @@ struct HerNessMobileApp: App {
             agent.selectProject(workspace.selectedProjectID)
             agent.setWorkspaceSnapshotProvider { try workspace.agentFiles() }
             agent.setLearnedRulesProvider { MobileLessons.rulesText(root: workspace.root) }
+            // ponytail: a scheduled run has no one to ask, so it asks no memory questions.
+            agent.setPersonalMemoryProvider { hasProject in
+                MobilePersonalMemory.text(
+                    userRoot: MobilePersonalMemory.defaultRoot(),
+                    workspace: hasProject ? workspace.root : nil
+                )
+            }
             let git = MobileGitClient(root: workspace.root, token: { SecureStore().read("oauth.github.access") ?? "" })
             agent.setGitClient(git)
             agent.register(AgentTools.workspace(workspace))
@@ -85,7 +92,7 @@ struct HerNessMobileApp: App {
                 .modifier(MobileWindowBehavior())
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .background { agent.pauseForLifecycleInterruption() }
-                    if phase == .active { agent.resumeRecoveredPlanIfNeeded() }
+                    if phase == .active { agent.resumeRecoveredConversationIfNeeded() }
                 }
         .task {
             await chatGPTOAuth.refreshIfNeeded()
@@ -94,6 +101,16 @@ struct HerNessMobileApp: App {
             shell.resetForProject()
             agent.setWorkspaceSnapshotProvider { try workspace.agentFiles() }
             agent.setLearnedRulesProvider { MobileLessons.rulesText(root: workspace.root) }
+            agent.setMemoryQuestions(
+                provider: { asked in MobileLessons.memoryQuestions(root: workspace.root, asked: asked, text: localization.text) },
+                answer: { id, choice in MobileLessons.answerMemoryQuestion(id, choice: choice, root: workspace.root) }
+            )
+            agent.setPersonalMemoryProvider { hasProject in
+                MobilePersonalMemory.text(
+                    userRoot: MobilePersonalMemory.defaultRoot(),
+                    workspace: hasProject ? workspace.root : nil
+                )
+            }
             let git = MobileGitClient(root: workspace.root, token: { SecureStore().read("oauth.github.access") ?? "" })
             agent.setGitClient(git)
             agent.register(AgentTools.workspace(workspace))
@@ -119,6 +136,16 @@ struct HerNessMobileApp: App {
                     agent.selectProject(projectID)
                     agent.setWorkspaceSnapshotProvider { try workspace.agentFiles() }
                     agent.setLearnedRulesProvider { MobileLessons.rulesText(root: workspace.root) }
+                    agent.setMemoryQuestions(
+                        provider: { asked in MobileLessons.memoryQuestions(root: workspace.root, asked: asked, text: localization.text) },
+                        answer: { id, choice in MobileLessons.answerMemoryQuestion(id, choice: choice, root: workspace.root) }
+                    )
+                    agent.setPersonalMemoryProvider { hasProject in
+                        MobilePersonalMemory.text(
+                            userRoot: MobilePersonalMemory.defaultRoot(),
+                            workspace: hasProject ? workspace.root : nil
+                        )
+                    }
                     let git = MobileGitClient(root: workspace.root, token: { SecureStore().read("oauth.github.access") ?? "" })
                     agent.setGitClient(git)
                     agent.register(AgentTools.workspace(workspace))
@@ -129,6 +156,18 @@ struct HerNessMobileApp: App {
                 }
                 .onOpenURL { url in
                     if !githubOAuth.handleCallback(url) && !chatGPTOAuth.handleCallback(url) { client.consumePairURL(url) }
+                }
+                .alert(
+                    localization.format("mobile.pairing.confirm.title", client.pendingPair?.host ?? ""),
+                    isPresented: Binding(
+                        get: { client.pendingPair != nil },
+                        set: { if !$0 { client.cancelPendingPair() } }),
+                    presenting: client.pendingPair
+                ) { _ in
+                    Button(localization.text("common.connect")) { Task { await client.confirmPendingPair() } }
+                    Button(localization.text("common.cancel"), role: .cancel) { client.cancelPendingPair() }
+                } message: { request in
+                    Text(localization.format("mobile.pairing.confirm.message", request.code))
                 }
         }
         .backgroundTask(.appRefresh(LoopScheduler.taskIdentifier)) {

@@ -10,8 +10,6 @@ namespace DotsHarnessCore;
 
 public static class DshJson
 {
-    public static JsonValue ValueFrom(object? any) => JsonValue.FromClr(any);
-
     public static JsonValue Parse(ReadOnlySpan<byte> data)
     {
         using var doc = JsonDocument.Parse(data.ToArray());

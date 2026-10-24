@@ -11,7 +11,7 @@ not required to open or use the app.
 2. Select a repository and branch.
 3. Clone it into the private app sandbox.
 4. Choose a provider and model.
-5. Use the local Code, Agent, Terminal, and Preview tabs.
+5. Use the local Agent, Code, Terminal, Preview, Tasks, Memory, Media, Bots, and Marketplace screens from the workspace navigation drawer.
 
 The callback is `herness://oauth/github`. GitHub public client IDs are build
 configuration, not secrets:
@@ -58,6 +58,14 @@ linked. There is no fake Git success.
 
 ### Paired desktop development
 
+Pairing needs the desktop's QR code: it carries a one-time secret (`k`) and the
+desktop certificate fingerprint (`fp`). While remote control is on, the desktop
+also opens a Cloudflare Quick Tunnel by itself, so the phone reaches it off the
+LAN. Every request, LAN and tunnel alike, goes through one sealed endpoint
+(`/v3/sealed`): the raw HTTP exchange is AES-256-GCM encrypted with a key only
+the desktop and the paired phone hold, so Cloudflare relays ciphertext only.
+Replies to the event feed are long-polled because Quick Tunnels do not stream.
+
 Select the matching paired desktop project in the project picker to enable a
 second Terminal runtime. It opens a persistent shell on that desktop; commands
 such as `./run.sh`, `npm run dev`, `npm test`, and Git status/diff run there, not
@@ -82,12 +90,39 @@ On macOS, the paired shell is backed by a PTY. Windows and Linux use a persisten
 redirected shell process, so ordinary commands and long-running dev servers work,
 but full-screen terminal programs that require a real TTY may not.
 
-## MCP, plugins, and loops
+## Tasks, memory, MCP, and plugins
+
+Tasks are saved as interval-based loops. They run on time while the app is open;
+the OS controls when background refresh can run. The Memory screen shows project
+facts and device-local preferences, and can add or remove project facts.
 
 Only HTTP MCP servers are supported; a phone app cannot spawn a stdio server
 process. Workspace plugins use the existing JavaScript runtime and receive the
-restricted `harness` bridge. Foreground loops run while the app is open; the OS
-controls background scheduling.
+restricted `harness` bridge.
+
+## Media, bots, and Marketplace
+
+Media projects, generated assets, and bot conversations are stored in the
+selected mobile project's `.herness` folder and use the same JSON date format
+on iOS and Android. Media includes size presets, project management, a shared
+asset library, a touch canvas with editable text and shape layers, drag-to-move,
+layer ordering, audio/video playback, and configurable image, speech, video,
+and music generation endpoints. Music projects keep generated stems on separate
+tracks with simultaneous mix playback, volume, mute, and solo controls.
+Generated images can be placed on the canvas.
+Provider keys are kept in device secure storage. The video model and music
+endpoint are configurable because providers expose different generation APIs.
+
+Bots have editable instructions and model overrides, saved per-bot chat history,
+and direct requests through the currently selected provider. Marketplace lists
+the plugin registry, skills, and project starters. A skill is installed only
+from an HTTPS URL with a catalog SHA-256 checksum and a matching skill ID; the
+installed `SKILL.md` is then included in the mobile agent's skill context.
+Marketplace entries for compiled desktop plugins remain informational on
+mobile; the app installs verified skills and starts projects from templates.
+Native desktop plugins are listed for discovery, but cannot execute in the
+mobile app. Starter cards create a mobile project and submit their prompt to the
+local agent.
 
 ## Build and test
 
@@ -99,6 +134,7 @@ mobile/android/run.sh
 ```sh
 xcodebuild -project mobile/ios/HerNessMobile.xcodeproj \
   -scheme HerNessMobile \
+  -derivedDataPath mobile/ios/build/DerivedData \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 ```
 

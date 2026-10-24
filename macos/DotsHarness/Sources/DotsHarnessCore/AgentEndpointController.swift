@@ -53,7 +53,7 @@ public final class AgentEndpointController: ObservableObject {
             apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 ? nil
                 : apiKey.trimmingCharacters(in: .whitespacesAndNewlines),
-            compactionPolicy: AgentContextCompactionPolicy.current()
+            compactionPolicy: .baseline
         )
     }
 

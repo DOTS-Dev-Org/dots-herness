@@ -30,6 +30,17 @@ final class ScheduledTaskTests: XCTestCase {
         XCTAssertNil(CronExpression("abc * * * *"))
     }
 
+    func testRecurrenceRoundTripsFormSchedules() {
+        for cron in ["0 * * * *", "30 9 * * *", "0 8 * * 1-5", "0 16 * * 5", "0 */5 * * *"] {
+            XCTAssertEqual(TaskRecurrence(cron: cron).cron, cron)
+        }
+        XCTAssertEqual(TaskRecurrence(cron: "0 8 * * 1-5").kind, .weekdays)
+        XCTAssertEqual(TaskRecurrence(cron: "0 16 * * 5").weekday, 5)
+        XCTAssertEqual(TaskRecurrence(cron: "0 0 * * 7").weekday, 0)
+        XCTAssertEqual(TaskRecurrence(cron: "0 */5 * * *").kind, .custom)
+        XCTAssertEqual(TaskRecurrence(cron: "15 * * * *").kind, .custom)
+    }
+
     func testEveryFiveHoursFromMidnight() {
         let cron = CronExpression("0 */5 * * *")!
         let next = cron.nextDate(after: date("2026-08-27T01:30:00Z"), calendar: utc)

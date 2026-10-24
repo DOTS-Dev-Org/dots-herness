@@ -45,7 +45,8 @@ public sealed class ConversationLoadTests : IDisposable
             },
         };
         var file = Path.Combine(_root, "sessions.json");
-        File.WriteAllText(file, JsonSerializer.Serialize(new[] { Chat("a", mine), Chat("b", other) }));
+        var legacyArchive = JsonSerializer.Serialize(new[] { Chat("a", mine), Chat("b", other) });
+        File.WriteAllText(file, legacyArchive);
 
         using var router = new RouterController(paths);
         var bridge = new AgentBridge(router, paths);
@@ -57,9 +58,10 @@ public sealed class ConversationLoadTests : IDisposable
         Assert.NotEmpty(loaded.ModelContext);
 
         bridge.RenameConversation("a", "renamed");
-        var stored = JsonSerializer.Deserialize<List<Conversation>>(File.ReadAllText(file))!;
+        var stored = new ConversationSqliteStore(_root, file).LoadAll();
         Assert.Equal("renamed", stored.Single(c => c.Id == "a").Title);
         Assert.Equal(2, stored.Single(c => c.Id == "a").Messages.Count);
         Assert.Equal(2, stored.Single(c => c.Id == "b").Messages.Count);
+        Assert.Equal(legacyArchive, File.ReadAllText(file));
     }
 }

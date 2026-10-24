@@ -28,16 +28,16 @@ final class ContextCompactionTests: XCTestCase {
         XCTAssertEqual(AgentContextCompaction.supersedeRepeatedReads(reduced), reduced)
     }
 
-    func testEconomyPolicyUsesNinetyPercentAndReservesLargeDynamicOutput() {
+    func testPolicyUsesNinetyPercentAndReservesLargeDynamicOutput() {
         let budget = AgentContextCompaction.budget(
             contextWindow: 32_768,
             reservedOutputTokens: 20_000,
             toolDefinitionTokens: 1_000,
-            policy: .economy
+            policy: .baseline
         )
 
         XCTAssertEqual(budget.policy.triggerRatio, 0.90, accuracy: 0.0001)
-        XCTAssertEqual(budget.triggerTokens, Int(Double(budget.usableInputTokens) * 0.90))
+        XCTAssertEqual(budget.triggerTokens, budget.usableInputTokens + budget.toolDefinitionTokens)
         XCTAssertGreaterThan(budget.reservedOutputTokens, 16_384)
         XCTAssertTrue(budget.fits(budget.usableInputTokens))
         XCTAssertFalse(budget.fits(budget.usableInputTokens, incomingTokens: 1))
@@ -70,7 +70,7 @@ final class ContextCompactionTests: XCTestCase {
             AgentMessage(
                 role: .assistant,
                 content: "",
-                toolCalls: [AgentToolCall(id: "call-1", name: "read_file", arguments: #"{"path":"src/a.swift"}"#)]
+                toolCalls: [AgentToolCall(id: "call-1", name: "invoke_tool", arguments: #"{"name":"read_file","arguments":"{\"path\":\"src/a.swift\"}"}"#)]
             ),
             AgentMessage(role: .tool, content: body, toolCallID: "call-1"),
             AgentMessage(role: .user, content: "now fix it"),
@@ -127,52 +127,30 @@ final class ContextCompactionTests: XCTestCase {
         XCTAssertLessThanOrEqual(selection?.archiveText.utf8.count ?? .max, 48_000)
     }
 
-    func testCompactionPoliciesUseNinetyPercentDefaultAndIgnoreLegacyOverrides() {
-        XCTAssertEqual(AgentContextCompactionPolicy.baseline.triggerRatio, 0.90)
-        XCTAssertEqual(AgentContextCompactionPolicy.baseline.targetRatio, 0.65)
-        XCTAssertEqual(AgentContextCompactionPolicy.cacheAware.triggerRatio, 0.80)
-        XCTAssertEqual(AgentContextCompactionPolicy.cacheAware.targetRatio, 0.55)
-        XCTAssertEqual(AgentContextCompactionPolicy.highRetention.triggerRatio, 0.85)
-        XCTAssertEqual(AgentContextCompactionPolicy.highRetention.targetRatio, 0.65)
+    func testSummaryCarriesReadAndModifiedFilesAcrossCompactions() {
+        let previous = "1. KULLANICI HEDEFİ: a\n\n<read-files>\nold.swift\nb.swift\n</read-files>"
+        let archive = [AgentMessage(role: .assistant, content: "", toolCalls: [
+            AgentToolCall(id: "1", name: "read_file", arguments: #"{"path":"./a.swift"}"#),
+            AgentToolCall(id: "2", name: "edit_file", arguments: #"{"path":"b.swift"}"#),
+            AgentToolCall(id: "3", name: "invoke_tool", arguments: #"{"name":"write_file","arguments":"{\"path\":\"c.swift\"}"}"#),
+        ])]
+        let lists = AgentContextCompaction.fileLists(previousSummary: previous, archive: archive)
+        XCTAssertEqual(lists, "<read-files>\nold.swift\na.swift\n</read-files>\n\n<modified-files>\nb.swift\nc.swift\n</modified-files>")
 
-        let suiteName = "ContextCompactionTests-\(UUID().uuidString)"
-        let defaults = try! XCTUnwrap(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-        defaults.set(
-            AgentContextCompactionPolicy.ID.cacheAware.rawValue,
-            forKey: AgentContextCompactionPolicy.userDefaultsKey
+        let selection = AgentContextCompactionSelection(
+            stableSystem: [], archivedMessages: [], recentMessages: [], archiveText: "", recentGroupCount: 1, fileLists: lists
         )
-
-        let migrated = AgentContextCompactionPolicy.current(defaults: defaults)
-        XCTAssertEqual(migrated.id, .custom)
-        XCTAssertEqual(migrated.triggerRatio, 0.90, accuracy: 0.0001)
+        // A summary that echoes the old lists ends with exactly one current copy.
+        XCTAssertEqual(selection.attachFileLists(to: previous), "1. KULLANICI HEDEFİ: a\n\n" + lists)
     }
 
-    func testUserThresholdAndReplayBudgetBoundEachModelsContextWindow() throws {
-        let suiteName = "ContextCompactionTests-\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-
-        XCTAssertEqual(AgentContextCompactionPolicy.current(defaults: defaults).triggerRatio, 0.90, accuracy: 0.0001)
-
-        defaults.set(70.0, forKey: AgentContextCompactionPolicy.triggerPercentKey)
-        let percent = AgentContextCompactionPolicy.current(defaults: defaults)
-        XCTAssertEqual(percent.id, .custom)
-        XCTAssertEqual(percent.triggerTokens(window: 250_000), 175_000)
-        XCTAssertEqual(percent.triggerTokens(window: 1_000_000), 700_000)
-
-        // The old ignored key cannot cap the percentage.
-        defaults.set(300_000, forKey: AgentContextCompactionPolicy.maxTokensKey)
-        let withoutLegacyCap = AgentContextCompactionPolicy.current(defaults: defaults)
-        XCTAssertEqual(withoutLegacyCap.triggerTokens(window: 1_000_000), 700_000)
-        XCTAssertNil(withoutLegacyCap.maxTokens)
-
-        // An explicit replay budget still caps it.
-        defaults.set(400_000, forKey: AgentContextCompactionPolicy.replayBudgetKey)
-        XCTAssertEqual(AgentContextCompactionPolicy.current(defaults: defaults).triggerTokens(window: 1_000_000), 400_000)
-
-        defaults.set(0, forKey: AgentContextCompactionPolicy.triggerPercentKey)
-        XCTAssertEqual(AgentContextCompactionPolicy.current(defaults: defaults).triggerTokens(window: 1_000), 1)
+    func testSinglePolicyCompactsAtNinetyPercentOfEachWindow() {
+        let policy = AgentContextCompactionPolicy.baseline
+        XCTAssertEqual(policy.triggerRatio, 0.90)
+        XCTAssertEqual(policy.targetRatio, 0.65)
+        XCTAssertEqual(policy.triggerTokens(window: 250_000), 225_000)
+        XCTAssertEqual(policy.triggerTokens(window: 1_000_000), 900_000)
+        XCTAssertEqual(policy.triggerTokens(window: 0), 1)
     }
 
     func testForkInstructionProducesAValidSummaryShape() {
@@ -209,6 +187,24 @@ final class ContextCompactionTests: XCTestCase {
         XCTAssertEqual(selection?.recentGroupCount, 2)
     }
 
+    func testRecentTurnsStayUnderTheTokenCapOnLargeWindows() {
+        // Each turn is ~12k tokens; a 1M window would otherwise keep all five.
+        let big = String(repeating: "x", count: 48_000)
+        var messages = [AgentMessage(role: .system, content: "rules")]
+        for index in 1...7 {
+            messages.append(AgentMessage(role: .user, content: "request \(index)"))
+            messages.append(AgentMessage(role: .assistant, content: big))
+        }
+
+        let selection = AgentContextCompaction.select(
+            messages,
+            previousSummary: nil,
+            budget: AgentContextCompaction.budget(contextWindow: 1_000_000)
+        )
+
+        XCTAssertEqual(selection?.recentGroupCount, 1)
+    }
+
     func testCompactionKeepsTheLanguagePolicyInStableSystemContext() {
         let policy = HerNessPrompt.core(scope: "scope line", toolGuidance: "tool line")
         var messages = [AgentMessage(role: .system, content: policy)]
@@ -223,9 +219,9 @@ final class ContextCompactionTests: XCTestCase {
             budget: AgentContextCompaction.budget(contextWindow: 32_768)
         )
 
-        XCTAssertTrue(selection?.stableSystem.contains(where: { $0.content.contains("Response language") }) == true)
+        XCTAssertTrue(selection?.stableSystem.contains(where: { $0.content.contains("Accuracy and language") }) == true)
         let composed = selection?.compose(summary: "summary", preserveProviderItems: false)
-        XCTAssertTrue(composed?.contains(where: { $0.role == .system && $0.content.contains("Response language") }) == true)
+        XCTAssertTrue(composed?.contains(where: { $0.role == .system && $0.content.contains("Accuracy and language") }) == true)
         XCTAssertTrue(AgentContextCompaction.summarySystemPrompt.contains("son güvenilir sohbet dilini"))
         XCTAssertTrue(AgentContextCompaction.summarySystemPrompt.contains("başka bir sohbetin dilini kullanma"))
     }
@@ -253,6 +249,77 @@ final class ContextCompactionTests: XCTestCase {
         XCTAssertTrue(selection?.archiveText.contains("Türkçe") == true)
         XCTAssertTrue(selection?.archiveText.contains("English") == true)
         XCTAssertTrue(selection?.recentMessages.contains(where: { $0.content.contains("简体中文") }) == true)
-        XCTAssertTrue(selection?.stableSystem.contains(where: { $0.content.contains("Response language") }) == true)
+        XCTAssertTrue(selection?.stableSystem.contains(where: { $0.content.contains("Accuracy and language") }) == true)
+    }
+
+    func testInvokeToolReadsAndWiderSpansSupersedeEarlierReads() {
+        let messages = [
+            AgentMessage(role: .user, content: "inspect"),
+            AgentMessage(
+                role: .assistant,
+                content: "",
+                toolCalls: [AgentToolCall(id: "r1", name: "invoke_tool", arguments: #"{"name":"read_file","arguments":"{\"path\":\"src/app.swift\",\"offset\":10,\"limit\":40}"}"#)]
+            ),
+            AgentMessage(role: .tool, content: "narrow slice", toolCallID: "r1"),
+            AgentMessage(
+                role: .assistant,
+                content: "",
+                toolCalls: [AgentToolCall(id: "r2", name: "invoke_tool", arguments: #"{"name":"read_file","arguments":"{\"path\":\"src/app.swift\",\"offset\":1,\"limit\":100}"}"#)]
+            ),
+            AgentMessage(role: .tool, content: "wider slice covering lines 1..100", toolCallID: "r2"),
+        ]
+
+        let reduced = AgentContextCompaction.supersedeRepeatedReads(messages)
+
+        XCTAssertEqual(reduced[2].content, AgentContextCompaction.supersededReadMarker)
+        XCTAssertEqual(reduced[4].content, "wider slice covering lines 1..100")
+    }
+
+    func testArchiveOmitsEditFilePayloadsAndBodies() {
+        let oldBody = String(repeating: "a", count: 4_000)
+        let newBody = String(repeating: "b", count: 4_000)
+        let diffOutput = String(repeating: "d", count: 4_000)
+        let messages = [
+            AgentMessage(role: .system, content: "rules"),
+            AgentMessage(role: .user, content: "patch the file"),
+            AgentMessage(
+                role: .assistant,
+                content: "",
+                toolCalls: [AgentToolCall(id: "edit-1", name: "edit_file", arguments: #"{"path":"src/app.swift","old_string":"\#(oldBody)","new_string":"\#(newBody)"}"#)]
+            ),
+            AgentMessage(role: .tool, content: diffOutput, toolCallID: "edit-1"),
+            AgentMessage(role: .user, content: "next step"),
+            AgentMessage(role: .assistant, content: "done"),
+        ]
+
+        let selection = AgentContextCompaction.select(
+            messages,
+            previousSummary: nil,
+            budget: AgentContextCompaction.budget(contextWindow: 8_192)
+        )
+
+        XCTAssertNotNil(selection)
+        XCTAssertTrue(selection?.archiveText.localizedCaseInsensitiveContains("file edits omitted") == true)
+        XCTAssertTrue(selection?.archiveText.localizedCaseInsensitiveContains("file write result omitted") == true)
+        XCTAssertFalse(selection?.archiveText.contains(oldBody) == true)
+        XCTAssertFalse(selection?.archiveText.contains(newBody) == true)
+        XCTAssertFalse(selection?.archiveText.contains(diffOutput) == true)
+    }
+
+    func testReadOnlyToolContainingErrorTextDoesNotResetRoutineEffort() {
+        var session = DeferredToolSession()
+        _ = session.control(
+            AgentToolCall(id: "plan-1", name: DeferredToolSession.planName, arguments: #"{"steps":["Update config"],"routine":true,"uncertainties":[]}"#),
+            catalog: [],
+            planMode: false
+        )
+        XCTAssertEqual(session.effort(selected: "high", planMode: false), "low")
+
+        session.record("Error: something failed in log line 42", callID: "call-1", toolName: "read_file")
+        session.record("Tool error: no matches", callID: "call-2", toolName: "grep_files")
+        XCTAssertEqual(session.effort(selected: "high", planMode: false), "low")
+
+        session.record("Error: build failed", callID: "call-3", toolName: "run_command")
+        XCTAssertEqual(session.effort(selected: "high", planMode: false), "high")
     }
 }

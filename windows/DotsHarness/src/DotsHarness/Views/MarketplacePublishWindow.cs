@@ -26,7 +26,7 @@ internal sealed class MarketplacePublishWindow : Window
     public MarketplacePublishWindow(MarketplacePublisher publisher)
     {
         _publisher = publisher;
-        Title = "Publish native plugin";
+        Title = LocalizationService.Current.Get("market.publish.title");
         Width = 660;
         Height = 760;
         MinWidth = 560;
@@ -36,12 +36,12 @@ internal sealed class MarketplacePublishWindow : Window
 
         _folderLabel = new TextBlock
         {
-            Text = "No plugin folder selected",
+            Text = LocalizationService.Current.Get("market.publish.noFolder"),
             TextWrapping = TextWrapping.Wrap,
             VerticalAlignment = VerticalAlignment.Center,
             Foreground = System.Windows.Media.Brushes.Gray,
         };
-        var browse = new Button { Content = "Choose folder…", Padding = new Thickness(10, 5, 10, 5), Margin = new Thickness(8, 0, 0, 0) };
+        var browse = new Button { Content = LocalizationService.Current.Get("market.publish.chooseFolder"), Padding = new Thickness(10, 5, 10, 5), Margin = new Thickness(8, 0, 0, 0) };
         browse.Click += (_, _) => ChooseFolder();
         var folderRow = new DockPanel { Margin = new Thickness(0, 4, 0, 8) };
         DockPanel.SetDock(browse, Dock.Right);
@@ -51,8 +51,8 @@ internal sealed class MarketplacePublishWindow : Window
         _version = new TextBox { Text = "1.0.0", Padding = new Thickness(7, 5, 7, 5) };
         _license = new TextBox { Text = "MIT", Padding = new Thickness(7, 5, 7, 5) };
         _visibility = new ComboBox { Padding = new Thickness(5), SelectedIndex = 0 };
-        _visibility.Items.Add(new ComboBoxItem { Content = "Public — source package is listed", Tag = "public" });
-        _visibility.Items.Add(new ComboBoxItem { Content = "Private — only you and CI can access source", Tag = "private" });
+        _visibility.Items.Add(new ComboBoxItem { Content = LocalizationService.Current.Get("market.publish.public"), Tag = "public" });
+        _visibility.Items.Add(new ComboBoxItem { Content = LocalizationService.Current.Get("market.publish.private"), Tag = "private" });
         _targetChecks = MarketplaceTarget.DefaultTargets.Select(target => new CheckBox
         {
             Content = target.Title,
@@ -70,27 +70,27 @@ internal sealed class MarketplacePublishWindow : Window
         _sourcePreview = PreviewText();
         _status = new TextBlock { TextWrapping = TextWrapping.Wrap, Foreground = System.Windows.Media.Brushes.Gray };
         _error = new TextBlock { TextWrapping = TextWrapping.Wrap, Foreground = System.Windows.Media.Brushes.Firebrick };
-        _publish = new Button { Content = "Publish", Padding = new Thickness(14, 7, 14, 7), IsEnabled = false, MinWidth = 100 };
+        _publish = new Button { Content = LocalizationService.Current.Get("market.publish.submit"), Padding = new Thickness(14, 7, 14, 7), IsEnabled = false, MinWidth = 100 };
         _publish.Click += async (_, _) => await PublishAsync();
-        var cancel = new Button { Content = "Cancel", Padding = new Thickness(14, 7, 14, 7), MinWidth = 90 };
+        var cancel = new Button { Content = LocalizationService.Current.Get("common.cancel"), Padding = new Thickness(14, 7, 14, 7), MinWidth = 90 };
         cancel.Click += (_, _) => DialogResult = false;
 
         var body = new StackPanel { Margin = new Thickness(22) };
-        body.Children.Add(new TextBlock { Text = "Publish a native plugin", FontSize = 21, FontWeight = FontWeights.SemiBold });
+        body.Children.Add(new TextBlock { Text = LocalizationService.Current.Get("market.publish.title"), FontSize = 21, FontWeight = FontWeights.SemiBold });
         body.Children.Add(new TextBlock
         {
-            Text = "The folder must contain plugin.yml, plugin.ir.json, and a non-empty license file. JavaScript and declarative runtimes are not accepted; platform builds are produced by CI.",
+            Text = LocalizationService.Current.Get("market.publish.hint"),
             TextWrapping = TextWrapping.Wrap,
             Foreground = System.Windows.Media.Brushes.Gray,
             Margin = new Thickness(0, 6, 0, 12),
         });
         body.Children.Add(folderRow);
-        body.Children.Add(PreviewSection("plugin.ir.json preview", _irPreview));
-        body.Children.Add(PreviewSection("Native source preview", _sourcePreview));
-        body.Children.Add(Field("Version (SemVer)", _version));
-        body.Children.Add(Field("SPDX license (for example MIT)", _license));
-        body.Children.Add(Field("Source visibility", _visibility));
-        body.Children.Add(new TextBlock { Text = "Platform targets", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 8, 0, 3) });
+        body.Children.Add(PreviewSection(LocalizationService.Current.Get("market.publish.irPreview"), _irPreview));
+        body.Children.Add(PreviewSection(LocalizationService.Current.Get("market.publish.sourcePreview"), _sourcePreview));
+        body.Children.Add(Field(LocalizationService.Current.Get("market.publish.version"), _version));
+        body.Children.Add(Field(LocalizationService.Current.Get("market.publish.license"), _license));
+        body.Children.Add(Field(LocalizationService.Current.Get("market.publish.visibility"), _visibility));
+        body.Children.Add(new TextBlock { Text = LocalizationService.Current.Get("market.publish.targets"), FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 8, 0, 3) });
         var targetPanel = new WrapPanel();
         foreach (var check in _targetChecks) targetPanel.Children.Add(check);
         body.Children.Add(targetPanel);
@@ -98,7 +98,7 @@ internal sealed class MarketplacePublishWindow : Window
         body.Children.Add(_error);
         body.Children.Add(new TextBlock
         {
-            Text = "After publishing, the Marketplace classifies category, scope, and risk. The plugin remains unlisted until native builds and human review are complete.",
+            Text = LocalizationService.Current.Get("market.publish.footer"),
             TextWrapping = TextWrapping.Wrap,
             Foreground = System.Windows.Media.Brushes.Gray,
             Margin = new Thickness(0, 8, 0, 10),
@@ -122,7 +122,7 @@ internal sealed class MarketplacePublishWindow : Window
 
     private void ChooseFolder()
     {
-        var picker = new OpenFolderDialog { Title = "Choose native plugin folder", Multiselect = false };
+        var picker = new OpenFolderDialog { Title = LocalizationService.Current.Get("market.publish.chooseFolder"), Multiselect = false };
         if (picker.ShowDialog(this) != true) return;
         _folder = picker.FolderName;
         _folderLabel.Text = _folder;
@@ -133,11 +133,11 @@ internal sealed class MarketplacePublishWindow : Window
 
     private void LoadPreviews(string folder)
     {
-        _irPreview.Text = ReadPreview(Path.Combine(folder, "plugin.ir.json"), 12_000) ?? "No plugin.ir.json preview available.";
+        _irPreview.Text = ReadPreview(Path.Combine(folder, "plugin.ir.json"), 12_000) ?? string.Empty;
         var sourceRoot = Path.Combine(folder, "source");
         if (!Directory.Exists(sourceRoot))
         {
-            _sourcePreview.Text = "No native source preview available.";
+            _sourcePreview.Text = string.Empty;
             return;
         }
 
@@ -150,7 +150,7 @@ internal sealed class MarketplacePublishWindow : Window
             var contents = ReadPreview(path, 4_000);
             if (contents is not null) previews.Add($"// {relative}\n{contents}");
         }
-        _sourcePreview.Text = previews.Count == 0 ? "No native source preview available." : string.Join("\n\n", previews);
+        _sourcePreview.Text = previews.Count == 0 ? string.Empty : string.Join("\n\n", previews);
     }
 
     private async Task PublishAsync()

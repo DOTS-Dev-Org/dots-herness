@@ -285,6 +285,27 @@ internal class MobileCacheState {
         val tokens = baseline.exactTokens ?: return null
         return tokens.takeIf { now - baseline.acceptedAt >= ttl * 1_000L }
     }
+    fun allowsAutomaticResume(model: String, now: Long = System.currentTimeMillis()): Boolean {
+        val baseline = baselines.values
+            .filter { it.proofVersion == 2 && it.model == model && (it.exactTokens ?: 0) >= 8_192 }
+            .maxByOrNull { it.acceptedAt } ?: return false
+        val tokens = baseline.exactTokens ?: return false
+        if (tokens < 8_192) return false
+
+        val latest = currentRouteEvidence.lastOrNull() ?: return false
+        // A write checkpoint doesn't prove reuse. Require a real measured hit.
+        val confirmedHitTokens = maxOf(latest.usage.cachedTokens ?: 0, latest.reusedTokens ?: 0)
+        if (confirmedHitTokens < 8_192) return false
+        if (latest.classification == "eligible") {
+            val eligible = latest.eligibleTokens ?: 0
+            val reused = latest.reusedTokens
+            if (eligible >= 8_192 && reused != null && reused.toDouble() <= eligible.toDouble() * 0.05) return false
+        }
+
+        val ttlMillis = minOf((baseline.ttlSeconds ?: 3_600).coerceAtLeast(1), 3_600) * 1_000L
+        val age = now - baseline.acceptedAt
+        return age >= 0 && age < ttlMillis
+    }
     var noticeFingerprint: String? = null
     var mode: String? = null
     var lessonsFingerprint: String? = null

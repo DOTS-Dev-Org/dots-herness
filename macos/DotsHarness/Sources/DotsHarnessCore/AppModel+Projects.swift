@@ -56,14 +56,11 @@ extension AppModel {
         Task { await bridge.refreshConnection() }
     }
 
-    /// Re-scans recent tool-call and prompt history for a repeated pattern worth
-    /// turning into a skill. Only ever produces a suggestion for the user to review;
-    /// nothing is written until acceptSkillSuggestion is called from an explicit click.
+    /// Looks for a lesson this project keeps relearning, worth turning into a skill.
+    /// Only ever produces a suggestion for the user to review; nothing is written
+    /// until acceptSkillSuggestion is called from an explicit click.
     public func scanSkillSuggestions() {
-        let prompts = bridge.selected?.messages
-            .filter { $0.kind == .user }
-            .map(\.text) ?? []
-        activeSkillSuggestions.scan(recentUserPrompts: prompts)
+        activeSkillSuggestions.scan(lessons: bridge.lessons)
     }
 
     @discardableResult
@@ -104,21 +101,7 @@ extension AppModel {
     }
 
     /// Opens a folder picker and adds the chosen folder as a new project, making it active.
-    public func addProject() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.canCreateDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = AppCopy.text("workspace.use")
-        panel.message = AppCopy.text("workspace.chooseMessage")
-        panel.begin { [weak self] response in
-            guard response == .OK, let url = panel.url else { return }
-            Task { @MainActor [weak self] in
-                self?.setWorkspace(url.path)
-            }
-        }
-    }
+    public func addProject() { chooseWorkspace() }
 
     /// Prompts the user to locate a moved or missing project folder or remove it from the list.
     public func promptToRelocateProject(missingPath: String, onRelocated: ((String) -> Void)? = nil) {
@@ -137,13 +120,7 @@ extension AppModel {
 
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
-            let panel = NSOpenPanel()
-            panel.canChooseFiles = false
-            panel.canChooseDirectories = true
-            panel.canCreateDirectories = true
-            panel.allowsMultipleSelection = false
-            panel.prompt = AppCopy.text("workspace.use")
-            panel.message = AppCopy.text("workspace.chooseMessage")
+            let panel = Self.workspaceFolderPanel()
             if panel.runModal() == .OK, let url = panel.url {
                 guard let newPath = relocateProject(missingPath: missingPath, to: url.path) else { return }
                 onRelocated?(newPath)
@@ -284,10 +261,6 @@ extension AppModel {
 
     public func projectSection(for path: String) -> String? {
         projectMetadata[path]?.section
-    }
-
-    public func projectWorktreeOrigin(for path: String) -> String? {
-        projectMetadata[path]?.worktreeOrigin
     }
 
     public func saveProjectMetadata(

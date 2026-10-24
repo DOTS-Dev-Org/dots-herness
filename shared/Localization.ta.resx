@@ -298,13 +298,14 @@
   <data name="usage.resetsIn" xml:space="preserve"><value>{0} இல் மீட்டமைக்கப்படும்</value></data>
   <data name="usage.resetsOn" xml:space="preserve"><value>{0} அன்று மீட்டமைக்கப்படும்</value></data>
   <data name="usage.resetsAvailable" xml:space="preserve"><value>{0} மீட்டமைப்புகள் உள்ளன</value></data>
-  <data name="usage.manageResets" xml:space="preserve"><value>Manage resets</value></data>
-  <data name="usage.useReset" xml:space="preserve"><value>Use reset</value></data>
-  <data name="usage.resetTitle" xml:space="preserve"><value>Use a Claude limit reset?</value></data>
-  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude's Usage page will open. Sign in to {0} and review the reset offered to that account. To use it, click Reset for free and confirm in Claude. Once used, a reset cannot be undone. Limits refresh when you return to HerNess.</value></data>
-  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Could not open Claude. Check that the account is still connected, then try again.</value></data>
-  <data name="usage.openClaude" xml:space="preserve"><value>Open Claude</value></data>
+  <data name="usage.manageResets" xml:space="preserve"><value>மீட்டமைப்புகளை நிர்வகி</value></data>
+  <data name="usage.useReset" xml:space="preserve"><value>மீட்டமைப்பைப் பயன்படுத்து</value></data>
+  <data name="usage.resetTitle" xml:space="preserve"><value>Claude வரம்பு மீட்டமைப்பைப் பயன்படுத்தவா?</value></data>
+  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude பயன்பாட்டுப் பக்கம் திறக்கும். {0} இல் உள்நுழைந்து அந்தக் கணக்கிற்கு வழங்கப்பட்ட மீட்டமைப்பைப் பார்க்கவும். பயன்படுத்த Reset for free ஐக் கிளிக் செய்து Claude இல் உறுதிப்படுத்தவும். பயன்படுத்திய மீட்டமைப்பைச் செயல்தவிர்க்க முடியாது. HerNess க்குத் திரும்பும்போது வரம்புகள் புதுப்பிக்கப்படும்.</value></data>
+  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Claude ஐத் திறக்க முடியவில்லை. கணக்கு இன்னும் இணைக்கப்பட்டுள்ளதா எனச் சரிபார்த்து மீண்டும் முயலவும்.</value></data>
+  <data name="usage.openClaude" xml:space="preserve"><value>Claude ஐத் திற</value></data>
   <data name="usage.needLogin" xml:space="preserve"><value>வரம்புகளைக் காண Claude-இல் உள்நுழையவும்</value></data>
+  <data name="agent.providerLimitTitle" xml:space="preserve"><value>வழங்குநர் வரம்பை அடைந்துவிட்டது</value></data>
   <data name="usage.noLimitInfo" xml:space="preserve"><value>வரம்புத் தகவல் இல்லை</value></data>
   <data name="usage.loadFailed" xml:space="preserve"><value>பயன்பாட்டை ஏற்ற முடியவில்லை</value></data>
   <data name="usage.loading" xml:space="preserve"><value>பயன்பாடு ஏற்றப்படுகிறது…</value></data>
@@ -332,21 +333,21 @@
   <data name="project.missing.message" xml:space="preserve"><value>'{0}' இல் உள்ள திட்டக் கோப்புறை நகர்த்தப்பட்டிருக்கலாம் அல்லது நீக்கப்பட்டிருக்கலாம். அதன் புதிய இடத்தைத் தேர்ந்தெடுக்கவும் அல்லது திட்டத்தை அகற்றவும்.</value></data>
   <data name="project.missing.locate" xml:space="preserve"><value>இடத்தைக் கண்டறி…</value></data>
   <data name="project.missing.readOnly" xml:space="preserve"><value>திட்டக் கோப்புறை கிடைக்கவில்லை. முந்தைய உரையாடல்களைப் பார்க்கலாம்; புதிய இடத்தைத் தேர்ந்தெடுக்கும் வரை புதிய உரையாடல்களையும் செய்திகளையும் அனுப்ப முடியாது.</value></data>
-  <data name="conversation.ranCommand" xml:space="preserve"><value>Ran 1 command</value></data>
-  <data name="conversation.ranCommands" xml:space="preserve"><value>Ran {0} commands</value></data>
-  <data name="conversation.runningTools" xml:space="preserve"><value>Running tools…</value></data>
-  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Thinking…</value></data>
-  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} tokens</value></data>
-  <data name="usage.context.window" xml:space="preserve"><value>Context window</value></data>
-  <data name="usage.planLimits" xml:space="preserve"><value>Plan usage limits</value></data>
-  <data name="composer.queue.one" xml:space="preserve"><value>1 message queued</value></data>
-  <data name="composer.queue.many" xml:space="preserve"><value>{0} messages queued</value></data>
-  <data name="composer.queue.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Clear the message box to edit</value></data>
-  <data name="composer.queue.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="git.createPR" xml:space="preserve"><value>Create PR</value></data>
-  <data name="git.hideBar" xml:space="preserve"><value>Hide</value></data>
-  <data name="composer.queue.next" xml:space="preserve"><value>Next: {0}</value></data>
+  <data name="conversation.ranCommand" xml:space="preserve"><value>1 கட்டளை இயக்கப்பட்டது</value></data>
+  <data name="conversation.ranCommands" xml:space="preserve"><value>{0} கட்டளைகள் இயக்கப்பட்டன</value></data>
+  <data name="conversation.runningTools" xml:space="preserve"><value>கருவிகள் இயங்குகின்றன…</value></data>
+  <data name="conversation.thinkingPhase" xml:space="preserve"><value>சிந்திக்கிறது…</value></data>
+  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} டோக்கன்கள்</value></data>
+  <data name="usage.context.window" xml:space="preserve"><value>சூழல் சாளரம்</value></data>
+  <data name="usage.planLimits" xml:space="preserve"><value>திட்டப் பயன்பாட்டு வரம்புகள்</value></data>
+  <data name="composer.queue.one" xml:space="preserve"><value>1 செய்தி வரிசையில்</value></data>
+  <data name="composer.queue.many" xml:space="preserve"><value>{0} செய்திகள் வரிசையில்</value></data>
+  <data name="composer.queue.edit" xml:space="preserve"><value>திருத்து</value></data>
+  <data name="composer.queue.editBlocked" xml:space="preserve"><value>திருத்த, செய்திப் பெட்டியைக் காலியாக்கவும்</value></data>
+  <data name="composer.queue.remove" xml:space="preserve"><value>அகற்று</value></data>
+  <data name="git.createPR" xml:space="preserve"><value>PR உருவாக்கு</value></data>
+  <data name="git.hideBar" xml:space="preserve"><value>மறை</value></data>
+  <data name="composer.queue.next" xml:space="preserve"><value>அடுத்து: {0}</value></data>
   <data name="sidebar.pinProject" xml:space="preserve"><value>திட்டத்தைப் பின் செய்</value></data>
   <data name="sidebar.unpinProject" xml:space="preserve"><value>திட்டத்தின் பினை நீக்கு</value></data>
   <data name="sidebar.sortLastUpdate" xml:space="preserve"><value>சமீபத்திய புதுப்பிப்பு</value></data>
@@ -357,6 +358,8 @@
   <data name="conversation.cancelPlan" xml:space="preserve"><value>திட்டத்தை ரத்து செய்</value></data>
   <data name="conversation.cancelPlanHelp" xml:space="preserve"><value>இந்தத் திட்டத்தை ரத்து செய்து வரிசையிலுள்ள செய்திகளை விடுவி</value></data>
   <data name="media.generated" xml:space="preserve"><value>படம் உருவாக்கப்பட்டது.</value></data>
+  <data name="media.videoGenerated" xml:space="preserve"><value>வீடியோ உருவாக்கப்பட்டது.</value></data>
+  <data name="media.audioGenerated" xml:space="preserve"><value>பேச்சு உருவாக்கப்பட்டது.</value></data>
   <data name="media.fallbackUsed" xml:space="preserve"><value>தேர்ந்தெடுத்த வழங்குநரால் இந்தப் படத்தை உருவாக்க முடியவில்லை. இது {0}/{1} வழியாக ஒருமுறை மாற்று கோரிக்கையால் உருவாக்கப்பட்டது; முதன்மை உரையாடலின் வழங்குநரும் மாடலும் மாறவில்லை, எனவே அதன் ப்ராம்ப்ட் கேச் அப்படியே உள்ளது.</value></data>
   <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>{0} மூலம் இந்தப் படத்தை என்னால் உருவாக்க முடியாது. மாற்றாக ஒரு பட API அல்லது வழங்குநரை அமைக்கவும். படத்துக்காக மட்டும் முதன்மை அரட்டை மாடலை மாற்றினால் வழங்குநரின் ப்ராம்ப்ட் கேச் உடையலாம்.</value></data>
   <data name="feedback.close" xml:space="preserve"><value>மூடு</value></data>
@@ -369,27 +372,27 @@
   <data name="feedback.persistenceFailed" xml:space="preserve"><value>கருத்தைப் பதிவுசெய்ய முடியவில்லை.</value></data>
   <data name="feedback.streamingMessage" xml:space="preserve"><value>கருத்தை அனுப்புவதற்கு முன் பதில் முடியும் வரை காத்திருக்கவும்.</value></data>
   <data name="feedback.submit" xml:space="preserve"><value>அனுப்பு</value></data>
-  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Apply it elsewhere</value></data>
-  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Broke an existing feature</value></data>
+  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>வேறு இடத்திலும் பயன்படுத்து</value></data>
+  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>ஏற்கனவே உள்ள அம்சத்தை உடைத்தது</value></data>
   <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>என் வழிமுறைகளைப் பின்பற்றவில்லை</value></data>
-  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Didn't follow project style</value></data>
+  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>திட்டப் பாணியைப் பின்பற்றவில்லை</value></data>
   <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>வேகமானதும் திறமையானதும்</value></data>
   <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>என் வழிமுறைகளைப் பின்பற்றியது</value></data>
-  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Ignored project architecture</value></data>
+  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>திட்டக் கட்டமைப்பைப் புறக்கணித்தது</value></data>
   <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>தவறானது அல்லது முழுமையற்றது</value></data>
-  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Keep the project style</value></data>
+  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>திட்டப் பாணியைத் தக்கவை</value></data>
   <data name="feedback.tag.lost_context" xml:space="preserve"><value>சூழல் இழப்பு</value></data>
   <data name="feedback.tag.negative_other" xml:space="preserve"><value>மற்றவை</value></data>
   <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>தலைப்புக்கு அப்பால் / வரம்புக்கு வெளியே</value></data>
   <data name="feedback.tag.output_quality" xml:space="preserve"><value>நல்ல குறியீடு / வெளியீட்டுத் தரம்</value></data>
   <data name="feedback.tag.positive_other" xml:space="preserve"><value>மற்றவை</value></data>
-  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Reuse this architecture</value></data>
-  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Reuse this token pattern</value></data>
+  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>இந்தக் கட்டமைப்பை மீண்டும் பயன்படுத்து</value></data>
+  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>இந்த டோக்கன் வடிவத்தை மீண்டும் பயன்படுத்து</value></data>
   <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>பாதுகாப்பு அல்லது சட்டச் சிக்கல்</value></data>
   <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>மெதுவானது அல்லது பிழையானது</value></data>
   <data name="feedback.tag.task_completed" xml:space="preserve"><value>என் பணியை முடித்தது</value></data>
   <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>பயனுள்ள தன்னாட்சி</value></data>
-  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Wrong theme or token</value></data>
+  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>தவறான தீம் அல்லது டோக்கன்</value></data>
   <data name="feedback.title" xml:space="preserve"><value>கருத்தைப் பகிரவும்</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>கருத்து பணியிட உரையாடல்களில் மட்டும் கிடைக்கும்.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>கருத்தை உதவியாளர் பதில்களுக்கு மட்டும் அனுப்ப முடியும்.</value></data>
@@ -398,12 +401,13 @@
   <data name="conversation.cacheExpired.explanation" xml:space="preserve"><value>கேச்சின் மதிப்பிடப்பட்ட ஆயுட்காலம் முடிந்துவிட்டது. ப்ராம்ப்ட் கேச் என்பது வழங்குநர் பக்கத்திலுள்ள தற்காலிகச் செயலாக்க நிலை; உங்கள் அரட்டை வரலாறு சேமிக்கப்பட்டே இருக்கும். முழு வரலாற்றுடன் தொடர்ந்தால், அந்த டோக்கன்கள் மீண்டும் புதிய உள்ளீடாகக் கணக்கிடப்படலாம். வழங்குநரிடம் கேச் இன்னும் இருந்ததா என்பதை அடுத்த கோரிக்கையின் பயன்பாட்டுத் தரவிலிருந்தே உறுதிப்படுத்த முடியும்.</value></data>
   <data name="conversation.cacheExpired.infoTitle" xml:space="preserve"><value>இது எனக்கு ஏன் தெரிகிறது?</value></data>
   <data name="conversation.cacheExpired.notice" xml:space="preserve"><value>கேச் காலாவதியாகியிருக்கலாம்; தொடர்ந்தால் அதிக டோக்கன்கள் செலவாகி, கட்டணம் கூடலாம். சுருக்கமான சுருக்கத்துடன் புதிய அரட்டையைத் தொடங்குங்கள்.</value></data>
+  <data name="conversation.cacheLocal.notice" xml:space="preserve"><value>லோக்கல் மாடலின் கேச் அழிக்கப்பட்டது; முழு வரலாறும் மீண்டும் செயலாக்கப்படும், பதில் தாமதமாகலாம். சுருக்கமான குறிப்புடன் புதிய அரட்டையைத் தொடங்கவும்.</value></data>
   <data name="conversation.filesChangedCount" xml:space="preserve"><value>{0} கோப்புகள் மாற்றப்பட்டன</value></data>
   <data name="conversation.filesLess" xml:space="preserve"><value>குறைவான கோப்புகளைக் காட்டு</value></data>
   <data name="conversation.filesLineSummary" xml:space="preserve"><value>+{0} −{1}</value></data>
   <data name="conversation.filesMore" xml:space="preserve"><value>மேலும் {0} கோப்புகளைக் காட்டு</value></data>
   <data name="conversation.filesReverted" xml:space="preserve"><value>கோப்பு மாற்றங்கள் செயல்தவிர்க்கப்பட்டன.</value></data>
-  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>The saved file version is unavailable, so the workspace was left unchanged.</value></data>
+  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>சேமித்த கோப்புப் பதிப்பு கிடைக்கவில்லை, எனவே பணியிடம் மாற்றப்படவில்லை.</value></data>
   <data name="conversation.undoChanges" xml:space="preserve"><value>செயல்தவிர்</value></data>
   <data name="conversation.viewChanges" xml:space="preserve"><value>மாற்றங்களைக் காண்</value></data>
   <data name="settings.archive" xml:space="preserve"><value>காப்பகம்</value></data>
@@ -434,9 +438,9 @@
   <data name="workLocation.remoteFolderUp" xml:space="preserve"><value>மேல் கோப்புறை</value></data>
   <data name="workLocation.remoteFolderEmpty" xml:space="preserve"><value>இங்கே துணைக் கோப்புறைகள் இல்லை</value></data>
   <data name="workLocation.remoteFolderUse" xml:space="preserve"><value>இந்தக் கோப்புறையைப் பயன்படுத்து</value></data>
-  <data name="workLocation.connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="workLocation.connect" xml:space="preserve"><value>இணை</value></data>
   <data name="workLocation.addHost" xml:space="preserve"><value>கணினியைச் சேர்…</value></data>
-  <data name="workLocation.useLocal" xml:space="preserve"><value>Use this computer</value></data>
+  <data name="workLocation.useLocal" xml:space="preserve"><value>இந்தக் கணினியைப் பயன்படுத்து</value></data>
   <data name="settings.sshAlias" xml:space="preserve"><value>மாற்றுப்பெயர்</value></data>
   <data name="settings.sshHostName" xml:space="preserve"><value>வழங்கி அல்லது IP</value></data>
   <data name="settings.sshUser" xml:space="preserve"><value>பயனர் பெயர்</value></data>
@@ -444,126 +448,106 @@
   <data name="settings.sshRemove" xml:space="preserve"><value>அகற்று</value></data>
   <data name="ssh.busy" xml:space="preserve"><value>வேலை இடத்தை மாற்றும் முன் நடப்பு இயக்கம் முடிய காத்திருங்கள்.</value></data>
   <data name="ssh.connecting" xml:space="preserve"><value>{0} உடன் இணைக்கிறது…</value></data>
-  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Choose a remote folder before starting a task.</value></data>
+  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>பணியைத் தொடங்கும் முன் ஒரு தொலைநிலைக் கோப்புறையைத் தேர்வுசெய்யவும்.</value></data>
   <data name="ssh.scanning" xml:space="preserve"><value>வழங்கி திறவுகோலைப் பெறுகிறது…</value></data>
   <data name="ssh.fingerprintTitle" xml:space="preserve"><value>இது {0} இன் கைரேகையா?</value></data>
   <data name="ssh.fingerprintMessage" xml:space="preserve"><value>நம்பும் முன் வழங்கியுடன் ஒப்பிடுங்கள். பொருந்தினால் மட்டுமே தொடருங்கள்.</value></data>
   <data name="ssh.trustAndConnect" xml:space="preserve"><value>நம்பி இணை</value></data>
   <data name="ssh.error.unavailable" xml:space="preserve"><value>இந்த Mac இல் ssh கிடைக்கவில்லை.</value></data>
   <data name="ssh.error.notReachable" xml:space="preserve"><value>{0} ஐ அடைய முடியவில்லை.</value></data>
-  <data name="conversation.choosePane" xml:space="preserve"><value>Choose a pane</value></data>
-  <data name="sidebar.toggle" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.mcpServers" xml:space="preserve"><value>MCP servers</value></data>
-  <data name="mcp.empty" xml:space="preserve"><value>No MCP servers configured.</value></data>
-  <data name="mcp.addServer" xml:space="preserve"><value>Add server</value></data>
-  <data name="mcp.name" xml:space="preserve"><value>Name</value></data>
-  <data name="mcp.transport" xml:space="preserve"><value>Transport</value></data>
+  <data name="conversation.choosePane" xml:space="preserve"><value>ஒரு பலகத்தைத் தேர்வுசெய்</value></data>
+  <data name="sidebar.toggle" xml:space="preserve"><value>பக்கப்பட்டியைக் காட்டு அல்லது மறை</value></data>
+  <data name="settings.mcpServers" xml:space="preserve"><value>MCP சேவையகங்கள்</value></data>
+  <data name="mcp.empty" xml:space="preserve"><value>MCP சேவையகங்கள் எதுவும் அமைக்கப்படவில்லை.</value></data>
+  <data name="mcp.addServer" xml:space="preserve"><value>சேவையகத்தைச் சேர்</value></data>
+  <data name="mcp.name" xml:space="preserve"><value>பெயர்</value></data>
+  <data name="mcp.transport" xml:space="preserve"><value>போக்குவரத்து முறை</value></data>
   <data name="mcp.http" xml:space="preserve"><value>HTTP</value></data>
   <data name="mcp.stdio" xml:space="preserve"><value>stdio</value></data>
   <data name="mcp.url" xml:space="preserve"><value>URL</value></data>
-  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (optional)</value></data>
-  <data name="mcp.executable" xml:space="preserve"><value>Executable path</value></data>
-  <data name="mcp.arguments" xml:space="preserve"><value>Arguments (space-separated)</value></data>
-  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Auto-run tools the server marks read-only</value></data>
-  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Server annotations are untrusted. Enabling this skips approval only for tools marked read-only and not destructive.</value></data>
-  <data name="mcp.test" xml:space="preserve"><value>Test</value></data>
-  <data name="mcp.add" xml:space="preserve"><value>Add</value></data>
-  <data name="mcp.reconnect" xml:space="preserve"><value>Reconnect</value></data>
-  <data name="mcp.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="mcp.idle" xml:space="preserve"><value>Idle</value></data>
-  <data name="mcp.connecting" xml:space="preserve"><value>Connecting…</value></data>
-  <data name="mcp.connected" xml:space="preserve"><value>Connected · {0} tool(s)</value></data>
-  <data name="mcp.failed" xml:space="preserve"><value>Failed: {0}</value></data>
-  <data name="mcp.testing" xml:space="preserve"><value>Testing…</value></data>
-  <data name="mcp.testConnected" xml:space="preserve"><value>Connected. {0} tool(s) available.</value></data>
-  <data name="conversation.toolInput" xml:space="preserve"><value>Tool input</value></data>
-  <data name="settings.tab.memory" xml:space="preserve"><value>Memory</value></data>
-  <data name="memory.vault.title" xml:space="preserve"><value>Memory vault</value></data>
-  <data name="memory.refresh" xml:space="preserve"><value>Refresh</value></data>
-  <data name="memory.reveal" xml:space="preserve"><value>Open .mem folder</value></data>
-  <data name="memory.refused" xml:space="preserve"><value>Not saved. The entry may contain a credential, exceed its limit, or the workspace may be unavailable.</value></data>
-  <data name="memory.noWorkspace" xml:space="preserve"><value>Select a local workspace to view its memory.</value></data>
-  <data name="memory.notInitialized" xml:space="preserve"><value>Memory starts after the first prompt in this workspace.</value></data>
-  <data name="memory.search" xml:space="preserve"><value>Search memory</value></data>
-  <data name="memory.selectNote" xml:space="preserve"><value>Select a note to view it.</value></data>
-  <data name="memory.save" xml:space="preserve"><value>Save</value></data>
-  <data name="memory.forget" xml:space="preserve"><value>Forget</value></data>
-  <data name="memory.ownRules" xml:space="preserve"><value>Your own rules</value></data>
-  <data name="memory.rulesHelp" xml:space="preserve"><value>These rules are added to every request in this project.</value></data>
-  <data name="memory.lessons" xml:space="preserve"><value>Learned lessons</value></data>
-  <data name="memory.learningStats" xml:space="preserve"><value>{0} turns logged; {1} were corrected or undone.</value></data>
-  <data name="memory.links" xml:space="preserve"><value>Links</value></data>
-  <data name="memory.backlinks" xml:space="preserve"><value>Linked mentions</value></data>
-  <data name="memory.userAuthored" xml:space="preserve"><value>user-authored</value></data>
-  <data name="memory.inferred" xml:space="preserve"><value>inferred</value></data>
-  <data name="memory.learnedCount" xml:space="preserve"><value>learned {0}×</value></data>
-  <data name="memory.usedCount" xml:space="preserve"><value>used {0}×</value></data>
-  <data name="memory.inactive" xml:space="preserve"><value>no longer applied</value></data>
-  <data name="memory.pin" xml:space="preserve"><value>Pin</value></data>
-  <data name="memory.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="memory.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="settings.tab.access" xml:space="preserve"><value>Workspace access</value></data>
-  <data name="access.currentActor" xml:space="preserve"><value>Current actor</value></data>
-  <data name="access.role" xml:space="preserve"><value>Role</value></data>
-  <data name="access.notAuthorized" xml:space="preserve"><value>Not authorized</value></data>
-  <data name="access.score" xml:space="preserve"><value>Score</value></data>
-  <data name="access.device" xml:space="preserve"><value>Device</value></data>
-  <data name="access.publicKey" xml:space="preserve"><value>Public key</value></data>
-  <data name="access.memoryRevision" xml:space="preserve"><value>Memory revision</value></data>
-  <data name="access.members" xml:space="preserve"><value>Members</value></data>
-  <data name="access.noMembers" xml:space="preserve"><value>No members yet.</value></data>
-  <data name="access.revoke" xml:space="preserve"><value>Revoke</value></data>
-  <data name="access.revoked" xml:space="preserve"><value>revoked</value></data>
-  <data name="access.inviteDevice" xml:space="preserve"><value>Invite device</value></data>
-  <data name="access.displayName" xml:space="preserve"><value>Display name</value></data>
-  <data name="access.newDevicePublicKey" xml:space="preserve"><value>New device public key</value></data>
-  <data name="access.createInvitation" xml:space="preserve"><value>Create signed invitation</value></data>
-  <data name="access.acceptInvitation" xml:space="preserve"><value>Accept invitation</value></data>
-  <data name="access.signedInvitation" xml:space="preserve"><value>Signed invitation</value></data>
-  <data name="access.accept" xml:space="preserve"><value>Accept</value></data>
-  <data name="access.reject" xml:space="preserve"><value>Reject</value></data>
-  <data name="access.pendingDecisions" xml:space="preserve"><value>Pending decisions</value></data>
-  <data name="access.noPendingDecisions" xml:space="preserve"><value>No pending project decisions.</value></data>
-  <data name="access.noWorkspace" xml:space="preserve"><value>Select a local workspace to manage access.</value></data>
-  <data name="access.scoreValue" xml:space="preserve"><value>Score: {0}</value></data>
-  <data name="access.initialize" xml:space="preserve"><value>Initialize workspace memory</value></data>
-  <data name="access.initializeHelp" xml:space="preserve"><value>Workspace access uses a signed memory log. Initializing creates the owner identity and event log in this project's .mem folder.</value></data>
-  <data name="access.role.owner" xml:space="preserve"><value>Owner</value></data>
-  <data name="access.role.approver" xml:space="preserve"><value>Approver</value></data>
-  <data name="access.role.contributor" xml:space="preserve"><value>Contributor</value></data>
-  <data name="access.role.observer" xml:space="preserve"><value>Observer</value></data>
-  <data name="settings.sandbox" xml:space="preserve"><value>Sandbox</value></data>
-  <data name="settings.sandboxOff" xml:space="preserve"><value>Off — the agent works directly in your checkout.</value></data>
-  <data name="settings.sandboxOn" xml:space="preserve"><value>On — the agent works in a separate git worktree.</value></data>
-  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Recovery is required before sandbox operations can continue.</value></data>
-  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Retry recovery</value></data>
-  <data name="settings.sandboxName" xml:space="preserve"><value>Name</value></data>
-  <data name="settings.sandboxEnter" xml:space="preserve"><value>Start sandbox</value></data>
-  <data name="settings.sandboxMerge" xml:space="preserve"><value>Merge and exit</value></data>
-  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Discard and exit</value></data>
-  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Origin</value></data>
-  <data name="settings.sandboxBranch" xml:space="preserve"><value>Branch</value></data>
-  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Allow network for new processes</value></data>
-  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>This applies only to new commands. Existing terminal sessions keep their current policy.</value></data>
-  <data name="settings.sandboxOpen" xml:space="preserve"><value>Open sandbox</value></data>
-  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Open origin</value></data>
-  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Conflicts</value></data>
-  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Prepare resolution</value></data>
-  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Ask agent</value></data>
-  <data name="settings.sandboxPreview" xml:space="preserve"><value>Refresh preview</value></data>
-  <data name="settings.sandboxApprove" xml:space="preserve"><value>Approve and merge</value></data>
-  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Cancel resolution</value></data>
-  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Retry cleanup</value></data>
-  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Discard this sandbox? Its branch will be kept for recovery, but its worktree will be removed.</value></data>
-  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Approval requires a complete preview with no unresolved files.</value></data>
-  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Resolution preview</value></data>
-  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Unresolved files</value></data>
-  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>Origin HEAD</value></data>
-  <data name="settings.sandboxHead" xml:space="preserve"><value>Sandbox HEAD</value></data>
-  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Preview fingerprint</value></data>
-  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Sandbox cleanup is still pending; the origin was not changed again.</value></data>
-  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Saved sandboxes</value></data>
-  <data name="settings.sandboxRecover" xml:space="preserve"><value>Recover</value></data>
+  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer டோக்கன் (விருப்பத்தேர்வு)</value></data>
+  <data name="mcp.executable" xml:space="preserve"><value>இயக்கக்கூடிய கோப்பின் பாதை</value></data>
+  <data name="mcp.arguments" xml:space="preserve"><value>அளவுருக்கள் (இடைவெளியால் பிரிக்கப்பட்டவை)</value></data>
+  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>சேவையகம் படிக்க மட்டும் எனக் குறிக்கும் கருவிகளைத் தானாக இயக்கு</value></data>
+  <data name="mcp.autoRunHelp" xml:space="preserve"><value>சேவையக குறிப்புரைகள் நம்பகமானவை அல்ல. இதை இயக்கினால், படிக்க-மட்டும் மற்றும் அழிவற்றவை எனக் குறிக்கப்பட்ட கருவிகளுக்கு மட்டுமே ஒப்புதல் தவிர்க்கப்படும்.</value></data>
+  <data name="mcp.test" xml:space="preserve"><value>சோதி</value></data>
+  <data name="mcp.add" xml:space="preserve"><value>சேவையகத்தைச் சேர்</value></data>
+  <data name="mcp.reconnect" xml:space="preserve"><value>மீண்டும் இணை</value></data>
+  <data name="mcp.remove" xml:space="preserve"><value>அகற்று</value></data>
+  <data name="mcp.idle" xml:space="preserve"><value>செயலற்றது</value></data>
+  <data name="mcp.connecting" xml:space="preserve"><value>இணைக்கிறது…</value></data>
+  <data name="mcp.connected" xml:space="preserve"><value>இணைந்தது · {0} கருவி(கள்)</value></data>
+  <data name="mcp.failed" xml:space="preserve"><value>தோல்வி: {0}</value></data>
+  <data name="mcp.testing" xml:space="preserve"><value>சோதிக்கிறது…</value></data>
+  <data name="mcp.testConnected" xml:space="preserve"><value>இணைந்தது. {0} கருவி(கள்) கிடைக்கின்றன.</value></data>
+  <data name="conversation.toolInput" xml:space="preserve"><value>கருவி உள்ளீடு</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>நினைவகம்</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>நினைவகப் பெட்டகம்</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>புதுப்பி</value></data>
+  <data name="memory.enabled" xml:space="preserve"><value>நினைவகம் இயக்கத்தில்</value></data>
+  <data name="memory.scanFrequency" xml:space="preserve"><value>ஸ்கேன் இடைவெளி</value></data>
+  <data name="memory.scan.off" xml:space="preserve"><value>முடக்கம்</value></data>
+  <data name="memory.scan.hourly" xml:space="preserve"><value>மணிக்கு ஒருமுறை</value></data>
+  <data name="memory.scan.daily" xml:space="preserve"><value>தினமும்</value></data>
+  <data name="memory.scan.weekly" xml:space="preserve"><value>வாரந்தோறும்</value></data>
+  <data name="memory.enabledHelp" xml:space="preserve"><value>முடக்கப்பட்டிருக்கும்போது எந்தப் பணியும் குறிக்கப்படாது, எதுவும் கற்கப்படாது, மாடலுக்கு எந்தக் கண்டறிதலும் அனுப்பப்படாது; ஏற்கெனவே சேமித்தவை வட்டில் அப்படியே இருக்கும்.</value></data>
+  <data name="memory.scanHelp" xml:space="preserve"><value>சுருக்கமான பணிக் குறிப்புகள் சேமிக்கப்படுவதால், வருடலுக்குப் பிறகும் கண்டறிதல்களின் காரணங்களைப் பார்க்கலாம்; வருடல் முடக்கப்பட்டால் பின்னணியில் எந்த மாதிரியும் அழைக்கப்படாது.</value></data>
+  <data name="memory.reveal" xml:space="preserve"><value>.mem கோப்புறையைத் திற</value></data>
+  <data name="memory.refused" xml:space="preserve"><value>சேமிக்கப்படவில்லை. பதிவில் சான்றுகள் இருக்கலாம், வரம்பை மீறியிருக்கலாம், அல்லது பணியிடம் கிடைக்காமல் இருக்கலாம்.</value></data>
+  <data name="memory.noWorkspace" xml:space="preserve"><value>நினைவகத்தைப் பார்க்க ஒரு உள்ளூர் பணியிடத்தைத் தேர்ந்தெடுக்கவும்.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>இந்தப் பணியிடத்தில் முதல் ப்ராம்ப்டுக்குப் பிறகு நினைவகம் தொடங்கும்.</value></data>
+  <data name="memory.search" xml:space="preserve"><value>நினைவகத்தில் தேடு</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>பார்க்க ஒரு குறிப்பைத் தேர்ந்தெடுக்கவும்.</value></data>
+  <data name="memory.save" xml:space="preserve"><value>சேமி</value></data>
+  <data name="memory.forget" xml:space="preserve"><value>மறந்துவிடு</value></data>
+  <data name="memory.ownRules" xml:space="preserve"><value>உங்கள் சொந்த விதிகள்</value></data>
+  <data name="memory.rulesHelp" xml:space="preserve"><value>இந்த விதிகள் இந்தத் திட்டத்தின் ஒவ்வொரு கோரிக்கையிலும் சேர்க்கப்படும்.</value></data>
+  <data name="memory.lessons" xml:space="preserve"><value>கற்ற பாடங்கள்</value></data>
+  <data name="memory.learningStats" xml:space="preserve"><value>{0} சுற்றுகள் பதிவாயின; {1} திருத்தப்பட்டன அல்லது செயல்தவிர்க்கப்பட்டன.</value></data>
+  <data name="memory.links" xml:space="preserve"><value>இணைப்புகள்</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>இணைக்கப்பட்ட குறிப்புகள்</value></data>
+  <data name="memory.userAuthored" xml:space="preserve"><value>பயனர் எழுதியது</value></data>
+  <data name="memory.inferred" xml:space="preserve"><value>ஊகிக்கப்பட்டது</value></data>
+  <data name="memory.learnedCount" xml:space="preserve"><value>{0}× கற்றது</value></data>
+  <data name="memory.usedCount" xml:space="preserve"><value>{0}× பயன்படுத்தப்பட்டது</value></data>
+  <data name="memory.inactive" xml:space="preserve"><value>இனி பயன்படுத்தப்படாது</value></data>
+  <data name="memory.pin" xml:space="preserve"><value>பின் செய்</value></data>
+  <data name="memory.edit" xml:space="preserve"><value>திருத்து</value></data>
+  <data name="memory.cancel" xml:space="preserve"><value>ரத்துசெய்</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>பணியிட அணுகல்</value></data>
+  <data name="access.accept" xml:space="preserve"><value>ஏற்றுக்கொள்</value></data>
+  <data name="settings.sandbox" xml:space="preserve"><value>சாண்ட்பாக்ஸ்</value></data>
+  <data name="settings.sandboxOff" xml:space="preserve"><value>முடக்கம் — முகவர் நேரடியாக உங்கள் செக்அவுட்டில் வேலை செய்கிறது.</value></data>
+  <data name="settings.sandboxOn" xml:space="preserve"><value>இயக்கம் — முகவர் தனி git worktree இல் வேலை செய்கிறது.</value></data>
+  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>சாண்ட்பாக்ஸ் செயல்பாடுகளைத் தொடர மீட்பு தேவை.</value></data>
+  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>மீட்பை மீண்டும் முயல்</value></data>
+  <data name="settings.sandboxName" xml:space="preserve"><value>பெயர்</value></data>
+  <data name="settings.sandboxEnter" xml:space="preserve"><value>சாண்ட்பாக்ஸைத் தொடங்கு</value></data>
+  <data name="settings.sandboxMerge" xml:space="preserve"><value>இணைத்து வெளியேறு</value></data>
+  <data name="settings.sandboxDiscard" xml:space="preserve"><value>நிராகரித்து வெளியேறு</value></data>
+  <data name="settings.sandboxOrigin" xml:space="preserve"><value>மூலம்</value></data>
+  <data name="settings.sandboxBranch" xml:space="preserve"><value>கிளை</value></data>
+  <data name="settings.sandboxNetwork" xml:space="preserve"><value>புதிய செயல்முறைகளுக்குப் பிணையத்தை அனுமதி</value></data>
+  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>இது புதிய கட்டளைகளுக்கு மட்டுமே பொருந்தும். ஏற்கனவே உள்ள டெர்மினல் அமர்வுகள் தற்போதைய கொள்கையைத் தக்கவைக்கும்.</value></data>
+  <data name="settings.sandboxOpen" xml:space="preserve"><value>சாண்ட்பாக்ஸைத் திற</value></data>
+  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>மூலத்தைத் திற</value></data>
+  <data name="settings.sandboxConflicts" xml:space="preserve"><value>முரண்பாடுகள்</value></data>
+  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>தீர்வைத் தயார்செய்</value></data>
+  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>முகவரிடம் கேள்</value></data>
+  <data name="settings.sandboxPreview" xml:space="preserve"><value>முன்னோட்டத்தைப் புதுப்பி</value></data>
+  <data name="settings.sandboxApprove" xml:space="preserve"><value>ஒப்புதல் அளித்து இணை</value></data>
+  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>தீர்வை ரத்துசெய்</value></data>
+  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>சுத்தத்தை மீண்டும் முயல்</value></data>
+  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>இந்த சாண்ட்பாக்ஸை நிராகரிக்கவா? மீட்புக்காக அதன் கிளை வைக்கப்படும், ஆனால் அதன் worktree அகற்றப்படும்.</value></data>
+  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>ஒப்புதலுக்குத் தீர்க்கப்படாத கோப்புகள் இல்லாத முழு முன்னோட்டம் தேவை.</value></data>
+  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>தீர்வு முன்னோட்டம்</value></data>
+  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>தீர்க்கப்படாத கோப்புகள்</value></data>
+  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>மூல HEAD</value></data>
+  <data name="settings.sandboxHead" xml:space="preserve"><value>சாண்ட்பாக்ஸ் HEAD</value></data>
+  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>முன்னோட்டக் கைரேகை</value></data>
+  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>சாண்ட்பாக்ஸ் சுத்தம் இன்னும் நிலுவையில் உள்ளது; மூலம் மீண்டும் மாற்றப்படவில்லை.</value></data>
+  <data name="settings.sandboxRecovery" xml:space="preserve"><value>சேமித்த சாண்ட்பாக்ஸ்கள்</value></data>
+  <data name="settings.sandboxRecover" xml:space="preserve"><value>மீட்டெடு</value></data>
   <data name="conversation.accountSwitched.notice" xml:space="preserve"><value>இந்த அரட்டை அதே மாடலில் வேறொரு கணக்கிற்கு மாறியுள்ளது. அங்கே கேச் தொடக்கத்திலிருந்து ஆரம்பிக்கும்; தொடர்ந்தால் அதிக டோக்கன்கள் செலவாகி, கட்டணம் கூடலாம்.</value></data>
   <data name="conversation.modelSwitched.notice" xml:space="preserve"><value>மாடல் மாற்றப்பட்டது. கேச் புதிய மாடலுக்குச் செல்லாது; முழு வரலாறும் மீண்டும் செயலாக்கப்படும், இதனால் அதிக டோக்கன்கள் செலவாகி, கட்டணம் கூடலாம்.</value></data>
   <data name="conversation.contextFull.notice" xml:space="preserve"><value>சூழல் சாளரம் கிட்டத்தட்ட நிரம்பிவிட்டது; தொடர்ந்தால் அதிக டோக்கன்கள் செலவாகி, கட்டணம் கூடலாம். சுருக்கமான சுருக்கத்துடன் புதிய அரட்டையைத் தொடங்குங்கள்.</value></data>
@@ -574,28 +558,28 @@
   <data name="context.overflowCompress" xml:space="preserve"><value>சுருக்கித் தொடர்</value></data>
   <data name="context.overflowNotNow" xml:space="preserve"><value>இப்போது வேண்டாம்</value></data>
   <data name="context.overflowDeclined" xml:space="preserve"><value>அனுப்புதல் நிறுத்தப்பட்டது: உரையாடல் புதிய மாடலில் பொருந்தவில்லை.</value></data>
-  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>When another chat is writing the same file</value></data>
-  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Wait before asking</value></data>
-  <data name="settings.conflictWaitValue" xml:space="preserve"><value>Wait {0} seconds</value></data>
-  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Wait, then ask</value></data>
-  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>A chat that wants a file another chat is writing waits quietly, and asks only if the wait goes on too long.</value></data>
-  <data name="conflict.policy.ask" xml:space="preserve"><value>Ask me</value></data>
-  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Ask as soon as two chats want the same file.</value></data>
-  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Always wait</value></data>
-  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Never ask: a write waits for the chat that holds the file.</value></data>
-  <data name="conflict.title" xml:space="preserve"><value>A file is busy: {0}</value></data>
-  <data name="conflict.wholeProject" xml:space="preserve"><value>Project command: {0}</value></data>
-  <data name="conflict.stillBusy" xml:space="preserve"><value>Write held back: another chat is still writing {0}.</value></data>
-  <data name="conflict.userSkipped" xml:space="preserve"><value>Write skipped: {0} was left with the other chat ({1}), as you asked.</value></data>
-  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Stopped {0} so this chat could write.</value></data>
-  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Stopped other chats so this chat could write.</value></data>
-  <data name="conflict.banner.title" xml:space="preserve"><value>Another chat is writing this file</value></data>
-  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · held by “{1}” for {2} seconds</value></data>
-  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Keep waiting</value></data>
-  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Stop {0}</value></data>
-  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Stop all other chats</value></data>
-  <data name="conflict.banner.skip" xml:space="preserve"><value>Skip this write</value></data>
-  <data name="conflict.waiting" xml:space="preserve"><value>Waiting for “{0}” to finish writing: {1}</value></data>
+  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>மற்றொரு உரை அதே கோப்பை எழுதினால்</value></data>
+  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>கேட்கும் முன் காத்திரு</value></data>
+  <data name="settings.conflictWaitValue" xml:space="preserve"><value>{0} வினாடிகள்</value></data>
+  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>காத்திரு, பின் கேள்</value></data>
+  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>மற்றொரு உரைக்காக அமைதியாகக் காத்திருக்கும்; நீடித்தால் மட்டுமே கேட்கும்.</value></data>
+  <data name="conflict.policy.ask" xml:space="preserve"><value>என்னிடம் கேள்</value></data>
+  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>இரு உரைகள் ஒரே கோப்பை விரும்பியவுடன் கேட்கும்.</value></data>
+  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>எப்போதும் காத்திரு</value></data>
+  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>கேட்காது: ஒவ்வொரு எழுத்தும் கோப்பை வைத்துள்ள உரைக்காகக் காத்திருக்கும்.</value></data>
+  <data name="conflict.title" xml:space="preserve"><value>மற்றொரு உரை {0} எழுதுகிறது</value></data>
+  <data name="conflict.wholeProject" xml:space="preserve"><value>முழு திட்டமும் (கட்டளை: {0})</value></data>
+  <data name="conflict.stillBusy" xml:space="preserve"><value>எழுத்து தாங்கப்படுகிறது: {0} ஐ மற்றொரு உரை இன்னும் எழுதுகிறது.</value></data>
+  <data name="conflict.userSkipped" xml:space="preserve"><value>எழுத்து தவிர்க்கப்பட்டது: {0} கேட்டபடி மற்றொரு உரையிடம் ({1}) இருந்தது.</value></data>
+  <data name="conflict.stoppedHolder" xml:space="preserve"><value>நீங்கள் கேட்டபடி உரை “{0}” நிறுத்தப்பட்டது, இந்த எழுத்து செய்யப்பட்டது.</value></data>
+  <data name="conflict.stoppedOthers" xml:space="preserve"><value>நீங்கள் கேட்டபடி இந்தத் திட்டத்தின் மற்ற உரைகள் நிறுத்தப்பட்டன, இந்த எழுத்து செய்யப்பட்டது.</value></data>
+  <data name="conflict.banner.title" xml:space="preserve"><value>மற்றொரு உரை இந்தக் கோப்பை எழுதுகிறது</value></data>
+  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · “{1}” {2} வினாடிகளாக வைத்துள்ளது</value></data>
+  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>தொடர்ந்து காத்திரு</value></data>
+  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>அந்த உரையை நிறுத்து</value></data>
+  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>மற்ற அனைத்து உரைகளையும் நிறுத்து</value></data>
+  <data name="conflict.banner.skip" xml:space="preserve"><value>இந்த எழுத்தைத் தவிர்</value></data>
+  <data name="conflict.waiting" xml:space="preserve"><value>“{0}” எழுதுவதற்காகக் காத்திருப்பு: {1}</value></data>
   <data name="usage.context.button" xml:space="preserve"><value>பயன்பாடு</value></data>
   <data name="usage.context.tooltip" xml:space="preserve"><value>சூழல் மற்றும் டோக்கன் பயன்பாடு</value></data>
   <data name="usage.context.latestRequest" xml:space="preserve"><value>சமீபத்திய கோரிக்கை · சூழல் சாளரம்</value></data>
@@ -605,34 +589,738 @@
   <data name="usage.context.notReported" xml:space="preserve"><value>வழங்குநர் தெரிவிக்கவில்லை</value></data>
   <data name="usage.context.estimatedBreakdown" xml:space="preserve"><value>மதிப்பிடப்பட்ட உள்ளீட்டுப் பிரிப்பு</value></data>
   <data name="usage.context.tokens" xml:space="preserve"><value>டோக்கன்கள்</value></data>
-  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} tokens ({2})</value></data>
-  <data name="usage.context.notAvailable" xml:space="preserve"><value>Context usage is not available yet.</value></data>
-  <data name="usage.context.composition" xml:space="preserve"><value>Estimated input composition</value></data>
+  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} டோக்கன்கள் ({2})</value></data>
+  <data name="usage.context.notAvailable" xml:space="preserve"><value>சூழல் பயன்பாடு இன்னும் கிடைக்கவில்லை.</value></data>
+  <data name="usage.context.composition" xml:space="preserve"><value>மதிப்பிடப்பட்ட உள்ளீட்டு அமைப்பு</value></data>
   <data name="usage.context.estimatedRow" xml:space="preserve"><value>{0}: {1} ({2})</value></data>
   <data name="usage.context.conversation" xml:space="preserve"><value>உரையாடல் செய்திகள்</value></data>
   <data name="usage.context.systemPrompt" xml:space="preserve"><value>கணினி வழிமுறைகள்</value></data>
   <data name="usage.context.toolDefinitions" xml:space="preserve"><value>கருவி வரையறைகள்</value></data>
   <data name="usage.context.mcpDefinitions" xml:space="preserve"><value>MCP கருவி வரையறைகள்</value></data>
-  <data name="usage.context.cacheHit" xml:space="preserve"><value>Measured cache hit</value></data>
-  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Verified prefix reuse: {0} · {1} / {2} tokens</value></data>
-  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Measurement coverage: {0} · {1} of {2} eligible requests</value></data>
-  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Cold: {0} · expired: {1} · changed: {2}</value></data>
-  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Cache writes: {0} tokens</value></data>
-  <data name="usage.context.freshInput" xml:space="preserve"><value>Fresh input: {0} tokens</value></data>
-  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Reuse not reported: {0} of {1} eligible requests</value></data>
-  <data name="usage.context.latency" xml:space="preserve"><value>Average request latency: {0}</value></data>
-  <data name="usage.context.prepare" xml:space="preserve"><value>Average request preparation: {0}</value></data>
-  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Largest cache loss: {0} ({1} tokens)</value></data>
-  <data name="settings.shortcuts" xml:space="preserve"><value>Keyboard shortcuts</value></data>
-  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Select a shortcut to change it. Press a key combination with at least one modifier.</value></data>
-  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Press keys…</value></data>
-  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Restore defaults</value></data>
-  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} is already assigned to {1}.</value></data>
-  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull requests</value></data>
-  <data name="conversation.review" xml:space="preserve"><value>Review</value></data>
-  <data name="conversation.files" xml:space="preserve"><value>Files</value></data>
-  <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
-  <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
-  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} டோக்கன்கள்</value></data>
+  <data name="usage.context.cacheHit" xml:space="preserve"><value>அளவிடப்பட்ட கேஷ் பொருத்தங்கள்</value></data>
+  <data name="usage.context.cacheReuse" xml:space="preserve"><value>சரிபார்க்கப்பட்ட முன்னொட்டு மறுபயன்பாடு: {0} · {1} / {2} டோக்கன்கள்</value></data>
+  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>அளவீட்டுப் பரப்பு: {0} · {2} தகுதியான கோரிக்கைகளில் {1}</value></data>
+  <data name="usage.context.cacheStatus" xml:space="preserve"><value>குளிர்: {0} · காலாவதி: {1} · மாற்றம்: {2}</value></data>
+  <data name="usage.context.cacheWrite" xml:space="preserve"><value>கேஷ் எழுதுதல்கள்: {0} டோக்கன்கள்</value></data>
+  <data name="usage.context.freshInput" xml:space="preserve"><value>புதிய உள்ளீடு: {0} டோக்கன்கள்</value></data>
+  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>மறுபயன்பாடு அறிவிக்கப்படவில்லை: {1} தகுதியான கோரிக்கைகளில் {0}</value></data>
+  <data name="usage.context.latency" xml:space="preserve"><value>சராசரி கோரிக்கைத் தாமதம்: {0}</value></data>
+  <data name="usage.context.prepare" xml:space="preserve"><value>சராசரி கோரிக்கைத் தயாரிப்பு: {0}</value></data>
+  <data name="usage.context.cacheLoss" xml:space="preserve"><value>மிகப்பெரிய கேஷ் இழப்பு: {0} ({1} டோக்கன்கள்)</value></data>
+  <data name="settings.shortcuts" xml:space="preserve"><value>விசைப்பலகைக் குறுக்குவழிகள்</value></data>
+  <data name="settings.shortcuts.hint" xml:space="preserve"><value>மாற்ற ஒரு குறுக்குவழியைத் தேர்ந்தெடுக்கவும். குறைந்தது ஒரு மாற்றி விசையுடன் கூடிய விசைச் சேர்க்கையை அழுத்தவும்.</value></data>
+  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>பக்கப்பட்டியைக் காட்டு அல்லது மறை</value></data>
+  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>விசைகளை அழுத்தவும்…</value></data>
+  <data name="settings.shortcuts.reset" xml:space="preserve"><value>இயல்புநிலைகளை மீட்டமை</value></data>
+  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} ஏற்கனவே {1} க்கு ஒதுக்கப்பட்டுள்ளது.</value></data>
+  <data name="sidebar.pullRequests" xml:space="preserve"><value>புல் கோரிக்கைகள்</value></data>
+  <data name="conversation.review" xml:space="preserve"><value>மதிப்பாய்வு</value></data>
+  <data name="conversation.files" xml:space="preserve"><value>கோப்புகள்</value></data>
+  <data name="conversation.browser" xml:space="preserve"><value>உலாவி</value></data>
+  <data name="conversation.newChat" xml:space="preserve"><value>புதிய உரையாடல்</value></data>
+  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} புதியதாக செயலாக்கப்பட்ட டோக்கன்கள்</value></data>
+  <data name="settings.skillSuggestions" xml:space="preserve"><value>திறன் பரிந்துரைகளைக் காட்டு</value></data>
+  <data name="settings.skillSuggestions.hint" xml:space="preserve"><value>ஒரு பாடம் மூன்று முறை கற்றுக்கொள்ளப்பட்டால் அல்லது மீண்டும் தேவைப்படும் பணிப்பாய்வை முகவர் முடித்தால் மட்டுமே திறனைப் பரிந்துரைக்கும்; வாரத்திற்கு அதிகபட்சம் ஒரு அட்டை. முடக்கம்: பரிந்துரை அட்டைகள் தோன்றாது, முகவரும் திறன்களைப் பரிந்துரைக்காது.</value></data>
+  <data name="skill.suggestion.title" xml:space="preserve"><value>பரிந்துரைக்கப்பட்ட திறன்: {0}</value></data>
+  <data name="skill.suggestion.create" xml:space="preserve"><value>திறனை உருவாக்கு</value></data>
+  <data name="skill.suggestion.dismiss" xml:space="preserve"><value>இப்போது வேண்டாம்</value></data>
+  <data name="settings.autoAccountFailover" xml:space="preserve"><value>வரம்பு முடிந்ததும் மற்றொரு கணக்கை தானாக முயற்சிக்கவும்</value></data>
+  <data name="settings.autoAccountFailover.hint" xml:space="preserve"><value>முடக்கப்பட்டிருக்கும்போது அரட்டை இடைநிறுத்தப்படும்; மற்றொரு இணக்கமான கணக்கை முயற்சிக்க தொடரவும் என்பதை அழுத்தவும். இயக்கப்பட்டிருக்கும்போது இணக்கமான கணக்குகள் தானாக சோதிக்கப்படும்.</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>டோக்கன்களில் மாதிரி-குறிப்பிட்ட சூழல் அளவை உள்ளிடவும். தானியங்கி விருப்பம் கிடைக்கும்போது மாதிரியின் அறிவிக்கப்பட்ட அல்லது ஆவணப்படுத்தப்பட்ட அளவைப் பயன்படுத்துகிறது, பின்னர் கணக்கின் கட்டமைக்கப்பட்ட மதிப்பைப் பயன்படுத்துகிறது.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>மாதிரிகளைத் தேடு</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>தானியங்கி மதிப்பு: {0} டோக்கன்கள்</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>வழங்குநர் சூழல் அளவை அறிவிக்கவில்லை.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>இன்னும் மாதிரிகள் கிடைக்கவில்லை. ஒரு வழங்குநரை இணைக்கவும் அல்லது மாதிரி பட்டியலைப் புதுப்பிக்கவும்.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>சேமிக்கப்பட்டது.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>தானியங்கி</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>நேர்மறை முழு டோக்கன் எண்ணிக்கையை உள்ளிடவும்.</value></data>
+  <data name="attachment.files" xml:space="preserve"><value>கோப்புகள் அல்லது புகைப்படங்கள்</value></data>
+  <data name="attachment.project" xml:space="preserve"><value>திட்டத்தில் வேலை செய்யுங்கள்</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>சூழல் தானாக சுருக்கப்பட்டது</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>கோப்புகள் படிக்கப்பட்டன</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>கோப்புகள் மாற்றப்பட்டன</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>கட்டளைகள் இயக்கப்பட்டன</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>இணையத்தில் தேடப்பட்டது</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>கோப்புகள் படிக்கப்படுகின்றன…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>கோப்புகள் திருத்தப்படுகின்றன…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>கட்டளைகள் இயங்குகின்றன…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>இணையத்தில் தேடுகிறது…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>கருவி பயன்படுத்தப்பட்டது</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>கருவி இயங்குகிறது…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>கருவி தோல்வியடைந்தது: {0}</value></data>
+  <data name="tasks.menu" xml:space="preserve"><value>பணிகள்</value></data>
+  <data name="tasks.title" xml:space="preserve"><value>திட்டமிடப்பட்ட பணிகள்</value></data>
+  <data name="tasks.subtitle" xml:space="preserve"><value>கிரான் அட்டவணையில் ஒரு வரியை இயக்கவும்.</value></data>
+  <data name="tasks.empty" xml:space="preserve"><value>இன்னும் பணிகள் இல்லை.</value></data>
+  <data name="tasks.add" xml:space="preserve"><value>பணியைச் சேர்க்கவும்</value></data>
+  <data name="tasks.edit" xml:space="preserve"><value>பணியைத் திருத்து</value></data>
+  <data name="tasks.delete" xml:space="preserve"><value>நீக்கு</value></data>
+  <data name="tasks.runNow" xml:space="preserve"><value>இப்போது இயக்கு</value></data>
+  <data name="tasks.enabled" xml:space="preserve"><value>இயக்கப்பட்டது</value></data>
+  <data name="tasks.field.name" xml:space="preserve"><value>பெயர்</value></data>
+  <data name="tasks.field.cron" xml:space="preserve"><value>கிரான் வெளிப்பாடு</value></data>
+  <data name="tasks.field.prompt" xml:space="preserve"><value>ப்ராம்ப்ட்</value></data>
+  <data name="tasks.field.workspace" xml:space="preserve"><value>பணியிடம்</value></data>
+  <data name="tasks.cron.invalid" xml:space="preserve"><value>தவறான கிரான் வெளிப்பாடு.</value></data>
+  <data name="tasks.cron.next" xml:space="preserve"><value>அடுத்த இயக்கங்கள்</value></data>
+  <data name="tasks.close" xml:space="preserve"><value>பணிகளை மூடு</value></data>
+  <data name="tasks.back" xml:space="preserve"><value>பின்செல்</value></data>
+  <data name="tasks.new" xml:space="preserve"><value>புதிய பணி</value></data>
+  <data name="tasks.active" xml:space="preserve"><value>உங்கள் பணிகள்</value></data>
+  <data name="tasks.disabled" xml:space="preserve"><value>முடக்கப்பட்டது</value></data>
+  <data name="tasks.suggestions" xml:space="preserve"><value>பரிந்துரைகள்</value></data>
+  <data name="tasks.history" xml:space="preserve"><value>சமீபத்திய இயக்கங்கள்</value></data>
+  <data name="tasks.history.empty" xml:space="preserve"><value>இந்தப் பணி இன்னும் இயக்கப்படவில்லை.</value></data>
+  <data name="tasks.field.target" xml:space="preserve"><value>இலக்கு கோப்பு அல்லது கோப்புறை</value></data>
+  <data name="tasks.field.targetHint" xml:space="preserve"><value>பணியிடத்துக்குள் விருப்பப் பாதை</value></data>
+  <data name="tasks.target.invalid" xml:space="preserve"><value>இலக்கு பணியிடத்துக்குள் இருக்க வேண்டும்.</value></data>
+  <data name="tasks.field.model" xml:space="preserve"><value>மாதிரி</value></data>
+  <data name="tasks.field.fallback" xml:space="preserve"><value>மாற்று மாதிரி</value></data>
+  <data name="tasks.network" xml:space="preserve"><value>பிணைய அணுகலை அனுமதி</value></data>
+  <data name="tasks.assistant.title" xml:space="preserve"><value>பணி உதவியாளர்</value></data>
+  <data name="tasks.assistant.placeholder" xml:space="preserve"><value>இந்தப் பணியை மாற்றக் கேளுங்கள்…</value></data>
+  <data name="tasks.assistant.updated" xml:space="preserve"><value>பணி புதுப்பிக்கப்பட்டது.</value></data>
+  <data name="tasks.notification.title" xml:space="preserve"><value>திட்டமிடப்பட்ட பணி</value></data>
+  <data name="tasks.notification.completed" xml:space="preserve"><value>முடிந்தது</value></data>
+  <data name="tasks.notification.failed" xml:space="preserve"><value>தோல்வி</value></data>
+  <data name="tasks.notification.fallback" xml:space="preserve"><value>மாற்று மாதிரி பயன்படுத்தப்பட்டது</value></data>
+  <data name="tasks.suggestion.daily.title" xml:space="preserve"><value>தினசரி சுருக்கம்</value></data>
+  <data name="tasks.suggestion.daily.detail" xml:space="preserve"><value>சமீபத்திய வேலை, திறந்த முன்னுரிமைகள் மற்றும் பணியிட மாற்றங்களைச் சுருக்கவும்.</value></data>
+  <data name="tasks.suggestion.daily.schedule" xml:space="preserve"><value>வார நாட்களில் காலை 8:00</value></data>
+  <data name="tasks.suggestion.daily.prompt" xml:space="preserve"><value>சமீபத்திய உரையாடல்கள் மற்றும் பணியிட மாற்றங்களை மதிப்பாய்வு செய்யவும். இன்றைய மிக முக்கியமான முன்னுரிமைகளைச் சுருக்கவும்.</value></data>
+  <data name="tasks.suggestion.weekly.title" xml:space="preserve"><value>வாராந்திர மதிப்பாய்வு</value></data>
+  <data name="tasks.suggestion.weekly.detail" xml:space="preserve"><value>ஒவ்வொரு வெள்ளிக்கிழமையும் சமீபத்திய வேலையைச் சுருக்கமான நிலை புதுப்பிப்பாக மாற்றவும்.</value></data>
+  <data name="tasks.suggestion.weekly.schedule" xml:space="preserve"><value>வெள்ளிக்கிழமைகளில் மாலை 4:00</value></data>
+  <data name="tasks.suggestion.weekly.prompt" xml:space="preserve"><value>இந்த வார உரையாடல்கள் மற்றும் பணியிட மாற்றங்களை மதிப்பாய்வு செய்யவும். முடிந்த வேலை, அபாயங்கள் மற்றும் அடுத்த படிகளுடன் சுருக்கமான நிலை புதுப்பிப்பை எழுதவும்.</value></data>
+  <data name="tasks.suggestion.followup.title" xml:space="preserve"><value>பின்தொடர்பு கண்காணிப்பு</value></data>
+  <data name="tasks.suggestion.followup.detail" xml:space="preserve"><value>சமீபத்திய செயல்பாட்டை மதிப்பாய்வு செய்து கவனம் தேவைப்படுவதைச் சுட்டிக்காட்டவும்.</value></data>
+  <data name="tasks.suggestion.followup.schedule" xml:space="preserve"><value>வார நாட்களில் காலை 9:00</value></data>
+  <data name="tasks.suggestion.followup.prompt" xml:space="preserve"><value>சமீபத்திய பணிகள் மற்றும் பணியிட செயல்பாட்டை மதிப்பாய்வு செய்யவும். முடிக்காத வேலை, தோல்வியுற்ற இயக்கங்கள் மற்றும் கவனம் தேவைப்படுவதைச் சுட்டிக்காட்டவும்.</value></data>
+  <data name="tasks.lastRun" xml:space="preserve"><value>கடைசி ஓட்டம்</value></data>
+  <data name="tasks.state.never" xml:space="preserve"><value>ஒருபோதும் ஓடாதே</value></data>
+  <data name="tasks.state.running" xml:space="preserve"><value>இயங்குகிறது…</value></data>
+  <data name="tasks.state.ok" xml:space="preserve"><value>வெற்றி பெற்றது</value></data>
+  <data name="tasks.state.failed" xml:space="preserve"><value>தோல்வியடைந்தது</value></data>
+  <data name="tasks.openConversation" xml:space="preserve"><value>உரையாடலைத் திறக்கவும்</value></data>
+  <data name="tasks.save" xml:space="preserve"><value>சேமிக்கவும்</value></data>
+  <data name="tasks.cancel" xml:space="preserve"><value>ரத்து செய்</value></data>
+  <data name="tasks.background" xml:space="preserve"><value>பயன்பாடு மூடப்பட்டிருக்கும் போது பணிகளை இயக்கவும்</value></data>
+  <data name="tasks.background.hint" xml:space="preserve"><value>டாட்ஸ் ஹார்னஸ் திறக்கப்படாவிட்டாலும், உரிய பணிகளை இயக்கும் பின்னணி உதவியாளரை (தொடக்கப்பட்டது) நிறுவுகிறது.</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>வரைபடம்</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>குறியீட்டு</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>பணிகள்</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>முடிவுகள்</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>விருப்பங்கள்</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>உரையாடல்கள்</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>இணைக்கப்பட்ட குறிப்புகள் இல்லை.</value></data>
+  <data name="memory.graph" xml:space="preserve"><value>வரைபடம்</value></data>
+  <data name="media.image" xml:space="preserve"><value>படம்</value></data>
+  <data name="media.video" xml:space="preserve"><value>வீடியோ</value></data>
+  <data name="media.audio" xml:space="preserve"><value>ஆடியோ</value></data>
+  <data name="media.promptMissing" xml:space="preserve"><value>கட்டளைக்குப் பிறகு என்ன உருவாக்க வேண்டும் என்பதை விவரிக்கவும்.</value></data>
+  <data name="media.promptMissingFor" xml:space="preserve"><value>கட்டளைக்குப் பிறகு உருவாக்க {0} ஐ விவரிக்கவும்.</value></data>
+  <data name="media.modelMissing" xml:space="preserve"><value>மீடியா வழங்குநர் மாதிரி உள்ளமைக்கப்படவில்லை.</value></data>
+  <data name="media.noOutput" xml:space="preserve"><value>வழங்குநர் மீடியா வெளியீட்டை வழங்கவில்லை.</value></data>
+  <data name="media.invalidOutput" xml:space="preserve"><value>வழங்குநர் தவறான மீடியா தரவை வழங்கியுள்ளார்.</value></data>
+  <data name="media.generationFailed" xml:space="preserve"><value>வழங்குநரால் மீடியாவை உருவாக்க முடியவில்லை.</value></data>
+  <data name="media.videoTimeout" xml:space="preserve"><value>வீடியோ உருவாக்க நேரம் முடிந்தது.</value></data>
+  <data name="media.busy" xml:space="preserve"><value>ஒரு தலைமுறை அல்லது முகவர் இயக்கம் ஏற்கனவே நடந்து கொண்டிருக்கிறது. அது முடிந்ததும் மீண்டும் முயற்சிக்கவும்.</value></data>
+  <data name="media.unsupported" xml:space="preserve"><value>என்னால் இதை இங்கு உருவாக்க முடியாது. தேர்ந்தெடுக்கப்பட்ட வழங்குநருக்கு இந்த திறன் இல்லை.</value></data>
+  <data name="media.unsupportedStatus" xml:space="preserve"><value>தேர்ந்தெடுக்கப்பட்ட வழங்குநரால் மீடியா உருவாக்கம் ஆதரிக்கப்படவில்லை.</value></data>
+  <data name="media.fileMissing" xml:space="preserve"><value>உருவாக்கப்பட்ட கோப்பு இனி கிடைக்காது.</value></data>
+  <data name="media.openAudio" xml:space="preserve"><value>உருவாக்கப்பட்ட ஆடியோவைத் திறக்கவும்</value></data>
+  <data name="media.save" xml:space="preserve"><value>சேமி</value></data>
+  <data name="media.showInFinder" xml:space="preserve"><value>Finder-ல் காட்டு</value></data>
+  <data name="rail.home" xml:space="preserve"><value>முகப்பு</value></data>
+  <data name="rail.media" xml:space="preserve"><value>மீடியா</value></data>
+  <data name="rail.tasks" xml:space="preserve"><value>பணிகள்</value></data>
+  <data name="rail.bots" xml:space="preserve"><value>பாட்கள்</value></data>
+  <data name="rail.marketplace" xml:space="preserve"><value>சந்தை</value></data>
+  <data name="rail.memory" xml:space="preserve"><value>நினைவகம்</value></data>
+  <data name="rail.settings" xml:space="preserve"><value>அமைப்புகள்</value></data>
+  <data name="models.followApp" xml:space="preserve"><value>பயன்பாட்டின் மாடல்</value></data>
+  <data name="studio.preset.square" xml:space="preserve"><value>சதுர இடுகை</value></data>
+  <data name="studio.preset.story" xml:space="preserve"><value>ஸ்டோரி</value></data>
+  <data name="studio.preset.landscape" xml:space="preserve"><value>கிடைமட்டம்</value></data>
+  <data name="studio.preset.thumbnail" xml:space="preserve"><value>வீடியோ சிறுபடம்</value></data>
+  <data name="studio.preset.logo" xml:space="preserve"><value>லோகோ</value></data>
+  <data name="studio.preset.poster" xml:space="preserve"><value>சுவரொட்டி</value></data>
+  <data name="studio.template.announcement" xml:space="preserve"><value>அறிவிப்பு</value></data>
+  <data name="studio.template.story" xml:space="preserve"><value>ஸ்டோரி</value></data>
+  <data name="studio.template.thumbnail" xml:space="preserve"><value>வீடியோ சிறுபடம்</value></data>
+  <data name="studio.template.slide" xml:space="preserve"><value>தலைப்பு ஸ்லைடு</value></data>
+  <data name="studio.template.logo" xml:space="preserve"><value>லோகோ</value></data>
+  <data name="studio.template.mobile" xml:space="preserve"><value>மொபைல் திரை</value></data>
+  <data name="studio.category.social" xml:space="preserve"><value>சமூக ஊடகம்</value></data>
+  <data name="studio.category.uiux" xml:space="preserve"><value>UI/UX</value></data>
+  <data name="studio.category.presentation" xml:space="preserve"><value>விளக்கக்காட்சி &amp; இன்போகிராஃபிக்</value></data>
+  <data name="studio.category.other" xml:space="preserve"><value>பிற வடிவமைப்புகள்</value></data>
+  <data name="studio.sample.title" xml:space="preserve"><value>உங்கள் தலைப்பு</value></data>
+  <data name="studio.sample.detail" xml:space="preserve"><value>மேலும் சொல்லும் ஒரு சிறு வரி</value></data>
+  <data name="studio.sample.brand" xml:space="preserve"><value>பிராண்ட்</value></data>
+  <data name="studio.sample.text" xml:space="preserve"><value>உரை</value></data>
+  <data name="studio.copyOf" xml:space="preserve"><value>{0} நகல்</value></data>
+  <data name="studio.untitled" xml:space="preserve"><value>தலைப்பில்லாத திட்டம்</value></data>
+  <data name="studio.home.title" xml:space="preserve"><value>உங்கள் யோசனையை விவரித்து அதற்கு உயிர் கொடுங்கள்</value></data>
+  <data name="studio.home.search" xml:space="preserve"><value>தேடு</value></data>
+  <data name="studio.home.sort.name" xml:space="preserve"><value>பெயர்</value></data>
+  <data name="studio.home.filter.all" xml:space="preserve"><value>எல்லா நேரமும்</value></data>
+  <data name="studio.home.filter.week" xml:space="preserve"><value>கடந்த 7 நாட்கள்</value></data>
+  <data name="studio.home.filter.month" xml:space="preserve"><value>கடந்த 30 நாட்கள்</value></data>
+  <data name="studio.home.starred" xml:space="preserve"><value>நட்சத்திரமிட்டவை</value></data>
+  <data name="studio.home.star" xml:space="preserve"><value>நட்சத்திரமிடு</value></data>
+  <data name="studio.home.unstar" xml:space="preserve"><value>நட்சத்திரத்தை நீக்கு</value></data>
+  <data name="studio.home.modified" xml:space="preserve"><value>கடைசியாக மாற்றியது</value></data>
+  <data name="studio.home.canvases" xml:space="preserve"><value>கேன்வாஸ்கள்</value></data>
+  <data name="studio.projects" xml:space="preserve"><value>திட்டங்கள்</value></data>
+  <data name="studio.templates" xml:space="preserve"><value>வார்ப்புருக்கள்</value></data>
+  <data name="studio.community" xml:space="preserve"><value>சமூகம்</value></data>
+  <data name="studio.community.banner" xml:space="preserve"><value>சமூகத்தால் உருவாக்கப்பட்ட வடிவமைப்புகளைக் கண்டறியவும்</value></data>
+  <data name="studio.community.saved" xml:space="preserve"><value>சேமிக்கப்பட்டவை</value></data>
+  <data name="studio.community.share" xml:space="preserve"><value>சமூகத்தில் பகிரவும்</value></data>
+  <data name="studio.community.shared" xml:space="preserve"><value>மதிப்பாய்வுக்கு அனுப்பப்பட்டது. ஒப்புதல் அளித்தவுடன் சமூகத்தில் தோன்றும்.</value></data>
+  <data name="studio.community.signIn" xml:space="preserve"><value>சமூகத்தில் பகிர உங்கள் HerNess கணக்கில் உள்நுழையவும்.</value></data>
+  <data name="studio.community.empty" xml:space="preserve"><value>இங்கே இன்னும் சமூக வடிவமைப்புகள் எதுவும் இல்லை.</value></data>
+  <data name="studio.projectName" xml:space="preserve"><value>திட்டப் பெயர்</value></data>
+  <data name="studio.newProject" xml:space="preserve"><value>புதிய திட்டம்</value></data>
+  <data name="studio.create" xml:space="preserve"><value>திட்டத்தை உருவாக்கு</value></data>
+  <data name="studio.rename" xml:space="preserve"><value>மறுபெயரிடு</value></data>
+  <data name="studio.duplicate" xml:space="preserve"><value>நகலெடு</value></data>
+  <data name="studio.deleteConfirm" xml:space="preserve"><value>“{0}” ஐ நீக்கவா? அதன் கேன்வாஸ்களும் பதிவேற்றிய கோப்புகளும் அகற்றப்படும்.</value></data>
+  <data name="studio.projectMeta" xml:space="preserve"><value>கேன்வாஸ்கள்: {0}, திருத்தியது {1}</value></data>
+  <data name="studio.empty.title" xml:space="preserve"><value>இன்னும் மீடியா திட்டங்கள் இல்லை</value></data>
+  <data name="studio.empty.detail" xml:space="preserve"><value>திட்டம் என்பது கேன்வாஸ்களின் பலகை. உரை, வடிவங்கள், படங்களை நீங்களே சேர்க்கலாம், அல்லது வேண்டியதை விவரித்து மாடலை அடுக்கு அடுக்காக உருவாக்க விடலாம்.</value></data>
+  <data name="studio.addCanvas" xml:space="preserve"><value>கேன்வாஸ்</value></data>
+  <data name="studio.undo" xml:space="preserve"><value>செயல்தவிர்</value></data>
+  <data name="studio.redo" xml:space="preserve"><value>மீண்டும் செய்</value></data>
+  <data name="studio.zoomOut" xml:space="preserve"><value>சிறிதாக்கு</value></data>
+  <data name="studio.zoomIn" xml:space="preserve"><value>பெரிதாக்கு</value></data>
+  <data name="studio.zoomFit" xml:space="preserve"><value>எல்லாக் கேன்வாஸ்களையும் பொருத்து</value></data>
+  <data name="studio.layers" xml:space="preserve"><value>அடுக்குகள்</value></data>
+  <data name="studio.layers.empty" xml:space="preserve"><value>இந்தக் கேன்வாஸில் இன்னும் அடுக்குகள் இல்லை.</value></data>
+  <data name="studio.layer.text" xml:space="preserve"><value>உரை</value></data>
+  <data name="studio.layer.shape" xml:space="preserve"><value>வடிவம்</value></data>
+  <data name="studio.layer.upload" xml:space="preserve"><value>பதிவேற்றம்</value></data>
+  <data name="studio.layer.show" xml:space="preserve"><value>அடுக்கைக் காட்டு</value></data>
+  <data name="studio.layer.hide" xml:space="preserve"><value>அடுக்கை மறை</value></data>
+  <data name="studio.shape.rectangle" xml:space="preserve"><value>செவ்வகம்</value></data>
+  <data name="studio.shape.ellipse" xml:space="preserve"><value>நீள்வட்டம்</value></data>
+  <data name="studio.name" xml:space="preserve"><value>பெயர்</value></data>
+  <data name="studio.opacity" xml:space="preserve"><value>ஒளிபுகாமை</value></data>
+  <data name="studio.fontSize" xml:space="preserve"><value>அளவு</value></data>
+  <data name="studio.weight.regular" xml:space="preserve"><value>வழக்கமான</value></data>
+  <data name="studio.weight.medium" xml:space="preserve"><value>நடுத்தர</value></data>
+  <data name="studio.weight.bold" xml:space="preserve"><value>தடித்த</value></data>
+  <data name="studio.fill" xml:space="preserve"><value>நிரப்பு</value></data>
+  <data name="studio.cornerRadius" xml:space="preserve"><value>மூலை ஆரம்</value></data>
+  <data name="studio.playVideo" xml:space="preserve"><value>வீடியோவை இயக்கு</value></data>
+  <data name="studio.size" xml:space="preserve"><value>அளவு</value></data>
+  <data name="studio.background" xml:space="preserve"><value>பின்னணி</value></data>
+  <data name="studio.deleteCanvas" xml:space="preserve"><value>கேன்வாஸை நீக்கு</value></data>
+  <data name="studio.ai.kind.design" xml:space="preserve"><value>வடிவமைப்பு</value></data>
+  <data name="studio.ai.kind.image" xml:space="preserve"><value>படம்</value></data>
+  <data name="studio.ai.kind.video" xml:space="preserve"><value>வீடியோ</value></data>
+  <data name="studio.ai.placeholder.design" xml:space="preserve"><value>இந்தக் கேன்வாஸில் உருவாக்க வேண்டிய வடிவமைப்பை விவரிக்கவும்</value></data>
+  <data name="studio.ai.placeholder.image" xml:space="preserve"><value>உருவாக்க வேண்டிய படத்தை விவரிக்கவும்</value></data>
+  <data name="studio.ai.placeholder.video" xml:space="preserve"><value>உருவாக்க வேண்டிய வீடியோவை விவரிக்கவும்</value></data>
+  <data name="studio.ai.run" xml:space="preserve"><value>உருவாக்கு</value></data>
+  <data name="studio.ai.planning" xml:space="preserve"><value>அடுக்குகள் திட்டமிடப்படுகின்றன</value></data>
+  <data name="studio.ai.layerProgress" xml:space="preserve"><value>அடுக்கு {0}/{1}: {2}</value></data>
+  <data name="studio.ai.drawing" xml:space="preserve"><value>படம் உருவாக்கப்படுகிறது</value></data>
+  <data name="studio.ai.renderingVideo" xml:space="preserve"><value>வீடியோ உருவாக்கப்படுகிறது. இதற்குச் சில நிமிடங்கள் ஆகலாம்.</value></data>
+  <data name="studio.ai.noPlan" xml:space="preserve"><value>மாடல் எந்த அடுக்குகளையும் தரவில்லை. மீண்டும் முயலவும் அல்லது வேறு மாடலைத் தேர்வுசெய்யவும்.</value></data>
+  <data name="studio.settings.title" xml:space="preserve"><value>மீடியா மாடல்கள்</value></data>
+  <data name="studio.settings.design" xml:space="preserve"><value>வடிவமைப்பு</value></data>
+  <data name="studio.settings.model" xml:space="preserve"><value>மாடல்</value></data>
+  <data name="studio.settings.designHelp" xml:space="preserve"><value>கோரிக்கையை அடுக்குகளாக மாற்றும் அரட்டை மாடல்.</value></data>
+  <data name="studio.settings.source" xml:space="preserve"><value>மூலம்</value></data>
+  <data name="studio.settings.source.provider" xml:space="preserve"><value>வழங்குநர்</value></data>
+  <data name="studio.settings.source.local" xml:space="preserve"><value>உள்ளூர்</value></data>
+  <data name="studio.settings.modelDefault" xml:space="preserve"><value>வழங்குநர் இயல்புநிலை</value></data>
+  <data name="studio.settings.local" xml:space="preserve"><value>உள்ளூர் சேவையகம்</value></data>
+  <data name="studio.settings.localURL" xml:space="preserve"><value>அடிப்படை URL</value></data>
+  <data name="studio.settings.localHelp" xml:space="preserve"><value>இந்தக் கணினி அல்லது பிணையத்தில் OpenAI-இணக்கமான சேவையகம். மேலே உள்ள மூலம் உள்ளூர் என அமைக்கப்பட்டால், அங்கு உள்ளிட்ட மாடல் பெயருடன் பயன்படுத்தப்படும்.</value></data>
+  <data name="studio.settings.music.connect" xml:space="preserve"><value>API-ஐ இணைக்கவும்</value></data>
+  <data name="studio.settings.music.type.standard" xml:space="preserve"><value>இசை சேவையகம்</value></data>
+  <data name="studio.settings.music.type.elevenlabs" xml:space="preserve"><value>ElevenLabs</value></data>
+  <data name="studio.settings.music.name" xml:space="preserve"><value>பெயர்</value></data>
+  <data name="studio.settings.music.key" xml:space="preserve"><value>API விசை</value></data>
+  <data name="studio.settings.music.help" xml:space="preserve"><value>இசை சேவையகம் POST /audio/generations-க்கு பதிலளிக்கிறது மற்றும் /models-ல் அதன் மாதிரிகளை பட்டியலிடுகிறது; tools/music_server.py அவற்றில் ஒன்றாகும். API விசை கீசெயினில் வைக்கப்பட்டுள்ளது.</value></data>
+  <data name="studio.ai.kind.next" xml:space="preserve"><value>அடுத்த திரை</value></data>
+  <data name="studio.ai.placeholder.next" xml:space="preserve"><value>அடுத்த திரையை விவரிக்கவும், அல்லது ஓட்டத்தைத் தொடர காலியாக விடவும்</value></data>
+  <data name="studio.ai.noImages" xml:space="preserve"><value>பட உருவாக்கி எதுவும் இணைக்கப்படவில்லை, எனவே பட அடுக்குகள் இடம்பிடிப்பான்களாக விடப்பட்டன. ஒன்றை இணைத்து, ஒவ்வொரு படத்தையும் அதன் அடுக்கிலிருந்து உருவாக்கவும்.</value></data>
+  <data name="studio.screenNumber" xml:space="preserve"><value>திரை {0}</value></data>
+  <data name="studio.layer.icon" xml:space="preserve"><value>ஐகான்</value></data>
+  <data name="studio.layer.lock" xml:space="preserve"><value>அடுக்கைப் பூட்டு</value></data>
+  <data name="studio.layer.unlock" xml:space="preserve"><value>அடுக்கின் பூட்டைத் திற</value></data>
+  <data name="studio.layer.front" xml:space="preserve"><value>முன்னே கொண்டு வா</value></data>
+  <data name="studio.layer.back" xml:space="preserve"><value>பின்னே அனுப்பு</value></data>
+  <data name="studio.position" xml:space="preserve"><value>நிலை</value></data>
+  <data name="studio.rotation" xml:space="preserve"><value>சுழற்சி</value></data>
+  <data name="studio.appearance" xml:space="preserve"><value>தோற்றம்</value></data>
+  <data name="studio.gradient" xml:space="preserve"><value>கிரேடியன்ட்</value></data>
+  <data name="studio.stroke" xml:space="preserve"><value>கோடு</value></data>
+  <data name="studio.shadow" xml:space="preserve"><value>நிழல்</value></data>
+  <data name="studio.symbol" xml:space="preserve"><value>குறியீட்டின் பெயர்</value></data>
+  <data name="studio.imagePrompt" xml:space="preserve"><value>பட விவரணை</value></data>
+  <data name="studio.generateImage" xml:space="preserve"><value>படத்தை உருவாக்கு</value></data>
+  <data name="studio.export" xml:space="preserve"><value>ஏற்றுமதி</value></data>
+  <data name="studio.exportAll" xml:space="preserve"><value>அனைத்து கேன்வாஸ்களையும் ஏற்றுமதி செய்</value></data>
+  <data name="studio.font.default" xml:space="preserve"><value>சான்ஸ்</value></data>
+  <data name="studio.font.rounded" xml:space="preserve"><value>வட்டமான</value></data>
+  <data name="studio.font.serif" xml:space="preserve"><value>செரிஃப்</value></data>
+  <data name="studio.font.mono" xml:space="preserve"><value>மோனோ</value></data>
+  <data name="studio.tool.move" xml:space="preserve"><value>நகர்த்து</value></data>
+  <data name="studio.tool.hand" xml:space="preserve"><value>கை</value></data>
+  <data name="studio.tool.pen" xml:space="preserve"><value>பேனா</value></data>
+  <data name="studio.tool.pencil" xml:space="preserve"><value>பென்சில்</value></data>
+  <data name="studio.shape.line" xml:space="preserve"><value>கோடு</value></data>
+  <data name="studio.shape.arrow" xml:space="preserve"><value>அம்பு</value></data>
+  <data name="studio.shape.polygon" xml:space="preserve"><value>பலகோணம்</value></data>
+  <data name="studio.shape.star" xml:space="preserve"><value>நட்சத்திரம்</value></data>
+  <data name="studio.actions" xml:space="preserve"><value>செயல்கள்</value></data>
+  <data name="studio.unlockAll" xml:space="preserve"><value>அனைத்து அடுக்குகளின் பூட்டைத் திற</value></data>
+  <data name="studio.frames.phone" xml:space="preserve"><value>தொலைபேசி</value></data>
+  <data name="studio.frames.tablet" xml:space="preserve"><value>டேப்லெட்</value></data>
+  <data name="studio.frames.desktop" xml:space="preserve"><value>டெஸ்க்டாப்</value></data>
+  <data name="studio.frames.presentation" xml:space="preserve"><value>விளக்கக்காட்சி</value></data>
+  <data name="studio.frames.watch" xml:space="preserve"><value>கடிகாரம்</value></data>
+  <data name="studio.frames.paper" xml:space="preserve"><value>காகிதம்</value></data>
+  <data name="studio.frames.social" xml:space="preserve"><value>சமூக ஊடகம்</value></data>
+  <data name="studio.tool.scale" xml:space="preserve"><value>அளவிடு</value></data>
+  <data name="studio.tool.section" xml:space="preserve"><value>பிரிவு</value></data>
+  <data name="studio.tool.slice" xml:space="preserve"><value>துண்டு</value></data>
+  <data name="studio.tool.textPath" xml:space="preserve"><value>பாதையில் உரை</value></data>
+  <data name="studio.tool.comment" xml:space="preserve"><value>கருத்து</value></data>
+  <data name="studio.search" xml:space="preserve"><value>தேடு</value></data>
+  <data name="studio.cut" xml:space="preserve"><value>வெட்டு</value></data>
+  <data name="studio.paste" xml:space="preserve"><value>ஒட்டு</value></data>
+  <data name="bots.preset.assistant" xml:space="preserve"><value>உதவியாளர்</value></data>
+  <data name="bots.preset.researcher" xml:space="preserve"><value>ஆய்வாளர்</value></data>
+  <data name="bots.preset.coder" xml:space="preserve"><value>நிரலாளர்</value></data>
+  <data name="bots.new" xml:space="preserve"><value>புதிய பாட்</value></data>
+  <data name="bots.edit" xml:space="preserve"><value>பாட்டைத் திருத்து</value></data>
+  <data name="bots.clear" xml:space="preserve"><value>அரட்டையை அழி</value></data>
+  <data name="bots.send" xml:space="preserve"><value>செய்தி அனுப்பு</value></data>
+  <data name="bots.deleteConfirm" xml:space="preserve"><value>“{0}” மற்றும் அதன் அரட்டையை நீக்கவா?</value></data>
+  <data name="bots.empty.title" xml:space="preserve"><value>இன்னும் பாட்கள் இல்லை</value></data>
+  <data name="bots.empty.detail" xml:space="preserve"><value>பாட் என்பது சொந்த அறிவுறுத்தல்கள், மாடல் மற்றும் தொடர் அரட்டை கொண்ட உதவியாளர். அதற்கு ஒரு கோப்புறையைக் கொடுத்தால் அங்கே முகவராகச் செயல்படும்.</value></data>
+  <data name="bots.greeting" xml:space="preserve"><value>தொடங்க {0} க்கு ஒரு செய்தி அனுப்பவும்.</value></data>
+  <data name="bots.placeholder" xml:space="preserve"><value>{0} க்குச் செய்தி</value></data>
+  <data name="bots.agentIn" xml:space="preserve"><value>{0} இல் முகவர்</value></data>
+  <data name="bots.name" xml:space="preserve"><value>பெயர்</value></data>
+  <data name="bots.icon" xml:space="preserve"><value>ஐகான்</value></data>
+  <data name="bots.instructions" xml:space="preserve"><value>அறிவுறுத்தல்கள்</value></data>
+  <data name="bots.instructionsHelp" xml:space="preserve"><value>பாட் எப்படி நடந்துகொள்ள வேண்டும், அதற்கு என்ன தெரியும், எப்படிப் பதிலளிக்கும்.</value></data>
+  <data name="bots.workspace" xml:space="preserve"><value>முகவர் கோப்புறை</value></data>
+  <data name="bots.workspace.none" xml:space="preserve"><value>ஏதுமில்லை: அரட்டை மட்டும்</value></data>
+  <data name="bots.workspace.choose" xml:space="preserve"><value>கோப்புறையைத் தேர்வுசெய்</value></data>
+  <data name="bots.workspace.clear" xml:space="preserve"><value>அகற்று</value></data>
+  <data name="bots.workspaceHelp" xml:space="preserve"><value>கோப்புறை இருந்தால், பாட் கேட்காமலேயே அதில் படிக்கவும் எழுதவும் கட்டளைகளை இயக்கவும் முடியும்; பிணைய அணுகல் இருக்காது. கோப்புறை இல்லையெனில் அரட்டை மட்டுமே.</value></data>
+  <data name="bots.error.noReply" xml:space="preserve"><value>பாட் பதிலளிக்கவில்லை.</value></data>
+  <data name="bots.status.delivered" xml:space="preserve"><value>பாட்டிடம் சேர்ந்தது</value></data>
+  <data name="bots.status.waiting" xml:space="preserve"><value>பாட்டிற்காகக் காத்திருக்கிறது</value></data>
+  <data name="tasks.plan.title" xml:space="preserve"><value>பணியைத் திட்டமிடு</value></data>
+  <data name="tasks.plan.subtitle" xml:space="preserve"><value>HerNess உங்களுக்காகத் தொடர் வேலைகளை இயக்குகிறது.</value></data>
+  <data name="tasks.upcoming" xml:space="preserve"><value>வரவிருப்பவை</value></data>
+  <data name="tasks.instructions" xml:space="preserve"><value>அறிவுறுத்தல்கள்…</value></data>
+  <data name="tasks.repeat" xml:space="preserve"><value>மீண்டும்</value></data>
+  <data name="tasks.time" xml:space="preserve"><value>நேரம்</value></data>
+  <data name="tasks.day" xml:space="preserve"><value>நாள்</value></data>
+  <data name="tasks.advanced" xml:space="preserve"><value>மேம்பட்டது</value></data>
+  <data name="tasks.create" xml:space="preserve"><value>உருவாக்கு</value></data>
+  <data name="tasks.repeat.hourly" xml:space="preserve"><value>மணிநேரத்திற்கு ஒருமுறை</value></data>
+  <data name="tasks.repeat.daily" xml:space="preserve"><value>தினமும்</value></data>
+  <data name="tasks.repeat.weekdays" xml:space="preserve"><value>வார நாட்கள்</value></data>
+  <data name="tasks.repeat.weekly" xml:space="preserve"><value>வாரந்தோறும்</value></data>
+  <data name="tasks.repeat.custom" xml:space="preserve"><value>தனிப்பயன்</value></data>
+  <data name="bots.preset.assistant.detail" xml:space="preserve"><value>அன்றாடப் பணிகளில் உதவி பெறுங்கள்</value></data>
+  <data name="bots.preset.researcher.detail" xml:space="preserve"><value>தலைப்புகளை ஆராய்ந்து ஆதாரங்களை ஒப்பிடுங்கள்</value></data>
+  <data name="bots.preset.coder.detail" xml:space="preserve"><value>குறியீடு எழுதி சிக்கல்களைத் தீர்க்கவும்</value></data>
+  <data name="tasks.suggestion.email.title" xml:space="preserve"><value>மின்னஞ்சல் கண்காணிப்பு</value></data>
+  <data name="tasks.suggestion.email.detail" xml:space="preserve"><value>முக்கிய மின்னஞ்சல்களைப் பார்த்து கவனம் தேவைப்படுவதைச் சுருக்கமாகக் கூறு.</value></data>
+  <data name="tasks.suggestion.reading.title" xml:space="preserve"><value>வார இறுதி வாசிப்பு</value></data>
+  <data name="tasks.suggestion.reading.detail" xml:space="preserve"><value>ஒவ்வொரு வாரமும் என் ஆர்வங்களுக்கு ஏற்ற கட்டுரையைக் கண்டுபிடி.</value></data>
+  <data name="tasks.suggestion.prices.title" xml:space="preserve"><value>விலை அறிவிப்புகள்</value></data>
+  <data name="tasks.suggestion.prices.detail" xml:space="preserve"><value>நான் பின்தொடரும் பொருட்களின் விலையைச் சரிபார்த்து தள்ளுபடிகளைத் தெரிவி.</value></data>
+  <data name="tasks.suggestion.events.title" xml:space="preserve"><value>நிகழ்வுகளைக் கண்டுபிடி</value></data>
+  <data name="tasks.suggestion.events.detail" xml:space="preserve"><value>என் ஆர்வங்களுக்கு ஏற்ற இசை நிகழ்ச்சிகளையும் நிகழ்வுகளையும் கண்டுபிடி.</value></data>
+  <data name="tasks.suggestion.weekend.title" xml:space="preserve"><value>என் வார இறுதித் திட்டம்</value></data>
+  <data name="tasks.suggestion.weekend.detail" xml:space="preserve"><value>என் விருப்பங்களின்படி வார இறுதிச் செயல்பாடுகளைப் பரிந்துரை.</value></data>
+  <data name="tasks.suggestions.memory" xml:space="preserve"><value>உங்கள் நினைவகத்தின் அடிப்படையில்</value></data>
+  <data name="tasks.suggestions.personalizing" xml:space="preserve"><value>உங்கள் நினைவகத்திலிருந்து பரிந்துரைகள் தயாராகின்றன…</value></data>
+  <data name="tasks.suggestions.unavailable" xml:space="preserve"><value>மாதிரிப் பரிந்துரைகள் · தனிப்பயனாக்கம் கிடைக்கவில்லை</value></data>
+  <data name="tasks.suggestions.refresh" xml:space="preserve"><value>பரிந்துரைகளைப் புதுப்பி</value></data>
+  <data name="tasks.suggestions.instruction" xml:space="preserve"><value>என் ஆர்வங்கள் மற்றும் விருப்பங்களுக்கு ஏற்ப முடிவைத் தயார் செய். கண்டுபிடித்ததைச் சுருக்கிக் கூறு. தகவல் அல்லது அணுகல் இல்லையெனில் தெரிவி.</value></data>
+  <data name="media.music" xml:space="preserve"><value>இசை</value></data>
+  <data name="studio.music" xml:space="preserve"><value>இசை</value></data>
+  <data name="studio.library" xml:space="preserve"><value>நூலகம்</value></data>
+  <data name="studio.music.composing" xml:space="preserve"><value>இசை அமைக்கப்படுகிறது. இதற்கு சில நிமிடங்கள் ஆகலாம்.</value></data>
+  <data name="studio.music.song" xml:space="preserve"><value>பாடல்</value></data>
+  <data name="studio.music.inspector" xml:space="preserve"><value>விவரங்கள்</value></data>
+  <data name="studio.music.section" xml:space="preserve"><value>பிரிவு</value></data>
+  <data name="studio.music.section.delete" xml:space="preserve"><value>பிரிவை நீக்கு</value></data>
+  <data name="studio.music.lyrics" xml:space="preserve"><value>பாடல் வரிகள்</value></data>
+  <data name="studio.music.track" xml:space="preserve"><value>டிராக்</value></data>
+  <data name="studio.music.track.generate" xml:space="preserve"><value>டிராக்கை உருவாக்கு</value></data>
+  <data name="studio.music.track.empty" xml:space="preserve"><value>இன்னும் ஆடியோ இல்லை</value></data>
+  <data name="studio.music.track.delete" xml:space="preserve"><value>டிராக்கை நீக்கு</value></data>
+  <data name="studio.music.mix" xml:space="preserve"><value>மிக்ஸ்</value></data>
+  <data name="studio.music.tempo" xml:space="preserve"><value>டெம்போ மற்றும் சுருதி</value></data>
+  <data name="studio.music.generating" xml:space="preserve"><value>{0} டிராக்குகள் உருவாக்கப்படுகின்றன</value></data>
+  <data name="studio.music.placeholder" xml:space="preserve"><value>பாடலை விவரிக்கவும்: மனநிலை, கதை, கருவிகள், யார் பாடுகிறார்கள்</value></data>
+  <data name="studio.music.empty" xml:space="preserve"><value>மேலே ஒரு பாடலை விவரிக்கவும் அல்லது வெற்றுப் பாடலைத் தொடங்கவும். முதலில் திட்டம் வரும்: பிரிவுகள், வரிகள் மற்றும் ஒவ்வொரு கருவிக்கும் ஒரு டிராக், ஆடியோ உருவாக்கப்படுவதற்கு முன்பு நீங்கள் அவற்றை மாற்றலாம்.</value></data>
+  <data name="studio.music.plan" xml:space="preserve"><value>பாடல் எழுது</value></data>
+  <data name="studio.music.new" xml:space="preserve"><value>வெற்றுப் பாடல்</value></data>
+  <data name="studio.music.noPlan" xml:space="preserve"><value>மாதிரி பாடல் திட்டத்தை வழங்கவில்லை. மீண்டும் முயற்சிக்கவும் அல்லது வேறு மாதிரியைத் தேர்ந்தெடுக்கவும்.</value></data>
+  <data name="studio.music.deleteConfirm" xml:space="preserve"><value>“{0}” ஐ நீக்கவா? அதன் டிராக்குகள் மற்றும் ஆடியோ கோப்புகள் அகற்றப்படும்.</value></data>
+  <data name="studio.music.trackCount" xml:space="preserve"><value>{0} டிராக்குகள்</value></data>
+  <data name="studio.music.bpm" xml:space="preserve"><value>{0} BPM</value></data>
+  <data name="studio.music.key" xml:space="preserve"><value>சுருதி</value></data>
+  <data name="studio.music.generateAll" xml:space="preserve"><value>அனைத்தையும் உருவாக்கு</value></data>
+  <data name="studio.music.regenerate" xml:space="preserve"><value>இந்த டிராக்கை மீண்டும் உருவாக்கு</value></data>
+  <data name="studio.music.script" xml:space="preserve"><value>ஸ்கிரிப்ட்</value></data>
+  <data name="studio.music.artists" xml:space="preserve"><value>கலைஞர்கள்</value></data>
+  <data name="studio.music.artist.add" xml:space="preserve"><value>கலைஞரைச் சேர்</value></data>
+  <data name="studio.music.artist.default" xml:space="preserve"><value>கலைஞர் {0}</value></data>
+  <data name="studio.music.artist.name" xml:space="preserve"><value>பெயர்</value></data>
+  <data name="studio.music.artist.style" xml:space="preserve"><value>குரல் மற்றும் பாணி</value></data>
+  <data name="studio.music.section.add" xml:space="preserve"><value>பிரிவைச் சேர்</value></data>
+  <data name="studio.music.section.default" xml:space="preserve"><value>சரணம்</value></data>
+  <data name="studio.music.section.bars" xml:space="preserve"><value>{0} பார்கள்</value></data>
+  <data name="studio.music.line.add" xml:space="preserve"><value>வரியைச் சேர்</value></data>
+  <data name="studio.music.line.placeholder" xml:space="preserve"><value>பாடல் வரி</value></data>
+  <data name="studio.music.line.unsung" xml:space="preserve"><value>யாரும் இல்லை</value></data>
+  <data name="studio.music.track.add" xml:space="preserve"><value>டிராக்கைச் சேர்</value></data>
+  <data name="studio.music.track.instrument" xml:space="preserve"><value>இசைக்கருவி</value></data>
+  <data name="studio.music.track.prompt" xml:space="preserve"><value>எவ்வாறு இசைக்க வேண்டும்</value></data>
+  <data name="studio.music.track.vocal" xml:space="preserve"><value>குரல் · {0}</value></data>
+  <data name="studio.music.mute" xml:space="preserve"><value>ஒலியடக்கு</value></data>
+  <data name="studio.music.solo" xml:space="preserve"><value>தனி</value></data>
+  <data name="library.all" xml:space="preserve"><value>அனைத்தும்</value></data>
+  <data name="library.kind.image" xml:space="preserve"><value>படங்கள்</value></data>
+  <data name="library.kind.video" xml:space="preserve"><value>வீடியோக்கள்</value></data>
+  <data name="library.kind.audio" xml:space="preserve"><value>குரல்</value></data>
+  <data name="library.kind.music" xml:space="preserve"><value>இசை</value></data>
+  <data name="library.kind.document" xml:space="preserve"><value>ஆவணங்கள்</value></data>
+  <data name="library.add" xml:space="preserve"><value>கோப்புகளைச் சேர்</value></data>
+  <data name="library.addFailed" xml:space="preserve"><value>{0} கோப்புகளைச் சேர்க்க முடியவில்லை.</value></data>
+  <data name="library.open" xml:space="preserve"><value>திற</value></data>
+  <data name="library.empty.title" xml:space="preserve"><value>இங்கே இன்னும் எதுவும் இல்லை</value></data>
+  <data name="library.empty.detail" xml:space="preserve"><value>நீங்கள் உருவாக்கும் படங்கள், வீடியோக்கள், குரல் மற்றும் இசை தானாகவே இங்கே சேமிக்கப்படும். ஆவணங்கள் மற்றும் பிற கோப்புகளை நீங்களே சேர்க்கவும்.</value></data>
+  <data name="backgroundTasks.title" xml:space="preserve"><value>பின்னணிப் பணிகள்</value></data>
+  <data name="backgroundTasks.empty" xml:space="preserve"><value>பின்னணிப் பணிகள் இல்லை</value></data>
+  <data name="backgroundTasks.finished" xml:space="preserve"><value>முடிந்தவை</value></data>
+  <data name="backgroundTasks.failed" xml:space="preserve"><value>தோல்வி (வெளியேறு {0})</value></data>
+  <data name="backgroundTasks.stopped" xml:space="preserve"><value>நிறுத்தப்பட்டது</value></data>
+  <data name="backgroundTasks.clear" xml:space="preserve"><value>முடிந்தவற்றை அழி</value></data>
+  <data name="backgroundTasks.runningCount" xml:space="preserve"><value>இயங்கும் பணிகள்: {0}</value></data>
+  <data name="backgroundTasks.wake" xml:space="preserve"><value>பின்னணிப் பணி “{0}” வெளியேறு குறியீடு {1} உடன் முடிந்தது. terminal_session (அமர்வு {2}) மூலம் அதன் வெளியீட்டைப் படித்துத் தொடரவும்.</value></data>
+  <data name="backgroundTasks.waitingInput" xml:space="preserve"><value>உள்ளீட்டிற்காகக் காத்திருக்கிறது</value></data>
+  <data name="local.installed" xml:space="preserve"><value>நிறுவப்பட்டது</value></data>
+  <data name="marketplace.title" xml:space="preserve"><value>சந்தை</value></data>
+  <data name="marketplace.empty" xml:space="preserve"><value>செருகுநிரல்கள் இல்லை</value></data>
+  <data name="marketplace.emptyHint" xml:space="preserve"><value>பதிவேட்டை ஏற்ற, புதுப்பி என்பதை அழுத்தவும்.</value></data>
+  <data name="marketplace.install" xml:space="preserve"><value>நிறுவவும்</value></data>
+  <data name="marketplace.search" xml:space="preserve"><value>செருகுநிரல்களைத் தேடுங்கள்</value></data>
+  <data name="marketplace.update" xml:space="preserve"><value>v{0} → v{1}ஐப் புதுப்பிக்கவும்</value></data>
+  <data name="marketplace.by" xml:space="preserve"><value>{0} மூலம்</value></data>
+  <data name="market.tab.plugins" xml:space="preserve"><value>செருகுநிரல்கள்</value></data>
+  <data name="market.tab.skills" xml:space="preserve"><value>திறன்கள்</value></data>
+  <data name="market.tab.starters" xml:space="preserve"><value>திட்டத் தொடக்கிகள்</value></data>
+  <data name="starters.intro" xml:space="preserve"><value>ஒரு தொடக்கியையும் வெற்றுக் கோப்புறையையும் தேர்வுசெய்யவும். ப்ராம்ப்ட் உள்ளீட்டுப் பெட்டியில் வரும்; படித்து அனுப்பலாம்.</value></data>
+  <data name="starters.use" xml:space="preserve"><value>தொடக்கியைப் பயன்படுத்து</value></data>
+  <data name="starters.chooseFolder" xml:space="preserve"><value>புதிய திட்டத்திற்கு ஒரு வெற்றுக் கோப்புறையைத் தேர்வுசெய்யவும்.</value></data>
+  <data name="starters.web.title" xml:space="preserve"><value>வலைப் பயன்பாடு</value></data>
+  <data name="starters.web.detail" xml:space="preserve"><value>TypeScript, ஒரு தளவமைப்பு, எடுத்துக்காட்டு API வழி மற்றும் லின்டிங்குடன் Next.js.</value></data>
+  <data name="starters.landing.title" xml:space="preserve"><value>லேண்டிங் பக்கம்</value></data>
+  <data name="starters.landing.detail" xml:space="preserve"><value>ஹீரோ, அம்சங்கள், விலை மற்றும் தொடர்புடன் நிலையான HTML மற்றும் CSS. பில்ட் படி இல்லை.</value></data>
+  <data name="starters.api.title" xml:space="preserve"><value>API சேவை</value></data>
+  <data name="starters.api.detail" xml:space="preserve"><value>நலச் சோதனை, எடுத்துக்காட்டு வளம், அமைப்புகள் மற்றும் சோதனைகளுடன் FastAPI.</value></data>
+  <data name="starters.ios.title" xml:space="preserve"><value>iOS பயன்பாடு</value></data>
+  <data name="starters.ios.detail" xml:space="preserve"><value>இரண்டு திரைகள், கவனிக்கக்கூடிய மாடல் மற்றும் ஒரு யூனிட் சோதனையுடன் SwiftUI.</value></data>
+  <data name="starters.worker.title" xml:space="preserve"><value>Cloudflare Worker</value></data>
+  <data name="starters.worker.detail" xml:space="preserve"><value>வகைப்படுத்திய பைண்டிங்குகள் மற்றும் ஒரு சோதனையுடன் Workers இல் TypeScript API.</value></data>
+  <data name="starters.cli.title" xml:space="preserve"><value>கட்டளை வரி கருவி</value></data>
+  <data name="starters.cli.detail" xml:space="preserve"><value>துணைக்கட்டளைகள், சோதனைகள் மற்றும் நிறுவல் வழிமுறைகளுடன் Python தொகுப்பு.</value></data>
+  <data name="common.cancel" xml:space="preserve"><value>ரத்து</value></data>
+  <data name="common.connect" xml:space="preserve"><value>இணை</value></data>
+  <data name="common.copied" xml:space="preserve"><value>நகலெடுக்கப்பட்டது</value></data>
+  <data name="common.delete" xml:space="preserve"><value>நீக்கு</value></data>
+  <data name="common.done" xml:space="preserve"><value>முடிந்தது</value></data>
+  <data name="common.download" xml:space="preserve"><value>பதிவிறக்கவும்</value></data>
+  <data name="common.idle" xml:space="preserve"><value>சும்மா</value></data>
+  <data name="common.refresh" xml:space="preserve"><value>புதுப்பி</value></data>
+  <data name="common.remove" xml:space="preserve"><value>அகற்று</value></data>
+  <data name="common.start" xml:space="preserve"><value>தொடங்கு</value></data>
+  <data name="common.stop" xml:space="preserve"><value>நிறுத்து</value></data>
+  <data name="common.test" xml:space="preserve"><value>சோதனை</value></data>
+  <data name="common.save" xml:space="preserve"><value>சேமிக்கவும்</value></data>
+  <data name="common.view" xml:space="preserve"><value>காண்க</value></data>
+  <data name="composer.add" xml:space="preserve"><value>சேர்</value></data>
+  <data name="attachment.addApp" xml:space="preserve"><value>டாட்ஸ் ஹார்னஸ் பயன்பாட்டைச் சேர்க்கவும்</value></data>
+  <data name="attachment.projectDetail" xml:space="preserve"><value>புதிய அரட்டைகளுக்கான திட்டத்தைத் தேர்ந்தெடுக்கவும்</value></data>
+  <data name="attachment.goal" xml:space="preserve"><value>இலக்கு</value></data>
+  <data name="attachment.goalDetail" xml:space="preserve"><value>வேலை செய்ய ஒரு இலக்கை அமைக்கவும்</value></data>
+  <data name="attachment.plan" xml:space="preserve"><value>திட்ட முறை</value></data>
+  <data name="attachment.planDetail" xml:space="preserve"><value>திட்ட பயன்முறையை இயக்கவும்</value></data>
+  <data name="attachment.saveSkill" xml:space="preserve"><value>ஒரு திறமையை சேமிக்கவும்</value></data>
+  <data name="attachment.plugins" xml:space="preserve"><value>செருகுநிரல்கள்</value></data>
+  <data name="attachment.slashCommands" xml:space="preserve"><value>ஸ்லாஷ் கட்டளைகள்</value></data>
+  <data name="attachment.folder" xml:space="preserve"><value>கோப்புறையைச் சேர்</value></data>
+  <data name="attachment.connectors" xml:space="preserve"><value>இணைப்பிகள்</value></data>
+  <data name="attachment.documentsDetail" xml:space="preserve"><value>ஆவண கலைப்பொருட்களை உருவாக்கி திருத்தவும்</value></data>
+  <data name="attachment.pdfDetail" xml:space="preserve"><value>PDF கோப்புகளைப் படிக்கவும், உருவாக்கவும் மற்றும் சரிபார்க்கவும்</value></data>
+  <data name="attachment.spreadsheetsDetail" xml:space="preserve"><value>விரிதாள் கோப்புகளை உருவாக்கி திருத்தவும்</value></data>
+  <data name="modelPicker.model" xml:space="preserve"><value>மாதிரி</value></data>
+  <data name="modelPicker.speed" xml:space="preserve"><value>வேகம்</value></data>
+  <data name="modelPicker.maximum" xml:space="preserve"><value>அதிகபட்சம்</value></data>
+  <data name="modelPicker.standard" xml:space="preserve"><value>தரநிலை</value></data>
+  <data name="modelPicker.fast" xml:space="preserve"><value>வேகமாக</value></data>
+  <data name="modelPicker.auto" xml:space="preserve"><value>ஆட்டோ</value></data>
+  <data name="modelPicker.autoHint" xml:space="preserve"><value>ஒரு செய்திக்கான மாதிரி மற்றும் முயற்சியைத் தேர்ந்தெடுக்கிறது</value></data>
+  <data name="settings.sshPassword" xml:space="preserve"><value>கடவுச்சொல் (ஒருமுறை பயன்படும்)</value></data>
+  <data name="settings.sshRememberPassword" xml:space="preserve"><value>கடவுச்சொல்லை நினைவில் கொள்ளுங்கள்</value></data>
+  <data name="settings.sshRememberPassword.hint" xml:space="preserve"><value>தேவையில்லை: கடவுச்சொல் திறவுகோலை நிறுவ ஒருமுறை மட்டுமே பயன்படும். அது ~/.ssh/config இல் எப்போதும் எழுதப்படாது.</value></data>
+  <data name="ssh.continue" xml:space="preserve"><value>தொடர்</value></data>
+  <data name="ssh.enrolling" xml:space="preserve"><value>திறவுகோலை நிறுவுகிறது…</value></data>
+  <data name="ssh.enrolled.hint" xml:space="preserve"><value>அடுத்த இணைப்புகள் திறவுகோலைப் பயன்படுத்தும்; கடவுச்சொல் இனி தேவையில்லை.</value></data>
+  <data name="ssh.retry" xml:space="preserve"><value>மீண்டும் முயற்சி</value></data>
+  <data name="ssh.retryHint" xml:space="preserve"><value>முகவரி, பயனர் பெயர், கடவுச்சொல்லை சரிபார்த்து மீண்டும் முயற்சிக்கவும்.</value></data>
+  <data name="ssh.installKeyManually" xml:space="preserve"><value>வழங்கியில் உள்ள ~/.ssh/authorized_keys இல் இந்தத் திறவுகோலைச் சேர்த்து மீண்டும் முயற்சிக்கவும்.</value></data>
+  <data name="ssh.copyPublicKey" xml:space="preserve"><value>திறவுகோலை நகலெடு</value></data>
+  <data name="ssh.error.passwordAuthDisabled" xml:space="preserve"><value>வழங்கி கடவுச்சொல் உள்நுழைவை ஏற்காது.</value></data>
+  <data name="ssh.error.authFailed" xml:space="preserve"><value>{0} உள்நுழைவை மறுத்தது.</value></data>
+  <data name="ssh.error.hostKeyChanged" xml:space="preserve"><value>{0} இன் வழங்கி திறவுகோல் மாறிவிட்டது. வழங்கி மீண்டும் நிறுவப்படாவிட்டால் தொடராதீர்கள்.</value></data>
+  <data name="ssh.error.invalidInput" xml:space="preserve"><value>சரியான மாற்றுப்பெயர், ஹோஸ்ட் பெயர், பயனர் பெயர் மற்றும் போர்ட்டை உள்ளிடவும்.</value></data>
+  <data name="sidebar.projects" xml:space="preserve"><value>திட்டங்கள்</value></data>
+  <data name="sidebar.recent" xml:space="preserve"><value>சமீபத்திய</value></data>
+  <data name="sidebar.search" xml:space="preserve"><value>அரட்டைகளைத் தேடுங்கள்</value></data>
+  <data name="sidebar.sites" xml:space="preserve"><value>தளங்கள்</value></data>
+  <data name="sidebar.scheduled" xml:space="preserve"><value>திட்டமிடப்பட்டது</value></data>
+  <data name="sidebar.addProject" xml:space="preserve"><value>திட்டத்தைச் சேர்</value></data>
+  <data name="settings.compactTrigger" xml:space="preserve"><value>சூழலைத் தானாகச் சுருக்கும் வரம்பு</value></data>
+  <data name="settings.compactTrigger.hint" xml:space="preserve"><value>ஒவ்வொரு மாடலின் சூழல் சாளரத்தின் விகிதம். சுருக்கம் ப்ராம்ப்ட் கேச்சை மீண்டும் எழுதுவதால், அதிக மதிப்பு கேச்சை நீண்ட நேரம் வைத்திருக்கும்.</value></data>
+  <data name="settings.explore.subagents" xml:space="preserve"><value>துணை முகவர்களைப் பயன்படுத்து</value></data>
+  <data name="settings.explore.hint" xml:space="preserve"><value>இயக்கத்தில் இருக்கும்போது, கடினமான அல்லது நீண்ட பணிகளில் பல கோப்புகளைத் தேடும் வேலையையும் பெரிய மாற்றத்தின் தனிப் பகுதிகளையும் முகவர் இணையான துணை முகவர்களிடம் ஒப்படைக்கும்; முதன்மை உரையாடலில் அவற்றின் சுருக்கம் மட்டுமே சேரும். திருத்தும் துணை முகவர் தனக்கு ஒதுக்கிய கோப்புகளில் மட்டுமே எழுத முடியும்; ஒதுக்கீடுகள் ஒன்றுடன் ஒன்று மோதக் கூடாது. எளிய பணிகளில் அழைக்கப்படாது. ஒவ்வொரு துணை முகவரும் தனி மாதிரி இயக்கம்; செலவைக் குறைக்க இதை அணைக்கவும்.</value></data>
+  <data name="settings.responseStyle" xml:space="preserve"><value>பதில் பாணி</value></data>
+  <data name="settings.responseStyle.hint" xml:space="preserve"><value>இந்த அமைப்பு தூண்டுதலை மீண்டும் எழுதாது. சுருக்கம்/அல்ட்ரா சிறந்த முயற்சி விருப்பங்கள்; டோக்கன் எண்ணிக்கை, நிறைவு அல்லது குறைந்த செலவுக்கு உத்தரவாதம் இல்லை.</value></data>
+  <data name="responseStyle.balanced" xml:space="preserve"><value>சமநிலை</value></data>
+  <data name="responseStyle.concise" xml:space="preserve"><value>சுருக்கம்</value></data>
+  <data name="responseStyle.ultra" xml:space="preserve"><value>அல்ட்ரா</value></data>
+  <data name="responseStyle.detailed" xml:space="preserve"><value>விரிவான</value></data>
+  <data name="settings.computerUse.enable" xml:space="preserve"><value>கணினிப் பயன்பாட்டை இயக்கு</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>பதிப்பும் புதுப்பிப்புகளும்</value></data>
+  <data name="settings.updates.available" xml:space="preserve"><value>புதிய பதிப்பு கிடைக்கிறது: v{0}</value></data>
+  <data name="settings.updates.download" xml:space="preserve"><value>புதுப்பிப்பைப் பதிவிறக்கு</value></data>
+  <data name="dock.branch" xml:space="preserve"><value>கிளை</value></data>
+  <data name="dock.refresh" xml:space="preserve"><value>புதுப்பி</value></data>
+  <data name="dock.commit" xml:space="preserve"><value>கமிட்</value></data>
+  <data name="dock.push" xml:space="preserve"><value>புஷ்</value></data>
+  <data name="dock.fetch" xml:space="preserve"><value>ஃபெட்ச்</value></data>
+  <data name="dock.commitOrPush" xml:space="preserve"><value>Commit அல்லது Push</value></data>
+  <data name="dock.commitMessage" xml:space="preserve"><value>Commit செய்தி</value></data>
+  <data name="dock.noChanges" xml:space="preserve"><value>முகவர் எந்த மாற்றமும் செய்யவில்லை.</value></data>
+  <data name="dock.whyRequest" xml:space="preserve"><value>உங்கள் கோரிக்கை</value></data>
+  <data name="dock.whyAgent" xml:space="preserve"><value>முகவரின் விளக்கம்</value></data>
+  <data name="dock.notRepo" xml:space="preserve"><value>இந்தக் கோப்புறை git களஞ்சியம் அல்ல.</value></data>
+  <data name="dock.gitMissing" xml:space="preserve"><value>Git நிறுவப்படவில்லை. மதிப்பாய்வு, commit மற்றும் push-க்கு இது தேவை.</value></data>
+  <data name="dock.installGit" xml:space="preserve"><value>Git-ஐ நிறுவு</value></data>
+  <data name="dock.filterFiles" xml:space="preserve"><value>கோப்புகளை வடிகட்டு…</value></data>
+  <data name="dock.openFile" xml:space="preserve"><value>கோப்பைத் திற</value></data>
+  <data name="dock.selectFile" xml:space="preserve"><value>பணியிட மரத்திலிருந்து ஒரு கோப்பைத் தேர்ந்தெடுக்கவும்</value></data>
+  <data name="dock.binaryFile" xml:space="preserve"><value>பைனரி அல்லது படிக்க முடியாத கோப்பு</value></data>
+  <data name="dock.expand" xml:space="preserve"><value>விரி</value></data>
+  <data name="dock.collapse" xml:space="preserve"><value>சுருக்கு</value></data>
+  <data name="dock.split" xml:space="preserve"><value>பிரி</value></data>
+  <data name="dock.unsplit" xml:space="preserve"><value>ஒரு தாவலைக் காட்டு</value></data>
+  <data name="dock.newTab" xml:space="preserve"><value>புதிய தாவல்</value></data>
+  <data name="dock.address" xml:space="preserve"><value>தேடுங்கள் அல்லது URL உள்ளிடுங்கள்</value></data>
+  <data name="dock.invalidAddress" xml:space="preserve"><value>சரியான இணைய முகவரி அல்லது தேடலை உள்ளிடுங்கள்.</value></data>
+  <data name="dock.openExternal" xml:space="preserve"><value>இயல்புநிலை உலாவியில் திற</value></data>
+  <data name="dock.bottomTerminal" xml:space="preserve"><value>கீழே முனையத்தைத் திற</value></data>
+  <data name="dock.splitHorizontal" xml:space="preserve"><value>பக்கவாட்டில் பிரி</value></data>
+  <data name="dock.splitVertical" xml:space="preserve"><value>மேலும் கீழும் பிரி</value></data>
+  <data name="dock.noWorkspace" xml:space="preserve"><value>முதலில் ஒரு பணியிடக் கோப்புறையைத் தேர்ந்தெடுக்கவும்.</value></data>
+  <data name="git.branchHelp" xml:space="preserve"><value>Git கிளையைத் தேர்ந்தெடுக்கவும்</value></data>
+  <data name="git.uncommitted" xml:space="preserve"><value>உறுதியற்றது: {0} கோப்புகள்</value></data>
+  <data name="market.area.core" xml:space="preserve"><value>முதன்மை சந்தை</value></data>
+  <data name="market.area.experimental" xml:space="preserve"><value>சோதனை</value></data>
+  <data name="market.area.community" xml:space="preserve"><value>சமூகம்</value></data>
+  <data name="market.area.communityExperimental" xml:space="preserve"><value>சமூகம் / சோதனை</value></data>
+  <data name="market.account" xml:space="preserve"><value>HerNess கணக்கு</value></data>
+  <data name="market.signIn" xml:space="preserve"><value>உள்நுழை</value></data>
+  <data name="market.signIn.email" xml:space="preserve"><value>மின்னஞ்சல் மற்றும் கடவுச்சொல்</value></data>
+  <data name="market.signIn.title" xml:space="preserve"><value>உங்கள் HerNess கணக்கில் உள்நுழைக</value></data>
+  <data name="market.email" xml:space="preserve"><value>மின்னஞ்சல்</value></data>
+  <data name="market.password" xml:space="preserve"><value>கடவுச்சொல்</value></data>
+  <data name="market.likeSignIn" xml:space="preserve"><value>விரும்ப உள்நுழைக</value></data>
+  <data name="market.customize" xml:space="preserve"><value>தனிப்பயனாக்கு</value></data>
+  <data name="market.localForks" xml:space="preserve"><value>உள்ளூர் தனிப்பயனாக்கங்கள்</value></data>
+  <data name="market.openFolder" xml:space="preserve"><value>கோப்புறையைத் திற</value></data>
+  <data name="market.fork.compared" xml:space="preserve"><value>ஒப்பிடப்பட்டது</value></data>
+  <data name="market.consent.title" xml:space="preserve"><value>இந்த செருகுநிரல் நேட்டிவ் குறியீட்டை இயக்குகிறது</value></data>
+  <data name="market.consent.accept" xml:space="preserve"><value>ஏற்று இயக்கு</value></data>
+  <data name="market.consent.message" xml:space="preserve"><value>{0} மூன்றாம் தரப்பு நேட்டிவ் செருகுநிரல். பகுதி: {1}. மதிப்பாய்வு: {2}. வகை: {3}. அதன் அனுமதிகளையும் மூலக் குறியீட்டையும் சரிபார்க்கவும். ஏற்றால், செருகுநிரல் உடனே நம்பகமானதாக இயங்கும்.</value></data>
+  <data name="market.review.verified" xml:space="preserve"><value>DOTS மதிப்பாய்வு செய்தது</value></data>
+  <data name="market.review.pending" xml:space="preserve"><value>மதிப்பாய்வுக்குக் காத்திருக்கிறது</value></data>
+  <data name="market.community.empty" xml:space="preserve"><value>இன்னும் சமூகச் செருகுநிரல்கள் இல்லை</value></data>
+  <data name="market.community.emptyHint" xml:space="preserve"><value>சமூகச் செருகுநிரல்களுக்குத் தனி மதிப்பாய்வும் நேட்டிவ் குறியீட்டை இயக்க வெளிப்படையான ஒப்புதலும் தேவை.</value></data>
+  <data name="market.report" xml:space="preserve"><value>புகாரளி</value></data>
+  <data name="market.report.title" xml:space="preserve"><value>செருகுநிரலைப் புகாரளி</value></data>
+  <data name="market.report.reason" xml:space="preserve"><value>காரணம்</value></data>
+  <data name="market.report.submit" xml:space="preserve"><value>புகாரை அனுப்பு</value></data>
+  <data name="market.report.malware" xml:space="preserve"><value>தீம்பொருள் அல்லது தீங்கான நடத்தை</value></data>
+  <data name="market.report.credentialTheft" xml:space="preserve"><value>அடையாளச் சான்று திருட்டு</value></data>
+  <data name="market.report.exfiltration" xml:space="preserve"><value>தரவுக் கசிவு</value></data>
+  <data name="market.report.deceptive" xml:space="preserve"><value>தவறான பட்டியல் அல்லது ஆள்மாறாட்டம்</value></data>
+  <data name="market.report.spam" xml:space="preserve"><value>ஸ்பேம் அல்லது வெற்று ராப்பர்</value></data>
+  <data name="market.report.copyright" xml:space="preserve"><value>பதிப்புரிமை அல்லது உரிம மீறல்</value></data>
+  <data name="market.publish" xml:space="preserve"><value>செருகுநிரலை வெளியிடு</value></data>
+  <data name="market.publish.title" xml:space="preserve"><value>நேட்டிவ் செருகுநிரலை வெளியிடு</value></data>
+  <data name="market.publish.hint" xml:space="preserve"><value>செருகுநிரல் கோப்புறையில் plugin.yml, plugin.ir.json, உரிமம் இருக்க வேண்டும். JavaScript, டிக்ளரேட்டிவ் இயக்கச் சூழல்கள் ஏற்கப்படாது; தள பில்ட்கள் CI-இல் உருவாக்கப்படும்.</value></data>
+  <data name="market.publish.noFolder" xml:space="preserve"><value>செருகுநிரல் கோப்புறை தேர்ந்தெடுக்கப்படவில்லை</value></data>
+  <data name="market.publish.chooseFolder" xml:space="preserve"><value>கோப்புறையைத் தேர்ந்தெடு</value></data>
+  <data name="market.publish.irPreview" xml:space="preserve"><value>plugin.ir.json முன்னோட்டம்</value></data>
+  <data name="market.publish.sourcePreview" xml:space="preserve"><value>நேட்டிவ் மூல முன்னோட்டம்</value></data>
+  <data name="market.publish.version" xml:space="preserve"><value>பதிப்பு (SemVer)</value></data>
+  <data name="market.publish.license" xml:space="preserve"><value>SPDX உரிமம் (எ.கா. MIT)</value></data>
+  <data name="market.publish.visibility" xml:space="preserve"><value>மூலத்தின் தெரிவுநிலை</value></data>
+  <data name="market.publish.public" xml:space="preserve"><value>பொது — மூலத் தொகுப்பு பட்டியலிடப்படும்</value></data>
+  <data name="market.publish.private" xml:space="preserve"><value>தனிப்பட்டது — உரிமையாளரும் CI-யும் மட்டுமே அணுக முடியும்</value></data>
+  <data name="market.publish.targets" xml:space="preserve"><value>இலக்கு தளங்கள்</value></data>
+  <data name="market.publish.footer" xml:space="preserve"><value>வெளியிட்ட பிறகு AI வகை, பகுதி, அபாயத்தை வகைப்படுத்தும். பில்ட் முடிந்தாலும் மனித மதிப்பாய்வு முடியும் வரை செருகுநிரல் பட்டியலிடப்படாது.</value></data>
+  <data name="market.publish.submit" xml:space="preserve"><value>வெளியிடு</value></data>
+  <data name="market.publish.error.http" xml:space="preserve"><value>சந்தையில் வெளியீடு தோல்வி (HTTP {0}): {1}</value></data>
+  <data name="market.publish.error.license" xml:space="preserve"><value>செருகுநிரலை வெளியிட உரிமத்தைத் தேர்ந்தெடுக்கவும்.</value></data>
+  <data name="market.publish.error.noManifest" xml:space="preserve"><value>தேர்ந்தெடுத்த கோப்புறையில் plugin.yml இல்லை.</value></data>
+  <data name="market.publish.error.nativeOnly" xml:space="preserve"><value>நேட்டிவ் செருகுநிரல்களை மட்டுமே வெளியிட முடியும்.</value></data>
+  <data name="market.publish.error.semver" xml:space="preserve"><value>சரியான SemVer பதிப்பை உள்ளிடவும்.</value></data>
+  <data name="market.publish.error.targets" xml:space="preserve"><value>குறைந்தது ஒரு இலக்கு தளத்தையும் சரியான மூலத் தெரிவுநிலையையும் தேர்ந்தெடுக்கவும்.</value></data>
+  <data name="market.publish.error.package" xml:space="preserve"><value>தொகுப்பில் plugin.ir.json, license கோப்புகள் இருக்க வேண்டும்.</value></data>
+  <data name="market.publish.error.irVersion" xml:space="preserve"><value>plugin.ir.json பதிப்பு 1 ஆக இருக்க வேண்டும்.</value></data>
+  <data name="market.publish.error.releaseID" xml:space="preserve"><value>சந்தை வெளியீட்டு ID-ஐப் பெற முடியவில்லை.</value></data>
+  <data name="market.publish.error.noVersion" xml:space="preserve"><value>plugin.yml-இல் version புலம் இல்லை.</value></data>
+  <data name="market.publish.status.registering" xml:space="preserve"><value>சந்தைப் பதிவை உருவாக்குகிறது…</value></data>
+  <data name="market.publish.status.uploading" xml:space="preserve"><value>நேட்டிவ் மூலத் தொகுப்பைப் பதிவேற்றுகிறது…</value></data>
+  <data name="market.publish.status.aiUnavailable" xml:space="preserve"><value>AI வகைப்பாடு கிடைக்கவில்லை; தற்காலிக லேபிள்: {0} · {1} · {2}. மனித மதிப்பாய்வு கட்டாயம்.</value></data>
+  <data name="market.publish.status.aiDone" xml:space="preserve"><value>AI வகைப்பாடு: {0} · {1} · {2}. மனித மதிப்பாய்வுக்குக் காத்திருக்கிறது.</value></data>
+  <data name="market.publish.status.aiFailed" xml:space="preserve"><value>AI வகைப்பாட்டை முடிக்க முடியவில்லை; மனித மதிப்பாய்வுக்குக் காத்திருக்கிறது.</value></data>
+  <data name="market.publish.status.queueing" xml:space="preserve"><value>நேட்டிவ் தள பில்ட்களை வரிசையில் சேர்க்கிறது…</value></data>
+  <data name="market.publish.status.uploaded" xml:space="preserve"><value>மூலத் தொகுப்பு பதிவேற்றப்பட்டது; நேட்டிவ் CI சரிபார்ப்புக்குக் காத்திருக்கிறது.</value></data>
+  <data name="market.error.notSignedIn" xml:space="preserve"><value>சந்தையில் வெளியிட HerNess கணக்கு தேவை.</value></data>
+  <data name="market.error.invalidCallback" xml:space="preserve"><value>HerNess உள்நுழைவு பதில் செல்லாதது.</value></data>
+  <data name="market.error.stateMismatch" xml:space="preserve"><value>HerNess உள்நுழைவு நிலை பொருந்தவில்லை.</value></data>
+  <data name="market.error.request" xml:space="preserve"><value>சந்தைக் கோரிக்கை தோல்வி (HTTP {0}): {1}</value></data>
+  <data name="market.error.invalidResponse" xml:space="preserve"><value>சந்தை செல்லாத பதிலை அளித்தது.</value></data>
+  <data name="market.error.credentials" xml:space="preserve"><value>மின்னஞ்சலும் கடவுச்சொல்லும் தேவை.</value></data>
+  <data name="remote.scan" xml:space="preserve"><value>இந்த QR குறியீட்டை வருடவும் அல்லது HerNess Mobile-இல் ஒருமுறைக் குறியீட்டை உள்ளிடவும்.</value></data>
+  <data name="remote.newCode" xml:space="preserve"><value>புதிய இணைப்புக் குறியீடு</value></data>
+  <data name="remote.copyLink" xml:space="preserve"><value>இணைப்பு இணைப்பை நகலெடு</value></data>
+  <data name="remote.tunnel.enable" xml:space="preserve"><value>Cloudflare Quick Tunnel-ஐ இயக்கு</value></data>
+  <data name="remote.hint" xml:space="preserve"><value>வழங்குநர் விசைகள் கணினியிலேயே இருக்கும். கோப்பு எழுதுதல், முனையம், பில்ட், டிப்ளாய், PR செயல்கள் தேர்ந்தெடுத்த ஒப்புதல் பயன்முறையையே பயன்படுத்தும்.</value></data>
+  <data name="settings.tab.mobile" xml:space="preserve"><value>மொபைல் கட்டுப்பாடு</value></data>
+  <data name="settings.compaction.economyFixed" xml:space="preserve"><value>சிக்கனக் கொள்கை நிலையான 90% வரம்பைப் பயன்படுத்துகிறது.</value></data>
+  <data name="settings.browser.title" xml:space="preserve"><value>விருப்பமான உலாவி மற்றும் இயந்திரம்</value></data>
+  <data name="settings.browser.auto" xml:space="preserve"><value>தானியங்கி (பயன்பாட்டுக்குள், அல்லது நீங்கள் குறிப்பிடும் உலாவி)</value></data>
+  <data name="settings.browser.managed" xml:space="preserve"><value>நிர்வகிக்கப்படும் தனிமைப்படுத்திய உலாவி (Chrome)</value></data>
+  <data name="settings.browser.chrome" xml:space="preserve"><value>எனது Chrome</value></data>
+  <data name="settings.browser.desktopHint" xml:space="preserve"><value>செயலிக்குள் உள்ள உலாவி கணினியின் உலாவி இயந்திரத்தைப் பயன்படுத்தும். நிர்வகிக்கப்படும் Chrome மற்றும் உங்கள் தற்போதைய Chrome சுயவிவரமும் கிடைக்கும்.</value></data>
+  <data name="settings.browser.inAppDesktop" xml:space="preserve"><value>செயலிக்குள் உள்ள உலாவி</value></data>
+  <data name="settings.computerUse.desktopHint" xml:space="preserve"><value>இயங்கும் பயன்பாடுகளை ஆய்வு செய்யவும், திரைப்பிடிப்புகளைப் பார்க்கவும், சுட்டி மற்றும் விசைப்பலகையைப் பயன்படுத்தி முடிவைச் சரிபார்க்கவும் முகவர் முடியும். டெஸ்க்டாப் செயல்களுக்கு அணுகல் ஒப்புதல் தேவை.</value></data>
+  <data name="settings.computerUse.linuxHint" xml:space="preserve"><value>Linux கணினி பயன்பாட்டிற்கு X11, xdotool மற்றும் maim அல்லது ImageMagick தேவை. Wayland ஆதரிக்கப்படவில்லை.</value></data>
+  <data name="market.settings.hint" xml:space="preserve"><value>Main Marketplace-இல் மதிப்பாய்வு செய்யப்பட்ட Harness செருகுநிரல்கள் இருக்கும். Community மற்றும் Experimental தனியாகக் காட்டப்படும்; நேட்டிவ் செருகுநிரல்களை இயக்க முன் உங்கள் ஒப்புதல் தேவை.</value></data>
+  <data name="market.registry.empty" xml:space="preserve"><value>Marketplace பதிவுகள் எதுவும் இல்லை. மீண்டும் முயற்சிக்க பதிவகத்தைப் புதுப்பிக்கவும்.</value></data>
+  <data name="market.signIn.hint" xml:space="preserve"><value>Google, GitHub அல்லது உங்கள் HerNess மின்னஞ்சல் மற்றும் கடவுச்சொல் மூலம் உள்நுழைக. அமர்வு டோக்கன்கள் தளத்தின் நற்சான்று சேமிப்பகத்தில் இருக்கும்.</value></data>
+  <data name="dock.clean" xml:space="preserve"><value>பணிக் கிளை சுத்தமாக உள்ளது.</value></data>
+  <data name="market.publish.folderPickerUnavailable" xml:space="preserve"><value>இந்த டெஸ்க்டாப் சூழலில் கோப்புறையைத் தேர்ந்தெடுக்கும் வசதி இல்லை.</value></data>
+  <data name="market.publish.localFolderRequired" xml:space="preserve"><value>செருகுநிரலை வெளியிட உள்ளூர் கோப்புறையைத் தேர்ந்தெடுக்கவும்.</value></data>
+  <data name="market.report.details" xml:space="preserve"><value>விவரங்கள் (விருப்பம், அதிகபட்சம் 5,000 எழுத்துகள்)</value></data>
+  <data name="dock.browser.webview2Unavailable" xml:space="preserve"><value>WebView2-ஐத் தொடங்க முடியவில்லை. Microsoft Edge WebView2 Runtime-ஐ நிறுவவும் அல்லது சரிசெய்யவும்.</value></data>
+  <data name="settings.marketplace" xml:space="preserve"><value>சந்தை</value></data>
+  <data name="workspace.use" xml:space="preserve"><value>பணியிடத்தைப் பயன்படுத்தவும்</value></data>
+  <data name="market.fork.consent.title" xml:space="preserve"><value>இந்த தனிப்பயன் செருகுநிரல் நேட்டிவ் குறியீட்டை இயக்குகிறது</value></data>
+  <data name="market.fork.consent.message" xml:space="preserve"><value>{0} ஒரு உள்ளூர் ஃபோர்க். அதன் மூலம் அப்ஸ்ட்ரீமிலிருந்து தனித்தது; இயக்குவதற்கு முன் மாற்றங்களைச் சரிபார்க்கவும்.</value></data>
+  <data name="market.fork.newUpstream" xml:space="preserve"><value>புதிய அப்ஸ்ட்ரீம்: v{0}; உள்ளூர் மாற்றங்கள் வைக்கப்படும்</value></data>
+  <data name="market.remove.confirmTitle" xml:space="preserve"><value>Marketplace செருகுநிரலை அகற்றவா?</value></data>
+  <data name="market.remove.confirmMessage" xml:space="preserve"><value>இந்தச் சாதனத்திலிருந்து {0} அகற்றவா?</value></data>
+  <data name="market.report.other" xml:space="preserve"><value>மற்றவை</value></data>
+  <data name="modelPicker.economy" xml:space="preserve"><value>சேமிப்பு</value></data>
+  <data name="conversation.toggleResponseEconomy" xml:space="preserve"><value>பதில்களில் டோக்கன் சேமிப்பை இயக்கவும் அல்லது முடக்கவும்</value></data>
+  <data name="market.unpublish.confirmMessage" xml:space="preserve"><value>{0} வெளியீட்டை நீக்கவா? ஏற்கனவே நிறுவியவை அகற்றப்படாது.</value></data>
+  <data name="market.permissions" xml:space="preserve"><value>அனுமதிகள்</value></data>
+  <data name="market.risk" xml:space="preserve"><value>அபாயம்: {0}</value></data>
+  <data name="market.category.coding" xml:space="preserve"><value>நிரலாக்கம்</value></data>
+  <data name="market.category.git" xml:space="preserve"><value>Git</value></data>
+  <data name="market.category.qa" xml:space="preserve"><value>சோதனை &amp; தரம்</value></data>
+  <data name="market.category.devops" xml:space="preserve"><value>DevOps</value></data>
+  <data name="market.category.browser" xml:space="preserve"><value>உலாவி</value></data>
+  <data name="market.category.web" xml:space="preserve"><value>வலை</value></data>
+  <data name="market.category.backend" xml:space="preserve"><value>பின்தளம்</value></data>
+  <data name="market.category.mobile" xml:space="preserve"><value>மொபைல்</value></data>
+  <data name="market.category.models" xml:space="preserve"><value>மாதிரிகள்</value></data>
+  <data name="market.category.integrations" xml:space="preserve"><value>ஒருங்கிணைப்புகள்</value></data>
+  <data name="market.category.workspace" xml:space="preserve"><value>பணியிடம்</value></data>
+  <data name="market.category.productivity" xml:space="preserve"><value>உற்பத்தித்திறன்</value></data>
+  <data name="market.category.tools" xml:space="preserve"><value>கருவிகள்</value></data>
+  <data name="market.category.design" xml:space="preserve"><value>வடிவமைப்பு</value></data>
+  <data name="market.category.documents" xml:space="preserve"><value>ஆவணங்கள்</value></data>
+  <data name="market.category.authoring" xml:space="preserve"><value>திறன் உருவாக்கம்</value></data>
+  <data name="market.category.community" xml:space="preserve"><value>சமூகம்</value></data>
+  <data name="market.category.other" xml:space="preserve"><value>பிற</value></data>
+  <data name="navigation.back" xml:space="preserve"><value>பின்</value></data>
+  <data name="navigation.forward" xml:space="preserve"><value>முன்</value></data>
+  <data name="dock.restart" xml:space="preserve"><value>மறுதொடக்கம்</value></data>
+  <data name="dock.go" xml:space="preserve"><value>செல்</value></data>
+  <data name="terminal.sandboxUnavailable" xml:space="preserve"><value>முனைய சாண்ட்பாக்ஸ் கிடைக்கவில்லை: {0}</value></data>
+  <data name="remote.lan" xml:space="preserve"><value>LAN முனையம்</value></data>
+  <data name="remote.code" xml:space="preserve"><value>குறியீடு</value></data>
+  <data name="remote.expires" xml:space="preserve"><value>காலாவதி: {0}</value></data>
+  <data name="remote.pairingLink" xml:space="preserve"><value>இணைப்பு இணைப்பு</value></data>
+  <data name="custom.detected" xml:space="preserve"><value>இந்தக் கணினியில் இயங்குபவை</value></data>
+  <data name="custom.modelOptional" xml:space="preserve"><value>மாடல் பெயர் (விருப்பத்தேர்வு)</value></data>
+  <data name="custom.contextOptional" xml:space="preserve"><value>டோக்கன்களில் சூழல் சாளரம் (விருப்பத்தேர்வு)</value></data>
+  <data name="custom.prefix" xml:space="preserve"><value>மாதிரி முன்னொட்டு</value></data>
+  <data name="local.tuning" xml:space="preserve"><value>செயல்திறன்</value></data>
+  <data name="local.tuningHint" xml:space="preserve"><value>காலியாகவோ auto ஆகவோ விட்டால் ரன்டைம் மாடலை உங்கள் GPU நினைவகத்துக்கு ஏற்ப அமைக்கும். மாற்றங்கள் அடுத்த முறை மாடல் தொடங்கும்போது செயல்படும்.</value></data>
+  <data name="local.contextSize" xml:space="preserve"><value>சூழல் அளவு (டோக்கன்கள்)</value></data>
+  <data name="local.gpuLayers" xml:space="preserve"><value>GPU அடுக்குகள் (auto, all அல்லது ஓர் எண்)</value></data>
+  <data name="local.threads" xml:space="preserve"><value>CPU த்ரெட்கள்</value></data>
+  <data name="local.batchSize" xml:space="preserve"><value>பேட்ச் அளவு</value></data>
+  <data name="local.flashAttention" xml:space="preserve"><value>Flash attention</value></data>
+  <data name="local.kvCache" xml:space="preserve"><value>KV கேச் வகை</value></data>
+  <data name="local.extraArgs" xml:space="preserve"><value>கூடுதல் llama-server அளவுருக்கள்</value></data>
+  <data name="local.hardware" xml:space="preserve"><value>வன்பொருள்</value></data>
+  <data name="local.listen" xml:space="preserve"><value>கேட்பது</value></data>
+  <data name="local.importGGUF" xml:space="preserve"><value>GGUF கோப்பைச் சேர்…</value></data>
+  <data name="local.tooLarge" xml:space="preserve"><value>மிகப் பெரியது</value></data>
+  <data name="local.backend" xml:space="preserve"><value>GPU பின்தளம்</value></data>
+  <data name="settings.compaction.autoRouted" xml:space="preserve"><value>தானியங்கி வழிமாற்று மாதிரிகள்</value></data>
+  <data name="settings.compaction.effectiveThreshold" xml:space="preserve"><value>பயனுள்ள வரம்பு</value></data>
+  <data name="sidebar.signOut" xml:space="preserve"><value>வெளியேறు</value></data>
+  <data name="market.unpublish" xml:space="preserve"><value>வெளியீட்டை நீக்கு</value></data>
+  <data name="settings.sshHosts" xml:space="preserve"><value>தொலை கணினிகள் (SSH)</value></data>
+  <data name="settings.sshHosts.hint" xml:space="preserve"><value>வழங்கிகள் ~/.ssh/config இலிருந்து வருகின்றன. இங்கே சேர்ப்பது அதிலேயே எழுதப்படும்.</value></data>
+  <data name="settings.sshNoHosts" xml:space="preserve"><value>~/.ssh/config இல் வழங்கிகள் இல்லை.</value></data>
+  <data name="settings.sshAddHost" xml:space="preserve"><value>கணினியைச் சேர்…</value></data>
+  <data name="settings.sshTest" xml:space="preserve"><value>சோதி</value></data>
+  <data name="settings.sshManaged" xml:space="preserve"><value>இங்கே சேர்க்கப்பட்டது</value></data>
+  <data name="settings.sshFromConfig" xml:space="preserve"><value>~/.ssh/config இலிருந்து</value></data>
+  <data name="settings.sshRemove.handWritten" xml:space="preserve"><value>இந்த வழங்கி ~/.ssh/config இல் கையால் எழுதப்பட்டது. அங்கேயே அகற்றவும்.</value></data>
+  <data name="settings.updates.current" xml:space="preserve"><value>தற்போதைய பதிப்பு</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>புதுப்பிப்புகளைச் சரிபார்க்கிறது…</value></data>
+  <data name="settings.updates.checkAgain" xml:space="preserve"><value>மீண்டும் சரிபார்</value></data>
+  <data name="settings.updates.upToDate" xml:space="preserve"><value>பயன்பாடு புதுப்பித்த நிலையில் உள்ளது.</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>புதுப்பிப்புகளைச் சரிபார்</value></data>
+  <data name="settings.updates.retry" xml:space="preserve"><value>மீண்டும் முயல்</value></data>
+  <data name="settings.updates.hint" xml:space="preserve"><value>சமீபத்திய வெளியீட்டைச் சரிபார்க்கவும்.</value></data>
+  <data name="settings.updates.required" xml:space="preserve"><value>கட்டாயம்</value></data>
+  <data name="ssh.connected" xml:space="preserve"><value>{0} பதிலளித்தது.</value></data>
+  <data name="remote.enable" xml:space="preserve"><value>ரிமோட் கட்டுப்பாட்டை அனுமதிக்கவும்</value></data>
+  <data name="remote.shareLan" xml:space="preserve"><value>உள்ளூர் நெட்வர்க்குடன் பகிர்ந்துகொள்ளவும்</value></data>
+  <data name="remote.enableHint" xml:space="preserve"><value>ரிமோட் கேட்வே ஆஃப் உள்ளது. தொலைபேசியை இணைக்க அதை இயக்கவும்.</value></data>
+  <data name="plan.title" xml:space="preserve"><value>திட்டம்</value></data>
+  <data name="plan.proposed" xml:space="preserve"><value>Claude ஒரு திட்டத்தை முன்மொழிந்தது</value></data>
+  <data name="plan.revise" xml:space="preserve"><value>திருத்து…</value></data>
+  <data name="plan.acceptAuto" xml:space="preserve"><value>ஏற்று, தானியங்கு முறை</value></data>
 </root>

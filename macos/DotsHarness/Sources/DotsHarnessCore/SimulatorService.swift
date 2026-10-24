@@ -8,12 +8,15 @@ public struct SimulatorDevice: Identifiable, Hashable, Sendable {
     public let name: String
     public let runtime: String
     public let state: String
+    /// An Android Virtual Device shown alongside the iOS simulators; `name` is the AVD name.
+    public let isAndroid: Bool
 
-    public init(id: String, name: String, runtime: String, state: String) {
+    public init(id: String, name: String, runtime: String, state: String, isAndroid: Bool = false) {
         self.id = id
         self.name = name
         self.runtime = runtime
         self.state = state
+        self.isAndroid = isAndroid
     }
 
     public var isBooted: Bool { state.caseInsensitiveCompare("Booted") == .orderedSame }
@@ -30,44 +33,20 @@ public struct SimulatorError: LocalizedError {
 /// `SimulatorService` helpers which hop to a background executor.
 public enum SimulatorShell {
     public static func run(_ arguments: [String], timeout: TimeInterval = 60) throws -> Data {
-        let process = Process()
-        let output = Pipe()
-        let errors = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
-        process.arguments = arguments
-        process.standardOutput = output
-        process.standardError = errors
-
-        do {
-            try process.run()
-        } catch {
-            throw SimulatorError(AppCopy.text("simulator.xcodeMissing"))
+        try ProcessRunner.run(
+            executable: URL(fileURLWithPath: "/usr/bin/xcrun"),
+            arguments: arguments,
+            timeout: timeout
+        ) { failure in
+            switch failure {
+            case .launch:
+                return SimulatorError(AppCopy.text("simulator.xcodeMissing"))
+            case .timedOut:
+                return SimulatorError(AppCopy.text("simulator.timedOut"))
+            case .nonzero(let status, let stderr):
+                return SimulatorError(stderr.isEmpty ? AppCopy.format("simulator.exitStatus", status) : stderr)
+            }
         }
-
-        // Drain both pipes while the child runs so a large screenshot cannot
-        // deadlock on a full pipe buffer.
-        var stdoutData = Data()
-        var stderrData = Data()
-        let stdoutHandle = output.fileHandleForReading
-        let stderrHandle = errors.fileHandleForReading
-        let deadline = Date().addingTimeInterval(timeout)
-        while process.isRunning, Date() < deadline {
-            stdoutData.append(stdoutHandle.availableData)
-            stderrData.append(stderrHandle.availableData)
-        }
-        if process.isRunning {
-            process.terminate()
-            throw SimulatorError(AppCopy.text("simulator.timedOut"))
-        }
-        stdoutData.append(stdoutHandle.readDataToEndOfFile())
-        stderrData.append(stderrHandle.readDataToEndOfFile())
-
-        guard process.terminationStatus == 0 else {
-            let text = String(data: stderrData.prefix(4_000), encoding: .utf8) ?? ""
-            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            throw SimulatorError(trimmed.isEmpty ? AppCopy.format("simulator.exitStatus", process.terminationStatus) : trimmed)
-        }
-        return stdoutData
     }
 
     public static func simctl(_ arguments: [String], timeout: TimeInterval = 60) throws -> Data {

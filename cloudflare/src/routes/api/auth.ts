@@ -24,8 +24,8 @@ import {
 import { sendPasswordResetEmail } from "../../lib/email";
 import { timingSafeEqual } from "../../lib/paytr";
 import { requireAuth } from "../../middleware/auth";
-import { rateLimit } from "../../middleware/rate-limit";
-import { hasSeatAvailable } from "../../lib/team";
+import { rateLimit, checkRateLimit } from "../../middleware/rate-limit";
+import { acceptTeamInviteWithinSeatLimit, hasSeatAvailable } from "../../lib/team";
 import {
   createOAuthState,
   consumeOAuthState,
@@ -270,6 +270,12 @@ auth.post("/login", rateLimit({ limit: 10, windowSeconds: 60, keyPrefix: "auth:l
 })), async (c) => {
   const body = c.req.valid("json");
   const { email, password } = body;
+  // A second limit that does not depend on the client IP: an attacker who
+  // can rotate their address still gets only a handful of tries per account.
+  const perAccount = await checkRateLimit(c.env, `auth:login:acct:${normalizeEmail(email)}`, 10, 300);
+  if (!perAccount.allowed) {
+    return c.json({ error: "Too many attempts. Try again in a few minutes." }, 429);
+  }
   const row = await db(c.env)
     .prepare("SELECT id, email, password_hash, role, status FROM users WHERE email = ?")
     .bind(normalizeEmail(email))
@@ -369,21 +375,20 @@ auth.post("/register", rateLimit({ limit: 5, windowSeconds: 3600, keyPrefix: "au
           403
         );
       }
-      const seats = await hasSeatAvailable(c.env, invite.workspace_id);
-      if (!seats.available) {
+      const accepted = await acceptTeamInviteWithinSeatLimit(c.env, {
+        inviteId: invite.id,
+        workspaceId: invite.workspace_id,
+        userId,
+        role: invite.role,
+        tokenHash: await hashToken(body.invite_token),
+      });
+      if (!accepted) {
+        const seats = await hasSeatAvailable(c.env, invite.workspace_id);
         return c.json(
           { error: "seat_limit_reached", used: seats.used, limit: seats.limit },
           409
         );
       }
-      await db(c.env)
-        .prepare("INSERT INTO workspace_members (workspace_id, user_id, role, joined_at) VALUES (?, ?, ?, NOW()) ON CONFLICT (workspace_id, user_id) DO NOTHING")
-        .bind(invite.workspace_id, userId, invite.role || "member")
-        .run();
-      await db(c.env)
-        .prepare("UPDATE team_invites SET token = ?, accepted_at = NOW() WHERE id = ?")
-        .bind(await hashToken(body.invite_token), invite.id)
-        .run();
       await recordAudit(c.env, {
         workspaceId: invite.workspace_id,
         actorUserId: userId,
@@ -455,12 +460,35 @@ auth.post("/refresh", rateLimit({ limit: 30, windowSeconds: 60, keyPrefix: "auth
     const userId = await verifyRefreshToken(c.env, refresh_token);
     const tokenHash = await hashToken(refresh_token);
     const stored = await db(c.env)
-      .prepare("SELECT expires_at FROM refresh_tokens WHERE user_id = ? AND token_hash = ? AND datetime(expires_at) > CURRENT_TIMESTAMP")
+      .prepare(
+        "SELECT id, expires_at, rotated_at, revoked_at FROM refresh_tokens WHERE user_id = ? AND token_hash = ?"
+      )
       .bind(userId, tokenHash)
-      .first<{ expires_at: string }>();
+      .first<{ id: string; expires_at: string; rotated_at: string | null; revoked_at: string | null }>();
     const storedExpiry = stored ? timestampMs(stored.expires_at) : NaN;
     if (!stored || !Number.isFinite(storedExpiry) || storedExpiry <= Date.now()) {
       return c.json({ error: "Invalid refresh token" }, 401);
+    }
+    if (stored.revoked_at) {
+      return c.json({ error: "Invalid refresh token" }, 401);
+    }
+
+    // A refresh token is single-use. If one that was already rotated comes
+    // back, it was copied — unless it is still inside the grace window,
+    // which covers a worker that stopped between answering the request and
+    // the client storing the new token.
+    const rotatedAt = stored.rotated_at ? timestampMs(stored.rotated_at) : NaN;
+    if (Number.isFinite(rotatedAt)) {
+      if (Date.now() - rotatedAt > REFRESH_ROTATION_GRACE_MS) {
+        // The token was used twice: treat the session as stolen and drop
+        // every refresh token this account has.
+        await revokeAllRefreshTokens(c.env, userId);
+        return c.json({ error: "Invalid refresh token" }, 401);
+      }
+      await db(c.env)
+        .prepare("UPDATE refresh_tokens SET rotated_at = NULL WHERE id = ?")
+        .bind(stored.id)
+        .run();
     }
 
     const user = await db(c.env)
@@ -469,17 +497,26 @@ auth.post("/refresh", rateLimit({ limit: 30, windowSeconds: 60, keyPrefix: "auth
       .first<{ id: string; email: string; role: string; status: string | null }>();
     if (!user || user.status !== "active") return c.json({ error: "Invalid refresh token" }, 401);
 
-    // Keep the 30-day refresh token stable and only renew the short-lived access
-    // token. If an MV3 worker or the computer stops after this response leaves the
-    // server but before the client persists it, the already-persisted refresh
-    // token remains valid and the request can be retried after startup.
+    // The access token stays short-lived. The refresh token is replaced on
+    // every use, so a copy of it is only good until the next refresh — and
+    // using that copy revokes the account's sessions.
     const access_token = await signAccessToken(c.env, {
       sub: user.id,
       email: user.email,
       role: user.role,
     });
-    setAuthCookies(c, access_token, refresh_token);
-    return c.json({ access_token, refresh_token });
+    const nextRefresh = await signRefreshToken(c.env, user.id);
+    const nextHash = await hashToken(nextRefresh);
+    await db(c.env)
+      .prepare("UPDATE refresh_tokens SET rotated_at = datetime('now') WHERE id = ?")
+      .bind(stored.id)
+      .run();
+    await db(c.env)
+      .prepare("INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)")
+      .bind(uuid(), user.id, nextHash, refreshExpiresAt())
+      .run();
+    setAuthCookies(c, access_token, nextRefresh);
+    return c.json({ access_token, refresh_token: nextRefresh });
   } catch {
     return c.json({ error: "Invalid refresh token" }, 401);
   }
@@ -587,9 +624,20 @@ auth.post("/set-password", rateLimit({ limit: 10, windowSeconds: 3600, keyPrefix
 
 /** Min seconds before the same user may request a new reset token + email. */
 const PASSWORD_RESET_COOLDOWN_SECONDS = 90;
+/** How long a rotated refresh token is still accepted. It covers a worker
+ *  that stopped between answering the refresh and the client storing the new
+ *  token; after that a second use means the token was copied. */
+const REFRESH_ROTATION_GRACE_MS = 90_000;
 
 auth.post("/forgot-password", rateLimit({ limit: 5, windowSeconds: 3600, keyPrefix: "auth:forgot-password" }), zValidator("json", z.object({ email: z.string().email().max(320) })), async (c) => {
   const email = normalizeEmail(c.req.valid("json").email);
+  // Per-account limit that does not depend on the client IP, so a rotating
+  // address cannot keep someone's inbox flooded. The answer stays the same
+  // either way — no hint about whether the address exists.
+  const perAccount = await checkRateLimit(c.env, `auth:forgot:acct:${email}`, 5, 3600);
+  if (!perAccount.allowed) {
+    return c.json({ ok: true, message: "If the email exists, a reset link was sent." });
+  }
   const user = await getUserByEmail(c.env, email);
   if (user) {
     // One row per user: within cooldown keep the existing unused token and do not re-send mail.

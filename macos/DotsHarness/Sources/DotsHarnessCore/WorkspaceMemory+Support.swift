@@ -69,21 +69,12 @@ extension WorkspaceMemory {
         return value
     }
 
-    var rootPublicKeyString: String? { (manifest?["rootAuthority"] as? [String: Any])?["publicKey"] as? String }
-    var rootDeviceID: String? { (manifest?["rootAuthority"] as? [String: Any])?["deviceId"] as? String }
-    var rootPublicKey: P256.Signing.PublicKey? {
-        guard let value = rootPublicKeyString, let data = Data(base64Encoded: value) else { return nil }
-        return try? P256.Signing.PublicKey(rawRepresentation: data)
+    func taskNoteField(_ name: String, in lines: [String]) -> String {
+        lines.first { $0.hasPrefix("\(name):") }
+            .map { String($0.dropFirst(name.count + 1)).trimmingCharacters(in: CharacterSet(charactersIn: " \"")) } ?? ""
     }
 
-    func verify(signature: String, object: [String: Any], publicKey: P256.Signing.PublicKey) -> Bool {
-        guard let signatureData = Data(base64Encoded: signature),
-              let signature = try? P256.Signing.ECDSASignature(rawRepresentation: signatureData),
-              let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]) else { return false }
-        return publicKey.isValidSignature(signature, for: data)
-    }
-
-    func invitationWithoutSignature(_ object: [String: Any]) -> [String: Any] {
+    func eventWithoutSignature(_ object: [String: Any]) -> [String: Any] {
         object.filter { $0.key != "signature" }
     }
 
@@ -107,14 +98,7 @@ extension WorkspaceMemory {
     }
 
     func sanitize(_ text: String, limit: Int) -> String {
-        var result = text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-        let patterns = [
-            #"(?i)(api[_-]?key|token|password|secret)\s*[:=]\s*[^\s,;]+"#,
-            #"(?i)bearer\s+[A-Za-z0-9._\-]+"#,
-            #"(?i)authorization\s*:\s*[^\s,;]+"#,
-        ]
-        for pattern in patterns { result = result.replacingOccurrences(of: pattern, with: "[redacted]", options: .regularExpression) }
-        return String(result.trimmingCharacters(in: .whitespacesAndNewlines).prefix(limit))
+        SecretRedaction.sanitize(text, limit: limit)
     }
 
     func writeJSON(_ object: [String: Any], to url: URL) throws {
@@ -130,17 +114,59 @@ extension WorkspaceMemory {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
+    /// Project state only. Schema 2 dropped the per-person and per-chat fields that
+    /// schema 1 kept here; a state file without this version is rebuilt on load.
     static func emptyState() -> [String: Any] {
         [
+            "schemaVersion": stateSchemaVersion,
             "revision": 0,
-            "members": [[String: Any]](),
             "projectDefaults": [String: Any](),
-            "activePreferences": [String: Any](),
             "acceptedDecisions": [[String: Any]](),
             "pendingProposals": [[String: Any]](),
             "supersededValues": [[String: Any]](),
-            "conversationStates": [String: Any](),
             "lastMapRevision": 0,
         ]
+    }
+
+    static let stateSchemaVersion = 2
+
+    /// Appends one JSON object as a line. The user layer's logs are append-only, so a
+    /// crash loses at most the line being written.
+    func appendJSONLine(_ object: [String: Any], to url: URL) throws {
+        var data = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+        data.append(0x0A)
+        try fileManager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if fileManager.fileExists(atPath: url.path) {
+            let handle = try FileHandle(forWritingTo: url)
+            defer { try? handle.close() }
+            try handle.seekToEnd()
+            try handle.write(contentsOf: data)
+        } else {
+            try data.write(to: url, options: .atomic)
+        }
+    }
+}
+
+/// Collapses whitespace and redacts credentials. Called for every task note and tool
+/// record; the patterns are compiled once instead of on every call.
+enum SecretRedaction {
+    nonisolated(unsafe) private static let whitespace = try! NSRegularExpression(pattern: #"\s+"#)
+    nonisolated(unsafe) private static let secrets = [
+        #"(?i)(api[_-]?key|token|password|secret)\s*[:=]\s*[^\s,;]+"#,
+        #"(?i)bearer\s+[A-Za-z0-9._\-]+"#,
+        #"(?i)authorization\s*:\s*[^\s,;]+"#,
+    ].map { try! NSRegularExpression(pattern: $0) }
+
+    static func sanitize(_ text: String, limit: Int) -> String {
+        var result = text.replacingMatches(of: whitespace, with: " ")
+        for pattern in secrets { result = result.replacingMatches(of: pattern, with: "[redacted]") }
+        return String(result.trimmingCharacters(in: .whitespacesAndNewlines).prefix(limit))
+    }
+}
+
+extension String {
+    /// `replacingOccurrences(of:options: .regularExpression)` with a precompiled pattern.
+    func replacingMatches(of regex: NSRegularExpression, with template: String) -> String {
+        regex.stringByReplacingMatches(in: self, range: NSRange(startIndex..., in: self), withTemplate: template)
     }
 }

@@ -21,8 +21,16 @@ public struct SimulatorPanelView: View {
             header
             Divider()
             screen
-            Divider()
-            controls
+            if !controller.status.isEmpty {
+                Divider()
+                Text(controller.status)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+            }
         }
         .frame(minWidth: 280, idealWidth: 320)
         .background(Color(nsColor: .windowBackgroundColor))
@@ -37,10 +45,20 @@ public struct SimulatorPanelView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
                 Text(AppCopy.text("simulator.title")).font(.headline)
-                Spacer()
+                liveBadge
+                Spacer(minLength: 4)
+                Button {
+                    isDark.toggle()
+                    Task { await controller.setAppearance(dark: isDark) }
+                } label: {
+                    Image(systemName: isDark ? "moon.fill" : "sun.max")
+                }
+                .buttonStyle(.borderless)
+                .help(AppCopy.text("simulator.appearance"))
+                settingsMenu
                 Button {
                     model.isSimulatorPresented = false
                 } label: {
@@ -49,70 +67,57 @@ public struct SimulatorPanelView: View {
                 .buttonStyle(.borderless)
                 .help(AppCopy.text("simulator.close"))
             }
-
             deviceMenu
-
-            HStack(spacing: 8) {
-                Text(AppCopy.text("simulator.captureRate"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Picker("", selection: $controller.captureRate) {
-                    ForEach(SimulatorController.CaptureRate.allCases) { rate in
-                        Text(rate.title).tag(rate)
-                    }
-                }
-                .labelsHidden()
-                .frame(width: 88)
-                .help(AppCopy.text("simulator.captureRateHelp"))
-
-                Text(AppCopy.text(controller.captureBackend.titleKey))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                Toggle(isOn: $isDark) {
-                    Image(systemName: isDark ? "moon.fill" : "sun.max")
-                }
-                .toggleStyle(.button)
-                .help(AppCopy.text("simulator.appearance"))
-                .onChange(of: isDark) { _, value in
-                    Task { await controller.setAppearance(dark: value) }
-                }
-            }
-
-            HStack(spacing: 8) {
-                Text(AppCopy.text("simulator.latency"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Picker("", selection: $controller.captureLatency) {
-                    ForEach(SimulatorController.CaptureLatency.allCases) { latency in
-                        Text(AppCopy.text(latency.titleKey)).tag(latency)
-                    }
-                }
-                .labelsHidden()
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            HStack(spacing: 8) {
-                Text(AppCopy.text("simulator.quality"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Picker("", selection: $controller.captureQuality) {
-                    ForEach(SimulatorController.CaptureQuality.allCases) { quality in
-                        Text(AppCopy.text(quality.titleKey)).tag(quality)
-                    }
-                }
-                .labelsHidden()
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
         }
-        .padding(10)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+    }
+
+    /// Backend and frame rate at a glance; the dot is green only while frames flow.
+    private var liveBadge: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(controller.isStreaming ? Color.green : Color.secondary.opacity(0.5))
+                .frame(width: 6, height: 6)
+            Text("\(AppCopy.text(controller.captureBackend.titleKey)) · \(controller.captureRate.title)")
+                .lineLimit(1)
+        }
+        .font(.caption2.weight(.medium))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background(Color.secondary.opacity(0.12), in: Capsule())
+    }
+
+    /// Capture rate, latency and quality live in one menu instead of three rows of pickers.
+    private var settingsMenu: some View {
+        Menu {
+            Picker(AppCopy.text("simulator.captureRate"), selection: $controller.captureRate) {
+                ForEach(SimulatorController.CaptureRate.allCases) { rate in
+                    Text(rate.title).tag(rate)
+                }
+            }
+            Picker(AppCopy.text("simulator.latency"), selection: $controller.captureLatency) {
+                ForEach(SimulatorController.CaptureLatency.allCases) { latency in
+                    Text(AppCopy.text(latency.titleKey)).tag(latency)
+                }
+            }
+            Picker(AppCopy.text("simulator.quality"), selection: $controller.captureQuality) {
+                ForEach(SimulatorController.CaptureQuality.allCases) { quality in
+                    Text(AppCopy.text(quality.titleKey)).tag(quality)
+                }
+            }
+        } label: {
+            Image(systemName: "slider.horizontal.3")
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(AppCopy.text("simulator.captureRateHelp"))
     }
 
     private var screen: some View {
-        SimulatorScreenPanel(frameStore: controller.frameStore) { start, end, viewSize, imageSize in
+        SimulatorScreenPanel(frameStore: controller.frameStore, placeholder: placeholder) { start, end, viewSize, imageSize in
             send(start: start, end: end, in: viewSize, image: imageSize)
         }
         .overlay {
@@ -120,38 +125,75 @@ public struct SimulatorPanelView: View {
                 ProgressView().controlSize(.small)
             }
         }
+        .overlay(alignment: .bottom) { dock.padding(.bottom, 12) }
         .frame(minHeight: 420)
     }
 
-    private var controls: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 10) {
-                button("house", "simulator.home") { controller.pressHome() }
-                button("lock", "simulator.lock") { controller.pressLock() }
-                button("camera", "simulator.screenshot") {
-                    Task { await saveScreenshot() }
+    private var placeholder: some View {
+        VStack(spacing: 14) {
+            Image(systemName: deviceSymbol)
+                .font(.system(size: 30, weight: .light))
+                .foregroundStyle(.secondary)
+                .frame(width: 72, height: 72)
+                .background(Color.secondary.opacity(0.1), in: Circle())
+            Text(AppCopy.text("simulator.noFrame"))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 220)
+            if controller.selectedDevice != nil && !controller.isSelectedDeviceBooted {
+                Button(AppCopy.text("simulator.boot")) {
+                    Task { await controller.boot() }
                 }
-                button(controller.isStreaming ? "pause" : "play", "simulator.stream") {
-                    controller.toggleStream()
-                }
-                button("arrow.clockwise", "simulator.refresh") {
-                    Task { await controller.refreshDevices() }
-                }
-                button("power", controller.isSelectedDeviceBooted ? "simulator.shutdown" : "simulator.boot") {
-                    Task {
-                        controller.isSelectedDeviceBooted ? await controller.shutdown() : await controller.boot()
-                    }
-                }
-            }
-            if !controller.status.isEmpty {
-                Text(controller.status)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                .buttonStyle(.borderedProminent)
+                .disabled(controller.isBusy)
             }
         }
-        .padding(10)
+        .padding(.bottom, 60)
+    }
+
+    private var deviceSymbol: String {
+        let title = controller.selectedDevice?.title ?? ""
+        if controller.selectedDevice?.isAndroid == true { return "candybarphone" }
+        if title.contains("Watch") { return "applewatch" }
+        if title.contains("iPad") { return "ipad" }
+        if title.contains("TV") { return "appletv" }
+        if title.contains("Vision") { return "visionpro" }
+        return "iphone"
+    }
+
+    /// The same floating dark bar the media editors use, laid over the foot of the screen.
+    private var dock: some View {
+        HStack(spacing: 2) {
+            if controller.selectedDevice?.isAndroid == true {
+                button("chevron.backward", "simulator.back") { controller.pressBack() }
+            }
+            button("house", "simulator.home") { controller.pressHome() }
+            button("lock", "simulator.lock") { controller.pressLock() }
+            button("camera", "simulator.screenshot") {
+                Task { await saveScreenshot() }
+            }
+            dockDivider
+            button(controller.isStreaming ? "pause.fill" : "play.fill", "simulator.stream") {
+                controller.toggleStream()
+            }
+            button("arrow.clockwise", "simulator.refresh") {
+                Task { await controller.refreshDevices() }
+            }
+            dockDivider
+            button("power", controller.isSelectedDeviceBooted ? "simulator.shutdown" : "simulator.boot",
+                   tint: controller.isSelectedDeviceBooted ? .red : .green) {
+                Task {
+                    controller.isSelectedDeviceBooted ? await controller.shutdown() : await controller.boot()
+                }
+            }
+        }
+        .padding(-3)
+        .editorDockChrome()
+    }
+
+    private var dockDivider: some View {
+        Rectangle().fill(Color.white.opacity(0.15)).frame(width: 1, height: 18).padding(.horizontal, 3)
     }
 
     private var deviceMenu: some View {
@@ -203,6 +245,8 @@ public struct SimulatorPanelView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .menuStyle(.borderedButton)
+        .menuIndicator(.hidden)
+        .frame(maxWidth: .infinity)
         .disabled(controller.devices.isEmpty || controller.isBusy)
     }
 
@@ -214,12 +258,17 @@ public struct SimulatorPanelView: View {
         controller.devices.filter { !$0.isBooted }
     }
 
-    private func button(_ symbol: String, _ helpKey: String, action: @escaping () -> Void) -> some View {
+    private func button(_ symbol: String, _ helpKey: String, tint: Color? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol).frame(width: 20, height: 18)
+            Image(systemName: symbol)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(tint ?? .white)
+                .frame(width: 30, height: 30)
+                .contentShape(Rectangle())
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(.plain)
         .help(AppCopy.text(helpKey))
+        .accessibilityLabel(AppCopy.text(helpKey))
     }
 
     private func saveScreenshot() async {
@@ -256,8 +305,9 @@ public struct SimulatorPanelView: View {
 /// Observes only the high-frequency frame store. Keeping this subtree separate
 /// prevents the header, controls, and parent panel from being recomputed for
 /// every incoming frame.
-private struct SimulatorScreenPanel: View {
+private struct SimulatorScreenPanel<Placeholder: View>: View {
     @ObservedObject var frameStore: SimulatorFrameStore
+    let placeholder: Placeholder
     let onGesture: (CGPoint, CGPoint, CGSize, CGSize) -> Void
 
     var body: some View {
@@ -270,18 +320,10 @@ private struct SimulatorScreenPanel: View {
                     }
                     .frame(width: geometry.size.width, height: geometry.size.height)
                 }
-                .padding(16)
+                // Bottom inset keeps the bezel clear of the floating dock.
+                .padding(EdgeInsets(top: 16, leading: 16, bottom: 64, trailing: 16))
             } else {
-                VStack(spacing: 10) {
-                    Image(systemName: "iphone.gen3")
-                        .font(.system(size: 36))
-                        .foregroundStyle(.secondary)
-                    Text(AppCopy.text("simulator.noFrame"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding()
+                placeholder
             }
         }
     }
@@ -459,7 +501,8 @@ private final class SimulatorScreenInputNSView: NSView {
             )
             let element = SimulatorScreenAccessibilityElement(
                 frame: screenFrame,
-                label: "iOS simulator coordinate (Int(local.x)), (Int(local.y))"
+                label: AppCopy.format("simulator.coordinate", Int(local.x), Int(local.y))
+
             ) { [weak self] in
                 guard let self else { return }
                 self.onGesture?(local, local)

@@ -43,6 +43,9 @@ public struct AgentConversationCacheEpoch: Codable, Sendable, Equatable {
 
     /// Object-key/discovery order alone never rotates the epoch.
     mutating func reconcile(tools: [AgentToolDefinition], bindings: String, policy: String, segment: Int) {
+        // Built-in tools are always listed, so an empty catalog is a transient read,
+        // not a new one: adopting it would drop every tool and rewrite the prefix.
+        guard !tools.isEmpty || self.tools.isEmpty else { return }
         let catalog = AgentCacheNamespace.toolFingerprint(tools)
         let reason: String?
         if transformationVersion != 2 { reason = "transformation_changed" }

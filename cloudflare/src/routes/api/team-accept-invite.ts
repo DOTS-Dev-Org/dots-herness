@@ -5,7 +5,7 @@ import type { Env, AppVariables } from "../../env";
 import { db, normalizeEmail } from "../../db/client";
 import { getUserByEmail, buildUserProfile } from "../../lib/users";
 import { hashToken } from "../../lib/jwt";
-import { hasSeatAvailable } from "../../lib/team";
+import { acceptTeamInviteWithinSeatLimit, hasSeatAvailable } from "../../lib/team";
 import { rateLimit } from "../../middleware/rate-limit";
 
 /** Public POST /team/accept-invite — mounted before authenticated teamRoutes. */
@@ -41,16 +41,17 @@ const acceptInviteRoutes = new Hono<{ Bindings: Env; Variables: AppVariables }>(
       return c.json({ ok: true, user: profile });
     }
 
-    const seats = await hasSeatAvailable(c.env, invite.workspace_id);
-    if (!seats.available) {
+    const accepted = await acceptTeamInviteWithinSeatLimit(c.env, {
+      inviteId: invite.id,
+      workspaceId: invite.workspace_id,
+      userId: user.id,
+      role: invite.role,
+      tokenHash,
+    });
+    if (!accepted) {
+      const seats = await hasSeatAvailable(c.env, invite.workspace_id);
       return c.json({ ok: false, error: "seat_limit_reached", used: seats.used, limit: seats.limit }, 409);
     }
-
-    await db(c.env)
-      .prepare("INSERT INTO workspace_members (workspace_id, user_id, role, joined_at) VALUES (?, ?, ?, NOW()) ON CONFLICT (workspace_id, user_id) DO NOTHING")
-      .bind(invite.workspace_id, user.id, invite.role || "member")
-      .run();
-    await db(c.env).prepare("UPDATE team_invites SET token = ?, accepted_at = NOW() WHERE id = ?").bind(tokenHash, invite.id).run();
 
     const profile = await buildUserProfile(c.env, user.id, invite.workspace_id);
     return c.json({ ok: true, user: profile });

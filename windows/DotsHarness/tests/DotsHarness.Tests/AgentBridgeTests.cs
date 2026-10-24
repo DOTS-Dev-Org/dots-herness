@@ -188,7 +188,8 @@ public sealed class AgentBridgeTests
             var file = Path.Combine(root, "a.txt");
             File.WriteAllText(file, string.Join('\n', Enumerable.Range(1, 10).Select(number => $"line {number}")));
 
-            Assert.Equal("line 3\nline 4", await ReadAsync(root, """{"path":"a.txt","offset":3,"limit":2}"""));
+            Assert.Equal("line 3\nline 4\n\n[truncated] Continue with offset: 5 (file has 10 lines)", await ReadAsync(root, """{"path":"a.txt","offset":3,"limit":2}"""));
+            Assert.Equal("line 9\nline 10", await ReadAsync(root, """{"path":"a.txt","offset":9,"limit":5}"""));
             Assert.Contains("10 lines", await ReadAsync(root, """{"path":"a.txt","offset":99}"""));
 
             // A partial read is not a licence to rewrite the whole file.
@@ -229,7 +230,7 @@ public sealed class AgentBridgeTests
 
             var first = await ReadAsync(root, """{"path":"big.txt"}""");
             Assert.Contains("[truncated] Continue with offset:", first);
-            Assert.True(Encoding.UTF8.GetByteCount(first) <= 60_200);
+            Assert.True(Encoding.UTF8.GetByteCount(first) <= 20_200);
             Assert.All(
                 first.Split('\n').Where(item => item.Length > 0 && !item.StartsWith('[')),
                 item => Assert.Equal(1_000, item.Length));
@@ -424,6 +425,48 @@ public sealed class AgentBridgeTests
     }
 
     [Fact]
+    public void StreamedAssistantHidesBacklogControlLinesAcrossChunkBoundaries()
+    {
+        var conversation = new Conversation();
+        static IReadOnlyDictionary<string, JsonValue> Chunk(string text) => new Dictionary<string, JsonValue>
+        {
+            ["type"] = JsonValue.String("assistant/chunk"),
+            ["data"] = JsonValue.Object(new Dictionary<string, JsonValue>
+            {
+                ["chunk"] = JsonValue.Object(new Dictionary<string, JsonValue>
+                {
+                    ["type"] = JsonValue.String("text-delta"),
+                    ["text"] = JsonValue.String(text),
+                }),
+            }),
+        };
+
+        SessionProjector.Apply(Chunk("Answer\nBACKLOG-D"), conversation);
+        Assert.Equal("Answer", Assert.Single(conversation.Messages).Text);
+        SessionProjector.Apply(Chunk("ONE: run-1"), conversation);
+        Assert.Equal("Answer", Assert.Single(conversation.Messages).Text);
+        SessionProjector.Apply(new Dictionary<string, JsonValue>
+        {
+            ["type"] = JsonValue.String("assistant/message"),
+            ["data"] = JsonValue.Object(new Dictionary<string, JsonValue>
+            {
+                ["message"] = JsonValue.Object(new Dictionary<string, JsonValue>
+                {
+                    ["id"] = JsonValue.String("answer-1"),
+                    ["content"] = JsonValue.Array(JsonValue.Object(new Dictionary<string, JsonValue>
+                    {
+                        ["type"] = JsonValue.String("text"),
+                        ["text"] = JsonValue.String("Answer\nBACKLOG-DONE: run-1"),
+                    })),
+                }),
+            }),
+        }, conversation);
+
+        Assert.Equal("Answer", Assert.Single(conversation.Messages).Text);
+        Assert.False(conversation.Messages[0].Streaming);
+    }
+
+    [Fact]
     public async Task MultipleQueuedPromptsRunInSubmissionOrder()
     {
         var root = Path.Combine(Path.GetTempPath(), $"DotsHarnessTests-{Guid.NewGuid()}");
@@ -433,7 +476,7 @@ public sealed class AgentBridgeTests
         {
             using var provider = new OrderedProvider();
             using var router = new RouterController(PathsFor(root));
-            var endpoint = router.Store.AddCustom("Queue test", "queue-test", provider.Url.ToString().TrimEnd('/'), NativeProviderProtocol.OpenAiCompatible, "chat", null);
+            var endpoint = router.Store.AddCustom("Queue test", "queue-test", provider.Url.ToString().TrimEnd('/'), NativeProviderProtocol.OpenAiCompatible, "chat", null, "test-model");
             router.Store.AddCustomAccount(endpoint, null);
             await router.RefreshAsync();
 
@@ -467,7 +510,7 @@ public sealed class AgentBridgeTests
         {
             using var provider = new OrderedProvider();
             using var router = new RouterController(PathsFor(root));
-            var endpoint = router.Store.AddCustom("Queue test", "queue-test", provider.Url.ToString().TrimEnd('/'), NativeProviderProtocol.OpenAiCompatible, "chat", null);
+            var endpoint = router.Store.AddCustom("Queue test", "queue-test", provider.Url.ToString().TrimEnd('/'), NativeProviderProtocol.OpenAiCompatible, "chat", null, "test-model");
             router.Store.AddCustomAccount(endpoint, null);
             await router.RefreshAsync();
 
@@ -484,9 +527,9 @@ public sealed class AgentBridgeTests
 
             Assert.Equal(new[] { "plan.md should be updated", "second" }, bridge.Selected?.PendingPrompts.Select(prompt => prompt.Text));
             Assert.False(bridge.Selected?.PendingPrompts.First().PlanIntentResolved);
-            var saved = JsonSerializer.Deserialize<List<Conversation>>(File.ReadAllText(Path.Combine(root, "sessions.json")));
-            Assert.NotNull(saved);
-            Assert.Equal(new[] { "plan.md should be updated", "second" }, saved![0].PendingPrompts.Select(prompt => prompt.Text));
+            var saved = new ConversationSqliteStore(root, Path.Combine(root, "sessions.json")).LoadAll();
+            Assert.Single(saved);
+            Assert.Equal(new[] { "plan.md should be updated", "second" }, saved[0].PendingPrompts.Select(prompt => prompt.Text));
             Assert.False(saved[0].PendingPrompts.First().PlanIntentResolved);
             Assert.Empty(provider.Prompts);
 
@@ -512,7 +555,7 @@ public sealed class AgentBridgeTests
         {
             using var provider = new OrderedProvider();
             using var router = new RouterController(PathsFor(root));
-            var endpoint = router.Store.AddCustom("Queue test", "queue-test", provider.Url.ToString().TrimEnd('/'), NativeProviderProtocol.OpenAiCompatible, "chat", null);
+            var endpoint = router.Store.AddCustom("Queue test", "queue-test", provider.Url.ToString().TrimEnd('/'), NativeProviderProtocol.OpenAiCompatible, "chat", null, "test-model");
             router.Store.AddCustomAccount(endpoint, null);
             await router.RefreshAsync();
 
@@ -553,7 +596,7 @@ public sealed class AgentBridgeTests
         {
             using var provider = new OrderedProvider();
             using var router = new RouterController(PathsFor(root));
-            var endpoint = router.Store.AddCustom("Queue test", "queue-test", provider.Url.ToString().TrimEnd('/'), NativeProviderProtocol.OpenAiCompatible, "chat", null);
+            var endpoint = router.Store.AddCustom("Queue test", "queue-test", provider.Url.ToString().TrimEnd('/'), NativeProviderProtocol.OpenAiCompatible, "chat", null, "test-model");
             router.Store.AddCustomAccount(endpoint, null);
             await router.RefreshAsync();
 
@@ -595,7 +638,7 @@ public sealed class AgentBridgeTests
         {
             using var provider = new PlanProvider();
             using var router = new RouterController(PathsFor(root));
-            var endpoint = router.Store.AddCustom("Plan test", "plan-test", provider.Url.ToString().TrimEnd('/'), NativeProviderProtocol.OpenAiCompatible, "chat", null);
+            var endpoint = router.Store.AddCustom("Plan test", "plan-test", provider.Url.ToString().TrimEnd('/'), NativeProviderProtocol.OpenAiCompatible, "chat", null, "test-model");
             router.Store.AddCustomAccount(endpoint, null);
             await router.RefreshAsync();
 
@@ -609,19 +652,19 @@ public sealed class AgentBridgeTests
             var planRequest = JsonNode.Parse(provider.Requests[0])!.AsObject();
             var planSystem = Assert.Single(planRequest["messages"]!.AsArray()
                 .Where(message => message?["role"]?.GetValue<string>() == "system"));
-            Assert.Contains("Response language", planSystem!["content"]!.GetValue<string>());
+            Assert.Contains("Accuracy and language", planSystem!["content"]!.GetValue<string>());
             // Tools go out sorted by name so the prompt-cache prefix is stable.
             Assert.Equal(
-                NativeWorkspaceTools.Definitions.Select(tool => tool.Name).OrderBy(name => name, StringComparer.Ordinal).ToArray(),
-                provider.ToolNames[0].Intersect(NativeWorkspaceTools.Definitions.Select(tool => tool.Name)).ToArray());
+                DeferredToolSession.Definitions.Select(tool => tool.Name).Concat(DeferredToolSession.DirectNames).OrderBy(n => n, StringComparer.Ordinal).ToArray(),
+                provider.ToolNames[0]);
             Assert.Equal(1, conversation.CacheSession?.Epoch);
 
             await bridge.SendAsync("apply plan").WaitAsync(TimeSpan.FromSeconds(10));
 
             Assert.Null(conversation.PendingPlanMessageId);
             Assert.Equal(
-                NativeWorkspaceTools.Definitions.Select(tool => tool.Name).OrderBy(name => name, StringComparer.Ordinal).ToArray(),
-                provider.ToolNames[1].Intersect(NativeWorkspaceTools.Definitions.Select(tool => tool.Name)).ToArray());
+                DeferredToolSession.Definitions.Select(tool => tool.Name).Concat(DeferredToolSession.DirectNames).OrderBy(n => n, StringComparer.Ordinal).ToArray(),
+                provider.ToolNames[1]);
             Assert.Contains(conversation.Messages, message => message.Kind == ChatKind.Assistant && message.Text == "Implemented.");
             Assert.Equal(provider.ToolNames[0], provider.ToolNames[1]);
             Assert.Equal(planRequest["prompt_cache_key"]?.GetValue<string>(),
@@ -644,7 +687,7 @@ public sealed class AgentBridgeTests
         {
             using var provider = new PlanProvider();
             using var router = new RouterController(PathsFor(root));
-            var endpoint = router.Store.AddCustom("Plan gate test", "plan-gate-test", provider.Url.ToString().TrimEnd('/'), NativeProviderProtocol.OpenAiCompatible, "chat", null);
+            var endpoint = router.Store.AddCustom("Plan gate test", "plan-gate-test", provider.Url.ToString().TrimEnd('/'), NativeProviderProtocol.OpenAiCompatible, "chat", null, "test-model");
             router.Store.AddCustomAccount(endpoint, null);
             await router.RefreshAsync();
 
@@ -687,7 +730,7 @@ public sealed class AgentBridgeTests
         {
             using var provider = new LimitProvider();
             using var router = new RouterController(PathsFor(root));
-            var endpoint = router.Store.AddCustom("Limit test", "limit-test", provider.Url.ToString().TrimEnd('/'), NativeProviderProtocol.OpenAiCompatible, "chat", null);
+            var endpoint = router.Store.AddCustom("Limit test", "limit-test", provider.Url.ToString().TrimEnd('/'), NativeProviderProtocol.OpenAiCompatible, "chat", null, "test-model");
             var account = router.Store.AddCustomAccount(endpoint, null);
             account.Model = "test-model";
             account.Models = ["test-model", "other-model"];
@@ -715,18 +758,18 @@ public sealed class AgentBridgeTests
             await queued.WaitAsync(TimeSpan.FromSeconds(10));
 
             Assert.Null(conversation.Continuation);
-            Assert.Equal(4, provider.Requests.Count);
-            var continuationBody = JsonNode.Parse(provider.Requests[2])!.AsObject();
+            Assert.Equal(5, provider.Requests.Count);
+            var continuationBody = JsonNode.Parse(provider.Requests[3])!.AsObject();
             Assert.Equal("other-model", continuationBody["model"]!.GetValue<string>());
             var messages = continuationBody["messages"]!.AsArray();
             var system = Assert.Single(messages.Where(message => message?["role"]?.GetValue<string>() == "system"));
-            Assert.Contains("Response language", system!["content"]!.GetValue<string>());
-            var assistant = Assert.Single(messages.Where(message => message?["role"]?.GetValue<string>() == "assistant"));
+            Assert.Contains("Accuracy and language", system!["content"]!.GetValue<string>());
+            var assistant = Assert.Single(messages.Where(message => message?["role"]?.GetValue<string>() == "assistant" && message?["tool_calls"]?.AsArray().Any(call => call?["id"]?.GetValue<string>() == "call-1") == true));
             Assert.NotNull(assistant!["tool_calls"]);
-            var tool = Assert.Single(messages.Where(message => message?["role"]?.GetValue<string>() == "tool"));
+            var tool = Assert.Single(messages.Where(message => message?["role"]?.GetValue<string>() == "tool" && message?["tool_call_id"]?.GetValue<string>() == "call-1"));
             Assert.Equal("the full file contents", tool!["content"]!.GetValue<string>());
             Assert.Equal("call-1", tool["tool_call_id"]!.GetValue<string>());
-            Assert.Equal("other-model", JsonNode.Parse(provider.Requests[3])!["model"]!.GetValue<string>());
+            Assert.Equal("other-model", JsonNode.Parse(provider.Requests[4])!["model"]!.GetValue<string>());
         }
         finally
         {
@@ -744,6 +787,35 @@ public sealed class AgentBridgeTests
         Path.Combine(root, "models"),
         Path.Combine(root, "runtime"));
 
+    // Composer follow-up suggestions are a separate, tool-less request after each turn.
+    // The providers answer them without counting them as run requests.
+    private static bool IsFollowUpSuggestion(string body) => body.Contains("private suggested follow-up user message", StringComparison.Ordinal);
+
+    private static NativeGatewayResponse SuggestionReply() => new(200, "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"Continue.\"}}]}"u8.ToArray());
+
+    [Fact]
+    public void FirstUserMessageBecomesConversationTitle()
+    {
+        var conversation = new Conversation { Title = "New conversation", Blank = true };
+        SessionProjector.Apply(new Dictionary<string, JsonValue>
+        {
+            ["type"] = JsonValue.String("user/message"),
+            ["time"] = JsonValue.Number(1_000),
+            ["data"] = JsonValue.Object(new Dictionary<string, JsonValue>
+            {
+                ["id"] = JsonValue.String("u1"),
+                ["content"] = JsonValue.Array(JsonValue.Object(new Dictionary<string, JsonValue>
+                {
+                    ["type"] = JsonValue.String("text"),
+                    ["text"] = JsonValue.String("Fix the sidebar\nKeep this detail below the title"),
+                })),
+            }),
+        }, conversation);
+
+        Assert.Equal("Fix the sidebar", conversation.Title);
+        Assert.False(conversation.Blank);
+    }
+
     private sealed class OrderedProvider : IDisposable
     {
         private readonly NativeProviderGateway _gateway;
@@ -752,8 +824,7 @@ public sealed class AgentBridgeTests
 
         public OrderedProvider()
         {
-            _gateway = new NativeProviderGateway(FreePort(), HandleAsync);
-            _gateway.Start();
+            _gateway = LocalTestGateway.Start(HandleAsync);
         }
 
         public Uri Url => _gateway.Url;
@@ -763,7 +834,9 @@ public sealed class AgentBridgeTests
 
         private async Task<NativeGatewayResponse> HandleAsync(NativeGatewayRequest request)
         {
-            var node = JsonNode.Parse(Encoding.UTF8.GetString(request.Body));
+            var body = Encoding.UTF8.GetString(request.Body);
+            if (IsFollowUpSuggestion(body)) return SuggestionReply();
+            var node = JsonNode.Parse(body);
             var prompt = node?["messages"]?.AsArray()
                 .LastOrDefault(message => message?["role"]?.GetValue<string>() == "user")?["content"]?.GetValue<string>() ?? "";
             int count;
@@ -783,12 +856,6 @@ public sealed class AgentBridgeTests
 
         public void Dispose() => _gateway.Dispose();
 
-        private static ushort FreePort()
-        {
-            using var listener = new TcpListener(IPAddress.Loopback, 0);
-            listener.Start();
-            return checked((ushort)((IPEndPoint)listener.LocalEndpoint).Port);
-        }
     }
 
     private sealed class PlanProvider : IDisposable
@@ -799,8 +866,7 @@ public sealed class AgentBridgeTests
 
         public PlanProvider()
         {
-            _gateway = new NativeProviderGateway(FreePort(), HandleAsync);
-            _gateway.Start();
+            _gateway = LocalTestGateway.Start(HandleAsync);
         }
 
         public Uri Url => _gateway.Url;
@@ -810,6 +876,7 @@ public sealed class AgentBridgeTests
         private Task<NativeGatewayResponse> HandleAsync(NativeGatewayRequest request)
         {
             var body = Encoding.UTF8.GetString(request.Body);
+            if (IsFollowUpSuggestion(body)) return Task.FromResult(SuggestionReply());
             var node = JsonNode.Parse(body);
             var tools = node?["tools"]?.AsArray()
                 .Select(tool => tool?["function"]?["name"]?.GetValue<string>() ?? "")
@@ -831,12 +898,6 @@ public sealed class AgentBridgeTests
 
         public void Dispose() => _gateway.Dispose();
 
-        private static ushort FreePort()
-        {
-            using var listener = new TcpListener(IPAddress.Loopback, 0);
-            listener.Start();
-            return checked((ushort)((IPEndPoint)listener.LocalEndpoint).Port);
-        }
     }
 
     private sealed class LimitProvider : IDisposable
@@ -847,8 +908,7 @@ public sealed class AgentBridgeTests
 
         public LimitProvider()
         {
-            _gateway = new NativeProviderGateway(FreePort(), HandleAsync);
-            _gateway.Start();
+            _gateway = LocalTestGateway.Start(HandleAsync);
         }
 
         public Uri Url => _gateway.Url;
@@ -860,13 +920,14 @@ public sealed class AgentBridgeTests
         {
             if (request.Method != "POST") return new NativeGatewayResponse(404, []);
             var body = Encoding.UTF8.GetString(request.Body);
+            if (IsFollowUpSuggestion(body)) return SuggestionReply();
             int count;
             lock (_lock)
             {
                 Requests.Add(body);
                 count = ++_requestCount;
             }
-            if (count == 1)
+            if (count <= 2)
             {
                 var toolCall = new
                 {
@@ -882,9 +943,9 @@ public sealed class AgentBridgeTests
                                 {
                                     new
                                     {
-                                        id = "call-1",
+                                        id = count == 1 ? "discover-1" : "call-1",
                                         type = "function",
-                                        function = new { name = "read_file", arguments = "{\"path\":\"input.txt\"}" },
+                                        function = new { name = count == 1 ? "discover_tools" : "invoke_tool", arguments = count == 1 ? """{"query":"read_file"}""" : """{"name":"read_file","arguments":"{\"path\":\"input.txt\"}"}""" },
                                     },
                                 },
                             },
@@ -893,7 +954,7 @@ public sealed class AgentBridgeTests
                 };
                 return new NativeGatewayResponse(200, JsonSerializer.SerializeToUtf8Bytes(toolCall));
             }
-            if (count == 2)
+            if (count == 3)
             {
                 LimitRequest.TrySetResult(true);
                 await ReleaseLimit.Task.WaitAsync(TimeSpan.FromSeconds(10));
@@ -904,12 +965,6 @@ public sealed class AgentBridgeTests
 
         public void Dispose() => _gateway.Dispose();
 
-        private static ushort FreePort()
-        {
-            using var listener = new TcpListener(IPAddress.Loopback, 0);
-            listener.Start();
-            return checked((ushort)((IPEndPoint)listener.LocalEndpoint).Port);
-        }
     }
 
 }

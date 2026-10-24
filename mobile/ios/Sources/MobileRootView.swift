@@ -65,8 +65,6 @@ struct MobileRootView: View {
                     IntroView { hasSeenIntro = true }
                 }
                 .ignoresSafeArea()
-            } else if legal.needsAcceptance {
-                LegalGateView(legal: legal)
             } else {
                 // The on-device runtime is the default. Pairing remains a
                 // backwards-compatible deep link, never an app-start gate.
@@ -203,7 +201,7 @@ private struct IntroSlideView: View {
                         if localization.isRTL {
                             HStack(spacing: 12) {
                                 if page < introSlides.count - 1 {
-                                    Button(localization.text("intro.skip"), action: onFinish)
+                                    Button(localization.text("intro.skip"), action: skipToLastPage)
                                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                                         .foregroundStyle(theme.isDark ? Color.white.opacity(0.92) : Color.black.opacity(0.88))
                                 }
@@ -239,7 +237,7 @@ private struct IntroSlideView: View {
                                 .buttonStyle(.plain)
                                 .accessibilityLabel(theme.isDark ? "Switch to light theme" : "Switch to dark theme")
                                 if page < introSlides.count - 1 {
-                                    Button(localization.text("intro.skip"), action: onFinish)
+                                    Button(localization.text("intro.skip"), action: skipToLastPage)
                                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                                         .foregroundStyle(theme.isDark ? Color.white.opacity(0.92) : Color.black.opacity(0.88))
                                 }
@@ -301,6 +299,10 @@ private struct IntroSlideView: View {
                 }
             }
         }
+    }
+
+    private func skipToLastPage() {
+        withAnimation(.easeInOut) { page = introSlides.count - 1 }
     }
 
     private var primaryButton: some View {
@@ -367,6 +369,9 @@ struct WorkspaceView: View {
     @State private var folderImportError: String?
     @State private var isLeftDrawerPresented = false
     @State private var isToolsDrawerPresented = false
+    @StateObject private var notificationInbox = MobileNotificationInbox.shared
+    @State private var showingNotifications = false
+    @State private var lastNotifiedTurnID: UUID?
 
     var files: [WorkspaceFile] { local.snapshot?.files.sorted { $0.path < $1.path } ?? client.snapshot?.files.sorted { $0.path < $1.path } ?? local.files() }
 
@@ -488,6 +493,37 @@ struct WorkspaceView: View {
             TerminalTab(onBack: { selectedTab = 0 })
         case 3:
             PreviewTab(url: $previewURL, onBack: { selectedTab = 0 })
+        case 5:
+            NavigationStack {
+                List { LoopsView() }
+                    .navigationTitle(localization.text("rail.tasks"))
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button { selectedTab = 0 } label: {
+                                Image(systemName: localization.isRTL ? "chevron.right" : "chevron.left")
+                            }
+                            .accessibilityLabel(localization.text("intro.back"))
+                        }
+                    }
+            }
+        case 6:
+            NavigationStack {
+                MobileMemoryVaultView()
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button { selectedTab = 0 } label: {
+                                Image(systemName: localization.isRTL ? "chevron.right" : "chevron.left")
+                            }
+                            .accessibilityLabel(localization.text("intro.back"))
+                        }
+                    }
+            }
+        case 7:
+            MobileMediaStudioView()
+        case 8:
+            MobileBotsView { selectedTab = 0 }
+        case 9:
+            MobileMarketplaceView { selectedTab = 0 }
         default:
             SettingsView(
                 previewURL: $previewURL,
@@ -547,6 +583,26 @@ struct WorkspaceView: View {
                         }
                     }
                     Spacer()
+                    Button { showingNotifications = true } label: {
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: notificationInbox.unreadCount > 0 ? "bell.badge.fill" : "bell")
+                                .font(.system(size: 17, weight: .medium))
+                                .frame(width: 36, height: 40)
+                            if notificationInbox.unreadCount > 0 {
+                                Text(notificationInbox.unreadCount > 9 ? "9+" : "\(notificationInbox.unreadCount)")
+                                    .font(.system(size: 8, weight: .bold).monospacedDigit())
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 4)
+                                    .frame(minWidth: 14, minHeight: 14)
+                                    .background(Color.accentColor, in: Capsule())
+                                    .offset(x: 2, y: 1)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(notificationInbox.unreadCount > 0
+                        ? localization.format("notifications.unreadCount", notificationInbox.unreadCount)
+                        : localization.text("notifications.title"))
                     Button {
                         withAnimation(.easeInOut(duration: 0.22)) { isToolsDrawerPresented = true }
                     } label: {
@@ -622,6 +678,10 @@ struct WorkspaceView: View {
                     onSettings: {
                         selectedTab = 4
                         withAnimation(.easeInOut(duration: 0.22)) { isLeftDrawerPresented = false }
+                    },
+                    onSelectTab: { tab in
+                        selectedTab = tab
+                        withAnimation(.easeInOut(duration: 0.22)) { isLeftDrawerPresented = false }
                     }
                 )
                 .transition(.opacity)
@@ -692,6 +752,12 @@ struct WorkspaceView: View {
                         .font(.headline)
                         .lineLimit(1)
                     Spacer(minLength: 8)
+                    Button { showingNotifications = true } label: {
+                        Image(systemName: notificationInbox.unreadCount > 0 ? "bell.badge.fill" : "bell")
+                            .font(.system(size: 17, weight: .medium))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(localization.text("notifications.title"))
                     if !client.remoteProjects.isEmpty {
                         Menu {
                             ForEach(client.remoteProjects) { project in
@@ -741,6 +807,11 @@ struct WorkspaceView: View {
         case 1: localization.text("mobile.nav.code")
         case 2: localization.text("mobile.nav.terminal")
         case 3: localization.text("mobile.nav.preview")
+        case 5: localization.text("rail.tasks")
+        case 6: localization.text("rail.memory")
+        case 7: localization.text("rail.media")
+        case 8: localization.text("rail.bots")
+        case 9: localization.text("rail.marketplace")
         default: localization.text("mobile.nav.settings")
         }
     }
@@ -806,6 +877,71 @@ struct WorkspaceView: View {
         } message: {
             Text(localization.text("mobile.exit.message"))
         }
+        .sheet(isPresented: $showingNotifications) {
+            MobileNotificationsView(inbox: notificationInbox, onSelect: openNotification)
+        }
+        .onChange(of: agent.isRunning) { wasRunning, isRunning in
+            if wasRunning && !isRunning { recordCompletedRun() }
+        }
+        .onChange(of: agent.questionRequest?.id) { _, id in
+            guard id != nil, let request = agent.questionRequest else { return }
+            let questions = request.askUserQuestions.map(\.prompt).joined(separator: " · ")
+            notificationInbox.append(
+                kind: "question",
+                title: localization.text("notifications.question"),
+                subtitle: local.selectedProject.name,
+                detail: questions.isEmpty ? request.question : questions,
+                conversationID: agent.activeConversationId,
+                projectID: agent.projectID,
+                conversationPath: local.selectedProject.localRoot,
+                isRead: selectedTab == 0)
+        }
+        .onChange(of: agent.approvalRequest?.id) { _, id in
+            guard id != nil, let request = agent.approvalRequest else { return }
+            notificationInbox.append(
+                kind: "approval",
+                title: localization.text("notifications.approval"),
+                subtitle: local.selectedProject.name,
+                detail: request.toolName,
+                conversationID: agent.activeConversationId,
+                projectID: agent.projectID,
+                conversationPath: local.selectedProject.localRoot,
+                isRead: selectedTab == 0)
+        }
+    }
+
+    private func recordCompletedRun() {
+        let failed = agent.runtimeState == "failed"
+        guard failed || agent.runtimeState == "completed" else { return }
+        let turn = agent.transcript.last { $0.role == (failed ? .error : .assistant) }
+        guard let turn, turn.id != lastNotifiedTurnID else { return }
+        lastNotifiedTurnID = turn.id
+        notificationInbox.append(
+            kind: failed ? "failed" : "completed",
+            title: localization.text(failed ? "notifications.operationFailed" : "notifications.responseReady"),
+            subtitle: local.selectedProject.name,
+            detail: turn.text,
+            conversationID: agent.activeConversationId,
+            projectID: agent.projectID,
+            conversationPath: local.selectedProject.localRoot,
+            isRead: selectedTab == 0)
+    }
+
+    private func openNotification(_ item: MobileInboxNotification) {
+        if let projectID = item.projectID {
+            if projectID == MobileHarnessRuntime.noProjectID && !agent.isNoProjectMode {
+                guard !agent.isRunning, loops.running == nil else { return }
+                agent.selectNoProject()
+            } else if projectID != local.selectedProjectID {
+                guard !agent.isRunning, loops.running == nil else { return }
+                guard local.switchProject(projectID) else { return }
+                agent.selectProject(projectID)
+            }
+        }
+        if let conversationID = item.conversationID, !agent.openConversation(conversationID) { return }
+        notificationInbox.markRead(item.id)
+        selectedTab = 0
+        showingNotifications = false
     }
 
     private func requestExit() {
@@ -1005,10 +1141,20 @@ private struct MobileNavigationDrawer: View {
                             MobileDrawerItem(title: localization.text("mobile.nav.code"), systemImage: "chevron.left.forwardslash.chevron.right", isSelected: selectedTab == 1, darkAppearance: darkAppearance) { onSelectTab?(1) }
                             MobileDrawerItem(title: localization.text("mobile.nav.terminal"), systemImage: "terminal", isSelected: selectedTab == 2, darkAppearance: darkAppearance) { onSelectTab?(2) }
                             MobileDrawerItem(title: localization.text("mobile.nav.preview"), systemImage: "globe", isSelected: selectedTab == 3, darkAppearance: darkAppearance) { onSelectTab?(3) }
+                            MobileDrawerItem(title: localization.text("rail.tasks"), systemImage: "clock", isSelected: selectedTab == 5, darkAppearance: darkAppearance) { onSelectTab?(5) }
+                            MobileDrawerItem(title: localization.text("rail.memory"), systemImage: "brain", isSelected: selectedTab == 6, darkAppearance: darkAppearance) { onSelectTab?(6) }
+                            MobileDrawerItem(title: localization.text("rail.media"), systemImage: "photo.on.rectangle.angled", isSelected: selectedTab == 7, darkAppearance: darkAppearance) { onSelectTab?(7) }
+                            MobileDrawerItem(title: localization.text("rail.bots"), systemImage: "person.2", isSelected: selectedTab == 8, darkAppearance: darkAppearance) { onSelectTab?(8) }
+                            MobileDrawerItem(title: localization.text("rail.marketplace"), systemImage: "shippingbox", isSelected: selectedTab == 9, darkAppearance: darkAppearance) { onSelectTab?(9) }
                             MobileDrawerItem(title: settingsTitle, systemImage: "gearshape", isSelected: selectedTab == 4, darkAppearance: darkAppearance, action: onSettings)
                         }
                     } else {
                         MobileDrawerItem(title: settingsTitle, systemImage: "gearshape", isSelected: selectedTab == 4, darkAppearance: darkAppearance, action: onSettings)
+                        MobileDrawerItem(title: localization.text("rail.tasks"), systemImage: "clock", isSelected: selectedTab == 5, darkAppearance: darkAppearance) { onSelectTab?(5) }
+                        MobileDrawerItem(title: localization.text("rail.memory"), systemImage: "brain", isSelected: selectedTab == 6, darkAppearance: darkAppearance) { onSelectTab?(6) }
+                        MobileDrawerItem(title: localization.text("rail.media"), systemImage: "photo.on.rectangle.angled", isSelected: selectedTab == 7, darkAppearance: darkAppearance) { onSelectTab?(7) }
+                        MobileDrawerItem(title: localization.text("rail.bots"), systemImage: "person.2", isSelected: selectedTab == 8, darkAppearance: darkAppearance) { onSelectTab?(8) }
+                        MobileDrawerItem(title: localization.text("rail.marketplace"), systemImage: "shippingbox", isSelected: selectedTab == 9, darkAppearance: darkAppearance) { onSelectTab?(9) }
                     }
                 }
                 .padding(.horizontal, 14)
@@ -1226,14 +1372,17 @@ struct EventFeedView: View {
     @State private var artifactText = ""
     @State private var showingArtifact = false
     @State private var artifactURL: URL?
-    @State private var questionAnswer = ""
+    @State private var answeredQuestionIDs: Set<String> = []
+    @State private var sendingQuestionIDs: Set<String> = []
     var body: some View {
         NavigationStack {
             VStack {
                 List(client.events.reversed()) { event in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(eventTitle(event)).font(.caption.bold()).foregroundStyle(.tint)
-                        Text(eventDescription(event)).font(.system(.body, design: .monospaced)).lineLimit(8)
+                        if event.kind != "question.required" {
+                            Text(eventDescription(event)).font(.system(.body, design: .monospaced)).lineLimit(8)
+                        }
                         if event.kind == "approval.required", let approvalID = event.payload["approvalId"]?.string {
                             HStack {
                                 Button(localization.text("permission.allowOnce")) { Task { try? await client.command(kind: "approve", payload: ["approvalId": .string(approvalID), "answer": .string("allowed-once")]) } }
@@ -1241,14 +1390,16 @@ struct EventFeedView: View {
                             }
                         }
                         if event.kind == "question.required", let questionID = event.payload["questionId"]?.string {
-                            Text(localization.text("mobile.agent.clarification")).font(.headline)
-                            Text(event.payload["questions"]?.string ?? localization.text("mobile.agent.answer")).font(.caption).foregroundStyle(.secondary)
-                            TextField(localization.text("mobile.agent.answer"), text: $questionAnswer)
-                            Button(localization.text("mobile.agent.answer")) {
-                                let answer = questionAnswer
-                                questionAnswer = ""
-                                Task { try? await client.command(kind: "question", payload: ["questionId": .string(questionID), "answers": .array([.string(answer)])]) }
-                            }.disabled(questionAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            let questions = askUserQuestions(for: event)
+                            if !answeredQuestionIDs.contains(questionID), !questions.isEmpty {
+                                MobileAskUserCard(
+                                    questions: questions,
+                                    enabled: client.isPaired && client.remoteSelectedProjectID != nil && !sendingQuestionIDs.contains(questionID),
+                                    onSubmit: { submitQuestion(questionID, answers: $0) },
+                                    onSkip: { submitQuestion(questionID, answers: []) }
+                                )
+                                .id(event.id)
+                            }
                         }
                         if let artifactID = event.artifactId {
                             if event.kind == "artifact.ready" {
@@ -1322,6 +1473,67 @@ struct EventFeedView: View {
             }
         default:
             return (payload["warning"]?.string.map { "⚠️ \($0)\n" } ?? "") + (payload["text"]?.string ?? payload["preview"]?.string ?? payload["output"]?.string ?? localization.text("mobile.event.live"))
+        }
+    }
+
+    private func askUserQuestions(for event: ControlEvent) -> [MobileAskUserQuestion] {
+        guard let payload = event.payload["questions"] else { return [] }
+        let raw: Any
+        switch payload {
+        case .array, .object:
+            raw = foundationValue(payload)
+        case .string(let text):
+            if let data = text.data(using: .utf8), let value = try? JSONSerialization.jsonObject(with: data), value is [[String: Any]] {
+                raw = value
+            } else {
+                let prompt = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                return prompt.isEmpty ? [] : [MobileAskUserQuestion(id: "q0", prompt: prompt)]
+            }
+        default:
+            return []
+        }
+        guard let values = raw as? [[String: Any]] else { return [] }
+        return values.enumerated().compactMap { index, item in
+            let prompt = (item["prompt"] as? String ?? item["question"] as? String ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !prompt.isEmpty else { return nil }
+            return MobileAskUserQuestion(
+                id: item["id"] as? String ?? "q\(index)",
+                header: (item["header"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
+                prompt: prompt,
+                options: (item["options"] as? [String] ?? []).filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.prefix(4).map { $0 }
+            )
+        }
+    }
+
+    private func foundationValue(_ value: RemoteJSONValue) -> Any {
+        switch value {
+        case .string(let value): return value
+        case .number(let value): return value
+        case .bool(let value): return value
+        case .object(let value): return value.mapValues(foundationValue)
+        case .array(let value): return value.map(foundationValue)
+        case .null: return NSNull()
+        }
+    }
+
+    private func submitQuestion(_ questionID: String, answers: [String]) {
+        sendingQuestionIDs.insert(questionID)
+        Task {
+            defer { sendingQuestionIDs.remove(questionID) }
+            do {
+                let response = try await client.command(kind: "question", payload: [
+                    "questionId": .string(questionID),
+                    "answers": .array(answers.map(RemoteJSONValue.string)),
+                ])
+                if response.status == "accepted" {
+                    answeredQuestionIDs.insert(questionID)
+                } else {
+                    client.errorMessage = response.error ?? "The desktop did not accept the answer."
+                }
+            } catch {
+                client.errorMessage = error.localizedDescription
+            }
         }
     }
 }
@@ -1503,6 +1715,122 @@ struct WebPreview: UIViewRepresentable {
     }
 }
 
+private struct MobileMemoryVaultView: View {
+    @EnvironmentObject private var local: LocalWorkspaceStore
+    @EnvironmentObject private var localization: MobileLocalization
+    @State private var kind = "project"
+    @State private var scope = "user"
+    @State private var key = ""
+    @State private var value = ""
+    @State private var status = ""
+    @State private var refreshID = 0
+    @State private var deleteTarget: MobileFacts.Entry?
+
+    private var root: URL { URL(fileURLWithPath: local.selectedProject.localRoot, isDirectory: true) }
+    private var userRoot: URL { MobilePersonalMemory.defaultRoot() }
+
+    var body: some View {
+        List {
+            Section(localization.text("vault.section.project")) {
+                if MobileFacts.needsTrust(root: root, userRoot: userRoot) {
+                    Text(localization.text("memory.trust.prompt"))
+                        .font(.footnote)
+                    HStack {
+                        Button(localization.text("memory.trust.yes")) {
+                            MobileFacts.setTrust(true, root: root, userRoot: userRoot)
+                            refreshID += 1
+                        }
+                        Button(localization.text("memory.trust.no")) {
+                            MobileFacts.setTrust(false, root: root, userRoot: userRoot)
+                            refreshID += 1
+                        }
+                    }
+                }
+                if MobileFacts.trust(root: root, userRoot: userRoot) == false {
+                    Text(MobileFacts.text(root: root, userRoot: userRoot))
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                let entries = MobileFacts.entries(root: root).filter { $0.kind != "preference" }
+                ForEach(entries) { entry in
+                    HStack(alignment: .center, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(entry.key).font(.subheadline.weight(.semibold))
+                            Text(entry.text).font(.footnote).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                        Button(role: .destructive) { deleteTarget = entry } label: {
+                            Image(systemName: "trash")
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel(localization.text("common.delete"))
+                    }
+                    .textSelection(.enabled)
+                }
+            }
+
+            Section(localization.text("vault.section.profile")) {
+                let personalMemory = MobilePersonalMemory.text(userRoot: userRoot, workspace: root)
+                if !personalMemory.isEmpty {
+                    Text(personalMemory).font(.footnote).textSelection(.enabled)
+                }
+            }
+
+            Section(localization.text("vault.new")) {
+                Picker(localization.text("vault.new"), selection: $kind) {
+                    Text(localization.text("vault.new.projectEntry")).tag("project")
+                    Text(localization.text("vault.new.preference")).tag("preference")
+                }
+                .pickerStyle(.segmented)
+                TextField(localization.text("vault.entry.keyLanguage"), text: $key)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                TextField(localization.text("vault.entry.value"), text: $value, axis: .vertical)
+                    .lineLimit(2...5)
+
+                if kind == "preference" {
+                    Picker(localization.text("vault.entry.scope"), selection: $scope) {
+                        Text(localization.text("vault.entry.everywhere")).tag("user")
+                        Text(localization.text("vault.entry.thisProject")).tag("project")
+                    }
+                }
+
+                Button(localization.text("common.save")) {
+                    status = MobileFacts.record(
+                        root: root,
+                        kind: kind,
+                        key: key,
+                        text: value,
+                        scope: scope,
+                        userRoot: userRoot
+                    )
+                    value = ""
+                    refreshID += 1
+                }
+                .disabled(key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !local.selectedProjectLocationAvailable)
+                if !status.isEmpty {
+                    Text(status).font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .navigationTitle(localization.text("memory.vault.title"))
+        .id(refreshID)
+        .confirmationDialog(
+            localization.text("vault.delete.confirm"),
+            isPresented: Binding(get: { deleteTarget != nil }, set: { if !$0 { deleteTarget = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button(localization.text("common.delete"), role: .destructive) {
+                if let deleteTarget {
+                    _ = MobileFacts.remove(root: root, kind: deleteTarget.kind, key: deleteTarget.key)
+                }
+                deleteTarget = nil
+                refreshID += 1
+            }
+            Button(localization.text("common.cancel"), role: .cancel) { deleteTarget = nil }
+        }
+    }
+}
+
 struct SettingsView: View {
     @EnvironmentObject private var client: RemoteControlClient
     @EnvironmentObject private var localization: MobileLocalization
@@ -1669,6 +1997,12 @@ struct SettingsView: View {
                                     Text(model).tag(model)
                                 }
                             }
+                        }
+                        if agent.supportsFast {
+                            Toggle(localization.text("mobile.agent.fast"), isOn: Binding(
+                                get: { agent.fastMode },
+                                set: { agent.setFastMode($0) }
+                            ))
                         }
                         if selectedProvider.requiresAPIKey {
                             SecureField(localization.text("mobile.settings.providerKey"), text: $providerKey)
@@ -1837,7 +2171,6 @@ struct SettingsView: View {
                         .disabled(pagesBusy || pagesAccountId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || pagesProject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || pagesToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         if !pagesStatus.isEmpty { Text(pagesStatus).font(.footnote).foregroundStyle(.secondary) }
                     }
-                    LoopsView()
                     MCPSettingsView()
                     PluginsView()
                     Section(localization.text("mobile.settings.preview")) { TextField(localization.text("mobile.settings.pagesURL"), text: $previewURL).textInputAutocapitalization(.never) }

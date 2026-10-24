@@ -126,8 +126,44 @@ data class AgentTurn(
     val activityDetail: String? = null,
 )
 data class MobileApprovalRequest(val id: String, val toolName: String)
-data class MobileQuestionRequest(val id: String, val question: String)
+/** [options] are shown as buttons; a typed answer is still accepted. */
+data class MobileAskUserQuestion(
+    val id: String,
+    val header: String = "",
+    val prompt: String,
+    val options: List<String> = emptyList(),
+)
+data class MobileQuestionRequest(
+    val id: String,
+    val question: String,
+    val options: List<String> = emptyList(),
+    /** Present for the structured `ask_user` tool; memory prompts keep the legacy single-question path. */
+    val askUserQuestions: List<MobileAskUserQuestion> = emptyList(),
+)
 data class MobileQueuedPrompt(val id: String, val text: String, val mode: String, val waitingForPlan: Boolean)
+
+private fun parseAskUserQuestions(input: JSONObject): List<MobileAskUserQuestion> {
+    val parsed = input.optJSONArray("questions")?.let { array ->
+        (0 until array.length()).mapNotNull { index ->
+            val item = array.optJSONObject(index) ?: return@mapNotNull null
+            val prompt = item.optString("question").ifBlank { item.optString("prompt") }.trim()
+            if (prompt.isBlank()) return@mapNotNull null
+            val options = item.optJSONArray("options")?.let { values ->
+                (0 until values.length()).map { values.optString(it).trim() }.filter(String::isNotBlank).take(4)
+            }.orEmpty()
+            MobileAskUserQuestion(
+                id = "q$index",
+                header = item.optString("header").trim(),
+                prompt = prompt,
+                options = options,
+            )
+        }
+    }.orEmpty()
+    if (parsed.isNotEmpty()) return parsed
+    val fallback = input.optString("question").ifBlank { input.optString("questions") }
+        .trim()
+    return if (fallback.isBlank()) emptyList() else listOf(MobileAskUserQuestion("q0", prompt = fallback))
+}
 
 data class MobileProviderDefinition(
     val id: String,
@@ -139,12 +175,19 @@ data class MobileProviderDefinition(
     val requiresApiKey: Boolean get() = authKind == AuthKind.API_KEY
     fun contextWindow(model: String): Int = when (id) {
         "anthropic" -> 200_000
-        "openai", "openai-responses", "gpt" -> when {
-            model.startsWith("gpt-4.1") -> 1_000_000
-            model.startsWith("o4-") -> 200_000
-            else -> 128_000
-        }
+        "openai", "openai-responses", "gpt" -> openAIContextWindow(model.lowercase()) ?: 128_000
         else -> 32_768
+    }
+
+    companion object {
+        /** OpenAI API windows for GPT-5.6+. Mini/nano variants are smaller and keep the 128k fallback. */
+        fun openAIContextWindow(model: String): Int? {
+            if (!model.startsWith("gpt-") || "-mini" in model || "-nano" in model) return null
+            val version = model.drop(4).takeWhile { it.isDigit() || it == '.' }.split('.').mapNotNull { it.toIntOrNull() }
+            val major = version.firstOrNull() ?: return null
+            val minor = version.getOrElse(1) { 0 }
+            return if (major >= 6 || (major == 5 && minor >= 6)) 1_050_000 else null
+        }
     }
 }
 
@@ -154,6 +197,13 @@ private class ProviderLimitException(
     val retryAtMillis: Long?,
     message: String,
 ) : Exception(message)
+
+internal fun indicatesContextWindowExceeded(message: String): Boolean {
+    val normalized = message.lowercase(Locale.ROOT).replace('_', ' ')
+    if (listOf("prompt is too long", "prompt too long", "input is too long", "input too long").any(normalized::contains)) return true
+    return listOf("context window", "context length", "maximum context", "max context", "prompt length", "input length").any(normalized::contains)
+        && listOf("exceed", "too long", "too large", "too many tokens", "maximum", "max tokens", "full", "limit").any(normalized::contains)
+}
 
 class MobileHarnessRuntime(
     private val apiKey: () -> String,
@@ -170,8 +220,9 @@ class MobileHarnessRuntime(
     private val chatGPTAccountIDs: () -> List<String> = { emptyList() },
 ) {
     var transcript by mutableStateOf<List<AgentTurn>>(emptyList()); private set
+    var hasOlderTranscriptMessages by mutableStateOf(false); private set
     var running by mutableStateOf(false); private set
-    var provider by mutableStateOf(stateStore?.setting("herness.agent.provider")?.takeIf { definition(it) != null } ?: "anthropic"); private set
+    var provider by mutableStateOf(stateStore?.setting("herness.agent.provider")?.takeIf { definition(it) != null } ?: "anthropic"); internal set
     var model by mutableStateOf(stateStore?.setting("herness.agent.model") ?: modelsFor(provider).first()); private set
     var error by mutableStateOf<String?>(null)
     var contextCompactionThresholdPercent by mutableStateOf(
@@ -202,9 +253,14 @@ class MobileHarnessRuntime(
     /** Whether the agent may hand workspace sweeps to explore subagents. Each one
      * is a separate model run, so the user can turn them off to hold cost down. */
     var subagentsEnabled by mutableStateOf(
-        stateStore?.setting(MobileExplore.SETTINGS_KEY)?.equals("false", ignoreCase = true) != true,
+        stateStore?.setting(MobileExplore.SETTINGS_KEY)?.equals("true", ignoreCase = true) == true,
     )
         private set
+    /** Fast (priority) output on models that offer it; fast mode may also delegate. */
+    var fastMode by mutableStateOf(stateStore?.setting(FAST_MODE_KEY)?.equals("true", ignoreCase = true) == true)
+        private set
+    val supportsFast get() = provider == "anthropic" && model in FAST_MODELS
+    private val subagentsActive get() = subagentsEnabled || (fastMode && supportsFast)
     var approvalRequest by mutableStateOf<MobileApprovalRequest?>(null); private set
     var questionRequest by mutableStateOf<MobileQuestionRequest?>(null); private set
     /** Prompt text contributed by loaded plugins, appended to the system prompt. */
@@ -216,6 +272,8 @@ class MobileHarnessRuntime(
 
     private val tools = linkedMapOf<String, AgentToolSpec>()
     private val wire = mutableListOf<JSONObject>()
+    private var compactRequested = false
+    private var manualCompactionJob: Job? = null
     private var promptHistory = MobilePromptHistory()
     private var cacheState = MobileCacheState()
     val expiredCachePrefixTokens: Int?
@@ -240,9 +298,18 @@ class MobileHarnessRuntime(
     var contextNearlyFull by mutableStateOf(false); private set
     /** The project's learned rules as a notice; see [MobileLessons]. Set by whoever registers the workspace tools. */
     var learnedRules: () -> String = { "" }
+    /** Memory questions asked before a turn; empty for a run with no one to ask. */
+    internal var memoryQuestions: (Set<String>) -> List<MobileLessons.MemoryQuestion> = { emptyList() }
+    /** Applies an answer: the option index, null for a typed one. */
+    var memoryAnswer: (String, Int?) -> Unit = { _, _ -> }
+    /** Asked in this session; a skipped question comes back next launch. */
+    private val askedMemoryQuestions = mutableSetOf<String>()
+    /** Preferences that follow the user even when no project is selected. */
+    var personalMemory: () -> String = { "" }
     private var discoveredModelCatalogs by mutableStateOf<Map<String, List<String>>>(emptyMap())
     /** A compaction replaces the serialized prefix and starts a new cache segment. */
     private var contextSegment = 0
+    private var transcriptBeforeRowId: Long? = null
     private val nativeCompactionUnsupportedProviders = mutableSetOf<String>()
     private var lastCompletedRouteIdentity: String? = null
     private var lastLimitedRouteIdentity: String? = null
@@ -251,11 +318,17 @@ class MobileHarnessRuntime(
     private var pendingChatGPTAccountId: String? = null
     /** No project means no workspace, but the web tools need neither, so they are
      * the only ones still offered in that scope. */
+    private var deferredTools = MobileDeferredTools()
+    var selectedEffort: String = "medium"
+    private val requestEffort get() = deferredTools.effort(selectedEffort, activePlanMode)
+    private val discoveryCatalog get() = orderedTools.filter { tool ->
+        !activePlanMode || !blockedInPlanMode(tool.name)
+    }
     private val orderedTools
         get() = tools.values.sortedBy { it.name }.let { specs ->
             if (isNoProjectMode) specs.filter { WebTools.isWebTool(it.name) }
             // Withheld entirely when subagents are off: no schema tokens for it.
-            else specs.filter { subagentsEnabled || (it.name != MobileExplore.NAME && it.name != MobileDelegate.NAME) }
+            else specs.filter { subagentsActive || (it.name != MobileExplore.NAME && it.name != MobileDelegate.NAME) }
         }
     private var explores: Map<String, Deferred<String>> = emptyMap()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -353,6 +426,16 @@ class MobileHarnessRuntime(
                 if (status !in 200..299) return@withContext emptyList()
                 val text = connection.inputStream.use { String(it.readBytes()) }
                 val root = JSONObject(text)
+                // Remember each model's provider-reported window; the bundled guess is only a fallback.
+                for (rows in listOfNotNull(root.optJSONArray("models"), root.optJSONArray("data"))) {
+                    for (index in 0 until rows.length()) {
+                        val row = rows.optJSONObject(index) ?: continue
+                        val id = row.optString("slug").ifBlank { row.optString("id") }.takeIf(String::isNotBlank) ?: continue
+                        val window = listOf("context_window", "context_length", "max_input_tokens", "input_token_limit")
+                            .map { row.optInt(it, 0) }.firstOrNull { it > 0 } ?: continue
+                        stateStore?.saveSetting("mobile.context.$targetProvider.$id", window.toString())
+                    }
+                }
                 if (isChatGpt) {
                     val rows = root.optJSONArray("models") ?: JSONArray()
                     (0 until rows.length()).mapNotNull { index ->
@@ -383,7 +466,7 @@ class MobileHarnessRuntime(
 
     private fun isAgentChatModel(id: String): Boolean {
         val normalized = id.lowercase(Locale.ROOT)
-        return (normalized.startsWith("gpt-") || normalized.startsWith("o1") || normalized.startsWith("o3") || normalized.startsWith("o4"))
+        return normalized.startsWith("gpt-")
             && listOf("image", "audio", "realtime", "transcribe", "embedding", "moderation", "search-preview").none(normalized::contains)
     }
 
@@ -500,7 +583,7 @@ class MobileHarnessRuntime(
     fun start() {
         runtimeConfigured = true
         runtimeState = "ready"
-        resumeRecoveredPlanIfNeeded()
+        resumeRecoveredConversationIfNeeded()
         resolveRestoredPlanIntents()
         val restoredConversation = conversationId
         val restoredStatus = restoredConversation?.let { stateStore?.conversationStatus(it) }
@@ -543,7 +626,7 @@ class MobileHarnessRuntime(
         if (!running) return
         recoveryAutoResumeScheduled = false
         requiresToolOutcomeRecovery = true
-        toolOutcomeRecoveryMessage = "The app was closed or suspended while this plan was active. Recovery will continue automatically when possible; tool results are not assumed and no tool call will be replayed."
+        toolOutcomeRecoveryMessage = "The app was closed or suspended while this conversation was active. Recovery will continue automatically when possible; tool results are not assumed and no tool call will be replayed."
         runtimeState = "paused"
         stateStore?.finishRun(conversationId, "interrupted")
         emit("run.paused", mapOf("reason" to "application_closed", "planGate" to planGateActive.toString()))
@@ -595,19 +678,44 @@ class MobileHarnessRuntime(
         resetConversation()
     }
 
+    /** Starts a separate thread while leaving the previous conversation in history. */
+    fun newConversation() {
+        if (!projectLocationAvailable || running) return
+        persistModelContext()
+        resetConversation(preserveCurrentConversation = true)
+        start()
+    }
+
     fun recentConversations(limit: Int = 30): List<StoredMobileConversation> =
         stateStore?.otherConversations(excluding = null, projectId = projectId, limit = limit).orEmpty()
 
     fun storedMessages(conversationId: String): List<StoredMobileMessage> =
         stateStore?.messages(conversationId).orEmpty()
 
+    fun storedMessagePage(conversationId: String, beforeRowId: Long? = null, limit: Int = 10): StoredMobileMessagePage =
+        stateStore?.messagePage(conversationId, beforeRowId, limit) ?: StoredMobileMessagePage(emptyList(), null, false)
+
     fun openConversation(id: String): Boolean {
         if (running || id.isBlank()) return false
         val stored = stateStore?.modelContext(id)?.takeIf { it.projectId == projectId } ?: return false
         resetConversation(preserveCurrentConversation = true)
         restoreModelContext(stored)
-        transcript = storedMessages(id).map { AgentTurn(it.role, it.content, it.toolName) }
+        resumeRecoveredConversationIfNeeded()
         return true
+    }
+
+    fun loadOlderTranscriptMessages() {
+        val id = conversationId ?: return
+        val cursor = transcriptBeforeRowId ?: return
+        if (!hasOlderTranscriptMessages) return
+        val page = stateStore?.messagePage(id, cursor) ?: return
+        if (page.messages.isEmpty()) {
+            hasOlderTranscriptMessages = false
+            return
+        }
+        transcript = page.messages.map { AgentTurn(it.role, it.content, it.toolName, id = it.id) } + transcript
+        transcriptBeforeRowId = page.beforeRowId
+        hasOlderTranscriptMessages = page.hasOlder
     }
 
     private fun resetConversation(preserveCurrentConversation: Boolean = false) {
@@ -648,19 +756,27 @@ class MobileHarnessRuntime(
         lastLimitedChatGPTAccountId = null
         pendingChatGPTAccountId = null
         transcript = emptyList()
+        hasOlderTranscriptMessages = false
+        transcriptBeforeRowId = null
         conversationId = null
         runtimeState = "idle"
     }
 
-    /** Approved plan execution may resume after a restart or foreground return.
-     * The synthetic unknown-result marker remains in `wire`; only a fresh
-     * provider request starts automatically, never the old tool call. */
-    fun resumeRecoveredPlanIfNeeded() {
-        if (!projectLocationAvailable || !runtimeConfigured || running || !requiresToolOutcomeRecovery || !planGateActive || recoveryAutoResumeScheduled) return
+    /** Interrupted conversations resume automatically only with a recent, proven
+     * cache prefix. The old tool call is never replayed; otherwise Continue stays manual. */
+    fun resumeRecoveredConversationIfNeeded() {
+        val recoveringConversationId = conversationId ?: return
+        if (!projectLocationAvailable || !runtimeConfigured || running || !requiresToolOutcomeRecovery || recoveryAutoResumeScheduled
+            || lastCompletedRouteIdentity != contextRouteIdentity()
+            || !cacheState.allowsAutomaticResume(model)) return
         recoveryAutoResumeScheduled = true
         scope.launch {
             kotlinx.coroutines.yield()
-            if (!projectLocationAvailable || !runtimeConfigured || running || !requiresToolOutcomeRecovery || !planGateActive) {
+            if (conversationId != recoveringConversationId) return@launch
+            if (!projectLocationAvailable || !runtimeConfigured || running || !requiresToolOutcomeRecovery
+                || lastCompletedRouteIdentity != contextRouteIdentity()
+                || !cacheState.allowsAutomaticResume(model)
+            ) {
                 recoveryAutoResumeScheduled = false
                 return@launch
             }
@@ -677,6 +793,12 @@ class MobileHarnessRuntime(
         if (!projectLocationAvailable) return false
         val prompt = text.trim()
         if (prompt.isEmpty() && attachments.isEmpty()) return false
+        val compactRemainder = MobilePromptHistory.compactCommand(prompt)
+        if (compactRemainder != null) {
+            requestContextCompaction()
+            if (compactRemainder.isEmpty() && attachments.isEmpty()) return true
+            return send(compactRemainder, attachments, mode, planMode)
+        }
         accountSwitched = false
         val verdict = MobilePlanningIntent.verdict(prompt)
         val needsClassification = !planMode && verdict == PlanVerdict.AMBIGUOUS
@@ -946,6 +1068,8 @@ class MobileHarnessRuntime(
         val attachmentLabel = attachments.joinToString(", ") { it.displayName }
         transcript = transcript + AgentTurn("user", listOf(prompt, attachmentLabel.takeIf { it.isNotEmpty() }?.let { "[Attachments: $it]" }).filterNotNull().filter { it.isNotEmpty() }.joinToString("\n"))
         val captured = promptHistory.capture(prompt, activeSystemPrompt(), HerNessPrompt.pluginGuidance(pluginPrompt))
+        deferredTools.resetPlan()
+        repeatGuard = ToolRepeatGuard()
         // Once per user turn, so the cached prefix moves at most once.
         MobilePromptHistory.supersedeRepeatedReads(wire)
         wire += canonicalUserMessage(captured, attachments)
@@ -1051,7 +1175,10 @@ class MobileHarnessRuntime(
         if (wait <= 0 || wait > MAXIMUM_LIMIT_RESUME_DELAY_MILLIS) return
         limitResumeJob = scope.launch {
             delay(wait)
-            if (canContinueAfterProviderLimit && !running) continueRun(allowAccountFailoverAfterLimit = false)
+            if (canContinueAfterProviderLimit && !running
+                && lastCompletedRouteIdentity == contextRouteIdentity()
+                && cacheState.allowsAutomaticResume(model)
+            ) continueRun(allowAccountFailoverAfterLimit = false)
         }
     }
 
@@ -1078,12 +1205,35 @@ class MobileHarnessRuntime(
     fun answerQuestion(questionId: String, answers: List<String>) {
         if (!projectLocationAvailable) return
         val pending = pendingQuestion?.takeIf { it.id == questionId } ?: return
+        if (pending.name == MEMORY_QUESTION_TOOL) {
+            val choice = answers.firstOrNull()?.let { questionRequest?.options?.indexOf(it) }?.takeIf { it >= 0 }
+            pendingQuestion = null
+            questionRequest = null
+            runtimeState = "idle"
+            memoryAnswer(pending.id, choice)
+            drainNextQueuedPromptIfReleased()
+            return
+        }
+        val askUserQuestions = questionRequest?.askUserQuestions.orEmpty()
         pendingQuestion = null
         questionRequest = null
         stateStore?.resolvePendingAction(questionId, "answered")
         emit("question.answered", mapOf("questionId" to questionId, "answers" to answers.joinToString("\n")))
-        val answer = answers.joinToString("\n").trim()
-        appendToolResult(pending.id, pending.name, (if (answer.isBlank()) "No answer was provided." else answer) to answer.isBlank())
+        if (askUserQuestions.isNotEmpty()) {
+            val transcript = askUserQuestions.mapIndexed { index, question ->
+                val answer = answers.getOrNull(index).orEmpty().trim()
+                "Q: ${question.prompt}\nA: ${answer.ifBlank { "(undetermined - user did not answer)" }}"
+            }.joinToString("\n\n")
+            val hasAnswer = answers.any { it.isNotBlank() }
+            appendToolResult(
+                pending.id,
+                pending.name,
+                (if (hasAnswer) transcript else "The user skipped the clarification. Continue only with work that does not depend on an unanswered decision; do not guess that decision.") to false,
+            )
+        } else {
+            val answer = answers.joinToString("\n").trim()
+            appendToolResult(pending.id, pending.name, (if (answer.isBlank()) "No answer was provided." else answer) to answer.isBlank())
+        }
         continueRun()
     }
 
@@ -1103,7 +1253,7 @@ class MobileHarnessRuntime(
         projectId = id
         events = stateStore?.recentEvents(projectId = id) ?: emptyList()
         restoreModelContext()
-        resumeRecoveredPlanIfNeeded()
+        resumeRecoveredConversationIfNeeded()
     }
 
     fun selectNoProject() = selectProject(NO_PROJECT_ID)
@@ -1111,6 +1261,11 @@ class MobileHarnessRuntime(
     fun updateAutoApprovePlans(value: Boolean) {
         autoApprovePlans = value
         stateStore?.saveSetting("herness.agent.autoApprovePlans", value.toString())
+    }
+
+    fun updateFastMode(value: Boolean) {
+        fastMode = value
+        stateStore?.saveSetting(FAST_MODE_KEY, value.toString())
     }
 
     fun updateSubagentsEnabled(value: Boolean) {
@@ -1123,27 +1278,7 @@ class MobileHarnessRuntime(
         stateStore?.saveSetting(CONTEXT_COMPACTION_THRESHOLD_KEY, contextCompactionThresholdPercent.toString())
     }
 
-    fun compactContextNow() {
-        scope.launch {
-            runCatching {
-                compactContextIfNeeded(force = true)
-                persistModelContext()
-            }.onFailure { error = it.message ?: "Could not compact context." }
-        }
-    }
-
-    fun refreshWorkspace() { emit("workspace.refreshed", mapOf("source" to "local")) }
-
-    suspend fun executeGit(operation: String): String {
-        val gitClient = gitClient ?: run {
-            val message = "unsupported_on_mobile: " + operation + " requires the native MobileGitClient backend."
-            emit("git.unsupported", mapOf("operation" to operation, "reason" to message))
-            return message
-        }
-        val result = gitClient.execute(operation)
-        if (result.unavailable) emit("git.unsupported", mapOf("operation" to operation, "reason" to result.output))
-        return result.output
-    }
+    private var repeatGuard = ToolRepeatGuard()
 
     private suspend fun runLoop() {
         try {
@@ -1186,7 +1321,7 @@ class MobileHarnessRuntime(
 
                 val calls = (0 until blocks.length()).mapNotNull { index ->
                     blocks.optJSONObject(index)?.takeIf { it.optString("type") == "tool_use" }
-                }
+                }.map { deferredTools.resolve(it, discoveryCatalog) }
                 if (calls.isEmpty()) {
                     if (activePlanMode && autoApprovePlans && said.isNotBlank()) {
                         activePlanMode = false
@@ -1240,15 +1375,46 @@ class MobileHarnessRuntime(
                         results.put(recordToolResult(callId, name, "blocked_in_plan_mode: $name is read-only in plan mode." to true))
                         continue
                     }
+                    val control = deferredTools.control(name, input, discoveryCatalog, activePlanMode)
+                    if (control != null) {
+                        results.put(recordToolResult(callId, name, control to control.startsWith("Tool error")))
+                        continue
+                    }
+                    if (repeatGuard.isRepeat(name, input)) {
+                        results.put(recordToolResult(callId, name, ToolRepeatGuard.REPEATED_NOTICE to true))
+                        continue
+                    }
                     if (name == "run_command" && AgentTools.isTestCommand(input.optString("command"))) activeTestStatus = "requested"
                     if (name == "ask_user") {
+                        val questions = parseAskUserQuestions(input)
+                        if (questions.isEmpty()) {
+                            results.put(recordToolResult(callId, name, "Tool error: ask_user needs at least one non-empty question." to true))
+                            continue
+                        }
                         if (results.length() > 0) wire += JSONObject().put("role", "user").put("content", results)
                         pendingQuestion = PendingTool(callId, name, input)
-                        questionRequest = MobileQuestionRequest(callId, input.optString("question").ifBlank { input.optString("questions").ifBlank { "The agent needs more information." } })
+                        questionRequest = MobileQuestionRequest(
+                            id = callId,
+                            question = questions.first().prompt,
+                            options = questions.first().options,
+                            askUserQuestions = questions,
+                        )
                         stateStore?.savePendingAction(callId, conversationId, "question", mapOf("toolName" to name), "waiting")
                         runtimeState = "waiting_question"
                         running = false
-                        emit("question.required", mapOf("questionId" to callId, "questions" to (questionRequest?.question ?: "")))
+                        val eventQuestions = JSONArray().apply {
+                            questions.forEach { question ->
+                                put(JSONObject()
+                                    .put("id", question.id)
+                                    .put("header", question.header)
+                                    .put("prompt", question.prompt)
+                                    .put("options", JSONArray(question.options)))
+                            }
+                        }
+                        emit("question.required", mapOf(
+                            "questionId" to callId,
+                            "questions" to eventQuestions.toString(),
+                        ))
                         return
                     }
                     if (requiresApproval(name)) {
@@ -1266,7 +1432,7 @@ class MobileHarnessRuntime(
                     }
                     if (!projectLocationAvailable) { runtimeState = "paused"; return }
                     beginToolActivity(callId, name, input)
-                    results.put(recordToolResult(callId, name, explores[callId]?.let { it.await() to false } ?: invoke(name, input)))
+                    results.put(recordToolResult(callId, name, explores[callId]?.let { it.await() to false } ?: invoke(name, input), input.optString("path")))
                 }
                 wire += JSONObject().put("role", "user").put("content", results)
                 inFlightToolCalls.clear()
@@ -1345,7 +1511,7 @@ class MobileHarnessRuntime(
     }
 
     private fun drainNextQueuedPromptIfReleased() {
-        if (!projectLocationAvailable || running || planGateActive) {
+        if (!projectLocationAvailable || running || manualCompactionJob != null || planGateActive) {
             syncPlanQueue()
             return
         }
@@ -1360,12 +1526,22 @@ class MobileHarnessRuntime(
             persistModelContext()
             return
         }
+        val question = if (pendingQuestion == null && !isNoProjectMode) memoryQuestions(askedMemoryQuestions).firstOrNull() else null
+        if (question != null) {
+            askedMemoryQuestions += question.id
+            pendingQuestion = PendingTool(question.id, MEMORY_QUESTION_TOOL, JSONObject())
+            questionRequest = MobileQuestionRequest(question.id, question.prompt, question.options)
+            runtimeState = "waiting_question"
+            emit("question.required", mapOf("questionId" to question.id, "questions" to question.prompt))
+            syncPlanQueue()
+            return
+        }
         beginRun(next.text, next.attachments, next.mode, next.planMode, next.isPlanApproval, consumedQueuedPrompt = next)
     }
 
     private fun appendToolResult(id: String, name: String, output: Pair<String, Boolean>) {
         val toolResult = recordToolResult(id, name, output)
-        if (name == "ask_user" && !output.second) {
+        if (name == "ask_user" && !output.second && output.first.startsWith("Q: ") && output.first.contains("\nA: ")) {
             val directive = AgentTools.ASK_USER_ANSWERED_DIRECTIVE
             val contentLimit = (MAXIMUM_TOOL_RESULT_CHARACTERS - directive.length - 2).coerceAtLeast(0)
             toolResult.put("content", output.first.take(contentLimit) + "\n\n" + directive)
@@ -1375,7 +1551,9 @@ class MobileHarnessRuntime(
         persistModelContext()
     }
 
-    private fun recordToolResult(id: String, name: String, output: Pair<String, Boolean>): JSONObject {
+    private fun recordToolResult(id: String, name: String, output: Pair<String, Boolean>, path: String? = null): JSONObject {
+        val repeatedRead = if (name == "read_file" && !output.second) deferredTools.repeatedRead(output.first, path) else null
+        deferredTools.record(output.first, id, output.second, name, path)
         if (name == "remove_file") {
             if (output.second) activeCleanupFailure = true
             if (output.first.contains(AgentTools.VERIFIED_MARKER)) activeVerifiedRemovals++
@@ -1396,7 +1574,7 @@ class MobileHarnessRuntime(
         val result = JSONObject()
             .put("type", "tool_result")
             .put("tool_use_id", id)
-            .put("content", output.first.take(MAXIMUM_TOOL_RESULT_CHARACTERS))
+            .put("content", repeatedRead ?: MobileDeferredTools.excerpt(output.first, name, id))
             .put("is_error", output.second)
         pendingLatestAttachment?.let {
             result.put("attachment", it.canonicalBlock())
@@ -1466,6 +1644,10 @@ class MobileHarnessRuntime(
         val snapshot = runCatching { JSONObject(stored.content) }.getOrNull() ?: return
         val storedMessages = snapshot.optJSONArray("messages") ?: return
         conversationId = stored.conversationId
+        val transcriptPage = store.messagePage(stored.conversationId)
+        transcript = transcriptPage.messages.map { AgentTurn(it.role, it.content, it.toolName, id = it.id) }
+        transcriptBeforeRowId = transcriptPage.beforeRowId
+        hasOlderTranscriptMessages = transcriptPage.hasOlder
         lastCompletedRouteIdentity = snapshot.optString("last_completed_route_identity").takeIf(String::isNotBlank)
         lastLimitedRouteIdentity = snapshot.optString("last_limited_route_identity").takeIf(String::isNotBlank)
         conversationChatGPTAccountId = snapshot.optString("chatgpt_account_id").takeIf(String::isNotBlank)
@@ -1473,7 +1655,6 @@ class MobileHarnessRuntime(
         lastLimitedChatGPTAccountId = snapshot.optString("limited_chatgpt_account_id").takeIf(String::isNotBlank)
             ?: lastLimitedRouteIdentity?.split('|')?.takeIf { it.size == 3 }?.get(2)
         pendingChatGPTAccountId = conversationChatGPTAccountId
-        transcript = store.messages(stored.conversationId).map { AgentTurn(it.role, it.content, it.toolName) }
         queuedPrompts.clear()
         snapshot.optJSONArray("queued_prompts")?.let { queued ->
             for (index in 0 until queued.length()) {
@@ -1519,7 +1700,7 @@ class MobileHarnessRuntime(
             runtimeState = "cancelled"
         } else if (interrupted || runWasActive || inFlightToolCalls.isNotEmpty() || requiresToolOutcomeRecovery) {
             requiresToolOutcomeRecovery = true
-            toolOutcomeRecoveryMessage = "The app was closed or suspended while this plan was active. Recovery will continue automatically when possible; tool results are not assumed and no tool call will be replayed."
+            toolOutcomeRecoveryMessage = "The app was closed or suspended while this conversation was active. Recovery will continue automatically when possible; tool results are not assumed and no tool call will be replayed."
             val completedIds = mutableSetOf<String>()
             for (message in wire) {
                 val content = message.optJSONArray("content") ?: continue
@@ -1542,6 +1723,7 @@ class MobileHarnessRuntime(
             toolOutcomeRecoveryMessage = null
         }
         syncPlanQueue()
+        deferredTools = MobileDeferredTools()
         promptHistory = MobilePromptHistory.restore(snapshot.optJSONObject("prompt_history"), snapshot.optString("policy").takeIf { it.isNotEmpty() })
         contextSegment = snapshot.optInt("context_segment", 0).coerceAtLeast(0)
         cacheState = MobileCacheState.restore(snapshot.optJSONObject("cacheEpoch"))
@@ -1676,7 +1858,12 @@ class MobileHarnessRuntime(
     }
 
     private fun appendCacheNotices() {
-        cacheState.captureNotices(attachmentRevisionNotice(), activePlanMode, if (isNoProjectMode) "" else learnedRules()).forEach { notice ->
+        val localActivity = if (isNoProjectMode) "" else
+            MobilePersonalMemory.activityText(stateStore?.recentEvents(projectId).orEmpty())
+        val memory = listOf(personalMemory(), if (isNoProjectMode) "" else learnedRules(), localActivity)
+            .filter(String::isNotEmpty)
+            .joinToString("\n\n")
+        cacheState.captureNotices(attachmentRevisionNotice(), activePlanMode, memory).forEach { notice ->
             wire += JSONObject().put("role", "user").put("content", JSONArray().put(JSONObject().put("type", "text").put("text", notice)))
         }
         persistModelContext()
@@ -1716,7 +1903,21 @@ class MobileHarnessRuntime(
         }.getOrElse { WorkspaceDiff(emptyList(), emptyList(), emptyList(), "incomplete") }
     }
 
-    private fun activeSystemPrompt(): String = if (!isNoProjectMode) systemPrompt() else systemPrompt() + """
+    private fun activeSystemPrompt(): String {
+        var prompt = systemPrompt()
+        if (!isNoProjectMode && subagentsActive) {
+            prompt += """
+
+
+            Workspace implementation with editing subagents enabled
+            - Inspect the relevant files and callers yourself, then record your plan with execution_plan before the first edit.
+            - Make edits yourself with edit_file and write_file: you already read those files, and a delegate would read them again. Use delegate only for one large part spanning many files you have not read. The parent owns design, integration, review and whole-change verification.
+            - Pass your plan, findings, interfaces, constraints, exact paths and acceptance criteria to the subagent. Use explore only for independent read-only research, never to inspect implementation code for you.
+            - Review the subagent's changed files and run the full relevant build/check yourself; fix small issues directly. Use run_command or terminal_session for inspection and checks, never to edit project files.
+            """
+        }
+        if (!isNoProjectMode) return prompt
+        return prompt + """
 
 
         No project scope
@@ -1724,6 +1925,7 @@ class MobileHarnessRuntime(
         - Answer as a general assistant. Do not inspect or modify local project files.
         - Only the web tools are available in this scope; the workspace tools need a project.
     """
+    }
 
     private fun cleanupStatus(trackingStatus: String? = null): String = when {
         activePlanMode -> "not_applicable"
@@ -1748,22 +1950,28 @@ class MobileHarnessRuntime(
 
     private suspend fun invoke(name: String, input: JSONObject): Pair<String, Boolean> {
         val tool = tools[name] ?: return "No tool named $name is available on this phone." to true
-        return try { tool.run(input) to false } catch (t: Throwable) { (t.message ?: "$name failed.") to true }
+        return try { tool.run(input) + repeatGuard.editNotice(name, input) to false } catch (t: Throwable) { (t.message ?: "$name failed.") to true }
     }
 
     private suspend fun complete(): JSONObject {
         val routeIdentity = contextRouteIdentity()
         val routeChanged = lastCompletedRouteIdentity != routeIdentity
         val priorRouteIdentity = lastLimitedRouteIdentity ?: lastCompletedRouteIdentity
-        compactContextIfNeeded(routeChanged = routeChanged)
+        val forceCompaction = compactRequested
+        compactRequested = false
+        compactContextIfNeeded(force = forceCompaction, routeChanged = routeChanged)
+        deferredTools.restoreDiscovery(wireForRequest())
         appendCacheNotices()
         emit("provider.request", mapOf("provider" to provider, "model" to model))
         val response = try {
-            when (provider) {
-                "anthropic" -> completeAnthropic()
-                "openai", "openai-responses" -> completeOpenAIResponses()
-                "gpt" -> completeChatGPT()
-                else -> completeOpenAI()
+            try {
+                sendToProvider()
+            } catch (t: IllegalStateException) {
+                if (!indicatesContextWindowExceeded(t.message.orEmpty())) throw t
+                // The local estimate undercounted: compact and send this step
+                // again once. A second overflow on the same step fails the run.
+                compactContextIfNeeded(force = true, routeChanged = routeChanged)
+                sendToProvider()
             }
         } catch (t: ProviderLimitException) {
             lastLimitedRouteIdentity = routeIdentity
@@ -1879,13 +2087,16 @@ class MobileHarnessRuntime(
         MobilePromptCache.applyAnthropicCacheBreakpoints(body, ttl)
         MobilePromptCache.applyAnthropicCacheBreakpoints(body, ttl, cacheState.previousBoundary(body, requestScope))
         if ("$capability|claude_diagnostics" !in cacheState.unsupported) body.put("diagnostics", JSONObject().put("previous_message_id", cacheState.responseIDs[requestScope] ?: JSONObject.NULL))
-        var response = providerRequest(endpoint, body, currentApiKey(), mapOf("x-api-key" to currentApiKey(), "anthropic-version" to "2023-06-01"), bearer = false)
+        val headers = mapOf("x-api-key" to currentApiKey(), "anthropic-version" to "2023-06-01") +
+            if (fastMode && supportsFast) mapOf("anthropic-beta" to "fast-mode-2026-02-01") else emptyMap()
+        if (fastMode && supportsFast) body.put("speed", "fast")
+        var response = providerRequest(endpoint, body, currentApiKey(), headers, bearer = false)
         for (attempt in 0..2) {
             val feature = MobilePromptCache.rejectedFeature(response.status, response.body)
             if (feature !in setOf("ttl", "claude_diagnostics") || "$capability|$feature" in cacheState.unsupported) break
             cacheState.unsupported += "$capability|$feature"
             if (feature == "ttl") MobilePromptCache.applyAnthropicCacheBreakpoints(body, "5m", cacheState.previousBoundary(body, requestScope)) else body.remove("diagnostics")
-            response = providerRequest(endpoint, body, currentApiKey(), mapOf("x-api-key" to currentApiKey(), "anthropic-version" to "2023-06-01"), bearer = false)
+            response = providerRequest(endpoint, body, currentApiKey(), headers, bearer = false)
         }
         if (response.status !in 200..299) throwProviderFailure(response, "anthropic")
         val objectResponse = MobilePromptCache.responseObject(response.body) ?: error("The provider returned an unexpected response.")
@@ -1895,7 +2106,7 @@ class MobileHarnessRuntime(
     }
 
     private suspend fun completeOpenAI(): JSONObject = withContext(Dispatchers.IO) {
-        val definitions = JSONArray(orderedTools.map { tool ->
+        val definitions = JSONArray(MobileDeferredTools.definitions.map { tool ->
             JSONObject().put("type", "function").put("function", JSONObject()
                 .put("name", tool.name).put("description", tool.description).put("parameters", tool.schema))
         })
@@ -1905,6 +2116,7 @@ class MobileHarnessRuntime(
             .put("messages", openAiMessages())
             .put("prompt_cache_key", promptCacheKey("openai-chat"))
         if (definitions.length() > 0) body.put("tools", definitions)
+        if (listOf("gpt-5", "gpt-6").any { model.startsWith(it) }) body.put("reasoning_effort", requestEffort)
         val response = providerRequest("https://api.openai.com/v1/chat/completions", body, currentApiKey(), emptyMap())
         val status = response.status
         val text = response.body
@@ -1952,6 +2164,7 @@ class MobileHarnessRuntime(
             .put("store", false)
             .put("stream", false)
             .put("prompt_cache_key", promptCacheKey(if (providerName == "gpt") "chatgpt-responses" else "openai-responses"))
+        if (listOf("gpt-5", "gpt-6").any { model.startsWith(it) }) body.put("reasoning", JSONObject().put("effort", requestEffort))
         val catalog = cachedToolCatalog()
         if (catalog.length() > 0) body.put("tools", JSONArray().apply { (0 until catalog.length()).forEach { index ->
             val t = catalog.getJSONObject(index)
@@ -1968,7 +2181,7 @@ class MobileHarnessRuntime(
         val routeChanged = withContext(Dispatchers.Main) { lastCompletedRouteIdentity != contextRouteIdentity() }
         val nativeCompaction = supportsNativeCompaction && !routeChanged
         if (nativeCompaction) {
-            val window = definition(provider)?.contextWindow(model) ?: 32_768
+            val window = currentContextWindow()
             val percent = withContext(Dispatchers.Main) { contextCompactionThresholdPercent }
             body.put("context_management", JSONArray().put(JSONObject()
                 .put("type", "compaction")
@@ -2048,17 +2261,25 @@ class MobileHarnessRuntime(
      * model, with no cache state and nothing persisted. The explore subagent runs
      * on this so a sweep never touches the conversation's wire history.
      */
-    private suspend fun completeSide(system: String, messages: List<JSONObject>, sideTools: List<AgentToolSpec>, sideModel: String, maxOutputTokens: Int? = null): JSONObject {
+    /**
+     * One side request. A subagent passes its run's own [cacheKey], so its steps reuse
+     * the cached prefix of the steps before them: 5-minute breakpoints on Anthropic,
+     * since a run lasts minutes and its prefix is never reused after it.
+     */
+    private suspend fun completeSide(system: String, messages: List<JSONObject>, sideTools: List<AgentToolSpec>, sideModel: String, maxOutputTokens: Int? = null, effort: String? = null, cacheKey: String? = null): JSONObject {
         if (provider == "anthropic") {
             val body = JSONObject().put("model", sideModel).put("max_tokens", maxOutputTokens ?: 8192).put("system", system).put("messages", anthropicMessages(messages))
             if (sideTools.isNotEmpty()) body.put("tools", JSONArray(sideTools.map { it.wire() }))
+            if (cacheKey != null) MobilePromptCache.applyAnthropicCacheBreakpoints(body, "5m")
             val response = providerRequest("https://api.anthropic.com/v1/messages", body, currentApiKey(), mapOf("x-api-key" to currentApiKey(), "anthropic-version" to "2023-06-01"), bearer = false)
             if (response.status !in 200..299) throwProviderFailure(response, "anthropic")
             return (MobilePromptCache.responseObject(response.body) ?: error("The provider returned an unexpected response."))
                 .put("_http_status", response.status)
         }
         val body = JSONObject().put("model", sideModel).put("instructions", system).put("input", responsesInput(messages)).put("store", false).put("stream", false)
+        if (cacheKey != null) body.put("prompt_cache_key", cacheKey)
         if (maxOutputTokens != null) body.put("max_output_tokens", maxOutputTokens)
+        if (effort != null && listOf("gpt-5", "gpt-6").any { sideModel.startsWith(it) }) body.put("reasoning", JSONObject().put("effort", effort))
         if (sideTools.isNotEmpty()) body.put("tools", JSONArray(sideTools.map { tool ->
             JSONObject().put("type", "function").put("name", tool.name).put("description", tool.description).put("parameters", tool.schema)
         }))
@@ -2083,24 +2304,32 @@ class MobileHarnessRuntime(
 
     /** Runs one explore subagent and returns what the parent model sees. */
     private suspend fun explore(task: String): String {
-        if (!subagentsEnabled) return "Tool error: subagents are turned off in Settings."
+        if (!subagentsActive) return "Tool error: subagents are turned off in Settings."
         val sideTools = orderedTools.filter { it.name in MobileExplore.READ_ONLY_TOOLS }
         val current = model
         val light = MobileExplore.lightModel(availableModelsFor(provider), current)
         emit("subagent.started", mapOf("name" to MobileExplore.NAME, "model" to light))
+        val cacheKey = MobileExplore.NAME + "-" + UUID.randomUUID()
+        val usage = SubagentUsage()
+        // The run stays on one model once it falls back: alternating would restart the cache each step.
+        var runModel = light
         val result = MobileExplore.run(
-            task,
-            complete = { messages, offerTools ->
-                val offered = if (offerTools) sideTools else emptyList()
-                try {
-                    completeSide(MobileExplore.SYSTEM_PROMPT, messages, offered, light)
+            rawTask = task,
+            catalog = sideTools,
+            complete = { messages ->
+                val offered = MobileDeferredTools.requestTools(sideTools)
+                val prompt = MobileExplore.SYSTEM_PROMPT + "\nCall provided tools directly. Discover other required tools with discover_tools, then call them via invoke_tool. Read original long results with read_tool_output."
+                val response = try {
+                    completeSide(prompt, messages, offered, runModel, effort = "low", cacheKey = cacheKey)
                 } catch (t: Throwable) {
                     // The light model is a guess from its name. When the account cannot
                     // run it, or its quota is spent, the sweep goes on with the
                     // conversation's model rather than costing the main run its answer.
-                    if (t is CancellationException || light == current) throw t
-                    completeSide(MobileExplore.SYSTEM_PROMPT, messages, offered, current)
+                    if (t is CancellationException || runModel == current) throw t
+                    runModel = current
+                    completeSide(prompt, messages, offered, current, effort = "low", cacheKey = cacheKey)
                 }
+                response.also { usage.add(it, provider == "anthropic") }
             },
             invoke = { name, input ->
                 val tool = sideTools.firstOrNull { it.name == name }
@@ -2112,7 +2341,7 @@ class MobileHarnessRuntime(
                 }
             },
         )
-        emit("subagent.finished", mapOf("name" to MobileExplore.NAME))
+        emit("subagent.finished", mapOf("name" to MobileExplore.NAME, "model" to runModel) + usage.payload())
         return result
     }
 
@@ -2121,19 +2350,28 @@ class MobileHarnessRuntime(
      * approved as a workspace mutation, which covers its writes to those files.
      */
     private suspend fun delegate(input: JSONObject): String {
-        if (!subagentsEnabled) return "Tool error: subagents are turned off in Settings."
+        if (!subagentsActive) return "Tool error: subagents are turned off in Settings."
+        val plan = input.optString("plan").trim()
+        if (plan.isEmpty()) return "Tool error: delegate needs the parent's implementation plan formed after code inspection."
         val files = input.optJSONArray("files")?.let { array -> (0 until array.length()).map { array.optString(it) } }.orEmpty()
         val claims = MobileDelegate.claims(files)
             ?: return "Tool error: delegate needs files - workspace-relative paths this subagent may create or change."
         val sideTools = orderedTools.filter { it.name in MobileExplore.READ_ONLY_TOOLS || it.name in MobileDelegate.WRITE_TOOLS }
         val ledgerScope = MobileDelegate.NAME + "-" + UUID.randomUUID()
-        val system = MobileDelegate.systemPrompt(claims)
+        val system = MobileDelegate.systemPrompt(plan, claims) + "\nCall provided tools directly. Discover other required tools with discover_tools, then call them via invoke_tool. Record an execution_plan before implementation. Read original long results with read_tool_output."
         val current = model
         emit("subagent.started", mapOf("name" to MobileDelegate.NAME, "model" to current))
+        val cacheKey = MobileDelegate.NAME + "-" + UUID.randomUUID()
+        val usage = SubagentUsage()
         val result = MobileDelegate.run(
-            input.optString("task"),
-            claims,
-            complete = { messages, offerTools -> completeSide(system, messages, if (offerTools) sideTools else emptyList(), current) },
+            rawPlan = plan,
+            rawTask = input.optString("task"),
+            claims = claims,
+            catalog = sideTools,
+            complete = { messages ->
+                completeSide(system, messages, MobileDeferredTools.requestTools(sideTools), current, effort = MobileDelegate.effort(selectedEffort), cacheKey = cacheKey)
+                    .also { usage.add(it, provider == "anthropic") }
+            },
             invoke = { name, toolInput ->
                 val tool = sideTools.firstOrNull { it.name == name }
                 if (tool == null) "No tool named $name is available to the subagent."
@@ -2144,7 +2382,7 @@ class MobileHarnessRuntime(
                 }
             },
         )
-        emit("subagent.finished", mapOf("name" to MobileDelegate.NAME))
+        emit("subagent.finished", mapOf("name" to MobileDelegate.NAME) + usage.payload())
         return result
     }
 
@@ -2171,11 +2409,11 @@ class MobileHarnessRuntime(
             route = route,
             model = model,
             accountScope = currentAccountScope(),
-            toolFingerprint = MobilePromptCache.toolFingerprint(orderedTools),
+            toolFingerprint = MobilePromptCache.toolFingerprint(MobileDeferredTools.requestTools(discoveryCatalog)),
         )
     }
 
-    private fun cachedToolCatalog(): JSONArray = cacheState.catalog(JSONArray(orderedTools.map { it.wire() }))
+    private fun cachedToolCatalog(): JSONArray = cacheState.catalog(JSONArray(MobileDeferredTools.requestTools(discoveryCatalog).map { it.wire() }))
 
     private fun cacheScope(endpoint: String, conversation: Boolean = true): String = MobilePromptCache.digest(listOf(if (conversation) conversationId ?: "unbound" else "capability", currentAccountScope(), endpoint).joinToString("|"))
 
@@ -2264,6 +2502,13 @@ class MobileHarnessRuntime(
             delay((attempt + 1) * 1_000L)
         }
         result
+    }
+
+    private suspend fun sendToProvider(): JSONObject = when (provider) {
+        "anthropic" -> completeAnthropic()
+        "openai", "openai-responses" -> completeOpenAIResponses()
+        "gpt" -> completeChatGPT()
+        else -> completeOpenAI()
     }
 
     private fun throwProviderFailure(response: ProviderResponse, providerName: String): Nothing {
@@ -2364,15 +2609,26 @@ class MobileHarnessRuntime(
         return old.size == 3 && new.size == 3 && old[0] == new[0] && old[1] == new[1] && old[2] != new[2]
     }
 
+    private fun currentContextWindow(): Int =
+        stateStore?.setting("mobile.context.$provider.$model")?.toIntOrNull()?.takeIf { it > 0 }
+            ?: definition(provider)?.contextWindow(model) ?: 32_768
+
+    /** Test seam: what `/compact` does to [context], without a run around it. */
+    internal suspend fun compactForTesting(context: List<JSONObject>) {
+        wire.clear()
+        wire.addAll(context)
+        compactContextIfNeeded(force = true)
+    }
+
     private suspend fun compactContextIfNeeded(force: Boolean = false, routeChanged: Boolean? = null) {
         if (wire.isEmpty()) return
-        val window = definition(provider)?.contextWindow(model) ?: 32_768
-        val toolTokens = orderedTools.sumOf { it.name.length + it.description.length + it.schema.toString().length } / 4
+        val window = currentContextWindow()
         val outputReserve = 4_096
         val safetyMargin = maxOf(512, window / 20)
-        val usableInputTokens = maxOf(1_024, window - toolTokens - outputReserve - safetyMargin)
+        // estimateContextTokens already counts tool schemas and the policy.
+        val usableInputTokens = maxOf(1_024, window - outputReserve - safetyMargin)
         val estimatedInputTokens = estimateContextTokens()
-        val triggerTokens = MobilePromptHistory.compactionThreshold(usableInputTokens, contextCompactionThresholdPercent)
+        val triggerTokens = minOf(usableInputTokens, MobilePromptHistory.compactionThreshold(window, contextCompactionThresholdPercent))
         contextNearlyFull = estimatedInputTokens >= triggerTokens
         val nativeRoute = provider in setOf("gpt", "openai", "openai-responses")
             && provider !in nativeCompactionUnsupportedProviders
@@ -2466,7 +2722,34 @@ class MobileHarnessRuntime(
         }
     }
 
+    private fun requestContextCompaction() {
+        if (running) {
+            compactRequested = true
+            emit("context.compaction.queued", mapOf("conversationId" to conversationId.orEmpty()))
+            return
+        }
+        if (wire.none { it.optString("role") == "user" }) {
+            emit("context.compaction.nothing_to_compact", mapOf("conversationId" to conversationId.orEmpty()))
+            return
+        }
+        if (manualCompactionJob?.isActive == true) return
+        manualCompactionJob = scope.launch {
+            try {
+                compactContextIfNeeded(force = true)
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                error = t.message ?: "Context compaction failed."
+            } finally {
+                manualCompactionJob = null
+                drainNextQueuedPromptIfReleased()
+            }
+        }
+    }
+
     private fun announceContextCompaction(automatic: Boolean) {
+        // Both compaction paths end here, and both drop read_file bodies the ledger
+        // still counts as seen: edits and rewrites need a fresh read after it.
+        AgentTools.reads.reset()
         val code = if (automatic) "context_compacted_auto" else "context_compacted"
         transcript = transcript + AgentTurn("activity", "", code)
         stateStore?.appendMessage(conversationId, "activity", "", code)
@@ -2475,7 +2758,7 @@ class MobileHarnessRuntime(
     private fun estimateContextTokens(messages: List<JSONObject> = wireForRequest()): Int {
         val data = JSONArray().apply { messages.forEach { put(it) } }.toString().toByteArray().size
         val policyBytes = promptHistory.policy.orEmpty().toByteArray().size
-        val toolBytes = orderedTools.sumOf { it.name.length + it.description.length + it.schema.toString().length }
+        val toolBytes = MobileDeferredTools.requestTools(discoveryCatalog).sumOf { it.name.length + it.description.length + it.schema.toString().length }
         return maxOf(1, (data + policyBytes + toolBytes + 3) / 4)
     }
 
@@ -2529,16 +2812,18 @@ class MobileHarnessRuntime(
 
     companion object {
         const val NO_PROJECT_ID = "__no_project__"
+        private const val MEMORY_QUESTION_TOOL = "memory_question"
         const val CONTEXT_COMPACTION_THRESHOLD_KEY = "herness.agent.contextCompactionThresholdPercent"
+        const val FAST_MODE_KEY = "herness.agent.fast"
+        /** Mirrors the `fast` flag in macOS providers.json. */
+        val FAST_MODELS = setOf("claude-opus-5-5", "claude-opus-5", "claude-opus-4-8")
         const val CHATGPT_CODEX_CLIENT_VERSION = "0.155.0"
         val PROVIDER_DEFINITIONS = listOf(
             MobileProviderDefinition("anthropic", "Anthropic", MobileProviderDefinition.AuthKind.API_KEY, listOf("claude-sonnet-4-5", "claude-opus-4-1", "claude-haiku-4-5")),
-            MobileProviderDefinition("openai", "OpenAI", MobileProviderDefinition.AuthKind.API_KEY, listOf("gpt-5.6-luna", "gpt-5.6-terra", "gpt-4.1", "gpt-4.1-mini", "o4-mini")),
-            MobileProviderDefinition("openai-responses", "OpenAI Responses", MobileProviderDefinition.AuthKind.API_KEY, listOf("gpt-5.6-luna", "gpt-5.6-terra", "gpt-4.1", "gpt-4.1-mini", "o4-mini")),
-            MobileProviderDefinition("gpt", "ChatGPT", MobileProviderDefinition.AuthKind.OAUTH, listOf("gpt-5.6-luna", "gpt-5.6-terra", "gpt-4.1", "gpt-4.1-mini", "o4-mini")),
+            MobileProviderDefinition("openai", "OpenAI", MobileProviderDefinition.AuthKind.API_KEY, listOf("gpt-5.6-luna", "gpt-5.6-terra")),
+            MobileProviderDefinition("openai-responses", "OpenAI Responses", MobileProviderDefinition.AuthKind.API_KEY, listOf("gpt-5.6-luna", "gpt-5.6-terra")),
+            MobileProviderDefinition("gpt", "ChatGPT", MobileProviderDefinition.AuthKind.OAUTH, listOf("gpt-5.6-luna", "gpt-5.6-terra")),
         )
-        val PROVIDERS = PROVIDER_DEFINITIONS.map { it.id }
-        val MODELS = PROVIDER_DEFINITIONS.flatMap { it.models }.distinct()
 
         fun definition(provider: String): MobileProviderDefinition? = PROVIDER_DEFINITIONS.firstOrNull { it.id == provider }
         fun modelsFor(provider: String): List<String> = definition(provider)?.models.orEmpty()

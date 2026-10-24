@@ -63,12 +63,15 @@ public static class FileDownloader
                 progress?.Invoke(new Progress(received, total));
             }
         }
-        File.Move(part, destination, overwrite: true);
-        if (!Matches(destination, expected, sha256))
+        // The checksum is checked on the partial file, before it becomes the
+        // final one: a process that looks for the runtime by name must never
+        // find a file that has not been verified yet.
+        if (!Matches(part, expected, sha256))
         {
-            File.Delete(destination);
+            try { File.Delete(part); } catch { }
             throw new RouterException(sha256 is null ? "Downloaded file size does not match the expected size." : "Downloaded file checksum does not match.");
         }
+        File.Move(part, destination, overwrite: true);
         var finalSize = new FileInfo(destination).Length;
         progress?.Invoke(new Progress(finalSize, Math.Max(expected, finalSize)));
     }
@@ -82,7 +85,9 @@ public static class FileDownloader
             var actual = Convert.ToHexString(SHA256.HashData(stream));
             return actual.Equals(Normalize(sha256), StringComparison.OrdinalIgnoreCase);
         }
-        return expected == 0 || size >= Math.Max(1, expected / 2);
+        // Without a checksum, half the expected size is not "close enough":
+        // a truncated or substituted download would pass.
+        return expected == 0 || size == expected;
     }
 
     private static string Normalize(string value) => value.Replace("sha256:", "", StringComparison.OrdinalIgnoreCase).Trim().ToUpperInvariant();

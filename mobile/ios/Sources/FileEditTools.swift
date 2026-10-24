@@ -70,8 +70,28 @@ enum FileEditTools {
         case .rejected(let reason):
             return reason
         case .applied(let updated, let summary, let covered):
-            return write(updated: updated, to: file, path: path, summary: summary, covered: covered)
+            let answer = write(updated: updated, to: file, path: path, summary: summary, covered: covered)
+            return answer.hasPrefix("Edited ") ? answer + changedLines(before: text, after: updated) : answer
         }
+    }
+
+    static let changedLinesShown = 40
+
+    /// The edited region of the new file, numbered, with two lines of context: the
+    /// model sees the result without a follow-up read_file. One span from the first
+    /// to the last changed line; a span wider than `changedLinesShown` only names
+    /// its line range.
+    static func changedLines(before: String, after: String) -> String {
+        let a = before.components(separatedBy: "\n"), b = after.components(separatedBy: "\n")
+        var top = 0
+        while top < a.count, top < b.count, a[top] == b[top] { top += 1 }
+        var bottom = 0
+        while bottom < a.count - top, bottom < b.count - top, a[a.count - 1 - bottom] == b[b.count - 1 - bottom] { bottom += 1 }
+        let start = max(0, top - 2), end = min(b.count, b.count - bottom + 2)
+        if end - start > changedLinesShown {
+            return "\nChanged lines \(top + 1)-\(b.count - bottom): too wide to show; read_file them if needed."
+        }
+        return "\n" + (start..<end).map { "\($0 + 1): \(b[$0])" }.joined(separator: "\n")
     }
 
     enum EditOutcome {

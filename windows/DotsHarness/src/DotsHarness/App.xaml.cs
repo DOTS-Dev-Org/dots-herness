@@ -24,14 +24,23 @@ public partial class App : Application
     private bool _hideHintShown;
     private bool _exiting;
 
-    public AppModel Model { get; } = new();
+    private AppModel? _model;
+    public AppModel Model => _model ??= new AppModel();
 
     /// <summary>True once the user really asked to leave, as opposed to just closing the window.</summary>
     public bool IsExiting => _exiting;
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (SshEnrollment.TryServePasswordPrompt())
+        {
+            _exiting = true;
+            Shutdown();
+            return;
+        }
         base.OnStartup(e);
+        // Agent shell commands run in an AppContainer; the runner probes itself before its first command.
+        AgentCommandIsolation.Current = new WindowsAppContainerIsolation();
         var marketplaceCallback = MarketplaceOAuthCallback(e.Args);
         if (marketplaceCallback is not null
             && MarketplaceOAuthProtocol.TryForwardCallbackAsync(marketplaceCallback).GetAwaiter().GetResult())
@@ -65,6 +74,7 @@ public partial class App : Application
         Model.Bridge.AssistantResponseReceived += OnAssistantResponse;
         Model.Bridge.RunSummaryReceived += OnRunSummary;
         Model.Bridge.AttentionNeeded += OnAttentionNeeded;
+        Model.ScheduledTaskNotificationRaised += OnScheduledTaskNotification;
         Model.Router.ConnectionChanged += OnConnectionChanged;
         _oauthCallbackCancellation = new CancellationTokenSource();
         _ = Task.Run(() => MarketplaceOAuthProtocol.ListenForCallbacksAsync(
@@ -88,9 +98,9 @@ public partial class App : Application
             try { await Model.Marketplace.RefreshOwnedPluginsAsync(); } catch { }
         }
         var message = Model.MarketplaceSession.IsSignedIn
-            ? $"Signed in to HerNess as {Model.MarketplaceSession.Profile?.Email}. You can publish plugins from Settings → Plugins."
-            : Model.MarketplaceSession.LastError ?? "HerNess sign-in did not complete.";
-        MessageBox.Show(MainWindow, message, "HerNess Marketplace", MessageBoxButton.OK,
+            ? $"{Model.L("market.account")}: {Model.MarketplaceSession.Profile?.Email}"
+            : Model.MarketplaceSession.LastError ?? Model.L("market.error.invalidCallback");
+        MessageBox.Show(MainWindow, message, Model.L("settings.marketplace"), MessageBoxButton.OK,
             Model.MarketplaceSession.IsSignedIn ? MessageBoxImage.Information : MessageBoxImage.Error);
     }
 
@@ -179,6 +189,7 @@ public partial class App : Application
         Model.Bridge.AssistantResponseReceived -= OnAssistantResponse;
         Model.Bridge.RunSummaryReceived -= OnRunSummary;
         Model.Bridge.AttentionNeeded -= OnAttentionNeeded;
+        Model.ScheduledTaskNotificationRaised -= OnScheduledTaskNotification;
         Model.Router.ConnectionChanged -= OnConnectionChanged;
         _notificationIcon?.Dispose();
         Model.Bridge.Stop();
@@ -241,11 +252,38 @@ public partial class App : Application
                 && ReferenceEquals(Model.Bridge, sender)
                 && Model.Bridge.SelectedId == e.ConversationId;
             if (visible) return;
+            var title = e.Kind switch
+            {
+                "question" => Model.L("notifications.question"),
+                "approval" => Model.L("plan.waitingApproval"),
+                _ => Model.L("notifications.actionRequired"),
+            };
             _notificationIcon?.ShowBalloonTip(
                 5000,
                 e.ConversationTitle,
-                Preview(Model.L("conversation.waitingApproval") + ": " + e.Detail),
+                Preview(title + ": " + e.Detail),
                 FormsToolTipIcon.Warning);
+        }
+        catch (ObjectDisposedException) { }
+    }
+
+    private void OnScheduledTaskNotification(InboxNotification item)
+    {
+        try
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    var failed = item.Detail.StartsWith(Model.L("tasks.notification.failed"), StringComparison.OrdinalIgnoreCase);
+                    _notificationIcon?.ShowBalloonTip(
+                        5000,
+                        string.IsNullOrWhiteSpace(item.Subtitle) ? item.Title : item.Subtitle,
+                        Preview(item.Detail),
+                        failed ? FormsToolTipIcon.Error : FormsToolTipIcon.Info);
+                }
+                catch (ObjectDisposedException) { }
+            }));
         }
         catch (ObjectDisposedException) { }
     }

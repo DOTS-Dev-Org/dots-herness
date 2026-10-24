@@ -220,6 +220,15 @@ fi
 
 echo "    Yalnızca $RUNTIME yerel varlıkları pakette tutuluyor"
 prune_foreign_runtime_assets "$STAGE_DIR" "$RUNTIME"
+# Metal shader is macOS-only; XML docs and PDBs are never loaded at runtime.
+find "$STAGE_DIR" -type f \( -name '*.metal' -o -name '*.xml' -o -name '*.pdb' \) -delete
+
+# en ve tr dışındaki diller pakete girmez; seçilince indirilir (LanguagePacks).
+# Dosyalar içerik hash'iyle adlandırılır: dist/language-packs/ altındakileri
+# R2'de downloads/languages/ altına yükleyin.
+command -v python3 >/dev/null 2>&1 || fail "Dil paketlerini üretmek için python3 gerekiyor."
+python3 "$ROOT/../../tools/build_language_packs.py" "$STAGE_DIR" "$DIST_DIR/language-packs" \
+    || fail "Dil paketleri üretilemedi."
 
 ICON_SOURCE="$ROOT/src/DotsHarness/Resources/DotsHarness.png"
 [[ -f "$ICON_SOURCE" ]] || fail "Uygulama ikonu bulunamadı: $ICON_SOURCE"
@@ -255,7 +264,11 @@ altına kopyalayabilirsin. Exec yolunu tam path yapman gerekir.
 EOF
 
 echo "==> tar.xz oluştur"
-tar -C "$DIST_DIR" -cJf "$TAR_PATH" "$STAGE_NAME"
+# xz preset 9 is smaller than 9e on the current release payload; x86 BCJ helps x64 ELF libs.
+# The BCJ filter is stored in the xz stream, so plain tar -xJf still works.
+XZ_OPTS=(--lzma2=preset=9)
+if [[ "$RUNTIME" == linux-x64 ]]; then XZ_OPTS=(--x86 "${XZ_OPTS[@]}"); fi
+tar -C "$DIST_DIR" -cf - "$STAGE_NAME" | xz "${XZ_OPTS[@]}" -c > "$TAR_PATH"
 
 echo "==> Hazır: $TAR_PATH"
 echo "    Uygulama: $APP_PATH"

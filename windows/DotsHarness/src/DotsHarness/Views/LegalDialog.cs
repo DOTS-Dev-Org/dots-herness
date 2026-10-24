@@ -64,6 +64,9 @@ internal sealed class LegalDialog : Window
     {
         var root = new StackPanel { Margin = new Thickness(20) };
 
+        if (_gate)
+            root.Children.Add(BuildStartupControls());
+
         root.Children.Add(new TextBlock
         {
             Text = _model.L("legal.gateHeading"),
@@ -90,22 +93,29 @@ internal sealed class LegalDialog : Window
 
         if (_gate)
         {
-            root.Children.Add(new TextBlock { Text = _model.L("legal.termsTab"), FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 4) });
-            root.Children.Add(new Border
+            var documents = new StackPanel();
+            documents.Children.Add(new TextBlock { Text = _model.L("legal.termsTab"), FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 4) });
+            documents.Children.Add(new Border
             {
                 BorderThickness = new Thickness(1),
                 BorderBrush = TryBrush("BorderSubtle"),
                 CornerRadius = new CornerRadius(8),
                 Child = _body,
             });
-            AddConsentControls(root);
-            root.Children.Add(new TextBlock { Text = _model.L("legal.privacyTab"), FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 12, 0, 4) });
-            root.Children.Add(new Border
+            documents.Children.Add(new TextBlock { Text = _model.L("legal.privacyTab"), FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 12, 0, 4) });
+            documents.Children.Add(new Border
             {
                 BorderThickness = new Thickness(1),
                 BorderBrush = TryBrush("BorderSubtle"),
                 CornerRadius = new CornerRadius(8),
                 Child = _privacyBody,
+            });
+            root.Children.Add(new Expander
+            {
+                Header = _model.L("legal.title"),
+                Content = documents,
+                IsExpanded = false,
+                Margin = new Thickness(0, 0, 0, 4),
             });
         }
         else
@@ -148,6 +158,85 @@ internal sealed class LegalDialog : Window
         }
 
         return new ScrollViewer { Content = root };
+    }
+
+    private FrameworkElement BuildStartupControls()
+    {
+        var controls = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 0, 0, 12),
+        };
+        var language = new ComboBox
+        {
+            MinWidth = 132,
+            MaxWidth = 190,
+            Background = Brushes.Transparent,
+            BorderBrush = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(8, 6, 8, 6),
+            VerticalContentAlignment = VerticalAlignment.Center,
+        };
+        foreach (var item in AppLanguages.All)
+            language.Items.Add(item == AppLanguage.System ? _model.L("language.system") : item.NativeName());
+        language.SelectedIndex = Array.IndexOf(AppLanguages.All.ToArray(), _model.Language);
+        language.SelectionChanged += async (_, _) =>
+        {
+            if (language.SelectedIndex >= 0 && language.SelectedIndex < AppLanguages.All.Count)
+                await ChangeLanguageAsync(AppLanguages.All[language.SelectedIndex]);
+        };
+        controls.Children.Add(language);
+
+        var themeGlyph = new TextBlock
+        {
+            Text = IsCurrentThemeDark() ? "☼" : "☾",
+            FontSize = 18,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var theme = new Button
+        {
+            Content = themeGlyph,
+            Background = Brushes.Transparent,
+            BorderBrush = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(8),
+            ToolTip = _model.L("settings.theme"),
+        };
+        theme.Click += (_, _) =>
+        {
+            var next = IsCurrentThemeDark()
+                ? AppModel.AppearanceKind.Light
+                : AppModel.AppearanceKind.Dark;
+            _model.SetAppearance(next);
+            ((App)Application.Current).ApplyAppearance(next);
+            Background = (Brush)Application.Current.FindResource("PanelBackground");
+            Content = Build();
+            RenderBody();
+        };
+        controls.Children.Add(theme);
+        return controls;
+    }
+
+    private async Task ChangeLanguageAsync(AppLanguage language)
+    {
+        if (_model.Language == language) return;
+        _model.SetAppLanguage(language);
+        Title = _model.L("legal.title");
+        FlowDirection = _model.IsRightToLeft ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+        Content = Build();
+        RenderBody();
+        await _model.LoadLegalAsync();
+        Content = Build();
+        RenderBody();
+    }
+
+    private bool IsCurrentThemeDark()
+    {
+        if (_model.Appearance == AppModel.AppearanceKind.Dark) return true;
+        if (_model.Appearance == AppModel.AppearanceKind.Light) return false;
+        return TryBrush("PanelBackground") is SolidColorBrush brush
+            && brush.Color.R + brush.Color.G + brush.Color.B < 384;
     }
 
     private void RenderBody()

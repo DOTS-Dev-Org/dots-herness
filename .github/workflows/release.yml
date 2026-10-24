@@ -17,9 +17,12 @@ jobs:
       - run: test "${GITHUB_REF_NAME#v}" = "$(tr -d '[:space:]' < VERSION)" || { echo "Tag ${GITHUB_REF_NAME} != VERSION file"; exit 1; }
 
   build-macos:
-    name: Build macOS DMG
+    name: Build macOS DMG (${{ matrix.architecture }})
     needs: verify-version
     runs-on: macos-14
+    strategy:
+      matrix:
+        architecture: [arm64, x86_64]
     steps:
       - uses: actions/checkout@v4
 
@@ -34,13 +37,13 @@ jobs:
 
       - name: Build and Package DMG
         run: |
-          VERSION="${{ steps.version.outputs.version }}" ./macos/DotsHarness/scripts/package-dmg.sh --no-open
+          VERSION="${{ steps.version.outputs.version }}" ARCH="${{ matrix.architecture }}" ./macos/DotsHarness/scripts/package-dmg.sh --no-open
 
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: DotsHarness-${{ steps.version.outputs.version }}-macos
-          path: macos/DotsHarness/dist/*.dmg
+          name: DotsHarness-${{ steps.version.outputs.version }}-macos-${{ matrix.architecture }}
+          path: macos/DotsHarness/dist/DotsHarness-${{ steps.version.outputs.version }}-macos-${{ matrix.architecture }}.dmg
 
   build-linux:
     name: Build Linux tar.xz

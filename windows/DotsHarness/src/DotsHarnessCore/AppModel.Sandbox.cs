@@ -47,7 +47,11 @@ public sealed partial class AppModel
             if (!SetProperty(ref _sandboxNetworkAccess, value)) return;
             Host.Settings.Set("agent.sandbox.networkAccess", JsonValue.Bool(value));
             PersistSettings();
-            try { Bridge.SetSandboxExecution(ActiveSandbox is null ? [] : SandboxWorkspaces.AgentWritableRoots(ActiveSandbox), ActiveSandbox is not null && value); }
+            try { Bridge.SetSandboxExecution(
+                ActiveSandbox is null ? [] : SandboxWorkspaces.AgentWritableRoots(ActiveSandbox),
+                ActiveSandbox is not null && value,
+                ActiveSandbox?.Branch,
+                ActiveSandbox?.Path); }
             catch (Exception error) { SandboxNotice = error.Message; }
         }
     }
@@ -76,7 +80,7 @@ public sealed partial class AppModel
             _sandboxCleanupMerge = settings.Get("agent.sandbox.cleanupMerge")?.AsBool() ?? true;
             SandboxRecoveryRequired = settings.Get("agent.sandbox.recoveryRequired")?.AsBool() ?? false;
             SandboxConflict = ReadPersistedConflict(sandbox, settings);
-            Bridge.SetSandboxExecution(SandboxWorkspaces.AgentWritableRoots(sandbox), SandboxNetworkAccess);
+            Bridge.SetSandboxExecution(SandboxWorkspaces.AgentWritableRoots(sandbox), SandboxNetworkAccess, sandbox.Branch, sandbox.Path);
             _ = McpRegistry.SuspendForSandboxAsync(true);
         }
         catch (Exception error)
@@ -111,7 +115,7 @@ public sealed partial class AppModel
             SandboxCleanupPending = false;
             _sandboxCleanupMerge = true;
             SandboxRecoveryRequired = false;
-            Bridge.SetSandboxExecution(SandboxWorkspaces.AgentWritableRoots(sandbox), SandboxNetworkAccess);
+            Bridge.SetSandboxExecution(SandboxWorkspaces.AgentWritableRoots(sandbox), SandboxNetworkAccess, sandbox.Branch, sandbox.Path);
             _ = McpRegistry.SuspendForSandboxAsync(true);
             SaveSandboxState(sandbox);
             SandboxNotice = dirty
@@ -142,7 +146,7 @@ public sealed partial class AppModel
             SandboxConflict = SameWorkspacePath(savedPath, sandbox.Path) ? ReadPersistedConflict(sandbox, Host.Settings) : null;
             SandboxResolutionPreview = null;
             SandboxCleanupPending = SameWorkspacePath(savedPath, sandbox.Path) && (Host.Settings.Get("agent.sandbox.cleanupPending")?.AsBool() ?? false);
-            Bridge.SetSandboxExecution(SandboxWorkspaces.AgentWritableRoots(sandbox), SandboxNetworkAccess);
+            Bridge.SetSandboxExecution(SandboxWorkspaces.AgentWritableRoots(sandbox), SandboxNetworkAccess, sandbox.Branch, sandbox.Path);
             SaveSandboxState(sandbox);
             SandboxNotice = $"Sandbox '{sandbox.Name}' recovered. {SandboxProcessIsolationStatus}";
         }
@@ -157,7 +161,7 @@ public sealed partial class AppModel
         {
             await Task.Run(() => SandboxStore.ValidateReady(sandbox));
             SandboxRecoveryRequired = false;
-            Bridge.SetSandboxExecution(SandboxWorkspaces.AgentWritableRoots(sandbox), SandboxNetworkAccess);
+            Bridge.SetSandboxExecution(SandboxWorkspaces.AgentWritableRoots(sandbox), SandboxNetworkAccess, sandbox.Branch, sandbox.Path);
             _ = McpRegistry.SuspendForSandboxAsync(true);
             SaveSandboxState(sandbox);
             SandboxNotice = "Sandbox recovery completed.";

@@ -21,19 +21,26 @@ extension WorkspaceMemory {
     /// `git status` spawns a child process and waits for it, which on a large
     /// working tree is hundreds of milliseconds of blocked main actor. The
     /// process runs detached; path normalisation stays here.
+    /// Memory writes into `.mem` during a run; they are the host's bookkeeping, not
+    /// work the model did, so they never count as changed files.
     public func changedGitPaths(workspace: URL) async -> Set<String> {
         let lines = await Task.detached(priority: .userInitiated) { Self.gitStatusLines(workspace: workspace) }.value
         return Set(lines.compactMap { line in
             guard line.count > 3 else { return nil }
-            return safePath(String(line.dropFirst(3)))
+            let path = safePath(String(line.dropFirst(3)))
+            return path == ".mem" || path.hasPrefix(".mem/") ? nil : path
         })
     }
 
     nonisolated private static func gitStatusLines(workspace: URL) -> [String] {
+        gitLines(["status", "--porcelain", "--untracked-files=all"], workspace: workspace)
+    }
+
+    nonisolated static func gitLines(_ arguments: [String], workspace: URL) -> [String] {
         let process = Process()
         let output = Pipe()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["git", "status", "--porcelain", "--untracked-files=all"]
+        process.arguments = ["git"] + arguments
         process.currentDirectoryURL = workspace
         process.standardOutput = output
         // This helper only records paths; diagnostics were discarded before too.
@@ -68,10 +75,10 @@ extension WorkspaceMemory {
             "name": call.name,
             "path": arguments["path"] is String ? safePath(arguments["path"] as! String) : NSNull(),
             "commandSummary": call.name == "run_command" ? sanitize(arguments["command"] as? String ?? "", limit: 160) : NSNull(),
-            "resultStatus": result.lowercased().contains("error") ? "failed" : "completed",
+            "resultStatus": result.range(of: "error", options: .caseInsensitive) != nil ? "failed" : "completed",
             "resultBytes": result.utf8.count,
         ]
-        _ = try? writeEvent(type: "tool.executed", scope: "task", payload: toolPayload)
+        recordActivity(type: "tool.executed", payload: toolPayload)
         task.tools.append(call.name)
 
         if let beforeFile,
@@ -87,7 +94,7 @@ extension WorkspaceMemory {
                 "afterBytes": afterData?.count ?? 0,
                 "attribution": "write_file",
             ]
-            _ = try? writeEvent(type: "file.changed", scope: "task", payload: change)
+            recordActivity(type: "file.changed", payload: change)
             task.changedFiles.append(change)
         }
 
@@ -98,10 +105,17 @@ extension WorkspaceMemory {
                 "operation": "modified",
                 "attribution": "unattributed-shell-change",
             ]
-            _ = try? writeEvent(type: "file.changed", scope: "task", payload: change)
+            recordActivity(type: "file.changed", payload: change)
             task.changedFiles.append(change)
         }
         tasks[runID.uuidString] = task
+    }
+
+    /// A skill the run read. Like a tool call, it is logged only for a task this memory began,
+    /// so a run in some other folder never writes into this project's records.
+    public func recordSkill(runID: UUID, skill: String) {
+        guard tasks[runID.uuidString] != nil else { return }
+        recordActivity(type: "skill.used", payload: ["runId": runID.uuidString, "skill": sanitize(skill, limit: 120)])
     }
 
     public func recordPrompt(runID: UUID, prompt: String) {
@@ -111,11 +125,13 @@ extension WorkspaceMemory {
         tasks[runID.uuidString] = task
     }
 
-    public func finishTask(runID: UUID, success: Bool, finalText: String = "") {
+    public func finishTask(runID: UUID, success: Bool, finalText: String = "", controlText: String? = nil) {
         guard let task = tasks.removeValue(forKey: runID.uuidString) else { return }
-        let open = openItems(in: finalText)
+        let controls = controlText ?? finalText
+        let visibleFinalText = visibleText(in: finalText)
+        let open = openItems(in: controls)
         let status = success ? (open.isEmpty ? "completed" : "unfinished") : "failed"
-        closeBacklog(mentionedIn: finalText)
+        closeBacklog(mentionedIn: controls)
         // A run that read nothing and changed nothing is chat, not work. Its note
         // would still be injected by `relevantTasks(for:)`, which falls back to the
         // three most recent notes when no term matches, so recording it costs every
@@ -125,62 +141,39 @@ extension WorkspaceMemory {
         let payload: [String: Any] = [
             "runId": task.runID,
             "status": status,
-            "promptSummary": task.promptSummary,
-            "promptHash": task.promptHash,
             "changedFiles": task.changedFiles,
             "toolCount": task.tools.count,
             "semanticStatus": "pending",
         ]
         if didWork || !open.isEmpty {
-            _ = try? writeEvent(type: "task.\(status)", scope: "task", payload: payload)
-            writeTaskNote(task, status: status, finalText: finalText, openItems: open)
+            recordActivity(type: "task.\(status)", payload: payload)
+            writeTaskNote(task, status: status, finalText: visibleFinalText, openItems: open)
         }
         // Work that touched a manifest may have changed what the project is built
-        // with: read the stack again instead of waiting to be told.
+        // with, and work that touched a document what the map says of it: read both
+        // again instead of waiting to be told.
         if task.changedFiles.contains(where: {
-            Self.isStackManifest(URL(fileURLWithPath: $0["path"] as? String ?? "").lastPathComponent)
+            let name = URL(fileURLWithPath: $0["path"] as? String ?? "").lastPathComponent
+            return Self.isStackManifest(name) || name.lowercased().hasSuffix(".md")
         }) {
             try? updateMapIfNeeded(deep: true)
         }
         let language = explicitLanguage(in: task.promptSummary)
         let decision = explicitDecision(in: task.promptSummary)
-        // The reply language describes the user, not this repository.
+        // The reply language describes the person in every project, so it goes to the
+        // profile only. Nothing about a preference is written to the repository.
         if let language { try? profile.setPreference(key: "language", value: language) }
         Task { @MainActor [weak self] in
             guard let self else { return }
-            if let language, let identity = self.identity {
-                _ = try? self.writeEvent(
-                    type: "preference.set",
-                    scope: "person",
-                    payload: [
-                        "personId": identity.personID,
-                        "key": "language",
-                        "value": language,
-                        "source": "explicit-user-instruction",
-                    ]
-                )
-            }
             if let decision {
-                _ = try? self.writeEvent(
-                    type: "decision.proposed",
-                    scope: "project",
-                    payload: [
-                        "summary": decision,
-                        "source": "explicit-user-instruction",
-                        "runId": runID.uuidString,
-                    ]
-                )
+                try? self.recordProjectDecision(summary: decision)
             }
-            _ = try? self.writeEvent(
-                type: "semantic.completed",
-                scope: "task",
-                payload: [
-                    "runId": runID.uuidString,
-                    "status": "completed",
-                    "preferenceUpdated": language != nil,
-                    "decisionProposed": decision != nil,
-                ]
-            )
+            self.recordActivity(type: "semantic.completed", payload: [
+                "runId": runID.uuidString,
+                "status": "completed",
+                "preferenceUpdated": language != nil,
+                "decisionProposed": decision != nil,
+            ])
         }
     }
 
@@ -192,14 +185,17 @@ extension WorkspaceMemory {
         state: ConversationLifecycleState
     ) {
         guard manifest != nil, !conversationID.isEmpty else { return }
-        _ = try? writeEvent(
-            type: "conversation.\(state.rawValue)",
-            scope: "conversation",
-            payload: [
-                "conversationId": conversationID,
-                "title": sanitize(title, limit: 120),
-            ]
-        )
+        let safeTitle = sanitize(title, limit: 120)
+        recordActivity(type: "conversation.\(state.rawValue)", payload: [
+            "conversationId": conversationID,
+            "title": safeTitle,
+        ])
+        writeConversationNote(conversationID: conversationID, record: [
+            "title": safeTitle,
+            "state": state.rawValue,
+            "updatedAt": isoNow(),
+            "revision": revision,
+        ])
     }
 
     public func recordConversationRewind(
@@ -210,16 +206,12 @@ extension WorkspaceMemory {
         conflictPaths: [String]
     ) {
         guard manifest != nil, !conversationID.isEmpty else { return }
-        _ = try? writeEvent(
-            type: "conversation.rewound",
-            scope: "conversation",
-            payload: [
-                "conversationId": conversationID,
-                "title": sanitize(title, limit: 120),
-                "beforeMessageId": beforeMessageID,
-                "restoredPaths": restoredPaths,
-                "conflictPaths": conflictPaths,
-            ]
-        )
+        recordActivity(type: "conversation.rewound", payload: [
+            "conversationId": conversationID,
+            "title": sanitize(title, limit: 120),
+            "beforeMessageId": beforeMessageID,
+            "restoredPaths": restoredPaths,
+            "conflictPaths": conflictPaths,
+        ])
     }
 }

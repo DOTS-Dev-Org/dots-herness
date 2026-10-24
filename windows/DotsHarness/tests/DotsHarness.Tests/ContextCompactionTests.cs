@@ -12,6 +12,23 @@ public sealed class ContextCompactionTests
         new("tool", content, ToolCallId: id);
 
     [Fact]
+    public async Task TrimToolResultsStopsWhenShortResultsCannotShrinkFurther()
+    {
+        // The system prompt alone exceeds the ceiling, and a ~200-character result
+        // clipped to the 160 floor plus its notice is longer than before.
+        var messages = new List<NativeMessage>
+        {
+            new("system", new string('p', 40_000)),
+            new("user", "look"),
+            ReadCall("a", """{"path":"a.txt"}"""),
+            ToolResult("a", new string('x', 200)),
+        };
+        var trim = Task.Run(() => ContextCompaction.TrimToolResults(messages, 1_024));
+        Assert.Same(trim, await Task.WhenAny(trim, Task.Delay(TimeSpan.FromSeconds(5))));
+        Assert.Equal(new string('x', 200), messages[3].Content);
+    }
+
+    [Fact]
     public void OnlyTheLatestReadOfTheSameLinesKeepsItsBody()
     {
         var messages = new List<NativeMessage>
@@ -46,7 +63,9 @@ public sealed class ContextCompactionTests
     {
         var budget = ContextCompaction.Budget(32_768, reservedOutputTokens: 4_096, toolDefinitionTokens: 1_000);
 
-        Assert.Equal((int)(budget.UsableInputTokens * .90), budget.TriggerTokens);
+        // A small window is bounded by the output reservation, a large one by 90% of the window.
+        Assert.Equal(budget.UsableInputTokens + budget.ToolDefinitionTokens, budget.TriggerTokens);
+        Assert.Equal(900_000, ContextCompaction.Budget(1_000_000, reservedOutputTokens: 4_096, toolDefinitionTokens: 1_000).TriggerTokens);
         Assert.Equal((int)(budget.UsableInputTokens * .65), budget.TargetTokens);
         Assert.True(budget.UsableInputTokens < budget.ContextWindow);
     }
@@ -72,7 +91,7 @@ public sealed class ContextCompactionTests
             economy: true);
 
         Assert.Equal(0.90, budget.TriggerRatio);
-        Assert.Equal((int)(budget.UsableInputTokens * .90), budget.TriggerTokens);
+        Assert.Equal(budget.UsableInputTokens + budget.ToolDefinitionTokens, budget.TriggerTokens);
         Assert.True(budget.ReservedOutputTokens > 16_384);
         Assert.True(budget.Fits(budget.UsableInputTokens));
         Assert.False(budget.Fits(budget.UsableInputTokens, incomingTokens: 1));
@@ -108,7 +127,7 @@ public sealed class ContextCompactionTests
         {
             new("system", "rules"),
             new("user", "inspect the file"),
-            new("assistant", "", ToolCalls: [new NativeToolCall("call-1", "read_file", "{\"path\":\"src/a.cs\"}")]),
+            new("assistant", "", ToolCalls: [new NativeToolCall("call-1", "invoke_tool", """{"name":"read_file","arguments":"{\"path\":\"src/a.cs\"}"}""")]),
             new("tool", body, "call-1"),
             new("user", "now fix it"),
             new("assistant", "I will fix it."),
@@ -170,9 +189,9 @@ public sealed class ContextCompactionTests
             ContextCompaction.Budget(32_768));
 
         Assert.NotNull(selection);
-        Assert.Contains(selection!.StableSystem, message => message.Content.Contains("Response language"));
+        Assert.Contains(selection!.StableSystem, message => message.Content.Contains("Accuracy and language"));
         var composed = selection.Compose("summary", preserveNativeItems: false);
-        Assert.Contains(composed, message => message.Role == "system" && message.Content.Contains("Response language"));
+        Assert.Contains(composed, message => message.Role == "system" && message.Content.Contains("Accuracy and language"));
         Assert.Contains("son güvenilir sohbet dilini", ContextCompaction.SummarySystemPrompt);
         Assert.Contains("başka bir sohbetin dilini kullanma", ContextCompaction.SummarySystemPrompt);
     }
@@ -202,6 +221,87 @@ public sealed class ContextCompactionTests
         Assert.Contains("Türkçe", selection!.ArchiveText);
         Assert.Contains("English", selection.ArchiveText);
         Assert.Contains(selection.RecentMessages, message => message.Content.Contains("简体中文"));
-        Assert.Contains(selection.StableSystem, message => message.Content.Contains("Response language"));
+        Assert.Contains(selection.StableSystem, message => message.Content.Contains("Accuracy and language"));
+    }
+
+    [Fact]
+    public void InvokeToolReadsAndWiderSpansSupersedeEarlierReads()
+    {
+        var messages = new List<NativeMessage>
+        {
+            new("user", "inspect"),
+            new("assistant", "", ToolCalls: [
+                new NativeToolCall("r1", "invoke_tool", """{"name":"read_file","arguments":"{\"path\":\"src/app.cs\",\"offset\":10,\"limit\":40}"}""")
+            ]),
+            ToolResult("r1", "narrow slice"),
+            new("assistant", "", ToolCalls: [
+                new NativeToolCall("r2", "invoke_tool", """{"name":"read_file","arguments":"{\"path\":\"src/app.cs\",\"offset\":1,\"limit\":100}"}""")
+            ]),
+            ToolResult("r2", "wider slice covering lines 1..100"),
+        };
+
+        var result = ContextCompaction.SupersedeRepeatedReads(messages);
+
+        Assert.Equal(ContextCompaction.SupersededReadMarker, result[2].Content);
+        Assert.Equal("wider slice covering lines 1..100", result[4].Content);
+    }
+
+    [Fact]
+    public void ArchiveOmitsEditFilePayloadsAndBodies()
+    {
+        var oldBody = new string('a', 4_000);
+        var newBody = new string('b', 4_000);
+        var diffOutput = new string('d', 4_000);
+        var messages = new List<NativeMessage>
+        {
+            new("system", "rules"),
+            new("user", "patch the file"),
+            new("assistant", "", ToolCalls: [
+                new NativeToolCall("edit-1", "edit_file", $$"""{"path":"src/app.cs","old_string":"{{oldBody}}","new_string":"{{newBody}}"}""")
+            ]),
+            new("tool", diffOutput, "edit-1"),
+            new("user", "next step"),
+            new("assistant", "done"),
+        };
+
+        var selection = ContextCompaction.Select(messages, null, ContextCompaction.Budget(8_192));
+
+        Assert.NotNull(selection);
+        Assert.Contains("file edits omitted", selection!.ArchiveText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("file write result omitted", selection.ArchiveText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(oldBody, selection.ArchiveText);
+        Assert.DoesNotContain(newBody, selection.ArchiveText);
+        Assert.DoesNotContain(diffOutput, selection.ArchiveText);
+    }
+
+    [Fact]
+    public void ReadOnlyToolContainingErrorTextDoesNotResetRoutineEffort()
+    {
+        var session = new DeferredToolSession();
+        session.Control(
+            new NativeToolCall("plan-1", DeferredToolSession.PlanName, """{"steps":["Update config"],"routine":true,"uncertainties":[]}"""),
+            [],
+            planMode: false);
+        Assert.Equal("low", session.Effort("high", planMode: false));
+
+        session.Record("Error: something failed in log line 42", "call-1", "read_file");
+        session.Record("Tool error: no matches", "call-2", "grep_files");
+        Assert.Equal("low", session.Effort("high", planMode: false));
+
+        session.Record("Error: build failed", "call-3", "run_command");
+        Assert.Equal("high", session.Effort("high", planMode: false));
+    }
+
+    [Fact]
+    public void EconomyModeSkipsFollowUpSuggestionsAndTransientProgressTokens()
+    {
+        Assert.True(FollowUpSuggestions.ShouldGenerate(true, false, false, false, economy: false));
+        Assert.False(FollowUpSuggestions.ShouldGenerate(true, false, false, false, economy: true));
+
+        var transientMsg = new NativeMessage("assistant", new string('p', 4_000), IsTransientProgressText: true);
+        var normalMsg = new NativeMessage("assistant", new string('p', 4_000), IsTransientProgressText: false);
+        Assert.True(ContextCompaction.EstimateTokens(transientMsg) < 10);
+        Assert.True(ContextCompaction.EstimateTokens(normalMsg) >= 1_000);
+        Assert.Equal("", ContextCompaction.ProviderContextMessages([transientMsg])[0].Content);
     }
 }

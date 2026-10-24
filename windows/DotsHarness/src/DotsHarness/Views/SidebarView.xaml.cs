@@ -15,9 +15,11 @@ namespace DotsHarness.Views;
 
 public partial class SidebarView : UserControl
 {
-    private readonly System.Windows.Threading.DispatcherTimer _projectAvailabilityTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly System.Windows.Threading.DispatcherTimer _projectAvailabilityTimer = new() { Interval = TimeSpan.FromSeconds(5) };
     private bool _projectsExpanded = true;
     private bool _recentExpanded = true;
+    private NotificationInboxStore? _observedInbox;
+    private NotificationInboxWindow? _inboxWindow;
 
     public SidebarView()
     {
@@ -40,8 +42,13 @@ public partial class SidebarView : UserControl
     {
         if (e.OldValue is INotifyPropertyChanged oldM) oldM.PropertyChanged -= OnModel;
         if (e.NewValue is INotifyPropertyChanged next) next.PropertyChanged += OnModel;
+        if (_observedInbox is not null) _observedInbox.Changed -= OnInboxChanged;
+        _observedInbox = (e.NewValue as AppModel)?.NotificationInbox;
+        if (_observedInbox is not null) _observedInbox.Changed += OnInboxChanged;
         Bind();
     }
+
+    private void OnInboxChanged(object? sender, EventArgs e) => Dispatcher.Invoke(Bind);
 
     private void OnModel(object? sender, PropertyChangedEventArgs e)
     {
@@ -60,6 +67,8 @@ public partial class SidebarView : UserControl
         FooterHost.Slot = WellKnownSlot.SidebarFooter;
         FooterHost.Registry = Model.Host.Slots;
         StatusText.Text = Model.StatusLine;
+        var unread = Model.NotificationInbox.UnreadCount;
+        NotificationsButton.Content = unread > 0 ? $"🔔 {unread}" : "🔔";
 
         var query = SearchBox.Text.Trim();
         var projects = Model.OrderedProjects
@@ -91,8 +100,8 @@ public partial class SidebarView : UserControl
         ProjectsPanel.Visibility = _projectsExpanded ? Visibility.Visible : Visibility.Collapsed;
         ConversationList.Visibility = _projectsExpanded ? Visibility.Visible : Visibility.Collapsed;
         RecentList.Visibility = _recentExpanded ? Visibility.Visible : Visibility.Collapsed;
-        ProjectsToggle.Content = (_projectsExpanded ? "⌄  " : "›  ") + "Projects";
-        RecentToggle.Content = (_recentExpanded ? "⌄  " : "›  ") + "Recent";
+        ProjectsToggle.Content = (_projectsExpanded ? "⌄  " : "›  ") + Model.L("sidebar.projects");
+        RecentToggle.Content = (_recentExpanded ? "⌄  " : "›  ") + Model.L("sidebar.recent");
         NewButton.IsEnabled = Model.ActiveProjectLocationAvailable || Model.IsNoProjectScope;
         NewChatButton.IsEnabled = Model.ActiveProjectLocationAvailable || Model.IsNoProjectScope;
         PullRequestsButton.IsEnabled = !string.IsNullOrWhiteSpace(Model.WorkspacePath);
@@ -102,16 +111,22 @@ public partial class SidebarView : UserControl
     public void RefreshLocalization()
     {
         if (Model is null) return;
-        ProjectsHeader.Text = "Projects";
-        SearchButton.ToolTip = "Search";
+        ProjectsHeader.Text = Model.L("sidebar.projects");
+        ConversationsHeader.Text = Model.L("memory.section.conversations");
+        SearchButton.ToolTip = Model.L("sidebar.search");
+        SearchBox.ToolTip = Model.L("sidebar.search");
         SettingsButton.ToolTip = Model.L("sidebar.settings");
+        NotificationsButton.ToolTip = Model.L("notifications.title");
         UserButton.ToolTip = Model.L("sidebar.userMenu");
         UserMenuText.Text = Model.L("sidebar.userMenu");
         SettingsMenu.Header = Model.L("sidebar.settings");
         NewChatButton.Content = "□  " + Model.L("sidebar.newChat");
         NoProjectButton.Content = "◇  " + Model.L("workspace.noProject");
-        PullRequestsButton.Content = "⑂  Pull requests";
-        SitesButton.Content = "▦  Sites";
+        PullRequestsButton.Content = "⑂  " + Model.L("sidebar.pullRequests");
+        PullRequestsButton.ToolTip = Model.L("sidebar.pullRequests");
+        SitesButton.Content = "▦  " + Model.L("sidebar.sites");
+        NewButton.ToolTip = Model.L("sidebar.newChat");
+        NewProjectButton.ToolTip = Model.L("sidebar.addProject");
         ScheduledButton.Content = "◷  " + Model.L("settings.tasks");
         PluginsButton.Content = "◌  " + Model.L("settings.plugins");
         StatusText.Text = Model.StatusLine;
@@ -137,7 +152,7 @@ public partial class SidebarView : UserControl
         var input = new TextBox { Margin = new Thickness(0, 8, 0, 12), Padding = new Thickness(8, 6, 8, 6), MinWidth = 300 };
         var dialog = new Window
         {
-            Title = "Add project",
+            Title = Model.L("sidebar.addProject"),
             Width = 420,
             SizeToContent = SizeToContent.Height,
             WindowStartupLocation = owner is null ? WindowStartupLocation.CenterScreen : WindowStartupLocation.CenterOwner,
@@ -147,7 +162,7 @@ public partial class SidebarView : UserControl
             Content = new StackPanel
             {
                 Margin = new Thickness(16),
-                Children = { new TextBlock { Text = "Folder path" }, input },
+                Children = { new TextBlock { Text = Model.L("settings.folder") }, input },
             },
         };
         var buttons = new StackPanel
@@ -288,6 +303,23 @@ public partial class SidebarView : UserControl
         SearchPanel.Visibility = SearchPanel.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
         if (SearchPanel.Visibility == Visibility.Visible) SearchBox.Focus();
         else { SearchBox.Clear(); Bind(); }
+    }
+
+    private void OnNotifications(object sender, RoutedEventArgs e)
+    {
+        if (Model is not { } model) return;
+        if (_inboxWindow is { IsVisible: true }) { _inboxWindow.Activate(); return; }
+        var window = new NotificationInboxWindow(model.NotificationInbox, key => model.L(key), item =>
+        {
+            model.NotificationInbox.MarkRead(item.Id);
+            if (!string.IsNullOrWhiteSpace(item.ConversationId))
+                _ = model.Bridge.OpenRecentConversationAsync(item.ConversationId);
+            _inboxWindow?.Close();
+        });
+        _inboxWindow = window;
+        window.Closed += (_, _) => { if (ReferenceEquals(_inboxWindow, window)) _inboxWindow = null; };
+        if (Window.GetWindow(this) is { } owner) { window.Owner = owner; window.Show(); }
+        else window.Show();
     }
 
     private void OnClearSearch(object sender, RoutedEventArgs e) { SearchBox.Clear(); SearchBox.Focus(); }

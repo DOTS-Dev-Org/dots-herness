@@ -86,10 +86,10 @@ final class ReadLedger: @unchecked Sendable {
         return (.unread, IndexSet())
     }
 
-    func state(for file: URL, data: Data) -> State {
+    func state(for file: URL, data: Data, partial: Bool = false) -> State {
         let key = Self.key(file)
         lock.lock()
-        let known = hashes[key]
+        let known = hashes[key] ?? (partial ? pages[key]?.hash : nil)
         lock.unlock()
         guard let known else { return .unread }
         return known == Self.hash(data) ? .fresh : .stale

@@ -4,123 +4,119 @@ using Xunit;
 
 public sealed class SkillSuggestionEngineTests
 {
-    [Fact]
-    public void ToolSequenceFiresOnlyAtOrAboveThreshold()
-    {
-        var events = Enumerable.Range(0, 2)
-            .Select(i => new MemEvent($"e{i}", i, DateTimeOffset.UtcNow, "tool.executed", "npm test && npm run lint", "run1"))
-            .ToList();
-
-        Assert.Empty(SkillSuggestionEngine.DetectToolSequencePatterns(events, minOccurrences: 3));
-
-        events.Add(new MemEvent("e2", 2, DateTimeOffset.UtcNow, "tool.executed", "npm test && npm run lint", "run1"));
-        var suggestions = SkillSuggestionEngine.DetectToolSequencePatterns(events, minOccurrences: 3);
-        var suggestion = Assert.Single(suggestions);
-        Assert.Equal(SkillSuggestionSignal.ToolSequence, suggestion.Signal);
-        Assert.Equal(3, suggestion.Occurrences);
-    }
+    internal static Lesson Learned(string rule, int hits) => new(
+        "editing the release workflow",
+        rule,
+        "the signing step needs it",
+        ["ci/"],
+        Enumerable.Range(0, hits).Select(i => $"{Lesson.SignalPrefix}{rule}-{i}").ToList(),
+        DateTimeOffset.UtcNow);
 
     [Fact]
-    public void ToolSequenceIgnoresVolatileSubstringsWhenGrouping()
+    public void OnlyALessonLearnedThreeTimesBecomesASuggestion()
     {
-        var events = new[]
-        {
-            new MemEvent("e0", 0, DateTimeOffset.UtcNow, "tool.executed", "cat /tmp/abc123/out.txt", "r1"),
-            new MemEvent("e1", 1, DateTimeOffset.UtcNow, "tool.executed", "cat /tmp/def456/out.txt", "r2"),
-            new MemEvent("e2", 2, DateTimeOffset.UtcNow, "tool.executed", "cat /tmp/ghi789/out.txt", "r3"),
-        };
+        Assert.Empty(SkillSuggestionEngine.FromLessons([Learned("Bump VERSION first", 2)]));
 
-        var suggestion = Assert.Single(SkillSuggestionEngine.DetectToolSequencePatterns(events, minOccurrences: 3));
-        Assert.Equal(3, suggestion.Occurrences);
-    }
-
-    [Fact]
-    public void PromptSimilarityClustersNearDuplicatesButNotUnrelatedPrompts()
-    {
-        var prompts = new[]
-        {
-            "add a dark mode toggle",
-            "add dark mode toggle please",
-            "can you add a dark mode toggle",
-            "fix the login page crash",
-        };
-
-        var suggestions = SkillSuggestionEngine.DetectPromptSimilarityPatterns(prompts, minOccurrences: 3, similarityThreshold: 0.6);
-        var suggestion = Assert.Single(suggestions);
-        Assert.Equal(SkillSuggestionSignal.PromptSimilarity, suggestion.Signal);
-        Assert.Equal(3, suggestion.Occurrences);
-    }
-
-    [Fact]
-    public void NoRepeatedPatternProducesNoSuggestions()
-    {
-        var prompts = new[] { "one off request", "another unrelated ask", "a third distinct thing" };
-        Assert.Empty(SkillSuggestionEngine.DetectPromptSimilarityPatterns(prompts, minOccurrences: 3, similarityThreshold: 0.75));
-
-        var events = new[]
-        {
-            new MemEvent("e0", 0, DateTimeOffset.UtcNow, "tool.executed", "ls", "r1"),
-            new MemEvent("e1", 1, DateTimeOffset.UtcNow, "tool.executed", "pwd", "r2"),
-        };
-        Assert.Empty(SkillSuggestionEngine.DetectToolSequencePatterns(events, minOccurrences: 2));
+        var suggestion = Assert.Single(SkillSuggestionEngine.FromLessons([Learned("Bump VERSION first", 3), Learned("Other", 1)]));
+        Assert.Equal(SkillSuggestionSignal.Lesson, suggestion.Signal);
+        Assert.Equal("Bump VERSION first", suggestion.DraftName);
+        Assert.Contains("## Rule", suggestion.Body);
+        Assert.Contains("`ci/`", suggestion.Body);
     }
 }
 
 public sealed class SkillSuggestionMonitorTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"DotsHarnessSuggestionTests-{Guid.NewGuid():N}");
+    private DateTimeOffset _now = DateTimeOffset.Parse("2026-10-01T00:00:00Z");
 
     [Fact]
-    public void AcceptWritesSkillAndDismissPreventsRefiring()
+    public void AcceptWritesSkillAndCooldownHoldsTheNextCard()
     {
-        var paths = Paths();
-        var workspace = Path.Combine(_root, "project");
-        Directory.CreateDirectory(workspace);
-        var skills = new SkillCatalog(paths, workspace);
-        var monitor = new SkillSuggestionMonitor(paths, skills) { ToolRepeatThreshold = 2 };
-        monitor.SetWorkspace(workspace);
+        var (monitor, skills) = Monitor();
 
-        WriteToolEvents(workspace, "npm test", 2);
-        monitor.Scan(Enumerable.Empty<string>());
+        monitor.Scan([SkillSuggestionEngineTests.Learned("Bump VERSION first", 3)]);
         Assert.NotNull(monitor.Pending);
 
-        var id = monitor.AcceptCurrent("Run Npm Test", "Runs the test suite.");
+        var id = monitor.AcceptCurrent("Release prep", "Prepares a release.");
         Assert.NotNull(skills.Descriptor(id));
         Assert.Null(monitor.Pending);
 
-        // Force past the debounce window is not needed: re-scanning immediately is a
-        // no-op due to debounce, but the accepted pattern's id is already recorded as
-        // seen, so even an unthrottled re-scan would not resurface it.
+        monitor.Scan([SkillSuggestionEngineTests.Learned("Run migrations before seeding", 4)]);
+        Assert.Null(monitor.Pending);
+
+        _now += SkillSuggestionMonitor.Cooldown;
+        monitor.Scan([SkillSuggestionEngineTests.Learned("Run migrations before seeding", 4)]);
+        Assert.NotNull(monitor.Pending);
     }
 
     [Fact]
-    public void AgentCanProposeASuggestionAndItStopsAfterOneDismiss()
+    public void TwoDismissalsInARowPauseSuggestions()
+    {
+        var (monitor, skills) = Monitor();
+
+        monitor.Scan([SkillSuggestionEngineTests.Learned("A", 3)]);
+        monitor.DismissCurrent();
+        _now += SkillSuggestionMonitor.Cooldown;
+        monitor.Scan([SkillSuggestionEngineTests.Learned("B", 3)]);
+        monitor.DismissCurrent();
+
+        _now += SkillSuggestionMonitor.Cooldown;
+        monitor.Scan([SkillSuggestionEngineTests.Learned("C", 3)]);
+        Assert.Null(monitor.Pending);
+        Assert.Contains("No card shown", Suggest(skills, monitor, "Deploy Preview"));
+
+        // The pause survives a restart.
+        var restarted = new SkillSuggestionMonitor(Paths(), skills) { Clock = () => _now };
+        Assert.False(restarted.CanSuggest);
+
+        _now += SkillSuggestionMonitor.Pause;
+        monitor.Scan([SkillSuggestionEngineTests.Learned("C", 3)]);
+        Assert.NotNull(monitor.Pending);
+    }
+
+    [Fact]
+    public void DisablingDropsPendingAndBlocksAgentProposals()
+    {
+        var (monitor, skills) = Monitor();
+        monitor.Scan([SkillSuggestionEngineTests.Learned("A", 3)]);
+        Assert.NotNull(monitor.Pending);
+
+        monitor.Enabled = false;
+        Assert.Null(monitor.Pending);
+        Assert.Contains("turned off", Suggest(skills, monitor, "Deploy Preview"));
+        Assert.Null(monitor.Pending);
+    }
+
+    [Fact]
+    public void AgentProposalIsNotShownAgainUnderAnotherDescription()
+    {
+        var (monitor, skills) = Monitor();
+
+        Assert.Contains("Suggestion card shown", Suggest(skills, monitor, "Deploy Preview"));
+        Assert.Equal(SkillSuggestionSignal.AgentProposed, monitor.Pending!.Signal);
+        monitor.DismissCurrent();
+
+        _now += SkillSuggestionMonitor.Cooldown;
+        Assert.Contains("already suggested", Suggest(skills, monitor, "deploy preview", "Reworded."));
+        Assert.Null(monitor.Pending);
+    }
+
+    private static string Suggest(SkillCatalog skills, SkillSuggestionMonitor monitor, string name, string description = "Builds and deploys a preview.") =>
+        SkillTools.Execute(
+            new NativeToolCall("1", "skill.suggest", $$"""{"name":"{{name}}","description":"{{description}}","body":"## Steps\n\n1. Build\n"}"""),
+            skills,
+            monitor);
+
+    private (SkillSuggestionMonitor, SkillCatalog) Monitor()
     {
         var paths = Paths();
         var workspace = Path.Combine(_root, "project");
         Directory.CreateDirectory(workspace);
         var skills = new SkillCatalog(paths, workspace);
-        var monitor = new SkillSuggestionMonitor(paths, skills);
+        var monitor = new SkillSuggestionMonitor(paths, skills) { Clock = () => _now };
         monitor.SetWorkspace(workspace);
-
-        var result = SkillTools.Execute(
-            new NativeToolCall("1", "skill.suggest", "{\"name\":\"Deploy Preview\",\"description\":\"Builds and deploys a preview.\",\"body\":\"## Steps\\n\\n1. Build\\n2. Deploy\\n\"}"),
-            skills,
-            monitor);
-
-        Assert.Contains("Suggestion card shown", result);
-        Assert.NotNull(monitor.Pending);
-        Assert.Equal(SkillSuggestionSignal.AgentProposed, monitor.Pending!.Signal);
-
-        monitor.DismissCurrent();
-        Assert.Null(monitor.Pending);
-
-        var again = SkillTools.Execute(
-            new NativeToolCall("2", "skill.suggest", "{\"name\":\"Deploy Preview\",\"description\":\"Builds and deploys a preview.\",\"body\":\"different body\"}"),
-            skills,
-            monitor);
-        Assert.Contains("already suggested", again);
-        Assert.Null(monitor.Pending);
+        return (monitor, skills);
     }
 
     public void Dispose()
@@ -140,24 +136,5 @@ public sealed class SkillSuggestionMonitorTests : IDisposable
             Path.Combine(_root, "trust.json"),
             Path.Combine(_root, "models"),
             Path.Combine(_root, "runtime"));
-    }
-
-    private static void WriteToolEvents(string workspace, string commandSummary, int count)
-    {
-        var directory = Path.Combine(workspace, ".mem", "events");
-        Directory.CreateDirectory(directory);
-        for (var i = 0; i < count; i++)
-        {
-            var json = $$"""
-            {
-                "eventId": "evt-{{i}}",
-                "lamport": {{i}},
-                "createdAt": "2026-01-01T00:00:0{{i}}Z",
-                "type": "tool.executed",
-                "payload": { "commandSummary": "{{commandSummary}}", "runId": "run-{{i}}" }
-            }
-            """;
-            File.WriteAllText(Path.Combine(directory, $"evt-{i}.json"), json);
-        }
     }
 }

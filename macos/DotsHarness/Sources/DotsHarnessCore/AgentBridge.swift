@@ -2,6 +2,7 @@
 // Native agent host: conversation state, model loop, tools, and workspace memory.
 
 import Foundation
+import Network
 import HarnessPluginKit
 import Observation
 import PluginRuntime
@@ -22,11 +23,13 @@ public struct AssistantResponseEvent: Sendable, Equatable {
     public let conversationTitle: String
     public let text: String
     public let isPlan: Bool
+    public let conversationID: String
 
-    public init(conversationTitle: String, text: String, isPlan: Bool = false) {
+    public init(conversationTitle: String, text: String, isPlan: Bool = false, conversationID: String = "") {
         self.conversationTitle = conversationTitle
         self.text = text
         self.isPlan = isPlan
+        self.conversationID = conversationID
     }
 }
 
@@ -60,7 +63,7 @@ public struct RunSummaryEvent: Sendable, Equatable {
 /// A run in some chat is blocked on the user (approval, question, download, conflict).
 public struct RunAttentionEvent: Sendable, Equatable {
     public enum Kind: Sendable, Equatable {
-        case approval, question, visionInstall, conflict, contextCompaction
+        case approval, question, visionInstall, conflict
     }
 
     public let conversationID: String
@@ -140,6 +143,8 @@ public struct PendingVisionInstall: Sendable, Equatable, Identifiable {
 /// tree, so run code reads and writes its own state while other conversations also run.
 enum AgentRunScope {
     @TaskLocal static var conversationID: String?
+    /// Per-prompt subagent permission, captured when the prompt is submitted.
+    @TaskLocal static var subagentsOverride: Bool?
 }
 
 /// Per-conversation run state: several conversations can run at once.
@@ -156,13 +161,13 @@ final class AgentRunState {
     var pendingVisionInstall: PendingVisionInstall? = nil
     var pendingQuestion: PendingQuestion? = nil
     var pendingConflict: PendingConflict? = nil
-    var pendingContextOverflow: PendingContextOverflow? = nil
+    /// Effective subagent permission for this run, retained if the run pauses.
+    var activeSubagentsOverride: Bool? = nil
     /// Set while this run waits for a lease another chat holds, so the sidebar can
     /// show that it is blocked rather than merely busy.
     var waitingOnLease: WorkspaceLeaseHolder? = nil
     @ObservationIgnored var approvalContinuation: CheckedContinuation<Bool, Never>? = nil
     @ObservationIgnored var visionInstallContinuation: CheckedContinuation<Bool, Never>? = nil
-    @ObservationIgnored var contextOverflowContinuation: CheckedContinuation<Bool, Never>? = nil
     @ObservationIgnored var questionContinuation: CheckedContinuation<[String]?, Never>? = nil
     @ObservationIgnored var conflictContinuation: CheckedContinuation<WorkspaceConflictChoice, Never>? = nil
     var askUserRounds: Int = 0
@@ -196,6 +201,9 @@ final class AgentRunState {
     var activeVerifiedRemovals: Int = 0
     var activeTurnWrittenPaths: Set<String> = []
     var activeTurnAttributionKnown: Bool = true
+    /// When this turn's opaque tools (commands, plugins, MCP, subagents) ran. `end` stays nil
+    /// for one that keeps writing after its call returns.
+    var activeTurnOpaqueWindows: [(start: Date, end: Date?)] = []
     var activePreservedRemoval: Bool = false
     var activeUnverifiedDeletion: Bool = false
     var activeCleanupFailure: Bool = false
@@ -207,7 +215,7 @@ public final class NativeAgentHost {
     // Views observe this class per property (Observation), not as a whole: only what a view
     // reads invalidates it. State that is not a tracked stored property (the run table, the
     // stores behind the sidebar lists, workspace memory) announces changes through
-    // `changeTick` / `accessRevision`, which the getters over that state read.
+    // `changeTick` / `memoryRevision`, which the getters over that state read.
     @ObservationIgnored var runStates: [String: AgentRunState] = [:]
     @ObservationIgnored private let unboundRun = AgentRunState()
     @ObservationIgnored var planIntentClassifierOverride: ((String) async -> Bool)?
@@ -221,31 +229,56 @@ public final class NativeAgentHost {
     /// that thinks first does not leave the bubble empty. Gone once prose starts.
     private(set) var liveThinking: [String: String] = [:]
     @ObservationIgnored private var liveReplyBuffers: [String: (text: String, thinking: String, published: Date)] = [:]
+    /// What `persist()` last wrote per conversation, and the store revision after it.
+    @ObservationIgnored var persistedConversations: [String: Conversation] = [:]
+    @ObservationIgnored var persistedRevision = -1
+    @ObservationIgnored var persistScheduled = false
 
     func appendLiveReply(_ delta: NativeAgentClient.StreamDelta, in conversationID: String) {
-        var buffer = liveReplyBuffers[conversationID] ?? ("", "", .distantPast)
+        // Appended in place: a copy taken out of the dictionary made every delta copy the whole reply.
         switch delta {
-        case .text(let text): buffer.text += text
-        case .thinking(let thinking): buffer.thinking += thinking
+        case .text(let text): liveReplyBuffers[conversationID, default: ("", "", .distantPast)].text += text
+        case .thinking(let thinking): liveReplyBuffers[conversationID, default: ("", "", .distantPast)].thinking += thinking
         }
-        // ponytail: published at most 20 times a second so a long reply is not
-        // re-laid-out per token; the tail waits for the next delta or the final message.
-        if Date().timeIntervalSince(buffer.published) >= 0.05 {
-            if buffer.text.isEmpty {
-                liveThinking[conversationID] = buffer.thinking
-            } else {
-                liveReplies[conversationID] = buffer.text
-                if liveThinking[conversationID] != nil { liveThinking[conversationID] = nil }
-            }
-            buffer.published = Date()
+        // ponytail: published 10 times a second, and only for the chat on screen: every
+        // publish re-renders the window, so background chats stream into the buffer alone.
+        // The tail waits for the next delta, the final message or `selectionDidChange`.
+        guard conversationID == selectedID,
+              Date().timeIntervalSince(liveReplyBuffers[conversationID]!.published) >= 0.1 else { return }
+        publishLiveReply(in: conversationID)
+    }
+
+    func publishLiveReply(in conversationID: String) {
+        guard let buffer = liveReplyBuffers[conversationID] else { return }
+        if buffer.text.isEmpty {
+            if !buffer.thinking.isEmpty { liveThinking[conversationID] = buffer.thinking }
+        } else {
+            liveReplies[conversationID] = memory.visibleText(in: buffer.text, hidePartialMarkerTail: true)
+            if liveThinking[conversationID] != nil { liveThinking[conversationID] = nil }
         }
-        liveReplyBuffers[conversationID] = buffer
+        liveReplyBuffers[conversationID]?.published = Date()
     }
 
     func clearLiveReply(in conversationID: String) {
         liveReplyBuffers[conversationID] = nil
         if liveReplies[conversationID] != nil { liveReplies[conversationID] = nil }
         if liveThinking[conversationID] != nil { liveThinking[conversationID] = nil }
+    }
+
+    func replaceLiveReply(_ text: String, thinking: String? = nil, in conversationID: String) {
+        let reasoning = thinking ?? ""
+        liveReplyBuffers[conversationID] = (text, reasoning, Date())
+        if text.isEmpty {
+            liveReplies[conversationID] = nil
+            liveThinking[conversationID] = reasoning.isEmpty ? nil : reasoning
+        } else {
+            liveReplies[conversationID] = memory.visibleText(in: text)
+            liveThinking[conversationID] = nil
+        }
+    }
+
+    func currentLiveReplyText(in conversationID: String) -> String? {
+        liveReplyBuffers[conversationID]?.text ?? liveReplies[conversationID]
     }
 
     /// Tell readers of state held outside tracked properties that it changed.
@@ -263,7 +296,17 @@ public final class NativeAgentHost {
     func state(for conversationID: String) -> AgentRunState {
         if let run = runStates[conversationID] { return run }
         let run = AgentRunState()
-        run.onBusyChange = { [weak self] in self?.touchRuns() }
+        run.onBusyChange = { [weak self, weak run] in
+            guard let self, let run else { return }
+            self.touchRuns()
+            guard !run.isBusy else { return }
+            // Run finalization still writes its last message and summary after
+            // clearing isBusy. Wait for that main-actor turn before releasing it.
+            Task { @MainActor [weak self] in
+                await Task.yield()
+                self?.trimInactiveConversationContent()
+            }
+        }
         runStates[conversationID] = run
         return run
     }
@@ -292,6 +335,7 @@ public final class NativeAgentHost {
                 UserDefaults.standard.set(selectedID, forKey: Self.lastSelectedKey(workspaceURL?.path))
             }
             onSelectedConversationChanged?(selectedID)
+            selectionDidChange(to: selectedID)
         }
     }
 
@@ -313,7 +357,7 @@ public final class NativeAgentHost {
         }
     }
     public internal(set) var historyMutationBusy = false
-    public private(set) var accessRevision = 0
+    public internal(set) var memoryRevision = 0
     public private(set) var permissionMode: AgentPermissionMode
     public private(set) var browserBackendSetting: BrowserBackend?
     public private(set) var isComputerUseEnabled: Bool = false
@@ -352,13 +396,6 @@ public final class NativeAgentHost {
         get { currentRun.pendingConflict }
         set {
             currentRun.pendingConflict = newValue
-            touchRuns()
-        }
-    }
-    public internal(set) var pendingContextOverflow: PendingContextOverflow? {
-        get { currentRun.pendingContextOverflow }
-        set {
-            currentRun.pendingContextOverflow = newValue
             touchRuns()
         }
     }
@@ -404,7 +441,11 @@ public final class NativeAgentHost {
     /// Long-lived shells the agent opened, keyed by conversation id. A run can
     /// only see and control the sessions its own conversation started.
     var agentTerminals: [String: [TerminalSession]] = [:]
+    /// Terminals the user opened in the dock. The agent may read them, never drive them.
+    weak var userTerminalManager: TerminalManager?
     let nonInteractive: Bool
+    /// Effort this host's runs ask for instead of the app's selection (a bot's own level).
+    var effortOverride: String?
     /// Scheduled runs may opt into network commands after their sandbox policy
     /// has explicitly enabled network access. Ordinary runs keep the approval gate.
     let automaticNetworkAccess: Bool
@@ -437,12 +478,6 @@ public final class NativeAgentHost {
         get { currentRun.visionInstallContinuation }
         set {
             currentRun.visionInstallContinuation = newValue
-        }
-    }
-    var contextOverflowContinuation: CheckedContinuation<Bool, Never>? {
-        get { currentRun.contextOverflowContinuation }
-        set {
-            currentRun.contextOverflowContinuation = newValue
         }
     }
     var questionContinuation: CheckedContinuation<[String]?, Never>? {
@@ -520,12 +555,12 @@ public final class NativeAgentHost {
             .sorted { $0.activityDate > $1.activityDate }
     }
 
-    /// Sidebar search also matches transcript text; headers carry none, so their
-    /// content is read on demand (the full decode is cached by the store).
+    /// Sidebar search reads only the searched transcript; its content is released
+    /// with the local value when this query finishes.
     public func contentMatches(_ conversation: Conversation, query: String) -> Bool {
-        let messages = conversation.contentLoaded
+        let messages = conversation.contentLoaded && conversation.transcriptComplete
             ? conversation.messages
-            : store.loadAll().first { $0.id == conversation.id }?.messages ?? []
+            : store.loadTranscript(id: conversation.id) ?? []
         return messages.contains { $0.text.localizedCaseInsensitiveContains(query) }
     }
 
@@ -534,34 +569,23 @@ public final class NativeAgentHost {
         guard requestedWorkspacePath == nil else { return false }
         return selected?.projectless == true
     }
-    public var workspaceAccess: WorkspaceAccessStatus {
-        _ = accessRevision
-        return memory.accessStatus()
-    }
-    public var memoryDevicePublicKey: String? {
-        _ = accessRevision
-        return memory.actorPublicKey
-    }
-    public var workspaceMembers: [[String: String]] {
-        _ = accessRevision
-        return memory.memberSummaries()
-    }
-    public var pendingWorkspaceDecisions: [[String: Any]] {
-        _ = accessRevision
-        return memory.pendingDecisions()
-    }
     /// Obsidian-style `.mem` vault (notes + link graph) for the Memory settings view.
     public var memoryVault: MemoryVault {
-        _ = accessRevision
+        _ = memoryRevision
         return memory.vault()
     }
     public var memoryFolderURL: URL? {
-        _ = accessRevision
+        _ = memoryRevision
         return memory.memoryDirectory
     }
+    /// This Mac's folder for the open project's private memory; never in the repository.
+    public var userMemoryFolderURL: URL? {
+        _ = memoryRevision
+        return memory.userMemoryDirectory
+    }
     public var memoryReady: Bool {
-        _ = accessRevision
-        return memory.accessStatus().memoryReady
+        _ = memoryRevision
+        return memory.memoryReady
     }
     // A busy agent can still accept a normal queued prompt or a steering prompt.
     public var isReady: Bool { connection != nil }
@@ -575,58 +599,8 @@ public final class NativeAgentHost {
 
     public init(
         paths: SupportPaths,
-        endpoint: AgentEndpointController,
-        skills: SkillCatalog? = nil,
-        permissionMode: AgentPermissionMode = .ask,
-        nonInteractive: Bool = false,
-        automaticNetworkAccess: Bool = false,
-        pluginHost: PluginHost? = nil,
-        skillSuggestions: SkillSuggestionMonitor? = nil
-    ) {
-        self.paths = paths
-        self.store = ConversationStore(paths: paths)
-        self.memory = WorkspaceMemory(paths: paths)
-        self.endpoint = endpoint
-        self.router = nil
-        let effectiveSkills = skills ?? SkillCatalog(paths: paths)
-        self.skillCatalog = effectiveSkills
-        self.skillSuggestionMonitor = skillSuggestions
-        self.pluginHost = pluginHost
-        self.permissionMode = permissionMode
-        self.browserBackendSetting = nil
-        self.nonInteractive = nonInteractive
-        self.automaticNetworkAccess = automaticNetworkAccess
-    }
-
-    public init(
-        paths: SupportPaths,
-        router: RouterController,
-        skills: SkillCatalog? = nil,
-        permissionMode: AgentPermissionMode = .ask,
-        nonInteractive: Bool = false,
-        automaticNetworkAccess: Bool = false,
-        pluginHost: PluginHost? = nil,
-        skillSuggestions: SkillSuggestionMonitor? = nil
-    ) {
-        self.paths = paths
-        self.store = ConversationStore(paths: paths)
-        self.memory = WorkspaceMemory(paths: paths)
-        self.endpoint = AgentEndpointController()
-        self.router = router
-        let effectiveSkills = skills ?? SkillCatalog(paths: paths)
-        self.skillCatalog = effectiveSkills
-        self.skillSuggestionMonitor = skillSuggestions
-        self.pluginHost = pluginHost
-        self.permissionMode = permissionMode
-        self.browserBackendSetting = nil
-        self.nonInteractive = nonInteractive
-        self.automaticNetworkAccess = automaticNetworkAccess
-    }
-
-    public init(
-        paths: SupportPaths,
-        endpoint: AgentEndpointController,
-        router: RouterController,
+        endpoint: AgentEndpointController = AgentEndpointController(),
+        router: RouterController? = nil,
         skills: SkillCatalog? = nil,
         permissionMode: AgentPermissionMode = .ask,
         nonInteractive: Bool = false,
@@ -657,14 +631,17 @@ public final class NativeAgentHost {
     }
     var followUpTask: Task<Void, Never>?
     var feedbackEvaluationTasks: [String: Task<Void, Never>] = [:]
+    public internal(set) var memoryScanInterval = MemoryScanInterval.daily
+    public internal(set) var memoryScanRunning = false
+    var memoryScanLoop: Task<Void, Never>?
     var pendingPlanIntentTasks: [String: Task<Void, Never>] = [:]
     var feedbackEvaluationTokens: [String: UUID] = [:]
     /// Answers already examined for an implicit lesson in this session.
     var examinedSignals = Set<String>()
+    /// Inferred lessons already put to the user in this session. Dismissal is persisted on the lesson.
+    var askedLessonIDs = Set<String>()
     /// Conversation id to the file lessons already handed over in it.
     var deliveredFileLessons: [String: Set<String>] = [:]
-    /// Conversation id to the gold examples it was first given; see `goldExamplesText`.
-    var pinnedGoldExamples: [String: String] = [:]
     var followUpGenerationID = UUID()
     /// Chats where the user asked for `/compact` while a run was active; the
     /// run loop honors it before its next model request.
@@ -790,16 +767,36 @@ public final class NativeAgentHost {
     // Allow a coding task to inspect, edit, reread and verify several files.
     // Repeated identical calls are still stopped independently.
     static let maxToolSteps = 128
+    /// Sent once when the limit is reached, so the turn ends with what it found.
+    static let toolStepLimitNotice = """
+    [Tool step limit]
+    This turn has used all of its tool steps. Do not call tools now. Answer from the evidence \
+    already gathered: report the confirmed findings, then list what was left unchecked so the \
+    user can ask to continue.
+    """
 
     struct ContextCompactionOutcome {
         let messages: [AgentMessage]
         let strategy: AgentCompactionStrategy
         let contextTokensBefore: Int
         let contextTokensAfter: Int
+        var trace: AgentCompactionTrace? = nil
     }
 
     /// Identical call repeated this many times means the loop stopped making progress.
     static let maxIdenticalToolCalls = 3
+    /// Edits to one file in a turn past this suggest the model is rewriting the same region.
+    static let maxEditsPerFile = 5
+    static let editChurnNotice = "\n\n[Repeated edits] This file was edited %d times this turn. Reread it and the diff, confirm the change is not already present, and stop rewriting the same region."
+
+    /// Key order and whitespace must not hide a repeated call.
+    static func toolSignature(_ call: AgentToolCall) -> String {
+        let object = arguments(of: call)
+        guard !object.isEmpty,
+              let data = try? JSONSerialization.data(withJSONObject: object, options: .sortedKeys),
+              let text = String(data: data, encoding: .utf8) else { return call.name + "|" + call.arguments }
+        return call.name + "|" + text
+    }
     /// Ceiling on concurrent read-only workspace calls in one turn: disk scans
     /// compete with each other, so fanning out without a limit only adds latency.
     static let maxConcurrentReads = 8
@@ -810,6 +807,8 @@ public final class NativeAgentHost {
     /// Conversations whose history was just edited or rewound: the next turn starts cold on any account.
     var historyRewrittenConversations: Set<String> = []
     var limitResumeTask: Task<Void, Never>?
+    @ObservationIgnored var networkMonitor: NWPathMonitor?
+    @ObservationIgnored var networkSatisfied = true
     /// A reset further out than this is not worth holding a timer for; the user will
     /// have come back long before it fires.
     static let maxLimitResumeDelay: TimeInterval = 6 * 60 * 60
@@ -845,6 +844,12 @@ public final class NativeAgentHost {
         get { currentRun.activeTurnAttributionKnown }
         set {
             currentRun.activeTurnAttributionKnown = newValue
+        }
+    }
+    var activeTurnOpaqueWindows: [(start: Date, end: Date?)] {
+        get { currentRun.activeTurnOpaqueWindows }
+        set {
+            currentRun.activeTurnOpaqueWindows = newValue
         }
     }
     /// Files that changed during a recent turn here without this chat writing
@@ -920,11 +925,6 @@ public final class NativeAgentHost {
         mcpRegistry?.setSandboxPolicy(nil)
     }
 
-    /// Where a tool call runs right now.
-    public var executionTarget: ExecutionTarget {
-        remoteTarget.map(ExecutionTarget.remote) ?? .local(sandboxPolicy)
-    }
-
     public func setSandboxPolicy(_ policy: SandboxExecutionPolicy?, branch: String? = nil) {
         guard remoteTarget == nil else {
             sandboxPolicy = nil
@@ -993,12 +993,6 @@ public final class NativeAgentHost {
         resolving(pendingVisionInstall?.conversationID) { finishVisionInstall(allow) }
     }
 
-    /// Declining is not a rejection of the message: the run stops here and the
-    /// transcript keeps the user's text for the next try.
-    public func answerContextCompaction(_ allow: Bool) {
-        resolving(pendingContextOverflow?.conversationID) { finishContextCompaction(allow) }
-    }
-
     public func answerQuestions(_ answers: [String], in conversationID: String? = nil) {
         resolving(conversationID ?? pendingQuestion?.conversationID) { finishQuestion(answers) }
     }
@@ -1015,30 +1009,16 @@ public final class NativeAgentHost {
         followUpConversationID = nil
     }
 
-    public func createWorkspaceInvite(
-        displayName: String,
-        role: MemoryRole,
-        score: Int,
-        publicKey: String
-    ) throws -> String {
-        let token = try memory.createInvite(displayName: displayName, role: role, score: score, publicKey: publicKey)
-        accessRevision += 1
-        return token
+    public func exportMemory(_ scope: MemoryTransferScope) throws -> Data {
+        try memory.exportMemory(scope)
     }
 
-    public func acceptWorkspaceInvite(_ token: String) throws {
-        try memory.acceptInvite(token)
-        accessRevision += 1
-    }
-
-    public func revokeWorkspaceDevice(_ deviceID: String) throws {
-        try memory.revoke(deviceID: deviceID)
-        accessRevision += 1
-    }
-
-    public func resolveWorkspaceDecision(_ eventID: String, accept: Bool) throws {
-        try memory.resolveDecision(eventID: eventID, accept: accept)
-        accessRevision += 1
+    @discardableResult
+    public func importMemory(_ data: Data, scope: MemoryTransferScope) throws -> Int {
+        if scope == .project, memory.enabled { try memory.openProject() }
+        let count = try memory.importMemory(data, scope: scope)
+        memoryRevision += 1
+        return count
     }
 
     public func refreshConnection() async {
@@ -1063,7 +1043,7 @@ public final class NativeAgentHost {
 
     /// Called when the user reaches for the composer: by the time they send,
     /// the connection to the provider is already open.
-    func prewarmProvider() {
+    public func prewarmProvider() {
         Task { [weak self] in
             guard let baseURL = await self?.currentConfiguration(loadCredentials: false)?.baseURL else { return }
             await NativeAgentClient.prewarm(baseURL: baseURL)
@@ -1075,7 +1055,15 @@ public final class NativeAgentHost {
             return configuration
         }
         guard let router else { return nil }
-        if loadCredentials { await router.refreshModelsIfNeeded() }
+        if loadCredentials {
+            // The cached catalog serves the send at once; the live listing refreshes behind it.
+            // Waiting on it here held the first message of a session as if it were queued.
+            if let configuration = await router.agentConfiguration(model: model) {
+                Task { await router.refreshModelsIfNeeded() }
+                return configuration
+            }
+            await router.refreshModelsIfNeeded()
+        }
         return await router.agentConfiguration(model: model, loadCredentials: loadCredentials)
     }
 
@@ -1126,13 +1114,11 @@ public final class NativeAgentHost {
         clearFollowUpSuggestion()
         finishApproval(false)
         finishVisionInstall(false)
-        finishContextCompaction(false)
         activeTask?.cancel()
         activeTask = nil
         feedbackEvaluationTasks.values.forEach { $0.cancel() }
         feedbackEvaluationTasks.removeAll()
         feedbackEvaluationTokens.removeAll()
-        pinnedGoldExamples.removeAll()
         deliveredFileLessons.removeAll()
         feedbackStore = nil
         activeConversationID = nil
@@ -1181,13 +1167,12 @@ public final class NativeAgentHost {
         }
 
         workspaceURL = url
-        feedbackStore = FeedbackStore(workspaceURL: url)
-        if let feedbackStore, !feedbackStore.records().isEmpty {
-            // Repair a gold projection left behind by an interrupted previous
-            // write before the next request reads project memory.
-            Task.detached(priority: .background) {
-                try? feedbackStore.rebuildGoldExamples()
-            }
+        memory.setWorkspace(url)
+        // The newly opened project is tended at once instead of at the loop's next tick.
+        if memoryScanLoop != nil { setMemoryScanInterval(memoryScanInterval) }
+        syncFeedbackStore()
+        if let feedbackStore {
+            Task.detached(priority: .background) { feedbackStore.dropRawText() }
         }
         // Once per workspace open, before the first turn - not per message.
         if seedProjectRules {
@@ -1195,8 +1180,7 @@ public final class NativeAgentHost {
                 ProjectRules.seedIfMissing(workspace: url)
             }
         }
-        memory.setWorkspace(url)
-        accessRevision += 1
+        memoryRevision += 1
         loadConversations(workspacePath: normalized)
         if selectedID == nil {
             newConversation()

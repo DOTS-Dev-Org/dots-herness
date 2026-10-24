@@ -299,13 +299,14 @@
   <data name="usage.resetsIn" xml:space="preserve"><value>{0}後にリセット</value></data>
   <data name="usage.resetsOn" xml:space="preserve"><value>{0}にリセット</value></data>
   <data name="usage.resetsAvailable" xml:space="preserve"><value>残り{0}回リセット可能</value></data>
-  <data name="usage.manageResets" xml:space="preserve"><value>Manage resets</value></data>
-  <data name="usage.useReset" xml:space="preserve"><value>Use reset</value></data>
-  <data name="usage.resetTitle" xml:space="preserve"><value>Use a Claude limit reset?</value></data>
-  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude's Usage page will open. Sign in to {0} and review the reset offered to that account. To use it, click Reset for free and confirm in Claude. Once used, a reset cannot be undone. Limits refresh when you return to HerNess.</value></data>
-  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Could not open Claude. Check that the account is still connected, then try again.</value></data>
-  <data name="usage.openClaude" xml:space="preserve"><value>Open Claude</value></data>
+  <data name="usage.manageResets" xml:space="preserve"><value>リセットを管理</value></data>
+  <data name="usage.useReset" xml:space="preserve"><value>リセットを使用</value></data>
+  <data name="usage.resetTitle" xml:space="preserve"><value>Claude の制限リセットを使用しますか？</value></data>
+  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude の使用状況ページが開きます。{0} にサインインし、そのアカウントに提供されているリセットを確認してください。使用するには「Reset for free」をクリックし、Claude で確定します。使用したリセットは取り消せません。HerNess に戻ると制限が更新されます。</value></data>
+  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Claude を開けませんでした。アカウントがまだ接続されているか確認して、もう一度お試しください。</value></data>
+  <data name="usage.openClaude" xml:space="preserve"><value>Claude を開く</value></data>
   <data name="usage.needLogin" xml:space="preserve"><value>制限を確認するにはClaudeにサインインしてください</value></data>
+  <data name="agent.providerLimitTitle" xml:space="preserve"><value>プロバイダーの上限に達しました</value></data>
   <data name="usage.noLimitInfo" xml:space="preserve"><value>制限情報なし</value></data>
   <data name="usage.loadFailed" xml:space="preserve"><value>使用状況を読み込めませんでした</value></data>
   <data name="usage.loading" xml:space="preserve"><value>使用状況を読み込み中…</value></data>
@@ -333,21 +334,21 @@
   <data name="project.missing.message" xml:space="preserve"><value>「{0}」にあるプロジェクトフォルダは移動または削除された可能性があります。新しい場所を選ぶか、プロジェクトを削除してください。</value></data>
   <data name="project.missing.locate" xml:space="preserve"><value>場所を指定…</value></data>
   <data name="project.missing.readOnly" xml:space="preserve"><value>プロジェクトフォルダを利用できません。以前の会話は表示できますが、新しい場所を選ぶまで新規会話の作成とメッセージ送信はできません。</value></data>
-  <data name="conversation.ranCommand" xml:space="preserve"><value>Ran 1 command</value></data>
-  <data name="conversation.ranCommands" xml:space="preserve"><value>Ran {0} commands</value></data>
-  <data name="conversation.runningTools" xml:space="preserve"><value>Running tools…</value></data>
-  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Thinking…</value></data>
-  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} tokens</value></data>
-  <data name="usage.context.window" xml:space="preserve"><value>Context window</value></data>
-  <data name="usage.planLimits" xml:space="preserve"><value>Plan usage limits</value></data>
-  <data name="composer.queue.one" xml:space="preserve"><value>1 message queued</value></data>
-  <data name="composer.queue.many" xml:space="preserve"><value>{0} messages queued</value></data>
-  <data name="composer.queue.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Clear the message box to edit</value></data>
-  <data name="composer.queue.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="git.createPR" xml:space="preserve"><value>Create PR</value></data>
-  <data name="git.hideBar" xml:space="preserve"><value>Hide</value></data>
-  <data name="composer.queue.next" xml:space="preserve"><value>Next: {0}</value></data>
+  <data name="conversation.ranCommand" xml:space="preserve"><value>1 個のコマンドを実行しました</value></data>
+  <data name="conversation.ranCommands" xml:space="preserve"><value>{0} 個のコマンドを実行しました</value></data>
+  <data name="conversation.runningTools" xml:space="preserve"><value>ツールを実行中…</value></data>
+  <data name="conversation.thinkingPhase" xml:space="preserve"><value>考え中…</value></data>
+  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} トークン</value></data>
+  <data name="usage.context.window" xml:space="preserve"><value>コンテキストウィンドウ</value></data>
+  <data name="usage.planLimits" xml:space="preserve"><value>プランの使用制限</value></data>
+  <data name="composer.queue.one" xml:space="preserve"><value>1 件のメッセージが待機中</value></data>
+  <data name="composer.queue.many" xml:space="preserve"><value>{0} 件のメッセージが待機中</value></data>
+  <data name="composer.queue.edit" xml:space="preserve"><value>編集</value></data>
+  <data name="composer.queue.editBlocked" xml:space="preserve"><value>編集するにはメッセージ欄を空にしてください</value></data>
+  <data name="composer.queue.remove" xml:space="preserve"><value>削除</value></data>
+  <data name="git.createPR" xml:space="preserve"><value>PR を作成</value></data>
+  <data name="git.hideBar" xml:space="preserve"><value>隠す</value></data>
+  <data name="composer.queue.next" xml:space="preserve"><value>次：{0}</value></data>
   <data name="sidebar.pinProject" xml:space="preserve"><value>プロジェクトをピン留め</value></data>
   <data name="sidebar.unpinProject" xml:space="preserve"><value>プロジェクトのピン留めを解除</value></data>
   <data name="sidebar.sortLastUpdate" xml:space="preserve"><value>最終更新</value></data>
@@ -358,6 +359,8 @@
   <data name="conversation.cancelPlan" xml:space="preserve"><value>プランをキャンセル</value></data>
   <data name="conversation.cancelPlanHelp" xml:space="preserve"><value>このプランをキャンセルし、待機中のメッセージを解放します</value></data>
   <data name="media.generated" xml:space="preserve"><value>画像を生成しました。</value></data>
+  <data name="media.videoGenerated" xml:space="preserve"><value>動画を生成しました。</value></data>
+  <data name="media.audioGenerated" xml:space="preserve"><value>音声を生成しました。</value></data>
   <data name="media.fallbackUsed" xml:space="preserve"><value>選択したプロバイダーではこの画像を生成できませんでした。{0}/{1} への 1 回限りのフォールバックリクエストで生成しました。メインの会話のプロバイダーとモデルは変更されていないため、プロンプトキャッシュはそのまま残ります。</value></data>
   <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>{0} ではこの画像を生成できません。フォールバックとして画像 API またはプロバイダーを設定してください。画像生成のためだけにメインのチャットモデルを切り替えると、プロバイダーのプロンプトキャッシュが失われることがあります。</value></data>
   <data name="feedback.close" xml:space="preserve"><value>閉じる</value></data>
@@ -370,27 +373,27 @@
   <data name="feedback.persistenceFailed" xml:space="preserve"><value>フィードバックをローカルに保存できませんでした。</value></data>
   <data name="feedback.streamingMessage" xml:space="preserve"><value>フィードバックを送信する前に回答が完了するまでお待ちください。</value></data>
   <data name="feedback.submit" xml:space="preserve"><value>送信</value></data>
-  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Apply it elsewhere</value></data>
-  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Broke an existing feature</value></data>
+  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>他の場所にも適用</value></data>
+  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>既存の機能を壊した</value></data>
   <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>指示に従わなかった</value></data>
-  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Didn't follow project style</value></data>
+  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>プロジェクトのスタイルに従わなかった</value></data>
   <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>速くて効率的</value></data>
   <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>指示に従った</value></data>
-  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Ignored project architecture</value></data>
+  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>プロジェクトのアーキテクチャを無視した</value></data>
   <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>誤りまたは不完全</value></data>
-  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Keep the project style</value></data>
+  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>プロジェクトのスタイルを維持</value></data>
   <data name="feedback.tag.lost_context" xml:space="preserve"><value>コンテキストの喪失</value></data>
   <data name="feedback.tag.negative_other" xml:space="preserve"><value>その他</value></data>
   <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>話題外／範囲外</value></data>
   <data name="feedback.tag.output_quality" xml:space="preserve"><value>良いコード／出力品質</value></data>
   <data name="feedback.tag.positive_other" xml:space="preserve"><value>その他</value></data>
-  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Reuse this architecture</value></data>
-  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Reuse this token pattern</value></data>
+  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>このアーキテクチャを再利用</value></data>
+  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>このトークンパターンを再利用</value></data>
   <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>セキュリティまたは法的な問題</value></data>
   <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>遅い／不具合がある</value></data>
   <data name="feedback.tag.task_completed" xml:space="preserve"><value>タスクを解決できた</value></data>
   <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>役立つ自律性</value></data>
-  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Wrong theme or token</value></data>
+  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>テーマまたはトークンが違う</value></data>
   <data name="feedback.title" xml:space="preserve"><value>フィードバックを共有</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>フィードバックはワークスペースのチャットでのみ利用できます。</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>フィードバックはアシスタントの回答に対してのみ送信できます。</value></data>
@@ -399,12 +402,13 @@
   <data name="conversation.cacheExpired.explanation" xml:space="preserve"><value>キャッシュの推定有効期間が過ぎました。プロンプトキャッシュはプロバイダー側の一時的な処理状態であり、チャット履歴は保存されたままです。履歴全体を使って続けると、そのトークンが再び新規入力として計上されることがあります。プロバイダー側にまだキャッシュが残っていたかどうかは、次のリクエストの使用量データで確認できます。</value></data>
   <data name="conversation.cacheExpired.infoTitle" xml:space="preserve"><value>この警告が表示される理由</value></data>
   <data name="conversation.cacheExpired.notice" xml:space="preserve"><value>キャッシュの有効期限が切れている可能性があります。このまま続けると、トークン使用量とコストが増えることがあります。短い要約を添えて新しいチャットを始めてください。</value></data>
+  <data name="conversation.cacheLocal.notice" xml:space="preserve"><value>ローカルモデルのキャッシュが消去されました。履歴全体が再処理されるため、応答が遅くなることがあります。短い要約を付けて新しいチャットを開始してください。</value></data>
   <data name="conversation.filesChangedCount" xml:space="preserve"><value>{0} 個のファイルを変更</value></data>
   <data name="conversation.filesLess" xml:space="preserve"><value>表示するファイルを減らす</value></data>
   <data name="conversation.filesLineSummary" xml:space="preserve"><value>+{0} −{1}</value></data>
   <data name="conversation.filesMore" xml:space="preserve"><value>さらに {0} 個のファイルを表示</value></data>
   <data name="conversation.filesReverted" xml:space="preserve"><value>ファイルの変更を元に戻しました。</value></data>
-  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>The saved file version is unavailable, so the workspace was left unchanged.</value></data>
+  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>保存されたファイルのバージョンが利用できないため、ワークスペースは変更されていません。</value></data>
   <data name="conversation.undoChanges" xml:space="preserve"><value>元に戻す</value></data>
   <data name="conversation.viewChanges" xml:space="preserve"><value>変更を表示</value></data>
   <data name="settings.archive" xml:space="preserve"><value>アーカイブ</value></data>
@@ -435,9 +439,9 @@
   <data name="workLocation.remoteFolderUp" xml:space="preserve"><value>親フォルダ</value></data>
   <data name="workLocation.remoteFolderEmpty" xml:space="preserve"><value>ここにサブフォルダはありません</value></data>
   <data name="workLocation.remoteFolderUse" xml:space="preserve"><value>このフォルダを使う</value></data>
-  <data name="workLocation.connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="workLocation.connect" xml:space="preserve"><value>接続</value></data>
   <data name="workLocation.addHost" xml:space="preserve"><value>コンピュータを追加…</value></data>
-  <data name="workLocation.useLocal" xml:space="preserve"><value>Use this computer</value></data>
+  <data name="workLocation.useLocal" xml:space="preserve"><value>このコンピューターを使用</value></data>
   <data name="settings.sshAlias" xml:space="preserve"><value>エイリアス</value></data>
   <data name="settings.sshHostName" xml:space="preserve"><value>ホストまたは IP</value></data>
   <data name="settings.sshUser" xml:space="preserve"><value>ユーザ名</value></data>
@@ -445,126 +449,106 @@
   <data name="settings.sshRemove" xml:space="preserve"><value>削除</value></data>
   <data name="ssh.busy" xml:space="preserve"><value>作業場所を変える前に、実行中の処理が終わるのを待ってください。</value></data>
   <data name="ssh.connecting" xml:space="preserve"><value>{0} に接続中…</value></data>
-  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Choose a remote folder before starting a task.</value></data>
+  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>タスクを開始する前にリモートフォルダーを選択してください。</value></data>
   <data name="ssh.scanning" xml:space="preserve"><value>ホスト鍵を取得中…</value></data>
   <data name="ssh.fingerprintTitle" xml:space="preserve"><value>これは {0} のフィンガープリントですか？</value></data>
   <data name="ssh.fingerprintMessage" xml:space="preserve"><value>信頼する前にサーバ側と照合してください。一致する場合のみ続けてください。</value></data>
   <data name="ssh.trustAndConnect" xml:space="preserve"><value>信頼して接続</value></data>
   <data name="ssh.error.unavailable" xml:space="preserve"><value>この Mac に ssh が見つかりません。</value></data>
   <data name="ssh.error.notReachable" xml:space="preserve"><value>{0} に到達できませんでした。</value></data>
-  <data name="conversation.choosePane" xml:space="preserve"><value>Choose a pane</value></data>
-  <data name="sidebar.toggle" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.mcpServers" xml:space="preserve"><value>MCP servers</value></data>
-  <data name="mcp.empty" xml:space="preserve"><value>No MCP servers configured.</value></data>
-  <data name="mcp.addServer" xml:space="preserve"><value>Add server</value></data>
-  <data name="mcp.name" xml:space="preserve"><value>Name</value></data>
-  <data name="mcp.transport" xml:space="preserve"><value>Transport</value></data>
+  <data name="conversation.choosePane" xml:space="preserve"><value>ペインを選択</value></data>
+  <data name="sidebar.toggle" xml:space="preserve"><value>サイドバーの表示/非表示</value></data>
+  <data name="settings.mcpServers" xml:space="preserve"><value>MCP サーバー</value></data>
+  <data name="mcp.empty" xml:space="preserve"><value>MCP サーバーが設定されていません。</value></data>
+  <data name="mcp.addServer" xml:space="preserve"><value>サーバーを追加</value></data>
+  <data name="mcp.name" xml:space="preserve"><value>名前</value></data>
+  <data name="mcp.transport" xml:space="preserve"><value>トランスポート</value></data>
   <data name="mcp.http" xml:space="preserve"><value>HTTP</value></data>
   <data name="mcp.stdio" xml:space="preserve"><value>stdio</value></data>
   <data name="mcp.url" xml:space="preserve"><value>URL</value></data>
-  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (optional)</value></data>
-  <data name="mcp.executable" xml:space="preserve"><value>Executable path</value></data>
-  <data name="mcp.arguments" xml:space="preserve"><value>Arguments (space-separated)</value></data>
-  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Auto-run tools the server marks read-only</value></data>
-  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Server annotations are untrusted. Enabling this skips approval only for tools marked read-only and not destructive.</value></data>
-  <data name="mcp.test" xml:space="preserve"><value>Test</value></data>
-  <data name="mcp.add" xml:space="preserve"><value>Add</value></data>
-  <data name="mcp.reconnect" xml:space="preserve"><value>Reconnect</value></data>
-  <data name="mcp.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="mcp.idle" xml:space="preserve"><value>Idle</value></data>
-  <data name="mcp.connecting" xml:space="preserve"><value>Connecting…</value></data>
-  <data name="mcp.connected" xml:space="preserve"><value>Connected · {0} tool(s)</value></data>
-  <data name="mcp.failed" xml:space="preserve"><value>Failed: {0}</value></data>
-  <data name="mcp.testing" xml:space="preserve"><value>Testing…</value></data>
-  <data name="mcp.testConnected" xml:space="preserve"><value>Connected. {0} tool(s) available.</value></data>
-  <data name="conversation.toolInput" xml:space="preserve"><value>Tool input</value></data>
-  <data name="settings.tab.memory" xml:space="preserve"><value>Memory</value></data>
-  <data name="memory.vault.title" xml:space="preserve"><value>Memory vault</value></data>
-  <data name="memory.refresh" xml:space="preserve"><value>Refresh</value></data>
-  <data name="memory.reveal" xml:space="preserve"><value>Open .mem folder</value></data>
-  <data name="memory.refused" xml:space="preserve"><value>Not saved. The entry may contain a credential, exceed its limit, or the workspace may be unavailable.</value></data>
-  <data name="memory.noWorkspace" xml:space="preserve"><value>Select a local workspace to view its memory.</value></data>
-  <data name="memory.notInitialized" xml:space="preserve"><value>Memory starts after the first prompt in this workspace.</value></data>
-  <data name="memory.search" xml:space="preserve"><value>Search memory</value></data>
-  <data name="memory.selectNote" xml:space="preserve"><value>Select a note to view it.</value></data>
-  <data name="memory.save" xml:space="preserve"><value>Save</value></data>
-  <data name="memory.forget" xml:space="preserve"><value>Forget</value></data>
-  <data name="memory.ownRules" xml:space="preserve"><value>Your own rules</value></data>
-  <data name="memory.rulesHelp" xml:space="preserve"><value>These rules are added to every request in this project.</value></data>
-  <data name="memory.lessons" xml:space="preserve"><value>Learned lessons</value></data>
-  <data name="memory.learningStats" xml:space="preserve"><value>{0} turns logged; {1} were corrected or undone.</value></data>
-  <data name="memory.links" xml:space="preserve"><value>Links</value></data>
-  <data name="memory.backlinks" xml:space="preserve"><value>Linked mentions</value></data>
-  <data name="memory.userAuthored" xml:space="preserve"><value>user-authored</value></data>
-  <data name="memory.inferred" xml:space="preserve"><value>inferred</value></data>
-  <data name="memory.learnedCount" xml:space="preserve"><value>learned {0}×</value></data>
-  <data name="memory.usedCount" xml:space="preserve"><value>used {0}×</value></data>
-  <data name="memory.inactive" xml:space="preserve"><value>no longer applied</value></data>
-  <data name="memory.pin" xml:space="preserve"><value>Pin</value></data>
-  <data name="memory.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="memory.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="settings.tab.access" xml:space="preserve"><value>Workspace access</value></data>
-  <data name="access.currentActor" xml:space="preserve"><value>Current actor</value></data>
-  <data name="access.role" xml:space="preserve"><value>Role</value></data>
-  <data name="access.notAuthorized" xml:space="preserve"><value>Not authorized</value></data>
-  <data name="access.score" xml:space="preserve"><value>Score</value></data>
-  <data name="access.device" xml:space="preserve"><value>Device</value></data>
-  <data name="access.publicKey" xml:space="preserve"><value>Public key</value></data>
-  <data name="access.memoryRevision" xml:space="preserve"><value>Memory revision</value></data>
-  <data name="access.members" xml:space="preserve"><value>Members</value></data>
-  <data name="access.noMembers" xml:space="preserve"><value>No members yet.</value></data>
-  <data name="access.revoke" xml:space="preserve"><value>Revoke</value></data>
-  <data name="access.revoked" xml:space="preserve"><value>revoked</value></data>
-  <data name="access.inviteDevice" xml:space="preserve"><value>Invite device</value></data>
-  <data name="access.displayName" xml:space="preserve"><value>Display name</value></data>
-  <data name="access.newDevicePublicKey" xml:space="preserve"><value>New device public key</value></data>
-  <data name="access.createInvitation" xml:space="preserve"><value>Create signed invitation</value></data>
-  <data name="access.acceptInvitation" xml:space="preserve"><value>Accept invitation</value></data>
-  <data name="access.signedInvitation" xml:space="preserve"><value>Signed invitation</value></data>
-  <data name="access.accept" xml:space="preserve"><value>Accept</value></data>
-  <data name="access.reject" xml:space="preserve"><value>Reject</value></data>
-  <data name="access.pendingDecisions" xml:space="preserve"><value>Pending decisions</value></data>
-  <data name="access.noPendingDecisions" xml:space="preserve"><value>No pending project decisions.</value></data>
-  <data name="access.noWorkspace" xml:space="preserve"><value>Select a local workspace to manage access.</value></data>
-  <data name="access.scoreValue" xml:space="preserve"><value>Score: {0}</value></data>
-  <data name="access.initialize" xml:space="preserve"><value>Initialize workspace memory</value></data>
-  <data name="access.initializeHelp" xml:space="preserve"><value>Workspace access uses a signed memory log. Initializing creates the owner identity and event log in this project's .mem folder.</value></data>
-  <data name="access.role.owner" xml:space="preserve"><value>Owner</value></data>
-  <data name="access.role.approver" xml:space="preserve"><value>Approver</value></data>
-  <data name="access.role.contributor" xml:space="preserve"><value>Contributor</value></data>
-  <data name="access.role.observer" xml:space="preserve"><value>Observer</value></data>
-  <data name="settings.sandbox" xml:space="preserve"><value>Sandbox</value></data>
-  <data name="settings.sandboxOff" xml:space="preserve"><value>Off — the agent works directly in your checkout.</value></data>
-  <data name="settings.sandboxOn" xml:space="preserve"><value>On — the agent works in a separate git worktree.</value></data>
-  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Recovery is required before sandbox operations can continue.</value></data>
-  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Retry recovery</value></data>
-  <data name="settings.sandboxName" xml:space="preserve"><value>Name</value></data>
-  <data name="settings.sandboxEnter" xml:space="preserve"><value>Start sandbox</value></data>
-  <data name="settings.sandboxMerge" xml:space="preserve"><value>Merge and exit</value></data>
-  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Discard and exit</value></data>
-  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Origin</value></data>
-  <data name="settings.sandboxBranch" xml:space="preserve"><value>Branch</value></data>
-  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Allow network for new processes</value></data>
-  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>This applies only to new commands. Existing terminal sessions keep their current policy.</value></data>
-  <data name="settings.sandboxOpen" xml:space="preserve"><value>Open sandbox</value></data>
-  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Open origin</value></data>
-  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Conflicts</value></data>
-  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Prepare resolution</value></data>
-  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Ask agent</value></data>
-  <data name="settings.sandboxPreview" xml:space="preserve"><value>Refresh preview</value></data>
-  <data name="settings.sandboxApprove" xml:space="preserve"><value>Approve and merge</value></data>
-  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Cancel resolution</value></data>
-  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Retry cleanup</value></data>
-  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Discard this sandbox? Its branch will be kept for recovery, but its worktree will be removed.</value></data>
-  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Approval requires a complete preview with no unresolved files.</value></data>
-  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Resolution preview</value></data>
-  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Unresolved files</value></data>
-  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>Origin HEAD</value></data>
-  <data name="settings.sandboxHead" xml:space="preserve"><value>Sandbox HEAD</value></data>
-  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Preview fingerprint</value></data>
-  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Sandbox cleanup is still pending; the origin was not changed again.</value></data>
-  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Saved sandboxes</value></data>
-  <data name="settings.sandboxRecover" xml:space="preserve"><value>Recover</value></data>
+  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer トークン（任意）</value></data>
+  <data name="mcp.executable" xml:space="preserve"><value>実行ファイルのパス</value></data>
+  <data name="mcp.arguments" xml:space="preserve"><value>引数 (スペース区切り)</value></data>
+  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>サーバーが読み取り専用とした ツールを自動実行</value></data>
+  <data name="mcp.autoRunHelp" xml:space="preserve"><value>サーバーのアノテーションは信頼できません。有効にすると、読み取り専用かつ非破壊とマークされたツールに限り承認を省略します。</value></data>
+  <data name="mcp.test" xml:space="preserve"><value>テスト</value></data>
+  <data name="mcp.add" xml:space="preserve"><value>サーバーを追加</value></data>
+  <data name="mcp.reconnect" xml:space="preserve"><value>再接続</value></data>
+  <data name="mcp.remove" xml:space="preserve"><value>削除</value></data>
+  <data name="mcp.idle" xml:space="preserve"><value>待機中</value></data>
+  <data name="mcp.connecting" xml:space="preserve"><value>接続中…</value></data>
+  <data name="mcp.connected" xml:space="preserve"><value>接続済み · ツール {0} 個</value></data>
+  <data name="mcp.failed" xml:space="preserve"><value>失敗：{0}</value></data>
+  <data name="mcp.testing" xml:space="preserve"><value>テスト中…</value></data>
+  <data name="mcp.testConnected" xml:space="preserve"><value>接続しました。ツールが {0} 個利用できます。</value></data>
+  <data name="conversation.toolInput" xml:space="preserve"><value>ツール入力</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>メモリ</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>メモリ保管庫</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>更新</value></data>
+  <data name="memory.enabled" xml:space="preserve"><value>メモリを有効にする</value></data>
+  <data name="memory.scanFrequency" xml:space="preserve"><value>スキャン頻度</value></data>
+  <data name="memory.scan.off" xml:space="preserve"><value>オフ</value></data>
+  <data name="memory.scan.hourly" xml:space="preserve"><value>1時間ごと</value></data>
+  <data name="memory.scan.daily" xml:space="preserve"><value>毎日</value></data>
+  <data name="memory.scan.weekly" xml:space="preserve"><value>毎週</value></data>
+  <data name="memory.enabledHelp" xml:space="preserve"><value>オフにすると、タスクは記録されず、何も学習されず、モデルに知見は送られません。すでに保存されたものはディスクに残ります。</value></data>
+  <data name="memory.scanHelp" xml:space="preserve"><value>短いタスクメモはスキャン後も保持され、知見の根拠を後から確認できます。スキャンをオフにすると、バックグラウンドでモデルは呼び出されません。</value></data>
+  <data name="memory.reveal" xml:space="preserve"><value>.mem フォルダーを開く</value></data>
+  <data name="memory.refused" xml:space="preserve"><value>保存されませんでした。エントリに認証情報が含まれているか、上限を超えているか、ワークスペースが利用できない可能性があります。</value></data>
+  <data name="memory.noWorkspace" xml:space="preserve"><value>メモリを表示するローカルワークスペースを選択してください。</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>メモリはこのワークスペースで最初のプロンプトを送った後に始まります。</value></data>
+  <data name="memory.search" xml:space="preserve"><value>メモリを検索</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>表示するノートを選択してください。</value></data>
+  <data name="memory.save" xml:space="preserve"><value>保存</value></data>
+  <data name="memory.forget" xml:space="preserve"><value>忘れる</value></data>
+  <data name="memory.ownRules" xml:space="preserve"><value>自分のルール</value></data>
+  <data name="memory.rulesHelp" xml:space="preserve"><value>これらのルールはこのプロジェクトのすべてのリクエストに追加されます。</value></data>
+  <data name="memory.lessons" xml:space="preserve"><value>学んだ教訓</value></data>
+  <data name="memory.learningStats" xml:space="preserve"><value>{0} ターンを記録。うち {1} 件が修正または取り消されました。</value></data>
+  <data name="memory.links" xml:space="preserve"><value>リンク</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>リンクされた言及</value></data>
+  <data name="memory.userAuthored" xml:space="preserve"><value>ユーザー作成</value></data>
+  <data name="memory.inferred" xml:space="preserve"><value>推測</value></data>
+  <data name="memory.learnedCount" xml:space="preserve"><value>{0}回学習</value></data>
+  <data name="memory.usedCount" xml:space="preserve"><value>{0}回使用</value></data>
+  <data name="memory.inactive" xml:space="preserve"><value>適用終了</value></data>
+  <data name="memory.pin" xml:space="preserve"><value>ピン留め</value></data>
+  <data name="memory.edit" xml:space="preserve"><value>編集</value></data>
+  <data name="memory.cancel" xml:space="preserve"><value>キャンセル</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>ワークスペースのアクセス</value></data>
+  <data name="access.accept" xml:space="preserve"><value>承認</value></data>
+  <data name="settings.sandbox" xml:space="preserve"><value>サンドボックス</value></data>
+  <data name="settings.sandboxOff" xml:space="preserve"><value>オフ — エージェントはチェックアウトで直接作業します。</value></data>
+  <data name="settings.sandboxOn" xml:space="preserve"><value>オン — エージェントは別の git worktree で作業します。</value></data>
+  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>サンドボックス操作を続けるには復旧が必要です。</value></data>
+  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>復旧を再試行</value></data>
+  <data name="settings.sandboxName" xml:space="preserve"><value>名前</value></data>
+  <data name="settings.sandboxEnter" xml:space="preserve"><value>サンドボックスを開始</value></data>
+  <data name="settings.sandboxMerge" xml:space="preserve"><value>マージして終了</value></data>
+  <data name="settings.sandboxDiscard" xml:space="preserve"><value>破棄して終了</value></data>
+  <data name="settings.sandboxOrigin" xml:space="preserve"><value>元</value></data>
+  <data name="settings.sandboxBranch" xml:space="preserve"><value>ブランチ</value></data>
+  <data name="settings.sandboxNetwork" xml:space="preserve"><value>新しいプロセスにネットワークを許可</value></data>
+  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>新しいコマンドにのみ適用されます。既存のターミナルセッションは現在のポリシーを維持します。</value></data>
+  <data name="settings.sandboxOpen" xml:space="preserve"><value>サンドボックスを開く</value></data>
+  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>オリジンを開く</value></data>
+  <data name="settings.sandboxConflicts" xml:space="preserve"><value>競合</value></data>
+  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>解決を準備</value></data>
+  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>エージェントに依頼</value></data>
+  <data name="settings.sandboxPreview" xml:space="preserve"><value>プレビューを更新</value></data>
+  <data name="settings.sandboxApprove" xml:space="preserve"><value>承認してマージ</value></data>
+  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>解決をキャンセル</value></data>
+  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>クリーンアップを再試行</value></data>
+  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>このサンドボックスを破棄しますか？ブランチは復旧用に残りますが、worktree は削除されます。</value></data>
+  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>承認には、未解決ファイルのない完全なプレビューが必要です。</value></data>
+  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>解決のプレビュー</value></data>
+  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>未解決のファイル</value></data>
+  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>オリジンの HEAD</value></data>
+  <data name="settings.sandboxHead" xml:space="preserve"><value>サンドボックスの HEAD</value></data>
+  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>プレビューのフィンガープリント</value></data>
+  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>サンドボックスのクリーンアップがまだ保留中です。オリジンは再度変更されていません。</value></data>
+  <data name="settings.sandboxRecovery" xml:space="preserve"><value>保存されたサンドボックス</value></data>
+  <data name="settings.sandboxRecover" xml:space="preserve"><value>復旧</value></data>
   <data name="conversation.accountSwitched.notice" xml:space="preserve"><value>このチャットは同じモデルのまま別のアカウントに切り替わりました。そのアカウントではキャッシュが最初から始まるため、続けるとトークン使用量とコストが増えることがあります。</value></data>
   <data name="conversation.modelSwitched.notice" xml:space="preserve"><value>モデルが変更されました。キャッシュは新しいモデルに引き継がれず、履歴全体が再処理されるため、トークン使用量とコストが増えることがあります。</value></data>
   <data name="conversation.contextFull.notice" xml:space="preserve"><value>コンテキストウィンドウがほぼいっぱいです。このまま続けると、トークン使用量とコストが増えることがあります。短い要約を添えて新しいチャットを始めてください。</value></data>
@@ -575,28 +559,28 @@
   <data name="context.overflowCompress" xml:space="preserve"><value>圧縮して続行</value></data>
   <data name="context.overflowNotNow" xml:space="preserve"><value>今はしない</value></data>
   <data name="context.overflowDeclined" xml:space="preserve"><value>送信を停止しました: 会話が新しいモデルに収まりません。</value></data>
-  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>When another chat is writing the same file</value></data>
-  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Wait before asking</value></data>
-  <data name="settings.conflictWaitValue" xml:space="preserve"><value>Wait {0} seconds</value></data>
-  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Wait, then ask</value></data>
-  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>A chat that wants a file another chat is writing waits quietly, and asks only if the wait goes on too long.</value></data>
-  <data name="conflict.policy.ask" xml:space="preserve"><value>Ask me</value></data>
-  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Ask as soon as two chats want the same file.</value></data>
-  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Always wait</value></data>
-  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Never ask: a write waits for the chat that holds the file.</value></data>
-  <data name="conflict.title" xml:space="preserve"><value>A file is busy: {0}</value></data>
-  <data name="conflict.wholeProject" xml:space="preserve"><value>Project command: {0}</value></data>
-  <data name="conflict.stillBusy" xml:space="preserve"><value>Write held back: another chat is still writing {0}.</value></data>
-  <data name="conflict.userSkipped" xml:space="preserve"><value>Write skipped: {0} was left with the other chat ({1}), as you asked.</value></data>
-  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Stopped {0} so this chat could write.</value></data>
-  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Stopped other chats so this chat could write.</value></data>
-  <data name="conflict.banner.title" xml:space="preserve"><value>Another chat is writing this file</value></data>
-  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · held by “{1}” for {2} seconds</value></data>
-  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Keep waiting</value></data>
-  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Stop {0}</value></data>
-  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Stop all other chats</value></data>
-  <data name="conflict.banner.skip" xml:space="preserve"><value>Skip this write</value></data>
-  <data name="conflict.waiting" xml:space="preserve"><value>Waiting for “{0}” to finish writing: {1}</value></data>
+  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>他のチャットが同じファイルを書き込んでいる場合</value></data>
+  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>確認前に待機</value></data>
+  <data name="settings.conflictWaitValue" xml:space="preserve"><value>{0} 秒</value></data>
+  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>待ってから確認</value></data>
+  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>別のチャットを黙って待ち、長引いたときだけ確認します。</value></data>
+  <data name="conflict.policy.ask" xml:space="preserve"><value>確認する</value></data>
+  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>二つのチャットが同じファイルを望んだ時点で確認します。</value></data>
+  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>常に待機</value></data>
+  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>確認しません：各書き込みはファイルを保持するチャットを待ちます。</value></data>
+  <data name="conflict.title" xml:space="preserve"><value>他のチャットが {0} を書き込んでいます</value></data>
+  <data name="conflict.wholeProject" xml:space="preserve"><value>プロジェクト全体（コマンド: {0}）</value></data>
+  <data name="conflict.stillBusy" xml:space="preserve"><value>書き込みを見送りました：{0} はまだ他のチャットが書き込んでいます。</value></data>
+  <data name="conflict.userSkipped" xml:space="preserve"><value>ご依頼どおり書き込みをスキップ：{0} は他のチャット ({1}) に残りました。</value></data>
+  <data name="conflict.stoppedHolder" xml:space="preserve"><value>ご依頼どおりチャット「{0}」を停止し、この書き込みを行いました。</value></data>
+  <data name="conflict.stoppedOthers" xml:space="preserve"><value>ご依頼どおりこのプロジェクトの他のチャットを停止し、この書き込みを行いました。</value></data>
+  <data name="conflict.banner.title" xml:space="preserve"><value>他のチャットがこのファイルを書き込んでいます</value></data>
+  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · 「{1}」が {2} 秒間保持しています</value></data>
+  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>引き続き待つ</value></data>
+  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>そのチャットを停止</value></data>
+  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>他のすべてのチャットを停止</value></data>
+  <data name="conflict.banner.skip" xml:space="preserve"><value>この書き込みをスキップ</value></data>
+  <data name="conflict.waiting" xml:space="preserve"><value>書き込み中の「{0}」を待っています: {1}</value></data>
   <data name="usage.context.button" xml:space="preserve"><value>使用状況</value></data>
   <data name="usage.context.tooltip" xml:space="preserve"><value>コンテキストとトークンの使用量</value></data>
   <data name="usage.context.latestRequest" xml:space="preserve"><value>最新のリクエスト · コンテキストウィンドウ</value></data>
@@ -606,34 +590,738 @@
   <data name="usage.context.notReported" xml:space="preserve"><value>プロバイダーから報告なし</value></data>
   <data name="usage.context.estimatedBreakdown" xml:space="preserve"><value>入力の推定内訳</value></data>
   <data name="usage.context.tokens" xml:space="preserve"><value>トークン</value></data>
-  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} tokens ({2})</value></data>
-  <data name="usage.context.notAvailable" xml:space="preserve"><value>Context usage is not available yet.</value></data>
-  <data name="usage.context.composition" xml:space="preserve"><value>Estimated input composition</value></data>
+  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} トークン（{2}）</value></data>
+  <data name="usage.context.notAvailable" xml:space="preserve"><value>コンテキスト使用量はまだ利用できません。</value></data>
+  <data name="usage.context.composition" xml:space="preserve"><value>推定入力構成</value></data>
   <data name="usage.context.estimatedRow" xml:space="preserve"><value>{0}: {1} ({2})</value></data>
   <data name="usage.context.conversation" xml:space="preserve"><value>会話メッセージ</value></data>
   <data name="usage.context.systemPrompt" xml:space="preserve"><value>システム指示</value></data>
   <data name="usage.context.toolDefinitions" xml:space="preserve"><value>ツール定義</value></data>
   <data name="usage.context.mcpDefinitions" xml:space="preserve"><value>MCPツール定義</value></data>
-  <data name="usage.context.cacheHit" xml:space="preserve"><value>Measured cache hit</value></data>
-  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Verified prefix reuse: {0} · {1} / {2} tokens</value></data>
-  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Measurement coverage: {0} · {1} of {2} eligible requests</value></data>
-  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Cold: {0} · expired: {1} · changed: {2}</value></data>
-  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Cache writes: {0} tokens</value></data>
-  <data name="usage.context.freshInput" xml:space="preserve"><value>Fresh input: {0} tokens</value></data>
-  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Reuse not reported: {0} of {1} eligible requests</value></data>
-  <data name="usage.context.latency" xml:space="preserve"><value>Average request latency: {0}</value></data>
-  <data name="usage.context.prepare" xml:space="preserve"><value>Average request preparation: {0}</value></data>
-  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Largest cache loss: {0} ({1} tokens)</value></data>
-  <data name="settings.shortcuts" xml:space="preserve"><value>Keyboard shortcuts</value></data>
-  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Select a shortcut to change it. Press a key combination with at least one modifier.</value></data>
-  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Press keys…</value></data>
-  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Restore defaults</value></data>
-  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} is already assigned to {1}.</value></data>
-  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull requests</value></data>
-  <data name="conversation.review" xml:space="preserve"><value>Review</value></data>
-  <data name="conversation.files" xml:space="preserve"><value>Files</value></data>
-  <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
-  <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
-  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0}トークン</value></data>
+  <data name="usage.context.cacheHit" xml:space="preserve"><value>計測されたキャッシュヒット</value></data>
+  <data name="usage.context.cacheReuse" xml:space="preserve"><value>検証済みプレフィックス再利用：{0} · {1} / {2} トークン</value></data>
+  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>計測カバレッジ：{0} · 対象リクエスト {2} 件中 {1} 件</value></data>
+  <data name="usage.context.cacheStatus" xml:space="preserve"><value>コールド：{0} · 期限切れ：{1} · 変更：{2}</value></data>
+  <data name="usage.context.cacheWrite" xml:space="preserve"><value>キャッシュ書き込み：{0} トークン</value></data>
+  <data name="usage.context.freshInput" xml:space="preserve"><value>新規入力：{0} トークン</value></data>
+  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>再利用が報告されていない：対象リクエスト {1} 件中 {0} 件</value></data>
+  <data name="usage.context.latency" xml:space="preserve"><value>平均リクエストレイテンシ：{0}</value></data>
+  <data name="usage.context.prepare" xml:space="preserve"><value>平均リクエスト準備時間：{0}</value></data>
+  <data name="usage.context.cacheLoss" xml:space="preserve"><value>最大のキャッシュ損失：{0}（{1} トークン）</value></data>
+  <data name="settings.shortcuts" xml:space="preserve"><value>キーボードショートカット</value></data>
+  <data name="settings.shortcuts.hint" xml:space="preserve"><value>変更するショートカットを選択し、修飾キーを 1 つ以上含むキーの組み合わせを押してください。</value></data>
+  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>サイドバーの表示/非表示</value></data>
+  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>キーを押してください…</value></data>
+  <data name="settings.shortcuts.reset" xml:space="preserve"><value>デフォルトに戻す</value></data>
+  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} はすでに {1} に割り当てられています。</value></data>
+  <data name="sidebar.pullRequests" xml:space="preserve"><value>プルリクエスト</value></data>
+  <data name="conversation.review" xml:space="preserve"><value>レビュー</value></data>
+  <data name="conversation.files" xml:space="preserve"><value>ファイル</value></data>
+  <data name="conversation.browser" xml:space="preserve"><value>ブラウザー</value></data>
+  <data name="conversation.newChat" xml:space="preserve"><value>新しい会話</value></data>
+  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} 個の新規処理トークン</value></data>
+  <data name="settings.skillSuggestions" xml:space="preserve"><value>スキルの提案を表示</value></data>
+  <data name="settings.skillSuggestions.hint" xml:space="preserve"><value>同じ教訓を3回学んだとき、または再び必要になるワークフローをエージェントが完了したときだけスキルを提案します。カードは週に最大1枚。オフ: 提案カードは表示されず、エージェントもスキルを提案しません。</value></data>
+  <data name="skill.suggestion.title" xml:space="preserve"><value>提案されたスキル: {0}</value></data>
+  <data name="skill.suggestion.create" xml:space="preserve"><value>スキルを作成</value></data>
+  <data name="skill.suggestion.dismiss" xml:space="preserve"><value>今はしない</value></data>
+  <data name="settings.autoAccountFailover" xml:space="preserve"><value>制限時に別のアカウントを自動で試行</value></data>
+  <data name="settings.autoAccountFailover.hint" xml:space="preserve"><value>オフの場合、制限に達したアカウントでチャットが一時停止します。「続行」を押して別の互換アカウントを試してください。オンの場合、互換アカウントが自動的に試行されます。</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>モデル固有のコンテキストサイズをトークン単位で入力してください。「自動」ではモデルが報告または文書化しているサイズが優先され、次にアカウントの設定値が使用されます。</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>モデルを検索</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>自動検出値: {0} トークン</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>プロバイダーはコンテキストサイズを報告していません。</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>利用可能なモデルがまだありません。プロバイダーを接続するかモデル一覧を更新してください。</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>保存しました。</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>自動</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>正の整数のトークン数を入力してください。</value></data>
+  <data name="attachment.files" xml:space="preserve"><value>ファイルまたは写真</value></data>
+  <data name="attachment.project" xml:space="preserve"><value>プロジェクトで作業</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>コンテキストが自動的に圧縮されました</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>ファイルを読み取りました</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>ファイルを変更しました</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>コマンドを実行しました</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>ウェブを検索しました</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>ファイルを読み取り中…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>ファイルを編集中…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>コマンドを実行中…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>ウェブを検索中…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>ツールを使用しました</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>ツールを実行中…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>ツールが失敗しました: {0}</value></data>
+  <data name="tasks.menu" xml:space="preserve"><value>タスク</value></data>
+  <data name="tasks.title" xml:space="preserve"><value>スケジュールされたタスク</value></data>
+  <data name="tasks.subtitle" xml:space="preserve"><value>cron スケジュールでプロンプトを実行します。</value></data>
+  <data name="tasks.empty" xml:space="preserve"><value>まだタスクはありません。</value></data>
+  <data name="tasks.add" xml:space="preserve"><value>タスクの追加</value></data>
+  <data name="tasks.edit" xml:space="preserve"><value>タスクの編集</value></data>
+  <data name="tasks.delete" xml:space="preserve"><value>削除</value></data>
+  <data name="tasks.runNow" xml:space="preserve"><value>今すぐ実行</value></data>
+  <data name="tasks.enabled" xml:space="preserve"><value>有効</value></data>
+  <data name="tasks.field.name" xml:space="preserve"><value>名前</value></data>
+  <data name="tasks.field.cron" xml:space="preserve"><value>クロン式</value></data>
+  <data name="tasks.field.prompt" xml:space="preserve"><value>プロンプト</value></data>
+  <data name="tasks.field.workspace" xml:space="preserve"><value>ワークスペース</value></data>
+  <data name="tasks.cron.invalid" xml:space="preserve"><value>無効な cron 式です。</value></data>
+  <data name="tasks.cron.next" xml:space="preserve"><value>次の実行</value></data>
+  <data name="tasks.close" xml:space="preserve"><value>タスクを閉じる</value></data>
+  <data name="tasks.back" xml:space="preserve"><value>戻る</value></data>
+  <data name="tasks.new" xml:space="preserve"><value>新しいタスク</value></data>
+  <data name="tasks.active" xml:space="preserve"><value>あなたのタスク</value></data>
+  <data name="tasks.disabled" xml:space="preserve"><value>無効</value></data>
+  <data name="tasks.suggestions" xml:space="preserve"><value>提案</value></data>
+  <data name="tasks.history" xml:space="preserve"><value>最近の実行</value></data>
+  <data name="tasks.history.empty" xml:space="preserve"><value>このタスクはまだ実行されていません。</value></data>
+  <data name="tasks.field.target" xml:space="preserve"><value>対象ファイルまたはフォルダ</value></data>
+  <data name="tasks.field.targetHint" xml:space="preserve"><value>ワークスペース内の任意のパス</value></data>
+  <data name="tasks.target.invalid" xml:space="preserve"><value>対象はワークスペース内に存在する必要があります。</value></data>
+  <data name="tasks.field.model" xml:space="preserve"><value>モデル</value></data>
+  <data name="tasks.field.fallback" xml:space="preserve"><value>フォールバックモデル</value></data>
+  <data name="tasks.network" xml:space="preserve"><value>ネットワークアクセスを許可</value></data>
+  <data name="tasks.assistant.title" xml:space="preserve"><value>タスクアシスタント</value></data>
+  <data name="tasks.assistant.placeholder" xml:space="preserve"><value>このタスクの変更を依頼…</value></data>
+  <data name="tasks.assistant.updated" xml:space="preserve"><value>タスクを更新しました。</value></data>
+  <data name="tasks.notification.title" xml:space="preserve"><value>スケジュール済みタスク</value></data>
+  <data name="tasks.notification.completed" xml:space="preserve"><value>完了</value></data>
+  <data name="tasks.notification.failed" xml:space="preserve"><value>失敗</value></data>
+  <data name="tasks.notification.fallback" xml:space="preserve"><value>フォールバックモデルを使用</value></data>
+  <data name="tasks.suggestion.daily.title" xml:space="preserve"><value>デイリーブリーフ</value></data>
+  <data name="tasks.suggestion.daily.detail" xml:space="preserve"><value>最近の作業、未処理の優先事項、ワークスペースの変更をまとめる</value></data>
+  <data name="tasks.suggestion.daily.schedule" xml:space="preserve"><value>平日 8:00</value></data>
+  <data name="tasks.suggestion.daily.prompt" xml:space="preserve"><value>最近の会話とワークスペースの変更を確認し、今日の最も重要な優先事項をまとめる</value></data>
+  <data name="tasks.suggestion.weekly.title" xml:space="preserve"><value>週間レビュー</value></data>
+  <data name="tasks.suggestion.weekly.detail" xml:space="preserve"><value>毎週金曜日に最近の作業を簡潔な状況報告にまとめる</value></data>
+  <data name="tasks.suggestion.weekly.schedule" xml:space="preserve"><value>金曜日 16:00</value></data>
+  <data name="tasks.suggestion.weekly.prompt" xml:space="preserve"><value>今週の会話とワークスペースの変更を確認し、完了した作業、リスク、次のステップを含む簡潔な状況報告を書く</value></data>
+  <data name="tasks.suggestion.followup.title" xml:space="preserve"><value>フォローアップモニター</value></data>
+  <data name="tasks.suggestion.followup.detail" xml:space="preserve"><value>最近のアクティビティを確認し、注意が必要なものを知らせる</value></data>
+  <data name="tasks.suggestion.followup.schedule" xml:space="preserve"><value>平日 9:00</value></data>
+  <data name="tasks.suggestion.followup.prompt" xml:space="preserve"><value>最近のタスクとワークスペースのアクティビティを確認し、未完了の作業、失敗した実行、注意が必要なものを知らせる</value></data>
+  <data name="tasks.lastRun" xml:space="preserve"><value>最後の実行</value></data>
+  <data name="tasks.state.never" xml:space="preserve"><value>決して走らないでください</value></data>
+  <data name="tasks.state.running" xml:space="preserve"><value>実行中…</value></data>
+  <data name="tasks.state.ok" xml:space="preserve"><value>成功しました</value></data>
+  <data name="tasks.state.failed" xml:space="preserve"><value>失敗しました</value></data>
+  <data name="tasks.openConversation" xml:space="preserve"><value>オープンな会話</value></data>
+  <data name="tasks.save" xml:space="preserve"><value>保存</value></data>
+  <data name="tasks.cancel" xml:space="preserve"><value>キャンセル</value></data>
+  <data name="tasks.background" xml:space="preserve"><value>アプリを閉じている間にタスクを実行する</value></data>
+  <data name="tasks.background.hint" xml:space="preserve"><value>Dots Harness が開いていない場合でも、必要なタスクを実行するバックグラウンド ヘルパー (launchd) をインストールします。</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>マップ</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>インデックス</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>タスク</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>決定事項</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>設定</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>会話</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>リンクされた言及はありません。</value></data>
+  <data name="memory.graph" xml:space="preserve"><value>グラフ</value></data>
+  <data name="media.image" xml:space="preserve"><value>画像</value></data>
+  <data name="media.video" xml:space="preserve"><value>ビデオ</value></data>
+  <data name="media.audio" xml:space="preserve"><value>オーディオ</value></data>
+  <data name="media.promptMissing" xml:space="preserve"><value>コマンドの後に何を生成するかを記述します。</value></data>
+  <data name="media.promptMissingFor" xml:space="preserve"><value>コマンドの後に生成する{0}を記述します。</value></data>
+  <data name="media.modelMissing" xml:space="preserve"><value>メディアプロバイダーモデルが設定されていません。</value></data>
+  <data name="media.noOutput" xml:space="preserve"><value>プロバイダーはメディア出力を返しませんでした。</value></data>
+  <data name="media.invalidOutput" xml:space="preserve"><value>プロバイダーが無効なメディア データを返しました。</value></data>
+  <data name="media.generationFailed" xml:space="preserve"><value>プロバイダーはメディアを生成できませんでした。</value></data>
+  <data name="media.videoTimeout" xml:space="preserve"><value>ビデオ生成がタイムアウトしました。</value></data>
+  <data name="media.busy" xml:space="preserve"><value>生成またはエージェントの実行がすでに進行中です。終了したらもう一度試してください。</value></data>
+  <data name="media.unsupported" xml:space="preserve"><value>ここでは生成できません。選択したプロバイダーにはこの機能がありません。</value></data>
+  <data name="media.unsupportedStatus" xml:space="preserve"><value>メディア生成は、選択したプロバイダーではサポートされていません。</value></data>
+  <data name="media.fileMissing" xml:space="preserve"><value>生成されたファイルは利用できなくなりました。</value></data>
+  <data name="media.openAudio" xml:space="preserve"><value>生成されたオーディオを開く</value></data>
+  <data name="media.save" xml:space="preserve"><value>保存</value></data>
+  <data name="media.showInFinder" xml:space="preserve"><value>Finderで表示</value></data>
+  <data name="rail.home" xml:space="preserve"><value>ホーム</value></data>
+  <data name="rail.media" xml:space="preserve"><value>メディア</value></data>
+  <data name="rail.tasks" xml:space="preserve"><value>タスク</value></data>
+  <data name="rail.bots" xml:space="preserve"><value>ボット</value></data>
+  <data name="rail.marketplace" xml:space="preserve"><value>マーケット</value></data>
+  <data name="rail.memory" xml:space="preserve"><value>メモリ</value></data>
+  <data name="rail.settings" xml:space="preserve"><value>設定</value></data>
+  <data name="models.followApp" xml:space="preserve"><value>アプリのモデル</value></data>
+  <data name="studio.preset.square" xml:space="preserve"><value>正方形の投稿</value></data>
+  <data name="studio.preset.story" xml:space="preserve"><value>ストーリー</value></data>
+  <data name="studio.preset.landscape" xml:space="preserve"><value>横向き</value></data>
+  <data name="studio.preset.thumbnail" xml:space="preserve"><value>動画サムネイル</value></data>
+  <data name="studio.preset.logo" xml:space="preserve"><value>ロゴ</value></data>
+  <data name="studio.preset.poster" xml:space="preserve"><value>ポスター</value></data>
+  <data name="studio.template.announcement" xml:space="preserve"><value>お知らせ</value></data>
+  <data name="studio.template.story" xml:space="preserve"><value>ストーリー</value></data>
+  <data name="studio.template.thumbnail" xml:space="preserve"><value>動画サムネイル</value></data>
+  <data name="studio.template.slide" xml:space="preserve"><value>タイトルスライド</value></data>
+  <data name="studio.template.logo" xml:space="preserve"><value>ロゴ</value></data>
+  <data name="studio.template.mobile" xml:space="preserve"><value>モバイル画面</value></data>
+  <data name="studio.category.social" xml:space="preserve"><value>ソーシャルメディア</value></data>
+  <data name="studio.category.uiux" xml:space="preserve"><value>UI/UX</value></data>
+  <data name="studio.category.presentation" xml:space="preserve"><value>プレゼンテーションとインフォグラフィック</value></data>
+  <data name="studio.category.other" xml:space="preserve"><value>その他のデザイン</value></data>
+  <data name="studio.sample.title" xml:space="preserve"><value>タイトル</value></data>
+  <data name="studio.sample.detail" xml:space="preserve"><value>もう少し詳しく伝える短い一文</value></data>
+  <data name="studio.sample.brand" xml:space="preserve"><value>ブランド</value></data>
+  <data name="studio.sample.text" xml:space="preserve"><value>テキスト</value></data>
+  <data name="studio.copyOf" xml:space="preserve"><value>{0} のコピー</value></data>
+  <data name="studio.untitled" xml:space="preserve"><value>無題のプロジェクト</value></data>
+  <data name="studio.home.title" xml:space="preserve"><value>アイデアを説明して形にしましょう</value></data>
+  <data name="studio.home.search" xml:space="preserve"><value>検索</value></data>
+  <data name="studio.home.sort.name" xml:space="preserve"><value>名前</value></data>
+  <data name="studio.home.filter.all" xml:space="preserve"><value>全期間</value></data>
+  <data name="studio.home.filter.week" xml:space="preserve"><value>過去7日間</value></data>
+  <data name="studio.home.filter.month" xml:space="preserve"><value>過去30日間</value></data>
+  <data name="studio.home.starred" xml:space="preserve"><value>スター付き</value></data>
+  <data name="studio.home.star" xml:space="preserve"><value>スターを付ける</value></data>
+  <data name="studio.home.unstar" xml:space="preserve"><value>スターを外す</value></data>
+  <data name="studio.home.modified" xml:space="preserve"><value>最終更新</value></data>
+  <data name="studio.home.canvases" xml:space="preserve"><value>キャンバス</value></data>
+  <data name="studio.projects" xml:space="preserve"><value>プロジェクト</value></data>
+  <data name="studio.templates" xml:space="preserve"><value>テンプレート</value></data>
+  <data name="studio.community" xml:space="preserve"><value>コミュニティ</value></data>
+  <data name="studio.community.banner" xml:space="preserve"><value>コミュニティが作成したデザインを見つける</value></data>
+  <data name="studio.community.saved" xml:space="preserve"><value>保存済み</value></data>
+  <data name="studio.community.share" xml:space="preserve"><value>コミュニティで共有</value></data>
+  <data name="studio.community.shared" xml:space="preserve"><value>審査に送信されました。承認後にコミュニティに表示されます。</value></data>
+  <data name="studio.community.signIn" xml:space="preserve"><value>コミュニティで共有するにはHerNessアカウントでサインインしてください。</value></data>
+  <data name="studio.community.empty" xml:space="preserve"><value>ここにはまだコミュニティのデザインがありません。</value></data>
+  <data name="studio.projectName" xml:space="preserve"><value>プロジェクト名</value></data>
+  <data name="studio.newProject" xml:space="preserve"><value>新しいプロジェクト</value></data>
+  <data name="studio.create" xml:space="preserve"><value>プロジェクトを作成</value></data>
+  <data name="studio.rename" xml:space="preserve"><value>名前を変更</value></data>
+  <data name="studio.duplicate" xml:space="preserve"><value>複製</value></data>
+  <data name="studio.deleteConfirm" xml:space="preserve"><value>「{0}」を削除しますか？キャンバスとアップロードしたファイルも削除されます。</value></data>
+  <data name="studio.projectMeta" xml:space="preserve"><value>キャンバス：{0}、編集 {1}</value></data>
+  <data name="studio.empty.title" xml:space="preserve"><value>メディアプロジェクトはまだありません</value></data>
+  <data name="studio.empty.detail" xml:space="preserve"><value>プロジェクトはキャンバスのボードです。テキスト、図形、画像を自分で追加するか、作りたいものを説明してモデルにレイヤーごとに作らせましょう。</value></data>
+  <data name="studio.addCanvas" xml:space="preserve"><value>キャンバス</value></data>
+  <data name="studio.undo" xml:space="preserve"><value>元に戻す</value></data>
+  <data name="studio.redo" xml:space="preserve"><value>やり直す</value></data>
+  <data name="studio.zoomOut" xml:space="preserve"><value>縮小</value></data>
+  <data name="studio.zoomIn" xml:space="preserve"><value>拡大</value></data>
+  <data name="studio.zoomFit" xml:space="preserve"><value>すべてのキャンバスに合わせる</value></data>
+  <data name="studio.layers" xml:space="preserve"><value>レイヤー</value></data>
+  <data name="studio.layers.empty" xml:space="preserve"><value>このキャンバスにはまだレイヤーがありません。</value></data>
+  <data name="studio.layer.text" xml:space="preserve"><value>テキスト</value></data>
+  <data name="studio.layer.shape" xml:space="preserve"><value>図形</value></data>
+  <data name="studio.layer.upload" xml:space="preserve"><value>アップロード</value></data>
+  <data name="studio.layer.show" xml:space="preserve"><value>レイヤーを表示</value></data>
+  <data name="studio.layer.hide" xml:space="preserve"><value>レイヤーを非表示</value></data>
+  <data name="studio.shape.rectangle" xml:space="preserve"><value>長方形</value></data>
+  <data name="studio.shape.ellipse" xml:space="preserve"><value>楕円</value></data>
+  <data name="studio.name" xml:space="preserve"><value>名前</value></data>
+  <data name="studio.opacity" xml:space="preserve"><value>不透明度</value></data>
+  <data name="studio.fontSize" xml:space="preserve"><value>サイズ</value></data>
+  <data name="studio.weight.regular" xml:space="preserve"><value>標準</value></data>
+  <data name="studio.weight.medium" xml:space="preserve"><value>中</value></data>
+  <data name="studio.weight.bold" xml:space="preserve"><value>太字</value></data>
+  <data name="studio.fill" xml:space="preserve"><value>塗り</value></data>
+  <data name="studio.cornerRadius" xml:space="preserve"><value>角の半径</value></data>
+  <data name="studio.playVideo" xml:space="preserve"><value>動画を再生</value></data>
+  <data name="studio.size" xml:space="preserve"><value>サイズ</value></data>
+  <data name="studio.background" xml:space="preserve"><value>背景</value></data>
+  <data name="studio.deleteCanvas" xml:space="preserve"><value>キャンバスを削除</value></data>
+  <data name="studio.ai.kind.design" xml:space="preserve"><value>デザイン</value></data>
+  <data name="studio.ai.kind.image" xml:space="preserve"><value>画像</value></data>
+  <data name="studio.ai.kind.video" xml:space="preserve"><value>動画</value></data>
+  <data name="studio.ai.placeholder.design" xml:space="preserve"><value>このキャンバスに作るデザインを説明してください</value></data>
+  <data name="studio.ai.placeholder.image" xml:space="preserve"><value>生成する画像を説明してください</value></data>
+  <data name="studio.ai.placeholder.video" xml:space="preserve"><value>生成する動画を説明してください</value></data>
+  <data name="studio.ai.run" xml:space="preserve"><value>生成</value></data>
+  <data name="studio.ai.planning" xml:space="preserve"><value>レイヤーを計画中</value></data>
+  <data name="studio.ai.layerProgress" xml:space="preserve"><value>レイヤー {0}/{1}：{2}</value></data>
+  <data name="studio.ai.drawing" xml:space="preserve"><value>画像を生成中</value></data>
+  <data name="studio.ai.renderingVideo" xml:space="preserve"><value>動画を生成中です。数分かかる場合があります。</value></data>
+  <data name="studio.ai.noPlan" xml:space="preserve"><value>モデルがレイヤーを返しませんでした。もう一度試すか、別のモデルを選んでください。</value></data>
+  <data name="studio.settings.title" xml:space="preserve"><value>メディアモデル</value></data>
+  <data name="studio.settings.design" xml:space="preserve"><value>デザイン</value></data>
+  <data name="studio.settings.model" xml:space="preserve"><value>モデル</value></data>
+  <data name="studio.settings.designHelp" xml:space="preserve"><value>リクエストをレイヤーに変換するチャットモデル。</value></data>
+  <data name="studio.settings.source" xml:space="preserve"><value>ソース</value></data>
+  <data name="studio.settings.source.provider" xml:space="preserve"><value>プロバイダー</value></data>
+  <data name="studio.settings.source.local" xml:space="preserve"><value>ローカル</value></data>
+  <data name="studio.settings.modelDefault" xml:space="preserve"><value>プロバイダーの既定</value></data>
+  <data name="studio.settings.local" xml:space="preserve"><value>ローカルサーバー</value></data>
+  <data name="studio.settings.localURL" xml:space="preserve"><value>ベース URL</value></data>
+  <data name="studio.settings.localHelp" xml:space="preserve"><value>このマシンまたはネットワーク上の OpenAI 互換サーバー。上のソースがローカルに設定されている場合に、そこで入力したモデル名で使用されます。</value></data>
+  <data name="studio.settings.music.connect" xml:space="preserve"><value>APIを接続</value></data>
+  <data name="studio.settings.music.type.standard" xml:space="preserve"><value>音楽サーバー</value></data>
+  <data name="studio.settings.music.type.elevenlabs" xml:space="preserve"><value>ElevenLabs</value></data>
+  <data name="studio.settings.music.name" xml:space="preserve"><value>名前</value></data>
+  <data name="studio.settings.music.key" xml:space="preserve"><value>APIキー</value></data>
+  <data name="studio.settings.music.help" xml:space="preserve"><value>音楽サーバーは POST /audio/generations に応答し、/models でモデル一覧を返します。tools/music_server.py はその一例です。APIキーはキーチェーンに保存されます。</value></data>
+  <data name="studio.ai.kind.next" xml:space="preserve"><value>次の画面</value></data>
+  <data name="studio.ai.placeholder.next" xml:space="preserve"><value>次の画面を説明するか、空のままにして流れを続けます</value></data>
+  <data name="studio.ai.noImages" xml:space="preserve"><value>画像生成が接続されていないため、画像レイヤーはプレースホルダーのままです。接続してから、各レイヤーで画像を生成してください。</value></data>
+  <data name="studio.screenNumber" xml:space="preserve"><value>画面 {0}</value></data>
+  <data name="studio.layer.icon" xml:space="preserve"><value>アイコン</value></data>
+  <data name="studio.layer.lock" xml:space="preserve"><value>レイヤーをロック</value></data>
+  <data name="studio.layer.unlock" xml:space="preserve"><value>レイヤーのロックを解除</value></data>
+  <data name="studio.layer.front" xml:space="preserve"><value>最前面へ移動</value></data>
+  <data name="studio.layer.back" xml:space="preserve"><value>最背面へ移動</value></data>
+  <data name="studio.position" xml:space="preserve"><value>位置</value></data>
+  <data name="studio.rotation" xml:space="preserve"><value>回転</value></data>
+  <data name="studio.appearance" xml:space="preserve"><value>外観</value></data>
+  <data name="studio.gradient" xml:space="preserve"><value>グラデーション</value></data>
+  <data name="studio.stroke" xml:space="preserve"><value>線</value></data>
+  <data name="studio.shadow" xml:space="preserve"><value>シャドウ</value></data>
+  <data name="studio.symbol" xml:space="preserve"><value>シンボル名</value></data>
+  <data name="studio.imagePrompt" xml:space="preserve"><value>画像の説明</value></data>
+  <data name="studio.generateImage" xml:space="preserve"><value>画像を生成</value></data>
+  <data name="studio.export" xml:space="preserve"><value>書き出す</value></data>
+  <data name="studio.exportAll" xml:space="preserve"><value>すべてのキャンバスを書き出す</value></data>
+  <data name="studio.font.default" xml:space="preserve"><value>サンセリフ</value></data>
+  <data name="studio.font.rounded" xml:space="preserve"><value>丸ゴシック</value></data>
+  <data name="studio.font.serif" xml:space="preserve"><value>セリフ</value></data>
+  <data name="studio.font.mono" xml:space="preserve"><value>等幅</value></data>
+  <data name="studio.tool.move" xml:space="preserve"><value>移動</value></data>
+  <data name="studio.tool.hand" xml:space="preserve"><value>手のひら</value></data>
+  <data name="studio.tool.pen" xml:space="preserve"><value>ペン</value></data>
+  <data name="studio.tool.pencil" xml:space="preserve"><value>鉛筆</value></data>
+  <data name="studio.shape.line" xml:space="preserve"><value>直線</value></data>
+  <data name="studio.shape.arrow" xml:space="preserve"><value>矢印</value></data>
+  <data name="studio.shape.polygon" xml:space="preserve"><value>多角形</value></data>
+  <data name="studio.shape.star" xml:space="preserve"><value>星</value></data>
+  <data name="studio.actions" xml:space="preserve"><value>アクション</value></data>
+  <data name="studio.unlockAll" xml:space="preserve"><value>すべてのレイヤーのロックを解除</value></data>
+  <data name="studio.frames.phone" xml:space="preserve"><value>スマートフォン</value></data>
+  <data name="studio.frames.tablet" xml:space="preserve"><value>タブレット</value></data>
+  <data name="studio.frames.desktop" xml:space="preserve"><value>デスクトップ</value></data>
+  <data name="studio.frames.presentation" xml:space="preserve"><value>プレゼンテーション</value></data>
+  <data name="studio.frames.watch" xml:space="preserve"><value>ウォッチ</value></data>
+  <data name="studio.frames.paper" xml:space="preserve"><value>用紙</value></data>
+  <data name="studio.frames.social" xml:space="preserve"><value>ソーシャルメディア</value></data>
+  <data name="studio.tool.scale" xml:space="preserve"><value>拡大縮小</value></data>
+  <data name="studio.tool.section" xml:space="preserve"><value>セクション</value></data>
+  <data name="studio.tool.slice" xml:space="preserve"><value>スライス</value></data>
+  <data name="studio.tool.textPath" xml:space="preserve"><value>パス上テキスト</value></data>
+  <data name="studio.tool.comment" xml:space="preserve"><value>コメント</value></data>
+  <data name="studio.search" xml:space="preserve"><value>検索</value></data>
+  <data name="studio.cut" xml:space="preserve"><value>カット</value></data>
+  <data name="studio.paste" xml:space="preserve"><value>ペースト</value></data>
+  <data name="bots.preset.assistant" xml:space="preserve"><value>アシスタント</value></data>
+  <data name="bots.preset.researcher" xml:space="preserve"><value>リサーチャー</value></data>
+  <data name="bots.preset.coder" xml:space="preserve"><value>コーダー</value></data>
+  <data name="bots.new" xml:space="preserve"><value>新しいボット</value></data>
+  <data name="bots.edit" xml:space="preserve"><value>ボットを編集</value></data>
+  <data name="bots.clear" xml:space="preserve"><value>チャットを消去</value></data>
+  <data name="bots.send" xml:space="preserve"><value>メッセージを送信</value></data>
+  <data name="bots.deleteConfirm" xml:space="preserve"><value>「{0}」とそのチャットを削除しますか？</value></data>
+  <data name="bots.empty.title" xml:space="preserve"><value>ボットはまだありません</value></data>
+  <data name="bots.empty.detail" xml:space="preserve"><value>ボットは、独自の指示・モデル・継続的なチャットを持つアシスタントです。フォルダーを指定すると、そこでエージェントとして作業します。</value></data>
+  <data name="bots.greeting" xml:space="preserve"><value>{0} にメッセージを送って始めましょう。</value></data>
+  <data name="bots.placeholder" xml:space="preserve"><value>{0} へのメッセージ</value></data>
+  <data name="bots.agentIn" xml:space="preserve"><value>{0} のエージェント</value></data>
+  <data name="bots.name" xml:space="preserve"><value>名前</value></data>
+  <data name="bots.icon" xml:space="preserve"><value>アイコン</value></data>
+  <data name="bots.instructions" xml:space="preserve"><value>指示</value></data>
+  <data name="bots.instructionsHelp" xml:space="preserve"><value>ボットの振る舞い、知っていること、答え方。</value></data>
+  <data name="bots.workspace" xml:space="preserve"><value>エージェントフォルダー</value></data>
+  <data name="bots.workspace.none" xml:space="preserve"><value>なし：チャットのみ</value></data>
+  <data name="bots.workspace.choose" xml:space="preserve"><value>フォルダーを選択</value></data>
+  <data name="bots.workspace.clear" xml:space="preserve"><value>削除</value></data>
+  <data name="bots.workspaceHelp" xml:space="preserve"><value>フォルダーがあると、ボットは確認なしでその中の読み書きやコマンド実行ができ、ネットワークにはアクセスできません。フォルダーがない場合はチャットのみです。</value></data>
+  <data name="bots.error.noReply" xml:space="preserve"><value>ボットが応答しませんでした。</value></data>
+  <data name="bots.status.delivered" xml:space="preserve"><value>ボットに届きました</value></data>
+  <data name="bots.status.waiting" xml:space="preserve"><value>ボットを待機中</value></data>
+  <data name="tasks.plan.title" xml:space="preserve"><value>タスクをスケジュール</value></data>
+  <data name="tasks.plan.subtitle" xml:space="preserve"><value>HerNess が定期的な作業を代わりに実行します。</value></data>
+  <data name="tasks.upcoming" xml:space="preserve"><value>予定</value></data>
+  <data name="tasks.instructions" xml:space="preserve"><value>指示…</value></data>
+  <data name="tasks.repeat" xml:space="preserve"><value>繰り返し</value></data>
+  <data name="tasks.time" xml:space="preserve"><value>時刻</value></data>
+  <data name="tasks.day" xml:space="preserve"><value>曜日</value></data>
+  <data name="tasks.advanced" xml:space="preserve"><value>詳細設定</value></data>
+  <data name="tasks.create" xml:space="preserve"><value>作成</value></data>
+  <data name="tasks.repeat.hourly" xml:space="preserve"><value>毎時</value></data>
+  <data name="tasks.repeat.daily" xml:space="preserve"><value>毎日</value></data>
+  <data name="tasks.repeat.weekdays" xml:space="preserve"><value>平日</value></data>
+  <data name="tasks.repeat.weekly" xml:space="preserve"><value>毎週</value></data>
+  <data name="tasks.repeat.custom" xml:space="preserve"><value>カスタム</value></data>
+  <data name="bots.preset.assistant.detail" xml:space="preserve"><value>日常の作業をサポート</value></data>
+  <data name="bots.preset.researcher.detail" xml:space="preserve"><value>テーマを調査して情報源を比較</value></data>
+  <data name="bots.preset.coder.detail" xml:space="preserve"><value>コードを書いて問題を解決</value></data>
+  <data name="tasks.suggestion.email.title" xml:space="preserve"><value>メールの確認</value></data>
+  <data name="tasks.suggestion.email.detail" xml:space="preserve"><value>重要なメールを確認し、注意が必要な内容を要約して。</value></data>
+  <data name="tasks.suggestion.reading.title" xml:space="preserve"><value>週末の読書</value></data>
+  <data name="tasks.suggestion.reading.detail" xml:space="preserve"><value>毎週、私の興味に合う記事を探して。</value></data>
+  <data name="tasks.suggestion.prices.title" xml:space="preserve"><value>価格アラート</value></data>
+  <data name="tasks.suggestion.prices.detail" xml:space="preserve"><value>チェックしている商品の価格を確認し、値下げを知らせて。</value></data>
+  <data name="tasks.suggestion.events.title" xml:space="preserve"><value>イベントを探す</value></data>
+  <data name="tasks.suggestion.events.detail" xml:space="preserve"><value>私の興味に合うコンサートやイベントを探して。</value></data>
+  <data name="tasks.suggestion.weekend.title" xml:space="preserve"><value>週末の予定</value></data>
+  <data name="tasks.suggestion.weekend.detail" xml:space="preserve"><value>私の好みに合わせて週末の活動を提案して。</value></data>
+  <data name="tasks.suggestions.memory" xml:space="preserve"><value>あなたのメモリに基づく</value></data>
+  <data name="tasks.suggestions.personalizing" xml:space="preserve"><value>メモリから提案を準備しています…</value></data>
+  <data name="tasks.suggestions.unavailable" xml:space="preserve"><value>提案例 · パーソナライズを利用できません</value></data>
+  <data name="tasks.suggestions.refresh" xml:space="preserve"><value>提案を更新</value></data>
+  <data name="tasks.suggestions.instruction" xml:space="preserve"><value>私の興味や好みに合わせて結果をまとめて。見つけた内容を要約して。必要な情報やアクセスが不足していれば教えて。</value></data>
+  <data name="media.music" xml:space="preserve"><value>音楽</value></data>
+  <data name="studio.music" xml:space="preserve"><value>音楽</value></data>
+  <data name="studio.library" xml:space="preserve"><value>ライブラリ</value></data>
+  <data name="studio.music.composing" xml:space="preserve"><value>音楽を作曲中。数分かかる場合があります。</value></data>
+  <data name="studio.music.song" xml:space="preserve"><value>曲</value></data>
+  <data name="studio.music.inspector" xml:space="preserve"><value>詳細</value></data>
+  <data name="studio.music.section" xml:space="preserve"><value>セクション</value></data>
+  <data name="studio.music.section.delete" xml:space="preserve"><value>セクションを削除</value></data>
+  <data name="studio.music.lyrics" xml:space="preserve"><value>歌詞</value></data>
+  <data name="studio.music.track" xml:space="preserve"><value>トラック</value></data>
+  <data name="studio.music.track.generate" xml:space="preserve"><value>トラックを生成</value></data>
+  <data name="studio.music.track.empty" xml:space="preserve"><value>音声はまだありません</value></data>
+  <data name="studio.music.track.delete" xml:space="preserve"><value>トラックを削除</value></data>
+  <data name="studio.music.mix" xml:space="preserve"><value>ミックス</value></data>
+  <data name="studio.music.tempo" xml:space="preserve"><value>テンポと調</value></data>
+  <data name="studio.music.generating" xml:space="preserve"><value>{0} トラックを生成中</value></data>
+  <data name="studio.music.placeholder" xml:space="preserve"><value>曲を説明してください: 雰囲気、ストーリー、楽器、ボーカル</value></data>
+  <data name="studio.music.empty" xml:space="preserve"><value>上に曲の説明を入力するか、空の曲から始めます。まず構成、歌詞、楽器ごとのトラックという計画が作成され、音声を生成する前にすべて調整できます。</value></data>
+  <data name="studio.music.plan" xml:space="preserve"><value>曲を作成</value></data>
+  <data name="studio.music.new" xml:space="preserve"><value>空の曲</value></data>
+  <data name="studio.music.noPlan" xml:space="preserve"><value>モデルから曲の計画が返されませんでした。再試行するか別のモデルを選択してください。</value></data>
+  <data name="studio.music.deleteConfirm" xml:space="preserve"><value>「{0}」を削除しますか？トラックと音声ファイルが削除されます。</value></data>
+  <data name="studio.music.trackCount" xml:space="preserve"><value>{0} トラック</value></data>
+  <data name="studio.music.bpm" xml:space="preserve"><value>{0} BPM</value></data>
+  <data name="studio.music.key" xml:space="preserve"><value>調</value></data>
+  <data name="studio.music.generateAll" xml:space="preserve"><value>すべて生成</value></data>
+  <data name="studio.music.regenerate" xml:space="preserve"><value>このトラックを再生成</value></data>
+  <data name="studio.music.script" xml:space="preserve"><value>台本</value></data>
+  <data name="studio.music.artists" xml:space="preserve"><value>アーティスト</value></data>
+  <data name="studio.music.artist.add" xml:space="preserve"><value>アーティストを追加</value></data>
+  <data name="studio.music.artist.default" xml:space="preserve"><value>アーティスト {0}</value></data>
+  <data name="studio.music.artist.name" xml:space="preserve"><value>名前</value></data>
+  <data name="studio.music.artist.style" xml:space="preserve"><value>声とスタイル</value></data>
+  <data name="studio.music.section.add" xml:space="preserve"><value>セクションを追加</value></data>
+  <data name="studio.music.section.default" xml:space="preserve"><value>ヴァース</value></data>
+  <data name="studio.music.section.bars" xml:space="preserve"><value>{0} 小節</value></data>
+  <data name="studio.music.line.add" xml:space="preserve"><value>行を追加</value></data>
+  <data name="studio.music.line.placeholder" xml:space="preserve"><value>歌詞の行</value></data>
+  <data name="studio.music.line.unsung" xml:space="preserve"><value>なし</value></data>
+  <data name="studio.music.track.add" xml:space="preserve"><value>トラックを追加</value></data>
+  <data name="studio.music.track.instrument" xml:space="preserve"><value>楽器</value></data>
+  <data name="studio.music.track.prompt" xml:space="preserve"><value>演奏方法</value></data>
+  <data name="studio.music.track.vocal" xml:space="preserve"><value>ボーカル · {0}</value></data>
+  <data name="studio.music.mute" xml:space="preserve"><value>ミュート</value></data>
+  <data name="studio.music.solo" xml:space="preserve"><value>ソロ</value></data>
+  <data name="library.all" xml:space="preserve"><value>すべて</value></data>
+  <data name="library.kind.image" xml:space="preserve"><value>画像</value></data>
+  <data name="library.kind.video" xml:space="preserve"><value>動画</value></data>
+  <data name="library.kind.audio" xml:space="preserve"><value>音声</value></data>
+  <data name="library.kind.music" xml:space="preserve"><value>音楽</value></data>
+  <data name="library.kind.document" xml:space="preserve"><value>書類</value></data>
+  <data name="library.add" xml:space="preserve"><value>ファイルを追加</value></data>
+  <data name="library.addFailed" xml:space="preserve"><value>{0} 個のファイルを追加できませんでした。</value></data>
+  <data name="library.open" xml:space="preserve"><value>開く</value></data>
+  <data name="library.empty.title" xml:space="preserve"><value>まだ何もありません</value></data>
+  <data name="library.empty.detail" xml:space="preserve"><value>生成した画像、動画、音声、音楽は自動的にここに保存されます。文書などのファイルは手動で追加してください。</value></data>
+  <data name="backgroundTasks.title" xml:space="preserve"><value>バックグラウンドタスク</value></data>
+  <data name="backgroundTasks.empty" xml:space="preserve"><value>バックグラウンドタスクはありません</value></data>
+  <data name="backgroundTasks.finished" xml:space="preserve"><value>完了</value></data>
+  <data name="backgroundTasks.failed" xml:space="preserve"><value>失敗(終了コード {0})</value></data>
+  <data name="backgroundTasks.stopped" xml:space="preserve"><value>停止済み</value></data>
+  <data name="backgroundTasks.clear" xml:space="preserve"><value>完了したタスクを消去</value></data>
+  <data name="backgroundTasks.runningCount" xml:space="preserve"><value>実行中のタスク: {0}</value></data>
+  <data name="backgroundTasks.wake" xml:space="preserve"><value>バックグラウンドタスク「{0}」が終了コード {1} で終了しました。terminal_session(セッション {2})で出力を読み、作業を続けてください。</value></data>
+  <data name="backgroundTasks.waitingInput" xml:space="preserve"><value>入力待ち</value></data>
+  <data name="local.installed" xml:space="preserve"><value>インストール済み</value></data>
+  <data name="marketplace.title" xml:space="preserve"><value>マーケットプレイス</value></data>
+  <data name="marketplace.empty" xml:space="preserve"><value>プラグインなし</value></data>
+  <data name="marketplace.emptyHint" xml:space="preserve"><value>「更新」を押してレジストリをロードします。</value></data>
+  <data name="marketplace.install" xml:space="preserve"><value>インストール</value></data>
+  <data name="marketplace.search" xml:space="preserve"><value>プラグインの検索</value></data>
+  <data name="marketplace.update" xml:space="preserve"><value>v{0} → v{1} をアップデートします</value></data>
+  <data name="marketplace.by" xml:space="preserve"><value>{0}により</value></data>
+  <data name="market.tab.plugins" xml:space="preserve"><value>プラグイン</value></data>
+  <data name="market.tab.skills" xml:space="preserve"><value>スキル</value></data>
+  <data name="market.tab.starters" xml:space="preserve"><value>プロジェクトスターター</value></data>
+  <data name="starters.intro" xml:space="preserve"><value>スターターと空のフォルダーを選んでください。プロンプトが入力欄に入るので、読んでから送信できます。</value></data>
+  <data name="starters.use" xml:space="preserve"><value>スターターを使用</value></data>
+  <data name="starters.chooseFolder" xml:space="preserve"><value>新しいプロジェクト用に空のフォルダーを選択してください。</value></data>
+  <data name="starters.web.title" xml:space="preserve"><value>Web アプリ</value></data>
+  <data name="starters.web.detail" xml:space="preserve"><value>TypeScript、レイアウト、サンプル API ルート、リントを備えた Next.js。</value></data>
+  <data name="starters.landing.title" xml:space="preserve"><value>ランディングページ</value></data>
+  <data name="starters.landing.detail" xml:space="preserve"><value>ヒーロー、機能、料金、問い合わせを含む静的 HTML と CSS。ビルド不要。</value></data>
+  <data name="starters.api.title" xml:space="preserve"><value>API サービス</value></data>
+  <data name="starters.api.detail" xml:space="preserve"><value>ヘルスチェック、サンプルリソース、設定、テストを備えた FastAPI。</value></data>
+  <data name="starters.ios.title" xml:space="preserve"><value>iOS アプリ</value></data>
+  <data name="starters.ios.detail" xml:space="preserve"><value>2 つの画面、Observable モデル、ユニットテストを備えた SwiftUI。</value></data>
+  <data name="starters.worker.title" xml:space="preserve"><value>Cloudflare Worker</value></data>
+  <data name="starters.worker.detail" xml:space="preserve"><value>型付きバインディングとテストを備えた Workers 上の TypeScript API。</value></data>
+  <data name="starters.cli.title" xml:space="preserve"><value>コマンドラインツール</value></data>
+  <data name="starters.cli.detail" xml:space="preserve"><value>サブコマンド、テスト、インストール手順を備えた Python パッケージ。</value></data>
+  <data name="common.cancel" xml:space="preserve"><value>キャンセル</value></data>
+  <data name="common.connect" xml:space="preserve"><value>接続</value></data>
+  <data name="common.copied" xml:space="preserve"><value>コピーしました</value></data>
+  <data name="common.delete" xml:space="preserve"><value>削除</value></data>
+  <data name="common.done" xml:space="preserve"><value>完了</value></data>
+  <data name="common.download" xml:space="preserve"><value>ダウンロード</value></data>
+  <data name="common.idle" xml:space="preserve"><value>待機中</value></data>
+  <data name="common.refresh" xml:space="preserve"><value>更新</value></data>
+  <data name="common.remove" xml:space="preserve"><value>削除</value></data>
+  <data name="common.start" xml:space="preserve"><value>開始</value></data>
+  <data name="common.stop" xml:space="preserve"><value>停止</value></data>
+  <data name="common.test" xml:space="preserve"><value>テスト</value></data>
+  <data name="common.save" xml:space="preserve"><value>保存</value></data>
+  <data name="common.view" xml:space="preserve"><value>見る</value></data>
+  <data name="composer.add" xml:space="preserve"><value>追加</value></data>
+  <data name="attachment.addApp" xml:space="preserve"><value>Dots Harnessアプリを追加</value></data>
+  <data name="attachment.projectDetail" xml:space="preserve"><value>新しいチャットのプロジェクトを選択</value></data>
+  <data name="attachment.goal" xml:space="preserve"><value>目標</value></data>
+  <data name="attachment.goalDetail" xml:space="preserve"><value>作業目標を設定</value></data>
+  <data name="attachment.plan" xml:space="preserve"><value>プランモード</value></data>
+  <data name="attachment.planDetail" xml:space="preserve"><value>プランモードをオンにする</value></data>
+  <data name="attachment.saveSkill" xml:space="preserve"><value>スキルを保存</value></data>
+  <data name="attachment.plugins" xml:space="preserve"><value>プラグイン</value></data>
+  <data name="attachment.slashCommands" xml:space="preserve"><value>スラッシュコマンド</value></data>
+  <data name="attachment.folder" xml:space="preserve"><value>フォルダを追加</value></data>
+  <data name="attachment.connectors" xml:space="preserve"><value>コネクタ</value></data>
+  <data name="attachment.documentsDetail" xml:space="preserve"><value>ドキュメント成果物を作成・編集</value></data>
+  <data name="attachment.pdfDetail" xml:space="preserve"><value>PDFファイルを読み取り、作成、検証</value></data>
+  <data name="attachment.spreadsheetsDetail" xml:space="preserve"><value>スプレッドシートを作成・編集</value></data>
+  <data name="modelPicker.model" xml:space="preserve"><value>モデル</value></data>
+  <data name="modelPicker.speed" xml:space="preserve"><value>速度</value></data>
+  <data name="modelPicker.maximum" xml:space="preserve"><value>最大</value></data>
+  <data name="modelPicker.standard" xml:space="preserve"><value>標準</value></data>
+  <data name="modelPicker.fast" xml:space="preserve"><value>高速</value></data>
+  <data name="modelPicker.auto" xml:space="preserve"><value>自動</value></data>
+  <data name="modelPicker.autoHint" xml:space="preserve"><value>メッセージごとにモデルと労力を選択します</value></data>
+  <data name="settings.sshPassword" xml:space="preserve"><value>パスワード（一度だけ使用）</value></data>
+  <data name="settings.sshRememberPassword" xml:space="preserve"><value>パスワードを記憶</value></data>
+  <data name="settings.sshRememberPassword.hint" xml:space="preserve"><value>不要です。パスワードは鍵を設置するために一度だけ使われ、~/.ssh/config には決して書き込まれません。</value></data>
+  <data name="ssh.continue" xml:space="preserve"><value>続ける</value></data>
+  <data name="ssh.enrolling" xml:space="preserve"><value>鍵を設置中…</value></data>
+  <data name="ssh.enrolled.hint" xml:space="preserve"><value>以降の接続は鍵を使います。パスワードはもう必要ありません。</value></data>
+  <data name="ssh.retry" xml:space="preserve"><value>再試行</value></data>
+  <data name="ssh.retryHint" xml:space="preserve"><value>アドレス、ユーザ名、パスワードを確認してからもう一度試してください。</value></data>
+  <data name="ssh.installKeyManually" xml:space="preserve"><value>サーバの ~/.ssh/authorized_keys にこの鍵を追加してから、もう一度試してください。</value></data>
+  <data name="ssh.copyPublicKey" xml:space="preserve"><value>鍵をコピー</value></data>
+  <data name="ssh.error.passwordAuthDisabled" xml:space="preserve"><value>サーバはパスワードでのログインを受け付けません。</value></data>
+  <data name="ssh.error.authFailed" xml:space="preserve"><value>{0} がログインを拒否しました。</value></data>
+  <data name="ssh.error.hostKeyChanged" xml:space="preserve"><value>{0} のホスト鍵が変わりました。サーバを入れ直した場合を除き、続けないでください。</value></data>
+  <data name="ssh.error.invalidInput" xml:space="preserve"><value>有効なエイリアス、ホスト名、ユーザー名、ポートを入力してください。</value></data>
+  <data name="sidebar.projects" xml:space="preserve"><value>プロジェクト</value></data>
+  <data name="sidebar.recent" xml:space="preserve"><value>最近使った項目</value></data>
+  <data name="sidebar.search" xml:space="preserve"><value>チャットを検索</value></data>
+  <data name="sidebar.sites" xml:space="preserve"><value>サイト</value></data>
+  <data name="sidebar.scheduled" xml:space="preserve"><value>スケジュール済み</value></data>
+  <data name="sidebar.addProject" xml:space="preserve"><value>プロジェクトを追加</value></data>
+  <data name="settings.compactTrigger" xml:space="preserve"><value>コンテキストを自動圧縮する上限</value></data>
+  <data name="settings.compactTrigger.hint" xml:space="preserve"><value>各モデルのコンテキストウィンドウに対する割合です。圧縮はプロンプトキャッシュを書き換えるため、値が大きいほどキャッシュを長く保てます。</value></data>
+  <data name="settings.explore.subagents" xml:space="preserve"><value>サブエージェントを使用</value></data>
+  <data name="settings.explore.hint" xml:space="preserve"><value>オンにすると、難しいタスクや長いタスクで、多数のファイルにまたがる検索や大きな変更の独立した部分を並列のサブエージェントに任せます。メインの会話には要約だけが入ります。編集するサブエージェントは割り当てられたファイルにしか書き込めず、割り当ては重複できません。簡単なタスクでは呼び出しません。各サブエージェントは別のモデル実行になるため、コストを抑えるにはオフにしてください。</value></data>
+  <data name="settings.responseStyle" xml:space="preserve"><value>応答スタイル</value></data>
+  <data name="settings.responseStyle.hint" xml:space="preserve"><value>この設定はプロンプトを書き換えません。簡潔/ウルトラはベストエフォートの希望であり、トークン数・完了・低コストを保証するものではありません。</value></data>
+  <data name="responseStyle.balanced" xml:space="preserve"><value>バランス</value></data>
+  <data name="responseStyle.concise" xml:space="preserve"><value>簡潔</value></data>
+  <data name="responseStyle.ultra" xml:space="preserve"><value>ウルトラ</value></data>
+  <data name="responseStyle.detailed" xml:space="preserve"><value>詳細</value></data>
+  <data name="settings.computerUse.enable" xml:space="preserve"><value>コンピュータ操作を有効にする</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>バージョンとアップデート</value></data>
+  <data name="settings.updates.available" xml:space="preserve"><value>新しいバージョンがあります: v{0}</value></data>
+  <data name="settings.updates.download" xml:space="preserve"><value>アップデートをダウンロード</value></data>
+  <data name="dock.branch" xml:space="preserve"><value>ブランチ</value></data>
+  <data name="dock.refresh" xml:space="preserve"><value>更新</value></data>
+  <data name="dock.commit" xml:space="preserve"><value>コミット</value></data>
+  <data name="dock.push" xml:space="preserve"><value>プッシュ</value></data>
+  <data name="dock.fetch" xml:space="preserve"><value>フェッチ</value></data>
+  <data name="dock.commitOrPush" xml:space="preserve"><value>コミットまたはプッシュ</value></data>
+  <data name="dock.commitMessage" xml:space="preserve"><value>コミットメッセージ</value></data>
+  <data name="dock.noChanges" xml:space="preserve"><value>エージェントによる変更はありません。</value></data>
+  <data name="dock.whyRequest" xml:space="preserve"><value>あなたのリクエスト</value></data>
+  <data name="dock.whyAgent" xml:space="preserve"><value>エージェントの説明</value></data>
+  <data name="dock.notRepo" xml:space="preserve"><value>このフォルダは git リポジトリではありません。</value></data>
+  <data name="dock.gitMissing" xml:space="preserve"><value>Git がインストールされていません。レビュー、commit、push に必要です。</value></data>
+  <data name="dock.installGit" xml:space="preserve"><value>Git をインストール</value></data>
+  <data name="dock.filterFiles" xml:space="preserve"><value>ファイルを絞り込み…</value></data>
+  <data name="dock.openFile" xml:space="preserve"><value>ファイルを開く</value></data>
+  <data name="dock.selectFile" xml:space="preserve"><value>ワークスペースツリーからファイルを選択</value></data>
+  <data name="dock.binaryFile" xml:space="preserve"><value>バイナリまたは読み取れないファイル</value></data>
+  <data name="dock.expand" xml:space="preserve"><value>展開</value></data>
+  <data name="dock.collapse" xml:space="preserve"><value>折りたたむ</value></data>
+  <data name="dock.split" xml:space="preserve"><value>分割</value></data>
+  <data name="dock.unsplit" xml:space="preserve"><value>1つのタブを表示</value></data>
+  <data name="dock.newTab" xml:space="preserve"><value>新しいタブ</value></data>
+  <data name="dock.address" xml:space="preserve"><value>検索またはURLを入力</value></data>
+  <data name="dock.invalidAddress" xml:space="preserve"><value>有効なウェブアドレスまたは検索語を入力してください。</value></data>
+  <data name="dock.openExternal" xml:space="preserve"><value>デフォルトのブラウザで開く</value></data>
+  <data name="dock.bottomTerminal" xml:space="preserve"><value>下部にターミナルを開く</value></data>
+  <data name="dock.splitHorizontal" xml:space="preserve"><value>左右に分割</value></data>
+  <data name="dock.splitVertical" xml:space="preserve"><value>上下に分割</value></data>
+  <data name="dock.noWorkspace" xml:space="preserve"><value>先に作業フォルダを選択してください。</value></data>
+  <data name="git.branchHelp" xml:space="preserve"><value>Gitブランチを選択</value></data>
+  <data name="git.uncommitted" xml:space="preserve"><value>コミットされていない: {0} ファイル</value></data>
+  <data name="market.area.core" xml:space="preserve"><value>メインマーケットプレイス</value></data>
+  <data name="market.area.experimental" xml:space="preserve"><value>実験的</value></data>
+  <data name="market.area.community" xml:space="preserve"><value>コミュニティ</value></data>
+  <data name="market.area.communityExperimental" xml:space="preserve"><value>コミュニティ / 実験的</value></data>
+  <data name="market.account" xml:space="preserve"><value>HerNess アカウント</value></data>
+  <data name="market.signIn" xml:space="preserve"><value>サインイン</value></data>
+  <data name="market.signIn.email" xml:space="preserve"><value>メールとパスワード</value></data>
+  <data name="market.signIn.title" xml:space="preserve"><value>HerNess アカウントでサインイン</value></data>
+  <data name="market.email" xml:space="preserve"><value>メール</value></data>
+  <data name="market.password" xml:space="preserve"><value>パスワード</value></data>
+  <data name="market.likeSignIn" xml:space="preserve"><value>いいねするにはサインイン</value></data>
+  <data name="market.customize" xml:space="preserve"><value>カスタマイズ</value></data>
+  <data name="market.localForks" xml:space="preserve"><value>ローカルのカスタマイズ</value></data>
+  <data name="market.openFolder" xml:space="preserve"><value>フォルダを開く</value></data>
+  <data name="market.fork.compared" xml:space="preserve"><value>比較済み</value></data>
+  <data name="market.consent.title" xml:space="preserve"><value>このプラグインはネイティブコードを実行します</value></data>
+  <data name="market.consent.accept" xml:space="preserve"><value>同意して有効にする</value></data>
+  <data name="market.consent.message" xml:space="preserve"><value>{0} はサードパーティ製のネイティブプラグインです。エリア: {1}。審査: {2}。カテゴリ: {3}。権限とソースコードを確認してください。同意すると、プラグインは信頼済みとしてすぐに実行されます。</value></data>
+  <data name="market.review.verified" xml:space="preserve"><value>DOTS 審査済み</value></data>
+  <data name="market.review.pending" xml:space="preserve"><value>審査待ち</value></data>
+  <data name="market.community.empty" xml:space="preserve"><value>コミュニティプラグインはまだありません</value></data>
+  <data name="market.community.emptyHint" xml:space="preserve"><value>コミュニティプラグインには、個別の審査とネイティブコード実行への明示的な同意が必要です。</value></data>
+  <data name="market.report" xml:space="preserve"><value>報告</value></data>
+  <data name="market.report.title" xml:space="preserve"><value>プラグインを報告</value></data>
+  <data name="market.report.reason" xml:space="preserve"><value>理由</value></data>
+  <data name="market.report.submit" xml:space="preserve"><value>報告を送信</value></data>
+  <data name="market.report.malware" xml:space="preserve"><value>マルウェアまたは有害な動作</value></data>
+  <data name="market.report.credentialTheft" xml:space="preserve"><value>認証情報の窃取</value></data>
+  <data name="market.report.exfiltration" xml:space="preserve"><value>データの持ち出し</value></data>
+  <data name="market.report.deceptive" xml:space="preserve"><value>誤解を招く掲載またはなりすまし</value></data>
+  <data name="market.report.spam" xml:space="preserve"><value>スパムまたは中身のないラッパー</value></data>
+  <data name="market.report.copyright" xml:space="preserve"><value>著作権またはライセンスの違反</value></data>
+  <data name="market.publish" xml:space="preserve"><value>プラグインを公開</value></data>
+  <data name="market.publish.title" xml:space="preserve"><value>ネイティブプラグインを公開</value></data>
+  <data name="market.publish.hint" xml:space="preserve"><value>プラグインフォルダには plugin.yml、plugin.ir.json、ライセンスが必要です。JavaScript と宣言型ランタイムは使用できません。プラットフォームビルドは CI で作成されます。</value></data>
+  <data name="market.publish.noFolder" xml:space="preserve"><value>プラグインフォルダが選択されていません</value></data>
+  <data name="market.publish.chooseFolder" xml:space="preserve"><value>フォルダを選択</value></data>
+  <data name="market.publish.irPreview" xml:space="preserve"><value>plugin.ir.json のプレビュー</value></data>
+  <data name="market.publish.sourcePreview" xml:space="preserve"><value>ネイティブソースのプレビュー</value></data>
+  <data name="market.publish.version" xml:space="preserve"><value>バージョン (SemVer)</value></data>
+  <data name="market.publish.license" xml:space="preserve"><value>SPDX ライセンス (例: MIT)</value></data>
+  <data name="market.publish.visibility" xml:space="preserve"><value>ソースの公開範囲</value></data>
+  <data name="market.publish.public" xml:space="preserve"><value>公開 — ソースパッケージが掲載されます</value></data>
+  <data name="market.publish.private" xml:space="preserve"><value>非公開 — 所有者と CI のみがアクセスできます</value></data>
+  <data name="market.publish.targets" xml:space="preserve"><value>対象プラットフォーム</value></data>
+  <data name="market.publish.footer" xml:space="preserve"><value>公開後、AI がカテゴリ、エリア、リスクを分類します。プラグインのビルドが完了しても、人による審査が終わるまで掲載されません。</value></data>
+  <data name="market.publish.submit" xml:space="preserve"><value>公開</value></data>
+  <data name="market.publish.error.http" xml:space="preserve"><value>Marketplace への公開に失敗しました (HTTP {0}): {1}</value></data>
+  <data name="market.publish.error.license" xml:space="preserve"><value>プラグインを公開するにはライセンスを選択してください。</value></data>
+  <data name="market.publish.error.noManifest" xml:space="preserve"><value>選択したフォルダに plugin.yml が見つかりません。</value></data>
+  <data name="market.publish.error.nativeOnly" xml:space="preserve"><value>公開できるのはネイティブプラグインのみです。</value></data>
+  <data name="market.publish.error.semver" xml:space="preserve"><value>有効な SemVer バージョンを入力してください。</value></data>
+  <data name="market.publish.error.targets" xml:space="preserve"><value>対象プラットフォームを 1 つ以上と、有効なソース公開範囲を選択してください。</value></data>
+  <data name="market.publish.error.package" xml:space="preserve"><value>パッケージには plugin.ir.json と license ファイルが必要です。</value></data>
+  <data name="market.publish.error.irVersion" xml:space="preserve"><value>plugin.ir.json はバージョン 1 である必要があります。</value></data>
+  <data name="market.publish.error.releaseID" xml:space="preserve"><value>Marketplace のリリース ID を取得できませんでした。</value></data>
+  <data name="market.publish.error.noVersion" xml:space="preserve"><value>plugin.yml に version フィールドがありません。</value></data>
+  <data name="market.publish.status.registering" xml:space="preserve"><value>Marketplace の登録を作成中…</value></data>
+  <data name="market.publish.status.uploading" xml:space="preserve"><value>ネイティブソースパッケージをアップロード中…</value></data>
+  <data name="market.publish.status.aiUnavailable" xml:space="preserve"><value>AI 分類を利用できません。仮ラベル: {0} · {1} · {2}。人による審査が必要です。</value></data>
+  <data name="market.publish.status.aiDone" xml:space="preserve"><value>AI 分類: {0} · {1} · {2}。人による審査待ちです。</value></data>
+  <data name="market.publish.status.aiFailed" xml:space="preserve"><value>AI 分類を完了できませんでした。人による審査待ちです。</value></data>
+  <data name="market.publish.status.queueing" xml:space="preserve"><value>ネイティブプラットフォームのビルドをキューに追加中…</value></data>
+  <data name="market.publish.status.uploaded" xml:space="preserve"><value>ソースパッケージをアップロードしました。ネイティブ CI の検証待ちです。</value></data>
+  <data name="market.error.notSignedIn" xml:space="preserve"><value>Marketplace に公開するには HerNess アカウントが必要です。</value></data>
+  <data name="market.error.invalidCallback" xml:space="preserve"><value>HerNess のサインインコールバックが無効でした。</value></data>
+  <data name="market.error.stateMismatch" xml:space="preserve"><value>HerNess のサインイン状態が一致しませんでした。</value></data>
+  <data name="market.error.request" xml:space="preserve"><value>Marketplace へのリクエストに失敗しました (HTTP {0}): {1}</value></data>
+  <data name="market.error.invalidResponse" xml:space="preserve"><value>Marketplace から無効な応答が返されました。</value></data>
+  <data name="market.error.credentials" xml:space="preserve"><value>メールとパスワードが必要です。</value></data>
+  <data name="remote.scan" xml:space="preserve"><value>この QR コードをスキャンするか、HerNess Mobile にワンタイムコードを入力してください。</value></data>
+  <data name="remote.newCode" xml:space="preserve"><value>新しいペアリングコード</value></data>
+  <data name="remote.copyLink" xml:space="preserve"><value>ペアリングリンクをコピー</value></data>
+  <data name="remote.tunnel.enable" xml:space="preserve"><value>Cloudflare Quick Tunnel を有効にする</value></data>
+  <data name="remote.hint" xml:space="preserve"><value>プロバイダーのキーはデスクトップに残ります。ファイル書き込み、ターミナル、ビルド、デプロイ、PR 操作には引き続き選択した承認モードが適用されます。</value></data>
+  <data name="settings.tab.mobile" xml:space="preserve"><value>モバイル操作</value></data>
+  <data name="settings.compaction.economyFixed" xml:space="preserve"><value>エコノミーポリシーでは 90% の固定しきい値を使用します。</value></data>
+  <data name="settings.browser.title" xml:space="preserve"><value>優先するブラウザとエンジン</value></data>
+  <data name="settings.browser.auto" xml:space="preserve"><value>自動 (アプリ内、または指定したブラウザ)</value></data>
+  <data name="settings.browser.managed" xml:space="preserve"><value>管理された分離ブラウザ (Chrome)</value></data>
+  <data name="settings.browser.chrome" xml:space="preserve"><value>自分の Chrome</value></data>
+  <data name="settings.browser.desktopHint" xml:space="preserve"><value>アプリ内ブラウザーはシステムのブラウザーエンジンを使用します。管理対象の Chrome と既存の Chrome プロファイルも利用できます。</value></data>
+  <data name="settings.browser.inAppDesktop" xml:space="preserve"><value>アプリ内ブラウザー</value></data>
+  <data name="settings.computerUse.desktopHint" xml:space="preserve"><value>エージェントは実行中のアプリを調べ、スクリーンショットを確認し、マウスとキーボードを操作して結果を検証できます。デスクトップ操作にはアクセスの承認が必要です。</value></data>
+  <data name="settings.computerUse.linuxHint" xml:space="preserve"><value>Linux でコンピューターを操作するには X11、xdotool、maim または ImageMagick が必要です。Wayland はサポートされていません。</value></data>
+  <data name="market.settings.hint" xml:space="preserve"><value>メイン Marketplace には審査済みの Harness プラグインが掲載されます。Community と Experimental は別枠で、ネイティブプラグインの実行には事前の承認が必要です。</value></data>
+  <data name="market.registry.empty" xml:space="preserve"><value>Marketplace の項目が見つかりません。再試行するにはレジストリを更新してください。</value></data>
+  <data name="market.signIn.hint" xml:space="preserve"><value>Google、GitHub、または HerNess のメールアドレスとパスワードでサインインします。セッショントークンはプラットフォームの資格情報ストアに保存されます。</value></data>
+  <data name="dock.clean" xml:space="preserve"><value>作業ツリーはクリーンです。</value></data>
+  <data name="market.publish.folderPickerUnavailable" xml:space="preserve"><value>このデスクトップ環境ではフォルダー選択を利用できません。</value></data>
+  <data name="market.publish.localFolderRequired" xml:space="preserve"><value>プラグインを公開するにはローカルフォルダーを選択してください。</value></data>
+  <data name="market.report.details" xml:space="preserve"><value>詳細（省略可、最大5,000文字）</value></data>
+  <data name="dock.browser.webview2Unavailable" xml:space="preserve"><value>WebView2 を起動できませんでした。Microsoft Edge WebView2 Runtime をインストールまたは修復してください。</value></data>
+  <data name="settings.marketplace" xml:space="preserve"><value>マーケットプレイス</value></data>
+  <data name="workspace.use" xml:space="preserve"><value>ワークスペースとして使用</value></data>
+  <data name="market.fork.consent.title" xml:space="preserve"><value>このカスタマイズ済みプラグインはネイティブコードを実行します</value></data>
+  <data name="market.fork.consent.message" xml:space="preserve"><value>{0} はローカルフォークです。ソースはアップストリームから独立しています。有効にする前に変更内容を確認してください。</value></data>
+  <data name="market.fork.newUpstream" xml:space="preserve"><value>新しいアップストリーム: v{0}。ローカルの変更は保持されます</value></data>
+  <data name="market.remove.confirmTitle" xml:space="preserve"><value>Marketplace プラグインを削除しますか？</value></data>
+  <data name="market.remove.confirmMessage" xml:space="preserve"><value>{0} をこのデバイスから削除しますか？</value></data>
+  <data name="market.report.other" xml:space="preserve"><value>その他</value></data>
+  <data name="modelPicker.economy" xml:space="preserve"><value>節約</value></data>
+  <data name="conversation.toggleResponseEconomy" xml:space="preserve"><value>応答のトークン節約を切り替え</value></data>
+  <data name="market.unpublish.confirmMessage" xml:space="preserve"><value>{0} の公開を取り消しますか？既存のインストールは削除されません。</value></data>
+  <data name="market.permissions" xml:space="preserve"><value>権限</value></data>
+  <data name="market.risk" xml:space="preserve"><value>リスク: {0}</value></data>
+  <data name="market.category.coding" xml:space="preserve"><value>コーディング</value></data>
+  <data name="market.category.git" xml:space="preserve"><value>Git</value></data>
+  <data name="market.category.qa" xml:space="preserve"><value>テストと品質</value></data>
+  <data name="market.category.devops" xml:space="preserve"><value>DevOps</value></data>
+  <data name="market.category.browser" xml:space="preserve"><value>ブラウザ</value></data>
+  <data name="market.category.web" xml:space="preserve"><value>Web</value></data>
+  <data name="market.category.backend" xml:space="preserve"><value>バックエンド</value></data>
+  <data name="market.category.mobile" xml:space="preserve"><value>モバイル</value></data>
+  <data name="market.category.models" xml:space="preserve"><value>モデル</value></data>
+  <data name="market.category.integrations" xml:space="preserve"><value>連携</value></data>
+  <data name="market.category.workspace" xml:space="preserve"><value>ワークスペース</value></data>
+  <data name="market.category.productivity" xml:space="preserve"><value>生産性</value></data>
+  <data name="market.category.tools" xml:space="preserve"><value>ツール</value></data>
+  <data name="market.category.design" xml:space="preserve"><value>デザイン</value></data>
+  <data name="market.category.documents" xml:space="preserve"><value>ドキュメント</value></data>
+  <data name="market.category.authoring" xml:space="preserve"><value>スキル作成</value></data>
+  <data name="market.category.community" xml:space="preserve"><value>コミュニティ</value></data>
+  <data name="market.category.other" xml:space="preserve"><value>その他</value></data>
+  <data name="navigation.back" xml:space="preserve"><value>戻る</value></data>
+  <data name="navigation.forward" xml:space="preserve"><value>進む</value></data>
+  <data name="dock.restart" xml:space="preserve"><value>再起動</value></data>
+  <data name="dock.go" xml:space="preserve"><value>移動</value></data>
+  <data name="terminal.sandboxUnavailable" xml:space="preserve"><value>ターミナルのサンドボックスを利用できません: {0}</value></data>
+  <data name="remote.lan" xml:space="preserve"><value>LAN エンドポイント</value></data>
+  <data name="remote.code" xml:space="preserve"><value>コード</value></data>
+  <data name="remote.expires" xml:space="preserve"><value>有効期限: {0}</value></data>
+  <data name="remote.pairingLink" xml:space="preserve"><value>ペアリングリンク</value></data>
+  <data name="custom.detected" xml:space="preserve"><value>このコンピュータで実行中</value></data>
+  <data name="custom.modelOptional" xml:space="preserve"><value>モデル名(任意)</value></data>
+  <data name="custom.contextOptional" xml:space="preserve"><value>コンテキストウィンドウ(トークン数、任意)</value></data>
+  <data name="custom.prefix" xml:space="preserve"><value>モデルプレフィックス</value></data>
+  <data name="local.tuning" xml:space="preserve"><value>パフォーマンス</value></data>
+  <data name="local.tuningHint" xml:space="preserve"><value>空または auto の場合、ランタイムがモデルを GPU メモリに合わせます。変更は次回のモデル起動時に適用されます。</value></data>
+  <data name="local.contextSize" xml:space="preserve"><value>コンテキストサイズ(トークン)</value></data>
+  <data name="local.gpuLayers" xml:space="preserve"><value>GPU レイヤー(auto、all または数値)</value></data>
+  <data name="local.threads" xml:space="preserve"><value>CPU スレッド数</value></data>
+  <data name="local.batchSize" xml:space="preserve"><value>バッチサイズ</value></data>
+  <data name="local.flashAttention" xml:space="preserve"><value>Flash Attention</value></data>
+  <data name="local.kvCache" xml:space="preserve"><value>KV キャッシュの種類</value></data>
+  <data name="local.extraArgs" xml:space="preserve"><value>llama-server の追加引数</value></data>
+  <data name="local.hardware" xml:space="preserve"><value>ハードウェア</value></data>
+  <data name="local.listen" xml:space="preserve"><value>待受</value></data>
+  <data name="local.importGGUF" xml:space="preserve"><value>GGUF ファイルを追加…</value></data>
+  <data name="local.tooLarge" xml:space="preserve"><value>大きすぎます</value></data>
+  <data name="local.backend" xml:space="preserve"><value>GPU バックエンド</value></data>
+  <data name="settings.compaction.autoRouted" xml:space="preserve"><value>自動ルーティングされたモデル</value></data>
+  <data name="settings.compaction.effectiveThreshold" xml:space="preserve"><value>有効なしきい値</value></data>
+  <data name="sidebar.signOut" xml:space="preserve"><value>サインアウト</value></data>
+  <data name="market.unpublish" xml:space="preserve"><value>公開を取り消す</value></data>
+  <data name="settings.sshHosts" xml:space="preserve"><value>リモートコンピュータ（SSH）</value></data>
+  <data name="settings.sshHosts.hint" xml:space="preserve"><value>ホストは ~/.ssh/config から読み込まれます。ここで追加したホストはそこに書き込まれます。</value></data>
+  <data name="settings.sshNoHosts" xml:space="preserve"><value>~/.ssh/config にホストがありません。</value></data>
+  <data name="settings.sshAddHost" xml:space="preserve"><value>コンピュータを追加…</value></data>
+  <data name="settings.sshTest" xml:space="preserve"><value>テスト</value></data>
+  <data name="settings.sshManaged" xml:space="preserve"><value>ここで追加</value></data>
+  <data name="settings.sshFromConfig" xml:space="preserve"><value>~/.ssh/config から</value></data>
+  <data name="settings.sshRemove.handWritten" xml:space="preserve"><value>このホストは ~/.ssh/config に手で書かれています。そちらで削除してください。</value></data>
+  <data name="settings.updates.current" xml:space="preserve"><value>現在のバージョン</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>アップデートを確認中…</value></data>
+  <data name="settings.updates.checkAgain" xml:space="preserve"><value>再確認</value></data>
+  <data name="settings.updates.upToDate" xml:space="preserve"><value>アプリは最新です。</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>アップデートを確認</value></data>
+  <data name="settings.updates.retry" xml:space="preserve"><value>再試行</value></data>
+  <data name="settings.updates.hint" xml:space="preserve"><value>最新のリリースを確認します。</value></data>
+  <data name="settings.updates.required" xml:space="preserve"><value>必須</value></data>
+  <data name="ssh.connected" xml:space="preserve"><value>{0} が応答しました。</value></data>
+  <data name="remote.enable" xml:space="preserve"><value>リモート制御を許可</value></data>
+  <data name="remote.shareLan" xml:space="preserve"><value>ローカルネットワークと共有</value></data>
+  <data name="remote.enableHint" xml:space="preserve"><value>リモートゲートウェイはオフです。電話をペアリングするにはオンにしてください。</value></data>
+  <data name="plan.title" xml:space="preserve"><value>計画</value></data>
+  <data name="plan.proposed" xml:space="preserve"><value>Claude がプランを提案しました</value></data>
+  <data name="plan.revise" xml:space="preserve"><value>修正…</value></data>
+  <data name="plan.acceptAuto" xml:space="preserve"><value>承認して自動モード</value></data>
 </root>

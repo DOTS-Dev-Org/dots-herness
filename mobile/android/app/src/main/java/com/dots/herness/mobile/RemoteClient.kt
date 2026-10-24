@@ -16,20 +16,32 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.BufferedReader
 import java.io.File
+import java.io.IOException
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
 import java.net.URLEncoder
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import java.security.MessageDigest
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
 import java.util.Base64
 import java.util.UUID
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
+import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManagerFactory
+import javax.net.ssl.X509TrustManager
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 data class RemoteFile(val path: String, val bytes: Long, val sha256: String, val mode: Int)
 data class ExcludedFile(val path: String, val reason: String)
@@ -37,35 +49,171 @@ data class WorkspaceSnapshot(val workspaceId: String, val revision: Long, val fi
 data class RemoteEvent(val id: String, val sequence: Long, val kind: String, val payload: Map<String, String>, val artifactId: String?)
 data class RemoteArtifact(val id: String, val kind: String, val bytes: Long)
 data class RemoteProjectDescriptor(val id: String, val name: String, val workspaceId: String, val branch: String?)
-data class Bootstrap(val workspaceId: String, val revision: Long, val status: String, val isBusy: Boolean, val accessMode: String, val provider: String?, val model: String?, val capabilities: List<String>, val projectId: String? = null)
+data class Bootstrap(val workspaceId: String, val revision: Long, val status: String, val isBusy: Boolean, val accessMode: String, val provider: String?, val model: String?, val capabilities: List<String>, val projectId: String? = null, val endpoints: List<String> = emptyList())
 data class CommandResult(val commandId: String, val status: String, val approvalId: String?, val result: String?, val error: String?)
 
-private data class PairingPayload(val endpoint: String, val code: String) {
+/** HTTPS only, LAN included. The desktop's LAN certificate is self-signed and
+ *  trusted by its pinned fingerprint (see [RemotePinning]); every exchange is
+ *  sealed on top of that (see [RemoteSealed]). */
+internal object RemoteEndpoint {
+    fun isAllowed(uri: URI?): Boolean =
+        uri != null && !uri.host.isNullOrBlank() && uri.userInfo == null && uri.scheme.equals("https", ignoreCase = true)
+
+    /** SHA-256 of a DER certificate, lowercase hex, as the pairing QR carries it. */
+    fun isFingerprint(value: String): Boolean = value.length == 64 && value.all { it in '0'..'9' || it in 'a'..'f' }
+}
+
+/** A server is trusted when its leaf certificate matches the paired desktop's
+ *  fingerprint exactly, otherwise only through the normal CA check (the cloud
+ *  tunnel) — a LAN impostor passes neither. */
+internal object RemotePinning {
+    fun sha256(der: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(der).joinToString("") { "%02x".format(it) }
+
+    fun apply(connection: HttpsURLConnection, pin: String) {
+        if (pin.isEmpty()) return
+        val system = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
+            .apply { init(null as KeyStore?) }.trustManagers.filterIsInstance<X509TrustManager>().first()
+        val pinned = object : X509TrustManager {
+            override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = system.checkClientTrusted(chain, authType)
+            override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {
+                if (chain.isNotEmpty() && sha256(chain[0].encoded) == pin) return
+                system.checkServerTrusted(chain, authType)
+            }
+            override fun getAcceptedIssuers(): Array<X509Certificate> = system.acceptedIssuers
+        }
+        connection.sslSocketFactory = SSLContext.getInstance("TLS").apply { init(null, arrayOf(pinned), null) }.socketFactory
+        val standard = HttpsURLConnection.getDefaultHostnameVerifier()
+        // The pinned certificate is the desktop itself, whatever name it was
+        // reached under (mDNS, IP); anything else needs a matching hostname.
+        connection.hostnameVerifier = HostnameVerifier { host, session ->
+            runCatching { sha256(session.peerCertificates[0].encoded) == pin }.getOrDefault(false) || standard.verify(host, session)
+        }
+    }
+}
+
+/** Sealed channel v1, the only way to talk to the desktop, LAN and cloud tunnel
+ *  alike: the tunnel ends TLS at Cloudflare, so the raw HTTP exchange is
+ *  AES-256-GCM encrypted end to end. The format is specified on the desktop
+ *  (`RemoteSealed` in macOS RemoteControl.swift and shared/RemoteControl.cs). */
+internal object RemoteSealed {
+    const val PATH = "/v3/sealed"
+    const val PAIRING_DEVICE = "pair"
+
+    fun key(secret: String) = SecretKeySpec(MessageDigest.getInstance("SHA-256").digest("herness.sealed.v1:$secret".toByteArray()), "AES")
+
+    /** A pairing or device secret: 32 random bytes, base64url without padding. */
+    fun isSecret(value: String) = value.length == 43 && value.all { it.isLetterOrDigit() || it == '-' || it == '_' }
+
+    fun seal(key: SecretKeySpec, nonce: ByteArray, plain: ByteArray, aad: ByteArray): ByteArray {
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(128, nonce)); updateAAD(aad) }
+        return nonce + cipher.doFinal(plain)
+    }
+
+    fun unseal(key: SecretKeySpec, sealed: ByteArray, aad: ByteArray): ByteArray {
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, sealed, 0, 12)); updateAAD(aad) }
+        return cipher.doFinal(sealed, 12, sealed.size - 12)
+    }
+
+    fun frameAad(nonce: ByteArray, counter: Int) = nonce + ByteBuffer.allocate(4).putInt(counter).array()
+
+    /** The request body: a fresh nonce, then the sealed timestamp and raw HTTP request. */
+    fun request(key: SecretKeySpec, device: String, method: String, path: String, host: String, body: ByteArray?, now: Long = System.currentTimeMillis()): ByteArray {
+        val head = "$method $path HTTP/1.1\r\nHost: $host\r\nContent-Length: ${body?.size ?: 0}\r\n" + (if (body != null) "Content-Type: application/json\r\n" else "") + "\r\n"
+        val plain = ByteBuffer.allocate(8).putLong(now).array() + head.toByteArray() + (body ?: ByteArray(0))
+        return seal(key, ByteArray(12).also { SecureRandom().nextBytes(it) }, plain, device.toByteArray())
+    }
+}
+
+/** The decrypted reply: frames are opened as they are read, and a reply that
+ *  stops before its end frame fails instead of passing for complete. */
+internal class SealedInput(private val lines: BufferedReader, private val key: SecretKeySpec, private val nonce: ByteArray) : InputStream() {
+    private var buffer = ByteArray(0)
+    private var position = 0
+    private var counter = 0
+    private var ended = false
+
+    override fun read(): Int = if (fill()) buffer[position++].toInt() and 0xff else -1
+
+    override fun read(target: ByteArray, offset: Int, length: Int): Int {
+        if (length == 0) return 0
+        if (!fill()) return -1
+        val count = minOf(length, buffer.size - position)
+        System.arraycopy(buffer, position, target, offset, count)
+        position += count
+        return count
+    }
+
+    override fun close() = lines.close()
+
+    private fun fill(): Boolean {
+        while (position >= buffer.size) {
+            if (ended) return false
+            val line = lines.readLine() ?: throw IOException("The desktop reply was cut off.")
+            buffer = RemoteSealed.unseal(key, Base64.getDecoder().decode(line), RemoteSealed.frameAad(nonce, counter++))
+            position = 0
+            ended = buffer.isEmpty()
+        }
+        return true
+    }
+
+    /** Reads the reply head and returns its status code; the body follows. */
+    fun status(): Int {
+        val head = StringBuilder()
+        while (!head.endsWith("\r\n\r\n")) { val next = read(); if (next < 0) throw IOException("The desktop reply was cut off."); head.append(next.toChar()) }
+        return head.split(' ', limit = 3).getOrNull(1)?.toIntOrNull() ?: throw IOException("The desktop reply is malformed.")
+    }
+}
+
+/** A pairing request that arrived through a `herness://` link. Any web page can
+ *  open that scheme, so the endpoint stays untrusted until the user confirms
+ *  the host they are shown. */
+data class PendingPairRequest(val endpoint: String, val code: String, val secret: String, val fingerprint: String? = null) {
+    /** The host the device would talk to — what the user has to recognise. */
+    val host: String
+        get() = runCatching { URI(endpoint).host }.getOrNull()?.takeIf { it.isNotBlank() } ?: endpoint
+}
+
+/** [secret] seals the pairing exchange; [fingerprint] pins the desktop certificate
+ *  and is required for its self-signed LAN address. Only the QR carries both. */
+internal data class PairingPayload(val endpoint: String, val code: String, val secret: String, val fingerprint: String? = null) {
     companion object {
-        fun fromFields(endpoint: String, code: String): PairingPayload? {
+        fun fromFields(endpoint: String, code: String, secret: String, fingerprint: String? = null): PairingPayload? {
             val normalized = endpoint.trim().trimEnd('/')
             val parsed = runCatching { URI(normalized) }.getOrNull()
-            val scheme = parsed?.scheme?.lowercase()
-            if (scheme != "https" || parsed?.host.isNullOrBlank() || parsed?.userInfo != null || code.length != 6 || !code.all { it in '0'..'9' }) return null
-            return PairingPayload(normalized, code)
+            val pin = fingerprint?.lowercase()
+            if (!RemoteEndpoint.isAllowed(parsed) || code.length != 6 || !code.all { it in '0'..'9' } || !RemoteSealed.isSecret(secret)) return null
+            if (pin != null && !RemoteEndpoint.isFingerprint(pin)) return null
+            return PairingPayload(normalized, code, secret, pin)
+        }
+
+        fun fromQuery(names: Set<String>, value: (String) -> List<String>): PairingPayload? {
+            if ((names != setOf("endpoint", "code", "k") && names != setOf("endpoint", "code", "k", "fp")) || names.any { value(it).size != 1 }) return null
+            return fromFields(value("endpoint")[0], value("code")[0], value("k")[0], value("fp").firstOrNull())
         }
 
         fun fromUri(uri: Uri): PairingPayload? {
             if (!uri.scheme.equals("herness", ignoreCase = true) || !uri.host.equals("pair", ignoreCase = true)) return null
-            if (uri.queryParameterNames != setOf("endpoint", "code") || uri.getQueryParameters("endpoint").size != 1 || uri.getQueryParameters("code").size != 1) return null
-            return fromFields(uri.getQueryParameter("endpoint").orEmpty(), uri.getQueryParameter("code").orEmpty())
+            return fromQuery(uri.queryParameterNames) { uri.getQueryParameters(it) }
         }
     }
 }
 
 class RemoteClient(private val context: Context) : ViewModel() {
     var endpoint by mutableStateOf(""); private set
+    /** Other addresses of the paired desktop (LAN, tunnel), tried in turn when
+     *  the current one stops answering, e.g. a restarted quick tunnel. */
+    private var knownEndpoints: List<String> = emptyList()
+    /** Paired desktop certificate fingerprint, see [RemotePinning]. */
+    @Volatile private var pin = ""
     var token by mutableStateOf(""); private set
+    /** The id the desktop knows this phone by; it names the sealing key. */
+    private var deviceId = ""
     var bootstrap by mutableStateOf<Bootstrap?>(null); private set
     var snapshot by mutableStateOf<WorkspaceSnapshot?>(null); private set
     var events by mutableStateOf<List<RemoteEvent>>(emptyList()); private set
-    var pairingEndpoint by mutableStateOf("")
-    var pairingCode by mutableStateOf("")
+    /** Set when a `herness://pair` link arrives; the user has to confirm it. */
+    var pendingPair by mutableStateOf<PendingPairRequest?>(null)
+        private set
     var error by mutableStateOf<String?>(null); private set
     var connecting by mutableStateOf(false); private set
     var pairing by mutableStateOf(false); private set
@@ -86,14 +234,18 @@ class RemoteClient(private val context: Context) : ViewModel() {
         projects = projectStore.projects
         refreshProjectAvailability()
         endpoint = secure.read("endpoint") ?: ""
+        knownEndpoints = secure.read("endpoints").orEmpty().split('\n').filter { it.isNotBlank() }
         token = secure.read("token") ?: ""
+        deviceId = secure.read("device") ?: ""
+        pin = secure.read("fingerprint").orEmpty()
         isGuest = preferences.getBoolean("guest_mode", false) || preferences.getBoolean("works_offline", false)
         loadCachedSnapshot()
         loadRepo()
-        if (endpoint.isNotBlank() && token.isNotBlank()) connect()
+        if (paired) connect()
     }
 
-    val paired get() = endpoint.isNotBlank() && token.isNotBlank()
+    /** A pairing from before the sealed channel has no device id: scan again. */
+    val paired get() = endpoint.isNotBlank() && token.isNotBlank() && deviceId.isNotBlank()
     val workspaceId get() = remoteProjects.firstOrNull { it.id == remoteSelectedProjectId }?.workspaceId ?: bootstrap?.workspaceId ?: snapshot?.workspaceId ?: ""
     val selectedProjectId: String get() = projectStore.selectedProjectId
     val selectedProject: MobileProject get() = projectStore.selected
@@ -161,21 +313,24 @@ class RemoteClient(private val context: Context) : ViewModel() {
         bootstrap = bootstrap?.copy(projectId = null)
     }
 
-    fun pair(onDone: () -> Unit = {}) {
-        val payload = PairingPayload.fromFields(pairingEndpoint, pairingCode)
-        if (payload == null) { error = "Enter a valid HTTPS endpoint and six-digit code."; return }
+    private fun pair(payload: PairingPayload, onDone: () -> Unit) {
         if (pairing) return
         viewModelScope.launch(Dispatchers.IO) {
             pairing = true
+            val previousPin = pin
+            pin = payload.fingerprint.orEmpty()
             try {
                 val body = JSONObject().put("code", payload.code).put("deviceName", Build.MODEL).toString().toByteArray()
-                val response = http("/v1/control/pair/complete", "POST", body, auth = false, base = payload.endpoint)
+                val response = http("/v1/control/pair/complete", "POST", body, base = payload.endpoint, secret = payload.secret, device = RemoteSealed.PAIRING_DEVICE)
                 val result = JSONObject(String(response.body))
-                endpoint = payload.endpoint; token = result.getString("token"); isGuest = false
+                endpoint = payload.endpoint; token = result.getString("token"); deviceId = result.getString("deviceId"); isGuest = false
                 preferences.edit().putBoolean("guest_mode", false).putBoolean("works_offline", false).apply()
-                secure.write("endpoint", endpoint); secure.write("token", token)
+                secure.write("token", token)
+                secure.write("device", deviceId)
+                if (payload.fingerprint != null) secure.write("fingerprint", payload.fingerprint) else secure.delete("fingerprint")
+                knownEndpoints = emptyList(); useEndpoint(payload.endpoint)
                 connect(); onDone()
-            } catch (t: Throwable) { error = t.message ?: "Pairing failed" }
+            } catch (t: Throwable) { pin = previousPin; error = t.message ?: "Pairing failed" }
             finally { pairing = false }
         }
     }
@@ -183,30 +338,31 @@ class RemoteClient(private val context: Context) : ViewModel() {
     fun consumePairUri(uri: Uri) {
         val payload = PairingPayload.fromUri(uri)
         if (payload == null) { error = "This QR code is not a valid HerNess pairing code."; return }
-        pairingEndpoint = payload.endpoint
-        pairingCode = payload.code
-        pair()
+        // A herness:// link can be opened by any web page, so never pair
+        // straight from it: hold the request until the user confirms the host.
+        pendingPair = PendingPairRequest(payload.endpoint, payload.code, payload.secret, payload.fingerprint)
     }
 
-    fun consumePairValue(value: String) { consumePairUri(Uri.parse(value)) }
-
-    fun continueAsGuest() {
-        isGuest = true
-        preferences.edit().putBoolean("guest_mode", true).putBoolean("works_offline", true).apply()
-        error = null
+    /** Pairs with the host the user just confirmed. */
+    fun confirmPendingPair(onDone: () -> Unit = {}) {
+        val pending = pendingPair ?: return
+        pendingPair = null
+        val payload = PairingPayload.fromFields(pending.endpoint, pending.code, pending.secret, pending.fingerprint)
+        if (payload == null) { error = "This pairing request is not valid."; return }
+        pair(payload, onDone)
     }
 
-    fun leaveGuest() {
-        isGuest = false
-        preferences.edit().putBoolean("guest_mode", false).putBoolean("works_offline", false).apply()
+    fun cancelPendingPair() {
+        pendingPair = null
     }
 
     fun connect() {
         viewModelScope.launch(Dispatchers.IO) {
             connecting = true
             try {
-                bootstrap = parseBootstrap(http("/v1/control/bootstrap").body)
+                bootstrap = reachDesktop()
                 runCatching { loadRemoteProjectsBlocking() }
+                runCatching { loadTranscriptBlocking() }
                 error = null
                 if (remoteProjectMatchesSelectedProject) startEvents() else clearRemoteProjectScope()
             }
@@ -215,32 +371,37 @@ class RemoteClient(private val context: Context) : ViewModel() {
         }
     }
 
-    fun requestSnapshot() {
-        if (!paired || !remoteProjectMatchesSelectedProject) return
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                snapshot = parseSnapshot(http(controlPath("/v1/control/snapshot/request"), "POST").body)
-                cacheSnapshot(snapshot!!)
-                var conflictPath: String? = null
-                snapshot!!.files.forEach { file ->
-                    runCatching {
-                        val target = localTarget(file.path)
-                        val pendingBase = pendingBase(file.path)
-                        val localHash = target.takeIf { it.exists() }?.let { sha256(it.readBytes()) }
-                        if (pendingBase != null && localHash != null && localHash != pendingBase) {
-                            if (file.sha256 != pendingBase) {
-                                conflictPath = file.path
-                            }
-                            return@runCatching
-                        }
-                        target.parentFile?.mkdirs()
-                        target.writeBytes(http(controlPath("/v1/control/file?path=${URLEncoder.encode(file.path, "UTF-8")}")).body)
-                    }
-                }
-                error = conflictPath?.let { "Conflict: $it changed on both the phone and desktop. Your local edit was kept." }
-            }
-            catch (t: Throwable) { error = t.message ?: "Snapshot failed" }
+    /** Seeds the feed with the desktop conversation so far; the event stream
+     *  only carries what happens after the phone connects. Sequence 0 marks
+     *  these rows so a reconnect replaces rather than duplicates them. */
+    private fun loadTranscriptBlocking() {
+        if (bootstrap?.capabilities?.contains("transcript") != true) return
+        val messages = JSONObject(String(http(controlPath("/v1/control/transcript")).body)).getJSONArray("messages")
+        val history = (0 until messages.length()).map { index ->
+            val item = messages.getJSONObject(index)
+            RemoteEvent("transcript-${item.getString("id")}", 0L, "${item.getString("kind")}.message", mapOf("text" to item.optString("text")), null)
         }
+        synchronized(eventLock) { events = history + events.filter { it.sequence != 0L } }
+    }
+
+    /** Bootstraps against the current endpoint, then every other known one,
+     *  and keeps whichever answers. */
+    private fun reachDesktop(): Bootstrap {
+        var last: Throwable = IllegalStateException("No desktop endpoint")
+        for (candidate in (listOf(endpoint) + knownEndpoints).filter { it.isNotBlank() }.distinct()) {
+            try {
+                val value = parseBootstrap(http("/v1/control/bootstrap", base = candidate).body)
+                useEndpoint(candidate, value.endpoints)
+                return value
+            } catch (t: Throwable) { last = t }
+        }
+        throw last
+    }
+
+    private fun useEndpoint(value: String, learned: List<String> = emptyList()) {
+        if (endpoint != value) { endpoint = value; secure.write("endpoint", value) }
+        knownEndpoints = (knownEndpoints + learned + value).distinct().takeLast(6)
+        secure.write("endpoints", knownEndpoints.joinToString("\n"))
     }
 
     suspend fun readFile(path: String): String = withContext(Dispatchers.IO) {
@@ -252,37 +413,12 @@ class RemoteClient(private val context: Context) : ViewModel() {
         String(http(controlPath("/v1/control/artifact?id=${URLEncoder.encode(id, "UTF-8")}")).body, StandardCharsets.UTF_8)
     }
 
-    suspend fun downloadArtifact(id: String, fileName: String): File = withContext(Dispatchers.IO) {
-        val safeName = fileName.substringAfterLast('/').replace(Regex("[^A-Za-z0-9._-]"), "_").ifBlank { "$id.artifact" }
-        val directory = File(context.cacheDir, "herness-artifacts").apply { mkdirs() }
-        val target = File(directory, safeName)
-        val temporary = File(directory, ".$safeName.part-${UUID.randomUUID()}")
-        temporary.writeBytes(http(controlPath("/v1/control/artifact?id=${URLEncoder.encode(id, "UTF-8")}")).body)
-        if (!temporary.renameTo(target)) {
-            temporary.copyTo(target, overwrite = true)
-            temporary.delete()
-        }
-        target
-    }
-
     suspend fun artifacts(): List<RemoteArtifact> = withContext(Dispatchers.IO) {
         val array = JSONArray(String(http(controlPath("/v1/control/artifacts")).body))
         (0 until array.length()).map { index ->
             val item = array.getJSONObject(index)
             RemoteArtifact(item.getString("id"), item.optString("kind", "artifact"), item.optLong("bytes"))
         }
-    }
-
-    suspend fun saveFile(file: RemoteFile, text: String): CommandResult = withContext(Dispatchers.IO) {
-        val expectedSha = pendingBase(file.path) ?: file.sha256
-        val remote = if (paired && bootstrap != null) runCatching {
-            command("write_file", mapOf("path" to file.path, "content" to text, "expectedSha256" to expectedSha), snapshot?.revision)
-        }.getOrNull() else null
-        if (remote?.status == "conflict") return@withContext remote
-        if (remote?.status == "completed") clearPending(file.path) else if (remote == null || remote.status == "approval-required" || remote.status == "offline") recordPending(file.path, expectedSha)
-        cacheFile(file.path, text)
-        if (remote?.status == "completed") updateCachedFile(file, text)
-        remote ?: CommandResult("", "offline", null, null, "Saved to the local workspace mirror.")
     }
 
 
@@ -391,18 +527,6 @@ class RemoteClient(private val context: Context) : ViewModel() {
         CommandResult(value.optString("commandId"), value.optString("status"), value.optString("approvalId").ifBlank { null }, value.opt("result")?.toString(), value.optString("error").ifBlank { null })
     }
 
-    fun clearError() { error = null }
-    fun reportError(message: String) { error = message }
-    fun forget() {
-        clearRemoteProjectScope()
-        remoteProjects = emptyList()
-        secure.delete("endpoint")
-        secure.delete("token")
-        endpoint = ""
-        token = ""
-        bootstrap = null
-        leaveGuest()
-    }
     fun cachedFiles() = snapshot?.files ?: emptyList()
     fun cachedText(path: String) = cachedFile(path)
     fun cachedChanges(): List<GitHubFileChange> = cachedFiles().mapNotNull { file ->
@@ -416,38 +540,59 @@ class RemoteClient(private val context: Context) : ViewModel() {
             var after = events.maxOfOrNull { it.sequence } ?: 0L
             while (isActive) {
                 try {
-                    val connection = open(controlPath("/v1/control/events?after=$after"))
-                    if (connection.responseCode != 200) throw IllegalStateException("Event stream refused")
-                    connection.inputStream.bufferedReader().useLines { lines ->
+                    val reply = exchange(controlPath("/v1/control/events?after=$after"))
+                    if (reply.status() != 200) { reply.close(); throw IllegalStateException("Event stream refused") }
+                    reply.bufferedReader().useLines { lines ->
                         var json = ""
                         lines.forEach { line ->
                             if (line.isBlank() && json.isNotBlank()) {
                                 val event = parseEvent(json); after = maxOf(after, event.sequence)
+                                if (event.kind == "tunnel.ready") event.payload["endpoint"]?.let { useEndpoint(endpoint, listOf(it)) }
                                 synchronized(eventLock) { events = (events + event).takeLast(500) }; json = ""
                             } else if (line.startsWith("data: ")) json = line.removePrefix("data: ")
                         }
                     }
-                } catch (_: Throwable) { delay(1000) }
+                } catch (_: Throwable) {
+                    delay(1000)
+                    // The address may be gone (new tunnel URL, left the Wi-Fi):
+                    // switch to whichever known endpoint answers before retrying.
+                    if (isActive) runCatching { reachDesktop() }.onSuccess { bootstrap = it }
+                }
             }
         }
     }
 
-    private fun http(path: String, method: String = "GET", body: ByteArray? = null, auth: Boolean = true, base: String = endpoint, allowError: Boolean = false): HttpResponse {
-        val connection = open(path, method, body, auth, base)
-        val status = connection.responseCode
-        val source = if (status in 200..299) connection.inputStream else connection.errorStream
-        val bytes = source?.use { it.readBytes() } ?: ByteArray(0)
+    private fun http(path: String, method: String = "GET", body: ByteArray? = null, base: String = endpoint, allowError: Boolean = false, secret: String = token, device: String = deviceId): HttpResponse {
+        val reply = exchange(path, method, body, base, secret, device)
+        val status = reply.status()
+        val bytes = reply.use { it.readBytes() }
         if (!allowError && status !in 200..299) throw IllegalStateException(String(bytes))
         return HttpResponse(status, bytes)
     }
-    private fun open(path: String, method: String = "GET", body: ByteArray? = null, auth: Boolean = true, base: String = endpoint): HttpURLConnection {
+
+    /** Sends one sealed request (see [RemoteSealed]) and returns the reply to
+     *  read. Redirects are refused outright: nothing but the paired desktop
+     *  can answer a sealed request anyway. */
+    private fun exchange(path: String, method: String = "GET", body: ByteArray? = null, base: String = endpoint, secret: String = token, device: String = deviceId): SealedInput {
         val normalized = base.trimEnd('/')
         val parsed = runCatching { URI(normalized) }.getOrNull()
-        check(parsed?.scheme?.lowercase() == "https" && !parsed.host.isNullOrBlank() && parsed.userInfo == null) { "HTTPS endpoint required" }
-        val url = URL(normalized + path); val connection = url.openConnection() as HttpURLConnection; connection.requestMethod = method; connection.connectTimeout = 8000; connection.readTimeout = if (path.contains("/commands")) 120000 else 30000; connection.doInput = true
-        if (auth) connection.setRequestProperty("Authorization", "Bearer $token")
-        if (body != null) { connection.doOutput = true; connection.setRequestProperty("Content-Type", "application/json"); connection.outputStream.use { it.write(body) } }
-        return connection
+        check(RemoteEndpoint.isAllowed(parsed)) { "HTTPS endpoint required" }
+        val key = RemoteSealed.key(secret)
+        val sealed = RemoteSealed.request(key, device, method, path, parsed!!.authority, body)
+        val connection = URL(normalized + RemoteSealed.PATH).openConnection() as HttpURLConnection
+        (connection as? HttpsURLConnection)?.let { RemotePinning.apply(it, pin) }
+        connection.requestMethod = "POST"; connection.connectTimeout = 8000; connection.readTimeout = if (path.contains("/commands")) COMMAND_READ_TIMEOUT_MS else 30000
+        connection.instanceFollowRedirects = false
+        connection.setRequestProperty("X-Herness-Device", device)
+        connection.setRequestProperty("Content-Type", "application/octet-stream")
+        connection.doOutput = true
+        connection.outputStream.use { it.write(sealed) }
+        if (connection.responseCode != 200) {
+            val message = connection.errorStream?.use { String(it.readBytes()) }
+            connection.disconnect()
+            throw IllegalStateException(runCatching { JSONObject(message!!).getString("error") }.getOrNull() ?: "The desktop refused the request.")
+        }
+        return SealedInput(connection.inputStream.bufferedReader(Charsets.US_ASCII), key, sealed.copyOfRange(0, 12))
     }
 
     fun selectRemoteProject(id: String) {
@@ -489,7 +634,7 @@ class RemoteClient(private val context: Context) : ViewModel() {
 
     private fun controlPath(v1Path: String): String = if (remoteSelectedProjectId.isNullOrBlank()) v1Path else v1Path.replaceFirst("/v1/", "/v2/")
 
-    private fun parseBootstrap(body: ByteArray) = JSONObject(String(body)).let { Bootstrap(it.getString("workspaceId"), it.getLong("revision"), it.optString("status"), it.optBoolean("isBusy"), it.optString("accessMode"), it.optString("provider").ifBlank { null }, it.optString("model").ifBlank { null }, it.optJSONArray("capabilities")?.strings() ?: emptyList(), it.optString("projectID").ifBlank { null }) }
+    private fun parseBootstrap(body: ByteArray) = JSONObject(String(body)).let { Bootstrap(it.getString("workspaceId"), it.getLong("revision"), it.optString("status"), it.optBoolean("isBusy"), it.optString("accessMode"), it.optString("provider").ifBlank { null }, it.optString("model").ifBlank { null }, it.optJSONArray("capabilities")?.strings() ?: emptyList(), it.optString("projectID").ifBlank { null }, it.optJSONArray("endpoints")?.strings() ?: emptyList()) }
     private fun parseSnapshot(body: ByteArray) = JSONObject(String(body)).let { root -> WorkspaceSnapshot(root.getString("workspaceId"), root.getLong("revision"), root.getJSONArray("files").objects { RemoteFile(it.getString("path"), it.getLong("bytes"), it.getString("sha256"), it.optInt("mode")) }, root.getJSONArray("excluded").objects { ExcludedFile(it.getString("path"), it.getString("reason")) }, root.optString("baseCommitSha").ifBlank { null }) }
     private fun parseEvent(body: String) = JSONObject(body).let { root -> val payload = root.optJSONObject("payload")?.keys()?.asSequence()?.associateWith { key -> root.getJSONObject("payload").opt(key)?.toString().orEmpty() } ?: emptyMap(); RemoteEvent(root.getString("id"), root.getLong("sequence"), root.getString("kind"), payload, root.optString("artifactId").ifBlank { null }) }
     private fun JSONArray.strings() = (0 until length()).map { getString(it) }
@@ -518,17 +663,6 @@ class RemoteClient(private val context: Context) : ViewModel() {
         return target
     }
 
-    private fun pendingFile() = metaFile("pending.json")
-    private fun pendingBase(path: String): String? = runCatching { JSONObject(pendingFile().readText()).optString(path).ifBlank { null } }.getOrNull()
-    private fun recordPending(path: String, baseSha: String) {
-        val file = pendingFile(); file.parentFile?.mkdirs(); val value = runCatching { JSONObject(file.readText()) }.getOrElse { JSONObject() }; value.put(path, baseSha); file.writeText(value.toString())
-    }
-    private fun clearPending(path: String) { val file = pendingFile(); if (!file.exists()) return; runCatching { val value = JSONObject(file.readText()); value.remove(path); file.writeText(value.toString()) } }
-    private fun updateCachedFile(file: RemoteFile, text: String) {
-        val current = snapshot ?: return
-        snapshot = current.copy(files = current.files.map { if (it.path == file.path) it.copy(bytes = text.toByteArray(StandardCharsets.UTF_8).size.toLong(), sha256 = sha256(text.toByteArray(StandardCharsets.UTF_8))) else it })
-        cacheSnapshot(snapshot!!)
-    }
     private fun loadCachedSnapshot() { val file = metaFile("snapshot.json"); if (file.exists()) runCatching { snapshot = parseSnapshot(file.readBytes()) } }
     private fun cachedFile(path: String): String? = runCatching {
         localTarget(path).takeIf { it.exists() }?.readText()
@@ -562,3 +696,6 @@ class SecureStore(context: Context) {
         delete(legacyKey)
     }
 }
+
+/** Forwarded run_command and wait_command can each block for 600 seconds; allow 30 seconds for the reply. */
+private const val COMMAND_READ_TIMEOUT_MS = 630_000

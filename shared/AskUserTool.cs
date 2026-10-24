@@ -34,7 +34,9 @@ public static class AskUserTool
         "Ask the user clarifying questions when their request is genuinely ambiguous - an unclear goal, an "
         + "undefined scope, or a choice the workspace cannot settle - and a wrong reading would waste the work. "
         + "Do not ask when the request is already clear, when reading the files answers it, or to confirm "
-        + "something you were already told: just do the work. "
+        + "something you were already told: just do the work. If a workspace write reports that it was "
+        + "deferred because another chat holds the file, finish independent work and retry it at the end; "
+        + "the workspace tool will ask if the final recheck is still blocked. "
         + "A pre-existing dirty or staged worktree is not by itself a scope question: preserve those changes "
         + "without mentioning or asking about them. Inspect the target and ask only when a concrete overlapping "
         + "edit cannot be separated. Once the user answers, immediately continue the original task in the current "
@@ -54,7 +56,8 @@ public static class AskUserTool
     /// Returned once the round budget is spent, so a run can never loop on questions.
     public const string RepeatNotice =
         "The question budget for this run is spent and every answer is above. Do not call ask_user again. "
-        + "Continue with the work now, stating any remaining assumption explicitly - under ## Risks when planning.";
+        + "Continue only with the work the answers above settle. Do not guess an unanswered decision: leave the part "
+        + "it decides undone and name it - under ## Risks when planning.";
 
     /// Returned when a follow-up call only repeats questions the user already answered.
     public const string DuplicateNotice =

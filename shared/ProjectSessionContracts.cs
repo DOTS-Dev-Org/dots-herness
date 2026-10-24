@@ -145,10 +145,35 @@ public sealed class NativeCacheSession
     public NativeCacheSummary Summary() => NativeCacheSummary.From(Events.Count == 0 ? Events
         : Events.Where(value => value.ScopeFingerprint == Events[^1].ScopeFingerprint));
 
-    public int? ExpiredLargePrefixTokens(DateTimeOffset now, int minimumTokens = 8_192)
+    /// <param name="others">Cache sessions of the other chats; a local server's
+    /// single prompt cache is replaced by any later request from one of them.</param>
+    public int? ExpiredLargePrefixTokens(DateTimeOffset now, int minimumTokens = 8_192,
+        IEnumerable<NativeCacheSession>? others = null)
     {
         var latest = Events.LastOrDefault();
         if (latest is null) return null;
+        // Warn when a large prefix cached earlier came back almost uncached.
+        // Known prefix rewrites (compaction, settings) are expected misses, not breaks.
+        int? Dropped() => latest.Usage is { CachedInputTokens: int cached } usage
+            && usage.InputTokens >= minimumTokens && cached <= usage.InputTokens * 0.05
+            && latest.CacheReuseEvidence.Classification != "changed"
+            && Events.Any(value => value != latest && value.ScopeFingerprint == latest.ScopeFingerprint
+                && value.Usage?.CachedInputTokens >= minimumTokens)
+            ? usage.InputTokens : null;
+        // A local server (llama-server --parallel 1, dotsmlx) keeps one prompt's KV
+        // cache with no lifetime and no cost: idle time says nothing, another chat does.
+        if (latest.Local)
+            return latest.Usage?.InputTokens >= minimumTokens && latest.RouteFingerprint is { } route
+                && (others ?? []).Any(session => session != this && session.Events.Any(value =>
+                    value.Timestamp > latest.Timestamp && value.RouteFingerprint == route))
+                ? latest.Usage.InputTokens
+                : Dropped();
+        // Routes without a known retention (ChatGPT subscription): after an hour the
+        // cache is gone on any OpenAI route, so that is the upper bound.
+        if (latest.CacheReuseEvidence.EffectiveTTLSeconds is null)
+            return now - latest.Timestamp >= TimeSpan.FromHours(1) && latest.Usage?.InputTokens >= minimumTokens
+                ? latest.Usage.InputTokens
+                : Dropped();
         var baseline = Baselines.Values.FirstOrDefault(value => value.EventId == latest.EventId)
             ?? Baselines.Values.FirstOrDefault(value => value.EventId == latest.CacheReuseEvidence.BaselineEventID);
         if (baseline?.TerminalCacheTokens is not int tokens || tokens < minimumTokens
@@ -175,7 +200,7 @@ public sealed record NativeCacheUsageEvent(string EventId, DateTimeOffset Timest
     string ScopeFingerprint, NativeUsage? Usage, NativeCacheReuseEvidence CacheReuseEvidence,
     int? LatencyMilliseconds = null, decimal? Cost = null,
     int? PrepareMilliseconds = null, int? FirstTokenMilliseconds = null,
-    string? RouteFingerprint = null);
+    string? RouteFingerprint = null, bool Local = false);
 
 public sealed record NativeCacheSummary(int SampleCount, int MeasuredInputCount, int ExactReuseCount,
     int CandidateCount, long InputTokens, long CachedTokens, long EligibleTokens, long ReusedTokens,

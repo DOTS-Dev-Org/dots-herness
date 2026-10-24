@@ -9,9 +9,13 @@ import PluginRuntime
 
 struct AccountMenuPopover: View {
     let account: AccountIdentity
-    @ObservedObject var model: AppModel
+    @ObservedObject var router: RouterController
     let onSettings: () -> Void
     let onSignOut: () -> Void
+    @State private var isUsageExpanded = false
+    @State private var isUsageHovered = false
+
+    private var usagePercent: Double? { accountUsageUsedFraction(router) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,7 +42,7 @@ struct AccountMenuPopover: View {
             Divider()
                 .opacity(0.7)
 
-            AccountLimitsSection(router: model.router)
+            usageDisclosure
 
             Divider()
                 .opacity(0.7)
@@ -66,33 +70,86 @@ struct AccountMenuPopover: View {
         }
         .frame(maxWidth: .infinity)
     }
+
+    private var usageDisclosure: some View {
+        VStack(spacing: 0) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.16)) {
+                    isUsageExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "gauge")
+                        .font(.system(size: 14, weight: .regular))
+                        .frame(width: 22)
+
+                    Text(AppCopy.text("sidebar.usage"))
+                        .font(.system(size: 13, weight: .regular))
+                        .lineLimit(1)
+
+                    Spacer(minLength: 8)
+
+                    UsageRing(usedPercent: usagePercent)
+                        .frame(width: 15, height: 15)
+
+                    Text(usagePercent.map { "\(Int(($0 * 100).rounded()))%" } ?? "—")
+                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                        .foregroundStyle(usagePercent.map(usageHeatColor) ?? Color.secondary)
+                        .frame(minWidth: 28, alignment: .trailing)
+
+                    Image(systemName: isUsageExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 12)
+                }
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 8)
+                .frame(maxWidth: .infinity, minHeight: 34, maxHeight: 34)
+                .background(
+                    isUsageHovered ? Color.primary.opacity(0.09) : Color.clear,
+                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .onHover { isUsageHovered = $0 }
+            .accessibilityLabel(AppCopy.text("sidebar.usage"))
+
+            if isUsageExpanded {
+                ScrollView(.vertical, showsIndicators: false) {
+                    AccountLimitsSection(router: router, compact: true)
+                }
+                .frame(maxHeight: 320)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 6)
+    }
 }
 
-/// Per-account rate limits, inline in either footer popover. No sign-in nag:
-/// accounts that report no endpoint (API keys) just say there is no limit info.
+/// Per-account limits for the expandable avatar section. Accounts without a
+/// usage endpoint (such as API keys) simply report that no limit is available.
 struct AccountLimitsSection: View {
     @ObservedObject var router: RouterController
+    var compact = false
 
     private var activeAccounts: [RouterConnection] { router.connections.filter(\.active) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(AppCopy.text("sidebar.usage"))
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.secondary)
-
+        VStack(alignment: .leading, spacing: compact ? 7 : 10) {
             if activeAccounts.isEmpty {
                 Text(AppCopy.text("usage.noLimitInfo"))
-                    .font(.system(size: 12))
+                    .font(.system(size: compact ? 11 : 12))
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(activeAccounts) { connection in
-                    AccountLimitRow(connection: connection, router: router)
+                    AccountLimitRow(connection: connection, router: router, compact: compact)
                 }
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.horizontal, compact ? 8 : 14)
+        .padding(.vertical, compact ? 6 : 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .onAppear {
             Task { await router.refreshAccountUsage() }
@@ -105,6 +162,7 @@ struct AccountLimitsSection: View {
 struct AccountLimitRow: View {
     let connection: RouterConnection
     @ObservedObject var router: RouterController
+    var compact = false
 
     private var isClaudeSubscription: Bool {
         connection.provider == "claude" && connection.authType == "oauth"
@@ -141,17 +199,18 @@ struct AccountLimitRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 8) {
-                ProviderLogoView(name: connection.name, providerID: connection.provider, size: 22)
+        VStack(alignment: .leading, spacing: compact ? 3 : 5) {
+            HStack(spacing: compact ? 6 : 8) {
+                ProviderLogoView(name: connection.name, providerID: connection.provider, size: compact ? 20 : 22)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(connection.name)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: compact ? 12 : 13, weight: .medium))
                         .lineLimit(1)
-                    if let email = connection.email {
+                    if let email = connection.email,
+                       email.localizedCaseInsensitiveCompare(connection.name) != .orderedSame {
                         Text(email)
-                            .font(.system(size: 11))
+                            .font(.system(size: compact ? 9 : 11))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
@@ -162,7 +221,7 @@ struct AccountLimitRow: View {
                 if let remaining {
                     let used = min(max(1 - remaining, 0), 1)
                     Text("\(Int((used * 100).rounded()))%")
-                        .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                        .font(.system(size: compact ? 11 : 12, weight: .semibold).monospacedDigit())
                         .foregroundStyle(usageHeatColor(used))
                 } else if pending {
                     ProgressView().controlSize(.mini)
@@ -177,15 +236,16 @@ struct AccountLimitRow: View {
                 let used = min(max(1 - remaining, 0), 1)
                 ProgressView(value: used)
                     .tint(usageHeatColor(used))
+                    .scaleEffect(x: 1, y: compact ? 0.72 : 1, anchor: .center)
 
                 HStack(spacing: 6) {
                     Text(AppCopy.format("router.quotaRemaining", Int((remaining * 100).rounded())))
                     Spacer(minLength: 0)
                     if let reset = snapshot?.resetsAt ?? fallbackReset {
-                        Text(resetLabel(reset))
+                        Text(usageResetLabel(reset))
                     }
                 }
-                .font(.system(size: 10))
+                .font(.system(size: compact ? 9 : 10))
                 .foregroundStyle(.secondary)
 
                 let known = windows.compactMap { window in
@@ -195,9 +255,9 @@ struct AccountLimitRow: View {
                     HStack(spacing: 4) {
                         ForEach(known, id: \.0) { kind, percent in
                             Text("\(windowLabel(kind)) \(Int((percent * 100).rounded()))%")
-                                .font(.system(size: 10, weight: .medium))
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
+                                .font(.system(size: compact ? 9 : 10, weight: .medium))
+                                .padding(.horizontal, compact ? 5 : 6)
+                                .padding(.vertical, compact ? 1 : 2)
                                 .background(Color.primary.opacity(0.07), in: Capsule())
                         }
                     }
@@ -218,13 +278,6 @@ struct AccountLimitRow: View {
         guard isClaudeSubscription, case .loaded(let usage) = router.claudeUsage else { return nil }
         return usage.windows.compactMap(\.resetsAt).min()
     }
-
-    private func resetLabel(_ date: Date) -> String {
-        switch ClaudeUsageService.resetText(date) {
-        case .relative(let text): return AppCopy.format("usage.resetsIn", text)
-        case .weekday(let text): return AppCopy.format("usage.resetsOn", text)
-        }
-    }
 }
 
 /// Shared limit heat: 0-25% green … 75%+ red, matching `ClaudeUsagePanel`.
@@ -234,6 +287,13 @@ func usageHeatColor(_ percent: Double) -> Color {
     case 1: return .yellow
     case 2: return .orange
     default: return .red
+    }
+}
+
+func usageResetLabel(_ date: Date) -> String {
+    switch ClaudeUsageService.resetText(date) {
+    case .relative(let text): return AppCopy.format("usage.resetsIn", text)
+    case .weekday(let text): return AppCopy.format("usage.resetsOn", text)
     }
 }
 
@@ -249,32 +309,13 @@ struct AccountMenuRow: View {
 
     var body: some View {
         Button(role: role, action: action) {
-            HStack(spacing: 13) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 14, weight: .regular))
-                    .frame(width: 22)
-
-                Text(title)
-                    .font(.system(size: 13, weight: .regular))
-                    .lineLimit(1)
-
-                Spacer(minLength: 10)
-
-                if let shortcut {
-                    Text(shortcut)
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundStyle(.secondary)
-                }
-
-                if let trailingSystemImage {
-                    Image(systemName: trailingSystemImage)
-                        .font(.system(size: 14, weight: .regular))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .foregroundStyle(isDestructive ? Color.red : Color.primary)
-            .padding(.horizontal, 8)
-            .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 32)
+            AccountMenuRowLabel(
+                title: title,
+                systemImage: systemImage,
+                trailingSystemImage: trailingSystemImage,
+                shortcut: shortcut,
+                isDestructive: isDestructive
+            )
             .background(
                 isHovered ? Color.primary.opacity(0.10) : Color.clear,
                 in: RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -282,6 +323,43 @@ struct AccountMenuRow: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
+    }
+}
+
+private struct AccountMenuRowLabel: View {
+    let title: String
+    let systemImage: String
+    var trailingSystemImage: String? = nil
+    var shortcut: String? = nil
+    var isDestructive = false
+
+    var body: some View {
+        HStack(spacing: 13) {
+            Image(systemName: systemImage)
+                .font(.system(size: 14, weight: .regular))
+                .frame(width: 22)
+
+            Text(title)
+                .font(.system(size: 13, weight: .regular))
+                .lineLimit(1)
+
+            Spacer(minLength: 10)
+
+            if let shortcut {
+                Text(shortcut)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+
+            if let trailingSystemImage {
+                Image(systemName: trailingSystemImage)
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .foregroundStyle(isDestructive ? Color.red : Color.primary)
+        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 32)
     }
 }
 

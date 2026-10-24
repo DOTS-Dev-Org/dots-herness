@@ -18,11 +18,14 @@ public struct AgentFileChange: Identifiable, Hashable, Sendable {
 extension AppModel {
     public func agentChanges() -> [AgentFileChange] {
         guard let conversation = selected else { return [] }
+        let messages = conversation.transcriptComplete
+            ? conversation.messages
+            : bridge.store.loadTranscript(id: conversation.id) ?? conversation.messages
         var order: [String] = []
         var byPath: [String: AgentFileChange] = [:]
-        for message in conversation.messages where message.kind == .assistant {
+        for message in messages where message.kind == .assistant {
             guard let turnID = message.turnID, !message.changedFiles.isEmpty else { continue }
-            let request = conversation.messages.first { $0.kind == .user && $0.turnID == turnID }?.text ?? ""
+            let request = messages.first { $0.kind == .user && $0.turnID == turnID }?.text ?? ""
             for file in message.changedFiles {
                 if let old = byPath[file.path] {
                     // Added then edited stays "added"; the earliest turn keeps the base content.

@@ -223,42 +223,78 @@ internal sealed class SshHostEntryWindow : Window
     private readonly TextBox _hostName = new();
     private readonly TextBox _user = new();
     private readonly TextBox _port = new() { Text = "22" };
-    private readonly TextBlock _error = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly PasswordBox _password = new();
+    private readonly CheckBox _rememberPassword = new();
+    private readonly TextBlock _rememberPasswordHint = new() { TextWrapping = TextWrapping.Wrap, Foreground = System.Windows.Media.Brushes.Gray };
+    private readonly StackPanel _form = new();
+    private readonly TextBlock _progress = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _fingerprintTitle = new() { TextWrapping = TextWrapping.Wrap, FontWeight = FontWeights.SemiBold };
+    private readonly TextBox _fingerprints = new() { IsReadOnly = true, TextWrapping = TextWrapping.Wrap, Height = 92, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+    private readonly TextBlock _manual = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly TextBox _publicKey = new() { IsReadOnly = true, TextWrapping = TextWrapping.Wrap, Height = 74, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+    private readonly TextBlock _error = new() { TextWrapping = TextWrapping.Wrap, Foreground = System.Windows.Media.Brushes.Firebrick };
+    private readonly TextBlock _retryHint = new() { TextWrapping = TextWrapping.Wrap, Foreground = System.Windows.Media.Brushes.Gray };
+    private readonly TextBlock _done = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly Button _primary = new() { Padding = new Thickness(12, 6, 12, 6), IsDefault = true };
+    private readonly Button _copy = new() { Padding = new Thickness(12, 6, 12, 6) };
+    private IReadOnlyList<SshHostKey> _scannedKeys = [];
+    private Step _step = Step.Form;
     public string? AddedAlias { get; private set; }
+
+    private enum Step { Form, Scanning, Fingerprint, Enrolling, Failed, KeyRejected, Done }
 
     public SshHostEntryWindow(AppModel model)
     {
         _model = model;
         Title = model.L("workLocation.addHost");
         Width = 420;
-        Height = 345;
+        Height = 520;
+        MinHeight = 480;
         ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var fields = new StackPanel { Margin = new Thickness(18) };
+        _form = fields;
         AddField(fields, model.L("settings.sshAlias"), _alias);
         AddField(fields, model.L("settings.sshHostName"), _hostName);
         AddField(fields, model.L("settings.sshUser"), _user);
         AddField(fields, model.L("settings.sshPort"), _port);
-        fields.Children.Add(new TextBlock
-        {
-            Text = "Uses the SSH keys configured on this computer. Passwords and private keys are not stored by DotsHarness.",
-            TextWrapping = TextWrapping.Wrap,
-            Foreground = System.Windows.Media.Brushes.Gray,
-            Margin = new Thickness(0, 2, 0, 8),
-        });
-        fields.Children.Add(_error);
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+        AddField(fields, model.L("settings.sshPassword"), _password);
+        _rememberPassword.Content = model.L("settings.sshRememberPassword");
+        fields.Children.Add(_rememberPassword);
+        _rememberPasswordHint.Text = model.L("settings.sshRememberPassword.hint");
+        _rememberPasswordHint.Margin = new Thickness(0, 2, 0, 8);
+        fields.Children.Add(_rememberPasswordHint);
+        var root = new StackPanel { Margin = new Thickness(18) };
+        root.Children.Add(fields);
+        _progress.Margin = new Thickness(0, 10, 0, 0);
+        root.Children.Add(_progress);
+        _fingerprintTitle.Margin = new Thickness(0, 10, 0, 4);
+        root.Children.Add(_fingerprintTitle);
+        root.Children.Add(_fingerprints);
+        _manual.Margin = new Thickness(0, 10, 0, 4);
+        root.Children.Add(_manual);
+        root.Children.Add(_publicKey);
+        _error.Margin = new Thickness(0, 10, 0, 4);
+        root.Children.Add(_error);
+        root.Children.Add(_retryHint);
+        _done.Margin = new Thickness(0, 10, 0, 4);
+        root.Children.Add(_done);
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 14, 0, 0) };
         var cancel = new Button { Content = model.L("archive.cancel"), Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 0, 8, 0) };
-        cancel.Click += (_, _) => DialogResult = false;
-        var save = new Button { Content = model.L("workLocation.addHost"), Padding = new Thickness(12, 6, 12, 6), IsDefault = true };
-        save.Click += OnSave;
+        cancel.Click += (_, _) => { if (_step is not (Step.Scanning or Step.Enrolling)) DialogResult = false; };
+        _copy.Content = model.L("ssh.copyPublicKey");
+        _copy.Margin = new Thickness(0, 0, 8, 0);
+        _copy.Click += (_, _) => CopyPublicKey();
+        _primary.Click += async (_, _) => await OnPrimaryAsync();
         buttons.Children.Add(cancel);
-        buttons.Children.Add(save);
-        fields.Children.Add(buttons);
-        Content = fields;
+        buttons.Children.Add(_copy);
+        buttons.Children.Add(_primary);
+        root.Children.Add(buttons);
+        Content = root;
+        RenderStep();
     }
 
-    private static void AddField(Panel panel, string title, TextBox input)
+    private static void AddField(Panel panel, string title, Control input)
     {
         panel.Children.Add(new TextBlock { Text = title, Margin = new Thickness(0, 0, 0, 3) });
         input.Padding = new Thickness(7, 5, 7, 5);
@@ -266,19 +302,134 @@ internal sealed class SshHostEntryWindow : Window
         panel.Children.Add(input);
     }
 
-    private void OnSave(object sender, RoutedEventArgs e)
+    private void RenderStep()
     {
-        if (!int.TryParse(_port.Text, out var port))
+        _form.Visibility = _step == Step.Form ? Visibility.Visible : Visibility.Collapsed;
+        _progress.Visibility = _step is Step.Scanning or Step.Enrolling ? Visibility.Visible : Visibility.Collapsed;
+        _progress.Text = _step == Step.Scanning ? _model.L("ssh.scanning") : _model.L("ssh.enrolling");
+        _fingerprintTitle.Visibility = _step == Step.Fingerprint ? Visibility.Visible : Visibility.Collapsed;
+        _fingerprints.Visibility = _step == Step.Fingerprint ? Visibility.Visible : Visibility.Collapsed;
+        _manual.Visibility = _step == Step.KeyRejected ? Visibility.Visible : Visibility.Collapsed;
+        _publicKey.Visibility = _step == Step.KeyRejected ? Visibility.Visible : Visibility.Collapsed;
+        _copy.Visibility = _step == Step.KeyRejected ? Visibility.Visible : Visibility.Collapsed;
+        _error.Visibility = _step == Step.Failed ? Visibility.Visible : Visibility.Collapsed;
+        _retryHint.Visibility = _step == Step.Failed ? Visibility.Visible : Visibility.Collapsed;
+        _done.Visibility = _step == Step.Done ? Visibility.Visible : Visibility.Collapsed;
+        _fingerprintTitle.Text = _model.L("ssh.fingerprintTitle", _hostName.Text.Trim());
+        _manual.Text = _model.L("ssh.installKeyManually");
+        _done.Text = _model.L("ssh.enrolled.hint");
+        _retryHint.Text = _model.L("ssh.retryHint");
+        _primary.Visibility = _step is Step.Scanning or Step.Enrolling ? Visibility.Collapsed : Visibility.Visible;
+        _primary.Content = _step switch
         {
-            _error.Text = "Enter a port from 1 to 65535.";
+            Step.Form => _model.L("ssh.continue"),
+            Step.Fingerprint => _model.L("ssh.trustAndConnect"),
+            Step.Failed or Step.KeyRejected => _model.L("ssh.retry"),
+            Step.Done => _model.L("common.done"),
+            _ => "",
+        };
+    }
+
+    private async Task OnPrimaryAsync()
+    {
+        switch (_step)
+        {
+            case Step.Form:
+                await ScanHostAsync();
+                break;
+            case Step.Fingerprint:
+            case Step.KeyRejected:
+                await AddHostAsync();
+                break;
+            case Step.Failed:
+                if (_scannedKeys.Count == 0) await ScanHostAsync();
+                else await AddHostAsync();
+                break;
+            case Step.Done:
+                DialogResult = true;
+                break;
+        }
+    }
+
+    private async Task ScanHostAsync()
+    {
+        if (!int.TryParse(_port.Text, out var port) || !RemoteSsh.IsValidAlias(_alias.Text.Trim())
+            || !RemoteSsh.IsValidHostInput(_hostName.Text.Trim(), _user.Text.Trim(), port))
+        {
+            _step = Step.Failed;
+            _error.Text = _model.L("ssh.error.invalidInput");
+            RenderStep();
             return;
         }
+        _step = Step.Scanning;
+        RenderStep();
         try
         {
-            AddedAlias = _alias.Text.Trim();
-            _model.AddSshHost(AddedAlias, _hostName.Text, _user.Text, port);
-            DialogResult = true;
+            var host = new SshHost(_alias.Text.Trim(), _hostName.Text.Trim(), _user.Text.Trim(), port);
+            _scannedKeys = await RemoteSsh.ScanHostKeysAsync(host);
+            if (_scannedKeys.Count == 0) throw new InvalidOperationException(_model.L("ssh.error.notReachable", host.Alias));
+            _fingerprints.Text = string.Join(Environment.NewLine, _scannedKeys.Select(key => $"{key.KeyType}: {key.Fingerprint}"))
+                + Environment.NewLine + Environment.NewLine + _model.L("ssh.fingerprintMessage");
+            _step = Step.Fingerprint;
         }
-        catch (Exception error) { _error.Text = error.Message; }
+        catch (Exception error)
+        {
+            _error.Text = error.Message;
+            _step = Step.Failed;
+        }
+        RenderStep();
+    }
+
+    private async Task AddHostAsync()
+    {
+        if (_scannedKeys.Count == 0 || !int.TryParse(_port.Text, out var port)) return;
+        var alias = _alias.Text.Trim();
+        var hostName = _hostName.Text.Trim();
+        var user = _user.Text.Trim();
+        var manualKeyRetry = _step == Step.KeyRejected;
+        var password = _password.Password;
+        var rememberPassword = _rememberPassword.IsChecked == true;
+        _step = Step.Enrolling;
+        RenderStep();
+        try
+        {
+            if (manualKeyRetry)
+                await _model.AddSshHostUsingGeneratedKeyAsync(alias, hostName, user, port, _scannedKeys);
+            else if (password.Length > 0)
+                await _model.EnrollSshHostAsync(alias, hostName, user, port, password, _scannedKeys, rememberPassword: rememberPassword);
+            else
+                await _model.AddSshHostWithoutPasswordAsync(alias, hostName, user, port, _scannedKeys);
+            AddedAlias = alias;
+            _password.Clear();
+            _step = Step.Done;
+        }
+        catch (SshEnrollmentException error) when (error.Failure == SshEnrollmentFailure.PasswordAuthenticationDisabled)
+        {
+            _password.Clear();
+            _publicKey.Text = SshEnrollment.ReadPublicKey() ?? "";
+            _step = Step.KeyRejected;
+        }
+        catch (Exception error)
+        {
+            _password.Clear();
+            _error.Text = LocalizedError(error, alias);
+            _step = Step.Failed;
+        }
+        RenderStep();
+    }
+
+    private string LocalizedError(Exception error, string alias) => error is SshEnrollmentException enrollment
+        ? enrollment.Failure switch
+        {
+            SshEnrollmentFailure.AuthenticationFailed => _model.L("ssh.error.authFailed", alias),
+            SshEnrollmentFailure.HostKeyChanged => _model.L("ssh.error.hostKeyChanged", alias),
+            SshEnrollmentFailure.TimedOut => _model.L("ssh.error.notReachable", alias),
+            _ => error.Message,
+        }
+        : error.Message;
+
+    private void CopyPublicKey()
+    {
+        if (_publicKey.Text.Length > 0) NativeClipboard.SetText(_publicKey.Text);
     }
 }

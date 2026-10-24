@@ -30,25 +30,12 @@ public enum AgentResponseStylePreference: String, Sendable, Codable, Equatable, 
     }
 
     public var title: String {
-        switch self {
-        case .balanced: return AppCopy.language == .tr ? "Dengeli" : "Balanced"
-        case .concise: return AppCopy.language == .tr ? "Kısa" : "Concise"
-        case .ultra: return AppCopy.language == .tr ? "Ultra kısa" : "Ultra"
-        case .detailed: return AppCopy.language == .tr ? "Detaylı" : "Detailed"
-        }
+        AppCopy.text("responseStyle.\(rawValue)")
     }
 
     public var detail: String {
-        switch self {
-        case .balanced:
-            return AppCopy.language == .tr ? "Doğal ve dengeli yanıtlar." : "Natural, balanced responses."
-        case .concise:
-            return AppCopy.language == .tr ? "Kısa ve okunabilir yanıtı tercih eder; tamamlanma veya maliyet garantisi vermez." : "Prefers short, readable responses; it does not guarantee completion or lower usage."
-        case .ultra:
-            return AppCopy.language == .tr ? "En kısa okunabilir yanıtı best-effort hedefler; tamamlanma garantisi vermez." : "Best-effort shortest readable response; no completion guarantee."
-        case .detailed:
-            return AppCopy.language == .tr ? "Bağlamı ve gerekçeyi daha kapsamlı açıklar." : "Provides fuller context and explanation."
-        }
+        AppCopy.text("responseStyle.\(rawValue).detail")
+
     }
 }
 
@@ -70,31 +57,23 @@ public struct ResponseStyleDecision: Sendable, Equatable {
         }
     }
     public var isHardLimit: Bool { style == .strict }
-    /// Word limits are converted conservatively for providers that expose only
-    /// a token ceiling; the prompt still carries the exact word constraint.
-    /// This is an upper bound only when the provider supports the mapped field,
-    /// and never a completion guarantee.
-    public var providerOutputTokenCap: Int? {
-        if let maxOutputTokens { return maxOutputTokens }
-        guard let maxWords else { return nil }
-        return maxWords > Int.max / 2 ? Int.max : max(1, maxWords * 2)
-    }
+    /// Only an explicit token ceiling becomes a provider cap. Word limits stay in
+    /// the prompt: a words-to-tokens guess is not measured for every language, and
+    /// when it is too tight the turn ends with an output-limit failure.
+    public var providerOutputTokenCap: Int? { maxOutputTokens }
 
     /// Aviation "dark cockpit": a quiet panel means everything is normal, so
     /// only the abnormal and the actionable earn output tokens.
-    static let darkCockpit = " Dark cockpit rule: silence means normal. Report only results, deviations, failures, and decisions the user must make; never narrate steps or restate what went as expected."
-    /// The macOS conversation draws `flow` and `chart` fences, so a process or
-    /// a data set costs one short line per item instead of paragraphs.
-    static let visualHint = " Show, do not describe: for a process, a request/response path, or how a change you made works, use a ```flow fence with one `stage: short note` line per stage in order; for three or more comparable numbers, use a ```chart fence with one `label: number` line per value. Never repeat a fence's content in prose."
+    static let darkCockpit = " Dark cockpit rule: state the requested result and evidence, including passing checks. Progress updates stay required but brief. Report failures, deviations and required decisions; omit repeated plans, expected outcomes and tool-by-tool narration. Use an optional diagram only when clearer than prose."
 
     public var guidance: String {
         switch style {
         case .standard:
             return ""
         case .concise:
-            return "Concise: short, direct prose for this turn. No preamble, optional explanation, or alternatives." + Self.darkCockpit + Self.visualHint
+            return "Concise: short, direct prose for this turn. No preamble, optional explanation, or alternatives." + Self.darkCockpit
         case .ultra:
-            return "Ultra: terse prose for this turn. Only the answer and the evidence it needs." + Self.darkCockpit + Self.visualHint
+            return "Ultra: terse prose for this turn. Only the answer and the evidence it needs." + Self.darkCockpit
         case .detailed:
             return "For this turn, explain the answer clearly and thoroughly. Include the relevant context, reasoning, trade-offs, and verification details, but avoid repetition and unrelated alternatives."
         case .strict:
@@ -184,18 +163,38 @@ public enum ResponseStyleDetector {
         return ResponseStyleDecision(style: .strict, maxOutputTokens: limit.tokens, maxWords: limit.words)
     }
 
+    /// A count is a limit only with a limit cue beside it ("en fazla 200 token",
+    /// "max 50 words", "100 kelimeyi geçme"). Bare counts such as "Add 2 words to the
+    /// commit message" or "512 token limit to the prompt builder" are task content.
+    private static let limitCuesBefore = [
+        "en fazla", "en cok", "at most", "no more than", "not more than", "up to",
+        "less than", "fewer than", "under", "below", "within", "exceed", "max", "maximum", "maksimum",
+    ]
+    private static let limitCuesAfter: Set<String> = [
+        "gecme", "gecmesin", "gecmeyin", "gecmeyecek", "asma", "asmasin", "asmayin", "asmayacak",
+        "sinirla", "sinirlandir", "max", "maximum", "maksimum",
+    ]
+
     private static func parseLimit(_ normalized: String) -> (tokens: Int?, words: Int?) {
         let words = normalized.split(separator: " ").map(String.init)
         guard words.count > 1 else { return (nil, nil) }
         for index in 0..<(words.count - 1) {
             guard let value = Int(words[index]), value > 0 else { continue }
-            switch words[index + 1] {
-            case "token", "tokens": return (value, nil)
-            case "kelime", "kelimelik", "kelimeyi", "word", "words": return (nil, value)
-            default: continue
-            }
+            let unit = words[index + 1]
+            let isTokens = unit == "token" || unit == "tokens"
+            let isWords = ["kelime", "kelimelik", "kelimeyi", "word", "words"].contains(unit)
+            guard isTokens || isWords else { continue }
+            let before = words[max(0, index - 3)..<index].joined(separator: " ")
+            let after = words[min(words.count, index + 2)..<min(words.count, index + 4)]
+            guard hasLimitCue(before: before, after: after) else { continue }
+            return isTokens ? (value, nil) : (nil, value)
         }
         return (nil, nil)
+    }
+
+    private static func hasLimitCue(before: String, after: ArraySlice<String>) -> Bool {
+        if limitCuesBefore.contains(where: { before == $0 || before.hasSuffix(" " + $0) }) { return true }
+        return after.contains { limitCuesAfter.contains($0) }
     }
 
     private static func normalize(_ value: String) -> String {

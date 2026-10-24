@@ -7,7 +7,7 @@ using JsonNodeValue = System.Text.Json.Nodes.JsonValue;
 
 namespace DotsHarnessCore;
 
-public enum NativeMediaKind { Image, Video, Audio }
+public enum NativeMediaKind { Image, Video, Audio, Music }
 
 public sealed record MediaRequest(NativeMediaKind Kind, string Prompt)
 {
@@ -19,6 +19,9 @@ public sealed record MediaRequest(NativeMediaKind Kind, string Prompt)
         var kind = parts[0][1..].ToLowerInvariant() switch
         {
             "imagegen" or "image" or "img" => NativeMediaKind.Image,
+            "videogen" or "video" => NativeMediaKind.Video,
+            "audiogen" or "audio" or "speech" => NativeMediaKind.Audio,
+            "musicgen" or "music" => NativeMediaKind.Music,
             _ => (NativeMediaKind?)null,
         };
         if (kind is null) return false;
@@ -426,6 +429,27 @@ public sealed class NativeProviderImageRouter
         catch (Exception ex) { return new ProviderImageResult.Failed(new ProviderImageFailure(ProviderImageFailureKind.Other, ex.Message)); }
     }
 
+    /// Video and speech use the first active account whose provider declares that media kind,
+    /// the same selection as macOS mediaConfiguration(for:). The selected chat model does not apply.
+    public async Task<NativeGeneratedMedia> GenerateMediaAsync(NativeMediaKind kind, string prompt, string root, CancellationToken ct = default)
+    {
+        prompt = prompt.Trim();
+        if (prompt.Length == 0) throw new NativeMediaGenerationException("Write a description after the command.");
+        foreach (var account in _store.State.Accounts.Where(account => account.Active).OrderBy(account => account.Priority))
+        {
+            if (NativeMediaCatalog.SpecFor(account.Provider, kind) is not { } spec) continue;
+            var credential = _store.Secrets.Read(account.CredentialId);
+            Dictionary<string, string>? headers = null;
+            if (account.Protocol == NativeProviderProtocol.ChatGpt && !string.IsNullOrWhiteSpace(account.SessionAccountId))
+            {
+                headers = new Dictionary<string, string> { ["ChatGPT-Account-ID"] = account.SessionAccountId };
+            }
+            var bytes = await NativeMediaGenerator.GenerateAsync(kind, prompt, account.BaseUrl, credential, spec, _http, ct, headers);
+            return NativeMediaGenerator.Save(kind, bytes, root, account.ProviderName, spec.Model, prompt);
+        }
+        throw new NativeMediaGenerationException("Connect a provider that supports video or speech generation before using this command.");
+    }
+
     private NativeProviderAccount? Primary(string? selectedModel)
     {
         var active = _store.State.Accounts.Where(account => account.Active).OrderBy(account => account.Priority).ToList();
@@ -444,7 +468,8 @@ public sealed class NativeProviderImageRouter
 
 public static class NativeImageFileStore
 {
-    public static string Save(ProviderImageOutput output, string root)
+    /// <summary>Every saved image is filed in the library too; <paramref name="prompt"/> becomes its title there.</summary>
+    public static string Save(ProviderImageOutput output, string root, string? prompt = null)
     {
         var directory = Path.Combine(root, "generated-media");
         Directory.CreateDirectory(directory);
@@ -457,6 +482,7 @@ public static class NativeImageFileStore
         };
         var path = Path.Combine(directory, $"{DateTimeOffset.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.{extension}");
         File.WriteAllBytes(path, output.Data);
+        MediaLibrary.Record(path, "image", prompt, root);
         return path;
     }
 }

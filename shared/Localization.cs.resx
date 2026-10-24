@@ -114,7 +114,7 @@
   <data name="conversation.ok" xml:space="preserve"><value>OK</value></data>
   <data name="conversation.stop" xml:space="preserve"><value>Přestaň</value></data>
   <data name="conversation.stopVoice" xml:space="preserve"><value>Zastavit hlasový vstup</value></data>
-  <data name="conversation.mic" xml:space="preserve"><value>Mic</value></data>
+  <data name="conversation.mic" xml:space="preserve"><value>Mikrofon</value></data>
   <data name="conversation.startVoice" xml:space="preserve"><value>Spusťte hlasový vstup</value></data>
   <data name="conversation.listening" xml:space="preserve"><value>Poslouchám…</value></data>
   <data name="conversation.heard" xml:space="preserve"><value>Slyšel: {0}</value></data>
@@ -299,13 +299,14 @@
   <data name="usage.resetsIn" xml:space="preserve"><value>reset za {0}</value></data>
   <data name="usage.resetsOn" xml:space="preserve"><value>reset {0}</value></data>
   <data name="usage.resetsAvailable" xml:space="preserve"><value>K dispozici je {0} resetování</value></data>
-  <data name="usage.manageResets" xml:space="preserve"><value>Manage resets</value></data>
-  <data name="usage.useReset" xml:space="preserve"><value>Use reset</value></data>
-  <data name="usage.resetTitle" xml:space="preserve"><value>Use a Claude limit reset?</value></data>
-  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude's Usage page will open. Sign in to {0} and review the reset offered to that account. To use it, click Reset for free and confirm in Claude. Once used, a reset cannot be undone. Limits refresh when you return to HerNess.</value></data>
-  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Could not open Claude. Check that the account is still connected, then try again.</value></data>
-  <data name="usage.openClaude" xml:space="preserve"><value>Open Claude</value></data>
+  <data name="usage.manageResets" xml:space="preserve"><value>Spravovat resety</value></data>
+  <data name="usage.useReset" xml:space="preserve"><value>Použít reset</value></data>
+  <data name="usage.resetTitle" xml:space="preserve"><value>Použít reset limitu Claude?</value></data>
+  <data name="usage.resetConfirmation" xml:space="preserve"><value>Otevře se stránka Využití v Claude. Přihlaste se k {0} a zkontrolujte reset nabízený tomuto účtu. Chcete-li ho použít, klikněte na „Reset for free“ a potvrďte v Claude. Použitý reset nelze vrátit. Limity se obnoví, až se vrátíte do HerNess.</value></data>
+  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Claude se nepodařilo otevřít. Zkontrolujte, zda je účet stále připojen, a zkuste to znovu.</value></data>
+  <data name="usage.openClaude" xml:space="preserve"><value>Otevřít Claude</value></data>
   <data name="usage.needLogin" xml:space="preserve"><value>Přihlaste se do Claude a zobrazte limity</value></data>
+  <data name="agent.providerLimitTitle" xml:space="preserve"><value>Byl dosažen limit poskytovatele</value></data>
   <data name="usage.noLimitInfo" xml:space="preserve"><value>Žádné informace o limitech</value></data>
   <data name="usage.loadFailed" xml:space="preserve"><value>Využití se nepodařilo načíst</value></data>
   <data name="usage.loading" xml:space="preserve"><value>Načítání využití…</value></data>
@@ -333,21 +334,21 @@
   <data name="project.missing.message" xml:space="preserve"><value>Složka projektu v umístění '{0}' mohla být přesunuta nebo odstraněna. Vyberte její nové umístění nebo projekt odeberte.</value></data>
   <data name="project.missing.locate" xml:space="preserve"><value>Najít umístění…</value></data>
   <data name="project.missing.readOnly" xml:space="preserve"><value>Složka projektu není dostupná. Předchozí konverzace můžete zobrazit; vytváření nových konverzací a odesílání zpráv je vypnuté, dokud nevyberete nové umístění.</value></data>
-  <data name="conversation.ranCommand" xml:space="preserve"><value>Ran 1 command</value></data>
-  <data name="conversation.ranCommands" xml:space="preserve"><value>Ran {0} commands</value></data>
-  <data name="conversation.runningTools" xml:space="preserve"><value>Running tools…</value></data>
-  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Thinking…</value></data>
-  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} tokens</value></data>
-  <data name="usage.context.window" xml:space="preserve"><value>Context window</value></data>
-  <data name="usage.planLimits" xml:space="preserve"><value>Plan usage limits</value></data>
-  <data name="composer.queue.one" xml:space="preserve"><value>1 message queued</value></data>
-  <data name="composer.queue.many" xml:space="preserve"><value>{0} messages queued</value></data>
-  <data name="composer.queue.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Clear the message box to edit</value></data>
-  <data name="composer.queue.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="git.createPR" xml:space="preserve"><value>Create PR</value></data>
-  <data name="git.hideBar" xml:space="preserve"><value>Hide</value></data>
-  <data name="composer.queue.next" xml:space="preserve"><value>Next: {0}</value></data>
+  <data name="conversation.ranCommand" xml:space="preserve"><value>Spuštěn 1 příkaz</value></data>
+  <data name="conversation.ranCommands" xml:space="preserve"><value>Spuštěné příkazy: {0}</value></data>
+  <data name="conversation.runningTools" xml:space="preserve"><value>Spouštění nástrojů…</value></data>
+  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Přemýšlím…</value></data>
+  <data name="conversation.tokensCount" xml:space="preserve"><value>Tokeny: {0}</value></data>
+  <data name="usage.context.window" xml:space="preserve"><value>Kontextové okno</value></data>
+  <data name="usage.planLimits" xml:space="preserve"><value>Limity využití plánu</value></data>
+  <data name="composer.queue.one" xml:space="preserve"><value>1 zpráva ve frontě</value></data>
+  <data name="composer.queue.many" xml:space="preserve"><value>Zprávy ve frontě: {0}</value></data>
+  <data name="composer.queue.edit" xml:space="preserve"><value>Upravit</value></data>
+  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Pro úpravu vyprázdněte pole zprávy</value></data>
+  <data name="composer.queue.remove" xml:space="preserve"><value>Odebrat</value></data>
+  <data name="git.createPR" xml:space="preserve"><value>Vytvořit PR</value></data>
+  <data name="git.hideBar" xml:space="preserve"><value>Skrýt</value></data>
+  <data name="composer.queue.next" xml:space="preserve"><value>Další: {0}</value></data>
   <data name="sidebar.pinProject" xml:space="preserve"><value>Připnout projekt</value></data>
   <data name="sidebar.unpinProject" xml:space="preserve"><value>Odepnout projekt</value></data>
   <data name="sidebar.sortLastUpdate" xml:space="preserve"><value>Poslední aktualizace</value></data>
@@ -358,6 +359,8 @@
   <data name="conversation.cancelPlan" xml:space="preserve"><value>Zrušit plán</value></data>
   <data name="conversation.cancelPlanHelp" xml:space="preserve"><value>Zrušit tento plán a uvolnit zprávy ve frontě</value></data>
   <data name="media.generated" xml:space="preserve"><value>Obrázek vygenerován.</value></data>
+  <data name="media.videoGenerated" xml:space="preserve"><value>Video vygenerováno.</value></data>
+  <data name="media.audioGenerated" xml:space="preserve"><value>Řeč vygenerována.</value></data>
   <data name="media.fallbackUsed" xml:space="preserve"><value>Vybraný poskytovatel tento obrázek vygenerovat nedokázal. Byl vygenerován jednorázovým záložním požadavkem přes {0}/{1}; poskytovatel a model hlavní konverzace se nezměnily, takže mezipaměť promptů zůstává nedotčená.</value></data>
   <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>Tento obrázek nemohu vygenerovat pomocí {0}. Nastavte jako zálohu API nebo poskytovatele obrázků. Přepnutí hlavního modelu chatu jen kvůli obrázku může rozbít mezipaměť promptů poskytovatele.</value></data>
   <data name="feedback.close" xml:space="preserve"><value>Zavřít</value></data>
@@ -370,27 +373,27 @@
   <data name="feedback.persistenceFailed" xml:space="preserve"><value>Zpětnou vazbu se nepodařilo uložit lokálně.</value></data>
   <data name="feedback.streamingMessage" xml:space="preserve"><value>Před odesláním zpětné vazby počkejte na dokončení odpovědi.</value></data>
   <data name="feedback.submit" xml:space="preserve"><value>Odeslat</value></data>
-  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Apply it elsewhere</value></data>
-  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Broke an existing feature</value></data>
+  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Použít jinde</value></data>
+  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Rozbil existující funkci</value></data>
   <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>Nedodržel mé pokyny</value></data>
-  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Didn't follow project style</value></data>
+  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Nedodržel styl projektu</value></data>
   <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>Rychlé a efektivní</value></data>
   <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>Dodržel mé pokyny</value></data>
-  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Ignored project architecture</value></data>
+  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Ignoroval architekturu projektu</value></data>
   <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>Nesprávné nebo neúplné</value></data>
-  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Keep the project style</value></data>
+  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Zachovat styl projektu</value></data>
   <data name="feedback.tag.lost_context" xml:space="preserve"><value>Ztráta kontextu</value></data>
   <data name="feedback.tag.negative_other" xml:space="preserve"><value>Jiné</value></data>
   <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>Mimo téma / mimo rozsah</value></data>
   <data name="feedback.tag.output_quality" xml:space="preserve"><value>Dobrá kvalita kódu / výstupu</value></data>
   <data name="feedback.tag.positive_other" xml:space="preserve"><value>Jiné</value></data>
-  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Reuse this architecture</value></data>
-  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Reuse this token pattern</value></data>
+  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Znovu použít tuto architekturu</value></data>
+  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Znovu použít tento vzor tokenů</value></data>
   <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>Bezpečnostní nebo právní problém</value></data>
   <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>Pomalé nebo chybové</value></data>
   <data name="feedback.tag.task_completed" xml:space="preserve"><value>Vyřešil můj úkol</value></data>
   <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>Užitečná autonomie</value></data>
-  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Wrong theme or token</value></data>
+  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Špatný motiv nebo token</value></data>
   <data name="feedback.title" xml:space="preserve"><value>Sdílet zpětnou vazbu</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Zpětná vazba je dostupná pouze v chatech pracovního prostoru.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Zpětnou vazbu lze odeslat pouze k odpovědím asistenta.</value></data>
@@ -399,12 +402,13 @@
   <data name="conversation.cacheExpired.explanation" xml:space="preserve"><value>Odhadovaná životnost mezipaměti uplynula. Mezipaměť promptů je dočasný stav zpracování na straně poskytovatele; historie chatu zůstává uložená. Pokud budete pokračovat s celou historií, mohou se tyto tokeny znovu počítat jako nový vstup. Teprve údaje o využití z dalšího požadavku potvrdí, zda poskytovatel mezipaměť ještě měl.</value></data>
   <data name="conversation.cacheExpired.infoTitle" xml:space="preserve"><value>Proč se mi to zobrazuje?</value></data>
   <data name="conversation.cacheExpired.notice" xml:space="preserve"><value>Mezipaměť možná vypršela; pokračování může spotřebovat více tokenů a stát více. Začněte nový chat s krátkým shrnutím.</value></data>
+  <data name="conversation.cacheLocal.notice" xml:space="preserve"><value>Mezipaměť lokálního modelu byla vymazána; celá historie se zpracuje znovu a odpověď se může zpozdit. Začněte nový chat s krátkým shrnutím.</value></data>
   <data name="conversation.filesChangedCount" xml:space="preserve"><value>Změněno souborů: {0}</value></data>
   <data name="conversation.filesLess" xml:space="preserve"><value>Zobrazit méně souborů</value></data>
   <data name="conversation.filesLineSummary" xml:space="preserve"><value>+{0} −{1}</value></data>
   <data name="conversation.filesMore" xml:space="preserve"><value>Zobrazit dalších {0} souborů</value></data>
   <data name="conversation.filesReverted" xml:space="preserve"><value>Změny souborů byly vráceny zpět.</value></data>
-  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>The saved file version is unavailable, so the workspace was left unchanged.</value></data>
+  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>Uložená verze souboru není dostupná, proto pracovní prostor zůstal beze změny.</value></data>
   <data name="conversation.undoChanges" xml:space="preserve"><value>Vrátit zpět</value></data>
   <data name="conversation.viewChanges" xml:space="preserve"><value>Zobrazit změny</value></data>
   <data name="settings.archive" xml:space="preserve"><value>Archiv</value></data>
@@ -435,9 +439,9 @@
   <data name="workLocation.remoteFolderUp" xml:space="preserve"><value>Nadřazená složka</value></data>
   <data name="workLocation.remoteFolderEmpty" xml:space="preserve"><value>Zde nejsou žádné podsložky</value></data>
   <data name="workLocation.remoteFolderUse" xml:space="preserve"><value>Použít složku</value></data>
-  <data name="workLocation.connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="workLocation.connect" xml:space="preserve"><value>Připojit</value></data>
   <data name="workLocation.addHost" xml:space="preserve"><value>Přidat počítač…</value></data>
-  <data name="workLocation.useLocal" xml:space="preserve"><value>Use this computer</value></data>
+  <data name="workLocation.useLocal" xml:space="preserve"><value>Použít tento počítač</value></data>
   <data name="settings.sshAlias" xml:space="preserve"><value>Alias</value></data>
   <data name="settings.sshHostName" xml:space="preserve"><value>Hostitel nebo IP</value></data>
   <data name="settings.sshUser" xml:space="preserve"><value>Uživatelské jméno</value></data>
@@ -445,126 +449,106 @@
   <data name="settings.sshRemove" xml:space="preserve"><value>Odebrat</value></data>
   <data name="ssh.busy" xml:space="preserve"><value>Než změníte místo práce, počkejte na dokončení běhu.</value></data>
   <data name="ssh.connecting" xml:space="preserve"><value>Připojování k {0}…</value></data>
-  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Choose a remote folder before starting a task.</value></data>
+  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Před spuštěním úlohy vyberte vzdálenou složku.</value></data>
   <data name="ssh.scanning" xml:space="preserve"><value>Načítání klíče hostitele…</value></data>
   <data name="ssh.fingerprintTitle" xml:space="preserve"><value>Je toto otisk {0}?</value></data>
   <data name="ssh.fingerprintMessage" xml:space="preserve"><value>Porovnejte ho se serverem, než mu budete důvěřovat. Pokračujte jen při shodě.</value></data>
   <data name="ssh.trustAndConnect" xml:space="preserve"><value>Důvěřovat a připojit</value></data>
   <data name="ssh.error.unavailable" xml:space="preserve"><value>Na tomto Macu nebyl nalezen ssh.</value></data>
   <data name="ssh.error.notReachable" xml:space="preserve"><value>{0} nebyl dostupný.</value></data>
-  <data name="conversation.choosePane" xml:space="preserve"><value>Choose a pane</value></data>
-  <data name="sidebar.toggle" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.mcpServers" xml:space="preserve"><value>MCP servers</value></data>
-  <data name="mcp.empty" xml:space="preserve"><value>No MCP servers configured.</value></data>
-  <data name="mcp.addServer" xml:space="preserve"><value>Add server</value></data>
-  <data name="mcp.name" xml:space="preserve"><value>Name</value></data>
-  <data name="mcp.transport" xml:space="preserve"><value>Transport</value></data>
+  <data name="conversation.choosePane" xml:space="preserve"><value>Vyberte panel</value></data>
+  <data name="sidebar.toggle" xml:space="preserve"><value>Zobrazit nebo skrýt postranní panel</value></data>
+  <data name="settings.mcpServers" xml:space="preserve"><value>Servery MCP</value></data>
+  <data name="mcp.empty" xml:space="preserve"><value>Nejsou nastaveny žádné servery MCP.</value></data>
+  <data name="mcp.addServer" xml:space="preserve"><value>Přidat server</value></data>
+  <data name="mcp.name" xml:space="preserve"><value>Název</value></data>
+  <data name="mcp.transport" xml:space="preserve"><value>Přenos</value></data>
   <data name="mcp.http" xml:space="preserve"><value>HTTP</value></data>
   <data name="mcp.stdio" xml:space="preserve"><value>stdio</value></data>
   <data name="mcp.url" xml:space="preserve"><value>URL</value></data>
-  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (optional)</value></data>
-  <data name="mcp.executable" xml:space="preserve"><value>Executable path</value></data>
-  <data name="mcp.arguments" xml:space="preserve"><value>Arguments (space-separated)</value></data>
-  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Auto-run tools the server marks read-only</value></data>
-  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Server annotations are untrusted. Enabling this skips approval only for tools marked read-only and not destructive.</value></data>
-  <data name="mcp.test" xml:space="preserve"><value>Test</value></data>
-  <data name="mcp.add" xml:space="preserve"><value>Add</value></data>
-  <data name="mcp.reconnect" xml:space="preserve"><value>Reconnect</value></data>
-  <data name="mcp.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="mcp.idle" xml:space="preserve"><value>Idle</value></data>
-  <data name="mcp.connecting" xml:space="preserve"><value>Connecting…</value></data>
-  <data name="mcp.connected" xml:space="preserve"><value>Connected · {0} tool(s)</value></data>
-  <data name="mcp.failed" xml:space="preserve"><value>Failed: {0}</value></data>
-  <data name="mcp.testing" xml:space="preserve"><value>Testing…</value></data>
-  <data name="mcp.testConnected" xml:space="preserve"><value>Connected. {0} tool(s) available.</value></data>
-  <data name="conversation.toolInput" xml:space="preserve"><value>Tool input</value></data>
-  <data name="settings.tab.memory" xml:space="preserve"><value>Memory</value></data>
-  <data name="memory.vault.title" xml:space="preserve"><value>Memory vault</value></data>
-  <data name="memory.refresh" xml:space="preserve"><value>Refresh</value></data>
-  <data name="memory.reveal" xml:space="preserve"><value>Open .mem folder</value></data>
-  <data name="memory.refused" xml:space="preserve"><value>Not saved. The entry may contain a credential, exceed its limit, or the workspace may be unavailable.</value></data>
-  <data name="memory.noWorkspace" xml:space="preserve"><value>Select a local workspace to view its memory.</value></data>
-  <data name="memory.notInitialized" xml:space="preserve"><value>Memory starts after the first prompt in this workspace.</value></data>
-  <data name="memory.search" xml:space="preserve"><value>Search memory</value></data>
-  <data name="memory.selectNote" xml:space="preserve"><value>Select a note to view it.</value></data>
-  <data name="memory.save" xml:space="preserve"><value>Save</value></data>
-  <data name="memory.forget" xml:space="preserve"><value>Forget</value></data>
-  <data name="memory.ownRules" xml:space="preserve"><value>Your own rules</value></data>
-  <data name="memory.rulesHelp" xml:space="preserve"><value>These rules are added to every request in this project.</value></data>
-  <data name="memory.lessons" xml:space="preserve"><value>Learned lessons</value></data>
-  <data name="memory.learningStats" xml:space="preserve"><value>{0} turns logged; {1} were corrected or undone.</value></data>
-  <data name="memory.links" xml:space="preserve"><value>Links</value></data>
-  <data name="memory.backlinks" xml:space="preserve"><value>Linked mentions</value></data>
-  <data name="memory.userAuthored" xml:space="preserve"><value>user-authored</value></data>
-  <data name="memory.inferred" xml:space="preserve"><value>inferred</value></data>
-  <data name="memory.learnedCount" xml:space="preserve"><value>learned {0}×</value></data>
-  <data name="memory.usedCount" xml:space="preserve"><value>used {0}×</value></data>
-  <data name="memory.inactive" xml:space="preserve"><value>no longer applied</value></data>
-  <data name="memory.pin" xml:space="preserve"><value>Pin</value></data>
-  <data name="memory.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="memory.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="settings.tab.access" xml:space="preserve"><value>Workspace access</value></data>
-  <data name="access.currentActor" xml:space="preserve"><value>Current actor</value></data>
-  <data name="access.role" xml:space="preserve"><value>Role</value></data>
-  <data name="access.notAuthorized" xml:space="preserve"><value>Not authorized</value></data>
-  <data name="access.score" xml:space="preserve"><value>Score</value></data>
-  <data name="access.device" xml:space="preserve"><value>Device</value></data>
-  <data name="access.publicKey" xml:space="preserve"><value>Public key</value></data>
-  <data name="access.memoryRevision" xml:space="preserve"><value>Memory revision</value></data>
-  <data name="access.members" xml:space="preserve"><value>Members</value></data>
-  <data name="access.noMembers" xml:space="preserve"><value>No members yet.</value></data>
-  <data name="access.revoke" xml:space="preserve"><value>Revoke</value></data>
-  <data name="access.revoked" xml:space="preserve"><value>revoked</value></data>
-  <data name="access.inviteDevice" xml:space="preserve"><value>Invite device</value></data>
-  <data name="access.displayName" xml:space="preserve"><value>Display name</value></data>
-  <data name="access.newDevicePublicKey" xml:space="preserve"><value>New device public key</value></data>
-  <data name="access.createInvitation" xml:space="preserve"><value>Create signed invitation</value></data>
-  <data name="access.acceptInvitation" xml:space="preserve"><value>Accept invitation</value></data>
-  <data name="access.signedInvitation" xml:space="preserve"><value>Signed invitation</value></data>
-  <data name="access.accept" xml:space="preserve"><value>Accept</value></data>
-  <data name="access.reject" xml:space="preserve"><value>Reject</value></data>
-  <data name="access.pendingDecisions" xml:space="preserve"><value>Pending decisions</value></data>
-  <data name="access.noPendingDecisions" xml:space="preserve"><value>No pending project decisions.</value></data>
-  <data name="access.noWorkspace" xml:space="preserve"><value>Select a local workspace to manage access.</value></data>
-  <data name="access.scoreValue" xml:space="preserve"><value>Score: {0}</value></data>
-  <data name="access.initialize" xml:space="preserve"><value>Initialize workspace memory</value></data>
-  <data name="access.initializeHelp" xml:space="preserve"><value>Workspace access uses a signed memory log. Initializing creates the owner identity and event log in this project's .mem folder.</value></data>
-  <data name="access.role.owner" xml:space="preserve"><value>Owner</value></data>
-  <data name="access.role.approver" xml:space="preserve"><value>Approver</value></data>
-  <data name="access.role.contributor" xml:space="preserve"><value>Contributor</value></data>
-  <data name="access.role.observer" xml:space="preserve"><value>Observer</value></data>
+  <data name="mcp.bearerToken" xml:space="preserve"><value>Token Bearer (volitelné)</value></data>
+  <data name="mcp.executable" xml:space="preserve"><value>Cesta ke spustitelnému souboru</value></data>
+  <data name="mcp.arguments" xml:space="preserve"><value>Argumenty (oddělené mezerou)</value></data>
+  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Automaticky spouštět nástroje, které server označí jen pro čtení</value></data>
+  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Anotace serveru nejsou důvěryhodné. Zapnutím se schválení přeskočí jen u nástrojů označených jako pouze pro čtení a nedestruktivní.</value></data>
+  <data name="mcp.test" xml:space="preserve"><value>Otestovat</value></data>
+  <data name="mcp.add" xml:space="preserve"><value>Přidat server</value></data>
+  <data name="mcp.reconnect" xml:space="preserve"><value>Znovu připojit</value></data>
+  <data name="mcp.remove" xml:space="preserve"><value>Odebrat</value></data>
+  <data name="mcp.idle" xml:space="preserve"><value>Nečinný</value></data>
+  <data name="mcp.connecting" xml:space="preserve"><value>Připojování…</value></data>
+  <data name="mcp.connected" xml:space="preserve"><value>Připojeno · nástroje: {0}</value></data>
+  <data name="mcp.failed" xml:space="preserve"><value>Selhalo: {0}</value></data>
+  <data name="mcp.testing" xml:space="preserve"><value>Testování…</value></data>
+  <data name="mcp.testConnected" xml:space="preserve"><value>Připojeno. Dostupné nástroje: {0}.</value></data>
+  <data name="conversation.toolInput" xml:space="preserve"><value>Vstup nástroje</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Paměť</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Trezor paměti</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Obnovit</value></data>
+  <data name="memory.enabled" xml:space="preserve"><value>Paměť zapnuta</value></data>
+  <data name="memory.scanFrequency" xml:space="preserve"><value>Frekvence skenování</value></data>
+  <data name="memory.scan.off" xml:space="preserve"><value>Vypnuto</value></data>
+  <data name="memory.scan.hourly" xml:space="preserve"><value>Každou hodinu</value></data>
+  <data name="memory.scan.daily" xml:space="preserve"><value>Denně</value></data>
+  <data name="memory.scan.weekly" xml:space="preserve"><value>Týdně</value></data>
+  <data name="memory.enabledHelp" xml:space="preserve"><value>Když je vypnuto, žádný úkol se nezaznamená, nic se neučí a modelu se neposílá žádný poznatek; dříve uložené zůstává na disku.</value></data>
+  <data name="memory.scanHelp" xml:space="preserve"><value>Krátké poznámky k úkolům se uchovávají, aby bylo možné důvody zjištění dohledat i po skenování; při vypnutém skenování se na pozadí nevolá žádný model.</value></data>
+  <data name="memory.reveal" xml:space="preserve"><value>Otevřít složku .mem</value></data>
+  <data name="memory.refused" xml:space="preserve"><value>Neuloženo. Záznam může obsahovat přihlašovací údaje, překračovat limit nebo pracovní prostor nemusí být dostupný.</value></data>
+  <data name="memory.noWorkspace" xml:space="preserve"><value>Vyberte místní pracovní prostor pro zobrazení jeho paměti.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Paměť začne fungovat po prvním promptu v tomto pracovním prostoru.</value></data>
+  <data name="memory.search" xml:space="preserve"><value>Hledat v paměti</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Vyberte poznámku k zobrazení.</value></data>
+  <data name="memory.save" xml:space="preserve"><value>Uložit</value></data>
+  <data name="memory.forget" xml:space="preserve"><value>Zapomenout</value></data>
+  <data name="memory.ownRules" xml:space="preserve"><value>Vaše vlastní pravidla</value></data>
+  <data name="memory.rulesHelp" xml:space="preserve"><value>Tato pravidla se přidávají ke každému požadavku v tomto projektu.</value></data>
+  <data name="memory.lessons" xml:space="preserve"><value>Získaná ponaučení</value></data>
+  <data name="memory.learningStats" xml:space="preserve"><value>Zaznamenaná kola: {0}; opravená nebo vrácená: {1}.</value></data>
+  <data name="memory.links" xml:space="preserve"><value>Odkazy</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Propojené zmínky</value></data>
+  <data name="memory.userAuthored" xml:space="preserve"><value>napsané uživatelem</value></data>
+  <data name="memory.inferred" xml:space="preserve"><value>odvozeno</value></data>
+  <data name="memory.learnedCount" xml:space="preserve"><value>naučeno {0}×</value></data>
+  <data name="memory.usedCount" xml:space="preserve"><value>použito {0}×</value></data>
+  <data name="memory.inactive" xml:space="preserve"><value>již se neuplatňuje</value></data>
+  <data name="memory.pin" xml:space="preserve"><value>Připnout</value></data>
+  <data name="memory.edit" xml:space="preserve"><value>Upravit</value></data>
+  <data name="memory.cancel" xml:space="preserve"><value>Zrušit</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Přístup k pracovnímu prostoru</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Přijmout</value></data>
   <data name="settings.sandbox" xml:space="preserve"><value>Sandbox</value></data>
-  <data name="settings.sandboxOff" xml:space="preserve"><value>Off — the agent works directly in your checkout.</value></data>
-  <data name="settings.sandboxOn" xml:space="preserve"><value>On — the agent works in a separate git worktree.</value></data>
-  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Recovery is required before sandbox operations can continue.</value></data>
-  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Retry recovery</value></data>
-  <data name="settings.sandboxName" xml:space="preserve"><value>Name</value></data>
-  <data name="settings.sandboxEnter" xml:space="preserve"><value>Start sandbox</value></data>
-  <data name="settings.sandboxMerge" xml:space="preserve"><value>Merge and exit</value></data>
-  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Discard and exit</value></data>
-  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Origin</value></data>
-  <data name="settings.sandboxBranch" xml:space="preserve"><value>Branch</value></data>
-  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Allow network for new processes</value></data>
-  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>This applies only to new commands. Existing terminal sessions keep their current policy.</value></data>
-  <data name="settings.sandboxOpen" xml:space="preserve"><value>Open sandbox</value></data>
-  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Open origin</value></data>
-  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Conflicts</value></data>
-  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Prepare resolution</value></data>
-  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Ask agent</value></data>
-  <data name="settings.sandboxPreview" xml:space="preserve"><value>Refresh preview</value></data>
-  <data name="settings.sandboxApprove" xml:space="preserve"><value>Approve and merge</value></data>
-  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Cancel resolution</value></data>
-  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Retry cleanup</value></data>
-  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Discard this sandbox? Its branch will be kept for recovery, but its worktree will be removed.</value></data>
-  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Approval requires a complete preview with no unresolved files.</value></data>
-  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Resolution preview</value></data>
-  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Unresolved files</value></data>
-  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>Origin HEAD</value></data>
-  <data name="settings.sandboxHead" xml:space="preserve"><value>Sandbox HEAD</value></data>
-  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Preview fingerprint</value></data>
-  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Sandbox cleanup is still pending; the origin was not changed again.</value></data>
-  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Saved sandboxes</value></data>
-  <data name="settings.sandboxRecover" xml:space="preserve"><value>Recover</value></data>
+  <data name="settings.sandboxOff" xml:space="preserve"><value>Vypnuto — agent pracuje přímo ve vaší pracovní kopii.</value></data>
+  <data name="settings.sandboxOn" xml:space="preserve"><value>Zapnuto — agent pracuje v samostatném git worktree.</value></data>
+  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Před pokračováním operací sandboxu je nutná obnova.</value></data>
+  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Zopakovat obnovu</value></data>
+  <data name="settings.sandboxName" xml:space="preserve"><value>Název</value></data>
+  <data name="settings.sandboxEnter" xml:space="preserve"><value>Spustit sandbox</value></data>
+  <data name="settings.sandboxMerge" xml:space="preserve"><value>Sloučit a ukončit</value></data>
+  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Zahodit a ukončit</value></data>
+  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Původ</value></data>
+  <data name="settings.sandboxBranch" xml:space="preserve"><value>Větev</value></data>
+  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Povolit síť pro nové procesy</value></data>
+  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>Platí jen pro nové příkazy. Stávající relace terminálu si zachovají aktuální zásadu.</value></data>
+  <data name="settings.sandboxOpen" xml:space="preserve"><value>Otevřít sandbox</value></data>
+  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Otevřít původ</value></data>
+  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Konflikty</value></data>
+  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Připravit řešení</value></data>
+  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Zeptat se agenta</value></data>
+  <data name="settings.sandboxPreview" xml:space="preserve"><value>Obnovit náhled</value></data>
+  <data name="settings.sandboxApprove" xml:space="preserve"><value>Schválit a sloučit</value></data>
+  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Zrušit řešení</value></data>
+  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Zopakovat čištění</value></data>
+  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Zahodit tento sandbox? Jeho větev zůstane zachována pro obnovu, ale jeho worktree bude odstraněn.</value></data>
+  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Schválení vyžaduje úplný náhled bez nevyřešených souborů.</value></data>
+  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Náhled řešení</value></data>
+  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Nevyřešené soubory</value></data>
+  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>HEAD původu</value></data>
+  <data name="settings.sandboxHead" xml:space="preserve"><value>HEAD sandboxu</value></data>
+  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Otisk náhledu</value></data>
+  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Čištění sandboxu stále čeká; původ nebyl znovu změněn.</value></data>
+  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Uložené sandboxy</value></data>
+  <data name="settings.sandboxRecover" xml:space="preserve"><value>Obnovit</value></data>
   <data name="conversation.accountSwitched.notice" xml:space="preserve"><value>Tento chat přešel na jiný účet se stejným modelem. Mezipaměť tam začíná od nuly; pokračování může spotřebovat více tokenů a stát více.</value></data>
   <data name="conversation.modelSwitched.notice" xml:space="preserve"><value>Model byl změněn. Mezipaměť se na nový model nepřenáší; celá historie se zpracuje znovu, což může spotřebovat více tokenů a stát více.</value></data>
   <data name="conversation.contextFull.notice" xml:space="preserve"><value>Kontextové okno je téměř plné; pokračování může spotřebovat více tokenů a stát více. Začněte nový chat s krátkým shrnutím.</value></data>
@@ -575,28 +559,28 @@
   <data name="context.overflowCompress" xml:space="preserve"><value>Zkomprimovat a pokračovat</value></data>
   <data name="context.overflowNotNow" xml:space="preserve"><value>Teď ne</value></data>
   <data name="context.overflowDeclined" xml:space="preserve"><value>Odesílání zastaveno: konverzace se do nového modelu nevejde.</value></data>
-  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>When another chat is writing the same file</value></data>
-  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Wait before asking</value></data>
-  <data name="settings.conflictWaitValue" xml:space="preserve"><value>Wait {0} seconds</value></data>
-  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Wait, then ask</value></data>
-  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>A chat that wants a file another chat is writing waits quietly, and asks only if the wait goes on too long.</value></data>
-  <data name="conflict.policy.ask" xml:space="preserve"><value>Ask me</value></data>
-  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Ask as soon as two chats want the same file.</value></data>
-  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Always wait</value></data>
-  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Never ask: a write waits for the chat that holds the file.</value></data>
-  <data name="conflict.title" xml:space="preserve"><value>A file is busy: {0}</value></data>
-  <data name="conflict.wholeProject" xml:space="preserve"><value>Project command: {0}</value></data>
-  <data name="conflict.stillBusy" xml:space="preserve"><value>Write held back: another chat is still writing {0}.</value></data>
-  <data name="conflict.userSkipped" xml:space="preserve"><value>Write skipped: {0} was left with the other chat ({1}), as you asked.</value></data>
-  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Stopped {0} so this chat could write.</value></data>
-  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Stopped other chats so this chat could write.</value></data>
-  <data name="conflict.banner.title" xml:space="preserve"><value>Another chat is writing this file</value></data>
-  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · held by “{1}” for {2} seconds</value></data>
-  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Keep waiting</value></data>
-  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Stop {0}</value></data>
-  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Stop all other chats</value></data>
-  <data name="conflict.banner.skip" xml:space="preserve"><value>Skip this write</value></data>
-  <data name="conflict.waiting" xml:space="preserve"><value>Waiting for “{0}” to finish writing: {1}</value></data>
+  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>Pokud jiný chat zapisuje stejný soubor</value></data>
+  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Čekat před dotazem</value></data>
+  <data name="settings.conflictWaitValue" xml:space="preserve"><value>{0} sekund</value></data>
+  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Čekat, pak se zeptat</value></data>
+  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>Tiše čeká na jiný chat a ptá se až když čekání trvá dlouho.</value></data>
+  <data name="conflict.policy.ask" xml:space="preserve"><value>Zeptej se</value></data>
+  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Okamžitě se zeptá, když dva chaty chtějí stejný soubor.</value></data>
+  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Vždy čekat</value></data>
+  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Neptá: každý zápis čeká na chat, který soubor drží.</value></data>
+  <data name="conflict.title" xml:space="preserve"><value>Jiný chat zapisuje {0}</value></data>
+  <data name="conflict.wholeProject" xml:space="preserve"><value>celý projekt (příkaz: {0})</value></data>
+  <data name="conflict.stillBusy" xml:space="preserve"><value>Zápis pozdržen: {0} stále zapisuje jiný chat.</value></data>
+  <data name="conflict.userSkipped" xml:space="preserve"><value>Zápis přeskočen: {0} zůstal jinému chatu ({1}), jak jste žádal.</value></data>
+  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Na vaši žádost byl chat „{0}“ zastaven a zápis proběhl.</value></data>
+  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Na vaši žádost byly zastaveny jiné chaty tohoto projektu a zápis proběhl.</value></data>
+  <data name="conflict.banner.title" xml:space="preserve"><value>Jiný chat zapisuje tento soubor</value></data>
+  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · drží „{1}“ již {2} sekund</value></data>
+  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Pokračovat v čekání</value></data>
+  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Zastavit tento chat</value></data>
+  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Zastavit všechny ostatní chaty</value></data>
+  <data name="conflict.banner.skip" xml:space="preserve"><value>Přeskočit tento zápis</value></data>
+  <data name="conflict.waiting" xml:space="preserve"><value>Čekání na zápis chatu „{0}“: {1}</value></data>
   <data name="usage.context.button" xml:space="preserve"><value>Využití</value></data>
   <data name="usage.context.tooltip" xml:space="preserve"><value>Využití kontextu a tokenů</value></data>
   <data name="usage.context.latestRequest" xml:space="preserve"><value>Poslední požadavek · kontextové okno</value></data>
@@ -606,34 +590,738 @@
   <data name="usage.context.notReported" xml:space="preserve"><value>Poskytovatel nehlásí</value></data>
   <data name="usage.context.estimatedBreakdown" xml:space="preserve"><value>Odhadovaný rozpis vstupu</value></data>
   <data name="usage.context.tokens" xml:space="preserve"><value>tokenů</value></data>
-  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} tokens ({2})</value></data>
-  <data name="usage.context.notAvailable" xml:space="preserve"><value>Context usage is not available yet.</value></data>
-  <data name="usage.context.composition" xml:space="preserve"><value>Estimated input composition</value></data>
+  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} tokenů ({2})</value></data>
+  <data name="usage.context.notAvailable" xml:space="preserve"><value>Využití kontextu zatím není k dispozici.</value></data>
+  <data name="usage.context.composition" xml:space="preserve"><value>Odhadované složení vstupu</value></data>
   <data name="usage.context.estimatedRow" xml:space="preserve"><value>{0}: {1} ({2})</value></data>
   <data name="usage.context.conversation" xml:space="preserve"><value>Zprávy konverzace</value></data>
   <data name="usage.context.systemPrompt" xml:space="preserve"><value>Systémové instrukce</value></data>
   <data name="usage.context.toolDefinitions" xml:space="preserve"><value>Definice nástrojů</value></data>
   <data name="usage.context.mcpDefinitions" xml:space="preserve"><value>Definice nástrojů MCP</value></data>
-  <data name="usage.context.cacheHit" xml:space="preserve"><value>Measured cache hit</value></data>
-  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Verified prefix reuse: {0} · {1} / {2} tokens</value></data>
-  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Measurement coverage: {0} · {1} of {2} eligible requests</value></data>
-  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Cold: {0} · expired: {1} · changed: {2}</value></data>
-  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Cache writes: {0} tokens</value></data>
-  <data name="usage.context.freshInput" xml:space="preserve"><value>Fresh input: {0} tokens</value></data>
-  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Reuse not reported: {0} of {1} eligible requests</value></data>
-  <data name="usage.context.latency" xml:space="preserve"><value>Average request latency: {0}</value></data>
-  <data name="usage.context.prepare" xml:space="preserve"><value>Average request preparation: {0}</value></data>
-  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Largest cache loss: {0} ({1} tokens)</value></data>
-  <data name="settings.shortcuts" xml:space="preserve"><value>Keyboard shortcuts</value></data>
-  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Select a shortcut to change it. Press a key combination with at least one modifier.</value></data>
-  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Press keys…</value></data>
-  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Restore defaults</value></data>
-  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} is already assigned to {1}.</value></data>
-  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull requests</value></data>
-  <data name="conversation.review" xml:space="preserve"><value>Review</value></data>
-  <data name="conversation.files" xml:space="preserve"><value>Files</value></data>
-  <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
-  <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
-  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} tokenů</value></data>
+  <data name="usage.context.cacheHit" xml:space="preserve"><value>Naměřené zásahy mezipaměti</value></data>
+  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Ověřené opětovné použití prefixu: {0} · {1} / {2} tokenů</value></data>
+  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Pokrytí měření: {0} · {1} z {2} způsobilých požadavků</value></data>
+  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Studené: {0} · vypršelé: {1} · změněné: {2}</value></data>
+  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Zápisy do mezipaměti: {0} tokenů</value></data>
+  <data name="usage.context.freshInput" xml:space="preserve"><value>Nový vstup: {0} tokenů</value></data>
+  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Opětovné použití nehlášeno: {0} z {1} způsobilých požadavků</value></data>
+  <data name="usage.context.latency" xml:space="preserve"><value>Průměrná latence požadavku: {0}</value></data>
+  <data name="usage.context.prepare" xml:space="preserve"><value>Průměrná příprava požadavku: {0}</value></data>
+  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Největší ztráta mezipaměti: {0} ({1} tokenů)</value></data>
+  <data name="settings.shortcuts" xml:space="preserve"><value>Klávesové zkratky</value></data>
+  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Vyberte zkratku, kterou chcete změnit. Stiskněte kombinaci kláves s alespoň jedním modifikátorem.</value></data>
+  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Zobrazit nebo skrýt postranní panel</value></data>
+  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Stiskněte klávesy…</value></data>
+  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Obnovit výchozí</value></data>
+  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} je již přiřazeno k {1}.</value></data>
+  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull requesty</value></data>
+  <data name="conversation.review" xml:space="preserve"><value>Revize</value></data>
+  <data name="conversation.files" xml:space="preserve"><value>Soubory</value></data>
+  <data name="conversation.browser" xml:space="preserve"><value>Prohlížeč</value></data>
+  <data name="conversation.newChat" xml:space="preserve"><value>Nová konverzace</value></data>
+  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} nově zpracovaných tokenů</value></data>
+  <data name="settings.skillSuggestions" xml:space="preserve"><value>Zobrazovat návrhy dovedností</value></data>
+  <data name="settings.skillSuggestions.hint" xml:space="preserve"><value>Navrhne dovednost jen tehdy, když se stejná lekce naučí třikrát nebo agent dokončí postup, který budete znovu potřebovat; nejvýše jedna karta týdně. Vypnuto: neobjevují se karty návrhů a agent nenavrhuje dovednosti.</value></data>
+  <data name="skill.suggestion.title" xml:space="preserve"><value>Navrhovaná dovednost: {0}</value></data>
+  <data name="skill.suggestion.create" xml:space="preserve"><value>Vytvořit dovednost</value></data>
+  <data name="skill.suggestion.dismiss" xml:space="preserve"><value>Teď ne</value></data>
+  <data name="settings.autoAccountFailover" xml:space="preserve"><value>Po dosažení limitu automaticky vyzkoušet jiný účet</value></data>
+  <data name="settings.autoAccountFailover.hint" xml:space="preserve"><value>Je-li vypnuto, chat se pozastaví; stisknutím tlačítka Pokračovat vyzkoušejte jiný kompatibilní účet. Je-li zapnuto, kompatibilní účty se vyzkouší automaticky.</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>Zadejte velikost kontextu modelu v tokenech. Automatická hodnota použije hlášenou nebo zdokumentovanou velikost modelu, je-li k dispozici, a poté hodnotu nastavenou pro účet.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>Hledat modely</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>Automatická hodnota: {0} tokenů</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>Poskytovatel nehlásí velikost kontextu.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>Zatím nejsou k dispozici žádné modely. Připojte poskytovatele nebo obnovte seznam modelů.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>Uloženo.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>Automaticky</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>Zadejte kladné celé číslo tokenů.</value></data>
+  <data name="attachment.files" xml:space="preserve"><value>Soubory nebo fotky</value></data>
+  <data name="attachment.project" xml:space="preserve"><value>Práce v projektu</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>Kontext byl automaticky zkomprimován</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>Soubory přečteny</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>Soubory změněny</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>Příkazy spuštěny</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>Vyhledáno na webu</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>Čtení souborů…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>Úprava souborů…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>Spouštění příkazů…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>Vyhledávání na webu…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>Nástroj použit</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>Spouštění nástroje…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>Nástroj selhal: {0}</value></data>
+  <data name="tasks.menu" xml:space="preserve"><value>Úkoly</value></data>
+  <data name="tasks.title" xml:space="preserve"><value>Naplánované úkoly</value></data>
+  <data name="tasks.subtitle" xml:space="preserve"><value>Spusťte výzvu podle plánu cronu.</value></data>
+  <data name="tasks.empty" xml:space="preserve"><value>Zatím žádné úkoly.</value></data>
+  <data name="tasks.add" xml:space="preserve"><value>Přidat úkol</value></data>
+  <data name="tasks.edit" xml:space="preserve"><value>Upravit úkol</value></data>
+  <data name="tasks.delete" xml:space="preserve"><value>Smazat</value></data>
+  <data name="tasks.runNow" xml:space="preserve"><value>Spustit nyní</value></data>
+  <data name="tasks.enabled" xml:space="preserve"><value>Povoleno</value></data>
+  <data name="tasks.field.name" xml:space="preserve"><value>Jméno</value></data>
+  <data name="tasks.field.cron" xml:space="preserve"><value>Cron výraz</value></data>
+  <data name="tasks.field.prompt" xml:space="preserve"><value>Prompt</value></data>
+  <data name="tasks.field.workspace" xml:space="preserve"><value>Pracovní prostor</value></data>
+  <data name="tasks.cron.invalid" xml:space="preserve"><value>Neplatný výraz cron.</value></data>
+  <data name="tasks.cron.next" xml:space="preserve"><value>Další spuštění</value></data>
+  <data name="tasks.close" xml:space="preserve"><value>Zavřít úkoly</value></data>
+  <data name="tasks.back" xml:space="preserve"><value>Zpět</value></data>
+  <data name="tasks.new" xml:space="preserve"><value>Nový úkol</value></data>
+  <data name="tasks.active" xml:space="preserve"><value>Tvé úkoly</value></data>
+  <data name="tasks.disabled" xml:space="preserve"><value>Zakázáno</value></data>
+  <data name="tasks.suggestions" xml:space="preserve"><value>Návrhy</value></data>
+  <data name="tasks.history" xml:space="preserve"><value>Nedávná spuštění</value></data>
+  <data name="tasks.history.empty" xml:space="preserve"><value>Tento úkol ještě nebyl spuštěn.</value></data>
+  <data name="tasks.field.target" xml:space="preserve"><value>Cílový soubor nebo složka</value></data>
+  <data name="tasks.field.targetHint" xml:space="preserve"><value>Volitelná cesta v pracovním prostoru</value></data>
+  <data name="tasks.target.invalid" xml:space="preserve"><value>Cíl musí být uvnitř pracovního prostoru.</value></data>
+  <data name="tasks.field.model" xml:space="preserve"><value>Model</value></data>
+  <data name="tasks.field.fallback" xml:space="preserve"><value>Záložní model</value></data>
+  <data name="tasks.network" xml:space="preserve"><value>Povolit přístup k síti</value></data>
+  <data name="tasks.assistant.title" xml:space="preserve"><value>Asistent úloh</value></data>
+  <data name="tasks.assistant.placeholder" xml:space="preserve"><value>Požádat o změnu tohoto úkolu…</value></data>
+  <data name="tasks.assistant.updated" xml:space="preserve"><value>Úkol aktualizován.</value></data>
+  <data name="tasks.notification.title" xml:space="preserve"><value>Naplánovaný úkol</value></data>
+  <data name="tasks.notification.completed" xml:space="preserve"><value>Dokončeno</value></data>
+  <data name="tasks.notification.failed" xml:space="preserve"><value>Selhalo</value></data>
+  <data name="tasks.notification.fallback" xml:space="preserve"><value>Použit záložní model</value></data>
+  <data name="tasks.suggestion.daily.title" xml:space="preserve"><value>Denní přehled</value></data>
+  <data name="tasks.suggestion.daily.detail" xml:space="preserve"><value>Shrň nedávnou práci, otevřené priority a změny pracovního prostoru.</value></data>
+  <data name="tasks.suggestion.daily.schedule" xml:space="preserve"><value>Ve všední dny v 8:00</value></data>
+  <data name="tasks.suggestion.daily.prompt" xml:space="preserve"><value>Prohlédni nedávné konverzace a změny pracovního prostoru. Shrň nejdůležitější priority pro dnešek.</value></data>
+  <data name="tasks.suggestion.weekly.title" xml:space="preserve"><value>Týdenní přehled</value></data>
+  <data name="tasks.suggestion.weekly.detail" xml:space="preserve"><value>Každý pátek převeď nedávnou práci na stručnou aktualizaci stavu.</value></data>
+  <data name="tasks.suggestion.weekly.schedule" xml:space="preserve"><value>V pátek v 16:00</value></data>
+  <data name="tasks.suggestion.weekly.prompt" xml:space="preserve"><value>Prohlédni konverzace a změny pracovního prostoru z tohoto týdne. Napiš stručnou aktualizaci stavu s dokončenou prací, riziky a dalšími kroky.</value></data>
+  <data name="tasks.suggestion.followup.title" xml:space="preserve"><value>Monitor následných akcí</value></data>
+  <data name="tasks.suggestion.followup.detail" xml:space="preserve"><value>Prohlédni nedávnou aktivitu a označ vše, co vyžaduje pozornost.</value></data>
+  <data name="tasks.suggestion.followup.schedule" xml:space="preserve"><value>Ve všední dny v 9:00</value></data>
+  <data name="tasks.suggestion.followup.prompt" xml:space="preserve"><value>Prohlédni nedávnou aktivitu úkolů a pracovního prostoru. Označ nedokončenou práci, neúspěšná spuštění a vše, co vyžaduje pozornost.</value></data>
+  <data name="tasks.lastRun" xml:space="preserve"><value>Poslední běh</value></data>
+  <data name="tasks.state.never" xml:space="preserve"><value>Nikdy neutíkej</value></data>
+  <data name="tasks.state.running" xml:space="preserve"><value>Běží…</value></data>
+  <data name="tasks.state.ok" xml:space="preserve"><value>Povedlo se</value></data>
+  <data name="tasks.state.failed" xml:space="preserve"><value>Nepodařilo se</value></data>
+  <data name="tasks.openConversation" xml:space="preserve"><value>Otevřete konverzaci</value></data>
+  <data name="tasks.save" xml:space="preserve"><value>Uložit</value></data>
+  <data name="tasks.cancel" xml:space="preserve"><value>Zrušit</value></data>
+  <data name="tasks.background" xml:space="preserve"><value>Spouštějte úlohy, když je aplikace zavřená</value></data>
+  <data name="tasks.background.hint" xml:space="preserve"><value>Nainstaluje pomocníka na pozadí (launchd), který spouští požadované úlohy, i když není otevřený svazek bodů.</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Mapa</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Index</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Úkoly</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Rozhodnutí</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Předvolby</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Konverzace</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Žádné propojené zmínky.</value></data>
+  <data name="memory.graph" xml:space="preserve"><value>Graf</value></data>
+  <data name="media.image" xml:space="preserve"><value>obrázek</value></data>
+  <data name="media.video" xml:space="preserve"><value>video</value></data>
+  <data name="media.audio" xml:space="preserve"><value>zvuk</value></data>
+  <data name="media.promptMissing" xml:space="preserve"><value>Popište, co se má vygenerovat po příkazu.</value></data>
+  <data name="media.promptMissingFor" xml:space="preserve"><value>Popište {0}, který se má vygenerovat po příkazu.</value></data>
+  <data name="media.modelMissing" xml:space="preserve"><value>Model poskytovatele médií není nakonfigurován.</value></data>
+  <data name="media.noOutput" xml:space="preserve"><value>Poskytovatel nevrátil žádný mediální výstup.</value></data>
+  <data name="media.invalidOutput" xml:space="preserve"><value>Poskytovatel vrátil neplatná data médií.</value></data>
+  <data name="media.generationFailed" xml:space="preserve"><value>Poskytovatel nemohl vygenerovat média.</value></data>
+  <data name="media.videoTimeout" xml:space="preserve"><value>Vypršel časový limit generování videa.</value></data>
+  <data name="media.busy" xml:space="preserve"><value>Generování nebo běh agenta již probíhá. Zkuste to znovu, až to skončí.</value></data>
+  <data name="media.unsupported" xml:space="preserve"><value>Nemohu to tady vygenerovat. Vybraný poskytovatel tuto možnost nemá.</value></data>
+  <data name="media.unsupportedStatus" xml:space="preserve"><value>Vybraný poskytovatel nepodporuje generování médií.</value></data>
+  <data name="media.fileMissing" xml:space="preserve"><value>Vygenerovaný soubor již není k dispozici.</value></data>
+  <data name="media.openAudio" xml:space="preserve"><value>Otevřít vygenerovaný zvuk</value></data>
+  <data name="media.save" xml:space="preserve"><value>Uložit</value></data>
+  <data name="media.showInFinder" xml:space="preserve"><value>Zobrazit ve Finderu</value></data>
+  <data name="rail.home" xml:space="preserve"><value>Domů</value></data>
+  <data name="rail.media" xml:space="preserve"><value>Média</value></data>
+  <data name="rail.tasks" xml:space="preserve"><value>Úlohy</value></data>
+  <data name="rail.bots" xml:space="preserve"><value>Boti</value></data>
+  <data name="rail.marketplace" xml:space="preserve"><value>Tržiště</value></data>
+  <data name="rail.memory" xml:space="preserve"><value>Paměť</value></data>
+  <data name="rail.settings" xml:space="preserve"><value>Nastavení</value></data>
+  <data name="models.followApp" xml:space="preserve"><value>Model aplikace</value></data>
+  <data name="studio.preset.square" xml:space="preserve"><value>Čtvercový příspěvek</value></data>
+  <data name="studio.preset.story" xml:space="preserve"><value>Příběh</value></data>
+  <data name="studio.preset.landscape" xml:space="preserve"><value>Na šířku</value></data>
+  <data name="studio.preset.thumbnail" xml:space="preserve"><value>Náhled videa</value></data>
+  <data name="studio.preset.logo" xml:space="preserve"><value>Logo</value></data>
+  <data name="studio.preset.poster" xml:space="preserve"><value>Plakát</value></data>
+  <data name="studio.template.announcement" xml:space="preserve"><value>Oznámení</value></data>
+  <data name="studio.template.story" xml:space="preserve"><value>Příběh</value></data>
+  <data name="studio.template.thumbnail" xml:space="preserve"><value>Náhled videa</value></data>
+  <data name="studio.template.slide" xml:space="preserve"><value>Titulní snímek</value></data>
+  <data name="studio.template.logo" xml:space="preserve"><value>Logo</value></data>
+  <data name="studio.template.mobile" xml:space="preserve"><value>Mobilní obrazovka</value></data>
+  <data name="studio.category.social" xml:space="preserve"><value>Sociální sítě</value></data>
+  <data name="studio.category.uiux" xml:space="preserve"><value>UI/UX</value></data>
+  <data name="studio.category.presentation" xml:space="preserve"><value>Prezentace a infografika</value></data>
+  <data name="studio.category.other" xml:space="preserve"><value>Ostatní návrhy</value></data>
+  <data name="studio.sample.title" xml:space="preserve"><value>Váš nadpis</value></data>
+  <data name="studio.sample.detail" xml:space="preserve"><value>Krátký řádek, který řekne víc</value></data>
+  <data name="studio.sample.brand" xml:space="preserve"><value>Značka</value></data>
+  <data name="studio.sample.text" xml:space="preserve"><value>Text</value></data>
+  <data name="studio.copyOf" xml:space="preserve"><value>Kopie {0}</value></data>
+  <data name="studio.untitled" xml:space="preserve"><value>Projekt bez názvu</value></data>
+  <data name="studio.home.title" xml:space="preserve"><value>Popište svůj nápad a přiveďte ho k životu</value></data>
+  <data name="studio.home.search" xml:space="preserve"><value>Hledat</value></data>
+  <data name="studio.home.sort.name" xml:space="preserve"><value>Název</value></data>
+  <data name="studio.home.filter.all" xml:space="preserve"><value>Kdykoli</value></data>
+  <data name="studio.home.filter.week" xml:space="preserve"><value>Posledních 7 dní</value></data>
+  <data name="studio.home.filter.month" xml:space="preserve"><value>Posledních 30 dní</value></data>
+  <data name="studio.home.starred" xml:space="preserve"><value>S hvězdičkou</value></data>
+  <data name="studio.home.star" xml:space="preserve"><value>Přidat hvězdičku</value></data>
+  <data name="studio.home.unstar" xml:space="preserve"><value>Odebrat hvězdičku</value></data>
+  <data name="studio.home.modified" xml:space="preserve"><value>Naposledy upraveno</value></data>
+  <data name="studio.home.canvases" xml:space="preserve"><value>Plátna</value></data>
+  <data name="studio.projects" xml:space="preserve"><value>Projekty</value></data>
+  <data name="studio.templates" xml:space="preserve"><value>Šablony</value></data>
+  <data name="studio.community" xml:space="preserve"><value>Komunita</value></data>
+  <data name="studio.community.banner" xml:space="preserve"><value>Objevte návrhy vytvořené komunitou</value></data>
+  <data name="studio.community.saved" xml:space="preserve"><value>Uložené</value></data>
+  <data name="studio.community.share" xml:space="preserve"><value>Sdílet v komunitě</value></data>
+  <data name="studio.community.shared" xml:space="preserve"><value>Odesláno ke kontrole. Po schválení se zobrazí v komunitě.</value></data>
+  <data name="studio.community.signIn" xml:space="preserve"><value>Chcete-li sdílet v komunitě, přihlaste se ke svému účtu HerNess.</value></data>
+  <data name="studio.community.empty" xml:space="preserve"><value>Zatím zde nejsou žádné návrhy komunity.</value></data>
+  <data name="studio.projectName" xml:space="preserve"><value>Název projektu</value></data>
+  <data name="studio.newProject" xml:space="preserve"><value>Nový projekt</value></data>
+  <data name="studio.create" xml:space="preserve"><value>Vytvořit projekt</value></data>
+  <data name="studio.rename" xml:space="preserve"><value>Přejmenovat</value></data>
+  <data name="studio.duplicate" xml:space="preserve"><value>Duplikovat</value></data>
+  <data name="studio.deleteConfirm" xml:space="preserve"><value>Smazat „{0}“? Jeho plátna a nahrané soubory budou odstraněny.</value></data>
+  <data name="studio.projectMeta" xml:space="preserve"><value>Plátna: {0}, upraveno {1}</value></data>
+  <data name="studio.empty.title" xml:space="preserve"><value>Zatím žádné mediální projekty</value></data>
+  <data name="studio.empty.detail" xml:space="preserve"><value>Projekt je tabule pláten. Přidejte text, tvary a obrázky sami, nebo popište, co chcete, a nechte model to postavit vrstvu po vrstvě.</value></data>
+  <data name="studio.addCanvas" xml:space="preserve"><value>Plátno</value></data>
+  <data name="studio.undo" xml:space="preserve"><value>Zpět</value></data>
+  <data name="studio.redo" xml:space="preserve"><value>Znovu</value></data>
+  <data name="studio.zoomOut" xml:space="preserve"><value>Oddálit</value></data>
+  <data name="studio.zoomIn" xml:space="preserve"><value>Přiblížit</value></data>
+  <data name="studio.zoomFit" xml:space="preserve"><value>Přizpůsobit všechna plátna</value></data>
+  <data name="studio.layers" xml:space="preserve"><value>Vrstvy</value></data>
+  <data name="studio.layers.empty" xml:space="preserve"><value>Toto plátno zatím nemá žádné vrstvy.</value></data>
+  <data name="studio.layer.text" xml:space="preserve"><value>Text</value></data>
+  <data name="studio.layer.shape" xml:space="preserve"><value>Tvar</value></data>
+  <data name="studio.layer.upload" xml:space="preserve"><value>Nahraný soubor</value></data>
+  <data name="studio.layer.show" xml:space="preserve"><value>Zobrazit vrstvu</value></data>
+  <data name="studio.layer.hide" xml:space="preserve"><value>Skrýt vrstvu</value></data>
+  <data name="studio.shape.rectangle" xml:space="preserve"><value>Obdélník</value></data>
+  <data name="studio.shape.ellipse" xml:space="preserve"><value>Elipsa</value></data>
+  <data name="studio.name" xml:space="preserve"><value>Název</value></data>
+  <data name="studio.opacity" xml:space="preserve"><value>Krytí</value></data>
+  <data name="studio.fontSize" xml:space="preserve"><value>Velikost</value></data>
+  <data name="studio.weight.regular" xml:space="preserve"><value>Běžné</value></data>
+  <data name="studio.weight.medium" xml:space="preserve"><value>Střední</value></data>
+  <data name="studio.weight.bold" xml:space="preserve"><value>Tučné</value></data>
+  <data name="studio.fill" xml:space="preserve"><value>Výplň</value></data>
+  <data name="studio.cornerRadius" xml:space="preserve"><value>Poloměr rohů</value></data>
+  <data name="studio.playVideo" xml:space="preserve"><value>Přehrát video</value></data>
+  <data name="studio.size" xml:space="preserve"><value>Velikost</value></data>
+  <data name="studio.background" xml:space="preserve"><value>Pozadí</value></data>
+  <data name="studio.deleteCanvas" xml:space="preserve"><value>Smazat plátno</value></data>
+  <data name="studio.ai.kind.design" xml:space="preserve"><value>Návrh</value></data>
+  <data name="studio.ai.kind.image" xml:space="preserve"><value>Obrázek</value></data>
+  <data name="studio.ai.kind.video" xml:space="preserve"><value>Video</value></data>
+  <data name="studio.ai.placeholder.design" xml:space="preserve"><value>Popište design, který se má na tomto plátně vytvořit</value></data>
+  <data name="studio.ai.placeholder.image" xml:space="preserve"><value>Popište obrázek k vygenerování</value></data>
+  <data name="studio.ai.placeholder.video" xml:space="preserve"><value>Popište video k vygenerování</value></data>
+  <data name="studio.ai.run" xml:space="preserve"><value>Generovat</value></data>
+  <data name="studio.ai.planning" xml:space="preserve"><value>Plánování vrstev</value></data>
+  <data name="studio.ai.layerProgress" xml:space="preserve"><value>Vrstva {0} z {1}: {2}</value></data>
+  <data name="studio.ai.drawing" xml:space="preserve"><value>Generování obrázku</value></data>
+  <data name="studio.ai.renderingVideo" xml:space="preserve"><value>Generování videa. Může to trvat několik minut.</value></data>
+  <data name="studio.ai.noPlan" xml:space="preserve"><value>Model nevrátil žádné vrstvy. Zkuste to znovu nebo vyberte jiný model.</value></data>
+  <data name="studio.settings.title" xml:space="preserve"><value>Mediální modely</value></data>
+  <data name="studio.settings.design" xml:space="preserve"><value>Návrh</value></data>
+  <data name="studio.settings.model" xml:space="preserve"><value>Model</value></data>
+  <data name="studio.settings.designHelp" xml:space="preserve"><value>Chatovací model, který převádí požadavek na vrstvy.</value></data>
+  <data name="studio.settings.source" xml:space="preserve"><value>Zdroj</value></data>
+  <data name="studio.settings.source.provider" xml:space="preserve"><value>Poskytovatel</value></data>
+  <data name="studio.settings.source.local" xml:space="preserve"><value>Místní</value></data>
+  <data name="studio.settings.modelDefault" xml:space="preserve"><value>Výchozí poskytovatele</value></data>
+  <data name="studio.settings.local" xml:space="preserve"><value>Místní server</value></data>
+  <data name="studio.settings.localURL" xml:space="preserve"><value>Základní URL</value></data>
+  <data name="studio.settings.localHelp" xml:space="preserve"><value>Server kompatibilní s OpenAI na tomto počítači nebo v síti. Použije se, když je zdroj výše nastaven na Místní, s názvem modelu, který tam zadáte.</value></data>
+  <data name="studio.settings.music.connect" xml:space="preserve"><value>Připojit API</value></data>
+  <data name="studio.settings.music.type.standard" xml:space="preserve"><value>Hudební server</value></data>
+  <data name="studio.settings.music.type.elevenlabs" xml:space="preserve"><value>ElevenLabs</value></data>
+  <data name="studio.settings.music.name" xml:space="preserve"><value>Jméno</value></data>
+  <data name="studio.settings.music.key" xml:space="preserve"><value>Klíč API</value></data>
+  <data name="studio.settings.music.help" xml:space="preserve"><value>Hudební server odpovídá na POST /audio/generations a uvádí své modely na adrese /models; jedním z nich je tools/music_server.py. Klíč API je uložen v Klíčence.</value></data>
+  <data name="studio.ai.kind.next" xml:space="preserve"><value>Další obrazovka</value></data>
+  <data name="studio.ai.placeholder.next" xml:space="preserve"><value>Popište další obrazovku, nebo nechte prázdné a pokračujte v toku</value></data>
+  <data name="studio.ai.noImages" xml:space="preserve"><value>Není připojen žádný generátor obrázků, takže vrstvy obrázků zůstaly jako zástupné. Připojte jej a pak vygenerujte každý obrázek z jeho vrstvy.</value></data>
+  <data name="studio.screenNumber" xml:space="preserve"><value>Obrazovka {0}</value></data>
+  <data name="studio.layer.icon" xml:space="preserve"><value>Ikona</value></data>
+  <data name="studio.layer.lock" xml:space="preserve"><value>Zamknout vrstvu</value></data>
+  <data name="studio.layer.unlock" xml:space="preserve"><value>Odemknout vrstvu</value></data>
+  <data name="studio.layer.front" xml:space="preserve"><value>Přenést dopředu</value></data>
+  <data name="studio.layer.back" xml:space="preserve"><value>Přenést dozadu</value></data>
+  <data name="studio.position" xml:space="preserve"><value>Poloha</value></data>
+  <data name="studio.rotation" xml:space="preserve"><value>Otočení</value></data>
+  <data name="studio.appearance" xml:space="preserve"><value>Vzhled</value></data>
+  <data name="studio.gradient" xml:space="preserve"><value>Přechod</value></data>
+  <data name="studio.stroke" xml:space="preserve"><value>Tah</value></data>
+  <data name="studio.shadow" xml:space="preserve"><value>Stín</value></data>
+  <data name="studio.symbol" xml:space="preserve"><value>Název symbolu</value></data>
+  <data name="studio.imagePrompt" xml:space="preserve"><value>Popis obrázku</value></data>
+  <data name="studio.generateImage" xml:space="preserve"><value>Vygenerovat obrázek</value></data>
+  <data name="studio.export" xml:space="preserve"><value>Exportovat</value></data>
+  <data name="studio.exportAll" xml:space="preserve"><value>Exportovat všechna plátna</value></data>
+  <data name="studio.font.default" xml:space="preserve"><value>Bezpatkové</value></data>
+  <data name="studio.font.rounded" xml:space="preserve"><value>Zaoblené</value></data>
+  <data name="studio.font.serif" xml:space="preserve"><value>Patkové</value></data>
+  <data name="studio.font.mono" xml:space="preserve"><value>Neproporcionální</value></data>
+  <data name="studio.tool.move" xml:space="preserve"><value>Přesun</value></data>
+  <data name="studio.tool.hand" xml:space="preserve"><value>Ruka</value></data>
+  <data name="studio.tool.pen" xml:space="preserve"><value>Pero</value></data>
+  <data name="studio.tool.pencil" xml:space="preserve"><value>Tužka</value></data>
+  <data name="studio.shape.line" xml:space="preserve"><value>Čára</value></data>
+  <data name="studio.shape.arrow" xml:space="preserve"><value>Šipka</value></data>
+  <data name="studio.shape.polygon" xml:space="preserve"><value>Mnohoúhelník</value></data>
+  <data name="studio.shape.star" xml:space="preserve"><value>Hvězda</value></data>
+  <data name="studio.actions" xml:space="preserve"><value>Akce</value></data>
+  <data name="studio.unlockAll" xml:space="preserve"><value>Odemknout všechny vrstvy</value></data>
+  <data name="studio.frames.phone" xml:space="preserve"><value>Telefon</value></data>
+  <data name="studio.frames.tablet" xml:space="preserve"><value>Tablet</value></data>
+  <data name="studio.frames.desktop" xml:space="preserve"><value>Počítač</value></data>
+  <data name="studio.frames.presentation" xml:space="preserve"><value>Prezentace</value></data>
+  <data name="studio.frames.watch" xml:space="preserve"><value>Hodinky</value></data>
+  <data name="studio.frames.paper" xml:space="preserve"><value>Papír</value></data>
+  <data name="studio.frames.social" xml:space="preserve"><value>Sociální sítě</value></data>
+  <data name="studio.tool.scale" xml:space="preserve"><value>Měřítko</value></data>
+  <data name="studio.tool.section" xml:space="preserve"><value>Sekce</value></data>
+  <data name="studio.tool.slice" xml:space="preserve"><value>Výřez</value></data>
+  <data name="studio.tool.textPath" xml:space="preserve"><value>Text na křivce</value></data>
+  <data name="studio.tool.comment" xml:space="preserve"><value>Komentář</value></data>
+  <data name="studio.search" xml:space="preserve"><value>Hledat</value></data>
+  <data name="studio.cut" xml:space="preserve"><value>Vyjmout</value></data>
+  <data name="studio.paste" xml:space="preserve"><value>Vložit</value></data>
+  <data name="bots.preset.assistant" xml:space="preserve"><value>Asistent</value></data>
+  <data name="bots.preset.researcher" xml:space="preserve"><value>Výzkumník</value></data>
+  <data name="bots.preset.coder" xml:space="preserve"><value>Programátor</value></data>
+  <data name="bots.new" xml:space="preserve"><value>Nový bot</value></data>
+  <data name="bots.edit" xml:space="preserve"><value>Upravit bota</value></data>
+  <data name="bots.clear" xml:space="preserve"><value>Vymazat chat</value></data>
+  <data name="bots.send" xml:space="preserve"><value>Odeslat zprávu</value></data>
+  <data name="bots.deleteConfirm" xml:space="preserve"><value>Smazat „{0}“ a jeho chat?</value></data>
+  <data name="bots.empty.title" xml:space="preserve"><value>Zatím žádní boti</value></data>
+  <data name="bots.empty.detail" xml:space="preserve"><value>Bot je asistent s vlastními pokyny, modelem a průběžným chatem. Dejte mu složku a bude v ní pracovat jako agent.</value></data>
+  <data name="bots.greeting" xml:space="preserve"><value>Pošlete {0} zprávu a začněte.</value></data>
+  <data name="bots.placeholder" xml:space="preserve"><value>Zpráva pro {0}</value></data>
+  <data name="bots.agentIn" xml:space="preserve"><value>Agent v {0}</value></data>
+  <data name="bots.name" xml:space="preserve"><value>Název</value></data>
+  <data name="bots.icon" xml:space="preserve"><value>Ikona</value></data>
+  <data name="bots.instructions" xml:space="preserve"><value>Pokyny</value></data>
+  <data name="bots.instructionsHelp" xml:space="preserve"><value>Jak se má bot chovat, co ví a jak odpovídá.</value></data>
+  <data name="bots.workspace" xml:space="preserve"><value>Složka agenta</value></data>
+  <data name="bots.workspace.none" xml:space="preserve"><value>Žádná: jen chat</value></data>
+  <data name="bots.workspace.choose" xml:space="preserve"><value>Vybrat složku</value></data>
+  <data name="bots.workspace.clear" xml:space="preserve"><value>Odebrat</value></data>
+  <data name="bots.workspaceHelp" xml:space="preserve"><value>Se složkou může bot v ní bez ptaní číst, zapisovat a spouštět příkazy a nemá přístup k síti. Bez složky jen chatuje.</value></data>
+  <data name="bots.error.noReply" xml:space="preserve"><value>Bot neodpověděl.</value></data>
+  <data name="bots.status.delivered" xml:space="preserve"><value>Doručeno botovi</value></data>
+  <data name="bots.status.waiting" xml:space="preserve"><value>Čeká se na bota</value></data>
+  <data name="tasks.plan.title" xml:space="preserve"><value>Naplánovat úlohu</value></data>
+  <data name="tasks.plan.subtitle" xml:space="preserve"><value>HerNess za vás provádí opakovanou práci.</value></data>
+  <data name="tasks.upcoming" xml:space="preserve"><value>Nadcházející</value></data>
+  <data name="tasks.instructions" xml:space="preserve"><value>Pokyny…</value></data>
+  <data name="tasks.repeat" xml:space="preserve"><value>Opakování</value></data>
+  <data name="tasks.time" xml:space="preserve"><value>Čas</value></data>
+  <data name="tasks.day" xml:space="preserve"><value>Den</value></data>
+  <data name="tasks.advanced" xml:space="preserve"><value>Pokročilé</value></data>
+  <data name="tasks.create" xml:space="preserve"><value>Vytvořit</value></data>
+  <data name="tasks.repeat.hourly" xml:space="preserve"><value>Každou hodinu</value></data>
+  <data name="tasks.repeat.daily" xml:space="preserve"><value>Denně</value></data>
+  <data name="tasks.repeat.weekdays" xml:space="preserve"><value>Pracovní dny</value></data>
+  <data name="tasks.repeat.weekly" xml:space="preserve"><value>Týdně</value></data>
+  <data name="tasks.repeat.custom" xml:space="preserve"><value>Vlastní</value></data>
+  <data name="bots.preset.assistant.detail" xml:space="preserve"><value>Pomoc s každodenními úkoly</value></data>
+  <data name="bots.preset.researcher.detail" xml:space="preserve"><value>Prozkoumejte témata a porovnejte zdroje</value></data>
+  <data name="bots.preset.coder.detail" xml:space="preserve"><value>Pište kód a řešte problémy</value></data>
+  <data name="tasks.suggestion.email.title" xml:space="preserve"><value>Kontrola e-mailů</value></data>
+  <data name="tasks.suggestion.email.detail" xml:space="preserve"><value>Zkontroluj důležité e-maily a shrň, co vyžaduje pozornost.</value></data>
+  <data name="tasks.suggestion.reading.title" xml:space="preserve"><value>Čtení na víkend</value></data>
+  <data name="tasks.suggestion.reading.detail" xml:space="preserve"><value>Každý týden najdi článek o mých zájmech.</value></data>
+  <data name="tasks.suggestion.prices.title" xml:space="preserve"><value>Upozornění na ceny</value></data>
+  <data name="tasks.suggestion.prices.detail" xml:space="preserve"><value>Kontroluj ceny sledovaných produktů a oznam slevy.</value></data>
+  <data name="tasks.suggestion.events.title" xml:space="preserve"><value>Objevování akcí</value></data>
+  <data name="tasks.suggestion.events.detail" xml:space="preserve"><value>Najdi koncerty a akce podle mých zájmů.</value></data>
+  <data name="tasks.suggestion.weekend.title" xml:space="preserve"><value>Naplánuj můj víkend</value></data>
+  <data name="tasks.suggestion.weekend.detail" xml:space="preserve"><value>Navrhni víkendové aktivity podle mých preferencí.</value></data>
+  <data name="tasks.suggestions.memory" xml:space="preserve"><value>Podle tvé paměti</value></data>
+  <data name="tasks.suggestions.personalizing" xml:space="preserve"><value>Příprava návrhů z tvé paměti…</value></data>
+  <data name="tasks.suggestions.unavailable" xml:space="preserve"><value>Ukázkové návrhy · přizpůsobení není dostupné</value></data>
+  <data name="tasks.suggestions.refresh" xml:space="preserve"><value>Obnovit návrhy</value></data>
+  <data name="tasks.suggestions.instruction" xml:space="preserve"><value>Přizpůsob výsledek mým zájmům a preferencím. Shrň zjištění. Uveď, jaké informace nebo přístup chybí.</value></data>
+  <data name="media.music" xml:space="preserve"><value>hudba</value></data>
+  <data name="studio.music" xml:space="preserve"><value>Hudba</value></data>
+  <data name="studio.library" xml:space="preserve"><value>Knihovna</value></data>
+  <data name="studio.music.composing" xml:space="preserve"><value>Skládání hudby. Může to trvat několik minut.</value></data>
+  <data name="studio.music.song" xml:space="preserve"><value>Skladba</value></data>
+  <data name="studio.music.inspector" xml:space="preserve"><value>Podrobnosti</value></data>
+  <data name="studio.music.section" xml:space="preserve"><value>Sekce</value></data>
+  <data name="studio.music.section.delete" xml:space="preserve"><value>Smazat sekci</value></data>
+  <data name="studio.music.lyrics" xml:space="preserve"><value>Text písně</value></data>
+  <data name="studio.music.track" xml:space="preserve"><value>Stopa</value></data>
+  <data name="studio.music.track.generate" xml:space="preserve"><value>Vygenerovat stopu</value></data>
+  <data name="studio.music.track.empty" xml:space="preserve"><value>Zatím žádný zvuk</value></data>
+  <data name="studio.music.track.delete" xml:space="preserve"><value>Smazat stopu</value></data>
+  <data name="studio.music.mix" xml:space="preserve"><value>Mix</value></data>
+  <data name="studio.music.tempo" xml:space="preserve"><value>Tempo a tónina</value></data>
+  <data name="studio.music.generating" xml:space="preserve"><value>Generování {0} stop</value></data>
+  <data name="studio.music.placeholder" xml:space="preserve"><value>Popište skladbu: nálada, příběh, nástroje, kdo zpívá</value></data>
+  <data name="studio.music.empty" xml:space="preserve"><value>Popište skladbu výše nebo začněte prázdnou. Nejprve vznikne plán: sekce, text a stopa pro každý nástroj, které můžete před vytvořením zvuku upravit.</value></data>
+  <data name="studio.music.plan" xml:space="preserve"><value>Napsat skladbu</value></data>
+  <data name="studio.music.new" xml:space="preserve"><value>Prázdná skladba</value></data>
+  <data name="studio.music.noPlan" xml:space="preserve"><value>Model nevrátil plán skladby. Zkuste to znovu nebo vyberte jiný model.</value></data>
+  <data name="studio.music.deleteConfirm" xml:space="preserve"><value>Smazat „{0}“? Jeho stopy a zvukové soubory budou odstraněny.</value></data>
+  <data name="studio.music.trackCount" xml:space="preserve"><value>{0} stop</value></data>
+  <data name="studio.music.bpm" xml:space="preserve"><value>{0} BPM</value></data>
+  <data name="studio.music.key" xml:space="preserve"><value>Tónina</value></data>
+  <data name="studio.music.generateAll" xml:space="preserve"><value>Vygenerovat vše</value></data>
+  <data name="studio.music.regenerate" xml:space="preserve"><value>Znovu vygenerovat tuto stopu</value></data>
+  <data name="studio.music.script" xml:space="preserve"><value>Scénář</value></data>
+  <data name="studio.music.artists" xml:space="preserve"><value>Umělci</value></data>
+  <data name="studio.music.artist.add" xml:space="preserve"><value>Přidat umělce</value></data>
+  <data name="studio.music.artist.default" xml:space="preserve"><value>Umělec {0}</value></data>
+  <data name="studio.music.artist.name" xml:space="preserve"><value>Jméno</value></data>
+  <data name="studio.music.artist.style" xml:space="preserve"><value>Hlas a styl</value></data>
+  <data name="studio.music.section.add" xml:space="preserve"><value>Přidat sekci</value></data>
+  <data name="studio.music.section.default" xml:space="preserve"><value>Sloka</value></data>
+  <data name="studio.music.section.bars" xml:space="preserve"><value>{0} taktů</value></data>
+  <data name="studio.music.line.add" xml:space="preserve"><value>Přidat řádek</value></data>
+  <data name="studio.music.line.placeholder" xml:space="preserve"><value>Řádek textu</value></data>
+  <data name="studio.music.line.unsung" xml:space="preserve"><value>Nikdo</value></data>
+  <data name="studio.music.track.add" xml:space="preserve"><value>Přidat stopu</value></data>
+  <data name="studio.music.track.instrument" xml:space="preserve"><value>Nástroj</value></data>
+  <data name="studio.music.track.prompt" xml:space="preserve"><value>Jak má hrát</value></data>
+  <data name="studio.music.track.vocal" xml:space="preserve"><value>Zpěv · {0}</value></data>
+  <data name="studio.music.mute" xml:space="preserve"><value>Ztlumit</value></data>
+  <data name="studio.music.solo" xml:space="preserve"><value>Sólo</value></data>
+  <data name="library.all" xml:space="preserve"><value>Vše</value></data>
+  <data name="library.kind.image" xml:space="preserve"><value>Obrázky</value></data>
+  <data name="library.kind.video" xml:space="preserve"><value>Videa</value></data>
+  <data name="library.kind.audio" xml:space="preserve"><value>Hlas</value></data>
+  <data name="library.kind.music" xml:space="preserve"><value>Hudba</value></data>
+  <data name="library.kind.document" xml:space="preserve"><value>Dokumenty</value></data>
+  <data name="library.add" xml:space="preserve"><value>Přidat soubory</value></data>
+  <data name="library.addFailed" xml:space="preserve"><value>{0} souborů se nepodařilo přidat.</value></data>
+  <data name="library.open" xml:space="preserve"><value>Otevřít</value></data>
+  <data name="library.empty.title" xml:space="preserve"><value>Zatím zde nic není</value></data>
+  <data name="library.empty.detail" xml:space="preserve"><value>Vygenerované obrázky, videa, řeč a hudba se sem ukládají automaticky. Dokumenty a další soubory přidejte sami.</value></data>
+  <data name="backgroundTasks.title" xml:space="preserve"><value>Úlohy na pozadí</value></data>
+  <data name="backgroundTasks.empty" xml:space="preserve"><value>Žádné úlohy na pozadí</value></data>
+  <data name="backgroundTasks.finished" xml:space="preserve"><value>Dokončené</value></data>
+  <data name="backgroundTasks.failed" xml:space="preserve"><value>Selhalo (kód {0})</value></data>
+  <data name="backgroundTasks.stopped" xml:space="preserve"><value>Zastaveno</value></data>
+  <data name="backgroundTasks.clear" xml:space="preserve"><value>Vymazat dokončené</value></data>
+  <data name="backgroundTasks.runningCount" xml:space="preserve"><value>Běžící úlohy: {0}</value></data>
+  <data name="backgroundTasks.wake" xml:space="preserve"><value>Úloha na pozadí „{0}“ skončila s návratovým kódem {1}. Přečti její výstup pomocí terminal_session (relace {2}) a pokračuj.</value></data>
+  <data name="backgroundTasks.waitingInput" xml:space="preserve"><value>Čeká na vstup</value></data>
+  <data name="local.installed" xml:space="preserve"><value>Instalováno</value></data>
+  <data name="marketplace.title" xml:space="preserve"><value>Tržiště</value></data>
+  <data name="marketplace.empty" xml:space="preserve"><value>Žádné pluginy</value></data>
+  <data name="marketplace.emptyHint" xml:space="preserve"><value>Stisknutím tlačítka Refresh načtěte registr.</value></data>
+  <data name="marketplace.install" xml:space="preserve"><value>Instalovat</value></data>
+  <data name="marketplace.search" xml:space="preserve"><value>Hledat pluginy</value></data>
+  <data name="marketplace.update" xml:space="preserve"><value>Aktualizujte v{0} → v{1}</value></data>
+  <data name="marketplace.by" xml:space="preserve"><value>od {0}</value></data>
+  <data name="market.tab.plugins" xml:space="preserve"><value>Pluginy</value></data>
+  <data name="market.tab.skills" xml:space="preserve"><value>Dovednosti</value></data>
+  <data name="market.tab.starters" xml:space="preserve"><value>Šablony projektů</value></data>
+  <data name="starters.intro" xml:space="preserve"><value>Vyberte šablonu a prázdnou složku. Prompt se objeví v poli pro psaní, abyste si ho mohli přečíst a odeslat.</value></data>
+  <data name="starters.use" xml:space="preserve"><value>Použít šablonu</value></data>
+  <data name="starters.chooseFolder" xml:space="preserve"><value>Vyberte prázdnou složku pro nový projekt.</value></data>
+  <data name="starters.web.title" xml:space="preserve"><value>Webová aplikace</value></data>
+  <data name="starters.web.detail" xml:space="preserve"><value>Next.js s TypeScriptem, rozvržením, ukázkovou trasou API a lintingem.</value></data>
+  <data name="starters.landing.title" xml:space="preserve"><value>Vstupní stránka</value></data>
+  <data name="starters.landing.detail" xml:space="preserve"><value>Statické HTML a CSS s úvodní sekcí, funkcemi, ceníkem a kontaktem. Bez kroku sestavení.</value></data>
+  <data name="starters.api.title" xml:space="preserve"><value>Služba API</value></data>
+  <data name="starters.api.detail" xml:space="preserve"><value>FastAPI s kontrolou stavu, ukázkovým zdrojem, nastavením a testy.</value></data>
+  <data name="starters.ios.title" xml:space="preserve"><value>Aplikace pro iOS</value></data>
+  <data name="starters.ios.detail" xml:space="preserve"><value>SwiftUI se dvěma obrazovkami, pozorovatelným modelem a jednotkovým testem.</value></data>
+  <data name="starters.worker.title" xml:space="preserve"><value>Cloudflare Worker</value></data>
+  <data name="starters.worker.detail" xml:space="preserve"><value>API v TypeScriptu na Workers s typovanými vazbami a testem.</value></data>
+  <data name="starters.cli.title" xml:space="preserve"><value>Nástroj příkazového řádku</value></data>
+  <data name="starters.cli.detail" xml:space="preserve"><value>Balíček Python s podpříkazy, testy a pokyny k instalaci.</value></data>
+  <data name="common.cancel" xml:space="preserve"><value>Zrušit</value></data>
+  <data name="common.connect" xml:space="preserve"><value>Připojit</value></data>
+  <data name="common.copied" xml:space="preserve"><value>Zkopírováno</value></data>
+  <data name="common.delete" xml:space="preserve"><value>Smazat</value></data>
+  <data name="common.done" xml:space="preserve"><value>Hotovo</value></data>
+  <data name="common.download" xml:space="preserve"><value>Stáhnout</value></data>
+  <data name="common.idle" xml:space="preserve"><value>Nečinný</value></data>
+  <data name="common.refresh" xml:space="preserve"><value>Obnovit</value></data>
+  <data name="common.remove" xml:space="preserve"><value>Odebrat</value></data>
+  <data name="common.start" xml:space="preserve"><value>Začněte</value></data>
+  <data name="common.stop" xml:space="preserve"><value>Přestaň</value></data>
+  <data name="common.test" xml:space="preserve"><value>Test</value></data>
+  <data name="common.save" xml:space="preserve"><value>Uložit</value></data>
+  <data name="common.view" xml:space="preserve"><value>Zobrazit</value></data>
+  <data name="composer.add" xml:space="preserve"><value>Přidat</value></data>
+  <data name="attachment.addApp" xml:space="preserve"><value>Přidejte aplikaci Dots Harness</value></data>
+  <data name="attachment.projectDetail" xml:space="preserve"><value>Vyberte projekt pro nové chaty</value></data>
+  <data name="attachment.goal" xml:space="preserve"><value>Cíl</value></data>
+  <data name="attachment.goalDetail" xml:space="preserve"><value>Stanovte si cíl, ke kterému budete pracovat</value></data>
+  <data name="attachment.plan" xml:space="preserve"><value>Režim plánu</value></data>
+  <data name="attachment.planDetail" xml:space="preserve"><value>Zapněte režim plánu</value></data>
+  <data name="attachment.saveSkill" xml:space="preserve"><value>Uložit dovednost</value></data>
+  <data name="attachment.plugins" xml:space="preserve"><value>Pluginy</value></data>
+  <data name="attachment.slashCommands" xml:space="preserve"><value>Příkazy lomítka</value></data>
+  <data name="attachment.folder" xml:space="preserve"><value>Přidat složku</value></data>
+  <data name="attachment.connectors" xml:space="preserve"><value>Konektory</value></data>
+  <data name="attachment.documentsDetail" xml:space="preserve"><value>Vytvářejte a upravujte artefakty dokumentu</value></data>
+  <data name="attachment.pdfDetail" xml:space="preserve"><value>Číst, vytvářet a ověřovat soubory PDF</value></data>
+  <data name="attachment.spreadsheetsDetail" xml:space="preserve"><value>Vytvářejte a upravujte tabulkové soubory</value></data>
+  <data name="modelPicker.model" xml:space="preserve"><value>Model</value></data>
+  <data name="modelPicker.speed" xml:space="preserve"><value>Rychlost</value></data>
+  <data name="modelPicker.maximum" xml:space="preserve"><value>Maximální</value></data>
+  <data name="modelPicker.standard" xml:space="preserve"><value>Standardní</value></data>
+  <data name="modelPicker.fast" xml:space="preserve"><value>Rychle</value></data>
+  <data name="modelPicker.auto" xml:space="preserve"><value>Auto</value></data>
+  <data name="modelPicker.autoHint" xml:space="preserve"><value>Vybere model a úsilí podle zprávy</value></data>
+  <data name="settings.sshPassword" xml:space="preserve"><value>Heslo (použije se jednou)</value></data>
+  <data name="settings.sshRememberPassword" xml:space="preserve"><value>Zapamatovat heslo</value></data>
+  <data name="settings.sshRememberPassword.hint" xml:space="preserve"><value>Není potřeba: heslo se použije jen jednou k instalaci klíče a nikdy se nezapisuje do ~/.ssh/config.</value></data>
+  <data name="ssh.continue" xml:space="preserve"><value>Pokračovat</value></data>
+  <data name="ssh.enrolling" xml:space="preserve"><value>Instalace klíče…</value></data>
+  <data name="ssh.enrolled.hint" xml:space="preserve"><value>Další připojení používají klíč; heslo už není potřeba.</value></data>
+  <data name="ssh.retry" xml:space="preserve"><value>Zkusit znovu</value></data>
+  <data name="ssh.retryHint" xml:space="preserve"><value>Zkontrolujte adresu, uživatelské jméno a heslo a zkuste to znovu.</value></data>
+  <data name="ssh.installKeyManually" xml:space="preserve"><value>Přidejte tento klíč na serveru do ~/.ssh/authorized_keys a zkuste to znovu.</value></data>
+  <data name="ssh.copyPublicKey" xml:space="preserve"><value>Kopírovat klíč</value></data>
+  <data name="ssh.error.passwordAuthDisabled" xml:space="preserve"><value>Server nepřijímá přihlášení heslem.</value></data>
+  <data name="ssh.error.authFailed" xml:space="preserve"><value>{0} odmítl přihlášení.</value></data>
+  <data name="ssh.error.hostKeyChanged" xml:space="preserve"><value>Klíč hostitele {0} se změnil. Nepokračujte, pokud server nebyl přeinstalován.</value></data>
+  <data name="ssh.error.invalidInput" xml:space="preserve"><value>Zadejte platný alias, název hostitele, uživatelské jméno a port.</value></data>
+  <data name="sidebar.projects" xml:space="preserve"><value>Projekty</value></data>
+  <data name="sidebar.recent" xml:space="preserve"><value>Nedávné</value></data>
+  <data name="sidebar.search" xml:space="preserve"><value>Hledat chaty</value></data>
+  <data name="sidebar.sites" xml:space="preserve"><value>Weby</value></data>
+  <data name="sidebar.scheduled" xml:space="preserve"><value>Naplánováno</value></data>
+  <data name="sidebar.addProject" xml:space="preserve"><value>Přidat projekt</value></data>
+  <data name="settings.compactTrigger" xml:space="preserve"><value>Automaticky zhustit kontext při</value></data>
+  <data name="settings.compactTrigger.hint" xml:space="preserve"><value>Podíl kontextového okna každého modelu. Vyšší hodnota drží cache promptu déle, protože ji zhuštění přepisuje.</value></data>
+  <data name="settings.explore.subagents" xml:space="preserve"><value>Používat podagenty</value></data>
+  <data name="settings.explore.hint" xml:space="preserve"><value>Když je zapnuto, agent u náročných nebo dlouhých úloh předává paralelním podagentům hledání napříč mnoha soubory a nezávislé části velké změny; do hlavní konverzace se dostane jen jejich shrnutí. Upravující podagent smí zapisovat jen soubory, které mu byly přiděleny, a přidělení se nesmí překrývat. Jednoduché úlohy je nikdy nevolají. Každý podagent je samostatný běh modelu; vypněte pro nižší náklady.</value></data>
+  <data name="settings.responseStyle" xml:space="preserve"><value>Styl odpovědi</value></data>
+  <data name="settings.responseStyle.hint" xml:space="preserve"><value>Toto nastavení nepřepisuje prompt. Stručný/Ultra jsou preference bez záruky; nezaručují počet tokenů, dokončení ani nižší cenu.</value></data>
+  <data name="responseStyle.balanced" xml:space="preserve"><value>Vyvážený</value></data>
+  <data name="responseStyle.concise" xml:space="preserve"><value>Stručný</value></data>
+  <data name="responseStyle.ultra" xml:space="preserve"><value>Ultra</value></data>
+  <data name="responseStyle.detailed" xml:space="preserve"><value>Podrobný</value></data>
+  <data name="settings.computerUse.enable" xml:space="preserve"><value>Povolit ovládání počítače</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>Verze a aktualizace</value></data>
+  <data name="settings.updates.available" xml:space="preserve"><value>Je k dispozici nová verze: v{0}</value></data>
+  <data name="settings.updates.download" xml:space="preserve"><value>Stáhnout aktualizaci</value></data>
+  <data name="dock.branch" xml:space="preserve"><value>Větev</value></data>
+  <data name="dock.refresh" xml:space="preserve"><value>Obnovit</value></data>
+  <data name="dock.commit" xml:space="preserve"><value>Commit</value></data>
+  <data name="dock.push" xml:space="preserve"><value>Odeslat</value></data>
+  <data name="dock.fetch" xml:space="preserve"><value>Načíst</value></data>
+  <data name="dock.commitOrPush" xml:space="preserve"><value>Commit nebo push</value></data>
+  <data name="dock.commitMessage" xml:space="preserve"><value>Zpráva commitu</value></data>
+  <data name="dock.noChanges" xml:space="preserve"><value>Agent neprovedl žádné změny.</value></data>
+  <data name="dock.whyRequest" xml:space="preserve"><value>Váš požadavek</value></data>
+  <data name="dock.whyAgent" xml:space="preserve"><value>Vysvětlení agenta</value></data>
+  <data name="dock.notRepo" xml:space="preserve"><value>Tato složka není git repozitář.</value></data>
+  <data name="dock.gitMissing" xml:space="preserve"><value>Git není nainstalován. Kontrola, commit a push ho potřebují.</value></data>
+  <data name="dock.installGit" xml:space="preserve"><value>Nainstalovat Git</value></data>
+  <data name="dock.filterFiles" xml:space="preserve"><value>Filtrovat soubory…</value></data>
+  <data name="dock.openFile" xml:space="preserve"><value>Otevřít soubor</value></data>
+  <data name="dock.selectFile" xml:space="preserve"><value>Vyberte soubor ze stromu pracovního prostoru</value></data>
+  <data name="dock.binaryFile" xml:space="preserve"><value>Binární nebo nečitelný soubor</value></data>
+  <data name="dock.expand" xml:space="preserve"><value>Rozbalit</value></data>
+  <data name="dock.collapse" xml:space="preserve"><value>Sbalit</value></data>
+  <data name="dock.split" xml:space="preserve"><value>Rozdělit</value></data>
+  <data name="dock.unsplit" xml:space="preserve"><value>Zobrazit jednu kartu</value></data>
+  <data name="dock.newTab" xml:space="preserve"><value>Nová karta</value></data>
+  <data name="dock.address" xml:space="preserve"><value>Hledat nebo zadat URL</value></data>
+  <data name="dock.invalidAddress" xml:space="preserve"><value>Zadejte platnou webovou adresu nebo hledaný výraz.</value></data>
+  <data name="dock.openExternal" xml:space="preserve"><value>Otevřít ve výchozím prohlížeči</value></data>
+  <data name="dock.bottomTerminal" xml:space="preserve"><value>Otevřít terminál dole</value></data>
+  <data name="dock.splitHorizontal" xml:space="preserve"><value>Rozdělit vedle sebe</value></data>
+  <data name="dock.splitVertical" xml:space="preserve"><value>Rozdělit nad sebe</value></data>
+  <data name="dock.noWorkspace" xml:space="preserve"><value>Nejprve vyberte pracovní složku.</value></data>
+  <data name="git.branchHelp" xml:space="preserve"><value>Vyberte větev Git</value></data>
+  <data name="git.uncommitted" xml:space="preserve"><value>Nepotvrzené: soubory {0}</value></data>
+  <data name="market.area.core" xml:space="preserve"><value>Hlavní Marketplace</value></data>
+  <data name="market.area.experimental" xml:space="preserve"><value>Experimentální</value></data>
+  <data name="market.area.community" xml:space="preserve"><value>Komunita</value></data>
+  <data name="market.area.communityExperimental" xml:space="preserve"><value>Komunita / Experimentální</value></data>
+  <data name="market.account" xml:space="preserve"><value>Účet HerNess</value></data>
+  <data name="market.signIn" xml:space="preserve"><value>Přihlásit se</value></data>
+  <data name="market.signIn.email" xml:space="preserve"><value>E-mail a heslo</value></data>
+  <data name="market.signIn.title" xml:space="preserve"><value>Přihlaste se účtem HerNess</value></data>
+  <data name="market.email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="market.password" xml:space="preserve"><value>Heslo</value></data>
+  <data name="market.likeSignIn" xml:space="preserve"><value>Přihlaste se a dejte líbí se mi</value></data>
+  <data name="market.customize" xml:space="preserve"><value>Upravit</value></data>
+  <data name="market.localForks" xml:space="preserve"><value>Místní úpravy</value></data>
+  <data name="market.openFolder" xml:space="preserve"><value>Otevřít složku</value></data>
+  <data name="market.fork.compared" xml:space="preserve"><value>Porovnáno</value></data>
+  <data name="market.consent.title" xml:space="preserve"><value>Tento plugin spouští nativní kód</value></data>
+  <data name="market.consent.accept" xml:space="preserve"><value>Přijmout a povolit</value></data>
+  <data name="market.consent.message" xml:space="preserve"><value>{0} je nativní plugin třetí strany. Oblast: {1}. Kontrola: {2}. Kategorie: {3}. Zkontrolujte jeho oprávnění a zdrojový kód. Pokud přijmete, plugin se ihned spustí jako důvěryhodný.</value></data>
+  <data name="market.review.verified" xml:space="preserve"><value>Zkontrolováno DOTS</value></data>
+  <data name="market.review.pending" xml:space="preserve"><value>Čeká na kontrolu</value></data>
+  <data name="market.community.empty" xml:space="preserve"><value>Zatím žádné komunitní pluginy</value></data>
+  <data name="market.community.emptyHint" xml:space="preserve"><value>Komunitní pluginy vyžadují samostatnou kontrolu a výslovný souhlas se spuštěním nativního kódu.</value></data>
+  <data name="market.report" xml:space="preserve"><value>Nahlásit</value></data>
+  <data name="market.report.title" xml:space="preserve"><value>Nahlásit plugin</value></data>
+  <data name="market.report.reason" xml:space="preserve"><value>Důvod</value></data>
+  <data name="market.report.submit" xml:space="preserve"><value>Odeslat hlášení</value></data>
+  <data name="market.report.malware" xml:space="preserve"><value>Malware nebo škodlivé chování</value></data>
+  <data name="market.report.credentialTheft" xml:space="preserve"><value>Krádež přihlašovacích údajů</value></data>
+  <data name="market.report.exfiltration" xml:space="preserve"><value>Vynášení dat</value></data>
+  <data name="market.report.deceptive" xml:space="preserve"><value>Zavádějící záznam nebo vydávání se za jiného</value></data>
+  <data name="market.report.spam" xml:space="preserve"><value>Spam nebo prázdný wrapper</value></data>
+  <data name="market.report.copyright" xml:space="preserve"><value>Porušení autorských práv nebo licence</value></data>
+  <data name="market.publish" xml:space="preserve"><value>Publikovat plugin</value></data>
+  <data name="market.publish.title" xml:space="preserve"><value>Publikovat nativní plugin</value></data>
+  <data name="market.publish.hint" xml:space="preserve"><value>Složka pluginu musí obsahovat plugin.yml, plugin.ir.json a licenci. JavaScript a deklarativní běhová prostředí nejsou přijímána; sestavení pro platformy vznikají v CI.</value></data>
+  <data name="market.publish.noFolder" xml:space="preserve"><value>Není vybrána složka pluginu</value></data>
+  <data name="market.publish.chooseFolder" xml:space="preserve"><value>Vybrat složku</value></data>
+  <data name="market.publish.irPreview" xml:space="preserve"><value>Náhled plugin.ir.json</value></data>
+  <data name="market.publish.sourcePreview" xml:space="preserve"><value>Náhled nativního zdroje</value></data>
+  <data name="market.publish.version" xml:space="preserve"><value>Verze (SemVer)</value></data>
+  <data name="market.publish.license" xml:space="preserve"><value>Licence SPDX (např. MIT)</value></data>
+  <data name="market.publish.visibility" xml:space="preserve"><value>Viditelnost zdroje</value></data>
+  <data name="market.publish.public" xml:space="preserve"><value>Veřejné — zdrojový balíček je uveden</value></data>
+  <data name="market.publish.private" xml:space="preserve"><value>Soukromé — přístup má jen vlastník a CI</value></data>
+  <data name="market.publish.targets" xml:space="preserve"><value>Cílové platformy</value></data>
+  <data name="market.publish.footer" xml:space="preserve"><value>Po publikování AI zařadí kategorii, oblast a riziko. I po dokončení sestavení se plugin nezobrazí, dokud neskončí lidská kontrola.</value></data>
+  <data name="market.publish.submit" xml:space="preserve"><value>Publikovat</value></data>
+  <data name="market.publish.error.http" xml:space="preserve"><value>Publikování na Marketplace selhalo (HTTP {0}): {1}</value></data>
+  <data name="market.publish.error.license" xml:space="preserve"><value>Pro publikování pluginu vyberte licenci.</value></data>
+  <data name="market.publish.error.noManifest" xml:space="preserve"><value>Ve vybrané složce nebyl nalezen plugin.yml.</value></data>
+  <data name="market.publish.error.nativeOnly" xml:space="preserve"><value>Publikovat lze jen nativní pluginy.</value></data>
+  <data name="market.publish.error.semver" xml:space="preserve"><value>Zadejte platnou verzi SemVer.</value></data>
+  <data name="market.publish.error.targets" xml:space="preserve"><value>Vyberte alespoň jednu cílovou platformu a platnou viditelnost zdroje.</value></data>
+  <data name="market.publish.error.package" xml:space="preserve"><value>Balíček musí obsahovat soubory plugin.ir.json a license.</value></data>
+  <data name="market.publish.error.irVersion" xml:space="preserve"><value>plugin.ir.json musí mít verzi 1.</value></data>
+  <data name="market.publish.error.releaseID" xml:space="preserve"><value>Nepodařilo se získat ID vydání Marketplace.</value></data>
+  <data name="market.publish.error.noVersion" xml:space="preserve"><value>V plugin.yml chybí pole version.</value></data>
+  <data name="market.publish.status.registering" xml:space="preserve"><value>Vytváření záznamu na Marketplace…</value></data>
+  <data name="market.publish.status.uploading" xml:space="preserve"><value>Nahrávání nativního zdrojového balíčku…</value></data>
+  <data name="market.publish.status.aiUnavailable" xml:space="preserve"><value>Klasifikace AI není dostupná; dočasný štítek: {0} · {1} · {2}. Je nutná lidská kontrola.</value></data>
+  <data name="market.publish.status.aiDone" xml:space="preserve"><value>Klasifikace AI: {0} · {1} · {2}. Čeká na lidskou kontrolu.</value></data>
+  <data name="market.publish.status.aiFailed" xml:space="preserve"><value>Klasifikaci AI se nepodařilo dokončit; čeká na lidskou kontrolu.</value></data>
+  <data name="market.publish.status.queueing" xml:space="preserve"><value>Řazení nativních sestavení do fronty…</value></data>
+  <data name="market.publish.status.uploaded" xml:space="preserve"><value>Zdrojový balíček nahrán; čeká na ověření nativním CI.</value></data>
+  <data name="market.error.notSignedIn" xml:space="preserve"><value>Publikování na Marketplace vyžaduje účet HerNess.</value></data>
+  <data name="market.error.invalidCallback" xml:space="preserve"><value>Zpětné volání přihlášení HerNess bylo neplatné.</value></data>
+  <data name="market.error.stateMismatch" xml:space="preserve"><value>Stav přihlášení HerNess se neshodoval.</value></data>
+  <data name="market.error.request" xml:space="preserve"><value>Požadavek na Marketplace selhal (HTTP {0}): {1}</value></data>
+  <data name="market.error.invalidResponse" xml:space="preserve"><value>Marketplace vrátil neplatnou odpověď.</value></data>
+  <data name="market.error.credentials" xml:space="preserve"><value>Je vyžadován e-mail a heslo.</value></data>
+  <data name="remote.scan" xml:space="preserve"><value>Naskenujte tento QR kód nebo zadejte jednorázový kód v HerNess Mobile.</value></data>
+  <data name="remote.newCode" xml:space="preserve"><value>Nový párovací kód</value></data>
+  <data name="remote.copyLink" xml:space="preserve"><value>Kopírovat párovací odkaz</value></data>
+  <data name="remote.tunnel.enable" xml:space="preserve"><value>Povolit Cloudflare Quick Tunnel</value></data>
+  <data name="remote.hint" xml:space="preserve"><value>Klíče poskytovatelů zůstávají v počítači. Zápisy souborů, terminál, sestavení, nasazení a akce PR stále používají vybraný režim schvalování.</value></data>
+  <data name="settings.tab.mobile" xml:space="preserve"><value>Mobilní ovládání</value></data>
+  <data name="settings.compaction.economyFixed" xml:space="preserve"><value>Úsporná zásada používá pevný práh 90 %.</value></data>
+  <data name="settings.browser.title" xml:space="preserve"><value>Preferovaný prohlížeč a jádro</value></data>
+  <data name="settings.browser.auto" xml:space="preserve"><value>Automaticky (v aplikaci nebo prohlížeč, který určíte)</value></data>
+  <data name="settings.browser.managed" xml:space="preserve"><value>Spravovaný izolovaný prohlížeč (Chrome)</value></data>
+  <data name="settings.browser.chrome" xml:space="preserve"><value>Můj Chrome</value></data>
+  <data name="settings.browser.desktopHint" xml:space="preserve"><value>Prohlížeč v aplikaci používá systémové jádro. K dispozici je také spravovaný Chrome a váš stávající profil.</value></data>
+  <data name="settings.browser.inAppDesktop" xml:space="preserve"><value>Prohlížeč v aplikaci</value></data>
+  <data name="settings.computerUse.desktopHint" xml:space="preserve"><value>Agent může kontrolovat spuštěné aplikace, prohlížet snímky obrazovky, používat myš a klávesnici a ověřit výsledek. Akce na ploše vyžadují schválení přístupu.</value></data>
+  <data name="settings.computerUse.linuxHint" xml:space="preserve"><value>Ovládání počítače v Linuxu vyžaduje X11, xdotool a maim nebo ImageMagick. Wayland není podporován.</value></data>
+  <data name="market.settings.hint" xml:space="preserve"><value>Main Marketplace obsahuje prověřené pluginy Harness. Community a Experimental jsou oddělené; nativní pluginy vyžadují před spuštěním váš souhlas.</value></data>
+  <data name="market.registry.empty" xml:space="preserve"><value>Nebyly nalezeny žádné položky Marketplace. Obnovte registr a zkuste to znovu.</value></data>
+  <data name="market.signIn.hint" xml:space="preserve"><value>Přihlaste se přes Google, GitHub nebo e-mailem a heslem HerNess. Tokeny relace zůstávají v úložišti přihlašovacích údajů platformy.</value></data>
+  <data name="dock.clean" xml:space="preserve"><value>Pracovní strom je čistý.</value></data>
+  <data name="market.publish.folderPickerUnavailable" xml:space="preserve"><value>Toto desktopové prostředí nenabízí výběr složky.</value></data>
+  <data name="market.publish.localFolderRequired" xml:space="preserve"><value>Chcete-li publikovat plugin, vyberte místní složku.</value></data>
+  <data name="market.report.details" xml:space="preserve"><value>Podrobnosti (volitelné, nejvýše 5 000 znaků)</value></data>
+  <data name="dock.browser.webview2Unavailable" xml:space="preserve"><value>WebView2 se nepodařilo spustit. Nainstalujte nebo opravte Microsoft Edge WebView2 Runtime.</value></data>
+  <data name="settings.marketplace" xml:space="preserve"><value>Tržiště</value></data>
+  <data name="workspace.use" xml:space="preserve"><value>Použijte pracovní prostor</value></data>
+  <data name="market.fork.consent.title" xml:space="preserve"><value>Tento upravený plugin spouští nativní kód</value></data>
+  <data name="market.fork.consent.message" xml:space="preserve"><value>{0} je místní fork. Jeho zdroj je nezávislý na upstreamu; před povolením zkontrolujte změny.</value></data>
+  <data name="market.fork.newUpstream" xml:space="preserve"><value>Nový upstream: v{0}; místní změny zůstanou zachovány</value></data>
+  <data name="market.remove.confirmTitle" xml:space="preserve"><value>Odebrat plugin Marketplace?</value></data>
+  <data name="market.remove.confirmMessage" xml:space="preserve"><value>Odebrat {0} z tohoto zařízení?</value></data>
+  <data name="market.report.other" xml:space="preserve"><value>Jiné</value></data>
+  <data name="modelPicker.economy" xml:space="preserve"><value>Úspora</value></data>
+  <data name="conversation.toggleResponseEconomy" xml:space="preserve"><value>Zapnout nebo vypnout úsporu tokenů v odpovědích</value></data>
+  <data name="market.unpublish.confirmMessage" xml:space="preserve"><value>Zrušit publikování {0}? Stávající instalace nebudou odebrány.</value></data>
+  <data name="market.permissions" xml:space="preserve"><value>Oprávnění</value></data>
+  <data name="market.risk" xml:space="preserve"><value>Riziko: {0}</value></data>
+  <data name="market.category.coding" xml:space="preserve"><value>Programování</value></data>
+  <data name="market.category.git" xml:space="preserve"><value>Git</value></data>
+  <data name="market.category.qa" xml:space="preserve"><value>Testování a kvalita</value></data>
+  <data name="market.category.devops" xml:space="preserve"><value>DevOps</value></data>
+  <data name="market.category.browser" xml:space="preserve"><value>Prohlížeč</value></data>
+  <data name="market.category.web" xml:space="preserve"><value>Web</value></data>
+  <data name="market.category.backend" xml:space="preserve"><value>Backend</value></data>
+  <data name="market.category.mobile" xml:space="preserve"><value>Mobilní</value></data>
+  <data name="market.category.models" xml:space="preserve"><value>Modely</value></data>
+  <data name="market.category.integrations" xml:space="preserve"><value>Integrace</value></data>
+  <data name="market.category.workspace" xml:space="preserve"><value>Pracovní prostor</value></data>
+  <data name="market.category.productivity" xml:space="preserve"><value>Produktivita</value></data>
+  <data name="market.category.tools" xml:space="preserve"><value>Nástroje</value></data>
+  <data name="market.category.design" xml:space="preserve"><value>Design</value></data>
+  <data name="market.category.documents" xml:space="preserve"><value>Dokumenty</value></data>
+  <data name="market.category.authoring" xml:space="preserve"><value>Tvorba dovedností</value></data>
+  <data name="market.category.community" xml:space="preserve"><value>Komunita</value></data>
+  <data name="market.category.other" xml:space="preserve"><value>Ostatní</value></data>
+  <data name="navigation.back" xml:space="preserve"><value>Zpět</value></data>
+  <data name="navigation.forward" xml:space="preserve"><value>Vpřed</value></data>
+  <data name="dock.restart" xml:space="preserve"><value>Restartovat</value></data>
+  <data name="dock.go" xml:space="preserve"><value>Přejít</value></data>
+  <data name="terminal.sandboxUnavailable" xml:space="preserve"><value>Sandbox terminálu není k dispozici: {0}</value></data>
+  <data name="remote.lan" xml:space="preserve"><value>Koncový bod LAN</value></data>
+  <data name="remote.code" xml:space="preserve"><value>Kód</value></data>
+  <data name="remote.expires" xml:space="preserve"><value>Platnost do: {0}</value></data>
+  <data name="remote.pairingLink" xml:space="preserve"><value>Odkaz párování</value></data>
+  <data name="custom.detected" xml:space="preserve"><value>Běží na tomto počítači</value></data>
+  <data name="custom.modelOptional" xml:space="preserve"><value>Název modelu (volitelné)</value></data>
+  <data name="custom.contextOptional" xml:space="preserve"><value>Kontextové okno v tokenech (volitelné)</value></data>
+  <data name="custom.prefix" xml:space="preserve"><value>Předpona modelu</value></data>
+  <data name="local.tuning" xml:space="preserve"><value>Výkon</value></data>
+  <data name="local.tuningHint" xml:space="preserve"><value>Prázdné nebo auto: runtime přizpůsobí model paměti vaší GPU. Změny se projeví při příštím spuštění modelu.</value></data>
+  <data name="local.contextSize" xml:space="preserve"><value>Velikost kontextu (tokeny)</value></data>
+  <data name="local.gpuLayers" xml:space="preserve"><value>Vrstvy na GPU (auto, all nebo číslo)</value></data>
+  <data name="local.threads" xml:space="preserve"><value>Vlákna CPU</value></data>
+  <data name="local.batchSize" xml:space="preserve"><value>Velikost dávky</value></data>
+  <data name="local.flashAttention" xml:space="preserve"><value>Flash attention</value></data>
+  <data name="local.kvCache" xml:space="preserve"><value>Typ KV cache</value></data>
+  <data name="local.extraArgs" xml:space="preserve"><value>Další argumenty llama-server</value></data>
+  <data name="local.hardware" xml:space="preserve"><value>Hardware</value></data>
+  <data name="local.listen" xml:space="preserve"><value>Poslouchání</value></data>
+  <data name="local.importGGUF" xml:space="preserve"><value>Přidat soubor GGUF…</value></data>
+  <data name="local.tooLarge" xml:space="preserve"><value>Příliš velký</value></data>
+  <data name="local.backend" xml:space="preserve"><value>Backend GPU</value></data>
+  <data name="settings.compaction.autoRouted" xml:space="preserve"><value>Automaticky směrované modely</value></data>
+  <data name="settings.compaction.effectiveThreshold" xml:space="preserve"><value>Efektivní práh</value></data>
+  <data name="sidebar.signOut" xml:space="preserve"><value>Odhlásit se</value></data>
+  <data name="market.unpublish" xml:space="preserve"><value>Zrušit publikování</value></data>
+  <data name="settings.sshHosts" xml:space="preserve"><value>Vzdálené počítače (SSH)</value></data>
+  <data name="settings.sshHosts.hint" xml:space="preserve"><value>Hostitelé pocházejí z ~/.ssh/config. Hostitel přidaný zde se zapíše tam.</value></data>
+  <data name="settings.sshNoHosts" xml:space="preserve"><value>V ~/.ssh/config nejsou žádní hostitelé.</value></data>
+  <data name="settings.sshAddHost" xml:space="preserve"><value>Přidat počítač…</value></data>
+  <data name="settings.sshTest" xml:space="preserve"><value>Otestovat</value></data>
+  <data name="settings.sshManaged" xml:space="preserve"><value>přidáno zde</value></data>
+  <data name="settings.sshFromConfig" xml:space="preserve"><value>z ~/.ssh/config</value></data>
+  <data name="settings.sshRemove.handWritten" xml:space="preserve"><value>Tento hostitel byl do ~/.ssh/config zapsán ručně. Odeberte ho tam.</value></data>
+  <data name="settings.updates.current" xml:space="preserve"><value>Aktuální verze</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>Hledání aktualizací…</value></data>
+  <data name="settings.updates.checkAgain" xml:space="preserve"><value>Zkontrolovat znovu</value></data>
+  <data name="settings.updates.upToDate" xml:space="preserve"><value>Aplikace je aktuální.</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>Vyhledat aktualizace</value></data>
+  <data name="settings.updates.retry" xml:space="preserve"><value>Zkusit znovu</value></data>
+  <data name="settings.updates.hint" xml:space="preserve"><value>Zkontrolujte nejnovější dostupnou verzi.</value></data>
+  <data name="settings.updates.required" xml:space="preserve"><value>Povinná</value></data>
+  <data name="ssh.connected" xml:space="preserve"><value>{0} odpověděl.</value></data>
+  <data name="remote.enable" xml:space="preserve"><value>Povolit vzdálené ovládání</value></data>
+  <data name="remote.shareLan" xml:space="preserve"><value>Sdílet v místní síti</value></data>
+  <data name="remote.enableHint" xml:space="preserve"><value>Vzdálená brána je vypnutá. Zapněte ji ke spárování telefonu.</value></data>
+  <data name="plan.title" xml:space="preserve"><value>Plán</value></data>
+  <data name="plan.proposed" xml:space="preserve"><value>Claude navrhl plán</value></data>
+  <data name="plan.revise" xml:space="preserve"><value>Upravit…</value></data>
+  <data name="plan.acceptAuto" xml:space="preserve"><value>Přijmout a automatický režim</value></data>
 </root>

@@ -1,6 +1,7 @@
 // Copyright (c) 2026 DOTS
 // Root window for the standalone native harness.
 
+import AppKit
 import SwiftUI
 import HarnessPluginKit
 import PluginRuntime
@@ -12,18 +13,46 @@ public struct RootView: View {
     @ObservedObject private var startupGate = StartupGate.shared
     private let logo: Image?
     @StateObject private var dock = RightDockState()
+    @State private var projectDirectoryMonitor = ProjectDirectoryChangeMonitor()
     @State private var preferredSidebarVisibility: NavigationSplitViewVisibility = .all
     @State private var isSidebarCompact = false
-    // Reserve a readable conversation width in addition to the widest sidebar.
-    private var sidebarAutoHideThreshold: CGFloat {
-        840 + (dock.isVisible ? 241 : 0) + (model.isSimulatorPresented ? 281 : 0)
+    @AppStorage("sidebar.home.width") private var homeSidebarWidth = 210.0
+    @AppStorage("dock.width.trailing") private var trailingWidth = 420.0
+    @AppStorage("dock.width.leading") private var leadingWidth = 320.0
+    @AppStorage("dock.width.simulator") private var simulatorWidth = 340.0
+    @AppStorage("dock.height.top") private var topHeight = 220.0
+    @AppStorage("dock.height.bottom") private var bottomHeight = 260.0
+    private var configuredHomeSidebarWidth: CGFloat {
+        min(520, max(180, CGFloat(homeSidebarWidth)))
     }
 
-    private var splitVisibility: Binding<NavigationSplitViewVisibility> {
-        Binding(
-            get: { isSidebarCompact ? .detailOnly : navigationState.visibility },
-            set: { if !isSidebarCompact { navigationState.visibility = $0 } }
-        )
+    private var sidebarDetailWidthReserve: CGFloat {
+        560 + (dock.isVisible ? dock.minimumWidth(on: .trailing) + 5 : 0)
+            + (dock.has(.leading) ? dock.minimumWidth(on: .leading) + 5 : 0)
+            + (model.isSimulatorPresented ? 281 : 0)
+    }
+
+    // Keep the project sidebar open only when its configured width and a
+    // readable conversation area both fit in the window.
+    private var sidebarAutoHideThreshold: CGFloat {
+        configuredHomeSidebarWidth + sidebarDetailWidthReserve
+    }
+
+    private var workspaceMinimumSize: CGSize {
+        guard model.section == .home, !model.isSettingsPresented, !model.legalNeedsAcceptance,
+              dock.isVisible || dock.hasMovedTabs || model.isSimulatorPresented else {
+            return CGSize(width: 520, height: 640)
+        }
+        var width: CGFloat = dock.isVisible && dock.isExpanded ? dock.minimumWidth(on: .trailing) : 240
+        if !(dock.isVisible && dock.isExpanded) {
+            if dock.has(.leading) { width += dock.minimumWidth(on: .leading) + 5 }
+            if dock.isVisible { width += dock.minimumWidth(on: .trailing) + 5 }
+        }
+        if model.isSimulatorPresented { width += 285 }
+        var height: CGFloat = 280
+        if dock.has(.top) { height += dock.minimumHeight(on: .top) + 5 }
+        if dock.has(.bottom) { height += dock.minimumHeight(on: .bottom) + 5 }
+        return CGSize(width: max(520, width + AppRailView.width), height: max(640, height))
     }
 
     public init(model: AppModel, logo: Image? = nil) {
@@ -39,12 +68,53 @@ public struct RootView: View {
             } else if model.isSettingsPresented {
                 SettingsView(model: model)
             } else {
-                gatedContent
+                HStack(spacing: 0) {
+                    AppRailView(model: model)
+                    gatedContent
+                }
             }
         }
+        .frame(minWidth: workspaceMinimumSize.width, minHeight: workspaceMinimumSize.height)
         .preferredColorScheme(model.appearance.colorScheme)
         .environment(\.locale, model.appLocale)
         .environment(\.layoutDirection, model.isRTL ? .rightToLeft : .leftToRight)
+        .onAppear {
+            refreshProjectLocations()
+            updateProjectDirectoryMonitor()
+        }
+        .onChange(of: model.projectPaths) { _, paths in
+            projectDirectoryMonitor.update(paths: paths)
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didMountNotification)) { _ in
+            refreshProjectLocations()
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didUnmountNotification)) { _ in
+            refreshProjectLocations()
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didRenameVolumeNotification)) { _ in
+            refreshProjectLocations()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshProjectLocations()
+        }
+        .onDisappear {
+            projectDirectoryMonitor.stop()
+        }
+    }
+
+    private func refreshProjectLocations() {
+        model.refreshProjectLocationAvailability()
+        updateProjectDirectoryMonitor()
+    }
+
+    private func updateProjectDirectoryMonitor() {
+        let model = model
+        let monitor = projectDirectoryMonitor
+        monitor.update(paths: model.projectPaths) { [weak model, weak monitor] in
+            guard let model, let monitor else { return }
+            model.refreshProjectLocationAvailability()
+            monitor.update(paths: model.projectPaths)
+        }
     }
 
     private var gatedContent: some View {
@@ -70,37 +140,57 @@ public struct RootView: View {
         .sheet(isPresented: $model.isUsagePresented) {
             UsageSummaryView(model: model)
         }
+        .modifier(MCPInteractionPresenter(registry: model.mcpRegistry))
         .onChange(of: model.voiceProvider) { _, _ in model.refreshVoiceModel() }
         .onChange(of: model.selected?.pendingPlanMessageID) { _, id in
             // Auto-approve applies the plan straight away, so only ask when it is manual.
             if id != nil, !model.autoApprovePlans { dock.showPlan() }
         }
         .onChange(of: model.planPaneRequestID) { _, _ in dock.showPlan() }
+        .onChange(of: model.reviewPaneRequestID) { _, _ in dock.showReview() }
+        .onChange(of: model.tasksPaneRequestID) { _, _ in dock.showTasks() }
+        .onChange(of: model.filesPaneRequestID) { _, _ in dock.add(.files, unique: true) }
+        .onChange(of: model.workspacePath, initial: true) { _, path in
+            dock.projectName = path.isEmpty ? "" : model.projectTitle(for: path)
+            model.mcpRegistry.setRoots(path.isEmpty ? [] : [URL(fileURLWithPath: path, isDirectory: true)])
+        }
     }
 
     @ViewBuilder
     private var mainContent: some View {
         GeometryReader { proxy in
-            NavigationSplitView(columnVisibility: splitVisibility) {
+            // Plain HStack like BotsView: NavigationSplitView floats the sidebar
+            // as a glass panel over the titlebar, misaligned with the rail.
+            HStack(spacing: 0) {
+                if model.section.showsProjectSidebar, !isSidebarCompact, navigationState.visibility != .detailOnly {
+                    let maximumSidebarWidth = min(520, max(180, proxy.size.width - sidebarDetailWidthReserve))
+                    let actualSidebarWidth = min(configuredHomeSidebarWidth, maximumSidebarWidth)
+                    SidebarView(model: model, logo: logo)
+                        .frame(width: actualSidebarWidth)
+                    WorkspaceDivider(
+                        horizontal: false,
+                        preferred: $homeSidebarWidth,
+                        actual: actualSidebarWidth,
+                        limits: 180...maximumSidebarWidth,
+                        sign: model.isRTL ? -1 : 1
+                    )
+                }
                 Group {
-                    if !isSidebarCompact {
-                        SidebarView(model: model, logo: logo)
-                    } else {
-                        Color.clear
+                    switch model.section {
+                    case .home: detailPanes
+                    case .tasks: TasksView(model: model)
+                    case .media: MediaView(model: model)
+                    case .bots: BotsView(model: model)
+                    case .marketplace: MarketplaceSectionView(model: model)
+                    case .memory: MemoryVaultView(bridge: model.bridge)
                     }
                 }
-                .toolbar(removing: .sidebarToggle)
-            } detail: {
-                if model.isTasksPresented {
-                    TasksView(model: model)
-                } else {
-                    detailPanes
-                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .toolbar(removing: .sidebarToggle)
             .toolbarBackground(.hidden, for: .windowToolbar)
             .overlay(alignment: model.isRTL ? .trailing : .leading) {
-                if isSidebarCompact, navigationState.visibility != .detailOnly {
+                if isSidebarCompact, model.section.showsProjectSidebar, navigationState.visibility != .detailOnly {
                     compactSidebar(for: proxy.size.width)
                 }
             }
@@ -125,15 +215,12 @@ public struct RootView: View {
                     preferredSidebarVisibility = visibility
                 }
             }
-            .onChange(of: dock.isVisible) { _, _ in
-                synchronizeSidebarVisibility(for: proxy.size.width)
-            }
-            .onChange(of: model.isSimulatorPresented) { _, _ in
+            .onChange(of: sidebarAutoHideThreshold) { _, _ in
                 synchronizeSidebarVisibility(for: proxy.size.width)
             }
             .onChange(of: model.selectedConversationID) { _, _ in dismissCompactSidebar() }
             .onChange(of: model.workspacePath) { _, _ in dismissCompactSidebar() }
-            .onChange(of: model.isTasksPresented) { _, _ in dismissCompactSidebar() }
+            .onChange(of: model.section) { _, _ in dismissCompactSidebar() }
         }
     }
 
@@ -158,25 +245,17 @@ public struct RootView: View {
 
     @ViewBuilder
     private var detailPanes: some View {
-        if dock.isVisible || model.isSimulatorPresented {
-            HSplitView {
-                if !(dock.isVisible && dock.isExpanded) {
-                    ConversationView(
-                        model: model,
-                        isPanePickerVisible: .constant(false)
-                    )
-                    .frame(minWidth: 240, idealWidth: 620, maxWidth: .infinity)
-                }
-
-                if dock.isVisible {
-                    RightDockView(model: model, state: dock)
-                        .frame(minWidth: 240, idealWidth: 420, maxWidth: .infinity)
-                }
-
-                if model.isSimulatorPresented {
-                    SimulatorPanelView(model: model)
-                        .frame(minWidth: 280, idealWidth: 340, maxWidth: .infinity)
-                }
+        if dock.isVisible || dock.hasMovedTabs || model.isSimulatorPresented {
+            GeometryReader { proxy in
+                dockedPanes(in: proxy.size)
+                    .onChange(of: proxy.frame(in: .global), initial: true) { _, frame in
+                        dock.dropArea = frame
+                    }
+                    .overlay {
+                        if let edge = dock.dropEdge, let tab = dock.dragging {
+                            DockDropPreview(edge: edge, tab: tab)
+                        }
+                    }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
@@ -184,7 +263,91 @@ public struct RootView: View {
                 model: model,
                 isPanePickerVisible: .constant(false)
             )
+            // The split view asks this column for its minimum size at zero width.
+            // Without a floor the composer notices wrap one character per line there,
+            // and that height (taller than the screen) became the column's minimum:
+            // the composer and the sidebar footer ended up below the window.
+            .frame(minWidth: 240)
         }
+    }
+
+    /// Size each pane from the actual window bounds. SwiftUI dividers avoid
+    /// nested NSSplitView hosting insets and preserve independent pane sizes.
+    private func dockedPanes(in size: CGSize) -> some View {
+        let topMinimum = dock.has(.top) ? dock.minimumHeight(on: .top) : 0
+        let bottomMinimum = dock.has(.bottom) ? dock.minimumHeight(on: .bottom) : 0
+        let bars: CGFloat = (dock.has(.top) ? 5 : 0) + (dock.has(.bottom) ? 5 : 0)
+        let top = dock.has(.top) ? paneExtent(topHeight, minimum: topMinimum,
+            maximum: size.height - 280 - bottomMinimum - bars) : 0
+        let bottom = dock.has(.bottom) ? paneExtent(bottomHeight, minimum: bottomMinimum,
+            maximum: size.height - 280 - top - bars) : 0
+        let middle = max(280, size.height - top - bottom - bars)
+        return VStack(spacing: 0) {
+            if dock.has(.top) {
+                RightDockView(model: model, state: dock, edge: .top)
+                    .frame(width: size.width, height: top).clipped()
+                WorkspaceDivider(horizontal: true, preferred: $topHeight, actual: top,
+                    limits: topMinimum...max(topMinimum, size.height - bottom - 280 - bars), sign: 1)
+            }
+            middlePanes(width: size.width, height: middle)
+            if dock.has(.bottom) {
+                WorkspaceDivider(horizontal: true, preferred: $bottomHeight, actual: bottom,
+                    limits: bottomMinimum...max(bottomMinimum, size.height - top - 280 - bars), sign: -1)
+                RightDockView(model: model, state: dock, edge: .bottom)
+                    .frame(width: size.width, height: bottom).clipped()
+            }
+        }
+        .frame(width: size.width, height: size.height)
+    }
+
+    private func middlePanes(width: CGFloat, height: CGFloat) -> some View {
+        let expanded = dock.isVisible && dock.isExpanded
+        let hasLeading = !expanded && dock.has(.leading)
+        let chatMinimum: CGFloat = expanded ? 0 : 240
+        let leftMinimum: CGFloat = hasLeading ? dock.minimumWidth(on: .leading) : 0
+        let rightMinimum: CGFloat = dock.isVisible ? dock.minimumWidth(on: .trailing) : 0
+        let simMinimum: CGFloat = model.isSimulatorPresented ? 280 : 0
+        let bars: CGFloat = (hasLeading ? 5 : 0) + (dock.isVisible && !expanded ? 5 : 0)
+            + (model.isSimulatorPresented ? 5 : 0)
+        let right = dock.isVisible && !expanded ? paneExtent(trailingWidth, minimum: rightMinimum,
+            maximum: width - chatMinimum - leftMinimum - simMinimum - bars) : 0
+        let left = hasLeading ? paneExtent(leadingWidth, minimum: leftMinimum,
+            maximum: width - chatMinimum - right - simMinimum - bars) : 0
+        let sim = model.isSimulatorPresented ? paneExtent(simulatorWidth, minimum: simMinimum,
+            maximum: width - chatMinimum - left - right - (expanded ? rightMinimum : 0) - bars) : 0
+        let chat = max(chatMinimum, width - left - right - sim - bars)
+        let direction: CGFloat = model.isRTL ? -1 : 1
+        return HStack(spacing: 0) {
+            if hasLeading {
+                RightDockView(model: model, state: dock, edge: .leading)
+                    .frame(width: left, height: height).clipped()
+                WorkspaceDivider(horizontal: false, preferred: $leadingWidth, actual: left,
+                    limits: leftMinimum...max(leftMinimum, width - chatMinimum - right - sim - bars), sign: direction)
+            }
+            if expanded {
+                RightDockView(model: model, state: dock)
+                    .frame(width: chat, height: height).clipped()
+            } else {
+                ConversationView(model: model, isPanePickerVisible: .constant(false))
+                    .frame(width: chat, height: height).clipped()
+                if dock.isVisible {
+                    WorkspaceDivider(horizontal: false, preferred: $trailingWidth, actual: right,
+                        limits: rightMinimum...max(rightMinimum, width - chatMinimum - left - sim - bars), sign: -direction)
+                    RightDockView(model: model, state: dock)
+                        .frame(width: right, height: height).clipped()
+                }
+            }
+            if model.isSimulatorPresented {
+                WorkspaceDivider(horizontal: false, preferred: $simulatorWidth, actual: sim,
+                    limits: simMinimum...max(simMinimum, width - left - right - (expanded ? rightMinimum : chatMinimum) - bars), sign: -direction)
+                SimulatorPanelView(model: model).frame(width: sim, height: height).clipped()
+            }
+        }
+        .frame(width: width, height: height)
+    }
+
+    private func paneExtent(_ preferred: Double, minimum: CGFloat, maximum: CGFloat) -> CGFloat {
+        min(max(minimum, CGFloat(preferred)), max(minimum, maximum))
     }
 
     @ToolbarContentBuilder
@@ -237,7 +400,8 @@ public struct RootView: View {
 
     private var panePickerToolbarButton: some View {
         Button {
-            dock.isVisible.toggle()
+            model.open(.home)
+            dock.toggleVisibility()
         } label: {
             Label(AppCopy.text("conversation.choosePane"), systemImage: "rectangle.split.2x1")
         }

@@ -372,7 +372,7 @@ aitrack.post("/billing/checkout", rateLimit({ limit: 10, windowSeconds: 60, keyP
     return c.json({ error: "workspace_not_found", message: "Hesap bulunamadı" }, 404);
   }
 
-  const orderId = await createOrder(c.env, {
+  await createOrder(c.env, {
     merchantOid,
     email: body.email.toLowerCase().trim(),
     planSlug: plan.slug,
@@ -412,7 +412,7 @@ aitrack.post("/billing/checkout", rateLimit({ limit: 10, windowSeconds: 60, keyP
     ],
   );
 
-  const { token, iframeUrl } = await createPaytrToken(c.env, {
+  const { iframeUrl } = await createPaytrToken(c.env, {
     merchantOid,
     email: body.email.toLowerCase().trim(),
     userIp: clientIp(c),

@@ -259,7 +259,7 @@ public sealed class VoiceInputSession : IAsyncDisposable
     private bool _queueFullReported;
     private Task? _stopTask;
     private bool _inferenceRunning;
-    private BatchRequest? _pendingInference;
+    private readonly List<BatchRequest> _pendingInference = new();
     private TaskCompletionSource<bool> _inferenceDone = CompletedSource();
     private int _samplesSinceInference;
 
@@ -459,7 +459,17 @@ public sealed class VoiceInputSession : IAsyncDisposable
         {
             if (_inferenceRunning)
             {
-                _pendingInference = request;
+                // A final covers the partials queued before it; a partial waits only while no final does.
+                if (isFinal)
+                {
+                    _pendingInference.RemoveAll(pending => !pending.IsFinal);
+                    _pendingInference.Add(request);
+                }
+                else if (!_pendingInference.Exists(pending => pending.IsFinal))
+                {
+                    _pendingInference.Clear();
+                    _pendingInference.Add(request);
+                }
             }
             else
             {
@@ -484,13 +494,16 @@ public sealed class VoiceInputSession : IAsyncDisposable
             if (request.IsFinal) _onError(error);
         }
 
-        BatchRequest? next;
+        BatchRequest? next = null;
         TaskCompletionSource<bool>? done = null;
         lock (_inferenceLock)
         {
-            next = _pendingInference;
-            _pendingInference = null;
-            if (next is null)
+            if (_pendingInference.Count > 0)
+            {
+                next = _pendingInference[0];
+                _pendingInference.RemoveAt(0);
+            }
+            else
             {
                 _inferenceRunning = false;
                 done = _inferenceDone;
@@ -907,6 +920,8 @@ public sealed class NemotronVoiceRuntime : IDisposable
         process.StartInfo.ArgumentList.Add("--endpointing");
         process.StartInfo.ArgumentList.Add("--stop-history-eou-ms");
         process.StartInfo.ArgumentList.Add("800");
+        // Warmup delays ready by ~10 s; the server starts per dictation, so skip it.
+        process.StartInfo.ArgumentList.Add("--no-warmup");
         if (!process.Start()) throw new RouterException("Nemotron voice runtime could not start.");
         _process = process;
         return ServerUrl;
@@ -1029,6 +1044,9 @@ public sealed class VoiceInputController : ObservableObject, IDisposable
     private readonly NemotronVoiceRuntime _nemotron;
     private WhisperFactory? _whisperFactory;
     private WhisperProcessor? _whisperProcessor;
+    private Timer? _whisperIdleRelease;
+    // Whisper weights (574 MB for large-v3-turbo) stay loaded after an utterance; release after this idle time.
+    private static readonly TimeSpan WhisperIdleRelease = TimeSpan.FromSeconds(120);
     private VoiceInputSession? _session;
     private VoiceRealtimeClient? _realtime;
     private VoiceInputProvider _provider = VoiceInputProvider.WhisperTinyQ5;
@@ -1238,6 +1256,7 @@ public sealed class VoiceInputController : ObservableObject, IDisposable
     public void Dispose()
     {
         Cancel();
+        _whisperIdleRelease?.Dispose();
         _whisperProcessor?.Dispose();
         _whisperFactory?.Dispose();
         _lifecycle.Dispose();
@@ -1267,7 +1286,38 @@ public sealed class VoiceInputController : ObservableObject, IDisposable
             }
             return text.ToString();
         }
-        finally { _whisperLock.Release(); }
+        finally
+        {
+            ScheduleWhisperRelease();   // under _whisperLock: the timer field is not otherwise guarded
+            _whisperLock.Release();
+        }
+    }
+
+    private void ScheduleWhisperRelease()
+    {
+        _whisperIdleRelease ??= new Timer(_ => ReleaseWhisper(), null, Timeout.Infinite, Timeout.Infinite);
+        _whisperIdleRelease.Change(WhisperIdleRelease, Timeout.InfiniteTimeSpan);
+    }
+
+    /// Runs on a timer thread. Waits for an utterance in progress; the next one reloads the model.
+    private void ReleaseWhisper()
+    {
+        try
+        {
+            _whisperLock.Wait();
+            try
+            {
+                _whisperProcessor?.Dispose();
+                _whisperFactory?.Dispose();
+                _whisperProcessor = null;
+                _whisperFactory = null;
+            }
+            finally { _whisperLock.Release(); }
+        }
+        catch (ObjectDisposedException)
+        {
+            // The controller was disposed while the timer was firing.
+        }
     }
 
     private bool LocalModelReady(VoiceModelSpec model)

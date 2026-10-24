@@ -352,6 +352,32 @@ struct MobileCacheState: Codable {
         else { return nil }
         return tokens
     }
+    func allowsAutomaticResume(model: String, now: Double) -> Bool {
+        let candidates = baselines.values.filter {
+            $0.proofVersion == 2
+                && $0.model == model
+                && ($0.exactTokens ?? 0) >= 8_192
+        }
+        guard let baseline = candidates.max(by: { $0.acceptedAt < $1.acceptedAt }),
+              let tokens = baseline.exactTokens,
+              tokens >= 8_192 else { return false }
+
+        guard let latest = currentRouteEvidence.last else { return false }
+        // A write checkpoint doesn't prove reuse. Require a real measured hit.
+        let confirmedHitTokens = max(latest.usage.cachedTokens ?? 0, latest.reusedTokens ?? 0)
+        guard confirmedHitTokens >= 8_192 else { return false }
+        if latest.classification == "eligible",
+           let eligible = latest.eligibleTokens,
+           let reused = latest.reusedTokens,
+           eligible >= 8_192,
+           Double(reused) <= Double(eligible) * 0.05 {
+            return false
+        }
+
+        let ttl = min(Double(baseline.ttlSeconds ?? 3_600), 3_600)
+        let age = now - baseline.acceptedAt
+        return ttl > 0 && age >= 0 && age < ttl
+    }
     var noticeFingerprint: String?
     var mode: String?
     var lessonsFingerprint: String?
@@ -501,6 +527,38 @@ struct AgentToolSpec: Sendable {
 }
 
 /// A tool call's arguments, carried as JSON so they can cross actor boundaries.
+/// Stops a tool loop that has stopped making progress (parity with desktop). One per user turn.
+struct ToolRepeatGuard {
+    static let maxIdenticalCalls = 3
+    static let maxEditsPerFile = 5
+    static let repeatedNotice = "This exact tool call was already made and returned the same result. Change the approach instead of repeating it."
+    private var signatures: [String: Int] = [:]
+    private var edits: [String: Int] = [:]
+
+    static func signature(_ name: String, _ input: AgentInput) -> String {
+        let object = (try? JSONSerialization.jsonObject(with: input.data)) ?? [:]
+        let data = (try? JSONSerialization.data(withJSONObject: object, options: .sortedKeys)) ?? input.data
+        return name + "|" + String(decoding: data, as: UTF8.self)
+    }
+
+    /// True once the same call (key order ignored) exceeds the limit.
+    mutating func isRepeat(_ name: String, _ input: AgentInput) -> Bool {
+        let key = Self.signature(name, input)
+        signatures[key, default: 0] += 1
+        return signatures[key]! > Self.maxIdenticalCalls
+    }
+
+    /// Appended to an edit result once one file has been edited too often this turn.
+    mutating func editNotice(_ name: String, _ input: AgentInput) -> String {
+        guard name == "edit_file" || name == "write_file", let path = input.string("path") else { return "" }
+        edits[path, default: 0] += 1
+        let count = edits[path]!
+        return count > Self.maxEditsPerFile
+            ? "\n\n[Repeated edits] This file was edited \(count) times this turn. Reread it and the diff, confirm the change is not already present, and stop rewriting the same region."
+            : ""
+    }
+}
+
 struct AgentInput: Sendable {
     let data: Data
 
@@ -515,6 +573,24 @@ struct AgentInput: Sendable {
     /// Nested arrays of objects, which is how `edit_file` carries its replacements.
     func objectArray(_ key: String) -> [[String: Any]]? { object[key] as? [[String: Any]] }
 
+    func askUserQuestions() -> [MobileAskUserQuestion] {
+        let parsed = (objectArray("questions") ?? []).enumerated().compactMap { index, item -> MobileAskUserQuestion? in
+            let prompt = (item["question"] as? String ?? item["prompt"] as? String ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !prompt.isEmpty else { return nil }
+            let header = (item["header"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let options = (item["options"] as? [String] ?? [])
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            return MobileAskUserQuestion(id: "q\(index)", header: header, prompt: prompt, options: Array(options.prefix(4)))
+        }
+        if !parsed.isEmpty { return parsed }
+        let fallback = (string("question") ?? string("questions") ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !fallback.isEmpty else { return [] }
+        return [MobileAskUserQuestion(id: "q0", prompt: fallback)]
+    }
+
     func required(_ key: String, tool: String) throws -> String {
         guard let value = string(key), !value.isEmpty else { throw AgentError.server("\(tool) needs a \(key).") }
         return value
@@ -523,7 +599,7 @@ struct AgentInput: Sendable {
 
 struct AgentTurn: Identifiable, Equatable {
     enum Role: String { case user, assistant, tool, error, system, activity }
-    let id = UUID()
+    let id: UUID
     let role: Role
     var text: String
     var toolName: String?
@@ -531,6 +607,26 @@ struct AgentTurn: Identifiable, Equatable {
     var toolCallID: String?
     var isRunning = false
     var activityDetail: String?
+
+    init(
+        id: UUID = UUID(),
+        role: Role,
+        text: String,
+        toolName: String? = nil,
+        failed: Bool = false,
+        toolCallID: String? = nil,
+        isRunning: Bool = false,
+        activityDetail: String? = nil
+    ) {
+        self.id = id
+        self.role = role
+        self.text = text
+        self.toolName = toolName
+        self.failed = failed
+        self.toolCallID = toolCallID
+        self.isRunning = isRunning
+        self.activityDetail = activityDetail
+    }
 }
 
 struct MobileApprovalRequest: Equatable, Sendable {
@@ -538,9 +634,27 @@ struct MobileApprovalRequest: Equatable, Sendable {
     let toolName: String
 }
 
+struct MobileAskUserQuestion: Equatable, Sendable, Identifiable {
+    let id: String
+    let header: String
+    let prompt: String
+    let options: [String]
+
+    init(id: String, header: String = "", prompt: String, options: [String] = []) {
+        self.id = id
+        self.header = header
+        self.prompt = prompt
+        self.options = options
+    }
+}
+
 struct MobileQuestionRequest: Equatable, Sendable {
     let id: String
     let question: String
+    /// Choices shown as buttons; a typed answer is still accepted.
+    var options: [String] = []
+    /// Present for the structured `ask_user` tool; memory prompts keep the legacy single-question path.
+    var askUserQuestions: [MobileAskUserQuestion] = []
 }
 
 struct MobileQueuedPrompt: Identifiable, Equatable, Sendable {
@@ -570,11 +684,18 @@ struct MobileProviderDefinition: Identifiable, Equatable, Sendable {
         switch id {
         case "anthropic": return 200_000
         case "openai", "openai-responses", "gpt":
-            if model.hasPrefix("gpt-4.1") { return 1_000_000 }
-            if model.hasPrefix("o4-") { return 200_000 }
-            return 128_000
+            return Self.openAIContextWindow(for: model.lowercased()) ?? 128_000
         default: return 32_768
         }
+    }
+
+    /// OpenAI API windows for GPT-5.6+. Mini/nano variants are smaller and keep the 128k fallback.
+    static func openAIContextWindow(for model: String) -> Int? {
+        guard model.hasPrefix("gpt-"), !model.contains("-mini"), !model.contains("-nano") else { return nil }
+        let version = model.dropFirst(4).prefix { $0.isNumber || $0 == "." }.split(separator: ".").compactMap { Int($0) }
+        guard let major = version.first else { return nil }
+        let minor = version.count > 1 ? version[1] : 0
+        return major >= 6 || (major == 5 && minor >= 6) ? 1_050_000 : nil
     }
 }
 
@@ -584,6 +705,7 @@ final class MobileHarnessRuntime: ObservableObject {
     private static let chatGPTCodexClientVersion = "0.155.0"
 
     @Published private(set) var transcript: [AgentTurn] = []
+    @Published private(set) var hasOlderTranscriptMessages = false
     @Published private(set) var isRunning = false
     @Published private(set) var contextCompactionThresholdPercent = 90
     @Published var provider = UserDefaults.standard.string(forKey: "herness.agent.provider") ?? "anthropic"
@@ -615,7 +737,14 @@ final class MobileHarnessRuntime: ObservableObject {
     @Published var autoApprovePlans = UserDefaults.standard.bool(forKey: "herness.agent.autoApprovePlans")
     /// Whether the agent may hand workspace sweeps to explore subagents. Each one
     /// is a separate model run, so the user can turn them off to hold cost down.
-    @Published private(set) var subagentsEnabled = UserDefaults.standard.object(forKey: MobileExplore.settingsKey) as? Bool ?? true
+    @Published private(set) var subagentsEnabled = UserDefaults.standard.object(forKey: MobileExplore.settingsKey) as? Bool ?? false
+    /// Fast (priority) output on models that offer it; fast mode may also delegate.
+    @Published private(set) var fastMode = UserDefaults.standard.bool(forKey: MobileHarnessRuntime.fastModeKey)
+    static let fastModeKey = "herness.agent.fast"
+    /// Mirrors the `fast` flag in macOS providers.json.
+    static let fastModels: Set<String> = ["claude-opus-5-5", "claude-opus-5", "claude-opus-4-8"]
+    var supportsFast: Bool { provider == "anthropic" && Self.fastModels.contains(model) }
+    private var subagentsActive: Bool { subagentsEnabled || (fastMode && supportsFast) }
     @Published private(set) var approvalRequest: MobileApprovalRequest?
     @Published private(set) var questionRequest: MobileQuestionRequest?
     /// Prompt text contributed by loaded plugins, appended to the system prompt.
@@ -627,11 +756,23 @@ final class MobileHarnessRuntime: ObservableObject {
     /// as those runtimes come up. Kept keyed so a re-registration replaces cleanly.
     private(set) var tools: [String: AgentToolSpec] = [:]
     private var wire: [[String: Any]] = []
+    private var compactRequested = false
+    private var manualCompactionTask: Task<Void, Never>?
+    private var deferredTools = MobileDeferredTools()
+    private var repeatGuard = ToolRepeatGuard()
+    @Published var selectedEffort = UserDefaults.standard.string(forKey: "herness.agent.effort") ?? "medium"
+    private var requestEffort: String { deferredTools.effort(selectedEffort, planMode: activePlanMode) }
+    private var discoveryCatalog: [AgentToolSpec] {
+        orderedTools.filter { tool in
+            !activePlanMode || !blockedInPlanMode(tool.name)
+        }
+    }
     private var promptHistory = MobilePromptHistory()
     private var cacheState = MobileCacheState()
     /// A compaction replaces the serialized prefix, so it starts a new cache
     /// segment. Provider/model/tool changes are included in the key below.
     private var contextSegment = 0
+    private var transcriptBeforeRowID: Int64?
     private var nativeCompactionUnsupportedProviders = Set<String>()
     private var lastCompletedRouteIdentity: String?
     private var lastLimitedRouteIdentity: String?
@@ -642,7 +783,7 @@ final class MobileHarnessRuntime: ObservableObject {
         isNoProjectMode
             ? tools.values.filter { Self.needsNoWorkspace($0.name) }.sorted { $0.name < $1.name }
             // Withheld entirely when subagents are off: no schema tokens for it.
-            : tools.values.filter { subagentsEnabled || ![MobileExplore.name, MobileDelegate.name].contains($0.name) }.sorted { $0.name < $1.name }
+            : tools.values.filter { subagentsActive || ![MobileExplore.name, MobileDelegate.name].contains($0.name) }.sorted { $0.name < $1.name }
     }
 
     func expiredCachePrefixTokens(now: Double) -> Int? {
@@ -734,6 +875,12 @@ final class MobileHarnessRuntime: ObservableObject {
     }
     private var workspaceSnapshotProvider: (() throws -> [WorkspaceFile])?
     private var learnedRulesProvider: () -> String = { "" }
+    private var memoryQuestionsProvider: (Set<String>) -> [MobileLessons.MemoryQuestion] = { _ in [] }
+    private var memoryAnswerHandler: (String, Int?) -> Void = { _, _ in }
+    /// Asked in this session; a skipped question comes back next launch.
+    private var askedMemoryQuestions = Set<String>()
+    private static let memoryQuestionTool = "memory_question"
+    private var personalMemoryProvider: (Bool) -> String = { _ in "" }
     private var projectLocationAvailableProvider: () -> Bool = { true }
     private var activeBeforeFiles: [String: String]?
     private var activeRunID = UUID()
@@ -753,9 +900,9 @@ final class MobileHarnessRuntime: ObservableObject {
 
     static let providerDefinitions: [MobileProviderDefinition] = [
         .init(id: "anthropic", name: "Anthropic", authKind: .apiKey, models: ["claude-sonnet-4-5", "claude-opus-4-1", "claude-haiku-4-5"]),
-        .init(id: "openai", name: "OpenAI", authKind: .apiKey, models: ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-4.1", "gpt-4.1-mini", "o4-mini"]),
-        .init(id: "openai-responses", name: "OpenAI Responses", authKind: .apiKey, models: ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-4.1", "gpt-4.1-mini", "o4-mini"]),
-        .init(id: "gpt", name: "ChatGPT", authKind: .oauth, models: ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-4.1", "gpt-4.1-mini", "o4-mini"]),
+        .init(id: "openai", name: "OpenAI", authKind: .apiKey, models: ["gpt-5.6-luna", "gpt-5.6-terra"]),
+        .init(id: "openai-responses", name: "OpenAI Responses", authKind: .apiKey, models: ["gpt-5.6-luna", "gpt-5.6-terra"]),
+        .init(id: "gpt", name: "ChatGPT", authKind: .oauth, models: ["gpt-5.6-luna", "gpt-5.6-terra"]),
     ]
     static let providers = providerDefinitions.map(\.id)
     static let models = providerDefinitions.flatMap(\.models).reduce(into: [String]()) { result, model in
@@ -907,6 +1054,13 @@ final class MobileHarnessRuntime: ObservableObject {
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
                   let root = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
             let discovered: [String]
+            // Remember each model's provider-reported window; the bundled guess is only a fallback.
+            for row in (root["models"] as? [[String: Any]] ?? []) + (root["data"] as? [[String: Any]] ?? []) {
+                guard let id = row["slug"] as? String ?? row["id"] as? String,
+                      let window = ["context_window", "context_length", "max_input_tokens", "input_token_limit"]
+                        .lazy.compactMap({ row[$0] as? Int }).first(where: { $0 > 0 }) else { continue }
+                stateStore.saveSetting(key: "mobile.context.\(targetProvider).\(id)", value: String(window))
+            }
             if targetProvider == "gpt" {
                 let rows = (root["models"] as? [[String: Any]] ?? []).enumerated()
                     .filter { $0.element["visibility"] as? String == "list" }
@@ -936,7 +1090,7 @@ final class MobileHarnessRuntime: ObservableObject {
 
     private static func isAgentChatModel(_ id: String) -> Bool {
         let normalized = id.lowercased()
-        guard ["gpt-", "o1", "o3", "o4"].contains(where: normalized.hasPrefix) else { return false }
+        guard normalized.hasPrefix("gpt-") else { return false }
         return !["image", "audio", "realtime", "transcribe", "embedding", "moderation", "search-preview"]
             .contains(where: normalized.contains)
     }
@@ -1004,18 +1158,39 @@ final class MobileHarnessRuntime: ObservableObject {
         if conversationID == id { return true }
         resetConversation(preserveCurrentConversation: true)
         restoreModelContext(stored)
-        transcript = stateStore.messages(conversationID: id).map { message in
-            AgentTurn(
-                role: AgentTurn.Role(rawValue: message.role) ?? .system,
-                text: message.content,
-                toolName: message.toolName
-            )
-        }
+        resumeRecoveredConversationIfNeeded()
         return true
     }
 
     func storedMessages(for conversationID: String) -> [StoredMobileMessage] {
         stateStore.messages(conversationID: conversationID)
+    }
+
+    func storedMessagePage(for conversationID: String, beforeRowID: Int64? = nil, limit: Int = 10) -> StoredMobileMessagePage {
+        stateStore.messagePage(conversationID: conversationID, beforeRowID: beforeRowID, limit: limit)
+    }
+
+    func loadOlderTranscriptMessages() {
+        guard hasOlderTranscriptMessages,
+              let conversationID,
+              let transcriptBeforeRowID else { return }
+        let page = stateStore.messagePage(conversationID: conversationID, beforeRowID: transcriptBeforeRowID)
+        guard !page.messages.isEmpty else {
+            hasOlderTranscriptMessages = false
+            return
+        }
+        transcript = page.messages.map(Self.agentTurn(from:)) + transcript
+        self.transcriptBeforeRowID = page.beforeRowID
+        hasOlderTranscriptMessages = page.hasOlder
+    }
+
+    private static func agentTurn(from message: StoredMobileMessage) -> AgentTurn {
+        AgentTurn(
+            id: UUID(uuidString: message.id) ?? UUID(),
+            role: AgentTurn.Role(rawValue: message.role) ?? .system,
+            text: message.content,
+            toolName: message.toolName
+        )
     }
 
     /// Plugin tools are discovered from the selected project's workspace. A
@@ -1041,6 +1216,20 @@ final class MobileHarnessRuntime: ObservableObject {
     /// The project's learned rules as a notice; see `MobileLessons`.
     func setLearnedRulesProvider(_ provider: @escaping () -> String) {
         learnedRulesProvider = provider
+    }
+
+    /// Memory questions asked before a turn: the provider lists them, the handler
+    /// applies an answer (the option index, nil for a typed one).
+    func setMemoryQuestions(
+        provider: @escaping (Set<String>) -> [MobileLessons.MemoryQuestion],
+        answer: @escaping (String, Int?) -> Void
+    ) {
+        memoryQuestionsProvider = provider
+        memoryAnswerHandler = answer
+    }
+
+    func setPersonalMemoryProvider(_ provider: @escaping (Bool) -> String) {
+        personalMemoryProvider = provider
     }
 
     func setGitClient(_ client: MobileGitClient?) {
@@ -1087,6 +1276,11 @@ final class MobileHarnessRuntime: ObservableObject {
         stateStore.saveSetting(key: "herness.agent.autoApprovePlans", value: value ? "true" : "false")
     }
 
+    func setFastMode(_ value: Bool) {
+        fastMode = value
+        UserDefaults.standard.set(value, forKey: Self.fastModeKey)
+    }
+
     func setSubagentsEnabled(_ value: Bool) {
         subagentsEnabled = value
         UserDefaults.standard.set(value, forKey: MobileExplore.settingsKey)
@@ -1099,21 +1293,17 @@ final class MobileHarnessRuntime: ObservableObject {
         stateStore.saveSetting(key: Self.contextCompactionThresholdKey, value: String(normalized))
     }
 
-    func compactContextNow() {
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            do {
-                try await compactContextIfNeeded(force: true)
-                persistModelContext()
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
-    }
-
     func reset() {
         guard projectLocationAvailable else { return }
         resetConversation()
+    }
+
+    /// Starts a new conversation while keeping the previous one in history.
+    /// Bots use this to give each workspace-enabled assistant its own thread.
+    func newConversation() {
+        guard projectLocationAvailable, !isRunning else { return }
+        resetConversation(preserveCurrentConversation: true)
+        start()
     }
 
     private func resetConversation(preserveCurrentConversation: Bool = false) {
@@ -1143,6 +1333,8 @@ final class MobileHarnessRuntime: ObservableObject {
         approvalRequest = nil
         questionRequest = nil
         transcript = []
+        hasOlderTranscriptMessages = false
+        transcriptBeforeRowID = nil
         isRunning = false
         runtimeState = "idle"
         appendUnknownToolOutcomeMarkers()
@@ -1209,7 +1401,7 @@ final class MobileHarnessRuntime: ObservableObject {
         guard isRunning else { return }
         recoveryAutoResumeScheduled = false
         requiresToolOutcomeRecovery = true
-        toolOutcomeRecoveryMessage = "The app was closed or suspended while this plan was active. Recovery will continue automatically when possible; tool results are not assumed and no tool call will be replayed."
+        toolOutcomeRecoveryMessage = "The app was closed or suspended while this conversation was active. Recovery will continue automatically when possible; tool results are not assumed and no tool call will be replayed."
         runtimeState = "paused"
         stateStore.finishRun(conversationID: conversationID, status: "interrupted")
         emit("run.paused", ["reason": "application_closed", "planGate": planGateActive ? "true" : "false"])
@@ -1264,7 +1456,7 @@ final class MobileHarnessRuntime: ObservableObject {
     func start() {
         runtimeConfigured = true
         runtimeState = "ready"
-        resumeRecoveredPlanIfNeeded()
+        resumeRecoveredConversationIfNeeded()
         resolveRestoredPlanIntents()
         if let conversationID,
            !requiresToolOutcomeRecovery,
@@ -1275,24 +1467,28 @@ final class MobileHarnessRuntime: ObservableObject {
         }
     }
 
-    /// Approved plan execution may resume after a restart or foreground return.
-    /// The synthetic unknown-result marker remains in `wire`; only the next
-    /// provider request is started automatically, never the old tool call.
-    func resumeRecoveredPlanIfNeeded() {
-        guard projectLocationAvailable,
+    /// Interrupted conversations resume automatically only with a recent, proven
+    /// cache prefix. The old tool call is never replayed; otherwise Continue stays manual.
+    func resumeRecoveredConversationIfNeeded() {
+        guard let recoveringConversationID = conversationID,
+              projectLocationAvailable,
               runtimeConfigured,
               !isRunning,
               requiresToolOutcomeRecovery,
-              planGateActive,
+              lastCompletedRouteIdentity == contextRouteIdentity,
+              cacheState.allowsAutomaticResume(model: model, now: Date().timeIntervalSince1970),
               !recoveryAutoResumeScheduled else { return }
         recoveryAutoResumeScheduled = true
         Task { @MainActor [weak self] in
             await Task.yield()
             guard let self else { return }
+            guard self.conversationID == recoveringConversationID else { return }
             guard self.runtimeConfigured,
                   !self.isRunning,
                   self.requiresToolOutcomeRecovery,
-                  self.planGateActive else {
+                  self.conversationID == recoveringConversationID,
+                  self.lastCompletedRouteIdentity == self.contextRouteIdentity,
+                  self.cacheState.allowsAutomaticResume(model: self.model, now: Date().timeIntervalSince1970) else {
                 self.recoveryAutoResumeScheduled = false
                 return
             }
@@ -1315,6 +1511,11 @@ final class MobileHarnessRuntime: ObservableObject {
         guard projectLocationAvailable else { return false }
         let prompt = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty || !incomingAttachments.isEmpty else { return false }
+        if let remainder = MobilePromptHistory.compactCommand(prompt) {
+            requestContextCompaction()
+            guard !remainder.isEmpty || !incomingAttachments.isEmpty else { return true }
+            return send(remainder, attachments: incomingAttachments, mode: mode, planMode: planMode)
+        }
         accountSwitched = false
         let verdict = MobilePlanningIntent.verdict(prompt)
         let needsClassification = !planMode && verdict == .ambiguous
@@ -1605,6 +1806,8 @@ final class MobileHarnessRuntime: ObservableObject {
         let captured = promptHistory.capture(
             prompt: prompt, policy: activeSystemPrompt(), context: HerNessPrompt.pluginGuidance(pluginPrompt)
         )
+        deferredTools.resetPlan()
+        repeatGuard = ToolRepeatGuard()
         // Once per user turn, so the cached prefix moves at most once.
         wire = MobilePromptHistory.supersedeRepeatedReads(wire)
         wire.append(canonicalUserMessage(text: captured, attachments: attachments))
@@ -1717,7 +1920,9 @@ final class MobileHarnessRuntime: ObservableObject {
         limitResumeTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             guard !Task.isCancelled, let self,
-                  self.canContinueAfterProviderLimit, !self.isRunning else { return }
+                  self.canContinueAfterProviderLimit, !self.isRunning,
+                  self.lastCompletedRouteIdentity == self.contextRouteIdentity,
+                  self.cacheState.allowsAutomaticResume(model: self.model, now: Date().timeIntervalSince1970) else { return }
             self.continueRun(allowAccountFailoverAfterLimit: false)
         }
     }
@@ -1747,12 +1952,38 @@ final class MobileHarnessRuntime: ObservableObject {
     func answerQuestion(_ questionID: String, answers: [String]) {
         guard projectLocationAvailable else { return }
         guard let pending = pendingQuestion, pending.id == questionID else { return }
+        if pending.name == Self.memoryQuestionTool {
+            let choice = answers.first.flatMap { questionRequest?.options.firstIndex(of: $0) }
+            pendingQuestion = nil
+            questionRequest = nil
+            runtimeState = "idle"
+            memoryAnswerHandler(pending.id, choice)
+            drainNextQueuedPromptIfReleased()
+            return
+        }
+        let askUserQuestions = questionRequest?.askUserQuestions ?? []
         pendingQuestion = nil
         questionRequest = nil
         stateStore.resolvePendingAction(id: questionID, status: "answered")
         emit("question.answered", ["questionId": questionID, "answers": answers.joined(separator: "\n")])
-        let answer = answers.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-        appendToolResult(id: pending.id, name: pending.name, output: (answer.isEmpty ? "No answer was provided." : answer, answer.isEmpty))
+        if !askUserQuestions.isEmpty {
+            let normalized = askUserQuestions.enumerated().map { index, question in
+                let answer = answers.indices.contains(index)
+                    ? answers[index].trimmingCharacters(in: .whitespacesAndNewlines)
+                    : ""
+                return "Q: \(question.prompt)\nA: \(answer.isEmpty ? "(undetermined - user did not answer)" : answer)"
+            }
+            let transcript = normalized.joined(separator: "\n\n")
+            let hasAnswer = answers.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            appendToolResult(
+                id: pending.id,
+                name: pending.name,
+                output: (hasAnswer ? transcript : "The user skipped the clarification. Continue only with work that does not depend on an unanswered decision; do not guess that decision.", false)
+            )
+        } else {
+            let answer = answers.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            appendToolResult(id: pending.id, name: pending.name, output: (answer.isEmpty ? "No answer was provided." : answer, answer.isEmpty))
+        }
         continueRun()
     }
 
@@ -1775,26 +2006,11 @@ final class MobileHarnessRuntime: ObservableObject {
         projectID = id
         events = stateStore.recentEvents(projectID: id)
         restoreModelContext()
-        resumeRecoveredPlanIfNeeded()
+        resumeRecoveredConversationIfNeeded()
     }
 
     func selectNoProject() {
         selectProject(Self.noProjectID)
-    }
-
-    func refreshWorkspace() {
-        emit("workspace.refreshed", ["source": "local"])
-    }
-
-    func executeGit(_ operation: String) async -> String {
-        guard let gitClient else {
-            let message = "unsupported_on_mobile: \(operation) requires the native MobileGitClient backend."
-            emit("git.unsupported", ["operation": operation, "reason": message])
-            return message
-        }
-        let result = await gitClient.execute(operation: operation)
-        if result.unavailable { emit("git.unsupported", ["operation": operation, "reason": result.output]) }
-        return result.output
     }
 
     private func run() async {
@@ -1860,7 +2076,7 @@ final class MobileHarnessRuntime: ObservableObject {
                     emit("message.assistant", ["text": said])
                 }
 
-                let calls = blocks.filter { $0["type"] as? String == "tool_use" }
+                let calls = blocks.filter { $0["type"] as? String == "tool_use" }.map { deferredTools.resolve($0, catalog: discoveryCatalog) }
                 if calls.isEmpty {
                     if activePlanMode && autoApprovePlans && !said.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         activePlanMode = false
@@ -1918,15 +2134,41 @@ final class MobileHarnessRuntime: ObservableObject {
                         results.append(recordToolResult(id: id, name: name, output: output))
                         continue
                     }
+                    if let control = deferredTools.control(name: name, input: input, catalog: discoveryCatalog, planMode: activePlanMode) {
+                        results.append(recordToolResult(id: id, name: name, output: (control, control.hasPrefix("Tool error"))))
+                        continue
+                    }
+                    if repeatGuard.isRepeat(name, input) {
+                        results.append(recordToolResult(id: id, name: name, output: (ToolRepeatGuard.repeatedNotice, true)))
+                        continue
+                    }
                     if name == "run_command", Self.isTestCommand(input.string("command")) { activeTestStatus = "requested" }
                     if name == "ask_user" {
+                        let questions = input.askUserQuestions()
+                        guard !questions.isEmpty else {
+                            results.append(recordToolResult(id: id, name: name, output: ("Tool error: ask_user needs at least one non-empty question.", true)))
+                            continue
+                        }
                         if !results.isEmpty { wire.append(["role": "user", "content": results]) }
                         pendingQuestion = PendingTool(id: id, name: name, input: input)
-                        questionRequest = MobileQuestionRequest(id: id, question: input.string("question") ?? input.string("questions") ?? "The agent needs more information.")
+                        questionRequest = MobileQuestionRequest(
+                            id: id,
+                            question: questions[0].prompt,
+                            options: questions[0].options,
+                            askUserQuestions: questions
+                        )
                         stateStore.savePendingAction(id: id, conversationID: conversationID, kind: "question", payload: ["toolName": name], status: "waiting")
                         runtimeState = "waiting_question"
                         isRunning = false
-                        emit("question.required", ["questionId": id, "questions": questionRequest?.question ?? ""])
+                        let eventQuestions = questions.map { [
+                                "id": $0.id,
+                                "header": $0.header,
+                                "prompt": $0.prompt,
+                                "options": $0.options,
+                            ] as [String: Any] }
+                        let eventQuestionsJSON = (try? JSONSerialization.data(withJSONObject: eventQuestions))
+                            .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+                        emit("question.required", ["questionId": id, "questions": eventQuestionsJSON])
                         return
                     }
                     if requiresApproval(name) {
@@ -1948,7 +2190,7 @@ final class MobileHarnessRuntime: ObservableObject {
                     } else {
                         output = await invoke(name: name, input: input)
                     }
-                    results.append(recordToolResult(id: id, name: name, output: output))
+                    results.append(recordToolResult(id: id, name: name, output: output, path: input.string("path")))
                 }
                 wire.append(["role": "user", "content": results])
                 inFlightToolCalls = []
@@ -1988,7 +2230,7 @@ final class MobileHarnessRuntime: ObservableObject {
     }
 
     private func drainNextQueuedPromptIfReleased() {
-        guard projectLocationAvailable, !isRunning, !planGateActive,
+        guard projectLocationAvailable, !isRunning, manualCompactionTask == nil, !planGateActive,
               let next = queuedPrompts.first,
               next.isReadyToRun,
               !next.isPlanApproval else {
@@ -2003,6 +2245,16 @@ final class MobileHarnessRuntime: ObservableObject {
             persistModelContext()
             return
         }
+        if pendingQuestion == nil, !isNoProjectMode,
+           let question = memoryQuestionsProvider(askedMemoryQuestions).first {
+            askedMemoryQuestions.insert(question.id)
+            pendingQuestion = PendingTool(id: question.id, name: Self.memoryQuestionTool, input: AgentInput([:]))
+            questionRequest = MobileQuestionRequest(id: question.id, question: question.prompt, options: question.options)
+            runtimeState = "waiting_question"
+            emit("question.required", ["questionId": question.id, "questions": question.prompt])
+            syncPlanQueue()
+            return
+        }
         beginRun(
             prompt: next.text,
             attachments: next.attachments,
@@ -2015,7 +2267,7 @@ final class MobileHarnessRuntime: ObservableObject {
 
     private func appendToolResult(id: String, name: String, output: (text: String, failed: Bool)) {
         var toolResult = recordToolResult(id: id, name: name, output: output)
-        if name == "ask_user", !output.failed {
+        if name == "ask_user", !output.failed, output.text.hasPrefix("Q: "), output.text.contains("\nA: ") {
             let directive = AgentTools.askUserAnsweredDirective
             let contentLimit = max(0, Self.maximumToolResultCharacters - directive.count - 2)
             toolResult["content"] = String(output.text.prefix(contentLimit)) + "\n\n" + directive
@@ -2025,7 +2277,9 @@ final class MobileHarnessRuntime: ObservableObject {
         persistModelContext()
     }
 
-    private func recordToolResult(id: String, name: String, output: (text: String, failed: Bool)) -> [String: Any] {
+    private func recordToolResult(id: String, name: String, output: (text: String, failed: Bool), path: String? = nil) -> [String: Any] {
+        let repeatedRead = name == "read_file" && !output.failed ? deferredTools.repeatedRead(output.text, path: path) : nil
+        deferredTools.record(output.text, id: id, failed: output.failed, toolName: name, path: path)
         recordCleanup(name: name, output: output.text, failed: output.failed)
         if name == "run_command", activeTestStatus == "requested" { activeTestStatus = output.failed ? "failed" : "passed" }
         if let index = transcript.lastIndex(where: { $0.role == .tool && $0.toolCallID == id && $0.isRunning }) {
@@ -2040,7 +2294,7 @@ final class MobileHarnessRuntime: ObservableObject {
         var result: [String: Any] = [
             "type": "tool_result",
             "tool_use_id": id,
-            "content": String(output.text.prefix(Self.maximumToolResultCharacters)),
+            "content": repeatedRead ?? MobileDeferredTools.excerpt(output.text, name: name, id: id),
             "is_error": output.failed,
         ]
         if let latest = pendingLatestAttachment {
@@ -2081,6 +2335,10 @@ final class MobileHarnessRuntime: ObservableObject {
               let snapshot = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let storedMessages = snapshot["messages"] as? [[String: Any]] else { return }
         conversationID = stored.conversationID
+        let transcriptPage = stateStore.messagePage(conversationID: stored.conversationID)
+        transcript = transcriptPage.messages.map(Self.agentTurn(from:))
+        transcriptBeforeRowID = transcriptPage.beforeRowID
+        hasOlderTranscriptMessages = transcriptPage.hasOlder
         lastCompletedRouteIdentity = (snapshot["last_completed_route_identity"] as? String).flatMap { $0.isEmpty ? nil : $0 }
         lastLimitedRouteIdentity = (snapshot["last_limited_route_identity"] as? String).flatMap { $0.isEmpty ? nil : $0 }
         conversationChatGPTAccountID = (snapshot["chatgpt_account_id"] as? String).flatMap { $0.isEmpty ? nil : $0 }
@@ -2131,7 +2389,7 @@ final class MobileHarnessRuntime: ObservableObject {
             runtimeState = "cancelled"
         } else if interrupted || runWasActive || !inFlightToolCalls.isEmpty || requiresToolOutcomeRecovery {
             requiresToolOutcomeRecovery = true
-            toolOutcomeRecoveryMessage = "The app was closed or suspended while this plan was active. Recovery will continue automatically when possible; tool results are not assumed and no tool call will be replayed."
+            toolOutcomeRecoveryMessage = "The app was closed or suspended while this conversation was active. Recovery will continue automatically when possible; tool results are not assumed and no tool call will be replayed."
             let completedIDs = Set(wire.flatMap { message in
                 (message["content"] as? [[String: Any]] ?? [])
                     .filter { $0["type"] as? String == "tool_result" }
@@ -2158,6 +2416,7 @@ final class MobileHarnessRuntime: ObservableObject {
         if let policy = snapshot["policy"] as? String, !policy.isEmpty {
             promptHistory = MobilePromptHistory(policy: policy)
         }
+        deferredTools = MobileDeferredTools()
         if let history = snapshot["prompt_history"],
            let data = try? JSONSerialization.data(withJSONObject: history),
            let restored = try? JSONDecoder().decode(MobilePromptHistory.self, from: data) {
@@ -2327,10 +2586,18 @@ final class MobileHarnessRuntime: ObservableObject {
     }
 
     private func appendCacheNotices() {
+        let localActivity = isNoProjectMode
+            ? ""
+            : MobilePersonalMemory.activityText(events: stateStore.recentEvents(projectID: projectID))
+        let memory = [
+            personalMemoryProvider(!isNoProjectMode),
+            isNoProjectMode ? "" : learnedRulesProvider(),
+            localActivity,
+        ].filter { !$0.isEmpty }.joined(separator: "\n\n")
         let notices = cacheState.captureNotices(
             attachmentNotice: attachmentRevisionNotice(),
             plan: activePlanMode,
-            lessons: isNoProjectMode ? "" : learnedRulesProvider()
+            lessons: memory
         )
         notices.forEach { wire.append(canonicalUserMessage(text: $0, attachments: [])) }
         persistModelContext()
@@ -2399,8 +2666,20 @@ final class MobileHarnessRuntime: ObservableObject {
     }
 
     private func activeSystemPrompt() -> String {
-        guard isNoProjectMode else { return systemPrompt() }
-        return systemPrompt() + """
+        var prompt = systemPrompt()
+        if !isNoProjectMode && subagentsActive {
+            prompt += """
+
+
+            Workspace implementation with editing subagents enabled
+            - Inspect the relevant files and callers yourself, then record your plan with execution_plan before the first edit.
+            - Make edits yourself with edit_file and write_file: you already read those files, and a delegate would read them again. Use delegate only for one large part spanning many files you have not read. The parent owns design, integration, review and whole-change verification.
+            - Pass your plan, findings, interfaces, constraints, exact paths and acceptance criteria to the subagent. Use explore only for independent read-only research, never to inspect implementation code for you.
+            - Review the subagent's changed files and run the full relevant build/check yourself; fix small issues directly. Use run_command or terminal_session for inspection and checks, never to edit project files.
+            """
+        }
+        guard isNoProjectMode else { return prompt }
+        return prompt + """
 
 
         No project scope
@@ -2455,7 +2734,7 @@ final class MobileHarnessRuntime: ObservableObject {
 
     private func invoke(name: String, input: AgentInput) async -> (text: String, failed: Bool) {
         guard let tool = tools[name] else { return ("No tool named \(name) is available on this phone.", true) }
-        do { return (try await tool.run(input), false) }
+        do { return (try await tool.run(input) + repeatGuard.editNotice(name, input), false) }
         catch { return (error.localizedDescription, true) }
     }
 
@@ -2463,16 +2742,21 @@ final class MobileHarnessRuntime: ObservableObject {
         let routeIdentity = contextRouteIdentity
         let routeChanged = lastCompletedRouteIdentity != routeIdentity
         let priorRouteIdentity = lastLimitedRouteIdentity ?? lastCompletedRouteIdentity
-        try await compactContextIfNeeded(routeChanged: routeChanged)
+        let forceCompaction = compactRequested
+        compactRequested = false
+        try await compactContextIfNeeded(force: forceCompaction, routeChanged: routeChanged)
+        deferredTools.restoreDiscovery(wireForRequest())
         appendCacheNotices()
         emit("provider.request", ["provider": provider, "model": model])
         let response: [String: Any]
         do {
-            switch provider {
-            case "anthropic": response = try await completeAnthropic()
-            case "openai", "openai-responses": response = try await completeOpenAIResponses()
-            case "gpt": response = try await completeChatGPT()
-            default: response = try await completeOpenAI()
+            do {
+                response = try await sendToProvider()
+            } catch let error as AgentError where error.isContextWindowExceeded {
+                // The local estimate undercounted: compact and send this step
+                // again once. A second overflow on the same step fails the run.
+                try await compactContextIfNeeded(force: true, routeChanged: routeChanged)
+                response = try await sendToProvider()
             }
         } catch let error as AgentError where error.isProviderLimit {
             lastLimitedRouteIdentity = routeIdentity
@@ -2497,18 +2781,27 @@ final class MobileHarnessRuntime: ObservableObject {
         return response
     }
 
+    private func sendToProvider() async throws -> [String: Any] {
+        switch provider {
+        case "anthropic": return try await completeAnthropic()
+        case "openai", "openai-responses": return try await completeOpenAIResponses()
+        case "gpt": return try await completeChatGPT()
+        default: return try await completeOpenAI()
+        }
+    }
+
     private func promptCacheKey(route: String) -> String {
         return MobilePromptCache.key(
             provider: provider,
             route: route,
             model: model,
             accountScope: currentAccountScope,
-            toolFingerprint: MobilePromptCache.toolFingerprint(orderedTools)
+            toolFingerprint: MobilePromptCache.toolFingerprint(MobileDeferredTools.requestTools(discoveryCatalog))
         )
     }
 
     private func cachedToolCatalog() -> [[String: Any]] {
-        cacheState.catalog(orderedTools.map(\.wire))
+        cacheState.catalog(MobileDeferredTools.requestTools(discoveryCatalog).map(\.wire))
     }
 
     private func cacheScope(endpoint: String, conversation: Bool = true) -> String {
@@ -2636,6 +2929,10 @@ final class MobileHarnessRuntime: ObservableObject {
             "system": promptHistory.policy ?? "",
             "messages": anthropicMessages(),
         ]
+        if fastMode && supportsFast {
+            body["speed"] = "fast"
+            request.setValue("fast-mode-2026-02-01", forHTTPHeaderField: "anthropic-beta")
+        }
         let catalog = cachedToolCatalog()
         if !catalog.isEmpty { body["tools"] = catalog }
         let ttl = cacheState.unsupported.contains(capability + "|ttl") ? "5m" : "1h"
@@ -2673,7 +2970,7 @@ final class MobileHarnessRuntime: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("Bearer \(currentAPIKey())", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let definitions: [[String: Any]] = orderedTools.map {
+        let definitions: [[String: Any]] = MobileDeferredTools.definitions.map {
             [
                 "type": "function",
                 "function": [
@@ -2690,6 +2987,7 @@ final class MobileHarnessRuntime: ObservableObject {
             "prompt_cache_key": promptCacheKey(route: "openai-chat"),
         ]
         if !definitions.isEmpty { body["tools"] = definitions }
+        if model.hasPrefix("gpt-5") || model.hasPrefix("gpt-6") { body["reasoning_effort"] = requestEffort }
         request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
         request.timeoutInterval = 300
 
@@ -2746,6 +3044,7 @@ final class MobileHarnessRuntime: ObservableObject {
             "prompt_cache_key": promptCacheKey(route: providerName == "gpt" ? "chatgpt-responses" : "openai-responses"),
         ]
         let catalog = cachedToolCatalog()
+        if model.hasPrefix("gpt-5") || model.hasPrefix("gpt-6") { body["reasoning"] = ["effort": requestEffort] }
         if !catalog.isEmpty { body["tools"] = catalog.map { ["type": "function", "name": $0["name"] ?? "", "description": $0["description"] ?? "", "parameters": $0["input_schema"] ?? ["type": "object"]] } }
         let scope = cacheScope(endpoint: endpoint)
         let requestStartedAt = Date().timeIntervalSince1970
@@ -2758,7 +3057,7 @@ final class MobileHarnessRuntime: ObservableObject {
         let routeChanged = lastCompletedRouteIdentity != contextRouteIdentity
         let nativeCompaction = supportsNativeCompaction && !routeChanged
         if nativeCompaction {
-            let window = MobileAgent.definition(for: provider)?.contextWindow(for: model) ?? 32_768
+            let window = currentContextWindow()
             body["context_management"] = [[
                 "type": "compaction",
                 "compact_threshold": MobilePromptHistory.compactionThreshold(window: window, percent: contextCompactionThresholdPercent),
@@ -2835,7 +3134,10 @@ final class MobileHarnessRuntime: ObservableObject {
     /// One provider call outside the conversation: its own transcript, tools and
     /// model, with no cache state and nothing persisted. The explore subagent runs
     /// on this so a sweep never touches the conversation's wire history.
-    private func completeSide(system: String, messages: [[String: Any]], tools sideTools: [AgentToolSpec], model sideModel: String, maxOutputTokens: Int? = nil) async throws -> [String: Any] {
+    /// One side request. A subagent passes its run's own `cacheKey`, so its steps reuse
+    /// the cached prefix of the steps before them: 5-minute breakpoints on Anthropic,
+    /// since a run lasts minutes and its prefix is never reused after it.
+    private func completeSide(system: String, messages: [[String: Any]], tools sideTools: [AgentToolSpec], model sideModel: String, maxOutputTokens: Int? = nil, effort: String? = nil, cacheKey: String? = nil) async throws -> [String: Any] {
         func post(_ endpoint: String, body: [String: Any], headers: [String: String]) async throws -> [String: Any] {
             var request = URLRequest(url: URL(string: endpoint)!)
             request.httpMethod = "POST"
@@ -2854,10 +3156,13 @@ final class MobileHarnessRuntime: ObservableObject {
         if provider == "anthropic" {
             var body: [String: Any] = ["model": sideModel, "max_tokens": maxOutputTokens ?? 8_192, "system": system, "messages": anthropicMessages(messages)]
             if !sideTools.isEmpty { body["tools"] = sideTools.map(\.wire) }
+            if cacheKey != nil { MobilePromptCache.applyAnthropicCacheBreakpoints(to: &body, ttl: "5m") }
             return try await post("https://api.anthropic.com/v1/messages", body: body, headers: ["x-api-key": currentAPIKey(), "anthropic-version": "2023-06-01"])
         }
         var body: [String: Any] = ["model": sideModel, "instructions": system, "input": responsesInput(messages), "store": false, "stream": false]
+        if let cacheKey { body["prompt_cache_key"] = cacheKey }
         if let maxOutputTokens { body["max_output_tokens"] = maxOutputTokens }
+        if let effort, sideModel.hasPrefix("gpt-5") || sideModel.hasPrefix("gpt-6") { body["reasoning"] = ["effort": effort] }
         if !sideTools.isEmpty {
             body["tools"] = sideTools.map(\.wire).map { ["type": "function", "name": $0["name"] ?? "", "description": $0["description"] ?? "", "parameters": $0["input_schema"] ?? ["type": "object"]] }
         }
@@ -2894,22 +3199,31 @@ final class MobileHarnessRuntime: ObservableObject {
 
     /// Runs one explore subagent and returns what the parent model sees.
     private func explore(task: String) async -> String {
-        guard subagentsEnabled else { return "Tool error: subagents are turned off in Settings." }
+        guard subagentsActive else { return "Tool error: subagents are turned off in Settings." }
         let sideTools = orderedTools.filter { MobileExplore.readOnlyTools.contains($0.name) }
         let current = model
         let light = MobileExplore.lightModel(among: availableModels(for: provider), current: current)
         emit("subagent.started", ["name": MobileExplore.name, "model": light])
-        let result = await MobileExplore.run(task: task, complete: { [weak self] messages, offerTools in
+        let cacheKey = MobileExplore.name + "-" + UUID().uuidString
+        let usage = SubagentUsage()
+        // The run stays on one model once it falls back: alternating would restart the cache each step.
+        var runModel = light
+        let result = await MobileExplore.run(task: task, catalog: sideTools, complete: { [weak self] messages in
             guard let self else { throw CancellationError() }
-            let offered = offerTools ? sideTools : []
+            let offered = MobileDeferredTools.requestTools(sideTools)
+            let prompt = MobileExplore.systemPrompt + "\nCall provided tools directly. Discover other required tools with discover_tools, then call them via invoke_tool. Read original long results with read_tool_output."
+            let response: [String: Any]
             do {
-                return try await self.completeSide(system: MobileExplore.systemPrompt, messages: messages, tools: offered, model: light)
-            } catch where light != current && !(error is CancellationError) {
+                response = try await self.completeSide(system: prompt, messages: messages, tools: offered, model: runModel, effort: "low", cacheKey: cacheKey)
+            } catch where runModel != current && !(error is CancellationError) {
                 // The light model is a guess from its name. When the account cannot
                 // run it, or its quota is spent, the sweep goes on with the
                 // conversation's model rather than costing the main run its answer.
-                return try await self.completeSide(system: MobileExplore.systemPrompt, messages: messages, tools: offered, model: current)
+                runModel = current
+                response = try await self.completeSide(system: prompt, messages: messages, tools: offered, model: current, effort: "low", cacheKey: cacheKey)
             }
+            usage.add(response, anthropic: self.provider == "anthropic")
+            return response
         }, invoke: { name, input in
             guard let tool = sideTools.first(where: { $0.name == name }) else { return "No tool named \(name) is available to the exploration agent." }
             // The parent never saw these file bodies, so reading them here must
@@ -2918,25 +3232,32 @@ final class MobileHarnessRuntime: ObservableObject {
                 do { return try await tool.run(input) } catch { return error.localizedDescription }
             }
         })
-        emit("subagent.finished", ["name": MobileExplore.name])
+        emit("subagent.finished", ["name": MobileExplore.name, "model": runModel].merging(usage.payload) { current, _ in current })
         return result
     }
 
     /// Runs one editing subagent inside the files it was assigned. The call was
     /// approved as a workspace mutation, which covers its writes to those files.
     private func delegate(_ input: AgentInput) async -> String {
-        guard subagentsEnabled else { return "Tool error: subagents are turned off in Settings." }
+        guard subagentsActive else { return "Tool error: subagents are turned off in Settings." }
+        guard let plan = input.string("plan")?.trimmingCharacters(in: .whitespacesAndNewlines), !plan.isEmpty else {
+            return "Tool error: delegate needs the parent's implementation plan formed after code inspection."
+        }
         guard let claims = MobileDelegate.claims(from: input.strings("files") ?? []) else {
             return "Tool error: delegate needs files - workspace-relative paths this subagent may create or change."
         }
         let sideTools = orderedTools.filter { MobileExplore.readOnlyTools.contains($0.name) || MobileDelegate.writeTools.contains($0.name) }
         let scope = MobileDelegate.name + "-" + UUID().uuidString
-        let system = MobileDelegate.systemPrompt(claims: claims)
+        let system = MobileDelegate.systemPrompt(plan: plan, claims: claims) + "\nCall provided tools directly. Discover other required tools with discover_tools, then call them via invoke_tool. Record an execution_plan before implementation. Read original long results with read_tool_output."
         let current = model
         emit("subagent.started", ["name": MobileDelegate.name, "model": current])
-        let result = await MobileDelegate.run(task: input.string("task") ?? "", claims: claims, complete: { [weak self] messages, offerTools in
+        let cacheKey = MobileDelegate.name + "-" + UUID().uuidString
+        let usage = SubagentUsage()
+        let result = await MobileDelegate.run(plan: plan, task: input.string("task") ?? "", claims: claims, catalog: sideTools, complete: { [weak self] messages in
             guard let self else { throw CancellationError() }
-            return try await self.completeSide(system: system, messages: messages, tools: offerTools ? sideTools : [], model: current)
+            let response = try await self.completeSide(system: system, messages: messages, tools: MobileDeferredTools.requestTools(sideTools), model: current, effort: MobileDelegate.effort(selected: self.selectedEffort), cacheKey: cacheKey)
+            usage.add(response, anthropic: self.provider == "anthropic")
+            return response
         }, invoke: { name, input in
             guard let tool = sideTools.first(where: { $0.name == name }) else { return "No tool named \(name) is available to the subagent." }
             // Its own ledger scope: it must read before it writes, and the parent
@@ -2945,7 +3266,7 @@ final class MobileHarnessRuntime: ObservableObject {
                 do { return try await tool.run(input) } catch { return error.localizedDescription }
             }
         })
-        emit("subagent.finished", ["name": MobileDelegate.name])
+        emit("subagent.finished", ["name": MobileDelegate.name].merging(usage.payload) { current, _ in current })
         return result
     }
 
@@ -3143,16 +3464,26 @@ final class MobileHarnessRuntime: ObservableObject {
             && old[0] == new[0] && old[1] == new[1] && old[2] != new[2]
     }
 
+    private func currentContextWindow() -> Int {
+        Int(stateStore.setting("mobile.context.\(provider).\(model)") ?? "").flatMap { $0 > 0 ? $0 : nil }
+            ?? MobileAgent.definition(for: provider)?.contextWindow(for: model) ?? 32_768
+    }
+
+    /// Test seam: what `/compact` does to `context`, without a run around it.
+    func compactForTesting(_ context: [[String: Any]]) async throws {
+        wire = context
+        try await compactContextIfNeeded(force: true)
+    }
+
     private func compactContextIfNeeded(force: Bool = false, routeChanged: Bool? = nil) async throws {
         guard !wire.isEmpty else { return }
-        let window = MobileAgent.definition(for: provider)?.contextWindow(for: model) ?? 32_768
-        let toolBytes = orderedTools.reduce(0) { $0 + $1.name.utf8.count + $1.description.utf8.count + $1.schemaData.count }
-        let toolTokens = (toolBytes + 3) / 4
+        let window = currentContextWindow()
         let outputReserve = 4_096
         let safetyMargin = max(512, window / 20)
-        let usableInputTokens = max(1_024, window - toolTokens - outputReserve - safetyMargin)
+        // estimateContextTokens already counts tool schemas and the policy.
+        let usableInputTokens = max(1_024, window - outputReserve - safetyMargin)
         let estimatedInputTokens = estimateContextTokens()
-        let triggerTokens = MobilePromptHistory.compactionThreshold(window: usableInputTokens, percent: contextCompactionThresholdPercent)
+        let triggerTokens = min(usableInputTokens, MobilePromptHistory.compactionThreshold(window: window, percent: contextCompactionThresholdPercent))
         contextNearlyFull = estimatedInputTokens >= triggerTokens
         let nativeRoute = ["gpt", "openai", "openai-responses"].contains(provider)
             && !nativeCompactionUnsupportedProviders.contains(provider)
@@ -3243,7 +3574,33 @@ final class MobileHarnessRuntime: ObservableObject {
         }
     }
 
+    private func requestContextCompaction() {
+        if isRunning {
+            compactRequested = true
+            emit("context.compaction.queued", ["conversationId": conversationID ?? ""])
+            return
+        }
+        guard wire.contains(where: { $0["role"] as? String == "user" }) else {
+            emit("context.compaction.nothing_to_compact", ["conversationId": conversationID ?? ""])
+            return
+        }
+        guard manualCompactionTask == nil else { return }
+        manualCompactionTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                try await self.compactContextIfNeeded(force: true)
+            } catch {
+                self.errorMessage = error.localizedDescription
+            }
+            self.manualCompactionTask = nil
+            self.drainNextQueuedPromptIfReleased()
+        }
+    }
+
     private func announceContextCompaction(automatic: Bool) {
+        // Both compaction paths end here, and both drop read_file bodies the ledger
+        // still counts as seen: edits and rewrites need a fresh read after it.
+        ReadLedger.shared.reset()
         let code = automatic ? "context_compacted_auto" : "context_compacted"
         transcript.append(AgentTurn(role: .activity, text: "", toolName: code))
         stateStore.appendMessage(conversationID: conversationID, role: "activity", content: "", toolName: code)
@@ -3252,7 +3609,7 @@ final class MobileHarnessRuntime: ObservableObject {
     private func estimateContextTokens(for messages: [[String: Any]]? = nil) -> Int {
         let data = (try? JSONSerialization.data(withJSONObject: messages ?? wireForRequest())) ?? Data()
         let policyBytes = (promptHistory.policy ?? "").utf8.count
-        let toolBytes = orderedTools.reduce(0) { $0 + $1.name.utf8.count + $1.description.utf8.count + $1.schemaData.count }
+        let toolBytes = MobileDeferredTools.requestTools(discoveryCatalog).reduce(0) { $0 + $1.name.utf8.count + $1.description.utf8.count + $1.schemaData.count }
         return max(1, (data.count + policyBytes + toolBytes + 3) / 4)
     }
 
@@ -3321,6 +3678,20 @@ enum AgentError: LocalizedError {
     var retryAt: Date? {
         if case .providerLimit(_, let retryAt) = self { return retryAt }
         return nil
+    }
+
+    var isContextWindowExceeded: Bool {
+        if case .server(let message) = self { return Self.indicatesContextWindowExceeded(message) }
+        return false
+    }
+
+    static func indicatesContextWindowExceeded(_ message: String) -> Bool {
+        let normalized = message.lowercased().replacingOccurrences(of: "_", with: " ")
+        if ["prompt is too long", "prompt too long", "input is too long", "input too long"].contains(where: normalized.contains) {
+            return true
+        }
+        return ["context window", "context length", "maximum context", "max context", "prompt length", "input length"].contains(where: normalized.contains)
+            && ["exceed", "too long", "too large", "too many tokens", "maximum", "max tokens", "full", "limit"].contains(where: normalized.contains)
     }
 
     var errorDescription: String? {

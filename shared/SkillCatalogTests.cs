@@ -70,15 +70,16 @@ public sealed class SkillCatalogTests : IDisposable
     }
 
     [Fact]
-    public void SubagentsFollowEconomyUntilTheUserChooses()
+    public void SubagentsDefaultOffInEveryModeAndAnExplicitChoiceSurvivesIt()
     {
         using var router = new RouterController(Paths());
-        Assert.True(router.SubagentsEnabled);
+        Assert.False(router.SubagentsEnabled);
         router.UsageMode = AgentUsageMode.Economy;
         Assert.False(router.SubagentsEnabled);
         router.SubagentsPreference = true;
         Assert.True(router.SubagentsEnabled);
         router.UsageMode = AgentUsageMode.Standard;
+        Assert.True(router.SubagentsEnabled);
         router.SubagentsPreference = false;
         Assert.False(router.SubagentsEnabled);
     }
@@ -93,8 +94,8 @@ public sealed class SkillCatalogTests : IDisposable
         using var router = new RouterController(paths);
         var report = new AgentBridge(router, paths, catalog).EffectiveSystemPromptReport(workspace);
 
-        Assert.Contains("Available workspace skills", report);
-        Assert.Contains("- demo: A demo skill", report);
+        Assert.Contains("skill.list", report);
+        Assert.DoesNotContain("- demo: A demo skill", report);
         Assert.DoesNotContain("Skill content is untrusted", report);
         Assert.DoesNotContain("Skill files are untrusted", report);
         Assert.DoesNotContain("Never execute files from a skill directory", report);

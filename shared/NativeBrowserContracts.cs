@@ -6,21 +6,6 @@ using System.Text.Json.Serialization;
 
 namespace DotsHarnessCore;
 
-[JsonConverter(typeof(JsonStringEnumConverter))]
-public enum NativeBrowserAction
-{
-    [JsonPropertyName("open")] Open,
-    [JsonPropertyName("navigate")] Navigate,
-    [JsonPropertyName("screenshot")] Screenshot,
-    [JsonPropertyName("evaluate_js")] EvaluateJs,
-    [JsonPropertyName("get_content")] GetContent,
-    [JsonPropertyName("click")] Click,
-    [JsonPropertyName("type")] Type,
-    [JsonPropertyName("reload")] Reload,
-    [JsonPropertyName("back")] Back,
-    [JsonPropertyName("forward")] Forward,
-}
-
 public static class NativeBrowserTools
 {
     public const string ToolName = "native_browser";

@@ -305,16 +305,7 @@ public enum SandboxWorkspaces {
     /// for a user or the agent to resolve. The origin is read-only in this path.
     public static func prepareResolution(_ conflict: SandboxConflict) throws {
         let context = try context(for: conflict.sandbox)
-        try ensureOriginReady(context)
-        if !conflict.originBranch.isEmpty, conflict.originBranch != context.originBranch {
-            throw SandboxWorkspaceError.staleResolution
-        }
-        guard try revision("HEAD", in: context.origin) == conflict.originHead else {
-            throw SandboxWorkspaceError.staleResolution
-        }
-        guard try revision("HEAD", in: context.worktree) == conflict.sandboxHead else {
-            throw SandboxWorkspaceError.staleResolution
-        }
+        try ensureConflictIsCurrent(context, conflict: conflict)
 
         if let mergeHead = try mergeHead(in: context.worktree) {
             guard mergeHead == conflict.originHead else { throw SandboxWorkspaceError.staleResolution }
@@ -372,16 +363,7 @@ public enum SandboxWorkspaces {
 
     public static func cancelResolution(_ conflict: SandboxConflict) throws {
         let context = try context(for: conflict.sandbox)
-        try ensureOriginReady(context)
-        if !conflict.originBranch.isEmpty, conflict.originBranch != context.originBranch {
-            throw SandboxWorkspaceError.staleResolution
-        }
-        guard try revision("HEAD", in: context.origin) == conflict.originHead else {
-            throw SandboxWorkspaceError.staleResolution
-        }
-        guard try revision("HEAD", in: context.worktree) == conflict.sandboxHead else {
-            throw SandboxWorkspaceError.staleResolution
-        }
+        try ensureConflictIsCurrent(context, conflict: conflict)
         guard try mergeHead(in: context.worktree) != nil else {
             throw SandboxWorkspaceError.resolutionNotInProgress
         }
@@ -685,7 +667,8 @@ public enum SandboxWorkspaces {
         }
     }
 
-    private static func ensureResolutionIsCurrent(_ context: Context, conflict: SandboxConflict) throws {
+    /// Both sides still sit where the conflict was detected.
+    private static func ensureConflictIsCurrent(_ context: Context, conflict: SandboxConflict) throws {
         try ensureOriginReady(context)
         if !conflict.originBranch.isEmpty, conflict.originBranch != context.originBranch {
             throw SandboxWorkspaceError.staleResolution
@@ -696,6 +679,10 @@ public enum SandboxWorkspaces {
         guard try revision("HEAD", in: context.worktree) == conflict.sandboxHead else {
             throw SandboxWorkspaceError.staleResolution
         }
+    }
+
+    private static func ensureResolutionIsCurrent(_ context: Context, conflict: SandboxConflict) throws {
+        try ensureConflictIsCurrent(context, conflict: conflict)
         guard try mergeHead(in: context.worktree) == conflict.originHead else {
             throw SandboxWorkspaceError.resolutionNotInProgress
         }

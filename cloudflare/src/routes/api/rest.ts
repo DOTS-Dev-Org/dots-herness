@@ -4,7 +4,11 @@ import { db, normalizeEmail, sqliteTimestamp, uuid } from "../../db/client";
 import { requireAuth, resolvePlatformRole } from "../../middleware/auth";
 import { clientIpFromRequest, recordAudit } from "../../lib/audit";
 import { hashToken } from "../../lib/jwt";
-import { hasSeatAvailable } from "../../lib/team";
+import {
+  createTeamInviteWithinSeatLimit,
+  hasSeatAvailable,
+  insertWorkspaceMemberWithinSeatLimit,
+} from "../../lib/team";
 
 // ─── Tablo Tanımları ve Güvenlik Kuralları ──────────────────────
 //
@@ -20,7 +24,7 @@ const TABLES = {
     rlsType: "id" as const,
     readOnly: false,
     hiddenCols: ["password_hash"],
-    immutable: ["id", "email", "role", "plan", "status", "email_verified", "auth_provider", "provider_id", "created_at"],
+    immutable: ["id", "email", "role", "plan", "status", "email_verified", "auth_provider", "provider_id", "created_at", "password_hash"],
   },
   user_connections: {
     rls: "user_id",
@@ -220,8 +224,23 @@ function assertNoImmutableCols(keys: string[], tbl: TableConfig, actorRole?: str
     if (tbl.immutable.includes(key)) {
       // role changes: superadmin-only, validated in assertUserRoleChange
       if (key === "role" && tbl.name === "users") continue;
-      // ponytail: admin REST bypass — id/created_at stay immutable for users table
-      if (adminUserBypass && key !== "id" && key !== "created_at" && key !== "status") continue;
+      // ponytail: admin REST bypass — only `status` stays writable for the
+      // users table. email and the auth columns stay immutable even for a
+      // superadmin: repointing an account is how an account takeover starts.
+      if (adminUserBypass && key === "status") continue;
+      throw new Error(`Column '${key}' cannot be modified`);
+    }
+  }
+}
+
+/**
+ * Columns that are hidden from reads must also be hidden from writes.
+ * Without this a client could write `password_hash` or an unencrypted
+ * `key_value` straight into the row the REST API otherwise protects.
+ */
+function assertNoHiddenCols(keys: string[], tbl: TableConfig) {
+  for (const key of keys) {
+    if (tbl.hiddenCols.includes(key)) {
       throw new Error(`Column '${key}' cannot be modified`);
     }
   }
@@ -694,12 +713,55 @@ function createRestApp(options: { publicOnly: boolean }) {
 
       const sql = `INSERT INTO ${tbl.name} (${keys.join(", ")})
                    VALUES (${keys.map(() => "?").join(", ")}) RETURNING *`;
-      const { results } = await db(c.env)
-        .prepare(sql)
-        .bind(...Object.values(body))
-        .all();
+      let results: Record<string, unknown>[];
+      if (tbl.name === "team_invites") {
+        if (
+          typeof body.id !== "string" ||
+          typeof body.workspace_id !== "string" ||
+          typeof body.email !== "string" ||
+          typeof body.role !== "string" ||
+          typeof body.token !== "string" ||
+          typeof body.expires_at !== "string"
+        ) {
+          throw new Error("Invalid team invite fields");
+        }
+        const inserted = await createTeamInviteWithinSeatLimit(c.env, {
+          id: body.id,
+          workspaceId: body.workspace_id,
+          email: body.email,
+          role: body.role,
+          token: body.token,
+          invitedBy: typeof body.invited_by === "string" ? body.invited_by : null,
+          expiresAt: body.expires_at,
+        });
+        if (!inserted) {
+          const seats = await hasSeatAvailable(c.env, body.workspace_id);
+          throw new Error(seats.available ? "invite_already_pending_or_member" : "seat_limit_reached");
+        }
+        const insertedRow = await db(c.env)
+          .prepare("SELECT * FROM team_invites WHERE id = ?")
+          .bind(body.id)
+          .all<Record<string, unknown>>();
+        results = insertedRow.results || [];
+      } else if (tbl.name === "workspace_members") {
+        results = await insertWorkspaceMemberWithinSeatLimit(c.env, {
+          columns: keys,
+          values: Object.values(body),
+          workspaceId: String(body.workspace_id),
+        });
+        if (results.length === 0) {
+          const existing = await db(c.env)
+            .prepare("SELECT 1 FROM workspace_members WHERE workspace_id = ? AND user_id = ?")
+            .bind(body.workspace_id, body.user_id)
+            .first();
+          throw new Error(existing ? "already_member" : "seat_limit_reached");
+        }
+      } else {
+        const inserted = await db(c.env).prepare(sql).bind(...Object.values(body)).all();
+        results = inserted.results as Record<string, unknown>[];
+      }
 
-      const rows = stripHiddenCols(results as Record<string, unknown>[], tbl.hiddenCols);
+      const rows = stripHiddenCols(results, tbl.hiddenCols);
       if (wantsRepresentation(c)) return c.json(rows, 201);
       return c.body(null, 201);
     } catch (err: unknown) {
@@ -734,6 +796,7 @@ function createRestApp(options: { publicOnly: boolean }) {
       const keys = Object.keys(body);
       if (keys.length === 0) throw new Error("Empty update body");
       keys.forEach((k) => assertSafeId(k, "column"));
+      assertNoHiddenCols(keys, tbl);
       assertNoImmutableCols(keys, tbl, user.role);
       if (tbl.rls && keys.includes(tbl.rls)) {
         throw new Error(`Column '${tbl.rls}' cannot be modified`);
@@ -821,6 +884,7 @@ function createRestApp(options: { publicOnly: boolean }) {
 
       const keys = Object.keys(body);
       keys.forEach((k) => assertSafeId(k, "column"));
+      assertNoHiddenCols(keys, tbl);
       assertNoImmutableCols(keys, tbl, user.role);
       if (tbl.rls && keys.includes(tbl.rls)) {
         throw new Error(`Column '${tbl.rls}' cannot be modified`);

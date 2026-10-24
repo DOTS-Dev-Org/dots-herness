@@ -22,19 +22,25 @@ public sealed record MemoryVault(IReadOnlyList<MemoryNote> Notes, IReadOnlyList<
     public static MemoryVault Empty { get; } = new([], []);
 }
 
-public enum MemoryEditKind { SetProject, ForgetProject, PinLesson, ForgetLesson, EditLesson, SetManualRules }
+public enum MemoryEditKind { SetProject, ForgetProject, PinLesson, ForgetLesson, EditLesson, SetManualRules, EditInsight, ForgetInsight }
 public sealed record MemoryEdit(MemoryEditKind Kind, string Key = "", string Id = "", string Value = "");
 
 public static class WorkspaceMemoryVault
 {
     private static readonly Regex WikiLink = new(@"\[\[([^\]]+)\]\]", RegexOptions.Compiled);
     private const string ProjectPrefix = "project:";
+    public const string InsightPrefix = "insight:";
+    public const string ToolPrefix = "tool:";
 
     public static MemoryVault Read(string? workspace, string? userRoot = null)
     {
         if (string.IsNullOrWhiteSpace(workspace) || !Directory.Exists(workspace)) return MemoryVault.Empty;
         var root = Path.Combine(workspace, ".mem");
-        if (!Directory.Exists(root)) return MemoryVault.Empty;
+        // Findings are the person's and live outside the repository, so a project with no
+        // .mem folder may still have a memory to show.
+        var insights = WorkspaceInsights.Read(workspace, userRoot).Insights;
+        var tools = WorkspaceInsights.ToolUses(workspace, userRoot);
+        if (!Directory.Exists(root) && insights.Count == 0 && tools.Count == 0) return MemoryVault.Empty;
 
         var byId = new Dictionary<string, MemoryNote>(StringComparer.Ordinal);
         var order = new List<string>();
@@ -66,13 +72,15 @@ public static class WorkspaceMemoryVault
         foreach (var name in new[] { "map.md", "index.md", "preferences.md" })
             Ingest(Path.Combine(root, name), "note");
 
-        var learnedPath = Path.Combine(root, "learned_rules.md");
-        var learnedBody = ReadText(learnedPath);
+        var learnedBody = WorkspaceLessons.RulesText(workspace, userRoot);
         AddLearned("learned_rules", "rule", "Learned rules", "learned_rules.md",
             learnedBody.Length == 0 ? "# Learned rules" : learnedBody);
 
-        foreach (var fact in WorkspaceFacts.Read(workspace).Where(item => item.Kind == "project").OrderBy(item => item.Key, StringComparer.Ordinal))
-            AddLearned(ProjectPrefix + fact.Key, "project", fact.Key, "", fact.Text);
+        foreach (var fact in WorkspaceFacts.Read(workspace)
+            .Where(item => item.Kind is "project" or "preference" or "decision")
+            .OrderBy(item => item.Kind, StringComparer.Ordinal).ThenBy(item => item.Key, StringComparer.Ordinal))
+            AddLearned(fact.Kind == "decision" ? "decision-" + fact.Key : ProjectPrefix + fact.Key,
+                fact.Kind, fact.Key, fact.Kind == "decision" ? ".mem/facts.md" : "", fact.Text);
 
         var profile = WorkspaceFacts.UserText(userRoot, workspace);
         if (profile.Length > 0) AddLearned("user-profile", "profile", "User profile", "", profile);
@@ -86,6 +94,20 @@ public static class WorkspaceMemoryVault
             catch (IOException) { continue; }
             catch (UnauthorizedAccessException) { continue; }
             foreach (var file in files) Ingest(file, kind);
+        }
+
+        foreach (var insight in insights)
+        {
+            var id = InsightPrefix + insight.Id;
+            byId[id] = new MemoryNote(id, "insight", insight.Text.Length > 60 ? insight.Text[..60] : insight.Text, "", insight.Text,
+                [insight.Kind], insight.Files.Select(file => "file:" + file).Concat(byId.ContainsKey("index") ? ["index"] : []).ToList(), [], true);
+            order.Add(id);
+        }
+        foreach (var tool in tools)
+        {
+            var id = ToolPrefix + tool.Name;
+            byId[id] = new MemoryNote(id, "tool", tool.Name, "", $"Used {tool.Calls} times in {tool.Tasks} tasks.", ["tool"], [], [], true);
+            order.Add(id);
         }
 
         for (var index = 0; index < order.Count; index++)
@@ -131,26 +153,18 @@ public static class WorkspaceMemoryVault
         var value = edit.Value;
         if (value.Length > 0 && WorkspaceFacts.IsSecret(new WorkspaceFact("project", edit.Key.Length > 0 ? edit.Key : "note", value)))
             return false;
-        var hasManifest = !string.IsNullOrWhiteSpace(workspace)
-            && File.Exists(Path.Combine(workspace, ".mem", "manifest.json"));
-        WorkspaceAccessStore? access = null;
-        if (hasManifest && !string.IsNullOrWhiteSpace(userRoot))
-        {
-            access = new WorkspaceAccessStore(workspace!, userRoot!);
-            if (edit.Kind is MemoryEditKind.SetProject or MemoryEditKind.ForgetProject && !access.CanEditProjectDefaults()) return false;
-        }
         return edit.Kind switch
         {
             MemoryEditKind.SetProject => string.IsNullOrWhiteSpace(value)
-                ? hasManifest ? access!.ForgetProjectDefault(edit.Key) : WorkspaceFacts.ForgetProject(workspace, edit.Key)
-                : hasManifest ? access!.SetProjectDefault(edit.Key, value) : WorkspaceFacts.SetProject(workspace, edit.Key, value),
-            MemoryEditKind.ForgetProject => hasManifest
-                ? access!.ForgetProjectDefault(edit.Key)
-                : WorkspaceFacts.ForgetProject(workspace, edit.Key),
-            MemoryEditKind.PinLesson => WorkspaceLessons.Pin(workspace, edit.Id),
-            MemoryEditKind.ForgetLesson => WorkspaceLessons.Forget(workspace, edit.Id),
-            MemoryEditKind.EditLesson => WorkspaceLessons.EditRule(workspace, edit.Id, value),
-            MemoryEditKind.SetManualRules => WorkspaceLessons.SetManualRules(workspace, value),
+                ? WorkspaceFacts.ForgetProject(workspace, edit.Key)
+                : WorkspaceFacts.SetProject(workspace, edit.Key, value),
+            MemoryEditKind.ForgetProject => WorkspaceFacts.ForgetProject(workspace, edit.Key),
+            MemoryEditKind.PinLesson => WorkspaceLessons.Pin(workspace, edit.Id, userRoot),
+            MemoryEditKind.ForgetLesson => WorkspaceLessons.Forget(workspace, edit.Id, userRoot),
+            MemoryEditKind.EditLesson => WorkspaceLessons.EditRule(workspace, edit.Id, value, userRoot),
+            MemoryEditKind.SetManualRules => WorkspaceLessons.SetManualRules(workspace, value, userRoot),
+            MemoryEditKind.EditInsight => WorkspaceInsights.EditInsight(workspace, userRoot, edit.Id, value),
+            MemoryEditKind.ForgetInsight => WorkspaceInsights.ForgetInsight(workspace, userRoot, edit.Id),
             _ => false,
         };
     }

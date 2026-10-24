@@ -139,10 +139,6 @@ public final class SSHHostStore: ObservableObject {
         try vault.set(password, for: passwordKey(alias))
     }
 
-    public func storedPassword(alias: String) -> String? {
-        try? vault.get(passwordKey(alias))
-    }
-
     public func forgetPassword(alias: String) {
         try? vault.remove(passwordKey(alias))
     }

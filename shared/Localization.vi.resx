@@ -298,13 +298,14 @@
   <data name="usage.resetsIn" xml:space="preserve"><value>đặt lại sau {0}</value></data>
   <data name="usage.resetsOn" xml:space="preserve"><value>đặt lại vào {0}</value></data>
   <data name="usage.resetsAvailable" xml:space="preserve"><value>Còn {0} lần đặt lại</value></data>
-  <data name="usage.manageResets" xml:space="preserve"><value>Manage resets</value></data>
-  <data name="usage.useReset" xml:space="preserve"><value>Use reset</value></data>
-  <data name="usage.resetTitle" xml:space="preserve"><value>Use a Claude limit reset?</value></data>
-  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude's Usage page will open. Sign in to {0} and review the reset offered to that account. To use it, click Reset for free and confirm in Claude. Once used, a reset cannot be undone. Limits refresh when you return to HerNess.</value></data>
-  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Could not open Claude. Check that the account is still connected, then try again.</value></data>
-  <data name="usage.openClaude" xml:space="preserve"><value>Open Claude</value></data>
+  <data name="usage.manageResets" xml:space="preserve"><value>Quản lý lượt đặt lại</value></data>
+  <data name="usage.useReset" xml:space="preserve"><value>Dùng lượt đặt lại</value></data>
+  <data name="usage.resetTitle" xml:space="preserve"><value>Dùng một lượt đặt lại giới hạn Claude?</value></data>
+  <data name="usage.resetConfirmation" xml:space="preserve"><value>Trang Sử dụng của Claude sẽ mở. Đăng nhập vào {0} và xem lượt đặt lại được cung cấp cho tài khoản đó. Để dùng, nhấp Reset for free và xác nhận trong Claude. Lượt đặt lại đã dùng không thể hoàn tác. Giới hạn sẽ làm mới khi bạn quay lại HerNess.</value></data>
+  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Không thể mở Claude. Kiểm tra xem tài khoản còn kết nối không rồi thử lại.</value></data>
+  <data name="usage.openClaude" xml:space="preserve"><value>Mở Claude</value></data>
   <data name="usage.needLogin" xml:space="preserve"><value>Đăng nhập Claude để xem giới hạn</value></data>
+  <data name="agent.providerLimitTitle" xml:space="preserve"><value>Đã đạt đến giới hạn của nhà cung cấp</value></data>
   <data name="usage.noLimitInfo" xml:space="preserve"><value>Không có thông tin giới hạn</value></data>
   <data name="usage.loadFailed" xml:space="preserve"><value>Không thể tải mức sử dụng</value></data>
   <data name="usage.loading" xml:space="preserve"><value>Đang tải mức sử dụng…</value></data>
@@ -332,21 +333,21 @@
   <data name="project.missing.message" xml:space="preserve"><value>Thư mục dự án tại '{0}' có thể đã bị di chuyển hoặc xóa. Hãy chọn vị trí mới hoặc xóa dự án.</value></data>
   <data name="project.missing.locate" xml:space="preserve"><value>Chọn vị trí…</value></data>
   <data name="project.missing.readOnly" xml:space="preserve"><value>Thư mục dự án không khả dụng. Bạn vẫn có thể xem các cuộc trò chuyện trước; việc tạo cuộc trò chuyện mới và gửi tin nhắn bị tắt cho đến khi bạn chọn vị trí mới.</value></data>
-  <data name="conversation.ranCommand" xml:space="preserve"><value>Ran 1 command</value></data>
-  <data name="conversation.ranCommands" xml:space="preserve"><value>Ran {0} commands</value></data>
-  <data name="conversation.runningTools" xml:space="preserve"><value>Running tools…</value></data>
-  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Thinking…</value></data>
-  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} tokens</value></data>
-  <data name="usage.context.window" xml:space="preserve"><value>Context window</value></data>
-  <data name="usage.planLimits" xml:space="preserve"><value>Plan usage limits</value></data>
-  <data name="composer.queue.one" xml:space="preserve"><value>1 message queued</value></data>
-  <data name="composer.queue.many" xml:space="preserve"><value>{0} messages queued</value></data>
-  <data name="composer.queue.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Clear the message box to edit</value></data>
-  <data name="composer.queue.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="git.createPR" xml:space="preserve"><value>Create PR</value></data>
-  <data name="git.hideBar" xml:space="preserve"><value>Hide</value></data>
-  <data name="composer.queue.next" xml:space="preserve"><value>Next: {0}</value></data>
+  <data name="conversation.ranCommand" xml:space="preserve"><value>Đã chạy 1 lệnh</value></data>
+  <data name="conversation.ranCommands" xml:space="preserve"><value>Đã chạy {0} lệnh</value></data>
+  <data name="conversation.runningTools" xml:space="preserve"><value>Đang chạy công cụ…</value></data>
+  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Đang suy nghĩ…</value></data>
+  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} token</value></data>
+  <data name="usage.context.window" xml:space="preserve"><value>Cửa sổ ngữ cảnh</value></data>
+  <data name="usage.planLimits" xml:space="preserve"><value>Giới hạn sử dụng của gói</value></data>
+  <data name="composer.queue.one" xml:space="preserve"><value>1 tin nhắn đang chờ</value></data>
+  <data name="composer.queue.many" xml:space="preserve"><value>{0} tin nhắn đang chờ</value></data>
+  <data name="composer.queue.edit" xml:space="preserve"><value>Sửa</value></data>
+  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Xóa trống ô tin nhắn để sửa</value></data>
+  <data name="composer.queue.remove" xml:space="preserve"><value>Gỡ</value></data>
+  <data name="git.createPR" xml:space="preserve"><value>Tạo PR</value></data>
+  <data name="git.hideBar" xml:space="preserve"><value>Ẩn</value></data>
+  <data name="composer.queue.next" xml:space="preserve"><value>Tiếp theo: {0}</value></data>
   <data name="sidebar.pinProject" xml:space="preserve"><value>Ghim dự án</value></data>
   <data name="sidebar.unpinProject" xml:space="preserve"><value>Bỏ ghim dự án</value></data>
   <data name="sidebar.sortLastUpdate" xml:space="preserve"><value>Cập nhật gần nhất</value></data>
@@ -357,6 +358,8 @@
   <data name="conversation.cancelPlan" xml:space="preserve"><value>Hủy kế hoạch</value></data>
   <data name="conversation.cancelPlanHelp" xml:space="preserve"><value>Hủy kế hoạch này và giải phóng các tin nhắn đang chờ</value></data>
   <data name="media.generated" xml:space="preserve"><value>Đã tạo hình ảnh.</value></data>
+  <data name="media.videoGenerated" xml:space="preserve"><value>Đã tạo video.</value></data>
+  <data name="media.audioGenerated" xml:space="preserve"><value>Đã tạo giọng nói.</value></data>
   <data name="media.fallbackUsed" xml:space="preserve"><value>Nhà cung cấp đã chọn không tạo được hình ảnh này. Hình ảnh được tạo bằng một yêu cầu dự phòng dùng một lần qua {0}/{1}; nhà cung cấp và mô hình của cuộc trò chuyện chính không đổi nên bộ đệm prompt vẫn nguyên vẹn.</value></data>
   <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>Tôi không thể tạo hình ảnh này bằng {0}. Hãy cấu hình một API hoặc nhà cung cấp hình ảnh làm dự phòng. Đổi mô hình trò chuyện chính chỉ để tạo ảnh có thể làm hỏng bộ đệm prompt của nhà cung cấp.</value></data>
   <data name="feedback.close" xml:space="preserve"><value>Đóng</value></data>
@@ -369,27 +372,27 @@
   <data name="feedback.persistenceFailed" xml:space="preserve"><value>Không thể lưu phản hồi trên thiết bị.</value></data>
   <data name="feedback.streamingMessage" xml:space="preserve"><value>Hãy đợi phản hồi hoàn tất trước khi gửi đánh giá.</value></data>
   <data name="feedback.submit" xml:space="preserve"><value>Gửi</value></data>
-  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Apply it elsewhere</value></data>
-  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Broke an existing feature</value></data>
+  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Áp dụng ở chỗ khác</value></data>
+  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Làm hỏng tính năng hiện có</value></data>
   <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>Không làm theo hướng dẫn của tôi</value></data>
-  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Didn't follow project style</value></data>
+  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Không theo phong cách dự án</value></data>
   <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>Nhanh và hiệu quả</value></data>
   <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>Đã làm theo hướng dẫn của tôi</value></data>
-  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Ignored project architecture</value></data>
+  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Bỏ qua kiến trúc dự án</value></data>
   <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>Sai hoặc chưa đầy đủ</value></data>
-  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Keep the project style</value></data>
+  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Giữ phong cách dự án</value></data>
   <data name="feedback.tag.lost_context" xml:space="preserve"><value>Mất ngữ cảnh</value></data>
   <data name="feedback.tag.negative_other" xml:space="preserve"><value>Khác</value></data>
   <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>Lạc đề / ngoài phạm vi</value></data>
   <data name="feedback.tag.output_quality" xml:space="preserve"><value>Chất lượng mã / đầu ra tốt</value></data>
   <data name="feedback.tag.positive_other" xml:space="preserve"><value>Khác</value></data>
-  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Reuse this architecture</value></data>
-  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Reuse this token pattern</value></data>
+  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Dùng lại kiến trúc này</value></data>
+  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Dùng lại mẫu token này</value></data>
   <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>Vấn đề bảo mật hoặc pháp lý</value></data>
   <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>Chậm hoặc có lỗi</value></data>
   <data name="feedback.tag.task_completed" xml:space="preserve"><value>Đã hoàn thành việc của tôi</value></data>
   <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>Tính tự chủ hữu ích</value></data>
-  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Wrong theme or token</value></data>
+  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Sai giao diện hoặc token</value></data>
   <data name="feedback.title" xml:space="preserve"><value>Chia sẻ phản hồi</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Phản hồi chỉ khả dụng trong các cuộc trò chuyện của không gian làm việc.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Chỉ có thể gửi phản hồi cho câu trả lời của trợ lý.</value></data>
@@ -398,12 +401,13 @@
   <data name="conversation.cacheExpired.explanation" xml:space="preserve"><value>Thời gian tồn tại ước tính của bộ nhớ đệm đã hết. Bộ nhớ đệm prompt là trạng thái xử lý tạm thời phía nhà cung cấp; lịch sử trò chuyện của bạn vẫn được lưu. Tiếp tục với toàn bộ lịch sử có thể khiến các token đó bị tính lại như đầu vào mới. Cần dữ liệu sử dụng của yêu cầu tiếp theo để xác nhận nhà cung cấp còn bộ nhớ đệm hay không.</value></data>
   <data name="conversation.cacheExpired.infoTitle" xml:space="preserve"><value>Vì sao tôi thấy thông báo này?</value></data>
   <data name="conversation.cacheExpired.notice" xml:space="preserve"><value>Bộ nhớ đệm có thể đã hết hạn; tiếp tục có thể tốn thêm token và chi phí. Hãy bắt đầu cuộc trò chuyện mới kèm bản tóm tắt ngắn.</value></data>
+  <data name="conversation.cacheLocal.notice" xml:space="preserve"><value>Bộ nhớ đệm của mô hình cục bộ đã bị xóa; toàn bộ lịch sử sẽ được xử lý lại và phản hồi có thể chậm. Hãy bắt đầu cuộc trò chuyện mới với bản tóm tắt ngắn.</value></data>
   <data name="conversation.filesChangedCount" xml:space="preserve"><value>Đã thay đổi {0} tệp</value></data>
   <data name="conversation.filesLess" xml:space="preserve"><value>Hiện ít tệp hơn</value></data>
   <data name="conversation.filesLineSummary" xml:space="preserve"><value>+{0} −{1}</value></data>
   <data name="conversation.filesMore" xml:space="preserve"><value>Hiện thêm {0} tệp</value></data>
   <data name="conversation.filesReverted" xml:space="preserve"><value>Các thay đổi đối với tệp đã được hoàn tác.</value></data>
-  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>The saved file version is unavailable, so the workspace was left unchanged.</value></data>
+  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>Phiên bản tệp đã lưu không khả dụng nên không gian làm việc được giữ nguyên.</value></data>
   <data name="conversation.undoChanges" xml:space="preserve"><value>Hoàn tác</value></data>
   <data name="conversation.viewChanges" xml:space="preserve"><value>Xem thay đổi</value></data>
   <data name="settings.archive" xml:space="preserve"><value>Lưu trữ</value></data>
@@ -434,9 +438,9 @@
   <data name="workLocation.remoteFolderUp" xml:space="preserve"><value>Thư mục cha</value></data>
   <data name="workLocation.remoteFolderEmpty" xml:space="preserve"><value>Không có thư mục con ở đây</value></data>
   <data name="workLocation.remoteFolderUse" xml:space="preserve"><value>Dùng thư mục</value></data>
-  <data name="workLocation.connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="workLocation.connect" xml:space="preserve"><value>Kết nối</value></data>
   <data name="workLocation.addHost" xml:space="preserve"><value>Thêm máy tính…</value></data>
-  <data name="workLocation.useLocal" xml:space="preserve"><value>Use this computer</value></data>
+  <data name="workLocation.useLocal" xml:space="preserve"><value>Dùng máy tính này</value></data>
   <data name="settings.sshAlias" xml:space="preserve"><value>Bí danh</value></data>
   <data name="settings.sshHostName" xml:space="preserve"><value>Máy chủ hoặc IP</value></data>
   <data name="settings.sshUser" xml:space="preserve"><value>Tên người dùng</value></data>
@@ -444,126 +448,106 @@
   <data name="settings.sshRemove" xml:space="preserve"><value>Gỡ</value></data>
   <data name="ssh.busy" xml:space="preserve"><value>Hãy đợi lượt chạy hiện tại kết thúc trước khi đổi nơi làm việc.</value></data>
   <data name="ssh.connecting" xml:space="preserve"><value>Đang kết nối tới {0}…</value></data>
-  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Choose a remote folder before starting a task.</value></data>
+  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Chọn một thư mục từ xa trước khi bắt đầu tác vụ.</value></data>
   <data name="ssh.scanning" xml:space="preserve"><value>Đang lấy khóa máy chủ…</value></data>
   <data name="ssh.fingerprintTitle" xml:space="preserve"><value>Đây có phải vân tay của {0} không?</value></data>
   <data name="ssh.fingerprintMessage" xml:space="preserve"><value>Hãy đối chiếu với máy chủ trước khi tin tưởng. Chỉ tiếp tục nếu khớp.</value></data>
   <data name="ssh.trustAndConnect" xml:space="preserve"><value>Tin tưởng và kết nối</value></data>
   <data name="ssh.error.unavailable" xml:space="preserve"><value>Không tìm thấy ssh trên máy Mac này.</value></data>
   <data name="ssh.error.notReachable" xml:space="preserve"><value>Không thể liên hệ {0}.</value></data>
-  <data name="conversation.choosePane" xml:space="preserve"><value>Choose a pane</value></data>
-  <data name="sidebar.toggle" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.mcpServers" xml:space="preserve"><value>MCP servers</value></data>
-  <data name="mcp.empty" xml:space="preserve"><value>No MCP servers configured.</value></data>
-  <data name="mcp.addServer" xml:space="preserve"><value>Add server</value></data>
-  <data name="mcp.name" xml:space="preserve"><value>Name</value></data>
-  <data name="mcp.transport" xml:space="preserve"><value>Transport</value></data>
+  <data name="conversation.choosePane" xml:space="preserve"><value>Chọn một ngăn</value></data>
+  <data name="sidebar.toggle" xml:space="preserve"><value>Hiện hoặc ẩn thanh bên</value></data>
+  <data name="settings.mcpServers" xml:space="preserve"><value>Máy chủ MCP</value></data>
+  <data name="mcp.empty" xml:space="preserve"><value>Chưa cấu hình máy chủ MCP nào.</value></data>
+  <data name="mcp.addServer" xml:space="preserve"><value>Thêm máy chủ</value></data>
+  <data name="mcp.name" xml:space="preserve"><value>Tên</value></data>
+  <data name="mcp.transport" xml:space="preserve"><value>Phương thức truyền</value></data>
   <data name="mcp.http" xml:space="preserve"><value>HTTP</value></data>
   <data name="mcp.stdio" xml:space="preserve"><value>stdio</value></data>
   <data name="mcp.url" xml:space="preserve"><value>URL</value></data>
-  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (optional)</value></data>
-  <data name="mcp.executable" xml:space="preserve"><value>Executable path</value></data>
-  <data name="mcp.arguments" xml:space="preserve"><value>Arguments (space-separated)</value></data>
-  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Auto-run tools the server marks read-only</value></data>
-  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Server annotations are untrusted. Enabling this skips approval only for tools marked read-only and not destructive.</value></data>
-  <data name="mcp.test" xml:space="preserve"><value>Test</value></data>
-  <data name="mcp.add" xml:space="preserve"><value>Add</value></data>
-  <data name="mcp.reconnect" xml:space="preserve"><value>Reconnect</value></data>
-  <data name="mcp.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="mcp.idle" xml:space="preserve"><value>Idle</value></data>
-  <data name="mcp.connecting" xml:space="preserve"><value>Connecting…</value></data>
-  <data name="mcp.connected" xml:space="preserve"><value>Connected · {0} tool(s)</value></data>
-  <data name="mcp.failed" xml:space="preserve"><value>Failed: {0}</value></data>
-  <data name="mcp.testing" xml:space="preserve"><value>Testing…</value></data>
-  <data name="mcp.testConnected" xml:space="preserve"><value>Connected. {0} tool(s) available.</value></data>
-  <data name="conversation.toolInput" xml:space="preserve"><value>Tool input</value></data>
-  <data name="settings.tab.memory" xml:space="preserve"><value>Memory</value></data>
-  <data name="memory.vault.title" xml:space="preserve"><value>Memory vault</value></data>
-  <data name="memory.refresh" xml:space="preserve"><value>Refresh</value></data>
-  <data name="memory.reveal" xml:space="preserve"><value>Open .mem folder</value></data>
-  <data name="memory.refused" xml:space="preserve"><value>Not saved. The entry may contain a credential, exceed its limit, or the workspace may be unavailable.</value></data>
-  <data name="memory.noWorkspace" xml:space="preserve"><value>Select a local workspace to view its memory.</value></data>
-  <data name="memory.notInitialized" xml:space="preserve"><value>Memory starts after the first prompt in this workspace.</value></data>
-  <data name="memory.search" xml:space="preserve"><value>Search memory</value></data>
-  <data name="memory.selectNote" xml:space="preserve"><value>Select a note to view it.</value></data>
-  <data name="memory.save" xml:space="preserve"><value>Save</value></data>
-  <data name="memory.forget" xml:space="preserve"><value>Forget</value></data>
-  <data name="memory.ownRules" xml:space="preserve"><value>Your own rules</value></data>
-  <data name="memory.rulesHelp" xml:space="preserve"><value>These rules are added to every request in this project.</value></data>
-  <data name="memory.lessons" xml:space="preserve"><value>Learned lessons</value></data>
-  <data name="memory.learningStats" xml:space="preserve"><value>{0} turns logged; {1} were corrected or undone.</value></data>
-  <data name="memory.links" xml:space="preserve"><value>Links</value></data>
-  <data name="memory.backlinks" xml:space="preserve"><value>Linked mentions</value></data>
-  <data name="memory.userAuthored" xml:space="preserve"><value>user-authored</value></data>
-  <data name="memory.inferred" xml:space="preserve"><value>inferred</value></data>
-  <data name="memory.learnedCount" xml:space="preserve"><value>learned {0}×</value></data>
-  <data name="memory.usedCount" xml:space="preserve"><value>used {0}×</value></data>
-  <data name="memory.inactive" xml:space="preserve"><value>no longer applied</value></data>
-  <data name="memory.pin" xml:space="preserve"><value>Pin</value></data>
-  <data name="memory.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="memory.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="settings.tab.access" xml:space="preserve"><value>Workspace access</value></data>
-  <data name="access.currentActor" xml:space="preserve"><value>Current actor</value></data>
-  <data name="access.role" xml:space="preserve"><value>Role</value></data>
-  <data name="access.notAuthorized" xml:space="preserve"><value>Not authorized</value></data>
-  <data name="access.score" xml:space="preserve"><value>Score</value></data>
-  <data name="access.device" xml:space="preserve"><value>Device</value></data>
-  <data name="access.publicKey" xml:space="preserve"><value>Public key</value></data>
-  <data name="access.memoryRevision" xml:space="preserve"><value>Memory revision</value></data>
-  <data name="access.members" xml:space="preserve"><value>Members</value></data>
-  <data name="access.noMembers" xml:space="preserve"><value>No members yet.</value></data>
-  <data name="access.revoke" xml:space="preserve"><value>Revoke</value></data>
-  <data name="access.revoked" xml:space="preserve"><value>revoked</value></data>
-  <data name="access.inviteDevice" xml:space="preserve"><value>Invite device</value></data>
-  <data name="access.displayName" xml:space="preserve"><value>Display name</value></data>
-  <data name="access.newDevicePublicKey" xml:space="preserve"><value>New device public key</value></data>
-  <data name="access.createInvitation" xml:space="preserve"><value>Create signed invitation</value></data>
-  <data name="access.acceptInvitation" xml:space="preserve"><value>Accept invitation</value></data>
-  <data name="access.signedInvitation" xml:space="preserve"><value>Signed invitation</value></data>
-  <data name="access.accept" xml:space="preserve"><value>Accept</value></data>
-  <data name="access.reject" xml:space="preserve"><value>Reject</value></data>
-  <data name="access.pendingDecisions" xml:space="preserve"><value>Pending decisions</value></data>
-  <data name="access.noPendingDecisions" xml:space="preserve"><value>No pending project decisions.</value></data>
-  <data name="access.noWorkspace" xml:space="preserve"><value>Select a local workspace to manage access.</value></data>
-  <data name="access.scoreValue" xml:space="preserve"><value>Score: {0}</value></data>
-  <data name="access.initialize" xml:space="preserve"><value>Initialize workspace memory</value></data>
-  <data name="access.initializeHelp" xml:space="preserve"><value>Workspace access uses a signed memory log. Initializing creates the owner identity and event log in this project's .mem folder.</value></data>
-  <data name="access.role.owner" xml:space="preserve"><value>Owner</value></data>
-  <data name="access.role.approver" xml:space="preserve"><value>Approver</value></data>
-  <data name="access.role.contributor" xml:space="preserve"><value>Contributor</value></data>
-  <data name="access.role.observer" xml:space="preserve"><value>Observer</value></data>
-  <data name="settings.sandbox" xml:space="preserve"><value>Sandbox</value></data>
-  <data name="settings.sandboxOff" xml:space="preserve"><value>Off — the agent works directly in your checkout.</value></data>
-  <data name="settings.sandboxOn" xml:space="preserve"><value>On — the agent works in a separate git worktree.</value></data>
-  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Recovery is required before sandbox operations can continue.</value></data>
-  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Retry recovery</value></data>
-  <data name="settings.sandboxName" xml:space="preserve"><value>Name</value></data>
-  <data name="settings.sandboxEnter" xml:space="preserve"><value>Start sandbox</value></data>
-  <data name="settings.sandboxMerge" xml:space="preserve"><value>Merge and exit</value></data>
-  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Discard and exit</value></data>
-  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Origin</value></data>
-  <data name="settings.sandboxBranch" xml:space="preserve"><value>Branch</value></data>
-  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Allow network for new processes</value></data>
-  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>This applies only to new commands. Existing terminal sessions keep their current policy.</value></data>
-  <data name="settings.sandboxOpen" xml:space="preserve"><value>Open sandbox</value></data>
-  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Open origin</value></data>
-  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Conflicts</value></data>
-  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Prepare resolution</value></data>
-  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Ask agent</value></data>
-  <data name="settings.sandboxPreview" xml:space="preserve"><value>Refresh preview</value></data>
-  <data name="settings.sandboxApprove" xml:space="preserve"><value>Approve and merge</value></data>
-  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Cancel resolution</value></data>
-  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Retry cleanup</value></data>
-  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Discard this sandbox? Its branch will be kept for recovery, but its worktree will be removed.</value></data>
-  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Approval requires a complete preview with no unresolved files.</value></data>
-  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Resolution preview</value></data>
-  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Unresolved files</value></data>
-  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>Origin HEAD</value></data>
-  <data name="settings.sandboxHead" xml:space="preserve"><value>Sandbox HEAD</value></data>
-  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Preview fingerprint</value></data>
-  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Sandbox cleanup is still pending; the origin was not changed again.</value></data>
-  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Saved sandboxes</value></data>
-  <data name="settings.sandboxRecover" xml:space="preserve"><value>Recover</value></data>
+  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (không bắt buộc)</value></data>
+  <data name="mcp.executable" xml:space="preserve"><value>Đường dẫn tệp thực thi</value></data>
+  <data name="mcp.arguments" xml:space="preserve"><value>Đối số (cách nhau bằng dấu cách)</value></data>
+  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Tự chạy các công cụ được máy chủ đánh dấu chỉ đọc</value></data>
+  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Chú thích của máy chủ không đáng tin cậy. Bật tùy chọn này chỉ bỏ qua phê duyệt cho công cụ được đánh dấu chỉ đọc và không phá hủy.</value></data>
+  <data name="mcp.test" xml:space="preserve"><value>Kiểm tra</value></data>
+  <data name="mcp.add" xml:space="preserve"><value>Thêm máy chủ</value></data>
+  <data name="mcp.reconnect" xml:space="preserve"><value>Kết nối lại</value></data>
+  <data name="mcp.remove" xml:space="preserve"><value>Gỡ</value></data>
+  <data name="mcp.idle" xml:space="preserve"><value>Nhàn rỗi</value></data>
+  <data name="mcp.connecting" xml:space="preserve"><value>Đang kết nối…</value></data>
+  <data name="mcp.connected" xml:space="preserve"><value>Đã kết nối · {0} công cụ</value></data>
+  <data name="mcp.failed" xml:space="preserve"><value>Thất bại: {0}</value></data>
+  <data name="mcp.testing" xml:space="preserve"><value>Đang kiểm tra…</value></data>
+  <data name="mcp.testConnected" xml:space="preserve"><value>Đã kết nối. Có {0} công cụ khả dụng.</value></data>
+  <data name="conversation.toolInput" xml:space="preserve"><value>Đầu vào công cụ</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Bộ nhớ</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Kho bộ nhớ</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Làm mới</value></data>
+  <data name="memory.enabled" xml:space="preserve"><value>Bật bộ nhớ</value></data>
+  <data name="memory.scanFrequency" xml:space="preserve"><value>Tần suất quét</value></data>
+  <data name="memory.scan.off" xml:space="preserve"><value>Tắt</value></data>
+  <data name="memory.scan.hourly" xml:space="preserve"><value>Hằng giờ</value></data>
+  <data name="memory.scan.daily" xml:space="preserve"><value>Hằng ngày</value></data>
+  <data name="memory.scan.weekly" xml:space="preserve"><value>Hằng tuần</value></data>
+  <data name="memory.enabledHelp" xml:space="preserve"><value>Khi tắt, không có tác vụ nào được ghi lại, không có gì được học và không có phát hiện nào được gửi tới mô hình; những gì đã lưu vẫn nằm trên đĩa.</value></data>
+  <data name="memory.scanHelp" xml:space="preserve"><value>Ghi chú ngắn về tác vụ được giữ lại để xem lại lý do của các phát hiện sau khi quét; khi tắt quét, không mô hình nào được gọi trong nền.</value></data>
+  <data name="memory.reveal" xml:space="preserve"><value>Mở thư mục .mem</value></data>
+  <data name="memory.refused" xml:space="preserve"><value>Chưa lưu. Mục này có thể chứa thông tin xác thực, vượt quá giới hạn, hoặc không gian làm việc không khả dụng.</value></data>
+  <data name="memory.noWorkspace" xml:space="preserve"><value>Chọn một không gian làm việc cục bộ để xem bộ nhớ của nó.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Bộ nhớ bắt đầu sau prompt đầu tiên trong không gian làm việc này.</value></data>
+  <data name="memory.search" xml:space="preserve"><value>Tìm trong bộ nhớ</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Chọn một ghi chú để xem.</value></data>
+  <data name="memory.save" xml:space="preserve"><value>Lưu</value></data>
+  <data name="memory.forget" xml:space="preserve"><value>Quên</value></data>
+  <data name="memory.ownRules" xml:space="preserve"><value>Quy tắc của riêng bạn</value></data>
+  <data name="memory.rulesHelp" xml:space="preserve"><value>Các quy tắc này được thêm vào mọi yêu cầu trong dự án này.</value></data>
+  <data name="memory.lessons" xml:space="preserve"><value>Bài học rút ra</value></data>
+  <data name="memory.learningStats" xml:space="preserve"><value>Đã ghi {0} lượt; {1} lượt đã được sửa hoặc hoàn tác.</value></data>
+  <data name="memory.links" xml:space="preserve"><value>Liên kết</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Đề cập được liên kết</value></data>
+  <data name="memory.userAuthored" xml:space="preserve"><value>do người dùng viết</value></data>
+  <data name="memory.inferred" xml:space="preserve"><value>suy luận</value></data>
+  <data name="memory.learnedCount" xml:space="preserve"><value>đã học {0}×</value></data>
+  <data name="memory.usedCount" xml:space="preserve"><value>đã dùng {0}×</value></data>
+  <data name="memory.inactive" xml:space="preserve"><value>không còn áp dụng</value></data>
+  <data name="memory.pin" xml:space="preserve"><value>Ghim</value></data>
+  <data name="memory.edit" xml:space="preserve"><value>Sửa</value></data>
+  <data name="memory.cancel" xml:space="preserve"><value>Hủy</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Quyền truy cập không gian làm việc</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Chấp nhận</value></data>
+  <data name="settings.sandbox" xml:space="preserve"><value>Hộp cát</value></data>
+  <data name="settings.sandboxOff" xml:space="preserve"><value>Tắt — tác tử làm việc trực tiếp trong bản checkout của bạn.</value></data>
+  <data name="settings.sandboxOn" xml:space="preserve"><value>Bật — tác tử làm việc trong một git worktree riêng.</value></data>
+  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Cần khôi phục trước khi tiếp tục thao tác sandbox.</value></data>
+  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Thử khôi phục lại</value></data>
+  <data name="settings.sandboxName" xml:space="preserve"><value>Tên</value></data>
+  <data name="settings.sandboxEnter" xml:space="preserve"><value>Bắt đầu sandbox</value></data>
+  <data name="settings.sandboxMerge" xml:space="preserve"><value>Hợp nhất và thoát</value></data>
+  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Hủy bỏ và thoát</value></data>
+  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Nguồn</value></data>
+  <data name="settings.sandboxBranch" xml:space="preserve"><value>Nhánh</value></data>
+  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Cho phép mạng cho tiến trình mới</value></data>
+  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>Chỉ áp dụng cho lệnh mới. Các phiên terminal hiện có giữ chính sách hiện tại.</value></data>
+  <data name="settings.sandboxOpen" xml:space="preserve"><value>Mở sandbox</value></data>
+  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Mở bản gốc</value></data>
+  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Xung đột</value></data>
+  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Chuẩn bị giải quyết</value></data>
+  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Hỏi tác tử</value></data>
+  <data name="settings.sandboxPreview" xml:space="preserve"><value>Làm mới bản xem trước</value></data>
+  <data name="settings.sandboxApprove" xml:space="preserve"><value>Phê duyệt và hợp nhất</value></data>
+  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Hủy giải quyết</value></data>
+  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Thử dọn dẹp lại</value></data>
+  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Hủy bỏ sandbox này? Nhánh của nó sẽ được giữ để khôi phục, nhưng worktree sẽ bị xóa.</value></data>
+  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Phê duyệt cần một bản xem trước đầy đủ không còn tệp chưa giải quyết.</value></data>
+  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Xem trước giải quyết</value></data>
+  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Tệp chưa giải quyết</value></data>
+  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>HEAD của bản gốc</value></data>
+  <data name="settings.sandboxHead" xml:space="preserve"><value>HEAD của sandbox</value></data>
+  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Dấu vân tay bản xem trước</value></data>
+  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Việc dọn dẹp sandbox vẫn đang chờ; bản gốc không bị thay đổi thêm.</value></data>
+  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Sandbox đã lưu</value></data>
+  <data name="settings.sandboxRecover" xml:space="preserve"><value>Khôi phục</value></data>
   <data name="conversation.accountSwitched.notice" xml:space="preserve"><value>Cuộc trò chuyện này đã chuyển sang tài khoản khác trên cùng mô hình. Bộ nhớ đệm ở tài khoản đó bắt đầu lại từ đầu; tiếp tục có thể tốn thêm token và chi phí.</value></data>
   <data name="conversation.modelSwitched.notice" xml:space="preserve"><value>Mô hình đã thay đổi. Bộ nhớ đệm không được chuyển sang mô hình mới; toàn bộ lịch sử được xử lý lại, nên có thể tốn thêm token và chi phí.</value></data>
   <data name="conversation.contextFull.notice" xml:space="preserve"><value>Cửa sổ ngữ cảnh sắp đầy; tiếp tục có thể tốn thêm token và chi phí. Hãy bắt đầu cuộc trò chuyện mới kèm bản tóm tắt ngắn.</value></data>
@@ -574,28 +558,28 @@
   <data name="context.overflowCompress" xml:space="preserve"><value>Nén và tiếp tục</value></data>
   <data name="context.overflowNotNow" xml:space="preserve"><value>Để sau</value></data>
   <data name="context.overflowDeclined" xml:space="preserve"><value>Đã dừng gửi: cuộc trò chuyện không vừa với mô hình mới.</value></data>
-  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>When another chat is writing the same file</value></data>
-  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Wait before asking</value></data>
-  <data name="settings.conflictWaitValue" xml:space="preserve"><value>Wait {0} seconds</value></data>
-  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Wait, then ask</value></data>
-  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>A chat that wants a file another chat is writing waits quietly, and asks only if the wait goes on too long.</value></data>
-  <data name="conflict.policy.ask" xml:space="preserve"><value>Ask me</value></data>
-  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Ask as soon as two chats want the same file.</value></data>
-  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Always wait</value></data>
-  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Never ask: a write waits for the chat that holds the file.</value></data>
-  <data name="conflict.title" xml:space="preserve"><value>A file is busy: {0}</value></data>
-  <data name="conflict.wholeProject" xml:space="preserve"><value>Project command: {0}</value></data>
-  <data name="conflict.stillBusy" xml:space="preserve"><value>Write held back: another chat is still writing {0}.</value></data>
-  <data name="conflict.userSkipped" xml:space="preserve"><value>Write skipped: {0} was left with the other chat ({1}), as you asked.</value></data>
-  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Stopped {0} so this chat could write.</value></data>
-  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Stopped other chats so this chat could write.</value></data>
-  <data name="conflict.banner.title" xml:space="preserve"><value>Another chat is writing this file</value></data>
-  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · held by “{1}” for {2} seconds</value></data>
-  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Keep waiting</value></data>
-  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Stop {0}</value></data>
-  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Stop all other chats</value></data>
-  <data name="conflict.banner.skip" xml:space="preserve"><value>Skip this write</value></data>
-  <data name="conflict.waiting" xml:space="preserve"><value>Waiting for “{0}” to finish writing: {1}</value></data>
+  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>Nếu một chat khác đang ghi cùng tệp</value></data>
+  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Chờ trước khi hỏi</value></data>
+  <data name="settings.conflictWaitValue" xml:space="preserve"><value>{0} giây</value></data>
+  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Chờ rồi hỏi</value></data>
+  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>Lặng lẽ chờ chat kia và chỉ hỏi nếu chờ quá lâu.</value></data>
+  <data name="conflict.policy.ask" xml:space="preserve"><value>Hỏi tôi</value></data>
+  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Hỏi ngay khi hai chat cùng muốn một tệp.</value></data>
+  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Luôn chờ</value></data>
+  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Không hỏi: mỗi lần ghi sẽ chờ chat đang giữ tệp.</value></data>
+  <data name="conflict.title" xml:space="preserve"><value>Một chat khác đang viết {0}</value></data>
+  <data name="conflict.wholeProject" xml:space="preserve"><value>toàn bộ dự án (lệnh: {0})</value></data>
+  <data name="conflict.stillBusy" xml:space="preserve"><value>Lần ghi bị giữ lại: {0} vẫn đang được một chat khác viết.</value></data>
+  <data name="conflict.userSkipped" xml:space="preserve"><value>Lần ghi bị bỏ qua: {0} vẫn ở chat khác ({1}) như bạn yêu cầu.</value></data>
+  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Đã dừng chat “{0}” theo yêu cầu của bạn và lần ghi này đã thực hiện.</value></data>
+  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Đã dừng các chat khác của dự án này theo yêu cầu và lần ghi này đã thực hiện.</value></data>
+  <data name="conflict.banner.title" xml:space="preserve"><value>Một chat khác đang viết tệp này</value></data>
+  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · “{1}” đã giữ {2} giây</value></data>
+  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Tiếp tục chờ</value></data>
+  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Dừng chat đó</value></data>
+  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Dừng tất cả chat khác</value></data>
+  <data name="conflict.banner.skip" xml:space="preserve"><value>Bỏ qua lần ghi này</value></data>
+  <data name="conflict.waiting" xml:space="preserve"><value>Đang chờ “{0}” ghi: {1}</value></data>
   <data name="usage.context.button" xml:space="preserve"><value>Mức sử dụng</value></data>
   <data name="usage.context.tooltip" xml:space="preserve"><value>Mức dùng ngữ cảnh và token</value></data>
   <data name="usage.context.latestRequest" xml:space="preserve"><value>Yêu cầu gần nhất · cửa sổ ngữ cảnh</value></data>
@@ -605,34 +589,738 @@
   <data name="usage.context.notReported" xml:space="preserve"><value>Nhà cung cấp không báo cáo</value></data>
   <data name="usage.context.estimatedBreakdown" xml:space="preserve"><value>Phân tích đầu vào ước tính</value></data>
   <data name="usage.context.tokens" xml:space="preserve"><value>token</value></data>
-  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} tokens ({2})</value></data>
-  <data name="usage.context.notAvailable" xml:space="preserve"><value>Context usage is not available yet.</value></data>
-  <data name="usage.context.composition" xml:space="preserve"><value>Estimated input composition</value></data>
+  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} token ({2})</value></data>
+  <data name="usage.context.notAvailable" xml:space="preserve"><value>Chưa có dữ liệu sử dụng ngữ cảnh.</value></data>
+  <data name="usage.context.composition" xml:space="preserve"><value>Thành phần đầu vào ước tính</value></data>
   <data name="usage.context.estimatedRow" xml:space="preserve"><value>{0}: {1} ({2})</value></data>
   <data name="usage.context.conversation" xml:space="preserve"><value>Tin nhắn hội thoại</value></data>
   <data name="usage.context.systemPrompt" xml:space="preserve"><value>Chỉ dẫn hệ thống</value></data>
   <data name="usage.context.toolDefinitions" xml:space="preserve"><value>Định nghĩa công cụ</value></data>
   <data name="usage.context.mcpDefinitions" xml:space="preserve"><value>Định nghĩa công cụ MCP</value></data>
-  <data name="usage.context.cacheHit" xml:space="preserve"><value>Measured cache hit</value></data>
-  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Verified prefix reuse: {0} · {1} / {2} tokens</value></data>
-  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Measurement coverage: {0} · {1} of {2} eligible requests</value></data>
-  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Cold: {0} · expired: {1} · changed: {2}</value></data>
-  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Cache writes: {0} tokens</value></data>
-  <data name="usage.context.freshInput" xml:space="preserve"><value>Fresh input: {0} tokens</value></data>
-  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Reuse not reported: {0} of {1} eligible requests</value></data>
-  <data name="usage.context.latency" xml:space="preserve"><value>Average request latency: {0}</value></data>
-  <data name="usage.context.prepare" xml:space="preserve"><value>Average request preparation: {0}</value></data>
-  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Largest cache loss: {0} ({1} tokens)</value></data>
-  <data name="settings.shortcuts" xml:space="preserve"><value>Keyboard shortcuts</value></data>
-  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Select a shortcut to change it. Press a key combination with at least one modifier.</value></data>
-  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Press keys…</value></data>
-  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Restore defaults</value></data>
-  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} is already assigned to {1}.</value></data>
-  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull requests</value></data>
-  <data name="conversation.review" xml:space="preserve"><value>Review</value></data>
-  <data name="conversation.files" xml:space="preserve"><value>Files</value></data>
-  <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
-  <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
-  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} token</value></data>
+  <data name="usage.context.cacheHit" xml:space="preserve"><value>Lượt trúng cache đo được</value></data>
+  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Tái sử dụng tiền tố đã xác minh: {0} · {1} / {2} token</value></data>
+  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Độ phủ đo lường: {0} · {1} trên {2} yêu cầu đủ điều kiện</value></data>
+  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Nguội: {0} · hết hạn: {1} · đã đổi: {2}</value></data>
+  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Ghi cache: {0} token</value></data>
+  <data name="usage.context.freshInput" xml:space="preserve"><value>Đầu vào mới: {0} token</value></data>
+  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Không báo cáo tái sử dụng: {0} trên {1} yêu cầu đủ điều kiện</value></data>
+  <data name="usage.context.latency" xml:space="preserve"><value>Độ trễ yêu cầu trung bình: {0}</value></data>
+  <data name="usage.context.prepare" xml:space="preserve"><value>Thời gian chuẩn bị yêu cầu trung bình: {0}</value></data>
+  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Mất cache lớn nhất: {0} ({1} token)</value></data>
+  <data name="settings.shortcuts" xml:space="preserve"><value>Phím tắt</value></data>
+  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Chọn một phím tắt để thay đổi. Nhấn tổ hợp phím có ít nhất một phím bổ trợ.</value></data>
+  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Hiện hoặc ẩn thanh bên</value></data>
+  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Nhấn phím…</value></data>
+  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Khôi phục mặc định</value></data>
+  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} đã được gán cho {1}.</value></data>
+  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull request</value></data>
+  <data name="conversation.review" xml:space="preserve"><value>Xem xét</value></data>
+  <data name="conversation.files" xml:space="preserve"><value>Tệp</value></data>
+  <data name="conversation.browser" xml:space="preserve"><value>Trình duyệt</value></data>
+  <data name="conversation.newChat" xml:space="preserve"><value>Cuộc trò chuyện mới</value></data>
+  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} token mới được xử lý</value></data>
+  <data name="settings.skillSuggestions" xml:space="preserve"><value>Hiển thị gợi ý kỹ năng</value></data>
+  <data name="settings.skillSuggestions.hint" xml:space="preserve"><value>Chỉ gợi ý kỹ năng khi một bài học được học ba lần hoặc tác tử hoàn thành một quy trình bạn sẽ cần lại; tối đa một thẻ mỗi tuần. Tắt: không có thẻ gợi ý nào và tác tử không đề xuất kỹ năng.</value></data>
+  <data name="skill.suggestion.title" xml:space="preserve"><value>Kỹ năng được gợi ý: {0}</value></data>
+  <data name="skill.suggestion.create" xml:space="preserve"><value>Tạo kỹ năng</value></data>
+  <data name="skill.suggestion.dismiss" xml:space="preserve"><value>Không phải bây giờ</value></data>
+  <data name="settings.autoAccountFailover" xml:space="preserve"><value>Tự động thử tài khoản khác sau khi chạm giới hạn</value></data>
+  <data name="settings.autoAccountFailover.hint" xml:space="preserve"><value>Khi tắt, cuộc trò chuyện sẽ tạm dừng; nhấn Tiếp tục để thử tài khoản tương thích khác. Khi bật, các tài khoản tương thích sẽ được thử tự động.</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>Nhập kích thước ngữ cảnh theo token riêng cho mô hình. Chế độ tự động sẽ ưu tiên kích thước được mô hình báo cáo hoặc ghi nhận, sau đó đến giá trị đã cấu hình của tài khoản.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>Tìm kiếm mô hình</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>Giá trị tự động: {0} token</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>Nhà cung cấp không báo cáo kích thước ngữ cảnh.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>Chưa có mô hình nào khả dụng. Hãy kết nối nhà cung cấp hoặc làm mới danh sách mô hình.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>Đã lưu.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>Tự động</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>Nhập một số nguyên dương token.</value></data>
+  <data name="attachment.files" xml:space="preserve"><value>Tệp hoặc ảnh</value></data>
+  <data name="attachment.project" xml:space="preserve"><value>Làm việc trong dự án</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>Ngữ cảnh được nén tự động</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>Đã đọc tệp</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>Tệp đã thay đổi</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>Đã chạy lệnh</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>Đã tìm kiếm trên web</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>Đang đọc tệp…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>Đang chỉnh sửa tệp…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>Đang chạy lệnh…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>Đang tìm kiếm trên web…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>Đã dùng công cụ</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>Đang chạy công cụ…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>Công cụ thất bại: {0}</value></data>
+  <data name="tasks.menu" xml:space="preserve"><value>Nhiệm vụ</value></data>
+  <data name="tasks.title" xml:space="preserve"><value>Nhiệm vụ theo lịch trình</value></data>
+  <data name="tasks.subtitle" xml:space="preserve"><value>Chạy lời nhắc theo lịch trình cron.</value></data>
+  <data name="tasks.empty" xml:space="preserve"><value>Chưa có nhiệm vụ nào.</value></data>
+  <data name="tasks.add" xml:space="preserve"><value>Thêm nhiệm vụ</value></data>
+  <data name="tasks.edit" xml:space="preserve"><value>Chỉnh sửa tác vụ</value></data>
+  <data name="tasks.delete" xml:space="preserve"><value>Xóa</value></data>
+  <data name="tasks.runNow" xml:space="preserve"><value>Chạy ngay</value></data>
+  <data name="tasks.enabled" xml:space="preserve"><value>Đã bật</value></data>
+  <data name="tasks.field.name" xml:space="preserve"><value>Tên</value></data>
+  <data name="tasks.field.cron" xml:space="preserve"><value>Biểu thức cron</value></data>
+  <data name="tasks.field.prompt" xml:space="preserve"><value>Lời nhắc</value></data>
+  <data name="tasks.field.workspace" xml:space="preserve"><value>Không gian làm việc</value></data>
+  <data name="tasks.cron.invalid" xml:space="preserve"><value>Biểu thức cron không hợp lệ.</value></data>
+  <data name="tasks.cron.next" xml:space="preserve"><value>Lần chạy tiếp theo</value></data>
+  <data name="tasks.close" xml:space="preserve"><value>Đóng tác vụ</value></data>
+  <data name="tasks.back" xml:space="preserve"><value>Quay lại</value></data>
+  <data name="tasks.new" xml:space="preserve"><value>Tác vụ mới</value></data>
+  <data name="tasks.active" xml:space="preserve"><value>Công việc của bạn</value></data>
+  <data name="tasks.disabled" xml:space="preserve"><value>Đã tắt</value></data>
+  <data name="tasks.suggestions" xml:space="preserve"><value>Gợi ý</value></data>
+  <data name="tasks.history" xml:space="preserve"><value>Các lần chạy gần đây</value></data>
+  <data name="tasks.history.empty" xml:space="preserve"><value>Tác vụ này chưa chạy lần nào.</value></data>
+  <data name="tasks.field.target" xml:space="preserve"><value>Tệp hoặc thư mục đích</value></data>
+  <data name="tasks.field.targetHint" xml:space="preserve"><value>Đường dẫn tùy chọn trong không gian làm việc</value></data>
+  <data name="tasks.target.invalid" xml:space="preserve"><value>Đích phải nằm trong không gian làm việc.</value></data>
+  <data name="tasks.field.model" xml:space="preserve"><value>Mô hình</value></data>
+  <data name="tasks.field.fallback" xml:space="preserve"><value>Mô hình dự phòng</value></data>
+  <data name="tasks.network" xml:space="preserve"><value>Cho phép truy cập mạng</value></data>
+  <data name="tasks.assistant.title" xml:space="preserve"><value>Trợ lý tác vụ</value></data>
+  <data name="tasks.assistant.placeholder" xml:space="preserve"><value>Yêu cầu thay đổi tác vụ này…</value></data>
+  <data name="tasks.assistant.updated" xml:space="preserve"><value>Tác vụ đã được cập nhật.</value></data>
+  <data name="tasks.notification.title" xml:space="preserve"><value>Tác vụ đã lên lịch</value></data>
+  <data name="tasks.notification.completed" xml:space="preserve"><value>Đã hoàn tất</value></data>
+  <data name="tasks.notification.failed" xml:space="preserve"><value>Thất bại</value></data>
+  <data name="tasks.notification.fallback" xml:space="preserve"><value>Đã sử dụng mô hình dự phòng</value></data>
+  <data name="tasks.suggestion.daily.title" xml:space="preserve"><value>Bản tóm tắt hằng ngày</value></data>
+  <data name="tasks.suggestion.daily.detail" xml:space="preserve"><value>Tóm tắt công việc gần đây, các ưu tiên còn lại và thay đổi trong không gian làm việc.</value></data>
+  <data name="tasks.suggestion.daily.schedule" xml:space="preserve"><value>Các ngày trong tuần lúc 8:00</value></data>
+  <data name="tasks.suggestion.daily.prompt" xml:space="preserve"><value>Xem lại các cuộc trò chuyện gần đây và thay đổi trong không gian làm việc. Tóm tắt các ưu tiên quan trọng nhất hôm nay.</value></data>
+  <data name="tasks.suggestion.weekly.title" xml:space="preserve"><value>Đánh giá hằng tuần</value></data>
+  <data name="tasks.suggestion.weekly.detail" xml:space="preserve"><value>Biến công việc gần đây thành bản cập nhật trạng thái ngắn gọn vào mỗi thứ Sáu.</value></data>
+  <data name="tasks.suggestion.weekly.schedule" xml:space="preserve"><value>Thứ Sáu lúc 16:00</value></data>
+  <data name="tasks.suggestion.weekly.prompt" xml:space="preserve"><value>Xem lại các cuộc trò chuyện và thay đổi trong không gian làm việc tuần này. Viết bản cập nhật trạng thái ngắn gọn gồm việc đã hoàn tất, rủi ro và bước tiếp theo.</value></data>
+  <data name="tasks.suggestion.followup.title" xml:space="preserve"><value>Bộ theo dõi tiếp nối</value></data>
+  <data name="tasks.suggestion.followup.detail" xml:space="preserve"><value>Xem lại hoạt động gần đây và đánh dấu mọi thứ cần chú ý.</value></data>
+  <data name="tasks.suggestion.followup.schedule" xml:space="preserve"><value>Các ngày trong tuần lúc 9:00</value></data>
+  <data name="tasks.suggestion.followup.prompt" xml:space="preserve"><value>Xem lại hoạt động gần đây của tác vụ và không gian làm việc. Đánh dấu việc chưa hoàn tất, lần chạy thất bại và mọi thứ cần chú ý.</value></data>
+  <data name="tasks.lastRun" xml:space="preserve"><value>Lần chạy cuối cùng</value></data>
+  <data name="tasks.state.never" xml:space="preserve"><value>Không bao giờ chạy</value></data>
+  <data name="tasks.state.running" xml:space="preserve"><value>Đang chạy…</value></data>
+  <data name="tasks.state.ok" xml:space="preserve"><value>thành công</value></data>
+  <data name="tasks.state.failed" xml:space="preserve"><value>thất bại</value></data>
+  <data name="tasks.openConversation" xml:space="preserve"><value>Cuộc trò chuyện mở</value></data>
+  <data name="tasks.save" xml:space="preserve"><value>Lưu</value></data>
+  <data name="tasks.cancel" xml:space="preserve"><value>Hủy bỏ</value></data>
+  <data name="tasks.background" xml:space="preserve"><value>Chạy các tác vụ trong khi đóng ứng dụng</value></data>
+  <data name="tasks.background.hint" xml:space="preserve"><value>Cài đặt trình trợ giúp nền (launchd) chạy các tác vụ đến hạn ngay cả khi Dots Harness không mở.</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Bản đồ</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>chỉ mục</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Nhiệm vụ</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Quyết định</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Tùy chọn</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Cuộc trò chuyện</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Không có đề cập liên kết.</value></data>
+  <data name="memory.graph" xml:space="preserve"><value>đồ thị</value></data>
+  <data name="media.image" xml:space="preserve"><value>hình ảnh</value></data>
+  <data name="media.video" xml:space="preserve"><value>video</value></data>
+  <data name="media.audio" xml:space="preserve"><value>âm thanh</value></data>
+  <data name="media.promptMissing" xml:space="preserve"><value>Mô tả những gì sẽ tạo ra sau lệnh.</value></data>
+  <data name="media.promptMissingFor" xml:space="preserve"><value>Mô tả {0} để tạo sau lệnh.</value></data>
+  <data name="media.modelMissing" xml:space="preserve"><value>Mô hình nhà cung cấp phương tiện truyền thông chưa được định cấu hình.</value></data>
+  <data name="media.noOutput" xml:space="preserve"><value>Nhà cung cấp không trả lại đầu ra phương tiện nào.</value></data>
+  <data name="media.invalidOutput" xml:space="preserve"><value>Nhà cung cấp trả lại dữ liệu phương tiện không hợp lệ.</value></data>
+  <data name="media.generationFailed" xml:space="preserve"><value>Nhà cung cấp không thể tạo ra phương tiện truyền thông.</value></data>
+  <data name="media.videoTimeout" xml:space="preserve"><value>Đã hết thời gian tạo video.</value></data>
+  <data name="media.busy" xml:space="preserve"><value>Quá trình chạy thế hệ hoặc tác nhân đang được tiến hành. Hãy thử lại khi nó kết thúc.</value></data>
+  <data name="media.unsupported" xml:space="preserve"><value>Tôi không thể tạo ra điều này ở đây. Nhà cung cấp được chọn không có khả năng này.</value></data>
+  <data name="media.unsupportedStatus" xml:space="preserve"><value>Việc tạo phương tiện không được nhà cung cấp đã chọn hỗ trợ.</value></data>
+  <data name="media.fileMissing" xml:space="preserve"><value>Tệp được tạo không còn có sẵn.</value></data>
+  <data name="media.openAudio" xml:space="preserve"><value>Mở âm thanh được tạo</value></data>
+  <data name="media.save" xml:space="preserve"><value>Lưu</value></data>
+  <data name="media.showInFinder" xml:space="preserve"><value>Hiển thị trong Finder</value></data>
+  <data name="rail.home" xml:space="preserve"><value>Trang chủ</value></data>
+  <data name="rail.media" xml:space="preserve"><value>Đa phương tiện</value></data>
+  <data name="rail.tasks" xml:space="preserve"><value>Tác vụ</value></data>
+  <data name="rail.bots" xml:space="preserve"><value>Bot</value></data>
+  <data name="rail.marketplace" xml:space="preserve"><value>Chợ</value></data>
+  <data name="rail.memory" xml:space="preserve"><value>Bộ nhớ</value></data>
+  <data name="rail.settings" xml:space="preserve"><value>Cài đặt</value></data>
+  <data name="models.followApp" xml:space="preserve"><value>Mô hình của ứng dụng</value></data>
+  <data name="studio.preset.square" xml:space="preserve"><value>Bài đăng vuông</value></data>
+  <data name="studio.preset.story" xml:space="preserve"><value>Tin</value></data>
+  <data name="studio.preset.landscape" xml:space="preserve"><value>Ngang</value></data>
+  <data name="studio.preset.thumbnail" xml:space="preserve"><value>Ảnh thu nhỏ video</value></data>
+  <data name="studio.preset.logo" xml:space="preserve"><value>Logo</value></data>
+  <data name="studio.preset.poster" xml:space="preserve"><value>Áp phích</value></data>
+  <data name="studio.template.announcement" xml:space="preserve"><value>Thông báo</value></data>
+  <data name="studio.template.story" xml:space="preserve"><value>Tin</value></data>
+  <data name="studio.template.thumbnail" xml:space="preserve"><value>Ảnh thu nhỏ video</value></data>
+  <data name="studio.template.slide" xml:space="preserve"><value>Trang tiêu đề</value></data>
+  <data name="studio.template.logo" xml:space="preserve"><value>Logo</value></data>
+  <data name="studio.template.mobile" xml:space="preserve"><value>Màn hình di động</value></data>
+  <data name="studio.category.social" xml:space="preserve"><value>Mạng xã hội</value></data>
+  <data name="studio.category.uiux" xml:space="preserve"><value>UI/UX</value></data>
+  <data name="studio.category.presentation" xml:space="preserve"><value>Thuyết trình &amp; Đồ họa thông tin</value></data>
+  <data name="studio.category.other" xml:space="preserve"><value>Thiết kế khác</value></data>
+  <data name="studio.sample.title" xml:space="preserve"><value>Tiêu đề của bạn</value></data>
+  <data name="studio.sample.detail" xml:space="preserve"><value>Một dòng ngắn nói thêm điều gì đó</value></data>
+  <data name="studio.sample.brand" xml:space="preserve"><value>Thương hiệu</value></data>
+  <data name="studio.sample.text" xml:space="preserve"><value>Chữ</value></data>
+  <data name="studio.copyOf" xml:space="preserve"><value>Bản sao {0}</value></data>
+  <data name="studio.untitled" xml:space="preserve"><value>Dự án chưa đặt tên</value></data>
+  <data name="studio.home.title" xml:space="preserve"><value>Mô tả ý tưởng và biến nó thành hiện thực</value></data>
+  <data name="studio.home.search" xml:space="preserve"><value>Tìm kiếm</value></data>
+  <data name="studio.home.sort.name" xml:space="preserve"><value>Tên</value></data>
+  <data name="studio.home.filter.all" xml:space="preserve"><value>Mọi thời điểm</value></data>
+  <data name="studio.home.filter.week" xml:space="preserve"><value>7 ngày qua</value></data>
+  <data name="studio.home.filter.month" xml:space="preserve"><value>30 ngày qua</value></data>
+  <data name="studio.home.starred" xml:space="preserve"><value>Đã gắn sao</value></data>
+  <data name="studio.home.star" xml:space="preserve"><value>Gắn sao</value></data>
+  <data name="studio.home.unstar" xml:space="preserve"><value>Bỏ gắn sao</value></data>
+  <data name="studio.home.modified" xml:space="preserve"><value>Sửa đổi lần cuối</value></data>
+  <data name="studio.home.canvases" xml:space="preserve"><value>Canvas</value></data>
+  <data name="studio.projects" xml:space="preserve"><value>Dự án</value></data>
+  <data name="studio.templates" xml:space="preserve"><value>Mẫu</value></data>
+  <data name="studio.community" xml:space="preserve"><value>Cộng đồng</value></data>
+  <data name="studio.community.banner" xml:space="preserve"><value>Khám phá các thiết kế do cộng đồng tạo ra</value></data>
+  <data name="studio.community.saved" xml:space="preserve"><value>Đã lưu</value></data>
+  <data name="studio.community.share" xml:space="preserve"><value>Chia sẻ với cộng đồng</value></data>
+  <data name="studio.community.shared" xml:space="preserve"><value>Đã gửi để xét duyệt. Sẽ xuất hiện trong cộng đồng sau khi được duyệt.</value></data>
+  <data name="studio.community.signIn" xml:space="preserve"><value>Đăng nhập vào tài khoản HerNess của bạn để chia sẻ với cộng đồng.</value></data>
+  <data name="studio.community.empty" xml:space="preserve"><value>Chưa có thiết kế cộng đồng nào ở đây.</value></data>
+  <data name="studio.projectName" xml:space="preserve"><value>Tên dự án</value></data>
+  <data name="studio.newProject" xml:space="preserve"><value>Dự án mới</value></data>
+  <data name="studio.create" xml:space="preserve"><value>Tạo dự án</value></data>
+  <data name="studio.rename" xml:space="preserve"><value>Đổi tên</value></data>
+  <data name="studio.duplicate" xml:space="preserve"><value>Nhân bản</value></data>
+  <data name="studio.deleteConfirm" xml:space="preserve"><value>Xóa “{0}”? Các canvas và tệp đã tải lên của nó sẽ bị xóa.</value></data>
+  <data name="studio.projectMeta" xml:space="preserve"><value>Canvas: {0}, đã sửa {1}</value></data>
+  <data name="studio.empty.title" xml:space="preserve"><value>Chưa có dự án đa phương tiện nào</value></data>
+  <data name="studio.empty.detail" xml:space="preserve"><value>Dự án là một bảng gồm các canvas. Tự thêm chữ, hình và ảnh, hoặc mô tả điều bạn muốn và để mô hình dựng từng lớp.</value></data>
+  <data name="studio.addCanvas" xml:space="preserve"><value>Canvas</value></data>
+  <data name="studio.undo" xml:space="preserve"><value>Hoàn tác</value></data>
+  <data name="studio.redo" xml:space="preserve"><value>Làm lại</value></data>
+  <data name="studio.zoomOut" xml:space="preserve"><value>Thu nhỏ</value></data>
+  <data name="studio.zoomIn" xml:space="preserve"><value>Phóng to</value></data>
+  <data name="studio.zoomFit" xml:space="preserve"><value>Vừa khít mọi canvas</value></data>
+  <data name="studio.layers" xml:space="preserve"><value>Lớp</value></data>
+  <data name="studio.layers.empty" xml:space="preserve"><value>Canvas này chưa có lớp nào.</value></data>
+  <data name="studio.layer.text" xml:space="preserve"><value>Chữ</value></data>
+  <data name="studio.layer.shape" xml:space="preserve"><value>Hình</value></data>
+  <data name="studio.layer.upload" xml:space="preserve"><value>Tải lên</value></data>
+  <data name="studio.layer.show" xml:space="preserve"><value>Hiện lớp</value></data>
+  <data name="studio.layer.hide" xml:space="preserve"><value>Ẩn lớp</value></data>
+  <data name="studio.shape.rectangle" xml:space="preserve"><value>Hình chữ nhật</value></data>
+  <data name="studio.shape.ellipse" xml:space="preserve"><value>Hình elip</value></data>
+  <data name="studio.name" xml:space="preserve"><value>Tên</value></data>
+  <data name="studio.opacity" xml:space="preserve"><value>Độ mờ đục</value></data>
+  <data name="studio.fontSize" xml:space="preserve"><value>Cỡ</value></data>
+  <data name="studio.weight.regular" xml:space="preserve"><value>Thường</value></data>
+  <data name="studio.weight.medium" xml:space="preserve"><value>Vừa</value></data>
+  <data name="studio.weight.bold" xml:space="preserve"><value>Đậm</value></data>
+  <data name="studio.fill" xml:space="preserve"><value>Tô màu</value></data>
+  <data name="studio.cornerRadius" xml:space="preserve"><value>Bán kính góc</value></data>
+  <data name="studio.playVideo" xml:space="preserve"><value>Phát video</value></data>
+  <data name="studio.size" xml:space="preserve"><value>Cỡ</value></data>
+  <data name="studio.background" xml:space="preserve"><value>Nền</value></data>
+  <data name="studio.deleteCanvas" xml:space="preserve"><value>Xóa canvas</value></data>
+  <data name="studio.ai.kind.design" xml:space="preserve"><value>Thiết kế</value></data>
+  <data name="studio.ai.kind.image" xml:space="preserve"><value>Ảnh</value></data>
+  <data name="studio.ai.kind.video" xml:space="preserve"><value>Video</value></data>
+  <data name="studio.ai.placeholder.design" xml:space="preserve"><value>Mô tả thiết kế cần dựng trên canvas này</value></data>
+  <data name="studio.ai.placeholder.image" xml:space="preserve"><value>Mô tả ảnh cần tạo</value></data>
+  <data name="studio.ai.placeholder.video" xml:space="preserve"><value>Mô tả video cần tạo</value></data>
+  <data name="studio.ai.run" xml:space="preserve"><value>Tạo</value></data>
+  <data name="studio.ai.planning" xml:space="preserve"><value>Đang lên kế hoạch các lớp</value></data>
+  <data name="studio.ai.layerProgress" xml:space="preserve"><value>Lớp {0}/{1}: {2}</value></data>
+  <data name="studio.ai.drawing" xml:space="preserve"><value>Đang tạo ảnh</value></data>
+  <data name="studio.ai.renderingVideo" xml:space="preserve"><value>Đang tạo video. Việc này có thể mất vài phút.</value></data>
+  <data name="studio.ai.noPlan" xml:space="preserve"><value>Mô hình không trả về lớp nào. Hãy thử lại hoặc chọn mô hình khác.</value></data>
+  <data name="studio.settings.title" xml:space="preserve"><value>Mô hình đa phương tiện</value></data>
+  <data name="studio.settings.design" xml:space="preserve"><value>Thiết kế</value></data>
+  <data name="studio.settings.model" xml:space="preserve"><value>Mô hình</value></data>
+  <data name="studio.settings.designHelp" xml:space="preserve"><value>Mô hình trò chuyện biến yêu cầu thành các lớp.</value></data>
+  <data name="studio.settings.source" xml:space="preserve"><value>Nguồn</value></data>
+  <data name="studio.settings.source.provider" xml:space="preserve"><value>Nhà cung cấp</value></data>
+  <data name="studio.settings.source.local" xml:space="preserve"><value>Cục bộ</value></data>
+  <data name="studio.settings.modelDefault" xml:space="preserve"><value>Mặc định của nhà cung cấp</value></data>
+  <data name="studio.settings.local" xml:space="preserve"><value>Máy chủ cục bộ</value></data>
+  <data name="studio.settings.localURL" xml:space="preserve"><value>URL cơ sở</value></data>
+  <data name="studio.settings.localHelp" xml:space="preserve"><value>Máy chủ tương thích OpenAI trên máy này hoặc trong mạng. Được dùng khi một nguồn ở trên đặt là Cục bộ, với tên mô hình bạn nhập ở đó.</value></data>
+  <data name="studio.settings.music.connect" xml:space="preserve"><value>Kết nối API</value></data>
+  <data name="studio.settings.music.type.standard" xml:space="preserve"><value>Máy chủ âm nhạc</value></data>
+  <data name="studio.settings.music.type.elevenlabs" xml:space="preserve"><value>ElevenLabs</value></data>
+  <data name="studio.settings.music.name" xml:space="preserve"><value>Tên</value></data>
+  <data name="studio.settings.music.key" xml:space="preserve"><value>Khóa API</value></data>
+  <data name="studio.settings.music.help" xml:space="preserve"><value>Máy chủ âm nhạc phản hồi POST /audio/generations và liệt kê các mô hình tại /models; tools/music_server.py là một ví dụ. Khóa API được lưu trữ trong Chuỗi khóa.</value></data>
+  <data name="studio.ai.kind.next" xml:space="preserve"><value>Màn hình tiếp theo</value></data>
+  <data name="studio.ai.placeholder.next" xml:space="preserve"><value>Mô tả màn hình tiếp theo, hoặc để trống để tiếp tục luồng</value></data>
+  <data name="studio.ai.noImages" xml:space="preserve"><value>Chưa kết nối trình tạo ảnh nên các lớp ảnh được để làm chỗ giữ. Hãy kết nối một trình tạo, rồi tạo từng ảnh từ lớp của nó.</value></data>
+  <data name="studio.screenNumber" xml:space="preserve"><value>Màn hình {0}</value></data>
+  <data name="studio.layer.icon" xml:space="preserve"><value>Biểu tượng</value></data>
+  <data name="studio.layer.lock" xml:space="preserve"><value>Khóa lớp</value></data>
+  <data name="studio.layer.unlock" xml:space="preserve"><value>Mở khóa lớp</value></data>
+  <data name="studio.layer.front" xml:space="preserve"><value>Đưa lên trên cùng</value></data>
+  <data name="studio.layer.back" xml:space="preserve"><value>Đưa xuống dưới cùng</value></data>
+  <data name="studio.position" xml:space="preserve"><value>Vị trí</value></data>
+  <data name="studio.rotation" xml:space="preserve"><value>Xoay</value></data>
+  <data name="studio.appearance" xml:space="preserve"><value>Giao diện</value></data>
+  <data name="studio.gradient" xml:space="preserve"><value>Chuyển màu</value></data>
+  <data name="studio.stroke" xml:space="preserve"><value>Viền</value></data>
+  <data name="studio.shadow" xml:space="preserve"><value>Bóng</value></data>
+  <data name="studio.symbol" xml:space="preserve"><value>Tên ký hiệu</value></data>
+  <data name="studio.imagePrompt" xml:space="preserve"><value>Mô tả ảnh</value></data>
+  <data name="studio.generateImage" xml:space="preserve"><value>Tạo ảnh</value></data>
+  <data name="studio.export" xml:space="preserve"><value>Xuất</value></data>
+  <data name="studio.exportAll" xml:space="preserve"><value>Xuất tất cả khung vẽ</value></data>
+  <data name="studio.font.default" xml:space="preserve"><value>Sans</value></data>
+  <data name="studio.font.rounded" xml:space="preserve"><value>Bo tròn</value></data>
+  <data name="studio.font.serif" xml:space="preserve"><value>Serif</value></data>
+  <data name="studio.font.mono" xml:space="preserve"><value>Mono</value></data>
+  <data name="studio.tool.move" xml:space="preserve"><value>Di chuyển</value></data>
+  <data name="studio.tool.hand" xml:space="preserve"><value>Bàn tay</value></data>
+  <data name="studio.tool.pen" xml:space="preserve"><value>Bút</value></data>
+  <data name="studio.tool.pencil" xml:space="preserve"><value>Bút chì</value></data>
+  <data name="studio.shape.line" xml:space="preserve"><value>Đường thẳng</value></data>
+  <data name="studio.shape.arrow" xml:space="preserve"><value>Mũi tên</value></data>
+  <data name="studio.shape.polygon" xml:space="preserve"><value>Đa giác</value></data>
+  <data name="studio.shape.star" xml:space="preserve"><value>Ngôi sao</value></data>
+  <data name="studio.actions" xml:space="preserve"><value>Thao tác</value></data>
+  <data name="studio.unlockAll" xml:space="preserve"><value>Mở khóa mọi lớp</value></data>
+  <data name="studio.frames.phone" xml:space="preserve"><value>Điện thoại</value></data>
+  <data name="studio.frames.tablet" xml:space="preserve"><value>Máy tính bảng</value></data>
+  <data name="studio.frames.desktop" xml:space="preserve"><value>Máy tính</value></data>
+  <data name="studio.frames.presentation" xml:space="preserve"><value>Trình chiếu</value></data>
+  <data name="studio.frames.watch" xml:space="preserve"><value>Đồng hồ</value></data>
+  <data name="studio.frames.paper" xml:space="preserve"><value>Giấy</value></data>
+  <data name="studio.frames.social" xml:space="preserve"><value>Mạng xã hội</value></data>
+  <data name="studio.tool.scale" xml:space="preserve"><value>Co giãn</value></data>
+  <data name="studio.tool.section" xml:space="preserve"><value>Phân vùng</value></data>
+  <data name="studio.tool.slice" xml:space="preserve"><value>Lát cắt</value></data>
+  <data name="studio.tool.textPath" xml:space="preserve"><value>Chữ theo đường</value></data>
+  <data name="studio.tool.comment" xml:space="preserve"><value>Bình luận</value></data>
+  <data name="studio.search" xml:space="preserve"><value>Tìm</value></data>
+  <data name="studio.cut" xml:space="preserve"><value>Cắt</value></data>
+  <data name="studio.paste" xml:space="preserve"><value>Dán</value></data>
+  <data name="bots.preset.assistant" xml:space="preserve"><value>Trợ lý</value></data>
+  <data name="bots.preset.researcher" xml:space="preserve"><value>Nhà nghiên cứu</value></data>
+  <data name="bots.preset.coder" xml:space="preserve"><value>Lập trình viên</value></data>
+  <data name="bots.new" xml:space="preserve"><value>Bot mới</value></data>
+  <data name="bots.edit" xml:space="preserve"><value>Sửa bot</value></data>
+  <data name="bots.clear" xml:space="preserve"><value>Xóa cuộc trò chuyện</value></data>
+  <data name="bots.send" xml:space="preserve"><value>Gửi tin nhắn</value></data>
+  <data name="bots.deleteConfirm" xml:space="preserve"><value>Xóa “{0}” và cuộc trò chuyện của nó?</value></data>
+  <data name="bots.empty.title" xml:space="preserve"><value>Chưa có bot nào</value></data>
+  <data name="bots.empty.detail" xml:space="preserve"><value>Bot là trợ lý có hướng dẫn, mô hình và cuộc trò chuyện liên tục riêng. Cho nó một thư mục và nó sẽ làm việc ở đó như một tác tử.</value></data>
+  <data name="bots.greeting" xml:space="preserve"><value>Gửi tin nhắn cho {0} để bắt đầu.</value></data>
+  <data name="bots.placeholder" xml:space="preserve"><value>Nhắn cho {0}</value></data>
+  <data name="bots.agentIn" xml:space="preserve"><value>Tác tử trong {0}</value></data>
+  <data name="bots.name" xml:space="preserve"><value>Tên</value></data>
+  <data name="bots.icon" xml:space="preserve"><value>Biểu tượng</value></data>
+  <data name="bots.instructions" xml:space="preserve"><value>Hướng dẫn</value></data>
+  <data name="bots.instructionsHelp" xml:space="preserve"><value>Bot nên hành xử thế nào, biết những gì và trả lời ra sao.</value></data>
+  <data name="bots.workspace" xml:space="preserve"><value>Thư mục tác tử</value></data>
+  <data name="bots.workspace.none" xml:space="preserve"><value>Không có: chỉ trò chuyện</value></data>
+  <data name="bots.workspace.choose" xml:space="preserve"><value>Chọn thư mục</value></data>
+  <data name="bots.workspace.clear" xml:space="preserve"><value>Gỡ</value></data>
+  <data name="bots.workspaceHelp" xml:space="preserve"><value>Có thư mục, bot có thể đọc, ghi và chạy lệnh trong đó mà không cần hỏi, và không có quyền truy cập mạng. Không có thư mục thì bot chỉ trò chuyện.</value></data>
+  <data name="bots.error.noReply" xml:space="preserve"><value>Bot không trả lời.</value></data>
+  <data name="bots.status.delivered" xml:space="preserve"><value>Đã chuyển đến bot</value></data>
+  <data name="bots.status.waiting" xml:space="preserve"><value>Đang chờ bot</value></data>
+  <data name="tasks.plan.title" xml:space="preserve"><value>Lên lịch tác vụ</value></data>
+  <data name="tasks.plan.subtitle" xml:space="preserve"><value>HerNess chạy các công việc định kỳ cho bạn.</value></data>
+  <data name="tasks.upcoming" xml:space="preserve"><value>Sắp tới</value></data>
+  <data name="tasks.instructions" xml:space="preserve"><value>Hướng dẫn…</value></data>
+  <data name="tasks.repeat" xml:space="preserve"><value>Lặp lại</value></data>
+  <data name="tasks.time" xml:space="preserve"><value>Thời gian</value></data>
+  <data name="tasks.day" xml:space="preserve"><value>Ngày</value></data>
+  <data name="tasks.advanced" xml:space="preserve"><value>Nâng cao</value></data>
+  <data name="tasks.create" xml:space="preserve"><value>Tạo</value></data>
+  <data name="tasks.repeat.hourly" xml:space="preserve"><value>Hằng giờ</value></data>
+  <data name="tasks.repeat.daily" xml:space="preserve"><value>Hằng ngày</value></data>
+  <data name="tasks.repeat.weekdays" xml:space="preserve"><value>Ngày trong tuần</value></data>
+  <data name="tasks.repeat.weekly" xml:space="preserve"><value>Hằng tuần</value></data>
+  <data name="tasks.repeat.custom" xml:space="preserve"><value>Tùy chỉnh</value></data>
+  <data name="bots.preset.assistant.detail" xml:space="preserve"><value>Nhận hỗ trợ cho công việc hằng ngày</value></data>
+  <data name="bots.preset.researcher.detail" xml:space="preserve"><value>Nghiên cứu chủ đề và so sánh nguồn</value></data>
+  <data name="bots.preset.coder.detail" xml:space="preserve"><value>Viết mã và giải quyết vấn đề</value></data>
+  <data name="tasks.suggestion.email.title" xml:space="preserve"><value>Theo dõi email</value></data>
+  <data name="tasks.suggestion.email.detail" xml:space="preserve"><value>Kiểm tra email quan trọng và tóm tắt những gì cần chú ý.</value></data>
+  <data name="tasks.suggestion.reading.title" xml:space="preserve"><value>Đọc cuối tuần</value></data>
+  <data name="tasks.suggestion.reading.detail" xml:space="preserve"><value>Mỗi tuần tìm một bài viết phù hợp với sở thích của tôi.</value></data>
+  <data name="tasks.suggestion.prices.title" xml:space="preserve"><value>Cảnh báo giá</value></data>
+  <data name="tasks.suggestion.prices.detail" xml:space="preserve"><value>Kiểm tra giá sản phẩm tôi theo dõi và báo giảm giá.</value></data>
+  <data name="tasks.suggestion.events.title" xml:space="preserve"><value>Khám phá sự kiện</value></data>
+  <data name="tasks.suggestion.events.detail" xml:space="preserve"><value>Tìm buổi hòa nhạc và sự kiện phù hợp với sở thích của tôi.</value></data>
+  <data name="tasks.suggestion.weekend.title" xml:space="preserve"><value>Lên kế hoạch cuối tuần</value></data>
+  <data name="tasks.suggestion.weekend.detail" xml:space="preserve"><value>Gợi ý hoạt động cuối tuần theo sở thích của tôi.</value></data>
+  <data name="tasks.suggestions.memory" xml:space="preserve"><value>Dựa trên bộ nhớ của bạn</value></data>
+  <data name="tasks.suggestions.personalizing" xml:space="preserve"><value>Đang chuẩn bị gợi ý từ bộ nhớ của bạn…</value></data>
+  <data name="tasks.suggestions.unavailable" xml:space="preserve"><value>Gợi ý mẫu · chưa thể cá nhân hóa</value></data>
+  <data name="tasks.suggestions.refresh" xml:space="preserve"><value>Làm mới gợi ý</value></data>
+  <data name="tasks.suggestions.instruction" xml:space="preserve"><value>Điều chỉnh kết quả theo sở thích và lựa chọn của tôi. Tóm tắt những gì tìm được. Cho biết thông tin hoặc quyền truy cập còn thiếu.</value></data>
+  <data name="media.music" xml:space="preserve"><value>âm nhạc</value></data>
+  <data name="studio.music" xml:space="preserve"><value>Âm nhạc</value></data>
+  <data name="studio.library" xml:space="preserve"><value>Thư viện</value></data>
+  <data name="studio.music.composing" xml:space="preserve"><value>Đang soạn nhạc. Quá trình này có thể mất vài phút.</value></data>
+  <data name="studio.music.song" xml:space="preserve"><value>Bài hát</value></data>
+  <data name="studio.music.inspector" xml:space="preserve"><value>Chi tiết</value></data>
+  <data name="studio.music.section" xml:space="preserve"><value>Phần</value></data>
+  <data name="studio.music.section.delete" xml:space="preserve"><value>Xóa phần</value></data>
+  <data name="studio.music.lyrics" xml:space="preserve"><value>Lời bài hát</value></data>
+  <data name="studio.music.track" xml:space="preserve"><value>Bản nhạc</value></data>
+  <data name="studio.music.track.generate" xml:space="preserve"><value>Tạo bản nhạc</value></data>
+  <data name="studio.music.track.empty" xml:space="preserve"><value>Chưa có âm thanh</value></data>
+  <data name="studio.music.track.delete" xml:space="preserve"><value>Xóa bản nhạc</value></data>
+  <data name="studio.music.mix" xml:space="preserve"><value>Bản phối</value></data>
+  <data name="studio.music.tempo" xml:space="preserve"><value>Nhịp độ và khóa âm</value></data>
+  <data name="studio.music.generating" xml:space="preserve"><value>Đang tạo {0} bản nhạc</value></data>
+  <data name="studio.music.placeholder" xml:space="preserve"><value>Mô tả bài hát: tâm trạng, câu chuyện, nhạc cụ, ai hát</value></data>
+  <data name="studio.music.empty" xml:space="preserve"><value>Mô tả bài hát ở trên hoặc bắt đầu một bài hát trống. Kế hoạch xuất hiện trước: các phần, lời bài hát và một bản nhạc cho mỗi nhạc cụ, bạn có thể chỉnh sửa trước khi tạo âm thanh.</value></data>
+  <data name="studio.music.plan" xml:space="preserve"><value>Viết bài hát</value></data>
+  <data name="studio.music.new" xml:space="preserve"><value>Bài hát trống</value></data>
+  <data name="studio.music.noPlan" xml:space="preserve"><value>Mô hình không trả về kế hoạch bài hát. Hãy thử lại hoặc chọn mô hình khác.</value></data>
+  <data name="studio.music.deleteConfirm" xml:space="preserve"><value>Xóa “{0}”? Các bản nhạc và tệp âm thanh của bài hát sẽ bị xóa.</value></data>
+  <data name="studio.music.trackCount" xml:space="preserve"><value>{0} bản nhạc</value></data>
+  <data name="studio.music.bpm" xml:space="preserve"><value>{0} BPM</value></data>
+  <data name="studio.music.key" xml:space="preserve"><value>Khóa âm</value></data>
+  <data name="studio.music.generateAll" xml:space="preserve"><value>Tạo tất cả</value></data>
+  <data name="studio.music.regenerate" xml:space="preserve"><value>Tạo lại bản nhạc này</value></data>
+  <data name="studio.music.script" xml:space="preserve"><value>Kịch bản</value></data>
+  <data name="studio.music.artists" xml:space="preserve"><value>Nghệ sĩ</value></data>
+  <data name="studio.music.artist.add" xml:space="preserve"><value>Thêm nghệ sĩ</value></data>
+  <data name="studio.music.artist.default" xml:space="preserve"><value>Nghệ sĩ {0}</value></data>
+  <data name="studio.music.artist.name" xml:space="preserve"><value>Tên</value></data>
+  <data name="studio.music.artist.style" xml:space="preserve"><value>Giọng và phong cách</value></data>
+  <data name="studio.music.section.add" xml:space="preserve"><value>Thêm phần</value></data>
+  <data name="studio.music.section.default" xml:space="preserve"><value>Đoạn</value></data>
+  <data name="studio.music.section.bars" xml:space="preserve"><value>{0} ô nhịp</value></data>
+  <data name="studio.music.line.add" xml:space="preserve"><value>Thêm dòng</value></data>
+  <data name="studio.music.line.placeholder" xml:space="preserve"><value>Dòng lời bài hát</value></data>
+  <data name="studio.music.line.unsung" xml:space="preserve"><value>Không có</value></data>
+  <data name="studio.music.track.add" xml:space="preserve"><value>Thêm bản nhạc</value></data>
+  <data name="studio.music.track.instrument" xml:space="preserve"><value>Nhạc cụ</value></data>
+  <data name="studio.music.track.prompt" xml:space="preserve"><value>Cách phát nhạc</value></data>
+  <data name="studio.music.track.vocal" xml:space="preserve"><value>Giọng hát · {0}</value></data>
+  <data name="studio.music.mute" xml:space="preserve"><value>Tắt tiếng</value></data>
+  <data name="studio.music.solo" xml:space="preserve"><value>Đơn ca</value></data>
+  <data name="library.all" xml:space="preserve"><value>Tất cả</value></data>
+  <data name="library.kind.image" xml:space="preserve"><value>Hình ảnh</value></data>
+  <data name="library.kind.video" xml:space="preserve"><value>Video</value></data>
+  <data name="library.kind.audio" xml:space="preserve"><value>Âm thanh</value></data>
+  <data name="library.kind.music" xml:space="preserve"><value>Âm nhạc</value></data>
+  <data name="library.kind.document" xml:space="preserve"><value>Tài liệu</value></data>
+  <data name="library.add" xml:space="preserve"><value>Thêm tệp</value></data>
+  <data name="library.addFailed" xml:space="preserve"><value>Không thể thêm {0} tệp.</value></data>
+  <data name="library.open" xml:space="preserve"><value>Mở</value></data>
+  <data name="library.empty.title" xml:space="preserve"><value>Chưa có gì ở đây</value></data>
+  <data name="library.empty.detail" xml:space="preserve"><value>Hình ảnh, video, giọng nói và nhạc bạn tạo sẽ tự động được lưu tại đây. Bạn hãy tự thêm tài liệu và các tệp khác.</value></data>
+  <data name="backgroundTasks.title" xml:space="preserve"><value>Tác vụ nền</value></data>
+  <data name="backgroundTasks.empty" xml:space="preserve"><value>Không có tác vụ nền</value></data>
+  <data name="backgroundTasks.finished" xml:space="preserve"><value>Đã kết thúc</value></data>
+  <data name="backgroundTasks.failed" xml:space="preserve"><value>Thất bại (mã thoát {0})</value></data>
+  <data name="backgroundTasks.stopped" xml:space="preserve"><value>Đã dừng</value></data>
+  <data name="backgroundTasks.clear" xml:space="preserve"><value>Xóa tác vụ đã kết thúc</value></data>
+  <data name="backgroundTasks.runningCount" xml:space="preserve"><value>Tác vụ đang chạy: {0}</value></data>
+  <data name="backgroundTasks.wake" xml:space="preserve"><value>Tác vụ nền “{0}” đã kết thúc với mã thoát {1}. Hãy đọc đầu ra bằng terminal_session (phiên {2}) rồi tiếp tục.</value></data>
+  <data name="backgroundTasks.waitingInput" xml:space="preserve"><value>Đang chờ nhập liệu</value></data>
+  <data name="local.installed" xml:space="preserve"><value>Đã cài đặt</value></data>
+  <data name="marketplace.title" xml:space="preserve"><value>Thị trường</value></data>
+  <data name="marketplace.empty" xml:space="preserve"><value>Không có plugin</value></data>
+  <data name="marketplace.emptyHint" xml:space="preserve"><value>Nhấn Làm mới để tải sổ đăng ký.</value></data>
+  <data name="marketplace.install" xml:space="preserve"><value>cài đặt</value></data>
+  <data name="marketplace.search" xml:space="preserve"><value>Tìm kiếm plugin</value></data>
+  <data name="marketplace.update" xml:space="preserve"><value>Cập nhật v{0} → v{1}</value></data>
+  <data name="marketplace.by" xml:space="preserve"><value>bởi {0}</value></data>
+  <data name="market.tab.plugins" xml:space="preserve"><value>Plugin</value></data>
+  <data name="market.tab.skills" xml:space="preserve"><value>Kỹ năng</value></data>
+  <data name="market.tab.starters" xml:space="preserve"><value>Mẫu dự án</value></data>
+  <data name="starters.intro" xml:space="preserve"><value>Chọn một mẫu và một thư mục trống. Prompt sẽ được đưa vào ô soạn để bạn đọc và gửi.</value></data>
+  <data name="starters.use" xml:space="preserve"><value>Dùng mẫu</value></data>
+  <data name="starters.chooseFolder" xml:space="preserve"><value>Chọn một thư mục trống cho dự án mới.</value></data>
+  <data name="starters.web.title" xml:space="preserve"><value>Ứng dụng web</value></data>
+  <data name="starters.web.detail" xml:space="preserve"><value>Next.js với TypeScript, một bố cục, một route API mẫu và linting.</value></data>
+  <data name="starters.landing.title" xml:space="preserve"><value>Trang đích</value></data>
+  <data name="starters.landing.detail" xml:space="preserve"><value>HTML và CSS tĩnh với phần hero, tính năng, bảng giá và liên hệ. Không cần bước build.</value></data>
+  <data name="starters.api.title" xml:space="preserve"><value>Dịch vụ API</value></data>
+  <data name="starters.api.detail" xml:space="preserve"><value>FastAPI với kiểm tra tình trạng, một tài nguyên mẫu, cài đặt và kiểm thử.</value></data>
+  <data name="starters.ios.title" xml:space="preserve"><value>Ứng dụng iOS</value></data>
+  <data name="starters.ios.detail" xml:space="preserve"><value>SwiftUI với hai màn hình, một mô hình quan sát được và một unit test.</value></data>
+  <data name="starters.worker.title" xml:space="preserve"><value>Cloudflare Worker</value></data>
+  <data name="starters.worker.detail" xml:space="preserve"><value>API TypeScript trên Workers với binding có kiểu và một bài kiểm thử.</value></data>
+  <data name="starters.cli.title" xml:space="preserve"><value>Công cụ dòng lệnh</value></data>
+  <data name="starters.cli.detail" xml:space="preserve"><value>Gói Python với lệnh con, kiểm thử và hướng dẫn cài đặt.</value></data>
+  <data name="common.cancel" xml:space="preserve"><value>Hủy</value></data>
+  <data name="common.connect" xml:space="preserve"><value>Kết nối</value></data>
+  <data name="common.copied" xml:space="preserve"><value>Đã sao chép</value></data>
+  <data name="common.delete" xml:space="preserve"><value>Xóa</value></data>
+  <data name="common.done" xml:space="preserve"><value>Xong</value></data>
+  <data name="common.download" xml:space="preserve"><value>Tải xuống</value></data>
+  <data name="common.idle" xml:space="preserve"><value>Nhàn rỗi</value></data>
+  <data name="common.refresh" xml:space="preserve"><value>Làm mới</value></data>
+  <data name="common.remove" xml:space="preserve"><value>Xóa</value></data>
+  <data name="common.start" xml:space="preserve"><value>Bắt đầu</value></data>
+  <data name="common.stop" xml:space="preserve"><value>Dừng lại</value></data>
+  <data name="common.test" xml:space="preserve"><value>kiểm tra</value></data>
+  <data name="common.save" xml:space="preserve"><value>Lưu</value></data>
+  <data name="common.view" xml:space="preserve"><value>Xem</value></data>
+  <data name="composer.add" xml:space="preserve"><value>Thêm</value></data>
+  <data name="attachment.addApp" xml:space="preserve"><value>Thêm ứng dụng Dots Harness</value></data>
+  <data name="attachment.projectDetail" xml:space="preserve"><value>Chọn một dự án cho các cuộc trò chuyện mới</value></data>
+  <data name="attachment.goal" xml:space="preserve"><value>Mục tiêu</value></data>
+  <data name="attachment.goalDetail" xml:space="preserve"><value>Đặt mục tiêu để hướng tới</value></data>
+  <data name="attachment.plan" xml:space="preserve"><value>Chế độ kế hoạch</value></data>
+  <data name="attachment.planDetail" xml:space="preserve"><value>Bật chế độ kế hoạch</value></data>
+  <data name="attachment.saveSkill" xml:space="preserve"><value>Lưu một kỹ năng</value></data>
+  <data name="attachment.plugins" xml:space="preserve"><value>Plugin</value></data>
+  <data name="attachment.slashCommands" xml:space="preserve"><value>Lệnh dấu gạch chéo</value></data>
+  <data name="attachment.folder" xml:space="preserve"><value>Thêm thư mục</value></data>
+  <data name="attachment.connectors" xml:space="preserve"><value>Bộ kết nối</value></data>
+  <data name="attachment.documentsDetail" xml:space="preserve"><value>Tạo và chỉnh sửa các tạo phẩm tài liệu</value></data>
+  <data name="attachment.pdfDetail" xml:space="preserve"><value>Đọc, tạo và xác minh tệp PDF</value></data>
+  <data name="attachment.spreadsheetsDetail" xml:space="preserve"><value>Tạo và chỉnh sửa tập tin bảng tính</value></data>
+  <data name="modelPicker.model" xml:space="preserve"><value>người mẫu</value></data>
+  <data name="modelPicker.speed" xml:space="preserve"><value>Tốc độ</value></data>
+  <data name="modelPicker.maximum" xml:space="preserve"><value>Tối đa</value></data>
+  <data name="modelPicker.standard" xml:space="preserve"><value>Tiêu chuẩn</value></data>
+  <data name="modelPicker.fast" xml:space="preserve"><value>Nhanh</value></data>
+  <data name="modelPicker.auto" xml:space="preserve"><value>Tự động</value></data>
+  <data name="modelPicker.autoHint" xml:space="preserve"><value>Chọn mô hình và nỗ lực cho mỗi tin nhắn</value></data>
+  <data name="settings.sshPassword" xml:space="preserve"><value>Mật khẩu (dùng một lần)</value></data>
+  <data name="settings.sshRememberPassword" xml:space="preserve"><value>Ghi nhớ mật khẩu</value></data>
+  <data name="settings.sshRememberPassword.hint" xml:space="preserve"><value>Không cần: mật khẩu chỉ dùng một lần để cài khóa và không bao giờ được ghi vào ~/.ssh/config.</value></data>
+  <data name="ssh.continue" xml:space="preserve"><value>Tiếp tục</value></data>
+  <data name="ssh.enrolling" xml:space="preserve"><value>Đang cài khóa…</value></data>
+  <data name="ssh.enrolled.hint" xml:space="preserve"><value>Các kết nối sau dùng khóa; không cần mật khẩu nữa.</value></data>
+  <data name="ssh.retry" xml:space="preserve"><value>Thử lại</value></data>
+  <data name="ssh.retryHint" xml:space="preserve"><value>Kiểm tra địa chỉ, tên người dùng và mật khẩu rồi thử lại.</value></data>
+  <data name="ssh.installKeyManually" xml:space="preserve"><value>Thêm khóa này vào ~/.ssh/authorized_keys trên máy chủ rồi thử lại.</value></data>
+  <data name="ssh.copyPublicKey" xml:space="preserve"><value>Sao chép khóa</value></data>
+  <data name="ssh.error.passwordAuthDisabled" xml:space="preserve"><value>Máy chủ không nhận đăng nhập bằng mật khẩu.</value></data>
+  <data name="ssh.error.authFailed" xml:space="preserve"><value>{0} từ chối đăng nhập.</value></data>
+  <data name="ssh.error.hostKeyChanged" xml:space="preserve"><value>Khóa máy chủ của {0} đã thay đổi. Đừng tiếp tục trừ khi máy chủ được cài lại.</value></data>
+  <data name="ssh.error.invalidInput" xml:space="preserve"><value>Nhập alias, tên máy chủ, tên người dùng và cổng hợp lệ.</value></data>
+  <data name="sidebar.projects" xml:space="preserve"><value>Dự án</value></data>
+  <data name="sidebar.recent" xml:space="preserve"><value>Gần đây</value></data>
+  <data name="sidebar.search" xml:space="preserve"><value>Tìm kiếm cuộc trò chuyện</value></data>
+  <data name="sidebar.sites" xml:space="preserve"><value>Trang web</value></data>
+  <data name="sidebar.scheduled" xml:space="preserve"><value>Đã lên lịch</value></data>
+  <data name="sidebar.addProject" xml:space="preserve"><value>Thêm dự án</value></data>
+  <data name="settings.compactTrigger" xml:space="preserve"><value>Tự động nén ngữ cảnh ở mức</value></data>
+  <data name="settings.compactTrigger.hint" xml:space="preserve"><value>Tỷ lệ trên cửa sổ ngữ cảnh của từng mô hình. Giá trị cao hơn giữ bộ nhớ đệm prompt lâu hơn, vì việc nén sẽ ghi lại bộ nhớ đệm.</value></data>
+  <data name="settings.explore.subagents" xml:space="preserve"><value>Dùng tác tử phụ</value></data>
+  <data name="settings.explore.hint" xml:space="preserve"><value>Khi bật, với tác vụ khó hoặc dài, tác tử giao các tìm kiếm quét nhiều tệp và các phần độc lập của một thay đổi lớn cho các tác tử phụ chạy song song; chỉ bản tóm tắt của chúng đi vào cuộc trò chuyện chính. Tác tử phụ chỉnh sửa chỉ được ghi các tệp được giao, và các phần giao không được chồng lấn. Tác vụ đơn giản không bao giờ gọi chúng. Mỗi tác tử phụ là một lần chạy mô hình riêng; tắt để giảm chi phí.</value></data>
+  <data name="settings.responseStyle" xml:space="preserve"><value>Kiểu phản hồi</value></data>
+  <data name="settings.responseStyle.hint" xml:space="preserve"><value>Cài đặt này không viết lại lời nhắc. Ngắn gọn/Siêu ngắn là ưu tiên theo khả năng tốt nhất; không đảm bảo số token, mức hoàn thành hay chi phí thấp hơn.</value></data>
+  <data name="responseStyle.balanced" xml:space="preserve"><value>Cân bằng</value></data>
+  <data name="responseStyle.concise" xml:space="preserve"><value>Ngắn gọn</value></data>
+  <data name="responseStyle.ultra" xml:space="preserve"><value>Siêu ngắn</value></data>
+  <data name="responseStyle.detailed" xml:space="preserve"><value>Chi tiết</value></data>
+  <data name="settings.computerUse.enable" xml:space="preserve"><value>Bật điều khiển máy tính</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>Phiên bản và cập nhật</value></data>
+  <data name="settings.updates.available" xml:space="preserve"><value>Có phiên bản mới: v{0}</value></data>
+  <data name="settings.updates.download" xml:space="preserve"><value>Tải bản cập nhật</value></data>
+  <data name="dock.branch" xml:space="preserve"><value>Nhánh</value></data>
+  <data name="dock.refresh" xml:space="preserve"><value>Làm mới</value></data>
+  <data name="dock.commit" xml:space="preserve"><value>Commit</value></data>
+  <data name="dock.push" xml:space="preserve"><value>Push</value></data>
+  <data name="dock.fetch" xml:space="preserve"><value>Fetch</value></data>
+  <data name="dock.commitOrPush" xml:space="preserve"><value>Commit hoặc push</value></data>
+  <data name="dock.commitMessage" xml:space="preserve"><value>Thông điệp commit</value></data>
+  <data name="dock.noChanges" xml:space="preserve"><value>Tác tử không thay đổi gì.</value></data>
+  <data name="dock.whyRequest" xml:space="preserve"><value>Yêu cầu của bạn</value></data>
+  <data name="dock.whyAgent" xml:space="preserve"><value>Giải thích của tác tử</value></data>
+  <data name="dock.notRepo" xml:space="preserve"><value>Thư mục này không phải kho git.</value></data>
+  <data name="dock.gitMissing" xml:space="preserve"><value>Chưa cài Git. Xem lại, commit và push cần đến nó.</value></data>
+  <data name="dock.installGit" xml:space="preserve"><value>Cài Git</value></data>
+  <data name="dock.filterFiles" xml:space="preserve"><value>Lọc tệp…</value></data>
+  <data name="dock.openFile" xml:space="preserve"><value>Mở tệp</value></data>
+  <data name="dock.selectFile" xml:space="preserve"><value>Chọn một tệp từ cây không gian làm việc</value></data>
+  <data name="dock.binaryFile" xml:space="preserve"><value>Tệp nhị phân hoặc không đọc được</value></data>
+  <data name="dock.expand" xml:space="preserve"><value>Mở rộng</value></data>
+  <data name="dock.collapse" xml:space="preserve"><value>Thu gọn</value></data>
+  <data name="dock.split" xml:space="preserve"><value>Chia</value></data>
+  <data name="dock.unsplit" xml:space="preserve"><value>Hiển thị một thẻ</value></data>
+  <data name="dock.newTab" xml:space="preserve"><value>Thẻ mới</value></data>
+  <data name="dock.address" xml:space="preserve"><value>Tìm kiếm hoặc nhập URL</value></data>
+  <data name="dock.invalidAddress" xml:space="preserve"><value>Nhập địa chỉ web hoặc nội dung tìm kiếm hợp lệ.</value></data>
+  <data name="dock.openExternal" xml:space="preserve"><value>Mở trong trình duyệt mặc định</value></data>
+  <data name="dock.bottomTerminal" xml:space="preserve"><value>Mở terminal phía dưới</value></data>
+  <data name="dock.splitHorizontal" xml:space="preserve"><value>Chia cạnh nhau</value></data>
+  <data name="dock.splitVertical" xml:space="preserve"><value>Chia trên dưới</value></data>
+  <data name="dock.noWorkspace" xml:space="preserve"><value>Hãy chọn thư mục làm việc trước.</value></data>
+  <data name="git.branchHelp" xml:space="preserve"><value>Chọn nhánh Git</value></data>
+  <data name="git.uncommitted" xml:space="preserve"><value>Không được cam kết: Tệp {0}</value></data>
+  <data name="market.area.core" xml:space="preserve"><value>Marketplace chính</value></data>
+  <data name="market.area.experimental" xml:space="preserve"><value>Thử nghiệm</value></data>
+  <data name="market.area.community" xml:space="preserve"><value>Cộng đồng</value></data>
+  <data name="market.area.communityExperimental" xml:space="preserve"><value>Cộng đồng / Thử nghiệm</value></data>
+  <data name="market.account" xml:space="preserve"><value>Tài khoản HerNess</value></data>
+  <data name="market.signIn" xml:space="preserve"><value>Đăng nhập</value></data>
+  <data name="market.signIn.email" xml:space="preserve"><value>Email và mật khẩu</value></data>
+  <data name="market.signIn.title" xml:space="preserve"><value>Đăng nhập bằng tài khoản HerNess</value></data>
+  <data name="market.email" xml:space="preserve"><value>Email</value></data>
+  <data name="market.password" xml:space="preserve"><value>Mật khẩu</value></data>
+  <data name="market.likeSignIn" xml:space="preserve"><value>Đăng nhập để thích</value></data>
+  <data name="market.customize" xml:space="preserve"><value>Tùy chỉnh</value></data>
+  <data name="market.localForks" xml:space="preserve"><value>Tùy chỉnh cục bộ</value></data>
+  <data name="market.openFolder" xml:space="preserve"><value>Mở thư mục</value></data>
+  <data name="market.fork.compared" xml:space="preserve"><value>Đã so sánh</value></data>
+  <data name="market.consent.title" xml:space="preserve"><value>Plugin này chạy mã gốc</value></data>
+  <data name="market.consent.accept" xml:space="preserve"><value>Chấp nhận và bật</value></data>
+  <data name="market.consent.message" xml:space="preserve"><value>{0} là plugin gốc của bên thứ ba. Khu vực: {1}. Đánh giá: {2}. Danh mục: {3}. Hãy kiểm tra quyền và mã nguồn. Nếu bạn chấp nhận, plugin sẽ chạy ngay như plugin đáng tin cậy.</value></data>
+  <data name="market.review.verified" xml:space="preserve"><value>Đã được DOTS đánh giá</value></data>
+  <data name="market.review.pending" xml:space="preserve"><value>Đang chờ đánh giá</value></data>
+  <data name="market.community.empty" xml:space="preserve"><value>Chưa có plugin cộng đồng</value></data>
+  <data name="market.community.emptyHint" xml:space="preserve"><value>Plugin cộng đồng cần đánh giá riêng và sự đồng ý rõ ràng để chạy mã gốc.</value></data>
+  <data name="market.report" xml:space="preserve"><value>Báo cáo</value></data>
+  <data name="market.report.title" xml:space="preserve"><value>Báo cáo plugin</value></data>
+  <data name="market.report.reason" xml:space="preserve"><value>Lý do</value></data>
+  <data name="market.report.submit" xml:space="preserve"><value>Gửi báo cáo</value></data>
+  <data name="market.report.malware" xml:space="preserve"><value>Phần mềm độc hại hoặc hành vi gây hại</value></data>
+  <data name="market.report.credentialTheft" xml:space="preserve"><value>Đánh cắp thông tin xác thực</value></data>
+  <data name="market.report.exfiltration" xml:space="preserve"><value>Rò rỉ dữ liệu</value></data>
+  <data name="market.report.deceptive" xml:space="preserve"><value>Mô tả gây hiểu lầm hoặc mạo danh</value></data>
+  <data name="market.report.spam" xml:space="preserve"><value>Spam hoặc lớp bọc rỗng</value></data>
+  <data name="market.report.copyright" xml:space="preserve"><value>Vi phạm bản quyền hoặc giấy phép</value></data>
+  <data name="market.publish" xml:space="preserve"><value>Xuất bản plugin</value></data>
+  <data name="market.publish.title" xml:space="preserve"><value>Xuất bản plugin gốc</value></data>
+  <data name="market.publish.hint" xml:space="preserve"><value>Thư mục plugin phải chứa plugin.yml, plugin.ir.json và giấy phép. Không chấp nhận JavaScript và runtime khai báo; bản dựng nền tảng được tạo trong CI.</value></data>
+  <data name="market.publish.noFolder" xml:space="preserve"><value>Chưa chọn thư mục plugin</value></data>
+  <data name="market.publish.chooseFolder" xml:space="preserve"><value>Chọn thư mục</value></data>
+  <data name="market.publish.irPreview" xml:space="preserve"><value>Xem trước plugin.ir.json</value></data>
+  <data name="market.publish.sourcePreview" xml:space="preserve"><value>Xem trước mã nguồn gốc</value></data>
+  <data name="market.publish.version" xml:space="preserve"><value>Phiên bản (SemVer)</value></data>
+  <data name="market.publish.license" xml:space="preserve"><value>Giấy phép SPDX (ví dụ: MIT)</value></data>
+  <data name="market.publish.visibility" xml:space="preserve"><value>Hiển thị mã nguồn</value></data>
+  <data name="market.publish.public" xml:space="preserve"><value>Công khai — gói mã nguồn được liệt kê</value></data>
+  <data name="market.publish.private" xml:space="preserve"><value>Riêng tư — chỉ chủ sở hữu và CI truy cập được</value></data>
+  <data name="market.publish.targets" xml:space="preserve"><value>Nền tảng đích</value></data>
+  <data name="market.publish.footer" xml:space="preserve"><value>Sau khi xuất bản, AI phân loại danh mục, khu vực và rủi ro. Ngay cả khi bản dựng hoàn tất, plugin chỉ được liệt kê sau khi con người đánh giá xong.</value></data>
+  <data name="market.publish.submit" xml:space="preserve"><value>Xuất bản</value></data>
+  <data name="market.publish.error.http" xml:space="preserve"><value>Xuất bản lên Marketplace thất bại (HTTP {0}): {1}</value></data>
+  <data name="market.publish.error.license" xml:space="preserve"><value>Chọn giấy phép để xuất bản plugin.</value></data>
+  <data name="market.publish.error.noManifest" xml:space="preserve"><value>Không tìm thấy plugin.yml trong thư mục đã chọn.</value></data>
+  <data name="market.publish.error.nativeOnly" xml:space="preserve"><value>Chỉ có thể xuất bản plugin gốc.</value></data>
+  <data name="market.publish.error.semver" xml:space="preserve"><value>Nhập phiên bản SemVer hợp lệ.</value></data>
+  <data name="market.publish.error.targets" xml:space="preserve"><value>Chọn ít nhất một nền tảng đích và mức hiển thị mã nguồn hợp lệ.</value></data>
+  <data name="market.publish.error.package" xml:space="preserve"><value>Gói phải chứa tệp plugin.ir.json và license.</value></data>
+  <data name="market.publish.error.irVersion" xml:space="preserve"><value>plugin.ir.json phải là phiên bản 1.</value></data>
+  <data name="market.publish.error.releaseID" xml:space="preserve"><value>Không lấy được ID bản phát hành Marketplace.</value></data>
+  <data name="market.publish.error.noVersion" xml:space="preserve"><value>plugin.yml thiếu trường version.</value></data>
+  <data name="market.publish.status.registering" xml:space="preserve"><value>Đang tạo mục Marketplace…</value></data>
+  <data name="market.publish.status.uploading" xml:space="preserve"><value>Đang tải lên gói mã nguồn gốc…</value></data>
+  <data name="market.publish.status.aiUnavailable" xml:space="preserve"><value>Không có phân loại AI; nhãn tạm thời: {0} · {1} · {2}. Bắt buộc con người đánh giá.</value></data>
+  <data name="market.publish.status.aiDone" xml:space="preserve"><value>Phân loại AI: {0} · {1} · {2}. Đang chờ con người đánh giá.</value></data>
+  <data name="market.publish.status.aiFailed" xml:space="preserve"><value>Không thể hoàn tất phân loại AI; đang chờ con người đánh giá.</value></data>
+  <data name="market.publish.status.queueing" xml:space="preserve"><value>Đang đưa bản dựng gốc vào hàng đợi…</value></data>
+  <data name="market.publish.status.uploaded" xml:space="preserve"><value>Đã tải lên gói mã nguồn; đang chờ CI gốc xác minh.</value></data>
+  <data name="market.error.notSignedIn" xml:space="preserve"><value>Xuất bản lên Marketplace cần tài khoản HerNess.</value></data>
+  <data name="market.error.invalidCallback" xml:space="preserve"><value>Phản hồi đăng nhập HerNess không hợp lệ.</value></data>
+  <data name="market.error.stateMismatch" xml:space="preserve"><value>Trạng thái đăng nhập HerNess không khớp.</value></data>
+  <data name="market.error.request" xml:space="preserve"><value>Yêu cầu Marketplace thất bại (HTTP {0}): {1}</value></data>
+  <data name="market.error.invalidResponse" xml:space="preserve"><value>Marketplace trả về phản hồi không hợp lệ.</value></data>
+  <data name="market.error.credentials" xml:space="preserve"><value>Cần email và mật khẩu.</value></data>
+  <data name="remote.scan" xml:space="preserve"><value>Quét mã QR này hoặc nhập mã dùng một lần trong HerNess Mobile.</value></data>
+  <data name="remote.newCode" xml:space="preserve"><value>Mã ghép nối mới</value></data>
+  <data name="remote.copyLink" xml:space="preserve"><value>Sao chép liên kết ghép nối</value></data>
+  <data name="remote.tunnel.enable" xml:space="preserve"><value>Bật Cloudflare Quick Tunnel</value></data>
+  <data name="remote.hint" xml:space="preserve"><value>Khóa nhà cung cấp vẫn ở trên máy tính. Ghi tệp, terminal, build, triển khai và thao tác PR vẫn dùng chế độ phê duyệt đã chọn.</value></data>
+  <data name="settings.tab.mobile" xml:space="preserve"><value>Điều khiển di động</value></data>
+  <data name="settings.compaction.economyFixed" xml:space="preserve"><value>Chính sách tiết kiệm dùng ngưỡng cố định 90%.</value></data>
+  <data name="settings.browser.title" xml:space="preserve"><value>Trình duyệt và công cụ ưu tiên</value></data>
+  <data name="settings.browser.auto" xml:space="preserve"><value>Tự động (trong ứng dụng, hoặc trình duyệt bạn chỉ định)</value></data>
+  <data name="settings.browser.managed" xml:space="preserve"><value>Trình duyệt cô lập được quản lý (Chrome)</value></data>
+  <data name="settings.browser.chrome" xml:space="preserve"><value>Chrome của tôi</value></data>
+  <data name="settings.browser.desktopHint" xml:space="preserve"><value>Trình duyệt trong ứng dụng dùng bộ máy trình duyệt của hệ thống. Bạn cũng có thể dùng Chrome được quản lý và hồ sơ Chrome hiện có.</value></data>
+  <data name="settings.browser.inAppDesktop" xml:space="preserve"><value>Trình duyệt trong ứng dụng</value></data>
+  <data name="settings.computerUse.desktopHint" xml:space="preserve"><value>Tác nhân có thể kiểm tra ứng dụng đang chạy, xem ảnh chụp màn hình, dùng chuột và bàn phím rồi xác minh kết quả. Thao tác trên màn hình cần được cấp quyền.</value></data>
+  <data name="settings.computerUse.linuxHint" xml:space="preserve"><value>Tính năng điều khiển máy tính trên Linux cần X11, xdotool và maim hoặc ImageMagick. Wayland không được hỗ trợ.</value></data>
+  <data name="market.settings.hint" xml:space="preserve"><value>Main Marketplace gồm các plugin Harness đã được duyệt. Community và Experimental được tách riêng; plugin gốc cần bạn chấp thuận trước khi chạy.</value></data>
+  <data name="market.registry.empty" xml:space="preserve"><value>Không tìm thấy mục Marketplace. Hãy làm mới danh mục để thử lại.</value></data>
+  <data name="market.signIn.hint" xml:space="preserve"><value>Đăng nhập bằng Google, GitHub hoặc email và mật khẩu HerNess. Mã phiên được lưu trong kho thông tin xác thực của nền tảng.</value></data>
+  <data name="dock.clean" xml:space="preserve"><value>Cây làm việc sạch.</value></data>
+  <data name="market.publish.folderPickerUnavailable" xml:space="preserve"><value>Môi trường máy tính này không có trình chọn thư mục.</value></data>
+  <data name="market.publish.localFolderRequired" xml:space="preserve"><value>Chọn thư mục cục bộ để xuất bản plugin.</value></data>
+  <data name="market.report.details" xml:space="preserve"><value>Chi tiết (không bắt buộc, tối đa 5.000 ký tự)</value></data>
+  <data name="dock.browser.webview2Unavailable" xml:space="preserve"><value>Không thể khởi chạy WebView2. Hãy cài đặt hoặc sửa chữa Microsoft Edge WebView2 Runtime.</value></data>
+  <data name="settings.marketplace" xml:space="preserve"><value>Thị trường</value></data>
+  <data name="workspace.use" xml:space="preserve"><value>Sử dụng không gian làm việc</value></data>
+  <data name="market.fork.consent.title" xml:space="preserve"><value>Plugin tùy chỉnh này chạy mã gốc</value></data>
+  <data name="market.fork.consent.message" xml:space="preserve"><value>{0} là bản fork cục bộ. Mã nguồn độc lập với upstream; hãy xem lại thay đổi trước khi bật.</value></data>
+  <data name="market.fork.newUpstream" xml:space="preserve"><value>Upstream mới: v{0}; thay đổi cục bộ được giữ lại</value></data>
+  <data name="market.remove.confirmTitle" xml:space="preserve"><value>Xóa plugin Marketplace?</value></data>
+  <data name="market.remove.confirmMessage" xml:space="preserve"><value>Xóa {0} khỏi thiết bị này?</value></data>
+  <data name="market.report.other" xml:space="preserve"><value>Khác</value></data>
+  <data name="modelPicker.economy" xml:space="preserve"><value>Tiết kiệm</value></data>
+  <data name="conversation.toggleResponseEconomy" xml:space="preserve"><value>Bật hoặc tắt chế độ tiết kiệm token cho câu trả lời</value></data>
+  <data name="market.unpublish.confirmMessage" xml:space="preserve"><value>Hủy đăng {0}? Các bản cài đặt hiện có sẽ không bị gỡ.</value></data>
+  <data name="market.permissions" xml:space="preserve"><value>Quyền</value></data>
+  <data name="market.risk" xml:space="preserve"><value>Rủi ro: {0}</value></data>
+  <data name="market.category.coding" xml:space="preserve"><value>Lập trình</value></data>
+  <data name="market.category.git" xml:space="preserve"><value>Git</value></data>
+  <data name="market.category.qa" xml:space="preserve"><value>Kiểm thử &amp; Chất lượng</value></data>
+  <data name="market.category.devops" xml:space="preserve"><value>DevOps</value></data>
+  <data name="market.category.browser" xml:space="preserve"><value>Trình duyệt</value></data>
+  <data name="market.category.web" xml:space="preserve"><value>Web</value></data>
+  <data name="market.category.backend" xml:space="preserve"><value>Backend</value></data>
+  <data name="market.category.mobile" xml:space="preserve"><value>Di động</value></data>
+  <data name="market.category.models" xml:space="preserve"><value>Mô hình</value></data>
+  <data name="market.category.integrations" xml:space="preserve"><value>Tích hợp</value></data>
+  <data name="market.category.workspace" xml:space="preserve"><value>Không gian làm việc</value></data>
+  <data name="market.category.productivity" xml:space="preserve"><value>Năng suất</value></data>
+  <data name="market.category.tools" xml:space="preserve"><value>Công cụ</value></data>
+  <data name="market.category.design" xml:space="preserve"><value>Thiết kế</value></data>
+  <data name="market.category.documents" xml:space="preserve"><value>Tài liệu</value></data>
+  <data name="market.category.authoring" xml:space="preserve"><value>Soạn kỹ năng</value></data>
+  <data name="market.category.community" xml:space="preserve"><value>Cộng đồng</value></data>
+  <data name="market.category.other" xml:space="preserve"><value>Khác</value></data>
+  <data name="navigation.back" xml:space="preserve"><value>Quay lại</value></data>
+  <data name="navigation.forward" xml:space="preserve"><value>Tiến</value></data>
+  <data name="dock.restart" xml:space="preserve"><value>Khởi động lại</value></data>
+  <data name="dock.go" xml:space="preserve"><value>Đi</value></data>
+  <data name="terminal.sandboxUnavailable" xml:space="preserve"><value>Không có vùng cách ly cho terminal: {0}</value></data>
+  <data name="remote.lan" xml:space="preserve"><value>Điểm cuối LAN</value></data>
+  <data name="remote.code" xml:space="preserve"><value>Mã</value></data>
+  <data name="remote.expires" xml:space="preserve"><value>Hết hạn: {0}</value></data>
+  <data name="remote.pairingLink" xml:space="preserve"><value>Liên kết ghép nối</value></data>
+  <data name="custom.detected" xml:space="preserve"><value>Đang chạy trên máy tính này</value></data>
+  <data name="custom.modelOptional" xml:space="preserve"><value>Tên mô hình (tùy chọn)</value></data>
+  <data name="custom.contextOptional" xml:space="preserve"><value>Cửa sổ ngữ cảnh tính bằng token (tùy chọn)</value></data>
+  <data name="custom.prefix" xml:space="preserve"><value>Tiền tố mẫu</value></data>
+  <data name="local.tuning" xml:space="preserve"><value>Hiệu năng</value></data>
+  <data name="local.tuningHint" xml:space="preserve"><value>Để trống hoặc auto để runtime tự điều chỉnh mô hình theo bộ nhớ GPU của bạn. Thay đổi có hiệu lực ở lần khởi động mô hình tiếp theo.</value></data>
+  <data name="local.contextSize" xml:space="preserve"><value>Kích thước ngữ cảnh (token)</value></data>
+  <data name="local.gpuLayers" xml:space="preserve"><value>Số lớp trên GPU (auto, all hoặc một số)</value></data>
+  <data name="local.threads" xml:space="preserve"><value>Luồng CPU</value></data>
+  <data name="local.batchSize" xml:space="preserve"><value>Kích thước lô</value></data>
+  <data name="local.flashAttention" xml:space="preserve"><value>Flash attention</value></data>
+  <data name="local.kvCache" xml:space="preserve"><value>Kiểu bộ đệm KV</value></data>
+  <data name="local.extraArgs" xml:space="preserve"><value>Tham số llama-server bổ sung</value></data>
+  <data name="local.hardware" xml:space="preserve"><value>Phần cứng</value></data>
+  <data name="local.listen" xml:space="preserve"><value>Nghe</value></data>
+  <data name="local.importGGUF" xml:space="preserve"><value>Thêm tệp GGUF…</value></data>
+  <data name="local.tooLarge" xml:space="preserve"><value>Quá lớn</value></data>
+  <data name="local.backend" xml:space="preserve"><value>Bộ xử lý đồ họa</value></data>
+  <data name="settings.compaction.autoRouted" xml:space="preserve"><value>Mô hình được định tuyến tự động</value></data>
+  <data name="settings.compaction.effectiveThreshold" xml:space="preserve"><value>Ngưỡng hiệu lực</value></data>
+  <data name="sidebar.signOut" xml:space="preserve"><value>Đăng xuất</value></data>
+  <data name="market.unpublish" xml:space="preserve"><value>Hủy xuất bản</value></data>
+  <data name="settings.sshHosts" xml:space="preserve"><value>Máy tính từ xa (SSH)</value></data>
+  <data name="settings.sshHosts.hint" xml:space="preserve"><value>Danh sách lấy từ ~/.ssh/config. Máy thêm ở đây sẽ được ghi vào đó.</value></data>
+  <data name="settings.sshNoHosts" xml:space="preserve"><value>Không có máy nào trong ~/.ssh/config.</value></data>
+  <data name="settings.sshAddHost" xml:space="preserve"><value>Thêm máy tính…</value></data>
+  <data name="settings.sshTest" xml:space="preserve"><value>Kiểm tra</value></data>
+  <data name="settings.sshManaged" xml:space="preserve"><value>thêm tại đây</value></data>
+  <data name="settings.sshFromConfig" xml:space="preserve"><value>từ ~/.ssh/config</value></data>
+  <data name="settings.sshRemove.handWritten" xml:space="preserve"><value>Máy này được viết tay trong ~/.ssh/config. Hãy gỡ ở đó.</value></data>
+  <data name="settings.updates.current" xml:space="preserve"><value>Phiên bản hiện tại</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>Đang kiểm tra cập nhật…</value></data>
+  <data name="settings.updates.checkAgain" xml:space="preserve"><value>Kiểm tra lại</value></data>
+  <data name="settings.updates.upToDate" xml:space="preserve"><value>Ứng dụng đã được cập nhật.</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>Kiểm tra cập nhật</value></data>
+  <data name="settings.updates.retry" xml:space="preserve"><value>Thử lại</value></data>
+  <data name="settings.updates.hint" xml:space="preserve"><value>Kiểm tra bản phát hành mới nhất.</value></data>
+  <data name="settings.updates.required" xml:space="preserve"><value>Bắt buộc</value></data>
+  <data name="ssh.connected" xml:space="preserve"><value>{0} đã phản hồi.</value></data>
+  <data name="remote.enable" xml:space="preserve"><value>Cho phép điều khiển từ xa</value></data>
+  <data name="remote.shareLan" xml:space="preserve"><value>Chia sẻ với mạng nội bộ</value></data>
+  <data name="remote.enableHint" xml:space="preserve"><value>Cổng từ xa đang tắt. Bật lên để ghép nối điện thoại.</value></data>
+  <data name="plan.title" xml:space="preserve"><value>Kế hoạch</value></data>
+  <data name="plan.proposed" xml:space="preserve"><value>Claude đã đề xuất một kế hoạch</value></data>
+  <data name="plan.revise" xml:space="preserve"><value>Chỉnh sửa…</value></data>
+  <data name="plan.acceptAuto" xml:space="preserve"><value>Chấp nhận và chế độ tự động</value></data>
 </root>

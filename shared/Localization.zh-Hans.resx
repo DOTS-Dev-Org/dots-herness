@@ -298,13 +298,14 @@
   <data name="usage.resetsIn" xml:space="preserve"><value>将在 {0} 后重置</value></data>
   <data name="usage.resetsOn" xml:space="preserve"><value>将在 {0} 重置</value></data>
   <data name="usage.resetsAvailable" xml:space="preserve"><value>可用重置次数：{0}</value></data>
-  <data name="usage.manageResets" xml:space="preserve"><value>Manage resets</value></data>
-  <data name="usage.useReset" xml:space="preserve"><value>Use reset</value></data>
-  <data name="usage.resetTitle" xml:space="preserve"><value>Use a Claude limit reset?</value></data>
-  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude's Usage page will open. Sign in to {0} and review the reset offered to that account. To use it, click Reset for free and confirm in Claude. Once used, a reset cannot be undone. Limits refresh when you return to HerNess.</value></data>
-  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Could not open Claude. Check that the account is still connected, then try again.</value></data>
-  <data name="usage.openClaude" xml:space="preserve"><value>Open Claude</value></data>
+  <data name="usage.manageResets" xml:space="preserve"><value>管理重置</value></data>
+  <data name="usage.useReset" xml:space="preserve"><value>使用重置</value></data>
+  <data name="usage.resetTitle" xml:space="preserve"><value>使用 Claude 限额重置？</value></data>
+  <data name="usage.resetConfirmation" xml:space="preserve"><value>将打开 Claude 的用量页面。请登录 {0}，查看为该账户提供的重置。要使用它，请点击“Reset for free”并在 Claude 中确认。重置一旦使用便无法撤销。返回 HerNess 后限制会刷新。</value></data>
+  <data name="usage.resetOpenFailed" xml:space="preserve"><value>无法打开 Claude。请检查账户是否仍已连接，然后重试。</value></data>
+  <data name="usage.openClaude" xml:space="preserve"><value>打开 Claude</value></data>
   <data name="usage.needLogin" xml:space="preserve"><value>登录 Claude 以查看限制</value></data>
+  <data name="agent.providerLimitTitle" xml:space="preserve"><value>已达到提供商限制</value></data>
   <data name="usage.noLimitInfo" xml:space="preserve"><value>没有限制信息</value></data>
   <data name="usage.loadFailed" xml:space="preserve"><value>无法加载使用情况</value></data>
   <data name="usage.loading" xml:space="preserve"><value>正在加载使用情况…</value></data>
@@ -332,21 +333,21 @@
   <data name="project.missing.message" xml:space="preserve"><value>位于“{0}”的项目文件夹可能已被移动或删除。请选择其新位置或移除项目。</value></data>
   <data name="project.missing.locate" xml:space="preserve"><value>查找位置…</value></data>
   <data name="project.missing.readOnly" xml:space="preserve"><value>项目文件夹不可用。你仍可查看以前的对话；在选择新位置之前，无法创建新对话或发送消息。</value></data>
-  <data name="conversation.ranCommand" xml:space="preserve"><value>Ran 1 command</value></data>
-  <data name="conversation.ranCommands" xml:space="preserve"><value>Ran {0} commands</value></data>
-  <data name="conversation.runningTools" xml:space="preserve"><value>Running tools…</value></data>
-  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Thinking…</value></data>
-  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} tokens</value></data>
-  <data name="usage.context.window" xml:space="preserve"><value>Context window</value></data>
-  <data name="usage.planLimits" xml:space="preserve"><value>Plan usage limits</value></data>
-  <data name="composer.queue.one" xml:space="preserve"><value>1 message queued</value></data>
-  <data name="composer.queue.many" xml:space="preserve"><value>{0} messages queued</value></data>
-  <data name="composer.queue.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Clear the message box to edit</value></data>
-  <data name="composer.queue.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="git.createPR" xml:space="preserve"><value>Create PR</value></data>
-  <data name="git.hideBar" xml:space="preserve"><value>Hide</value></data>
-  <data name="composer.queue.next" xml:space="preserve"><value>Next: {0}</value></data>
+  <data name="conversation.ranCommand" xml:space="preserve"><value>运行了 1 条命令</value></data>
+  <data name="conversation.ranCommands" xml:space="preserve"><value>运行了 {0} 条命令</value></data>
+  <data name="conversation.runningTools" xml:space="preserve"><value>正在运行工具…</value></data>
+  <data name="conversation.thinkingPhase" xml:space="preserve"><value>思考中…</value></data>
+  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} 个 token</value></data>
+  <data name="usage.context.window" xml:space="preserve"><value>上下文窗口</value></data>
+  <data name="usage.planLimits" xml:space="preserve"><value>套餐用量限制</value></data>
+  <data name="composer.queue.one" xml:space="preserve"><value>1 条消息排队中</value></data>
+  <data name="composer.queue.many" xml:space="preserve"><value>{0} 条消息排队中</value></data>
+  <data name="composer.queue.edit" xml:space="preserve"><value>编辑</value></data>
+  <data name="composer.queue.editBlocked" xml:space="preserve"><value>清空消息框后才能编辑</value></data>
+  <data name="composer.queue.remove" xml:space="preserve"><value>移除</value></data>
+  <data name="git.createPR" xml:space="preserve"><value>创建 PR</value></data>
+  <data name="git.hideBar" xml:space="preserve"><value>隐藏</value></data>
+  <data name="composer.queue.next" xml:space="preserve"><value>下一条：{0}</value></data>
   <data name="sidebar.pinProject" xml:space="preserve"><value>固定项目</value></data>
   <data name="sidebar.unpinProject" xml:space="preserve"><value>取消固定项目</value></data>
   <data name="sidebar.sortLastUpdate" xml:space="preserve"><value>最近更新</value></data>
@@ -357,6 +358,8 @@
   <data name="conversation.cancelPlan" xml:space="preserve"><value>取消计划</value></data>
   <data name="conversation.cancelPlanHelp" xml:space="preserve"><value>取消此计划并释放排队的消息</value></data>
   <data name="media.generated" xml:space="preserve"><value>图像已生成。</value></data>
+  <data name="media.videoGenerated" xml:space="preserve"><value>视频已生成。</value></data>
+  <data name="media.audioGenerated" xml:space="preserve"><value>语音已生成。</value></data>
   <data name="media.fallbackUsed" xml:space="preserve"><value>所选提供商无法生成此图像。已通过 {0}/{1} 的一次性备用请求生成;主对话的提供商和模型未更改,因此其提示缓存保持完好。</value></data>
   <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>我无法使用 {0} 生成此图像。请配置一个图像 API 或提供商作为备用。仅为生成图像而切换主聊天模型可能会破坏提供商的提示缓存。</value></data>
   <data name="feedback.close" xml:space="preserve"><value>关闭</value></data>
@@ -369,27 +372,27 @@
   <data name="feedback.persistenceFailed" xml:space="preserve"><value>无法在本地保存反馈。</value></data>
   <data name="feedback.streamingMessage" xml:space="preserve"><value>请等待回复完成后再发送反馈。</value></data>
   <data name="feedback.submit" xml:space="preserve"><value>发送</value></data>
-  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Apply it elsewhere</value></data>
-  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Broke an existing feature</value></data>
+  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>应用到其他地方</value></data>
+  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>破坏了现有功能</value></data>
   <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>未遵循我的指示</value></data>
-  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Didn't follow project style</value></data>
+  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>未遵循项目风格</value></data>
   <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>快速且高效</value></data>
   <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>遵循了我的指示</value></data>
-  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Ignored project architecture</value></data>
+  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>忽略了项目架构</value></data>
   <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>错误或不完整</value></data>
-  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Keep the project style</value></data>
+  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>保持项目风格</value></data>
   <data name="feedback.tag.lost_context" xml:space="preserve"><value>丢失上下文</value></data>
   <data name="feedback.tag.negative_other" xml:space="preserve"><value>其他</value></data>
   <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>偏离主题或超出范围</value></data>
   <data name="feedback.tag.output_quality" xml:space="preserve"><value>良好的代码/输出质量</value></data>
   <data name="feedback.tag.positive_other" xml:space="preserve"><value>其他</value></data>
-  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Reuse this architecture</value></data>
-  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Reuse this token pattern</value></data>
+  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>复用此架构</value></data>
+  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>复用此 token 模式</value></data>
   <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>安全或法律问题</value></data>
   <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>缓慢或有问题</value></data>
   <data name="feedback.tag.task_completed" xml:space="preserve"><value>解决了我的任务</value></data>
   <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>有用的自主处理</value></data>
-  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Wrong theme or token</value></data>
+  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>主题或 token 错误</value></data>
   <data name="feedback.title" xml:space="preserve"><value>分享反馈</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>反馈仅适用于工作区聊天。</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>反馈只能针对助手回复发送。</value></data>
@@ -398,12 +401,13 @@
   <data name="conversation.cacheExpired.explanation" xml:space="preserve"><value>缓存的预计有效期已过。提示缓存是提供商一侧的临时处理状态，你的聊天记录仍然保留。带着完整历史继续聊天，可能会让这些 token 重新按新输入计费。只有下一次请求的用量数据才能确认提供商是否仍命中缓存。</value></data>
   <data name="conversation.cacheExpired.infoTitle" xml:space="preserve"><value>为什么会看到此提示？</value></data>
   <data name="conversation.cacheExpired.notice" xml:space="preserve"><value>缓存可能已过期；继续聊天可能会消耗更多 token 并增加费用。请附上简短摘要开始新聊天。</value></data>
+  <data name="conversation.cacheLocal.notice" xml:space="preserve"><value>本地模型的缓存已清除；全部历史将重新处理，回复可能变慢。请用简短摘要开始新对话。</value></data>
   <data name="conversation.filesChangedCount" xml:space="preserve"><value>已更改 {0} 个文件</value></data>
   <data name="conversation.filesLess" xml:space="preserve"><value>收起部分文件</value></data>
   <data name="conversation.filesLineSummary" xml:space="preserve"><value>+{0} −{1}</value></data>
   <data name="conversation.filesMore" xml:space="preserve"><value>再显示 {0} 个文件</value></data>
   <data name="conversation.filesReverted" xml:space="preserve"><value>文件更改已撤销。</value></data>
-  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>The saved file version is unavailable, so the workspace was left unchanged.</value></data>
+  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>保存的文件版本不可用，因此工作区未作更改。</value></data>
   <data name="conversation.undoChanges" xml:space="preserve"><value>撤销</value></data>
   <data name="conversation.viewChanges" xml:space="preserve"><value>查看更改</value></data>
   <data name="settings.archive" xml:space="preserve"><value>归档</value></data>
@@ -434,9 +438,9 @@
   <data name="workLocation.remoteFolderUp" xml:space="preserve"><value>上一层文件夹</value></data>
   <data name="workLocation.remoteFolderEmpty" xml:space="preserve"><value>这里没有子文件夹</value></data>
   <data name="workLocation.remoteFolderUse" xml:space="preserve"><value>使用此文件夹</value></data>
-  <data name="workLocation.connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="workLocation.connect" xml:space="preserve"><value>连接</value></data>
   <data name="workLocation.addHost" xml:space="preserve"><value>添加电脑…</value></data>
-  <data name="workLocation.useLocal" xml:space="preserve"><value>Use this computer</value></data>
+  <data name="workLocation.useLocal" xml:space="preserve"><value>使用这台电脑</value></data>
   <data name="settings.sshAlias" xml:space="preserve"><value>别名</value></data>
   <data name="settings.sshHostName" xml:space="preserve"><value>主机或 IP</value></data>
   <data name="settings.sshUser" xml:space="preserve"><value>用户名</value></data>
@@ -444,126 +448,106 @@
   <data name="settings.sshRemove" xml:space="preserve"><value>移除</value></data>
   <data name="ssh.busy" xml:space="preserve"><value>更改工作位置前，请等待当前运行结束。</value></data>
   <data name="ssh.connecting" xml:space="preserve"><value>正在连接 {0}…</value></data>
-  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Choose a remote folder before starting a task.</value></data>
+  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>开始任务前请选择一个远程文件夹。</value></data>
   <data name="ssh.scanning" xml:space="preserve"><value>正在获取主机密钥…</value></data>
   <data name="ssh.fingerprintTitle" xml:space="preserve"><value>这是 {0} 的指纹吗？</value></data>
   <data name="ssh.fingerprintMessage" xml:space="preserve"><value>信任之前请与服务器核对，只有一致时才继续。</value></data>
   <data name="ssh.trustAndConnect" xml:space="preserve"><value>信任并连接</value></data>
   <data name="ssh.error.unavailable" xml:space="preserve"><value>这台 Mac 上找不到 ssh。</value></data>
   <data name="ssh.error.notReachable" xml:space="preserve"><value>无法连接 {0}。</value></data>
-  <data name="conversation.choosePane" xml:space="preserve"><value>Choose a pane</value></data>
-  <data name="sidebar.toggle" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.mcpServers" xml:space="preserve"><value>MCP servers</value></data>
-  <data name="mcp.empty" xml:space="preserve"><value>No MCP servers configured.</value></data>
-  <data name="mcp.addServer" xml:space="preserve"><value>Add server</value></data>
-  <data name="mcp.name" xml:space="preserve"><value>Name</value></data>
-  <data name="mcp.transport" xml:space="preserve"><value>Transport</value></data>
+  <data name="conversation.choosePane" xml:space="preserve"><value>选择窗格</value></data>
+  <data name="sidebar.toggle" xml:space="preserve"><value>显示或隐藏侧边栏</value></data>
+  <data name="settings.mcpServers" xml:space="preserve"><value>MCP 服务器</value></data>
+  <data name="mcp.empty" xml:space="preserve"><value>未配置 MCP 服务器。</value></data>
+  <data name="mcp.addServer" xml:space="preserve"><value>添加服务器</value></data>
+  <data name="mcp.name" xml:space="preserve"><value>名称</value></data>
+  <data name="mcp.transport" xml:space="preserve"><value>传输方式</value></data>
   <data name="mcp.http" xml:space="preserve"><value>HTTP</value></data>
   <data name="mcp.stdio" xml:space="preserve"><value>stdio</value></data>
   <data name="mcp.url" xml:space="preserve"><value>URL</value></data>
-  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (optional)</value></data>
-  <data name="mcp.executable" xml:space="preserve"><value>Executable path</value></data>
-  <data name="mcp.arguments" xml:space="preserve"><value>Arguments (space-separated)</value></data>
-  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Auto-run tools the server marks read-only</value></data>
-  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Server annotations are untrusted. Enabling this skips approval only for tools marked read-only and not destructive.</value></data>
-  <data name="mcp.test" xml:space="preserve"><value>Test</value></data>
-  <data name="mcp.add" xml:space="preserve"><value>Add</value></data>
-  <data name="mcp.reconnect" xml:space="preserve"><value>Reconnect</value></data>
-  <data name="mcp.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="mcp.idle" xml:space="preserve"><value>Idle</value></data>
-  <data name="mcp.connecting" xml:space="preserve"><value>Connecting…</value></data>
-  <data name="mcp.connected" xml:space="preserve"><value>Connected · {0} tool(s)</value></data>
-  <data name="mcp.failed" xml:space="preserve"><value>Failed: {0}</value></data>
-  <data name="mcp.testing" xml:space="preserve"><value>Testing…</value></data>
-  <data name="mcp.testConnected" xml:space="preserve"><value>Connected. {0} tool(s) available.</value></data>
-  <data name="conversation.toolInput" xml:space="preserve"><value>Tool input</value></data>
-  <data name="settings.tab.memory" xml:space="preserve"><value>Memory</value></data>
-  <data name="memory.vault.title" xml:space="preserve"><value>Memory vault</value></data>
-  <data name="memory.refresh" xml:space="preserve"><value>Refresh</value></data>
-  <data name="memory.reveal" xml:space="preserve"><value>Open .mem folder</value></data>
-  <data name="memory.refused" xml:space="preserve"><value>Not saved. The entry may contain a credential, exceed its limit, or the workspace may be unavailable.</value></data>
-  <data name="memory.noWorkspace" xml:space="preserve"><value>Select a local workspace to view its memory.</value></data>
-  <data name="memory.notInitialized" xml:space="preserve"><value>Memory starts after the first prompt in this workspace.</value></data>
-  <data name="memory.search" xml:space="preserve"><value>Search memory</value></data>
-  <data name="memory.selectNote" xml:space="preserve"><value>Select a note to view it.</value></data>
-  <data name="memory.save" xml:space="preserve"><value>Save</value></data>
-  <data name="memory.forget" xml:space="preserve"><value>Forget</value></data>
-  <data name="memory.ownRules" xml:space="preserve"><value>Your own rules</value></data>
-  <data name="memory.rulesHelp" xml:space="preserve"><value>These rules are added to every request in this project.</value></data>
-  <data name="memory.lessons" xml:space="preserve"><value>Learned lessons</value></data>
-  <data name="memory.learningStats" xml:space="preserve"><value>{0} turns logged; {1} were corrected or undone.</value></data>
-  <data name="memory.links" xml:space="preserve"><value>Links</value></data>
-  <data name="memory.backlinks" xml:space="preserve"><value>Linked mentions</value></data>
-  <data name="memory.userAuthored" xml:space="preserve"><value>user-authored</value></data>
-  <data name="memory.inferred" xml:space="preserve"><value>inferred</value></data>
-  <data name="memory.learnedCount" xml:space="preserve"><value>learned {0}×</value></data>
-  <data name="memory.usedCount" xml:space="preserve"><value>used {0}×</value></data>
-  <data name="memory.inactive" xml:space="preserve"><value>no longer applied</value></data>
-  <data name="memory.pin" xml:space="preserve"><value>Pin</value></data>
-  <data name="memory.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="memory.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="settings.tab.access" xml:space="preserve"><value>Workspace access</value></data>
-  <data name="access.currentActor" xml:space="preserve"><value>Current actor</value></data>
-  <data name="access.role" xml:space="preserve"><value>Role</value></data>
-  <data name="access.notAuthorized" xml:space="preserve"><value>Not authorized</value></data>
-  <data name="access.score" xml:space="preserve"><value>Score</value></data>
-  <data name="access.device" xml:space="preserve"><value>Device</value></data>
-  <data name="access.publicKey" xml:space="preserve"><value>Public key</value></data>
-  <data name="access.memoryRevision" xml:space="preserve"><value>Memory revision</value></data>
-  <data name="access.members" xml:space="preserve"><value>Members</value></data>
-  <data name="access.noMembers" xml:space="preserve"><value>No members yet.</value></data>
-  <data name="access.revoke" xml:space="preserve"><value>Revoke</value></data>
-  <data name="access.revoked" xml:space="preserve"><value>revoked</value></data>
-  <data name="access.inviteDevice" xml:space="preserve"><value>Invite device</value></data>
-  <data name="access.displayName" xml:space="preserve"><value>Display name</value></data>
-  <data name="access.newDevicePublicKey" xml:space="preserve"><value>New device public key</value></data>
-  <data name="access.createInvitation" xml:space="preserve"><value>Create signed invitation</value></data>
-  <data name="access.acceptInvitation" xml:space="preserve"><value>Accept invitation</value></data>
-  <data name="access.signedInvitation" xml:space="preserve"><value>Signed invitation</value></data>
-  <data name="access.accept" xml:space="preserve"><value>Accept</value></data>
-  <data name="access.reject" xml:space="preserve"><value>Reject</value></data>
-  <data name="access.pendingDecisions" xml:space="preserve"><value>Pending decisions</value></data>
-  <data name="access.noPendingDecisions" xml:space="preserve"><value>No pending project decisions.</value></data>
-  <data name="access.noWorkspace" xml:space="preserve"><value>Select a local workspace to manage access.</value></data>
-  <data name="access.scoreValue" xml:space="preserve"><value>Score: {0}</value></data>
-  <data name="access.initialize" xml:space="preserve"><value>Initialize workspace memory</value></data>
-  <data name="access.initializeHelp" xml:space="preserve"><value>Workspace access uses a signed memory log. Initializing creates the owner identity and event log in this project's .mem folder.</value></data>
-  <data name="access.role.owner" xml:space="preserve"><value>Owner</value></data>
-  <data name="access.role.approver" xml:space="preserve"><value>Approver</value></data>
-  <data name="access.role.contributor" xml:space="preserve"><value>Contributor</value></data>
-  <data name="access.role.observer" xml:space="preserve"><value>Observer</value></data>
-  <data name="settings.sandbox" xml:space="preserve"><value>Sandbox</value></data>
-  <data name="settings.sandboxOff" xml:space="preserve"><value>Off — the agent works directly in your checkout.</value></data>
-  <data name="settings.sandboxOn" xml:space="preserve"><value>On — the agent works in a separate git worktree.</value></data>
-  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Recovery is required before sandbox operations can continue.</value></data>
-  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Retry recovery</value></data>
-  <data name="settings.sandboxName" xml:space="preserve"><value>Name</value></data>
-  <data name="settings.sandboxEnter" xml:space="preserve"><value>Start sandbox</value></data>
-  <data name="settings.sandboxMerge" xml:space="preserve"><value>Merge and exit</value></data>
-  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Discard and exit</value></data>
-  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Origin</value></data>
-  <data name="settings.sandboxBranch" xml:space="preserve"><value>Branch</value></data>
-  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Allow network for new processes</value></data>
-  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>This applies only to new commands. Existing terminal sessions keep their current policy.</value></data>
-  <data name="settings.sandboxOpen" xml:space="preserve"><value>Open sandbox</value></data>
-  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Open origin</value></data>
-  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Conflicts</value></data>
-  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Prepare resolution</value></data>
-  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Ask agent</value></data>
-  <data name="settings.sandboxPreview" xml:space="preserve"><value>Refresh preview</value></data>
-  <data name="settings.sandboxApprove" xml:space="preserve"><value>Approve and merge</value></data>
-  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Cancel resolution</value></data>
-  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Retry cleanup</value></data>
-  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Discard this sandbox? Its branch will be kept for recovery, but its worktree will be removed.</value></data>
-  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Approval requires a complete preview with no unresolved files.</value></data>
-  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Resolution preview</value></data>
-  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Unresolved files</value></data>
-  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>Origin HEAD</value></data>
-  <data name="settings.sandboxHead" xml:space="preserve"><value>Sandbox HEAD</value></data>
-  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Preview fingerprint</value></data>
-  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Sandbox cleanup is still pending; the origin was not changed again.</value></data>
-  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Saved sandboxes</value></data>
-  <data name="settings.sandboxRecover" xml:space="preserve"><value>Recover</value></data>
+  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer 令牌（可选）</value></data>
+  <data name="mcp.executable" xml:space="preserve"><value>可执行文件路径</value></data>
+  <data name="mcp.arguments" xml:space="preserve"><value>参数（以空格分隔）</value></data>
+  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>自动运行服务器标记为只读的工具</value></data>
+  <data name="mcp.autoRunHelp" xml:space="preserve"><value>服务器注释不可信。启用后，仅对标记为只读且非破坏性的工具跳过审批。</value></data>
+  <data name="mcp.test" xml:space="preserve"><value>测试</value></data>
+  <data name="mcp.add" xml:space="preserve"><value>添加服务器</value></data>
+  <data name="mcp.reconnect" xml:space="preserve"><value>重新连接</value></data>
+  <data name="mcp.remove" xml:space="preserve"><value>移除</value></data>
+  <data name="mcp.idle" xml:space="preserve"><value>空闲</value></data>
+  <data name="mcp.connecting" xml:space="preserve"><value>正在连接…</value></data>
+  <data name="mcp.connected" xml:space="preserve"><value>已连接 · {0} 个工具</value></data>
+  <data name="mcp.failed" xml:space="preserve"><value>失败：{0}</value></data>
+  <data name="mcp.testing" xml:space="preserve"><value>正在测试…</value></data>
+  <data name="mcp.testConnected" xml:space="preserve"><value>已连接。有 {0} 个工具可用。</value></data>
+  <data name="conversation.toolInput" xml:space="preserve"><value>工具输入</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>记忆</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>记忆库</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>刷新</value></data>
+  <data name="memory.enabled" xml:space="preserve"><value>开启记忆</value></data>
+  <data name="memory.scanFrequency" xml:space="preserve"><value>扫描频率</value></data>
+  <data name="memory.scan.off" xml:space="preserve"><value>关闭</value></data>
+  <data name="memory.scan.hourly" xml:space="preserve"><value>每小时</value></data>
+  <data name="memory.scan.daily" xml:space="preserve"><value>每天</value></data>
+  <data name="memory.scan.weekly" xml:space="preserve"><value>每周</value></data>
+  <data name="memory.enabledHelp" xml:space="preserve"><value>关闭后，不记录任何任务，不学习任何内容，也不向模型发送任何发现；已保存的内容仍保留在磁盘上。</value></data>
+  <data name="memory.scanHelp" xml:space="preserve"><value>简短的任务笔记会保留，因此扫描后仍可查阅各项发现的依据；关闭扫描后，后台不会调用模型。</value></data>
+  <data name="memory.reveal" xml:space="preserve"><value>打开 .mem 文件夹</value></data>
+  <data name="memory.refused" xml:space="preserve"><value>未保存。该条目可能包含凭据、超出限制，或工作区不可用。</value></data>
+  <data name="memory.noWorkspace" xml:space="preserve"><value>选择一个本地工作区以查看其记忆。</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>记忆在此工作区的第一个提示词之后开始。</value></data>
+  <data name="memory.search" xml:space="preserve"><value>搜索记忆</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>选择一条笔记以查看。</value></data>
+  <data name="memory.save" xml:space="preserve"><value>保存</value></data>
+  <data name="memory.forget" xml:space="preserve"><value>遗忘</value></data>
+  <data name="memory.ownRules" xml:space="preserve"><value>你自己的规则</value></data>
+  <data name="memory.rulesHelp" xml:space="preserve"><value>这些规则会添加到此项目的每个请求中。</value></data>
+  <data name="memory.lessons" xml:space="preserve"><value>学到的经验</value></data>
+  <data name="memory.learningStats" xml:space="preserve"><value>已记录 {0} 轮；其中 {1} 轮被纠正或撤销。</value></data>
+  <data name="memory.links" xml:space="preserve"><value>链接</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>关联提及</value></data>
+  <data name="memory.userAuthored" xml:space="preserve"><value>用户编写</value></data>
+  <data name="memory.inferred" xml:space="preserve"><value>推断</value></data>
+  <data name="memory.learnedCount" xml:space="preserve"><value>已学习 {0} 次</value></data>
+  <data name="memory.usedCount" xml:space="preserve"><value>已使用 {0} 次</value></data>
+  <data name="memory.inactive" xml:space="preserve"><value>不再应用</value></data>
+  <data name="memory.pin" xml:space="preserve"><value>固定</value></data>
+  <data name="memory.edit" xml:space="preserve"><value>编辑</value></data>
+  <data name="memory.cancel" xml:space="preserve"><value>取消</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>工作区访问</value></data>
+  <data name="access.accept" xml:space="preserve"><value>接受</value></data>
+  <data name="settings.sandbox" xml:space="preserve"><value>沙盒</value></data>
+  <data name="settings.sandboxOff" xml:space="preserve"><value>关闭 — 智能体直接在你的检出副本中工作。</value></data>
+  <data name="settings.sandboxOn" xml:space="preserve"><value>开启 — 智能体在单独的 git worktree 中工作。</value></data>
+  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>需要先恢复才能继续沙盒操作。</value></data>
+  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>重试恢复</value></data>
+  <data name="settings.sandboxName" xml:space="preserve"><value>名称</value></data>
+  <data name="settings.sandboxEnter" xml:space="preserve"><value>启动沙盒</value></data>
+  <data name="settings.sandboxMerge" xml:space="preserve"><value>合并并退出</value></data>
+  <data name="settings.sandboxDiscard" xml:space="preserve"><value>丢弃并退出</value></data>
+  <data name="settings.sandboxOrigin" xml:space="preserve"><value>来源</value></data>
+  <data name="settings.sandboxBranch" xml:space="preserve"><value>分支</value></data>
+  <data name="settings.sandboxNetwork" xml:space="preserve"><value>允许新进程访问网络</value></data>
+  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>仅适用于新命令。现有终端会话保留当前策略。</value></data>
+  <data name="settings.sandboxOpen" xml:space="preserve"><value>打开沙盒</value></data>
+  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>打开源</value></data>
+  <data name="settings.sandboxConflicts" xml:space="preserve"><value>冲突</value></data>
+  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>准备解决</value></data>
+  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>询问智能体</value></data>
+  <data name="settings.sandboxPreview" xml:space="preserve"><value>刷新预览</value></data>
+  <data name="settings.sandboxApprove" xml:space="preserve"><value>批准并合并</value></data>
+  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>取消解决</value></data>
+  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>重试清理</value></data>
+  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>丢弃此沙盒？其分支将保留以便恢复，但其 worktree 将被删除。</value></data>
+  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>批准需要一个没有未解决文件的完整预览。</value></data>
+  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>解决预览</value></data>
+  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>未解决的文件</value></data>
+  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>源 HEAD</value></data>
+  <data name="settings.sandboxHead" xml:space="preserve"><value>沙盒 HEAD</value></data>
+  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>预览指纹</value></data>
+  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>沙盒清理仍在等待中；源未再次更改。</value></data>
+  <data name="settings.sandboxRecovery" xml:space="preserve"><value>已保存的沙盒</value></data>
+  <data name="settings.sandboxRecover" xml:space="preserve"><value>恢复</value></data>
   <data name="conversation.accountSwitched.notice" xml:space="preserve"><value>此聊天已在同一模型下切换到另一个账户。缓存在该账户上从头开始；继续聊天可能会消耗更多 token 并增加费用。</value></data>
   <data name="conversation.modelSwitched.notice" xml:space="preserve"><value>模型已更改。缓存不会延续到新模型，全部历史将重新处理，这可能会消耗更多 token 并增加费用。</value></data>
   <data name="conversation.contextFull.notice" xml:space="preserve"><value>上下文窗口即将用尽；继续聊天可能会消耗更多 token 并增加费用。请附上简短摘要开始新聊天。</value></data>
@@ -574,28 +558,28 @@
   <data name="context.overflowCompress" xml:space="preserve"><value>压缩并继续</value></data>
   <data name="context.overflowNotNow" xml:space="preserve"><value>暂不</value></data>
   <data name="context.overflowDeclined" xml:space="preserve"><value>发送已停止:对话无法放入新模型。</value></data>
-  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>When another chat is writing the same file</value></data>
-  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Wait before asking</value></data>
-  <data name="settings.conflictWaitValue" xml:space="preserve"><value>Wait {0} seconds</value></data>
-  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Wait, then ask</value></data>
-  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>A chat that wants a file another chat is writing waits quietly, and asks only if the wait goes on too long.</value></data>
-  <data name="conflict.policy.ask" xml:space="preserve"><value>Ask me</value></data>
-  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Ask as soon as two chats want the same file.</value></data>
-  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Always wait</value></data>
-  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Never ask: a write waits for the chat that holds the file.</value></data>
-  <data name="conflict.title" xml:space="preserve"><value>A file is busy: {0}</value></data>
-  <data name="conflict.wholeProject" xml:space="preserve"><value>Project command: {0}</value></data>
-  <data name="conflict.stillBusy" xml:space="preserve"><value>Write held back: another chat is still writing {0}.</value></data>
-  <data name="conflict.userSkipped" xml:space="preserve"><value>Write skipped: {0} was left with the other chat ({1}), as you asked.</value></data>
-  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Stopped {0} so this chat could write.</value></data>
-  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Stopped other chats so this chat could write.</value></data>
-  <data name="conflict.banner.title" xml:space="preserve"><value>Another chat is writing this file</value></data>
-  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · held by “{1}” for {2} seconds</value></data>
-  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Keep waiting</value></data>
-  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Stop {0}</value></data>
-  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Stop all other chats</value></data>
-  <data name="conflict.banner.skip" xml:space="preserve"><value>Skip this write</value></data>
-  <data name="conflict.waiting" xml:space="preserve"><value>Waiting for “{0}” to finish writing: {1}</value></data>
+  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>当另一个会话正在写入同一文件</value></data>
+  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>询问前先等待</value></data>
+  <data name="settings.conflictWaitValue" xml:space="preserve"><value>{0} 秒</value></data>
+  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>先等待，再询问</value></data>
+  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>会先安静等待另一个会话，只有等待过久才会询问。</value></data>
+  <data name="conflict.policy.ask" xml:space="preserve"><value>询问我</value></data>
+  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>当两个会话同时想要同一文件时立即询问。</value></data>
+  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>始终等待</value></data>
+  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>不会询问：每次写入都等待持有该文件的会话。</value></data>
+  <data name="conflict.title" xml:space="preserve"><value>另一个会话正在写入 {0}</value></data>
+  <data name="conflict.wholeProject" xml:space="preserve"><value>整个项目（命令：{0}）</value></data>
+  <data name="conflict.stillBusy" xml:space="preserve"><value>已暂缓写入：另一个会话仍在写入 {0}。</value></data>
+  <data name="conflict.userSkipped" xml:space="preserve"><value>已按要求跳过写入：{0} 仍归另一个会话（{1}）。</value></data>
+  <data name="conflict.stoppedHolder" xml:space="preserve"><value>已按您的请求停止会话“{0}”，并完成此次写入。</value></data>
+  <data name="conflict.stoppedOthers" xml:space="preserve"><value>已按您的请求停止该项目的其他会话，并完成此次写入。</value></data>
+  <data name="conflict.banner.title" xml:space="preserve"><value>另一个会话正在写入此文件</value></data>
+  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · 由“{1}”已持有 {2} 秒</value></data>
+  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>继续等待</value></data>
+  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>停止该会话</value></data>
+  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>停止其他所有会话</value></data>
+  <data name="conflict.banner.skip" xml:space="preserve"><value>跳过此写入</value></data>
+  <data name="conflict.waiting" xml:space="preserve"><value>正在等待“{0}”完成写入：{1}</value></data>
   <data name="usage.context.button" xml:space="preserve"><value>用量</value></data>
   <data name="usage.context.tooltip" xml:space="preserve"><value>上下文和令牌用量</value></data>
   <data name="usage.context.latestRequest" xml:space="preserve"><value>最近一次请求 · 上下文窗口</value></data>
@@ -605,34 +589,738 @@
   <data name="usage.context.notReported" xml:space="preserve"><value>提供方未报告</value></data>
   <data name="usage.context.estimatedBreakdown" xml:space="preserve"><value>预估输入明细</value></data>
   <data name="usage.context.tokens" xml:space="preserve"><value>token</value></data>
-  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} tokens ({2})</value></data>
-  <data name="usage.context.notAvailable" xml:space="preserve"><value>Context usage is not available yet.</value></data>
-  <data name="usage.context.composition" xml:space="preserve"><value>Estimated input composition</value></data>
+  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} 个 token（{2}）</value></data>
+  <data name="usage.context.notAvailable" xml:space="preserve"><value>上下文用量暂不可用。</value></data>
+  <data name="usage.context.composition" xml:space="preserve"><value>估计的输入构成</value></data>
   <data name="usage.context.estimatedRow" xml:space="preserve"><value>{0}: {1} ({2})</value></data>
   <data name="usage.context.conversation" xml:space="preserve"><value>对话消息</value></data>
   <data name="usage.context.systemPrompt" xml:space="preserve"><value>系统指令</value></data>
   <data name="usage.context.toolDefinitions" xml:space="preserve"><value>工具定义</value></data>
   <data name="usage.context.mcpDefinitions" xml:space="preserve"><value>MCP 工具定义</value></data>
-  <data name="usage.context.cacheHit" xml:space="preserve"><value>Measured cache hit</value></data>
-  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Verified prefix reuse: {0} · {1} / {2} tokens</value></data>
-  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Measurement coverage: {0} · {1} of {2} eligible requests</value></data>
-  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Cold: {0} · expired: {1} · changed: {2}</value></data>
-  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Cache writes: {0} tokens</value></data>
-  <data name="usage.context.freshInput" xml:space="preserve"><value>Fresh input: {0} tokens</value></data>
-  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Reuse not reported: {0} of {1} eligible requests</value></data>
-  <data name="usage.context.latency" xml:space="preserve"><value>Average request latency: {0}</value></data>
-  <data name="usage.context.prepare" xml:space="preserve"><value>Average request preparation: {0}</value></data>
-  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Largest cache loss: {0} ({1} tokens)</value></data>
-  <data name="settings.shortcuts" xml:space="preserve"><value>Keyboard shortcuts</value></data>
-  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Select a shortcut to change it. Press a key combination with at least one modifier.</value></data>
-  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Press keys…</value></data>
-  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Restore defaults</value></data>
-  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} is already assigned to {1}.</value></data>
-  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull requests</value></data>
-  <data name="conversation.review" xml:space="preserve"><value>Review</value></data>
-  <data name="conversation.files" xml:space="preserve"><value>Files</value></data>
-  <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
-  <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
-  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} 个 token</value></data>
+  <data name="usage.context.cacheHit" xml:space="preserve"><value>测得的缓存命中</value></data>
+  <data name="usage.context.cacheReuse" xml:space="preserve"><value>已验证的前缀复用：{0} · {1} / {2} 个 token</value></data>
+  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>测量覆盖率：{0} · {2} 个符合条件的请求中有 {1} 个</value></data>
+  <data name="usage.context.cacheStatus" xml:space="preserve"><value>冷启动：{0} · 已过期：{1} · 已更改：{2}</value></data>
+  <data name="usage.context.cacheWrite" xml:space="preserve"><value>缓存写入：{0} 个 token</value></data>
+  <data name="usage.context.freshInput" xml:space="preserve"><value>新输入：{0} 个 token</value></data>
+  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>未报告复用：{1} 个符合条件的请求中有 {0} 个</value></data>
+  <data name="usage.context.latency" xml:space="preserve"><value>平均请求延迟：{0}</value></data>
+  <data name="usage.context.prepare" xml:space="preserve"><value>平均请求准备时间：{0}</value></data>
+  <data name="usage.context.cacheLoss" xml:space="preserve"><value>最大缓存损失：{0}（{1} 个 token）</value></data>
+  <data name="settings.shortcuts" xml:space="preserve"><value>键盘快捷键</value></data>
+  <data name="settings.shortcuts.hint" xml:space="preserve"><value>选择一个快捷键进行更改。按下至少包含一个修饰键的组合键。</value></data>
+  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>显示或隐藏侧边栏</value></data>
+  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>请按键…</value></data>
+  <data name="settings.shortcuts.reset" xml:space="preserve"><value>恢复默认</value></data>
+  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} 已分配给 {1}。</value></data>
+  <data name="sidebar.pullRequests" xml:space="preserve"><value>拉取请求</value></data>
+  <data name="conversation.review" xml:space="preserve"><value>审查</value></data>
+  <data name="conversation.files" xml:space="preserve"><value>文件</value></data>
+  <data name="conversation.browser" xml:space="preserve"><value>浏览器</value></data>
+  <data name="conversation.newChat" xml:space="preserve"><value>新对话</value></data>
+  <data name="conversation.processedTokensCount" xml:space="preserve"><value>新处理了 {0} 个 token</value></data>
+  <data name="settings.skillSuggestions" xml:space="preserve"><value>显示技能建议</value></data>
+  <data name="settings.skillSuggestions.hint" xml:space="preserve"><value>仅当同一经验被学到三次，或代理完成了你还会再用的工作流时才建议技能；每周最多一张卡片。关闭：不显示建议卡片，代理也不会建议技能。</value></data>
+  <data name="skill.suggestion.title" xml:space="preserve"><value>建议的技能：{0}</value></data>
+  <data name="skill.suggestion.create" xml:space="preserve"><value>创建技能</value></data>
+  <data name="skill.suggestion.dismiss" xml:space="preserve"><value>暂不</value></data>
+  <data name="settings.autoAccountFailover" xml:space="preserve"><value>额度用尽后自动尝试其他账户</value></data>
+  <data name="settings.autoAccountFailover.hint" xml:space="preserve"><value>关闭时，聊天会在达到限额的账户上暂停；点击“继续”以尝试其他兼容账户。开启时，会自动尝试兼容账户。</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>以 Token 为单位输入特定模型的上下文大小。“自动”会在可用时使用模型报告或记录的大小，然后使用账户配置的值。</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>搜索模型</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>自动检测值：{0} Token</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>提供商未报告上下文大小。</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>暂无可用模型。请连接提供商或刷新模型列表。</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>已保存。</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>自动</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>请输入正整数 Token 数。</value></data>
+  <data name="attachment.files" xml:space="preserve"><value>文件或照片</value></data>
+  <data name="attachment.project" xml:space="preserve"><value>在项目中工作</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>上下文已自动压缩</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>已读取文件</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>已更改文件</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>已运行命令</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>已搜索网络</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>正在读取文件…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>正在编辑文件…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>正在运行命令…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>正在搜索网络…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>已使用工具</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>正在运行工具…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>工具失败：{0}</value></data>
+  <data name="tasks.menu" xml:space="preserve"><value>任务</value></data>
+  <data name="tasks.title" xml:space="preserve"><value>计划任务</value></data>
+  <data name="tasks.subtitle" xml:space="preserve"><value>根据 cron 计划运行提示。</value></data>
+  <data name="tasks.empty" xml:space="preserve"><value>还没有任务。</value></data>
+  <data name="tasks.add" xml:space="preserve"><value>添加任务</value></data>
+  <data name="tasks.edit" xml:space="preserve"><value>编辑任务</value></data>
+  <data name="tasks.delete" xml:space="preserve"><value>删除</value></data>
+  <data name="tasks.runNow" xml:space="preserve"><value>立即运行</value></data>
+  <data name="tasks.enabled" xml:space="preserve"><value>启用</value></data>
+  <data name="tasks.field.name" xml:space="preserve"><value>名称</value></data>
+  <data name="tasks.field.cron" xml:space="preserve"><value>克朗表达式</value></data>
+  <data name="tasks.field.prompt" xml:space="preserve"><value>提示</value></data>
+  <data name="tasks.field.workspace" xml:space="preserve"><value>工作空间</value></data>
+  <data name="tasks.cron.invalid" xml:space="preserve"><value>无效的 cron 表达式。</value></data>
+  <data name="tasks.cron.next" xml:space="preserve"><value>下一次运行</value></data>
+  <data name="tasks.close" xml:space="preserve"><value>关闭任务</value></data>
+  <data name="tasks.back" xml:space="preserve"><value>返回</value></data>
+  <data name="tasks.new" xml:space="preserve"><value>新任务</value></data>
+  <data name="tasks.active" xml:space="preserve"><value>你的任务</value></data>
+  <data name="tasks.disabled" xml:space="preserve"><value>已停用</value></data>
+  <data name="tasks.suggestions" xml:space="preserve"><value>建议</value></data>
+  <data name="tasks.history" xml:space="preserve"><value>最近运行</value></data>
+  <data name="tasks.history.empty" xml:space="preserve"><value>此任务尚未运行。</value></data>
+  <data name="tasks.field.target" xml:space="preserve"><value>目标文件或文件夹</value></data>
+  <data name="tasks.field.targetHint" xml:space="preserve"><value>工作区内的可选路径</value></data>
+  <data name="tasks.target.invalid" xml:space="preserve"><value>目标必须位于工作区内。</value></data>
+  <data name="tasks.field.model" xml:space="preserve"><value>模型</value></data>
+  <data name="tasks.field.fallback" xml:space="preserve"><value>备用模型</value></data>
+  <data name="tasks.network" xml:space="preserve"><value>允许网络访问</value></data>
+  <data name="tasks.assistant.title" xml:space="preserve"><value>任务助手</value></data>
+  <data name="tasks.assistant.placeholder" xml:space="preserve"><value>请求修改此任务…</value></data>
+  <data name="tasks.assistant.updated" xml:space="preserve"><value>任务已更新。</value></data>
+  <data name="tasks.notification.title" xml:space="preserve"><value>计划任务</value></data>
+  <data name="tasks.notification.completed" xml:space="preserve"><value>已完成</value></data>
+  <data name="tasks.notification.failed" xml:space="preserve"><value>失败</value></data>
+  <data name="tasks.notification.fallback" xml:space="preserve"><value>已使用备用模型</value></data>
+  <data name="tasks.suggestion.daily.title" xml:space="preserve"><value>每日简报</value></data>
+  <data name="tasks.suggestion.daily.detail" xml:space="preserve"><value>总结近期工作、待处理优先事项和工作区变更。</value></data>
+  <data name="tasks.suggestion.daily.schedule" xml:space="preserve"><value>工作日上午 8:00</value></data>
+  <data name="tasks.suggestion.daily.prompt" xml:space="preserve"><value>查看近期对话和工作区变更，总结今天最重要的优先事项。</value></data>
+  <data name="tasks.suggestion.weekly.title" xml:space="preserve"><value>每周回顾</value></data>
+  <data name="tasks.suggestion.weekly.detail" xml:space="preserve"><value>每周五将近期工作整理成简洁的状态更新。</value></data>
+  <data name="tasks.suggestion.weekly.schedule" xml:space="preserve"><value>每周五下午 4:00</value></data>
+  <data name="tasks.suggestion.weekly.prompt" xml:space="preserve"><value>查看本周对话和工作区变更，撰写包含已完成工作、风险和后续步骤的简洁状态更新。</value></data>
+  <data name="tasks.suggestion.followup.title" xml:space="preserve"><value>跟进监视器</value></data>
+  <data name="tasks.suggestion.followup.detail" xml:space="preserve"><value>检查近期活动，标记任何需要关注的事项。</value></data>
+  <data name="tasks.suggestion.followup.schedule" xml:space="preserve"><value>工作日上午 9:00</value></data>
+  <data name="tasks.suggestion.followup.prompt" xml:space="preserve"><value>查看近期任务和工作区活动，标记未完成的工作、失败的运行以及任何需要关注的事项。</value></data>
+  <data name="tasks.lastRun" xml:space="preserve"><value>最后一次运行</value></data>
+  <data name="tasks.state.never" xml:space="preserve"><value>永远不要跑</value></data>
+  <data name="tasks.state.running" xml:space="preserve"><value>正在运行...</value></data>
+  <data name="tasks.state.ok" xml:space="preserve"><value>成功了</value></data>
+  <data name="tasks.state.failed" xml:space="preserve"><value>失败</value></data>
+  <data name="tasks.openConversation" xml:space="preserve"><value>开放对话</value></data>
+  <data name="tasks.save" xml:space="preserve"><value>保存</value></data>
+  <data name="tasks.cancel" xml:space="preserve"><value>取消</value></data>
+  <data name="tasks.background" xml:space="preserve"><value>在应用程序关闭时运行任务</value></data>
+  <data name="tasks.background.hint" xml:space="preserve"><value>安装一个后台助手 (launchd)，即使 Dots Harness 未打开，它也会运行到期任务。</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>映射</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>索引</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>任务</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>决策</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>偏好设置</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>对话</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>无关联提及。</value></data>
+  <data name="memory.graph" xml:space="preserve"><value>图谱</value></data>
+  <data name="media.image" xml:space="preserve"><value>图像</value></data>
+  <data name="media.video" xml:space="preserve"><value>视频</value></data>
+  <data name="media.audio" xml:space="preserve"><value>音频</value></data>
+  <data name="media.promptMissing" xml:space="preserve"><value>描述命令后生成的内容。</value></data>
+  <data name="media.promptMissingFor" xml:space="preserve"><value>描述命令后生成的{0}。</value></data>
+  <data name="media.modelMissing" xml:space="preserve"><value>未配置媒体提供商模型。</value></data>
+  <data name="media.noOutput" xml:space="preserve"><value>提供者没有返回任何媒体输出。</value></data>
+  <data name="media.invalidOutput" xml:space="preserve"><value>提供商返回了无效的媒体数据。</value></data>
+  <data name="media.generationFailed" xml:space="preserve"><value>提供者无法生成媒体。</value></data>
+  <data name="media.videoTimeout" xml:space="preserve"><value>视频生成超时。</value></data>
+  <data name="media.busy" xml:space="preserve"><value>生成或代理运行已经在进行中。完成后重试。</value></data>
+  <data name="media.unsupported" xml:space="preserve"><value>我这里无法生成这个。所选提供商不具备此功能。</value></data>
+  <data name="media.unsupportedStatus" xml:space="preserve"><value>所选提供商不支持媒体生成。</value></data>
+  <data name="media.fileMissing" xml:space="preserve"><value>生成的文件不再可用。</value></data>
+  <data name="media.openAudio" xml:space="preserve"><value>打开生成的音频</value></data>
+  <data name="media.save" xml:space="preserve"><value>保存</value></data>
+  <data name="media.showInFinder" xml:space="preserve"><value>在 Finder 中显示</value></data>
+  <data name="rail.home" xml:space="preserve"><value>首页</value></data>
+  <data name="rail.media" xml:space="preserve"><value>媒体</value></data>
+  <data name="rail.tasks" xml:space="preserve"><value>任务</value></data>
+  <data name="rail.bots" xml:space="preserve"><value>机器人</value></data>
+  <data name="rail.marketplace" xml:space="preserve"><value>市场</value></data>
+  <data name="rail.memory" xml:space="preserve"><value>记忆</value></data>
+  <data name="rail.settings" xml:space="preserve"><value>设置</value></data>
+  <data name="models.followApp" xml:space="preserve"><value>应用的模型</value></data>
+  <data name="studio.preset.square" xml:space="preserve"><value>方形帖子</value></data>
+  <data name="studio.preset.story" xml:space="preserve"><value>快拍</value></data>
+  <data name="studio.preset.landscape" xml:space="preserve"><value>横向</value></data>
+  <data name="studio.preset.thumbnail" xml:space="preserve"><value>视频缩略图</value></data>
+  <data name="studio.preset.logo" xml:space="preserve"><value>标志</value></data>
+  <data name="studio.preset.poster" xml:space="preserve"><value>海报</value></data>
+  <data name="studio.template.announcement" xml:space="preserve"><value>公告</value></data>
+  <data name="studio.template.story" xml:space="preserve"><value>快拍</value></data>
+  <data name="studio.template.thumbnail" xml:space="preserve"><value>视频缩略图</value></data>
+  <data name="studio.template.slide" xml:space="preserve"><value>标题幻灯片</value></data>
+  <data name="studio.template.logo" xml:space="preserve"><value>标志</value></data>
+  <data name="studio.template.mobile" xml:space="preserve"><value>移动端屏幕</value></data>
+  <data name="studio.category.social" xml:space="preserve"><value>社交媒体</value></data>
+  <data name="studio.category.uiux" xml:space="preserve"><value>UI/UX</value></data>
+  <data name="studio.category.presentation" xml:space="preserve"><value>演示与信息图</value></data>
+  <data name="studio.category.other" xml:space="preserve"><value>其他设计</value></data>
+  <data name="studio.sample.title" xml:space="preserve"><value>你的标题</value></data>
+  <data name="studio.sample.detail" xml:space="preserve"><value>一句话多说一点</value></data>
+  <data name="studio.sample.brand" xml:space="preserve"><value>品牌</value></data>
+  <data name="studio.sample.text" xml:space="preserve"><value>文字</value></data>
+  <data name="studio.copyOf" xml:space="preserve"><value>{0} 副本</value></data>
+  <data name="studio.untitled" xml:space="preserve"><value>未命名项目</value></data>
+  <data name="studio.home.title" xml:space="preserve"><value>描述你的想法，让它变为现实</value></data>
+  <data name="studio.home.search" xml:space="preserve"><value>搜索</value></data>
+  <data name="studio.home.sort.name" xml:space="preserve"><value>名称</value></data>
+  <data name="studio.home.filter.all" xml:space="preserve"><value>全部时间</value></data>
+  <data name="studio.home.filter.week" xml:space="preserve"><value>最近 7 天</value></data>
+  <data name="studio.home.filter.month" xml:space="preserve"><value>最近 30 天</value></data>
+  <data name="studio.home.starred" xml:space="preserve"><value>已加星标</value></data>
+  <data name="studio.home.star" xml:space="preserve"><value>添加星标</value></data>
+  <data name="studio.home.unstar" xml:space="preserve"><value>移除星标</value></data>
+  <data name="studio.home.modified" xml:space="preserve"><value>上次修改</value></data>
+  <data name="studio.home.canvases" xml:space="preserve"><value>画布</value></data>
+  <data name="studio.projects" xml:space="preserve"><value>项目</value></data>
+  <data name="studio.templates" xml:space="preserve"><value>模板</value></data>
+  <data name="studio.community" xml:space="preserve"><value>社区</value></data>
+  <data name="studio.community.banner" xml:space="preserve"><value>探索社区创作的设计</value></data>
+  <data name="studio.community.saved" xml:space="preserve"><value>已保存</value></data>
+  <data name="studio.community.share" xml:space="preserve"><value>分享到社区</value></data>
+  <data name="studio.community.shared" xml:space="preserve"><value>已提交审核。批准后将显示在社区中。</value></data>
+  <data name="studio.community.signIn" xml:space="preserve"><value>登录你的 HerNess 账户以分享到社区。</value></data>
+  <data name="studio.community.empty" xml:space="preserve"><value>这里尚无社区设计。</value></data>
+  <data name="studio.projectName" xml:space="preserve"><value>项目名称</value></data>
+  <data name="studio.newProject" xml:space="preserve"><value>新建项目</value></data>
+  <data name="studio.create" xml:space="preserve"><value>创建项目</value></data>
+  <data name="studio.rename" xml:space="preserve"><value>重命名</value></data>
+  <data name="studio.duplicate" xml:space="preserve"><value>复制</value></data>
+  <data name="studio.deleteConfirm" xml:space="preserve"><value>删除“{0}”？其画布和上传的文件都会被移除。</value></data>
+  <data name="studio.projectMeta" xml:space="preserve"><value>画布：{0}，编辑于 {1}</value></data>
+  <data name="studio.empty.title" xml:space="preserve"><value>还没有媒体项目</value></data>
+  <data name="studio.empty.detail" xml:space="preserve"><value>项目是由画布组成的面板。你可以自己添加文字、形状和图像，也可以描述想要的内容，让模型逐层构建。</value></data>
+  <data name="studio.addCanvas" xml:space="preserve"><value>画布</value></data>
+  <data name="studio.undo" xml:space="preserve"><value>撤销</value></data>
+  <data name="studio.redo" xml:space="preserve"><value>重做</value></data>
+  <data name="studio.zoomOut" xml:space="preserve"><value>缩小</value></data>
+  <data name="studio.zoomIn" xml:space="preserve"><value>放大</value></data>
+  <data name="studio.zoomFit" xml:space="preserve"><value>适应所有画布</value></data>
+  <data name="studio.layers" xml:space="preserve"><value>图层</value></data>
+  <data name="studio.layers.empty" xml:space="preserve"><value>此画布还没有图层。</value></data>
+  <data name="studio.layer.text" xml:space="preserve"><value>文字</value></data>
+  <data name="studio.layer.shape" xml:space="preserve"><value>形状</value></data>
+  <data name="studio.layer.upload" xml:space="preserve"><value>上传</value></data>
+  <data name="studio.layer.show" xml:space="preserve"><value>显示图层</value></data>
+  <data name="studio.layer.hide" xml:space="preserve"><value>隐藏图层</value></data>
+  <data name="studio.shape.rectangle" xml:space="preserve"><value>矩形</value></data>
+  <data name="studio.shape.ellipse" xml:space="preserve"><value>椭圆</value></data>
+  <data name="studio.name" xml:space="preserve"><value>名称</value></data>
+  <data name="studio.opacity" xml:space="preserve"><value>不透明度</value></data>
+  <data name="studio.fontSize" xml:space="preserve"><value>大小</value></data>
+  <data name="studio.weight.regular" xml:space="preserve"><value>常规</value></data>
+  <data name="studio.weight.medium" xml:space="preserve"><value>中等</value></data>
+  <data name="studio.weight.bold" xml:space="preserve"><value>粗体</value></data>
+  <data name="studio.fill" xml:space="preserve"><value>填充</value></data>
+  <data name="studio.cornerRadius" xml:space="preserve"><value>圆角半径</value></data>
+  <data name="studio.playVideo" xml:space="preserve"><value>播放视频</value></data>
+  <data name="studio.size" xml:space="preserve"><value>大小</value></data>
+  <data name="studio.background" xml:space="preserve"><value>背景</value></data>
+  <data name="studio.deleteCanvas" xml:space="preserve"><value>删除画布</value></data>
+  <data name="studio.ai.kind.design" xml:space="preserve"><value>设计</value></data>
+  <data name="studio.ai.kind.image" xml:space="preserve"><value>图像</value></data>
+  <data name="studio.ai.kind.video" xml:space="preserve"><value>视频</value></data>
+  <data name="studio.ai.placeholder.design" xml:space="preserve"><value>描述要在此画布上构建的设计</value></data>
+  <data name="studio.ai.placeholder.image" xml:space="preserve"><value>描述要生成的图像</value></data>
+  <data name="studio.ai.placeholder.video" xml:space="preserve"><value>描述要生成的视频</value></data>
+  <data name="studio.ai.run" xml:space="preserve"><value>生成</value></data>
+  <data name="studio.ai.planning" xml:space="preserve"><value>正在规划图层</value></data>
+  <data name="studio.ai.layerProgress" xml:space="preserve"><value>图层 {0}/{1}：{2}</value></data>
+  <data name="studio.ai.drawing" xml:space="preserve"><value>正在生成图像</value></data>
+  <data name="studio.ai.renderingVideo" xml:space="preserve"><value>正在生成视频，可能需要几分钟。</value></data>
+  <data name="studio.ai.noPlan" xml:space="preserve"><value>模型没有返回图层。请重试或选择其他模型。</value></data>
+  <data name="studio.settings.title" xml:space="preserve"><value>媒体模型</value></data>
+  <data name="studio.settings.design" xml:space="preserve"><value>设计</value></data>
+  <data name="studio.settings.model" xml:space="preserve"><value>模型</value></data>
+  <data name="studio.settings.designHelp" xml:space="preserve"><value>将请求转换为图层的聊天模型。</value></data>
+  <data name="studio.settings.source" xml:space="preserve"><value>来源</value></data>
+  <data name="studio.settings.source.provider" xml:space="preserve"><value>提供商</value></data>
+  <data name="studio.settings.source.local" xml:space="preserve"><value>本地</value></data>
+  <data name="studio.settings.modelDefault" xml:space="preserve"><value>提供商默认</value></data>
+  <data name="studio.settings.local" xml:space="preserve"><value>本地服务器</value></data>
+  <data name="studio.settings.localURL" xml:space="preserve"><value>基础 URL</value></data>
+  <data name="studio.settings.localHelp" xml:space="preserve"><value>本机或网络中与 OpenAI 兼容的服务器。当上方的来源设为本地时，使用你在那里输入的模型名称。</value></data>
+  <data name="studio.settings.music.connect" xml:space="preserve"><value>连接 API</value></data>
+  <data name="studio.settings.music.type.standard" xml:space="preserve"><value>音乐服务器</value></data>
+  <data name="studio.settings.music.type.elevenlabs" xml:space="preserve"><value>ElevenLabs</value></data>
+  <data name="studio.settings.music.name" xml:space="preserve"><value>名称</value></data>
+  <data name="studio.settings.music.key" xml:space="preserve"><value>API 密钥</value></data>
+  <data name="studio.settings.music.help" xml:space="preserve"><value>音乐服务器响应 POST /audio/generations 并在 /models 列出其模型；tools/music_server.py 即为一例。API 密钥保存在钥匙串中。</value></data>
+  <data name="studio.ai.kind.next" xml:space="preserve"><value>下一屏</value></data>
+  <data name="studio.ai.placeholder.next" xml:space="preserve"><value>描述下一屏，或留空以延续流程</value></data>
+  <data name="studio.ai.noImages" xml:space="preserve"><value>未连接图像生成器，图像图层保留为占位符。连接后可在各图层上生成图像。</value></data>
+  <data name="studio.screenNumber" xml:space="preserve"><value>第 {0} 屏</value></data>
+  <data name="studio.layer.icon" xml:space="preserve"><value>图标</value></data>
+  <data name="studio.layer.lock" xml:space="preserve"><value>锁定图层</value></data>
+  <data name="studio.layer.unlock" xml:space="preserve"><value>解锁图层</value></data>
+  <data name="studio.layer.front" xml:space="preserve"><value>移到最前</value></data>
+  <data name="studio.layer.back" xml:space="preserve"><value>移到最后</value></data>
+  <data name="studio.position" xml:space="preserve"><value>位置</value></data>
+  <data name="studio.rotation" xml:space="preserve"><value>旋转</value></data>
+  <data name="studio.appearance" xml:space="preserve"><value>外观</value></data>
+  <data name="studio.gradient" xml:space="preserve"><value>渐变</value></data>
+  <data name="studio.stroke" xml:space="preserve"><value>描边</value></data>
+  <data name="studio.shadow" xml:space="preserve"><value>阴影</value></data>
+  <data name="studio.symbol" xml:space="preserve"><value>符号名称</value></data>
+  <data name="studio.imagePrompt" xml:space="preserve"><value>图像描述</value></data>
+  <data name="studio.generateImage" xml:space="preserve"><value>生成图像</value></data>
+  <data name="studio.export" xml:space="preserve"><value>导出</value></data>
+  <data name="studio.exportAll" xml:space="preserve"><value>导出所有画布</value></data>
+  <data name="studio.font.default" xml:space="preserve"><value>无衬线</value></data>
+  <data name="studio.font.rounded" xml:space="preserve"><value>圆体</value></data>
+  <data name="studio.font.serif" xml:space="preserve"><value>衬线</value></data>
+  <data name="studio.font.mono" xml:space="preserve"><value>等宽</value></data>
+  <data name="studio.tool.move" xml:space="preserve"><value>移动</value></data>
+  <data name="studio.tool.hand" xml:space="preserve"><value>抓手</value></data>
+  <data name="studio.tool.pen" xml:space="preserve"><value>钢笔</value></data>
+  <data name="studio.tool.pencil" xml:space="preserve"><value>铅笔</value></data>
+  <data name="studio.shape.line" xml:space="preserve"><value>直线</value></data>
+  <data name="studio.shape.arrow" xml:space="preserve"><value>箭头</value></data>
+  <data name="studio.shape.polygon" xml:space="preserve"><value>多边形</value></data>
+  <data name="studio.shape.star" xml:space="preserve"><value>星形</value></data>
+  <data name="studio.actions" xml:space="preserve"><value>操作</value></data>
+  <data name="studio.unlockAll" xml:space="preserve"><value>解锁所有图层</value></data>
+  <data name="studio.frames.phone" xml:space="preserve"><value>手机</value></data>
+  <data name="studio.frames.tablet" xml:space="preserve"><value>平板</value></data>
+  <data name="studio.frames.desktop" xml:space="preserve"><value>桌面</value></data>
+  <data name="studio.frames.presentation" xml:space="preserve"><value>演示文稿</value></data>
+  <data name="studio.frames.watch" xml:space="preserve"><value>手表</value></data>
+  <data name="studio.frames.paper" xml:space="preserve"><value>纸张</value></data>
+  <data name="studio.frames.social" xml:space="preserve"><value>社交媒体</value></data>
+  <data name="studio.tool.scale" xml:space="preserve"><value>缩放</value></data>
+  <data name="studio.tool.section" xml:space="preserve"><value>分区</value></data>
+  <data name="studio.tool.slice" xml:space="preserve"><value>切片</value></data>
+  <data name="studio.tool.textPath" xml:space="preserve"><value>路径文字</value></data>
+  <data name="studio.tool.comment" xml:space="preserve"><value>评论</value></data>
+  <data name="studio.search" xml:space="preserve"><value>搜索</value></data>
+  <data name="studio.cut" xml:space="preserve"><value>剪切</value></data>
+  <data name="studio.paste" xml:space="preserve"><value>粘贴</value></data>
+  <data name="bots.preset.assistant" xml:space="preserve"><value>助手</value></data>
+  <data name="bots.preset.researcher" xml:space="preserve"><value>研究员</value></data>
+  <data name="bots.preset.coder" xml:space="preserve"><value>程序员</value></data>
+  <data name="bots.new" xml:space="preserve"><value>新建机器人</value></data>
+  <data name="bots.edit" xml:space="preserve"><value>编辑机器人</value></data>
+  <data name="bots.clear" xml:space="preserve"><value>清空聊天</value></data>
+  <data name="bots.send" xml:space="preserve"><value>发送消息</value></data>
+  <data name="bots.deleteConfirm" xml:space="preserve"><value>删除“{0}”及其聊天？</value></data>
+  <data name="bots.empty.title" xml:space="preserve"><value>还没有机器人</value></data>
+  <data name="bots.empty.detail" xml:space="preserve"><value>机器人是拥有自己的指令、模型和持续聊天的助手。给它一个文件夹，它就会在那里作为智能体工作。</value></data>
+  <data name="bots.greeting" xml:space="preserve"><value>向 {0} 发送消息以开始。</value></data>
+  <data name="bots.placeholder" xml:space="preserve"><value>发消息给 {0}</value></data>
+  <data name="bots.agentIn" xml:space="preserve"><value>{0} 中的智能体</value></data>
+  <data name="bots.name" xml:space="preserve"><value>名称</value></data>
+  <data name="bots.icon" xml:space="preserve"><value>图标</value></data>
+  <data name="bots.instructions" xml:space="preserve"><value>指令</value></data>
+  <data name="bots.instructionsHelp" xml:space="preserve"><value>机器人应如何表现、知道什么以及如何回答。</value></data>
+  <data name="bots.workspace" xml:space="preserve"><value>智能体文件夹</value></data>
+  <data name="bots.workspace.none" xml:space="preserve"><value>无：仅聊天</value></data>
+  <data name="bots.workspace.choose" xml:space="preserve"><value>选择文件夹</value></data>
+  <data name="bots.workspace.clear" xml:space="preserve"><value>移除</value></data>
+  <data name="bots.workspaceHelp" xml:space="preserve"><value>有文件夹时，机器人可以在其中直接读写和运行命令而无需询问，且无法访问网络。没有文件夹时只进行聊天。</value></data>
+  <data name="bots.error.noReply" xml:space="preserve"><value>机器人没有回复。</value></data>
+  <data name="bots.status.delivered" xml:space="preserve"><value>已送达机器人</value></data>
+  <data name="bots.status.waiting" xml:space="preserve"><value>正在等待机器人</value></data>
+  <data name="tasks.plan.title" xml:space="preserve"><value>安排任务</value></data>
+  <data name="tasks.plan.subtitle" xml:space="preserve"><value>HerNess 为你执行周期性工作。</value></data>
+  <data name="tasks.upcoming" xml:space="preserve"><value>即将进行</value></data>
+  <data name="tasks.instructions" xml:space="preserve"><value>指令…</value></data>
+  <data name="tasks.repeat" xml:space="preserve"><value>重复</value></data>
+  <data name="tasks.time" xml:space="preserve"><value>时间</value></data>
+  <data name="tasks.day" xml:space="preserve"><value>日期</value></data>
+  <data name="tasks.advanced" xml:space="preserve"><value>高级</value></data>
+  <data name="tasks.create" xml:space="preserve"><value>创建</value></data>
+  <data name="tasks.repeat.hourly" xml:space="preserve"><value>每小时</value></data>
+  <data name="tasks.repeat.daily" xml:space="preserve"><value>每天</value></data>
+  <data name="tasks.repeat.weekdays" xml:space="preserve"><value>工作日</value></data>
+  <data name="tasks.repeat.weekly" xml:space="preserve"><value>每周</value></data>
+  <data name="tasks.repeat.custom" xml:space="preserve"><value>自定义</value></data>
+  <data name="bots.preset.assistant.detail" xml:space="preserve"><value>协助处理日常任务</value></data>
+  <data name="bots.preset.researcher.detail" xml:space="preserve"><value>研究主题并比较来源</value></data>
+  <data name="bots.preset.coder.detail" xml:space="preserve"><value>编写代码并解决问题</value></data>
+  <data name="tasks.suggestion.email.title" xml:space="preserve"><value>邮件跟进</value></data>
+  <data name="tasks.suggestion.email.detail" xml:space="preserve"><value>检查重要邮件并总结需要关注的内容。</value></data>
+  <data name="tasks.suggestion.reading.title" xml:space="preserve"><value>周末阅读</value></data>
+  <data name="tasks.suggestion.reading.detail" xml:space="preserve"><value>每周寻找一篇符合我兴趣的文章。</value></data>
+  <data name="tasks.suggestion.prices.title" xml:space="preserve"><value>价格提醒</value></data>
+  <data name="tasks.suggestion.prices.detail" xml:space="preserve"><value>检查我关注的商品价格并通知折扣。</value></data>
+  <data name="tasks.suggestion.events.title" xml:space="preserve"><value>发现活动</value></data>
+  <data name="tasks.suggestion.events.detail" xml:space="preserve"><value>寻找符合我兴趣的音乐会和活动。</value></data>
+  <data name="tasks.suggestion.weekend.title" xml:space="preserve"><value>规划我的周末</value></data>
+  <data name="tasks.suggestion.weekend.detail" xml:space="preserve"><value>根据我的偏好推荐周末活动。</value></data>
+  <data name="tasks.suggestions.memory" xml:space="preserve"><value>根据你的记忆</value></data>
+  <data name="tasks.suggestions.personalizing" xml:space="preserve"><value>正在根据记忆准备建议…</value></data>
+  <data name="tasks.suggestions.unavailable" xml:space="preserve"><value>示例建议 · 个性化暂不可用</value></data>
+  <data name="tasks.suggestions.refresh" xml:space="preserve"><value>刷新建议</value></data>
+  <data name="tasks.suggestions.instruction" xml:space="preserve"><value>根据我的兴趣和偏好整理结果。总结发现的内容。如果缺少必要信息或访问权限，请说明需要什么。</value></data>
+  <data name="media.music" xml:space="preserve"><value>音乐</value></data>
+  <data name="studio.music" xml:space="preserve"><value>音乐</value></data>
+  <data name="studio.library" xml:space="preserve"><value>资料库</value></data>
+  <data name="studio.music.composing" xml:space="preserve"><value>正在谱曲，可能需要几分钟。</value></data>
+  <data name="studio.music.song" xml:space="preserve"><value>歌曲</value></data>
+  <data name="studio.music.inspector" xml:space="preserve"><value>详细信息</value></data>
+  <data name="studio.music.section" xml:space="preserve"><value>段落</value></data>
+  <data name="studio.music.section.delete" xml:space="preserve"><value>删除段落</value></data>
+  <data name="studio.music.lyrics" xml:space="preserve"><value>歌词</value></data>
+  <data name="studio.music.track" xml:space="preserve"><value>音轨</value></data>
+  <data name="studio.music.track.generate" xml:space="preserve"><value>生成音轨</value></data>
+  <data name="studio.music.track.empty" xml:space="preserve"><value>暂无音频</value></data>
+  <data name="studio.music.track.delete" xml:space="preserve"><value>删除音轨</value></data>
+  <data name="studio.music.mix" xml:space="preserve"><value>混音</value></data>
+  <data name="studio.music.tempo" xml:space="preserve"><value>速度与调式</value></data>
+  <data name="studio.music.generating" xml:space="preserve"><value>正在生成 {0} 条音轨</value></data>
+  <data name="studio.music.placeholder" xml:space="preserve"><value>描述歌曲：情绪、故事、乐器、演唱者</value></data>
+  <data name="studio.music.empty" xml:space="preserve"><value>在上方描述一首歌曲，或从空白歌曲开始。首先生成方案：段落、歌词和每个乐器的音轨，在生成音频之前你可以进行修改。</value></data>
+  <data name="studio.music.plan" xml:space="preserve"><value>创作歌曲</value></data>
+  <data name="studio.music.new" xml:space="preserve"><value>空白歌曲</value></data>
+  <data name="studio.music.noPlan" xml:space="preserve"><value>模型未返回歌曲方案。请重试或选择其他模型。</value></data>
+  <data name="studio.music.deleteConfirm" xml:space="preserve"><value>删除“{0}”？其音轨和音频文件将被移除。</value></data>
+  <data name="studio.music.trackCount" xml:space="preserve"><value>{0} 条音轨</value></data>
+  <data name="studio.music.bpm" xml:space="preserve"><value>{0} BPM</value></data>
+  <data name="studio.music.key" xml:space="preserve"><value>调式</value></data>
+  <data name="studio.music.generateAll" xml:space="preserve"><value>全部生成</value></data>
+  <data name="studio.music.regenerate" xml:space="preserve"><value>重新生成此音轨</value></data>
+  <data name="studio.music.script" xml:space="preserve"><value>脚本</value></data>
+  <data name="studio.music.artists" xml:space="preserve"><value>艺术家</value></data>
+  <data name="studio.music.artist.add" xml:space="preserve"><value>添加艺术家</value></data>
+  <data name="studio.music.artist.default" xml:space="preserve"><value>艺术家 {0}</value></data>
+  <data name="studio.music.artist.name" xml:space="preserve"><value>名称</value></data>
+  <data name="studio.music.artist.style" xml:space="preserve"><value>声音与风格</value></data>
+  <data name="studio.music.section.add" xml:space="preserve"><value>添加段落</value></data>
+  <data name="studio.music.section.default" xml:space="preserve"><value>主歌</value></data>
+  <data name="studio.music.section.bars" xml:space="preserve"><value>{0} 小节</value></data>
+  <data name="studio.music.line.add" xml:space="preserve"><value>添加行</value></data>
+  <data name="studio.music.line.placeholder" xml:space="preserve"><value>歌词行</value></data>
+  <data name="studio.music.line.unsung" xml:space="preserve"><value>无演唱</value></data>
+  <data name="studio.music.track.add" xml:space="preserve"><value>添加音轨</value></data>
+  <data name="studio.music.track.instrument" xml:space="preserve"><value>乐器</value></data>
+  <data name="studio.music.track.prompt" xml:space="preserve"><value>演奏提示词</value></data>
+  <data name="studio.music.track.vocal" xml:space="preserve"><value>人声 · {0}</value></data>
+  <data name="studio.music.mute" xml:space="preserve"><value>静音</value></data>
+  <data name="studio.music.solo" xml:space="preserve"><value>独奏</value></data>
+  <data name="library.all" xml:space="preserve"><value>全部</value></data>
+  <data name="library.kind.image" xml:space="preserve"><value>图像</value></data>
+  <data name="library.kind.video" xml:space="preserve"><value>视频</value></data>
+  <data name="library.kind.audio" xml:space="preserve"><value>语音</value></data>
+  <data name="library.kind.music" xml:space="preserve"><value>音乐</value></data>
+  <data name="library.kind.document" xml:space="preserve"><value>文档</value></data>
+  <data name="library.add" xml:space="preserve"><value>添加文件</value></data>
+  <data name="library.addFailed" xml:space="preserve"><value>未能添加 {0} 个文件。</value></data>
+  <data name="library.open" xml:space="preserve"><value>打开</value></data>
+  <data name="library.empty.title" xml:space="preserve"><value>这里尚无内容</value></data>
+  <data name="library.empty.detail" xml:space="preserve"><value>你生成的图像、视频、语音和音乐会自动保存在这里。文档和其他文件请自行添加。</value></data>
+  <data name="backgroundTasks.title" xml:space="preserve"><value>后台任务</value></data>
+  <data name="backgroundTasks.empty" xml:space="preserve"><value>没有后台任务</value></data>
+  <data name="backgroundTasks.finished" xml:space="preserve"><value>已结束</value></data>
+  <data name="backgroundTasks.failed" xml:space="preserve"><value>失败(退出码 {0})</value></data>
+  <data name="backgroundTasks.stopped" xml:space="preserve"><value>已停止</value></data>
+  <data name="backgroundTasks.clear" xml:space="preserve"><value>清除已结束的任务</value></data>
+  <data name="backgroundTasks.runningCount" xml:space="preserve"><value>正在运行的任务:{0}</value></data>
+  <data name="backgroundTasks.wake" xml:space="preserve"><value>后台任务“{0}”已结束,退出码为 {1}。请用 terminal_session(会话 {2})读取其输出并继续。</value></data>
+  <data name="backgroundTasks.waitingInput" xml:space="preserve"><value>等待输入</value></data>
+  <data name="local.installed" xml:space="preserve"><value>已安装</value></data>
+  <data name="marketplace.title" xml:space="preserve"><value>市场</value></data>
+  <data name="marketplace.empty" xml:space="preserve"><value>没有插件</value></data>
+  <data name="marketplace.emptyHint" xml:space="preserve"><value>按刷新加载注册表。</value></data>
+  <data name="marketplace.install" xml:space="preserve"><value>安装</value></data>
+  <data name="marketplace.search" xml:space="preserve"><value>搜索插件</value></data>
+  <data name="marketplace.update" xml:space="preserve"><value>更新 v{0} → v{1}</value></data>
+  <data name="marketplace.by" xml:space="preserve"><value>通过 {0}</value></data>
+  <data name="market.tab.plugins" xml:space="preserve"><value>插件</value></data>
+  <data name="market.tab.skills" xml:space="preserve"><value>技能</value></data>
+  <data name="market.tab.starters" xml:space="preserve"><value>项目模板</value></data>
+  <data name="starters.intro" xml:space="preserve"><value>选择一个模板和一个空文件夹。提示词会放入输入框，供你阅读后发送。</value></data>
+  <data name="starters.use" xml:space="preserve"><value>使用模板</value></data>
+  <data name="starters.chooseFolder" xml:space="preserve"><value>为新项目选择一个空文件夹。</value></data>
+  <data name="starters.web.title" xml:space="preserve"><value>Web 应用</value></data>
+  <data name="starters.web.detail" xml:space="preserve"><value>包含 TypeScript、布局、示例 API 路由和代码检查的 Next.js。</value></data>
+  <data name="starters.landing.title" xml:space="preserve"><value>落地页</value></data>
+  <data name="starters.landing.detail" xml:space="preserve"><value>包含主视觉、功能、价格和联系方式的静态 HTML 和 CSS。无需构建。</value></data>
+  <data name="starters.api.title" xml:space="preserve"><value>API 服务</value></data>
+  <data name="starters.api.detail" xml:space="preserve"><value>包含健康检查、示例资源、设置和测试的 FastAPI。</value></data>
+  <data name="starters.ios.title" xml:space="preserve"><value>iOS 应用</value></data>
+  <data name="starters.ios.detail" xml:space="preserve"><value>包含两个界面、一个可观察模型和一个单元测试的 SwiftUI。</value></data>
+  <data name="starters.worker.title" xml:space="preserve"><value>Cloudflare Worker</value></data>
+  <data name="starters.worker.detail" xml:space="preserve"><value>运行在 Workers 上的 TypeScript API，带类型化绑定和测试。</value></data>
+  <data name="starters.cli.title" xml:space="preserve"><value>命令行工具</value></data>
+  <data name="starters.cli.detail" xml:space="preserve"><value>包含子命令、测试和安装说明的 Python 包。</value></data>
+  <data name="common.cancel" xml:space="preserve"><value>取消</value></data>
+  <data name="common.connect" xml:space="preserve"><value>连接</value></data>
+  <data name="common.copied" xml:space="preserve"><value>已复制</value></data>
+  <data name="common.delete" xml:space="preserve"><value>删除</value></data>
+  <data name="common.done" xml:space="preserve"><value>完成</value></data>
+  <data name="common.download" xml:space="preserve"><value>下载</value></data>
+  <data name="common.idle" xml:space="preserve"><value>空闲</value></data>
+  <data name="common.refresh" xml:space="preserve"><value>刷新</value></data>
+  <data name="common.remove" xml:space="preserve"><value>移除</value></data>
+  <data name="common.start" xml:space="preserve"><value>启动</value></data>
+  <data name="common.stop" xml:space="preserve"><value>停止</value></data>
+  <data name="common.test" xml:space="preserve"><value>测试</value></data>
+  <data name="common.save" xml:space="preserve"><value>保存</value></data>
+  <data name="common.view" xml:space="preserve"><value>查看</value></data>
+  <data name="composer.add" xml:space="preserve"><value>添加</value></data>
+  <data name="attachment.addApp" xml:space="preserve"><value>添加 Dots Harness 应用</value></data>
+  <data name="attachment.projectDetail" xml:space="preserve"><value>为新聊天选择项目</value></data>
+  <data name="attachment.goal" xml:space="preserve"><value>目标</value></data>
+  <data name="attachment.goalDetail" xml:space="preserve"><value>设置工作目标</value></data>
+  <data name="attachment.plan" xml:space="preserve"><value>计划模式</value></data>
+  <data name="attachment.planDetail" xml:space="preserve"><value>开启计划模式</value></data>
+  <data name="attachment.saveSkill" xml:space="preserve"><value>保存技能</value></data>
+  <data name="attachment.plugins" xml:space="preserve"><value>插件</value></data>
+  <data name="attachment.slashCommands" xml:space="preserve"><value>斜杠命令</value></data>
+  <data name="attachment.folder" xml:space="preserve"><value>添加文件夹</value></data>
+  <data name="attachment.connectors" xml:space="preserve"><value>连接器</value></data>
+  <data name="attachment.documentsDetail" xml:space="preserve"><value>创建和编辑文档产物</value></data>
+  <data name="attachment.pdfDetail" xml:space="preserve"><value>读取、创建和验证 PDF 文件</value></data>
+  <data name="attachment.spreadsheetsDetail" xml:space="preserve"><value>创建和编辑电子表格</value></data>
+  <data name="modelPicker.model" xml:space="preserve"><value>模型</value></data>
+  <data name="modelPicker.speed" xml:space="preserve"><value>速度</value></data>
+  <data name="modelPicker.maximum" xml:space="preserve"><value>最大</value></data>
+  <data name="modelPicker.standard" xml:space="preserve"><value>标准</value></data>
+  <data name="modelPicker.fast" xml:space="preserve"><value>快速</value></data>
+  <data name="modelPicker.auto" xml:space="preserve"><value>汽车</value></data>
+  <data name="modelPicker.autoHint" xml:space="preserve"><value>选择每条消息的模型和工作量</value></data>
+  <data name="settings.sshPassword" xml:space="preserve"><value>密码（仅使用一次）</value></data>
+  <data name="settings.sshRememberPassword" xml:space="preserve"><value>记住密码</value></data>
+  <data name="settings.sshRememberPassword.hint" xml:space="preserve"><value>不需要：密码只用一次来安装密钥，绝不会写入 ~/.ssh/config。</value></data>
+  <data name="ssh.continue" xml:space="preserve"><value>继续</value></data>
+  <data name="ssh.enrolling" xml:space="preserve"><value>正在安装密钥…</value></data>
+  <data name="ssh.enrolled.hint" xml:space="preserve"><value>之后的连接使用密钥，不再需要密码。</value></data>
+  <data name="ssh.retry" xml:space="preserve"><value>重试</value></data>
+  <data name="ssh.retryHint" xml:space="preserve"><value>检查地址、用户名和密码后重试。</value></data>
+  <data name="ssh.installKeyManually" xml:space="preserve"><value>把该密钥加入服务器的 ~/.ssh/authorized_keys，然后重试。</value></data>
+  <data name="ssh.copyPublicKey" xml:space="preserve"><value>复制密钥</value></data>
+  <data name="ssh.error.passwordAuthDisabled" xml:space="preserve"><value>服务器不接受密码登录。</value></data>
+  <data name="ssh.error.authFailed" xml:space="preserve"><value>{0} 拒绝了登录。</value></data>
+  <data name="ssh.error.hostKeyChanged" xml:space="preserve"><value>{0} 的主机密钥已更改。除非服务器被重装，否则不要继续。</value></data>
+  <data name="ssh.error.invalidInput" xml:space="preserve"><value>请输入有效的别名、主机名、用户名和端口。</value></data>
+  <data name="sidebar.projects" xml:space="preserve"><value>项目</value></data>
+  <data name="sidebar.recent" xml:space="preserve"><value>最近</value></data>
+  <data name="sidebar.search" xml:space="preserve"><value>搜索聊天</value></data>
+  <data name="sidebar.sites" xml:space="preserve"><value>站点</value></data>
+  <data name="sidebar.scheduled" xml:space="preserve"><value>已计划</value></data>
+  <data name="sidebar.addProject" xml:space="preserve"><value>添加项目</value></data>
+  <data name="settings.compactTrigger" xml:space="preserve"><value>自动压缩上下文的阈值</value></data>
+  <data name="settings.compactTrigger.hint" xml:space="preserve"><value>占每个模型上下文窗口的比例。压缩会重写提示缓存，因此数值越高，缓存保留得越久。</value></data>
+  <data name="settings.explore.subagents" xml:space="preserve"><value>使用子智能体</value></data>
+  <data name="settings.explore.hint" xml:space="preserve"><value>开启后，在困难或耗时的任务中，智能体会把需要遍历大量文件的搜索以及大型更改中相互独立的部分交给并行子智能体；主对话中只会加入它们的摘要。负责编辑的子智能体只能写入分配给它的文件，分配不能重叠。简单任务不会调用。每个子智能体都是一次单独的模型运行；关闭可降低成本。</value></data>
+  <data name="settings.responseStyle" xml:space="preserve"><value>回复风格</value></data>
+  <data name="settings.responseStyle.hint" xml:space="preserve"><value>此设置不会改写提示词。简洁/极简是尽力而为的偏好，不保证令牌数量、完成度或更低成本。</value></data>
+  <data name="responseStyle.balanced" xml:space="preserve"><value>平衡</value></data>
+  <data name="responseStyle.concise" xml:space="preserve"><value>简洁</value></data>
+  <data name="responseStyle.ultra" xml:space="preserve"><value>极简</value></data>
+  <data name="responseStyle.detailed" xml:space="preserve"><value>详细</value></data>
+  <data name="settings.computerUse.enable" xml:space="preserve"><value>启用电脑操作</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>版本与更新</value></data>
+  <data name="settings.updates.available" xml:space="preserve"><value>有新版本：v{0}</value></data>
+  <data name="settings.updates.download" xml:space="preserve"><value>下载更新</value></data>
+  <data name="dock.branch" xml:space="preserve"><value>分支</value></data>
+  <data name="dock.refresh" xml:space="preserve"><value>刷新</value></data>
+  <data name="dock.commit" xml:space="preserve"><value>提交</value></data>
+  <data name="dock.push" xml:space="preserve"><value>推送</value></data>
+  <data name="dock.fetch" xml:space="preserve"><value>拉取</value></data>
+  <data name="dock.commitOrPush" xml:space="preserve"><value>提交或推送</value></data>
+  <data name="dock.commitMessage" xml:space="preserve"><value>提交信息</value></data>
+  <data name="dock.noChanges" xml:space="preserve"><value>智能体没有做出更改。</value></data>
+  <data name="dock.whyRequest" xml:space="preserve"><value>你的请求</value></data>
+  <data name="dock.whyAgent" xml:space="preserve"><value>智能体的说明</value></data>
+  <data name="dock.notRepo" xml:space="preserve"><value>此文件夹不是 git 仓库。</value></data>
+  <data name="dock.gitMissing" xml:space="preserve"><value>未安装 Git。审查、commit 和 push 需要它。</value></data>
+  <data name="dock.installGit" xml:space="preserve"><value>安装 Git</value></data>
+  <data name="dock.filterFiles" xml:space="preserve"><value>筛选文件…</value></data>
+  <data name="dock.openFile" xml:space="preserve"><value>打开文件</value></data>
+  <data name="dock.selectFile" xml:space="preserve"><value>从工作区树中选择文件</value></data>
+  <data name="dock.binaryFile" xml:space="preserve"><value>二进制或无法读取的文件</value></data>
+  <data name="dock.expand" xml:space="preserve"><value>展开</value></data>
+  <data name="dock.collapse" xml:space="preserve"><value>折叠</value></data>
+  <data name="dock.split" xml:space="preserve"><value>拆分</value></data>
+  <data name="dock.unsplit" xml:space="preserve"><value>显示单个标签页</value></data>
+  <data name="dock.newTab" xml:space="preserve"><value>新标签页</value></data>
+  <data name="dock.address" xml:space="preserve"><value>搜索或输入网址</value></data>
+  <data name="dock.invalidAddress" xml:space="preserve"><value>请输入有效的网址或搜索内容。</value></data>
+  <data name="dock.openExternal" xml:space="preserve"><value>在默认浏览器中打开</value></data>
+  <data name="dock.bottomTerminal" xml:space="preserve"><value>打开底部终端</value></data>
+  <data name="dock.splitHorizontal" xml:space="preserve"><value>左右拆分</value></data>
+  <data name="dock.splitVertical" xml:space="preserve"><value>上下拆分</value></data>
+  <data name="dock.noWorkspace" xml:space="preserve"><value>请先选择工作文件夹。</value></data>
+  <data name="git.branchHelp" xml:space="preserve"><value>选择 Git 分支</value></data>
+  <data name="git.uncommitted" xml:space="preserve"><value>未提交：{0} 文件</value></data>
+  <data name="market.area.core" xml:space="preserve"><value>主市场</value></data>
+  <data name="market.area.experimental" xml:space="preserve"><value>实验性</value></data>
+  <data name="market.area.community" xml:space="preserve"><value>社区</value></data>
+  <data name="market.area.communityExperimental" xml:space="preserve"><value>社区 / 实验性</value></data>
+  <data name="market.account" xml:space="preserve"><value>HerNess 账户</value></data>
+  <data name="market.signIn" xml:space="preserve"><value>登录</value></data>
+  <data name="market.signIn.email" xml:space="preserve"><value>邮箱和密码</value></data>
+  <data name="market.signIn.title" xml:space="preserve"><value>使用 HerNess 账户登录</value></data>
+  <data name="market.email" xml:space="preserve"><value>邮箱</value></data>
+  <data name="market.password" xml:space="preserve"><value>密码</value></data>
+  <data name="market.likeSignIn" xml:space="preserve"><value>登录后点赞</value></data>
+  <data name="market.customize" xml:space="preserve"><value>自定义</value></data>
+  <data name="market.localForks" xml:space="preserve"><value>本地自定义</value></data>
+  <data name="market.openFolder" xml:space="preserve"><value>打开文件夹</value></data>
+  <data name="market.fork.compared" xml:space="preserve"><value>已比较</value></data>
+  <data name="market.consent.title" xml:space="preserve"><value>此插件会运行原生代码</value></data>
+  <data name="market.consent.accept" xml:space="preserve"><value>接受并启用</value></data>
+  <data name="market.consent.message" xml:space="preserve"><value>{0} 是第三方原生插件。区域：{1}。审核：{2}。类别：{3}。请检查其权限和源代码。接受后，插件将立即作为受信任插件运行。</value></data>
+  <data name="market.review.verified" xml:space="preserve"><value>已通过 DOTS 审核</value></data>
+  <data name="market.review.pending" xml:space="preserve"><value>等待审核</value></data>
+  <data name="market.community.empty" xml:space="preserve"><value>暂无社区插件</value></data>
+  <data name="market.community.emptyHint" xml:space="preserve"><value>社区插件需要单独审核，并需你明确同意运行原生代码。</value></data>
+  <data name="market.report" xml:space="preserve"><value>举报</value></data>
+  <data name="market.report.title" xml:space="preserve"><value>举报插件</value></data>
+  <data name="market.report.reason" xml:space="preserve"><value>原因</value></data>
+  <data name="market.report.submit" xml:space="preserve"><value>提交举报</value></data>
+  <data name="market.report.malware" xml:space="preserve"><value>恶意软件或有害行为</value></data>
+  <data name="market.report.credentialTheft" xml:space="preserve"><value>窃取凭据</value></data>
+  <data name="market.report.exfiltration" xml:space="preserve"><value>数据外泄</value></data>
+  <data name="market.report.deceptive" xml:space="preserve"><value>误导性条目或冒充</value></data>
+  <data name="market.report.spam" xml:space="preserve"><value>垃圾内容或空壳封装</value></data>
+  <data name="market.report.copyright" xml:space="preserve"><value>侵犯版权或违反许可证</value></data>
+  <data name="market.publish" xml:space="preserve"><value>发布插件</value></data>
+  <data name="market.publish.title" xml:space="preserve"><value>发布原生插件</value></data>
+  <data name="market.publish.hint" xml:space="preserve"><value>插件文件夹必须包含 plugin.yml、plugin.ir.json 和许可证。不接受 JavaScript 和声明式运行时；平台构建在 CI 中生成。</value></data>
+  <data name="market.publish.noFolder" xml:space="preserve"><value>未选择插件文件夹</value></data>
+  <data name="market.publish.chooseFolder" xml:space="preserve"><value>选择文件夹</value></data>
+  <data name="market.publish.irPreview" xml:space="preserve"><value>plugin.ir.json 预览</value></data>
+  <data name="market.publish.sourcePreview" xml:space="preserve"><value>原生源代码预览</value></data>
+  <data name="market.publish.version" xml:space="preserve"><value>版本 (SemVer)</value></data>
+  <data name="market.publish.license" xml:space="preserve"><value>SPDX 许可证（例如 MIT）</value></data>
+  <data name="market.publish.visibility" xml:space="preserve"><value>源代码可见性</value></data>
+  <data name="market.publish.public" xml:space="preserve"><value>公开 — 列出源代码包</value></data>
+  <data name="market.publish.private" xml:space="preserve"><value>私有 — 仅所有者和 CI 可访问</value></data>
+  <data name="market.publish.targets" xml:space="preserve"><value>目标平台</value></data>
+  <data name="market.publish.footer" xml:space="preserve"><value>发布后，AI 会对类别、区域和风险进行分类。即使插件构建完成，在人工审核结束前也不会上架。</value></data>
+  <data name="market.publish.submit" xml:space="preserve"><value>发布</value></data>
+  <data name="market.publish.error.http" xml:space="preserve"><value>Marketplace 发布失败（HTTP {0}）：{1}</value></data>
+  <data name="market.publish.error.license" xml:space="preserve"><value>请选择许可证以发布插件。</value></data>
+  <data name="market.publish.error.noManifest" xml:space="preserve"><value>所选文件夹中未找到 plugin.yml。</value></data>
+  <data name="market.publish.error.nativeOnly" xml:space="preserve"><value>只能发布原生插件。</value></data>
+  <data name="market.publish.error.semver" xml:space="preserve"><value>请输入有效的 SemVer 版本。</value></data>
+  <data name="market.publish.error.targets" xml:space="preserve"><value>请至少选择一个目标平台和有效的源代码可见性。</value></data>
+  <data name="market.publish.error.package" xml:space="preserve"><value>软件包必须包含 plugin.ir.json 和 license 文件。</value></data>
+  <data name="market.publish.error.irVersion" xml:space="preserve"><value>plugin.ir.json 必须为版本 1。</value></data>
+  <data name="market.publish.error.releaseID" xml:space="preserve"><value>无法获取 Marketplace 发布 ID。</value></data>
+  <data name="market.publish.error.noVersion" xml:space="preserve"><value>plugin.yml 缺少 version 字段。</value></data>
+  <data name="market.publish.status.registering" xml:space="preserve"><value>正在创建 Marketplace 条目…</value></data>
+  <data name="market.publish.status.uploading" xml:space="preserve"><value>正在上传原生源代码包…</value></data>
+  <data name="market.publish.status.aiUnavailable" xml:space="preserve"><value>AI 分类不可用；临时标签：{0} · {1} · {2}。需要人工审核。</value></data>
+  <data name="market.publish.status.aiDone" xml:space="preserve"><value>AI 分类：{0} · {1} · {2}。等待人工审核。</value></data>
+  <data name="market.publish.status.aiFailed" xml:space="preserve"><value>AI 分类未能完成；等待人工审核。</value></data>
+  <data name="market.publish.status.queueing" xml:space="preserve"><value>正在将原生平台构建加入队列…</value></data>
+  <data name="market.publish.status.uploaded" xml:space="preserve"><value>源代码包已上传；等待原生 CI 验证。</value></data>
+  <data name="market.error.notSignedIn" xml:space="preserve"><value>在 Marketplace 发布需要 HerNess 账户。</value></data>
+  <data name="market.error.invalidCallback" xml:space="preserve"><value>HerNess 登录回调无效。</value></data>
+  <data name="market.error.stateMismatch" xml:space="preserve"><value>HerNess 登录状态不匹配。</value></data>
+  <data name="market.error.request" xml:space="preserve"><value>Marketplace 请求失败（HTTP {0}）：{1}</value></data>
+  <data name="market.error.invalidResponse" xml:space="preserve"><value>Marketplace 返回了无效响应。</value></data>
+  <data name="market.error.credentials" xml:space="preserve"><value>需要邮箱和密码。</value></data>
+  <data name="remote.scan" xml:space="preserve"><value>扫描此二维码，或在 HerNess Mobile 中输入一次性代码。</value></data>
+  <data name="remote.newCode" xml:space="preserve"><value>新配对码</value></data>
+  <data name="remote.copyLink" xml:space="preserve"><value>复制配对链接</value></data>
+  <data name="remote.tunnel.enable" xml:space="preserve"><value>启用 Cloudflare Quick Tunnel</value></data>
+  <data name="remote.hint" xml:space="preserve"><value>提供商密钥保留在桌面端。文件写入、终端、构建、部署和 PR 操作仍使用所选的批准模式。</value></data>
+  <data name="settings.tab.mobile" xml:space="preserve"><value>移动控制</value></data>
+  <data name="settings.compaction.economyFixed" xml:space="preserve"><value>经济策略使用固定的 90% 阈值。</value></data>
+  <data name="settings.browser.title" xml:space="preserve"><value>首选浏览器和引擎</value></data>
+  <data name="settings.browser.auto" xml:space="preserve"><value>自动（应用内，或你指定的浏览器）</value></data>
+  <data name="settings.browser.managed" xml:space="preserve"><value>托管的隔离浏览器（Chrome）</value></data>
+  <data name="settings.browser.chrome" xml:space="preserve"><value>我的 Chrome</value></data>
+  <data name="settings.browser.desktopHint" xml:space="preserve"><value>应用内浏览器使用系统浏览器引擎。也可使用受管理的 Chrome 和现有 Chrome 配置文件。</value></data>
+  <data name="settings.browser.inAppDesktop" xml:space="preserve"><value>应用内浏览器</value></data>
+  <data name="settings.computerUse.desktopHint" xml:space="preserve"><value>代理可以检查正在运行的应用、查看屏幕截图、使用鼠标和键盘并验证结果。桌面操作需要访问授权。</value></data>
+  <data name="settings.computerUse.linuxHint" xml:space="preserve"><value>Linux 电脑控制需要 X11、xdotool，以及 maim 或 ImageMagick。不支持 Wayland。</value></data>
+  <data name="market.settings.hint" xml:space="preserve"><value>主 Marketplace 展示经过审核的 Harness 插件。Community 和 Experimental 单独列出；原生插件运行前需要获得你的批准。</value></data>
+  <data name="market.registry.empty" xml:space="preserve"><value>未找到 Marketplace 条目。刷新注册表后重试。</value></data>
+  <data name="market.signIn.hint" xml:space="preserve"><value>使用 Google、GitHub 或 HerNess 邮箱和密码登录。会话令牌保存在平台的凭据存储中。</value></data>
+  <data name="dock.clean" xml:space="preserve"><value>工作区干净。</value></data>
+  <data name="market.publish.folderPickerUnavailable" xml:space="preserve"><value>此桌面环境不提供文件夹选择器。</value></data>
+  <data name="market.publish.localFolderRequired" xml:space="preserve"><value>请选择本地文件夹以发布插件。</value></data>
+  <data name="market.report.details" xml:space="preserve"><value>详细信息（可选，最多 5,000 个字符）</value></data>
+  <data name="dock.browser.webview2Unavailable" xml:space="preserve"><value>无法启动 WebView2。请安装或修复 Microsoft Edge WebView2 Runtime。</value></data>
+  <data name="settings.marketplace" xml:space="preserve"><value>市场</value></data>
+  <data name="workspace.use" xml:space="preserve"><value>使用工作区</value></data>
+  <data name="market.fork.consent.title" xml:space="preserve"><value>此自定义插件会运行原生代码</value></data>
+  <data name="market.fork.consent.message" xml:space="preserve"><value>{0} 是本地分支。其源代码独立于上游；启用前请检查更改。</value></data>
+  <data name="market.fork.newUpstream" xml:space="preserve"><value>新上游：v{0}；本地更改将保留</value></data>
+  <data name="market.remove.confirmTitle" xml:space="preserve"><value>要移除 Marketplace 插件吗？</value></data>
+  <data name="market.remove.confirmMessage" xml:space="preserve"><value>要从此设备移除 {0} 吗？</value></data>
+  <data name="market.report.other" xml:space="preserve"><value>其他</value></data>
+  <data name="modelPicker.economy" xml:space="preserve"><value>节省</value></data>
+  <data name="conversation.toggleResponseEconomy" xml:space="preserve"><value>切换回复的 token 节省模式</value></data>
+  <data name="market.unpublish.confirmMessage" xml:space="preserve"><value>要取消发布 {0} 吗？现有安装不会被移除。</value></data>
+  <data name="market.permissions" xml:space="preserve"><value>权限</value></data>
+  <data name="market.risk" xml:space="preserve"><value>风险：{0}</value></data>
+  <data name="market.category.coding" xml:space="preserve"><value>编程</value></data>
+  <data name="market.category.git" xml:space="preserve"><value>Git</value></data>
+  <data name="market.category.qa" xml:space="preserve"><value>测试与质量</value></data>
+  <data name="market.category.devops" xml:space="preserve"><value>DevOps</value></data>
+  <data name="market.category.browser" xml:space="preserve"><value>浏览器</value></data>
+  <data name="market.category.web" xml:space="preserve"><value>Web</value></data>
+  <data name="market.category.backend" xml:space="preserve"><value>后端</value></data>
+  <data name="market.category.mobile" xml:space="preserve"><value>移动</value></data>
+  <data name="market.category.models" xml:space="preserve"><value>模型</value></data>
+  <data name="market.category.integrations" xml:space="preserve"><value>集成</value></data>
+  <data name="market.category.workspace" xml:space="preserve"><value>工作区</value></data>
+  <data name="market.category.productivity" xml:space="preserve"><value>效率</value></data>
+  <data name="market.category.tools" xml:space="preserve"><value>工具</value></data>
+  <data name="market.category.design" xml:space="preserve"><value>设计</value></data>
+  <data name="market.category.documents" xml:space="preserve"><value>文档</value></data>
+  <data name="market.category.authoring" xml:space="preserve"><value>技能编写</value></data>
+  <data name="market.category.community" xml:space="preserve"><value>社区</value></data>
+  <data name="market.category.other" xml:space="preserve"><value>其他</value></data>
+  <data name="navigation.back" xml:space="preserve"><value>后退</value></data>
+  <data name="navigation.forward" xml:space="preserve"><value>前进</value></data>
+  <data name="dock.restart" xml:space="preserve"><value>重新启动</value></data>
+  <data name="dock.go" xml:space="preserve"><value>前往</value></data>
+  <data name="terminal.sandboxUnavailable" xml:space="preserve"><value>终端沙盒不可用：{0}</value></data>
+  <data name="remote.lan" xml:space="preserve"><value>局域网端点</value></data>
+  <data name="remote.code" xml:space="preserve"><value>代码</value></data>
+  <data name="remote.expires" xml:space="preserve"><value>过期时间：{0}</value></data>
+  <data name="remote.pairingLink" xml:space="preserve"><value>配对链接</value></data>
+  <data name="custom.detected" xml:space="preserve"><value>正在这台电脑上运行</value></data>
+  <data name="custom.modelOptional" xml:space="preserve"><value>模型名称(可选)</value></data>
+  <data name="custom.contextOptional" xml:space="preserve"><value>上下文窗口(token 数,可选)</value></data>
+  <data name="custom.prefix" xml:space="preserve"><value>模型前缀</value></data>
+  <data name="local.tuning" xml:space="preserve"><value>性能</value></data>
+  <data name="local.tuningHint" xml:space="preserve"><value>留空或填 auto 时,运行时会让模型适配你的显存。更改在下次启动模型时生效。</value></data>
+  <data name="local.contextSize" xml:space="preserve"><value>上下文大小(token)</value></data>
+  <data name="local.gpuLayers" xml:space="preserve"><value>GPU 层数(auto、all 或数字)</value></data>
+  <data name="local.threads" xml:space="preserve"><value>CPU 线程数</value></data>
+  <data name="local.batchSize" xml:space="preserve"><value>批大小</value></data>
+  <data name="local.flashAttention" xml:space="preserve"><value>Flash Attention</value></data>
+  <data name="local.kvCache" xml:space="preserve"><value>KV 缓存类型</value></data>
+  <data name="local.extraArgs" xml:space="preserve"><value>额外的 llama-server 参数</value></data>
+  <data name="local.hardware" xml:space="preserve"><value>硬件</value></data>
+  <data name="local.listen" xml:space="preserve"><value>监听地址</value></data>
+  <data name="local.importGGUF" xml:space="preserve"><value>添加 GGUF 文件…</value></data>
+  <data name="local.tooLarge" xml:space="preserve"><value>太大</value></data>
+  <data name="local.backend" xml:space="preserve"><value>GPU 后端</value></data>
+  <data name="settings.compaction.autoRouted" xml:space="preserve"><value>自动路由模型</value></data>
+  <data name="settings.compaction.effectiveThreshold" xml:space="preserve"><value>有效阈值</value></data>
+  <data name="sidebar.signOut" xml:space="preserve"><value>退出登录</value></data>
+  <data name="market.unpublish" xml:space="preserve"><value>取消发布</value></data>
+  <data name="settings.sshHosts" xml:space="preserve"><value>远程电脑（SSH）</value></data>
+  <data name="settings.sshHosts.hint" xml:space="preserve"><value>主机来自 ~/.ssh/config。在这里添加的主机会写回该文件。</value></data>
+  <data name="settings.sshNoHosts" xml:space="preserve"><value>~/.ssh/config 中没有主机。</value></data>
+  <data name="settings.sshAddHost" xml:space="preserve"><value>添加电脑…</value></data>
+  <data name="settings.sshTest" xml:space="preserve"><value>测试</value></data>
+  <data name="settings.sshManaged" xml:space="preserve"><value>在此添加</value></data>
+  <data name="settings.sshFromConfig" xml:space="preserve"><value>来自 ~/.ssh/config</value></data>
+  <data name="settings.sshRemove.handWritten" xml:space="preserve"><value>该主机是手动写入 ~/.ssh/config 的，请在那里移除。</value></data>
+  <data name="settings.updates.current" xml:space="preserve"><value>当前版本</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>正在检查更新…</value></data>
+  <data name="settings.updates.checkAgain" xml:space="preserve"><value>再次检查</value></data>
+  <data name="settings.updates.upToDate" xml:space="preserve"><value>应用已是最新版本。</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>检查更新</value></data>
+  <data name="settings.updates.retry" xml:space="preserve"><value>重试</value></data>
+  <data name="settings.updates.hint" xml:space="preserve"><value>检查最新可用版本。</value></data>
+  <data name="settings.updates.required" xml:space="preserve"><value>必需</value></data>
+  <data name="ssh.connected" xml:space="preserve"><value>{0} 已响应。</value></data>
+  <data name="remote.enable" xml:space="preserve"><value>允许远程控制</value></data>
+  <data name="remote.shareLan" xml:space="preserve"><value>与本地网络共享</value></data>
+  <data name="remote.enableHint" xml:space="preserve"><value>远程网关已关闭。开启后即可配对手机。</value></data>
+  <data name="plan.title" xml:space="preserve"><value>计划</value></data>
+  <data name="plan.proposed" xml:space="preserve"><value>Claude 提出了一个计划</value></data>
+  <data name="plan.revise" xml:space="preserve"><value>修改…</value></data>
+  <data name="plan.acceptAuto" xml:space="preserve"><value>接受并开启自动模式</value></data>
 </root>

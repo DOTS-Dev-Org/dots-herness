@@ -50,6 +50,10 @@ public sealed class NativeFileEditTests : IDisposable
         NativeFileEdit.Execute(new NativeToolCall("glob", "glob",
             new JsonObject { ["pattern"] = pattern, ["path"] = path }.ToJsonString()), _root);
 
+    /// The ledger keys on the resolved path (symlinks followed), as the tools do.
+    private ReadState LedgerState(string file) =>
+        ReadLedger.StateOf(NativeWorkspaceTools.Resolve(Path.GetRelativePath(_root, file), _root), File.ReadAllBytes(file));
+
     private string Content(string relative) =>
         File.ReadAllText(Path.Combine(_root, relative.Replace('/', Path.DirectorySeparatorChar)));
 
@@ -58,13 +62,17 @@ public sealed class NativeFileEditTests : IDisposable
     {
         var original = string.Join('\n', Enumerable.Range(1, 240).Select(i => $"line-{i}:" + new string('x', 1000)));
         var file = Seed("project.swift", original);
-        for (var start = 1; start <= 240; start += 20)
+        for (var start = 1; start <= 240;)
         {
-            var args = new JsonObject { ["path"] = "project.swift", ["offset"] = start, ["limit"] = 20 }.ToJsonString();
+            var args = new JsonObject { ["path"] = "project.swift", ["offset"] = start, ["limit"] = 10 }.ToJsonString();
             var page = await NativeWorkspaceTools.ExecuteAsync(new NativeToolCall("read", "read_file", args), _root);
             Assert.Equal(page, EconomyPolicy.NormalizeToolOutput(page, "read_file", args));
             if (start == 1) Assert.Contains("lines 180-180 of project.swift, which were not read", EditCall("project.swift", ("line-180:", "fixed-180:")));
+            if (start == 1) Assert.Equal(ReadState.Unread, LedgerState(file));
+            var continuation = System.Text.RegularExpressions.Regex.Match(page, @"\[truncated\] Continue with offset: (\d+)");
+            start = continuation.Success ? int.Parse(continuation.Groups[1].Value) : start + 10;
         }
+        Assert.Equal(ReadState.Fresh, LedgerState(file));
         Assert.StartsWith("Edited", EditCall("project.swift", ("line-180:", "fixed-180:")));
         Assert.Equal(original.Replace("line-180:", "fixed-180:"), File.ReadAllText(file));
         var reread = await NativeWorkspaceTools.ExecuteAsync(new NativeToolCall("read", "read_file",
@@ -95,7 +103,7 @@ public sealed class NativeFileEditTests : IDisposable
         var original = string.Join('\n', Enumerable.Range(1, 600).Select(i => $"line-{i}"));
         Seed("long.txt", original);
         var page = await ReadAsync("long.txt");
-        Assert.EndsWith("[truncated] Continue with offset: 251", page);
+        Assert.EndsWith("[truncated] Continue with offset: 251 (file has 600 lines)", page);
         Assert.Contains("line-250", page);
         Assert.DoesNotContain("line-251", page);
 
@@ -109,6 +117,63 @@ public sealed class NativeFileEditTests : IDisposable
             new JsonObject { ["path"] = "long.txt", ["content"] = "x" }.ToJsonString()), _root);
         Assert.DoesNotContain("Wrote", write);
         Assert.Contains("added-a", Content("long.txt"));
+    }
+
+    [Fact]
+    public async Task AnExternalChangeVoidsOldPagesAndOnlyTheNewPageCounts()
+    {
+        Seed("mid.txt", string.Join('\n', Enumerable.Range(1, 600).Select(i => $"line-{i}")));
+        Task<string> Page(int offset, int limit) => NativeWorkspaceTools.ExecuteAsync(new NativeToolCall("read", "read_file",
+            new JsonObject { ["path"] = "mid.txt", ["offset"] = offset, ["limit"] = limit }.ToJsonString()), _root);
+        await Page(170, 31);
+        await Page(400, 10);
+        // A deletion shrinks the range it sits in and pulls the later page up.
+        Assert.StartsWith("Edited", EditCall("mid.txt", ("line-180\nline-181\n", "")));
+        Assert.StartsWith("Edited", EditCall("mid.txt", ("line-405\n", "line-405!\n")));
+
+        // Someone else inserts three lines at the top: every old page is void.
+        File.WriteAllText(Path.Combine(_root, "mid.txt"), "x\ny\nz\n" + Content("mid.txt"));
+        Assert.Contains("changed since it was read", EditCall("mid.txt", ("line-190\n", "nope\n")));
+        // Rereading one section is enough for that section, not for the other one.
+        await Page(185, 20);
+        Assert.StartsWith("Edited", EditCall("mid.txt", ("line-190\n", "line-190!\n")));
+        Assert.Contains("which were not read", EditCall("mid.txt", ("line-406\n", "nope\n")));
+        Assert.Contains("line-405!", Content("mid.txt"));
+        Assert.DoesNotContain("line-181\n", Content("mid.txt"));
+    }
+
+    [Fact]
+    public async Task CompactionForgetsTheConversationsReadsOnly()
+    {
+        Seed("kept.txt", "alpha\nbeta\n");
+        var previous = ReadLedger.Scope;
+        try
+        {
+            ReadLedger.Scope = "conversation:a";
+            await ReadAsync("kept.txt");
+            ReadLedger.Scope = "conversation:b";
+            await ReadAsync("kept.txt");
+
+            // Compaction of conversation a drops its file bodies: it must read again.
+            ReadLedger.ForgetScope("conversation:a");
+            ReadLedger.Scope = "conversation:a";
+            Assert.Contains("has not been read", EditCall("kept.txt", ("alpha", "omega")));
+            var write = await NativeWorkspaceTools.ExecuteAsync(new NativeToolCall("write", "write_file",
+                new JsonObject { ["path"] = "kept.txt", ["content"] = "x" }.ToJsonString()), _root);
+            Assert.DoesNotContain("Wrote", write);
+            Assert.Equal("alpha\nbeta\n", Content("kept.txt"));
+
+            // Conversation b still holds its read.
+            ReadLedger.Scope = "conversation:b";
+            Assert.StartsWith("Edited", EditCall("kept.txt", ("beta", "gamma")));
+
+            // After a fresh read, a sees the current bytes (b's edit included) and may edit.
+            ReadLedger.Scope = "conversation:a";
+            Assert.Contains("gamma", await ReadAsync("kept.txt"));
+            Assert.StartsWith("Edited", EditCall("kept.txt", ("alpha", "omega")));
+            Assert.Equal("omega\ngamma\n", Content("kept.txt"));
+        }
+        finally { ReadLedger.Scope = previous; }
     }
 
     [Fact]
@@ -209,7 +274,7 @@ public sealed class NativeFileEditTests : IDisposable
         };
         var answer = NativeFileEdit.Execute(
             new NativeToolCall("edit", "edit_file", arguments.ToJsonString()), _root);
-        Assert.Equal("Edited all.txt (replaced 2 occurrences).", answer);
+        Assert.Equal("Edited all.txt (replaced 2 occurrences).\n1: y\n2: y\n3: ", answer);
         Assert.Equal("y\ny\n", Content("all.txt"));
     }
 
@@ -218,11 +283,11 @@ public sealed class NativeFileEditTests : IDisposable
     {
         Seed("one.txt", "first\nsecond\nthird\n");
         await ReadAsync("one.txt");
-        Assert.Equal("Edited one.txt (replaced 1 occurrence).", EditCall("one.txt", ("second", "SECOND")));
+        Assert.Equal("Edited one.txt (replaced 1 occurrence).\n1: first\n2: SECOND\n3: third\n4: ", EditCall("one.txt", ("second", "SECOND")));
         Assert.Equal("first\nSECOND\nthird\n", Content("one.txt"));
         // The edit re-arms the ledger with the bytes it wrote, so the next edit needs no
         // fresh read.
-        Assert.Equal("Edited one.txt (replaced 1 occurrence).", EditCall("one.txt", ("SECOND", "second")));
+        Assert.StartsWith("Edited one.txt (replaced 1 occurrence).", EditCall("one.txt", ("SECOND", "second")));
     }
 
     [Fact]
@@ -370,6 +435,24 @@ public sealed class NativeFileEditTests : IDisposable
     {
         Seed("docs/readme.md", "a\n");
         Assert.Contains("is not a directory", Glob("*", "docs/readme.md"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ChangedLinesNamesAWideSpanInsteadOfShowingIt()
+    {
+        var before = string.Join('\n', Enumerable.Range(1, 100).Select(n => $"l{n}"));
+        var after = before.Replace("l10\n", "X\n").Replace("l90\n", "Y\n");
+        Assert.Equal("\nChanged lines 10-90: too wide to show; read_file them if needed.",
+            NativeFileEdit.ChangedLines(before, after));
+    }
+
+    [Fact]
+    public void LongCommandOutputKeepsHeadAndTail()
+    {
+        var text = new string('a', 3_000) + new string('b', 20_000) + "FAILED";
+        var kept = NativeWorkspaceTools.KeepHeadAndTail(text);
+        Assert.StartsWith(new string('a', 2_000) + "\n[... 7006 characters omitted ...]\n", kept);
+        Assert.EndsWith("FAILED", kept);
     }
 
     public void Dispose()

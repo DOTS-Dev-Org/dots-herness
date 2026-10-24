@@ -2,10 +2,10 @@
 // Lessons: what a corrected or undone turn teaches, kept with the situation it
 // applies to, the reason, and how often it has been learned.
 //
-// The store is <workspace>/.mem/lessons.json, the same file macOS writes, so a
-// lesson learned on one desktop is read on the others. Mirrors
-// macos/DotsHarness/Sources/DotsHarnessCore/Lessons.swift; the readable copy
-// (learned_rules.md, a vault note) is regenerated there only.
+// The desktop app stores these user-specific lessons under app support, next to
+// the matching project insights. Older workspace-local lessons are copied there
+// once so existing learning survives the privacy boundary change. Mirrors
+// macos/DotsHarness/Sources/DotsHarnessCore/Lessons.swift.
 
 using System.Globalization;
 using System.Security.Cryptography;
@@ -28,7 +28,8 @@ public sealed record Lesson(
     string Why,
     IReadOnlyList<string> Paths,
     IReadOnlyList<string> Sources,
-    DateTimeOffset LastSeen)
+    DateTimeOffset LastSeen,
+    bool ReviewPromptDismissed = false)
 {
     public const string SignalPrefix = "signal:";
     public const string InferredSuffix = ":inferred";
@@ -47,6 +48,13 @@ public sealed record Lesson(
     public bool IsExplicit => Sources.Any(source => !source.StartsWith(SignalPrefix, StringComparison.Ordinal));
 
     /// <summary>
+    /// Said by the user, or learned from more than one event. One inference may be
+    /// a misread failure, so until it is seen again it is a hint, not a rule.
+    /// </summary>
+    public bool IsConfirmed => IsExplicit || Hits >= 2;
+    public const string UnconfirmedNote = "A lesson marked unconfirmed was inferred from a single turn and may be wrong: treat it as a hint, check it against the current code and errors, and never avoid an API, library or approach only because of it.";
+
+    /// <summary>
     /// What the user said stays. What was only inferred from their behaviour
     /// stays while it is recent or has been learned more than once.
     /// </summary>
@@ -61,7 +69,7 @@ public sealed record Lesson(
         get
         {
             var key = Id.StartsWith(SignalPrefix, StringComparison.Ordinal) ? Id[SignalPrefix.Length..] : Id;
-            return $"[{(key.Length > 6 ? key[..6] : key)} {(IsExplicit ? "user" : "inferred")}] {Line}";
+            return $"[{(key.Length > 6 ? key[..6] : key)} {(IsExplicit ? "user" : IsConfirmed ? "inferred" : "unconfirmed")}] {Line}";
         }
     }
 
@@ -70,7 +78,7 @@ public sealed record Lesson(
         get
         {
             var situation = When.Trim(' ', '.', ':');
-            return (situation.Length == 0 ? "" : $"When {situation}: ") + Rule + (Why.Length == 0 ? "" : $" Why: {Why}");
+            return (situation.Length == 0 ? "" : $"{situation}: ") + Rule + (Why.Length == 0 ? "" : $" — {Why}");
         }
     }
 
@@ -135,8 +143,8 @@ public static class WorkspaceLessons
         + "applies to, one short clause), \"rule\" (what to do or avoid, one or two imperative sentences), \"why\" (the "
         + "cause, one sentence), \"paths\" (an array of the changed files or their directories that the lesson is "
         + "specific to; empty when it holds for the whole project). Leave \"rule\" empty when the evidence does not show "
-        + "a mistake by the agent: a changed mind, a new request or an outside failure is not a lesson. Write in "
-        + "English. Do not use Markdown, XML, or a code fence.";
+        + "a mistake by the agent: a changed mind, a new request or an outside failure is not a lesson. "
+        + "When the user said nothing and the turn only failed, write a rule only when the trace shows the cause; never tell the agent to avoid an API, library, tool or approach unless the evidence shows that it, rather than how it was used, caused the failure. Write the human-readable values in the language of the user's original prompt. If that language is unclear, use the user's comment; if neither is clear, use the assistant response's main language. Do not default to English. Keep file paths, identifiers, API names, and quoted code unchanged. Do not use Markdown, XML, or a code fence.";
 
     private static readonly object Gate = new();
 
@@ -146,9 +154,9 @@ public static class WorkspaceLessons
         "bir", "ve", "ile", "için", "icin", "bu", "şu", "su", "olan", "olarak", "çok", "cok", "ama", "de", "da", "mi",
     };
 
-    public static IReadOnlyList<Lesson> Read(string? workspace)
+    public static IReadOnlyList<Lesson> Read(string? workspace, string? userRoot = null)
     {
-        var path = StorePath(workspace);
+        var path = StorePath(workspace, userRoot);
         if (path is null || !File.Exists(path)) return [];
         try
         {
@@ -171,7 +179,8 @@ public static class WorkspaceLessons
                         DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
                         out var seen)
                         ? seen
-                        : DateTimeOffset.MinValue));
+                        : DateTimeOffset.MinValue,
+                    entry["reviewPromptDismissed"]?.GetValue<bool>() ?? false));
             }
             return lessons;
         }
@@ -180,28 +189,28 @@ public static class WorkspaceLessons
         catch (UnauthorizedAccessException) { return []; }
     }
 
-    public static IReadOnlyList<Lesson> RankedRead(string? workspace) => Ranked(Read(workspace)).ToList();
+    public static IReadOnlyList<Lesson> RankedRead(string? workspace, string? userRoot = null) => Ranked(Read(workspace, userRoot)).ToList();
 
-    public static bool Pin(string? workspace, string id) => MutateLesson(workspace, id, lesson =>
+    public static bool Pin(string? workspace, string id, string? userRoot = null) => MutateLesson(workspace, id, userRoot, lesson =>
         lesson with { Sources = lesson.Sources.Append("user:" + id).Distinct(StringComparer.Ordinal).OrderBy(item => item, StringComparer.Ordinal).ToList() });
 
-    public static bool Forget(string? workspace, string id)
+    public static bool Forget(string? workspace, string id, string? userRoot = null)
     {
-        var path = StorePath(workspace);
+        var path = StorePath(workspace, userRoot);
         if (path is null) return false;
         lock (Gate)
         {
-            var all = Read(workspace).Where(lesson => lesson.Id != id).ToList();
-            return WriteEditedLessons(workspace, path, all);
+            var all = Read(workspace, userRoot).Where(lesson => lesson.Id != id).ToList();
+            return WriteEditedLessons(workspace, userRoot, path, all);
         }
     }
 
-    public static bool EditRule(string? workspace, string id, string rule)
+    public static bool EditRule(string? workspace, string id, string rule, string? userRoot = null)
     {
         var normalized = string.Join(" ", rule.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-        if (normalized.Length == 0) return Forget(workspace, id);
+        if (normalized.Length == 0) return Forget(workspace, id, userRoot);
         if (normalized.Length > MaxLessonCharacters) return false;
-        return MutateLesson(workspace, id, lesson => lesson with
+        return MutateLesson(workspace, id, userRoot, lesson => lesson with
         {
             Rule = normalized,
             Sources = lesson.Sources.Append("user:" + id).Distinct(StringComparer.Ordinal).OrderBy(item => item, StringComparer.Ordinal).ToList(),
@@ -209,36 +218,36 @@ public static class WorkspaceLessons
         });
     }
 
-    private static bool MutateLesson(string? workspace, string id, Func<Lesson, Lesson> update)
+    private static bool MutateLesson(string? workspace, string id, string? userRoot, Func<Lesson, Lesson> update)
     {
-        var path = StorePath(workspace);
+        var path = StorePath(workspace, userRoot);
         if (path is null) return false;
         lock (Gate)
         {
-            var all = Read(workspace).ToList();
+            var all = Read(workspace, userRoot).ToList();
             var index = all.FindIndex(lesson => lesson.Id == id);
             if (index < 0) return false;
             all[index] = update(all[index]);
-            return WriteEditedLessons(workspace, path, all);
+            return WriteEditedLessons(workspace, userRoot, path, all);
         }
     }
 
-    private static bool WriteEditedLessons(string? workspace, string path, IReadOnlyList<Lesson> all)
+    private static bool WriteEditedLessons(string? workspace, string? userRoot, string path, IReadOnlyList<Lesson> all)
     {
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             WriteAtomic(path, Serialize(all));
-            WriteRulesNote(workspace, all);
+            WriteRulesNote(workspace, userRoot, all);
             return true;
         }
         catch (IOException) { return false; }
         catch (UnauthorizedAccessException) { return false; }
     }
 
-    public static string ManualRules(string? workspace)
+    public static string ManualRules(string? workspace, string? userRoot = null)
     {
-        var path = StorePath(workspace);
+        var path = StorePath(workspace, userRoot);
         if (path is null) return "";
         var note = File.Exists(Path.Combine(Path.GetDirectoryName(path)!, "learned_rules.md"))
             ? SafeRead(Path.Combine(Path.GetDirectoryName(path)!, "learned_rules.md"))
@@ -251,9 +260,9 @@ public static class WorkspaceLessons
         return manual == DefaultRulesHeader ? "" : manual;
     }
 
-    public static bool SetManualRules(string? workspace, string text)
+    public static bool SetManualRules(string? workspace, string text, string? userRoot = null)
     {
-        var path = StorePath(workspace);
+        var path = StorePath(workspace, userRoot);
         if (path is null) return false;
         var manual = text.Replace(RulesStart, "", StringComparison.Ordinal)
             .Replace(RulesEnd, "", StringComparison.Ordinal).Trim();
@@ -261,7 +270,7 @@ public static class WorkspaceLessons
         {
             try
             {
-                WriteRulesNote(workspace, Read(workspace), manual);
+                WriteRulesNote(workspace, userRoot, Read(workspace, userRoot), manual);
                 return true;
             }
             catch (IOException) { return false; }
@@ -269,12 +278,12 @@ public static class WorkspaceLessons
         }
     }
 
-    public static IReadOnlyList<string> InjectedRecords(string? workspace)
+    public static IReadOnlyList<string> InjectedRecords(string? workspace, string? userRoot = null)
     {
         var now = DateTimeOffset.UtcNow;
         var result = new List<string>();
         var used = 0;
-        foreach (var lesson in Ranked(Read(workspace)).Where(lesson => lesson.Paths.Count == 0 && lesson.IsActive(now)))
+        foreach (var lesson in Ranked(Read(workspace, userRoot)).Where(lesson => lesson.Paths.Count == 0 && lesson.IsActive(now)))
         {
             var line = "- " + lesson.Cited;
             if (used + line.Length > MaxLessonCharacters) break;
@@ -287,8 +296,8 @@ public static class WorkspaceLessons
     }
 
     public static void LogTurn(string? workspace, IReadOnlyList<string> records, string? conversationId = null,
-        string? turnId = null, string? runId = null, string? provider = null, string? model = null) =>
-        AppendLearningLog(workspace, new
+        string? turnId = null, string? runId = null, string? provider = null, string? model = null, string? userRoot = null) =>
+        AppendLearningLog(workspace, userRoot, new
         {
             at = DateTimeOffset.UtcNow,
             records,
@@ -304,8 +313,8 @@ public static class WorkspaceLessons
         });
 
     public static void LogCompletion(string? workspace, string? conversationId, string? turnId, string? runId,
-        string? provider, string? model, string status) =>
-        AppendLearningLog(workspace, new
+        string? provider, string? model, string status, string? userRoot = null) =>
+        AppendLearningLog(workspace, userRoot, new
         {
             at = DateTimeOffset.UtcNow,
             records = (string[]?)null,
@@ -321,8 +330,8 @@ public static class WorkspaceLessons
         });
 
     public static void LogCorrection(string? workspace, string signal, string? conversationId, string? turnId,
-        string? runId, string? provider, string? model, string outcome) =>
-        AppendLearningLog(workspace, new
+        string? runId, string? provider, string? model, string outcome, string? userRoot = null) =>
+        AppendLearningLog(workspace, userRoot, new
         {
             at = DateTimeOffset.UtcNow,
             records = (string[]?)null,
@@ -337,9 +346,9 @@ public static class WorkspaceLessons
             feedbackOutcome = outcome is "approved" or "corrected" or "rejected" or "adopted" ? outcome : "unknown",
         });
 
-    public static WorkspaceLearningStats LearningStats(string? workspace)
+    public static WorkspaceLearningStats LearningStats(string? workspace, string? userRoot = null)
     {
-        var path = StorePath(workspace);
+        var path = StorePath(workspace, userRoot);
         if (path is null) return new WorkspaceLearningStats(0, 0, []);
         var log = Path.Combine(Path.GetDirectoryName(path)!, "injections.jsonl");
         var turns = 0;
@@ -370,9 +379,9 @@ public static class WorkspaceLessons
                 .Select(pair => (pair.Key, pair.Value)).ToList());
     }
 
-    private static void AppendLearningLog(string? workspace, object entry)
+    private static void AppendLearningLog(string? workspace, string? userRoot, object entry)
     {
-        var path = StorePath(workspace);
+        var path = StorePath(workspace, userRoot);
         if (path is null) return;
         lock (Gate)
         {
@@ -405,13 +414,13 @@ public static class WorkspaceLessons
     /// lesson that says what an existing one says is merged into it: that is how
     /// a lesson gets stronger instead of longer.
     /// </summary>
-    public static IReadOnlyList<Lesson> Set(string? workspace, Lesson? lesson, string source)
+    public static IReadOnlyList<Lesson> Set(string? workspace, Lesson? lesson, string source, string? userRoot = null)
     {
-        var path = StorePath(workspace);
+        var path = StorePath(workspace, userRoot);
         if (path is null) return [];
         lock (Gate)
         {
-            var all = Read(workspace)
+            var all = Read(workspace, userRoot)
                 .Select(item => item with { Sources = item.Sources.Where(existing => existing != source).ToList() })
                 .Where(item => item.Sources.Count > 0)
                 .ToList();
@@ -438,11 +447,11 @@ public static class WorkspaceLessons
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-                File.WriteAllText(path, Serialize(all));
+                WriteAtomic(path, Serialize(all));
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
-            try { WriteRulesNote(workspace, all); }
+            try { WriteRulesNote(workspace, userRoot, all); }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
             return all;
@@ -453,10 +462,12 @@ public static class WorkspaceLessons
     /// Writes a human-readable projection beside lessons.json. Only the marked
     /// generated block changes, so notes edited by a person remain intact.
     /// </summary>
-    private static void WriteRulesNote(string? workspace, IReadOnlyList<Lesson> lessons, string? manual = null)
+    private static void WriteRulesNote(string? workspace, string? userRoot, IReadOnlyList<Lesson> lessons, string? manual = null)
     {
-        if (string.IsNullOrWhiteSpace(workspace) || !Directory.Exists(workspace)) return;
-        var root = Path.Combine(workspace, ".mem");
+        var root = StorePath(workspace, userRoot) is { } storePath
+            ? Path.GetDirectoryName(storePath)
+            : null;
+        if (root is null) return;
         Directory.CreateDirectory(root);
         var path = Path.Combine(root, "learned_rules.md");
         var existing = File.Exists(path) ? File.ReadAllText(path) : "";
@@ -492,22 +503,105 @@ public static class WorkspaceLessons
         WriteAtomic(path, content);
     }
 
-    /// <summary>Stable workspace identity shared with macOS when its manifest exists.</summary>
+    /// <summary>The same id that names the person's folder for the project (see WorkspaceInsights.ProjectId).</summary>
     public static string ProjectIdentity(string? workspace)
     {
         if (string.IsNullOrWhiteSpace(workspace)) return "";
-        try
+        try { return WorkspaceInsights.ProjectId(workspace); }
+        catch (ArgumentException) { return ""; }
+    }
+
+    /// <summary>Moves the profile's entries for a project from the ids it had before its manifest to its manifest id.</summary>
+    internal static void RenameProject(string userRoot, IEnumerable<string> from, string to)
+    {
+        var path = ProfilePath(userRoot);
+        if (path is null || !File.Exists(path)) return;
+        lock (Gate)
         {
-            var manifest = Path.Combine(workspace, ".mem", "manifest.json");
-            if (File.Exists(manifest)
-                && JsonNode.Parse(File.ReadAllText(manifest))?["projectId"]?.GetValue<string>() is { Length: > 0 } id)
-                return id;
+            if (ReadProfile(path) is not { } profile) return;
+            var preferences = profile["projectPreferences"] as JsonObject;
+            var lessons = ReadSharedLessons(profile);
+            foreach (var old in from)
+            {
+                if (preferences?[old] is JsonObject moved && preferences[to] is null)
+                {
+                    preferences.Remove(old);
+                    preferences[to] = moved;
+                }
+                foreach (var lesson in lessons)
+                {
+                    if (lesson.Projects.Remove(old, out var stack)) lesson.Projects.TryAdd(to, stack);
+                }
+            }
+            if (profile["lessons"] is not null) profile["lessons"] = JsonSerializer.SerializeToNode(lessons, ProfileJson);
+            try { WriteAtomic(path, profile.ToJsonString(ProfileJson)); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
         }
-        catch (JsonException) { }
-        catch (IOException) { }
-        catch (UnauthorizedAccessException) { }
-        try { return Path.GetFullPath(workspace); }
-        catch (ArgumentException) { return workspace; }
+    }
+
+    public static bool SetProjectPreference(string? userRoot, string? workspace, string key, string value)
+    {
+        var path = ProfilePath(userRoot);
+        var project = ProjectIdentity(workspace);
+        if (path is null || project.Length == 0) return false;
+        key = key.Trim();
+        value = value.Trim();
+        if (key.Length == 0 || value.Length == 0) return false;
+        lock (Gate)
+        {
+            var profile = ReadProfile(path);
+            if (profile is null) return false;
+            var all = profile["projectPreferences"] as JsonObject ?? new JsonObject();
+            var preferences = all[project] as JsonObject ?? new JsonObject();
+            if (preferences[key] is null && preferences.Count >= 40) return false;
+            preferences[key] = value;
+            all[project] = preferences;
+            profile["projectPreferences"] = all;
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                WriteAtomic(path, profile.ToJsonString(ProfileJson));
+                return true;
+            }
+            catch (IOException) { return false; }
+            catch (UnauthorizedAccessException) { return false; }
+        }
+    }
+
+    public static string ProjectPreferenceText(string? userRoot, string? workspace)
+    {
+        var path = ProfilePath(userRoot);
+        var project = ProjectIdentity(workspace);
+        if (path is null || project.Length == 0) return "";
+        var projectKeys = WorkspaceFacts.Read(workspace)
+            .Select(fact => fact.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        lock (Gate)
+        {
+            var profile = ReadProfile(path);
+            if (profile?["projectPreferences"]?[project] is not JsonObject preferences || preferences.Count == 0) return "";
+            var lines = preferences.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                .Where(pair => !projectKeys.Contains(pair.Key))
+                .Select(pair => $"- {pair.Key}: {pair.Value?.GetValue<string>() ?? ""}")
+                .Where(line => !line.EndsWith(": ", StringComparison.Ordinal));
+            var body = string.Join("\n", lines);
+            return body.Length == 0 ? "" : "## Preferences for this project\n" + body;
+        }
+    }
+
+    public static IReadOnlyList<string> ProjectPreferenceKeys(string? userRoot, string? workspace)
+    {
+        var path = ProfilePath(userRoot);
+        var project = ProjectIdentity(workspace);
+        if (path is null || project.Length == 0) return [];
+        lock (Gate)
+        {
+            var profile = ReadProfile(path);
+            return profile?["projectPreferences"]?[project] is JsonObject preferences
+                ? preferences.Select(pair => pair.Key).ToList()
+                : [];
+        }
     }
 
     /// <summary>
@@ -527,7 +621,7 @@ public static class WorkspaceLessons
             var shared = ReadSharedLessons(profile);
             foreach (var lesson in shared) lesson.Projects.Remove(project);
             shared = shared.Where(lesson => lesson.Projects.Count > 0).ToList();
-            foreach (var lesson in Read(workspace).Where(lesson => lesson.Paths.Count == 0))
+            foreach (var lesson in Read(workspace, userRoot).Where(lesson => lesson.Paths.Count == 0))
             {
                 var known = shared.FirstOrDefault(item => Similar(item.Rule, lesson.Rule));
                 if (known is null)
@@ -543,7 +637,9 @@ public static class WorkspaceLessons
                 known.Projects[project] = stack.Distinct(StringComparer.Ordinal).OrderBy(item => item, StringComparer.Ordinal).ToList();
             }
             profile["lessons"] = JsonSerializer.SerializeToNode(
-                shared.OrderBy(item => item.Rule, StringComparer.Ordinal).Take(200).ToList(), ProfileJson);
+                // Past the cap the lessons fewest projects taught go first.
+                shared.OrderByDescending(item => item.Projects.Count).ThenBy(item => item.Rule, StringComparer.Ordinal)
+                    .Take(200).ToList(), ProfileJson);
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -614,7 +710,8 @@ public static class WorkspaceLessons
     private static string? ProfilePath(string? userRoot) =>
         string.IsNullOrWhiteSpace(userRoot) ? null : Path.Combine(userRoot, UserProfileFile);
 
-    private static void WriteAtomic(string path, string content)
+    /// <summary>Writes beside the file and moves it over, so a crash never leaves half a file that reads as empty.</summary>
+    internal static void WriteAtomic(string path, string content)
     {
         var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
@@ -633,21 +730,24 @@ public static class WorkspaceLessons
     /// within a fixed budget. A lesson tied to files is not here - it is handed
     /// over when one of those files is opened; see <see cref="FileNotice"/>.
     /// </summary>
-    public static string RulesText(string? workspace)
+    public static string RulesText(string? workspace, string? userRoot = null)
     {
         var now = DateTimeOffset.UtcNow;
         var lines = new List<string>();
         var used = 0;
-        foreach (var lesson in Ranked(Read(workspace)).Where(lesson => lesson.Paths.Count == 0 && lesson.IsActive(now)))
+        foreach (var lesson in Ranked(Read(workspace, userRoot)).Where(lesson => lesson.Paths.Count == 0 && lesson.IsActive(now)))
         {
             var line = "- " + lesson.Cited;
             if (used + line.Length > MaxLessonCharacters) break;
             used += line.Length;
             lines.Add(line);
         }
-        return lines.Count == 0
-            ? ""
-            : "## Lessons from the user's feedback and earlier work\n" + string.Join("\n", lines);
+        // What the person wrote by hand goes whole, as on macOS: cutting it would drop their rules unseen.
+        return string.Join("\n\n", new[]
+        {
+            ManualRules(workspace, userRoot),
+            lines.Count == 0 ? "" : "## Lessons from the user's feedback and earlier work\n" + Lesson.UnconfirmedNote + "\n" + string.Join("\n", lines),
+        }.Where(part => part.Length > 0));
     }
 
     /// <summary>
@@ -655,16 +755,16 @@ public static class WorkspaceLessons
     /// changed it - once per conversation, tracked in <paramref name="delivered"/>.
     /// Most turns never touch the file; in the prompt they would cost every turn.
     /// </summary>
-    public static string FileNotice(string? workspace, string? path, ISet<string> delivered)
+    public static string FileNotice(string? workspace, string? path, ISet<string> delivered, string? userRoot = null)
     {
         if (string.IsNullOrWhiteSpace(path)) return "";
         var now = DateTimeOffset.UtcNow;
-        var fresh = Ranked(Read(workspace))
+        var fresh = Ranked(Read(workspace, userRoot))
             .Where(lesson => lesson.IsActive(now) && lesson.AppliesTo(path) && !delivered.Contains(lesson.Id))
             .ToList();
         if (fresh.Count == 0) return "";
         foreach (var lesson in fresh) delivered.Add(lesson.Id);
-        return "\n\nLearned earlier about this file (apply it):\n" + string.Join("\n", fresh.Select(lesson => "- " + lesson.Cited));
+        return "\n\nLearned earlier about this file (apply it; an unconfirmed one is only a hint to verify):\n" + string.Join("\n", fresh.Select(lesson => "- " + lesson.Cited));
     }
 
     public static string Payload(LessonEvidence evidence)
@@ -787,8 +887,13 @@ public static class WorkspaceLessons
             .Where(token => token.Length >= 3 && !StopWords.Contains(token))
             .ToHashSet(StringComparer.Ordinal);
 
+    /// <summary>
+    /// What the user said comes first, so an inferred lesson met often can never push one
+    /// out of the prompt's budget.
+    /// </summary>
     private static IEnumerable<Lesson> Ranked(IEnumerable<Lesson> lessons) => lessons
-        .OrderByDescending(lesson => lesson.Hits)
+        .OrderByDescending(lesson => lesson.IsExplicit)
+        .ThenByDescending(lesson => lesson.Hits)
         .ThenByDescending(lesson => lesson.LastSeen)
         .ThenBy(lesson => lesson.Id, StringComparer.Ordinal);
 
@@ -834,6 +939,7 @@ public static class WorkspaceLessons
                 ["lastSeen"] = lesson.LastSeen.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
                 ["paths"] = new JsonArray(lesson.Paths.Select(path => (JsonNode?)JsonValue.Create(path)).ToArray()),
                 ["rule"] = lesson.Rule,
+                ["reviewPromptDismissed"] = lesson.ReviewPromptDismissed,
                 ["sources"] = new JsonArray(lesson.Sources.Select(source => (JsonNode?)JsonValue.Create(source)).ToArray()),
                 ["when"] = lesson.When,
                 ["why"] = lesson.Why,
@@ -842,8 +948,41 @@ public static class WorkspaceLessons
         return items.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
     }
 
-    private static string? StorePath(string? workspace) =>
-        string.IsNullOrWhiteSpace(workspace) || !Directory.Exists(workspace)
-            ? null
-            : Path.Combine(workspace, ".mem", "lessons.json");
+    public static string? RulesNotePath(string? workspace, string? userRoot = null) =>
+        StorePath(workspace, userRoot) is { } path
+            ? Path.Combine(Path.GetDirectoryName(path)!, "learned_rules.md")
+            : null;
+
+    private static string? StorePath(string? workspace, string? userRoot = null)
+    {
+        if (string.IsNullOrWhiteSpace(workspace) || !Directory.Exists(workspace)) return null;
+        if (!string.IsNullOrWhiteSpace(userRoot))
+        {
+            if (WorkspaceInsights.Folder(workspace, userRoot) is not { } folder) return null;
+            MigrateLegacyFiles(workspace, folder);
+            return Path.Combine(folder, "lessons.json");
+        }
+        // Retain the old location for isolated callers and legacy migrations. The
+        // desktop app always supplies its support root, keeping personal learning
+        // outside the checkout and any project snapshot.
+        return Path.Combine(workspace, ".mem", "lessons.json");
+    }
+
+    private static void MigrateLegacyFiles(string workspace, string folder)
+    {
+        var legacy = Path.Combine(workspace, ".mem");
+        foreach (var name in new[] { "lessons.json", "learned_rules.md" })
+        {
+            var source = Path.Combine(legacy, name);
+            var destination = Path.Combine(folder, name);
+            if (File.Exists(destination) || !File.Exists(source)) continue;
+            try
+            {
+                Directory.CreateDirectory(folder);
+                File.Copy(source, destination, overwrite: false);
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
 }

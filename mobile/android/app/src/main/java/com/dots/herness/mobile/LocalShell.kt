@@ -32,54 +32,61 @@ class LocalShell(private val root: () -> File) {
     }
 
     suspend fun execute(line: String): String = withContext(Dispatchers.IO) {
+        val workspaceRoot = root().canonicalFile
+        MobileWorkspaceWriteLease.withLease(workspaceRoot) {
+            executeInWorkspace(line, workspaceRoot)
+        }
+    }
+
+    private fun executeInWorkspace(line: String, workspaceRoot: File): String {
         val trimmed = line.trim()
-        if (trimmed.isEmpty()) return@withContext ""
+        if (trimmed.isEmpty()) return ""
         if (trimmed == "clear") {
             lines = emptyList()
-            return@withContext ""
+            return ""
         }
         if (trimmed.contains("|") || trimmed.contains(">") || trimmed.contains("&&") || trimmed.contains(";")) {
-            return@withContext unsupported(trimmed.substringBefore(' ').ifBlank { trimmed })
+            return unsupported(trimmed.substringBefore(' ').ifBlank { trimmed })
         }
 
         val arguments = tokenize(trimmed)
-        val name = arguments.firstOrNull() ?: return@withContext ""
+        val name = arguments.firstOrNull() ?: return ""
         val values = arguments.drop(1)
-        try {
+        return try {
             when (name) {
                 "help" -> commands.joinToString(" ") + "\nThis is the mobile runtime. Native build tools and arbitrary processes are unavailable."
                 "pwd" -> "/$directory"
-                "cd" -> changeDirectory(values.firstOrNull().orEmpty())
-                "ls" -> list(values)
-                "cat" -> values.map { read(it) }.joinToString("")
-                "head" -> slice(values, fromEnd = false)
-                "tail" -> slice(values, fromEnd = true)
+                "cd" -> changeDirectory(values.firstOrNull().orEmpty(), workspaceRoot)
+                "ls" -> list(values, workspaceRoot)
+                "cat" -> values.map { read(it, workspaceRoot) }.joinToString("")
+                "head" -> slice(values, workspaceRoot, fromEnd = false)
+                "tail" -> slice(values, workspaceRoot, fromEnd = true)
                 "echo" -> values.joinToString(" ")
                 "mkdir" -> {
-                    values.forEach { AgentTools.resolve(root(), resolvePath(it)).mkdirs() }
+                    values.forEach { AgentTools.resolve(workspaceRoot, resolvePath(it)).mkdirs() }
                     ""
                 }
                 "touch" -> {
                     values.forEach {
-                        val file = AgentTools.resolve(root(), resolvePath(it))
+                        val file = AgentTools.resolve(workspaceRoot, resolvePath(it))
                         if (!file.exists()) {
                             file.parentFile?.mkdirs()
-                            file.writeBytes(ByteArray(0))
+                            AgentTools.writeAtomically(file, ByteArray(0))
                         }
                     }
                     ""
                 }
-                "rm" -> remove(values)
-                "find" -> AgentTools.walk(root()).filter { values.firstOrNull()?.let { prefix -> it.startsWith(resolvePath(prefix)) } ?: true }.take(500).joinToString("\n")
-                "grep" -> grep(values)
+                "rm" -> remove(values, workspaceRoot)
+                "find" -> AgentTools.walk(workspaceRoot).filter { values.firstOrNull()?.let { prefix -> it.startsWith(resolvePath(prefix)) } ?: true }.take(500).joinToString("\n")
+                "grep" -> grep(values, workspaceRoot)
                 "sha256" -> values.joinToString("\n") { file ->
-                    val digest = MessageDigest.getInstance("SHA-256").digest(AgentTools.resolve(root(), resolvePath(file)).readBytes())
+                    val digest = MessageDigest.getInstance("SHA-256").digest(AgentTools.resolve(workspaceRoot, resolvePath(file)).readBytes())
                         .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
                     "$digest  $file"
                 }
                 "sqlite" -> {
                     require(values.size >= 2) { "sqlite: needs a database path and statement" }
-                    LocalSql.run(AgentTools.resolve(root(), resolvePath(values.first())), values.drop(1).joinToString(" "))
+                    LocalSql.run(AgentTools.resolve(workspaceRoot, resolvePath(values.first())), values.drop(1).joinToString(" "))
                 }
                 "git" -> unsupported("git")
                 else -> unsupported(name)
@@ -89,18 +96,18 @@ class LocalShell(private val root: () -> File) {
         }
     }
 
-    private fun changeDirectory(path: String): String {
+    private fun changeDirectory(path: String, workspaceRoot: File): String {
         val target = resolvePath(path)
-        val file = AgentTools.resolve(root(), target)
+        val file = AgentTools.resolve(workspaceRoot, target)
         require(file.isDirectory) { "cd: $path: no such directory" }
         directory = target
         return ""
     }
 
-    private fun list(arguments: List<String>): String {
+    private fun list(arguments: List<String>, workspaceRoot: File): String {
         val all = arguments.contains("-a")
         val path = arguments.firstOrNull { !it.startsWith("-") }?.let(::resolvePath) ?: directory
-        val directoryFile = AgentTools.resolve(root(), path)
+        val directoryFile = AgentTools.resolve(workspaceRoot, path)
         require(directoryFile.isDirectory) { "ls: $path: not a directory" }
         return directoryFile.listFiles().orEmpty()
             .filter { all || !it.name.startsWith(".") }
@@ -109,39 +116,39 @@ class LocalShell(private val root: () -> File) {
             .joinToString("\n") { if (it.isDirectory) it.name + "/" else it.name }
     }
 
-    private fun read(path: String): String {
-        val file = AgentTools.resolve(root(), resolvePath(path))
+    private fun read(path: String, workspaceRoot: File): String {
+        val file = AgentTools.resolve(workspaceRoot, resolvePath(path))
         val text = file.readText()
         return if (text.endsWith("\n")) text else "$text\n"
     }
 
-    private fun slice(arguments: List<String>, fromEnd: Boolean): String {
+    private fun slice(arguments: List<String>, workspaceRoot: File, fromEnd: Boolean): String {
         require(arguments.isNotEmpty()) { "head/tail: needs a file" }
         val option = arguments.firstOrNull()
         val count = option?.removePrefix("-n")?.toIntOrNull() ?: 10
         val path = if (option?.startsWith("-n") == true) arguments.getOrNull(1) else option
         require(path != null) { "head/tail: needs a file" }
-        val lines = read(path).lineSequence().toList()
+        val lines = read(path, workspaceRoot).lineSequence().toList()
         return (if (fromEnd) lines.takeLast(count) else lines.take(count)).joinToString("\n")
     }
 
-    private fun remove(arguments: List<String>): String {
+    private fun remove(arguments: List<String>, workspaceRoot: File): String {
         require(arguments.isNotEmpty()) { "rm: needs a file" }
         arguments.filterNot { it == "-f" }.forEach {
-            val file = AgentTools.resolve(root(), resolvePath(it))
-            require(file != root().canonicalFile) { "rm: refusing to remove the workspace root" }
+            val file = AgentTools.resolve(workspaceRoot, resolvePath(it))
+            require(file != workspaceRoot) { "rm: refusing to remove the workspace root" }
             require(!file.isDirectory || file.listFiles().isNullOrEmpty()) { "rm: directories must be empty" }
             require(file.delete()) { "rm: could not remove $it" }
         }
         return ""
     }
 
-    private fun grep(arguments: List<String>): String {
+    private fun grep(arguments: List<String>, workspaceRoot: File): String {
         require(arguments.isNotEmpty()) { "grep: needs a pattern" }
         val pattern = Regex(arguments.first())
-        val paths = arguments.drop(1).ifEmpty { AgentTools.walk(root()) }
+        val paths = arguments.drop(1).ifEmpty { AgentTools.walk(workspaceRoot) }
         return paths.flatMap { path ->
-            val file = AgentTools.resolve(root(), resolvePath(path))
+            val file = AgentTools.resolve(workspaceRoot, resolvePath(path))
             if (!file.isFile) emptyList() else file.readLines().mapIndexedNotNull { index, line ->
                 if (pattern.containsMatchIn(line)) path + ":" + (index + 1) + ": " + line else null
             }

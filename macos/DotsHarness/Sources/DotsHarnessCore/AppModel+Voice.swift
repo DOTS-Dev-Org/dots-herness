@@ -48,64 +48,6 @@ extension AppModel {
         setSpeechModelState(localSpeech.isModelInstalled ? .installed : .notInstalled)
     }
 
-    public func requestSpeechModelDownload() {
-        refreshSpeechModel()
-        guard !isSpeechModelInstalled, !isSpeechModelDownloading else { return }
-
-        let alert = NSAlert()
-        alert.alertStyle = .informational
-        alert.messageText = AppCopy.text("speech.download.title")
-        alert.informativeText = AppCopy.format(
-            "speech.download.message",
-            LocalSpeechModel.turkishPiper.name,
-            "21 MB"
-        )
-        alert.addButton(withTitle: AppCopy.text("speech.download.action"))
-        alert.addButton(withTitle: AppCopy.text("speech.download.cancel"))
-        if alert.runModal() == .alertFirstButtonReturn {
-            downloadSpeechModel()
-        }
-    }
-
-    public func downloadSpeechModel() {
-        refreshSpeechModel()
-        guard !isSpeechModelInstalled, !isSpeechModelDownloading else { return }
-
-        let key = LocalSpeechModel.turkishPiper.id
-        setSpeechModelState(.downloading)
-        setVoiceModelProgress(
-            FileDownloader.Progress(received: 0, expected: LocalSpeechModel.turkishPiper.archiveBytes),
-            forKey: key
-        )
-
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            do {
-                let progressHandler: @Sendable (FileDownloader.Progress) -> Void = { [weak self] progress in
-                    Task { @MainActor in
-                        self?.setVoiceModelProgress(progress, forKey: key)
-                    }
-                }
-                try await self.localSpeech.ensureModel(progress: progressHandler)
-                self.setSpeechModelState(self.localSpeech.isModelInstalled ? .installed : .failed(AppCopy.text("speech.modelIncomplete")))
-            } catch is CancellationError {
-                self.setSpeechModelState(.notInstalled)
-            } catch {
-                self.setSpeechModelState(.failed(error.localizedDescription))
-            }
-        }
-    }
-
-    public func deleteSpeechModel() {
-        guard !isSpeechModelDownloading else { return }
-        do {
-            try localSpeech.deleteModel()
-            setSpeechModelState(.notInstalled)
-        } catch {
-            setSpeechModelState(.failed(error.localizedDescription))
-        }
-    }
-
     public func requestVoiceModelDownload() {
         refreshVoiceModel()
         let provider = voiceProvider
@@ -215,55 +157,6 @@ extension AppModel {
         }
     }
 
-    public func pauseVoiceModelDownload() {
-        guard isVoiceModelDownloading else { return }
-        voiceDownloadStopReason = .pause
-        voiceDownloadTask?.cancel()
-    }
-
-    public func resumeVoiceModelDownload() {
-        guard voiceModelState == .paused else { return }
-        downloadVoiceModel()
-    }
-
-    public func cancelVoiceModelDownload() {
-        guard voiceModelState == .downloading || voiceModelState == .paused else { return }
-        if voiceModelState == .downloading {
-            voiceDownloadStopReason = .cancel
-            voiceDownloadTask?.cancel()
-            return
-        }
-
-        discardVoiceDownload(for: voiceProvider, hadRuntime: voiceDownloadHadRuntime)
-        setVoiceModelState(.notInstalled, for: voiceProvider)
-        finishVoiceDownload()
-    }
-
-    public func deleteVoiceModel() {
-        let provider = voiceProvider
-        guard provider.isFileBacked, voiceModelState(for: provider) != .downloading else { return }
-        do {
-            switch provider {
-            case .whisperTinyQ5:
-                voice.configure(model: .whisperTinyQ5)
-                try voice.deleteModel()
-            case .whisperLargeV3Turbo:
-                voice.configure(model: .whisperLargeV3Turbo)
-                try voice.deleteModel()
-            case .customLocal:
-                voice.configure(model: .custom)
-                try voice.deleteModel()
-            case .nemotron:
-                try nemotron.deleteModel()
-            case .api:
-                break
-            }
-            setVoiceModelState(.notInstalled, for: provider)
-        } catch {
-            setVoiceModelState(.failed(error.localizedDescription), for: provider)
-        }
-    }
-
     public func requestVoiceInputSetup() {
         refreshVoiceModel()
         guard !isVoiceReady else { return }
@@ -304,42 +197,6 @@ extension AppModel {
         }
         refreshVoiceModel()
         prewarmNemotron()
-        persistVoiceInputSettings()
-    }
-
-    public func setVoiceAPIEndpoint(_ value: String) {
-        voiceAPIEndpoint = value
-        persistVoiceInputSettings()
-    }
-
-    public func setVoiceAPIKey(_ value: String) {
-        do {
-            if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                try router.store.vault.remove(Self.voiceCredentialID)
-                guard try router.store.vault.get(Self.voiceCredentialID) == nil else {
-                    throw ProviderStoreError.credentialUnavailable
-                }
-            } else {
-                try router.store.vault.set(value, for: Self.voiceCredentialID)
-                guard try router.store.vault.get(Self.voiceCredentialID) == value else {
-                    throw ProviderStoreError.credentialUnavailable
-                }
-            }
-            voiceAPIKey = value
-            host.settings.remove(Self.voiceCredentialID)
-            persistVoiceInputSettings()
-        } catch {
-            router.error = "Voice API key was not stored securely: \(error.localizedDescription)"
-        }
-    }
-
-    public func setVoiceAPIModel(_ value: String) {
-        voiceAPIModel = value
-        persistVoiceInputSettings()
-    }
-
-    public func setVoiceAPIRealtimeEndpoint(_ value: String) {
-        voiceAPIRealtimeEndpoint = value
         persistVoiceInputSettings()
     }
 
@@ -387,46 +244,6 @@ extension AppModel {
         }
     }
 
-    public func transcribeVoice(samples: [Float], sampleRate: Double) async throws -> String {
-        switch voiceProvider {
-        case .whisperTinyQ5, .whisperLargeV3Turbo, .customLocal:
-            refreshVoiceModel()
-            guard isVoiceModelInstalled else {
-                throw NativeAgentError(AppCopy.text("voice.modelNotReady"))
-            }
-            return try await voice.transcribe(samples: samples, sampleRate: sampleRate)
-        case .nemotron:
-            guard nemotron.isReady else {
-                throw NativeAgentError(AppCopy.text("voice.modelNotReady"))
-            }
-            _ = try nemotron.start()
-            guard await nemotron.waitUntilReady() else {
-                nemotron.stop()
-                throw NativeAgentError(AppCopy.text("voice.runtime.notReady"))
-            }
-            return try await VoiceAPITranscriber.transcribe(
-                samples: samples,
-                sampleRate: sampleRate,
-                configuration: VoiceAPIConfiguration(
-                    endpoint: nemotron.serverURL.absoluteString,
-                    apiKey: "",
-                    model: "default"
-                )
-            )
-        case .api:
-            return try await VoiceAPITranscriber.transcribe(
-                samples: samples,
-                sampleRate: sampleRate,
-                configuration: VoiceAPIConfiguration(
-                    endpoint: voiceAPIEndpoint,
-                    apiKey: voiceAPIKey,
-                    model: voiceAPIModel,
-                    realtimeEndpoint: voiceAPIRealtimeEndpoint
-                )
-            )
-        }
-    }
-
     public func makeVoiceStreamingSession(
         onUpdate: @escaping @Sendable (VoiceTranscriptUpdate) -> Void,
         onError: @escaping @Sendable (Error) -> Void
@@ -465,13 +282,15 @@ extension AppModel {
                 onError: onError
             )
             try await client.start()
+            let runtime = nemotron
             return VoiceStreamingSession(
                 mode: .realtime,
                 realtimePush: { samples in client.send(samples: samples) },
                 realtimeCommit: { client.commit() },
                 realtimeCancel: { client.cancel() },
                 onUpdate: onUpdate,
-                onError: onError
+                onError: onError,
+                onActivity: { runtime.noteActivity() }
             )
         case .api:
             let configuration = VoiceAPIConfiguration(

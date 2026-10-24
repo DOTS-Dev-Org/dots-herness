@@ -7,6 +7,24 @@ import UniformTypeIdentifiers
 import DotsHarnessCore
 import HarnessPluginKit
 
+@MainActor
+private func popoverAction(icon: String, title: String, action: @escaping () -> Void) -> some View {
+    Button(action: action) {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .medium))
+                .frame(width: 17)
+                .foregroundStyle(.secondary)
+            Text(title).font(.callout)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 9)
+        .frame(height: 30)
+        .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+}
+
 enum WorkLocationOption: String, Identifiable {
     case local
     case localWorktree
@@ -41,102 +59,111 @@ struct ProjectPickerPopover: View {
     let onChoose: () -> Void
     let onClear: () -> Void
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(AppCopy.text("composer.projectPickerTitle"))
-                .font(.headline)
-                .padding(.horizontal, 9)
-                .padding(.top, 7)
-                .padding(.bottom, 5)
+    @State private var searchText = ""
+    @State private var hoveredPath: String?
+    @FocusState private var searchFocused: Bool
 
-            if projects.isEmpty {
-                if workspacePath.isEmpty {
-                    Text(AppCopy.text("composer.noProject"))
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 7)
-                } else {
-                    projectRowContent(path: workspacePath, isSelected: true)
-                }
+    private func title(for path: String) -> String {
+        projectTitle?(path) ?? URL(fileURLWithPath: path).lastPathComponent
+    }
+
+    private var visibleProjects: [String] {
+        let all = projects.isEmpty && !workspacePath.isEmpty ? [workspacePath] : projects
+        guard !searchText.isEmpty else { return all }
+        return all.filter {
+            title(for: $0).localizedCaseInsensitiveContains(searchText)
+                || URL(fileURLWithPath: $0).lastPathComponent.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 13, weight: .medium))
+                    .frame(width: 17)
+                    .foregroundStyle(.secondary)
+                TextField(AppCopy.text("studio.search"), text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(.callout)
+                    .focused($searchFocused)
+            }
+            .padding(.horizontal, 9)
+            .frame(height: 32)
+
+            Divider().padding(.vertical, 5)
+
+            if visibleProjects.isEmpty {
+                Text(AppCopy.text("composer.noProject"))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 9)
+                    .frame(height: 30)
             } else {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(projects, id: \.self) { path in
-                            let isSelected = ConversationStore.normalizedPath(path) == ConversationStore.normalizedPath(workspacePath)
+                    VStack(alignment: .leading, spacing: 1) {
+                        ForEach(visibleProjects, id: \.self) { path in
                             Button {
                                 onSelect?(path)
                             } label: {
-                                projectRowContent(path: path, isSelected: isSelected)
+                                projectRow(path: path)
                             }
                             .buttonStyle(.plain)
+                            .onHover { hoveredPath = $0 ? path : (hoveredPath == path ? nil : hoveredPath) }
+                            .help(path)
                         }
                     }
                 }
-                .frame(maxHeight: 220)
+                .frame(maxHeight: 230)
+                .fixedSize(horizontal: false, vertical: true)
             }
 
             Divider().padding(.vertical, 5)
 
-            projectAction(icon: "plus", title: AppCopy.text("composer.chooseProject"), action: onChoose)
-            projectAction(
-                icon: "bubble.left.and.bubble.right",
-                title: AppCopy.text("composer.dontWorkInProject"),
-                action: onClear
-            )
-            .disabled(workspacePath.isEmpty)
-            .opacity(workspacePath.isEmpty ? 0.45 : 1)
+            popoverAction(icon: "plus", title: AppCopy.text("studio.newProject"), action: onChoose)
+            if !workspacePath.isEmpty {
+                popoverAction(
+                    icon: "bubble.left.and.bubble.right",
+                    title: AppCopy.text("composer.dontWorkInProject"),
+                    action: onClear
+                )
+            }
         }
-        .padding(8)
-        .frame(width: 360)
+        .padding(6)
+        .frame(width: 290)
+        .onAppear { searchFocused = true }
     }
 
-    private func projectRowContent(path: String, isSelected: Bool) -> some View {
-        HStack(spacing: 10) {
+    private func projectRow(path: String) -> some View {
+        let isSelected = ConversationStore.normalizedPath(path) == ConversationStore.normalizedPath(workspacePath)
+        let name = title(for: path)
+        let folder = URL(fileURLWithPath: path).lastPathComponent
+        return HStack(spacing: 10) {
             Image(systemName: "folder")
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 13, weight: .medium))
                 .frame(width: 17)
                 .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(projectTitle?(path) ?? URL(fileURLWithPath: path).lastPathComponent)
-                    .font(.callout.weight(.medium))
-                    .lineLimit(1)
-                Text(path)
-                    .font(.caption)
+            Text(name)
+                .lineLimit(1)
+                .layoutPriority(1)
+            if folder != name {
+                Text(folder)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                    .truncationMode(.head)
+                    .truncationMode(.middle)
             }
-            Spacer(minLength: 8)
-            if isSelected {
-                Image(systemName: "checkmark")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
-            }
+            Spacer(minLength: 0)
         }
+        .font(.callout)
         .padding(.horizontal, 9)
-        .padding(.vertical, 7)
-        .background(isSelected ? Color.primary.opacity(0.11) : Color.clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .frame(height: 30)
+        .background(
+            Color.primary.opacity(isSelected ? 0.11 : (hoveredPath == path ? 0.06 : 0)),
+            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+        )
         .contentShape(Rectangle())
     }
 
-    private func projectAction(icon: String, title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: icon)
-                    .font(.system(size: 13, weight: .medium))
-                    .frame(width: 17)
-                    .foregroundStyle(.secondary)
-                Text(title)
-                    .font(.callout)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 9)
-            .frame(height: 30)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
 }
 
 struct WorkLocationPopover: View {
@@ -199,9 +226,9 @@ struct WorkLocationPopover: View {
             }
 
             if selection.isRemote {
-                action(icon: "folder", title: AppCopy.text("workLocation.chooseRemoteFolder"), action: onChooseFolder)
+                popoverAction(icon: "folder", title: AppCopy.text("workLocation.chooseRemoteFolder"), action: onChooseFolder)
             }
-            action(icon: "plus", title: AppCopy.text("workLocation.addHost"), action: onManageHosts)
+            popoverAction(icon: "plus", title: AppCopy.text("workLocation.addHost"), action: onManageHosts)
         }
         .padding(8)
         .frame(width: 350)
@@ -257,22 +284,6 @@ struct WorkLocationPopover: View {
         .opacity(isEnabled ? 1 : 0.45)
     }
 
-    private func action(icon: String, title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: icon)
-                    .font(.system(size: 13, weight: .medium))
-                    .frame(width: 17)
-                    .foregroundStyle(.secondary)
-                Text(title).font(.callout)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 9)
-            .frame(height: 30)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
 }
 
 struct GitBranchPopover: View {
@@ -444,70 +455,188 @@ struct GitBranchPopover: View {
     }
 }
 
+/// The composer's "+" menu: one line per action, with its shortcut or a chevron
+/// for rows that lead somewhere else on the trailing side.
 struct AttachmentMenu: View {
-    let onChooseFiles: () -> Void
-    let onChooseWorkspace: () -> Void
-    let showsWorkspace: Bool
-    let onOpenSkills: () -> Void
-    let onSetGoal: () -> Void
+    struct Row: Identifiable {
+        let icon: String
+        let title: String
+        var shortcut: String? = nil
+        var opensElsewhere = false
+        let action: () -> Void
+        var id: String { title }
+    }
+
+    let rows: [Row]
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(AppCopy.text("composer.add"))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 9)
-                .padding(.bottom, 4)
-            attachmentRow(icon: "paperclip", title: AppCopy.text("attachment.files"), action: onChooseFiles)
-            attachmentRow(icon: "rectangle.stack", title: AppCopy.text("attachment.addApp")) {}
-            if showsWorkspace {
-                attachmentRow(icon: "folder", title: AppCopy.text("attachment.project"), detail: AppCopy.text("attachment.projectDetail"), action: onChooseWorkspace)
-            }
-            attachmentRow(icon: "scope", title: AppCopy.text("attachment.goal"), detail: AppCopy.text("attachment.goalDetail"), action: onSetGoal)
-            attachmentRow(icon: "target", title: AppCopy.text("attachment.saveSkill"), action: onOpenSkills)
-
-            Divider().padding(.vertical, 5)
-            Text(AppCopy.text("attachment.plugins"))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 9)
-            attachmentRow(icon: "doc.text", title: "Documents", detail: AppCopy.text("attachment.documentsDetail")) {}
-            attachmentRow(icon: "doc.richtext", title: "PDF", detail: AppCopy.text("attachment.pdfDetail")) {}
-            attachmentRow(icon: "tablecells", title: "Spreadsheets", detail: AppCopy.text("attachment.spreadsheetsDetail")) {}
-        }
-        .padding(8)
-        .frame(width: 395)
-    }
-
-    private func attachmentRow(
-        icon: String,
-        title: String,
-        detail: String? = nil,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: icon)
-                    .font(.system(size: 13, weight: .medium))
-                    .frame(width: 17)
-                    .foregroundStyle(.secondary)
-                Text(title)
-                    .lineLimit(1)
-                if let detail {
-                    Text(detail)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+        VStack(spacing: 1) {
+            ForEach(rows) { row in
+                Button {
+                    dismiss()
+                    row.action()
+                } label: {
+                    HStack(spacing: 11) {
+                        Image(systemName: row.icon)
+                            .font(.system(size: 14))
+                            .frame(width: 20)
+                        Text(row.title)
+                            .font(.system(size: 14))
+                            .lineLimit(1)
+                        Spacer(minLength: 12)
+                        if let shortcut = row.shortcut {
+                            Text(shortcut)
+                                .font(.system(size: 12))
+                                .foregroundStyle(.tertiary)
+                        }
+                        if row.opensElsewhere {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .padding(.horizontal, 10)
+                    .frame(height: 32)
+                    .contentShape(Rectangle())
                 }
-                Spacer(minLength: 0)
+                .buttonStyle(PickerRowStyle(selected: false))
             }
-            .font(.callout)
-            .padding(.horizontal, 9)
-            .frame(minHeight: 29)
-            .contentShape(Rectangle())
+        }
+        .padding(6)
+        .frame(width: 270)
+    }
+}
+
+/// The composer's "+" button with its menu. ⌘U runs `onShortcut` whether or not the menu is open.
+struct ComposerAddButton: View {
+    let rows: [AttachmentMenu.Row]
+    let onShortcut: () -> Void
+    @State private var isPresented = false
+
+    var body: some View {
+        Button { isPresented.toggle() } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 17, weight: .regular))
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .popover(isPresented: $isPresented, arrowEdge: .bottom) { AttachmentMenu(rows: rows) }
+        .background {
+            Button("", action: onShortcut).keyboardShortcut("u", modifiers: .command).opacity(0).accessibilityHidden(true)
+        }
+        .help(AppCopy.text("composer.add"))
+        .accessibilityLabel(AppCopy.text("composer.add"))
     }
+}
+
+/// The composer's dictation button.
+struct ComposerVoiceButton: View {
+    @ObservedObject var model: AppModel
+    @ObservedObject var voiceInput: LiveVoiceInput
+
+    var body: some View {
+        let help = voiceInput.isListening ? AppCopy.text("composer.stopListening") : model.voiceInputHelp
+        Button { voiceInput.toggle() } label: {
+            Image(systemName: voiceInput.state.icon)
+                .font(.system(size: 15, weight: .medium))
+                .frame(width: 25, height: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(model.isVoiceReady ? voiceInput.state.tint : .secondary)
+        .opacity(model.isVoiceModelDownloading ? 0.55 : (model.isVoiceReady ? 1 : 0.7))
+        .disabled(voiceInput.state == .transcribing || voiceInput.state == .sending || model.isVoiceModelDownloading)
+        .help(help)
+        .accessibilityLabel(help)
+    }
+}
+
+/// The filled round button at the composer's trailing edge: send, stop or continue.
+struct ComposerRoundButton: View {
+    let icon: String
+    var size: CGFloat = 12
+    let label: String
+    var help: String?
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: size, weight: .bold))
+                .frame(width: 30, height: 30)
+                .foregroundStyle(Color(nsColor: .windowBackgroundColor))
+                .background(Color.primary, in: Circle())
+        }
+        .buttonStyle(.plain)
+        .help(help ?? label)
+        .accessibilityLabel(label)
+    }
+}
+
+/// The composer's model pill: the model, its effort and a chevron.
+struct ComposerModelLabel: View {
+    let name: String
+    let effort: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(name).lineLimit(1)
+            Text(effort).foregroundStyle(.secondary).lineLimit(1)
+            Image(systemName: "chevron.down")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(.secondary)
+        }
+        .font(.callout)
+    }
+}
+
+extension View {
+    /// The rounded outline around a composer's editor and controls.
+    func composerOutline() -> some View {
+        overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        }
+    }
+}
+
+/// Width reported by a composer's text area so wrapped lines contribute to its height.
+struct ComposerEditorWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        let next = nextValue()
+        if next > 0 { value = next }
+    }
+}
+
+/// Height of a composer editor holding `text`: it grows with the draft up to ten visual lines.
+@MainActor
+func composerEditorHeight(for text: String, width: CGFloat = .greatestFiniteMagnitude) -> CGFloat {
+    let font = NSFont.systemFont(ofSize: 15)
+    let layoutWidth = width.isFinite && width > 0 ? width : 100_000
+    let container = NSTextContainer(
+        containerSize: NSSize(width: layoutWidth, height: .greatestFiniteMagnitude)
+    )
+    container.lineFragmentPadding = 0
+    container.maximumNumberOfLines = 11
+
+    let storage = NSTextStorage(string: text.isEmpty ? " " : text, attributes: [.font: font])
+    let layoutManager = NSLayoutManager()
+    layoutManager.addTextContainer(container)
+    storage.addLayoutManager(layoutManager)
+    layoutManager.ensureLayout(for: container)
+
+    var visualLines = 0
+    layoutManager.enumerateLineFragments(forGlyphRange: layoutManager.glyphRange(for: container)) { _, _, _, _, _ in
+        visualLines += 1
+    }
+    let explicitLines = text.components(separatedBy: .newlines).count
+    let visibleLines = min(max(max(visualLines, explicitLines), 1), 10)
+    let lineHeight = ceil(layoutManager.defaultLineHeight(for: font))
+    return min(238, max(44, CGFloat(visibleLines) * lineHeight + 16))
 }
 
 struct PermissionMenu: View {

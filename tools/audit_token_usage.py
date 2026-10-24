@@ -86,6 +86,21 @@ def context_sizes(conversation):
     }
 
 
+def compaction(events):
+    """Compaction verdicts logged since compactionTrace existed; older events have none."""
+    traced = [event["compactionTrace"] for event in events if isinstance(event.get("compactionTrace"), dict)]
+    strategies = [event.get("strategy") for event in events if isinstance(event.get("compactionTrace"), dict)]
+    return {
+        "traced_requests": len(traced),
+        "rewriting_prunes": sum(strategy not in (None, "none") for strategy in strategies),
+        "strategies": dict(collections.Counter(strategies)),
+        "context_windows": dict(collections.Counter(trace.get("contextWindow") for trace in traced)),
+        "trigger_tokens": dict(collections.Counter(trace.get("triggerTokens") for trace in traced)),
+        "route_changed_requests": sum(bool(trace.get("routeChanged")) for trace in traced),
+        "forced_requests": sum(bool(trace.get("forced")) for trace in traced),
+    }
+
+
 def audit(events, conversations):
     routes = collections.defaultdict(list)
     chats = collections.defaultdict(list)
@@ -97,6 +112,7 @@ def audit(events, conversations):
         "measurement": "Saved provider usage counters; no new provider requests",
         "totals": totals(events),
         "efforts": dict(collections.Counter(event.get("selectedEffort", "unreported") for event in events)),
+        "compaction": compaction(events),
         "routes": [dict(provider=route[0], model=route[1], api=route[2], **totals(group)) for route, group in sorted(routes.items())],
         "largest_chats": [
             dict(rank=rank, **totals(group), current_retained_context=context_sizes(by_id.get(chat_id, {})))

@@ -14,13 +14,6 @@ extension AppModel {
 
 
 
-    /// What the UI shows as the current working folder. A remote workspace has
-    /// no local path, so it is named by host and folder instead.
-    public var workspaceDisplayPath: String {
-        if let remote = remoteWorkspace { return "\(remote.alias):\(remote.remotePath)" }
-        return workspacePath
-    }
-
     /// Terminal panes are keyed by this, so a remote folder never shares a
     /// session list with a local directory of the same path.
     public var terminalWorkspaceKey: String {

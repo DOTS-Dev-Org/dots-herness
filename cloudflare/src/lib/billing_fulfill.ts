@@ -71,47 +71,93 @@ export async function addExtraSeats(
     .run();
 }
 
-/**
- * Apply an entitlement for an already-claimed completed order.
- * Ledger is billing_orders only (no purchases table). Callers should use
- * fulfillDuePaidOrder so immediate and deferred orders are both idempotent.
- */
-export async function fulfillCompletedOrder(
-  env: Env,
-  order: {
-    workspace_id?: string | null;
-    plan_slug?: string | null;
-    kind?: string | null;
-    metadata_json?: string | null;
-  }
-): Promise<{ workspaceId: string | null }> {
-  const workspaceId = order.workspace_id ?? null;
-  if (!workspaceId) {
-    return { workspaceId: null };
-  }
-
-  const kind = mapOrderKind(order.kind);
-
-  if (kind === "extra_seat") {
-    await addExtraSeats(env, workspaceId, quantityFromMetadata(order.metadata_json));
-    return { workspaceId };
-  }
-
-  if (kind === "plan" || kind === "upgrade" || kind === "gift" || kind === "proration") {
-    if (!order.plan_slug) return { workspaceId };
-    await applyPlanToWorkspace(env, workspaceId, order.plan_slug);
-  }
-
-  return { workspaceId };
-}
-
 type DueEntitlementRow = {
   merchant_oid: string;
   workspace_id: string | null;
   plan_slug: string | null;
   kind: string | null;
   metadata_json: string | null;
+  updated_at: string;
 };
+
+/** Applies the workspace change and marks its order fulfilled in one D1 transaction. */
+async function applyAndCompletePaidOrder(env: Env, merchantOid: string, order: DueEntitlementRow): Promise<void> {
+  if (!order.workspace_id) throw new Error("entitlement_workspace_missing");
+
+  const database = db(env);
+  const statements: D1PreparedStatement[] = [];
+  const kind = mapOrderKind(order.kind);
+
+  if (kind === "extra_seat") {
+    statements.push(
+      database
+        .prepare(
+          `UPDATE workspaces
+              SET extra_seats = COALESCE(extra_seats, 0) + ?,
+                  updated_at = datetime('now')
+            WHERE id = ?
+              AND EXISTS (
+                SELECT 1 FROM billing_orders
+                 WHERE merchant_oid = ?
+                   AND status = 'completed'
+                   AND entitlement_status = 'processing'
+                   AND updated_at = ?
+              )`,
+        )
+        .bind(quantityFromMetadata(order.metadata_json), order.workspace_id, merchantOid, order.updated_at),
+    );
+  } else if (order.plan_slug && ["plan", "upgrade", "gift", "proration"].includes(kind)) {
+    const { normalizePlanSlug } = await import("./plan_features");
+    const slug = normalizePlanSlug(order.plan_slug);
+    const isFree = slug === "free";
+    const started = isFree ? null : new Date().toISOString();
+    const ends = isFree ? null : new Date(Date.now() + 30 * 86400000).toISOString();
+    statements.push(
+      database
+        .prepare(
+          `UPDATE workspaces
+              SET plan_slug = ?,
+                  subscription_started_at = ?,
+                  subscription_ends_at = ?,
+                  store_extra_seats = CASE WHEN ? = 'team' THEN store_extra_seats ELSE 0 END,
+                  updated_at = datetime('now')
+            WHERE id = ?
+              AND EXISTS (
+                SELECT 1 FROM billing_orders
+                 WHERE merchant_oid = ?
+                   AND status = 'completed'
+                   AND entitlement_status = 'processing'
+                   AND updated_at = ?
+              )`,
+        )
+        .bind(slug, started, ends, slug, order.workspace_id, merchantOid, order.updated_at),
+    );
+  }
+
+  statements.push(
+    database
+      .prepare(
+        `UPDATE billing_orders
+            SET entitlement_status = 'fulfilled',
+                entitlement_activated_at = ?,
+                entitlement_last_error = NULL,
+                updated_at = datetime('now')
+          WHERE merchant_oid = ?
+            AND status = 'completed'
+            AND entitlement_status = 'processing'
+            AND updated_at = ?
+            AND EXISTS (SELECT 1 FROM workspaces WHERE id = ?)`,
+      )
+      .bind(nowIso(), merchantOid, order.updated_at, order.workspace_id),
+  );
+
+  const results = await database.batch(statements);
+  for (const result of results) {
+    if ((result.meta?.changes ?? 0) !== 1) {
+      throw new Error("entitlement_claim_lost_or_workspace_missing");
+    }
+  }
+}
 
 /**
  * Claims and applies one paid order whose entitlement date has arrived.
@@ -124,11 +170,12 @@ export async function fulfillDuePaidOrder(
   env: Env,
   merchantOid: string,
 ): Promise<"fulfilled" | "not_due" | "not_claimed" | "failed"> {
+  const claimTimestamp = nowIso();
   const claim = await db(env)
     .prepare(
       `UPDATE billing_orders
           SET entitlement_status = 'processing',
-              updated_at = datetime('now')
+              updated_at = ?
         WHERE merchant_oid = ?
           AND status = 'completed'
           AND entitlement_status = 'pending'
@@ -137,7 +184,7 @@ export async function fulfillDuePaidOrder(
             OR entitlement_available_at <= datetime('now')
           )`,
     )
-    .bind(merchantOid)
+    .bind(claimTimestamp, merchantOid)
     .run();
 
   if ((claim.meta?.changes ?? 0) !== 1) {
@@ -153,29 +200,20 @@ export async function fulfillDuePaidOrder(
     return "not_claimed";
   }
 
-  const order = await db(env)
-    .prepare(
-      `SELECT merchant_oid, workspace_id, plan_slug, kind, metadata_json
-         FROM billing_orders
-        WHERE merchant_oid = ?`,
-    )
-    .bind(merchantOid)
-    .first<DueEntitlementRow>();
-
   try {
-    if (!order?.workspace_id) throw new Error("entitlement_workspace_missing");
-    await fulfillCompletedOrder(env, order);
-    await db(env)
+    const order = await db(env)
       .prepare(
-        `UPDATE billing_orders
-            SET entitlement_status = 'fulfilled',
-                entitlement_activated_at = ?,
-                entitlement_last_error = NULL,
-                updated_at = datetime('now')
-          WHERE merchant_oid = ?`,
+        `SELECT merchant_oid, workspace_id, plan_slug, kind, metadata_json, updated_at
+           FROM billing_orders
+          WHERE merchant_oid = ?
+            AND status = 'completed'
+            AND entitlement_status = 'processing'
+            AND updated_at = ?`,
       )
-      .bind(nowIso(), merchantOid)
-      .run();
+      .bind(merchantOid, claimTimestamp)
+      .first<DueEntitlementRow>();
+    if (!order) throw new Error("entitlement_order_missing");
+    await applyAndCompletePaidOrder(env, merchantOid, order);
     return "fulfilled";
   } catch (error) {
     const message = (error instanceof Error ? error.message : String(error)).slice(0, 1000);
@@ -185,9 +223,12 @@ export async function fulfillDuePaidOrder(
             SET entitlement_status = 'pending',
                 entitlement_last_error = ?,
                 updated_at = datetime('now')
-          WHERE merchant_oid = ?`,
+          WHERE merchant_oid = ?
+            AND status = 'completed'
+            AND entitlement_status = 'processing'
+            AND updated_at = ?`,
       )
-      .bind(message, merchantOid)
+      .bind(message, merchantOid, claimTimestamp)
       .run();
     return "failed";
   }
@@ -196,6 +237,20 @@ export async function fulfillDuePaidOrder(
 /** Retry due paid entitlements from the Worker schedule. */
 export async function processDuePaidEntitlements(env: Env): Promise<void> {
   try {
+    // A Worker can terminate after claiming an order. Reopen claims that have
+    // been stuck long enough for any in-flight request to have ended.
+    await db(env)
+      .prepare(
+        `UPDATE billing_orders
+            SET entitlement_status = 'pending',
+                entitlement_last_error = COALESCE(entitlement_last_error, 'Previous fulfillment attempt timed out'),
+                updated_at = datetime('now')
+          WHERE status = 'completed'
+            AND entitlement_status = 'processing'
+            AND datetime(updated_at) <= datetime('now', '-30 minutes')`,
+      )
+      .run();
+
     const rows = await db(env)
       .prepare(
         `SELECT merchant_oid

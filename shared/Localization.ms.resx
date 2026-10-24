@@ -113,7 +113,7 @@
   <data name="conversation.ok" xml:space="preserve"><value>OK</value></data>
   <data name="conversation.stop" xml:space="preserve"><value>Berhenti</value></data>
   <data name="conversation.stopVoice" xml:space="preserve"><value>Hentikan input suara</value></data>
-  <data name="conversation.mic" xml:space="preserve"><value>Mic</value></data>
+  <data name="conversation.mic" xml:space="preserve"><value>Mikrofon</value></data>
   <data name="conversation.startVoice" xml:space="preserve"><value>Mulakan input suara</value></data>
   <data name="conversation.listening" xml:space="preserve"><value>Mendengar…</value></data>
   <data name="conversation.heard" xml:space="preserve"><value>Didengar: {0}</value></data>
@@ -298,13 +298,14 @@
   <data name="usage.resetsIn" xml:space="preserve"><value>ditetapkan semula dalam {0}</value></data>
   <data name="usage.resetsOn" xml:space="preserve"><value>ditetapkan semula {0}</value></data>
   <data name="usage.resetsAvailable" xml:space="preserve"><value>{0} tetapan semula tersedia</value></data>
-  <data name="usage.manageResets" xml:space="preserve"><value>Manage resets</value></data>
-  <data name="usage.useReset" xml:space="preserve"><value>Use reset</value></data>
-  <data name="usage.resetTitle" xml:space="preserve"><value>Use a Claude limit reset?</value></data>
-  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude's Usage page will open. Sign in to {0} and review the reset offered to that account. To use it, click Reset for free and confirm in Claude. Once used, a reset cannot be undone. Limits refresh when you return to HerNess.</value></data>
-  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Could not open Claude. Check that the account is still connected, then try again.</value></data>
-  <data name="usage.openClaude" xml:space="preserve"><value>Open Claude</value></data>
+  <data name="usage.manageResets" xml:space="preserve"><value>Urus tetapan semula</value></data>
+  <data name="usage.useReset" xml:space="preserve"><value>Guna tetapan semula</value></data>
+  <data name="usage.resetTitle" xml:space="preserve"><value>Guna tetapan semula had Claude?</value></data>
+  <data name="usage.resetConfirmation" xml:space="preserve"><value>Halaman Penggunaan Claude akan dibuka. Log masuk ke {0} dan semak tetapan semula yang ditawarkan kepada akaun itu. Untuk menggunakannya, klik Reset for free dan sahkan dalam Claude. Tetapan semula yang telah digunakan tidak boleh dibuat asal. Had dimuat semula apabila anda kembali ke HerNess.</value></data>
+  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Tidak dapat membuka Claude. Pastikan akaun masih disambungkan, kemudian cuba lagi.</value></data>
+  <data name="usage.openClaude" xml:space="preserve"><value>Buka Claude</value></data>
   <data name="usage.needLogin" xml:space="preserve"><value>Log masuk ke Claude untuk melihat had</value></data>
+  <data name="agent.providerLimitTitle" xml:space="preserve"><value>Had pembekal dicapai</value></data>
   <data name="usage.noLimitInfo" xml:space="preserve"><value>Tiada maklumat had</value></data>
   <data name="usage.loadFailed" xml:space="preserve"><value>Penggunaan tidak dapat dimuatkan</value></data>
   <data name="usage.loading" xml:space="preserve"><value>Memuatkan penggunaan…</value></data>
@@ -332,21 +333,21 @@
   <data name="project.missing.message" xml:space="preserve"><value>Folder projek di '{0}' mungkin telah dialihkan atau dipadam. Pilih lokasi baharunya atau keluarkan projek.</value></data>
   <data name="project.missing.locate" xml:space="preserve"><value>Cari lokasi…</value></data>
   <data name="project.missing.readOnly" xml:space="preserve"><value>Folder projek tidak tersedia. Anda masih boleh melihat perbualan terdahulu; penciptaan perbualan baharu dan penghantaran mesej dinyahdayakan sehingga anda memilih lokasi baharu.</value></data>
-  <data name="conversation.ranCommand" xml:space="preserve"><value>Ran 1 command</value></data>
-  <data name="conversation.ranCommands" xml:space="preserve"><value>Ran {0} commands</value></data>
-  <data name="conversation.runningTools" xml:space="preserve"><value>Running tools…</value></data>
-  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Thinking…</value></data>
-  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} tokens</value></data>
-  <data name="usage.context.window" xml:space="preserve"><value>Context window</value></data>
-  <data name="usage.planLimits" xml:space="preserve"><value>Plan usage limits</value></data>
-  <data name="composer.queue.one" xml:space="preserve"><value>1 message queued</value></data>
-  <data name="composer.queue.many" xml:space="preserve"><value>{0} messages queued</value></data>
+  <data name="conversation.ranCommand" xml:space="preserve"><value>Menjalankan 1 arahan</value></data>
+  <data name="conversation.ranCommands" xml:space="preserve"><value>Menjalankan {0} arahan</value></data>
+  <data name="conversation.runningTools" xml:space="preserve"><value>Menjalankan alat…</value></data>
+  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Sedang berfikir…</value></data>
+  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} token</value></data>
+  <data name="usage.context.window" xml:space="preserve"><value>Tetingkap konteks</value></data>
+  <data name="usage.planLimits" xml:space="preserve"><value>Had penggunaan pelan</value></data>
+  <data name="composer.queue.one" xml:space="preserve"><value>1 mesej dalam baris gilir</value></data>
+  <data name="composer.queue.many" xml:space="preserve"><value>{0} mesej dalam baris gilir</value></data>
   <data name="composer.queue.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Clear the message box to edit</value></data>
-  <data name="composer.queue.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="git.createPR" xml:space="preserve"><value>Create PR</value></data>
-  <data name="git.hideBar" xml:space="preserve"><value>Hide</value></data>
-  <data name="composer.queue.next" xml:space="preserve"><value>Next: {0}</value></data>
+  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Kosongkan kotak mesej untuk mengedit</value></data>
+  <data name="composer.queue.remove" xml:space="preserve"><value>Alih keluar</value></data>
+  <data name="git.createPR" xml:space="preserve"><value>Cipta PR</value></data>
+  <data name="git.hideBar" xml:space="preserve"><value>Sembunyikan</value></data>
+  <data name="composer.queue.next" xml:space="preserve"><value>Seterusnya: {0}</value></data>
   <data name="sidebar.pinProject" xml:space="preserve"><value>Sematkan projek</value></data>
   <data name="sidebar.unpinProject" xml:space="preserve"><value>Nyahsemat projek</value></data>
   <data name="sidebar.sortLastUpdate" xml:space="preserve"><value>Kemas kini terkini</value></data>
@@ -357,6 +358,8 @@
   <data name="conversation.cancelPlan" xml:space="preserve"><value>Batalkan pelan</value></data>
   <data name="conversation.cancelPlanHelp" xml:space="preserve"><value>Batalkan pelan ini dan lepaskan mesej dalam giliran</value></data>
   <data name="media.generated" xml:space="preserve"><value>Imej dijana.</value></data>
+  <data name="media.videoGenerated" xml:space="preserve"><value>Video dijana.</value></data>
+  <data name="media.audioGenerated" xml:space="preserve"><value>Pertuturan dijana.</value></data>
   <data name="media.fallbackUsed" xml:space="preserve"><value>Pembekal yang dipilih tidak dapat menjana imej ini. Imej dijana melalui satu permintaan sandaran melalui {0}/{1}; pembekal dan model perbualan utama tidak berubah, jadi cache prompt kekal utuh.</value></data>
   <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>Saya tidak dapat menjana imej ini dengan {0}. Konfigurasikan API atau pembekal imej sebagai sandaran. Menukar model sembang utama hanya untuk menjana imej boleh merosakkan cache prompt pembekal.</value></data>
   <data name="feedback.close" xml:space="preserve"><value>Tutup</value></data>
@@ -369,27 +372,27 @@
   <data name="feedback.persistenceFailed" xml:space="preserve"><value>Maklum balas tidak dapat disimpan secara setempat.</value></data>
   <data name="feedback.streamingMessage" xml:space="preserve"><value>Tunggu sehingga respons selesai sebelum menghantar maklum balas.</value></data>
   <data name="feedback.submit" xml:space="preserve"><value>Hantar</value></data>
-  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Apply it elsewhere</value></data>
-  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Broke an existing feature</value></data>
+  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Gunakan di tempat lain</value></data>
+  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Merosakkan ciri sedia ada</value></data>
   <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>Tidak mengikut arahan saya</value></data>
-  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Didn't follow project style</value></data>
+  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Tidak mengikut gaya projek</value></data>
   <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>Pantas dan cekap</value></data>
   <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>Mengikut arahan saya</value></data>
-  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Ignored project architecture</value></data>
+  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Mengabaikan seni bina projek</value></data>
   <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>Salah atau tidak lengkap</value></data>
-  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Keep the project style</value></data>
+  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Kekalkan gaya projek</value></data>
   <data name="feedback.tag.lost_context" xml:space="preserve"><value>Kehilangan konteks</value></data>
   <data name="feedback.tag.negative_other" xml:space="preserve"><value>Lain-lain</value></data>
   <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>Di luar topik / di luar skop</value></data>
   <data name="feedback.tag.output_quality" xml:space="preserve"><value>Kualiti kod / output yang baik</value></data>
   <data name="feedback.tag.positive_other" xml:space="preserve"><value>Lain-lain</value></data>
-  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Reuse this architecture</value></data>
-  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Reuse this token pattern</value></data>
+  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Guna semula seni bina ini</value></data>
+  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Guna semula corak token ini</value></data>
   <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>Isu keselamatan atau undang-undang</value></data>
   <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>Perlahan atau bermasalah</value></data>
   <data name="feedback.tag.task_completed" xml:space="preserve"><value>Menyelesaikan tugas saya</value></data>
   <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>Autonomi yang berguna</value></data>
-  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Wrong theme or token</value></data>
+  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Tema atau token salah</value></data>
   <data name="feedback.title" xml:space="preserve"><value>Kongsi maklum balas</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Maklum balas hanya tersedia dalam sembang ruang kerja.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Maklum balas hanya boleh dihantar untuk respons pembantu.</value></data>
@@ -398,12 +401,13 @@
   <data name="conversation.cacheExpired.explanation" xml:space="preserve"><value>Anggaran jangka hayat cache telah berlalu. Cache prompt ialah keadaan pemprosesan sementara di pihak pembekal; sejarah sembang anda kekal disimpan. Meneruskan dengan keseluruhan sejarah boleh menyebabkan token tersebut dikira semula sebagai input baharu. Data penggunaan permintaan seterusnya diperlukan untuk mengesahkan sama ada pembekal masih mempunyai cache.</value></data>
   <data name="conversation.cacheExpired.infoTitle" xml:space="preserve"><value>Mengapa saya melihat ini?</value></data>
   <data name="conversation.cacheExpired.notice" xml:space="preserve"><value>Cache mungkin telah tamat tempoh; meneruskan boleh menggunakan lebih banyak token dan kos. Mulakan sembang baharu dengan ringkasan pendek.</value></data>
+  <data name="conversation.cacheLocal.notice" xml:space="preserve"><value>Cache model tempatan telah dikosongkan; seluruh sejarah akan diproses semula dan balasan mungkin lambat. Mulakan sembang baharu dengan ringkasan pendek.</value></data>
   <data name="conversation.filesChangedCount" xml:space="preserve"><value>{0} fail diubah</value></data>
   <data name="conversation.filesLess" xml:space="preserve"><value>Tunjukkan lebih sedikit fail</value></data>
   <data name="conversation.filesLineSummary" xml:space="preserve"><value>+{0} −{1}</value></data>
   <data name="conversation.filesMore" xml:space="preserve"><value>Tunjukkan {0} fail lagi</value></data>
   <data name="conversation.filesReverted" xml:space="preserve"><value>Perubahan fail telah dibuat asal.</value></data>
-  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>The saved file version is unavailable, so the workspace was left unchanged.</value></data>
+  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>Versi fail yang disimpan tidak tersedia, jadi ruang kerja dibiarkan tanpa perubahan.</value></data>
   <data name="conversation.undoChanges" xml:space="preserve"><value>Buat asal</value></data>
   <data name="conversation.viewChanges" xml:space="preserve"><value>Lihat perubahan</value></data>
   <data name="settings.archive" xml:space="preserve"><value>Arkib</value></data>
@@ -434,9 +438,9 @@
   <data name="workLocation.remoteFolderUp" xml:space="preserve"><value>Folder induk</value></data>
   <data name="workLocation.remoteFolderEmpty" xml:space="preserve"><value>Tiada subfolder di sini</value></data>
   <data name="workLocation.remoteFolderUse" xml:space="preserve"><value>Guna folder</value></data>
-  <data name="workLocation.connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="workLocation.connect" xml:space="preserve"><value>Sambung</value></data>
   <data name="workLocation.addHost" xml:space="preserve"><value>Tambah komputer…</value></data>
-  <data name="workLocation.useLocal" xml:space="preserve"><value>Use this computer</value></data>
+  <data name="workLocation.useLocal" xml:space="preserve"><value>Guna komputer ini</value></data>
   <data name="settings.sshAlias" xml:space="preserve"><value>Alias</value></data>
   <data name="settings.sshHostName" xml:space="preserve"><value>Hos atau IP</value></data>
   <data name="settings.sshUser" xml:space="preserve"><value>Nama pengguna</value></data>
@@ -444,126 +448,106 @@
   <data name="settings.sshRemove" xml:space="preserve"><value>Buang</value></data>
   <data name="ssh.busy" xml:space="preserve"><value>Tunggu larian semasa selesai sebelum menukar tempat kerjanya.</value></data>
   <data name="ssh.connecting" xml:space="preserve"><value>Menyambung ke {0}…</value></data>
-  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Choose a remote folder before starting a task.</value></data>
+  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Pilih folder jauh sebelum memulakan tugas.</value></data>
   <data name="ssh.scanning" xml:space="preserve"><value>Mengambil kunci hos…</value></data>
   <data name="ssh.fingerprintTitle" xml:space="preserve"><value>Adakah ini cap jari {0}?</value></data>
   <data name="ssh.fingerprintMessage" xml:space="preserve"><value>Bandingkan dengan pelayan sebelum mempercayainya. Teruskan hanya jika sepadan.</value></data>
   <data name="ssh.trustAndConnect" xml:space="preserve"><value>Percaya dan sambung</value></data>
   <data name="ssh.error.unavailable" xml:space="preserve"><value>ssh tidak dijumpai pada Mac ini.</value></data>
   <data name="ssh.error.notReachable" xml:space="preserve"><value>{0} tidak dapat dihubungi.</value></data>
-  <data name="conversation.choosePane" xml:space="preserve"><value>Choose a pane</value></data>
-  <data name="sidebar.toggle" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.mcpServers" xml:space="preserve"><value>MCP servers</value></data>
-  <data name="mcp.empty" xml:space="preserve"><value>No MCP servers configured.</value></data>
-  <data name="mcp.addServer" xml:space="preserve"><value>Add server</value></data>
-  <data name="mcp.name" xml:space="preserve"><value>Name</value></data>
-  <data name="mcp.transport" xml:space="preserve"><value>Transport</value></data>
+  <data name="conversation.choosePane" xml:space="preserve"><value>Pilih anak tetingkap</value></data>
+  <data name="sidebar.toggle" xml:space="preserve"><value>Tunjuk atau sembunyikan bar sisi</value></data>
+  <data name="settings.mcpServers" xml:space="preserve"><value>Pelayan MCP</value></data>
+  <data name="mcp.empty" xml:space="preserve"><value>Tiada pelayan MCP dikonfigurasi.</value></data>
+  <data name="mcp.addServer" xml:space="preserve"><value>Tambah pelayan</value></data>
+  <data name="mcp.name" xml:space="preserve"><value>Nama</value></data>
+  <data name="mcp.transport" xml:space="preserve"><value>Pengangkutan</value></data>
   <data name="mcp.http" xml:space="preserve"><value>HTTP</value></data>
   <data name="mcp.stdio" xml:space="preserve"><value>stdio</value></data>
   <data name="mcp.url" xml:space="preserve"><value>URL</value></data>
-  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (optional)</value></data>
-  <data name="mcp.executable" xml:space="preserve"><value>Executable path</value></data>
-  <data name="mcp.arguments" xml:space="preserve"><value>Arguments (space-separated)</value></data>
-  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Auto-run tools the server marks read-only</value></data>
-  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Server annotations are untrusted. Enabling this skips approval only for tools marked read-only and not destructive.</value></data>
-  <data name="mcp.test" xml:space="preserve"><value>Test</value></data>
-  <data name="mcp.add" xml:space="preserve"><value>Add</value></data>
-  <data name="mcp.reconnect" xml:space="preserve"><value>Reconnect</value></data>
-  <data name="mcp.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="mcp.idle" xml:space="preserve"><value>Idle</value></data>
-  <data name="mcp.connecting" xml:space="preserve"><value>Connecting…</value></data>
-  <data name="mcp.connected" xml:space="preserve"><value>Connected · {0} tool(s)</value></data>
-  <data name="mcp.failed" xml:space="preserve"><value>Failed: {0}</value></data>
-  <data name="mcp.testing" xml:space="preserve"><value>Testing…</value></data>
-  <data name="mcp.testConnected" xml:space="preserve"><value>Connected. {0} tool(s) available.</value></data>
-  <data name="conversation.toolInput" xml:space="preserve"><value>Tool input</value></data>
-  <data name="settings.tab.memory" xml:space="preserve"><value>Memory</value></data>
-  <data name="memory.vault.title" xml:space="preserve"><value>Memory vault</value></data>
-  <data name="memory.refresh" xml:space="preserve"><value>Refresh</value></data>
-  <data name="memory.reveal" xml:space="preserve"><value>Open .mem folder</value></data>
-  <data name="memory.refused" xml:space="preserve"><value>Not saved. The entry may contain a credential, exceed its limit, or the workspace may be unavailable.</value></data>
-  <data name="memory.noWorkspace" xml:space="preserve"><value>Select a local workspace to view its memory.</value></data>
-  <data name="memory.notInitialized" xml:space="preserve"><value>Memory starts after the first prompt in this workspace.</value></data>
-  <data name="memory.search" xml:space="preserve"><value>Search memory</value></data>
-  <data name="memory.selectNote" xml:space="preserve"><value>Select a note to view it.</value></data>
-  <data name="memory.save" xml:space="preserve"><value>Save</value></data>
-  <data name="memory.forget" xml:space="preserve"><value>Forget</value></data>
-  <data name="memory.ownRules" xml:space="preserve"><value>Your own rules</value></data>
-  <data name="memory.rulesHelp" xml:space="preserve"><value>These rules are added to every request in this project.</value></data>
-  <data name="memory.lessons" xml:space="preserve"><value>Learned lessons</value></data>
-  <data name="memory.learningStats" xml:space="preserve"><value>{0} turns logged; {1} were corrected or undone.</value></data>
-  <data name="memory.links" xml:space="preserve"><value>Links</value></data>
-  <data name="memory.backlinks" xml:space="preserve"><value>Linked mentions</value></data>
-  <data name="memory.userAuthored" xml:space="preserve"><value>user-authored</value></data>
-  <data name="memory.inferred" xml:space="preserve"><value>inferred</value></data>
-  <data name="memory.learnedCount" xml:space="preserve"><value>learned {0}×</value></data>
-  <data name="memory.usedCount" xml:space="preserve"><value>used {0}×</value></data>
-  <data name="memory.inactive" xml:space="preserve"><value>no longer applied</value></data>
-  <data name="memory.pin" xml:space="preserve"><value>Pin</value></data>
+  <data name="mcp.bearerToken" xml:space="preserve"><value>Token Bearer (pilihan)</value></data>
+  <data name="mcp.executable" xml:space="preserve"><value>Laluan boleh laku</value></data>
+  <data name="mcp.arguments" xml:space="preserve"><value>Argumen (dipisahkan ruang)</value></data>
+  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Jalankan secara automatik alatan yang ditanda baca sahaja oleh pelayan</value></data>
+  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Anotasi pelayan tidak dipercayai. Mendayakan ini hanya melangkau kelulusan untuk alat yang ditanda baca sahaja dan tidak memusnahkan.</value></data>
+  <data name="mcp.test" xml:space="preserve"><value>Uji</value></data>
+  <data name="mcp.add" xml:space="preserve"><value>Tambah pelayan</value></data>
+  <data name="mcp.reconnect" xml:space="preserve"><value>Sambung semula</value></data>
+  <data name="mcp.remove" xml:space="preserve"><value>Alih keluar</value></data>
+  <data name="mcp.idle" xml:space="preserve"><value>Melahu</value></data>
+  <data name="mcp.connecting" xml:space="preserve"><value>Menyambung…</value></data>
+  <data name="mcp.connected" xml:space="preserve"><value>Disambungkan · {0} alat</value></data>
+  <data name="mcp.failed" xml:space="preserve"><value>Gagal: {0}</value></data>
+  <data name="mcp.testing" xml:space="preserve"><value>Menguji…</value></data>
+  <data name="mcp.testConnected" xml:space="preserve"><value>Disambungkan. {0} alat tersedia.</value></data>
+  <data name="conversation.toolInput" xml:space="preserve"><value>Input alat</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Memori</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Peti besi memori</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Muat semula</value></data>
+  <data name="memory.enabled" xml:space="preserve"><value>Memori aktif</value></data>
+  <data name="memory.scanFrequency" xml:space="preserve"><value>Kekerapan imbasan</value></data>
+  <data name="memory.scan.off" xml:space="preserve"><value>Mati</value></data>
+  <data name="memory.scan.hourly" xml:space="preserve"><value>Setiap jam</value></data>
+  <data name="memory.scan.daily" xml:space="preserve"><value>Harian</value></data>
+  <data name="memory.scan.weekly" xml:space="preserve"><value>Mingguan</value></data>
+  <data name="memory.enabledHelp" xml:space="preserve"><value>Apabila dimatikan, tiada tugas dicatat, tiada apa yang dipelajari dan tiada dapatan dihantar kepada model; apa yang telah disimpan kekal pada cakera.</value></data>
+  <data name="memory.scanHelp" xml:space="preserve"><value>Nota ringkas tugas disimpan supaya sebab dapatan boleh dirujuk semula selepas imbasan; apabila imbasan dimatikan, tiada model dipanggil di latar belakang.</value></data>
+  <data name="memory.reveal" xml:space="preserve"><value>Buka folder .mem</value></data>
+  <data name="memory.refused" xml:space="preserve"><value>Tidak disimpan. Entri mungkin mengandungi kelayakan, melebihi hadnya, atau ruang kerja mungkin tidak tersedia.</value></data>
+  <data name="memory.noWorkspace" xml:space="preserve"><value>Pilih ruang kerja setempat untuk melihat memorinya.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Memori bermula selepas prompt pertama dalam ruang kerja ini.</value></data>
+  <data name="memory.search" xml:space="preserve"><value>Cari memori</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Pilih nota untuk melihatnya.</value></data>
+  <data name="memory.save" xml:space="preserve"><value>Simpan</value></data>
+  <data name="memory.forget" xml:space="preserve"><value>Lupakan</value></data>
+  <data name="memory.ownRules" xml:space="preserve"><value>Peraturan anda sendiri</value></data>
+  <data name="memory.rulesHelp" xml:space="preserve"><value>Peraturan ini ditambah pada setiap permintaan dalam projek ini.</value></data>
+  <data name="memory.lessons" xml:space="preserve"><value>Pengajaran yang dipelajari</value></data>
+  <data name="memory.learningStats" xml:space="preserve"><value>{0} giliran dilog; {1} telah dibetulkan atau dibuat asal.</value></data>
+  <data name="memory.links" xml:space="preserve"><value>Pautan</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Sebutan terpaut</value></data>
+  <data name="memory.userAuthored" xml:space="preserve"><value>ditulis pengguna</value></data>
+  <data name="memory.inferred" xml:space="preserve"><value>disimpulkan</value></data>
+  <data name="memory.learnedCount" xml:space="preserve"><value>dipelajari {0}×</value></data>
+  <data name="memory.usedCount" xml:space="preserve"><value>digunakan {0}×</value></data>
+  <data name="memory.inactive" xml:space="preserve"><value>tidak lagi digunakan</value></data>
+  <data name="memory.pin" xml:space="preserve"><value>Sematkan</value></data>
   <data name="memory.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="memory.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="settings.tab.access" xml:space="preserve"><value>Workspace access</value></data>
-  <data name="access.currentActor" xml:space="preserve"><value>Current actor</value></data>
-  <data name="access.role" xml:space="preserve"><value>Role</value></data>
-  <data name="access.notAuthorized" xml:space="preserve"><value>Not authorized</value></data>
-  <data name="access.score" xml:space="preserve"><value>Score</value></data>
-  <data name="access.device" xml:space="preserve"><value>Device</value></data>
-  <data name="access.publicKey" xml:space="preserve"><value>Public key</value></data>
-  <data name="access.memoryRevision" xml:space="preserve"><value>Memory revision</value></data>
-  <data name="access.members" xml:space="preserve"><value>Members</value></data>
-  <data name="access.noMembers" xml:space="preserve"><value>No members yet.</value></data>
-  <data name="access.revoke" xml:space="preserve"><value>Revoke</value></data>
-  <data name="access.revoked" xml:space="preserve"><value>revoked</value></data>
-  <data name="access.inviteDevice" xml:space="preserve"><value>Invite device</value></data>
-  <data name="access.displayName" xml:space="preserve"><value>Display name</value></data>
-  <data name="access.newDevicePublicKey" xml:space="preserve"><value>New device public key</value></data>
-  <data name="access.createInvitation" xml:space="preserve"><value>Create signed invitation</value></data>
-  <data name="access.acceptInvitation" xml:space="preserve"><value>Accept invitation</value></data>
-  <data name="access.signedInvitation" xml:space="preserve"><value>Signed invitation</value></data>
-  <data name="access.accept" xml:space="preserve"><value>Accept</value></data>
-  <data name="access.reject" xml:space="preserve"><value>Reject</value></data>
-  <data name="access.pendingDecisions" xml:space="preserve"><value>Pending decisions</value></data>
-  <data name="access.noPendingDecisions" xml:space="preserve"><value>No pending project decisions.</value></data>
-  <data name="access.noWorkspace" xml:space="preserve"><value>Select a local workspace to manage access.</value></data>
-  <data name="access.scoreValue" xml:space="preserve"><value>Score: {0}</value></data>
-  <data name="access.initialize" xml:space="preserve"><value>Initialize workspace memory</value></data>
-  <data name="access.initializeHelp" xml:space="preserve"><value>Workspace access uses a signed memory log. Initializing creates the owner identity and event log in this project's .mem folder.</value></data>
-  <data name="access.role.owner" xml:space="preserve"><value>Owner</value></data>
-  <data name="access.role.approver" xml:space="preserve"><value>Approver</value></data>
-  <data name="access.role.contributor" xml:space="preserve"><value>Contributor</value></data>
-  <data name="access.role.observer" xml:space="preserve"><value>Observer</value></data>
+  <data name="memory.cancel" xml:space="preserve"><value>Batal</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Akses ruang kerja</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Terima</value></data>
   <data name="settings.sandbox" xml:space="preserve"><value>Sandbox</value></data>
-  <data name="settings.sandboxOff" xml:space="preserve"><value>Off — the agent works directly in your checkout.</value></data>
-  <data name="settings.sandboxOn" xml:space="preserve"><value>On — the agent works in a separate git worktree.</value></data>
-  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Recovery is required before sandbox operations can continue.</value></data>
-  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Retry recovery</value></data>
-  <data name="settings.sandboxName" xml:space="preserve"><value>Name</value></data>
-  <data name="settings.sandboxEnter" xml:space="preserve"><value>Start sandbox</value></data>
-  <data name="settings.sandboxMerge" xml:space="preserve"><value>Merge and exit</value></data>
-  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Discard and exit</value></data>
-  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Origin</value></data>
-  <data name="settings.sandboxBranch" xml:space="preserve"><value>Branch</value></data>
-  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Allow network for new processes</value></data>
-  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>This applies only to new commands. Existing terminal sessions keep their current policy.</value></data>
-  <data name="settings.sandboxOpen" xml:space="preserve"><value>Open sandbox</value></data>
-  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Open origin</value></data>
-  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Conflicts</value></data>
-  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Prepare resolution</value></data>
-  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Ask agent</value></data>
-  <data name="settings.sandboxPreview" xml:space="preserve"><value>Refresh preview</value></data>
-  <data name="settings.sandboxApprove" xml:space="preserve"><value>Approve and merge</value></data>
-  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Cancel resolution</value></data>
-  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Retry cleanup</value></data>
-  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Discard this sandbox? Its branch will be kept for recovery, but its worktree will be removed.</value></data>
-  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Approval requires a complete preview with no unresolved files.</value></data>
-  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Resolution preview</value></data>
-  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Unresolved files</value></data>
-  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>Origin HEAD</value></data>
-  <data name="settings.sandboxHead" xml:space="preserve"><value>Sandbox HEAD</value></data>
-  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Preview fingerprint</value></data>
-  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Sandbox cleanup is still pending; the origin was not changed again.</value></data>
-  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Saved sandboxes</value></data>
-  <data name="settings.sandboxRecover" xml:space="preserve"><value>Recover</value></data>
+  <data name="settings.sandboxOff" xml:space="preserve"><value>Mati — ejen bekerja terus dalam checkout anda.</value></data>
+  <data name="settings.sandboxOn" xml:space="preserve"><value>Hidup — ejen bekerja dalam git worktree yang berasingan.</value></data>
+  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Pemulihan diperlukan sebelum operasi kotak pasir boleh diteruskan.</value></data>
+  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Cuba semula pemulihan</value></data>
+  <data name="settings.sandboxName" xml:space="preserve"><value>Nama</value></data>
+  <data name="settings.sandboxEnter" xml:space="preserve"><value>Mulakan kotak pasir</value></data>
+  <data name="settings.sandboxMerge" xml:space="preserve"><value>Gabung dan keluar</value></data>
+  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Buang dan keluar</value></data>
+  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Asal</value></data>
+  <data name="settings.sandboxBranch" xml:space="preserve"><value>Cawangan</value></data>
+  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Benarkan rangkaian untuk proses baharu</value></data>
+  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>Ini hanya terpakai pada arahan baharu. Sesi terminal sedia ada mengekalkan dasar semasa.</value></data>
+  <data name="settings.sandboxOpen" xml:space="preserve"><value>Buka kotak pasir</value></data>
+  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Buka asal</value></data>
+  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Konflik</value></data>
+  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Sediakan penyelesaian</value></data>
+  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Tanya ejen</value></data>
+  <data name="settings.sandboxPreview" xml:space="preserve"><value>Muat semula pratonton</value></data>
+  <data name="settings.sandboxApprove" xml:space="preserve"><value>Luluskan dan gabung</value></data>
+  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Batalkan penyelesaian</value></data>
+  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Cuba semula pembersihan</value></data>
+  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Buang kotak pasir ini? Cabangnya akan disimpan untuk pemulihan, tetapi worktree-nya akan dialih keluar.</value></data>
+  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Kelulusan memerlukan pratonton lengkap tanpa fail yang belum diselesaikan.</value></data>
+  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Pratonton penyelesaian</value></data>
+  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Fail belum diselesaikan</value></data>
+  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>HEAD asal</value></data>
+  <data name="settings.sandboxHead" xml:space="preserve"><value>HEAD kotak pasir</value></data>
+  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Cap jari pratonton</value></data>
+  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Pembersihan kotak pasir masih belum selesai; asal tidak diubah lagi.</value></data>
+  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Kotak pasir disimpan</value></data>
+  <data name="settings.sandboxRecover" xml:space="preserve"><value>Pulihkan</value></data>
   <data name="conversation.accountSwitched.notice" xml:space="preserve"><value>Sembang ini telah berpindah ke akaun lain pada model yang sama. Cache di akaun itu bermula dari awal; meneruskan boleh menggunakan lebih banyak token dan kos.</value></data>
   <data name="conversation.modelSwitched.notice" xml:space="preserve"><value>Model telah ditukar. Cache tidak dibawa ke model baharu; keseluruhan sejarah diproses semula, dan ini boleh menggunakan lebih banyak token dan kos.</value></data>
   <data name="conversation.contextFull.notice" xml:space="preserve"><value>Tetingkap konteks hampir penuh; meneruskan boleh menggunakan lebih banyak token dan kos. Mulakan sembang baharu dengan ringkasan pendek.</value></data>
@@ -574,28 +558,28 @@
   <data name="context.overflowCompress" xml:space="preserve"><value>Mampatkan dan teruskan</value></data>
   <data name="context.overflowNotNow" xml:space="preserve"><value>Bukan sekarang</value></data>
   <data name="context.overflowDeclined" xml:space="preserve"><value>Penghantaran dihentikan: perbualan tidak muat dalam model baharu.</value></data>
-  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>When another chat is writing the same file</value></data>
-  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Wait before asking</value></data>
-  <data name="settings.conflictWaitValue" xml:space="preserve"><value>Wait {0} seconds</value></data>
-  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Wait, then ask</value></data>
-  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>A chat that wants a file another chat is writing waits quietly, and asks only if the wait goes on too long.</value></data>
-  <data name="conflict.policy.ask" xml:space="preserve"><value>Ask me</value></data>
-  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Ask as soon as two chats want the same file.</value></data>
-  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Always wait</value></data>
-  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Never ask: a write waits for the chat that holds the file.</value></data>
-  <data name="conflict.title" xml:space="preserve"><value>A file is busy: {0}</value></data>
-  <data name="conflict.wholeProject" xml:space="preserve"><value>Project command: {0}</value></data>
-  <data name="conflict.stillBusy" xml:space="preserve"><value>Write held back: another chat is still writing {0}.</value></data>
-  <data name="conflict.userSkipped" xml:space="preserve"><value>Write skipped: {0} was left with the other chat ({1}), as you asked.</value></data>
-  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Stopped {0} so this chat could write.</value></data>
-  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Stopped other chats so this chat could write.</value></data>
-  <data name="conflict.banner.title" xml:space="preserve"><value>Another chat is writing this file</value></data>
-  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · held by “{1}” for {2} seconds</value></data>
-  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Keep waiting</value></data>
-  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Stop {0}</value></data>
-  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Stop all other chats</value></data>
-  <data name="conflict.banner.skip" xml:space="preserve"><value>Skip this write</value></data>
-  <data name="conflict.waiting" xml:space="preserve"><value>Waiting for “{0}” to finish writing: {1}</value></data>
+  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>Jika sembang lain menulis fail yang sama</value></data>
+  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Tunggu sebelum bertanya</value></data>
+  <data name="settings.conflictWaitValue" xml:space="preserve"><value>{0} detik</value></data>
+  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Tunggu, kemudian tanya</value></data>
+  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>Menunggu sembang lain dengan senyap dan hanya bertanya jika terlalu lama.</value></data>
+  <data name="conflict.policy.ask" xml:space="preserve"><value>Tanya saya</value></data>
+  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Langsung bertanya apabila dua sembang mahu fail yang sama.</value></data>
+  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Sentiasa tunggu</value></data>
+  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Tidak bertanya: setiap penulisan menunggu sembang yang memegang fail.</value></data>
+  <data name="conflict.title" xml:space="preserve"><value>Sembang lain sedang menulis {0}</value></data>
+  <data name="conflict.wholeProject" xml:space="preserve"><value>keseluruhan projek (arahan: {0})</value></data>
+  <data name="conflict.stillBusy" xml:space="preserve"><value>Tulisan ditahan: {0} masih ditulis sembang lain.</value></data>
+  <data name="conflict.userSkipped" xml:space="preserve"><value>Penulisan dilangkau: {0} kekal dengan sembang lain ({1}) seperti diminta.</value></data>
+  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Sembang “{0}” dihentikan atas permintaan anda dan penulisan ini diteruskan.</value></data>
+  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Sembang lain projek ini dihentikan atas permintaan anda dan penulisan ini diteruskan.</value></data>
+  <data name="conflict.banner.title" xml:space="preserve"><value>Sembang lain sedang menulis fail ini</value></data>
+  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · dipegang “{1}” selama {2} detik</value></data>
+  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Terus tunggu</value></data>
+  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Hentikan sembang itu</value></data>
+  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Hentikan semua sembang lain</value></data>
+  <data name="conflict.banner.skip" xml:space="preserve"><value>Langkau penulisan ini</value></data>
+  <data name="conflict.waiting" xml:space="preserve"><value>Menunggu “{0}” menulis: {1}</value></data>
   <data name="usage.context.button" xml:space="preserve"><value>Penggunaan</value></data>
   <data name="usage.context.tooltip" xml:space="preserve"><value>Penggunaan konteks dan token</value></data>
   <data name="usage.context.latestRequest" xml:space="preserve"><value>Permintaan terkini · tetingkap konteks</value></data>
@@ -605,34 +589,738 @@
   <data name="usage.context.notReported" xml:space="preserve"><value>Tidak dilaporkan oleh penyedia</value></data>
   <data name="usage.context.estimatedBreakdown" xml:space="preserve"><value>Anggaran pecahan input</value></data>
   <data name="usage.context.tokens" xml:space="preserve"><value>token</value></data>
-  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} tokens ({2})</value></data>
-  <data name="usage.context.notAvailable" xml:space="preserve"><value>Context usage is not available yet.</value></data>
-  <data name="usage.context.composition" xml:space="preserve"><value>Estimated input composition</value></data>
+  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} token ({2})</value></data>
+  <data name="usage.context.notAvailable" xml:space="preserve"><value>Penggunaan konteks belum tersedia.</value></data>
+  <data name="usage.context.composition" xml:space="preserve"><value>Anggaran komposisi input</value></data>
   <data name="usage.context.estimatedRow" xml:space="preserve"><value>{0}: {1} ({2})</value></data>
   <data name="usage.context.conversation" xml:space="preserve"><value>Mesej perbualan</value></data>
   <data name="usage.context.systemPrompt" xml:space="preserve"><value>Arahan sistem</value></data>
   <data name="usage.context.toolDefinitions" xml:space="preserve"><value>Definisi alat</value></data>
   <data name="usage.context.mcpDefinitions" xml:space="preserve"><value>Definisi alat MCP</value></data>
-  <data name="usage.context.cacheHit" xml:space="preserve"><value>Measured cache hit</value></data>
-  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Verified prefix reuse: {0} · {1} / {2} tokens</value></data>
-  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Measurement coverage: {0} · {1} of {2} eligible requests</value></data>
-  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Cold: {0} · expired: {1} · changed: {2}</value></data>
-  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Cache writes: {0} tokens</value></data>
-  <data name="usage.context.freshInput" xml:space="preserve"><value>Fresh input: {0} tokens</value></data>
-  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Reuse not reported: {0} of {1} eligible requests</value></data>
-  <data name="usage.context.latency" xml:space="preserve"><value>Average request latency: {0}</value></data>
-  <data name="usage.context.prepare" xml:space="preserve"><value>Average request preparation: {0}</value></data>
-  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Largest cache loss: {0} ({1} tokens)</value></data>
-  <data name="settings.shortcuts" xml:space="preserve"><value>Keyboard shortcuts</value></data>
-  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Select a shortcut to change it. Press a key combination with at least one modifier.</value></data>
-  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Press keys…</value></data>
-  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Restore defaults</value></data>
-  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} is already assigned to {1}.</value></data>
-  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull requests</value></data>
-  <data name="conversation.review" xml:space="preserve"><value>Review</value></data>
-  <data name="conversation.files" xml:space="preserve"><value>Files</value></data>
-  <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
-  <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
-  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} token</value></data>
+  <data name="usage.context.cacheHit" xml:space="preserve"><value>Hit cache yang diukur</value></data>
+  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Guna semula awalan yang disahkan: {0} · {1} / {2} token</value></data>
+  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Liputan pengukuran: {0} · {1} daripada {2} permintaan layak</value></data>
+  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Sejuk: {0} · tamat tempoh: {1} · berubah: {2}</value></data>
+  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Penulisan cache: {0} token</value></data>
+  <data name="usage.context.freshInput" xml:space="preserve"><value>Input baharu: {0} token</value></data>
+  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Guna semula tidak dilaporkan: {0} daripada {1} permintaan layak</value></data>
+  <data name="usage.context.latency" xml:space="preserve"><value>Purata kependaman permintaan: {0}</value></data>
+  <data name="usage.context.prepare" xml:space="preserve"><value>Purata penyediaan permintaan: {0}</value></data>
+  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Kehilangan cache terbesar: {0} ({1} token)</value></data>
+  <data name="settings.shortcuts" xml:space="preserve"><value>Pintasan papan kekunci</value></data>
+  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Pilih pintasan untuk menukarnya. Tekan gabungan kekunci dengan sekurang-kurangnya satu pengubah suai.</value></data>
+  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Tunjuk atau sembunyikan bar sisi</value></data>
+  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Tekan kekunci…</value></data>
+  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Pulihkan lalai</value></data>
+  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} sudah ditetapkan kepada {1}.</value></data>
+  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull request</value></data>
+  <data name="conversation.review" xml:space="preserve"><value>Semak</value></data>
+  <data name="conversation.files" xml:space="preserve"><value>Fail</value></data>
+  <data name="conversation.browser" xml:space="preserve"><value>Pelayar</value></data>
+  <data name="conversation.newChat" xml:space="preserve"><value>Perbualan baharu</value></data>
+  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} token yang baru diproses</value></data>
+  <data name="settings.skillSuggestions" xml:space="preserve"><value>Papar cadangan kemahiran</value></data>
+  <data name="settings.skillSuggestions.hint" xml:space="preserve"><value>Mencadangkan kemahiran hanya apabila sesuatu pengajaran dipelajari tiga kali atau ejen menyelesaikan aliran kerja yang anda perlukan lagi; paling banyak satu kad seminggu. Mati: tiada kad cadangan dipaparkan dan ejen tidak mencadangkan kemahiran.</value></data>
+  <data name="skill.suggestion.title" xml:space="preserve"><value>Kemahiran yang dicadangkan: {0}</value></data>
+  <data name="skill.suggestion.create" xml:space="preserve"><value>Cipta kemahiran</value></data>
+  <data name="skill.suggestion.dismiss" xml:space="preserve"><value>Jangan sekarang</value></data>
+  <data name="settings.autoAccountFailover" xml:space="preserve"><value>Cuba akaun lain secara automatik selepas had dicapai</value></data>
+  <data name="settings.autoAccountFailover.hint" xml:space="preserve"><value>Apabila dimatikan, sembang dijeda; tekan Teruskan untuk mencuba akaun serasi lain. Apabila dihidupkan, akaun yang serasi dicuba secara automatik.</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>Masukkan saiz konteks khusus model dalam token. Automatik menggunakan saiz yang dilaporkan atau didokumenkan oleh model jika tersedia, kemudian nilai yang dikonfigurasi akaun.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>Cari model</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>Nilai automatik: {0} token</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>Pembekal tidak melaporkan saiz konteks.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>Belum ada model tersedia. Sambungkan pembekal atau muat semula senarai model.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>Disimpan.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>Automatik</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>Masukkan nombor bulat positif token.</value></data>
+  <data name="attachment.files" xml:space="preserve"><value>Fail atau foto</value></data>
+  <data name="attachment.project" xml:space="preserve"><value>Bekerja dalam projek</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>Konteks dipadatkan secara automatik</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>Fail dibaca</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>Fail ditukar</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>Perintah dijalankan</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>Carian web</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>Membaca fail…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>Menyunting fail…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>Menjalankan perintah…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>Mencari di web…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>Alat digunakan</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>Menjalankan alat…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>Alat gagal: {0}</value></data>
+  <data name="tasks.menu" xml:space="preserve"><value>Tugasan</value></data>
+  <data name="tasks.title" xml:space="preserve"><value>Tugas Berjadual</value></data>
+  <data name="tasks.subtitle" xml:space="preserve"><value>Jalankan gesaan pada jadual cron.</value></data>
+  <data name="tasks.empty" xml:space="preserve"><value>Tiada tugas lagi.</value></data>
+  <data name="tasks.add" xml:space="preserve"><value>Tambah Tugas</value></data>
+  <data name="tasks.edit" xml:space="preserve"><value>Edit Tugasan</value></data>
+  <data name="tasks.delete" xml:space="preserve"><value>Padam</value></data>
+  <data name="tasks.runNow" xml:space="preserve"><value>Jalankan sekarang</value></data>
+  <data name="tasks.enabled" xml:space="preserve"><value>Didayakan</value></data>
+  <data name="tasks.field.name" xml:space="preserve"><value>Nama</value></data>
+  <data name="tasks.field.cron" xml:space="preserve"><value>Ungkapan Cron</value></data>
+  <data name="tasks.field.prompt" xml:space="preserve"><value>Prompt</value></data>
+  <data name="tasks.field.workspace" xml:space="preserve"><value>Ruang kerja</value></data>
+  <data name="tasks.cron.invalid" xml:space="preserve"><value>Ungkapan cron tidak sah.</value></data>
+  <data name="tasks.cron.next" xml:space="preserve"><value>Larian seterusnya</value></data>
+  <data name="tasks.close" xml:space="preserve"><value>Tutup tugas</value></data>
+  <data name="tasks.back" xml:space="preserve"><value>Kembali</value></data>
+  <data name="tasks.new" xml:space="preserve"><value>Tugas baharu</value></data>
+  <data name="tasks.active" xml:space="preserve"><value>Tugas anda</value></data>
+  <data name="tasks.disabled" xml:space="preserve"><value>Dilumpuhkan</value></data>
+  <data name="tasks.suggestions" xml:space="preserve"><value>Cadangan</value></data>
+  <data name="tasks.history" xml:space="preserve"><value>Larian terkini</value></data>
+  <data name="tasks.history.empty" xml:space="preserve"><value>Tugas ini belum dijalankan.</value></data>
+  <data name="tasks.field.target" xml:space="preserve"><value>Fail atau folder sasaran</value></data>
+  <data name="tasks.field.targetHint" xml:space="preserve"><value>Laluan pilihan dalam ruang kerja</value></data>
+  <data name="tasks.target.invalid" xml:space="preserve"><value>Sasaran mesti berada dalam ruang kerja.</value></data>
+  <data name="tasks.field.model" xml:space="preserve"><value>Model</value></data>
+  <data name="tasks.field.fallback" xml:space="preserve"><value>Model sandaran</value></data>
+  <data name="tasks.network" xml:space="preserve"><value>Benarkan akses rangkaian</value></data>
+  <data name="tasks.assistant.title" xml:space="preserve"><value>Pembantu tugas</value></data>
+  <data name="tasks.assistant.placeholder" xml:space="preserve"><value>Minta ubah tugas ini…</value></data>
+  <data name="tasks.assistant.updated" xml:space="preserve"><value>Tugas dikemas kini.</value></data>
+  <data name="tasks.notification.title" xml:space="preserve"><value>Tugas dijadualkan</value></data>
+  <data name="tasks.notification.completed" xml:space="preserve"><value>Selesai</value></data>
+  <data name="tasks.notification.failed" xml:space="preserve"><value>Gagal</value></data>
+  <data name="tasks.notification.fallback" xml:space="preserve"><value>Model sandaran digunakan</value></data>
+  <data name="tasks.suggestion.daily.title" xml:space="preserve"><value>Ringkasan harian</value></data>
+  <data name="tasks.suggestion.daily.detail" xml:space="preserve"><value>Ringkaskan kerja terkini, keutamaan terbuka dan perubahan ruang kerja.</value></data>
+  <data name="tasks.suggestion.daily.schedule" xml:space="preserve"><value>Hari bekerja pada 8:00</value></data>
+  <data name="tasks.suggestion.daily.prompt" xml:space="preserve"><value>Semak perbualan terkini dan perubahan ruang kerja. Ringkaskan keutamaan paling penting untuk hari ini.</value></data>
+  <data name="tasks.suggestion.weekly.title" xml:space="preserve"><value>Semakan mingguan</value></data>
+  <data name="tasks.suggestion.weekly.detail" xml:space="preserve"><value>Jadikan kerja terkini sebagai kemas kini status ringkas setiap Jumaat.</value></data>
+  <data name="tasks.suggestion.weekly.schedule" xml:space="preserve"><value>Jumaat pada 16:00</value></data>
+  <data name="tasks.suggestion.weekly.prompt" xml:space="preserve"><value>Semak perbualan dan perubahan ruang kerja minggu ini. Tulis kemas kini status ringkas dengan kerja yang selesai, risiko dan langkah seterusnya.</value></data>
+  <data name="tasks.suggestion.followup.title" xml:space="preserve"><value>Monitor susulan</value></data>
+  <data name="tasks.suggestion.followup.detail" xml:space="preserve"><value>Semak aktiviti terkini dan tandakan apa-apa yang memerlukan perhatian.</value></data>
+  <data name="tasks.suggestion.followup.schedule" xml:space="preserve"><value>Hari bekerja pada 9:00</value></data>
+  <data name="tasks.suggestion.followup.prompt" xml:space="preserve"><value>Semak aktiviti tugas dan ruang kerja terkini. Tandakan kerja yang belum selesai, larian yang gagal dan apa-apa yang memerlukan perhatian.</value></data>
+  <data name="tasks.lastRun" xml:space="preserve"><value>Larian terakhir</value></data>
+  <data name="tasks.state.never" xml:space="preserve"><value>Jangan sekali-kali berlari</value></data>
+  <data name="tasks.state.running" xml:space="preserve"><value>Berlari…</value></data>
+  <data name="tasks.state.ok" xml:space="preserve"><value>Berjaya</value></data>
+  <data name="tasks.state.failed" xml:space="preserve"><value>gagal</value></data>
+  <data name="tasks.openConversation" xml:space="preserve"><value>Buka perbualan</value></data>
+  <data name="tasks.save" xml:space="preserve"><value>Jimat</value></data>
+  <data name="tasks.cancel" xml:space="preserve"><value>Batal</value></data>
+  <data name="tasks.background" xml:space="preserve"><value>Jalankan tugas semasa apl ditutup</value></data>
+  <data name="tasks.background.hint" xml:space="preserve"><value>Memasang pembantu latar belakang (dilancarkan) yang menjalankan tugas yang sewajarnya walaupun ketika Dots Harness tidak dibuka.</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Peta</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Indeks</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>Tugasan</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Keputusan</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Keutamaan</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Perbualan</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Tiada sebutan berkaitan.</value></data>
+  <data name="memory.graph" xml:space="preserve"><value>Graf</value></data>
+  <data name="media.image" xml:space="preserve"><value>imej</value></data>
+  <data name="media.video" xml:space="preserve"><value>video</value></data>
+  <data name="media.audio" xml:space="preserve"><value>audio</value></data>
+  <data name="media.promptMissing" xml:space="preserve"><value>Terangkan perkara yang perlu dijana selepas arahan.</value></data>
+  <data name="media.promptMissingFor" xml:space="preserve"><value>Terangkan {0} untuk dijana selepas arahan.</value></data>
+  <data name="media.modelMissing" xml:space="preserve"><value>Model pembekal media tidak dikonfigurasikan.</value></data>
+  <data name="media.noOutput" xml:space="preserve"><value>Pembekal tidak mengembalikan output media.</value></data>
+  <data name="media.invalidOutput" xml:space="preserve"><value>Pembekal mengembalikan data media yang tidak sah.</value></data>
+  <data name="media.generationFailed" xml:space="preserve"><value>Pembekal tidak dapat menjana media.</value></data>
+  <data name="media.videoTimeout" xml:space="preserve"><value>Penjanaan video tamat masa.</value></data>
+  <data name="media.busy" xml:space="preserve"><value>Generasi atau ejen dijalankan sudah pun dijalankan. Cuba lagi apabila ia selesai.</value></data>
+  <data name="media.unsupported" xml:space="preserve"><value>Saya tidak boleh menjana ini di sini. Pembekal yang dipilih tidak mempunyai keupayaan ini.</value></data>
+  <data name="media.unsupportedStatus" xml:space="preserve"><value>Penjanaan media tidak disokong oleh pembekal yang dipilih.</value></data>
+  <data name="media.fileMissing" xml:space="preserve"><value>Fail yang dijana tidak lagi tersedia.</value></data>
+  <data name="media.openAudio" xml:space="preserve"><value>Buka audio yang dijana</value></data>
+  <data name="media.save" xml:space="preserve"><value>Simpan</value></data>
+  <data name="media.showInFinder" xml:space="preserve"><value>Tunjukkan dalam Finder</value></data>
+  <data name="rail.home" xml:space="preserve"><value>Laman utama</value></data>
+  <data name="rail.media" xml:space="preserve"><value>Media</value></data>
+  <data name="rail.tasks" xml:space="preserve"><value>Tugas</value></data>
+  <data name="rail.bots" xml:space="preserve"><value>Bot</value></data>
+  <data name="rail.marketplace" xml:space="preserve"><value>Pasaran</value></data>
+  <data name="rail.memory" xml:space="preserve"><value>Memori</value></data>
+  <data name="rail.settings" xml:space="preserve"><value>Tetapan</value></data>
+  <data name="models.followApp" xml:space="preserve"><value>Model aplikasi</value></data>
+  <data name="studio.preset.square" xml:space="preserve"><value>Hantaran segi empat</value></data>
+  <data name="studio.preset.story" xml:space="preserve"><value>Cerita</value></data>
+  <data name="studio.preset.landscape" xml:space="preserve"><value>Landskap</value></data>
+  <data name="studio.preset.thumbnail" xml:space="preserve"><value>Lakaran kecil video</value></data>
+  <data name="studio.preset.logo" xml:space="preserve"><value>Logo</value></data>
+  <data name="studio.preset.poster" xml:space="preserve"><value>Poster</value></data>
+  <data name="studio.template.announcement" xml:space="preserve"><value>Pengumuman</value></data>
+  <data name="studio.template.story" xml:space="preserve"><value>Cerita</value></data>
+  <data name="studio.template.thumbnail" xml:space="preserve"><value>Lakaran kecil video</value></data>
+  <data name="studio.template.slide" xml:space="preserve"><value>Slaid tajuk</value></data>
+  <data name="studio.template.logo" xml:space="preserve"><value>Logo</value></data>
+  <data name="studio.template.mobile" xml:space="preserve"><value>Skrin mudah alih</value></data>
+  <data name="studio.category.social" xml:space="preserve"><value>Media Sosial</value></data>
+  <data name="studio.category.uiux" xml:space="preserve"><value>UI/UX</value></data>
+  <data name="studio.category.presentation" xml:space="preserve"><value>Pembentangan &amp; Infografik</value></data>
+  <data name="studio.category.other" xml:space="preserve"><value>Reka bentuk lain</value></data>
+  <data name="studio.sample.title" xml:space="preserve"><value>Tajuk anda</value></data>
+  <data name="studio.sample.detail" xml:space="preserve"><value>Satu baris pendek yang menyatakan lebih</value></data>
+  <data name="studio.sample.brand" xml:space="preserve"><value>Jenama</value></data>
+  <data name="studio.sample.text" xml:space="preserve"><value>Teks</value></data>
+  <data name="studio.copyOf" xml:space="preserve"><value>Salinan {0}</value></data>
+  <data name="studio.untitled" xml:space="preserve"><value>Projek tanpa tajuk</value></data>
+  <data name="studio.home.title" xml:space="preserve"><value>Terangkan idea anda dan jadikannya nyata</value></data>
+  <data name="studio.home.search" xml:space="preserve"><value>Cari</value></data>
+  <data name="studio.home.sort.name" xml:space="preserve"><value>Nama</value></data>
+  <data name="studio.home.filter.all" xml:space="preserve"><value>Sepanjang masa</value></data>
+  <data name="studio.home.filter.week" xml:space="preserve"><value>7 hari lepas</value></data>
+  <data name="studio.home.filter.month" xml:space="preserve"><value>30 hari lepas</value></data>
+  <data name="studio.home.starred" xml:space="preserve"><value>Berbintang</value></data>
+  <data name="studio.home.star" xml:space="preserve"><value>Tambah ke berbintang</value></data>
+  <data name="studio.home.unstar" xml:space="preserve"><value>Alih keluar daripada berbintang</value></data>
+  <data name="studio.home.modified" xml:space="preserve"><value>Terakhir diubah</value></data>
+  <data name="studio.home.canvases" xml:space="preserve"><value>Kanvas</value></data>
+  <data name="studio.projects" xml:space="preserve"><value>Projek</value></data>
+  <data name="studio.templates" xml:space="preserve"><value>Templat</value></data>
+  <data name="studio.community" xml:space="preserve"><value>Komuniti</value></data>
+  <data name="studio.community.banner" xml:space="preserve"><value>Terokai reka bentuk yang dibuat oleh komuniti</value></data>
+  <data name="studio.community.saved" xml:space="preserve"><value>Disimpan</value></data>
+  <data name="studio.community.share" xml:space="preserve"><value>Kongsi ke Komuniti</value></data>
+  <data name="studio.community.shared" xml:space="preserve"><value>Dihantar untuk semakan. Akan muncul dalam Komuniti selepas diluluskan.</value></data>
+  <data name="studio.community.signIn" xml:space="preserve"><value>Log masuk ke akaun HerNess anda untuk berkongsi ke Komuniti.</value></data>
+  <data name="studio.community.empty" xml:space="preserve"><value>Belum ada reka bentuk komuniti di sini.</value></data>
+  <data name="studio.projectName" xml:space="preserve"><value>Nama projek</value></data>
+  <data name="studio.newProject" xml:space="preserve"><value>Projek baharu</value></data>
+  <data name="studio.create" xml:space="preserve"><value>Cipta projek</value></data>
+  <data name="studio.rename" xml:space="preserve"><value>Namakan semula</value></data>
+  <data name="studio.duplicate" xml:space="preserve"><value>Pendua</value></data>
+  <data name="studio.deleteConfirm" xml:space="preserve"><value>Padam “{0}”? Kanvas dan fail yang dimuat naiknya akan dialih keluar.</value></data>
+  <data name="studio.projectMeta" xml:space="preserve"><value>Kanvas: {0}, diedit {1}</value></data>
+  <data name="studio.empty.title" xml:space="preserve"><value>Belum ada projek media</value></data>
+  <data name="studio.empty.detail" xml:space="preserve"><value>Projek ialah papan kanvas. Tambah teks, bentuk dan imej sendiri, atau huraikan apa yang anda mahu dan biarkan model membinanya lapisan demi lapisan.</value></data>
+  <data name="studio.addCanvas" xml:space="preserve"><value>Kanvas</value></data>
+  <data name="studio.undo" xml:space="preserve"><value>Buat asal</value></data>
+  <data name="studio.redo" xml:space="preserve"><value>Buat semula</value></data>
+  <data name="studio.zoomOut" xml:space="preserve"><value>Zum keluar</value></data>
+  <data name="studio.zoomIn" xml:space="preserve"><value>Zum masuk</value></data>
+  <data name="studio.zoomFit" xml:space="preserve"><value>Muatkan semua kanvas</value></data>
+  <data name="studio.layers" xml:space="preserve"><value>Lapisan</value></data>
+  <data name="studio.layers.empty" xml:space="preserve"><value>Kanvas ini belum mempunyai lapisan.</value></data>
+  <data name="studio.layer.text" xml:space="preserve"><value>Teks</value></data>
+  <data name="studio.layer.shape" xml:space="preserve"><value>Bentuk</value></data>
+  <data name="studio.layer.upload" xml:space="preserve"><value>Muat naik</value></data>
+  <data name="studio.layer.show" xml:space="preserve"><value>Tunjukkan lapisan</value></data>
+  <data name="studio.layer.hide" xml:space="preserve"><value>Sembunyikan lapisan</value></data>
+  <data name="studio.shape.rectangle" xml:space="preserve"><value>Segi empat tepat</value></data>
+  <data name="studio.shape.ellipse" xml:space="preserve"><value>Elips</value></data>
+  <data name="studio.name" xml:space="preserve"><value>Nama</value></data>
+  <data name="studio.opacity" xml:space="preserve"><value>Kelegapan</value></data>
+  <data name="studio.fontSize" xml:space="preserve"><value>Saiz</value></data>
+  <data name="studio.weight.regular" xml:space="preserve"><value>Biasa</value></data>
+  <data name="studio.weight.medium" xml:space="preserve"><value>Sederhana</value></data>
+  <data name="studio.weight.bold" xml:space="preserve"><value>Tebal</value></data>
+  <data name="studio.fill" xml:space="preserve"><value>Isian</value></data>
+  <data name="studio.cornerRadius" xml:space="preserve"><value>Jejari sudut</value></data>
+  <data name="studio.playVideo" xml:space="preserve"><value>Main video</value></data>
+  <data name="studio.size" xml:space="preserve"><value>Saiz</value></data>
+  <data name="studio.background" xml:space="preserve"><value>Latar belakang</value></data>
+  <data name="studio.deleteCanvas" xml:space="preserve"><value>Padam kanvas</value></data>
+  <data name="studio.ai.kind.design" xml:space="preserve"><value>Reka bentuk</value></data>
+  <data name="studio.ai.kind.image" xml:space="preserve"><value>Imej</value></data>
+  <data name="studio.ai.kind.video" xml:space="preserve"><value>Video</value></data>
+  <data name="studio.ai.placeholder.design" xml:space="preserve"><value>Huraikan reka bentuk yang hendak dibina pada kanvas ini</value></data>
+  <data name="studio.ai.placeholder.image" xml:space="preserve"><value>Huraikan imej yang hendak dijana</value></data>
+  <data name="studio.ai.placeholder.video" xml:space="preserve"><value>Huraikan video yang hendak dijana</value></data>
+  <data name="studio.ai.run" xml:space="preserve"><value>Jana</value></data>
+  <data name="studio.ai.planning" xml:space="preserve"><value>Merancang lapisan</value></data>
+  <data name="studio.ai.layerProgress" xml:space="preserve"><value>Lapisan {0} daripada {1}: {2}</value></data>
+  <data name="studio.ai.drawing" xml:space="preserve"><value>Menjana imej</value></data>
+  <data name="studio.ai.renderingVideo" xml:space="preserve"><value>Menjana video. Ini boleh mengambil masa beberapa minit.</value></data>
+  <data name="studio.ai.noPlan" xml:space="preserve"><value>Model tidak mengembalikan lapisan. Cuba lagi atau pilih model lain.</value></data>
+  <data name="studio.settings.title" xml:space="preserve"><value>Model media</value></data>
+  <data name="studio.settings.design" xml:space="preserve"><value>Reka bentuk</value></data>
+  <data name="studio.settings.model" xml:space="preserve"><value>Model</value></data>
+  <data name="studio.settings.designHelp" xml:space="preserve"><value>Model sembang yang menukar permintaan kepada lapisan.</value></data>
+  <data name="studio.settings.source" xml:space="preserve"><value>Sumber</value></data>
+  <data name="studio.settings.source.provider" xml:space="preserve"><value>Pembekal</value></data>
+  <data name="studio.settings.source.local" xml:space="preserve"><value>Setempat</value></data>
+  <data name="studio.settings.modelDefault" xml:space="preserve"><value>Lalai pembekal</value></data>
+  <data name="studio.settings.local" xml:space="preserve"><value>Pelayan setempat</value></data>
+  <data name="studio.settings.localURL" xml:space="preserve"><value>URL asas</value></data>
+  <data name="studio.settings.localHelp" xml:space="preserve"><value>Pelayan serasi OpenAI pada mesin atau rangkaian ini. Digunakan apabila sumber di atas ditetapkan kepada Setempat, dengan nama model yang anda masukkan di sana.</value></data>
+  <data name="studio.settings.music.connect" xml:space="preserve"><value>Sambungkan API</value></data>
+  <data name="studio.settings.music.type.standard" xml:space="preserve"><value>Pelayan muzik</value></data>
+  <data name="studio.settings.music.type.elevenlabs" xml:space="preserve"><value>ElevenLabs</value></data>
+  <data name="studio.settings.music.name" xml:space="preserve"><value>Nama</value></data>
+  <data name="studio.settings.music.key" xml:space="preserve"><value>Kunci API</value></data>
+  <data name="studio.settings.music.help" xml:space="preserve"><value>Pelayan muzik menjawab POST /audio/generations dan menyenaraikan modelnya di /models; tools/music_server.py adalah salah satunya. Kunci API disimpan dalam Rantai Kunci.</value></data>
+  <data name="studio.ai.kind.next" xml:space="preserve"><value>Skrin seterusnya</value></data>
+  <data name="studio.ai.placeholder.next" xml:space="preserve"><value>Terangkan skrin seterusnya, atau biarkan kosong untuk meneruskan aliran</value></data>
+  <data name="studio.ai.noImages" xml:space="preserve"><value>Tiada penjana imej disambungkan, jadi lapisan imej dibiarkan sebagai ruang letak. Sambungkan satu, kemudian jana setiap imej daripada lapisannya.</value></data>
+  <data name="studio.screenNumber" xml:space="preserve"><value>Skrin {0}</value></data>
+  <data name="studio.layer.icon" xml:space="preserve"><value>Ikon</value></data>
+  <data name="studio.layer.lock" xml:space="preserve"><value>Kunci lapisan</value></data>
+  <data name="studio.layer.unlock" xml:space="preserve"><value>Buka kunci lapisan</value></data>
+  <data name="studio.layer.front" xml:space="preserve"><value>Bawa ke hadapan</value></data>
+  <data name="studio.layer.back" xml:space="preserve"><value>Hantar ke belakang</value></data>
+  <data name="studio.position" xml:space="preserve"><value>Kedudukan</value></data>
+  <data name="studio.rotation" xml:space="preserve"><value>Putaran</value></data>
+  <data name="studio.appearance" xml:space="preserve"><value>Rupa</value></data>
+  <data name="studio.gradient" xml:space="preserve"><value>Gradien</value></data>
+  <data name="studio.stroke" xml:space="preserve"><value>Garis luar</value></data>
+  <data name="studio.shadow" xml:space="preserve"><value>Bayang</value></data>
+  <data name="studio.symbol" xml:space="preserve"><value>Nama simbol</value></data>
+  <data name="studio.imagePrompt" xml:space="preserve"><value>Perihalan imej</value></data>
+  <data name="studio.generateImage" xml:space="preserve"><value>Jana imej</value></data>
+  <data name="studio.export" xml:space="preserve"><value>Eksport</value></data>
+  <data name="studio.exportAll" xml:space="preserve"><value>Eksport semua kanvas</value></data>
+  <data name="studio.font.default" xml:space="preserve"><value>Sans</value></data>
+  <data name="studio.font.rounded" xml:space="preserve"><value>Bundar</value></data>
+  <data name="studio.font.serif" xml:space="preserve"><value>Serif</value></data>
+  <data name="studio.font.mono" xml:space="preserve"><value>Mono</value></data>
+  <data name="studio.tool.move" xml:space="preserve"><value>Alih</value></data>
+  <data name="studio.tool.hand" xml:space="preserve"><value>Tangan</value></data>
+  <data name="studio.tool.pen" xml:space="preserve"><value>Pen</value></data>
+  <data name="studio.tool.pencil" xml:space="preserve"><value>Pensel</value></data>
+  <data name="studio.shape.line" xml:space="preserve"><value>Garis</value></data>
+  <data name="studio.shape.arrow" xml:space="preserve"><value>Anak panah</value></data>
+  <data name="studio.shape.polygon" xml:space="preserve"><value>Poligon</value></data>
+  <data name="studio.shape.star" xml:space="preserve"><value>Bintang</value></data>
+  <data name="studio.actions" xml:space="preserve"><value>Tindakan</value></data>
+  <data name="studio.unlockAll" xml:space="preserve"><value>Buka kunci semua lapisan</value></data>
+  <data name="studio.frames.phone" xml:space="preserve"><value>Telefon</value></data>
+  <data name="studio.frames.tablet" xml:space="preserve"><value>Tablet</value></data>
+  <data name="studio.frames.desktop" xml:space="preserve"><value>Desktop</value></data>
+  <data name="studio.frames.presentation" xml:space="preserve"><value>Pembentangan</value></data>
+  <data name="studio.frames.watch" xml:space="preserve"><value>Jam tangan</value></data>
+  <data name="studio.frames.paper" xml:space="preserve"><value>Kertas</value></data>
+  <data name="studio.frames.social" xml:space="preserve"><value>Media sosial</value></data>
+  <data name="studio.tool.scale" xml:space="preserve"><value>Skala</value></data>
+  <data name="studio.tool.section" xml:space="preserve"><value>Bahagian</value></data>
+  <data name="studio.tool.slice" xml:space="preserve"><value>Hirisan</value></data>
+  <data name="studio.tool.textPath" xml:space="preserve"><value>Teks pada laluan</value></data>
+  <data name="studio.tool.comment" xml:space="preserve"><value>Komen</value></data>
+  <data name="studio.search" xml:space="preserve"><value>Cari</value></data>
+  <data name="studio.cut" xml:space="preserve"><value>Potong</value></data>
+  <data name="studio.paste" xml:space="preserve"><value>Tampal</value></data>
+  <data name="bots.preset.assistant" xml:space="preserve"><value>Pembantu</value></data>
+  <data name="bots.preset.researcher" xml:space="preserve"><value>Penyelidik</value></data>
+  <data name="bots.preset.coder" xml:space="preserve"><value>Pengatur cara</value></data>
+  <data name="bots.new" xml:space="preserve"><value>Bot baharu</value></data>
+  <data name="bots.edit" xml:space="preserve"><value>Edit bot</value></data>
+  <data name="bots.clear" xml:space="preserve"><value>Kosongkan sembang</value></data>
+  <data name="bots.send" xml:space="preserve"><value>Hantar mesej</value></data>
+  <data name="bots.deleteConfirm" xml:space="preserve"><value>Padam “{0}” dan sembangnya?</value></data>
+  <data name="bots.empty.title" xml:space="preserve"><value>Belum ada bot</value></data>
+  <data name="bots.empty.detail" xml:space="preserve"><value>Bot ialah pembantu dengan arahan, model dan sembang berterusannya sendiri. Berikan folder dan ia akan bekerja di sana sebagai ejen.</value></data>
+  <data name="bots.greeting" xml:space="preserve"><value>Hantar mesej kepada {0} untuk bermula.</value></data>
+  <data name="bots.placeholder" xml:space="preserve"><value>Mesej kepada {0}</value></data>
+  <data name="bots.agentIn" xml:space="preserve"><value>Ejen dalam {0}</value></data>
+  <data name="bots.name" xml:space="preserve"><value>Nama</value></data>
+  <data name="bots.icon" xml:space="preserve"><value>Ikon</value></data>
+  <data name="bots.instructions" xml:space="preserve"><value>Arahan</value></data>
+  <data name="bots.instructionsHelp" xml:space="preserve"><value>Cara bot harus berkelakuan, apa yang diketahuinya dan cara ia menjawab.</value></data>
+  <data name="bots.workspace" xml:space="preserve"><value>Folder ejen</value></data>
+  <data name="bots.workspace.none" xml:space="preserve"><value>Tiada: sembang sahaja</value></data>
+  <data name="bots.workspace.choose" xml:space="preserve"><value>Pilih folder</value></data>
+  <data name="bots.workspace.clear" xml:space="preserve"><value>Alih keluar</value></data>
+  <data name="bots.workspaceHelp" xml:space="preserve"><value>Dengan folder, bot boleh membaca, menulis dan menjalankan arahan di dalamnya tanpa bertanya, dan tiada akses rangkaian. Tanpa folder ia hanya bersembang.</value></data>
+  <data name="bots.error.noReply" xml:space="preserve"><value>Bot tidak membalas.</value></data>
+  <data name="bots.status.delivered" xml:space="preserve"><value>Dihantar kepada bot</value></data>
+  <data name="bots.status.waiting" xml:space="preserve"><value>Menunggu bot</value></data>
+  <data name="tasks.plan.title" xml:space="preserve"><value>Jadualkan tugas</value></data>
+  <data name="tasks.plan.subtitle" xml:space="preserve"><value>HerNess menjalankan kerja berulang untuk anda.</value></data>
+  <data name="tasks.upcoming" xml:space="preserve"><value>Akan datang</value></data>
+  <data name="tasks.instructions" xml:space="preserve"><value>Arahan…</value></data>
+  <data name="tasks.repeat" xml:space="preserve"><value>Ulang</value></data>
+  <data name="tasks.time" xml:space="preserve"><value>Masa</value></data>
+  <data name="tasks.day" xml:space="preserve"><value>Hari</value></data>
+  <data name="tasks.advanced" xml:space="preserve"><value>Lanjutan</value></data>
+  <data name="tasks.create" xml:space="preserve"><value>Cipta</value></data>
+  <data name="tasks.repeat.hourly" xml:space="preserve"><value>Setiap jam</value></data>
+  <data name="tasks.repeat.daily" xml:space="preserve"><value>Harian</value></data>
+  <data name="tasks.repeat.weekdays" xml:space="preserve"><value>Hari bekerja</value></data>
+  <data name="tasks.repeat.weekly" xml:space="preserve"><value>Mingguan</value></data>
+  <data name="tasks.repeat.custom" xml:space="preserve"><value>Tersuai</value></data>
+  <data name="bots.preset.assistant.detail" xml:space="preserve"><value>Dapatkan bantuan untuk tugas harian</value></data>
+  <data name="bots.preset.researcher.detail" xml:space="preserve"><value>Kaji topik dan bandingkan sumber</value></data>
+  <data name="bots.preset.coder.detail" xml:space="preserve"><value>Tulis kod dan selesaikan masalah</value></data>
+  <data name="tasks.suggestion.email.title" xml:space="preserve"><value>Susulan e-mel</value></data>
+  <data name="tasks.suggestion.email.detail" xml:space="preserve"><value>Semak e-mel penting dan ringkaskan perkara yang perlu diberi perhatian.</value></data>
+  <data name="tasks.suggestion.reading.title" xml:space="preserve"><value>Bacaan hujung minggu</value></data>
+  <data name="tasks.suggestion.reading.detail" xml:space="preserve"><value>Cari artikel tentang minat saya setiap minggu.</value></data>
+  <data name="tasks.suggestion.prices.title" xml:space="preserve"><value>Amaran harga</value></data>
+  <data name="tasks.suggestion.prices.detail" xml:space="preserve"><value>Semak harga produk yang saya ikuti dan laporkan diskaun.</value></data>
+  <data name="tasks.suggestion.events.title" xml:space="preserve"><value>Temui acara</value></data>
+  <data name="tasks.suggestion.events.detail" xml:space="preserve"><value>Cari konsert dan acara yang sesuai dengan minat saya.</value></data>
+  <data name="tasks.suggestion.weekend.title" xml:space="preserve"><value>Rancang hujung minggu</value></data>
+  <data name="tasks.suggestion.weekend.detail" xml:space="preserve"><value>Cadangkan aktiviti hujung minggu berdasarkan pilihan saya.</value></data>
+  <data name="tasks.suggestions.memory" xml:space="preserve"><value>Berdasarkan memori anda</value></data>
+  <data name="tasks.suggestions.personalizing" xml:space="preserve"><value>Menyediakan cadangan daripada memori anda…</value></data>
+  <data name="tasks.suggestions.unavailable" xml:space="preserve"><value>Contoh cadangan · pemperibadian tidak tersedia</value></data>
+  <data name="tasks.suggestions.refresh" xml:space="preserve"><value>Muat semula cadangan</value></data>
+  <data name="tasks.suggestions.instruction" xml:space="preserve"><value>Sesuaikan hasil dengan minat dan pilihan saya. Ringkaskan penemuan anda. Nyatakan maklumat atau akses yang masih diperlukan.</value></data>
+  <data name="media.music" xml:space="preserve"><value>muzik</value></data>
+  <data name="studio.music" xml:space="preserve"><value>Muzik</value></data>
+  <data name="studio.library" xml:space="preserve"><value>Pustaka</value></data>
+  <data name="studio.music.composing" xml:space="preserve"><value>Sedang menggubah muzik. Ini mungkin mengambil masa beberapa minit.</value></data>
+  <data name="studio.music.song" xml:space="preserve"><value>Lagu</value></data>
+  <data name="studio.music.inspector" xml:space="preserve"><value>Butiran</value></data>
+  <data name="studio.music.section" xml:space="preserve"><value>Bahagian</value></data>
+  <data name="studio.music.section.delete" xml:space="preserve"><value>Padam bahagian</value></data>
+  <data name="studio.music.lyrics" xml:space="preserve"><value>Lirik</value></data>
+  <data name="studio.music.track" xml:space="preserve"><value>Trek</value></data>
+  <data name="studio.music.track.generate" xml:space="preserve"><value>Hasilkan trek</value></data>
+  <data name="studio.music.track.empty" xml:space="preserve"><value>Belum ada audio</value></data>
+  <data name="studio.music.track.delete" xml:space="preserve"><value>Padam trek</value></data>
+  <data name="studio.music.mix" xml:space="preserve"><value>Campuran</value></data>
+  <data name="studio.music.tempo" xml:space="preserve"><value>Tempo dan kunci nada</value></data>
+  <data name="studio.music.generating" xml:space="preserve"><value>Menghasilkan {0} trek</value></data>
+  <data name="studio.music.placeholder" xml:space="preserve"><value>Huraikan lagu: mood, cerita, instrumen, siapa menyanyi</value></data>
+  <data name="studio.music.empty" xml:space="preserve"><value>Huraikan lagu di atas, atau mulakan lagu kosong. Rancangan didahulukan: bahagian, lirik dan satu trek bagi setiap instrumen, yang boleh diubah sebelum audio dihasilkan.</value></data>
+  <data name="studio.music.plan" xml:space="preserve"><value>Tulis lagu</value></data>
+  <data name="studio.music.new" xml:space="preserve"><value>Lagu kosong</value></data>
+  <data name="studio.music.noPlan" xml:space="preserve"><value>Model tidak mengembalikan rancangan lagu. Cuba lagi atau pilih model lain.</value></data>
+  <data name="studio.music.deleteConfirm" xml:space="preserve"><value>Padam “{0}”? Trek dan fail audionya akan dialih keluar.</value></data>
+  <data name="studio.music.trackCount" xml:space="preserve"><value>{0} trek</value></data>
+  <data name="studio.music.bpm" xml:space="preserve"><value>{0} BPM</value></data>
+  <data name="studio.music.key" xml:space="preserve"><value>Kunci nada</value></data>
+  <data name="studio.music.generateAll" xml:space="preserve"><value>Hasilkan semua</value></data>
+  <data name="studio.music.regenerate" xml:space="preserve"><value>Hasilkan trek ini semula</value></data>
+  <data name="studio.music.script" xml:space="preserve"><value>Skrip</value></data>
+  <data name="studio.music.artists" xml:space="preserve"><value>Artis</value></data>
+  <data name="studio.music.artist.add" xml:space="preserve"><value>Tambah artis</value></data>
+  <data name="studio.music.artist.default" xml:space="preserve"><value>Artis {0}</value></data>
+  <data name="studio.music.artist.name" xml:space="preserve"><value>Nama</value></data>
+  <data name="studio.music.artist.style" xml:space="preserve"><value>Suara dan gaya</value></data>
+  <data name="studio.music.section.add" xml:space="preserve"><value>Tambah bahagian</value></data>
+  <data name="studio.music.section.default" xml:space="preserve"><value>Rangkap</value></data>
+  <data name="studio.music.section.bars" xml:space="preserve"><value>{0} bar</value></data>
+  <data name="studio.music.line.add" xml:space="preserve"><value>Tambah baris</value></data>
+  <data name="studio.music.line.placeholder" xml:space="preserve"><value>Baris lirik</value></data>
+  <data name="studio.music.line.unsung" xml:space="preserve"><value>Tiada siapa</value></data>
+  <data name="studio.music.track.add" xml:space="preserve"><value>Tambah trek</value></data>
+  <data name="studio.music.track.instrument" xml:space="preserve"><value>Instrumen</value></data>
+  <data name="studio.music.track.prompt" xml:space="preserve"><value>Bagaimana ia harus dimainkan</value></data>
+  <data name="studio.music.track.vocal" xml:space="preserve"><value>Vokal · {0}</value></data>
+  <data name="studio.music.mute" xml:space="preserve"><value>Bisu</value></data>
+  <data name="studio.music.solo" xml:space="preserve"><value>Solo</value></data>
+  <data name="library.all" xml:space="preserve"><value>Semua</value></data>
+  <data name="library.kind.image" xml:space="preserve"><value>Imej</value></data>
+  <data name="library.kind.video" xml:space="preserve"><value>Video</value></data>
+  <data name="library.kind.audio" xml:space="preserve"><value>Audio</value></data>
+  <data name="library.kind.music" xml:space="preserve"><value>Muzik</value></data>
+  <data name="library.kind.document" xml:space="preserve"><value>Dokumen</value></data>
+  <data name="library.add" xml:space="preserve"><value>Tambah fail</value></data>
+  <data name="library.addFailed" xml:space="preserve"><value>{0} fail tidak dapat ditambah.</value></data>
+  <data name="library.open" xml:space="preserve"><value>Buka</value></data>
+  <data name="library.empty.title" xml:space="preserve"><value>Belum ada apa-apa di sini</value></data>
+  <data name="library.empty.detail" xml:space="preserve"><value>Imej, video, suara dan muzik yang anda hasilkan disimpan di sini secara automatik. Tambah dokumen dan fail lain sendiri.</value></data>
+  <data name="backgroundTasks.title" xml:space="preserve"><value>Tugas latar belakang</value></data>
+  <data name="backgroundTasks.empty" xml:space="preserve"><value>Tiada tugas latar belakang</value></data>
+  <data name="backgroundTasks.finished" xml:space="preserve"><value>Selesai</value></data>
+  <data name="backgroundTasks.failed" xml:space="preserve"><value>Gagal (keluar {0})</value></data>
+  <data name="backgroundTasks.stopped" xml:space="preserve"><value>Dihentikan</value></data>
+  <data name="backgroundTasks.clear" xml:space="preserve"><value>Kosongkan yang selesai</value></data>
+  <data name="backgroundTasks.runningCount" xml:space="preserve"><value>Tugas sedang berjalan: {0}</value></data>
+  <data name="backgroundTasks.wake" xml:space="preserve"><value>Tugas latar belakang “{0}” selesai dengan kod keluar {1}. Baca outputnya dengan terminal_session (sesi {2}) dan teruskan.</value></data>
+  <data name="backgroundTasks.waitingInput" xml:space="preserve"><value>Menunggu input</value></data>
+  <data name="local.installed" xml:space="preserve"><value>Dipasang</value></data>
+  <data name="marketplace.title" xml:space="preserve"><value>Pasaran</value></data>
+  <data name="marketplace.empty" xml:space="preserve"><value>Tiada pemalam</value></data>
+  <data name="marketplace.emptyHint" xml:space="preserve"><value>Tekan Muat Semula untuk memuatkan pendaftaran.</value></data>
+  <data name="marketplace.install" xml:space="preserve"><value>Pasang</value></data>
+  <data name="marketplace.search" xml:space="preserve"><value>Cari pemalam</value></data>
+  <data name="marketplace.update" xml:space="preserve"><value>Kemas kini v{0} → v{1}</value></data>
+  <data name="marketplace.by" xml:space="preserve"><value>oleh {0}</value></data>
+  <data name="market.tab.plugins" xml:space="preserve"><value>Pemalam</value></data>
+  <data name="market.tab.skills" xml:space="preserve"><value>Kemahiran</value></data>
+  <data name="market.tab.starters" xml:space="preserve"><value>Pemula projek</value></data>
+  <data name="starters.intro" xml:space="preserve"><value>Pilih pemula dan folder kosong. Prompt akan masuk ke penyusun supaya anda boleh membaca dan menghantarnya.</value></data>
+  <data name="starters.use" xml:space="preserve"><value>Guna pemula</value></data>
+  <data name="starters.chooseFolder" xml:space="preserve"><value>Pilih folder kosong untuk projek baharu.</value></data>
+  <data name="starters.web.title" xml:space="preserve"><value>Aplikasi web</value></data>
+  <data name="starters.web.detail" xml:space="preserve"><value>Next.js dengan TypeScript, susun atur, laluan API contoh dan linting.</value></data>
+  <data name="starters.landing.title" xml:space="preserve"><value>Halaman pendaratan</value></data>
+  <data name="starters.landing.detail" xml:space="preserve"><value>HTML dan CSS statik dengan hero, ciri, harga dan hubungan. Tiada langkah binaan.</value></data>
+  <data name="starters.api.title" xml:space="preserve"><value>Perkhidmatan API</value></data>
+  <data name="starters.api.detail" xml:space="preserve"><value>FastAPI dengan semakan kesihatan, sumber contoh, tetapan dan ujian.</value></data>
+  <data name="starters.ios.title" xml:space="preserve"><value>Aplikasi iOS</value></data>
+  <data name="starters.ios.detail" xml:space="preserve"><value>SwiftUI dengan dua skrin, model boleh diperhati dan satu ujian unit.</value></data>
+  <data name="starters.worker.title" xml:space="preserve"><value>Cloudflare Worker</value></data>
+  <data name="starters.worker.detail" xml:space="preserve"><value>API TypeScript di Workers dengan pengikatan bertaip dan satu ujian.</value></data>
+  <data name="starters.cli.title" xml:space="preserve"><value>Alat baris arahan</value></data>
+  <data name="starters.cli.detail" xml:space="preserve"><value>Pakej Python dengan subarahan, ujian dan arahan pemasangan.</value></data>
+  <data name="common.cancel" xml:space="preserve"><value>Batal</value></data>
+  <data name="common.connect" xml:space="preserve"><value>Sambung</value></data>
+  <data name="common.copied" xml:space="preserve"><value>disalin</value></data>
+  <data name="common.delete" xml:space="preserve"><value>Padam</value></data>
+  <data name="common.done" xml:space="preserve"><value>Selesai</value></data>
+  <data name="common.download" xml:space="preserve"><value>Muat turun</value></data>
+  <data name="common.idle" xml:space="preserve"><value>terbiar</value></data>
+  <data name="common.refresh" xml:space="preserve"><value>Muat semula</value></data>
+  <data name="common.remove" xml:space="preserve"><value>Alih keluar</value></data>
+  <data name="common.start" xml:space="preserve"><value>Mulakan</value></data>
+  <data name="common.stop" xml:space="preserve"><value>Berhenti</value></data>
+  <data name="common.test" xml:space="preserve"><value>Ujian</value></data>
+  <data name="common.save" xml:space="preserve"><value>Jimat</value></data>
+  <data name="common.view" xml:space="preserve"><value>Lihat</value></data>
+  <data name="composer.add" xml:space="preserve"><value>Tambah</value></data>
+  <data name="attachment.addApp" xml:space="preserve"><value>Tambahkan apl Dots Harness</value></data>
+  <data name="attachment.projectDetail" xml:space="preserve"><value>Pilih projek untuk sembang baharu</value></data>
+  <data name="attachment.goal" xml:space="preserve"><value>Matlamat</value></data>
+  <data name="attachment.goalDetail" xml:space="preserve"><value>Tetapkan matlamat untuk berusaha ke arah itu</value></data>
+  <data name="attachment.plan" xml:space="preserve"><value>Mod rancangan</value></data>
+  <data name="attachment.planDetail" xml:space="preserve"><value>Hidupkan mod pelan</value></data>
+  <data name="attachment.saveSkill" xml:space="preserve"><value>Simpan kemahiran</value></data>
+  <data name="attachment.plugins" xml:space="preserve"><value>Pemalam</value></data>
+  <data name="attachment.slashCommands" xml:space="preserve"><value>Perintah garis miring</value></data>
+  <data name="attachment.folder" xml:space="preserve"><value>Tambah folder</value></data>
+  <data name="attachment.connectors" xml:space="preserve"><value>Penyambung</value></data>
+  <data name="attachment.documentsDetail" xml:space="preserve"><value>Buat dan edit artifak dokumen</value></data>
+  <data name="attachment.pdfDetail" xml:space="preserve"><value>Baca, buat dan sahkan fail PDF</value></data>
+  <data name="attachment.spreadsheetsDetail" xml:space="preserve"><value>Buat dan edit fail hamparan</value></data>
+  <data name="modelPicker.model" xml:space="preserve"><value>Model</value></data>
+  <data name="modelPicker.speed" xml:space="preserve"><value>Kelajuan</value></data>
+  <data name="modelPicker.maximum" xml:space="preserve"><value>maksimum</value></data>
+  <data name="modelPicker.standard" xml:space="preserve"><value>Standard</value></data>
+  <data name="modelPicker.fast" xml:space="preserve"><value>Cepat</value></data>
+  <data name="modelPicker.auto" xml:space="preserve"><value>Auto</value></data>
+  <data name="modelPicker.autoHint" xml:space="preserve"><value>Memilih model dan usaha setiap mesej</value></data>
+  <data name="settings.sshPassword" xml:space="preserve"><value>Kata laluan (digunakan sekali)</value></data>
+  <data name="settings.sshRememberPassword" xml:space="preserve"><value>Ingat kata laluan</value></data>
+  <data name="settings.sshRememberPassword.hint" xml:space="preserve"><value>Tidak perlu: kata laluan digunakan sekali sahaja untuk memasang kunci dan tidak pernah ditulis ke ~/.ssh/config.</value></data>
+  <data name="ssh.continue" xml:space="preserve"><value>Teruskan</value></data>
+  <data name="ssh.enrolling" xml:space="preserve"><value>Memasang kunci…</value></data>
+  <data name="ssh.enrolled.hint" xml:space="preserve"><value>Sambungan seterusnya menggunakan kunci; kata laluan tidak diperlukan lagi.</value></data>
+  <data name="ssh.retry" xml:space="preserve"><value>Cuba lagi</value></data>
+  <data name="ssh.retryHint" xml:space="preserve"><value>Semak alamat, nama pengguna dan kata laluan, kemudian cuba lagi.</value></data>
+  <data name="ssh.installKeyManually" xml:space="preserve"><value>Tambah kunci ini ke ~/.ssh/authorized_keys pada pelayan, kemudian cuba lagi.</value></data>
+  <data name="ssh.copyPublicKey" xml:space="preserve"><value>Salin kunci</value></data>
+  <data name="ssh.error.passwordAuthDisabled" xml:space="preserve"><value>Pelayan tidak menerima log masuk kata laluan.</value></data>
+  <data name="ssh.error.authFailed" xml:space="preserve"><value>{0} menolak log masuk.</value></data>
+  <data name="ssh.error.hostKeyChanged" xml:space="preserve"><value>Kunci hos {0} telah berubah. Jangan teruskan melainkan pelayan dipasang semula.</value></data>
+  <data name="ssh.error.invalidInput" xml:space="preserve"><value>Masukkan alias, nama hos, nama pengguna dan port yang sah.</value></data>
+  <data name="sidebar.projects" xml:space="preserve"><value>Projek</value></data>
+  <data name="sidebar.recent" xml:space="preserve"><value>Baru-baru ini</value></data>
+  <data name="sidebar.search" xml:space="preserve"><value>Cari sembang</value></data>
+  <data name="sidebar.sites" xml:space="preserve"><value>Tapak</value></data>
+  <data name="sidebar.scheduled" xml:space="preserve"><value>Dijadualkan</value></data>
+  <data name="sidebar.addProject" xml:space="preserve"><value>Tambah projek</value></data>
+  <data name="settings.compactTrigger" xml:space="preserve"><value>Padatkan konteks secara automatik pada</value></data>
+  <data name="settings.compactTrigger.hint" xml:space="preserve"><value>Peratusan tetingkap konteks setiap model. Nilai lebih tinggi mengekalkan cache prompt lebih lama, kerana pemadatan menulis semulanya.</value></data>
+  <data name="settings.explore.subagents" xml:space="preserve"><value>Gunakan subejen</value></data>
+  <data name="settings.explore.hint" xml:space="preserve"><value>Apabila dihidupkan, untuk tugas sukar atau panjang ejen menyerahkan carian yang meliputi banyak fail dan bahagian bebas sesuatu perubahan besar kepada subejen selari; hanya ringkasan mereka masuk ke perbualan utama. Subejen penyunting hanya boleh menulis fail yang ditugaskan kepadanya, dan tugasan tidak boleh bertindih. Tugas mudah tidak pernah memanggilnya. Setiap subejen ialah larian model berasingan; matikan untuk mengurangkan kos.</value></data>
+  <data name="settings.responseStyle" xml:space="preserve"><value>Gaya respons</value></data>
+  <data name="settings.responseStyle.hint" xml:space="preserve"><value>Tetapan ini tidak menulis semula gesaan. Ringkas/Ultra ialah keutamaan usaha terbaik; ia tidak menjamin bilangan token, kesempurnaan atau kos lebih rendah.</value></data>
+  <data name="responseStyle.balanced" xml:space="preserve"><value>Seimbang</value></data>
+  <data name="responseStyle.concise" xml:space="preserve"><value>Ringkas</value></data>
+  <data name="responseStyle.ultra" xml:space="preserve"><value>Ultra</value></data>
+  <data name="responseStyle.detailed" xml:space="preserve"><value>Terperinci</value></data>
+  <data name="settings.computerUse.enable" xml:space="preserve"><value>Dayakan penggunaan komputer</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>Versi dan kemas kini</value></data>
+  <data name="settings.updates.available" xml:space="preserve"><value>Versi baharu tersedia: v{0}</value></data>
+  <data name="settings.updates.download" xml:space="preserve"><value>Muat turun kemas kini</value></data>
+  <data name="dock.branch" xml:space="preserve"><value>Cabang</value></data>
+  <data name="dock.refresh" xml:space="preserve"><value>Segar semula</value></data>
+  <data name="dock.commit" xml:space="preserve"><value>Commit</value></data>
+  <data name="dock.push" xml:space="preserve"><value>Push</value></data>
+  <data name="dock.fetch" xml:space="preserve"><value>Ambil</value></data>
+  <data name="dock.commitOrPush" xml:space="preserve"><value>Commit atau push</value></data>
+  <data name="dock.commitMessage" xml:space="preserve"><value>Mesej commit</value></data>
+  <data name="dock.noChanges" xml:space="preserve"><value>Tiada perubahan oleh ejen.</value></data>
+  <data name="dock.whyRequest" xml:space="preserve"><value>Permintaan anda</value></data>
+  <data name="dock.whyAgent" xml:space="preserve"><value>Penjelasan ejen</value></data>
+  <data name="dock.notRepo" xml:space="preserve"><value>Folder ini bukan repositori git.</value></data>
+  <data name="dock.gitMissing" xml:space="preserve"><value>Git tidak dipasang. Semakan, commit dan push memerlukannya.</value></data>
+  <data name="dock.installGit" xml:space="preserve"><value>Pasang Git</value></data>
+  <data name="dock.filterFiles" xml:space="preserve"><value>Tapis fail…</value></data>
+  <data name="dock.openFile" xml:space="preserve"><value>Buka fail</value></data>
+  <data name="dock.selectFile" xml:space="preserve"><value>Pilih fail daripada pepohon ruang kerja</value></data>
+  <data name="dock.binaryFile" xml:space="preserve"><value>Fail binari atau tidak boleh dibaca</value></data>
+  <data name="dock.expand" xml:space="preserve"><value>Kembangkan</value></data>
+  <data name="dock.collapse" xml:space="preserve"><value>Runtuhkan</value></data>
+  <data name="dock.split" xml:space="preserve"><value>Pisah</value></data>
+  <data name="dock.unsplit" xml:space="preserve"><value>Tunjukkan satu tab</value></data>
+  <data name="dock.newTab" xml:space="preserve"><value>Tab baharu</value></data>
+  <data name="dock.address" xml:space="preserve"><value>Cari atau masukkan URL</value></data>
+  <data name="dock.invalidAddress" xml:space="preserve"><value>Masukkan alamat web atau carian yang sah.</value></data>
+  <data name="dock.openExternal" xml:space="preserve"><value>Buka dalam pelayar lalai</value></data>
+  <data name="dock.bottomTerminal" xml:space="preserve"><value>Buka terminal bawah</value></data>
+  <data name="dock.splitHorizontal" xml:space="preserve"><value>Pisah bersebelahan</value></data>
+  <data name="dock.splitVertical" xml:space="preserve"><value>Pisah atas dan bawah</value></data>
+  <data name="dock.noWorkspace" xml:space="preserve"><value>Pilih folder ruang kerja dahulu.</value></data>
+  <data name="git.branchHelp" xml:space="preserve"><value>Pilih cabang Git</value></data>
+  <data name="git.uncommitted" xml:space="preserve"><value>Tidak komited: fail {0}</value></data>
+  <data name="market.area.core" xml:space="preserve"><value>Marketplace utama</value></data>
+  <data name="market.area.experimental" xml:space="preserve"><value>Eksperimen</value></data>
+  <data name="market.area.community" xml:space="preserve"><value>Komuniti</value></data>
+  <data name="market.area.communityExperimental" xml:space="preserve"><value>Komuniti / Eksperimen</value></data>
+  <data name="market.account" xml:space="preserve"><value>Akaun HerNess</value></data>
+  <data name="market.signIn" xml:space="preserve"><value>Log masuk</value></data>
+  <data name="market.signIn.email" xml:space="preserve"><value>E-mel dan kata laluan</value></data>
+  <data name="market.signIn.title" xml:space="preserve"><value>Log masuk dengan akaun HerNess anda</value></data>
+  <data name="market.email" xml:space="preserve"><value>E-mel</value></data>
+  <data name="market.password" xml:space="preserve"><value>Kata laluan</value></data>
+  <data name="market.likeSignIn" xml:space="preserve"><value>Log masuk untuk suka</value></data>
+  <data name="market.customize" xml:space="preserve"><value>Sesuaikan</value></data>
+  <data name="market.localForks" xml:space="preserve"><value>Penyesuaian setempat</value></data>
+  <data name="market.openFolder" xml:space="preserve"><value>Buka folder</value></data>
+  <data name="market.fork.compared" xml:space="preserve"><value>Telah dibandingkan</value></data>
+  <data name="market.consent.title" xml:space="preserve"><value>Plugin ini menjalankan kod asli</value></data>
+  <data name="market.consent.accept" xml:space="preserve"><value>Terima dan dayakan</value></data>
+  <data name="market.consent.message" xml:space="preserve"><value>{0} ialah plugin asli pihak ketiga. Kawasan: {1}. Semakan: {2}. Kategori: {3}. Semak kebenaran dan kod sumbernya. Jika anda menerima, plugin terus berjalan sebagai dipercayai.</value></data>
+  <data name="market.review.verified" xml:space="preserve"><value>Disemak oleh DOTS</value></data>
+  <data name="market.review.pending" xml:space="preserve"><value>Menunggu semakan</value></data>
+  <data name="market.community.empty" xml:space="preserve"><value>Belum ada plugin komuniti</value></data>
+  <data name="market.community.emptyHint" xml:space="preserve"><value>Plugin komuniti memerlukan semakan berasingan dan persetujuan jelas untuk menjalankan kod asli.</value></data>
+  <data name="market.report" xml:space="preserve"><value>Laporkan</value></data>
+  <data name="market.report.title" xml:space="preserve"><value>Laporkan plugin</value></data>
+  <data name="market.report.reason" xml:space="preserve"><value>Sebab</value></data>
+  <data name="market.report.submit" xml:space="preserve"><value>Hantar laporan</value></data>
+  <data name="market.report.malware" xml:space="preserve"><value>Perisian hasad atau tingkah laku berbahaya</value></data>
+  <data name="market.report.credentialTheft" xml:space="preserve"><value>Kecurian kelayakan</value></data>
+  <data name="market.report.exfiltration" xml:space="preserve"><value>Eksfiltrasi data</value></data>
+  <data name="market.report.deceptive" xml:space="preserve"><value>Penyenaraian mengelirukan atau penyamaran</value></data>
+  <data name="market.report.spam" xml:space="preserve"><value>Spam atau pembalut kosong</value></data>
+  <data name="market.report.copyright" xml:space="preserve"><value>Pelanggaran hak cipta atau lesen</value></data>
+  <data name="market.publish" xml:space="preserve"><value>Terbitkan plugin</value></data>
+  <data name="market.publish.title" xml:space="preserve"><value>Terbitkan plugin asli</value></data>
+  <data name="market.publish.hint" xml:space="preserve"><value>Folder plugin mesti mengandungi plugin.yml, plugin.ir.json dan lesen. JavaScript dan runtime deklaratif tidak diterima; binaan platform dicipta dalam CI.</value></data>
+  <data name="market.publish.noFolder" xml:space="preserve"><value>Tiada folder plugin dipilih</value></data>
+  <data name="market.publish.chooseFolder" xml:space="preserve"><value>Pilih folder</value></data>
+  <data name="market.publish.irPreview" xml:space="preserve"><value>Pratonton plugin.ir.json</value></data>
+  <data name="market.publish.sourcePreview" xml:space="preserve"><value>Pratonton sumber asli</value></data>
+  <data name="market.publish.version" xml:space="preserve"><value>Versi (SemVer)</value></data>
+  <data name="market.publish.license" xml:space="preserve"><value>Lesen SPDX (cth. MIT)</value></data>
+  <data name="market.publish.visibility" xml:space="preserve"><value>Keterlihatan sumber</value></data>
+  <data name="market.publish.public" xml:space="preserve"><value>Awam — pakej sumber disenaraikan</value></data>
+  <data name="market.publish.private" xml:space="preserve"><value>Peribadi — hanya pemilik dan CI boleh mengakses</value></data>
+  <data name="market.publish.targets" xml:space="preserve"><value>Platform sasaran</value></data>
+  <data name="market.publish.footer" xml:space="preserve"><value>Selepas diterbitkan, AI mengelaskan kategori, kawasan dan risiko. Walaupun binaan selesai, plugin tidak disenaraikan sehingga semakan manusia selesai.</value></data>
+  <data name="market.publish.submit" xml:space="preserve"><value>Terbitkan</value></data>
+  <data name="market.publish.error.http" xml:space="preserve"><value>Penerbitan Marketplace gagal (HTTP {0}): {1}</value></data>
+  <data name="market.publish.error.license" xml:space="preserve"><value>Pilih lesen untuk menerbitkan plugin.</value></data>
+  <data name="market.publish.error.noManifest" xml:space="preserve"><value>plugin.yml tidak ditemui dalam folder yang dipilih.</value></data>
+  <data name="market.publish.error.nativeOnly" xml:space="preserve"><value>Hanya plugin asli boleh diterbitkan.</value></data>
+  <data name="market.publish.error.semver" xml:space="preserve"><value>Masukkan versi SemVer yang sah.</value></data>
+  <data name="market.publish.error.targets" xml:space="preserve"><value>Pilih sekurang-kurangnya satu platform sasaran dan keterlihatan sumber yang sah.</value></data>
+  <data name="market.publish.error.package" xml:space="preserve"><value>Pakej mesti mengandungi fail plugin.ir.json dan license.</value></data>
+  <data name="market.publish.error.irVersion" xml:space="preserve"><value>plugin.ir.json mesti versi 1.</value></data>
+  <data name="market.publish.error.releaseID" xml:space="preserve"><value>Tidak dapat memperoleh ID keluaran Marketplace.</value></data>
+  <data name="market.publish.error.noVersion" xml:space="preserve"><value>plugin.yml tiada medan version.</value></data>
+  <data name="market.publish.status.registering" xml:space="preserve"><value>Mencipta entri Marketplace…</value></data>
+  <data name="market.publish.status.uploading" xml:space="preserve"><value>Memuat naik pakej sumber asli…</value></data>
+  <data name="market.publish.status.aiUnavailable" xml:space="preserve"><value>Pengelasan AI tidak tersedia; label sementara: {0} · {1} · {2}. Semakan manusia diwajibkan.</value></data>
+  <data name="market.publish.status.aiDone" xml:space="preserve"><value>Pengelasan AI: {0} · {1} · {2}. Menunggu semakan manusia.</value></data>
+  <data name="market.publish.status.aiFailed" xml:space="preserve"><value>Pengelasan AI tidak dapat diselesaikan; menunggu semakan manusia.</value></data>
+  <data name="market.publish.status.queueing" xml:space="preserve"><value>Membariskan binaan platform asli…</value></data>
+  <data name="market.publish.status.uploaded" xml:space="preserve"><value>Pakej sumber dimuat naik; menunggu pengesahan CI asli.</value></data>
+  <data name="market.error.notSignedIn" xml:space="preserve"><value>Penerbitan Marketplace memerlukan akaun HerNess.</value></data>
+  <data name="market.error.invalidCallback" xml:space="preserve"><value>Panggilan balik log masuk HerNess tidak sah.</value></data>
+  <data name="market.error.stateMismatch" xml:space="preserve"><value>Keadaan log masuk HerNess tidak sepadan.</value></data>
+  <data name="market.error.request" xml:space="preserve"><value>Permintaan Marketplace gagal (HTTP {0}): {1}</value></data>
+  <data name="market.error.invalidResponse" xml:space="preserve"><value>Marketplace mengembalikan respons tidak sah.</value></data>
+  <data name="market.error.credentials" xml:space="preserve"><value>E-mel dan kata laluan diperlukan.</value></data>
+  <data name="remote.scan" xml:space="preserve"><value>Imbas kod QR ini atau masukkan kod sekali guna dalam HerNess Mobile.</value></data>
+  <data name="remote.newCode" xml:space="preserve"><value>Kod berpasangan baharu</value></data>
+  <data name="remote.copyLink" xml:space="preserve"><value>Salin pautan berpasangan</value></data>
+  <data name="remote.tunnel.enable" xml:space="preserve"><value>Dayakan Cloudflare Quick Tunnel</value></data>
+  <data name="remote.hint" xml:space="preserve"><value>Kunci penyedia kekal pada desktop. Penulisan fail, terminal, binaan, penggunaan dan tindakan PR masih menggunakan mod kelulusan yang dipilih.</value></data>
+  <data name="settings.tab.mobile" xml:space="preserve"><value>Kawalan mudah alih</value></data>
+  <data name="settings.compaction.economyFixed" xml:space="preserve"><value>Dasar jimat menggunakan ambang tetap 90%.</value></data>
+  <data name="settings.browser.title" xml:space="preserve"><value>Pelayar dan enjin pilihan</value></data>
+  <data name="settings.browser.auto" xml:space="preserve"><value>Automatik (dalam apl, atau pelayar yang anda namakan)</value></data>
+  <data name="settings.browser.managed" xml:space="preserve"><value>Pelayar terpencil terurus (Chrome)</value></data>
+  <data name="settings.browser.chrome" xml:space="preserve"><value>Chrome saya</value></data>
+  <data name="settings.browser.desktopHint" xml:space="preserve"><value>Pelayar dalam apl menggunakan enjin pelayar sistem. Chrome terurus dan profil Chrome sedia ada anda turut tersedia.</value></data>
+  <data name="settings.browser.inAppDesktop" xml:space="preserve"><value>Pelayar dalam aplikasi</value></data>
+  <data name="settings.computerUse.desktopHint" xml:space="preserve"><value>Ejen boleh memeriksa aplikasi yang sedang berjalan, melihat tangkapan skrin, menggunakan tetikus dan papan kekunci serta mengesahkan hasil. Tindakan desktop memerlukan kelulusan akses.</value></data>
+  <data name="settings.computerUse.linuxHint" xml:space="preserve"><value>Penggunaan komputer pada Linux memerlukan X11, xdotool dan maim atau ImageMagick. Wayland tidak disokong.</value></data>
+  <data name="market.settings.hint" xml:space="preserve"><value>Main Marketplace mengandungi pemalam Harness yang telah disemak. Community dan Experimental diasingkan; pemalam asli memerlukan kelulusan anda sebelum dijalankan.</value></data>
+  <data name="market.registry.empty" xml:space="preserve"><value>Tiada entri Marketplace ditemukan. Segarkan registri untuk mencuba lagi.</value></data>
+  <data name="market.signIn.hint" xml:space="preserve"><value>Log masuk dengan Google, GitHub atau e-mel dan kata laluan HerNess anda. Token sesi kekal dalam stor kelayakan platform anda.</value></data>
+  <data name="dock.clean" xml:space="preserve"><value>Pokok kerja bersih.</value></data>
+  <data name="market.publish.folderPickerUnavailable" xml:space="preserve"><value>Persekitaran desktop ini tidak menyediakan pemilih folder.</value></data>
+  <data name="market.publish.localFolderRequired" xml:space="preserve"><value>Pilih folder setempat untuk menerbitkan pemalam.</value></data>
+  <data name="market.report.details" xml:space="preserve"><value>Butiran (pilihan, sehingga 5,000 aksara)</value></data>
+  <data name="dock.browser.webview2Unavailable" xml:space="preserve"><value>WebView2 tidak dapat dimulakan. Pasang atau baiki Microsoft Edge WebView2 Runtime.</value></data>
+  <data name="settings.marketplace" xml:space="preserve"><value>Pasaran</value></data>
+  <data name="workspace.use" xml:space="preserve"><value>Gunakan Ruang Kerja</value></data>
+  <data name="market.fork.consent.title" xml:space="preserve"><value>Plugin tersuai ini menjalankan kod asli</value></data>
+  <data name="market.fork.consent.message" xml:space="preserve"><value>{0} ialah fork setempat. Sumbernya bebas daripada upstream; semak perubahan sebelum mendayakannya.</value></data>
+  <data name="market.fork.newUpstream" xml:space="preserve"><value>Upstream baharu: v{0}; perubahan setempat dikekalkan</value></data>
+  <data name="market.remove.confirmTitle" xml:space="preserve"><value>Alih keluar pemalam Marketplace?</value></data>
+  <data name="market.remove.confirmMessage" xml:space="preserve"><value>Alih keluar {0} daripada peranti ini?</value></data>
+  <data name="market.report.other" xml:space="preserve"><value>Lain-lain</value></data>
+  <data name="modelPicker.economy" xml:space="preserve"><value>Jimat</value></data>
+  <data name="conversation.toggleResponseEconomy" xml:space="preserve"><value>Hidupkan atau matikan penjimatan token jawapan</value></data>
+  <data name="market.unpublish.confirmMessage" xml:space="preserve"><value>Nyahterbitkan {0}? Pemasangan sedia ada tidak akan dialih keluar.</value></data>
+  <data name="market.permissions" xml:space="preserve"><value>Kebenaran</value></data>
+  <data name="market.risk" xml:space="preserve"><value>Risiko: {0}</value></data>
+  <data name="market.category.coding" xml:space="preserve"><value>Pengekodan</value></data>
+  <data name="market.category.git" xml:space="preserve"><value>Git</value></data>
+  <data name="market.category.qa" xml:space="preserve"><value>Pengujian &amp; Kualiti</value></data>
+  <data name="market.category.devops" xml:space="preserve"><value>DevOps</value></data>
+  <data name="market.category.browser" xml:space="preserve"><value>Pelayar</value></data>
+  <data name="market.category.web" xml:space="preserve"><value>Web</value></data>
+  <data name="market.category.backend" xml:space="preserve"><value>Backend</value></data>
+  <data name="market.category.mobile" xml:space="preserve"><value>Mudah alih</value></data>
+  <data name="market.category.models" xml:space="preserve"><value>Model</value></data>
+  <data name="market.category.integrations" xml:space="preserve"><value>Integrasi</value></data>
+  <data name="market.category.workspace" xml:space="preserve"><value>Ruang kerja</value></data>
+  <data name="market.category.productivity" xml:space="preserve"><value>Produktiviti</value></data>
+  <data name="market.category.tools" xml:space="preserve"><value>Alatan</value></data>
+  <data name="market.category.design" xml:space="preserve"><value>Reka bentuk</value></data>
+  <data name="market.category.documents" xml:space="preserve"><value>Dokumen</value></data>
+  <data name="market.category.authoring" xml:space="preserve"><value>Penulisan kemahiran</value></data>
+  <data name="market.category.community" xml:space="preserve"><value>Komuniti</value></data>
+  <data name="market.category.other" xml:space="preserve"><value>Lain-lain</value></data>
+  <data name="navigation.back" xml:space="preserve"><value>Kembali</value></data>
+  <data name="navigation.forward" xml:space="preserve"><value>Ke hadapan</value></data>
+  <data name="dock.restart" xml:space="preserve"><value>Mulakan semula</value></data>
+  <data name="dock.go" xml:space="preserve"><value>Pergi</value></data>
+  <data name="terminal.sandboxUnavailable" xml:space="preserve"><value>Kotak pasir terminal tidak tersedia: {0}</value></data>
+  <data name="remote.lan" xml:space="preserve"><value>Titik akhir LAN</value></data>
+  <data name="remote.code" xml:space="preserve"><value>Kod</value></data>
+  <data name="remote.expires" xml:space="preserve"><value>Tamat tempoh: {0}</value></data>
+  <data name="remote.pairingLink" xml:space="preserve"><value>Pautan gandingan</value></data>
+  <data name="custom.detected" xml:space="preserve"><value>Berjalan pada komputer ini</value></data>
+  <data name="custom.modelOptional" xml:space="preserve"><value>Nama model (pilihan)</value></data>
+  <data name="custom.contextOptional" xml:space="preserve"><value>Tetingkap konteks dalam token (pilihan)</value></data>
+  <data name="custom.prefix" xml:space="preserve"><value>Awalan model</value></data>
+  <data name="local.tuning" xml:space="preserve"><value>Prestasi</value></data>
+  <data name="local.tuningHint" xml:space="preserve"><value>Kosong atau auto membolehkan runtime menyesuaikan model dengan memori GPU anda. Perubahan berkuat kuasa apabila model dimulakan seterusnya.</value></data>
+  <data name="local.contextSize" xml:space="preserve"><value>Saiz konteks (token)</value></data>
+  <data name="local.gpuLayers" xml:space="preserve"><value>Lapisan GPU (auto, all atau nombor)</value></data>
+  <data name="local.threads" xml:space="preserve"><value>Thread CPU</value></data>
+  <data name="local.batchSize" xml:space="preserve"><value>Saiz kelompok</value></data>
+  <data name="local.flashAttention" xml:space="preserve"><value>Flash attention</value></data>
+  <data name="local.kvCache" xml:space="preserve"><value>Jenis cache KV</value></data>
+  <data name="local.extraArgs" xml:space="preserve"><value>Argumen llama-server tambahan</value></data>
+  <data name="local.hardware" xml:space="preserve"><value>Perkakasan</value></data>
+  <data name="local.listen" xml:space="preserve"><value>Mendengar</value></data>
+  <data name="local.importGGUF" xml:space="preserve"><value>Tambah fail GGUF…</value></data>
+  <data name="local.tooLarge" xml:space="preserve"><value>Terlalu besar</value></data>
+  <data name="local.backend" xml:space="preserve"><value>Backend GPU</value></data>
+  <data name="settings.compaction.autoRouted" xml:space="preserve"><value>Model yang dihalakan secara automatik</value></data>
+  <data name="settings.compaction.effectiveThreshold" xml:space="preserve"><value>Ambang berkesan</value></data>
+  <data name="sidebar.signOut" xml:space="preserve"><value>Log keluar</value></data>
+  <data name="market.unpublish" xml:space="preserve"><value>Nyahterbit</value></data>
+  <data name="settings.sshHosts" xml:space="preserve"><value>Komputer jauh (SSH)</value></data>
+  <data name="settings.sshHosts.hint" xml:space="preserve"><value>Hos diambil daripada ~/.ssh/config. Hos yang ditambah di sini ditulis ke fail itu.</value></data>
+  <data name="settings.sshNoHosts" xml:space="preserve"><value>Tiada hos dalam ~/.ssh/config.</value></data>
+  <data name="settings.sshAddHost" xml:space="preserve"><value>Tambah komputer…</value></data>
+  <data name="settings.sshTest" xml:space="preserve"><value>Uji</value></data>
+  <data name="settings.sshManaged" xml:space="preserve"><value>ditambah di sini</value></data>
+  <data name="settings.sshFromConfig" xml:space="preserve"><value>daripada ~/.ssh/config</value></data>
+  <data name="settings.sshRemove.handWritten" xml:space="preserve"><value>Hos ini ditulis secara manual dalam ~/.ssh/config. Buang di sana.</value></data>
+  <data name="settings.updates.current" xml:space="preserve"><value>Versi semasa</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>Menyemak kemas kini…</value></data>
+  <data name="settings.updates.checkAgain" xml:space="preserve"><value>Semak semula</value></data>
+  <data name="settings.updates.upToDate" xml:space="preserve"><value>Apl adalah terkini.</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>Semak kemas kini</value></data>
+  <data name="settings.updates.retry" xml:space="preserve"><value>Cuba lagi</value></data>
+  <data name="settings.updates.hint" xml:space="preserve"><value>Semak keluaran terkini yang tersedia.</value></data>
+  <data name="settings.updates.required" xml:space="preserve"><value>Wajib</value></data>
+  <data name="ssh.connected" xml:space="preserve"><value>{0} menjawab.</value></data>
+  <data name="remote.enable" xml:space="preserve"><value>Benarkan kawalan jauh</value></data>
+  <data name="remote.shareLan" xml:space="preserve"><value>Kongsi dengan rangkaian tempatan</value></data>
+  <data name="remote.enableHint" xml:space="preserve"><value>Gateway jarak jauh dimatikan. Aktifkannya untuk memasangkan telefon.</value></data>
+  <data name="plan.title" xml:space="preserve"><value>Rancang</value></data>
+  <data name="plan.proposed" xml:space="preserve"><value>Claude mencadangkan satu pelan</value></data>
+  <data name="plan.revise" xml:space="preserve"><value>Semak semula…</value></data>
+  <data name="plan.acceptAuto" xml:space="preserve"><value>Terima dan mod auto</value></data>
 </root>

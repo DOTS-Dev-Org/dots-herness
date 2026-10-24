@@ -15,12 +15,6 @@ export const LOCAL_ALLOWED_ORIGINS = new Set([
   "http://127.0.0.1:3002",
 ]);
 
-/** Kept as a compatibility export; request checks use isAllowedOrigin. */
-export const ALLOWED_ORIGINS = new Set([
-  ...PRODUCTION_ALLOWED_ORIGINS,
-  ...LOCAL_ALLOWED_ORIGINS,
-]);
-
 export function isAllowedOrigin(
   env: Pick<Env, "ALLOW_LOCAL_ORIGINS"> | undefined,
   origin: string,

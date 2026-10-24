@@ -1,99 +1,95 @@
 // Copyright (c) 2026 DOTS
-// Event store: identity, projection, signing and replay.
+// Project event compatibility and replay. New project facts use `.mem/facts.md`.
 
 import CryptoKit
 import Foundation
 import PluginRuntime
 
+private struct WorkspaceProjectMapUpdate: Sendable {
+    let root: URL
+    let technologies: [String]
+    let mapText: String
+    let recordTechnologies: Bool
+    let indexData: Data?
+    let mapNote: String?
+}
+
 extension WorkspaceMemory {
+    /// Repository entries are untrusted: a symlink can point at any file, so it is deleted and never copied.
+    /// Returns true when the entry was a symlink.
+    private func discardSymbolicLink(_ url: URL) -> Bool {
+        guard isSymbolicLink(url) else { return false }
+        try? fileManager.removeItem(at: entryPath(url))
+        return true
+    }
+
+    /// Asks about the link itself, not the file it names. A directory URL carries a trailing
+    /// slash, and a lookup through it follows the link, so every check uses the bare path.
+    private func isSymbolicLink(_ url: URL) -> Bool {
+        (try? entryPath(url).resourceValues(forKeys: [.isSymbolicLinkKey]))?.isSymbolicLink == true
+    }
+
+    private func entryPath(_ url: URL) -> URL {
+        url.deletingLastPathComponent().appendingPathComponent(url.lastPathComponent)
+    }
+
     func loadExisting() {
         guard let root = memoryDirectory else { return }
         guard let data = try? Data(contentsOf: root.appendingPathComponent("manifest.json")),
               let loaded = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               loaded["schemaVersion"] as? Int == 1,
-              loaded["projectId"] is String,
-              loaded["rootAuthority"] is [String: Any] else { return }
+              loaded["projectId"] is String else { return }
         manifest = loaded
         // Written by earlier versions and never read: the vault travels with its
         // folder, and an absolute path differs on every machine that clones it.
         manifest?.removeValue(forKey: "workspaceRoot")
-        try? ensureIdentity()
-        if let stateData = try? Data(contentsOf: root.appendingPathComponent("state.json")),
-           let cachedState = try? JSONSerialization.jsonObject(with: stateData) as? [String: Any],
-           cachedState["schemaVersion"] as? Int == 1 {
-            state = cachedState
-        } else {
-            rebuildProjection()
-        }
+        loadLegacyIdentity()
+        moveUserContentOutOfRepository()
+        // Replay old event files for compatibility. New project facts use `.mem/facts.md`;
+        // signatures no longer grant repository access. Builds before this one left state.json.
+        rebuildProjection()
         mapText = (try? String(contentsOf: root.appendingPathComponent("map.md"), encoding: .utf8)) ?? ""
-        syncFacts()
+        if let projectID, let workspaceURL { profile.recordProject(name: workspaceURL.lastPathComponent, projectID: projectID) }
+    }
+
+    /// Creates the project's memory when the first prompt has not yet. Feedback needs the
+    /// project id, which names the person's folder; opening a workspace does not call this.
+    public func openProject() throws {
+        guard enabled, workspaceURL != nil else { throw WorkspaceMemoryError.noWorkspace }
+        if manifest == nil { try initializeWorkspace() }
     }
 
     func initializeWorkspace() throws {
-        guard let root = memoryDirectory, let identity else { throw WorkspaceMemoryError.noWorkspace }
-        try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
-        for folder in ["events", "tasks", "decisions", "conversations"] {
-            try fileManager.createDirectory(at: root.appendingPathComponent(folder, isDirectory: true), withIntermediateDirectories: true)
+        guard let root = memoryDirectory else { throw WorkspaceMemoryError.noWorkspace }
+        // The manifest may have arrived since the workspace was opened (a checkout, a pull), or
+        // be unreadable (a merge conflict). Overwriting it gives the project a new id and strands
+        // every record kept under the old one, so an existing manifest is never replaced.
+        let manifestURL = root.appendingPathComponent("manifest.json")
+        if fileManager.fileExists(atPath: manifestURL.path) || isSymbolicLink(manifestURL) {
+            loadExisting()
+            guard manifest != nil else { throw WorkspaceMemoryError.invalidManifest }
+            return
         }
+        try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
         let projectID = UUID().uuidString
         manifest = [
             "schemaVersion": 1,
             "projectId": projectID,
             "createdAt": isoNow(),
-            "rootAuthority": [
-                "personId": identity.personID,
-                "deviceId": identity.deviceID,
-                "publicKey": identity.publicKey,
-                "keyId": identity.keyID,
-                "algorithm": "P-256-SHA256",
-            ],
-            "revision": 0,
         ]
         try writeJSON(manifest!, to: root.appendingPathComponent("manifest.json"))
-        _ = try writeEvent(
-            type: "workspace.initialized",
-            scope: "project",
-            payload: [
-                "projectId": projectID,
-                "personId": identity.personID,
-                "deviceId": identity.deviceID,
-                "displayName": identity.displayName,
-                "role": MemoryRole.owner.rawValue,
-                "score": 100,
-                "publicKey": identity.publicKey,
-            ]
-        )
+        if let workspaceURL { profile.recordProject(name: workspaceURL.lastPathComponent, projectID: projectID) }
     }
 
-    func ensureIdentity() throws {
-        if identity != nil, privateKey != nil { return }
-        paths.ensure(fileManager: fileManager)
+    /// Read only attribution fields from an old identity file when migrating local activity.
+    /// The legacy private key is ignored; repository permissions are handled by Git.
+    func loadLegacyIdentity() {
+        guard identity == nil else { return }
         let identityURL = paths.root.appendingPathComponent("memory-identity.json")
         if let data = try? Data(contentsOf: identityURL),
-           let stored = try? JSONDecoder().decode(StoredIdentity.self, from: data),
-           let keyData = Data(base64Encoded: stored.privateKey),
-           let key = try? P256.Signing.PrivateKey(rawRepresentation: keyData) {
+           let stored = try? JSONDecoder().decode(StoredIdentity.self, from: data) {
             identity = stored
-            privateKey = key
-            return
         }
-        let key = P256.Signing.PrivateKey()
-        let publicKey = key.publicKey.rawRepresentation.base64EncodedString()
-        let deviceID = digest(key.publicKey.rawRepresentation)
-        let stored = StoredIdentity(
-            personID: UUID().uuidString,
-            displayName: NSUserName().isEmpty ? "User" : NSUserName(),
-            privateKey: key.rawRepresentation.base64EncodedString(),
-            publicKey: publicKey,
-            deviceID: deviceID,
-            keyID: "device-\(String(deviceID.prefix(16)))"
-        )
-        let data = try JSONEncoder().encode(stored)
-        try fileManager.createDirectory(at: paths.root, withIntermediateDirectories: true)
-        try data.write(to: identityURL, options: .atomic)
-        try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: identityURL.path)
-        identity = stored
-        privateKey = key
     }
 
     /// The root listing is compared on every prompt. The stack scan below it reads
@@ -101,61 +97,156 @@ extension WorkspaceMemory {
     /// `deep`, when a finished task touched a manifest.
     func updateMapIfNeeded(deep: Bool = false) throws {
         guard let workspaceURL, let root = memoryDirectory else { return }
-        let structure = mapStructure(workspaceURL)
+        let update = try Self.makeMapUpdate(
+            workspace: workspaceURL,
+            root: root,
+            fileManager: fileManager,
+            deep: deep,
+            existingMapText: mapText
+        )
+        try applyMapUpdate(update)
+    }
+
+    func scheduleMapUpdateInBackground() {
+        guard let workspaceURL = workspaceURL?.standardizedFileURL,
+              let root = memoryDirectory,
+              let projectID else { return }
+        let requestKey = workspaceURL.path
+        guard mapRefreshInFlight.insert(requestKey).inserted else { return }
+        let cachedMapText = mapText
+
+        Task { @MainActor [weak self] in
+            let update: WorkspaceProjectMapUpdate?
+            do {
+                update = try await Task.detached(priority: .utility) {
+                    try Self.makeMapUpdate(
+                        workspace: workspaceURL,
+                        root: root,
+                        fileManager: .default,
+                        deep: false,
+                        existingMapText: cachedMapText
+                    )
+                }.value
+            } catch {
+                update = nil
+            }
+            guard let self else { return }
+            self.mapRefreshInFlight.remove(requestKey)
+            guard self.enabled,
+                  self.workspaceURL?.standardizedFileURL == workspaceURL,
+                  self.projectID == projectID,
+                  let update else { return }
+            do { try self.applyMapUpdate(update) } catch { }
+        }
+    }
+
+    private func applyMapUpdate(_ update: WorkspaceProjectMapUpdate) throws {
+        stack = update.technologies
+        mapText = update.mapText
+        if update.recordTechnologies, let projectID {
+            profile.recordTechnologies(update.technologies, projectID: projectID)
+        }
+        guard let indexData = update.indexData, let mapNote = update.mapNote else { return }
+        try fileManager.createDirectory(at: update.root, withIntermediateDirectories: true)
+        try indexData.write(to: update.root.appendingPathComponent("index.json"), options: .atomic)
+        try mapNote.write(to: update.root.appendingPathComponent("map.md"), atomically: true, encoding: .utf8)
+        writeIndexNote()
+    }
+
+    nonisolated private static func makeMapUpdate(
+        workspace: URL,
+        root: URL,
+        fileManager: FileManager,
+        deep: Bool,
+        existingMapText: String
+    ) throws -> WorkspaceProjectMapUpdate {
+        let structure = mapStructure(workspace, fileManager: fileManager)
         let indexURL = root.appendingPathComponent("index.json")
         let index = (try? Data(contentsOf: indexURL))
             .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
         let known = index["technologies"] as? [String]
-        // A map written by an older build is rebuilt even when the project has
-        // not moved: what the map says changed, not what it describes.
-        let rootUnchanged = index["schemaVersion"] as? Int == Self.mapSchemaVersion
+        // A map written by an older build is rebuilt even when the project has not moved.
+        let rootUnchanged = index["schemaVersion"] as? Int == mapSchemaVersion
             && index["rootFingerprint"] as? String == structure.fingerprint
         if rootUnchanged, let known, !deep {
-            stack = known
-            // The note's frontmatter carries an `updated` stamp and wiki links. The
-            // prompt gets the same body a fresh build produces, so a reload does not
-            // read as a changed project.
-            if let note = try? String(contentsOf: root.appendingPathComponent("map.md"), encoding: .utf8),
-               let start = note.range(of: "# Project Map") {
-                mapText = note[start.lowerBound...].components(separatedBy: "\n\nBack to [[index]]")[0]
-            }
-            return
+            return WorkspaceProjectMapUpdate(
+                root: root,
+                technologies: known,
+                mapText: cachedMapText(in: root) ?? existingMapText,
+                recordTechnologies: false,
+                indexData: nil,
+                mapNote: nil
+            )
         }
-        let technologies = Self.detectTechnologies(in: workspaceURL, fileManager: fileManager)
-        stack = technologies
-        if let projectID { profile.recordTechnologies(technologies, projectID: projectID) }
-        if rootUnchanged, known == technologies { return }
-        let markdown = mapMarkdown(workspaceURL, structure: structure, technologies: technologies)
-        let fingerprint = digest(Data((structure.fingerprint + "\n" + technologies.joined(separator: ",")).utf8))
-        mapText = markdown
-        try writeJSON([
-            "schemaVersion": Self.mapSchemaVersion,
+
+        let technologies = detectTechnologies(in: workspace, fileManager: fileManager)
+        let documents = documentOutlines(in: workspace, fileManager: fileManager)
+        if rootUnchanged, known == technologies, index["documents"] as? [String] == documents {
+            return WorkspaceProjectMapUpdate(
+                root: root,
+                technologies: technologies,
+                mapText: existingMapText,
+                recordTechnologies: true,
+                indexData: nil,
+                mapNote: nil
+            )
+        }
+
+        let markdown = mapMarkdown(workspace, structure: structure, technologies: technologies, documents: documents)
+        let fingerprintInput = structure.fingerprint + "\n" + technologies.joined(separator: ",") + "\n" + documents.joined(separator: "\n")
+        let fingerprint = SHA256.hash(data: Data(fingerprintInput.utf8))
+            .map { String(format: "%02x", $0) }.joined()
+        let indexData = try JSONSerialization.data(withJSONObject: [
+            "schemaVersion": mapSchemaVersion,
             "fingerprint": fingerprint,
             "rootFingerprint": structure.fingerprint,
-            "updatedAt": isoNow(),
+            "updatedAt": mapTimestamp(),
             "topLevel": structure.topLevel,
             "manifests": structure.manifests,
             "technologies": technologies,
-        ], to: indexURL)
-        let mapFront = frontmatter([
-            "id": "map",
-            "type": "map",
-            "title": "Project map",
-            "updated": isoNow(),
-        ], tags: ["map"], links: ["index"])
-        try (mapFront + "\n" + markdown + "\n\nBack to [[index]]\n")
-            .write(to: root.appendingPathComponent("map.md"), atomically: true, encoding: .utf8)
-        let mapRevision = (state["lastMapRevision"] as? Int ?? 0) + 1
-        _ = try? writeEvent(type: "map.updated", scope: "project", payload: ["revision": mapRevision, "fingerprint": fingerprint])
-        writeIndexNote()
+            "documents": documents,
+        ], options: [.prettyPrinted, .sortedKeys])
+        let mapFront = [
+            "---",
+            "id: map",
+            "title: Project map",
+            "type: map",
+            "updated: \(mapTimestamp())",
+            "tags: [map]",
+            "links: [\"index\"]",
+            "---",
+        ].joined(separator: "\n")
+        let mapNote = mapFront + "\n" + markdown + "\n\nBack to [[index]]\n"
+        return WorkspaceProjectMapUpdate(
+            root: root,
+            technologies: technologies,
+            mapText: markdown,
+            recordTechnologies: true,
+            indexData: indexData,
+            mapNote: mapNote
+        )
     }
 
-    /// 3: the map no longer names the workspace's absolute path.
-    static let mapSchemaVersion = 3
+    nonisolated private static func cachedMapText(in root: URL) -> String? {
+        guard let note = try? String(contentsOf: root.appendingPathComponent("map.md"), encoding: .utf8),
+              let start = note.range(of: "# Project Map") else { return nil }
+        return note[start.lowerBound...].components(separatedBy: "\n\nBack to [[index]]")[0]
+    }
 
-    private static let ignoredDirectories: Set<String> = [".git", ".mem", "node_modules", "vendor", "build", "dist", ".build", "bin", "obj", "target", "Pods"]
+    nonisolated private static func mapTimestamp() -> String {
+        ISO8601DateFormatter().string(from: Date())
+    }
 
-    private func mapStructure(_ workspace: URL) -> (fingerprint: String, topLevel: [String], manifests: [String]) {
+    /// 3: the map no longer names the workspace's absolute path. 4: it lists the documents.
+    /// 5: it shows the structure two folders deep.
+    nonisolated static let mapSchemaVersion = 5
+
+    nonisolated static var ignoredDirectories: Set<String> { WorkspaceTools.ignoredScanDirectories }
+
+    nonisolated private static func mapStructure(
+        _ workspace: URL,
+        fileManager: FileManager
+    ) -> (fingerprint: String, topLevel: [String], manifests: [String]) {
         let urls = (try? fileManager.contentsOfDirectory(at: workspace, includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey], options: [.skipsHiddenFiles])) ?? []
         var topLevel: [String] = []
         var manifestPaths: [String] = []
@@ -166,36 +257,95 @@ extension WorkspaceMemory {
             let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey])
             let directory = values?.isDirectory == true
             let large = (values?.fileSize ?? 0) > 1_000_000
-            if !directory && (large || binaryFileName(name)) {
+            if !directory && (large || Self.binaryFileName(name)) {
                 fingerprint.append("\(name):ignored")
                 continue
             }
             topLevel.append(directory ? "\(name)/" : name)
             fingerprint.append("\(name):\(directory ? "d" : "f")")
-            if isManifest(name) { manifestPaths.append(name) }
+            // The structure section goes two folders deep, so a folder added there rebuilds it.
+            // ponytail: counts are not fingerprinted - they refresh with the next rebuild - so
+            // adding a file never rewrites the map or signs an event.
+            if directory {
+                let children = (try? fileManager.contentsOfDirectory(at: url, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles])) ?? []
+                for child in children where (try? child.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
+                    fingerprint.append("\(name)/\(child.lastPathComponent):d")
+                }
+            }
+            if Self.isManifest(name) { manifestPaths.append(name) }
         }
         return (fingerprint.joined(separator: "\n"), topLevel, manifestPaths.sorted())
     }
 
-    private func mapMarkdown(
+    nonisolated private static func mapMarkdown(
         _ workspace: URL,
         structure: (fingerprint: String, topLevel: [String], manifests: [String]),
-        technologies: [String]
+        technologies: [String],
+        documents: [String]
     ) -> String {
         let stack = technologies.isEmpty ? "Unknown" : technologies.joined(separator: ", ")
         var lines = ["# Project Map", "", "## Workspace", "", "- Stack: \(stack)", "", "## Top-level", ""]
         lines.append(contentsOf: structure.topLevel.map { "- `\($0)`" })
         lines += ["", "## Important files", ""]
         lines.append(contentsOf: structure.manifests.map { "- `\($0)`" })
+        let layout = ProjectMap.markdown(ProjectMap.files(in: workspace)) { ProjectMap.head(workspace.appendingPathComponent($0)) }
+        if !layout.isEmpty { lines += ["", layout] }
+        if !documents.isEmpty {
+            lines += ["", "## Documents", "", "Each with its headings. Read the one that covers the request before searching the code."]
+            lines.append(contentsOf: documents.map { "- \($0)" })
+        }
         lines += ["", "## Guidance", "", "- Source files and task history are selected by the native host as needed.", "- The private project context is not exposed through workspace file tools."]
         return lines.joined(separator: "\n")
+    }
+
+    /// The project's own documents, each with its title and section headings, so a request
+    /// is pointed at the document that covers it without a model having read any.
+    /// ponytail: three levels down, 24 documents, read again only when the map is rebuilt -
+    /// the root listing moved or a task changed a document. An edit made outside the app
+    /// waits for one of those; add a stamp to the per-prompt check if that bites.
+    nonisolated private static func documentOutlines(in workspace: URL, fileManager: FileManager) -> [String] {
+        var found: [(path: String, url: URL)] = []
+        let walker = fileManager.enumerator(at: workspace, includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey], options: [.skipsHiddenFiles])
+        var visited = 0
+        while let url = walker?.nextObject() as? URL, visited < 3_000 {
+            visited += 1
+            let name = url.lastPathComponent
+            if (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
+                if Self.ignoredDirectories.contains(name) || (walker?.level ?? 1) >= 3 { walker?.skipDescendants() }
+            } else if name.lowercased().hasSuffix(".md"), !["AGENTS.md", "CLAUDE.md"].contains(name) {
+                // The two rule files are sent whole as project rules already. The path is
+                // counted from the walk, not cut from the URL: a temporary folder is
+                // reached through a link and comes back under another prefix.
+                found.append((url.pathComponents.suffix(walker?.level ?? 1).joined(separator: "/"), url))
+            }
+        }
+        return found
+            .sorted { ($0.url.pathComponents.count, $0.path) < ($1.url.pathComponents.count, $1.path) }
+            .prefix(24)
+            .compactMap { entry -> String? in
+                let url = entry.url
+                guard let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize, size < 400_000,
+                      let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+                var fenced = false
+                var headings: [String] = []
+                for line in text.split(whereSeparator: \.isNewline) {
+                    // A shell comment in a code block is not a heading.
+                    if line.hasPrefix("```") {
+                        fenced.toggle()
+                    } else if !fenced, line.hasPrefix("# ") || line.hasPrefix("## ") {
+                        headings.append(String(line.drop { $0 == "#" || $0 == " " }))
+                    }
+                }
+                let path = "`\(entry.path)`"
+                return headings.isEmpty ? path : "\(path) - \(sanitizeMapExcerpt(headings.prefix(8).joined(separator: "; "), limit: 160))"
+            }
     }
 
     /// What the project is built with, read from its manifests rather than asked
     /// of the user. Monorepos keep them a level or two down (`mobile/android/`).
     /// ponytail: breadth-first, two levels, 200 directories; a deeper layout is
     /// missed until a task touches its manifest - raise the bounds if that bites.
-    static func detectTechnologies(in workspace: URL, fileManager: FileManager = .default) -> [String] {
+    nonisolated static func detectTechnologies(in workspace: URL, fileManager: FileManager = .default) -> [String] {
         var found = Set<String>()
         var level = [workspace]
         var listed = 0
@@ -222,20 +372,20 @@ extension WorkspaceMemory {
         return found.sorted()
     }
 
-    static func isStackManifest(_ name: String) -> Bool {
+    nonisolated static func isStackManifest(_ name: String) -> Bool {
         ["pubspec.yaml", "Package.swift", "package.json", "wrangler.toml", "wrangler.json", "wrangler.jsonc",
          "Cargo.toml", "go.mod", "pyproject.toml", "requirements.txt", "build.gradle", "build.gradle.kts",
          "pom.xml", "composer.json", "Gemfile"].contains(name)
             || name.hasSuffix(".csproj") || name.hasSuffix(".sln")
     }
 
-    private static let packageFrameworks: [String: String] = [
+    private nonisolated static let packageFrameworks: [String: String] = [
         "react-native": "React Native", "expo": "Expo", "next": "Next.js", "react": "React", "vue": "Vue",
         "nuxt": "Nuxt", "svelte": "Svelte", "@angular/core": "Angular", "hono": "Hono", "express": "Express",
         "electron": "Electron", "tailwindcss": "Tailwind CSS",
     ]
 
-    private static func technologies(inManifest url: URL) -> [String] {
+    private nonisolated static func technologies(inManifest url: URL) -> [String] {
         let name = url.lastPathComponent
         func text() -> String { (try? String(contentsOf: url, encoding: .utf8)) ?? "" }
         switch name {
@@ -260,18 +410,21 @@ extension WorkspaceMemory {
         }
     }
 
-    private func isManifest(_ name: String) -> Bool {
+    private nonisolated static func isManifest(_ name: String) -> Bool {
         ["Package.swift", "package.json", "pyproject.toml", "Cargo.toml", "go.mod", "pom.xml", "build.gradle", "Makefile", "README.md", "CONTRACT.md"].contains(name)
             || name.hasSuffix(".csproj") || name.hasSuffix(".sln")
     }
 
-    private func binaryFileName(_ name: String) -> Bool {
+    private nonisolated static func binaryFileName(_ name: String) -> Bool {
         let extensions = Set(["app", "bin", "dmg", "exe", "dll", "dylib", "so", "zip", "gz", "7z", "png", "jpg", "jpeg", "gif", "webp", "pdf", "mp3", "mp4", "mov", "wav"])
         return extensions.contains(URL(fileURLWithPath: name).pathExtension.lowercased())
     }
 
-    /// Cold start / repair path: replays the whole event log, verifying every
-    /// signature. Only `loadExisting()` reaches it now — see `commit(_:)`.
+    nonisolated private static func sanitizeMapExcerpt(_ text: String, limit: Int) -> String {
+        SecretRedaction.sanitize(text, limit: limit)
+    }
+
+    /// Reads the legacy event log for backward compatibility; current writes use facts.md.
     private func rebuildProjection() {
         state = Self.emptyState()
         events = []
@@ -287,91 +440,57 @@ extension WorkspaceMemory {
             return left.0 == right.0 ? left.1 < right.1 : left.0 < right.0
         }
         var validEventIDs = Set<String>()
+        let presentEventIDs = Set(candidates.compactMap { $0["eventId"] as? String })
         for event in candidates where verifyEvent(event) {
+            // A parent missing from the folder was moved to the user layer, which is
+            // not a broken chain. A parent that is present but failed verification is.
             let parents = event["parents"] as? [String] ?? []
-            guard parents.allSatisfy({ validEventIDs.contains($0) }) else { continue }
-            events.append(event)
+            guard parents.allSatisfy({ validEventIDs.contains($0) || !presentEventIDs.contains($0) }) else { continue }
             if let eventID = event["eventId"] as? String { validEventIDs.insert(eventID) }
+            // Legacy membership events remain in the chain but never change project memory.
+            guard isReadableProjectEvent(event) else { continue }
+            events.append(event)
             apply(event)
         }
+        // The revision is derived, never stored: a file every event rewrote would conflict
+        // whenever two people commit memory in parallel.
         if let latest = events.last, let revision = latest["lamport"] as? Int {
             state["revision"] = revision
-            if var manifest {
-                manifest["revision"] = revision
-                self.manifest = manifest
-                if let root = memoryDirectory { try? writeJSON(manifest, to: root.appendingPathComponent("manifest.json")) }
-            }
         }
-        if let root = memoryDirectory { try? writeJSON(state, to: root.appendingPathComponent("state.json")) }
         writeDecisionNotes()
-        writeConversationNotes()
         writeIndexNote()
-        writePreferencesNote()
     }
 
     private func verifyEvent(_ event: [String: Any]) -> Bool {
         guard event["schemaVersion"] as? Int == 1,
-              event["projectId"] as? String == projectID,
-              let actor = event["actor"] as? [String: Any],
+              event["projectId"] as? String == projectID else { return false }
+        // Old events may still be signed. Their content remains readable, but signatures no
+        // longer grant repository access or define project ownership.
+        guard let signature = (event["signature"] as? [String: Any])?["value"] as? String else { return true }
+        guard let actor = event["actor"] as? [String: Any],
               let publicKey = actor["publicKey"] as? String,
-              let signature = (event["signature"] as? [String: Any])?["value"] as? String,
               let keyData = Data(base64Encoded: publicKey),
-              let key = try? P256.Signing.PublicKey(rawRepresentation: keyData) else { return false }
-        let base = invitationWithoutSignature(event)
-        guard let data = try? JSONSerialization.data(withJSONObject: base, options: [.sortedKeys]),
+              let key = try? P256.Signing.PublicKey(rawRepresentation: keyData),
+              let data = try? JSONSerialization.data(withJSONObject: eventWithoutSignature(event), options: [.sortedKeys]),
               let signatureData = Data(base64Encoded: signature),
               let ecdsa = try? P256.Signing.ECDSASignature(rawRepresentation: signatureData),
               key.isValidSignature(ecdsa, for: data) else { return false }
-        guard let deviceID = actor["deviceId"] as? String, digest(keyData) == deviceID else { return false }
-        if deviceID == rootDeviceID { return publicKey == rootPublicKeyString }
-        if event["type"] as? String == "member.accepted" {
-            guard let payload = event["payload"] as? [String: Any],
-                  payload["publicKey"] as? String == publicKey,
-                  payload["deviceId"] as? String == deviceID else { return false }
-            return events.contains { existing in
-                existing["type"] as? String == "member.invited"
-                    && (existing["payload"] as? [String: Any])?["publicKey"] as? String == publicKey
-                    && (existing["payload"] as? [String: Any])?["personId"] as? String == payload["personId"] as? String
-            }
-        }
-        return member(deviceID: deviceID)?["revoked"] as? Bool != true
+        return true
+    }
+
+    /// Repository access is enforced by Git. Legacy membership events are ignored.
+    private func isReadableProjectEvent(_ event: [String: Any]) -> Bool {
+        let type = event["type"] as? String ?? ""
+        guard event["scope"] as? String == "project" else { return false }
+        return !type.hasPrefix("member.") && type != "workspace.initialized"
     }
 
     private func apply(_ event: [String: Any]) {
         guard let type = event["type"] as? String,
               let payload = event["payload"] as? [String: Any] else { return }
         switch type {
-        case "workspace.initialized", "member.accepted":
-            upsertMember(payload)
-            if type == "member.accepted" {
-                let personID = payload["personId"] as? String
-                state["pendingProposals"] = (state["pendingProposals"] as? [[String: Any]] ?? []).filter {
-                    let invited = $0["payload"] as? [String: Any]
-                    return invited?["personId"] as? String != personID
-                }
-            }
-        case "member.invited":
+        case "workspace.initialized", "member.accepted", "member.invited", "member.revoked", "member.updated":
             break
-        case "member.revoked":
-            if let deviceID = payload["deviceId"] as? String { setMember(deviceID: deviceID, key: "revoked", value: true) }
-        case "member.updated":
-            if let deviceID = payload["deviceId"] as? String {
-                if let role = payload["role"] { setMember(deviceID: deviceID, key: "role", value: role) }
-                if let score = payload["score"] { setMember(deviceID: deviceID, key: "score", value: score) }
-                if let displayName = payload["displayName"] { setMember(deviceID: deviceID, key: "displayName", value: displayName) }
-            }
-        case "preference.set":
-            guard let personID = payload["personId"] as? String, let key = payload["key"] as? String else { return }
-            var all = state["activePreferences"] as? [String: Any] ?? [:]
-            var preferences = all[personID] as? [String: Any] ?? [:]
-            if let old = preferences[key] {
-                var superseded = state["supersededValues"] as? [[String: Any]] ?? []
-                superseded.append(["key": key, "value": old, "personId": personID, "eventId": event["eventId"] as Any])
-                state["supersededValues"] = superseded
-            }
-            preferences[key] = payload["value"] ?? NSNull()
-            all[personID] = preferences
-            state["activePreferences"] = all
         case "project.default.set":
             var defaults = state["projectDefaults"] as? [String: Any] ?? [:]
             // An entry set without a value is one the user took back.
@@ -406,104 +525,77 @@ extension WorkspaceMemory {
             state["pendingProposals"] = (state["pendingProposals"] as? [[String: Any]] ?? []).filter { $0["eventId"] as? String != payload["proposalEventId"] as? String }
         case "map.updated":
             state["lastMapRevision"] = payload["revision"] as? Int ?? (state["lastMapRevision"] as? Int ?? 0)
-        case "conversation.archived", "conversation.restored", "conversation.deleted":
-            guard let conversationID = payload["conversationId"] as? String else { return }
-            var conversations = state["conversationStates"] as? [String: Any] ?? [:]
-            conversations[conversationID] = [
-                "conversationId": conversationID,
-                "title": payload["title"] as? String ?? conversationID,
-                "state": String(type.dropFirst("conversation.".count)),
-                "eventId": event["eventId"] as? String ?? "",
-                "updatedAt": event["createdAt"] as? String ?? "",
-                "revision": event["lamport"] as? Int ?? 0,
-            ]
-            state["conversationStates"] = conversations
         default: break
         }
     }
 
-    @discardableResult
-    func writeEvent(
-        type: String,
-        scope: String,
-        supersedes: [String] = [],
-        payload: [String: Any]
-    ) throws -> String {
-        guard let root = memoryDirectory, let identity, let privateKey,
-              let projectID else { throw WorkspaceMemoryError.noWorkspace }
-        guard canWrite(for: type) else { throw WorkspaceMemoryError.unauthorized }
-        let eventID = UUID().uuidString
-        let lamport = max(revision, events.map { $0["lamport"] as? Int ?? 0 }.max() ?? 0) + 1
-        let parents = events.last.flatMap { $0["eventId"] as? String }.map { [$0] } ?? []
-        let object: [String: Any] = [
+    /// Used only while reading old repository events; new facts are stored in facts.md.
+    static let sharedEventScopes: Set<String> = ["project"]
+
+    /// The person's own activity: tasks, tool calls, file changes and chat lifecycle.
+    /// Kept beside their other records on this Mac, never in the repository.
+    func recordActivity(type: String, payload: [String: Any]) {
+        guard let url = userMemoryDirectory?.appendingPathComponent("activity.jsonl") else { return }
+        try? appendJSONLine([
             "schemaVersion": 1,
-            "eventId": eventID,
             "type": type,
-            "scope": scope,
-            "projectId": projectID,
-            "actor": [
-                "personId": identity.personID,
-                "deviceId": identity.deviceID,
-                "keyId": identity.keyID,
-                "publicKey": identity.publicKey,
-            ],
-            "lamport": lamport,
             "createdAt": isoNow(),
-            "parents": parents,
-            "supersedes": supersedes,
+            "projectId": projectID ?? "",
             "payload": payload,
-        ]
-        let signed = try signedObject(object, key: privateKey, actor: identity)
-        try fileManager.createDirectory(at: root.appendingPathComponent("events"), withIntermediateDirectories: true)
-        try writeJSON(signed, to: root.appendingPathComponent("events").appendingPathComponent("\(eventID).json"))
-        commit(signed)
-        return eventID
+        ], to: url)
     }
 
-    /// Folds one locally-authored event into the projection.
-    ///
-    /// This used to call `rebuildProjection()`, which re-read and re-verified
-    /// every event file and rewrote every decision and conversation note plus an
-    /// index that re-parses all of them — so a single append cost O(history)
-    /// file operations, on the main actor, several times per run. Full replay is
-    /// now reserved for load, when `state.json` is missing or unreadable.
-    private func commit(_ event: [String: Any]) {
-        events.append(event)
-        apply(event)
-        guard let revision = event["lamport"] as? Int else { return }
-        state["revision"] = revision
-        if var manifest {
-            manifest["revision"] = revision
-            self.manifest = manifest
+    /// Moves the person's own activity and preferences that earlier builds wrote into the
+    /// repository into the user layer. An event moves only when its signature verifies, this
+    /// device signed it, and it names this person. Anything else stays in the folder untouched:
+    /// a teammate's record is theirs, and an unsigned file cannot be attributed. Loose repository
+    /// files (tasks, chats, feedback, lessons, rules) are no longer imported; the copies on this
+    /// Mac are the only ones read. Each moved copy lands before its repository file is removed.
+    /// Git history still holds the old copies. A link inside the repository is removed as a link
+    /// and never followed; a linked `.mem` is not migrated at all, because it names some other memory store.
+    func moveUserContentOutOfRepository() {
+        guard let root = memoryDirectory, !isSymbolicLink(root), let userRoot = userMemoryDirectory, let identity, let projectID else { return }
+        let activityURL = userRoot.appendingPathComponent("activity.jsonl")
+        let eventsURL = root.appendingPathComponent("events", isDirectory: true)
+        // A linked events folder is removed as a link; the files it names stay where they are.
+        let eventFiles: [URL] = discardSymbolicLink(eventsURL) ? [] : ((try? fileManager.contentsOfDirectory(at: eventsURL, includingPropertiesForKeys: nil)) ?? [])
+        // Ids already in the activity log, matched as ids. A text search of the log also finds an id
+        // in another event's `parents`, and that parent was then deleted without ever being written.
+        var loggedIDs = Set(((try? String(contentsOf: activityURL, encoding: .utf8)) ?? "")
+            .split(separator: "\n")
+            .compactMap { ((try? JSONSerialization.jsonObject(with: Data($0.utf8))) as? [String: Any])?["eventId"] as? String })
+        for url in eventFiles where url.pathExtension == "json" {
+            if discardSymbolicLink(url) { continue }
+            guard let data = try? Data(contentsOf: url),
+                  let event = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+            if (event["type"] as? String ?? "").hasPrefix("member.") { continue }
+            if Self.sharedEventScopes.contains(event["scope"] as? String ?? "") { continue }
+            // Only this device's own signed events move. An unsigned or foreign event stays where it is.
+            guard verifyEvent(event),
+                  let actor = event["actor"] as? [String: Any],
+                  actor["publicKey"] as? String == identity.publicKey,
+                  actor["personId"] as? String == identity.personID else { continue }
+            let eventID = event["eventId"] as? String ?? ""
+            do {
+                if !loggedIDs.contains(eventID) { try appendJSONLine(event, to: activityURL) }
+            } catch { continue }
+            loggedIDs.insert(eventID)
+            if event["type"] as? String == "preference.set",
+               let payload = event["payload"] as? [String: Any],
+               let rawKey = payload["key"] as? String,
+               let rawValue = payload["value"] as? String {
+                let key = sanitize(rawKey, limit: 60)
+                let value = sanitize(rawValue, limit: 240)
+                if key == "language" {
+                    try? profile.setPreference(key: key, value: value)
+                } else if !key.isEmpty {
+                    try? profile.setProjectPreference(projectID: projectID, key: key, value: value)
+                }
+            }
+            try? fileManager.removeItem(at: url)
         }
-        guard let root = memoryDirectory else { return }
-        if let manifest { try? writeJSON(manifest, to: root.appendingPathComponent("manifest.json")) }
-        try? writeJSON(state, to: root.appendingPathComponent("state.json"))
-        refreshDerivedNotes(for: event)
+        // Derived copies with nothing left in the repository to derive them from.
+        try? fileManager.removeItem(at: root.appendingPathComponent("preferences.md"))
     }
 
-    /// Writes only the notes the event type actually feeds.
-    private func refreshDerivedNotes(for event: [String: Any]) {
-        switch event["type"] as? String {
-        case "decision.accepted":
-            writeDecisionNote(event)
-            writeIndexNote()
-        case "conversation.archived", "conversation.restored", "conversation.deleted":
-            writeConversationNote(for: event)
-            writeIndexNote()
-        case "preference.set":
-            writePreferencesNote()
-        default:
-            break
-        }
-    }
-
-    func signedObject(_ object: [String: Any], key: P256.Signing.PrivateKey?, actor: StoredIdentity) throws -> [String: Any] {
-        guard let key else { throw WorkspaceMemoryError.unauthorized }
-        let canonical = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
-        let signature = try key.signature(for: canonical).rawRepresentation.base64EncodedString()
-        var result = object
-        result["signature"] = ["algorithm": "P-256-SHA256", "value": signature]
-        return result
-    }
 }

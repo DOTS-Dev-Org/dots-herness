@@ -75,6 +75,16 @@ struct RouterProvidersView: View {
                             ForEach(group.accounts) { connection in
                                 connectionRow(connection)
                             }
+                            if group.provider.hasPrefix("custom:") {
+                                let models = router.modelContextSettings.filter { $0.provider == group.provider }
+                                if !models.isEmpty {
+                                    Text(AppCopy.text("usage.context.window"))
+                                        .font(.subheadline.weight(.semibold))
+                                    ForEach(models) { item in
+                                        ModelContextSettingRow(router: router, model: item)
+                                    }
+                                }
+                            }
                             if let kind = RouterCatalog.kind(for: group.provider) {
                                 HStack {
                                     Spacer(minLength: 0)
@@ -168,8 +178,9 @@ struct RouterProvidersView: View {
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(.secondary)
-                        .help(isAPIKeyVisible ? "Hide API key" : "Show API key")
-                        .accessibilityLabel(isAPIKeyVisible ? "Hide API key" : "Show API key")
+                        .help(AppCopy.text(isAPIKeyVisible ? "router.apiKey.hide" : "router.apiKey.show"))
+                        .accessibilityLabel(AppCopy.text(isAPIKeyVisible ? "router.apiKey.hide" : "router.apiKey.show"))
+
                     }
                 }
             }
@@ -313,9 +324,9 @@ struct RouterProvidersView: View {
 
     private func authLabel(_ value: String) -> String {
         switch value {
-        case "chatgpt": return "Browser sign-in"
-        case "apiKey": return "API key"
-        case "custom": return "Custom API"
+        case "chatgpt": return AppCopy.text("router.browserLogin")
+        case "apiKey": return AppCopy.text("router.apiKey")
+        case "custom": return AppCopy.text("settings.tab.custom")
         default: return value
         }
     }
@@ -336,7 +347,7 @@ struct ProviderLogoView: View {
         guard let resource = ProviderLogoSource.mark(for: providerID),
               let url = Bundle.module.url(forResource: resource, withExtension: "svg")
                 ?? Bundle.module.url(forResource: resource, withExtension: "png") else { return nil }
-        return NSImage(contentsOf: url)
+        return ImageFileCache.image(at: url)
     }
 
     var body: some View {
@@ -516,7 +527,8 @@ struct RouterShareView: View {
     }
 
     private var shareEndpoint: String {
-        guard !router.tunnel.shareURL.isEmpty else { return "Enable sharing to create an endpoint" }
+        guard !router.tunnel.shareURL.isEmpty else { return AppCopy.text("router.share.noEndpoint") }
+
         return router.tunnel.shareURL.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/v1"
     }
 
@@ -526,8 +538,7 @@ struct RouterShareView: View {
     }
 
     private func copy(_ text: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+        NSPasteboard.copy(text)
         router.status = AppCopy.text("common.copied")
     }
 }

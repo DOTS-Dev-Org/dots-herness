@@ -67,14 +67,4 @@ public struct AgentCacheReuseSummary: Sendable, Equatable {
         }
         lostTokensByReason = losses
     }
-
-    /// Each account/endpoint/model keeps its own last 100 candidate requests.
-    /// Pooling different routes would conceal a poorly performing provider.
-    public static func byRoute(events: [AgentContextUsageEvent]) -> [String: AgentCacheReuseSummary] {
-        let groups = Dictionary(grouping: events.filter { $0.requestKind == .main }) {
-            [$0.provider, $0.api, $0.model, $0.cacheTrace?.accountFingerprint ?? "unknown",
-             $0.cacheTrace?.endpointFingerprint ?? "unknown"].joined(separator: "|")
-        }
-        return groups.mapValues { AgentCacheReuseSummary(events: $0) }
-    }
 }

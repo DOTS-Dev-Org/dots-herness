@@ -66,7 +66,7 @@ final class AppStatusItem: NSObject {
             image.addRepresentation(rep)
         }
         guard !image.representations.isEmpty else { return nil }
-        image.isTemplate = true
+        image.isTemplate = false
         return image
     }()
 }

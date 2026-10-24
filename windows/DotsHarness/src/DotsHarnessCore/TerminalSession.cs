@@ -34,6 +34,19 @@ public sealed class TerminalSession : IDisposable
 
     public event EventHandler? Changed;
 
+    /// <summary>
+    /// Factory shared with the Linux terminal so the agent tool can start a session
+    /// the same way on both desktops. Windows has no bubblewrap equivalent here,
+    /// so the sandbox arguments are accepted and ignored.
+    /// </summary>
+    public static TerminalSession Create(
+        string workingDirectory,
+        SshTarget? remoteTarget = null,
+        bool sandboxed = false,
+        IReadOnlyList<string>? sandboxWritableRoots = null,
+        bool sandboxNetworkAccess = false) =>
+        new(workingDirectory, remoteTarget);
+
     public string Output
     {
         get { lock (_gate) return _outputText; }
@@ -44,6 +57,12 @@ public sealed class TerminalSession : IDisposable
         get { lock (_gate) return _isRunning; }
     }
 
+    /// <summary>When the session started; the Tasks tab shows the elapsed time.</summary>
+    public DateTime StartedAt { get; private set; } = DateTime.Now;
+
+    /// <summary>The shell's exit code, once it has exited.</summary>
+    public int? ExitCode { get; private set; }
+
     public void Start()
     {
         Stop();
@@ -51,6 +70,8 @@ public sealed class TerminalSession : IDisposable
         {
             _outputText = "";
             _generation++;
+            StartedAt = DateTime.Now;
+            ExitCode = null;
         }
 
         if (_remoteTarget is null && !Directory.Exists(_workingDirectory))
@@ -288,6 +309,13 @@ public sealed class TerminalSession : IDisposable
     private async Task WaitForExitAsync(IntPtr processHandle, long generation)
     {
         await Task.Run(() => WaitForSingleObject(processHandle, uint.MaxValue)).ConfigureAwait(false);
+        var exitCode = 0u;
+        try { _ = GetExitCodeProcess(processHandle, out exitCode); }
+        catch { }
+        lock (_gate)
+        {
+            if (_generation == generation) ExitCode = (int)exitCode;
+        }
         Complete(generation);
     }
 
@@ -488,6 +516,9 @@ public sealed class TerminalSession : IDisposable
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern uint WaitForSingleObject(IntPtr handle, uint milliseconds);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetExitCodeProcess(IntPtr handle, out uint exitCode);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool InitializeProcThreadAttributeList(

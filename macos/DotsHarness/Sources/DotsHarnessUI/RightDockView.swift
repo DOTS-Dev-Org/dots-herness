@@ -1,9 +1,29 @@
 // Copyright (c) 2026 DOTS
-// Right-hand tabbed dock: Review (real git), Terminal, Browser, Files.
+// Tabbed dock: Review (real git), Terminal, Browser, Files. The dock stays right of the chat; a tab can be dragged to any side.
 
 import SwiftUI
 import WebKit
 import DotsHarnessCore
+
+/// `.leading` is the side next to the sidebar (the physical right in RTL).
+enum DockEdge: String, Equatable {
+    case leading, trailing, top, bottom
+
+    var isSideBySide: Bool { self == .leading || self == .trailing }
+}
+
+/// Edge under `point`. Nil in the central region, so a drag near the centre does not move the tab.
+func dockEdge(at point: CGPoint, in size: CGSize, rightToLeft: Bool) -> DockEdge? {
+    guard size.width > 0, size.height > 0 else { return nil }
+    let dx = (point.x - size.width / 2) / (size.width / 2)
+    let dy = (point.y - size.height / 2) / (size.height / 2)
+    if abs(dx) >= abs(dy) {
+        guard abs(dx) >= 0.5 else { return nil }
+        return (dx < 0) != rightToLeft ? .leading : .trailing
+    }
+    guard abs(dy) >= 0.5 else { return nil }
+    return dy < 0 ? .top : .bottom
+}
 
 // MARK: - State
 
@@ -15,18 +35,115 @@ final class RightDockState: ObservableObject {
         case files
         case browser
         case plan
+        case tasks
+
+        var systemImage: String {
+            switch self {
+            case .review: return KeyboardShortcutAction.review.systemImage
+            case .terminal: return "terminal"
+            case .files: return "folder"
+            case .browser: return "globe"
+            case .plan: return "lightbulb"
+            case .tasks: return "clock.arrow.circlepath"
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .review: return KeyboardShortcutAction.review.title
+            case .terminal: return KeyboardShortcutAction.terminal.title
+            case .files: return KeyboardShortcutAction.files.title
+            case .browser: return KeyboardShortcutAction.browser.title
+            case .plan: return AppCopy.text("plan.title")
+            case .tasks: return AppCopy.text("backgroundTasks.title")
+            }
+        }
+
+        /// Where this tool was last dragged to; new tabs of the kind open there.
+        fileprivate var edgeKey: String {
+            switch self {
+            case .review: return "dock.edge.review"
+            case .terminal: return "dock.edge.terminal"
+            case .files: return "dock.edge.files"
+            case .browser: return "dock.edge.browser"
+            case .plan: return "dock.edge.plan"
+            case .tasks: return "dock.edge.tasks"
+            }
+        }
     }
 
     struct Tab: Identifiable, Equatable {
         let id = UUID()
         let kind: Kind
+        var edge: DockEdge
+        /// Project name plus a per-tool number, so two terminals stay tellable apart.
+        let number: Int
+        let title: String
     }
 
+    /// The right dock itself. Tabs dragged to another edge show regardless.
     @Published var isVisible = false
-    /// Dock fills the whole detail area (conversation hidden).
+    /// Right dock fills the whole detail area (conversation hidden).
     @Published var isExpanded = false
-    @Published var tabs: [Tab] = []
-    @Published var selectedID: UUID?
+    @Published private(set) var tabs: [Tab] = []
+    @Published var selected: [DockEdge: UUID] = [:]
+    /// Edges that show a pair of tabs instead of one at a time.
+    @Published var split = Set((UserDefaults.standard.stringArray(forKey: "dock.split") ?? []).compactMap(DockEdge.init)) {
+        didSet { UserDefaults.standard.set(split.map(\.rawValue), forKey: "dock.split") }
+    }
+    @Published var horizontalSplits = Set((UserDefaults.standard.stringArray(forKey: "dock.horizontalSplits") ?? ["top", "bottom"]).compactMap(DockEdge.init)) {
+        didSet { UserDefaults.standard.set(horizontalSplits.map(\.rawValue), forKey: "dock.horizontalSplits") }
+    }
+    @Published private var splitCompanions: [DockEdge: UUID] = [:]
+    private var browsers: [UUID: NativeBrowserService] = [:]
+
+    func splitTabs(on edge: DockEdge) -> [Tab] {
+        let all = tabs(on: edge)
+        let active = selected[edge] ?? all.first?.id
+        let companion = all.first { $0.id == splitCompanions[edge] && $0.id != active }
+            ?? all.first { $0.id != active }
+        return all.filter { $0.id == active || $0.id == companion?.id }
+    }
+
+    func minimumWidth(on edge: DockEdge) -> CGFloat {
+        split.contains(edge) && horizontalSplits.contains(edge) && tabs(on: edge).count > 1 ? 401 : 240
+    }
+
+    func minimumHeight(on edge: DockEdge) -> CGFloat {
+        split.contains(edge) && !horizontalSplits.contains(edge) && tabs(on: edge).count > 1 ? 245 : 180
+    }
+
+    func browser(for tab: Tab) -> NativeBrowserService? { browsers[tab.id] }
+
+    func toggleVisibility() {
+        isVisible.toggle()
+        if isVisible && !has(.trailing) { add(.browser, unique: false, at: .trailing) }
+    }
+
+    func setSplit(_ edge: DockEdge, horizontal: Bool?) {
+        guard let horizontal else { split.remove(edge); splitCompanions[edge] = nil; return }
+        if horizontal { horizontalSplits.insert(edge) } else { horizontalSplits.remove(edge) }
+        split.insert(edge)
+        if splitCompanions[edge] == nil {
+            splitCompanions[edge] = tabs(on: edge).first { $0.id != selected[edge] }?.id
+        }
+    }
+
+    func splitPane(_ edge: DockEdge, horizontal: Bool, model: AppModel) {
+        if tabs(on: edge).count < 2 {
+            if edge == .bottom { openTerminal(model: model, at: edge) }
+            else { add(.browser, unique: false, at: edge) }
+        }
+        setSplit(edge, horizontal: horizontal)
+    }
+
+    /// Tab being dragged and the edge it would land on.
+    @Published private(set) var dragging: Tab?
+    @Published private(set) var dropEdge: DockEdge?
+    /// Detail area in window coordinates; `RootView` keeps it current.
+    var dropArea = CGRect.zero
+    /// Names new tabs; `RootView` keeps it current.
+    var projectName = ""
 
     init() {
         NativeBrowserService.shared.onNavigateRequested = { [weak self] _ in
@@ -34,12 +151,68 @@ final class RightDockState: ObservableObject {
         }
     }
 
+    func tabs(on edge: DockEdge) -> [Tab] { tabs.filter { $0.edge == edge } }
+
+    func has(_ edge: DockEdge) -> Bool { tabs.contains { $0.edge == edge } }
+
+    var hasMovedTabs: Bool { tabs.contains { $0.edge != .trailing } }
+
     func showPlan() {
         add(.plan, unique: true)
     }
 
+    func showReview() {
+        add(.review, unique: true)
+    }
+
+    func showTasks() {
+        add(.tasks, unique: true)
+    }
+
     func showBrowser() {
-        add(.browser, unique: true)
+        if let tab = tabs.first(where: { browsers[$0.id] === NativeBrowserService.shared }) {
+            select(tab)
+        } else {
+            add(.browser, unique: false, at: .trailing, browser: .shared)
+        }
+    }
+
+    /// `point` is in window coordinates, like `dropArea`.
+    func previewDrop(_ tab: Tab, at point: CGPoint, rightToLeft: Bool) {
+        var target = dockEdge(
+            at: CGPoint(x: point.x - dropArea.minX, y: point.y - dropArea.minY),
+            in: dropArea.size,
+            rightToLeft: rightToLeft
+        )
+        if target == tab.edge { target = nil }
+        // Skip no-op writes: every drag tick would otherwise re-render the whole root view.
+        if dragging != tab { dragging = tab }
+        if dropEdge != target { dropEdge = target }
+    }
+
+    func drop(_ tab: Tab, at point: CGPoint, rightToLeft: Bool) {
+        previewDrop(tab, at: point, rightToLeft: rightToLeft)
+        if let dropEdge { move(tab, to: dropEdge) }
+        dropEdge = nil
+        dragging = nil
+    }
+
+    func move(_ tab: Tab, to edge: DockEdge) {
+        guard let index = tabs.firstIndex(where: { $0.id == tab.id }), tabs[index].edge != edge else { return }
+        let old = tabs[index].edge
+        tabs[index].edge = edge
+        UserDefaults.standard.set(edge.rawValue, forKey: tab.kind.edgeKey)
+        if selected[old] == tab.id { selected[old] = tabs(on: old).last?.id }
+        select(tabs[index])
+    }
+
+    func select(_ tab: Tab) {
+        if split.contains(tab.edge), splitCompanions[tab.edge] == tab.id {
+            splitCompanions[tab.edge] = selected[tab.edge]
+        }
+        if selected[tab.edge] != tab.id { selected[tab.edge] = tab.id }
+        if let browser = browsers[tab.id] { NativeBrowserService.activate(browser) }
+        if tab.edge == .trailing { isVisible = true }
     }
 
     func perform(_ action: KeyboardShortcutAction, model: AppModel) {
@@ -56,18 +229,34 @@ final class RightDockState: ObservableObject {
         }
     }
 
-    private func add(_ kind: Kind, unique: Bool) {
-        isVisible = true
+    func add(_ kind: Kind, unique: Bool, at requestedEdge: DockEdge? = nil, browser: NativeBrowserService? = nil) {
         if unique, let existing = tabs.first(where: { $0.kind == kind }) {
-            selectedID = existing.id
+            select(existing)
             return
         }
-        let tab = Tab(kind: kind)
+        let edge = requestedEdge ?? DockEdge(rawValue: UserDefaults.standard.string(forKey: kind.edgeKey) ?? "") ?? .trailing
+        let taken = Set(tabs.filter { $0.kind.edgeKey == kind.edgeKey }.map(\.number))
+        let number = (1...).first { !taken.contains($0) } ?? 1
+        let tab = Tab(
+            kind: kind,
+            edge: edge,
+            number: number,
+            title: kind == .browser ? AppCopy.text("dock.newTab") : "\(kind.title) · \(projectName.isEmpty ? String(number) : "\(projectName) \(number)")"
+        )
+        if kind == .browser {
+            let service = browser ?? NativeBrowserService()
+            browsers[tab.id] = service
+            service.onNavigateRequested = { [weak self, weak service] _ in
+                guard let self, let service,
+                      let tab = self.tabs.first(where: { self.browsers[$0.id] === service }) else { return }
+                self.select(tab)
+            }
+        }
         tabs.append(tab)
-        selectedID = tab.id
+        select(tab)
     }
 
-    private func openTerminal(model: AppModel) {
+    func openTerminal(model: AppModel, at edge: DockEdge? = nil) {
         let key = model.terminalWorkspaceKey
         guard !key.isEmpty else {
             if !model.isRemoteWorkLocation { model.chooseWorkspace() }
@@ -78,7 +267,7 @@ final class RightDockState: ObservableObject {
             executionPolicy: model.remoteWorkspace == nil ? model.sandboxExecutionPolicy : nil,
             remoteTarget: model.remoteWorkspace
         ) else { return }
-        add(.terminal(session: session.id, key: key), unique: false)
+        add(.terminal(session: session.id, key: key), unique: false, at: edge)
     }
 
     func close(_ tab: Tab, model: AppModel) {
@@ -86,10 +275,20 @@ final class RightDockState: ObservableObject {
            let session = model.terminalManager.sessions(for: key).first(where: { $0.id == id }) {
             model.terminalManager.closeSession(session, for: key)
         }
-        guard let index = tabs.firstIndex(of: tab) else { return }
+        guard let index = tabs.firstIndex(where: { $0.id == tab.id }) else { return }
+        let closedActiveBrowser = browsers[tab.id] === NativeBrowserService.shared
+        if let browser = browsers.removeValue(forKey: tab.id) {
+            browser.stop()
+        }
         tabs.remove(at: index)
-        if selectedID == tab.id {
-            selectedID = tabs.isEmpty ? nil : tabs[min(index, tabs.count - 1)].id
+        if selected[tab.edge] == tab.id { selected[tab.edge] = tabs(on: tab.edge).last?.id }
+        if closedActiveBrowser {
+            let successor = tabs(on: tab.edge).first { $0.id == selected[tab.edge] }
+            NativeBrowserService.activate(successor.flatMap { browsers[$0.id] } ?? browsers.values.first ?? NativeBrowserService())
+        }
+        if !has(tab.edge) { split.remove(tab.edge) }
+        if tab.edge == .trailing && !has(.trailing) && isVisible {
+            add(.browser, unique: false, at: .trailing)
         }
     }
 }
@@ -98,10 +297,15 @@ private let dockActions: [KeyboardShortcutAction] = [.review, .terminal, .browse
 
 // MARK: - Dock
 
+/// Tabs and tools at one workspace edge.
 struct RightDockView: View {
     @ObservedObject var model: AppModel
     @ObservedObject var state: RightDockState
-    @State private var isMenuPresented = false
+    var edge: DockEdge = .trailing
+
+    private var tabs: [RightDockState.Tab] { state.tabs(on: edge) }
+    private var selectedID: UUID? { state.selected[edge] ?? tabs.first?.id }
+    private var isSplit: Bool { state.split.contains(edge) && tabs.count > 1 }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -111,100 +315,160 @@ struct RightDockView: View {
         }
         .frame(minWidth: 240, maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
+        .onAppear {
+            if edge == .trailing && tabs.isEmpty { state.add(.browser, unique: false, at: .trailing) }
+        }
     }
 
     private var tabBar: some View {
         HStack(spacing: 6) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 4) {
-                    ForEach(state.tabs) { tab in tabButton(tab) }
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 4) {
+                        ForEach(tabs) { tab in tabButton(tab).id(tab.id) }
+                    }
+                }
+                .onChange(of: selectedID, initial: true) { _, id in
+                    if let id { proxy.scrollTo(id, anchor: .trailing) }
                 }
             }
             .frame(maxWidth: .infinity)
 
-            Button { isMenuPresented.toggle() } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 13, weight: .medium))
-                    .frame(width: 28, height: 28)
+            Button {
+                if edge == .bottom { state.openTerminal(model: model, at: .bottom) }
+                else { state.add(.browser, unique: false, at: edge) }
+            } label: {
+                Image(systemName: "plus").frame(width: 28, height: 28)
             }
             .buttonStyle(.plain)
-            .popover(isPresented: $isMenuPresented, arrowEdge: .bottom) { pickerList(inPopover: true) }
+            .help(edge == .bottom ? KeyboardShortcutAction.terminal.title : AppCopy.text("dock.newTab"))
+            .accessibilityLabel(edge == .bottom ? KeyboardShortcutAction.terminal.title : AppCopy.text("dock.newTab"))
 
-            Spacer(minLength: 0)
-
-            Button { state.isExpanded.toggle() } label: {
-                Image(systemName: state.isExpanded
-                    ? "arrow.down.right.and.arrow.up.left"
-                    : "arrow.up.left.and.arrow.down.right")
-                    .font(.system(size: 12, weight: .medium))
-                    .frame(width: 28, height: 28)
+            .contextMenu {
+                ForEach(dockActions) { action in
+                    Button(action.title) { state.perform(action, model: model) }
+                }
+                Button(AppCopy.text("backgroundTasks.title")) { state.showTasks() }
+                Divider()
+                Button(AppCopy.text("dock.bottomTerminal")) { state.openTerminal(model: model, at: .bottom) }
             }
-            .buttonStyle(.plain)
-            .help(AppCopy.text(state.isExpanded ? "dock.collapse" : "dock.expand"))
-            .accessibilityLabel(AppCopy.text(state.isExpanded ? "dock.collapse" : "dock.expand"))
+
+            if !tabs.isEmpty {
+                Menu {
+                    Button(AppCopy.text("dock.splitHorizontal")) { state.splitPane(edge, horizontal: true, model: model) }
+                    Button(AppCopy.text("dock.splitVertical")) { state.splitPane(edge, horizontal: false, model: model) }
+                    Button(AppCopy.text("dock.unsplit")) { state.setSplit(edge, horizontal: nil) }
+                } label: {
+                    Image(systemName: state.horizontalSplits.contains(edge) ? "rectangle.split.2x1" : "rectangle.split.1x2")
+                        .foregroundStyle(isSplit ? Color.accentColor : Color.primary)
+                        .frame(width: 28, height: 28)
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help(AppCopy.text("dock.split"))
+                .accessibilityLabel(AppCopy.text("dock.split"))
+            }
+
+            if edge == .trailing {
+                Button { state.isExpanded.toggle() } label: {
+                    Image(systemName: state.isExpanded
+                        ? "arrow.down.right.and.arrow.up.left"
+                        : "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 12, weight: .medium))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .help(AppCopy.text(state.isExpanded ? "dock.collapse" : "dock.expand"))
+                .accessibilityLabel(AppCopy.text(state.isExpanded ? "dock.collapse" : "dock.expand"))
+            }
         }
         .padding(.horizontal, 10)
         .frame(height: 44)
     }
 
     private func tabButton(_ tab: RightDockState.Tab) -> some View {
-        let selected = tab.id == state.selectedID
-        return HStack(spacing: 6) {
-            Button { state.selectedID = tab.id } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: icon(tab.kind)).font(.system(size: 12))
-                    Text(title(tab.kind)).font(.system(size: 13)).lineLimit(1)
+        HStack(spacing: 6) {
+            // Tap selects, drag moves the tab to another edge. A plain gesture, not onDrag:
+            // a pasteboard drag needs a declared UTType and this app declares none.
+            HStack(spacing: 6) {
+                Image(systemName: tab.kind.systemImage).font(.system(size: 12))
+                if let browser = state.browser(for: tab) {
+                    DockBrowserTabTitle(service: browser)
+                } else {
+                    Text(tab.title).font(.system(size: 13)).lineLimit(1)
                 }
             }
-            .buttonStyle(.plain)
+            .frame(height: 30)
+            .contentShape(Rectangle())
+            .onTapGesture { state.select(tab) }
+            .gesture(
+                DragGesture(minimumDistance: 8, coordinateSpace: .global)
+                    .onChanged { state.previewDrop(tab, at: $0.location, rightToLeft: model.isRTL) }
+                    .onEnded { state.drop(tab, at: $0.location, rightToLeft: model.isRTL) }
+            )
+            .accessibilityAddTraits(.isButton)
             Button { state.close(tab, model: model) } label: {
                 Image(systemName: "xmark").font(.system(size: 10, weight: .semibold))
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
+            .accessibilityLabel(AppCopy.text("feedback.close"))
         }
         .padding(.horizontal, 10)
+        .frame(maxWidth: 220)
         .frame(height: 30)
         .background(
-            Color.primary.opacity(selected ? 0.10 : 0),
+            Color.primary.opacity(!isSplit && tab.id == selectedID ? 0.10 : 0),
             in: RoundedRectangle(cornerRadius: 8, style: .continuous)
         )
-    }
-
-    private func icon(_ kind: RightDockState.Kind) -> String {
-        switch kind {
-        case .review: return KeyboardShortcutAction.review.systemImage
-        case .terminal: return "terminal"
-        case .files: return "folder"
-        case .browser: return "globe"
-        case .plan: return "lightbulb"
-        }
-    }
-
-    private func title(_ kind: RightDockState.Kind) -> String {
-        switch kind {
-        case .review: return KeyboardShortcutAction.review.title
-        case .terminal: return KeyboardShortcutAction.terminal.title
-        case .files: return KeyboardShortcutAction.files.title
-        case .browser: return KeyboardShortcutAction.browser.title
-        case .plan: return AppCopy.text("plan.title")
-        }
+        .opacity(state.dragging?.id == tab.id ? 0.4 : 1)
     }
 
     @ViewBuilder
     private var content: some View {
-        if let tab = state.tabs.first(where: { $0.id == state.selectedID }) {
-            switch tab.kind {
-            case .review: DockReviewView(model: model).id(model.workspacePath)
-            case .terminal(let id, let key): DockTerminalView(manager: model.terminalManager, key: key, id: id)
-            case .files: DockFilesView(model: model).id(model.workspacePath)
-            case .browser: DockBrowserView().id(tab.id)
-            case .plan: DockPlanView(model: model)
+        if isSplit {
+            // Panes follow the tab bar's order.
+            if !state.horizontalSplits.contains(edge) {
+                VSplitView {
+                    ForEach(state.splitTabs(on: edge)) { tab in
+                        boundedPane(tab).frame(minHeight: 100)
+                    }
+                }
+            } else {
+                HSplitView {
+                    ForEach(state.splitTabs(on: edge)) { tab in
+                        boundedPane(tab).frame(minWidth: 200)
+                    }
+                }
             }
+        } else if let tab = tabs.first(where: { $0.id == selectedID }) {
+            pane(tab)
         } else {
-            VStack { Spacer(); pickerList(inPopover: false); Spacer() }
+            VStack { pickerList(inPopover: false); Spacer(minLength: 0) }
                 .padding(.horizontal, 20)
                 .frame(maxHeight: .infinity)
+        }
+    }
+
+    private func boundedPane(_ tab: RightDockState.Tab) -> some View {
+        GeometryReader { proxy in
+            pane(tab).frame(width: proxy.size.width, height: proxy.size.height)
+        }
+    }
+
+    @ViewBuilder
+    private func pane(_ tab: RightDockState.Tab) -> some View {
+        switch tab.kind {
+        case .review: DockReviewView(model: model).id(model.workspacePath)
+        case .terminal(let id, let key): DockTerminalView(manager: model.terminalManager, key: key, id: id)
+        case .files: DockFilesView(model: model).id(model.workspacePath)
+        case .browser:
+            if let service = state.browser(for: tab) {
+                DockBrowserView(model: model, state: state, service: service).id(tab.id)
+            }
+        case .plan: DockPlanView(model: model)
+        case .tasks: DockTasksView(model: model)
         }
     }
 
@@ -216,13 +480,51 @@ struct RightDockView: View {
                     title: action.title,
                     shortcut: model.shortcut(for: action).displayValue
                 ) {
-                    isMenuPresented = false
                     state.perform(action, model: model)
                 }
             }
         }
         .padding(inPopover ? 10 : 0)
         .frame(width: inPopover ? 300 : nil)
+    }
+}
+
+/// Slot, sized like the pane it becomes, that shows where the dragged tab will land.
+struct DockDropPreview: View {
+    let edge: DockEdge
+    let tab: RightDockState.Tab
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+        GeometryReader { proxy in
+            VStack(spacing: 8) {
+                Image(systemName: tab.kind.systemImage).font(.system(size: 24, weight: .medium))
+                Text(tab.title).font(.system(size: 13, weight: .semibold))
+            }
+            .foregroundStyle(Color.accentColor)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.accentColor.opacity(0.16), in: shape)
+            .background(.ultraThinMaterial, in: shape)
+            .overlay { shape.strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [6, 4])) }
+            .shadow(color: .black.opacity(0.18), radius: 14, y: 4)
+            .padding(8)
+            .frame(
+                width: edge.isSideBySide ? min(420, proxy.size.width / 2) : proxy.size.width,
+                height: edge.isSideBySide ? proxy.size.height : min(320, proxy.size.height / 2)
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
+        }
+        .allowsHitTesting(false)
+        .animation(.snappy(duration: 0.18), value: edge)
+    }
+
+    private var alignment: Alignment {
+        switch edge {
+        case .leading: return .leading
+        case .trailing: return .trailing
+        case .top: return .top
+        case .bottom: return .bottom
+        }
     }
 }
 
@@ -286,6 +588,120 @@ private struct DockPlanView: View {
         }
         .buttonStyle(.bordered)
         .disabled(!enabled)
+    }
+}
+
+// MARK: - Background tasks
+
+/// Shells and background tasks the agent started in the selected conversation.
+private struct DockTasksView: View {
+    @ObservedObject var model: AppModel
+    @State private var expanded = Set<UUID>()
+
+    var body: some View {
+        // The clock drives both the elapsed times and the running/finished grouping.
+        // Nothing running: nothing to tick, so it stops waking the view every second.
+        let anyRunning = model.bridge.backgroundTasks(in: model.selected?.id).contains(where: \.isRunning)
+        TimelineView(.animation(minimumInterval: 1, paused: !anyRunning)) { context in
+            let tasks = model.bridge.backgroundTasks(in: model.selected?.id)
+            let running = tasks.filter(\.isRunning)
+            let finished = tasks.filter { !$0.isRunning }
+            if tasks.isEmpty {
+                Text(AppCopy.text("backgroundTasks.empty"))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if !running.isEmpty {
+                            header(AppCopy.text("router.running"))
+                            ForEach(running) { row($0, now: context.date) }
+                        }
+                        if !finished.isEmpty {
+                            HStack {
+                                header("\(AppCopy.text("backgroundTasks.finished")) \(finished.count)")
+                                Spacer(minLength: 0)
+                                Button {
+                                    if let id = model.selected?.id { model.bridge.clearFinishedBackgroundTasks(in: id) }
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(.secondary)
+                                .help(AppCopy.text("backgroundTasks.clear"))
+                                .accessibilityLabel(AppCopy.text("backgroundTasks.clear"))
+                            }
+                            .padding(.top, running.isEmpty ? 0 : 8)
+                            ForEach(finished.reversed()) { row($0, now: context.date) }
+                        }
+                    }
+                    .padding(12)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func header(_ title: String) -> some View {
+        Text(title).font(.callout).foregroundStyle(.secondary)
+    }
+
+    private func row(_ task: TerminalSession, now: Date) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(task.title.isEmpty ? KeyboardShortcutAction.terminal.title : task.title)
+                        .font(.system(size: 13, weight: .medium))
+                        .lineLimit(expanded.contains(task.id) ? nil : 2)
+                    Text("\(status(task))  \(elapsed(task, now: now))")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(task.exitCode ?? 0 == 0 ? Color.secondary : Color.red)
+                }
+                Spacer(minLength: 0)
+                if task.isRunning {
+                    Button { task.stop() } label: {
+                        Image(systemName: "stop.fill")
+                            .font(.system(size: 10))
+                            .frame(width: 26, height: 26)
+                            .background(Color.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .help(AppCopy.text("common.stop"))
+                    .accessibilityLabel(AppCopy.text("common.stop"))
+                }
+            }
+            if expanded.contains(task.id) {
+                ScrollView {
+                    Text(String(task.output.suffix(4000)))
+                        .font(.system(size: 11, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .defaultScrollAnchor(.bottom)
+                .frame(maxHeight: 220)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if !expanded.insert(task.id).inserted { expanded.remove(task.id) }
+        }
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private func status(_ task: TerminalSession) -> String {
+        if task.isRunning { return AppCopy.text("router.running") }
+        guard let code = task.exitCode else { return AppCopy.text("backgroundTasks.stopped") }
+        return code == 0
+            ? AppCopy.text("tasks.notification.completed")
+            : AppCopy.format("backgroundTasks.failed", Int(code))
+    }
+
+    private func elapsed(_ task: TerminalSession, now: Date) -> String {
+        let seconds = Int((task.endedAt ?? now).timeIntervalSince(task.startedAt))
+        return Duration.seconds(max(0, seconds)).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .narrow))
     }
 }
 
@@ -361,6 +777,7 @@ private final class ReviewModel: ObservableObject {
     @Published var error: String?
     @Published var busy = false
     @Published var notRepo = false
+    @Published var gitMissing = false
 
     let path: String
     let app: AppModel
@@ -372,6 +789,8 @@ private final class ReviewModel: ObservableObject {
     var removed: Int { changes.map(\.removed).reduce(0, +) }
 
     func refresh() async {
+        gitMissing = !(await Task.detached { GitInstall.isAvailable() }.value)
+        if gitMissing { return }
         guard (await Git.run(["rev-parse", "--is-inside-work-tree"], at: path)).ok else {
             notRepo = true
             return
@@ -465,6 +884,14 @@ private final class ReviewModel: ObservableObject {
         await refresh()
     }
 
+    /// Sets upstream so a branch's first push works too.
+    func push() async {
+        // `branch` falls back to the short hash when detached, so ask git again.
+        let current = (await Git.run(["branch", "--show-current"], at: path)).out.trimmed
+        guard !current.isEmpty else { error = AppCopy.text("git.detached"); return }
+        await run(["push", "--set-upstream", "origin", current])
+    }
+
     func run(_ args: [String]) async {
         busy = true
         defer { busy = false }
@@ -517,7 +944,16 @@ private struct ReviewBody: View {
         VStack(spacing: 0) {
             header
             Divider()
-            if review.notRepo {
+            if review.gitMissing {
+                VStack(spacing: 10) {
+                    Text(AppCopy.text("dock.gitMissing"))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                    Button(AppCopy.text("dock.installGit")) { GitInstall.install() }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if review.notRepo {
                 Text(AppCopy.text("dock.notRepo"))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -566,7 +1002,7 @@ private struct ReviewBody: View {
 
             Menu {
                 Button(AppCopy.text("dock.commit")) { commitPresented = true }
-                Button(AppCopy.text("dock.push")) { Task { await review.run(["push"]) } }
+                Button(AppCopy.text("dock.push")) { Task { await review.push() } }
                 Button(AppCopy.text("dock.fetch")) { Task { await review.run(["fetch"]) } }
             } label: {
                 Label(AppCopy.text("dock.commitOrPush"), systemImage: "point.topleft.down.curvedto.point.bottomright.up")
@@ -776,6 +1212,9 @@ private struct DockFilesView: View {
                 let query = filter
                 matches = await Task.detached { Self.search(root: root, query: query) }.value
             }
+            .onChange(of: model.filesPaneRequestID, initial: true) { _, _ in
+                if let file = model.requestedFile { selected = file }
+            }
             .onChange(of: selected) { _, url in
                 guard let url else { preview = ""; return }
                 Task {
@@ -875,77 +1314,6 @@ private struct FileTreeRow: View {
             if expanded {
                 ForEach(children) { FileTreeRow(entry: $0, depth: depth + 1, selected: $selected) }
             }
-        }
-    }
-}
-
-// MARK: - Native Live Browser (WebKit)
-
-private struct WebViewHost: NSViewRepresentable {
-    let webView: WKWebView
-    func makeNSView(context: Context) -> WKWebView { webView }
-    func updateNSView(_ nsView: WKWebView, context: Context) {}
-}
-
-private struct DockBrowserView: View {
-    @ObservedObject private var service = NativeBrowserService.shared
-    @State private var inputAddress: String = ""
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Button { service.goBack() } label: { Image(systemName: "chevron.left") }
-                    .disabled(!service.canGoBack)
-                Button { service.goForward() } label: { Image(systemName: "chevron.right") }
-                    .disabled(!service.canGoForward)
-                Button { service.reload() } label: { Image(systemName: "arrow.clockwise") }
-
-                TextField("URL", text: $inputAddress)
-                    .textFieldStyle(.roundedBorder)
-                    .onSubmit {
-                        Task { try? await service.navigate(to: inputAddress) }
-                    }
-
-                if service.isLoading {
-                    ProgressView().controlSize(.small)
-                }
-
-                if let currentURL = URL(string: service.currentURLString) {
-                    Button {
-                        NSWorkspace.shared.open(currentURL)
-                    } label: {
-                        Image(systemName: "safari")
-                    }
-                    .help("Open in Safari")
-                }
-            }
-            .buttonStyle(.plain)
-            .padding(8)
-
-            if let activity = service.agentActivity {
-                HStack(spacing: 6) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.purple)
-                    Text(activity)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Spacer()
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(Color.purple.opacity(0.1))
-            }
-
-            Divider()
-            WebViewHost(webView: service.webView)
-        }
-        .onAppear {
-            inputAddress = service.currentURLString
-        }
-        .onChange(of: service.currentURLString) { _, newURL in
-            inputAddress = newURL
         }
     }
 }

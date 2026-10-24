@@ -34,19 +34,6 @@ public struct PluginInstaller {
         return merged
     }
 
-    public func pinPublisher(id: String, publicKey: String) throws {
-        guard id != "dots" else {
-            throw PluginError.package("the official DOTS publisher key is immutable")
-        }
-        var current = (try? JSONDecoder().decode(
-            [String: String].self,
-            from: Data(contentsOf: catalog.paths.publishers)
-        )) ?? [:]
-        current[id] = publicKey
-        let data = try JSONEncoder().encode(current)
-        try data.write(to: catalog.paths.publishers, options: .atomic)
-    }
-
     // MARK: Install
 
     /// `signature == nil` installs unsigned (used for local dev). A signature is
@@ -94,6 +81,11 @@ public struct PluginInstaller {
     ) async throws -> PluginManifest {
         guard url.scheme?.lowercased() == "https" else {
             throw PluginError.package("Marketplace downloads must use HTTPS")
+        }
+        // A remote package is native code. Without a checksum or a signature
+        // there is nothing to check it against, so it is not installed.
+        guard sha256?.isEmpty == false || signature != nil else {
+            throw PluginError.package("This plugin has no published checksum or signature and cannot be installed.")
         }
         let scratch = catalog.paths.runtime.appendingPathComponent("downloads", isDirectory: true)
         let name = url.lastPathComponent.isEmpty ? "package.dotsplugin" : url.lastPathComponent

@@ -14,6 +14,28 @@ public static class WorkspaceBacklog
     public const string Marker = "BACKLOG:";
     public const string DoneMarker = "BACKLOG-DONE:";
 
+    /// <summary>Text shown to people. Directives stay in model context and are parsed separately.</summary>
+    public static string VisibleText(string? text, bool hidePartialMarkerTail = false)
+    {
+        var lines = (text ?? "").Split('\n');
+        var kept = new List<string>(lines.Length);
+        for (var index = 0; index < lines.Length; index++)
+        {
+            var line = lines[index];
+            var trimmed = line.TrimStart(' ', '\t', '\r');
+            if (trimmed.StartsWith(Marker, StringComparison.OrdinalIgnoreCase)
+                || trimmed.StartsWith(DoneMarker, StringComparison.OrdinalIgnoreCase)) continue;
+            if (hidePartialMarkerTail && index == lines.Length - 1 && IsMarkerPrefix(trimmed)) continue;
+            kept.Add(line);
+        }
+        return string.Join("\n", kept);
+    }
+
+    private static bool IsMarkerPrefix(string line) =>
+        line.Length > 0
+        && (Marker.StartsWith(line, StringComparison.OrdinalIgnoreCase)
+            || DoneMarker.StartsWith(line, StringComparison.OrdinalIgnoreCase));
+
     /// <summary>How many open notes reach the prompt. Older ones stay on disk.</summary>
     public const int MaxPromptEntries = 5;
 
@@ -30,12 +52,14 @@ public static class WorkspaceBacklog
     /// Records one finished run. Only runs that left work open - or failed -
     /// produce a note; a clean run has nothing to carry forward.
     /// </summary>
-    public static void Record(string? workspace, string runId, string prompt, string? finalText, string outcome)
+    public static void Record(
+        string? workspace, string runId, string prompt, string? finalText, string outcome, string? controlText = null)
     {
         var directory = TasksDirectory(workspace);
         if (directory is null || string.IsNullOrWhiteSpace(runId)) return;
-        Close(workspace, finalText);
-        var items = OpenItems(finalText);
+        var controls = controlText ?? finalText;
+        Close(workspace, controls);
+        var items = OpenItems(controls);
         var status = outcome == "completed" ? (items.Count == 0 ? "completed" : "unfinished") : "failed";
         if (status == "completed") return;
 
@@ -63,7 +87,7 @@ public static class WorkspaceBacklog
 
             ## Result
 
-            {Sanitize(finalText ?? "", 600)}
+            {Sanitize(VisibleText(finalText), 600)}
             """;
         try
         {

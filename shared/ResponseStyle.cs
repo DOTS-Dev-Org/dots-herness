@@ -46,16 +46,14 @@ public readonly record struct ResponseStyleDecision(
 {
     public bool IsShort => Style is AgentResponseStyle.Concise or AgentResponseStyle.Ultra or AgentResponseStyle.Strict;
     public bool IsHardLimit => Style == AgentResponseStyle.Strict;
-    /// Word limits are converted conservatively for providers that expose only
-    /// a token ceiling; the prompt still carries the exact word constraint.
-    /// This is an upper bound, not a completion guarantee.
-    public int? ProviderOutputTokenCap => MaxOutputTokens ?? (MaxWords is { } words
-        ? words > int.MaxValue / 2 ? int.MaxValue : words * 2
-        : null);
+    /// Only an explicit token ceiling becomes a provider cap. Word limits stay in
+    /// the prompt: a words-to-tokens guess is not measured for every language, and
+    /// when it is too tight the turn ends with an output-limit failure.
+    public int? ProviderOutputTokenCap => MaxOutputTokens;
 
     /// Aviation "dark cockpit": a quiet panel means everything is normal, so
     /// only the abnormal and the actionable earn output tokens.
-    private const string DarkCockpit = " Dark cockpit rule: silence means normal. Report only results, deviations, failures, and decisions the user must make; never narrate steps or restate what went as expected.";
+    private const string DarkCockpit = " Dark cockpit rule: state the requested result and evidence, including passing checks. Progress updates stay required but brief. Report failures, deviations and required decisions; omit repeated plans, expected outcomes and tool-by-tool narration. Use an optional diagram only when clearer than prose.";
 
     public string Guidance => Style switch
     {
@@ -153,6 +151,21 @@ public static class ResponseStyleDetector
             : null;
     }
 
+    /// A count is a limit only with a limit cue beside it ("en fazla 200 token",
+    /// "max 50 words", "100 kelimeyi geçme"). Bare counts such as "Add 2 words to the
+    /// commit message" or "512 token limit to the prompt builder" are task content.
+    private static readonly string[] LimitCuesBefore =
+    [
+        "en fazla", "en cok", "at most", "no more than", "not more than", "up to",
+        "less than", "fewer than", "under", "below", "within", "exceed", "max", "maximum", "maksimum",
+    ];
+
+    private static readonly HashSet<string> LimitCuesAfter = new(StringComparer.Ordinal)
+    {
+        "gecme", "gecmesin", "gecmeyin", "gecmeyecek", "asma", "asmasin", "asmayin", "asmayacak",
+        "sinirla", "sinirlandir", "max", "maximum", "maksimum",
+    };
+
     private static (int? tokens, int? words) ParseLimit(string normalized)
     {
         var words = normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -162,11 +175,21 @@ public static class ResponseStyleDetector
                 || value <= 0)
                 continue;
             var unit = words[index + 1].TrimEnd('.', ',', ';', ':');
-            if (unit is "token" or "tokens") return (value, null);
-            if (unit is "kelime" or "kelimelik" or "kelimeyi" or "word" or "words") return (null, value);
+            var isTokens = unit is "token" or "tokens";
+            var isWords = unit is "kelime" or "kelimelik" or "kelimeyi" or "word" or "words";
+            if (!isTokens && !isWords) continue;
+            var before = string.Join(' ', words[Math.Max(0, index - 3)..index]);
+            var after = words[(index + 2)..Math.Min(words.Length, index + 4)];
+            if (!HasLimitCue(before, after)) continue;
+            if (isTokens) return (value, null);
+            return (null, value);
         }
         return (null, null);
     }
+
+    private static bool HasLimitCue(string before, string[] after) =>
+        LimitCuesBefore.Any(cue => before == cue || before.EndsWith(" " + cue, StringComparison.Ordinal))
+        || after.Any(LimitCuesAfter.Contains);
 
     private static string Normalize(string value)
     {

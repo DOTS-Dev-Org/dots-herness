@@ -1,5 +1,5 @@
 // Copyright (c) 2026 DOTS
-// Local response feedback and the small, relevant examples it produces.
+// Local response feedback: which answer it was given on, never the answer itself.
 
 using System.Security.Cryptography;
 using System.Text;
@@ -61,8 +61,9 @@ public static class FeedbackCatalog
 }
 
 /// <summary>
-/// Raw feedback stays in the project-local .mem folder. The prompt and answer
-/// are redacted and bounded before they are sent to the private lesson evaluator.
+/// Feedback on one answer. The prompt and answer are held only while the record is
+/// in memory, for the lesson evaluator; the file keeps their hash (see
+/// FeedbackStore.Stored), so a record read back has them empty.
 /// </summary>
 public sealed record FeedbackRecord(
     [property: JsonPropertyName("conversation_id")] string ConversationId,
@@ -76,19 +77,39 @@ public sealed record FeedbackRecord(
 {
     [JsonIgnore]
     public string Id => $"{ConversationId}:{MessageId}";
+
+    [JsonIgnore]
+    public string Digest { get; init; } = ComputeDigest(Prompt, Response);
+
+    public static string ComputeDigest(string prompt, string response) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(prompt + "\0" + response))).ToLowerInvariant();
 }
 
 public sealed class FeedbackStore
 {
     public const int MaxCommentCharacters = 2_000;
 
-    private sealed record GoldExample(
+    /// <summary>One line of feedback.jsonl. Prompt and Response are only read, from files
+    /// written before the text was dropped, and never written.</summary>
+    private sealed record Stored(
         [property: JsonPropertyName("conversation_id")] string ConversationId,
         [property: JsonPropertyName("message_id")] string MessageId,
-        [property: JsonPropertyName("prompt")] string Prompt,
-        [property: JsonPropertyName("response")] string Response,
-        [property: JsonPropertyName("tags")] IReadOnlyList<string> Tags,
-        [property: JsonPropertyName("timestamp")] DateTimeOffset Timestamp);
+        [property: JsonPropertyName("digest")] string? Digest,
+        [property: JsonPropertyName("prompt"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Prompt,
+        [property: JsonPropertyName("response"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Response,
+        [property: JsonPropertyName("feedback_type")] FeedbackType Type,
+        [property: JsonPropertyName("tags")] IReadOnlyList<string>? Tags,
+        [property: JsonPropertyName("user_comment")] string? UserComment,
+        [property: JsonPropertyName("timestamp")] DateTimeOffset Timestamp)
+    {
+        public static Stored From(FeedbackRecord record) => new(record.ConversationId, record.MessageId, record.Digest,
+            null, null, record.Type, record.Tags, record.UserComment, record.Timestamp);
+
+        public FeedbackRecord Record() => new(ConversationId, MessageId, "", "", Type, Tags ?? [], UserComment ?? "", Timestamp)
+        {
+            Digest = Digest ?? FeedbackRecord.ComputeDigest(Prompt ?? "", Response ?? ""),
+        };
+    }
 
     private static readonly object Gate = new();
     private static readonly JsonSerializerOptions Json = new()
@@ -96,18 +117,40 @@ public sealed class FeedbackStore
         PropertyNameCaseInsensitive = true,
         Converters = { new FeedbackTypeJsonConverter() },
     };
-    private static readonly HashSet<string> StopWords = new(StringComparer.Ordinal)
-    {
-        "the", "and", "for", "with", "that", "this", "from", "are", "was", "were", "have", "has", "not", "you", "your",
-        "bir", "ve", "ile", "için", "icin", "bu", "şu", "su", "olan", "olarak", "çok", "cok", "ama", "de", "da", "mi",
-    };
-
     private readonly string _workspace;
-    private string Root => Path.Combine(_workspace, ".mem");
+    private readonly string? _userRoot;
+    private string Root => !string.IsNullOrWhiteSpace(_userRoot)
+        ? WorkspaceInsights.Folder(_workspace, _userRoot) ?? Path.Combine(_workspace, ".mem")
+        : Path.Combine(_workspace, ".mem");
     private string FeedbackPath => Path.Combine(Root, "feedback.jsonl");
     private string ExamplesPath => Path.Combine(Root, "gold_examples.json");
 
-    public FeedbackStore(string workspace) => _workspace = Path.GetFullPath(workspace);
+    public FeedbackStore(string workspace, string? userRoot = null)
+    {
+        _workspace = Path.GetFullPath(workspace);
+        _userRoot = userRoot;
+        MigrateLegacyFeedback();
+    }
+
+    private void MigrateLegacyFeedback()
+    {
+        if (string.IsNullOrWhiteSpace(_userRoot)
+            || WorkspaceInsights.Folder(_workspace, _userRoot) is not { } folder) return;
+        var source = Path.Combine(_workspace, ".mem", "feedback.jsonl");
+        var destination = Path.Combine(folder, "feedback.jsonl");
+        if (File.Exists(destination) || !File.Exists(source)) return;
+        lock (Gate)
+        {
+            if (File.Exists(destination)) return;
+            try
+            {
+                Directory.CreateDirectory(folder);
+                File.Copy(source, destination, overwrite: false);
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
 
     public FeedbackRecord? Record(string conversationId, string messageId) =>
         ReadAll().FirstOrDefault(record => record.ConversationId == conversationId && record.MessageId == messageId);
@@ -124,8 +167,11 @@ public sealed class FeedbackStore
                 {
                     try
                     {
-                        if (JsonSerializer.Deserialize<FeedbackRecord>(line, Json) is { } record)
+                        if (JsonSerializer.Deserialize<Stored>(line, Json) is { } stored)
+                        {
+                            var record = stored.Record();
                             latest[record.Id] = record;
+                        }
                     }
                     catch (JsonException) { }
                 }
@@ -145,10 +191,7 @@ public sealed class FeedbackStore
                 Directory.CreateDirectory(Root);
                 var records = ReadAll().Where(item => item.Id != record.Id).Append(record)
                     .OrderBy(item => item.Timestamp).ToList();
-                WriteAtomic(FeedbackPath, string.Join("\n", records.Select(item => JsonSerializer.Serialize(item, Json))) + "\n");
-                try { RebuildGoldExamples(records); }
-                catch (IOException) { }
-                catch (UnauthorizedAccessException) { }
+                WriteAtomic(FeedbackPath, string.Join("\n", records.Select(item => JsonSerializer.Serialize(Stored.From(item), Json))) + "\n");
                 return true;
             }
             catch (IOException) { return false; }
@@ -159,44 +202,23 @@ public sealed class FeedbackStore
     public string DerivedKey(FeedbackRecord record) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(record.Id))).ToLowerInvariant()[..16];
 
-    public string ExamplesText(string prompt)
+    /// <summary>Removes what earlier versions kept of the conversation: the request and
+    /// answer inside each record, and the approved answers copied out as examples.</summary>
+    public void DropRawText()
     {
-        var promptTokens = Tokens(prompt);
-        if (promptTokens.Count == 0) return "";
-        GoldExample[] examples;
-        try
+        lock (Gate)
         {
-            if (!File.Exists(ExamplesPath)) return "";
-            examples = JsonSerializer.Deserialize<GoldExample[]>(File.ReadAllText(ExamplesPath), Json) ?? [];
-        }
-        catch (IOException) { return ""; }
-        catch (JsonException) { return ""; }
-        catch (UnauthorizedAccessException) { return ""; }
-
-        var selected = examples.Select(example =>
+            try
             {
-                var tokens = Tokens(example.Prompt);
-                var overlap = promptTokens.Intersect(tokens).Count();
-                var score = (double)overlap / Math.Max(1, promptTokens.Union(tokens).Count());
-                return (Example: example, Score: score, Overlap: overlap);
-            })
-            .Where(item => item.Overlap >= Math.Min(2, promptTokens.Count))
-            .OrderByDescending(item => item.Score)
-            .ThenByDescending(item => item.Example.Timestamp)
-            .Take(3)
-            .Select(item => item.Example)
-            .ToList();
-        if (selected.Count == 0) return "";
-
-        var blocks = new List<string>();
-        foreach (var (example, index) in selected.Select((example, index) => (example, index)))
-        {
-            var block = $"### Example {index + 1}\nPrompt:\n{Clip(example.Prompt, 600)}\nResponse:\n{Clip(example.Response, 2_000)}";
-            var candidate = string.Join("\n\n", blocks.Append(block));
-            if (candidate.Length > 8_000) break;
-            blocks.Add(block);
+                File.Delete(ExamplesPath);
+                if (!File.Exists(FeedbackPath)) return;
+                var text = File.ReadAllText(FeedbackPath);
+                if (!text.Contains("\"prompt\":") && !text.Contains("\"response\":")) return;
+                WriteAtomic(FeedbackPath, string.Join("\n", ReadAll().Select(item => JsonSerializer.Serialize(Stored.From(item), Json))) + "\n");
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
         }
-        return blocks.Count == 0 ? "" : "## Gold examples (reference only)\n" + string.Join("\n\n", blocks);
     }
 
     public static string? DirectRule(FeedbackRecord record)
@@ -207,14 +229,6 @@ public sealed class FeedbackStore
             .SelectMany(part => part.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
         var cleaned = string.Join(" ", comment);
         return cleaned.Length == 0 ? null : "Avoid (user-reported): " + Clip(cleaned, 560);
-    }
-
-    private void RebuildGoldExamples(IReadOnlyList<FeedbackRecord> records)
-    {
-        var examples = records.Where(record => record.Type == FeedbackType.Good)
-            .Select(record => new GoldExample(record.ConversationId, record.MessageId, record.Prompt,
-                record.Response, record.Tags, record.Timestamp)).ToList();
-        WriteAtomic(ExamplesPath, JsonSerializer.Serialize(examples, Json));
     }
 
     private static void WriteAtomic(string path, string contents)
@@ -247,19 +261,4 @@ public sealed class FeedbackStore
 
     private static string Clip(string value, int limit) =>
         value.Length <= limit ? value : value[..limit] + "\n[content clipped]";
-
-    private static HashSet<string> Tokens(string text)
-    {
-        var normalized = text.Normalize(NormalizationForm.FormD).ToLowerInvariant();
-        var words = new List<string>();
-        var current = new StringBuilder();
-        foreach (var character in normalized)
-        {
-            if (char.GetUnicodeCategory(character) == System.Globalization.UnicodeCategory.NonSpacingMark) continue;
-            if (char.IsLetterOrDigit(character)) current.Append(character == 'ı' ? 'i' : character);
-            else if (current.Length > 0) { words.Add(current.ToString()); current.Clear(); }
-        }
-        if (current.Length > 0) words.Add(current.ToString());
-        return words.Where(word => word.Length >= 3 && !StopWords.Contains(word)).ToHashSet(StringComparer.Ordinal);
-    }
 }

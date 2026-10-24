@@ -32,6 +32,7 @@ extension AppModel {
     public func start() {
         guard !hasStarted else { return }
         hasStarted = true
+        loadLanguagePack()
         if deferredVoiceKeyLoad {
             deferredVoiceKeyLoad = false
             loadVoiceAPIKeyInBackground()
@@ -48,6 +49,7 @@ extension AppModel {
 
         // Normally already done before the first frame (see prepareForFirstFrame).
         prepareForFirstFrame()
+        startArchiveRetentionMonitor()
 
         // Let SwiftUI commit the first frame before plugin mounting, remote work
         // location (may touch SSH), the remote-control listener and the scheduler.
@@ -57,8 +59,10 @@ extension AppModel {
 
             self.startDeferredBridgeIfNeeded()
             self.restoreWorkLocation()
-            self.remoteControl.start()
-            self.remount(refreshCatalog: true)
+            // The remote gateway stays closed until the user turns it on.
+            if self.remoteControl.isEnabled { self.remoteControl.start() }
+            self.restoreRemoteCloudTunnel()
+            self.remount(refreshCatalog: true, refreshWorkspaceSkills: false)
             self.hasBootstrapped = true
             self.router.startUsagePolling()
             self.objectWillChange.send()
@@ -77,11 +81,11 @@ extension AppModel {
                 async let marketRestored: () = self.marketplaceSession.restore()
                 _ = await (bridgeRefreshed, marketRestored)
                 self.syncAccountFromMarketplace()
-                // The release poll is independent of plan recovery, so it runs
+                // The release poll is independent of interrupted-run recovery, so it runs
                 // alongside it instead of adding its latency to startup.
                 async let updates: () = self.updateChecker.checkForUpdates(manual: false)
                 self.bridge.resolvePendingPlanIntents()
-                await self.bridge.resumeRecoveredPlanIfNeeded()
+                await self.bridge.resumeRecoveredConversationIfNeeded()
                 _ = await updates
             }
 
@@ -101,11 +105,29 @@ extension AppModel {
         guard !hasStarted else { return }
         hasStarted = true
         catalog.refresh()
-        remount(refreshCatalog: false)
-        remoteControl.start()
+        remount(refreshCatalog: false, refreshWorkspaceSkills: false)
+        startArchiveRetentionMonitor()
+        // The remote gateway stays closed until the user turns it on.
+        if remoteControl.isEnabled { remoteControl.start() }
+        restoreRemoteCloudTunnel()
         hasBootstrapped = true
         scheduler.runsDueTasks = true
         scheduler.start()
+    }
+
+    private func startArchiveRetentionMonitor() {
+        Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                let days = UserDefaults.standard.integer(forKey: ConversationArchiveRetention.preferenceKey)
+                await self.bridge.deleteExpiredArchivedConversationsInBackground(retentionDays: days)
+                do {
+                    try await Task.sleep(for: .seconds(15 * 60))
+                } catch {
+                    return
+                }
+            }
+        }
     }
 
     public func presentTasks() {
@@ -181,10 +203,10 @@ extension AppModel {
     }
 
     func notifyScheduledTask(_ task: ScheduledTask, result: TaskScheduler.RunResult) {
-        desktopNotifications.showScheduledTask(task, result: result)
+        receiveScheduledTask(task, result: result)
     }
 
-    public func chooseWorkspace() {
+    static func workspaceFolderPanel() -> NSOpenPanel {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
@@ -192,6 +214,11 @@ extension AppModel {
         panel.allowsMultipleSelection = false
         panel.prompt = AppCopy.text("workspace.use")
         panel.message = AppCopy.text("workspace.chooseMessage")
+        return panel
+    }
+
+    public func chooseWorkspace() {
+        let panel = Self.workspaceFolderPanel()
         panel.begin { [weak self] response in
             guard response == .OK, let url = panel.url else { return }
             Task { @MainActor [weak self] in
@@ -326,11 +353,11 @@ extension AppModel {
         remount()
     }
 
-    func remount(refreshCatalog: Bool) {
+    func remount(refreshCatalog: Bool, refreshWorkspaceSkills: Bool = true) {
         if refreshCatalog {
             catalog.refresh()
         }
-        skills.refresh()
+        if refreshWorkspaceSkills { skills.refresh() }
         let document = CompositionLoader.loadHost(paths: paths, catalog: catalog)
         _ = host.mount(document)
         bridge.updateSystemPrompt(host.prompt.assembledText())

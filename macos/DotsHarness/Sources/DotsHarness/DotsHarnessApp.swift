@@ -239,6 +239,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelega
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard shouldAllowTermination() else { return .terminateCancel }
+        model?.shutdownLocalModelRuntime()
         model?.shutdownVoice()
         model?.terminalManager.stopAll()
         model?.bridge.stopAllAgentTerminals()

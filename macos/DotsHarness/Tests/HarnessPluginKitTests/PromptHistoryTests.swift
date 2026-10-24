@@ -30,6 +30,37 @@ final class PromptHistoryTests: XCTestCase {
         XCTAssertFalse(next.contains { $0.systemKind == .promptDynamic })
     }
 
+    func testTaskHistoryCapturesOnlyNewEntriesUntilTheBacklogChanges() {
+        func history(_ text: String) -> String {
+            HerNessPrompt.assemble([PromptSection(tag: "task_history", trust: .data, text: text)])
+        }
+        let backlog = "## Unfinished work (backlog)\n- `t1` — port the parser"
+        let first = capture([AgentMessage(role: .user, content: "one")], context: history(
+            "## Relevant task history\n- task A\n  Files: a.swift\n- task B\n\n" + backlog))
+        XCTAssertTrue(first[0].content.contains("task A"))
+
+        // A and B were captured already: only C is new.
+        let second = capture(first + [AgentMessage(role: .user, content: "two")], context: history(
+            "## Relevant task history\n- task B\n- task C\n\n" + backlog))
+        XCTAssertEqual(Array(second.prefix(first.count)), first)
+        let added = second.last!.content
+        XCTAssertTrue(added.contains(NativeAgentClient.taskHistoryAdditionsMarker))
+        XCTAssertTrue(added.contains("## Relevant task history\n- task C"))
+        XCTAssertFalse(added.contains("task B"))
+        XCTAssertFalse(added.contains("port the parser"))
+
+        // Nothing new: the section is not captured at all.
+        let third = capture(second + [AgentMessage(role: .user, content: "three")], context: history(
+            "## Relevant task history\n- task A\n  Files: a.swift\n\n" + backlog))
+        XCTAssertEqual(third.last?.content, "three")
+
+        // A finished backlog item is state: the section is captured whole.
+        let fourth = capture(third + [AgentMessage(role: .user, content: "four")], context: history(
+            "## Relevant task history\n- task A\n  Files: a.swift"))
+        XCTAssertFalse(fourth.last!.content.contains(NativeAgentClient.taskHistoryAdditionsMarker))
+        XCTAssertTrue(fourth.last!.content.contains("task A"))
+    }
+
     func testUnchangedSectionsAreCapturedOnceAndRetiredOnesAreClosed() {
         func context(_ sections: [PromptSection]) -> String { HerNessPrompt.assemble(sections) }
         let rules = PromptSection(tag: "project_context", trust: .rules, text: "use tabs")

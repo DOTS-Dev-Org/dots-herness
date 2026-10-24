@@ -6,29 +6,91 @@ import PluginRuntime
 
 /// Resolves `dots_whisper_transcribe` from libWhisperVoice.dylib on first use.
 /// Keeping whisper behind dlopen means ggml/Metal are never mapped at launch
-/// when the user does not use voice.
+/// when the user does not use voice. A development build carries the dylib
+/// beside the app executable (run.sh); a release downloads it on first use.
 enum WhisperBridge {
     typealias TranscribeFn = @convention(c) (
         UnsafePointer<CChar>, UnsafePointer<Float>, Int32, Int32,
         UnsafeMutablePointer<CChar>, Int32
     ) -> Int32
+    typealias UnloadFn = @convention(c) () -> Void
 
-    private static let entry: TranscribeFn? = {
-        let dir = Bundle.main.executableURL?.deletingLastPathComponent()
-        let candidates = [
-            dir?.appendingPathComponent("libWhisperVoice.dylib").path,
-            "libWhisperVoice.dylib",
+    /// whisper.cpp version, then our own revision of the archive.
+    static let build = "1.7.5-1"
+    /// Built by scripts/package-whisper.sh and stored in the `dotsherness-assets` R2 bucket.
+    static func asset(for arch: String) -> LocalRuntime.PinnedAsset? {
+        switch arch {
+        case "arm64":
+            return LocalRuntime.PinnedAsset(
+                url: URL(string: "https://dotsherness-unified-backend.dotsherness-unified-backend.workers.dev/assets/downloads/whispervoice-\(build)-macos-arm64.tar.gz")!,
+                size: 671_333,
+                sha256: "c19d2287592ccc400a30895ee5e112a7f0d0526ddd1303dafa299bc67009ebfd"
+            )
+        case "x64", "x86_64":
+            return LocalRuntime.PinnedAsset(
+                url: URL(string: "https://dotsherness-unified-backend.dotsherness-unified-backend.workers.dev/assets/downloads/whispervoice-\(build)-macos-x86_64.tar.gz")!,
+                size: 756_044,
+                sha256: "671bd149157b270f0f86381626e04b1732e5745ae8773d257dbfc96f3edb8b19"
+            )
+        default:
+            return nil
+        }
+    }
+
+    /// Keep Intel and Apple Silicon installs separate (Rosetta may run both on one Mac).
+    static var directory: URL {
+        let suffix = LocalRuntime.hostArch == "arm64" ? "" : "-x86_64"
+        return SupportPaths.default().runtime.appendingPathComponent("whispervoice-\(build)\(suffix)", isDirectory: true)
+    }
+
+    private static var libraries: [String] {
+        [
+            ProcessInfo.processInfo.environment["DOTS_WHISPER_LIBRARY"],   // tests: a dylib outside the app bundle
+            Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("libWhisperVoice.dylib").path,
+            directory.appendingPathComponent("libWhisperVoice.dylib").path,
         ].compactMap { $0 }
-        for path in candidates {
+    }
+
+    /// Must run before the first `transcribe`: `entries` resolves only once.
+    static func ensureInstalled() async throws {
+        let fm = FileManager.default
+        guard !libraries.contains(where: fm.fileExists(atPath:)) else { return }
+        guard let asset = Self.asset(for: LocalRuntime.hostArch), asset.size > 0, !asset.sha256.isEmpty else {
+            throw NativeAgentError(AppCopy.text("voice.modelLoadFailed"))
+        }
+        let archive = directory.appendingPathExtension("tar.gz")
+        try await FileDownloader.download(from: asset.url, to: archive, expected: asset.size, sha256: asset.sha256)
+        try? fm.removeItem(at: directory)
+        try fm.createDirectory(at: directory, withIntermediateDirectories: true)
+        let tar = Process()
+        tar.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
+        tar.arguments = ["-xzf", archive.path, "-C", directory.path]
+        try tar.run()
+        tar.waitUntilExit()
+        try? fm.removeItem(at: archive)
+        guard tar.terminationStatus == 0, libraries.contains(where: fm.fileExists(atPath:)) else {
+            try? fm.removeItem(at: directory)
+            throw NativeAgentError(AppCopy.text("voice.modelLoadFailed"))
+        }
+    }
+
+    private static let entries: (transcribe: TranscribeFn, unload: UnloadFn)? = {
+        for path in libraries + ["libWhisperVoice.dylib"] {
             guard let handle = dlopen(path, RTLD_NOW | RTLD_LOCAL) else { continue }
-            guard let symbol = dlsym(handle, "dots_whisper_transcribe") else { continue }
-            return unsafeBitCast(symbol, to: TranscribeFn.self)
+            guard let transcribe = dlsym(handle, "dots_whisper_transcribe"),
+                  let unload = dlsym(handle, "dots_whisper_unload") else { continue }
+            return (unsafeBitCast(transcribe, to: TranscribeFn.self), unsafeBitCast(unload, to: UnloadFn.self))
         }
         return nil
     }()
 
+    /// Only call after `transcribe`: a first call here would dlopen whisper just to free nothing.
+    static func unload() {
+        entries?.unload()
+    }
+
     static func transcribe(modelPath: String, samples: [Float], threads: Int32) throws -> String {
-        guard let entry else {
+        guard let entry = entries?.transcribe else {
             throw NativeAgentError(AppCopy.text("voice.modelLoadFailed"))
         }
         var capacity = 8_192
@@ -79,7 +141,7 @@ public struct LocalVoiceModel: Sendable, Equatable {
 
     public static let whisperTinyQ5 = LocalVoiceModel(
         id: "whisper-tiny-q5",
-        name: "Whisper Tiny Q5 (hızlı)",
+        name: "Whisper Tiny Q5",
         filename: "ggml-tiny-q5_1.bin",
         url: URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q5_1.bin?download=true"),
         bytes: 32_152_673,
@@ -108,7 +170,7 @@ public struct LocalVoiceModel: Sendable, Equatable {
 
     public static let custom = LocalVoiceModel(
         id: "custom-local",
-        name: "Kullanıcı lokal modeli",
+        name: "Custom local model",
         filename: "voice-custom.bin",
         url: nil,
         bytes: 0,
@@ -142,11 +204,16 @@ public enum LocalVoiceModelState: Equatable, Sendable {
 
 public final class LocalVoiceTranscriber: @unchecked Sendable {
     public static let model = LocalVoiceModel.model
+    /// Whisper weights stay in RAM after an utterance; they are released this long after the last one.
+    static let idleReleaseDelay: Duration = .seconds(120)
 
     public let paths: SupportPaths
     public private(set) var selectedModel: LocalVoiceModel
 
+    // Guards whisper calls and the release state below.
     private let lock = NSLock()
+    private var whisperLoaded = false
+    private var idleRelease: Task<Void, Never>?
 
     public init(paths: SupportPaths, model: LocalVoiceModel = .model) {
         self.paths = paths
@@ -170,6 +237,7 @@ public final class LocalVoiceTranscriber: @unchecked Sendable {
     }
 
     public func ensureModel(progress: (@Sendable (FileDownloader.Progress) -> Void)? = nil) async throws {
+        try await WhisperBridge.ensureInstalled()
         guard !isModelInstalled else { return }
         guard let url = selectedModel.url else {
             throw NativeAgentError(AppCopy.text("voice.localModelFileRequired"))
@@ -220,8 +288,12 @@ public final class LocalVoiceTranscriber: @unchecked Sendable {
         }
     }
 
-    /// The helper owns a process-lifetime context cache; kept for call-site parity.
-    public func unloadModel() {}
+    /// Frees the whisper weights now. Off the caller's thread: a running utterance holds `lock`.
+    public func unloadModel() {
+        Task.detached(priority: .utility) { [self] in
+            releaseWhisper()
+        }
+    }
 
     public func transcribe(samples: [Float], sampleRate: Double) async throws -> String {
         let pcm = Self.resample(samples, from: sampleRate)
@@ -232,6 +304,8 @@ public final class LocalVoiceTranscriber: @unchecked Sendable {
         guard isModelInstalled else {
             throw NativeAgentError(AppCopy.text("voice.modelNotReady"))
         }
+        // Covers a model installed by a release that still bundled whisper.
+        try await WhisperBridge.ensureInstalled()
         return try await Task.detached(priority: .userInitiated) { [self] in
             try transcribe16k(pcm)
         }.value
@@ -255,13 +329,31 @@ public final class LocalVoiceTranscriber: @unchecked Sendable {
 
     private func transcribe16k(_ samples: [Float]) throws -> String {
         lock.lock()
-        defer { lock.unlock() }
+        defer {
+            // Re-armed after every utterance, so rolling partials keep the weights loaded while speaking.
+            idleRelease?.cancel()
+            idleRelease = Task.detached(priority: .utility) { [self] in
+                try? await Task.sleep(for: Self.idleReleaseDelay)
+                guard !Task.isCancelled else { return }
+                releaseWhisper()
+            }
+            lock.unlock()
+        }
 
         let threads = Int32(min(8, max(1, ProcessInfo.processInfo.activeProcessorCount - 1)))
+        whisperLoaded = true
         return try WhisperBridge.transcribe(
             modelPath: modelURL.path,
             samples: samples,
             threads: threads
         )
+    }
+
+    private func releaseWhisper() {
+        lock.lock()
+        defer { lock.unlock() }
+        guard whisperLoaded else { return }
+        WhisperBridge.unload()
+        whisperLoaded = false
     }
 }

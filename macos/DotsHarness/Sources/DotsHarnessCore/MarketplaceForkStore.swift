@@ -85,10 +85,6 @@ public final class MarketplaceForkStore: ObservableObject {
         return fork
     }
 
-    public func setDisabled(_ fork: MarketplaceFork, _ disabled: Bool) {
-        catalog.setEnabled(fork.id, !disabled && catalog.entries.first(where: { $0.manifest.id == fork.id })?.trust == .trusted)
-    }
-
     public func acceptAndEnable(_ fork: MarketplaceFork) {
         catalog.setTrust(fork.id, .trusted)
         catalog.setEnabled(fork.id, true)
@@ -143,12 +139,12 @@ public final class MarketplaceForkStore: ObservableObject {
                 lines[index] = "id: \(id)"
                 idFound = true
             } else if lines[index].hasPrefix("name:") {
-                lines[index] += " (Özelleştirildi)"
+                lines[index] += " (\(AppCopy.text("market.customized")))"
                 nameFound = true
             }
         }
         if !idFound { lines.insert("id: \(id)", at: 0) }
-        if !nameFound { lines.insert("name: \(id) (Özelleştirildi)", at: 1) }
+        if !nameFound { lines.insert("name: \(id) (\(AppCopy.text("market.customized")))", at: 1) }
         lines.append("# DOTS upstream: \(upstreamID)")
         try lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
     }

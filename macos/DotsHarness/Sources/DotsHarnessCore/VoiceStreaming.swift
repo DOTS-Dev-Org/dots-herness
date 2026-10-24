@@ -16,7 +16,6 @@ public struct VoiceTranscriptUpdate: Sendable, Equatable {
 public struct VoiceStreamTuning: Sendable, Equatable {
     public var sampleRate = 16_000
     public var frameSamples = 320 // 20 ms
-    public var chunkSamples = 2_560 // 160 ms
     public var rollingWindowSamples = 48_000 // 3 s
     public var inferenceStepSamples = 5_120 // 320 ms
     public var preRollSamples = 3_200 // 200 ms
@@ -160,6 +159,7 @@ public final class VoiceStreamingSession: @unchecked Sendable {
     private let realtimeCancel: RealtimeAction?
     private let onUpdate: UpdateHandler
     private let onError: ErrorHandler
+    private let onActivity: (@Sendable () -> Void)?
     private let tuning: VoiceStreamTuning
     private let queue = DispatchQueue(label: "com.dots.dotsharness.voice-stream", qos: .userInitiated)
 
@@ -168,7 +168,8 @@ public final class VoiceStreamingSession: @unchecked Sendable {
     private var rolling: [Float] = []
     private var samplesSinceInference = 0
     private var inferenceRunning = false
-    private var pendingInference: (samples: [Float], isFinal: Bool)?
+    // Finals queue in order and are never dropped; a partial waits only while no final does.
+    private var pendingInference: [(samples: [Float], isFinal: Bool)] = []
     private var stopRequested = false
     private var stopHandler: (@Sendable () -> Void)?
     private var cancelled = false
@@ -181,7 +182,8 @@ public final class VoiceStreamingSession: @unchecked Sendable {
         realtimeCommit: RealtimeAction? = nil,
         realtimeCancel: RealtimeAction? = nil,
         onUpdate: @escaping UpdateHandler,
-        onError: @escaping ErrorHandler
+        onError: @escaping ErrorHandler,
+        onActivity: (@Sendable () -> Void)? = nil
     ) {
         self.mode = mode
         self.tuning = tuning
@@ -191,11 +193,13 @@ public final class VoiceStreamingSession: @unchecked Sendable {
         self.realtimeCancel = realtimeCancel
         self.onUpdate = onUpdate
         self.onError = onError
+        self.onActivity = onActivity
         self.detector = VoiceActivityDetector(tuning: tuning)
     }
 
     public func push(_ samples: [Float]) {
         guard !samples.isEmpty else { return }
+        onActivity?()
         queue.async { [weak self] in
             guard let self, !self.cancelled, !self.stopRequested else { return }
             for event in self.detector.consume(samples) {
@@ -223,7 +227,7 @@ public final class VoiceStreamingSession: @unchecked Sendable {
             self.detector.reset()
             self.utterance.removeAll(keepingCapacity: true)
             self.rolling.removeAll(keepingCapacity: true)
-            self.pendingInference = nil
+            self.pendingInference.removeAll()
             self.realtimeCancel?()
             self.stopHandler = nil
         }
@@ -277,7 +281,13 @@ public final class VoiceStreamingSession: @unchecked Sendable {
               samples.count >= 1_600 else { return }
         let request = (samples, isFinal)
         if inferenceRunning {
-            pendingInference = request
+            if isFinal {
+                // A final covers the audio of the partials queued before it.
+                pendingInference.removeAll { !$0.isFinal }
+                pendingInference.append(request)
+            } else if !pendingInference.contains(where: { $0.isFinal }) {
+                pendingInference = [request]
+            }
             return
         }
         inferenceRunning = true
@@ -298,9 +308,9 @@ public final class VoiceStreamingSession: @unchecked Sendable {
             guard let self else { return }
             self.queue.async {
                 self.inferenceRunning = false
-                if let pending = self.pendingInference {
-                    self.pendingInference = nil
-                    self.scheduleBatch(pending.samples, isFinal: pending.isFinal)
+                if !self.pendingInference.isEmpty {
+                    let next = self.pendingInference.removeFirst()
+                    self.scheduleBatch(next.samples, isFinal: next.isFinal)
                 }
                 self.finishIfPossible()
             }
@@ -308,7 +318,7 @@ public final class VoiceStreamingSession: @unchecked Sendable {
     }
 
     private func finishIfPossible() {
-        guard stopRequested, !inferenceRunning, pendingInference == nil else { return }
+        guard stopRequested, !inferenceRunning, pendingInference.isEmpty else { return }
         let completion = stopHandler
         stopHandler = nil
         completion?()

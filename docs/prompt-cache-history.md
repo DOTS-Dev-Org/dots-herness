@@ -17,9 +17,8 @@ The visible conversation still shows the user's original text.
   request, so a section costs its size times how often it moves. macOS therefore
   keeps what moves on its own in small sections: `current_date` and
   `project_brief` apart from `runtime_context`; memory as `user_memory`,
-  `learned_rules`, `project_memory`, `task_history` and `gold_examples`, none of
-  which carries a date or a counter. Gold examples are chosen once per
-  conversation. Settings › effective prompt lists, per section, how many copies
+  `learned_rules`, `project_memory` and `task_history`, none of which carries a
+  date or a counter. Settings › effective prompt lists, per section, how many copies
   the selected conversation holds and their size
   (`NativeAgentClient.promptSectionChurn`).
 - Windows and Linux share `NativePromptHistory` and the same `AgentBridge`.
@@ -67,9 +66,17 @@ reload snapshots, and cover changing host context, retries and tool results.
 ## Compaction (macOS)
 
 - The threshold is the host's, never the model's. The user sets a share of each
-  model's own context window (Settings, default 80%); the optional token
-  ceiling `dots.contextCompactionMaxTokens` caps very large windows. Without a
-  choice the `cacheAware` policy applies (80% trigger, 55% target).
+  model's own context window (Settings; the stored default is 90%, target
+  = trigger - 25 points). The window comes from the route's provider: the
+  documented capacity first, then the live catalog, so a catalog read that fails
+  cannot shrink it. A failed catalog read keeps that provider's last good listing.
+  The optional `dots.contextReplayBudgetTokens` caps the threshold when set. Without
+  it, routes that cache their prompt (Anthropic, Responses) keep the percentage
+  alone; a cap-driven prune rewrites history and drops the cached prefix. Other
+  routes keep the 32K coding replay cap.
+- Every main request logs the numbers behind its compaction verdict
+  (`compactionTrace` in the context usage log: window, usable input, trigger,
+  target, previous input, route change, fit, prune decision, tool count).
 - The summary is a fork: the exact request the chat just sent (same model,
   account, tools, cache key) plus one instruction, so it is almost all cache
   hits. If that request fails or the model calls a tool, the old archive-only
@@ -102,9 +109,10 @@ settings. The legacy thinking budget follows the selected effort only, so it
 stays constant across a conversation.
 
 A Responses gateway on GPT-5.6+ that reports `cached_tokens` without
-`cache_write_tokens` is measured against the previous request's whole input
-(`responses_input_baseline`). Its retention is unpublished; 300 seconds is
-assumed until `verifiedPromptCacheTTLSeconds` is set from a live measurement.
+`cache_write_tokens` is not accepted as a reuse boundary: its boundary stays
+unverified (`previous_boundary_unverified`), so its reuse is not measured. No
+retention is assumed; `verifiedPromptCacheTTLSeconds` stays unset until a live
+measurement sets it.
 
 ## Cache key scope
 

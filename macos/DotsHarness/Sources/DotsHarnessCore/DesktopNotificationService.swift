@@ -70,11 +70,7 @@ public final class DesktopNotificationService: NSObject, UNUserNotificationCente
     /// A chat is waiting on the user: approval, an answer, or a download.
     public func showAttention(_ event: RunAttentionEvent) {
         let content = UNMutableNotificationContent()
-        content.title = event.kind == .question
-            ? AppCopy.text("ask.title")
-            : (event.kind == .contextCompaction
-                ? AppCopy.text("context.overflowTitle")
-                : AppCopy.text("plan.waitingApproval"))
+        content.title = AppCopy.text(event.kind == .question ? "ask.title" : "plan.waitingApproval")
         content.subtitle = event.conversationTitle
         content.body = Self.preview(event.detail)
         content.sound = .default

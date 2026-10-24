@@ -36,15 +36,15 @@ public partial class App : Application
     /// <summary>True once the user really asked to leave, as opposed to just closing the window.</summary>
     public bool IsExiting => _exiting;
 
-    private static async Task PromptForUpdateAsync(IClassicDesktopStyleApplicationLifetime desktop)
+    private async Task PromptForUpdateAsync(IClassicDesktopStyleApplicationLifetime desktop)
     {
         var update = await CrossPlatformUpdateChecker.CheckOnStartupAsync("linux");
         if (update is null || desktop.MainWindow is not { } owner) return;
-        var open = new Button { Content = "İndir" };
-        var later = new Button { Content = "Sonra", IsVisible = !update.Mandatory };
+        var open = new Button { Content = Model.L("settings.updates.download") };
+        var later = new Button { Content = Model.L("common.cancel"), IsVisible = !update.Mandatory };
         var dialog = new Window
         {
-            Title = "Güncelleme",
+            Title = Model.L("settings.updates.title"),
             Width = 420,
             SizeToContent = SizeToContent.Height,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
@@ -54,7 +54,7 @@ public partial class App : Application
                 Spacing = 12,
                 Children =
                 {
-                    new TextBlock { Text = $"Yeni sürüm: {update.LatestVersion}\n\n{update.ReleaseNotes}", TextWrapping = TextWrapping.Wrap },
+                    new TextBlock { Text = $"{Model.L("settings.updates.available", update.LatestVersion)}\n\n{update.ReleaseNotes}", TextWrapping = TextWrapping.Wrap },
                     new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { open, later } },
                 },
             },
@@ -87,6 +87,7 @@ public partial class App : Application
         Model.Bridge.AssistantResponseReceived += OnAssistantResponse;
         Model.Bridge.RunSummaryReceived += OnRunSummary;
         Model.Bridge.AttentionNeeded += OnAttentionNeeded;
+        Model.ScheduledTaskNotificationRaised += OnScheduledTaskNotification;
         Model.Router.ConnectionChanged += OnConnectionChanged;
         ApplyAppearance(Model.Appearance);
         Model.Start();
@@ -108,6 +109,7 @@ public partial class App : Application
                 Model.Bridge.AssistantResponseReceived -= OnAssistantResponse;
                 Model.Bridge.RunSummaryReceived -= OnRunSummary;
                 Model.Bridge.AttentionNeeded -= OnAttentionNeeded;
+                Model.ScheduledTaskNotificationRaised -= OnScheduledTaskNotification;
                 Model.Router.ConnectionChanged -= OnConnectionChanged;
                 if (desktop.MainWindow is MainWindow window) window.StopTerminal();
                 Model.Bridge.Stop();
@@ -152,13 +154,13 @@ public partial class App : Application
         }
         var signedIn = Model.MarketplaceSession.IsSignedIn;
         var message = signedIn
-            ? $"Signed in to HerNess as {Model.MarketplaceSession.Profile?.Email}. You can publish plugins from Settings → Plugins."
-            : Model.MarketplaceSession.LastError ?? "HerNess sign-in did not complete.";
+            ? $"{Model.L("market.account")}: {Model.MarketplaceSession.Profile?.Email}"
+            : Model.MarketplaceSession.LastError ?? Model.L("market.error.invalidCallback");
         if (desktop.MainWindow is not { } owner) return;
-        var close = new Button { Content = "Close", Padding = new Thickness(12, 6), HorizontalAlignment = HorizontalAlignment.Right };
+        var close = new Button { Content = Model.L("common.cancel"), Padding = new Thickness(12, 6), HorizontalAlignment = HorizontalAlignment.Right };
         var dialog = new Window
         {
-            Title = "HerNess Marketplace",
+            Title = Model.L("settings.marketplace"),
             Width = 440,
             SizeToContent = SizeToContent.Height,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
@@ -389,7 +391,27 @@ public partial class App : Application
             if (visible) return;
             var start = new ProcessStartInfo("notify-send") { UseShellExecute = false, CreateNoWindow = true };
             start.ArgumentList.Add(e.ConversationTitle);
-            start.ArgumentList.Add(Preview(Model.L("conversation.waitingApproval") + ": " + e.Detail));
+            var title = e.Kind switch
+            {
+                "question" => Model.L("notifications.question"),
+                "approval" => Model.L("plan.waitingApproval"),
+                _ => Model.L("notifications.actionRequired"),
+            };
+            start.ArgumentList.Add(Preview(title + ": " + e.Detail));
+            Process.Start(start)?.Dispose();
+        }
+        catch { }
+    }
+
+    private void OnScheduledTaskNotification(InboxNotification item)
+    {
+        try
+        {
+            var failed = item.Detail.StartsWith(Model.L("tasks.notification.failed"), StringComparison.OrdinalIgnoreCase);
+            var start = new ProcessStartInfo("notify-send") { UseShellExecute = false, CreateNoWindow = true };
+            if (failed) start.ArgumentList.Add("--urgency=critical");
+            start.ArgumentList.Add(string.IsNullOrWhiteSpace(item.Subtitle) ? item.Title : item.Subtitle);
+            start.ArgumentList.Add(Preview(item.Detail));
             Process.Start(start)?.Dispose();
         }
         catch { }

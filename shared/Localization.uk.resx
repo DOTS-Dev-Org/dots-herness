@@ -299,13 +299,14 @@
   <data name="usage.resetsIn" xml:space="preserve"><value>скидання через {0}</value></data>
   <data name="usage.resetsOn" xml:space="preserve"><value>скидання {0}</value></data>
   <data name="usage.resetsAvailable" xml:space="preserve"><value>Доступно скидань: {0}</value></data>
-  <data name="usage.manageResets" xml:space="preserve"><value>Manage resets</value></data>
-  <data name="usage.useReset" xml:space="preserve"><value>Use reset</value></data>
-  <data name="usage.resetTitle" xml:space="preserve"><value>Use a Claude limit reset?</value></data>
-  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude's Usage page will open. Sign in to {0} and review the reset offered to that account. To use it, click Reset for free and confirm in Claude. Once used, a reset cannot be undone. Limits refresh when you return to HerNess.</value></data>
-  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Could not open Claude. Check that the account is still connected, then try again.</value></data>
-  <data name="usage.openClaude" xml:space="preserve"><value>Open Claude</value></data>
+  <data name="usage.manageResets" xml:space="preserve"><value>Керувати скиданнями</value></data>
+  <data name="usage.useReset" xml:space="preserve"><value>Використати скидання</value></data>
+  <data name="usage.resetTitle" xml:space="preserve"><value>Використати скидання ліміту Claude?</value></data>
+  <data name="usage.resetConfirmation" xml:space="preserve"><value>Відкриється сторінка використання Claude. Увійдіть у {0} і перегляньте скидання, запропоноване цьому обліковому запису. Щоб скористатися ним, натисніть «Reset for free» і підтвердьте в Claude. Використане скидання не можна скасувати. Ліміти оновляться, коли ви повернетеся до HerNess.</value></data>
+  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Не вдалося відкрити Claude. Перевірте, чи обліковий запис досі підключено, і спробуйте ще раз.</value></data>
+  <data name="usage.openClaude" xml:space="preserve"><value>Відкрити Claude</value></data>
   <data name="usage.needLogin" xml:space="preserve"><value>Увійдіть у Claude, щоб переглянути ліміти</value></data>
+  <data name="agent.providerLimitTitle" xml:space="preserve"><value>Досягнуто ліміту постачальника</value></data>
   <data name="usage.noLimitInfo" xml:space="preserve"><value>Немає інформації про ліміти</value></data>
   <data name="usage.loadFailed" xml:space="preserve"><value>Не вдалося завантажити дані про використання</value></data>
   <data name="usage.loading" xml:space="preserve"><value>Завантаження даних про використання…</value></data>
@@ -333,21 +334,21 @@
   <data name="project.missing.message" xml:space="preserve"><value>Папку проєкту в «{0}» могли перемістити або видалити. Виберіть її нове розташування або видаліть проєкт.</value></data>
   <data name="project.missing.locate" xml:space="preserve"><value>Знайти розташування…</value></data>
   <data name="project.missing.readOnly" xml:space="preserve"><value>Папка проєкту недоступна. Ви можете переглядати попередні розмови; створення нових розмов і надсилання повідомлень вимкнено, доки не виберете нове розташування.</value></data>
-  <data name="conversation.ranCommand" xml:space="preserve"><value>Ran 1 command</value></data>
-  <data name="conversation.ranCommands" xml:space="preserve"><value>Ran {0} commands</value></data>
-  <data name="conversation.runningTools" xml:space="preserve"><value>Running tools…</value></data>
-  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Thinking…</value></data>
-  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} tokens</value></data>
-  <data name="usage.context.window" xml:space="preserve"><value>Context window</value></data>
-  <data name="usage.planLimits" xml:space="preserve"><value>Plan usage limits</value></data>
-  <data name="composer.queue.one" xml:space="preserve"><value>1 message queued</value></data>
-  <data name="composer.queue.many" xml:space="preserve"><value>{0} messages queued</value></data>
-  <data name="composer.queue.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Clear the message box to edit</value></data>
-  <data name="composer.queue.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="git.createPR" xml:space="preserve"><value>Create PR</value></data>
-  <data name="git.hideBar" xml:space="preserve"><value>Hide</value></data>
-  <data name="composer.queue.next" xml:space="preserve"><value>Next: {0}</value></data>
+  <data name="conversation.ranCommand" xml:space="preserve"><value>Виконано 1 команду</value></data>
+  <data name="conversation.ranCommands" xml:space="preserve"><value>Виконано команд: {0}</value></data>
+  <data name="conversation.runningTools" xml:space="preserve"><value>Виконання інструментів…</value></data>
+  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Розмірковую…</value></data>
+  <data name="conversation.tokensCount" xml:space="preserve"><value>Токенів: {0}</value></data>
+  <data name="usage.context.window" xml:space="preserve"><value>Вікно контексту</value></data>
+  <data name="usage.planLimits" xml:space="preserve"><value>Ліміти використання плану</value></data>
+  <data name="composer.queue.one" xml:space="preserve"><value>1 повідомлення в черзі</value></data>
+  <data name="composer.queue.many" xml:space="preserve"><value>Повідомлень у черзі: {0}</value></data>
+  <data name="composer.queue.edit" xml:space="preserve"><value>Редагувати</value></data>
+  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Очистьте поле повідомлення, щоб редагувати</value></data>
+  <data name="composer.queue.remove" xml:space="preserve"><value>Прибрати</value></data>
+  <data name="git.createPR" xml:space="preserve"><value>Створити PR</value></data>
+  <data name="git.hideBar" xml:space="preserve"><value>Сховати</value></data>
+  <data name="composer.queue.next" xml:space="preserve"><value>Далі: {0}</value></data>
   <data name="sidebar.pinProject" xml:space="preserve"><value>Закріпити проєкт</value></data>
   <data name="sidebar.unpinProject" xml:space="preserve"><value>Відкріпити проєкт</value></data>
   <data name="sidebar.sortLastUpdate" xml:space="preserve"><value>Останнім оновленням</value></data>
@@ -358,6 +359,8 @@
   <data name="conversation.cancelPlan" xml:space="preserve"><value>Скасувати план</value></data>
   <data name="conversation.cancelPlanHelp" xml:space="preserve"><value>Скасувати цей план і звільнити повідомлення з черги</value></data>
   <data name="media.generated" xml:space="preserve"><value>Зображення створено.</value></data>
+  <data name="media.videoGenerated" xml:space="preserve"><value>Відео створено.</value></data>
+  <data name="media.audioGenerated" xml:space="preserve"><value>Мовлення створено.</value></data>
   <data name="media.fallbackUsed" xml:space="preserve"><value>Вибраний провайдер не зміг створити це зображення. Його створено одноразовим резервним запитом через {0}/{1}; провайдер і модель основної розмови не змінювалися, тож кеш промптів залишився цілим.</value></data>
   <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>Не можу створити це зображення за допомогою {0}. Налаштуйте API або провайдера зображень як резервний варіант. Перемикання основної моделі чату лише заради зображення може зламати кеш промптів провайдера.</value></data>
   <data name="feedback.close" xml:space="preserve"><value>Закрити</value></data>
@@ -370,27 +373,27 @@
   <data name="feedback.persistenceFailed" xml:space="preserve"><value>Не вдалося зберегти відгук локально.</value></data>
   <data name="feedback.streamingMessage" xml:space="preserve"><value>Перш ніж надіслати відгук, дочекайтеся завершення відповіді.</value></data>
   <data name="feedback.submit" xml:space="preserve"><value>Надіслати</value></data>
-  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Apply it elsewhere</value></data>
-  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Broke an existing feature</value></data>
+  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Застосувати деінде</value></data>
+  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Зламав наявну функцію</value></data>
   <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>Не дотримався моїх інструкцій</value></data>
-  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Didn't follow project style</value></data>
+  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Не дотримався стилю проєкту</value></data>
   <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>Швидко й ефективно</value></data>
   <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>Дотримався моїх інструкцій</value></data>
-  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Ignored project architecture</value></data>
+  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Проігнорував архітектуру проєкту</value></data>
   <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>Неправильно або неповно</value></data>
-  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Keep the project style</value></data>
+  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Зберегти стиль проєкту</value></data>
   <data name="feedback.tag.lost_context" xml:space="preserve"><value>Втрата контексту</value></data>
   <data name="feedback.tag.negative_other" xml:space="preserve"><value>Інше</value></data>
   <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>Не по темі або поза межами</value></data>
   <data name="feedback.tag.output_quality" xml:space="preserve"><value>Якісний код / результат</value></data>
   <data name="feedback.tag.positive_other" xml:space="preserve"><value>Інше</value></data>
-  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Reuse this architecture</value></data>
-  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Reuse this token pattern</value></data>
+  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Повторно використати цю архітектуру</value></data>
+  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Повторно використати цей шаблон токенів</value></data>
   <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>Проблема безпеки або юридична проблема</value></data>
   <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>Повільно або з помилками</value></data>
   <data name="feedback.tag.task_completed" xml:space="preserve"><value>Виконав моє завдання</value></data>
   <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>Корисна автономність</value></data>
-  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Wrong theme or token</value></data>
+  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Неправильна тема або токен</value></data>
   <data name="feedback.title" xml:space="preserve"><value>Поділитися відгуком</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>Відгуки доступні лише в чатах робочої області.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>Відгук можна надіслати лише для відповідей помічника.</value></data>
@@ -399,12 +402,13 @@
   <data name="conversation.cacheExpired.explanation" xml:space="preserve"><value>Розрахунковий час життя кешу минув. Кеш промптів — це тимчасовий стан обробки на боці провайдера; історія чату залишається збереженою. Якщо продовжити з повною історією, ці токени можуть знову рахуватися як нове введення. Підтвердити, чи зберігся кеш у провайдера, можна лише за даними про використання наступного запиту.</value></data>
   <data name="conversation.cacheExpired.infoTitle" xml:space="preserve"><value>Чому я це бачу?</value></data>
   <data name="conversation.cacheExpired.notice" xml:space="preserve"><value>Можливо, термін дії кешу минув; продовження може потребувати більше токенів і коштувати дорожче. Почніть новий чат із коротким підсумком.</value></data>
+  <data name="conversation.cacheLocal.notice" xml:space="preserve"><value>Кеш локальної моделі очищено; усю історію буде оброблено заново, і відповідь може затриматися. Почніть новий чат із коротким підсумком.</value></data>
   <data name="conversation.filesChangedCount" xml:space="preserve"><value>Змінено файлів: {0}</value></data>
   <data name="conversation.filesLess" xml:space="preserve"><value>Показати менше файлів</value></data>
   <data name="conversation.filesLineSummary" xml:space="preserve"><value>+{0} −{1}</value></data>
   <data name="conversation.filesMore" xml:space="preserve"><value>Показати ще {0} файлів</value></data>
   <data name="conversation.filesReverted" xml:space="preserve"><value>Зміни у файлах скасовано.</value></data>
-  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>The saved file version is unavailable, so the workspace was left unchanged.</value></data>
+  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>Збережена версія файлу недоступна, тому робочу область не змінено.</value></data>
   <data name="conversation.undoChanges" xml:space="preserve"><value>Скасувати</value></data>
   <data name="conversation.viewChanges" xml:space="preserve"><value>Переглянути зміни</value></data>
   <data name="settings.archive" xml:space="preserve"><value>Архів</value></data>
@@ -435,9 +439,9 @@
   <data name="workLocation.remoteFolderUp" xml:space="preserve"><value>Тека вище</value></data>
   <data name="workLocation.remoteFolderEmpty" xml:space="preserve"><value>Тут немає підтек</value></data>
   <data name="workLocation.remoteFolderUse" xml:space="preserve"><value>Використати теку</value></data>
-  <data name="workLocation.connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="workLocation.connect" xml:space="preserve"><value>Підключити</value></data>
   <data name="workLocation.addHost" xml:space="preserve"><value>Додати комп’ютер…</value></data>
-  <data name="workLocation.useLocal" xml:space="preserve"><value>Use this computer</value></data>
+  <data name="workLocation.useLocal" xml:space="preserve"><value>Використовувати цей комп’ютер</value></data>
   <data name="settings.sshAlias" xml:space="preserve"><value>Псевдонім</value></data>
   <data name="settings.sshHostName" xml:space="preserve"><value>Вузол або IP</value></data>
   <data name="settings.sshUser" xml:space="preserve"><value>Ім’я користувача</value></data>
@@ -445,126 +449,106 @@
   <data name="settings.sshRemove" xml:space="preserve"><value>Вилучити</value></data>
   <data name="ssh.busy" xml:space="preserve"><value>Зачекайте, поки завершиться поточний запуск, перш ніж змінювати місце роботи.</value></data>
   <data name="ssh.connecting" xml:space="preserve"><value>З’єднання з {0}…</value></data>
-  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Choose a remote folder before starting a task.</value></data>
+  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Виберіть віддалену папку перед запуском завдання.</value></data>
   <data name="ssh.scanning" xml:space="preserve"><value>Отримання ключа вузла…</value></data>
   <data name="ssh.fingerprintTitle" xml:space="preserve"><value>Це відбиток {0}?</value></data>
   <data name="ssh.fingerprintMessage" xml:space="preserve"><value>Звірте його із сервером, перш ніж довіряти. Продовжуйте, лише якщо збігається.</value></data>
   <data name="ssh.trustAndConnect" xml:space="preserve"><value>Довіряти й під’єднатися</value></data>
   <data name="ssh.error.unavailable" xml:space="preserve"><value>На цьому Mac не знайдено ssh.</value></data>
   <data name="ssh.error.notReachable" xml:space="preserve"><value>Не вдалося зв’язатися з {0}.</value></data>
-  <data name="conversation.choosePane" xml:space="preserve"><value>Choose a pane</value></data>
-  <data name="sidebar.toggle" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.mcpServers" xml:space="preserve"><value>MCP servers</value></data>
-  <data name="mcp.empty" xml:space="preserve"><value>No MCP servers configured.</value></data>
-  <data name="mcp.addServer" xml:space="preserve"><value>Add server</value></data>
-  <data name="mcp.name" xml:space="preserve"><value>Name</value></data>
-  <data name="mcp.transport" xml:space="preserve"><value>Transport</value></data>
+  <data name="conversation.choosePane" xml:space="preserve"><value>Виберіть панель</value></data>
+  <data name="sidebar.toggle" xml:space="preserve"><value>Показати або сховати бічну панель</value></data>
+  <data name="settings.mcpServers" xml:space="preserve"><value>MCP-сервери</value></data>
+  <data name="mcp.empty" xml:space="preserve"><value>Сервери MCP не налаштовано.</value></data>
+  <data name="mcp.addServer" xml:space="preserve"><value>Додати сервер</value></data>
+  <data name="mcp.name" xml:space="preserve"><value>Ім’я</value></data>
+  <data name="mcp.transport" xml:space="preserve"><value>Транспорт</value></data>
   <data name="mcp.http" xml:space="preserve"><value>HTTP</value></data>
   <data name="mcp.stdio" xml:space="preserve"><value>stdio</value></data>
   <data name="mcp.url" xml:space="preserve"><value>URL</value></data>
-  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (optional)</value></data>
-  <data name="mcp.executable" xml:space="preserve"><value>Executable path</value></data>
-  <data name="mcp.arguments" xml:space="preserve"><value>Arguments (space-separated)</value></data>
-  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Auto-run tools the server marks read-only</value></data>
-  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Server annotations are untrusted. Enabling this skips approval only for tools marked read-only and not destructive.</value></data>
-  <data name="mcp.test" xml:space="preserve"><value>Test</value></data>
-  <data name="mcp.add" xml:space="preserve"><value>Add</value></data>
-  <data name="mcp.reconnect" xml:space="preserve"><value>Reconnect</value></data>
-  <data name="mcp.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="mcp.idle" xml:space="preserve"><value>Idle</value></data>
-  <data name="mcp.connecting" xml:space="preserve"><value>Connecting…</value></data>
-  <data name="mcp.connected" xml:space="preserve"><value>Connected · {0} tool(s)</value></data>
-  <data name="mcp.failed" xml:space="preserve"><value>Failed: {0}</value></data>
-  <data name="mcp.testing" xml:space="preserve"><value>Testing…</value></data>
-  <data name="mcp.testConnected" xml:space="preserve"><value>Connected. {0} tool(s) available.</value></data>
-  <data name="conversation.toolInput" xml:space="preserve"><value>Tool input</value></data>
-  <data name="settings.tab.memory" xml:space="preserve"><value>Memory</value></data>
-  <data name="memory.vault.title" xml:space="preserve"><value>Memory vault</value></data>
-  <data name="memory.refresh" xml:space="preserve"><value>Refresh</value></data>
-  <data name="memory.reveal" xml:space="preserve"><value>Open .mem folder</value></data>
-  <data name="memory.refused" xml:space="preserve"><value>Not saved. The entry may contain a credential, exceed its limit, or the workspace may be unavailable.</value></data>
-  <data name="memory.noWorkspace" xml:space="preserve"><value>Select a local workspace to view its memory.</value></data>
-  <data name="memory.notInitialized" xml:space="preserve"><value>Memory starts after the first prompt in this workspace.</value></data>
-  <data name="memory.search" xml:space="preserve"><value>Search memory</value></data>
-  <data name="memory.selectNote" xml:space="preserve"><value>Select a note to view it.</value></data>
-  <data name="memory.save" xml:space="preserve"><value>Save</value></data>
-  <data name="memory.forget" xml:space="preserve"><value>Forget</value></data>
-  <data name="memory.ownRules" xml:space="preserve"><value>Your own rules</value></data>
-  <data name="memory.rulesHelp" xml:space="preserve"><value>These rules are added to every request in this project.</value></data>
-  <data name="memory.lessons" xml:space="preserve"><value>Learned lessons</value></data>
-  <data name="memory.learningStats" xml:space="preserve"><value>{0} turns logged; {1} were corrected or undone.</value></data>
-  <data name="memory.links" xml:space="preserve"><value>Links</value></data>
-  <data name="memory.backlinks" xml:space="preserve"><value>Linked mentions</value></data>
-  <data name="memory.userAuthored" xml:space="preserve"><value>user-authored</value></data>
-  <data name="memory.inferred" xml:space="preserve"><value>inferred</value></data>
-  <data name="memory.learnedCount" xml:space="preserve"><value>learned {0}×</value></data>
-  <data name="memory.usedCount" xml:space="preserve"><value>used {0}×</value></data>
-  <data name="memory.inactive" xml:space="preserve"><value>no longer applied</value></data>
-  <data name="memory.pin" xml:space="preserve"><value>Pin</value></data>
-  <data name="memory.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="memory.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="settings.tab.access" xml:space="preserve"><value>Workspace access</value></data>
-  <data name="access.currentActor" xml:space="preserve"><value>Current actor</value></data>
-  <data name="access.role" xml:space="preserve"><value>Role</value></data>
-  <data name="access.notAuthorized" xml:space="preserve"><value>Not authorized</value></data>
-  <data name="access.score" xml:space="preserve"><value>Score</value></data>
-  <data name="access.device" xml:space="preserve"><value>Device</value></data>
-  <data name="access.publicKey" xml:space="preserve"><value>Public key</value></data>
-  <data name="access.memoryRevision" xml:space="preserve"><value>Memory revision</value></data>
-  <data name="access.members" xml:space="preserve"><value>Members</value></data>
-  <data name="access.noMembers" xml:space="preserve"><value>No members yet.</value></data>
-  <data name="access.revoke" xml:space="preserve"><value>Revoke</value></data>
-  <data name="access.revoked" xml:space="preserve"><value>revoked</value></data>
-  <data name="access.inviteDevice" xml:space="preserve"><value>Invite device</value></data>
-  <data name="access.displayName" xml:space="preserve"><value>Display name</value></data>
-  <data name="access.newDevicePublicKey" xml:space="preserve"><value>New device public key</value></data>
-  <data name="access.createInvitation" xml:space="preserve"><value>Create signed invitation</value></data>
-  <data name="access.acceptInvitation" xml:space="preserve"><value>Accept invitation</value></data>
-  <data name="access.signedInvitation" xml:space="preserve"><value>Signed invitation</value></data>
-  <data name="access.accept" xml:space="preserve"><value>Accept</value></data>
-  <data name="access.reject" xml:space="preserve"><value>Reject</value></data>
-  <data name="access.pendingDecisions" xml:space="preserve"><value>Pending decisions</value></data>
-  <data name="access.noPendingDecisions" xml:space="preserve"><value>No pending project decisions.</value></data>
-  <data name="access.noWorkspace" xml:space="preserve"><value>Select a local workspace to manage access.</value></data>
-  <data name="access.scoreValue" xml:space="preserve"><value>Score: {0}</value></data>
-  <data name="access.initialize" xml:space="preserve"><value>Initialize workspace memory</value></data>
-  <data name="access.initializeHelp" xml:space="preserve"><value>Workspace access uses a signed memory log. Initializing creates the owner identity and event log in this project's .mem folder.</value></data>
-  <data name="access.role.owner" xml:space="preserve"><value>Owner</value></data>
-  <data name="access.role.approver" xml:space="preserve"><value>Approver</value></data>
-  <data name="access.role.contributor" xml:space="preserve"><value>Contributor</value></data>
-  <data name="access.role.observer" xml:space="preserve"><value>Observer</value></data>
-  <data name="settings.sandbox" xml:space="preserve"><value>Sandbox</value></data>
-  <data name="settings.sandboxOff" xml:space="preserve"><value>Off — the agent works directly in your checkout.</value></data>
-  <data name="settings.sandboxOn" xml:space="preserve"><value>On — the agent works in a separate git worktree.</value></data>
-  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Recovery is required before sandbox operations can continue.</value></data>
-  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Retry recovery</value></data>
-  <data name="settings.sandboxName" xml:space="preserve"><value>Name</value></data>
-  <data name="settings.sandboxEnter" xml:space="preserve"><value>Start sandbox</value></data>
-  <data name="settings.sandboxMerge" xml:space="preserve"><value>Merge and exit</value></data>
-  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Discard and exit</value></data>
-  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Origin</value></data>
-  <data name="settings.sandboxBranch" xml:space="preserve"><value>Branch</value></data>
-  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Allow network for new processes</value></data>
-  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>This applies only to new commands. Existing terminal sessions keep their current policy.</value></data>
-  <data name="settings.sandboxOpen" xml:space="preserve"><value>Open sandbox</value></data>
-  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Open origin</value></data>
-  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Conflicts</value></data>
-  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Prepare resolution</value></data>
-  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Ask agent</value></data>
-  <data name="settings.sandboxPreview" xml:space="preserve"><value>Refresh preview</value></data>
-  <data name="settings.sandboxApprove" xml:space="preserve"><value>Approve and merge</value></data>
-  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Cancel resolution</value></data>
-  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Retry cleanup</value></data>
-  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Discard this sandbox? Its branch will be kept for recovery, but its worktree will be removed.</value></data>
-  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Approval requires a complete preview with no unresolved files.</value></data>
-  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Resolution preview</value></data>
-  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Unresolved files</value></data>
-  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>Origin HEAD</value></data>
-  <data name="settings.sandboxHead" xml:space="preserve"><value>Sandbox HEAD</value></data>
-  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Preview fingerprint</value></data>
-  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Sandbox cleanup is still pending; the origin was not changed again.</value></data>
-  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Saved sandboxes</value></data>
-  <data name="settings.sandboxRecover" xml:space="preserve"><value>Recover</value></data>
+  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer-токен (необов’язково)</value></data>
+  <data name="mcp.executable" xml:space="preserve"><value>Шлях до виконуваного файлу</value></data>
+  <data name="mcp.arguments" xml:space="preserve"><value>Аргументи (через пробіл)</value></data>
+  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Автоматично запускати інструменти, позначені сервером як лише для читання</value></data>
+  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Анотації сервера не є довіреними. Якщо ввімкнути, підтвердження пропускатиметься лише для інструментів, позначених як лише для читання й неруйнівні.</value></data>
+  <data name="mcp.test" xml:space="preserve"><value>Перевірити</value></data>
+  <data name="mcp.add" xml:space="preserve"><value>Додати сервер</value></data>
+  <data name="mcp.reconnect" xml:space="preserve"><value>Перепідключити</value></data>
+  <data name="mcp.remove" xml:space="preserve"><value>Прибрати</value></data>
+  <data name="mcp.idle" xml:space="preserve"><value>Простій</value></data>
+  <data name="mcp.connecting" xml:space="preserve"><value>Підключення…</value></data>
+  <data name="mcp.connected" xml:space="preserve"><value>Підключено · інструментів: {0}</value></data>
+  <data name="mcp.failed" xml:space="preserve"><value>Помилка: {0}</value></data>
+  <data name="mcp.testing" xml:space="preserve"><value>Перевірка…</value></data>
+  <data name="mcp.testConnected" xml:space="preserve"><value>Підключено. Доступно інструментів: {0}.</value></data>
+  <data name="conversation.toolInput" xml:space="preserve"><value>Вхідні дані інструмента</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>Пам’ять</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>Сховище пам’яті</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>Оновити</value></data>
+  <data name="memory.enabled" xml:space="preserve"><value>Пам’ять увімкнено</value></data>
+  <data name="memory.scanFrequency" xml:space="preserve"><value>Частота сканування</value></data>
+  <data name="memory.scan.off" xml:space="preserve"><value>Вимк.</value></data>
+  <data name="memory.scan.hourly" xml:space="preserve"><value>Щогодини</value></data>
+  <data name="memory.scan.daily" xml:space="preserve"><value>Щодня</value></data>
+  <data name="memory.scan.weekly" xml:space="preserve"><value>Щотижня</value></data>
+  <data name="memory.enabledHelp" xml:space="preserve"><value>Коли вимкнено, завдання не записуються, нічого не запам’ятовується і моделі не передаються жодні висновки; уже збережене залишається на диску.</value></data>
+  <data name="memory.scanHelp" xml:space="preserve"><value>Короткі нотатки про завдання зберігаються, тож після сканування можна переглянути підстави висновків; коли сканування вимкнено, модель у фоні не викликається.</value></data>
+  <data name="memory.reveal" xml:space="preserve"><value>Відкрити папку .mem</value></data>
+  <data name="memory.refused" xml:space="preserve"><value>Не збережено. Запис може містити облікові дані, перевищувати ліміт, або робоча область недоступна.</value></data>
+  <data name="memory.noWorkspace" xml:space="preserve"><value>Виберіть локальну робочу область, щоб переглянути її пам’ять.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>Пам’ять починає працювати після першого промпту в цій робочій області.</value></data>
+  <data name="memory.search" xml:space="preserve"><value>Пошук у пам’яті</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>Виберіть нотатку для перегляду.</value></data>
+  <data name="memory.save" xml:space="preserve"><value>Зберегти</value></data>
+  <data name="memory.forget" xml:space="preserve"><value>Забути</value></data>
+  <data name="memory.ownRules" xml:space="preserve"><value>Ваші власні правила</value></data>
+  <data name="memory.rulesHelp" xml:space="preserve"><value>Ці правила додаються до кожного запиту в цьому проєкті.</value></data>
+  <data name="memory.lessons" xml:space="preserve"><value>Отримані уроки</value></data>
+  <data name="memory.learningStats" xml:space="preserve"><value>Записано ходів: {0}; виправлено або скасовано: {1}.</value></data>
+  <data name="memory.links" xml:space="preserve"><value>Посилання</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>Пов’язані згадки</value></data>
+  <data name="memory.userAuthored" xml:space="preserve"><value>створено користувачем</value></data>
+  <data name="memory.inferred" xml:space="preserve"><value>виведено</value></data>
+  <data name="memory.learnedCount" xml:space="preserve"><value>вивчено {0}×</value></data>
+  <data name="memory.usedCount" xml:space="preserve"><value>використано {0}×</value></data>
+  <data name="memory.inactive" xml:space="preserve"><value>більше не застосовується</value></data>
+  <data name="memory.pin" xml:space="preserve"><value>Закріпити</value></data>
+  <data name="memory.edit" xml:space="preserve"><value>Редагувати</value></data>
+  <data name="memory.cancel" xml:space="preserve"><value>Скасувати</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>Доступ до робочої області</value></data>
+  <data name="access.accept" xml:space="preserve"><value>Прийняти</value></data>
+  <data name="settings.sandbox" xml:space="preserve"><value>Пісочниця</value></data>
+  <data name="settings.sandboxOff" xml:space="preserve"><value>Вимк. — агент працює безпосередньо у вашій робочій копії.</value></data>
+  <data name="settings.sandboxOn" xml:space="preserve"><value>Увімк. — агент працює в окремому git worktree.</value></data>
+  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Перш ніж продовжити операції з пісочницею, потрібне відновлення.</value></data>
+  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Повторити відновлення</value></data>
+  <data name="settings.sandboxName" xml:space="preserve"><value>Назва</value></data>
+  <data name="settings.sandboxEnter" xml:space="preserve"><value>Запустити пісочницю</value></data>
+  <data name="settings.sandboxMerge" xml:space="preserve"><value>Злити й вийти</value></data>
+  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Відкинути й вийти</value></data>
+  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Джерело</value></data>
+  <data name="settings.sandboxBranch" xml:space="preserve"><value>Гілка</value></data>
+  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Дозволити мережу для нових процесів</value></data>
+  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>Застосовується лише до нових команд. Наявні сеанси термінала зберігають поточну політику.</value></data>
+  <data name="settings.sandboxOpen" xml:space="preserve"><value>Відкрити пісочницю</value></data>
+  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Відкрити вихідну копію</value></data>
+  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Конфлікти</value></data>
+  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Підготувати розв’язання</value></data>
+  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Запитати агента</value></data>
+  <data name="settings.sandboxPreview" xml:space="preserve"><value>Оновити попередній перегляд</value></data>
+  <data name="settings.sandboxApprove" xml:space="preserve"><value>Схвалити й злити</value></data>
+  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Скасувати розв’язання</value></data>
+  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Повторити очищення</value></data>
+  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Відкинути цю пісочницю? Її гілку буде збережено для відновлення, але worktree буде видалено.</value></data>
+  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Для схвалення потрібен повний попередній перегляд без нерозв’язаних файлів.</value></data>
+  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Попередній перегляд розв’язання</value></data>
+  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Нерозв’язані файли</value></data>
+  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>HEAD вихідної копії</value></data>
+  <data name="settings.sandboxHead" xml:space="preserve"><value>HEAD пісочниці</value></data>
+  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Відбиток попереднього перегляду</value></data>
+  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Очищення пісочниці ще очікується; вихідну копію повторно не змінено.</value></data>
+  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Збережені пісочниці</value></data>
+  <data name="settings.sandboxRecover" xml:space="preserve"><value>Відновити</value></data>
   <data name="conversation.accountSwitched.notice" xml:space="preserve"><value>Цей чат перейшов на інший обліковий запис із тією самою моделлю. Кеш там починається з нуля; продовження може потребувати більше токенів і коштувати дорожче.</value></data>
   <data name="conversation.modelSwitched.notice" xml:space="preserve"><value>Модель змінено. Кеш не переноситься на нову модель; уся історія обробляється заново, що може потребувати більше токенів і коштувати дорожче.</value></data>
   <data name="conversation.contextFull.notice" xml:space="preserve"><value>Контекстне вікно майже заповнене; продовження може потребувати більше токенів і коштувати дорожче. Почніть новий чат із коротким підсумком.</value></data>
@@ -575,28 +559,28 @@
   <data name="context.overflowCompress" xml:space="preserve"><value>Стиснути й продовжити</value></data>
   <data name="context.overflowNotNow" xml:space="preserve"><value>Не зараз</value></data>
   <data name="context.overflowDeclined" xml:space="preserve"><value>Надсилання зупинено: розмова не поміщається в нову модель.</value></data>
-  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>When another chat is writing the same file</value></data>
-  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Wait before asking</value></data>
-  <data name="settings.conflictWaitValue" xml:space="preserve"><value>Wait {0} seconds</value></data>
-  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Wait, then ask</value></data>
-  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>A chat that wants a file another chat is writing waits quietly, and asks only if the wait goes on too long.</value></data>
-  <data name="conflict.policy.ask" xml:space="preserve"><value>Ask me</value></data>
-  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Ask as soon as two chats want the same file.</value></data>
-  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Always wait</value></data>
-  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Never ask: a write waits for the chat that holds the file.</value></data>
-  <data name="conflict.title" xml:space="preserve"><value>A file is busy: {0}</value></data>
-  <data name="conflict.wholeProject" xml:space="preserve"><value>Project command: {0}</value></data>
-  <data name="conflict.stillBusy" xml:space="preserve"><value>Write held back: another chat is still writing {0}.</value></data>
-  <data name="conflict.userSkipped" xml:space="preserve"><value>Write skipped: {0} was left with the other chat ({1}), as you asked.</value></data>
-  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Stopped {0} so this chat could write.</value></data>
-  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Stopped other chats so this chat could write.</value></data>
-  <data name="conflict.banner.title" xml:space="preserve"><value>Another chat is writing this file</value></data>
-  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · held by “{1}” for {2} seconds</value></data>
-  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Keep waiting</value></data>
-  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Stop {0}</value></data>
-  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Stop all other chats</value></data>
-  <data name="conflict.banner.skip" xml:space="preserve"><value>Skip this write</value></data>
-  <data name="conflict.waiting" xml:space="preserve"><value>Waiting for “{0}” to finish writing: {1}</value></data>
+  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>Якщо інший чат пише той самий файл</value></data>
+  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Чекати перед запитанням</value></data>
+  <data name="settings.conflictWaitValue" xml:space="preserve"><value>{0} секунд</value></data>
+  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Почекати, потім запитати</value></data>
+  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>Мовчки чекає на інший чат і питає, лише якщо очікування затягується.</value></data>
+  <data name="conflict.policy.ask" xml:space="preserve"><value>Запитайте мене</value></data>
+  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Питає щойно два чати захочють той самий файл.</value></data>
+  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Завжди чекати</value></data>
+  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Не питає: кожен запис чекає на чат, що тримає файл.</value></data>
+  <data name="conflict.title" xml:space="preserve"><value>Інший чат пише {0}</value></data>
+  <data name="conflict.wholeProject" xml:space="preserve"><value>весь проєкт (команда: {0})</value></data>
+  <data name="conflict.stillBusy" xml:space="preserve"><value>Запис призупинено: {0} досі пише інший чат.</value></data>
+  <data name="conflict.userSkipped" xml:space="preserve"><value>Запис пропущено: {0} лишився в іншого чата ({1}), як ви просили.</value></data>
+  <data name="conflict.stoppedHolder" xml:space="preserve"><value>За вашим проханням зупинено чат «{0}», і цей запис виконано.</value></data>
+  <data name="conflict.stoppedOthers" xml:space="preserve"><value>За вашим проханням зупинено інші чати цього проєкту, і цей запис виконано.</value></data>
+  <data name="conflict.banner.title" xml:space="preserve"><value>Інший чат пише цей файл</value></data>
+  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · утримується чатом «{1}» уже {2} с</value></data>
+  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Продовжувати чекати</value></data>
+  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Зупинити цей чат</value></data>
+  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Зупинити всі інші чати</value></data>
+  <data name="conflict.banner.skip" xml:space="preserve"><value>Пропустити цей запис</value></data>
+  <data name="conflict.waiting" xml:space="preserve"><value>Очікування запису чатом «{0}»: {1}</value></data>
   <data name="usage.context.button" xml:space="preserve"><value>Використання</value></data>
   <data name="usage.context.tooltip" xml:space="preserve"><value>Використання контексту й токенів</value></data>
   <data name="usage.context.latestRequest" xml:space="preserve"><value>Останній запит · вікно контексту</value></data>
@@ -606,34 +590,738 @@
   <data name="usage.context.notReported" xml:space="preserve"><value>Постачальник не повідомив</value></data>
   <data name="usage.context.estimatedBreakdown" xml:space="preserve"><value>Оцінний розподіл вводу</value></data>
   <data name="usage.context.tokens" xml:space="preserve"><value>токенів</value></data>
-  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} tokens ({2})</value></data>
-  <data name="usage.context.notAvailable" xml:space="preserve"><value>Context usage is not available yet.</value></data>
-  <data name="usage.context.composition" xml:space="preserve"><value>Estimated input composition</value></data>
+  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} токенів ({2})</value></data>
+  <data name="usage.context.notAvailable" xml:space="preserve"><value>Дані про використання контексту ще недоступні.</value></data>
+  <data name="usage.context.composition" xml:space="preserve"><value>Оцінений склад вводу</value></data>
   <data name="usage.context.estimatedRow" xml:space="preserve"><value>{0}: {1} ({2})</value></data>
   <data name="usage.context.conversation" xml:space="preserve"><value>Повідомлення чату</value></data>
   <data name="usage.context.systemPrompt" xml:space="preserve"><value>Системні інструкції</value></data>
   <data name="usage.context.toolDefinitions" xml:space="preserve"><value>Визначення інструментів</value></data>
   <data name="usage.context.mcpDefinitions" xml:space="preserve"><value>Визначення інструментів MCP</value></data>
-  <data name="usage.context.cacheHit" xml:space="preserve"><value>Measured cache hit</value></data>
-  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Verified prefix reuse: {0} · {1} / {2} tokens</value></data>
-  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Measurement coverage: {0} · {1} of {2} eligible requests</value></data>
-  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Cold: {0} · expired: {1} · changed: {2}</value></data>
-  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Cache writes: {0} tokens</value></data>
-  <data name="usage.context.freshInput" xml:space="preserve"><value>Fresh input: {0} tokens</value></data>
-  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Reuse not reported: {0} of {1} eligible requests</value></data>
-  <data name="usage.context.latency" xml:space="preserve"><value>Average request latency: {0}</value></data>
-  <data name="usage.context.prepare" xml:space="preserve"><value>Average request preparation: {0}</value></data>
-  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Largest cache loss: {0} ({1} tokens)</value></data>
-  <data name="settings.shortcuts" xml:space="preserve"><value>Keyboard shortcuts</value></data>
-  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Select a shortcut to change it. Press a key combination with at least one modifier.</value></data>
-  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Press keys…</value></data>
-  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Restore defaults</value></data>
-  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} is already assigned to {1}.</value></data>
-  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull requests</value></data>
-  <data name="conversation.review" xml:space="preserve"><value>Review</value></data>
-  <data name="conversation.files" xml:space="preserve"><value>Files</value></data>
-  <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
-  <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
-  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} токенів</value></data>
+  <data name="usage.context.cacheHit" xml:space="preserve"><value>Виміряні влучання в кеш</value></data>
+  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Підтверджене повторне використання префікса: {0} · {1} / {2} токенів</value></data>
+  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Охоплення вимірювань: {0} · {1} з {2} придатних запитів</value></data>
+  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Холодні: {0} · прострочені: {1} · змінені: {2}</value></data>
+  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Записи в кеш: {0} токенів</value></data>
+  <data name="usage.context.freshInput" xml:space="preserve"><value>Новий ввід: {0} токенів</value></data>
+  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Повторне використання не повідомлено: {0} з {1} придатних запитів</value></data>
+  <data name="usage.context.latency" xml:space="preserve"><value>Середня затримка запиту: {0}</value></data>
+  <data name="usage.context.prepare" xml:space="preserve"><value>Середня підготовка запиту: {0}</value></data>
+  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Найбільша втрата кешу: {0} ({1} токенів)</value></data>
+  <data name="settings.shortcuts" xml:space="preserve"><value>Сполучення клавіш</value></data>
+  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Виберіть сполучення, щоб змінити його. Натисніть комбінацію принаймні з однією клавішею-модифікатором.</value></data>
+  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Показати або сховати бічну панель</value></data>
+  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Натисніть клавіші…</value></data>
+  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Відновити типові</value></data>
+  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} уже призначено для {1}.</value></data>
+  <data name="sidebar.pullRequests" xml:space="preserve"><value>Пул-реквести</value></data>
+  <data name="conversation.review" xml:space="preserve"><value>Рецензія</value></data>
+  <data name="conversation.files" xml:space="preserve"><value>Файли</value></data>
+  <data name="conversation.browser" xml:space="preserve"><value>Браузер</value></data>
+  <data name="conversation.newChat" xml:space="preserve"><value>Нова розмова</value></data>
+  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} нових оброблених токенів</value></data>
+  <data name="settings.skillSuggestions" xml:space="preserve"><value>Показувати пропозиції навичок</value></data>
+  <data name="settings.skillSuggestions.hint" xml:space="preserve"><value>Пропонує навичку лише тоді, коли урок засвоєно тричі або агент завершив процес, який знадобиться знову; не більше однієї картки на тиждень. Вимк.: картки пропозицій не з'являються, і агент не пропонує навички.</value></data>
+  <data name="skill.suggestion.title" xml:space="preserve"><value>Запропонована навичка: {0}</value></data>
+  <data name="skill.suggestion.create" xml:space="preserve"><value>Створити навичку</value></data>
+  <data name="skill.suggestion.dismiss" xml:space="preserve"><value>Не зараз</value></data>
+  <data name="settings.autoAccountFailover" xml:space="preserve"><value>Автоматично спробувати інший обліковий запис після вичерпання ліміту</value></data>
+  <data name="settings.autoAccountFailover.hint" xml:space="preserve"><value>Якщо вимкнено, чат призупиняється; натисніть «Продовжити», щоб спробувати інший сумісний обліковий запис. Якщо увімкнено, сумісні облікові записи перевіряються автоматично.</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>Введіть розмір контексту для моделі в токенах. Автоматичний режим використовує заявлений або задокументований розмір моделі, якщо він доступний, а потім налаштоване значення облікового запису.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>Пошук моделей</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>Автоматичне значення: {0} токенів</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>Провайдер не повідомляє про розмір контексту.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>Моделі ще недоступні. Підключіть провайдера або оновіть список моделей.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>Збережено.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>Автоматично</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>Введіть додатне ціле число токенів.</value></data>
+  <data name="attachment.files" xml:space="preserve"><value>Файли або фото</value></data>
+  <data name="attachment.project" xml:space="preserve"><value>Робота в проекті</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>Контекст автоматично стиснуто</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>Прочитано файли</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>Змінено файли</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>Виконано команди</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>Пошук в інтернеті</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>Читання файлів…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>Редагування файлів…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>Виконання команд…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>Пошук в інтернеті…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>Використано інструмент</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>Виконання інструмента…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>Помилка інструмента: {0}</value></data>
+  <data name="tasks.menu" xml:space="preserve"><value>завдання</value></data>
+  <data name="tasks.title" xml:space="preserve"><value>Заплановані завдання</value></data>
+  <data name="tasks.subtitle" xml:space="preserve"><value>Запустіть підказку за розкладом cron.</value></data>
+  <data name="tasks.empty" xml:space="preserve"><value>Завдань ще немає.</value></data>
+  <data name="tasks.add" xml:space="preserve"><value>Додати завдання</value></data>
+  <data name="tasks.edit" xml:space="preserve"><value>Редагувати завдання</value></data>
+  <data name="tasks.delete" xml:space="preserve"><value>Видалити</value></data>
+  <data name="tasks.runNow" xml:space="preserve"><value>Запустити зараз</value></data>
+  <data name="tasks.enabled" xml:space="preserve"><value>Увімкнено</value></data>
+  <data name="tasks.field.name" xml:space="preserve"><value>Ім'я</value></data>
+  <data name="tasks.field.cron" xml:space="preserve"><value>Вираз Cron</value></data>
+  <data name="tasks.field.prompt" xml:space="preserve"><value>Промпт</value></data>
+  <data name="tasks.field.workspace" xml:space="preserve"><value>Робоча область</value></data>
+  <data name="tasks.cron.invalid" xml:space="preserve"><value>Недійсний вираз cron.</value></data>
+  <data name="tasks.cron.next" xml:space="preserve"><value>Наступні запуски</value></data>
+  <data name="tasks.close" xml:space="preserve"><value>Закрити завдання</value></data>
+  <data name="tasks.back" xml:space="preserve"><value>Назад</value></data>
+  <data name="tasks.new" xml:space="preserve"><value>Нове завдання</value></data>
+  <data name="tasks.active" xml:space="preserve"><value>Твої завдання</value></data>
+  <data name="tasks.disabled" xml:space="preserve"><value>Вимкнено</value></data>
+  <data name="tasks.suggestions" xml:space="preserve"><value>Пропозиції</value></data>
+  <data name="tasks.history" xml:space="preserve"><value>Останні запуски</value></data>
+  <data name="tasks.history.empty" xml:space="preserve"><value>Це завдання ще не запускалося.</value></data>
+  <data name="tasks.field.target" xml:space="preserve"><value>Цільовий файл або папка</value></data>
+  <data name="tasks.field.targetHint" xml:space="preserve"><value>Необов’язковий шлях у робочому просторі</value></data>
+  <data name="tasks.target.invalid" xml:space="preserve"><value>Ціль має бути всередині робочого простору.</value></data>
+  <data name="tasks.field.model" xml:space="preserve"><value>Модель</value></data>
+  <data name="tasks.field.fallback" xml:space="preserve"><value>Резервна модель</value></data>
+  <data name="tasks.network" xml:space="preserve"><value>Дозволити доступ до мережі</value></data>
+  <data name="tasks.assistant.title" xml:space="preserve"><value>Помічник завдань</value></data>
+  <data name="tasks.assistant.placeholder" xml:space="preserve"><value>Попросіть змінити це завдання…</value></data>
+  <data name="tasks.assistant.updated" xml:space="preserve"><value>Завдання оновлено.</value></data>
+  <data name="tasks.notification.title" xml:space="preserve"><value>Заплановане завдання</value></data>
+  <data name="tasks.notification.completed" xml:space="preserve"><value>Завершено</value></data>
+  <data name="tasks.notification.failed" xml:space="preserve"><value>Не вдалося</value></data>
+  <data name="tasks.notification.fallback" xml:space="preserve"><value>Використано резервну модель</value></data>
+  <data name="tasks.suggestion.daily.title" xml:space="preserve"><value>Щоденний звіт</value></data>
+  <data name="tasks.suggestion.daily.detail" xml:space="preserve"><value>Підсумуй останню роботу, відкриті пріоритети та зміни робочого простору.</value></data>
+  <data name="tasks.suggestion.daily.schedule" xml:space="preserve"><value>У будні о 8:00</value></data>
+  <data name="tasks.suggestion.daily.prompt" xml:space="preserve"><value>Переглянь останні розмови та зміни робочого простору. Підсумуй найважливіші пріоритети на сьогодні.</value></data>
+  <data name="tasks.suggestion.weekly.title" xml:space="preserve"><value>Щотижневий огляд</value></data>
+  <data name="tasks.suggestion.weekly.detail" xml:space="preserve"><value>Щоп’ятниці перетворюй останню роботу на стислий звіт про стан.</value></data>
+  <data name="tasks.suggestion.weekly.schedule" xml:space="preserve"><value>Щоп’ятниці о 16:00</value></data>
+  <data name="tasks.suggestion.weekly.prompt" xml:space="preserve"><value>Переглянь розмови та зміни робочого простору цього тижня. Напиши стислий звіт про виконану роботу, ризики й наступні кроки.</value></data>
+  <data name="tasks.suggestion.followup.title" xml:space="preserve"><value>Монітор подальших дій</value></data>
+  <data name="tasks.suggestion.followup.detail" xml:space="preserve"><value>Переглянь останню активність і познач усе, що потребує уваги.</value></data>
+  <data name="tasks.suggestion.followup.schedule" xml:space="preserve"><value>У будні о 9:00</value></data>
+  <data name="tasks.suggestion.followup.prompt" xml:space="preserve"><value>Переглянь останні завдання та активність робочого простору. Познач незавершену роботу, невдалі запуски й усе, що потребує уваги.</value></data>
+  <data name="tasks.lastRun" xml:space="preserve"><value>Останній запуск</value></data>
+  <data name="tasks.state.never" xml:space="preserve"><value>Ніколи не бігайте</value></data>
+  <data name="tasks.state.running" xml:space="preserve"><value>Виконується…</value></data>
+  <data name="tasks.state.ok" xml:space="preserve"><value>Вдався</value></data>
+  <data name="tasks.state.failed" xml:space="preserve"><value>Не вдалося</value></data>
+  <data name="tasks.openConversation" xml:space="preserve"><value>Відкрита розмова</value></data>
+  <data name="tasks.save" xml:space="preserve"><value>зберегти</value></data>
+  <data name="tasks.cancel" xml:space="preserve"><value>Скасувати</value></data>
+  <data name="tasks.background" xml:space="preserve"><value>Виконуйте завдання, поки програма закрита</value></data>
+  <data name="tasks.background.hint" xml:space="preserve"><value>Встановлює фоновий помічник (launchd), який виконує певні завдання, навіть коли Dots Harness не відкрито.</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>Карта</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>Індекс</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>завдання</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>Рішення</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>Уподобання</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>Розмови</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>Немає пов’язаних згадок.</value></data>
+  <data name="memory.graph" xml:space="preserve"><value>Графік</value></data>
+  <data name="media.image" xml:space="preserve"><value>зображення</value></data>
+  <data name="media.video" xml:space="preserve"><value>відео</value></data>
+  <data name="media.audio" xml:space="preserve"><value>аудіо</value></data>
+  <data name="media.promptMissing" xml:space="preserve"><value>Опишіть, що генерувати після команди.</value></data>
+  <data name="media.promptMissingFor" xml:space="preserve"><value>Опишіть {0} для генерації після команди.</value></data>
+  <data name="media.modelMissing" xml:space="preserve"><value>Модель медіапровайдера не налаштовано.</value></data>
+  <data name="media.noOutput" xml:space="preserve"><value>Постачальник не повернув медіа-виведення.</value></data>
+  <data name="media.invalidOutput" xml:space="preserve"><value>Постачальник повернув недійсні медіадані.</value></data>
+  <data name="media.generationFailed" xml:space="preserve"><value>Постачальнику не вдалося створити медіафайл.</value></data>
+  <data name="media.videoTimeout" xml:space="preserve"><value>Час очікування створення відео минув.</value></data>
+  <data name="media.busy" xml:space="preserve"><value>Генерація або запуск агента вже триває. Спробуйте знову, коли він закінчиться.</value></data>
+  <data name="media.unsupported" xml:space="preserve"><value>Я не можу створити це тут. Вибраний постачальник не має такої можливості.</value></data>
+  <data name="media.unsupportedStatus" xml:space="preserve"><value>Генерація мультимедійних даних не підтримується вибраним постачальником.</value></data>
+  <data name="media.fileMissing" xml:space="preserve"><value>Згенерований файл більше не доступний.</value></data>
+  <data name="media.openAudio" xml:space="preserve"><value>Відкрити згенероване аудіо</value></data>
+  <data name="media.save" xml:space="preserve"><value>Зберегти</value></data>
+  <data name="media.showInFinder" xml:space="preserve"><value>Показати у Finder</value></data>
+  <data name="rail.home" xml:space="preserve"><value>Головна</value></data>
+  <data name="rail.media" xml:space="preserve"><value>Медіа</value></data>
+  <data name="rail.tasks" xml:space="preserve"><value>Завдання</value></data>
+  <data name="rail.bots" xml:space="preserve"><value>Боти</value></data>
+  <data name="rail.marketplace" xml:space="preserve"><value>Маркет</value></data>
+  <data name="rail.memory" xml:space="preserve"><value>Пам’ять</value></data>
+  <data name="rail.settings" xml:space="preserve"><value>Налаштування</value></data>
+  <data name="models.followApp" xml:space="preserve"><value>Модель застосунку</value></data>
+  <data name="studio.preset.square" xml:space="preserve"><value>Квадратний допис</value></data>
+  <data name="studio.preset.story" xml:space="preserve"><value>Історія</value></data>
+  <data name="studio.preset.landscape" xml:space="preserve"><value>Альбомна</value></data>
+  <data name="studio.preset.thumbnail" xml:space="preserve"><value>Обкладинка відео</value></data>
+  <data name="studio.preset.logo" xml:space="preserve"><value>Логотип</value></data>
+  <data name="studio.preset.poster" xml:space="preserve"><value>Постер</value></data>
+  <data name="studio.template.announcement" xml:space="preserve"><value>Оголошення</value></data>
+  <data name="studio.template.story" xml:space="preserve"><value>Історія</value></data>
+  <data name="studio.template.thumbnail" xml:space="preserve"><value>Обкладинка відео</value></data>
+  <data name="studio.template.slide" xml:space="preserve"><value>Титульний слайд</value></data>
+  <data name="studio.template.logo" xml:space="preserve"><value>Логотип</value></data>
+  <data name="studio.template.mobile" xml:space="preserve"><value>Мобільний екран</value></data>
+  <data name="studio.category.social" xml:space="preserve"><value>Соціальні мережі</value></data>
+  <data name="studio.category.uiux" xml:space="preserve"><value>UI/UX</value></data>
+  <data name="studio.category.presentation" xml:space="preserve"><value>Презентація та інфографіка</value></data>
+  <data name="studio.category.other" xml:space="preserve"><value>Інші дизайни</value></data>
+  <data name="studio.sample.title" xml:space="preserve"><value>Ваш заголовок</value></data>
+  <data name="studio.sample.detail" xml:space="preserve"><value>Короткий рядок, що каже більше</value></data>
+  <data name="studio.sample.brand" xml:space="preserve"><value>Бренд</value></data>
+  <data name="studio.sample.text" xml:space="preserve"><value>Текст</value></data>
+  <data name="studio.copyOf" xml:space="preserve"><value>{0} (копія)</value></data>
+  <data name="studio.untitled" xml:space="preserve"><value>Проєкт без назви</value></data>
+  <data name="studio.home.title" xml:space="preserve"><value>Опишіть ідею та втільте її</value></data>
+  <data name="studio.home.search" xml:space="preserve"><value>Пошук</value></data>
+  <data name="studio.home.sort.name" xml:space="preserve"><value>Назва</value></data>
+  <data name="studio.home.filter.all" xml:space="preserve"><value>За весь час</value></data>
+  <data name="studio.home.filter.week" xml:space="preserve"><value>Останні 7 днів</value></data>
+  <data name="studio.home.filter.month" xml:space="preserve"><value>Останні 30 днів</value></data>
+  <data name="studio.home.starred" xml:space="preserve"><value>Із зірочкою</value></data>
+  <data name="studio.home.star" xml:space="preserve"><value>Додати зірочку</value></data>
+  <data name="studio.home.unstar" xml:space="preserve"><value>Прибрати зірочку</value></data>
+  <data name="studio.home.modified" xml:space="preserve"><value>Остання зміна</value></data>
+  <data name="studio.home.canvases" xml:space="preserve"><value>Полотна</value></data>
+  <data name="studio.projects" xml:space="preserve"><value>Проєкти</value></data>
+  <data name="studio.templates" xml:space="preserve"><value>Шаблони</value></data>
+  <data name="studio.community" xml:space="preserve"><value>Спільнота</value></data>
+  <data name="studio.community.banner" xml:space="preserve"><value>Відкрийте для себе дизайни від спільноти</value></data>
+  <data name="studio.community.saved" xml:space="preserve"><value>Збережені</value></data>
+  <data name="studio.community.share" xml:space="preserve"><value>Поділитися в спільноті</value></data>
+  <data name="studio.community.shared" xml:space="preserve"><value>Надіслано на розгляд. З'явиться у спільноті після схвалення.</value></data>
+  <data name="studio.community.signIn" xml:space="preserve"><value>Увійдіть у свій обліковий запис HerNess, щоб поділитися у спільноті.</value></data>
+  <data name="studio.community.empty" xml:space="preserve"><value>Тут ще немає дизайнів спільноти.</value></data>
+  <data name="studio.projectName" xml:space="preserve"><value>Назва проєкту</value></data>
+  <data name="studio.newProject" xml:space="preserve"><value>Новий проєкт</value></data>
+  <data name="studio.create" xml:space="preserve"><value>Створити проєкт</value></data>
+  <data name="studio.rename" xml:space="preserve"><value>Перейменувати</value></data>
+  <data name="studio.duplicate" xml:space="preserve"><value>Дублювати</value></data>
+  <data name="studio.deleteConfirm" xml:space="preserve"><value>Видалити «{0}»? Його полотна й завантажені файли буде видалено.</value></data>
+  <data name="studio.projectMeta" xml:space="preserve"><value>Полотен: {0}, змінено {1}</value></data>
+  <data name="studio.empty.title" xml:space="preserve"><value>Медіапроєктів ще немає</value></data>
+  <data name="studio.empty.detail" xml:space="preserve"><value>Проєкт — це дошка з полотен. Додавайте текст, фігури й зображення самостійно або опишіть, що потрібно, і модель збудує це шар за шаром.</value></data>
+  <data name="studio.addCanvas" xml:space="preserve"><value>Полотно</value></data>
+  <data name="studio.undo" xml:space="preserve"><value>Скасувати</value></data>
+  <data name="studio.redo" xml:space="preserve"><value>Повторити</value></data>
+  <data name="studio.zoomOut" xml:space="preserve"><value>Зменшити</value></data>
+  <data name="studio.zoomIn" xml:space="preserve"><value>Збільшити</value></data>
+  <data name="studio.zoomFit" xml:space="preserve"><value>Умістити всі полотна</value></data>
+  <data name="studio.layers" xml:space="preserve"><value>Шари</value></data>
+  <data name="studio.layers.empty" xml:space="preserve"><value>На цьому полотні ще немає шарів.</value></data>
+  <data name="studio.layer.text" xml:space="preserve"><value>Текст</value></data>
+  <data name="studio.layer.shape" xml:space="preserve"><value>Фігура</value></data>
+  <data name="studio.layer.upload" xml:space="preserve"><value>Завантаження</value></data>
+  <data name="studio.layer.show" xml:space="preserve"><value>Показати шар</value></data>
+  <data name="studio.layer.hide" xml:space="preserve"><value>Сховати шар</value></data>
+  <data name="studio.shape.rectangle" xml:space="preserve"><value>Прямокутник</value></data>
+  <data name="studio.shape.ellipse" xml:space="preserve"><value>Еліпс</value></data>
+  <data name="studio.name" xml:space="preserve"><value>Ім’я</value></data>
+  <data name="studio.opacity" xml:space="preserve"><value>Непрозорість</value></data>
+  <data name="studio.fontSize" xml:space="preserve"><value>Розмір</value></data>
+  <data name="studio.weight.regular" xml:space="preserve"><value>Звичайний</value></data>
+  <data name="studio.weight.medium" xml:space="preserve"><value>Середній</value></data>
+  <data name="studio.weight.bold" xml:space="preserve"><value>Жирний</value></data>
+  <data name="studio.fill" xml:space="preserve"><value>Заливка</value></data>
+  <data name="studio.cornerRadius" xml:space="preserve"><value>Радіус заокруглення</value></data>
+  <data name="studio.playVideo" xml:space="preserve"><value>Відтворити відео</value></data>
+  <data name="studio.size" xml:space="preserve"><value>Розмір</value></data>
+  <data name="studio.background" xml:space="preserve"><value>Тло</value></data>
+  <data name="studio.deleteCanvas" xml:space="preserve"><value>Видалити полотно</value></data>
+  <data name="studio.ai.kind.design" xml:space="preserve"><value>Дизайн</value></data>
+  <data name="studio.ai.kind.image" xml:space="preserve"><value>Зображення</value></data>
+  <data name="studio.ai.kind.video" xml:space="preserve"><value>Відео</value></data>
+  <data name="studio.ai.placeholder.design" xml:space="preserve"><value>Опишіть дизайн, який потрібно створити на цьому полотні</value></data>
+  <data name="studio.ai.placeholder.image" xml:space="preserve"><value>Опишіть зображення для створення</value></data>
+  <data name="studio.ai.placeholder.video" xml:space="preserve"><value>Опишіть відео для створення</value></data>
+  <data name="studio.ai.run" xml:space="preserve"><value>Створити</value></data>
+  <data name="studio.ai.planning" xml:space="preserve"><value>Планування шарів</value></data>
+  <data name="studio.ai.layerProgress" xml:space="preserve"><value>Шар {0} з {1}: {2}</value></data>
+  <data name="studio.ai.drawing" xml:space="preserve"><value>Створення зображення</value></data>
+  <data name="studio.ai.renderingVideo" xml:space="preserve"><value>Створення відео. Це може тривати кілька хвилин.</value></data>
+  <data name="studio.ai.noPlan" xml:space="preserve"><value>Модель не повернула шарів. Спробуйте ще раз або виберіть іншу модель.</value></data>
+  <data name="studio.settings.title" xml:space="preserve"><value>Медіамоделі</value></data>
+  <data name="studio.settings.design" xml:space="preserve"><value>Дизайн</value></data>
+  <data name="studio.settings.model" xml:space="preserve"><value>Модель</value></data>
+  <data name="studio.settings.designHelp" xml:space="preserve"><value>Чат-модель, яка перетворює запит на шари.</value></data>
+  <data name="studio.settings.source" xml:space="preserve"><value>Джерело</value></data>
+  <data name="studio.settings.source.provider" xml:space="preserve"><value>Провайдер</value></data>
+  <data name="studio.settings.source.local" xml:space="preserve"><value>Локально</value></data>
+  <data name="studio.settings.modelDefault" xml:space="preserve"><value>Типово у провайдера</value></data>
+  <data name="studio.settings.local" xml:space="preserve"><value>Локальний сервер</value></data>
+  <data name="studio.settings.localURL" xml:space="preserve"><value>Базова URL-адреса</value></data>
+  <data name="studio.settings.localHelp" xml:space="preserve"><value>OpenAI-сумісний сервер на цьому комп’ютері або в мережі. Використовується, коли джерело вище встановлено на «Локально», з указаною там назвою моделі.</value></data>
+  <data name="studio.settings.music.connect" xml:space="preserve"><value>Підключити API</value></data>
+  <data name="studio.settings.music.type.standard" xml:space="preserve"><value>Музичний сервер</value></data>
+  <data name="studio.settings.music.type.elevenlabs" xml:space="preserve"><value>ElevenLabs</value></data>
+  <data name="studio.settings.music.name" xml:space="preserve"><value>Ім'я</value></data>
+  <data name="studio.settings.music.key" xml:space="preserve"><value>Ключ API</value></data>
+  <data name="studio.settings.music.help" xml:space="preserve"><value>Музичний сервер відповідає на POST /audio/generations і перераховує свої моделі за адресою /models; tools/music_server.py — один із них. Ключ API зберігається у в'язці ключів.</value></data>
+  <data name="studio.ai.kind.next" xml:space="preserve"><value>Наступний екран</value></data>
+  <data name="studio.ai.placeholder.next" xml:space="preserve"><value>Опишіть наступний екран або залиште поле порожнім, щоб продовжити сценарій</value></data>
+  <data name="studio.ai.noImages" xml:space="preserve"><value>Генератор зображень не підключено, тож шари зображень залишилися заповнювачами. Підключіть його, а потім створіть кожне зображення з його шару.</value></data>
+  <data name="studio.screenNumber" xml:space="preserve"><value>Екран {0}</value></data>
+  <data name="studio.layer.icon" xml:space="preserve"><value>Значок</value></data>
+  <data name="studio.layer.lock" xml:space="preserve"><value>Заблокувати шар</value></data>
+  <data name="studio.layer.unlock" xml:space="preserve"><value>Розблокувати шар</value></data>
+  <data name="studio.layer.front" xml:space="preserve"><value>На передній план</value></data>
+  <data name="studio.layer.back" xml:space="preserve"><value>На задній план</value></data>
+  <data name="studio.position" xml:space="preserve"><value>Положення</value></data>
+  <data name="studio.rotation" xml:space="preserve"><value>Поворот</value></data>
+  <data name="studio.appearance" xml:space="preserve"><value>Вигляд</value></data>
+  <data name="studio.gradient" xml:space="preserve"><value>Градієнт</value></data>
+  <data name="studio.stroke" xml:space="preserve"><value>Обведення</value></data>
+  <data name="studio.shadow" xml:space="preserve"><value>Тінь</value></data>
+  <data name="studio.symbol" xml:space="preserve"><value>Назва символу</value></data>
+  <data name="studio.imagePrompt" xml:space="preserve"><value>Опис зображення</value></data>
+  <data name="studio.generateImage" xml:space="preserve"><value>Створити зображення</value></data>
+  <data name="studio.export" xml:space="preserve"><value>Експорт</value></data>
+  <data name="studio.exportAll" xml:space="preserve"><value>Експортувати всі полотна</value></data>
+  <data name="studio.font.default" xml:space="preserve"><value>Без засічок</value></data>
+  <data name="studio.font.rounded" xml:space="preserve"><value>Заокруглений</value></data>
+  <data name="studio.font.serif" xml:space="preserve"><value>Із засічками</value></data>
+  <data name="studio.font.mono" xml:space="preserve"><value>Моноширинний</value></data>
+  <data name="studio.tool.move" xml:space="preserve"><value>Переміщення</value></data>
+  <data name="studio.tool.hand" xml:space="preserve"><value>Рука</value></data>
+  <data name="studio.tool.pen" xml:space="preserve"><value>Перо</value></data>
+  <data name="studio.tool.pencil" xml:space="preserve"><value>Олівець</value></data>
+  <data name="studio.shape.line" xml:space="preserve"><value>Лінія</value></data>
+  <data name="studio.shape.arrow" xml:space="preserve"><value>Стрілка</value></data>
+  <data name="studio.shape.polygon" xml:space="preserve"><value>Багатокутник</value></data>
+  <data name="studio.shape.star" xml:space="preserve"><value>Зірка</value></data>
+  <data name="studio.actions" xml:space="preserve"><value>Дії</value></data>
+  <data name="studio.unlockAll" xml:space="preserve"><value>Розблокувати всі шари</value></data>
+  <data name="studio.frames.phone" xml:space="preserve"><value>Телефон</value></data>
+  <data name="studio.frames.tablet" xml:space="preserve"><value>Планшет</value></data>
+  <data name="studio.frames.desktop" xml:space="preserve"><value>Комп’ютер</value></data>
+  <data name="studio.frames.presentation" xml:space="preserve"><value>Презентація</value></data>
+  <data name="studio.frames.watch" xml:space="preserve"><value>Годинник</value></data>
+  <data name="studio.frames.paper" xml:space="preserve"><value>Папір</value></data>
+  <data name="studio.frames.social" xml:space="preserve"><value>Соцмережі</value></data>
+  <data name="studio.tool.scale" xml:space="preserve"><value>Масштаб</value></data>
+  <data name="studio.tool.section" xml:space="preserve"><value>Секція</value></data>
+  <data name="studio.tool.slice" xml:space="preserve"><value>Фрагмент</value></data>
+  <data name="studio.tool.textPath" xml:space="preserve"><value>Текст уздовж контуру</value></data>
+  <data name="studio.tool.comment" xml:space="preserve"><value>Коментар</value></data>
+  <data name="studio.search" xml:space="preserve"><value>Пошук</value></data>
+  <data name="studio.cut" xml:space="preserve"><value>Вирізати</value></data>
+  <data name="studio.paste" xml:space="preserve"><value>Вставити</value></data>
+  <data name="bots.preset.assistant" xml:space="preserve"><value>Асистент</value></data>
+  <data name="bots.preset.researcher" xml:space="preserve"><value>Дослідник</value></data>
+  <data name="bots.preset.coder" xml:space="preserve"><value>Програміст</value></data>
+  <data name="bots.new" xml:space="preserve"><value>Новий бот</value></data>
+  <data name="bots.edit" xml:space="preserve"><value>Редагувати бота</value></data>
+  <data name="bots.clear" xml:space="preserve"><value>Очистити чат</value></data>
+  <data name="bots.send" xml:space="preserve"><value>Надіслати повідомлення</value></data>
+  <data name="bots.deleteConfirm" xml:space="preserve"><value>Видалити «{0}» і його чат?</value></data>
+  <data name="bots.empty.title" xml:space="preserve"><value>Ботів ще немає</value></data>
+  <data name="bots.empty.detail" xml:space="preserve"><value>Бот — це асистент із власними інструкціями, моделлю та постійним чатом. Дайте йому папку, і він працюватиме в ній як агент.</value></data>
+  <data name="bots.greeting" xml:space="preserve"><value>Надішліть {0} повідомлення, щоб почати.</value></data>
+  <data name="bots.placeholder" xml:space="preserve"><value>Повідомлення для {0}</value></data>
+  <data name="bots.agentIn" xml:space="preserve"><value>Агент у {0}</value></data>
+  <data name="bots.name" xml:space="preserve"><value>Ім’я</value></data>
+  <data name="bots.icon" xml:space="preserve"><value>Значок</value></data>
+  <data name="bots.instructions" xml:space="preserve"><value>Інструкції</value></data>
+  <data name="bots.instructionsHelp" xml:space="preserve"><value>Як бот має поводитися, що він знає і як відповідає.</value></data>
+  <data name="bots.workspace" xml:space="preserve"><value>Папка агента</value></data>
+  <data name="bots.workspace.none" xml:space="preserve"><value>Немає: лише чат</value></data>
+  <data name="bots.workspace.choose" xml:space="preserve"><value>Вибрати папку</value></data>
+  <data name="bots.workspace.clear" xml:space="preserve"><value>Прибрати</value></data>
+  <data name="bots.workspaceHelp" xml:space="preserve"><value>З папкою бот може читати, записувати й виконувати в ній команди без запиту і не має доступу до мережі. Без папки він лише спілкується.</value></data>
+  <data name="bots.error.noReply" xml:space="preserve"><value>Бот не відповів.</value></data>
+  <data name="bots.status.delivered" xml:space="preserve"><value>Доставлено боту</value></data>
+  <data name="bots.status.waiting" xml:space="preserve"><value>Очікування бота</value></data>
+  <data name="tasks.plan.title" xml:space="preserve"><value>Запланувати завдання</value></data>
+  <data name="tasks.plan.subtitle" xml:space="preserve"><value>HerNess виконує повторювану роботу за вас.</value></data>
+  <data name="tasks.upcoming" xml:space="preserve"><value>Найближчі</value></data>
+  <data name="tasks.instructions" xml:space="preserve"><value>Інструкції…</value></data>
+  <data name="tasks.repeat" xml:space="preserve"><value>Повтор</value></data>
+  <data name="tasks.time" xml:space="preserve"><value>Час</value></data>
+  <data name="tasks.day" xml:space="preserve"><value>День</value></data>
+  <data name="tasks.advanced" xml:space="preserve"><value>Додатково</value></data>
+  <data name="tasks.create" xml:space="preserve"><value>Створити</value></data>
+  <data name="tasks.repeat.hourly" xml:space="preserve"><value>Щогодини</value></data>
+  <data name="tasks.repeat.daily" xml:space="preserve"><value>Щодня</value></data>
+  <data name="tasks.repeat.weekdays" xml:space="preserve"><value>Робочі дні</value></data>
+  <data name="tasks.repeat.weekly" xml:space="preserve"><value>Щотижня</value></data>
+  <data name="tasks.repeat.custom" xml:space="preserve"><value>Власний</value></data>
+  <data name="bots.preset.assistant.detail" xml:space="preserve"><value>Допомога з повсякденними завданнями</value></data>
+  <data name="bots.preset.researcher.detail" xml:space="preserve"><value>Досліджуйте теми та порівнюйте джерела</value></data>
+  <data name="bots.preset.coder.detail" xml:space="preserve"><value>Пишіть код і розв’язуйте проблеми</value></data>
+  <data name="tasks.suggestion.email.title" xml:space="preserve"><value>Перевірка пошти</value></data>
+  <data name="tasks.suggestion.email.detail" xml:space="preserve"><value>Перевіряй важливі листи й підсумовуй те, що потребує уваги.</value></data>
+  <data name="tasks.suggestion.reading.title" xml:space="preserve"><value>Читання на вихідних</value></data>
+  <data name="tasks.suggestion.reading.detail" xml:space="preserve"><value>Щотижня знаходь статтю за моїми інтересами.</value></data>
+  <data name="tasks.suggestion.prices.title" xml:space="preserve"><value>Сповіщення про ціни</value></data>
+  <data name="tasks.suggestion.prices.detail" xml:space="preserve"><value>Перевіряй ціни товарів, за якими я стежу, та повідомляй про знижки.</value></data>
+  <data name="tasks.suggestion.events.title" xml:space="preserve"><value>Пошук подій</value></data>
+  <data name="tasks.suggestion.events.detail" xml:space="preserve"><value>Знаходь концерти й події за моїми інтересами.</value></data>
+  <data name="tasks.suggestion.weekend.title" xml:space="preserve"><value>Плани на вихідні</value></data>
+  <data name="tasks.suggestion.weekend.detail" xml:space="preserve"><value>Пропонуй заняття на вихідні з урахуванням моїх уподобань.</value></data>
+  <data name="tasks.suggestions.memory" xml:space="preserve"><value>На основі твоєї пам’яті</value></data>
+  <data name="tasks.suggestions.personalizing" xml:space="preserve"><value>Підготовка пропозицій на основі пам’яті…</value></data>
+  <data name="tasks.suggestions.unavailable" xml:space="preserve"><value>Приклади пропозицій · персоналізація недоступна</value></data>
+  <data name="tasks.suggestions.refresh" xml:space="preserve"><value>Оновити пропозиції</value></data>
+  <data name="tasks.suggestions.instruction" xml:space="preserve"><value>Враховуй мої інтереси й уподобання. Підсумуй результати. Якщо бракує інформації чи доступу, повідом про це.</value></data>
+  <data name="media.music" xml:space="preserve"><value>музика</value></data>
+  <data name="studio.music" xml:space="preserve"><value>Музика</value></data>
+  <data name="studio.library" xml:space="preserve"><value>Бібліотека</value></data>
+  <data name="studio.music.composing" xml:space="preserve"><value>Створення музики. Це може зайняти кілька хвилин.</value></data>
+  <data name="studio.music.song" xml:space="preserve"><value>Пісня</value></data>
+  <data name="studio.music.inspector" xml:space="preserve"><value>Деталі</value></data>
+  <data name="studio.music.section" xml:space="preserve"><value>Секція</value></data>
+  <data name="studio.music.section.delete" xml:space="preserve"><value>Видалити секцію</value></data>
+  <data name="studio.music.lyrics" xml:space="preserve"><value>Слова пісні</value></data>
+  <data name="studio.music.track" xml:space="preserve"><value>Доріжка</value></data>
+  <data name="studio.music.track.generate" xml:space="preserve"><value>Згенерувати доріжку</value></data>
+  <data name="studio.music.track.empty" xml:space="preserve"><value>Аудіо ще немає</value></data>
+  <data name="studio.music.track.delete" xml:space="preserve"><value>Видалити доріжку</value></data>
+  <data name="studio.music.mix" xml:space="preserve"><value>Мікс</value></data>
+  <data name="studio.music.tempo" xml:space="preserve"><value>Темп і тональність</value></data>
+  <data name="studio.music.generating" xml:space="preserve"><value>Створення {0} доріжок</value></data>
+  <data name="studio.music.placeholder" xml:space="preserve"><value>Опишіть пісню: настрій, сюжет, інструменти, вокал</value></data>
+  <data name="studio.music.empty" xml:space="preserve"><value>Опишіть пісню вище або почніть із порожньої. Спочатку створюється план: секції, текст та по доріжці для інструмента — все можна змінити до створення аудіо.</value></data>
+  <data name="studio.music.plan" xml:space="preserve"><value>Написати пісню</value></data>
+  <data name="studio.music.new" xml:space="preserve"><value>Порожня пісня</value></data>
+  <data name="studio.music.noPlan" xml:space="preserve"><value>Модель не повернула план пісні. Спробуйте ще раз або виберіть іншу модель.</value></data>
+  <data name="studio.music.deleteConfirm" xml:space="preserve"><value>Видалити «{0}»? Дорожки та аудіофайли буде вилучено.</value></data>
+  <data name="studio.music.trackCount" xml:space="preserve"><value>{0} доріжок</value></data>
+  <data name="studio.music.bpm" xml:space="preserve"><value>{0} BPM</value></data>
+  <data name="studio.music.key" xml:space="preserve"><value>Тональність</value></data>
+  <data name="studio.music.generateAll" xml:space="preserve"><value>Згенерувати все</value></data>
+  <data name="studio.music.regenerate" xml:space="preserve"><value>Згенерувати цю доріжку знову</value></data>
+  <data name="studio.music.script" xml:space="preserve"><value>Сценарій</value></data>
+  <data name="studio.music.artists" xml:space="preserve"><value>Виконавці</value></data>
+  <data name="studio.music.artist.add" xml:space="preserve"><value>Додати виконавця</value></data>
+  <data name="studio.music.artist.default" xml:space="preserve"><value>Виконавець {0}</value></data>
+  <data name="studio.music.artist.name" xml:space="preserve"><value>Ім'я</value></data>
+  <data name="studio.music.artist.style" xml:space="preserve"><value>Голос і стиль</value></data>
+  <data name="studio.music.section.add" xml:space="preserve"><value>Додати секцію</value></data>
+  <data name="studio.music.section.default" xml:space="preserve"><value>Куплет</value></data>
+  <data name="studio.music.section.bars" xml:space="preserve"><value>{0} тактів</value></data>
+  <data name="studio.music.line.add" xml:space="preserve"><value>Додати рядок</value></data>
+  <data name="studio.music.line.placeholder" xml:space="preserve"><value>Рядок тексту</value></data>
+  <data name="studio.music.line.unsung" xml:space="preserve"><value>Ніхто</value></data>
+  <data name="studio.music.track.add" xml:space="preserve"><value>Додати доріжку</value></data>
+  <data name="studio.music.track.instrument" xml:space="preserve"><value>Інструмент</value></data>
+  <data name="studio.music.track.prompt" xml:space="preserve"><value>Як має грати</value></data>
+  <data name="studio.music.track.vocal" xml:space="preserve"><value>Вокал · {0}</value></data>
+  <data name="studio.music.mute" xml:space="preserve"><value>Вимкнути звук</value></data>
+  <data name="studio.music.solo" xml:space="preserve"><value>Соло</value></data>
+  <data name="library.all" xml:space="preserve"><value>Усе</value></data>
+  <data name="library.kind.image" xml:space="preserve"><value>Зображення</value></data>
+  <data name="library.kind.video" xml:space="preserve"><value>Відео</value></data>
+  <data name="library.kind.audio" xml:space="preserve"><value>Голос</value></data>
+  <data name="library.kind.music" xml:space="preserve"><value>Музика</value></data>
+  <data name="library.kind.document" xml:space="preserve"><value>Документи</value></data>
+  <data name="library.add" xml:space="preserve"><value>Додати файли</value></data>
+  <data name="library.addFailed" xml:space="preserve"><value>Не вдалося додати {0} файлів.</value></data>
+  <data name="library.open" xml:space="preserve"><value>Відкрити</value></data>
+  <data name="library.empty.title" xml:space="preserve"><value>Тут ще нічого немає</value></data>
+  <data name="library.empty.detail" xml:space="preserve"><value>Створені зображення, відео, голос та музика зберігаються тут автоматично. Документи та інші файли додавайте власноруч.</value></data>
+  <data name="backgroundTasks.title" xml:space="preserve"><value>Фонові завдання</value></data>
+  <data name="backgroundTasks.empty" xml:space="preserve"><value>Немає фонових завдань</value></data>
+  <data name="backgroundTasks.finished" xml:space="preserve"><value>Завершені</value></data>
+  <data name="backgroundTasks.failed" xml:space="preserve"><value>Помилка (код {0})</value></data>
+  <data name="backgroundTasks.stopped" xml:space="preserve"><value>Зупинено</value></data>
+  <data name="backgroundTasks.clear" xml:space="preserve"><value>Очистити завершені</value></data>
+  <data name="backgroundTasks.runningCount" xml:space="preserve"><value>Виконується завдань: {0}</value></data>
+  <data name="backgroundTasks.wake" xml:space="preserve"><value>Фонове завдання «{0}» завершилося з кодом виходу {1}. Прочитай його вивід через terminal_session (сеанс {2}) і продовжуй.</value></data>
+  <data name="backgroundTasks.waitingInput" xml:space="preserve"><value>Очікує введення</value></data>
+  <data name="local.installed" xml:space="preserve"><value>встановлено</value></data>
+  <data name="marketplace.title" xml:space="preserve"><value>Ринок</value></data>
+  <data name="marketplace.empty" xml:space="preserve"><value>Без плагінів</value></data>
+  <data name="marketplace.emptyHint" xml:space="preserve"><value>Натисніть «Оновити», щоб завантажити реєстр.</value></data>
+  <data name="marketplace.install" xml:space="preserve"><value>встановити</value></data>
+  <data name="marketplace.search" xml:space="preserve"><value>Плагіни пошуку</value></data>
+  <data name="marketplace.update" xml:space="preserve"><value>Оновити v{0} → v{1}</value></data>
+  <data name="marketplace.by" xml:space="preserve"><value>від {0}</value></data>
+  <data name="market.tab.plugins" xml:space="preserve"><value>Плагіни</value></data>
+  <data name="market.tab.skills" xml:space="preserve"><value>Навички</value></data>
+  <data name="market.tab.starters" xml:space="preserve"><value>Шаблони проєктів</value></data>
+  <data name="starters.intro" xml:space="preserve"><value>Виберіть шаблон і порожню папку. Промпт з’явиться в полі введення, щоб ви могли прочитати й надіслати його.</value></data>
+  <data name="starters.use" xml:space="preserve"><value>Використати шаблон</value></data>
+  <data name="starters.chooseFolder" xml:space="preserve"><value>Виберіть порожню папку для нового проєкту.</value></data>
+  <data name="starters.web.title" xml:space="preserve"><value>Вебзастосунок</value></data>
+  <data name="starters.web.detail" xml:space="preserve"><value>Next.js з TypeScript, макетом, прикладом API-маршруту та лінтингом.</value></data>
+  <data name="starters.landing.title" xml:space="preserve"><value>Лендинг</value></data>
+  <data name="starters.landing.detail" xml:space="preserve"><value>Статичні HTML і CSS з головним блоком, можливостями, цінами та контактами. Без збирання.</value></data>
+  <data name="starters.api.title" xml:space="preserve"><value>API-сервіс</value></data>
+  <data name="starters.api.detail" xml:space="preserve"><value>FastAPI з перевіркою стану, прикладом ресурсу, налаштуваннями та тестами.</value></data>
+  <data name="starters.ios.title" xml:space="preserve"><value>Застосунок iOS</value></data>
+  <data name="starters.ios.detail" xml:space="preserve"><value>SwiftUI з двома екранами, спостережуваною моделлю та модульним тестом.</value></data>
+  <data name="starters.worker.title" xml:space="preserve"><value>Cloudflare Worker</value></data>
+  <data name="starters.worker.detail" xml:space="preserve"><value>API на TypeScript у Workers з типізованими прив’язками та тестом.</value></data>
+  <data name="starters.cli.title" xml:space="preserve"><value>Інструмент командного рядка</value></data>
+  <data name="starters.cli.detail" xml:space="preserve"><value>Пакет Python з підкомандами, тестами та інструкцією зі встановлення.</value></data>
+  <data name="common.cancel" xml:space="preserve"><value>Скасувати</value></data>
+  <data name="common.connect" xml:space="preserve"><value>Підключити</value></data>
+  <data name="common.copied" xml:space="preserve"><value>Скопійовано</value></data>
+  <data name="common.delete" xml:space="preserve"><value>Видалити</value></data>
+  <data name="common.done" xml:space="preserve"><value>Готово</value></data>
+  <data name="common.download" xml:space="preserve"><value>Завантажити</value></data>
+  <data name="common.idle" xml:space="preserve"><value>Бездіяльність</value></data>
+  <data name="common.refresh" xml:space="preserve"><value>Оновити</value></data>
+  <data name="common.remove" xml:space="preserve"><value>видалити</value></data>
+  <data name="common.start" xml:space="preserve"><value>старт</value></data>
+  <data name="common.stop" xml:space="preserve"><value>Стоп</value></data>
+  <data name="common.test" xml:space="preserve"><value>Тест</value></data>
+  <data name="common.save" xml:space="preserve"><value>зберегти</value></data>
+  <data name="common.view" xml:space="preserve"><value>Переглянути</value></data>
+  <data name="composer.add" xml:space="preserve"><value>додати</value></data>
+  <data name="attachment.addApp" xml:space="preserve"><value>Додайте додаток Dots Harness</value></data>
+  <data name="attachment.projectDetail" xml:space="preserve"><value>Виберіть проект для нових чатів</value></data>
+  <data name="attachment.goal" xml:space="preserve"><value>Мета</value></data>
+  <data name="attachment.goalDetail" xml:space="preserve"><value>Поставте мету, до досягнення якої потрібно працювати</value></data>
+  <data name="attachment.plan" xml:space="preserve"><value>Плановий режим</value></data>
+  <data name="attachment.planDetail" xml:space="preserve"><value>Увімкніть режим планування</value></data>
+  <data name="attachment.saveSkill" xml:space="preserve"><value>Зберегти навик</value></data>
+  <data name="attachment.plugins" xml:space="preserve"><value>Плагіни</value></data>
+  <data name="attachment.slashCommands" xml:space="preserve"><value>Слеш-команди</value></data>
+  <data name="attachment.folder" xml:space="preserve"><value>Додати папку</value></data>
+  <data name="attachment.connectors" xml:space="preserve"><value>Конектори</value></data>
+  <data name="attachment.documentsDetail" xml:space="preserve"><value>Створення та редагування артефактів документів</value></data>
+  <data name="attachment.pdfDetail" xml:space="preserve"><value>Читайте, створюйте та перевіряйте файли PDF</value></data>
+  <data name="attachment.spreadsheetsDetail" xml:space="preserve"><value>Створення та редагування файлів електронних таблиць</value></data>
+  <data name="modelPicker.model" xml:space="preserve"><value>Модель</value></data>
+  <data name="modelPicker.speed" xml:space="preserve"><value>швидкість</value></data>
+  <data name="modelPicker.maximum" xml:space="preserve"><value>Максимум</value></data>
+  <data name="modelPicker.standard" xml:space="preserve"><value>Стандартний</value></data>
+  <data name="modelPicker.fast" xml:space="preserve"><value>швидко</value></data>
+  <data name="modelPicker.auto" xml:space="preserve"><value>Авто</value></data>
+  <data name="modelPicker.autoHint" xml:space="preserve"><value>Вибирає модель і зусилля для кожного повідомлення</value></data>
+  <data name="settings.sshPassword" xml:space="preserve"><value>Пароль (використовується один раз)</value></data>
+  <data name="settings.sshRememberPassword" xml:space="preserve"><value>Запам’ятати пароль</value></data>
+  <data name="settings.sshRememberPassword.hint" xml:space="preserve"><value>Не потрібно: пароль використовується лише раз, щоб встановити ключ. У ~/.ssh/config він не записується ніколи.</value></data>
+  <data name="ssh.continue" xml:space="preserve"><value>Далі</value></data>
+  <data name="ssh.enrolling" xml:space="preserve"><value>Встановлення ключа…</value></data>
+  <data name="ssh.enrolled.hint" xml:space="preserve"><value>Наступні з’єднання використовують ключ; пароль більше не потрібен.</value></data>
+  <data name="ssh.retry" xml:space="preserve"><value>Спробувати ще</value></data>
+  <data name="ssh.retryHint" xml:space="preserve"><value>Перевірте адресу, ім’я користувача й пароль і спробуйте ще раз.</value></data>
+  <data name="ssh.installKeyManually" xml:space="preserve"><value>Додайте цей ключ до ~/.ssh/authorized_keys на сервері й спробуйте ще раз.</value></data>
+  <data name="ssh.copyPublicKey" xml:space="preserve"><value>Копіювати ключ</value></data>
+  <data name="ssh.error.passwordAuthDisabled" xml:space="preserve"><value>Сервер не приймає вхід за паролем.</value></data>
+  <data name="ssh.error.authFailed" xml:space="preserve"><value>{0} відхилив вхід.</value></data>
+  <data name="ssh.error.hostKeyChanged" xml:space="preserve"><value>Ключ вузла {0} змінився. Не продовжуйте, якщо сервер не перевстановлювали.</value></data>
+  <data name="ssh.error.invalidInput" xml:space="preserve"><value>Введіть дійсний псевдонім, ім'я хоста, ім'я користувача та порт.</value></data>
+  <data name="sidebar.projects" xml:space="preserve"><value>Проекти</value></data>
+  <data name="sidebar.recent" xml:space="preserve"><value>Останні</value></data>
+  <data name="sidebar.search" xml:space="preserve"><value>Пошук чатів</value></data>
+  <data name="sidebar.sites" xml:space="preserve"><value>Сайти</value></data>
+  <data name="sidebar.scheduled" xml:space="preserve"><value>За розкладом</value></data>
+  <data name="sidebar.addProject" xml:space="preserve"><value>Додати проект</value></data>
+  <data name="settings.compactTrigger" xml:space="preserve"><value>Автостиснення контексту при</value></data>
+  <data name="settings.compactTrigger.hint" xml:space="preserve"><value>Частка контекстного вікна кожної моделі. Вище значення довше зберігає кеш промпта, адже стиснення його переписує.</value></data>
+  <data name="settings.explore.subagents" xml:space="preserve"><value>Використовувати субагентів</value></data>
+  <data name="settings.explore.hint" xml:space="preserve"><value>Якщо ввімкнено, у складних або довгих завданнях агент передає паралельним субагентам пошук по багатьох файлах і незалежні частини великої зміни; до основної розмови потрапляє лише їхній підсумок. Субагент, що редагує, може записувати лише призначені йому файли, і призначення не можуть перетинатися. Прості завдання їх ніколи не викликають. Кожен субагент — окремий запуск моделі; вимкніть, щоб зменшити витрати.</value></data>
+  <data name="settings.responseStyle" xml:space="preserve"><value>Стиль відповіді</value></data>
+  <data name="settings.responseStyle.hint" xml:space="preserve"><value>Цей параметр не переписує запит. «Стисло» та «Ультра» — побажання без гарантій: вони не забезпечують певну кількість токенів, завершеність чи нижчу вартість.</value></data>
+  <data name="responseStyle.balanced" xml:space="preserve"><value>Збалансований</value></data>
+  <data name="responseStyle.concise" xml:space="preserve"><value>Стисло</value></data>
+  <data name="responseStyle.ultra" xml:space="preserve"><value>Ультра</value></data>
+  <data name="responseStyle.detailed" xml:space="preserve"><value>Детально</value></data>
+  <data name="settings.computerUse.enable" xml:space="preserve"><value>Увімкнути керування комп'ютером</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>Версія та оновлення</value></data>
+  <data name="settings.updates.available" xml:space="preserve"><value>Доступна нова версія: v{0}</value></data>
+  <data name="settings.updates.download" xml:space="preserve"><value>Завантажити оновлення</value></data>
+  <data name="dock.branch" xml:space="preserve"><value>Гілка</value></data>
+  <data name="dock.refresh" xml:space="preserve"><value>Оновити</value></data>
+  <data name="dock.commit" xml:space="preserve"><value>Коміт</value></data>
+  <data name="dock.push" xml:space="preserve"><value>Надіслати</value></data>
+  <data name="dock.fetch" xml:space="preserve"><value>Отримати</value></data>
+  <data name="dock.commitOrPush" xml:space="preserve"><value>Commit або push</value></data>
+  <data name="dock.commitMessage" xml:space="preserve"><value>Повідомлення коміту</value></data>
+  <data name="dock.noChanges" xml:space="preserve"><value>Агент нічого не змінив.</value></data>
+  <data name="dock.whyRequest" xml:space="preserve"><value>Ваш запит</value></data>
+  <data name="dock.whyAgent" xml:space="preserve"><value>Пояснення агента</value></data>
+  <data name="dock.notRepo" xml:space="preserve"><value>Ця тека не є git-репозиторієм.</value></data>
+  <data name="dock.gitMissing" xml:space="preserve"><value>Git не встановлено. Він потрібен для перегляду, commit і push.</value></data>
+  <data name="dock.installGit" xml:space="preserve"><value>Встановити Git</value></data>
+  <data name="dock.filterFiles" xml:space="preserve"><value>Фільтр файлів…</value></data>
+  <data name="dock.openFile" xml:space="preserve"><value>Відкрити файл</value></data>
+  <data name="dock.selectFile" xml:space="preserve"><value>Виберіть файл у дереві робочого простору</value></data>
+  <data name="dock.binaryFile" xml:space="preserve"><value>Двійковий або нечитабельний файл</value></data>
+  <data name="dock.expand" xml:space="preserve"><value>Розгорнути</value></data>
+  <data name="dock.collapse" xml:space="preserve"><value>Згорнути</value></data>
+  <data name="dock.split" xml:space="preserve"><value>Розділити</value></data>
+  <data name="dock.unsplit" xml:space="preserve"><value>Показати одну вкладку</value></data>
+  <data name="dock.newTab" xml:space="preserve"><value>Нова вкладка</value></data>
+  <data name="dock.address" xml:space="preserve"><value>Пошук або введення URL</value></data>
+  <data name="dock.invalidAddress" xml:space="preserve"><value>Введіть дійсну вебадресу або пошуковий запит.</value></data>
+  <data name="dock.openExternal" xml:space="preserve"><value>Відкрити в типовому браузері</value></data>
+  <data name="dock.bottomTerminal" xml:space="preserve"><value>Відкрити термінал унизу</value></data>
+  <data name="dock.splitHorizontal" xml:space="preserve"><value>Розділити поруч</value></data>
+  <data name="dock.splitVertical" xml:space="preserve"><value>Розділити зверху і знизу</value></data>
+  <data name="dock.noWorkspace" xml:space="preserve"><value>Спершу виберіть робочу теку.</value></data>
+  <data name="git.branchHelp" xml:space="preserve"><value>Виберіть гілку Git</value></data>
+  <data name="git.uncommitted" xml:space="preserve"><value>Незакріплені: файли {0}</value></data>
+  <data name="market.area.core" xml:space="preserve"><value>Основний Marketplace</value></data>
+  <data name="market.area.experimental" xml:space="preserve"><value>Експериментальний</value></data>
+  <data name="market.area.community" xml:space="preserve"><value>Спільнота</value></data>
+  <data name="market.area.communityExperimental" xml:space="preserve"><value>Спільнота / Експериментальний</value></data>
+  <data name="market.account" xml:space="preserve"><value>Обліковий запис HerNess</value></data>
+  <data name="market.signIn" xml:space="preserve"><value>Увійти</value></data>
+  <data name="market.signIn.email" xml:space="preserve"><value>Ел. пошта й пароль</value></data>
+  <data name="market.signIn.title" xml:space="preserve"><value>Увійдіть з обліковим записом HerNess</value></data>
+  <data name="market.email" xml:space="preserve"><value>Ел. пошта</value></data>
+  <data name="market.password" xml:space="preserve"><value>Пароль</value></data>
+  <data name="market.likeSignIn" xml:space="preserve"><value>Увійдіть, щоб уподобати</value></data>
+  <data name="market.customize" xml:space="preserve"><value>Змінити</value></data>
+  <data name="market.localForks" xml:space="preserve"><value>Локальні зміни</value></data>
+  <data name="market.openFolder" xml:space="preserve"><value>Відкрити папку</value></data>
+  <data name="market.fork.compared" xml:space="preserve"><value>Порівняно</value></data>
+  <data name="market.consent.title" xml:space="preserve"><value>Цей плагін виконує нативний код</value></data>
+  <data name="market.consent.accept" xml:space="preserve"><value>Прийняти й увімкнути</value></data>
+  <data name="market.consent.message" xml:space="preserve"><value>{0} — сторонній нативний плагін. Розділ: {1}. Перевірка: {2}. Категорія: {3}. Перевірте дозволи та вихідний код. Якщо погодитеся, плагін одразу запуститься як довірений.</value></data>
+  <data name="market.review.verified" xml:space="preserve"><value>Перевірено DOTS</value></data>
+  <data name="market.review.pending" xml:space="preserve"><value>Очікує перевірки</value></data>
+  <data name="market.community.empty" xml:space="preserve"><value>Ще немає плагінів спільноти</value></data>
+  <data name="market.community.emptyHint" xml:space="preserve"><value>Плагіни спільноти потребують окремої перевірки та явної згоди на виконання нативного коду.</value></data>
+  <data name="market.report" xml:space="preserve"><value>Поскаржитися</value></data>
+  <data name="market.report.title" xml:space="preserve"><value>Поскаржитися на плагін</value></data>
+  <data name="market.report.reason" xml:space="preserve"><value>Причина</value></data>
+  <data name="market.report.submit" xml:space="preserve"><value>Надіслати скаргу</value></data>
+  <data name="market.report.malware" xml:space="preserve"><value>Шкідливе ПЗ або небезпечна поведінка</value></data>
+  <data name="market.report.credentialTheft" xml:space="preserve"><value>Крадіжка облікових даних</value></data>
+  <data name="market.report.exfiltration" xml:space="preserve"><value>Витік даних</value></data>
+  <data name="market.report.deceptive" xml:space="preserve"><value>Оманливий опис або видавання себе за іншого</value></data>
+  <data name="market.report.spam" xml:space="preserve"><value>Спам або порожня обгортка</value></data>
+  <data name="market.report.copyright" xml:space="preserve"><value>Порушення авторських прав або ліцензії</value></data>
+  <data name="market.publish" xml:space="preserve"><value>Опублікувати плагін</value></data>
+  <data name="market.publish.title" xml:space="preserve"><value>Опублікувати нативний плагін</value></data>
+  <data name="market.publish.hint" xml:space="preserve"><value>Тека плагіна має містити plugin.yml, plugin.ir.json і ліцензію. JavaScript і декларативні середовища не приймаються; збірки для платформ створюються в CI.</value></data>
+  <data name="market.publish.noFolder" xml:space="preserve"><value>Теку плагіна не вибрано</value></data>
+  <data name="market.publish.chooseFolder" xml:space="preserve"><value>Вибрати теку</value></data>
+  <data name="market.publish.irPreview" xml:space="preserve"><value>Попередній перегляд plugin.ir.json</value></data>
+  <data name="market.publish.sourcePreview" xml:space="preserve"><value>Попередній перегляд нативного коду</value></data>
+  <data name="market.publish.version" xml:space="preserve"><value>Версія (SemVer)</value></data>
+  <data name="market.publish.license" xml:space="preserve"><value>Ліцензія SPDX (наприклад, MIT)</value></data>
+  <data name="market.publish.visibility" xml:space="preserve"><value>Видимість вихідного коду</value></data>
+  <data name="market.publish.public" xml:space="preserve"><value>Публічний — пакет вихідного коду публікується</value></data>
+  <data name="market.publish.private" xml:space="preserve"><value>Приватний — доступ лише у власника та CI</value></data>
+  <data name="market.publish.targets" xml:space="preserve"><value>Цільові платформи</value></data>
+  <data name="market.publish.footer" xml:space="preserve"><value>Після публікації ШІ визначає категорію, розділ і ризик. Навіть після завершення збірки плагін не з'явиться в списку до перевірки людиною.</value></data>
+  <data name="market.publish.submit" xml:space="preserve"><value>Опублікувати</value></data>
+  <data name="market.publish.error.http" xml:space="preserve"><value>Не вдалося опублікувати в Marketplace (HTTP {0}): {1}</value></data>
+  <data name="market.publish.error.license" xml:space="preserve"><value>Виберіть ліцензію, щоб опублікувати плагін.</value></data>
+  <data name="market.publish.error.noManifest" xml:space="preserve"><value>У вибраній теці немає plugin.yml.</value></data>
+  <data name="market.publish.error.nativeOnly" xml:space="preserve"><value>Публікувати можна лише нативні плагіни.</value></data>
+  <data name="market.publish.error.semver" xml:space="preserve"><value>Введіть коректну версію SemVer.</value></data>
+  <data name="market.publish.error.targets" xml:space="preserve"><value>Виберіть принаймні одну цільову платформу та допустиму видимість вихідного коду.</value></data>
+  <data name="market.publish.error.package" xml:space="preserve"><value>Пакет має містити файли plugin.ir.json і license.</value></data>
+  <data name="market.publish.error.irVersion" xml:space="preserve"><value>plugin.ir.json має бути версії 1.</value></data>
+  <data name="market.publish.error.releaseID" xml:space="preserve"><value>Не вдалося отримати ідентифікатор випуску Marketplace.</value></data>
+  <data name="market.publish.error.noVersion" xml:space="preserve"><value>У plugin.yml немає поля version.</value></data>
+  <data name="market.publish.status.registering" xml:space="preserve"><value>Створення запису в Marketplace…</value></data>
+  <data name="market.publish.status.uploading" xml:space="preserve"><value>Вивантаження пакета нативного коду…</value></data>
+  <data name="market.publish.status.aiUnavailable" xml:space="preserve"><value>Класифікація ШІ недоступна; тимчасова мітка: {0} · {1} · {2}. Потрібна перевірка людиною.</value></data>
+  <data name="market.publish.status.aiDone" xml:space="preserve"><value>Класифікація ШІ: {0} · {1} · {2}. Очікує перевірки людиною.</value></data>
+  <data name="market.publish.status.aiFailed" xml:space="preserve"><value>Не вдалося завершити класифікацію ШІ; очікує перевірки людиною.</value></data>
+  <data name="market.publish.status.queueing" xml:space="preserve"><value>Додавання нативних збірок у чергу…</value></data>
+  <data name="market.publish.status.uploaded" xml:space="preserve"><value>Пакет вихідного коду вивантажено; очікує перевірки нативної CI.</value></data>
+  <data name="market.error.notSignedIn" xml:space="preserve"><value>Для публікації в Marketplace потрібен обліковий запис HerNess.</value></data>
+  <data name="market.error.invalidCallback" xml:space="preserve"><value>Недійсна відповідь входу HerNess.</value></data>
+  <data name="market.error.stateMismatch" xml:space="preserve"><value>Стан входу HerNess не збігся.</value></data>
+  <data name="market.error.request" xml:space="preserve"><value>Помилка запиту до Marketplace (HTTP {0}): {1}</value></data>
+  <data name="market.error.invalidResponse" xml:space="preserve"><value>Marketplace повернув недійсну відповідь.</value></data>
+  <data name="market.error.credentials" xml:space="preserve"><value>Потрібні ел. пошта й пароль.</value></data>
+  <data name="remote.scan" xml:space="preserve"><value>Відскануйте цей QR-код або введіть одноразовий код у HerNess Mobile.</value></data>
+  <data name="remote.newCode" xml:space="preserve"><value>Новий код з'єднання</value></data>
+  <data name="remote.copyLink" xml:space="preserve"><value>Скопіювати посилання для з'єднання</value></data>
+  <data name="remote.tunnel.enable" xml:space="preserve"><value>Увімкнути Cloudflare Quick Tunnel</value></data>
+  <data name="remote.hint" xml:space="preserve"><value>Ключі провайдерів лишаються на комп'ютері. Запис файлів, термінал, збірка, розгортання та дії з PR і далі використовують вибраний режим схвалення.</value></data>
+  <data name="settings.tab.mobile" xml:space="preserve"><value>Мобільне керування</value></data>
+  <data name="settings.compaction.economyFixed" xml:space="preserve"><value>Економна політика використовує фіксований поріг 90%.</value></data>
+  <data name="settings.browser.title" xml:space="preserve"><value>Бажаний браузер і рушій</value></data>
+  <data name="settings.browser.auto" xml:space="preserve"><value>Автоматично (вбудований або вказаний вами браузер)</value></data>
+  <data name="settings.browser.managed" xml:space="preserve"><value>Керований ізольований браузер (Chrome)</value></data>
+  <data name="settings.browser.chrome" xml:space="preserve"><value>Мій Chrome</value></data>
+  <data name="settings.browser.desktopHint" xml:space="preserve"><value>Вбудований браузер використовує системний рушій. Також доступні керований Chrome і наявний профіль Chrome.</value></data>
+  <data name="settings.browser.inAppDesktop" xml:space="preserve"><value>Вбудований браузер</value></data>
+  <data name="settings.computerUse.desktopHint" xml:space="preserve"><value>Агент може переглядати запущені програми й знімки екрана, користуватися мишею та клавіатурою і перевіряти результат. Дії на робочому столі потребують дозволу.</value></data>
+  <data name="settings.computerUse.linuxHint" xml:space="preserve"><value>Для керування комп’ютером у Linux потрібні X11, xdotool і maim або ImageMagick. Wayland не підтримується.</value></data>
+  <data name="market.settings.hint" xml:space="preserve"><value>В основному Marketplace наведено перевірені плагіни Harness. Community та Experimental показано окремо; для запуску нативних плагінів потрібна ваша згода.</value></data>
+  <data name="market.registry.empty" xml:space="preserve"><value>Записів Marketplace не знайдено. Оновіть реєстр і спробуйте ще раз.</value></data>
+  <data name="market.signIn.hint" xml:space="preserve"><value>Увійдіть через Google, GitHub або за допомогою електронної пошти й пароля HerNess. Токени сеансу зберігаються у сховищі облікових даних платформи.</value></data>
+  <data name="dock.clean" xml:space="preserve"><value>Робоче дерево чисте.</value></data>
+  <data name="market.publish.folderPickerUnavailable" xml:space="preserve"><value>У цьому середовищі робочого столу немає засобу вибору папки.</value></data>
+  <data name="market.publish.localFolderRequired" xml:space="preserve"><value>Виберіть локальну папку, щоб опублікувати плагін.</value></data>
+  <data name="market.report.details" xml:space="preserve"><value>Деталі (необов’язково, до 5 000 символів)</value></data>
+  <data name="dock.browser.webview2Unavailable" xml:space="preserve"><value>Не вдалося запустити WebView2. Установіть або відновіть Microsoft Edge WebView2 Runtime.</value></data>
+  <data name="settings.marketplace" xml:space="preserve"><value>Ринок</value></data>
+  <data name="workspace.use" xml:space="preserve"><value>Використовуйте робочу область</value></data>
+  <data name="market.fork.consent.title" xml:space="preserve"><value>Цей змінений плагін виконує нативний код</value></data>
+  <data name="market.fork.consent.message" xml:space="preserve"><value>{0} — локальний форк. Його вихідний код не залежить від upstream; перегляньте зміни перед увімкненням.</value></data>
+  <data name="market.fork.newUpstream" xml:space="preserve"><value>Новий upstream: v{0}; локальні зміни зберігаються</value></data>
+  <data name="market.remove.confirmTitle" xml:space="preserve"><value>Видалити плагін Marketplace?</value></data>
+  <data name="market.remove.confirmMessage" xml:space="preserve"><value>Видалити {0} з цього пристрою?</value></data>
+  <data name="market.report.other" xml:space="preserve"><value>Інше</value></data>
+  <data name="modelPicker.economy" xml:space="preserve"><value>Економія</value></data>
+  <data name="conversation.toggleResponseEconomy" xml:space="preserve"><value>Увімкнути або вимкнути заощадження токенів у відповідях</value></data>
+  <data name="market.unpublish.confirmMessage" xml:space="preserve"><value>Зняти {0} з публікації? Наявні встановлення не буде видалено.</value></data>
+  <data name="market.permissions" xml:space="preserve"><value>Дозволи</value></data>
+  <data name="market.risk" xml:space="preserve"><value>Ризик: {0}</value></data>
+  <data name="market.category.coding" xml:space="preserve"><value>Програмування</value></data>
+  <data name="market.category.git" xml:space="preserve"><value>Git</value></data>
+  <data name="market.category.qa" xml:space="preserve"><value>Тестування та якість</value></data>
+  <data name="market.category.devops" xml:space="preserve"><value>DevOps</value></data>
+  <data name="market.category.browser" xml:space="preserve"><value>Браузер</value></data>
+  <data name="market.category.web" xml:space="preserve"><value>Веб</value></data>
+  <data name="market.category.backend" xml:space="preserve"><value>Бекенд</value></data>
+  <data name="market.category.mobile" xml:space="preserve"><value>Мобільні</value></data>
+  <data name="market.category.models" xml:space="preserve"><value>Моделі</value></data>
+  <data name="market.category.integrations" xml:space="preserve"><value>Інтеграції</value></data>
+  <data name="market.category.workspace" xml:space="preserve"><value>Робочий простір</value></data>
+  <data name="market.category.productivity" xml:space="preserve"><value>Продуктивність</value></data>
+  <data name="market.category.tools" xml:space="preserve"><value>Інструменти</value></data>
+  <data name="market.category.design" xml:space="preserve"><value>Дизайн</value></data>
+  <data name="market.category.documents" xml:space="preserve"><value>Документи</value></data>
+  <data name="market.category.authoring" xml:space="preserve"><value>Створення навичок</value></data>
+  <data name="market.category.community" xml:space="preserve"><value>Спільнота</value></data>
+  <data name="market.category.other" xml:space="preserve"><value>Інше</value></data>
+  <data name="navigation.back" xml:space="preserve"><value>Назад</value></data>
+  <data name="navigation.forward" xml:space="preserve"><value>Вперед</value></data>
+  <data name="dock.restart" xml:space="preserve"><value>Перезапустити</value></data>
+  <data name="dock.go" xml:space="preserve"><value>Перейти</value></data>
+  <data name="terminal.sandboxUnavailable" xml:space="preserve"><value>Ізольоване середовище термінала недоступне: {0}</value></data>
+  <data name="remote.lan" xml:space="preserve"><value>Адреса в локальній мережі</value></data>
+  <data name="remote.code" xml:space="preserve"><value>Код</value></data>
+  <data name="remote.expires" xml:space="preserve"><value>Спливає: {0}</value></data>
+  <data name="remote.pairingLink" xml:space="preserve"><value>Посилання для з’єднання</value></data>
+  <data name="custom.detected" xml:space="preserve"><value>Запущено на цьому комп'ютері</value></data>
+  <data name="custom.modelOptional" xml:space="preserve"><value>Назва моделі (необов'язково)</value></data>
+  <data name="custom.contextOptional" xml:space="preserve"><value>Вікно контексту в токенах (необов'язково)</value></data>
+  <data name="custom.prefix" xml:space="preserve"><value>Префікс моделі</value></data>
+  <data name="local.tuning" xml:space="preserve"><value>Продуктивність</value></data>
+  <data name="local.tuningHint" xml:space="preserve"><value>Порожньо або auto: середовище виконання саме підлаштує модель під пам'ять GPU. Зміни діють під час наступного запуску моделі.</value></data>
+  <data name="local.contextSize" xml:space="preserve"><value>Розмір контексту (токени)</value></data>
+  <data name="local.gpuLayers" xml:space="preserve"><value>Шари на GPU (auto, all або число)</value></data>
+  <data name="local.threads" xml:space="preserve"><value>Потоки CPU</value></data>
+  <data name="local.batchSize" xml:space="preserve"><value>Розмір пакета</value></data>
+  <data name="local.flashAttention" xml:space="preserve"><value>Flash attention</value></data>
+  <data name="local.kvCache" xml:space="preserve"><value>Тип KV-кешу</value></data>
+  <data name="local.extraArgs" xml:space="preserve"><value>Додаткові аргументи llama-server</value></data>
+  <data name="local.hardware" xml:space="preserve"><value>Обладнання</value></data>
+  <data name="local.listen" xml:space="preserve"><value>Слухання</value></data>
+  <data name="local.importGGUF" xml:space="preserve"><value>Додати файл GGUF…</value></data>
+  <data name="local.tooLarge" xml:space="preserve"><value>Завелика</value></data>
+  <data name="local.backend" xml:space="preserve"><value>Бекенд GPU</value></data>
+  <data name="settings.compaction.autoRouted" xml:space="preserve"><value>Моделі з автоматичною маршрутизацією</value></data>
+  <data name="settings.compaction.effectiveThreshold" xml:space="preserve"><value>Чинний поріг</value></data>
+  <data name="sidebar.signOut" xml:space="preserve"><value>Вийти</value></data>
+  <data name="market.unpublish" xml:space="preserve"><value>Зняти з публікації</value></data>
+  <data name="settings.sshHosts" xml:space="preserve"><value>Віддалені комп’ютери (SSH)</value></data>
+  <data name="settings.sshHosts.hint" xml:space="preserve"><value>Вузли беруться з ~/.ssh/config. Доданий тут вузол записується туди ж.</value></data>
+  <data name="settings.sshNoHosts" xml:space="preserve"><value>У ~/.ssh/config немає вузлів.</value></data>
+  <data name="settings.sshAddHost" xml:space="preserve"><value>Додати комп’ютер…</value></data>
+  <data name="settings.sshTest" xml:space="preserve"><value>Перевірити</value></data>
+  <data name="settings.sshManaged" xml:space="preserve"><value>додано тут</value></data>
+  <data name="settings.sshFromConfig" xml:space="preserve"><value>з ~/.ssh/config</value></data>
+  <data name="settings.sshRemove.handWritten" xml:space="preserve"><value>Цей вузол вписано в ~/.ssh/config вручну. Вилучіть його там.</value></data>
+  <data name="settings.updates.current" xml:space="preserve"><value>Поточна версія</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>Перевірка оновлень…</value></data>
+  <data name="settings.updates.checkAgain" xml:space="preserve"><value>Перевірити знову</value></data>
+  <data name="settings.updates.upToDate" xml:space="preserve"><value>Застосунок оновлено.</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>Перевірити оновлення</value></data>
+  <data name="settings.updates.retry" xml:space="preserve"><value>Спробувати ще раз</value></data>
+  <data name="settings.updates.hint" xml:space="preserve"><value>Перевірте наявність останньої версії.</value></data>
+  <data name="settings.updates.required" xml:space="preserve"><value>Обов'язково</value></data>
+  <data name="ssh.connected" xml:space="preserve"><value>{0} відповів.</value></data>
+  <data name="remote.enable" xml:space="preserve"><value>Дозволити дистанційне керування</value></data>
+  <data name="remote.shareLan" xml:space="preserve"><value>Поділитися в локальній мережі</value></data>
+  <data name="remote.enableHint" xml:space="preserve"><value>Віддалений шлюз вимкнено. Увімкніть його, щоб зв'язати телефон.</value></data>
+  <data name="plan.title" xml:space="preserve"><value>План</value></data>
+  <data name="plan.proposed" xml:space="preserve"><value>Claude запропонував план</value></data>
+  <data name="plan.revise" xml:space="preserve"><value>Доопрацювати…</value></data>
+  <data name="plan.acceptAuto" xml:space="preserve"><value>Прийняти й авторежим</value></data>
 </root>

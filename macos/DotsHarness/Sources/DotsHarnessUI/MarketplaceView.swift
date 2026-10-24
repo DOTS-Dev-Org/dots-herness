@@ -20,6 +20,8 @@ public struct MarketplaceView: View {
     @State private var showPublish = false
     @State private var showEmailSignIn = false
     @State private var selectedArea = "core"
+    @State private var selectedCategory: String?
+    @State private var detailID: String?
 
     public init(model: AppModel) {
         self.model = model
@@ -28,104 +30,52 @@ public struct MarketplaceView: View {
         _publisher = StateObject(wrappedValue: MarketplacePublisher(session: model.marketplaceSession))
     }
 
+    private var source: [MarketplaceEntry] {
+        selectedArea == "core" ? market.entries : market.communityEntries
+    }
+
+    /// Categories present in the current area, in display order.
+    private var categories: [String] {
+        Set(source.map { MarketCategory.key($0.category) }).sorted { MarketCategory.rank($0) < MarketCategory.rank($1) }
+    }
+
+    /// Category chip plus search: every typed word must match, ignoring case and diacritics.
     private var filtered: [MarketplaceEntry] {
-        let source = selectedArea == "core" ? market.entries : market.communityEntries
-        guard !query.isEmpty else { return source }
-        let q = query.lowercased()
-        return source.filter {
-            $0.name.lowercased().contains(q)
-                || $0.id.lowercased().contains(q)
-                || $0.description.lowercased().contains(q)
+        let terms = query.split(whereSeparator: \.isWhitespace)
+        return source.filter { entry in
+            (selectedCategory == nil || MarketCategory.key(entry.category) == selectedCategory)
+                && terms.allSatisfy { term in
+                    [entry.name, entry.id, entry.description, entry.author, MarketCategory.title(entry.category)]
+                        .contains { $0.localizedStandardContains(term) }
+                }
         }
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(AppCopy.text("marketplace.title")).font(.title2.weight(.semibold))
-                Spacer()
-                if session.isSignedIn {
-                    Text(session.profile?.email ?? "HerNess hesabı")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Button("Plugin yayınla") { showPublish = true }
-                Button("Çıkış") { signOutMarketplace() }
-                } else {
-                    Menu("Giriş yap") {
-                        ForEach(MarketplaceProvider.allCases) { provider in
-                            Button(provider.title) { session.beginOAuth(provider) }
-                        }
-                        Divider()
-                        Button("Email ve şifre") { showEmailSignIn = true }
-                    }
-                }
-                if market.isLoading { ProgressView().controlSize(.small) }
-                Button(AppCopy.text("common.refresh")) { Task { await market.refresh() } }
-                    .disabled(market.isLoading)
-            }
-            .padding()
-
-            TextField(AppCopy.text("marketplace.search"), text: $query)
-                .textFieldStyle(.roundedBorder)
-                .padding(.horizontal)
-
-            Picker("Marketplace alanı", selection: $selectedArea) {
-                Text("Ana Marketplace").tag("core")
-                Text("Community / Experimental").tag("community")
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-            .padding(.top, 8)
-
-            Text(selectedArea == "core"
-                 ? "DOTS Harness iş akışına doğrudan katkı veren, incelenmiş pluginler."
-                 : "Ana keşif alanından ayrı, AI tarafından topluluk veya deneysel olarak sınıflandırılmış pluginler.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal)
-                .padding(.top, 4)
-
-            if !market.forks.forks.isEmpty {
-                localForks
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-            }
-
-            if session.isSignedIn && !market.ownedPlugins.isEmpty {
-                ownedPlugins
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-            }
-
-            if let error = market.lastError ?? actionError {
-                Text(error).font(.caption).foregroundStyle(.red).padding(.horizontal).padding(.top, 4)
-            }
-
-            if filtered.isEmpty {
-                ContentUnavailableView(
-                    selectedArea == "core" ? AppCopy.text("marketplace.empty") : "Community alanında henüz plugin yok",
-                    systemImage: "shippingbox",
-                    description: Text(selectedArea == "core"
-                                      ? AppCopy.text("marketplace.emptyHint")
-                                      : "Community pluginleri ayrı inceleme ve açık native-code onayı gerektirir.")
-                )
-                .frame(maxHeight: .infinity)
+        Group {
+            if let entry = (market.entries + market.communityEntries).first(where: { $0.id == detailID }) {
+                detail(entry)
             } else {
-                List(filtered) { entry in
-                    row(entry).padding(.vertical, 4)
-                }
+                catalog
             }
         }
         .frame(minWidth: 520, minHeight: 420)
         .task {
-            if market.entries.isEmpty && market.communityEntries.isEmpty { await market.refresh() }
+            // Always refetch: the cached registry would show stale download and like counts.
+            await market.refresh()
             await market.refreshOwnedPlugins()
+            await market.refreshLikes()
         }
+        .onChange(of: selectedArea) { selectedCategory = nil }
         .onChange(of: session.isSignedIn) { _, signedIn in
             if signedIn {
                 model.syncAccountFromMarketplace()
-                Task { await market.refreshOwnedPlugins() }
+                Task {
+                    await market.refreshOwnedPlugins()
+                    await market.refreshLikes()
+                }
             } else {
+                Task { await market.refreshLikes() }
                 model.setAccountIdentity(.signedOut())
             }
         }
@@ -145,114 +95,272 @@ public struct MarketplaceView: View {
             MarketplaceReportView(market: market, entry: entry)
         }
         .confirmationDialog(
-            "Bu plugin native kod çalıştırır",
+            AppCopy.text("market.consent.title"),
             isPresented: Binding(
                 get: { pendingConsent != nil },
                 set: { if !$0 { pendingConsent = nil } }
             ),
             presenting: pendingConsent
         ) { entry in
-            Button("Kabul et ve etkinleştir", role: .destructive) {
+            Button(AppCopy.text("market.consent.accept"), role: .destructive) {
                 pendingConsent = nil
                 installAccepted(entry)
             }
-            Button("İptal", role: .cancel) { pendingConsent = nil }
+            Button(AppCopy.text("common.cancel"), role: .cancel) { pendingConsent = nil }
         } message: { entry in
-            let area = entry.catalogScope == "core"
-                ? "ana Marketplace"
-                : (entry.catalogScope == "experimental" ? "Experimental alanı" : "Community alanı")
-            let review = entry.verificationStatus == "verified" ? "DOTS incelemesinden geçmiş" : "inceleme bekleyen"
-            Text("\(entry.name), \(area) içindeki \(review) üçüncü taraf native pluginidir. Kategori: \(categoryTitle(entry.category)). İzinleri ve kaynak kodunu inceleyin. Kabul ederseniz plugin trusted olarak hemen çalıştırılır.")
+            Text(AppCopy.format("market.consent.message", entry.name, scopeTitle(entry.catalogScope),
+                                reviewTitle(entry), MarketCategory.title(entry.category)))
         }
         .confirmationDialog(
-            "Özelleştirilmiş plugin native kod çalıştırır",
+            AppCopy.text("market.fork.consent.title"),
             isPresented: Binding(
                 get: { pendingForkConsent != nil },
                 set: { if !$0 { pendingForkConsent = nil } }
             ),
             presenting: pendingForkConsent
         ) { fork in
-            Button("Kabul et ve etkinleştir", role: .destructive) {
+            Button(AppCopy.text("market.consent.accept"), role: .destructive) {
                 pendingForkConsent = nil
                 market.forks.acceptAndEnable(fork)
                 model.remount()
             }
-            Button("İptal", role: .cancel) { pendingForkConsent = nil }
+            Button(AppCopy.text("common.cancel"), role: .cancel) { pendingForkConsent = nil }
         } message: { fork in
-            Text("\(fork.id) yerel fork'tur. Kaynak upstream'den bağımsızdır; değişiklikleri inceledikten sonra etkinleştirin.")
+            Text(AppCopy.format("market.fork.consent.message", fork.id))
         }
+    }
+
+    private var catalog: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                // Always shown: hiding it while searching would shift the search field under the cursor.
+                MarketFeatured(items: MarketItem.featured(in: source.map(item))) { detailID = $0.id }
+
+                Text(AppCopy.text("market.tab.plugins")).font(.system(size: 24, weight: .semibold))
+
+                HStack(spacing: 14) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                        TextField(AppCopy.text("marketplace.search"), text: $query).textFieldStyle(.plain)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .overlay(Capsule().stroke(Color.primary.opacity(0.18)))
+
+                    if market.isLoading {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Button { Task { await market.refresh() } } label: {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        .help(AppCopy.text("common.refresh"))
+                    }
+
+                    Menu {
+                        if session.isSignedIn {
+                            Text(session.profile?.email ?? AppCopy.text("market.account"))
+                            Button(AppCopy.text("sidebar.signOut")) { signOutMarketplace() }
+                        } else {
+                            ForEach(MarketplaceProvider.allCases) { provider in
+                                Button(provider.title) { session.beginOAuth(provider) }
+                            }
+                            Divider()
+                            Button(AppCopy.text("market.signIn.email")) { showEmailSignIn = true }
+                        }
+                    } label: {
+                        Image(systemName: session.isSignedIn ? "person.crop.circle.fill" : "person.crop.circle")
+                            .foregroundStyle(.secondary)
+                    }
+                    .menuStyle(.button)
+                    .buttonStyle(.plain)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                    .help(session.isSignedIn ? (session.profile?.email ?? AppCopy.text("market.account")) : AppCopy.text("market.signIn"))
+
+                    Menu {
+                        Button(AppCopy.text("market.publish")) { showPublish = true }
+                            .disabled(!session.isSignedIn)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(AppCopy.text("composer.add")).font(.system(size: 13, weight: .medium))
+                            Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold))
+                        }
+                        .foregroundStyle(Color(nsColor: .windowBackgroundColor))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Color.primary, in: Capsule())
+                    }
+                    .menuStyle(.button)
+                    .buttonStyle(.plain)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                }
+
+                HStack(spacing: 4) {
+                    MarketPill(AppCopy.text("market.area.core"), selected: selectedArea == "core") { selectedArea = "core" }
+                    MarketPill(AppCopy.text("market.area.communityExperimental"), selected: selectedArea == "community") { selectedArea = "community" }
+                }
+
+                if categories.count > 1 {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 4) {
+                            MarketPill(AppCopy.text("library.all"), selected: selectedCategory == nil) { selectedCategory = nil }
+                            ForEach(categories, id: \.self) { id in
+                                MarketPill(MarketCategory.title(id), selected: selectedCategory == id) { selectedCategory = id }
+                            }
+                        }
+                    }
+                }
+
+                if !market.forks.forks.isEmpty { localForks }
+                if session.isSignedIn && !market.ownedPlugins.isEmpty { ownedPlugins }
+
+                if let actionError {
+                    Text(actionError).font(.caption).foregroundStyle(.red)
+                }
+
+                if filtered.isEmpty {
+                    ContentUnavailableView(
+                        selectedArea == "core" ? AppCopy.text("marketplace.empty") : AppCopy.text("market.community.empty"),
+                        systemImage: "shippingbox",
+                        description: Text(selectedArea == "core"
+                                          ? AppCopy.text("marketplace.emptyHint")
+                                          : AppCopy.text("market.community.emptyHint"))
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 260)
+                } else {
+                    ForEach(MarketItem.sections(filtered.map(item)), id: \.title) { section in
+                        Text(section.title).font(.system(size: 16, weight: .medium)).padding(.top, 10)
+                        LazyVGrid(columns: MarketRowLayout.columns, alignment: .leading, spacing: 20) {
+                            ForEach(section.items) { listing in
+                                if let entry = filtered.first(where: { $0.id == listing.id }) { row(entry) }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 30)
+            .padding(.vertical, 26)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func item(_ entry: MarketplaceEntry) -> MarketItem {
+        let verified = entry.verificationStatus == "verified"
+        return MarketItem(
+            id: entry.id, symbol: MarketCategory.symbol(entry.category), title: entry.name,
+            summary: entry.description.isEmpty ? entry.id : entry.description, category: entry.category, publisher: entry.author,
+            badge: verified ? (entry.author == "DOTS" ? .official : .verified) : nil,
+            date: entry.publishedAt, downloads: entry.downloads, likes: entry.likes, featured: entry.featured
+        )
+    }
+
+    /// Compact catalog row; the full listing opens in place on click.
+    private func row(_ entry: MarketplaceEntry) -> some View {
+        MarketRow(item: item(entry), open: { detailID = entry.id }) { quickAction(entry) }
     }
 
     @ViewBuilder
-    private func row(_ entry: MarketplaceEntry) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(entry.name).font(.headline)
-                Text("v\(entry.version)").font(.caption).foregroundStyle(.secondary)
-                Spacer()
-                action(entry)
-            }
-            Text(entry.id).font(.caption.monospaced()).foregroundStyle(.secondary)
-            HStack(spacing: 8) {
-                TagBadge(entry.tier, background: AnyShapeStyle(.quaternary))
-                TagBadge(scopeTitle(entry.catalogScope), background: AnyShapeStyle(.quaternary))
-                TagBadge(categoryTitle(entry.category), background: AnyShapeStyle(.quaternary))
-                TagBadge(entry.verificationStatus == "verified" ? "DOTS reviewed" : "inceleme bekliyor", background: AnyShapeStyle(.quaternary))
-                if entry.riskLevel != "low" && entry.riskLevel != "unknown" {
-                    TagBadge("risk: \(entry.riskLevel)", background: AnyShapeStyle(.quaternary))
+    private func quickAction(_ entry: MarketplaceEntry) -> some View {
+        if market.busyIDs.contains(entry.id) {
+            ProgressView().controlSize(.small)
+        } else {
+            switch market.status(entry) {
+            case .notInstalled:
+                MarketIconButton("plus", help: AppCopy.text("marketplace.install")) {
+                    pendingConsent = entry
                 }
-                if entry.signature != nil || entry.currentArtifact?.signature != nil {
-                    TagBadge("signed", background: AnyShapeStyle(.quaternary))
+            case .updateAvailable(let installed):
+                MarketIconButton("arrow.down.circle", help: AppCopy.format("marketplace.update", installed, entry.version)) {
+                    pendingConsent = entry
                 }
-                if market.forks.hasFork(for: entry.id) {
-                    TagBadge("Özelleştirildi", background: AnyShapeStyle(.quaternary))
-                }
-                if !entry.author.isEmpty {
-                    Text(AppCopy.format("marketplace.by", entry.author)).font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            if !entry.description.isEmpty {
-                Text(entry.description).font(.caption)
-            }
-            HStack(spacing: 8) {
-                if !entry.permissions.isEmpty {
-                    Text("İzinler: \(entry.permissions.joined(separator: ", "))")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-                Spacer()
-                if session.isSignedIn {
-                    Button("Raporla") { pendingReport = entry }
-                        .buttonStyle(.borderless)
-                        .font(.caption2)
-                }
+            case .upToDate:
+                Image(systemName: "checkmark")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .help(AppCopy.text("local.installed"))
             }
         }
     }
 
-    private func categoryTitle(_ category: String) -> String {
-        switch category {
-        case "coding": return "Coding"
-        case "git": return "Git"
-        case "devops": return "DevOps"
-        case "qa": return "QA"
-        case "browser": return "Browser"
-        case "workspace": return "Workspace"
-        case "models": return "Models"
-        case "integrations": return "Integrations"
-        case "productivity": return "Productivity"
-        case "community": return "Community"
-        default: return "Other"
+    private func detail(_ entry: MarketplaceEntry) -> some View {
+        let listing = item(entry)
+        return MarketDetail(item: listing, backTitle: AppCopy.text("market.tab.plugins"), back: { detailID = nil },
+                            related: listing.related(in: source.map(item)), openRelated: { detailID = $0.id }) {
+            if let actionError {
+                Text(actionError).font(.caption).foregroundStyle(.red)
+            }
+            if !entry.description.isEmpty {
+                Text(entry.description).fixedSize(horizontal: false, vertical: true)
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    TagBadge(scopeTitle(entry.catalogScope))
+                    TagBadge(MarketCategory.title(entry.category))
+                    TagBadge(reviewTitle(entry))
+                    if entry.riskLevel != "low" && entry.riskLevel != "unknown" {
+                        TagBadge(AppCopy.format("market.risk", entry.riskLevel))
+                    }
+                    if entry.signature != nil || entry.currentArtifact?.signature != nil { TagBadge(AppCopy.text("market.signed")) }
+                    if market.forks.hasFork(for: entry.id) { TagBadge(AppCopy.text("market.customized")) }
+                }
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                MarketField(AppCopy.text("market.field.version"), "v\(entry.version)")
+                if let license = entry.license { MarketField(AppCopy.text("market.field.license"), license) }
+                MarketField(AppCopy.text("market.field.type"), entry.tier)
+                MarketField(AppCopy.text("market.field.source"), entry.sourceVisibility)
+            }
+            HStack(spacing: 14) {
+                if let homepage = entry.homepage, let url = URL(string: homepage) { Link(AppCopy.text("market.homepage"), destination: url) }
+                if let source = entry.sourceURL, let url = URL(string: source) { Link(AppCopy.text("market.sourceCode"), destination: url) }
+            }
+            if !entry.permissions.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(AppCopy.text("market.permissions")).font(.headline)
+                    ForEach(entry.permissions, id: \.self) { permission in
+                        Label(permission, systemImage: "lock").font(.callout).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            if session.isSignedIn {
+                Button(AppCopy.text("market.report")) {
+                    pendingReport = entry
+                }
+                .buttonStyle(.link)
+            }
+        } actions: {
+            likeButton(entry)
+            action(entry)
         }
     }
 
     private func scopeTitle(_ scope: String) -> String {
         switch scope {
-        case "core": return "Ana"
-        case "experimental": return "Experimental"
-        default: return "Community"
+        case "core": return AppCopy.text("market.area.core")
+        case "experimental": return AppCopy.text("market.area.experimental")
+        default: return AppCopy.text("market.area.community")
         }
+    }
+
+    private func reviewTitle(_ entry: MarketplaceEntry) -> String {
+        AppCopy.text(entry.verificationStatus == "verified" ? "market.review.verified" : "market.review.pending")
+    }
+
+    private func likeButton(_ entry: MarketplaceEntry) -> some View {
+        let liked = market.likedIDs.contains(entry.id)
+        return MarketIconButton(liked ? "heart.fill" : "heart",
+                                help: AppCopy.text(session.isSignedIn ? (liked ? "market.unlike" : "market.like") : "market.likeSignIn")) {
+            actionError = nil
+            Task {
+                do { try await market.setLiked(!liked, id: entry.id) }
+                catch { actionError = error.localizedDescription }
+            }
+        }
+        .disabled(!session.isSignedIn)
     }
 
     @ViewBuilder
@@ -262,27 +370,32 @@ public struct MarketplaceView: View {
         } else {
             switch market.status(entry) {
             case .notInstalled:
-                Button(AppCopy.text("marketplace.install")) { pendingConsent = entry }
+                Button(AppCopy.text("marketplace.install")) {
+                    pendingConsent = entry
+                }
+                .buttonStyle(.borderedProminent)
             case .updateAvailable(let installed):
-                Button(AppCopy.format("marketplace.update", installed, entry.version)) { pendingConsent = entry }
+                Button(AppCopy.format("marketplace.update", installed, entry.version)) {
+                    pendingConsent = entry
+                }
+                .buttonStyle(.borderedProminent)
             case .upToDate:
-                HStack(spacing: 6) {
-                    Text(AppCopy.text("local.installed")).font(.caption).foregroundStyle(.secondary)
-                    if !market.forks.hasFork(for: entry.id) {
-                        Button("Özelleştir") { createFork(entry) }
+                if !market.forks.hasFork(for: entry.id) {
+                    Button(AppCopy.text("market.customize")) {
+                        createFork(entry)
                     }
-                    Button(AppCopy.text("common.remove"), role: .destructive) {
-                        actionError = nil
-                        do {
-                            if entry.id == VisionFallbackDefaults.pluginID {
-                                try model.removeVisionPlugin()
-                            } else {
-                                try market.remove(entry.id)
-                                model.remount()
-                            }
+                }
+                Button(AppCopy.text("common.remove"), role: .destructive) {
+                    actionError = nil
+                    do {
+                        if entry.id == VisionFallbackDefaults.pluginID {
+                            try model.removeVisionPlugin()
+                        } else {
+                            try market.remove(entry.id)
+                            model.remount()
                         }
-                        catch { actionError = error.localizedDescription }
                     }
+                    catch { actionError = error.localizedDescription }
                 }
             }
         }
@@ -290,28 +403,28 @@ public struct MarketplaceView: View {
 
     private var localForks: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Yerel özelleştirmeler").font(.headline)
+            Text(AppCopy.text("market.localForks")).font(.headline)
             ForEach(market.forks.forks) { fork in
                 HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(fork.id).font(.caption.monospaced())
-                        Text("upstream \(fork.upstreamID) · v\(fork.upstreamVersion)")
+                        Text(AppCopy.format("market.fork.upstream", fork.upstreamID, fork.upstreamVersion))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                         if let available = fork.upstreamVersionAvailable {
-                            Text("Yeni upstream: v\(available); yerel değişiklikler korunuyor")
+                            Text(AppCopy.format("market.fork.newUpstream", available))
                                 .font(.caption2)
                                 .foregroundStyle(.orange)
                         }
                     }
                     Spacer()
-                    Button("Klasörü aç") { NSWorkspace.shared.open(market.forks.folder(for: fork)) }
-                    Button("Dışa aktar") { exportFork(fork) }
-                    Button("Sil", role: .destructive) { deleteFork(fork) }
+                    Button(AppCopy.text("market.openFolder")) { NSWorkspace.shared.open(market.forks.folder(for: fork)) }
+                    Button(AppCopy.text("studio.export")) { exportFork(fork) }
+                    Button(AppCopy.text("common.delete"), role: .destructive) { deleteFork(fork) }
                     if fork.upstreamVersionAvailable != nil {
-                        Button("Karşılaştırıldı") { market.forks.acknowledgeUpstream(fork, version: fork.upstreamVersionAvailable!) }
+                        Button(AppCopy.text("market.fork.compared")) { market.forks.acknowledgeUpstream(fork, version: fork.upstreamVersionAvailable!) }
                     }
-                    Button("Kabul et") { pendingForkConsent = fork }
+                    Button(AppCopy.text("plan.accept")) { pendingForkConsent = fork }
                 }
             }
         }
@@ -321,17 +434,17 @@ public struct MarketplaceView: View {
 
     private var ownedPlugins: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Yayınlarım").font(.headline)
+            Text(AppCopy.text("market.owned")).font(.headline)
             ForEach(market.ownedPlugins) { plugin in
                 VStack(alignment: .leading, spacing: 3) {
                     HStack {
                         Text(plugin.name).font(.subheadline.weight(.semibold))
                         Text(plugin.id).font(.caption.monospaced()).foregroundStyle(.secondary)
                         Spacer()
-                        Text(plugin.sourceVisibility == "private" ? "private source" : "public source")
+                        Text(AppCopy.text(plugin.sourceVisibility == "private" ? "market.source.private" : "market.source.public"))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
-                        Button("Yayından kaldır", role: .destructive) {
+                        Button(AppCopy.text("market.unpublish"), role: .destructive) {
                             unpublish(plugin)
                         }
                     }
@@ -363,7 +476,7 @@ public struct MarketplaceView: View {
     private func createFork(_ entry: MarketplaceEntry) {
         do {
             let fork = try market.forks.createFork(upstreamID: entry.id, upstreamVersion: entry.version)
-            actionError = "Özelleştirilmiş fork oluşturuldu: \(fork.id). Kaynak upstream'den bağımsızdır."
+            actionError = AppCopy.format("market.fork.created", fork.id)
             model.remount()
         } catch {
             actionError = error.localizedDescription
@@ -385,7 +498,7 @@ public struct MarketplaceView: View {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             try market.forks.export(fork, to: url)
-            actionError = "Fork dışa aktarıldı."
+            actionError = AppCopy.text("market.fork.exported")
         } catch {
             actionError = error.localizedDescription
         }
@@ -439,14 +552,14 @@ private struct MarketplaceEmailSignInView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("HerNess hesabıyla giriş").font(.title2.weight(.semibold))
+                Text(AppCopy.text("market.signIn.title")).font(.title2.weight(.semibold))
                 Spacer()
-                Button("Kapat") { dismiss() }
+                Button(AppCopy.text("feedback.close")) { dismiss() }
             }
-            TextField("Email", text: $email)
+            TextField(AppCopy.text("market.email"), text: $email)
                 .textFieldStyle(.roundedBorder)
                 .textContentType(.username)
-            SecureField("Şifre", text: $password)
+            SecureField(AppCopy.text("market.password"), text: $password)
                 .textFieldStyle(.roundedBorder)
                 .textContentType(.password)
             if let error {
@@ -454,7 +567,7 @@ private struct MarketplaceEmailSignInView: View {
             }
             HStack {
                 Spacer()
-                Button("Giriş yap") { submit() }
+                Button(AppCopy.text("market.signIn")) { submit() }
                     .buttonStyle(.borderedProminent)
                     .disabled(isSubmitting || email.isEmpty || password.isEmpty)
             }
@@ -495,22 +608,22 @@ private struct MarketplacePublishView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Native plugin yayınla").font(.title2.weight(.semibold))
+                Text(AppCopy.text("market.publish.title")).font(.title2.weight(.semibold))
                 Spacer()
-                Button("Kapat") { dismiss() }
+                Button(AppCopy.text("feedback.close")) { dismiss() }
             }
-            Text("Plugin klasöründe plugin.yml, plugin.ir.json ve license bulunmalı. JavaScript ve declarative runtime kabul edilmez; platform buildleri CI'da oluşturulur.")
+            Text(AppCopy.text("market.publish.hint"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             HStack {
-                Text(folder?.path ?? "Plugin klasörü seçilmedi")
+                Text(folder?.path ?? AppCopy.text("market.publish.noFolder"))
                     .font(.caption.monospaced())
                     .lineLimit(2)
                 Spacer()
-                Button("Klasör seç") { chooseFolder() }
+                Button(AppCopy.text("market.publish.chooseFolder")) { chooseFolder() }
             }
             if let irPreview {
-                DisclosureGroup("plugin.ir.json önizleme") {
+                DisclosureGroup(AppCopy.text("market.publish.irPreview")) {
                     ScrollView {
                         Text(irPreview)
                             .font(.system(.caption, design: .monospaced))
@@ -521,7 +634,7 @@ private struct MarketplacePublishView: View {
                 }
             }
             if let nativeSourcePreview {
-                DisclosureGroup("Native kaynak önizleme") {
+                DisclosureGroup(AppCopy.text("market.publish.sourcePreview")) {
                     ScrollView {
                         Text(nativeSourcePreview)
                             .font(.system(.caption, design: .monospaced))
@@ -531,16 +644,16 @@ private struct MarketplacePublishView: View {
                     .frame(maxHeight: 120)
                 }
             }
-            TextField("Sürüm (SemVer)", text: $version)
+            TextField(AppCopy.text("market.publish.version"), text: $version)
                 .textFieldStyle(.roundedBorder)
-            TextField("SPDX lisansı (ör. MIT)", text: $license)
+            TextField(AppCopy.text("market.publish.license"), text: $license)
                 .textFieldStyle(.roundedBorder)
-            Picker("Kaynak görünürlüğü", selection: $sourceVisibility) {
-                Text("Public — kaynak paketi listelenir").tag("public")
-                Text("Private — yalnızca sahibi ve CI erişir").tag("private")
+            Picker(AppCopy.text("market.publish.visibility"), selection: $sourceVisibility) {
+                Text(AppCopy.text("market.publish.public")).tag("public")
+                Text(AppCopy.text("market.publish.private")).tag("private")
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text("Platform hedefleri").font(.caption.weight(.semibold))
+                Text(AppCopy.text("market.publish.targets")).font(.caption.weight(.semibold))
                 ForEach(MarketplaceTarget.defaultTargets) { target in
                     Toggle(target.title, isOn: Binding(
                         get: { selectedTargets.contains(target.id) },
@@ -558,11 +671,11 @@ private struct MarketplacePublishView: View {
                 Text(error).font(.caption).foregroundStyle(.red)
             }
             HStack {
-                Text("Yayın sonrası AI kategori, alan ve risk sınıflandırması yapar. Plugin build tamamlandıktan sonra da insan incelemesi bitene kadar listelenmez.")
+                Text(AppCopy.text("market.publish.footer"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Button("Yayınla") { publish() }
+                Button(AppCopy.text("market.publish.submit")) { publish() }
                     .buttonStyle(.borderedProminent)
                     .disabled(folder == nil || publisher.isPublishing || !session.isSignedIn || selectedTargets.isEmpty)
             }
@@ -634,28 +747,28 @@ private struct MarketplaceReportView: View {
     @State private var isSubmitting = false
 
     private static let reasons: [(String, String)] = [
-        ("malware", "Malware veya zararlı davranış"),
-        ("credential_theft", "Kimlik bilgisi / credential hırsızlığı"),
-        ("data_exfiltration", "Veri dışarı aktarma"),
-        ("deceptive_listing", "Yanıltıcı listeleme / impersonation"),
-        ("spam", "Spam veya boş wrapper"),
-        ("copyright", "Telif / lisans ihlali"),
-        ("other", "Diğer"),
+        ("malware", "market.report.malware"),
+        ("credential_theft", "market.report.credentialTheft"),
+        ("data_exfiltration", "market.report.exfiltration"),
+        ("deceptive_listing", "market.report.deceptive"),
+        ("spam", "market.report.spam"),
+        ("copyright", "market.report.copyright"),
+        ("other", "sidebar.other"),
     ]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Plugin'i raporla").font(.title2.weight(.semibold))
+                Text(AppCopy.text("market.report.title")).font(.title2.weight(.semibold))
                 Spacer()
-                Button("Kapat") { dismiss() }
+                Button(AppCopy.text("feedback.close")) { dismiss() }
             }
             Text("\(entry.name) · v\(entry.version)")
                 .font(.caption.monospaced())
                 .foregroundStyle(.secondary)
-            Picker("Neden", selection: $reason) {
+            Picker(AppCopy.text("market.report.reason"), selection: $reason) {
                 ForEach(Self.reasons, id: \.0) { value, label in
-                    Text(label).tag(value)
+                    Text(AppCopy.text(label)).tag(value)
                 }
             }
             TextEditor(text: $details)
@@ -667,7 +780,8 @@ private struct MarketplaceReportView: View {
             }
             HStack {
                 Spacer()
-                Button("Raporu gönder") { submit() }
+                Button(AppCopy.text("market.report.submit")) { submit() }
+
                     .buttonStyle(.borderedProminent)
                     .disabled(isSubmitting)
             }

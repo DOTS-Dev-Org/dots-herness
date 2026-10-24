@@ -79,7 +79,7 @@ public struct TrayPanelView: View {
             .foregroundStyle(.secondary)
 
             VStack(spacing: 1) {
-                Text(model.selected?.title ?? AppCopy.text("sidebar.newChat"))
+                Text(model.selected?.displayTitle ?? AppCopy.text("sidebar.newChat"))
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
                 if let status, !status.text.isEmpty {
@@ -259,6 +259,9 @@ public struct TrayPanelView: View {
         if let continuation = conversation.continuation {
             if continuation.reason == .toolStepLimit {
                 return TrayChatStatus(text: AppCopy.text("agent.toolStepLimit"), tint: .orange)
+            }
+            if continuation.reason == .networkLost {
+                return TrayChatStatus(text: AppCopy.text("agent.networkLostTitle"), tint: .orange)
             }
             return continuation.reason == .providerLimit
                 ? TrayChatStatus(text: AppCopy.text("agent.providerLimitTitle"), tint: .red)

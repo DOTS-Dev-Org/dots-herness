@@ -55,6 +55,7 @@ private enum ProviderModelCatalogDecoder {
         let contextWindow: Int?
         let efforts: [String]?
         let fast: Bool
+        let tools: Bool?
     }
 
     private static let effortOrder = ["none", "low", "medium", "high", "xhigh", "max"]
@@ -91,9 +92,19 @@ private enum ProviderModelCatalogDecoder {
                 name: firstString(in: row, keys: ["display_name", "displayName", "label"]),
             contextWindow: contextWindow(in: row),
                 efforts: reasoningEfforts(in: row),
-                fast: supportsFast(in: row)
+                fast: supportsFast(in: row),
+                tools: toolSupport(in: row)
             )
         }
+    }
+
+    private static func toolSupport(in row: [String: Any]) -> Bool? {
+        if let value = row["tools"] as? Bool { return value }
+        if let capabilities = row["capabilities"] as? [String: Any],
+           let value = capabilities["tools"] as? Bool {
+            return value
+        }
+        return nil
     }
 
     private static func firstString(in row: [String: Any], keys: [String]) -> String? {
@@ -225,8 +236,15 @@ extension RouterController {
         if modelRefreshTask == task { modelRefreshTask = nil }
     }
 
+    /// The last good listing of one provider, kept while its catalog cannot be read.
+    static func carriedListing(provider: String, from known: [RouterModel]) -> [RouterModel] {
+        known.filter { $0.provider == provider }
+    }
+
     private func performModelRefresh() async {
         await ProviderRegistry.shared.refreshRemote()
+        // Read before the listing is replaced: a failed account keeps this snapshot.
+        let known = models
         var next: [RouterModel] = []
         let activeAccounts = store.state.accounts.filter(\.active)
 
@@ -309,7 +327,8 @@ extension RouterController {
                 name: String? = nil,
                 discoveredEfforts: [String]? = nil,
                 contextWindow: Int? = nil,
-                fast: Bool? = nil
+                fast: Bool? = nil,
+                tools: Bool? = nil
             ) -> RouterModel {
                 let spec = specModels.first { $0.id == id }
                 let efforts: [String] = {
@@ -323,6 +342,7 @@ extension RouterController {
                     contextWindow: RouterCatalog.documentedContextWindow(for: id, provider: account.provider)
                     ?? servedContexts[account.id]?[id] ?? servedContexts[account.id]?[LocalServerProbe.anyModel]
                     ?? geminiContexts[account.id]?[id] ?? contextWindow ?? spec?.contextWindow,
+                    tools: RouterCatalog.supportsToolCalling(for: account.provider, reported: tools),
                     efforts: efforts,
                     displayName: name ?? spec?.name,
                     provider: account.provider,
@@ -345,6 +365,9 @@ extension RouterController {
             switch results[account.id] {
             case .failure(let failure):
                 issues.append("\(owner): \(failure.localizedDescription)")
+                // The registry knows neither windows nor models the listing added; a
+                // failed refresh keeps the last good listing for this provider instead.
+                live = Self.carriedListing(provider: account.provider, from: known)
             case .success(let data):
                 if account.provider == "gpt" {
                     if let catalog = try? JSONDecoder().decode(CodexModelCatalogPayload.self, from: data) {
@@ -376,10 +399,11 @@ extension RouterController {
                             name: item.name,
                             discoveredEfforts: item.efforts,
                             contextWindow: item.contextWindow,
-                            fast: item.fast
+                            fast: item.fast,
+                            tools: item.tools
                         )
                     }
-                    // A local server with a declared model may list nothing (mlx_lm does).
+                    // A local server with a declared model may list nothing.
                     if live.isEmpty, account.authType != "custom" || account.hasPlaceholderModel {
                         issues.append("\(owner): model list was empty")
                     }
@@ -469,15 +493,20 @@ extension RouterController {
         ]
     }
 
-    /// Automatically reported or documented context size, before applying a
-    /// user override or the conservative runtime fallback.
-    public func detectedContextWindow(for model: String? = nil, provider preferredProvider: String? = nil) -> Int? {
+    /// Highest-priority active account that can serve the model, on the preferred provider when there is one.
+    private func servingAccount(for model: String?, provider preferredProvider: String?) -> StoredProviderAccount? {
         let accounts = store.state.accounts
             .filter(\.active)
             .sorted { $0.priority < $1.priority }
-        let account = accounts.first {
+        return accounts.first {
             (preferredProvider == nil || $0.provider == preferredProvider) && canServe($0, model: model ?? "")
         } ?? accounts.first { canServe($0, model: model ?? "") }
+    }
+
+    /// Automatically reported or documented context size, before applying a
+    /// user override or the conservative runtime fallback.
+    public func detectedContextWindow(for model: String? = nil, provider preferredProvider: String? = nil) -> Int? {
+        let account = servingAccount(for: model, provider: preferredProvider)
         let provider = preferredProvider ?? account?.provider
         if let model, let provider,
            let documented = RouterCatalog.documentedContextWindow(for: model, provider: provider) { return documented }
@@ -504,12 +533,7 @@ extension RouterController {
     }
 
     public func contextWindow(for model: String? = nil, provider preferredProvider: String? = nil) -> Int {
-        let accounts = store.state.accounts
-            .filter(\.active)
-            .sorted { $0.priority < $1.priority }
-        let account = accounts.first {
-            (preferredProvider == nil || $0.provider == preferredProvider) && canServe($0, model: model ?? "")
-        } ?? accounts.first { canServe($0, model: model ?? "") }
+        let account = servingAccount(for: model, provider: preferredProvider)
         let provider = preferredProvider ?? account?.provider
         if let model, let provider,
            let override = modelContextWindowOverride(for: model, provider: provider), override > 0 {
@@ -621,10 +645,6 @@ extension RouterController {
             return (configuration, provider)
         }
         return nil
-    }
-
-    public var hasImageFallback: Bool {
-        store.state.accounts.contains { $0.active && $0.imageFallbackEnabled }
     }
 
     public var imageGenerationCommandVisible: Bool {

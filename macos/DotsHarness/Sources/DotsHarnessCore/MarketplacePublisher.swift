@@ -34,7 +34,7 @@ public enum MarketplacePublishError: LocalizedError, Sendable {
     public var errorDescription: String? {
         switch self {
         case let .invalidPlugin(message): return message
-        case let .response(status, message): return "Marketplace yayınlama başarısız (HTTP \(status)): \(message)"
+        case let .response(status, message): return AppCopy.format("market.publish.error.http", status, message)
         }
     }
 }
@@ -55,22 +55,22 @@ public final class MarketplacePublisher: ObservableObject {
         isPublishing = true
         defer { isPublishing = false }
         guard draft.license.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
-            throw MarketplacePublishError.invalidPlugin("Plugin yayınlamak için lisans seçmelisiniz.")
+            throw MarketplacePublishError.invalidPlugin(AppCopy.text("market.publish.error.license"))
         }
         guard let manifestData = try? Data(contentsOf: draft.folder.appendingPathComponent("plugin.yml")) else {
-            throw MarketplacePublishError.invalidPlugin("Seçilen klasörde plugin.yml bulunamadı.")
+            throw MarketplacePublishError.invalidPlugin(AppCopy.text("market.publish.error.noManifest"))
         }
         let manifest = try MiniYAML.decode(PluginManifest.self, from: String(decoding: manifestData, as: UTF8.self))
         let library = manifest.library?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard manifest.runtime == "native", manifest.main == nil,
               !library.isEmpty, !library.hasPrefix("/"), !library.contains("..") else {
-            throw MarketplacePublishError.invalidPlugin("Yalnızca native pluginler yayınlanabilir.")
+            throw MarketplacePublishError.invalidPlugin(AppCopy.text("market.publish.error.nativeOnly"))
         }
         guard Self.isReleaseSemVer(draft.version) else {
-            throw MarketplacePublishError.invalidPlugin("Geçerli bir SemVer sürümü girin.")
+            throw MarketplacePublishError.invalidPlugin(AppCopy.text("market.publish.error.semver"))
         }
         guard ["public", "private"].contains(draft.sourceVisibility), !draft.targets.isEmpty else {
-            throw MarketplacePublishError.invalidPlugin("En az bir platform hedefi ve geçerli kaynak görünürlüğü seçmelisiniz.")
+            throw MarketplacePublishError.invalidPlugin(AppCopy.text("market.publish.error.targets"))
         }
 
         let fm = FileManager.default
@@ -91,15 +91,15 @@ public final class MarketplacePublisher: ObservableObject {
         guard fm.fileExists(atPath: irURL.path),
               let licenseData = try? Data(contentsOf: sourceFolder.appendingPathComponent("license")),
               !licenseData.isEmpty else {
-            throw MarketplacePublishError.invalidPlugin("Paket plugin.ir.json ve license dosyalarını içermeli.")
+            throw MarketplacePublishError.invalidPlugin(AppCopy.text("market.publish.error.package"))
         }
         let irData = try Data(contentsOf: irURL)
         let ir = try JSONSerialization.jsonObject(with: irData) as? [String: Any]
         guard let ir, (ir["version"] as? Int) == 1 else {
-            throw MarketplacePublishError.invalidPlugin("plugin.ir.json yalnızca version 1 olmalıdır.")
+            throw MarketplacePublishError.invalidPlugin(AppCopy.text("market.publish.error.irVersion"))
         }
 
-        status = "Marketplace kaydı oluşturuluyor…"
+        status = AppCopy.text("market.publish.status.registering")
         let manifestJSON = try JSONSerialization.jsonObject(with: JSONEncoder().encode(releaseManifest))
         let metadata: [String: Any] = [
             "id": manifest.id,
@@ -147,7 +147,7 @@ public final class MarketplacePublisher: ObservableObject {
             throw MarketplacePublishError.response(create.1.statusCode, String(decoding: create.0, as: UTF8.self))
         }
 
-        status = "Native kaynak paketi yükleniyor…"
+        status = AppCopy.text("market.publish.status.uploading")
         let sourceArchive = temporary.appendingPathComponent("source.dotsplugin")
         try PluginPackage.pack(folder: sourceFolder, to: sourceArchive)
         let sourceData = try Data(contentsOf: sourceArchive, options: .mappedIfSafe)
@@ -167,12 +167,12 @@ public final class MarketplacePublisher: ObservableObject {
            let scope = sourceObject["catalog_scope"] as? String {
             let model = sourceObject["moderation_model"] as? String
             moderationSummary = model == "unavailable"
-                ? "AI sınıflandırması kullanılamadı; geçici etiket: \(category) · \(scope) · \(moderationStatus). İnsan incelemesi zorunlu."
-                : "AI sınıflandırması: \(category) · \(scope) · \(moderationStatus). İnsan incelemesi bekleniyor."
+                ? AppCopy.format("market.publish.status.aiUnavailable", category, scope, moderationStatus)
+                : AppCopy.format("market.publish.status.aiDone", category, scope, moderationStatus)
         } else {
-            moderationSummary = "AI sınıflandırması tamamlanamadı; insan incelemesi bekleniyor."
+            moderationSummary = AppCopy.text("market.publish.status.aiFailed")
         }
-        status = "\(moderationSummary) Native platform buildleri kuyruğa alınıyor…"
+        status = moderationSummary + " " + AppCopy.text("market.publish.status.queueing")
         let build = try await session.authorizedData(
             path: "api/marketplace/releases/\(releaseID)/build",
             method: "POST",
@@ -182,13 +182,13 @@ public final class MarketplacePublisher: ObservableObject {
         guard (200..<300).contains(build.1.statusCode) else {
             throw MarketplacePublishError.response(build.1.statusCode, String(decoding: build.0, as: UTF8.self))
         }
-        status = "Kaynak paketi yüklendi; native CI doğrulaması bekleniyor."
+        status = AppCopy.text("market.publish.status.uploaded")
     }
 
     private static func releaseID(from data: Data) throws -> String {
         guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let id = object["release_id"] as? String, !id.isEmpty else {
-            throw MarketplacePublishError.invalidPlugin("Marketplace release kimliği alınamadı.")
+            throw MarketplacePublishError.invalidPlugin(AppCopy.text("market.publish.error.releaseID"))
         }
         return id
     }
@@ -206,7 +206,7 @@ public final class MarketplacePublisher: ObservableObject {
             .split(separator: "\n", omittingEmptySubsequences: false)
             .map(String.init)
         guard let index = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("version:") }) else {
-            throw MarketplacePublishError.invalidPlugin("plugin.yml version alanı eksik.")
+            throw MarketplacePublishError.invalidPlugin(AppCopy.text("market.publish.error.noVersion"))
         }
         let indentation = String(lines[index].prefix { $0 == " " || $0 == "\t" })
         lines[index] = "\(indentation)version: \(version)"

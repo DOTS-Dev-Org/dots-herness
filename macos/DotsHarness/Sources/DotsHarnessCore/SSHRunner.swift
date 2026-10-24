@@ -180,20 +180,16 @@ public enum SSHRunner {
         }
     }
 
-    public static func directoryExists(target: SSHTarget) -> Bool {
-        guard let output = try? runOnHost(
-            alias: target.alias,
-            command: "test -d \(shellQuote(target.remotePath))"
-        ) else { return false }
-        return output.status == 0 && !output.timedOut
-    }
-
     /// Expands `~` and relative input the way the remote login shell would, so
     /// the stored path is stable across sessions.
     public static func resolveDirectory(alias: String, path: String) -> String? {
         let probe = "cd -- \(shellQuote(path)) >/dev/null 2>&1 && pwd -P"
+        // The `~` form has to be quoted like every other path: dropping the
+        // quotes instead let a path like `~;id;` run a command on the host.
+        // Single quotes would stop the shell from expanding `~`, so the home
+        // directory is expanded by the shell and only the remainder is quoted.
         let expanded = path.hasPrefix("~")
-            ? "cd \(path.replacingOccurrences(of: "'", with: "")) >/dev/null 2>&1 && pwd -P"
+            ? "cd -- \"$HOME\"/\(shellQuote(String(path.dropFirst()))) >/dev/null 2>&1 && pwd -P"
             : probe
         guard let output = try? runOnHost(alias: alias, command: expanded), output.status == 0 else { return nil }
         let resolved = output.text.trimmingCharacters(in: .whitespacesAndNewlines)

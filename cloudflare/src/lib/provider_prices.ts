@@ -11,9 +11,6 @@ export type SubscriptionPacketRow = {
   price_usd_cents: number;
 };
 
-/** @deprecated Use SubscriptionPacketRow */
-export type ProviderPlanPriceRow = SubscriptionPacketRow;
-
 /** Collapse punctuation / filler so "Token Plan · Monthly Plus" ≈ "plus". */
 export function normalizePlanKey(raw: string): string {
   return raw

@@ -93,10 +93,6 @@ public final class SimulatorController: ObservableObject {
         public var title: String { "\(rawValue) FPS" }
     }
 
-    /// Kept as a source-compatible name for callers that used the old polling
-    /// terminology. New UI should use CaptureRate.
-    public typealias FrameRate = CaptureRate
-
     public enum CaptureLatency: String, CaseIterable, Identifiable, Sendable {
         case low
         case balanced
@@ -201,6 +197,8 @@ public final class SimulatorController: ObservableObject {
     private var captureScreenRect: CGRect?
     private var hidInput: SimulatorHIDInput?
     private var hidInputDeviceID: String?
+    /// `wm size` per emulator serial, read once when its stream starts.
+    private var androidInputSizes: [String: CGSize] = [:]
 
     public init() {
         let defaults = UserDefaults.standard
@@ -226,7 +224,9 @@ public final class SimulatorController: ObservableObject {
 
     public func refreshDevices() async {
         do {
-            let list = try await background { try SimulatorService.devices() }
+            let simulators = try await background { try SimulatorService.devices() }
+            let android = (try? await background { Self.androidDevices() }) ?? []
+            let list = simulators + android
             devices = list
             if selectedDeviceID == nil || !list.contains(where: { $0.id == selectedDeviceID }) {
                 selectedDeviceID = list.first(where: \.isBooted)?.id ?? list.first?.id
@@ -238,6 +238,10 @@ public final class SimulatorController: ObservableObject {
     }
 
     public func boot() async {
+        if let device = selectedDevice, device.isAndroid {
+            await bootAndroid(device.name)
+            return
+        }
         guard let udid = selectedDeviceID else { return }
         hidInput = nil
         hidInputDeviceID = nil
@@ -250,6 +254,14 @@ public final class SimulatorController: ObservableObject {
     }
 
     public func shutdown() async {
+        if let emulator = selectedAndroidEmulator {
+            stopStream()
+            await perform("simulator.shuttingDown") { try AndroidEmulatorService.shutdown(serial: emulator.serial) }
+            frameStore.clear()
+            try? await Task.sleep(for: .seconds(1))
+            await refreshDevices()
+            return
+        }
         guard let udid = selectedDeviceID else { return }
         hidInput = nil
         hidInputDeviceID = nil
@@ -311,6 +323,10 @@ public final class SimulatorController: ObservableObject {
     }
 
     private func startPreferredStream(for udid: String, token: UUID) async {
+        if let device = selectedDevice, device.isAndroid {
+            await startAndroidStream(avdName: device.name, token: token)
+            return
+        }
         await relocateSimulatorWindowOffscreen()
         guard isCurrentStream(token) else { return }
 
@@ -365,6 +381,114 @@ public final class SimulatorController: ObservableObject {
             guard isCurrentStream(token) else { return }
             startFallbackStream(for: udid, token: token, cause: error)
         }
+    }
+
+    // MARK: - Android
+
+    /// AVDs listed next to the simulators; an SDK-less Mac simply has none.
+    private nonisolated static func androidDevices() -> [SimulatorDevice] {
+        let avds = (try? AndroidEmulatorService.avds()) ?? []
+        let running = AndroidRunningEmulator.running()
+        let names = avds + running.map(\.avdName).filter { !avds.contains($0) }
+        return names.map { name in
+            SimulatorDevice(
+                id: "android:" + name,
+                name: name,
+                runtime: "Android",
+                state: running.contains { $0.avdName == name } ? "Booted" : "Shutdown",
+                isAndroid: true
+            )
+        }
+    }
+
+    private var selectedAndroidEmulator: AndroidRunningEmulator? {
+        guard let device = selectedDevice, device.isAndroid else { return nil }
+        return AndroidRunningEmulator.running().first { $0.avdName == device.name }
+    }
+
+    private func bootAndroid(_ avdName: String) async {
+        stopStream()
+        await perform("simulator.booting") { try AndroidEmulatorService.boot(avdName: avdName) }
+        isBusy = true
+        for _ in 0..<90 where selectedAndroidEmulator == nil {
+            try? await Task.sleep(for: .seconds(1))
+        }
+        isBusy = false
+        await refreshDevices()
+        guard isSelectedDeviceBooted else { return }
+        startStream()
+    }
+
+    /// Captures the emulator's own window the same zero-copy way as Simulator.app.
+    /// Its window may appear a few seconds after the discovery file, so a missing
+    /// window is retried briefly.
+    private func startAndroidStream(avdName: String, token: UUID) async {
+        guard let emulator = selectedAndroidEmulator else {
+            reportStreamFailure(SimulatorCaptureError.windowNotFound)
+            return
+        }
+        await relocateWindowOffscreen(processID: emulator.processID)
+        if let size = try? await background({ try AndroidEmulatorService.inputSize(serial: emulator.serial) }) {
+            androidInputSizes[emulator.serial] = size
+        }
+        for attempt in 0..<10 {
+            guard isCurrentStream(token) else { return }
+            do {
+                let capture = try await SimulatorScreenCapture.start(
+                    processID: emulator.processID,
+                    deviceName: avdName,
+                    rate: captureRate,
+                    latency: captureLatency,
+                    quality: captureQuality,
+                    displayAspectRatio: emulator.screenSize.width / max(emulator.screenSize.height, 1),
+                    screenFillsWindowWidth: true,
+                    frameHandler: { @MainActor [weak self] frame in
+                        guard let self, self.isCurrentStream(token) else { return }
+                        self.acceptFrame(frame)
+                    },
+                    geometryHandler: { _ in },
+                    failureHandler: { @MainActor [weak self] error in
+                        guard let self, self.isCurrentStream(token) else { return }
+                        self.reportStreamFailure(error)
+                    }
+                )
+                guard isCurrentStream(token) else {
+                    await capture.stop()
+                    return
+                }
+                liveCapture = capture
+                captureBackend = .screenCaptureKit
+                return
+            } catch SimulatorCaptureError.windowNotFound where attempt < 9 {
+                try? await Task.sleep(for: .seconds(1))
+            } catch {
+                guard isCurrentStream(token) else { return }
+                reportStreamFailure(error)
+                return
+            }
+        }
+    }
+
+    /// Runs one adb command off the main actor; failures land in the status line.
+    private func android(_ work: @escaping @Sendable (AndroidRunningEmulator) throws -> Void) {
+        guard let emulator = selectedAndroidEmulator else { return }
+        Task { @MainActor [weak self] in
+            do { try await self?.background { try work(emulator) } } catch { self?.report(error) }
+        }
+    }
+
+    /// Frame point to the coordinates `adb shell input` takes. With a `wm size`
+    /// override Android letterboxes the logical screen inside the physical panel,
+    /// so the point is first mapped into that fitted area.
+    private func androidPoint(_ point: CGPoint, imageSize: CGSize, emulator: AndroidRunningEmulator) -> (Int, Int) {
+        let panel = emulator.screenSize
+        let logical = androidInputSizes[emulator.serial] ?? panel
+        let physical = CGPoint(x: point.x / imageSize.width * panel.width, y: point.y / imageSize.height * panel.height)
+        let scale = min(panel.width / logical.width, panel.height / logical.height)
+        let origin = CGPoint(x: (panel.width - logical.width * scale) / 2, y: (panel.height - logical.height * scale) / 2)
+        let x = min(max((physical.x - origin.x) / scale, 0), logical.width - 1)
+        let y = min(max((physical.y - origin.y) / scale, 0), logical.height - 1)
+        return (Int(x), Int(y))
     }
 
     private func startFallbackStream(for udid: String, token: UUID, cause: Error?) {
@@ -444,32 +568,31 @@ public final class SimulatorController: ObservableObject {
     // MARK: - Actions
 
     public func openURL(_ url: String) async {
+        if let emulator = selectedAndroidEmulator {
+            await perform("simulator.openingURL") { try AndroidEmulatorService.openURL(serial: emulator.serial, url: url) }
+            return
+        }
         guard let udid = selectedDeviceID else { return }
         await perform("simulator.openingURL") { try SimulatorService.openURL(udid, url: url) }
     }
 
-    public func installAndLaunch(appPath: String) async {
-        guard let udid = selectedDeviceID else { return }
-        await perform("simulator.installing") {
-            try SimulatorService.install(udid, appPath: appPath)
-            guard let plist = NSDictionary(contentsOfFile: appPath + "/Info.plist"),
-                  let bundleID = plist["CFBundleIdentifier"] as? String else {
-                throw SimulatorError(AppCopy.format("simulator.appNotFound", appPath + "/Info.plist"))
-            }
-            _ = try SimulatorService.launch(udid, bundleID: bundleID)
-        }
-        startStream()
-    }
-
     public func setAppearance(dark: Bool) async {
+        if let emulator = selectedAndroidEmulator {
+            await perform("simulator.appearance") { try AndroidEmulatorService.setNightMode(serial: emulator.serial, dark: dark) }
+            return
+        }
         guard let udid = selectedDeviceID else { return }
         await perform("simulator.appearance") { try SimulatorService.setAppearance(udid, dark: dark) }
     }
 
     public func saveScreenshot(to directory: URL) async -> URL? {
         guard let udid = selectedDeviceID else { return nil }
+        let emulator = selectedAndroidEmulator
         do {
-            let data = try await background { try SimulatorService.screenshot(udid) }
+            let data = try await background {
+                if let emulator { return try AndroidEmulatorService.screenshot(serial: emulator.serial) }
+                return try SimulatorService.screenshot(udid)
+            }
             let name = "simulator-\(Int(Date().timeIntervalSince1970)).png"
             let url = directory.appendingPathComponent(name)
             try data.write(to: url, options: .atomic)
@@ -493,6 +616,11 @@ public final class SimulatorController: ObservableObject {
     /// - Parameter point: position inside the streamed frame, in image points.
     public func tap(at point: CGPoint) {
         guard let imageSize = frameStore.frame?.displayPixelSize else { return }
+        if let emulator = selectedAndroidEmulator {
+            let (x, y) = androidPoint(point, imageSize: imageSize, emulator: emulator)
+            android { try AndroidEmulatorService.tap(serial: $0.serial, x: x, y: y) }
+            return
+        }
         if isInputTrusted,
            let screenPoint = screenPoint(for: point, imageSize: imageSize),
            pressSimulatorElement(at: screenPoint) {
@@ -513,6 +641,12 @@ public final class SimulatorController: ObservableObject {
     }
 
     public func swipe(from start: CGPoint, to end: CGPoint) {
+        if let emulator = selectedAndroidEmulator, let imageSize = frameStore.frame?.displayPixelSize {
+            let (x1, y1) = androidPoint(start, imageSize: imageSize, emulator: emulator)
+            let (x2, y2) = androidPoint(end, imageSize: imageSize, emulator: emulator)
+            android { try AndroidEmulatorService.swipe(serial: $0.serial, x1: x1, y1: y1, x2: x2, y2: y2) }
+            return
+        }
         guard let imageSize = frameStore.frame?.displayPixelSize,
               let udid = selectedDeviceID,
               let input = hidInput(for: udid),
@@ -533,12 +667,25 @@ public final class SimulatorController: ObservableObject {
     }
 
     public func pressHome() {
+        if selectedDevice?.isAndroid == true {
+            android { try AndroidEmulatorService.keyEvent(serial: $0.serial, code: 3) }
+            return
+        }
         if !pressSimulatorAction(description: "Home") {
             pressKey(keyCode: 0x04, flags: [.maskCommand, .maskShift])
         }
     }
 
+    /// Android only: iOS has no back key.
+    public func pressBack() {
+        android { try AndroidEmulatorService.keyEvent(serial: $0.serial, code: 4) }
+    }
+
     public func pressLock() {
+        if selectedDevice?.isAndroid == true {
+            android { try AndroidEmulatorService.keyEvent(serial: $0.serial, code: 26) }
+            return
+        }
         if !pressSimulatorAction(description: "Sleep/Wake") {
             pressKey(keyCode: 0x25, flags: [.maskCommand])
         }
@@ -692,9 +839,18 @@ public final class SimulatorController: ObservableObject {
     /// activating or moving to the real Simulator window.
     /// Retries briefly: right after `boot`, the window may not exist yet.
     public func relocateSimulatorWindowOffscreen() async {
+        if let emulator = selectedAndroidEmulator {
+            await relocateWindowOffscreen(processID: emulator.processID)
+            return
+        }
+        guard let pid = simulatorProcessIdentifier() else { return }
+        await relocateWindowOffscreen(processID: pid)
+    }
+
+    private func relocateWindowOffscreen(processID: pid_t) async {
         guard isInputTrusted else { return }
         for _ in 0..<10 {
-            if let window = simulatorAXWindow() {
+            if let window = axWindow(processID: processID) {
                 var target = Self.offscreenOrigin
                 if let value = AXValueCreate(.cgPoint, &target) {
                     AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, value)
@@ -714,6 +870,10 @@ public final class SimulatorController: ObservableObject {
 
     private func simulatorAXWindow() -> AXUIElement? {
         guard let pid = simulatorProcessIdentifier() else { return nil }
+        return axWindow(processID: pid)
+    }
+
+    private func axWindow(processID pid: pid_t) -> AXUIElement? {
         let app = AXUIElementCreateApplication(pid)
         var windowsRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windowsRef) == .success,

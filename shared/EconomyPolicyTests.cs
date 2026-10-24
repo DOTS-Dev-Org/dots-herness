@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using DotsHarnessCore;
 using Xunit;
 
@@ -12,13 +13,23 @@ public sealed class EconomyPolicyTests
         {
             var standard = ContextCompaction.Budget(window);
             var economy = ContextCompaction.Budget(window, economy: true);
-            Assert.Equal((int)(standard.UsableInputTokens * .90), standard.TriggerTokens);
-            Assert.Equal((int)(economy.UsableInputTokens * .90), economy.TriggerTokens);
+            Assert.Equal((int)(window * .90), standard.TriggerTokens);
+            Assert.Equal((int)(window * .90), economy.TriggerTokens);
             Assert.True(standard.TargetTokens < standard.TriggerTokens);
             Assert.True(economy.TargetTokens < economy.TriggerTokens);
             Assert.Equal((int)(window * .90), ContextCompaction.NativeThreshold(window, 90));
         }
         Assert.Equal(1, ContextCompaction.NativeThreshold(1_000_000, 0));
+    }
+
+    [Fact]
+    public void ProviderContextOverflowIsDistinctFromQuotaLimits()
+    {
+        Assert.True(new NativeProviderException("Anthropic: prompt is too long: 210000 tokens > 200000 maximum", 400).IsContextWindowExceeded);
+        Assert.True(new NativeProviderException("This model's maximum context length is 128000 tokens.", 400).IsContextWindowExceeded);
+        Assert.True(new NativeProviderException("context_length_exceeded", 400).IsContextWindowExceeded);
+        Assert.False(new NativeProviderException("Rate limit reached for requests", 429).IsContextWindowExceeded);
+        Assert.False(new NativeProviderException("You exceeded your current quota", 429).IsContextWindowExceeded);
     }
 
     [Fact]
@@ -35,6 +46,37 @@ public sealed class EconomyPolicyTests
         Assert.Equal("<project_context>\nNo longer applies.\n</project_context>\n\nthree", third.Last().Content);
         var fresh = NativePromptHistory.Prepare([new NativeMessage("user", "four")], "policy", rules);
         Assert.Contains("use tabs", fresh.Last().Content);
+    }
+
+    [Fact]
+    public void TaskHistoryCapturesOnlyNewEntriesUntilTheBacklogChanges()
+    {
+        static string History(string text) => "<task_history trust=\"data\">\n" + text + "\n</task_history>";
+        const string backlog = "## Unfinished work (backlog)\n- `t1` — port the parser";
+        var first = NativePromptHistory.Prepare([new NativeMessage("user", "one")], "policy",
+            History("## Relevant task history\n- task A\n  Files: a.cs\n- task B\n\n" + backlog));
+        Assert.Contains("task A", first.Last().Content);
+
+        // A and B were captured already: only C is new.
+        var second = NativePromptHistory.Prepare(first.Concat([new NativeMessage("user", "two")]).ToList(), "policy",
+            History("## Relevant task history\n- task B\n- task C\n\n" + backlog));
+        Assert.Equal(first, second.Take(first.Count));
+        var added = second.Last().Content;
+        Assert.Contains(NativePromptHistory.TaskHistoryAdditionsMarker, added);
+        Assert.Contains("## Relevant task history\n- task C", added);
+        Assert.DoesNotContain("task B", added);
+        Assert.DoesNotContain("port the parser", added);
+
+        // Nothing new: the section is not captured at all.
+        var third = NativePromptHistory.Prepare(second.Concat([new NativeMessage("user", "three")]).ToList(), "policy",
+            History("## Relevant task history\n- task A\n  Files: a.cs\n\n" + backlog));
+        Assert.Equal("three", third.Last().Content);
+
+        // A finished backlog item is state: the section is captured whole.
+        var fourth = NativePromptHistory.Prepare(third.Concat([new NativeMessage("user", "four")]).ToList(), "policy",
+            History("## Relevant task history\n- task A\n  Files: a.cs"));
+        Assert.DoesNotContain(NativePromptHistory.TaskHistoryAdditionsMarker, fourth.Last().Content);
+        Assert.Contains("task A", fourth.Last().Content);
     }
 
     [Fact]
@@ -72,6 +114,29 @@ public sealed class EconomyPolicyTests
         Assert.True(budget.VisibleReserve >= 12_288);
         Assert.True(budget.MaxOutputTokens >= 25_600);
         Assert.Equal(0, budget.MaxOutputTokens % 512);
+    }
+
+    [Fact]
+    public void StrictTokenLimitCapsOnlyProseTurns()
+    {
+        var limit = new ResponseStyleDecision(AgentResponseStyle.Strict, MaxOutputTokens: 200);
+        var prose = EconomyPolicy.Resolve(
+            NativeProviderProtocol.ChatGpt,
+            "gpt-6-astra",
+            "low",
+            [new NativeMessage("user", "explain a mutex")],
+            [],
+            limit);
+        var coding = EconomyPolicy.Resolve(
+            NativeProviderProtocol.ChatGpt,
+            "gpt-6-astra",
+            "low",
+            [new NativeMessage("user", "edit the project")],
+            [new NativeToolDefinition("write_file", "write", new System.Text.Json.Nodes.JsonObject())],
+            limit);
+
+        Assert.Equal(200, prose.MaxOutputTokens);
+        Assert.True(coding.MaxOutputTokens > 200);
     }
 
     [Fact]
@@ -123,5 +188,35 @@ public sealed class EconomyPolicyTests
 
         Assert.Equal(200, budget.MaxOutputTokens);
         Assert.Null(budget.ProviderReasoningBudgetTokens);
+    }
+
+    [Fact]
+    public void ReplayedProviderItemsAreNotDoubleCountedAndCiphertextIsDiscounted()
+    {
+        const string arguments = """{"path":"a.swift"}""";
+        var calls = new[] { new NativeToolCall("call_1", "read_file", arguments) };
+        var plain = new NativeMessage("assistant", "done", ToolCalls: calls);
+        var replayed = plain with
+        {
+            ProviderItems =
+            [
+                new JsonObject { ["type"] = "function_call", ["call_id"] = "call_1", ["name"] = "read_file", ["arguments"] = arguments },
+                new JsonObject { ["type"] = "message", ["content"] = new JsonArray(new JsonObject { ["type"] = "output_text", ["text"] = "done" }) },
+                new JsonObject { ["type"] = "reasoning", ["id"] = "rs_1", ["encrypted_content"] = new string('A', 16_000) },
+            ],
+        };
+        // 16 KB of ciphertext replays as ~1k reasoning tokens, not 4k.
+        var extra = ContextCompaction.EstimateTokens(replayed) - ContextCompaction.EstimateTokens(plain);
+        Assert.InRange(extra, 1_001, 1_049);
+    }
+
+    [Fact]
+    public void ObservedInputIsTheProviderCountPlusOnlyTheNewEstimate()
+    {
+        // 245k counted for a request estimated at 260k; a 3k tool result was added since.
+        Assert.Equal(248_000, ContextCompaction.ObservedInputTokens(263_000, 245_000, 260_000));
+        // No counted baseline (new chat, route change, after compaction): full estimate.
+        Assert.Equal(263_000, ContextCompaction.ObservedInputTokens(263_000, 245_000, 0));
+        Assert.Equal(263_000, ContextCompaction.ObservedInputTokens(263_000, 0, 260_000));
     }
 }

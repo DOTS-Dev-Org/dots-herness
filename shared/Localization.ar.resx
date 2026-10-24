@@ -299,13 +299,14 @@
   <data name="usage.resetsIn" xml:space="preserve"><value>إعادة الضبط خلال {0}</value></data>
   <data name="usage.resetsOn" xml:space="preserve"><value>تتم إعادة الضبط {0}</value></data>
   <data name="usage.resetsAvailable" xml:space="preserve"><value>يتوفر {0} من عمليات إعادة الضبط</value></data>
-  <data name="usage.manageResets" xml:space="preserve"><value>Manage resets</value></data>
-  <data name="usage.useReset" xml:space="preserve"><value>Use reset</value></data>
-  <data name="usage.resetTitle" xml:space="preserve"><value>Use a Claude limit reset?</value></data>
-  <data name="usage.resetConfirmation" xml:space="preserve"><value>Claude's Usage page will open. Sign in to {0} and review the reset offered to that account. To use it, click Reset for free and confirm in Claude. Once used, a reset cannot be undone. Limits refresh when you return to HerNess.</value></data>
-  <data name="usage.resetOpenFailed" xml:space="preserve"><value>Could not open Claude. Check that the account is still connected, then try again.</value></data>
-  <data name="usage.openClaude" xml:space="preserve"><value>Open Claude</value></data>
+  <data name="usage.manageResets" xml:space="preserve"><value>إدارة إعادات التعيين</value></data>
+  <data name="usage.useReset" xml:space="preserve"><value>استخدام إعادة التعيين</value></data>
+  <data name="usage.resetTitle" xml:space="preserve"><value>استخدام إعادة تعيين حد Claude؟</value></data>
+  <data name="usage.resetConfirmation" xml:space="preserve"><value>ستُفتح صفحة الاستخدام في Claude. سجّل الدخول إلى {0} وراجع إعادة التعيين المعروضة لذلك الحساب. لاستخدامها، انقر Reset for free وأكّد في Claude. لا يمكن التراجع عن إعادة تعيين مستخدمة. تتحدّث الحدود عند عودتك إلى HerNess.</value></data>
+  <data name="usage.resetOpenFailed" xml:space="preserve"><value>تعذّر فتح Claude. تحقّق من أن الحساب لا يزال متصلًا، ثم حاول مرة أخرى.</value></data>
+  <data name="usage.openClaude" xml:space="preserve"><value>فتح Claude</value></data>
   <data name="usage.needLogin" xml:space="preserve"><value>سجّل الدخول إلى Claude لعرض الحدود</value></data>
+  <data name="agent.providerLimitTitle" xml:space="preserve"><value>تم الوصول إلى الحد الأقصى للموفر</value></data>
   <data name="usage.noLimitInfo" xml:space="preserve"><value>لا توجد معلومات عن الحدود</value></data>
   <data name="usage.loadFailed" xml:space="preserve"><value>تعذر تحميل الاستخدام</value></data>
   <data name="usage.loading" xml:space="preserve"><value>جارٍ تحميل الاستخدام…</value></data>
@@ -333,21 +334,21 @@
   <data name="project.missing.message" xml:space="preserve"><value>ربما تم نقل مجلد المشروع في '{0}' أو حذفه. يُرجى اختيار موقعه الجديد أو إزالة المشروع.</value></data>
   <data name="project.missing.locate" xml:space="preserve"><value>تحديد الموقع…</value></data>
   <data name="project.missing.readOnly" xml:space="preserve"><value>مجلد المشروع غير متاح. يمكنك عرض المحادثات السابقة؛ تم تعطيل إنشاء محادثات جديدة وإرسال الرسائل إلى أن تختار موقعًا جديدًا.</value></data>
-  <data name="conversation.ranCommand" xml:space="preserve"><value>Ran 1 command</value></data>
-  <data name="conversation.ranCommands" xml:space="preserve"><value>Ran {0} commands</value></data>
-  <data name="conversation.runningTools" xml:space="preserve"><value>Running tools…</value></data>
-  <data name="conversation.thinkingPhase" xml:space="preserve"><value>Thinking…</value></data>
-  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} tokens</value></data>
-  <data name="usage.context.window" xml:space="preserve"><value>Context window</value></data>
-  <data name="usage.planLimits" xml:space="preserve"><value>Plan usage limits</value></data>
-  <data name="composer.queue.one" xml:space="preserve"><value>1 message queued</value></data>
-  <data name="composer.queue.many" xml:space="preserve"><value>{0} messages queued</value></data>
-  <data name="composer.queue.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="composer.queue.editBlocked" xml:space="preserve"><value>Clear the message box to edit</value></data>
-  <data name="composer.queue.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="git.createPR" xml:space="preserve"><value>Create PR</value></data>
-  <data name="git.hideBar" xml:space="preserve"><value>Hide</value></data>
-  <data name="composer.queue.next" xml:space="preserve"><value>Next: {0}</value></data>
+  <data name="conversation.ranCommand" xml:space="preserve"><value>تم تشغيل أمر واحد</value></data>
+  <data name="conversation.ranCommands" xml:space="preserve"><value>تم تشغيل {0} أوامر</value></data>
+  <data name="conversation.runningTools" xml:space="preserve"><value>جارٍ تشغيل الأدوات…</value></data>
+  <data name="conversation.thinkingPhase" xml:space="preserve"><value>جارٍ التفكير…</value></data>
+  <data name="conversation.tokensCount" xml:space="preserve"><value>{0} رمز</value></data>
+  <data name="usage.context.window" xml:space="preserve"><value>نافذة السياق</value></data>
+  <data name="usage.planLimits" xml:space="preserve"><value>حدود استخدام الخطة</value></data>
+  <data name="composer.queue.one" xml:space="preserve"><value>رسالة واحدة في قائمة الانتظار</value></data>
+  <data name="composer.queue.many" xml:space="preserve"><value>{0} رسائل في قائمة الانتظار</value></data>
+  <data name="composer.queue.edit" xml:space="preserve"><value>تعديل</value></data>
+  <data name="composer.queue.editBlocked" xml:space="preserve"><value>امسح مربع الرسالة للتعديل</value></data>
+  <data name="composer.queue.remove" xml:space="preserve"><value>إزالة</value></data>
+  <data name="git.createPR" xml:space="preserve"><value>إنشاء PR</value></data>
+  <data name="git.hideBar" xml:space="preserve"><value>إخفاء</value></data>
+  <data name="composer.queue.next" xml:space="preserve"><value>التالي: {0}</value></data>
   <data name="sidebar.pinProject" xml:space="preserve"><value>تثبيت المشروع</value></data>
   <data name="sidebar.unpinProject" xml:space="preserve"><value>إلغاء تثبيت المشروع</value></data>
   <data name="sidebar.sortLastUpdate" xml:space="preserve"><value>آخر تحديث</value></data>
@@ -358,6 +359,8 @@
   <data name="conversation.cancelPlan" xml:space="preserve"><value>إلغاء الخطة</value></data>
   <data name="conversation.cancelPlanHelp" xml:space="preserve"><value>إلغاء هذه الخطة وتحرير الرسائل المنتظرة</value></data>
   <data name="media.generated" xml:space="preserve"><value>تم إنشاء الصورة.</value></data>
+  <data name="media.videoGenerated" xml:space="preserve"><value>تم إنشاء الفيديو.</value></data>
+  <data name="media.audioGenerated" xml:space="preserve"><value>تم إنشاء الكلام.</value></data>
   <data name="media.fallbackUsed" xml:space="preserve"><value>تعذّر على المزوّد المحدد إنشاء هذه الصورة. أُنشئت عبر طلب احتياطي لمرة واحدة من خلال {0}/{1}؛ لم يتغير مزوّد المحادثة الرئيسية ولا نموذجها، لذا تبقى ذاكرة التخزين المؤقت للموجّهات سليمة.</value></data>
   <data name="media.imageUnsupportedWithFallbackHint" xml:space="preserve"><value>لا أستطيع إنشاء هذه الصورة باستخدام {0}. اضبط واجهة API أو مزوّد صور كخيار احتياطي. تبديل نموذج المحادثة الرئيسي لإنشاء الصور فقط قد يُفسد ذاكرة الموجّهات المؤقتة لدى المزوّد.</value></data>
   <data name="feedback.close" xml:space="preserve"><value>إغلاق</value></data>
@@ -370,27 +373,27 @@
   <data name="feedback.persistenceFailed" xml:space="preserve"><value>تعذر حفظ الملاحظات محليًا.</value></data>
   <data name="feedback.streamingMessage" xml:space="preserve"><value>انتظر حتى تكتمل الإجابة قبل إرسال الملاحظات.</value></data>
   <data name="feedback.submit" xml:space="preserve"><value>إرسال</value></data>
-  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>Apply it elsewhere</value></data>
-  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>Broke an existing feature</value></data>
+  <data name="feedback.tag.apply_elsewhere" xml:space="preserve"><value>طبّقه في مكان آخر</value></data>
+  <data name="feedback.tag.broke_existing_feature" xml:space="preserve"><value>أفسد ميزة موجودة</value></data>
   <data name="feedback.tag.did_not_follow_instructions" xml:space="preserve"><value>لم يتبع تعليماتي</value></data>
-  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>Didn't follow project style</value></data>
+  <data name="feedback.tag.did_not_follow_project_style" xml:space="preserve"><value>لم يتبع نمط المشروع</value></data>
   <data name="feedback.tag.fast_efficient" xml:space="preserve"><value>سريع وفعال</value></data>
   <data name="feedback.tag.followed_instructions" xml:space="preserve"><value>اتبع تعليماتي</value></data>
-  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>Ignored project architecture</value></data>
+  <data name="feedback.tag.ignored_project_architecture" xml:space="preserve"><value>تجاهل بنية المشروع</value></data>
   <data name="feedback.tag.incorrect_incomplete" xml:space="preserve"><value>غير صحيح أو غير مكتمل</value></data>
-  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>Keep the project style</value></data>
+  <data name="feedback.tag.keep_project_style" xml:space="preserve"><value>حافظ على نمط المشروع</value></data>
   <data name="feedback.tag.lost_context" xml:space="preserve"><value>فقدان السياق</value></data>
   <data name="feedback.tag.negative_other" xml:space="preserve"><value>أخرى</value></data>
   <data name="feedback.tag.off_topic_out_of_scope" xml:space="preserve"><value>خارج الموضوع أو النطاق</value></data>
   <data name="feedback.tag.output_quality" xml:space="preserve"><value>جودة جيدة للكود أو المخرجات</value></data>
   <data name="feedback.tag.positive_other" xml:space="preserve"><value>أخرى</value></data>
-  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>Reuse this architecture</value></data>
-  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>Reuse this token pattern</value></data>
+  <data name="feedback.tag.reuse_architecture" xml:space="preserve"><value>أعد استخدام هذه البنية</value></data>
+  <data name="feedback.tag.reuse_token_pattern" xml:space="preserve"><value>أعد استخدام نمط الرموز هذا</value></data>
   <data name="feedback.tag.security_or_legal_issue" xml:space="preserve"><value>مشكلة أمنية أو قانونية</value></data>
   <data name="feedback.tag.slow_or_buggy" xml:space="preserve"><value>بطيء أو به أخطاء</value></data>
   <data name="feedback.tag.task_completed" xml:space="preserve"><value>أنجز مهمتي</value></data>
   <data name="feedback.tag.useful_autonomy" xml:space="preserve"><value>استقلالية مفيدة</value></data>
-  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>Wrong theme or token</value></data>
+  <data name="feedback.tag.wrong_theme_or_token" xml:space="preserve"><value>سمة أو رمز خاطئ</value></data>
   <data name="feedback.title" xml:space="preserve"><value>مشاركة الملاحظات</value></data>
   <data name="feedback.unavailable" xml:space="preserve"><value>الملاحظات متاحة فقط في محادثات مساحة العمل.</value></data>
   <data name="feedback.unsupportedMessage" xml:space="preserve"><value>لا يمكن إرسال الملاحظات إلا لردود المساعد.</value></data>
@@ -399,12 +402,13 @@
   <data name="conversation.cacheExpired.explanation" xml:space="preserve"><value>انقضت المدة المقدَّرة لصلاحية ذاكرة التخزين المؤقت. ذاكرة التخزين المؤقت للموجّهات هي حالة معالجة مؤقتة لدى المزوّد؛ ويبقى سجل محادثتك محفوظًا. قد تؤدي المتابعة بالسجل الكامل إلى احتساب تلك الرموز كإدخال جديد مرة أخرى. لا يمكن التأكد من أن المزوّد ما زال يحتفظ بالذاكرة المؤقتة إلا من بيانات استخدام الطلب التالي.</value></data>
   <data name="conversation.cacheExpired.infoTitle" xml:space="preserve"><value>لماذا أرى هذا؟</value></data>
   <data name="conversation.cacheExpired.notice" xml:space="preserve"><value>ربما انتهت صلاحية ذاكرة التخزين المؤقت؛ قد تستهلك المتابعة رموزًا أكثر وتكلّف أكثر. ابدأ محادثة جديدة بملخص قصير.</value></data>
+  <data name="conversation.cacheLocal.notice" xml:space="preserve"><value>تم مسح ذاكرة التخزين المؤقت للنموذج المحلي؛ ستتم معالجة السجل كاملًا من جديد وقد يتأخر الرد. ابدأ محادثة جديدة بملخص قصير.</value></data>
   <data name="conversation.filesChangedCount" xml:space="preserve"><value>تم تغيير {0} من الملفات</value></data>
   <data name="conversation.filesLess" xml:space="preserve"><value>عرض ملفات أقل</value></data>
   <data name="conversation.filesLineSummary" xml:space="preserve"><value>+{0} −{1}</value></data>
   <data name="conversation.filesMore" xml:space="preserve"><value>عرض {0} ملفات إضافية</value></data>
   <data name="conversation.filesReverted" xml:space="preserve"><value>تم التراجع عن تغييرات الملفات.</value></data>
-  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>The saved file version is unavailable, so the workspace was left unchanged.</value></data>
+  <data name="conversation.historySnapshotUnavailable" xml:space="preserve"><value>إصدار الملف المحفوظ غير متاح، لذا تُركت مساحة العمل دون تغيير.</value></data>
   <data name="conversation.undoChanges" xml:space="preserve"><value>تراجع</value></data>
   <data name="conversation.viewChanges" xml:space="preserve"><value>عرض التغييرات</value></data>
   <data name="settings.archive" xml:space="preserve"><value>الأرشيف</value></data>
@@ -435,9 +439,9 @@
   <data name="workLocation.remoteFolderUp" xml:space="preserve"><value>المجلد الأعلى</value></data>
   <data name="workLocation.remoteFolderEmpty" xml:space="preserve"><value>لا توجد مجلدات فرعية هنا</value></data>
   <data name="workLocation.remoteFolderUse" xml:space="preserve"><value>استخدام المجلد</value></data>
-  <data name="workLocation.connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="workLocation.connect" xml:space="preserve"><value>اتصال</value></data>
   <data name="workLocation.addHost" xml:space="preserve"><value>إضافة حاسوب…</value></data>
-  <data name="workLocation.useLocal" xml:space="preserve"><value>Use this computer</value></data>
+  <data name="workLocation.useLocal" xml:space="preserve"><value>استخدام هذا الكمبيوتر</value></data>
   <data name="settings.sshAlias" xml:space="preserve"><value>الاسم المستعار</value></data>
   <data name="settings.sshHostName" xml:space="preserve"><value>المضيف أو IP</value></data>
   <data name="settings.sshUser" xml:space="preserve"><value>اسم المستخدم</value></data>
@@ -445,126 +449,106 @@
   <data name="settings.sshRemove" xml:space="preserve"><value>إزالة</value></data>
   <data name="ssh.busy" xml:space="preserve"><value>انتظر انتهاء التشغيل الحالي قبل تغيير مكان العمل.</value></data>
   <data name="ssh.connecting" xml:space="preserve"><value>جارٍ الاتصال بـ {0}…</value></data>
-  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>Choose a remote folder before starting a task.</value></data>
+  <data name="ssh.chooseRemoteFolder" xml:space="preserve"><value>اختر مجلدًا بعيدًا قبل بدء مهمة.</value></data>
   <data name="ssh.scanning" xml:space="preserve"><value>جارٍ جلب مفتاح المضيف…</value></data>
   <data name="ssh.fingerprintTitle" xml:space="preserve"><value>هل هذه بصمة {0}؟</value></data>
   <data name="ssh.fingerprintMessage" xml:space="preserve"><value>قارنها بالخادم قبل الوثوق بها، ولا تتابع إلا إذا تطابقت.</value></data>
   <data name="ssh.trustAndConnect" xml:space="preserve"><value>الوثوق والاتصال</value></data>
   <data name="ssh.error.unavailable" xml:space="preserve"><value>لم يُعثر على ssh على هذا الـ Mac.</value></data>
   <data name="ssh.error.notReachable" xml:space="preserve"><value>تعذّر الوصول إلى {0}.</value></data>
-  <data name="conversation.choosePane" xml:space="preserve"><value>Choose a pane</value></data>
-  <data name="sidebar.toggle" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.mcpServers" xml:space="preserve"><value>MCP servers</value></data>
-  <data name="mcp.empty" xml:space="preserve"><value>No MCP servers configured.</value></data>
-  <data name="mcp.addServer" xml:space="preserve"><value>Add server</value></data>
-  <data name="mcp.name" xml:space="preserve"><value>Name</value></data>
-  <data name="mcp.transport" xml:space="preserve"><value>Transport</value></data>
+  <data name="conversation.choosePane" xml:space="preserve"><value>اختر لوحة</value></data>
+  <data name="sidebar.toggle" xml:space="preserve"><value>إظهار الشريط الجانبي أو إخفاؤه</value></data>
+  <data name="settings.mcpServers" xml:space="preserve"><value>خوادم MCP</value></data>
+  <data name="mcp.empty" xml:space="preserve"><value>لا توجد خوادم MCP مهيّأة.</value></data>
+  <data name="mcp.addServer" xml:space="preserve"><value>إضافة خادم</value></data>
+  <data name="mcp.name" xml:space="preserve"><value>الاسم</value></data>
+  <data name="mcp.transport" xml:space="preserve"><value>النقل</value></data>
   <data name="mcp.http" xml:space="preserve"><value>HTTP</value></data>
   <data name="mcp.stdio" xml:space="preserve"><value>stdio</value></data>
   <data name="mcp.url" xml:space="preserve"><value>URL</value></data>
-  <data name="mcp.bearerToken" xml:space="preserve"><value>Bearer token (optional)</value></data>
-  <data name="mcp.executable" xml:space="preserve"><value>Executable path</value></data>
-  <data name="mcp.arguments" xml:space="preserve"><value>Arguments (space-separated)</value></data>
-  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>Auto-run tools the server marks read-only</value></data>
-  <data name="mcp.autoRunHelp" xml:space="preserve"><value>Server annotations are untrusted. Enabling this skips approval only for tools marked read-only and not destructive.</value></data>
-  <data name="mcp.test" xml:space="preserve"><value>Test</value></data>
-  <data name="mcp.add" xml:space="preserve"><value>Add</value></data>
-  <data name="mcp.reconnect" xml:space="preserve"><value>Reconnect</value></data>
-  <data name="mcp.remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="mcp.idle" xml:space="preserve"><value>Idle</value></data>
-  <data name="mcp.connecting" xml:space="preserve"><value>Connecting…</value></data>
-  <data name="mcp.connected" xml:space="preserve"><value>Connected · {0} tool(s)</value></data>
-  <data name="mcp.failed" xml:space="preserve"><value>Failed: {0}</value></data>
-  <data name="mcp.testing" xml:space="preserve"><value>Testing…</value></data>
-  <data name="mcp.testConnected" xml:space="preserve"><value>Connected. {0} tool(s) available.</value></data>
-  <data name="conversation.toolInput" xml:space="preserve"><value>Tool input</value></data>
-  <data name="settings.tab.memory" xml:space="preserve"><value>Memory</value></data>
-  <data name="memory.vault.title" xml:space="preserve"><value>Memory vault</value></data>
-  <data name="memory.refresh" xml:space="preserve"><value>Refresh</value></data>
-  <data name="memory.reveal" xml:space="preserve"><value>Open .mem folder</value></data>
-  <data name="memory.refused" xml:space="preserve"><value>Not saved. The entry may contain a credential, exceed its limit, or the workspace may be unavailable.</value></data>
-  <data name="memory.noWorkspace" xml:space="preserve"><value>Select a local workspace to view its memory.</value></data>
-  <data name="memory.notInitialized" xml:space="preserve"><value>Memory starts after the first prompt in this workspace.</value></data>
-  <data name="memory.search" xml:space="preserve"><value>Search memory</value></data>
-  <data name="memory.selectNote" xml:space="preserve"><value>Select a note to view it.</value></data>
-  <data name="memory.save" xml:space="preserve"><value>Save</value></data>
-  <data name="memory.forget" xml:space="preserve"><value>Forget</value></data>
-  <data name="memory.ownRules" xml:space="preserve"><value>Your own rules</value></data>
-  <data name="memory.rulesHelp" xml:space="preserve"><value>These rules are added to every request in this project.</value></data>
-  <data name="memory.lessons" xml:space="preserve"><value>Learned lessons</value></data>
-  <data name="memory.learningStats" xml:space="preserve"><value>{0} turns logged; {1} were corrected or undone.</value></data>
-  <data name="memory.links" xml:space="preserve"><value>Links</value></data>
-  <data name="memory.backlinks" xml:space="preserve"><value>Linked mentions</value></data>
-  <data name="memory.userAuthored" xml:space="preserve"><value>user-authored</value></data>
-  <data name="memory.inferred" xml:space="preserve"><value>inferred</value></data>
-  <data name="memory.learnedCount" xml:space="preserve"><value>learned {0}×</value></data>
-  <data name="memory.usedCount" xml:space="preserve"><value>used {0}×</value></data>
-  <data name="memory.inactive" xml:space="preserve"><value>no longer applied</value></data>
-  <data name="memory.pin" xml:space="preserve"><value>Pin</value></data>
-  <data name="memory.edit" xml:space="preserve"><value>Edit</value></data>
-  <data name="memory.cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="settings.tab.access" xml:space="preserve"><value>Workspace access</value></data>
-  <data name="access.currentActor" xml:space="preserve"><value>Current actor</value></data>
-  <data name="access.role" xml:space="preserve"><value>Role</value></data>
-  <data name="access.notAuthorized" xml:space="preserve"><value>Not authorized</value></data>
-  <data name="access.score" xml:space="preserve"><value>Score</value></data>
-  <data name="access.device" xml:space="preserve"><value>Device</value></data>
-  <data name="access.publicKey" xml:space="preserve"><value>Public key</value></data>
-  <data name="access.memoryRevision" xml:space="preserve"><value>Memory revision</value></data>
-  <data name="access.members" xml:space="preserve"><value>Members</value></data>
-  <data name="access.noMembers" xml:space="preserve"><value>No members yet.</value></data>
-  <data name="access.revoke" xml:space="preserve"><value>Revoke</value></data>
-  <data name="access.revoked" xml:space="preserve"><value>revoked</value></data>
-  <data name="access.inviteDevice" xml:space="preserve"><value>Invite device</value></data>
-  <data name="access.displayName" xml:space="preserve"><value>Display name</value></data>
-  <data name="access.newDevicePublicKey" xml:space="preserve"><value>New device public key</value></data>
-  <data name="access.createInvitation" xml:space="preserve"><value>Create signed invitation</value></data>
-  <data name="access.acceptInvitation" xml:space="preserve"><value>Accept invitation</value></data>
-  <data name="access.signedInvitation" xml:space="preserve"><value>Signed invitation</value></data>
-  <data name="access.accept" xml:space="preserve"><value>Accept</value></data>
-  <data name="access.reject" xml:space="preserve"><value>Reject</value></data>
-  <data name="access.pendingDecisions" xml:space="preserve"><value>Pending decisions</value></data>
-  <data name="access.noPendingDecisions" xml:space="preserve"><value>No pending project decisions.</value></data>
-  <data name="access.noWorkspace" xml:space="preserve"><value>Select a local workspace to manage access.</value></data>
-  <data name="access.scoreValue" xml:space="preserve"><value>Score: {0}</value></data>
-  <data name="access.initialize" xml:space="preserve"><value>Initialize workspace memory</value></data>
-  <data name="access.initializeHelp" xml:space="preserve"><value>Workspace access uses a signed memory log. Initializing creates the owner identity and event log in this project's .mem folder.</value></data>
-  <data name="access.role.owner" xml:space="preserve"><value>Owner</value></data>
-  <data name="access.role.approver" xml:space="preserve"><value>Approver</value></data>
-  <data name="access.role.contributor" xml:space="preserve"><value>Contributor</value></data>
-  <data name="access.role.observer" xml:space="preserve"><value>Observer</value></data>
-  <data name="settings.sandbox" xml:space="preserve"><value>Sandbox</value></data>
-  <data name="settings.sandboxOff" xml:space="preserve"><value>Off — the agent works directly in your checkout.</value></data>
-  <data name="settings.sandboxOn" xml:space="preserve"><value>On — the agent works in a separate git worktree.</value></data>
-  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>Recovery is required before sandbox operations can continue.</value></data>
-  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>Retry recovery</value></data>
-  <data name="settings.sandboxName" xml:space="preserve"><value>Name</value></data>
-  <data name="settings.sandboxEnter" xml:space="preserve"><value>Start sandbox</value></data>
-  <data name="settings.sandboxMerge" xml:space="preserve"><value>Merge and exit</value></data>
-  <data name="settings.sandboxDiscard" xml:space="preserve"><value>Discard and exit</value></data>
-  <data name="settings.sandboxOrigin" xml:space="preserve"><value>Origin</value></data>
-  <data name="settings.sandboxBranch" xml:space="preserve"><value>Branch</value></data>
-  <data name="settings.sandboxNetwork" xml:space="preserve"><value>Allow network for new processes</value></data>
-  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>This applies only to new commands. Existing terminal sessions keep their current policy.</value></data>
-  <data name="settings.sandboxOpen" xml:space="preserve"><value>Open sandbox</value></data>
-  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>Open origin</value></data>
-  <data name="settings.sandboxConflicts" xml:space="preserve"><value>Conflicts</value></data>
-  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>Prepare resolution</value></data>
-  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>Ask agent</value></data>
-  <data name="settings.sandboxPreview" xml:space="preserve"><value>Refresh preview</value></data>
-  <data name="settings.sandboxApprove" xml:space="preserve"><value>Approve and merge</value></data>
-  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>Cancel resolution</value></data>
-  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>Retry cleanup</value></data>
-  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>Discard this sandbox? Its branch will be kept for recovery, but its worktree will be removed.</value></data>
-  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>Approval requires a complete preview with no unresolved files.</value></data>
-  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>Resolution preview</value></data>
-  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>Unresolved files</value></data>
-  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>Origin HEAD</value></data>
-  <data name="settings.sandboxHead" xml:space="preserve"><value>Sandbox HEAD</value></data>
-  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>Preview fingerprint</value></data>
-  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>Sandbox cleanup is still pending; the origin was not changed again.</value></data>
-  <data name="settings.sandboxRecovery" xml:space="preserve"><value>Saved sandboxes</value></data>
-  <data name="settings.sandboxRecover" xml:space="preserve"><value>Recover</value></data>
+  <data name="mcp.bearerToken" xml:space="preserve"><value>رمز Bearer (اختياري)</value></data>
+  <data name="mcp.executable" xml:space="preserve"><value>مسار الملف التنفيذي</value></data>
+  <data name="mcp.arguments" xml:space="preserve"><value>الوسائط (مفصولة بمسافات)</value></data>
+  <data name="mcp.autoRunReadOnly" xml:space="preserve"><value>تشغيل الأدوات التي يعلّمها الخادم للقراءة فقط تلقائيًا</value></data>
+  <data name="mcp.autoRunHelp" xml:space="preserve"><value>تعليقات الخادم التوضيحية غير موثوقة. تفعيل هذا يتخطى الموافقة فقط للأدوات المعلَّمة للقراءة فقط وغير المدمِّرة.</value></data>
+  <data name="mcp.test" xml:space="preserve"><value>اختبار</value></data>
+  <data name="mcp.add" xml:space="preserve"><value>إضافة خادم</value></data>
+  <data name="mcp.reconnect" xml:space="preserve"><value>إعادة الاتصال</value></data>
+  <data name="mcp.remove" xml:space="preserve"><value>إزالة</value></data>
+  <data name="mcp.idle" xml:space="preserve"><value>خامل</value></data>
+  <data name="mcp.connecting" xml:space="preserve"><value>جارٍ الاتصال…</value></data>
+  <data name="mcp.connected" xml:space="preserve"><value>متصل · {0} أداة</value></data>
+  <data name="mcp.failed" xml:space="preserve"><value>فشل: {0}</value></data>
+  <data name="mcp.testing" xml:space="preserve"><value>جارٍ الاختبار…</value></data>
+  <data name="mcp.testConnected" xml:space="preserve"><value>متصل. {0} أداة متاحة.</value></data>
+  <data name="conversation.toolInput" xml:space="preserve"><value>مدخلات الأداة</value></data>
+  <data name="settings.tab.memory" xml:space="preserve"><value>الذاكرة</value></data>
+  <data name="memory.vault.title" xml:space="preserve"><value>خزنة الذاكرة</value></data>
+  <data name="memory.refresh" xml:space="preserve"><value>تحديث</value></data>
+  <data name="memory.enabled" xml:space="preserve"><value>الذاكرة مفعّلة</value></data>
+  <data name="memory.scanFrequency" xml:space="preserve"><value>تكرار الفحص</value></data>
+  <data name="memory.scan.off" xml:space="preserve"><value>إيقاف</value></data>
+  <data name="memory.scan.hourly" xml:space="preserve"><value>كل ساعة</value></data>
+  <data name="memory.scan.daily" xml:space="preserve"><value>يوميًا</value></data>
+  <data name="memory.scan.weekly" xml:space="preserve"><value>أسبوعيًا</value></data>
+  <data name="memory.enabledHelp" xml:space="preserve"><value>عند الإيقاف لا تُدوَّن أي مهمة ولا يُتعلَّم شيء ولا تُرسَل أي نتيجة إلى النموذج؛ وما حُفظ سابقًا يبقى على القرص.</value></data>
+  <data name="memory.scanHelp" xml:space="preserve"><value>تُحفظ ملاحظات موجزة عن المهام للرجوع إلى أسباب النتائج حتى بعد الفحص؛ وعند إيقاف الفحص لا يُستدعى أي نموذج في الخلفية.</value></data>
+  <data name="memory.reveal" xml:space="preserve"><value>فتح مجلد ‎.mem</value></data>
+  <data name="memory.refused" xml:space="preserve"><value>لم يُحفظ. قد يحتوي الإدخال على بيانات اعتماد، أو يتجاوز حده، أو قد تكون مساحة العمل غير متاحة.</value></data>
+  <data name="memory.noWorkspace" xml:space="preserve"><value>اختر مساحة عمل محلية لعرض ذاكرتها.</value></data>
+  <data name="memory.notInitialized" xml:space="preserve"><value>تبدأ الذاكرة بعد أول موجّه في مساحة العمل هذه.</value></data>
+  <data name="memory.search" xml:space="preserve"><value>البحث في الذاكرة</value></data>
+  <data name="memory.selectNote" xml:space="preserve"><value>اختر ملاحظة لعرضها.</value></data>
+  <data name="memory.save" xml:space="preserve"><value>حفظ</value></data>
+  <data name="memory.forget" xml:space="preserve"><value>نسيان</value></data>
+  <data name="memory.ownRules" xml:space="preserve"><value>قواعدك الخاصة</value></data>
+  <data name="memory.rulesHelp" xml:space="preserve"><value>تُضاف هذه القواعد إلى كل طلب في هذا المشروع.</value></data>
+  <data name="memory.lessons" xml:space="preserve"><value>دروس مستفادة</value></data>
+  <data name="memory.learningStats" xml:space="preserve"><value>سُجّلت {0} أدوار؛ صُحّح أو أُلغي {1} منها.</value></data>
+  <data name="memory.links" xml:space="preserve"><value>الروابط</value></data>
+  <data name="memory.backlinks" xml:space="preserve"><value>إشارات مرتبطة</value></data>
+  <data name="memory.userAuthored" xml:space="preserve"><value>من كتابة المستخدم</value></data>
+  <data name="memory.inferred" xml:space="preserve"><value>مستنتَج</value></data>
+  <data name="memory.learnedCount" xml:space="preserve"><value>تعلّم {0}×</value></data>
+  <data name="memory.usedCount" xml:space="preserve"><value>استُخدم {0}×</value></data>
+  <data name="memory.inactive" xml:space="preserve"><value>لم يعد مطبَّقًا</value></data>
+  <data name="memory.pin" xml:space="preserve"><value>تثبيت</value></data>
+  <data name="memory.edit" xml:space="preserve"><value>تعديل</value></data>
+  <data name="memory.cancel" xml:space="preserve"><value>إلغاء</value></data>
+  <data name="settings.tab.access" xml:space="preserve"><value>الوصول إلى مساحة العمل</value></data>
+  <data name="access.accept" xml:space="preserve"><value>قبول</value></data>
+  <data name="settings.sandbox" xml:space="preserve"><value>بيئة معزولة</value></data>
+  <data name="settings.sandboxOff" xml:space="preserve"><value>إيقاف — يعمل الوكيل مباشرةً في نسختك.</value></data>
+  <data name="settings.sandboxOn" xml:space="preserve"><value>تشغيل — يعمل الوكيل في git worktree منفصلة.</value></data>
+  <data name="settings.sandboxRecoveryRequired" xml:space="preserve"><value>يلزم الاسترداد قبل متابعة عمليات البيئة المعزولة.</value></data>
+  <data name="settings.sandboxRetryRecovery" xml:space="preserve"><value>إعادة محاولة الاسترداد</value></data>
+  <data name="settings.sandboxName" xml:space="preserve"><value>الاسم</value></data>
+  <data name="settings.sandboxEnter" xml:space="preserve"><value>بدء البيئة المعزولة</value></data>
+  <data name="settings.sandboxMerge" xml:space="preserve"><value>الدمج والخروج</value></data>
+  <data name="settings.sandboxDiscard" xml:space="preserve"><value>تجاهل والخروج</value></data>
+  <data name="settings.sandboxOrigin" xml:space="preserve"><value>الأصل</value></data>
+  <data name="settings.sandboxBranch" xml:space="preserve"><value>فرع</value></data>
+  <data name="settings.sandboxNetwork" xml:space="preserve"><value>السماح بالشبكة للعمليات الجديدة</value></data>
+  <data name="settings.sandboxNetwork.hint" xml:space="preserve"><value>ينطبق هذا على الأوامر الجديدة فقط. تحتفظ جلسات الطرفية الحالية بسياستها الحالية.</value></data>
+  <data name="settings.sandboxOpen" xml:space="preserve"><value>فتح البيئة المعزولة</value></data>
+  <data name="settings.sandboxOpenOrigin" xml:space="preserve"><value>فتح الأصل</value></data>
+  <data name="settings.sandboxConflicts" xml:space="preserve"><value>التعارضات</value></data>
+  <data name="settings.sandboxPrepareResolution" xml:space="preserve"><value>تحضير الحل</value></data>
+  <data name="settings.sandboxAskAgent" xml:space="preserve"><value>اسأل الوكيل</value></data>
+  <data name="settings.sandboxPreview" xml:space="preserve"><value>تحديث المعاينة</value></data>
+  <data name="settings.sandboxApprove" xml:space="preserve"><value>الموافقة والدمج</value></data>
+  <data name="settings.sandboxCancelResolution" xml:space="preserve"><value>إلغاء الحل</value></data>
+  <data name="settings.sandboxRetryCleanup" xml:space="preserve"><value>إعادة محاولة التنظيف</value></data>
+  <data name="settings.sandboxDiscardConfirm" xml:space="preserve"><value>تجاهل هذه البيئة المعزولة؟ سيُحتفظ بفرعها للاسترداد، لكن ستُزال شجرة العمل الخاصة بها.</value></data>
+  <data name="settings.sandboxResolutionIncomplete" xml:space="preserve"><value>تتطلب الموافقة معاينة كاملة دون ملفات غير محلولة.</value></data>
+  <data name="settings.sandboxResolutionReady" xml:space="preserve"><value>معاينة الحل</value></data>
+  <data name="settings.sandboxUnresolved" xml:space="preserve"><value>ملفات غير محلولة</value></data>
+  <data name="settings.sandboxOriginHead" xml:space="preserve"><value>HEAD الأصل</value></data>
+  <data name="settings.sandboxHead" xml:space="preserve"><value>HEAD البيئة المعزولة</value></data>
+  <data name="settings.sandboxFingerprint" xml:space="preserve"><value>بصمة المعاينة</value></data>
+  <data name="settings.sandboxCleanupPending" xml:space="preserve"><value>لا يزال تنظيف البيئة المعزولة معلّقًا؛ لم يُغيَّر الأصل مرة أخرى.</value></data>
+  <data name="settings.sandboxRecovery" xml:space="preserve"><value>البيئات المعزولة المحفوظة</value></data>
+  <data name="settings.sandboxRecover" xml:space="preserve"><value>استرداد</value></data>
   <data name="conversation.accountSwitched.notice" xml:space="preserve"><value>انتقلت هذه المحادثة إلى حساب آخر على النموذج نفسه. تبدأ ذاكرة التخزين المؤقت هناك من الصفر؛ قد تستهلك المتابعة رموزًا أكثر وتكلّف أكثر.</value></data>
   <data name="conversation.modelSwitched.notice" xml:space="preserve"><value>تغيّر النموذج. لا تنتقل ذاكرة التخزين المؤقت إلى النموذج الجديد؛ يُعالَج السجل كاملًا من جديد، وقد يستهلك ذلك رموزًا أكثر ويكلّف أكثر.</value></data>
   <data name="conversation.contextFull.notice" xml:space="preserve"><value>نافذة السياق على وشك الامتلاء؛ قد تستهلك المتابعة رموزًا أكثر وتكلّف أكثر. ابدأ محادثة جديدة بملخص قصير.</value></data>
@@ -575,28 +559,28 @@
   <data name="context.overflowCompress" xml:space="preserve"><value>ضغط ومتابعة</value></data>
   <data name="context.overflowNotNow" xml:space="preserve"><value>ليس الآن</value></data>
   <data name="context.overflowDeclined" xml:space="preserve"><value>توقف الإرسال: المحادثة لا تتسع في النموذج الجديد.</value></data>
-  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>When another chat is writing the same file</value></data>
-  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>Wait before asking</value></data>
-  <data name="settings.conflictWaitValue" xml:space="preserve"><value>Wait {0} seconds</value></data>
-  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>Wait, then ask</value></data>
-  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>A chat that wants a file another chat is writing waits quietly, and asks only if the wait goes on too long.</value></data>
-  <data name="conflict.policy.ask" xml:space="preserve"><value>Ask me</value></data>
-  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>Ask as soon as two chats want the same file.</value></data>
-  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>Always wait</value></data>
-  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>Never ask: a write waits for the chat that holds the file.</value></data>
-  <data name="conflict.title" xml:space="preserve"><value>A file is busy: {0}</value></data>
-  <data name="conflict.wholeProject" xml:space="preserve"><value>Project command: {0}</value></data>
-  <data name="conflict.stillBusy" xml:space="preserve"><value>Write held back: another chat is still writing {0}.</value></data>
-  <data name="conflict.userSkipped" xml:space="preserve"><value>Write skipped: {0} was left with the other chat ({1}), as you asked.</value></data>
-  <data name="conflict.stoppedHolder" xml:space="preserve"><value>Stopped {0} so this chat could write.</value></data>
-  <data name="conflict.stoppedOthers" xml:space="preserve"><value>Stopped other chats so this chat could write.</value></data>
-  <data name="conflict.banner.title" xml:space="preserve"><value>Another chat is writing this file</value></data>
-  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · held by “{1}” for {2} seconds</value></data>
-  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>Keep waiting</value></data>
-  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>Stop {0}</value></data>
-  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>Stop all other chats</value></data>
-  <data name="conflict.banner.skip" xml:space="preserve"><value>Skip this write</value></data>
-  <data name="conflict.waiting" xml:space="preserve"><value>Waiting for “{0}” to finish writing: {1}</value></data>
+  <data name="settings.workspaceConflictPolicy" xml:space="preserve"><value>إذا كانت دردشة أخرى تكتب الملف نفسه</value></data>
+  <data name="settings.conflictWaitSeconds" xml:space="preserve"><value>الانتظار قبل السؤال</value></data>
+  <data name="settings.conflictWaitValue" xml:space="preserve"><value>{0} ثانية</value></data>
+  <data name="conflict.policy.waitThenAsk" xml:space="preserve"><value>الانتظار ثم السؤال</value></data>
+  <data name="conflict.policy.waitThenAsk.detail" xml:space="preserve"><value>ينتظر الدردشة الأخرى بصمت ولا يسأل إلا إذا طال الانتظار.</value></data>
+  <data name="conflict.policy.ask" xml:space="preserve"><value>اسألني</value></data>
+  <data name="conflict.policy.ask.detail" xml:space="preserve"><value>يسأل بمجرد أن تريد دردشتان الملف نفسه.</value></data>
+  <data name="conflict.policy.waitOnly" xml:space="preserve"><value>الانتظار دائمًا</value></data>
+  <data name="conflict.policy.waitOnly.detail" xml:space="preserve"><value>لا يسأل: كل كتابة تنتظر الدردشة التي تحتفظ بالملف.</value></data>
+  <data name="conflict.title" xml:space="preserve"><value>تكتب دردشة أخرى {0}</value></data>
+  <data name="conflict.wholeProject" xml:space="preserve"><value>المشروع بالكامل (الأمر: {0})</value></data>
+  <data name="conflict.stillBusy" xml:space="preserve"><value>تم تعليق الكتابة: ما زالت دردشة أخرى تكتب {0}.</value></data>
+  <data name="conflict.userSkipped" xml:space="preserve"><value>تم تخطي الكتابة: بقي {0} مع الدردشة الأخرى ({1}) كما طلبت.</value></data>
+  <data name="conflict.stoppedHolder" xml:space="preserve"><value>تم إيقاف الدردشة “{0}” بناءً على طلبك ونُفِّذت هذه الكتابة.</value></data>
+  <data name="conflict.stoppedOthers" xml:space="preserve"><value>تم إيقاف الدردشات الأخرى لهذا المشروع بناءً على طلبك ونُفِّذت هذه الكتابة.</value></data>
+  <data name="conflict.banner.title" xml:space="preserve"><value>تكتب دردشة أخرى هذا الملف</value></data>
+  <data name="conflict.banner.body" xml:space="preserve"><value>{0} · تحتفظ به «{1}» منذ {2} ثانية</value></data>
+  <data name="conflict.banner.keepWaiting" xml:space="preserve"><value>متابعة الانتظار</value></data>
+  <data name="conflict.banner.stopHolder" xml:space="preserve"><value>أوقف هذه الدردشة</value></data>
+  <data name="conflict.banner.stopAllOthers" xml:space="preserve"><value>أوقف كل الدردشات الأخرى</value></data>
+  <data name="conflict.banner.skip" xml:space="preserve"><value>تخطي هذه الكتابة</value></data>
+  <data name="conflict.waiting" xml:space="preserve"><value>جارٍ انتظار “{0}” أثناء الكتابة: {1}</value></data>
   <data name="usage.context.button" xml:space="preserve"><value>الاستخدام</value></data>
   <data name="usage.context.tooltip" xml:space="preserve"><value>استخدام السياق والرموز</value></data>
   <data name="usage.context.latestRequest" xml:space="preserve"><value>آخر طلب · نافذة السياق</value></data>
@@ -606,34 +590,738 @@
   <data name="usage.context.notReported" xml:space="preserve"><value>لم يبلّغ عنه المزوّد</value></data>
   <data name="usage.context.estimatedBreakdown" xml:space="preserve"><value>تفصيل المدخلات المقدَّر</value></data>
   <data name="usage.context.tokens" xml:space="preserve"><value>رموز</value></data>
-  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} tokens ({2})</value></data>
-  <data name="usage.context.notAvailable" xml:space="preserve"><value>Context usage is not available yet.</value></data>
-  <data name="usage.context.composition" xml:space="preserve"><value>Estimated input composition</value></data>
+  <data name="usage.context.summary" xml:space="preserve"><value>{0} / {1} رمز ({2})</value></data>
+  <data name="usage.context.notAvailable" xml:space="preserve"><value>استخدام السياق غير متاح بعد.</value></data>
+  <data name="usage.context.composition" xml:space="preserve"><value>التكوين التقديري للإدخال</value></data>
   <data name="usage.context.estimatedRow" xml:space="preserve"><value>{0}: {1} ({2})</value></data>
   <data name="usage.context.conversation" xml:space="preserve"><value>رسائل المحادثة</value></data>
   <data name="usage.context.systemPrompt" xml:space="preserve"><value>تعليمات النظام</value></data>
   <data name="usage.context.toolDefinitions" xml:space="preserve"><value>تعريفات الأدوات</value></data>
   <data name="usage.context.mcpDefinitions" xml:space="preserve"><value>تعريفات أدوات MCP</value></data>
-  <data name="usage.context.cacheHit" xml:space="preserve"><value>Measured cache hit</value></data>
-  <data name="usage.context.cacheReuse" xml:space="preserve"><value>Verified prefix reuse: {0} · {1} / {2} tokens</value></data>
-  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>Measurement coverage: {0} · {1} of {2} eligible requests</value></data>
-  <data name="usage.context.cacheStatus" xml:space="preserve"><value>Cold: {0} · expired: {1} · changed: {2}</value></data>
-  <data name="usage.context.cacheWrite" xml:space="preserve"><value>Cache writes: {0} tokens</value></data>
-  <data name="usage.context.freshInput" xml:space="preserve"><value>Fresh input: {0} tokens</value></data>
-  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>Reuse not reported: {0} of {1} eligible requests</value></data>
-  <data name="usage.context.latency" xml:space="preserve"><value>Average request latency: {0}</value></data>
-  <data name="usage.context.prepare" xml:space="preserve"><value>Average request preparation: {0}</value></data>
-  <data name="usage.context.cacheLoss" xml:space="preserve"><value>Largest cache loss: {0} ({1} tokens)</value></data>
-  <data name="settings.shortcuts" xml:space="preserve"><value>Keyboard shortcuts</value></data>
-  <data name="settings.shortcuts.hint" xml:space="preserve"><value>Select a shortcut to change it. Press a key combination with at least one modifier.</value></data>
-  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>Show or hide sidebar</value></data>
-  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>Press keys…</value></data>
-  <data name="settings.shortcuts.reset" xml:space="preserve"><value>Restore defaults</value></data>
-  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} is already assigned to {1}.</value></data>
-  <data name="sidebar.pullRequests" xml:space="preserve"><value>Pull requests</value></data>
-  <data name="conversation.review" xml:space="preserve"><value>Review</value></data>
-  <data name="conversation.files" xml:space="preserve"><value>Files</value></data>
-  <data name="conversation.browser" xml:space="preserve"><value>Browser</value></data>
-  <data name="conversation.newChat" xml:space="preserve"><value>New conversation</value></data>
-  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} رمز</value></data>
+  <data name="usage.context.cacheHit" xml:space="preserve"><value>إصابات ذاكرة التخزين المؤقت المقيسة</value></data>
+  <data name="usage.context.cacheReuse" xml:space="preserve"><value>إعادة استخدام البادئة المتحقق منها: {0} · {1} / {2} رمز</value></data>
+  <data name="usage.context.cacheCoverage" xml:space="preserve"><value>تغطية القياس: {0} · {1} من {2} طلبات مؤهلة</value></data>
+  <data name="usage.context.cacheStatus" xml:space="preserve"><value>باردة: {0} · منتهية: {1} · متغيرة: {2}</value></data>
+  <data name="usage.context.cacheWrite" xml:space="preserve"><value>عمليات الكتابة في ذاكرة التخزين المؤقت: {0} رمز</value></data>
+  <data name="usage.context.freshInput" xml:space="preserve"><value>إدخال جديد: {0} رمز</value></data>
+  <data name="usage.context.reuseUnknown" xml:space="preserve"><value>لم يُبلَّغ عن إعادة الاستخدام: {0} من {1} طلبات مؤهلة</value></data>
+  <data name="usage.context.latency" xml:space="preserve"><value>متوسط زمن استجابة الطلب: {0}</value></data>
+  <data name="usage.context.prepare" xml:space="preserve"><value>متوسط تحضير الطلب: {0}</value></data>
+  <data name="usage.context.cacheLoss" xml:space="preserve"><value>أكبر خسارة في ذاكرة التخزين المؤقت: {0} ({1} رمز)</value></data>
+  <data name="settings.shortcuts" xml:space="preserve"><value>اختصارات لوحة المفاتيح</value></data>
+  <data name="settings.shortcuts.hint" xml:space="preserve"><value>اختر اختصارًا لتغييره. اضغط تركيبة مفاتيح تتضمن مفتاح تعديل واحدًا على الأقل.</value></data>
+  <data name="settings.shortcuts.sidebar" xml:space="preserve"><value>إظهار الشريط الجانبي أو إخفاؤه</value></data>
+  <data name="settings.shortcuts.pressKeys" xml:space="preserve"><value>اضغط المفاتيح…</value></data>
+  <data name="settings.shortcuts.reset" xml:space="preserve"><value>استعادة الإعدادات الافتراضية</value></data>
+  <data name="settings.shortcuts.conflict" xml:space="preserve"><value>{0} مُعيَّن بالفعل لـ {1}.</value></data>
+  <data name="sidebar.pullRequests" xml:space="preserve"><value>طلبات السحب</value></data>
+  <data name="conversation.review" xml:space="preserve"><value>مراجعة</value></data>
+  <data name="conversation.files" xml:space="preserve"><value>الملفات</value></data>
+  <data name="conversation.browser" xml:space="preserve"><value>المتصفح</value></data>
+  <data name="conversation.newChat" xml:space="preserve"><value>محادثة جديدة</value></data>
+  <data name="conversation.processedTokensCount" xml:space="preserve"><value>{0} رمزًا تمت معالجته حديثًا</value></data>
+  <data name="settings.skillSuggestions" xml:space="preserve"><value>إظهار اقتراحات المهارات</value></data>
+  <data name="settings.skillSuggestions.hint" xml:space="preserve"><value>يقترح مهارة فقط عندما يُتعلَّم الدرس نفسه ثلاث مرات أو ينهي الوكيل سير عمل ستحتاجه مجددًا؛ بطاقة واحدة أسبوعيًا على الأكثر. إيقاف: لا تظهر بطاقات اقتراح، ولا يقترح الوكيل مهارات.</value></data>
+  <data name="skill.suggestion.title" xml:space="preserve"><value>مهارة مقترحة: {0}</value></data>
+  <data name="skill.suggestion.create" xml:space="preserve"><value>إنشاء مهارة</value></data>
+  <data name="skill.suggestion.dismiss" xml:space="preserve"><value>ليس الآن</value></data>
+  <data name="settings.autoAccountFailover" xml:space="preserve"><value>تجربة حساب آخر تلقائيًا بعد بلوغ الحد</value></data>
+  <data name="settings.autoAccountFailover.hint" xml:space="preserve"><value>عند التعطيل، تتوقف المحادثة مؤقتًا؛ اضغط على متابعة لتجربة حساب متوافق آخر. عند التفعيل، تُجرّب الحسابات المتوافقة تلقائيًا.</value></data>
+  <data name="model.context.description" xml:space="preserve"><value>أدخل حجم سياق خاصًا بالنموذج بالرموز المميزة. يستخدم التلقائي الحجم المعلن أو الموثق للنموذج عند توفره، ثم القيمة المحددة للحساب.</value></data>
+  <data name="model.context.search" xml:space="preserve"><value>البحث في النماذج</value></data>
+  <data name="model.context.detected" xml:space="preserve"><value>القيمة التلقائية: {0} رمزًا</value></data>
+  <data name="model.context.notDetected" xml:space="preserve"><value>لا يبلغ المزود عن حجم السياق.</value></data>
+  <data name="model.context.empty" xml:space="preserve"><value>لا توجد نماذج متاحة بعد. اربط مزودًا أو حدّث قائمة النماذج.</value></data>
+  <data name="model.context.saved" xml:space="preserve"><value>تم الحفظ.</value></data>
+  <data name="model.context.auto" xml:space="preserve"><value>تلقائي</value></data>
+  <data name="model.context.invalid" xml:space="preserve"><value>أدخل عددًا صحيحًا موجبًا من الرموز المميزة.</value></data>
+  <data name="attachment.files" xml:space="preserve"><value>الملفات أو الصور</value></data>
+  <data name="attachment.project" xml:space="preserve"><value>العمل في مشروع</value></data>
+  <data name="conversation.contextCompactedAuto" xml:space="preserve"><value>تم ضغط السياق تلقائيًا</value></data>
+  <data name="conversation.activity.filesRead" xml:space="preserve"><value>تمت قراءة الملفات</value></data>
+  <data name="conversation.activity.filesChanged" xml:space="preserve"><value>تم تعديل الملفات</value></data>
+  <data name="conversation.activity.commandsRun" xml:space="preserve"><value>تم تشغيل الأوامر</value></data>
+  <data name="conversation.activity.webSearch" xml:space="preserve"><value>تم البحث في الويب</value></data>
+  <data name="conversation.activity.filesReading" xml:space="preserve"><value>جارٍ قراءة الملفات…</value></data>
+  <data name="conversation.activity.filesChanging" xml:space="preserve"><value>جارٍ تعديل الملفات…</value></data>
+  <data name="conversation.activity.commandsRunning" xml:space="preserve"><value>جارٍ تشغيل الأوامر…</value></data>
+  <data name="conversation.activity.webSearching" xml:space="preserve"><value>جارٍ البحث في الويب…</value></data>
+  <data name="conversation.activity.otherDone" xml:space="preserve"><value>تم استخدام أداة</value></data>
+  <data name="conversation.activity.otherRunning" xml:space="preserve"><value>جارٍ تشغيل أداة…</value></data>
+  <data name="conversation.activity.toolFailed" xml:space="preserve"><value>فشلت الأداة: {0}</value></data>
+  <data name="tasks.menu" xml:space="preserve"><value>المهام</value></data>
+  <data name="tasks.title" xml:space="preserve"><value>المهام المجدولة</value></data>
+  <data name="tasks.subtitle" xml:space="preserve"><value>قم بتشغيل موجه وفقًا لجدول cron.</value></data>
+  <data name="tasks.empty" xml:space="preserve"><value>لا توجد مهام حتى الآن.</value></data>
+  <data name="tasks.add" xml:space="preserve"><value>إضافة مهمة</value></data>
+  <data name="tasks.edit" xml:space="preserve"><value>تحرير المهمة</value></data>
+  <data name="tasks.delete" xml:space="preserve"><value>حذف</value></data>
+  <data name="tasks.runNow" xml:space="preserve"><value>تشغيل الآن</value></data>
+  <data name="tasks.enabled" xml:space="preserve"><value>ممكّن</value></data>
+  <data name="tasks.field.name" xml:space="preserve"><value>الاسم</value></data>
+  <data name="tasks.field.cron" xml:space="preserve"><value>تعبير كرون</value></data>
+  <data name="tasks.field.prompt" xml:space="preserve"><value>موجّه</value></data>
+  <data name="tasks.field.workspace" xml:space="preserve"><value>مساحة العمل</value></data>
+  <data name="tasks.cron.invalid" xml:space="preserve"><value>تعبير كرون غير صالح.</value></data>
+  <data name="tasks.cron.next" xml:space="preserve"><value>التشغيلات القادمة</value></data>
+  <data name="tasks.close" xml:space="preserve"><value>إغلاق المهام</value></data>
+  <data name="tasks.back" xml:space="preserve"><value>رجوع</value></data>
+  <data name="tasks.new" xml:space="preserve"><value>مهمة جديدة</value></data>
+  <data name="tasks.active" xml:space="preserve"><value>مهامك</value></data>
+  <data name="tasks.disabled" xml:space="preserve"><value>معطلة</value></data>
+  <data name="tasks.suggestions" xml:space="preserve"><value>الاقتراحات</value></data>
+  <data name="tasks.history" xml:space="preserve"><value>عمليات التشغيل الأخيرة</value></data>
+  <data name="tasks.history.empty" xml:space="preserve"><value>لم تُشغّل هذه المهمة بعد.</value></data>
+  <data name="tasks.field.target" xml:space="preserve"><value>الملف أو المجلد الهدف</value></data>
+  <data name="tasks.field.targetHint" xml:space="preserve"><value>مسار اختياري داخل مساحة العمل</value></data>
+  <data name="tasks.target.invalid" xml:space="preserve"><value>يجب أن يكون الهدف داخل مساحة العمل.</value></data>
+  <data name="tasks.field.model" xml:space="preserve"><value>النموذج</value></data>
+  <data name="tasks.field.fallback" xml:space="preserve"><value>النموذج الاحتياطي</value></data>
+  <data name="tasks.network" xml:space="preserve"><value>السماح بالوصول إلى الشبكة</value></data>
+  <data name="tasks.assistant.title" xml:space="preserve"><value>مساعد المهام</value></data>
+  <data name="tasks.assistant.placeholder" xml:space="preserve"><value>اطلب تغيير هذه المهمة…</value></data>
+  <data name="tasks.assistant.updated" xml:space="preserve"><value>تم تحديث المهمة.</value></data>
+  <data name="tasks.notification.title" xml:space="preserve"><value>مهمة مجدولة</value></data>
+  <data name="tasks.notification.completed" xml:space="preserve"><value>مكتملة</value></data>
+  <data name="tasks.notification.failed" xml:space="preserve"><value>فشلت</value></data>
+  <data name="tasks.notification.fallback" xml:space="preserve"><value>استُخدم النموذج الاحتياطي</value></data>
+  <data name="tasks.suggestion.daily.title" xml:space="preserve"><value>الملخص اليومي</value></data>
+  <data name="tasks.suggestion.daily.detail" xml:space="preserve"><value>لخّص العمل الأخير والأولويات المفتوحة وتغييرات مساحة العمل.</value></data>
+  <data name="tasks.suggestion.daily.schedule" xml:space="preserve"><value>أيام الأسبوع الساعة 8:00 صباحًا</value></data>
+  <data name="tasks.suggestion.daily.prompt" xml:space="preserve"><value>راجع المحادثات الأخيرة وتغييرات مساحة العمل. لخّص أهم الأولويات لليوم.</value></data>
+  <data name="tasks.suggestion.weekly.title" xml:space="preserve"><value>المراجعة الأسبوعية</value></data>
+  <data name="tasks.suggestion.weekly.detail" xml:space="preserve"><value>حوّل العمل الأخير إلى تحديث موجز للحالة كل جمعة.</value></data>
+  <data name="tasks.suggestion.weekly.schedule" xml:space="preserve"><value>أيام الجمعة الساعة 4:00 مساءً</value></data>
+  <data name="tasks.suggestion.weekly.prompt" xml:space="preserve"><value>راجع محادثات هذا الأسبوع وتغييرات مساحة العمل. اكتب تحديثًا موجزًا للحالة يتضمن العمل المكتمل والمخاطر والخطوات التالية.</value></data>
+  <data name="tasks.suggestion.followup.title" xml:space="preserve"><value>مراقب المتابعة</value></data>
+  <data name="tasks.suggestion.followup.detail" xml:space="preserve"><value>راجع النشاط الأخير وحدد كل ما يحتاج إلى الانتباه.</value></data>
+  <data name="tasks.suggestion.followup.schedule" xml:space="preserve"><value>أيام الأسبوع الساعة 9:00 صباحًا</value></data>
+  <data name="tasks.suggestion.followup.prompt" xml:space="preserve"><value>راجع نشاط المهام ومساحة العمل الأخير. حدّد العمل غير المكتمل وعمليات التشغيل الفاشلة وكل ما يحتاج إلى الانتباه.</value></data>
+  <data name="tasks.lastRun" xml:space="preserve"><value>التشغيل الأخير</value></data>
+  <data name="tasks.state.never" xml:space="preserve"><value>لا تركض أبدًا</value></data>
+  <data name="tasks.state.running" xml:space="preserve"><value>جاري…</value></data>
+  <data name="tasks.state.ok" xml:space="preserve"><value>نجحت</value></data>
+  <data name="tasks.state.failed" xml:space="preserve"><value>فشل</value></data>
+  <data name="tasks.openConversation" xml:space="preserve"><value>محادثة مفتوحة</value></data>
+  <data name="tasks.save" xml:space="preserve"><value>حفظ</value></data>
+  <data name="tasks.cancel" xml:space="preserve"><value>إلغاء</value></data>
+  <data name="tasks.background" xml:space="preserve"><value>تشغيل المهام أثناء إغلاق التطبيق</value></data>
+  <data name="tasks.background.hint" xml:space="preserve"><value>يقوم بتثبيت مساعد الخلفية (launchd) الذي يقوم بتشغيل المهام الواجبة حتى عندما لا يكون Dots Harness مفتوحًا.</value></data>
+  <data name="memory.section.map" xml:space="preserve"><value>خريطة</value></data>
+  <data name="memory.section.index" xml:space="preserve"><value>الفهرس</value></data>
+  <data name="memory.section.tasks" xml:space="preserve"><value>المهام</value></data>
+  <data name="memory.section.decisions" xml:space="preserve"><value>القرارات</value></data>
+  <data name="memory.section.preferences" xml:space="preserve"><value>التفضيلات</value></data>
+  <data name="memory.section.conversations" xml:space="preserve"><value>المحادثات</value></data>
+  <data name="memory.noBacklinks" xml:space="preserve"><value>لا توجد إشارات مرتبطة.</value></data>
+  <data name="memory.graph" xml:space="preserve"><value>رسم بياني</value></data>
+  <data name="media.image" xml:space="preserve"><value>صورة</value></data>
+  <data name="media.video" xml:space="preserve"><value>فيديو</value></data>
+  <data name="media.audio" xml:space="preserve"><value>الصوت</value></data>
+  <data name="media.promptMissing" xml:space="preserve"><value>وصف ما سيتم إنشاؤه بعد الأمر.</value></data>
+  <data name="media.promptMissingFor" xml:space="preserve"><value>قم بوصف {0} الذي سيتم إنشاؤه بعد الأمر.</value></data>
+  <data name="media.modelMissing" xml:space="preserve"><value>لم يتم تكوين نموذج موفر الوسائط.</value></data>
+  <data name="media.noOutput" xml:space="preserve"><value>لم يُرجع الموفر أي إخراج للوسائط.</value></data>
+  <data name="media.invalidOutput" xml:space="preserve"><value>قام الموفر بإرجاع بيانات وسائط غير صالحة.</value></data>
+  <data name="media.generationFailed" xml:space="preserve"><value>لم يتمكن الموفر من إنشاء الوسائط.</value></data>
+  <data name="media.videoTimeout" xml:space="preserve"><value>انتهت مهلة إنشاء الفيديو.</value></data>
+  <data name="media.busy" xml:space="preserve"><value>هناك عملية إنشاء أو تشغيل وكيل قيد التقدم بالفعل. حاول مرة أخرى عند الانتهاء.</value></data>
+  <data name="media.unsupported" xml:space="preserve"><value>لا أستطيع توليد هذا هنا. الموفر المحدد ليس لديه هذه الإمكانية.</value></data>
+  <data name="media.unsupportedStatus" xml:space="preserve"><value>إنشاء الوسائط غير مدعوم من قبل الموفر المحدد.</value></data>
+  <data name="media.fileMissing" xml:space="preserve"><value>الملف الذي تم إنشاؤه لم يعد متاحا.</value></data>
+  <data name="media.openAudio" xml:space="preserve"><value>فتح الصوت الذي تم إنشاؤه</value></data>
+  <data name="media.save" xml:space="preserve"><value>حفظ</value></data>
+  <data name="media.showInFinder" xml:space="preserve"><value>إظهار في Finder</value></data>
+  <data name="rail.home" xml:space="preserve"><value>الرئيسية</value></data>
+  <data name="rail.media" xml:space="preserve"><value>الوسائط</value></data>
+  <data name="rail.tasks" xml:space="preserve"><value>المهام</value></data>
+  <data name="rail.bots" xml:space="preserve"><value>البوتات</value></data>
+  <data name="rail.marketplace" xml:space="preserve"><value>المتجر</value></data>
+  <data name="rail.memory" xml:space="preserve"><value>الذاكرة</value></data>
+  <data name="rail.settings" xml:space="preserve"><value>الإعدادات</value></data>
+  <data name="models.followApp" xml:space="preserve"><value>نموذج التطبيق</value></data>
+  <data name="studio.preset.square" xml:space="preserve"><value>منشور مربع</value></data>
+  <data name="studio.preset.story" xml:space="preserve"><value>قصة</value></data>
+  <data name="studio.preset.landscape" xml:space="preserve"><value>أفقي</value></data>
+  <data name="studio.preset.thumbnail" xml:space="preserve"><value>صورة مصغرة للفيديو</value></data>
+  <data name="studio.preset.logo" xml:space="preserve"><value>شعار</value></data>
+  <data name="studio.preset.poster" xml:space="preserve"><value>ملصق</value></data>
+  <data name="studio.template.announcement" xml:space="preserve"><value>إعلان</value></data>
+  <data name="studio.template.story" xml:space="preserve"><value>قصة</value></data>
+  <data name="studio.template.thumbnail" xml:space="preserve"><value>صورة مصغرة للفيديو</value></data>
+  <data name="studio.template.slide" xml:space="preserve"><value>شريحة عنوان</value></data>
+  <data name="studio.template.logo" xml:space="preserve"><value>شعار</value></data>
+  <data name="studio.template.mobile" xml:space="preserve"><value>شاشة الجوال</value></data>
+  <data name="studio.category.social" xml:space="preserve"><value>وسائل التواصل الاجتماعي</value></data>
+  <data name="studio.category.uiux" xml:space="preserve"><value>UI/UX</value></data>
+  <data name="studio.category.presentation" xml:space="preserve"><value>العروض التقديمية والإنفوجرافيك</value></data>
+  <data name="studio.category.other" xml:space="preserve"><value>تصاميم أخرى</value></data>
+  <data name="studio.sample.title" xml:space="preserve"><value>عنوانك</value></data>
+  <data name="studio.sample.detail" xml:space="preserve"><value>سطر قصير يقول المزيد</value></data>
+  <data name="studio.sample.brand" xml:space="preserve"><value>العلامة التجارية</value></data>
+  <data name="studio.sample.text" xml:space="preserve"><value>نص</value></data>
+  <data name="studio.copyOf" xml:space="preserve"><value>نسخة من {0}</value></data>
+  <data name="studio.untitled" xml:space="preserve"><value>مشروع بلا عنوان</value></data>
+  <data name="studio.home.title" xml:space="preserve"><value>صف فكرتك واجعلها حقيقة</value></data>
+  <data name="studio.home.search" xml:space="preserve"><value>بحث</value></data>
+  <data name="studio.home.sort.name" xml:space="preserve"><value>الاسم</value></data>
+  <data name="studio.home.filter.all" xml:space="preserve"><value>كل الأوقات</value></data>
+  <data name="studio.home.filter.week" xml:space="preserve"><value>آخر 7 أيام</value></data>
+  <data name="studio.home.filter.month" xml:space="preserve"><value>آخر 30 يومًا</value></data>
+  <data name="studio.home.starred" xml:space="preserve"><value>المميّزة بنجمة</value></data>
+  <data name="studio.home.star" xml:space="preserve"><value>إضافة إلى المميّزة</value></data>
+  <data name="studio.home.unstar" xml:space="preserve"><value>إزالة من المميّزة</value></data>
+  <data name="studio.home.modified" xml:space="preserve"><value>آخر تعديل</value></data>
+  <data name="studio.home.canvases" xml:space="preserve"><value>اللوحات</value></data>
+  <data name="studio.projects" xml:space="preserve"><value>المشاريع</value></data>
+  <data name="studio.templates" xml:space="preserve"><value>القوالب</value></data>
+  <data name="studio.community" xml:space="preserve"><value>المجتمع</value></data>
+  <data name="studio.community.banner" xml:space="preserve"><value>استكشف التصاميم التي أنشأها المجتمع</value></data>
+  <data name="studio.community.saved" xml:space="preserve"><value>المحفوظات</value></data>
+  <data name="studio.community.share" xml:space="preserve"><value>مشاركة في المجتمع</value></data>
+  <data name="studio.community.shared" xml:space="preserve"><value>أُرسل للمراجعة. سيظهر في المجتمع بعد الموافقة.</value></data>
+  <data name="studio.community.signIn" xml:space="preserve"><value>سجّل الدخول إلى حساب HerNess للمشاركة في المجتمع.</value></data>
+  <data name="studio.community.empty" xml:space="preserve"><value>لا توجد تصاميم للمجتمع هنا بعد.</value></data>
+  <data name="studio.projectName" xml:space="preserve"><value>اسم المشروع</value></data>
+  <data name="studio.newProject" xml:space="preserve"><value>مشروع جديد</value></data>
+  <data name="studio.create" xml:space="preserve"><value>إنشاء مشروع</value></data>
+  <data name="studio.rename" xml:space="preserve"><value>إعادة التسمية</value></data>
+  <data name="studio.duplicate" xml:space="preserve"><value>تكرار</value></data>
+  <data name="studio.deleteConfirm" xml:space="preserve"><value>حذف «{0}»؟ ستُزال لوحاته وملفاته المرفوعة.</value></data>
+  <data name="studio.projectMeta" xml:space="preserve"><value>اللوحات: {0}، عُدّل {1}</value></data>
+  <data name="studio.empty.title" xml:space="preserve"><value>لا توجد مشاريع وسائط بعد</value></data>
+  <data name="studio.empty.detail" xml:space="preserve"><value>المشروع لوحة تضم عدة لوحات رسم. أضف النصوص والأشكال والصور بنفسك، أو صف ما تريد ودع نموذجًا يبنيه طبقةً تلو الأخرى.</value></data>
+  <data name="studio.addCanvas" xml:space="preserve"><value>لوحة</value></data>
+  <data name="studio.undo" xml:space="preserve"><value>تراجع</value></data>
+  <data name="studio.redo" xml:space="preserve"><value>إعادة</value></data>
+  <data name="studio.zoomOut" xml:space="preserve"><value>تصغير</value></data>
+  <data name="studio.zoomIn" xml:space="preserve"><value>تكبير</value></data>
+  <data name="studio.zoomFit" xml:space="preserve"><value>احتواء كل اللوحات</value></data>
+  <data name="studio.layers" xml:space="preserve"><value>الطبقات</value></data>
+  <data name="studio.layers.empty" xml:space="preserve"><value>لا تحتوي هذه اللوحة على طبقات بعد.</value></data>
+  <data name="studio.layer.text" xml:space="preserve"><value>نص</value></data>
+  <data name="studio.layer.shape" xml:space="preserve"><value>شكل</value></data>
+  <data name="studio.layer.upload" xml:space="preserve"><value>ملف مرفوع</value></data>
+  <data name="studio.layer.show" xml:space="preserve"><value>إظهار الطبقة</value></data>
+  <data name="studio.layer.hide" xml:space="preserve"><value>إخفاء الطبقة</value></data>
+  <data name="studio.shape.rectangle" xml:space="preserve"><value>مستطيل</value></data>
+  <data name="studio.shape.ellipse" xml:space="preserve"><value>شكل بيضاوي</value></data>
+  <data name="studio.name" xml:space="preserve"><value>الاسم</value></data>
+  <data name="studio.opacity" xml:space="preserve"><value>العتامة</value></data>
+  <data name="studio.fontSize" xml:space="preserve"><value>الحجم</value></data>
+  <data name="studio.weight.regular" xml:space="preserve"><value>عادي</value></data>
+  <data name="studio.weight.medium" xml:space="preserve"><value>متوسط</value></data>
+  <data name="studio.weight.bold" xml:space="preserve"><value>عريض</value></data>
+  <data name="studio.fill" xml:space="preserve"><value>التعبئة</value></data>
+  <data name="studio.cornerRadius" xml:space="preserve"><value>نصف قطر الزوايا</value></data>
+  <data name="studio.playVideo" xml:space="preserve"><value>تشغيل الفيديو</value></data>
+  <data name="studio.size" xml:space="preserve"><value>الحجم</value></data>
+  <data name="studio.background" xml:space="preserve"><value>الخلفية</value></data>
+  <data name="studio.deleteCanvas" xml:space="preserve"><value>حذف اللوحة</value></data>
+  <data name="studio.ai.kind.design" xml:space="preserve"><value>تصميم</value></data>
+  <data name="studio.ai.kind.image" xml:space="preserve"><value>صورة</value></data>
+  <data name="studio.ai.kind.video" xml:space="preserve"><value>فيديو</value></data>
+  <data name="studio.ai.placeholder.design" xml:space="preserve"><value>صف التصميم المراد بناؤه على هذه اللوحة</value></data>
+  <data name="studio.ai.placeholder.image" xml:space="preserve"><value>صف الصورة المراد إنشاؤها</value></data>
+  <data name="studio.ai.placeholder.video" xml:space="preserve"><value>صف الفيديو المراد إنشاؤه</value></data>
+  <data name="studio.ai.run" xml:space="preserve"><value>إنشاء</value></data>
+  <data name="studio.ai.planning" xml:space="preserve"><value>جارٍ تخطيط الطبقات</value></data>
+  <data name="studio.ai.layerProgress" xml:space="preserve"><value>الطبقة {0} من {1}: {2}</value></data>
+  <data name="studio.ai.drawing" xml:space="preserve"><value>جارٍ إنشاء الصورة</value></data>
+  <data name="studio.ai.renderingVideo" xml:space="preserve"><value>جارٍ إنشاء الفيديو. قد يستغرق ذلك بضع دقائق.</value></data>
+  <data name="studio.ai.noPlan" xml:space="preserve"><value>لم يُرجع النموذج أي طبقات. حاول مجددًا أو اختر نموذجًا آخر.</value></data>
+  <data name="studio.settings.title" xml:space="preserve"><value>نماذج الوسائط</value></data>
+  <data name="studio.settings.design" xml:space="preserve"><value>تصميم</value></data>
+  <data name="studio.settings.model" xml:space="preserve"><value>النموذج</value></data>
+  <data name="studio.settings.designHelp" xml:space="preserve"><value>نموذج المحادثة الذي يحوّل الطلب إلى طبقات.</value></data>
+  <data name="studio.settings.source" xml:space="preserve"><value>المصدر</value></data>
+  <data name="studio.settings.source.provider" xml:space="preserve"><value>المزوّد</value></data>
+  <data name="studio.settings.source.local" xml:space="preserve"><value>محلي</value></data>
+  <data name="studio.settings.modelDefault" xml:space="preserve"><value>الافتراضي لدى المزوّد</value></data>
+  <data name="studio.settings.local" xml:space="preserve"><value>خادم محلي</value></data>
+  <data name="studio.settings.localURL" xml:space="preserve"><value>عنوان URL الأساسي</value></data>
+  <data name="studio.settings.localHelp" xml:space="preserve"><value>خادم متوافق مع OpenAI على هذا الجهاز أو الشبكة. يُستخدم عندما يكون أحد المصادر أعلاه مضبوطًا على محلي، مع اسم النموذج الذي تدخله هناك.</value></data>
+  <data name="studio.settings.music.connect" xml:space="preserve"><value>ربط واجهة برمجة التطبيقات</value></data>
+  <data name="studio.settings.music.type.standard" xml:space="preserve"><value>خادم الموسيقى</value></data>
+  <data name="studio.settings.music.type.elevenlabs" xml:space="preserve"><value>ElevenLabs</value></data>
+  <data name="studio.settings.music.name" xml:space="preserve"><value>الاسم</value></data>
+  <data name="studio.settings.music.key" xml:space="preserve"><value>مفتاح API</value></data>
+  <data name="studio.settings.music.help" xml:space="preserve"><value>يستجيب خادم الموسيقى لطلب POST /audio/generations ويسرد نماذجه في /models؛ يُعد tools/music_server.py أحدها. يُحفظ مفتاح API في سلسلة المفاتيح.</value></data>
+  <data name="studio.ai.kind.next" xml:space="preserve"><value>الشاشة التالية</value></data>
+  <data name="studio.ai.placeholder.next" xml:space="preserve"><value>صف الشاشة التالية، أو اتركه فارغًا لمتابعة التسلسل</value></data>
+  <data name="studio.ai.noImages" xml:space="preserve"><value>لا يوجد مولّد صور متصل، لذا بقيت طبقات الصور عناصر نائبة. صِل مولّدًا ثم أنشئ كل صورة من طبقتها.</value></data>
+  <data name="studio.screenNumber" xml:space="preserve"><value>الشاشة {0}</value></data>
+  <data name="studio.layer.icon" xml:space="preserve"><value>أيقونة</value></data>
+  <data name="studio.layer.lock" xml:space="preserve"><value>قفل الطبقة</value></data>
+  <data name="studio.layer.unlock" xml:space="preserve"><value>فتح قفل الطبقة</value></data>
+  <data name="studio.layer.front" xml:space="preserve"><value>إحضار إلى المقدمة</value></data>
+  <data name="studio.layer.back" xml:space="preserve"><value>إرسال إلى الخلف</value></data>
+  <data name="studio.position" xml:space="preserve"><value>الموضع</value></data>
+  <data name="studio.rotation" xml:space="preserve"><value>التدوير</value></data>
+  <data name="studio.appearance" xml:space="preserve"><value>المظهر</value></data>
+  <data name="studio.gradient" xml:space="preserve"><value>تدرّج</value></data>
+  <data name="studio.stroke" xml:space="preserve"><value>الحد</value></data>
+  <data name="studio.shadow" xml:space="preserve"><value>الظل</value></data>
+  <data name="studio.symbol" xml:space="preserve"><value>اسم الرمز</value></data>
+  <data name="studio.imagePrompt" xml:space="preserve"><value>وصف الصورة</value></data>
+  <data name="studio.generateImage" xml:space="preserve"><value>إنشاء الصورة</value></data>
+  <data name="studio.export" xml:space="preserve"><value>تصدير</value></data>
+  <data name="studio.exportAll" xml:space="preserve"><value>تصدير كل اللوحات</value></data>
+  <data name="studio.font.default" xml:space="preserve"><value>بلا زوائد</value></data>
+  <data name="studio.font.rounded" xml:space="preserve"><value>مستدير</value></data>
+  <data name="studio.font.serif" xml:space="preserve"><value>بزوائد</value></data>
+  <data name="studio.font.mono" xml:space="preserve"><value>ثابت العرض</value></data>
+  <data name="studio.tool.move" xml:space="preserve"><value>تحريك</value></data>
+  <data name="studio.tool.hand" xml:space="preserve"><value>يد</value></data>
+  <data name="studio.tool.pen" xml:space="preserve"><value>قلم</value></data>
+  <data name="studio.tool.pencil" xml:space="preserve"><value>قلم رصاص</value></data>
+  <data name="studio.shape.line" xml:space="preserve"><value>خط</value></data>
+  <data name="studio.shape.arrow" xml:space="preserve"><value>سهم</value></data>
+  <data name="studio.shape.polygon" xml:space="preserve"><value>مضلع</value></data>
+  <data name="studio.shape.star" xml:space="preserve"><value>نجمة</value></data>
+  <data name="studio.actions" xml:space="preserve"><value>إجراءات</value></data>
+  <data name="studio.unlockAll" xml:space="preserve"><value>فتح قفل كل الطبقات</value></data>
+  <data name="studio.frames.phone" xml:space="preserve"><value>هاتف</value></data>
+  <data name="studio.frames.tablet" xml:space="preserve"><value>جهاز لوحي</value></data>
+  <data name="studio.frames.desktop" xml:space="preserve"><value>سطح المكتب</value></data>
+  <data name="studio.frames.presentation" xml:space="preserve"><value>عرض تقديمي</value></data>
+  <data name="studio.frames.watch" xml:space="preserve"><value>ساعة</value></data>
+  <data name="studio.frames.paper" xml:space="preserve"><value>ورق</value></data>
+  <data name="studio.frames.social" xml:space="preserve"><value>وسائل التواصل</value></data>
+  <data name="studio.tool.scale" xml:space="preserve"><value>تغيير الحجم</value></data>
+  <data name="studio.tool.section" xml:space="preserve"><value>قسم</value></data>
+  <data name="studio.tool.slice" xml:space="preserve"><value>شريحة</value></data>
+  <data name="studio.tool.textPath" xml:space="preserve"><value>نص على مسار</value></data>
+  <data name="studio.tool.comment" xml:space="preserve"><value>تعليق</value></data>
+  <data name="studio.search" xml:space="preserve"><value>بحث</value></data>
+  <data name="studio.cut" xml:space="preserve"><value>قص</value></data>
+  <data name="studio.paste" xml:space="preserve"><value>لصق</value></data>
+  <data name="bots.preset.assistant" xml:space="preserve"><value>مساعد</value></data>
+  <data name="bots.preset.researcher" xml:space="preserve"><value>باحث</value></data>
+  <data name="bots.preset.coder" xml:space="preserve"><value>مبرمج</value></data>
+  <data name="bots.new" xml:space="preserve"><value>بوت جديد</value></data>
+  <data name="bots.edit" xml:space="preserve"><value>تعديل البوت</value></data>
+  <data name="bots.clear" xml:space="preserve"><value>مسح المحادثة</value></data>
+  <data name="bots.send" xml:space="preserve"><value>إرسال الرسالة</value></data>
+  <data name="bots.deleteConfirm" xml:space="preserve"><value>حذف «{0}» ومحادثته؟</value></data>
+  <data name="bots.empty.title" xml:space="preserve"><value>لا توجد بوتات بعد</value></data>
+  <data name="bots.empty.detail" xml:space="preserve"><value>البوت مساعد له تعليماته ونموذجه ومحادثته المستمرة. امنحه مجلدًا وسيعمل فيه كوكيل.</value></data>
+  <data name="bots.greeting" xml:space="preserve"><value>أرسل رسالة إلى {0} للبدء.</value></data>
+  <data name="bots.placeholder" xml:space="preserve"><value>رسالة إلى {0}</value></data>
+  <data name="bots.agentIn" xml:space="preserve"><value>وكيل في {0}</value></data>
+  <data name="bots.name" xml:space="preserve"><value>الاسم</value></data>
+  <data name="bots.icon" xml:space="preserve"><value>الأيقونة</value></data>
+  <data name="bots.instructions" xml:space="preserve"><value>التعليمات</value></data>
+  <data name="bots.instructionsHelp" xml:space="preserve"><value>كيف يجب أن يتصرف البوت، وما يعرفه، وكيف يجيب.</value></data>
+  <data name="bots.workspace" xml:space="preserve"><value>مجلد الوكيل</value></data>
+  <data name="bots.workspace.none" xml:space="preserve"><value>لا شيء: محادثة فقط</value></data>
+  <data name="bots.workspace.choose" xml:space="preserve"><value>اختيار مجلد</value></data>
+  <data name="bots.workspace.clear" xml:space="preserve"><value>إزالة</value></data>
+  <data name="bots.workspaceHelp" xml:space="preserve"><value>مع مجلد، يستطيع البوت القراءة والكتابة وتشغيل الأوامر داخله دون سؤال، ولا يمكنه الوصول إلى الشبكة. بدون مجلد يكتفي بالمحادثة.</value></data>
+  <data name="bots.error.noReply" xml:space="preserve"><value>لم يرد البوت.</value></data>
+  <data name="bots.status.delivered" xml:space="preserve"><value>تم التسليم إلى البوت</value></data>
+  <data name="bots.status.waiting" xml:space="preserve"><value>في انتظار البوت</value></data>
+  <data name="tasks.plan.title" xml:space="preserve"><value>جدولة مهمة</value></data>
+  <data name="tasks.plan.subtitle" xml:space="preserve"><value>ينفّذ HerNess الأعمال المتكررة نيابةً عنك.</value></data>
+  <data name="tasks.upcoming" xml:space="preserve"><value>القادمة</value></data>
+  <data name="tasks.instructions" xml:space="preserve"><value>التعليمات…</value></data>
+  <data name="tasks.repeat" xml:space="preserve"><value>التكرار</value></data>
+  <data name="tasks.time" xml:space="preserve"><value>الوقت</value></data>
+  <data name="tasks.day" xml:space="preserve"><value>اليوم</value></data>
+  <data name="tasks.advanced" xml:space="preserve"><value>متقدم</value></data>
+  <data name="tasks.create" xml:space="preserve"><value>إنشاء</value></data>
+  <data name="tasks.repeat.hourly" xml:space="preserve"><value>كل ساعة</value></data>
+  <data name="tasks.repeat.daily" xml:space="preserve"><value>يوميًا</value></data>
+  <data name="tasks.repeat.weekdays" xml:space="preserve"><value>أيام العمل</value></data>
+  <data name="tasks.repeat.weekly" xml:space="preserve"><value>أسبوعيًا</value></data>
+  <data name="tasks.repeat.custom" xml:space="preserve"><value>مخصص</value></data>
+  <data name="bots.preset.assistant.detail" xml:space="preserve"><value>احصل على مساعدة في المهام اليومية</value></data>
+  <data name="bots.preset.researcher.detail" xml:space="preserve"><value>ابحث في المواضيع وقارن المصادر</value></data>
+  <data name="bots.preset.coder.detail" xml:space="preserve"><value>اكتب التعليمات البرمجية وحل المشكلات</value></data>
+  <data name="tasks.suggestion.email.title" xml:space="preserve"><value>متابعة البريد</value></data>
+  <data name="tasks.suggestion.email.detail" xml:space="preserve"><value>راجع الرسائل المهمة ولخّص ما يحتاج إلى اهتمام.</value></data>
+  <data name="tasks.suggestion.reading.title" xml:space="preserve"><value>قراءة نهاية الأسبوع</value></data>
+  <data name="tasks.suggestion.reading.detail" xml:space="preserve"><value>ابحث كل أسبوع عن مقال يناسب اهتماماتي.</value></data>
+  <data name="tasks.suggestion.prices.title" xml:space="preserve"><value>تنبيهات الأسعار</value></data>
+  <data name="tasks.suggestion.prices.detail" xml:space="preserve"><value>تحقق من أسعار المنتجات التي أتابعها وأبلغني بالتخفيضات.</value></data>
+  <data name="tasks.suggestion.events.title" xml:space="preserve"><value>اكتشاف الفعاليات</value></data>
+  <data name="tasks.suggestion.events.detail" xml:space="preserve"><value>ابحث عن حفلات وفعاليات تناسب اهتماماتي.</value></data>
+  <data name="tasks.suggestion.weekend.title" xml:space="preserve"><value>خطط لعطلة نهاية الأسبوع</value></data>
+  <data name="tasks.suggestion.weekend.detail" xml:space="preserve"><value>اقترح أنشطة لنهاية الأسبوع وفق تفضيلاتي.</value></data>
+  <data name="tasks.suggestions.memory" xml:space="preserve"><value>استنادًا إلى ذاكرتك</value></data>
+  <data name="tasks.suggestions.personalizing" xml:space="preserve"><value>جارٍ إعداد اقتراحات من ذاكرتك…</value></data>
+  <data name="tasks.suggestions.unavailable" xml:space="preserve"><value>اقتراحات نموذجية · التخصيص غير متاح</value></data>
+  <data name="tasks.suggestions.refresh" xml:space="preserve"><value>تحديث الاقتراحات</value></data>
+  <data name="tasks.suggestions.instruction" xml:space="preserve"><value>خصّص النتيجة حسب اهتماماتي وتفضيلاتي. لخّص ما تجده وأخبرني بالمعلومات أو صلاحيات الوصول الناقصة.</value></data>
+  <data name="media.music" xml:space="preserve"><value>موسيقى</value></data>
+  <data name="studio.music" xml:space="preserve"><value>الموسيقى</value></data>
+  <data name="studio.library" xml:space="preserve"><value>المكتبة</value></data>
+  <data name="studio.music.composing" xml:space="preserve"><value>جارٍ تأليف الموسيقى. قد يستغرق هذا بضع دقائق.</value></data>
+  <data name="studio.music.song" xml:space="preserve"><value>أغنية</value></data>
+  <data name="studio.music.inspector" xml:space="preserve"><value>التفاصيل</value></data>
+  <data name="studio.music.section" xml:space="preserve"><value>القسم</value></data>
+  <data name="studio.music.section.delete" xml:space="preserve"><value>حذف القسم</value></data>
+  <data name="studio.music.lyrics" xml:space="preserve"><value>الكلمات</value></data>
+  <data name="studio.music.track" xml:space="preserve"><value>المسار</value></data>
+  <data name="studio.music.track.generate" xml:space="preserve"><value>إنشاء المسار</value></data>
+  <data name="studio.music.track.empty" xml:space="preserve"><value>لا يوجد صوت بعد</value></data>
+  <data name="studio.music.track.delete" xml:space="preserve"><value>حذف المسار</value></data>
+  <data name="studio.music.mix" xml:space="preserve"><value>المكساج</value></data>
+  <data name="studio.music.tempo" xml:space="preserve"><value>الإيقاع والمفتاح</value></data>
+  <data name="studio.music.generating" xml:space="preserve"><value>جارٍ إنشاء {0} مقاطع</value></data>
+  <data name="studio.music.placeholder" xml:space="preserve"><value>صف الأغنية: الأجواء، القصة، الآلات، ومن يغني</value></data>
+  <data name="studio.music.empty" xml:space="preserve"><value>صف أغنية أعلاه أو ابدأ بأغنية فارغة. تأتي الخطة أولاً: الأقسام والكلمات ومسار لكل آلة، ويمكنك تعديل كل شيء قبل إنشاء الصوت.</value></data>
+  <data name="studio.music.plan" xml:space="preserve"><value>كتابة الأغنية</value></data>
+  <data name="studio.music.new" xml:space="preserve"><value>أغنية فارغة</value></data>
+  <data name="studio.music.noPlan" xml:space="preserve"><value>لم يُرجع النموذج خطة للأغنية. أعد المحاولة أو اختر نموذجًا آخر.</value></data>
+  <data name="studio.music.deleteConfirm" xml:space="preserve"><value>هل تريد حذف ”{0}“؟ ستُزال مقاطعه وملفاته الصوتية.</value></data>
+  <data name="studio.music.trackCount" xml:space="preserve"><value>{0} مسارات</value></data>
+  <data name="studio.music.bpm" xml:space="preserve"><value>{0} BPM</value></data>
+  <data name="studio.music.key" xml:space="preserve"><value>المفتاح الموسيقي</value></data>
+  <data name="studio.music.generateAll" xml:space="preserve"><value>إنشاء الكل</value></data>
+  <data name="studio.music.regenerate" xml:space="preserve"><value>إعادة إنشاء هذا المقطع</value></data>
+  <data name="studio.music.script" xml:space="preserve"><value>السيناريو</value></data>
+  <data name="studio.music.artists" xml:space="preserve"><value>الفنانون</value></data>
+  <data name="studio.music.artist.add" xml:space="preserve"><value>إضافة فنان</value></data>
+  <data name="studio.music.artist.default" xml:space="preserve"><value>فنان {0}</value></data>
+  <data name="studio.music.artist.name" xml:space="preserve"><value>الاسم</value></data>
+  <data name="studio.music.artist.style" xml:space="preserve"><value>الصوت والأسلوب</value></data>
+  <data name="studio.music.section.add" xml:space="preserve"><value>إضافة قسم</value></data>
+  <data name="studio.music.section.default" xml:space="preserve"><value>المقطع</value></data>
+  <data name="studio.music.section.bars" xml:space="preserve"><value>{0} حقول</value></data>
+  <data name="studio.music.line.add" xml:space="preserve"><value>إضافة سطر</value></data>
+  <data name="studio.music.line.placeholder" xml:space="preserve"><value>سطر من الكلمات</value></data>
+  <data name="studio.music.line.unsung" xml:space="preserve"><value>لا أحد</value></data>
+  <data name="studio.music.track.add" xml:space="preserve"><value>إضافة مسار</value></data>
+  <data name="studio.music.track.instrument" xml:space="preserve"><value>الآلة الموسيقية</value></data>
+  <data name="studio.music.track.prompt" xml:space="preserve"><value>كيفية العزف</value></data>
+  <data name="studio.music.track.vocal" xml:space="preserve"><value>غناء · {0}</value></data>
+  <data name="studio.music.mute" xml:space="preserve"><value>كتم الصوت</value></data>
+  <data name="studio.music.solo" xml:space="preserve"><value>عزف منفرد</value></data>
+  <data name="library.all" xml:space="preserve"><value>الكل</value></data>
+  <data name="library.kind.image" xml:space="preserve"><value>الصور</value></data>
+  <data name="library.kind.video" xml:space="preserve"><value>الفيديوهات</value></data>
+  <data name="library.kind.audio" xml:space="preserve"><value>الصوت</value></data>
+  <data name="library.kind.music" xml:space="preserve"><value>الموسيقى</value></data>
+  <data name="library.kind.document" xml:space="preserve"><value>المستندات</value></data>
+  <data name="library.add" xml:space="preserve"><value>إضافة ملفات</value></data>
+  <data name="library.addFailed" xml:space="preserve"><value>تعذر إضافة {0} ملفات.</value></data>
+  <data name="library.open" xml:space="preserve"><value>فتح</value></data>
+  <data name="library.empty.title" xml:space="preserve"><value>لا يوجد شيء هنا بعد</value></data>
+  <data name="library.empty.detail" xml:space="preserve"><value>تُحفظ الصور ومقاطع الفيديو والتسجيلات والموسيقى المُنشأة هنا تلقائيًا. أضف المستندات والملفات الأخرى بنفسك.</value></data>
+  <data name="backgroundTasks.title" xml:space="preserve"><value>مهام الخلفية</value></data>
+  <data name="backgroundTasks.empty" xml:space="preserve"><value>لا توجد مهام في الخلفية</value></data>
+  <data name="backgroundTasks.finished" xml:space="preserve"><value>المنتهية</value></data>
+  <data name="backgroundTasks.failed" xml:space="preserve"><value>فشلت (رمز الخروج {0})</value></data>
+  <data name="backgroundTasks.stopped" xml:space="preserve"><value>أُوقفت</value></data>
+  <data name="backgroundTasks.clear" xml:space="preserve"><value>مسح المنتهية</value></data>
+  <data name="backgroundTasks.runningCount" xml:space="preserve"><value>المهام الجارية: {0}</value></data>
+  <data name="backgroundTasks.wake" xml:space="preserve"><value>انتهت مهمة الخلفية «{0}» برمز الخروج {1}. اقرأ مخرجاتها عبر terminal_session (الجلسة {2}) ثم تابع.</value></data>
+  <data name="backgroundTasks.waitingInput" xml:space="preserve"><value>بانتظار الإدخال</value></data>
+  <data name="local.installed" xml:space="preserve"><value>تم التثبيت</value></data>
+  <data name="marketplace.title" xml:space="preserve"><value>السوق</value></data>
+  <data name="marketplace.empty" xml:space="preserve"><value>لا الإضافات</value></data>
+  <data name="marketplace.emptyHint" xml:space="preserve"><value>اضغط على "تحديث" لتحميل السجل.</value></data>
+  <data name="marketplace.install" xml:space="preserve"><value>تثبيت</value></data>
+  <data name="marketplace.search" xml:space="preserve"><value>البحث في الإضافات</value></data>
+  <data name="marketplace.update" xml:space="preserve"><value>تحديث v{0} → v{1}</value></data>
+  <data name="marketplace.by" xml:space="preserve"><value>بواسطة {0}</value></data>
+  <data name="market.tab.plugins" xml:space="preserve"><value>الإضافات</value></data>
+  <data name="market.tab.skills" xml:space="preserve"><value>المهارات</value></data>
+  <data name="market.tab.starters" xml:space="preserve"><value>قوالب المشاريع</value></data>
+  <data name="starters.intro" xml:space="preserve"><value>اختر قالبًا ومجلدًا فارغًا. سيظهر الموجّه في مربع الكتابة لتقرأه وترسله.</value></data>
+  <data name="starters.use" xml:space="preserve"><value>استخدام القالب</value></data>
+  <data name="starters.chooseFolder" xml:space="preserve"><value>اختر مجلدًا فارغًا للمشروع الجديد.</value></data>
+  <data name="starters.web.title" xml:space="preserve"><value>تطبيق ويب</value></data>
+  <data name="starters.web.detail" xml:space="preserve"><value>Next.js مع TypeScript وتخطيط ومسار API نموذجي وفحص للشيفرة.</value></data>
+  <data name="starters.landing.title" xml:space="preserve"><value>صفحة هبوط</value></data>
+  <data name="starters.landing.detail" xml:space="preserve"><value>HTML وCSS ثابتان مع قسم رئيسي وميزات وأسعار وتواصل. دون خطوة بناء.</value></data>
+  <data name="starters.api.title" xml:space="preserve"><value>خدمة API</value></data>
+  <data name="starters.api.detail" xml:space="preserve"><value>FastAPI مع فحص للحالة ومورد نموذجي وإعدادات واختبارات.</value></data>
+  <data name="starters.ios.title" xml:space="preserve"><value>تطبيق iOS</value></data>
+  <data name="starters.ios.detail" xml:space="preserve"><value>SwiftUI مع شاشتين ونموذج قابل للمراقبة واختبار وحدة.</value></data>
+  <data name="starters.worker.title" xml:space="preserve"><value>Cloudflare Worker</value></data>
+  <data name="starters.worker.detail" xml:space="preserve"><value>واجهة API بلغة TypeScript على Workers مع روابط مكتوبة الأنواع واختبار.</value></data>
+  <data name="starters.cli.title" xml:space="preserve"><value>أداة سطر الأوامر</value></data>
+  <data name="starters.cli.detail" xml:space="preserve"><value>حزمة Python مع أوامر فرعية واختبارات وتعليمات التثبيت.</value></data>
+  <data name="common.cancel" xml:space="preserve"><value>إلغاء</value></data>
+  <data name="common.connect" xml:space="preserve"><value>اتصال</value></data>
+  <data name="common.copied" xml:space="preserve"><value>منقول</value></data>
+  <data name="common.delete" xml:space="preserve"><value>حذف</value></data>
+  <data name="common.done" xml:space="preserve"><value>تم</value></data>
+  <data name="common.download" xml:space="preserve"><value>تحميل</value></data>
+  <data name="common.idle" xml:space="preserve"><value>خامل</value></data>
+  <data name="common.refresh" xml:space="preserve"><value>تحديث</value></data>
+  <data name="common.remove" xml:space="preserve"><value>إزالة</value></data>
+  <data name="common.start" xml:space="preserve"><value>ابدأ</value></data>
+  <data name="common.stop" xml:space="preserve"><value>توقف</value></data>
+  <data name="common.test" xml:space="preserve"><value>اختبار</value></data>
+  <data name="common.save" xml:space="preserve"><value>حفظ</value></data>
+  <data name="common.view" xml:space="preserve"><value>عرض</value></data>
+  <data name="composer.add" xml:space="preserve"><value>أضف</value></data>
+  <data name="attachment.addApp" xml:space="preserve"><value>أضف تطبيق Dots Harness</value></data>
+  <data name="attachment.projectDetail" xml:space="preserve"><value>اختر مشروعًا للمحادثات الجديدة</value></data>
+  <data name="attachment.goal" xml:space="preserve"><value>هدف</value></data>
+  <data name="attachment.goalDetail" xml:space="preserve"><value>حدد هدفًا للعمل على تحقيقه</value></data>
+  <data name="attachment.plan" xml:space="preserve"><value>وضع الخطة</value></data>
+  <data name="attachment.planDetail" xml:space="preserve"><value>قم بتشغيل وضع الخطة</value></data>
+  <data name="attachment.saveSkill" xml:space="preserve"><value>احفظ مهارة</value></data>
+  <data name="attachment.plugins" xml:space="preserve"><value>الإضافات</value></data>
+  <data name="attachment.slashCommands" xml:space="preserve"><value>أوامر الشرطة المائلة</value></data>
+  <data name="attachment.folder" xml:space="preserve"><value>إضافة مجلد</value></data>
+  <data name="attachment.connectors" xml:space="preserve"><value>الموصلات</value></data>
+  <data name="attachment.documentsDetail" xml:space="preserve"><value>إنشاء وتحرير عناصر المستند</value></data>
+  <data name="attachment.pdfDetail" xml:space="preserve"><value>قراءة وإنشاء والتحقق من ملفات PDF</value></data>
+  <data name="attachment.spreadsheetsDetail" xml:space="preserve"><value>إنشاء وتحرير ملفات جداول البيانات</value></data>
+  <data name="modelPicker.model" xml:space="preserve"><value>نموذج</value></data>
+  <data name="modelPicker.speed" xml:space="preserve"><value>السرعة</value></data>
+  <data name="modelPicker.maximum" xml:space="preserve"><value>الحد الأقصى</value></data>
+  <data name="modelPicker.standard" xml:space="preserve"><value>قياسي</value></data>
+  <data name="modelPicker.fast" xml:space="preserve"><value>سريع</value></data>
+  <data name="modelPicker.auto" xml:space="preserve"><value>تلقائي</value></data>
+  <data name="modelPicker.autoHint" xml:space="preserve"><value>يختار النموذج والجهد لكل رسالة</value></data>
+  <data name="settings.sshPassword" xml:space="preserve"><value>كلمة السر (تُستخدم مرة واحدة)</value></data>
+  <data name="settings.sshRememberPassword" xml:space="preserve"><value>تذكر كلمة المرور</value></data>
+  <data name="settings.sshRememberPassword.hint" xml:space="preserve"><value>غير ضروري: تُستخدم كلمة السر مرة واحدة فقط لتثبيت مفتاح، ولا تُكتب أبدًا في ~/.ssh/config.</value></data>
+  <data name="ssh.continue" xml:space="preserve"><value>متابعة</value></data>
+  <data name="ssh.enrolling" xml:space="preserve"><value>جارٍ تثبيت المفتاح…</value></data>
+  <data name="ssh.enrolled.hint" xml:space="preserve"><value>تستخدم الاتصالات التالية المفتاح، ولم تعد كلمة السر لازمة.</value></data>
+  <data name="ssh.retry" xml:space="preserve"><value>إعادة المحاولة</value></data>
+  <data name="ssh.retryHint" xml:space="preserve"><value>تحقق من العنوان واسم المستخدم وكلمة السر ثم أعد المحاولة.</value></data>
+  <data name="ssh.installKeyManually" xml:space="preserve"><value>أضف هذا المفتاح إلى ~/.ssh/authorized_keys على الخادم ثم أعد المحاولة.</value></data>
+  <data name="ssh.copyPublicKey" xml:space="preserve"><value>نسخ المفتاح</value></data>
+  <data name="ssh.error.passwordAuthDisabled" xml:space="preserve"><value>لا يقبل الخادم تسجيل الدخول بكلمة سر.</value></data>
+  <data name="ssh.error.authFailed" xml:space="preserve"><value>رفض {0} تسجيل الدخول.</value></data>
+  <data name="ssh.error.hostKeyChanged" xml:space="preserve"><value>تغيّر مفتاح المضيف {0}. لا تتابع إلا إذا أُعيد تنصيب الخادم.</value></data>
+  <data name="ssh.error.invalidInput" xml:space="preserve"><value>أدخل اسمًا مستعارًا صحيحًا واسم مضيف واسم مستخدم وميناءً صحيحًا.</value></data>
+  <data name="sidebar.projects" xml:space="preserve"><value>المشاريع</value></data>
+  <data name="sidebar.recent" xml:space="preserve"><value>الأخيرة</value></data>
+  <data name="sidebar.search" xml:space="preserve"><value>بحث في الدردشات</value></data>
+  <data name="sidebar.sites" xml:space="preserve"><value>مواقع</value></data>
+  <data name="sidebar.scheduled" xml:space="preserve"><value>المقرر</value></data>
+  <data name="sidebar.addProject" xml:space="preserve"><value>إضافة مشروع</value></data>
+  <data name="settings.compactTrigger" xml:space="preserve"><value>ضغط السياق تلقائيًا عند</value></data>
+  <data name="settings.compactTrigger.hint" xml:space="preserve"><value>نسبة من نافذة سياق كل نموذج. القيمة الأعلى تُبقي ذاكرة التخزين المؤقت للموجّه فترة أطول لأن الضغط يعيد كتابتها.</value></data>
+  <data name="settings.explore.subagents" xml:space="preserve"><value>استخدام الوكلاء الفرعيين</value></data>
+  <data name="settings.explore.hint" xml:space="preserve"><value>عند التفعيل، يسلّم الوكيل في المهام الصعبة أو الطويلة عمليات البحث التي تمسح ملفات كثيرة والأجزاء المستقلة من تغيير كبير إلى وكلاء فرعيين متوازين؛ ولا يدخل المحادثة الرئيسية إلا ملخصهم. لا يكتب الوكيل الفرعي المحرِّر إلا في الملفات المُسندة إليه، ولا يمكن أن تتداخل الإسنادات. لا تستدعيه المهام البسيطة أبدًا. كل وكيل فرعي تشغيل منفصل للنموذج؛ أوقف الخيار لخفض التكلفة.</value></data>
+  <data name="settings.responseStyle" xml:space="preserve"><value>أسلوب الرد</value></data>
+  <data name="settings.responseStyle.hint" xml:space="preserve"><value>لا يعيد هذا الإعداد كتابة الطلب. «موجز» و«مختصر جدًا» تفضيلات بأفضل جهد؛ ولا تضمن عدد رموز أو اكتمالًا أو تكلفة أقل.</value></data>
+  <data name="responseStyle.balanced" xml:space="preserve"><value>متوازن</value></data>
+  <data name="responseStyle.concise" xml:space="preserve"><value>موجز</value></data>
+  <data name="responseStyle.ultra" xml:space="preserve"><value>مختصر جدًا</value></data>
+  <data name="responseStyle.detailed" xml:space="preserve"><value>مفصّل</value></data>
+  <data name="settings.computerUse.enable" xml:space="preserve"><value>تفعيل استخدام الكمبيوتر</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>الإصدار والتحديثات</value></data>
+  <data name="settings.updates.available" xml:space="preserve"><value>يتوفر إصدار جديد: v{0}</value></data>
+  <data name="settings.updates.download" xml:space="preserve"><value>تنزيل التحديث</value></data>
+  <data name="dock.branch" xml:space="preserve"><value>الفرع</value></data>
+  <data name="dock.refresh" xml:space="preserve"><value>تحديث</value></data>
+  <data name="dock.commit" xml:space="preserve"><value>إيداع</value></data>
+  <data name="dock.push" xml:space="preserve"><value>دفع</value></data>
+  <data name="dock.fetch" xml:space="preserve"><value>جلب</value></data>
+  <data name="dock.commitOrPush" xml:space="preserve"><value>Commit أو Push</value></data>
+  <data name="dock.commitMessage" xml:space="preserve"><value>رسالة الـ commit</value></data>
+  <data name="dock.noChanges" xml:space="preserve"><value>لا تغييرات من الوكيل.</value></data>
+  <data name="dock.whyRequest" xml:space="preserve"><value>طلبك</value></data>
+  <data name="dock.whyAgent" xml:space="preserve"><value>شرح الوكيل</value></data>
+  <data name="dock.notRepo" xml:space="preserve"><value>هذا المجلد ليس مستودع git.</value></data>
+  <data name="dock.gitMissing" xml:space="preserve"><value>Git غير مثبت. المراجعة وcommit وpush تحتاج إليه.</value></data>
+  <data name="dock.installGit" xml:space="preserve"><value>تثبيت Git</value></data>
+  <data name="dock.filterFiles" xml:space="preserve"><value>تصفية الملفات…</value></data>
+  <data name="dock.openFile" xml:space="preserve"><value>فتح الملف</value></data>
+  <data name="dock.selectFile" xml:space="preserve"><value>اختر ملفًا من شجرة مساحة العمل</value></data>
+  <data name="dock.binaryFile" xml:space="preserve"><value>ملف ثنائي أو غير قابل للقراءة</value></data>
+  <data name="dock.expand" xml:space="preserve"><value>توسيع</value></data>
+  <data name="dock.collapse" xml:space="preserve"><value>طي</value></data>
+  <data name="dock.split" xml:space="preserve"><value>تقسيم</value></data>
+  <data name="dock.unsplit" xml:space="preserve"><value>عرض علامة تبويب واحدة</value></data>
+  <data name="dock.newTab" xml:space="preserve"><value>علامة تبويب جديدة</value></data>
+  <data name="dock.address" xml:space="preserve"><value>ابحث أو أدخل عنوان URL</value></data>
+  <data name="dock.invalidAddress" xml:space="preserve"><value>أدخل عنوان ويب أو بحثًا صالحًا.</value></data>
+  <data name="dock.openExternal" xml:space="preserve"><value>افتح في المتصفح الافتراضي</value></data>
+  <data name="dock.bottomTerminal" xml:space="preserve"><value>افتح الطرفية في الأسفل</value></data>
+  <data name="dock.splitHorizontal" xml:space="preserve"><value>قسّم جنبًا إلى جنب</value></data>
+  <data name="dock.splitVertical" xml:space="preserve"><value>قسّم أعلى وأسفل</value></data>
+  <data name="dock.noWorkspace" xml:space="preserve"><value>اختر مجلد عمل أولًا.</value></data>
+  <data name="git.branchHelp" xml:space="preserve"><value>اختر فرع Git</value></data>
+  <data name="git.uncommitted" xml:space="preserve"><value>غير ملتزم: ملفات {0}</value></data>
+  <data name="market.area.core" xml:space="preserve"><value>المتجر الرئيسي</value></data>
+  <data name="market.area.experimental" xml:space="preserve"><value>تجريبي</value></data>
+  <data name="market.area.community" xml:space="preserve"><value>المجتمع</value></data>
+  <data name="market.area.communityExperimental" xml:space="preserve"><value>المجتمع / تجريبي</value></data>
+  <data name="market.account" xml:space="preserve"><value>حساب HerNess</value></data>
+  <data name="market.signIn" xml:space="preserve"><value>تسجيل الدخول</value></data>
+  <data name="market.signIn.email" xml:space="preserve"><value>البريد الإلكتروني وكلمة المرور</value></data>
+  <data name="market.signIn.title" xml:space="preserve"><value>سجّل الدخول بحساب HerNess</value></data>
+  <data name="market.email" xml:space="preserve"><value>البريد الإلكتروني</value></data>
+  <data name="market.password" xml:space="preserve"><value>كلمة المرور</value></data>
+  <data name="market.likeSignIn" xml:space="preserve"><value>سجّل الدخول للإعجاب</value></data>
+  <data name="market.customize" xml:space="preserve"><value>تخصيص</value></data>
+  <data name="market.localForks" xml:space="preserve"><value>التخصيصات المحلية</value></data>
+  <data name="market.openFolder" xml:space="preserve"><value>فتح المجلد</value></data>
+  <data name="market.fork.compared" xml:space="preserve"><value>تمت المقارنة</value></data>
+  <data name="market.consent.title" xml:space="preserve"><value>يشغّل هذا المكوّن الإضافي شيفرة أصلية</value></data>
+  <data name="market.consent.accept" xml:space="preserve"><value>قبول وتفعيل</value></data>
+  <data name="market.consent.message" xml:space="preserve"><value>{0} مكوّن إضافي أصلي من جهة خارجية. القسم: {1}. المراجعة: {2}. الفئة: {3}. راجع أذوناته وشيفرته المصدرية. إذا وافقت، فسيعمل المكوّن فورًا كمكوّن موثوق.</value></data>
+  <data name="market.review.verified" xml:space="preserve"><value>راجعته DOTS</value></data>
+  <data name="market.review.pending" xml:space="preserve"><value>بانتظار المراجعة</value></data>
+  <data name="market.community.empty" xml:space="preserve"><value>لا توجد مكوّنات من المجتمع بعد</value></data>
+  <data name="market.community.emptyHint" xml:space="preserve"><value>تحتاج مكوّنات المجتمع إلى مراجعة منفصلة وموافقة صريحة لتشغيل شيفرة أصلية.</value></data>
+  <data name="market.report" xml:space="preserve"><value>إبلاغ</value></data>
+  <data name="market.report.title" xml:space="preserve"><value>الإبلاغ عن المكوّن</value></data>
+  <data name="market.report.reason" xml:space="preserve"><value>السبب</value></data>
+  <data name="market.report.submit" xml:space="preserve"><value>إرسال البلاغ</value></data>
+  <data name="market.report.malware" xml:space="preserve"><value>برمجيات خبيثة أو سلوك ضار</value></data>
+  <data name="market.report.credentialTheft" xml:space="preserve"><value>سرقة بيانات الاعتماد</value></data>
+  <data name="market.report.exfiltration" xml:space="preserve"><value>تسريب البيانات</value></data>
+  <data name="market.report.deceptive" xml:space="preserve"><value>إدراج مضلل أو انتحال شخصية</value></data>
+  <data name="market.report.spam" xml:space="preserve"><value>بريد مزعج أو غلاف فارغ</value></data>
+  <data name="market.report.copyright" xml:space="preserve"><value>انتهاك حقوق النشر أو الترخيص</value></data>
+  <data name="market.publish" xml:space="preserve"><value>نشر مكوّن إضافي</value></data>
+  <data name="market.publish.title" xml:space="preserve"><value>نشر مكوّن إضافي أصلي</value></data>
+  <data name="market.publish.hint" xml:space="preserve"><value>يجب أن يحتوي مجلد المكوّن على plugin.yml وplugin.ir.json وترخيص. لا تُقبل JavaScript ولا بيئات التشغيل التصريحية؛ تُنشأ إصدارات المنصات في CI.</value></data>
+  <data name="market.publish.noFolder" xml:space="preserve"><value>لم يُحدَّد مجلد المكوّن</value></data>
+  <data name="market.publish.chooseFolder" xml:space="preserve"><value>اختيار مجلد</value></data>
+  <data name="market.publish.irPreview" xml:space="preserve"><value>معاينة plugin.ir.json</value></data>
+  <data name="market.publish.sourcePreview" xml:space="preserve"><value>معاينة الشيفرة الأصلية</value></data>
+  <data name="market.publish.version" xml:space="preserve"><value>الإصدار (SemVer)</value></data>
+  <data name="market.publish.license" xml:space="preserve"><value>ترخيص SPDX (مثل MIT)</value></data>
+  <data name="market.publish.visibility" xml:space="preserve"><value>ظهور المصدر</value></data>
+  <data name="market.publish.public" xml:space="preserve"><value>عام — تُدرج حزمة المصدر</value></data>
+  <data name="market.publish.private" xml:space="preserve"><value>خاص — لا يصل إليه إلا المالك وCI</value></data>
+  <data name="market.publish.targets" xml:space="preserve"><value>المنصات المستهدفة</value></data>
+  <data name="market.publish.footer" xml:space="preserve"><value>بعد النشر، يصنّف الذكاء الاصطناعي الفئة والقسم والمخاطر. حتى بعد اكتمال البناء، لا يُدرج المكوّن حتى تنتهي المراجعة البشرية.</value></data>
+  <data name="market.publish.submit" xml:space="preserve"><value>نشر</value></data>
+  <data name="market.publish.error.http" xml:space="preserve"><value>فشل النشر في المتجر (HTTP {0}): {1}</value></data>
+  <data name="market.publish.error.license" xml:space="preserve"><value>اختر ترخيصًا لنشر المكوّن.</value></data>
+  <data name="market.publish.error.noManifest" xml:space="preserve"><value>لم يُعثر على plugin.yml في المجلد المحدد.</value></data>
+  <data name="market.publish.error.nativeOnly" xml:space="preserve"><value>يمكن نشر المكوّنات الأصلية فقط.</value></data>
+  <data name="market.publish.error.semver" xml:space="preserve"><value>أدخل إصدار SemVer صالحًا.</value></data>
+  <data name="market.publish.error.targets" xml:space="preserve"><value>اختر منصة مستهدفة واحدة على الأقل وظهورًا صالحًا للمصدر.</value></data>
+  <data name="market.publish.error.package" xml:space="preserve"><value>يجب أن تحتوي الحزمة على ملفي plugin.ir.json وlicense.</value></data>
+  <data name="market.publish.error.irVersion" xml:space="preserve"><value>يجب أن يكون plugin.ir.json بالإصدار 1.</value></data>
+  <data name="market.publish.error.releaseID" xml:space="preserve"><value>تعذّر الحصول على معرّف إصدار المتجر.</value></data>
+  <data name="market.publish.error.noVersion" xml:space="preserve"><value>يفتقد plugin.yml إلى الحقل version.</value></data>
+  <data name="market.publish.status.registering" xml:space="preserve"><value>جارٍ إنشاء إدخال المتجر…</value></data>
+  <data name="market.publish.status.uploading" xml:space="preserve"><value>جارٍ رفع حزمة المصدر الأصلية…</value></data>
+  <data name="market.publish.status.aiUnavailable" xml:space="preserve"><value>تصنيف الذكاء الاصطناعي غير متاح؛ تسمية مؤقتة: {0} · {1} · {2}. المراجعة البشرية إلزامية.</value></data>
+  <data name="market.publish.status.aiDone" xml:space="preserve"><value>تصنيف الذكاء الاصطناعي: {0} · {1} · {2}. بانتظار المراجعة البشرية.</value></data>
+  <data name="market.publish.status.aiFailed" xml:space="preserve"><value>تعذّر إكمال تصنيف الذكاء الاصطناعي؛ بانتظار المراجعة البشرية.</value></data>
+  <data name="market.publish.status.queueing" xml:space="preserve"><value>جارٍ وضع إصدارات المنصات الأصلية في قائمة الانتظار…</value></data>
+  <data name="market.publish.status.uploaded" xml:space="preserve"><value>تم رفع حزمة المصدر؛ بانتظار تحقق CI الأصلي.</value></data>
+  <data name="market.error.notSignedIn" xml:space="preserve"><value>يتطلب النشر في المتجر حساب HerNess.</value></data>
+  <data name="market.error.invalidCallback" xml:space="preserve"><value>كانت استجابة تسجيل الدخول إلى HerNess غير صالحة.</value></data>
+  <data name="market.error.stateMismatch" xml:space="preserve"><value>لم تتطابق حالة تسجيل الدخول إلى HerNess.</value></data>
+  <data name="market.error.request" xml:space="preserve"><value>فشل طلب المتجر (HTTP {0}): {1}</value></data>
+  <data name="market.error.invalidResponse" xml:space="preserve"><value>أعاد المتجر استجابة غير صالحة.</value></data>
+  <data name="market.error.credentials" xml:space="preserve"><value>البريد الإلكتروني وكلمة المرور مطلوبان.</value></data>
+  <data name="remote.scan" xml:space="preserve"><value>امسح رمز QR هذا أو أدخل الرمز لمرة واحدة في HerNess Mobile.</value></data>
+  <data name="remote.newCode" xml:space="preserve"><value>رمز إقران جديد</value></data>
+  <data name="remote.copyLink" xml:space="preserve"><value>نسخ رابط الإقران</value></data>
+  <data name="remote.tunnel.enable" xml:space="preserve"><value>تفعيل Cloudflare Quick Tunnel</value></data>
+  <data name="remote.hint" xml:space="preserve"><value>تبقى مفاتيح المزوّدين على سطح المكتب. تظل كتابة الملفات والطرفية والبناء والنشر وإجراءات PR تستخدم وضع الموافقة المحدد.</value></data>
+  <data name="settings.tab.mobile" xml:space="preserve"><value>التحكم عبر الجوّال</value></data>
+  <data name="settings.compaction.economyFixed" xml:space="preserve"><value>تستخدم سياسة التوفير حدًا ثابتًا قدره 90%.</value></data>
+  <data name="settings.browser.title" xml:space="preserve"><value>المتصفح والمحرك المفضلان</value></data>
+  <data name="settings.browser.auto" xml:space="preserve"><value>تلقائي (داخل التطبيق أو المتصفح الذي تسمّيه)</value></data>
+  <data name="settings.browser.managed" xml:space="preserve"><value>متصفح معزول مُدار (Chrome)</value></data>
+  <data name="settings.browser.chrome" xml:space="preserve"><value>متصفح Chrome الخاص بي</value></data>
+  <data name="settings.browser.desktopHint" xml:space="preserve"><value>يستخدم المتصفح داخل التطبيق محرك النظام. يتوفر أيضًا Chrome المُدار وملف Chrome الحالي.</value></data>
+  <data name="settings.browser.inAppDesktop" xml:space="preserve"><value>متصفح داخل التطبيق</value></data>
+  <data name="settings.computerUse.desktopHint" xml:space="preserve"><value>يمكن للوكيل فحص التطبيقات المفتوحة وعرض لقطات الشاشة واستخدام الفأرة ولوحة المفاتيح والتحقق من النتيجة. تتطلب إجراءات سطح المكتب موافقة على الوصول.</value></data>
+  <data name="settings.computerUse.linuxHint" xml:space="preserve"><value>يتطلب استخدام الكمبيوتر على Linux وجود X11 وxdotool وmaim أو ImageMagick. Wayland غير مدعوم.</value></data>
+  <data name="market.settings.hint" xml:space="preserve"><value>يضم Marketplace الرئيسي إضافات Harness التي خضعت للمراجعة. تُعرض Community وExperimental بشكل منفصل، وتتطلب الإضافات الأصلية موافقتك قبل تشغيلها.</value></data>
+  <data name="market.registry.empty" xml:space="preserve"><value>لم يتم العثور على إدخالات في Marketplace. حدّث السجل للمحاولة مجددًا.</value></data>
+  <data name="market.signIn.hint" xml:space="preserve"><value>سجّل الدخول باستخدام Google أو GitHub أو بريد HerNess الإلكتروني وكلمة المرور. تبقى رموز الجلسة في مخزن بيانات اعتماد النظام الأساسي.</value></data>
+  <data name="dock.clean" xml:space="preserve"><value>شجرة العمل نظيفة.</value></data>
+  <data name="market.publish.folderPickerUnavailable" xml:space="preserve"><value>لا توفر بيئة سطح المكتب هذه أداة لاختيار المجلدات.</value></data>
+  <data name="market.publish.localFolderRequired" xml:space="preserve"><value>اختر مجلدًا محليًا لنشر المكوّن الإضافي.</value></data>
+  <data name="market.report.details" xml:space="preserve"><value>التفاصيل (اختياري، حتى ٥٬٠٠٠ حرف)</value></data>
+  <data name="dock.browser.webview2Unavailable" xml:space="preserve"><value>تعذّر تشغيل WebView2. ثبّت Microsoft Edge WebView2 Runtime أو أصلحه.</value></data>
+  <data name="settings.marketplace" xml:space="preserve"><value>السوق</value></data>
+  <data name="workspace.use" xml:space="preserve"><value>استخدم مساحة العمل</value></data>
+  <data name="market.fork.consent.title" xml:space="preserve"><value>يشغّل هذا المكوّن المخصّص شيفرة أصلية</value></data>
+  <data name="market.fork.consent.message" xml:space="preserve"><value>{0} نسخة محلية مشتقة. مصدرها مستقل عن الأصل؛ راجع التغييرات قبل تفعيلها.</value></data>
+  <data name="market.fork.newUpstream" xml:space="preserve"><value>إصدار أصلي جديد: v{0}؛ ستُحفظ التغييرات المحلية</value></data>
+  <data name="market.remove.confirmTitle" xml:space="preserve"><value>هل تريد إزالة إضافة Marketplace؟</value></data>
+  <data name="market.remove.confirmMessage" xml:space="preserve"><value>هل تريد إزالة {0} من هذا الجهاز؟</value></data>
+  <data name="market.report.other" xml:space="preserve"><value>أخرى</value></data>
+  <data name="modelPicker.economy" xml:space="preserve"><value>توفير</value></data>
+  <data name="conversation.toggleResponseEconomy" xml:space="preserve"><value>تبديل وضع توفير الرموز في الردود</value></data>
+  <data name="market.unpublish.confirmMessage" xml:space="preserve"><value>هل تريد إلغاء نشر {0}؟ لن تتم إزالة التثبيتات الحالية.</value></data>
+  <data name="market.permissions" xml:space="preserve"><value>الأذونات</value></data>
+  <data name="market.risk" xml:space="preserve"><value>المخاطر: {0}</value></data>
+  <data name="market.category.coding" xml:space="preserve"><value>البرمجة</value></data>
+  <data name="market.category.git" xml:space="preserve"><value>Git</value></data>
+  <data name="market.category.qa" xml:space="preserve"><value>الاختبار والجودة</value></data>
+  <data name="market.category.devops" xml:space="preserve"><value>DevOps</value></data>
+  <data name="market.category.browser" xml:space="preserve"><value>المتصفح</value></data>
+  <data name="market.category.web" xml:space="preserve"><value>الويب</value></data>
+  <data name="market.category.backend" xml:space="preserve"><value>الواجهة الخلفية</value></data>
+  <data name="market.category.mobile" xml:space="preserve"><value>الجوّال</value></data>
+  <data name="market.category.models" xml:space="preserve"><value>النماذج</value></data>
+  <data name="market.category.integrations" xml:space="preserve"><value>عمليات التكامل</value></data>
+  <data name="market.category.workspace" xml:space="preserve"><value>مساحة العمل</value></data>
+  <data name="market.category.productivity" xml:space="preserve"><value>الإنتاجية</value></data>
+  <data name="market.category.tools" xml:space="preserve"><value>الأدوات</value></data>
+  <data name="market.category.design" xml:space="preserve"><value>التصميم</value></data>
+  <data name="market.category.documents" xml:space="preserve"><value>المستندات</value></data>
+  <data name="market.category.authoring" xml:space="preserve"><value>كتابة المهارات</value></data>
+  <data name="market.category.community" xml:space="preserve"><value>المجتمع</value></data>
+  <data name="market.category.other" xml:space="preserve"><value>أخرى</value></data>
+  <data name="navigation.back" xml:space="preserve"><value>رجوع</value></data>
+  <data name="navigation.forward" xml:space="preserve"><value>تقدّم</value></data>
+  <data name="dock.restart" xml:space="preserve"><value>إعادة التشغيل</value></data>
+  <data name="dock.go" xml:space="preserve"><value>انتقال</value></data>
+  <data name="terminal.sandboxUnavailable" xml:space="preserve"><value>بيئة الطرفية المعزولة غير متاحة: {0}</value></data>
+  <data name="remote.lan" xml:space="preserve"><value>نقطة نهاية الشبكة المحلية</value></data>
+  <data name="remote.code" xml:space="preserve"><value>الرمز</value></data>
+  <data name="remote.expires" xml:space="preserve"><value>تنتهي الصلاحية: {0}</value></data>
+  <data name="remote.pairingLink" xml:space="preserve"><value>رابط الاقتران</value></data>
+  <data name="custom.detected" xml:space="preserve"><value>يعمل على هذا الحاسوب</value></data>
+  <data name="custom.modelOptional" xml:space="preserve"><value>اسم النموذج (اختياري)</value></data>
+  <data name="custom.contextOptional" xml:space="preserve"><value>نافذة السياق بالرموز (اختياري)</value></data>
+  <data name="custom.prefix" xml:space="preserve"><value>بادئة النموذج</value></data>
+  <data name="local.tuning" xml:space="preserve"><value>الأداء</value></data>
+  <data name="local.tuningHint" xml:space="preserve"><value>عند تركه فارغًا أو auto يضبط وقت التشغيل النموذج بحسب ذاكرة GPU لديك. تُطبَّق التغييرات عند بدء النموذج في المرة القادمة.</value></data>
+  <data name="local.contextSize" xml:space="preserve"><value>حجم السياق (رموز)</value></data>
+  <data name="local.gpuLayers" xml:space="preserve"><value>طبقات GPU (auto أو all أو رقم)</value></data>
+  <data name="local.threads" xml:space="preserve"><value>خيوط CPU</value></data>
+  <data name="local.batchSize" xml:space="preserve"><value>حجم الدفعة</value></data>
+  <data name="local.flashAttention" xml:space="preserve"><value>Flash attention</value></data>
+  <data name="local.kvCache" xml:space="preserve"><value>نوع ذاكرة KV المؤقتة</value></data>
+  <data name="local.extraArgs" xml:space="preserve"><value>وسائط llama-server إضافية</value></data>
+  <data name="local.hardware" xml:space="preserve"><value>العتاد</value></data>
+  <data name="local.listen" xml:space="preserve"><value>الاستماع</value></data>
+  <data name="local.importGGUF" xml:space="preserve"><value>إضافة ملف GGUF…</value></data>
+  <data name="local.tooLarge" xml:space="preserve"><value>كبير جدًا</value></data>
+  <data name="local.backend" xml:space="preserve"><value>الواجهة الخلفية لوحدة GPU</value></data>
+  <data name="settings.compaction.autoRouted" xml:space="preserve"><value>النماذج ذات التوجيه التلقائي</value></data>
+  <data name="settings.compaction.effectiveThreshold" xml:space="preserve"><value>الحد الفعّال</value></data>
+  <data name="sidebar.signOut" xml:space="preserve"><value>تسجيل الخروج</value></data>
+  <data name="market.unpublish" xml:space="preserve"><value>إلغاء النشر</value></data>
+  <data name="settings.sshHosts" xml:space="preserve"><value>الحواسيب البعيدة (SSH)</value></data>
+  <data name="settings.sshHosts.hint" xml:space="preserve"><value>تأتي المضيفات من ~/.ssh/config. والمضيف المضاف هنا يُكتب فيه.</value></data>
+  <data name="settings.sshNoHosts" xml:space="preserve"><value>لا توجد مضيفات في ~/.ssh/config.</value></data>
+  <data name="settings.sshAddHost" xml:space="preserve"><value>إضافة حاسوب…</value></data>
+  <data name="settings.sshTest" xml:space="preserve"><value>اختبار</value></data>
+  <data name="settings.sshManaged" xml:space="preserve"><value>أُضيف هنا</value></data>
+  <data name="settings.sshFromConfig" xml:space="preserve"><value>من ~/.ssh/config</value></data>
+  <data name="settings.sshRemove.handWritten" xml:space="preserve"><value>كُتب هذا المضيف يدويًا في ~/.ssh/config. أزِله من هناك.</value></data>
+  <data name="settings.updates.current" xml:space="preserve"><value>الإصدار الحالي</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>جارٍ التحقق من التحديثات…</value></data>
+  <data name="settings.updates.checkAgain" xml:space="preserve"><value>التحقق مجددًا</value></data>
+  <data name="settings.updates.upToDate" xml:space="preserve"><value>التطبيق محدَّث.</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>التحقق من التحديثات</value></data>
+  <data name="settings.updates.retry" xml:space="preserve"><value>إعادة المحاولة</value></data>
+  <data name="settings.updates.hint" xml:space="preserve"><value>تحقق من أحدث إصدار متاح.</value></data>
+  <data name="settings.updates.required" xml:space="preserve"><value>إلزامي</value></data>
+  <data name="ssh.connected" xml:space="preserve"><value>استجاب {0}.</value></data>
+  <data name="remote.enable" xml:space="preserve"><value>السماح بالتحكم عن بُعد</value></data>
+  <data name="remote.shareLan" xml:space="preserve"><value>المشاركة مع الشبكة المحلية</value></data>
+  <data name="remote.enableHint" xml:space="preserve"><value>البوابة البعيدة متوقفة. شغّلها لإقران هاتف.</value></data>
+  <data name="plan.title" xml:space="preserve"><value>خطة</value></data>
+  <data name="plan.proposed" xml:space="preserve"><value>اقترح Claude خطة</value></data>
+  <data name="plan.revise" xml:space="preserve"><value>تعديل…</value></data>
+  <data name="plan.acceptAuto" xml:space="preserve"><value>قبول مع الوضع التلقائي</value></data>
 </root>

@@ -39,7 +39,7 @@ public sealed record EconomyOutputBudget(
 
 public static class EconomyPolicy
 {
-    public const int ToolOutputTokenLimit = 2_048;
+    public const int ToolOutputTokenLimit = 1_024;
     public const int ToolOutputLineLimit = 160;
     public const string ToolOutputMarker = "[… tool output reduced for context economy …]\nContinue with read_file offset or a narrower grep_files query.";
     public const string SystemInstruction = "Economy mode: keep prose as short as the answer allows and omit optional explanations and alternatives. Stop when the success criteria are met.";
@@ -70,6 +70,7 @@ public static class EconomyPolicy
             };
         var writeReserve = messages
             .SelectMany(message => message.ToolCalls ?? [])
+            .Select(UnwrapCall)
             .Where(call => string.Equals(call.Name, "write_file", StringComparison.OrdinalIgnoreCase))
             .Select(call => WriteReserve(call.Arguments))
             .DefaultIfEmpty(0)
@@ -80,7 +81,9 @@ public static class EconomyPolicy
         var recent = ReasoningHistory.TryGetValue(key, out var values) && values.Count > 0 ? values.Max() : 0;
         var reasoning = Math.Max(baseReasoning, recent > 0 ? recent + Math.Max(1_024, baseReasoning / 4) : 0);
         var maximum = ProviderMaximum(protocol, contextWindow);
-        var cap = detectedStyle == AgentResponseStyle.Strict && selectedDecision.ProviderOutputTokenCap is { } requested
+        // A provider cap on a tool turn would cut tool calls and write_file payloads;
+        // the style limit still shapes the prose there.
+        var cap = detectedStyle == AgentResponseStyle.Strict && !codingLike && selectedDecision.ProviderOutputTokenCap is { } requested
             ? Math.Min(maximum, Math.Max(1, requested))
             : Math.Min(maximum, Math.Max(1_024, RoundUp(reasoning + visible + 1_024)));
         var providerBudget = SupportsLegacyThinkingBudget(model) && cap > visible + 1_024
@@ -130,7 +133,7 @@ public static class EconomyPolicy
     {
         if (string.IsNullOrEmpty(value)) return value;
         // read_file already pages whole lines. Preserve the content its read ledger recorded.
-        if (string.Equals(toolName, "read_file", StringComparison.OrdinalIgnoreCase)) return value;
+        if (string.Equals(toolName, "read_file", StringComparison.OrdinalIgnoreCase) || toolName is DeferredToolSession.SearchName or DeferredToolSession.OutputName) return value;
         if (string.Equals(toolName, "grep_files", StringComparison.OrdinalIgnoreCase)) return NormalizeLines(value, arguments, false);
         return ClipHeadTail(value, ToolOutputMarker);
     }
@@ -149,7 +152,8 @@ public static class EconomyPolicy
             var call = messages.Take(index).Reverse()
                 .SelectMany(item => item.Role == "assistant" ? item.ToolCalls ?? [] : [])
                 .FirstOrDefault(item => string.Equals(item.Id, message.ToolCallId, StringComparison.Ordinal));
-            var body = NormalizeToolOutput(message.Content, ToolName(message, call), call?.Arguments ?? "");
+            var unwrapped = call is null ? null : UnwrapCall(call);
+            var body = NormalizeToolOutput(message.Content, unwrapped?.Name ?? message.ToolCallId ?? "tool", unwrapped?.Arguments ?? "");
             result.Add(message with
             {
                 Content = body,
@@ -218,19 +222,6 @@ public static class EconomyPolicy
         return pruned;
     }
 
-    private static List<List<NativeMessage>> GroupTurns(IReadOnlyList<NativeMessage> messages)
-    {
-        var result = new List<List<NativeMessage>>();
-        var current = new List<NativeMessage>();
-        foreach (var message in messages)
-        {
-            if (message.Role == "user" && current.Count > 0) { result.Add(current); current = []; }
-            current.Add(message);
-        }
-        if (current.Count > 0) result.Add(current);
-        return result;
-    }
-
     /// <summary>
     /// Groups assistant tool calls with their following results, so old rounds
     /// from one long user turn can be removed without leaving unmatched calls.
@@ -253,7 +244,19 @@ public static class EconomyPolicy
         return result;
     }
 
-    private static string ToolName(NativeMessage message, NativeToolCall? call) => call?.Name ?? message.ToolCallId ?? "tool";
+    private static NativeToolCall UnwrapCall(NativeToolCall call)
+    {
+        if (call.Name != DeferredToolSession.InvokeName) return call;
+        try
+        {
+            var node = JsonNode.Parse(call.Arguments)?.AsObject();
+            var name = node?["name"]?.GetValue<string>();
+            if (string.IsNullOrEmpty(name)) return call;
+            var arguments = node?["arguments"]?.GetValue<string>() ?? "{}";
+            return new NativeToolCall(call.Id, name, arguments);
+        }
+        catch { return call; }
+    }
 
     private static int WriteReserve(string arguments)
     {

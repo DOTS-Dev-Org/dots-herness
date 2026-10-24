@@ -127,6 +127,16 @@ public static class AgentCommandSandbox
             info.ArgumentList.Add(writableRoot);
             info.ArgumentList.Add(writableRoot);
         }
+        // Git metadata stays read-only even though its directory is writable:
+        // bubblewrap applies the mounts in order, so these shadow the
+        // writable bind above. A rewritten hook or config would run on the
+        // user's next git command, outside this sandbox.
+        foreach (var protectedPath in GitMetadataGuards.ProtectedPaths(additionalWritableRoots ?? Array.Empty<string>()))
+        {
+            info.ArgumentList.Add("--ro-bind");
+            info.ArgumentList.Add(protectedPath);
+            info.ArgumentList.Add(protectedPath);
+        }
         info.ArgumentList.Add("--proc");
         info.ArgumentList.Add("/proc");
         info.ArgumentList.Add("--dev");

@@ -59,7 +59,7 @@ final class TerminalTests: XCTestCase {
     func testSandboxTerminalCannotWriteOutsideItsWorkspace() throws {
         let workspace = FileManager.default.temporaryDirectory
             .appendingPathComponent("dots-terminal-sandbox-\(UUID().uuidString)", isDirectory: true)
-        let outside = FileManager.default.temporaryDirectory
+        let outside = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("dots-terminal-outside-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)

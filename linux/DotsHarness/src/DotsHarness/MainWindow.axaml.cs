@@ -41,13 +41,89 @@ public partial class MainWindow : Window
             Command = new RelayCommand(_ => new SettingsWindow { DataContext = model }.Show(this)),
         });
         RefreshLocalization();
+        ShowSection();
+    }
+
+    private readonly Dictionary<string, Control> _sections = [];
+
+    /// <summary>Builds the rail: one button per section, Settings at the foot. Mirrors macOS AppRailView.</summary>
+    private void BuildRail()
+    {
+        var model = ((App)Application.Current!).Model;
+        Rail.Children.Clear();
+        Button RailButton(string glyph, string title, bool selected, Action click)
+        {
+            var stack = new StackPanel();
+            stack.Children.Add(new TextBlock { Text = glyph, FontSize = 17, HorizontalAlignment = HorizontalAlignment.Center });
+            stack.Children.Add(new TextBlock { Text = title, FontSize = 10, HorizontalAlignment = HorizontalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, FontWeight = selected ? FontWeight.SemiBold : FontWeight.Normal });
+            var button = new Button
+            {
+                Content = stack, Width = 60, Height = 50, Margin = new Thickness(4, 2, 4, 2), HorizontalContentAlignment = HorizontalAlignment.Center,
+                BorderThickness = new Thickness(0), Foreground = Ui.Brush(selected ? "TextPrimary" : "TextSecondary"),
+                Background = selected ? new SolidColorBrush(Color.FromArgb(0x30, 0x80, 0x80, 0x80)) : Brushes.Transparent,
+            };
+            ToolTip.SetTip(button, title);
+            button.Click += (_, _) => click();
+            return button;
+        }
+        var glyphs = new Dictionary<string, string> { ["home"] = "⌂", ["media"] = "🖼", ["tasks"] = "◷", ["bots"] = "💬", ["marketplace"] = "🛍", ["memory"] = "🧠" };
+        foreach (var section in AppModel.Sections.Where(s => s != "memory" || model.MemoryEnabled))
+        {
+            var button = RailButton(glyphs[section], model.L($"rail.{section}"), model.Section == section, () => OpenSection(section));
+            DockPanel.SetDock(button, Dock.Top);
+            Rail.Children.Add(button);
+        }
+        var settings = RailButton("⚙", model.L("rail.settings"), false, () => new SettingsWindow { DataContext = model }.Show(this));
+        DockPanel.SetDock(settings, Dock.Bottom);
+        Rail.Children.Add(settings);
+    }
+
+    public void OpenSection(string section)
+    {
+        ((App)Application.Current!).Model.Section = section;
+        ShowSection();
+    }
+
+    /// <summary>Only Home keeps the project sidebar and chat; the rest own the whole area.</summary>
+    private void ShowSection()
+    {
+        var model = ((App)Application.Current!).Model;
+        var home = model.Section == "home";
+        DesktopGrid.IsVisible = home;
+        SectionHost.IsVisible = !home;
+        if (!home)
+        {
+            if (!_sections.TryGetValue(model.Section, out var view))
+            {
+                view = model.Section switch
+                {
+                    "media" => new MediaView(model),
+                    "bots" => new BotsView(model),
+                    "tasks" => new TasksSectionView(model),
+                    "marketplace" => new MarketplaceSectionView(model),
+                    _ => new MemorySectionView(model),
+                };
+                _sections[model.Section] = view;
+            }
+            SectionHost.Content = view;
+            (view as ISectionView)?.Activate();
+        }
+        BuildRail();
     }
 
     private void OnModel(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(AppModel.Section) or nameof(AppModel.MemoryEnabled))
+            Dispatcher.UIThread.Post(ShowSection);
         if (e.PropertyName is nameof(AppModel.Language) or nameof(AppModel.IsRightToLeft))
         {
-            Dispatcher.UIThread.Post(RefreshLocalization);
+            Dispatcher.UIThread.Post(() =>
+            {
+                RefreshLocalization();
+                // Sections are rebuilt in the new language the next time they open.
+                _sections.Clear();
+                ShowSection();
+            });
             return;
         }
         if (e.PropertyName is nameof(AppModel.SelectedConversationId) or nameof(AppModel.WorkspacePath))
@@ -67,6 +143,7 @@ public partial class MainWindow : Window
         Title = model.L("app.title");
         WindowTitle.Text = model.L("app.title");
         TasksButton.Content = model.L("settings.tasks");
+        ToolTip.SetTip(TasksButton, model.L("settings.tasks"));
         PaneButton.Content = model.L("conversation.choosePane");
         ToolTip.SetTip(SidebarToggle, model.L("sidebar.toggle"));
         ToolTip.SetTip(PaneButton, model.L("conversation.choosePane"));
@@ -250,7 +327,7 @@ public partial class MainWindow : Window
         UpdateResponsiveLayout();
     }
 
-    private void OnTasks(object? sender, RoutedEventArgs e) => OpenSettings("tasks");
+    private void OnTasks(object? sender, RoutedEventArgs e) => OpenSection("tasks");
 
     public void ShowBrowserPanel(string? url = null)
     {

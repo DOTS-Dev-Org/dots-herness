@@ -13,10 +13,10 @@ enum MobileExplore {
     static let name = "explore"
     /// A sweep that needs more than this was the wrong question to delegate.
     static let maxSteps = 20
-    /// A target, not a ceiling: findings that need the room keep it.
-    static let condenseThreshold = 2_000
-    /// Where the one condense retry fires; below it the round-trip costs more than it saves.
-    static let condenseTrigger = 3_500
+    /// A target, not a ceiling: findings that need the room keep it. The rule lives in
+    /// the prompt only; a retry to shorten the answer resends the whole transcript to
+    /// save a few hundred tokens the parent reads from cache, so it never pays for itself.
+    static let answerTarget = 2_000
     /// Concurrent subagents per assistant turn, to protect quota.
     static let maxPerTurn = 3
     static let maximumToolResultCharacters = 20_000
@@ -30,7 +30,9 @@ enum MobileExplore {
     it, how a pattern is used across the project. It cannot edit anything, so verify and change \
     code yourself afterwards. Do not use it for a file you already know the path of, or when one \
     search_files call or reading fewer than three files answers the question: do that directly, \
-    since a subagent costs a whole extra run. State the question in full, including the naming \
+    since a subagent costs a whole extra run. Use it only when the search is broad and the edit is \
+    narrow. When the files you would search are the files you will change, read them yourself: an \
+    explore read does not count as yours, so you would read them twice. State the question in full, including the naming \
     conventions and paths worth trying, since the subagent sees nothing of this conversation. For \
     a broad investigation, split it into independent questions and call explore several times in \
     the same turn (maximum \(maxPerTurn) subagents per turn): those subagents run in parallel and \
@@ -67,14 +69,15 @@ enum MobileExplore {
     Say "partial" whenever any part of the question is still open, whenever you stopped early, and
     whenever a finding rests on a file you did not actually read. The caller acts on this line, so a
     wrong "answered" is worse than an honest "partial".
-    Keep the answer under \(condenseThreshold) characters. Go past it only when the findings genuinely
+    Keep the answer under \(answerTarget) characters. Go past it only when the findings genuinely
     need the room - every extra paragraph is context the caller loses for its real work - and never
     to restate a finding or paste code a path:line already points at.
     """
 
-    /// One model step over the subagent's own transcript. `offerTools` is false for
-    /// the calls that must produce text: the condense retry and the wrap-up.
-    typealias Complete = @MainActor (_ messages: [[String: Any]], _ offerTools: Bool) async throws -> [String: Any]
+    /// One model step over the subagent's own transcript. Every step offers the same
+    /// tools, the wrap-up included: the provider caches the prefix from the tool list
+    /// on, so dropping them would resend the whole transcript uncached.
+    typealias Complete = @MainActor (_ messages: [[String: Any]]) async throws -> [String: Any]
     typealias Invoke = @MainActor (_ name: String, _ input: AgentInput) async -> String
 
     /// The lightest model of the provider the conversation already runs on: locating
@@ -89,10 +92,11 @@ enum MobileExplore {
 
     /// Runs the sweep and returns the text the parent model sees: the findings plus
     /// every reason it has to distrust them.
-    static func run(task rawTask: String, complete: Complete, invoke: Invoke) async -> String {
+    static func run(task rawTask: String, catalog: [AgentToolSpec], complete: Complete, invoke: Invoke) async -> String {
         let task = rawTask.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !task.isEmpty else { return "Tool error: explore needs a task - the full question to answer." }
 
+        var deferred = MobileDeferredTools()
         var messages: [[String: Any]] = [userText(task)]
         var readPaths: [String] = []
         var searches = 0
@@ -119,10 +123,11 @@ enum MobileExplore {
 
         for _ in 0..<maxSteps {
             if Task.isCancelled { return finish("The exploration was cancelled.") }
+            if steps > 0 { messages = MobilePromptHistory.supersedeRepeatedReads(messages) }
             steps += 1
             let response: [String: Any]
             do {
-                response = try await complete(messages, true)
+                response = try await complete(messages)
             } catch {
                 let partial = partialFindings()
                 let message = "The exploration failed: \(error.localizedDescription)"
@@ -135,44 +140,39 @@ enum MobileExplore {
 
             let calls = blocks.filter { $0["type"] as? String == "tool_use" }
             if calls.isEmpty {
-                var answer = text(of: blocks)
+                let answer = text(of: blocks)
                 if answer.isEmpty { return finish("The subagent returned no findings.") }
-                // Nothing is ever cut: a half fact reads exactly like a whole one. Past
-                // the trigger the subagent is asked once to tighten its own answer.
-                if answer.count > condenseTrigger {
-                    messages.append(userText("Your answer is too long for the caller's context. Rewrite it under \(condenseThreshold) characters in the same shape, keeping every path:line and the Status line. Drop restated findings and quoted code."))
-                    if let condensed = try? await complete(messages, false) {
-                        let shorter = text(of: condensed["content"] as? [[String: Any]] ?? [])
-                        if !shorter.isEmpty, shorter.count < answer.count { answer = shorter }
-                    }
-                }
                 return finish(answer)
             }
 
             var results: [[String: Any]] = []
-            for call in calls {
+            for wireCall in calls {
+                let call = deferred.resolve(wireCall, catalog: catalog)
                 let toolName = call["name"] as? String ?? ""
                 let input = call["input"] as? [String: Any] ?? [:]
                 if toolName == "read_file", let path = input["path"] as? String, !path.isEmpty, !readPaths.contains(path) {
                     readPaths.append(path)
                 }
                 if toolName != "read_file", readOnlyTools.contains(toolName) { searches += 1 }
-                let output = readOnlyTools.contains(toolName)
-                    ? await invoke(toolName, AgentInput(input))
-                    : "blocked: the exploration agent is read-only and has no \(toolName) tool."
+                let output: String
+                if let control = deferred.control(name: toolName, input: AgentInput(input), catalog: catalog, planMode: false) {
+                    output = control
+                } else if readOnlyTools.contains(toolName) { output = await invoke(toolName, AgentInput(input)) }
+                else { output = "blocked: the exploration agent is read-only and has no \(toolName) tool." }
+                deferred.record(output, id: call["id"] as? String ?? "tool", failed: output.lowercased().hasPrefix("tool error"), toolName: toolName)
                 results.append([
                     "type": "tool_result",
                     "tool_use_id": call["id"] as? String ?? "tool",
-                    "content": String(output.prefix(maximumToolResultCharacters)),
+                    "content": MobileDeferredTools.excerpt(output, name: toolName, id: call["id"] as? String ?? "tool"),
                 ])
             }
             messages.append(["role": "user", "content": results])
         }
 
         // The step budget is spent, but the transcript still holds what was found:
-        // one last tool-free call turns it into an answer instead of discarding it.
-        messages.append(userText("Your step budget is spent. Answer now from what you already found, in the required shape, with Status: partial."))
-        var answer = ((try? await complete(messages, false))?["content"] as? [[String: Any]]).map(text(of:)) ?? ""
+        // one last call turns it into an answer instead of discarding it.
+        messages.append(userText("Your step budget is spent. Do not call any tool. Answer now from what you already found, in the required shape, with Status: partial."))
+        var answer = ((try? await complete(messages))?["content"] as? [[String: Any]]).map(text(of:)) ?? ""
         if answer.isEmpty {
             let partial = partialFindings()
             answer = "The subagent reached its step limit without an answer." + (partial.isEmpty ? "" : "\n\nPartial findings:\n" + partial)
@@ -217,22 +217,29 @@ enum MobileDelegate {
     static let maxSteps = 40
     static let writeTools: Set<String> = ["write_file", FileEditTools.editName]
 
+    /// The parent plans at the selected effort; a part it hands out runs at medium at most.
+    static func effort(selected: String) -> String {
+        ["high", "xhigh", "max", "ultra"].contains(selected.lowercased()) ? "medium" : selected
+    }
+
     static let description = """
-    Hand one self-contained part of a change to a separate agent that reads and edits files, and \
-    get back only its report. Use it for a large part of a task that touches its own set of files, \
-    so those file bodies stay out of this conversation. Do not use it for a change that fits in a \
-    few edits: do that yourself, since a subagent costs a whole extra run on this conversation's \
-    model. On this device subagents run one at a time, so call delegate once per turn. \
+    Hand one self-contained implementation assignment to a separate agent that reads and edits files, \
+    then get back its report. The parent must inspect relevant code and plan the change first. Do not \
+    delegate a small or single-file edit: make it yourself with edit_file, since a subagent re-reads the \
+    files and costs a whole extra run. On this device subagents run one at a time, so delegate only one \
+    large part spanning many files you have not read. The parent owns design, integration, review and whole-change verification. Do not \
+    use explore to read implementation files on the parent's behalf. \
     `files` is the subagent's assignment: the only paths it may create or change. A directory \
     covers everything under it. The subagent cannot run commands, delete files or write elsewhere, \
-    and it sees nothing of this conversation, so state the task in full: what to change, the \
-    interfaces it must keep, and the conventions to follow. Test the result yourself afterwards, \
-    and re-read a file the subagent changed before editing it.
+    and it sees nothing of this conversation. Pass the parent's implementation plan in `plan`; include \
+    findings, interfaces, constraints, exact paths and acceptance criteria in `task`. Review the \
+    changed files and run the whole relevant build/check yourself; fix small issues yourself.
     """
 
     static let schema: [String: Any] = [
         "type": "object",
         "properties": [
+            "plan": ["type": "string", "description": "The implementation plan the parent formed after inspecting relevant code. Passed to the subagent as design context."],
             "task": ["type": "string", "description": "The complete instructions for this part of the change."],
             "files": [
                 "type": "array",
@@ -240,16 +247,24 @@ enum MobileDelegate {
                 "description": "Workspace-relative files or directories this subagent may create or change.",
             ],
         ],
-        "required": ["task", "files"],
+        "required": ["plan", "task", "files"],
     ]
 
-    static func systemPrompt(claims: [String]) -> String {
+    static func systemPrompt(plan: String, claims: [String]) -> String {
         """
         You are an editing agent working inside one workspace on one assigned part of a larger change.
+        Follow the parent's plan as the design source. Keep the assignment within that plan; do not
+        independently redesign the architecture or broaden the work. If it conflicts with the code
+        or leaves a necessary decision open, report that under Unresolved.
+        Parent plan:
+        \(plan)
         You may create or change only these paths (a directory covers everything under it):
         \(claims.map { "- \($0)" }.joined(separator: "\n"))
-        You may read any file. A write outside the assignment is refused: do not look for another way,
-        report what was needed under Unresolved instead. You cannot run commands or delete files.
+        Use the parent's findings and assigned paths. Read those files and only directly referenced code
+        needed to implement the assignment; do not conduct a broad workspace search. If another file
+        is necessary, report its exact path and why under Unresolved instead of widening the assignment.
+        A write outside the assignment is refused: do not look for another way, report it under Unresolved.
+        You cannot run commands or delete files.
         Read a file before you change it. Prefer edit_file for an existing file and write_file for a
         new one. Keep to the task: no unrelated refactors, no new files beyond what it needs.
         When you are done, reply with the report only, in exactly this shape:
@@ -301,11 +316,19 @@ enum MobileDelegate {
 
     /// Runs the subagent and returns the text the parent model sees: its report,
     /// the files it really changed, and every reason to distrust the report.
-    static func run(task rawTask: String, claims: [String], complete: MobileExplore.Complete, invoke: MobileExplore.Invoke) async -> String {
+    static func run(task: String, claims: [String], catalog: [AgentToolSpec], complete: MobileExplore.Complete, invoke: MobileExplore.Invoke) async -> String {
+        await run(plan: "Parent plan not supplied by caller.", task: task, claims: claims, catalog: catalog, complete: complete, invoke: invoke)
+    }
+
+    static func run(plan rawPlan: String, task rawTask: String, claims: [String], catalog: [AgentToolSpec], complete: MobileExplore.Complete, invoke: MobileExplore.Invoke) async -> String {
+        let plan = rawPlan.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !plan.isEmpty else { return "Tool error: delegate needs the parent's implementation plan formed after code inspection." }
         let task = rawTask.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !task.isEmpty else { return "Tool error: delegate needs a task - the complete instructions for the subagent." }
 
-        var messages: [[String: Any]] = [["role": "user", "content": [["type": "text", "text": task]]]]
+        var deferred = MobileDeferredTools()
+        let assignment = "Parent plan:\n\(plan)\n\nAssigned task:\n\(task)"
+        var messages: [[String: Any]] = [["role": "user", "content": [["type": "text", "text": assignment]]]]
         var written: [String] = []
 
         func text(_ blocks: [[String: Any]]) -> String {
@@ -318,15 +341,16 @@ enum MobileDelegate {
             if hitStepLimit { parts.append("[The subagent reached its step limit.]") }
             parts.append(written.isEmpty
                 ? "[No file was changed.]"
-                : "Files changed: " + written.joined(separator: ", ") + "\nRe-read any of these before editing it yourself.")
+                : "Files changed: " + written.joined(separator: ", ") + "\nReview these files; fix small issues yourself.")
             return parts.joined(separator: "\n\n")
         }
 
-        for _ in 0..<maxSteps {
+        for step in 0..<maxSteps {
             if Task.isCancelled { return finish("The subagent was stopped before it finished.", done: false) }
+            if step > 0 { messages = MobilePromptHistory.supersedeRepeatedReads(messages) }
             let response: [String: Any]
             do {
-                response = try await complete(messages, true)
+                response = try await complete(messages)
             } catch {
                 return finish("The subagent failed: \(error.localizedDescription)", done: false)
             }
@@ -342,11 +366,14 @@ enum MobileDelegate {
             }
 
             var results: [[String: Any]] = []
-            for call in calls {
+            for wireCall in calls {
+                let call = deferred.resolve(wireCall, catalog: catalog)
                 let toolName = call["name"] as? String ?? ""
                 let input = call["input"] as? [String: Any] ?? [:]
                 let output: String
-                if MobileExplore.readOnlyTools.contains(toolName) {
+                if let control = deferred.control(name: toolName, input: AgentInput(input), catalog: catalog, planMode: false) {
+                    output = control
+                } else if MobileExplore.readOnlyTools.contains(toolName) {
                     output = await invoke(toolName, AgentInput(input))
                 } else if writeTools.contains(toolName) {
                     if let path = (input["path"] as? String).flatMap(normalize), covers(claims, path) {
@@ -359,19 +386,21 @@ enum MobileDelegate {
                 } else {
                     output = "blocked: this subagent can only read and edit files; it has no \(toolName) tool."
                 }
+                deferred.record(output, id: call["id"] as? String ?? "tool", failed: output.lowercased().hasPrefix("tool error"), toolName: toolName)
                 results.append([
                     "type": "tool_result",
                     "tool_use_id": call["id"] as? String ?? "tool",
-                    "content": String(output.prefix(MobileExplore.maximumToolResultCharacters)),
+                    "content": MobileDeferredTools.excerpt(output, name: toolName, id: call["id"] as? String ?? "tool"),
                 ])
             }
             messages.append(["role": "user", "content": results])
         }
 
-        // Out of steps with edits possibly half done: one tool-free call for an honest
-        // report beats leaving the parent to guess what state the files are in.
-        messages.append(["role": "user", "content": [["type": "text", "text": "Your step budget is spent. Report now in the required shape, with Status: partial, naming exactly what is finished and what is not."]]])
-        let answer = ((try? await complete(messages, false))?["content"] as? [[String: Any]]).map(text) ?? ""
+        // Out of steps with edits possibly half done: one last call for an honest report
+        // beats leaving the parent to guess what state the files are in. It keeps the
+        // same tools so the cached prefix still matches.
+        messages.append(["role": "user", "content": [["type": "text", "text": "Your step budget is spent. Do not call any tool. Report now in the required shape, with Status: partial, naming exactly what is finished and what is not."]]])
+        let answer = ((try? await complete(messages))?["content"] as? [[String: Any]]).map(text) ?? ""
         return finish(answer.isEmpty ? "The subagent reached its step limit without a report." : answer, done: false, hitStepLimit: true)
     }
 
@@ -383,5 +412,27 @@ enum MobileDelegate {
             return trimmed.dropFirst("status:".count).trimmingCharacters(in: .whitespaces).hasPrefix("done")
         }
         return false
+    }
+}
+
+/// One subagent run's provider usage, reported with its finished event so the cost
+/// and cache reuse of side runs is measurable apart from the conversation's requests.
+@MainActor
+final class SubagentUsage {
+    private var requests = 0
+    private var input = 0
+    private var cached = 0
+    private var written = 0
+
+    func add(_ response: [String: Any], anthropic: Bool) {
+        let usage = MobileCacheUsage.parse(response, anthropic: anthropic)
+        requests += 1
+        input += usage.inputTokens ?? 0
+        cached += usage.cachedTokens ?? 0
+        written += usage.writeTokens ?? 0
+    }
+
+    var payload: [String: String] {
+        ["requests": "\(requests)", "inputTokens": "\(input)", "cachedTokens": "\(cached)", "cacheWriteTokens": "\(written)"]
     }
 }

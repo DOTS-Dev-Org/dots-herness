@@ -82,14 +82,19 @@ public final class LivePluginContext: PluginContext {
     }
 }
 
+/// A row's view of services. A child realm keeps the names its row marked
+/// `isolate: {name: true}` private to that row; every other name it provides
+/// is published through to the parent, where all plugins can see it.
 @MainActor
 public final class ServiceRealm {
     private var values: [String: Any] = [:]
     private let parent: ServiceRealm?
+    private let isolated: Set<String>
 
-    public init(parent: ServiceRealm? = nil, seed: [String: Any] = [:]) {
+    public init(parent: ServiceRealm? = nil, seed: [String: Any] = [:], isolated: Set<String> = []) {
         self.parent = parent
         self.values = seed
+        self.isolated = isolated
     }
 
     public func get(_ name: String) -> Any? {
@@ -97,11 +102,11 @@ public final class ServiceRealm {
     }
 
     public func provide(_ name: String, _ value: Any) {
-        values[name] = value
+        if let parent, !isolated.contains(name) { parent.provide(name, value) } else { values[name] = value }
     }
 
     public func retract(_ name: String) {
-        values.removeValue(forKey: name)
+        if let parent, !isolated.contains(name) { parent.retract(name) } else { values.removeValue(forKey: name) }
     }
 
     public var publishedNames: [String] { Array(values.keys) }
@@ -138,6 +143,12 @@ public final class PluginHost: ObservableObject {
     private var configuredToolOwners: [String: String] = [:]
     private var acceptedToolCatalog: [RegisteredTool] = []
     private var mounting = false
+    private var needsToolCatalogReconcile = true
+    private var reconciledRegistryRevision: UInt64?
+    /// Changes only when the provider-visible plugin definitions change.
+    public private(set) var toolCatalogRevision: UInt64 = 0
+    /// Last lookup result, consumed immediately by prompt-preparation telemetry.
+    public private(set) var lastToolCatalogCacheHit = false
     private struct CachedToolCatalog: Codable {
         var owners: [String: String]
         var tools: [RegisteredTool]
@@ -147,7 +158,16 @@ public final class PluginHost: ObservableObject {
     /// Definitions survive disabled or temporarily failed mounts. Closures do
     /// not; ToolRegistry.call still requires a currently mounted implementation.
     public func cacheableTools() -> [RegisteredTool] {
-        guard !mounting else { return acceptedToolCatalog }
+        guard !mounting else {
+            lastToolCatalogCacheHit = false
+            return acceptedToolCatalog
+        }
+        let registryRevision = tools.revision
+        if !needsToolCatalogReconcile, reconciledRegistryRevision == registryRevision {
+            lastToolCatalogCacheHit = true
+            return acceptedToolCatalog
+        }
+        lastToolCatalogCacheHit = false
         let active = tools.tools()
         let activeOwners = Set(fibers.map(\.id))
         let installed = Set(catalog.entries.map { $0.manifest.id })
@@ -158,8 +178,11 @@ public final class PluginHost: ObservableObject {
         let next = (retained + active).sorted { $0.name < $1.name }
         if next != acceptedToolCatalog {
             acceptedToolCatalog = next
+            toolCatalogRevision &+= 1
             saveToolCatalog()
         }
+        reconciledRegistryRevision = registryRevision
+        needsToolCatalogReconcile = false
         return next
     }
 
@@ -211,11 +234,13 @@ public final class PluginHost: ObservableObject {
         contexts.removeAll()
         fibers.removeAll()
         issues.removeAll()
+        needsToolCatalogReconcile = true
     }
 
     @discardableResult
     public func mount(_ document: CompositionDocument) -> [MountIssue] {
         unmountAll()
+        needsToolCatalogReconcile = true
         let previousOwners = configuredToolOwners
         let previousCatalog = acceptedToolCatalog
         mounting = true
@@ -235,12 +260,9 @@ public final class PluginHost: ObservableObject {
                 let plugin = try resolved.make()
                 let inject = resolved.manifest.inject
                 let isolate = entry.isolate
-                let realm: ServiceRealm
-                if document.plane == .session, !isolate.isEmpty {
-                    realm = ServiceRealm(parent: root)
-                } else {
-                    realm = root
-                }
+                let privateNames = Set(isolate.filter(\.value).keys)
+                // Honored on both planes: isolated names never reach the shared root.
+                let realm = privateNames.isEmpty ? root : ServiceRealm(parent: root, isolated: privateNames)
                 for name in inject {
                     if realm.get(name) == nil {
                         throw PluginError.missingService(name)
@@ -269,7 +291,7 @@ public final class PluginHost: ObservableObject {
                 }
                 if document.plane == .session {
                     let published = Set(root.publishedNames).subtracting(publishedBefore)
-                    if isolate.isEmpty, !published.isEmpty {
+                    if !published.isEmpty {
                         throw PluginError.globalService(published.sorted().joined(separator: ", "))
                     }
                 }
@@ -289,6 +311,7 @@ public final class PluginHost: ObservableObject {
             unmountAll()
             configuredToolOwners = previousOwners
             acceptedToolCatalog = previousCatalog
+            needsToolCatalogReconcile = true
             mounting = false
             issues = nextIssues
             return nextIssues

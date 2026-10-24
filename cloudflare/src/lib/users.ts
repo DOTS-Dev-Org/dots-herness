@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Env } from "../env";
-import { db, normalizeEmail, nowIso, stableId, uuid } from "../db/client";
+import { db, normalizeEmail, nowIso } from "../db/client";
 import { planDefForSlug, planFeaturesForSlug } from "./plan_features";
 import {
   getVpsCacheValue,
@@ -173,22 +173,6 @@ export async function userHasProviderConnection(
   return Boolean(row);
 }
 
-/** Bu provider için belirli bir account_label'a sahip bağlantıyı bulur (scan-connect eşleme). */
-export async function findConnectionByLabel(
-  env: Env,
-  userId: string,
-  providerId: string,
-  accountLabel: string
-): Promise<{ id: string } | null> {
-  const row = await db(env)
-    .prepare(
-      "SELECT id FROM user_connections WHERE user_id = ? AND provider = ? AND account_label = ? LIMIT 1"
-    )
-    .bind(userId, providerId, accountLabel)
-    .first<{ id: string }>();
-  return row || null;
-}
-
 export async function findConnectionByLabelCached(
   env: Env,
   userId: string,
@@ -324,16 +308,6 @@ export type UsageUpsertInput = {
   snapshot_id?: string | null;
 };
 
-type ExistingUsageRow = {
-  used_percent: number | null;
-  used: string | null;
-  total: string | null;
-  resets_at: string | null;
-  error: string | null;
-  /** JSON array of StoredWindow; provider_usage_windows tablosunun yerini aldi. */
-  windows_json: string | null;
-};
-
 /** user_provider_usage.windows_json icindeki tek window kaydi. */
 export type StoredWindow = {
   window: string;
@@ -403,21 +377,6 @@ export async function getUsageSnapshot(env: Env, userId: string): Promise<UsageS
     await putVpsSnapshot(env, userId, snapshot);
   }
   return snapshot;
-}
-
-function hourBucketIso(value: string): string {
-  const parsed = new Date(value);
-  const date = Number.isFinite(parsed.getTime()) ? parsed : new Date();
-  date.setUTCMinutes(0, 0, 0);
-  return date.toISOString();
-}
-
-function snapshotProviders(snapshot: UsageSnapshot): Record<string, UsageSnapshotEntry[]> {
-  const providers: Record<string, UsageSnapshotEntry[]> = {};
-  for (const entry of Object.values(snapshot)) {
-    (providers[entry.provider_id] ||= []).push(entry);
-  }
-  return providers;
 }
 
 function storedWindowsForInput(

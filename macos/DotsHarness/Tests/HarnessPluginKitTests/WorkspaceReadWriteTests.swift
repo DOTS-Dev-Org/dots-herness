@@ -35,15 +35,56 @@ final class WorkspaceReadWriteTests: XCTestCase {
         , conversationID: "test")
     }
 
+    func testCommandTimeoutIsClampedAndATimeoutKeepsItsOutput() {
+        XCTAssertEqual(WorkspaceTools.commandTimeout([:]), 120)
+        XCTAssertEqual(WorkspaceTools.commandTimeout(["timeout_seconds": 900]), 600)
+        XCTAssertEqual(WorkspaceTools.commandTimeout(["timeout_seconds": -5]), 120)
+        let result = WorkspaceTools.execute(
+            AgentToolCall(id: "c", name: "run_command", arguments: #"{"command":"echo started; sleep 5","timeout_seconds":1}"#),
+            workspace: workspace,
+            conversationID: "test"
+        )
+        XCTAssertTrue(result.contains(AppCopy.format("tool.timedOut", 1)), result)
+        XCTAssertTrue(result.contains("started"), result)
+        XCTAssertFalse(WorkspaceTools.lockNotice("Another instance of SwiftPM is already running using '.build'").isEmpty)
+    }
+
+    func testLockNoticeNamesTheHolderAndWaitCommandSeesItExit() throws {
+        let notice = WorkspaceTools.lockNotice("Another instance of SwiftPM (PID: 37990) is already running using '.build', waiting")
+        XCTAssertTrue(notice.contains("PID 37990"), notice)
+        XCTAssertTrue(notice.contains("wait_command"), notice)
+
+        let log = workspace.appendingPathComponent("job.log")
+        try "build done".write(to: log, atomically: true, encoding: .utf8)
+        let sleeper = Process()
+        sleeper.executableURL = URL(fileURLWithPath: "/bin/sleep")
+        sleeper.arguments = ["1"]
+        try sleeper.run()
+        let result = WorkspaceTools.execute(
+            AgentToolCall(id: "w", name: "wait_command", arguments: #"{"pid":\#(sleeper.processIdentifier),"log_path":"job.log","timeout_seconds":10}"#),
+            workspace: workspace,
+            conversationID: "test"
+        )
+        sleeper.waitUntilExit()
+        XCTAssertTrue(result.contains("exited after"), result)
+        XCTAssertTrue(result.contains("build done"), result)
+    }
+
     func testPagedProjectFileCanBeEditedAndReread() throws {
         let original = (1...240).map { "line-\($0):" + String(repeating: "x", count: 1_000) }.joined(separator: "\n")
         let file = workspace.appendingPathComponent("project.swift")
         try original.write(to: file, atomically: true, encoding: .utf8)
-        for start in stride(from: 1, through: 240, by: 20) {
+        var start = 1
+        while start <= 240 {
             let args = "{\"path\":\"project.swift\",\"offset\":\(start),\"limit\":20}"
             let page = read(args)
             XCTAssertEqual(EconomyToolOutputPolicy.normalize(page, toolName: "read_file", arguments: args), page)
             if start == 1 { XCTAssertTrue(write("project.swift", "blind overwrite").lowercased().contains("read")) }
+            if let marker = page.range(of: "[truncated] Continue with offset: "),
+               let next = Int(page[marker.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)) {
+                XCTAssertGreaterThan(next, start)
+                start = next
+            } else { start += 20 }
         }
         let args = #"{"path":"project.swift","edits":[{"old_text":"line-180:","new_text":"fixed-180:"}]}"#
         let result = WorkspaceTools.execute(AgentToolCall(id: "edit", name: "edit_file", arguments: args), workspace: workspace, conversationID: "test")

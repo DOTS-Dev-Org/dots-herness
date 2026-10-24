@@ -1,8 +1,104 @@
 // Copyright (c) 2026 DOTS
 // Small shared primitives for the native macOS UI.
 
+import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 import DotsHarnessCore
+
+/// `NSImage(contentsOf:)` inside a view body reads and decodes the file on every
+/// render. Keyed by path and modification date, so a rewritten file is reloaded.
+@MainActor
+enum ImageFileCache {
+    private static let costLimit = 48 * 1024 * 1024
+    private static let cache: NSCache<NSString, NSImage> = {
+        let cache = NSCache<NSString, NSImage>()
+        cache.countLimit = 96
+        // Decoded pixels, not compressed file size, determine the retained memory.
+        cache.totalCostLimit = costLimit
+        return cache
+    }()
+
+    static func image(at url: URL) -> NSImage? {
+        let modified = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
+        let key = "\(url.path)|\(modified?.timeIntervalSince1970 ?? 0)" as NSString
+        if let cached = cache.object(forKey: key) { return cached }
+        guard let image = NSImage(contentsOf: url) else { return nil }
+        let pixels = image.representations.reduce(into: 0) { largest, representation in
+            let width = max(representation.pixelsWide, 0)
+            let height = max(representation.pixelsHigh, 0)
+            let (count, overflow) = width.multipliedReportingOverflow(by: height)
+            if !overflow { largest = max(largest, count) }
+        }
+        let (cost, overflow) = pixels.multipliedReportingOverflow(by: 4)
+        // NSCache's cost limit is advisory. Do not let a single panorama or
+        // screenshot exceed the entire cache budget and remain retained.
+        if pixels > 0, !overflow, cost <= costLimit {
+            cache.setObject(image, forKey: key, cost: cost)
+        }
+        return image
+    }
+}
+
+@MainActor
+private final class FileDropBatch {
+    private var remaining: Int
+    private var urls: [URL?]
+    private let onURLs: @MainActor ([URL]) -> Void
+
+    init(count: Int, onURLs: @escaping @MainActor ([URL]) -> Void) {
+        remaining = count
+        urls = Array(repeating: nil, count: count)
+        self.onURLs = onURLs
+    }
+
+    func finish(_ url: URL?, at index: Int) {
+        guard urls.indices.contains(index), urls[index] == nil else { return }
+        urls[index] = url
+        remaining -= 1
+        guard remaining == 0 else { return }
+
+        let loadedURLs = urls.compactMap { $0 }
+        if !loadedURLs.isEmpty { onURLs(loadedURLs) }
+    }
+}
+
+@MainActor
+func handleFileDrop(_ providers: [NSItemProvider], onURLs: @escaping @MainActor ([URL]) -> Void) -> Bool {
+    guard !providers.isEmpty else { return false }
+    let batch = FileDropBatch(count: providers.count, onURLs: onURLs)
+
+    for (index, provider) in providers.enumerated() {
+        if provider.canLoadObject(ofClass: NSURL.self) {
+            _ = provider.loadObject(ofClass: NSURL.self) { item, _ in
+                let url = (item as? NSURL).map { $0 as URL }
+                Task { @MainActor in batch.finish(url, at: index) }
+            }
+        } else {
+            _ = provider.loadDataRepresentation(for: .fileURL) { data, _ in
+                let url = data.flatMap { URL(dataRepresentation: $0, relativeTo: nil) }
+                Task { @MainActor in batch.finish(url, at: index) }
+            }
+        }
+    }
+    return true
+}
+
+struct VoiceTranscriptPreview: View {
+    let text: String
+
+    var body: some View {
+        if !text.isEmpty {
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .padding(.horizontal, 15)
+                .padding(.bottom, 7)
+                .allowsHitTesting(false)
+        }
+    }
+}
 
 struct ComposerBanner<Content: View>: View {
     private let verticalPadding: CGFloat
@@ -23,6 +119,95 @@ struct ComposerBanner<Content: View>: View {
                     .stroke(Color.primary.opacity(0.08), lineWidth: 1)
             }
             .accessibilityElement(children: .contain)
+    }
+}
+
+/// The filled capsule for a composer banner's main action.
+struct BannerButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.callout.weight(.medium))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(Color.primary.opacity(0.16), in: Capsule())
+            .opacity(configuration.isPressed ? 0.7 : 1)
+    }
+}
+
+/// Shows a short, localized confirmation after writing text to the pasteboard.
+struct CopyFeedbackButton: View {
+    let text: String
+
+    @State private var isCopied = false
+    @State private var resetID = UUID()
+
+    private var label: String {
+        AppCopy.text(isCopied ? "common.copied" : "conversation.copy")
+    }
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Button {
+                guard NSPasteboard.copy(text) else { return }
+                withAnimation(.easeInOut(duration: 0.16)) {
+                    isCopied = true
+                    resetID = UUID()
+                }
+            } label: {
+                Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
+                    .foregroundStyle(isCopied ? Color.green : Color.secondary)
+            }
+            .buttonStyle(.plain)
+            .help(label)
+            .accessibilityLabel(label)
+
+            if isCopied {
+                Text(AppCopy.text("common.copied"))
+                    .font(.caption)
+                    .foregroundStyle(.green)
+                    .transition(.opacity)
+                    .accessibilityHidden(true)
+            }
+        }
+        .task(id: resetID) {
+            guard isCopied else { return }
+            do {
+                try await Task.sleep(for: .seconds(2.5))
+            } catch {
+                return
+            }
+            withAnimation(.easeInOut(duration: 0.16)) {
+                isCopied = false
+            }
+        }
+    }
+}
+
+extension NSPasteboard {
+    /// Replaces the general pasteboard's contents with `text`.
+    @discardableResult
+    static func copy(_ text: String) -> Bool {
+        general.clearContents()
+        return general.setString(text, forType: .string)
+    }
+}
+
+/// Shows a message in the app language under the original, or hides it again.
+@MainActor
+func toggleTranslation(
+    id: String, text: String, model: AppModel,
+    translations: Binding<[String: String]>, translating: Binding<Set<String>>
+) {
+    if translations.wrappedValue.removeValue(forKey: id) != nil { return }
+    translating.wrappedValue.insert(id)
+    Task { @MainActor in
+        defer { translating.wrappedValue.remove(id) }
+        do {
+            translations.wrappedValue[id] = try await model.translate(text)
+        } catch {
+            translations.wrappedValue[id] = error.localizedDescription
+        }
     }
 }
 
@@ -51,6 +236,51 @@ extension ChatAttachment.Kind {
         case .audio: return "waveform"
         case .video: return "video"
         case .file: return "doc"
+        }
+    }
+}
+
+extension View {
+    /// Shows a "jump to latest" arrow at the bottom trailing edge of a chat
+    /// scroll view once the reader has scrolled up from the end.
+    func scrollToBottomButton(action: @escaping () -> Void) -> some View {
+        modifier(ScrollToBottomButton(action: action))
+    }
+}
+
+private struct ScrollToBottomButton: ViewModifier {
+    let action: () -> Void
+    @State private var scrolledUp = false
+
+    func body(content: Content) -> some View {
+        // ponytail: scroll geometry needs macOS 15; older systems just get no arrow.
+        if #available(macOS 15.0, *) {
+            content
+                .onScrollGeometryChange(for: Bool.self) { geometry in
+                    geometry.contentSize.height - geometry.visibleRect.maxY > 120
+                } action: { _, isScrolledUp in
+                    scrolledUp = isScrolledUp
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    if scrolledUp {
+                        Button(action: action) {
+                            Image(systemName: "arrow.down")
+                                .font(.system(size: 13, weight: .semibold))
+                                .frame(width: 30, height: 30)
+                                .background(.regularMaterial, in: Circle())
+                                .overlay(Circle().strokeBorder(.separator))
+                                .contentShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .help(AppCopy.text("conversation.scrollToBottom"))
+                        .accessibilityLabel(AppCopy.text("conversation.scrollToBottom"))
+                        .padding(16)
+                        .transition(.opacity)
+                    }
+                }
+                .animation(.easeOut(duration: 0.15), value: scrolledUp)
+        } else {
+            content
         }
     }
 }

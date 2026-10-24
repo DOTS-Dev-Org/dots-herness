@@ -140,7 +140,8 @@ struct PluginSettingsView: View {
         GroupBox {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Label("Vision fallback", systemImage: "eye")
+                    Label(AppCopy.text("vision.title"), systemImage
+: "eye")
                         .font(.headline)
                     Spacer()
                     if model.visionPluginInstalled {
