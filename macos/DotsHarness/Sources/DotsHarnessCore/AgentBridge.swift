@@ -193,6 +193,7 @@ final class AgentRunState {
     /// True if any contribution to the live count used local estimates or lacked cache accounting.
     var activeRunTokenCountIncludesEstimate: Bool = false
     var activeRunChangedFiles: [ChangedFile] = []
+    @ObservationIgnored var activeRunChangedFileSet: Set<ChangedFile> = []
     var activeRunLastTurnID: String = ""
     var activeRunTrackingStatus: String = "complete"
     var activeRunCleanupStatus: String = "not_applicable"
@@ -209,6 +210,140 @@ final class AgentRunState {
     var activeCleanupFailure: Bool = false
 }
 
+/// One stable paragraph in the reply that is still arriving. The text changes in
+/// place, so SwiftUI can keep already completed paragraphs out of later layouts.
+@MainActor
+@Observable
+public final class LiveReplyParagraph: Identifiable {
+    public let id = UUID()
+    public private(set) var text = ""
+    public private(set) var isComplete = false
+
+    func append(contentsOf value: String) { text.append(contentsOf: value) }
+    func finish() { isComplete = true }
+    func removeTrailingNewline() {
+        guard text.last == "\n" else { return }
+        text.removeLast()
+    }
+}
+
+@MainActor
+private struct LiveReplyBuffer {
+    private static let markers = ["backlog:", "backlog-done:"]
+
+    var thinking = ""
+    var published = Date.distantPast
+    var paragraphs = [LiveReplyParagraph()]
+    var hasVisibleText = false
+    var receivedText = false
+    var text = ""
+
+    private var lineBuffer = ""
+    private var lineIsVisible = false
+    private var suppressLine = false
+    private var visibleLineCount = 0
+    private var pendingPresentation = ""
+    private var lastRenderedCharacterWasNewline = false
+
+    mutating func appendStreamText(_ text: String) {
+        guard !text.isEmpty else { return }
+        self.text.append(contentsOf: text)
+        receivedText = true
+        for character in text {
+            if character == "\n" {
+                finishLine()
+                continue
+            }
+            guard !suppressLine else { continue }
+            if lineIsVisible {
+                stage(character)
+                continue
+            }
+
+            lineBuffer.append(character)
+            let markerCandidate = lineBuffer.trimmingCharacters(in: CharacterSet(charactersIn: " \t\r")).lowercased()
+            if Self.markers.contains(where: { markerCandidate.hasPrefix($0) }) {
+                suppressLine = true
+                lineBuffer = ""
+            } else if !Self.markers.contains(where: { $0.hasPrefix(markerCandidate) }) {
+                beginVisibleLine(lineBuffer)
+                lineBuffer = ""
+                lineIsVisible = true
+            }
+        }
+    }
+
+    mutating func appendThinking(_ text: String) {
+        thinking.append(contentsOf: text.suffix(400))
+        if thinking.count > 400 { thinking = String(thinking.suffix(400)) }
+    }
+
+    mutating func appendFilteredText(_ text: String) {
+        guard !text.isEmpty else { return }
+        receivedText = true
+        var line = ""
+        for character in text {
+            if character == "\n" {
+                beginVisibleLine(line)
+                line.removeAll(keepingCapacity: true)
+            } else {
+                line.append(character)
+            }
+        }
+        beginVisibleLine(line)
+    }
+
+    @discardableResult
+    mutating func flushPresentation() -> Bool {
+        guard !pendingPresentation.isEmpty else { return false }
+        var chunk = ""
+        for character in pendingPresentation {
+            if character == "\n" {
+                if lastRenderedCharacterWasNewline {
+                    paragraphs[paragraphs.count - 1].append(contentsOf: chunk)
+                    chunk.removeAll(keepingCapacity: true)
+                    paragraphs[paragraphs.count - 1].removeTrailingNewline()
+                    paragraphs[paragraphs.count - 1].finish()
+                    paragraphs.append(LiveReplyParagraph())
+                    lastRenderedCharacterWasNewline = false
+                } else {
+                    chunk.append(character)
+                    lastRenderedCharacterWasNewline = true
+                }
+            } else {
+                chunk.append(character)
+                lastRenderedCharacterWasNewline = false
+            }
+        }
+        paragraphs[paragraphs.count - 1].append(contentsOf: chunk)
+        pendingPresentation.removeAll(keepingCapacity: true)
+        return true
+    }
+
+    private mutating func finishLine() {
+        if !suppressLine, !lineIsVisible {
+            let markerCandidate = lineBuffer.trimmingCharacters(in: CharacterSet(charactersIn: " \t\r")).lowercased()
+            if !Self.markers.contains(where: { markerCandidate.hasPrefix($0) }) {
+                beginVisibleLine(lineBuffer)
+            }
+        }
+        lineBuffer = ""
+        lineIsVisible = false
+        suppressLine = false
+    }
+
+    private mutating func beginVisibleLine(_ line: String) {
+        if visibleLineCount > 0 { stage("\n") }
+        for character in line { stage(character) }
+        visibleLineCount += 1
+    }
+
+    private mutating func stage(_ character: Character) {
+        pendingPresentation.append(character)
+        hasVisibleText = true
+    }
+}
+
 @MainActor
 @Observable
 public final class NativeAgentHost {
@@ -222,68 +357,94 @@ public final class NativeAgentHost {
     private(set) var runTick = 0
     /// The sidebar lists come from the conversation store, not from tracked properties.
     var listTick = 0
+    private(set) var changedFilesRevisions: [String: Int] = [:]
     /// The reply a provider is still writing, per conversation. The finished
     /// message replaces it: any `append` to the conversation clears it.
-    private(set) var liveReplies: [String: String] = [:]
+    private(set) var liveReplyParagraphs: [String: [LiveReplyParagraph]] = [:]
     /// The reasoning written before the first word of the reply, so a model
     /// that thinks first does not leave the bubble empty. Gone once prose starts.
     private(set) var liveThinking: [String: String] = [:]
-    @ObservationIgnored private var liveReplyBuffers: [String: (text: String, thinking: String, published: Date)] = [:]
+    @ObservationIgnored private var liveReplyBuffers: [String: LiveReplyBuffer] = [:]
     /// What `persist()` last wrote per conversation, and the store revision after it.
     @ObservationIgnored var persistedConversations: [String: Conversation] = [:]
     @ObservationIgnored var persistedRevision = -1
     @ObservationIgnored var persistScheduled = false
 
     func appendLiveReply(_ delta: NativeAgentClient.StreamDelta, in conversationID: String) {
-        // Appended in place: a copy taken out of the dictionary made every delta copy the whole reply.
         switch delta {
-        case .text(let text): liveReplyBuffers[conversationID, default: ("", "", .distantPast)].text += text
-        case .thinking(let thinking): liveReplyBuffers[conversationID, default: ("", "", .distantPast)].thinking += thinking
+        case .text(let text): liveReplyBuffers[conversationID, default: LiveReplyBuffer()].appendStreamText(text)
+        case .thinking(let thinking): liveReplyBuffers[conversationID, default: LiveReplyBuffer()].appendThinking(thinking)
         }
         // ponytail: published 10 times a second, and only for the chat on screen: every
         // publish re-renders the window, so background chats stream into the buffer alone.
         // The tail waits for the next delta, the final message or `selectionDidChange`.
         guard conversationID == selectedID,
-              Date().timeIntervalSince(liveReplyBuffers[conversationID]!.published) >= 0.1 else { return }
+              let published = liveReplyBuffers[conversationID]?.published,
+              Date().timeIntervalSince(published) >= 0.1 else { return }
         publishLiveReply(in: conversationID)
     }
 
     func publishLiveReply(in conversationID: String) {
-        guard let buffer = liveReplyBuffers[conversationID] else { return }
-        if buffer.text.isEmpty {
+        guard var buffer = liveReplyBuffers[conversationID] else { return }
+        let didFlush = buffer.flushPresentation()
+        buffer.published = Date()
+        liveReplyBuffers[conversationID] = buffer
+        if didFlush {
+            setLiveReplyParagraphs(buffer.hasVisibleText ? buffer.paragraphs : nil, in: conversationID)
+        }
+        if !buffer.receivedText {
             if !buffer.thinking.isEmpty { liveThinking[conversationID] = buffer.thinking }
         } else {
-            liveReplies[conversationID] = memory.visibleText(in: buffer.text, hidePartialMarkerTail: true)
             if liveThinking[conversationID] != nil { liveThinking[conversationID] = nil }
         }
-        liveReplyBuffers[conversationID]?.published = Date()
     }
 
     func clearLiveReply(in conversationID: String) {
         liveReplyBuffers[conversationID] = nil
-        if liveReplies[conversationID] != nil { liveReplies[conversationID] = nil }
+        setLiveReplyParagraphs(nil, in: conversationID)
         if liveThinking[conversationID] != nil { liveThinking[conversationID] = nil }
     }
 
+    /// Paragraph objects publish their own text changes. Reassign the array only
+    /// when its structure changes so the transcript parent does not redraw for each token.
+    private func setLiveReplyParagraphs(_ paragraphs: [LiveReplyParagraph]?, in conversationID: String) {
+        let current = liveReplyParagraphs[conversationID]
+        if let current, let paragraphs,
+           current.count == paragraphs.count,
+           zip(current, paragraphs).allSatisfy({ pair in pair.0.id == pair.1.id }) {
+            return
+        }
+        guard current != nil || paragraphs != nil else { return }
+        liveReplyParagraphs[conversationID] = paragraphs
+    }
+
     func replaceLiveReply(_ text: String, thinking: String? = nil, in conversationID: String) {
-        let reasoning = thinking ?? ""
-        liveReplyBuffers[conversationID] = (text, reasoning, Date())
+        var buffer = LiveReplyBuffer()
+        buffer.published = Date()
+        buffer.thinking = String((thinking ?? "").suffix(400))
+        buffer.text = text
+        buffer.appendFilteredText(memory.visibleText(in: text))
+        _ = buffer.flushPresentation()
+        liveReplyBuffers[conversationID] = buffer
         if text.isEmpty {
-            liveReplies[conversationID] = nil
-            liveThinking[conversationID] = reasoning.isEmpty ? nil : reasoning
+            setLiveReplyParagraphs(nil, in: conversationID)
+            liveThinking[conversationID] = buffer.thinking.isEmpty ? nil : buffer.thinking
         } else {
-            liveReplies[conversationID] = memory.visibleText(in: text)
-            liveThinking[conversationID] = nil
+            setLiveReplyParagraphs(buffer.hasVisibleText ? buffer.paragraphs : nil, in: conversationID)
+            liveThinking[conversationID] = buffer.hasVisibleText ? nil : buffer.thinking
         }
     }
 
     func currentLiveReplyText(in conversationID: String) -> String? {
-        liveReplyBuffers[conversationID]?.text ?? liveReplies[conversationID]
+        liveReplyBuffers[conversationID]?.text
     }
 
     /// Tell readers of state held outside tracked properties that it changed.
     func touchRuns() { runTick &+= 1 }
     func touchLists() { listTick &+= 1 }
+    func markChangedFilesUpdated(in conversationID: String) {
+        changedFilesRevisions[conversationID, default: 0] &+= 1
+    }
 
     /// Inside a run's task: that run. Anywhere else (UI): the selected conversation's.
     private var currentRun: AgentRunState {
@@ -420,6 +581,8 @@ public final class NativeAgentHost {
     @ObservationIgnored public var onAttentionNeeded: ((RunAttentionEvent) -> Void)?
     /// A plan was approved automatically, so the composer's plan mode should end like a manual approval.
     @ObservationIgnored public var onPlanAutoApproved: (() -> Void)?
+    /// The model switched a turn to plan mode; nil (bots, tests) keeps runs out of plan mode.
+    @ObservationIgnored public var onPlanModeEntered: (() -> Void)?
     @ObservationIgnored public var onRemoteEvent: ((String, [String: String]) -> Void)?
     /// Set by the app: called after `install_plugin` writes a plugin so the host
     /// re-mounts and the new plugin goes live without a restart. Nil in tests.
@@ -510,7 +673,14 @@ public final class NativeAgentHost {
         conversations.first { $0.id == selectedID }
     }
 
+    /// Revision for UI work that depends on metadata-only conversation lists.
+    public var conversationListRevision: Int {
+        _ = listTick
+        return listTick
+    }
+
     @ObservationIgnored private var outsideProjectsCache: (revision: Int, known: Set<String>, result: [Conversation])?
+    @ObservationIgnored private var contentSearchCache: (query: String, includingArchived: Bool, storeRevision: Int, listRevision: Int, matches: Set<String>)?
     @ObservationIgnored var contentTask: Task<Void, Never>?
     @ObservationIgnored var loadGeneration = 0
 
@@ -535,8 +705,9 @@ public final class NativeAgentHost {
         }
         let result = all
             .filter { conversation in
+                if conversation.projectless { return true }
                 guard let cwd = ConversationStore.normalizedPath(conversation.cwd) else {
-                    return conversation.projectless
+                    return false
                 }
                 return !known.contains(cwd)
             }
@@ -555,13 +726,79 @@ public final class NativeAgentHost {
             .sorted { $0.activityDate > $1.activityDate }
     }
 
-    /// Sidebar search reads only the searched transcript; its content is released
-    /// with the local value when this query finishes.
+    /// Synchronous compatibility helper. UI searches should use the asynchronous
+    /// method below so disk reads never run on the main actor.
+    @available(*, deprecated, message: "Use contentMatchingConversationIDs(query:includingArchived:) for disk-backed searches.")
     public func contentMatches(_ conversation: Conversation, query: String) -> Bool {
         let messages = conversation.contentLoaded && conversation.transcriptComplete
             ? conversation.messages
             : store.loadTranscript(id: conversation.id) ?? []
         return messages.contains { $0.text.localizedCaseInsensitiveContains(query) }
+    }
+
+    /// Searches visible message text off the main actor. Sidebar searches call
+    /// this after a short debounce so SQLite reads and decoding never block typing.
+    public func contentMatchingConversationIDs(
+        query: String,
+        includingArchived: Bool = false
+    ) async -> Set<String> {
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return [] }
+
+        let store = self.store
+        let storeRevision = store.revision
+        let listRevision = listTick
+        if let cached = contentSearchCache,
+           cached.query == query,
+           cached.includingArchived == includingArchived,
+           cached.storeRevision == storeRevision,
+           cached.listRevision == listRevision {
+            return cached.matches
+        }
+
+        // Keep the active, fully loaded transcript current if a save is still
+        // pending; all other candidates are read one message at a time from SQLite.
+        let loadedTranscripts: [String: [ChatMessage]] = conversations.reduce(into: [:]) { result, conversation in
+            guard conversation.contentLoaded, conversation.transcriptComplete else { return }
+            result[conversation.id] = conversation.messages
+        }
+        let searchTask = Task.detached(priority: .userInitiated) {
+            AppBackgroundWorkLimiter.withCancellablePermit(isCancelled: { Task.isCancelled }) { () -> Set<String> in
+                var matches = Set<String>()
+                for header in store.loadHeaders() where !header.blank && header.archived == includingArchived {
+                    guard !Task.isCancelled else { return Set<String>() }
+                    if let messages = loadedTranscripts[header.id] {
+                        for message in messages {
+                            guard !Task.isCancelled else { return Set<String>() }
+                            if message.text.localizedCaseInsensitiveContains(query) {
+                                matches.insert(header.id)
+                                break
+                            }
+                        }
+                    } else if store.transcriptContains(id: header.id, query: query, shouldCancel: { Task.isCancelled }) {
+                        matches.insert(header.id)
+                    }
+                }
+                return matches
+            } ?? []
+        }
+
+        let matches = await withTaskCancellationHandler {
+            await searchTask.value
+        } onCancel: {
+            searchTask.cancel()
+        }
+        guard !Task.isCancelled else { return [] }
+        if store.revision == storeRevision, listTick == listRevision {
+            contentSearchCache = (
+                query,
+                includingArchived,
+                storeRevision,
+                listRevision,
+                matches
+            )
+        }
+        return matches
     }
 
     public var workspacePath: String? { workspaceURL?.path }
@@ -738,7 +975,13 @@ public final class NativeAgentHost {
         get { currentRun.activeRunChangedFiles }
         set {
             currentRun.activeRunChangedFiles = newValue
+            currentRun.activeRunChangedFileSet = Set(newValue)
         }
+    }
+    func appendActiveRunChangedFileIfNeeded(_ file: ChangedFile) -> Bool {
+        guard currentRun.activeRunChangedFileSet.insert(file).inserted else { return false }
+        currentRun.activeRunChangedFiles.append(file)
+        return true
     }
     var activeRunLastTurnID: String {
         get { currentRun.activeRunLastTurnID }
@@ -855,6 +1098,7 @@ public final class NativeAgentHost {
     /// Files that changed during a recent turn here without this chat writing
     /// them - another chat or an external editor did. Surfaced to the next turn.
     var concurrentChanges: [ChangedFile] = []
+    @ObservationIgnored var concurrentChangeSet: Set<ChangedFile> = []
     var activePreservedRemoval: Bool {
         get { currentRun.activePreservedRemoval }
         set {

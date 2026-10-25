@@ -27,7 +27,7 @@ struct ConversationView: View {
     @State private var streamingScrollTask: Task<Void, Never>?
     /// Full composer height; a change means the transcript just lost or gained room.
     @State private var composerHeight: CGFloat = 0
-    private static let messagePageSize = 10
+    private static let messagePageSize = ConversationStore.defaultTranscriptPageSize
     private var bridge: AgentBridge { model.bridge }
 
     init(model: AppModel, isPanePickerVisible: Binding<Bool>) {
@@ -130,9 +130,9 @@ struct ConversationView: View {
     private func conversationBody(_ conversation: Conversation) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
-                // Eager on purpose: a LazyVStack under a bottom scroll anchor re-estimated its
-                // variable row heights and re-anchored the offset every frame, pinning the main
-                // thread while a run was on screen. The transcript is paged, so it stays short.
+                // Eager on purpose: LazyVStack here re-estimates variable row heights on every
+                // scrollTo and loops LazyLayoutCacheItem.AllItemsPhaseMutation forever, pinning
+                // the main thread at 100%. The transcript is paged, so it stays short.
                 VStack(alignment: .leading, spacing: 20) {
                     let hasActiveToolActivity = conversation.running
                         && conversation.messages.last?.kind == .tool
@@ -207,7 +207,9 @@ struct ConversationView: View {
                             .id("run-status-\(conversation.id)")
                     }
                     if conversation.running {
-                        LiveReplyView(bridge: bridge, conversationID: conversation.id)
+                        LiveReplyView(bridge: bridge, conversationID: conversation.id) {
+                            scheduleStreamingScroll(using: proxy, conversation: conversation)
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -215,7 +217,6 @@ struct ConversationView: View {
                 .padding(.vertical, 28)
                 .id("transcript")
             }
-            .defaultScrollAnchor(.bottom)
             .softTopScrollEdgeEffect()
             .scrollToBottomButton {
                 withAnimation(.easeOut(duration: 0.18)) { proxy.scrollTo("transcript", anchor: .bottom) }
@@ -254,9 +255,7 @@ struct ConversationView: View {
                     scrollToLast(using: proxy, conversation: conversation)
                 }
             }
-            // Count, not a per-message string array: this key is rebuilt on every redraw.
-            // Message additions are already covered by the messages.count handler above.
-            .onChange(of: conversation.messages.reduce(0) { $0 + $1.changedFiles.count }) { _, _ in
+            .onChange(of: bridge.changedFilesRevision(for: conversation.id)) { _, _ in
                 // A completed turn can attach its file list to an earlier stop event
                 // or a later assistant response; keep either card in view.
                 if olderPageAnchorID == nil {
@@ -827,7 +826,13 @@ struct ConversationView: View {
            !message.streaming,
            !replyIsStillRunning(message, in: conversation),
            !isIntermediateReply(message, in: conversation) {
-            let latestUser = TranscriptIndex.of(conversation).latestUserID == message.id
+            let transcriptIndex = TranscriptIndex.of(conversation)
+            let latestUser = transcriptIndex.latestUserID == message.id
+            let displayedTimestamp = transcriptIndex.timestampByMessageID[message.id] ?? message.createdAt
+            let turnStartedAt = transcriptIndex.turnStartedAtByMessageID[message.id]
+            let isLongOperation = turnStartedAt.map {
+                displayedTimestamp.timeIntervalSince($0) >= 60
+            } ?? false
             let canEdit = latestUser && bridge.canEdit(messageID: message.id, in: conversation.id)
             let canRewind = message.kind == .user && bridge.canRewind(messageID: message.id, in: conversation.id)
             let hasText = !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -878,7 +883,7 @@ struct ConversationView: View {
                     feedbackButton(type: .good, selected: feedback?.feedbackType == .good, message: message, conversation: conversation)
                     feedbackButton(type: .bad, selected: feedback?.feedbackType == .bad, message: message, conversation: conversation)
                 }
-                messageTimestamp(message.createdAt)
+                messageTimestamp(displayedTimestamp, showAbsolute: isLongOperation)
             }
             .font(.callout)
             .foregroundStyle(.secondary)
@@ -965,11 +970,50 @@ struct ConversationView: View {
         return f
     }()
 
-    private func messageTimestamp(_ date: Date) -> some View {
-        Text(Self.relativeFormatter.localizedString(for: date, relativeTo: .now))
-            .font(.callout)
-            .help(date.formatted(date: .complete, time: .complete))
-            .accessibilityLabel(date.formatted(date: .complete, time: .complete))
+    @ViewBuilder
+    private func messageTimestamp(_ date: Date, showAbsolute: Bool) -> some View {
+        if showAbsolute {
+            Text(longOperationTimestamp(date))
+                .font(.callout)
+                .help(date.formatted(date: .complete, time: .complete))
+                .accessibilityLabel(date.formatted(date: .complete, time: .complete))
+        } else {
+            TimelineView(.periodic(from: .now, by: 15)) { context in
+                Text(Self.relativeFormatter.localizedString(for: date, relativeTo: context.date))
+                    .font(.callout)
+                    .help(date.formatted(date: .complete, time: .complete))
+                    .accessibilityLabel(date.formatted(date: .complete, time: .complete))
+            }
+        }
+    }
+
+    private func longOperationTimestamp(_ date: Date) -> String {
+        var calendar = Calendar.current
+        calendar.locale = AppCopy.locale
+
+        if calendar.isDateInToday(date) {
+            return date.formatted(Date.FormatStyle(
+                date: .omitted,
+                time: .shortened,
+                locale: AppCopy.locale
+            ))
+        }
+
+        if calendar.isDateInYesterday(date) {
+            let formatter = DateFormatter()
+            formatter.calendar = calendar
+            formatter.locale = AppCopy.locale
+            formatter.doesRelativeDateFormatting = true
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            return formatter.string(from: date)
+        }
+
+        return date.formatted(Date.FormatStyle(
+            date: .abbreviated,
+            time: .shortened,
+            locale: AppCopy.locale
+        ))
     }
 
     private func liveActivityHeader(_ conversation: Conversation) -> some View {
@@ -1337,6 +1381,11 @@ struct ConversationView: View {
                                                 Text(elapsedText(from: activeTool.createdAt, now: context.date))
                                                     .monospacedDigit()
                                             }
+                                            if context.date.timeIntervalSince(activeTool.createdAt) >= 60 {
+                                                Text(activeTool.createdAt.formatted(date: .omitted, time: .shortened))
+                                                    .monospacedDigit()
+                                                    .help(activeTool.createdAt.formatted(date: .complete, time: .complete))
+                                            }
                                         }
                                         if !bridge.activeUsedSkillIDs.isEmpty {
                                             Text("·").foregroundStyle(.tertiary)
@@ -1472,12 +1521,22 @@ struct ConversationView: View {
                             .foregroundStyle(.red)
                     }
                     // Instant tools need no clock; only slow ones earn one.
-                    if let end = item.completedAt, end.timeIntervalSince(item.startedAt) >= 1 {
-                        Text(elapsedText(from: item.startedAt, now: end))
-                            .font(.caption)
-                            .monospacedDigit()
-                            .foregroundStyle(.tertiary)
-                            .help(end.formatted(date: .complete, time: .complete))
+                    if let end = item.completedAt {
+                        let duration = end.timeIntervalSince(item.startedAt)
+                        if duration >= 1 {
+                            Text(elapsedText(from: item.startedAt, now: end))
+                                .font(.caption)
+                                .monospacedDigit()
+                                .foregroundStyle(.tertiary)
+                                .help(end.formatted(date: .complete, time: .complete))
+                        }
+                        if duration >= 60 {
+                            Text(end.formatted(date: .numeric, time: .shortened))
+                                .font(.caption)
+                                .monospacedDigit()
+                                .foregroundStyle(.tertiary)
+                                .help(end.formatted(date: .complete, time: .complete))
+                        }
                     }
                 }
             }
@@ -1902,7 +1961,10 @@ struct ConversationView: View {
     ) {
         guard let last = conversation.messages.last else { return }
         let targetID: String
-        if last.kind == .tool {
+        if conversation.running,
+           bridge.liveReplyParagraphs(for: conversation.id)?.isEmpty == false {
+            targetID = "live-reply-bottom-\(conversation.id)"
+        } else if last.kind == .tool {
             var start = conversation.messages.count - 1
             while start > 0, conversation.messages[start - 1].kind == .tool {
                 start -= 1
@@ -2047,6 +2109,8 @@ struct ConversationView: View {
 private enum TranscriptIndex {
     struct Value {
         var position: [String: Int] = [:]
+        var timestampByMessageID: [String: Date] = [:]
+        var turnStartedAtByMessageID: [String: Date] = [:]
         var latestUserIndex: Int?
         var latestUserID: String?
         var intermediateReplyIDs: Set<String> = []
@@ -2062,6 +2126,23 @@ private enum TranscriptIndex {
         let key = "\(conversation.id)|\(messages.count)|\(messages.first?.id ?? "")|\(messages.last?.id ?? "")"
         if key == self.key { return value }
         var next = Value()
+        var previousTimestamp: Date?
+        var latestUserTimestamp: Date?
+        for message in messages {
+            let timestamp = max(message.createdAt, previousTimestamp ?? message.createdAt)
+            next.timestampByMessageID[message.id] = timestamp
+            switch message.kind {
+            case .user:
+                latestUserTimestamp = timestamp
+            case .assistant, .plan:
+                if let latestUserTimestamp {
+                    next.turnStartedAtByMessageID[message.id] = latestUserTimestamp
+                }
+            default:
+                break
+            }
+            previousTimestamp = timestamp
+        }
         // Walking backwards: was an assistant or plan reply seen before the next user message?
         var laterReply = false
         for (index, message) in messages.enumerated().reversed() {
@@ -2261,37 +2342,66 @@ private struct HoverScope<Content: View>: View {
 private struct LiveReplyView: View {
     let bridge: AgentBridge
     let conversationID: String
+    let onTextChange: () -> Void
 
     var body: some View {
-        if let text = bridge.liveReply(for: conversationID), !text.isEmpty {
-            // Keep the in-flight reply cheap to update. Parsing and laying out
-            // the entire accumulated Markdown document for every stream batch
-            // gets quadratic as the reply grows; the completed bubble is
-            // rendered as Markdown once the run stores it in the transcript.
-            // One Text per paragraph: finished paragraphs keep their cached
-            // layout, so each batch measures and draws only the last one.
-            let paragraphs = text.components(separatedBy: "\n\n")
-            VStack(alignment: .leading, spacing: 20) {
-                ForEach(paragraphs.indices, id: \.self) { index in
-                    Text(verbatim: paragraphs[index])
-                        .font(.body)
-                        .lineSpacing(3)
+        let paragraphs = bridge.liveReplyParagraphs(for: conversationID)
+        return Group {
+            if let paragraphs, !paragraphs.isEmpty {
+                // Each paragraph is an independent Markdown view. Completed
+                // paragraphs stay cached; only the paragraph receiving tokens is reparsed.
+                VStack(alignment: .leading, spacing: 20) {
+                    ForEach(paragraphs) { paragraph in
+                        LiveReplyParagraphView(paragraph: paragraph)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else if let thinking = bridge.liveThinking(for: conversationID), !thinking.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label(AppCopy.text("conversation.thinking"), systemImage: "brain.head.profile")
+                        .font(.callout.weight(.medium))
+                    // ponytail: only the tail, the full reasoning lands in the finished message's disclosure.
+                    Text("…" + thinking.suffix(400))
+                        .font(.callout)
+                        .lineLimit(4)
+                        .truncationMode(.head)
+                }
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        } else if let thinking = bridge.liveThinking(for: conversationID), !thinking.isEmpty {
-            VStack(alignment: .leading, spacing: 4) {
-                Label(AppCopy.text("conversation.thinking"), systemImage: "brain.head.profile")
-                    .font(.callout.weight(.medium))
-                // ponytail: only the tail, the full reasoning lands in the finished message's disclosure.
-                Text("…" + thinking.suffix(400))
-                    .font(.callout)
-                    .lineLimit(4)
-                    .truncationMode(.head)
-            }
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .overlay(alignment: .bottom) {
+            LiveReplyTailAnchor(
+                conversationID: conversationID,
+                paragraph: paragraphs?.last,
+                onTextChange: onTextChange
+            )
+        }
+    }
+}
+
+/// Observes the changing tail outside the paragraph list, so token updates scroll
+/// the transcript without invalidating the parent that owns completed paragraphs.
+private struct LiveReplyTailAnchor: View {
+    let conversationID: String
+    let paragraph: LiveReplyParagraph?
+    let onTextChange: () -> Void
+
+    var body: some View {
+        Color.clear
+            .frame(height: 1)
+            .id("live-reply-bottom-\(conversationID)")
+            .onChange(of: paragraph?.text) { _, _ in onTextChange() }
+    }
+}
+
+private struct LiveReplyParagraphView: View {
+    let paragraph: LiveReplyParagraph
+
+    var body: some View {
+        PlanMarkdownView(text: paragraph.text, caches: paragraph.isComplete)
+            .lineSpacing(3)
+            .textSelection(.enabled)
     }
 }
 
