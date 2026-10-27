@@ -1884,8 +1884,11 @@ private struct MobileMarketPlugin: Codable, Identifiable, Equatable {
     var displayName: String { name?.isEmpty == false ? name! : id }
 }
 
+/// HerNess account session shared by Marketplace and Cloud runs. One instance:
+/// refresh tokens are single-use, so two copies would revoke each other.
 @MainActor
-private final class MobileMarketplaceSession: ObservableObject {
+final class MobileMarketplaceSession: ObservableObject {
+    static let shared = MobileMarketplaceSession()
     @Published private(set) var isSignedIn = false
     @Published private(set) var email = ""
     @Published private(set) var isLoading = false
@@ -1923,9 +1926,16 @@ private final class MobileMarketplaceSession: ObservableObject {
         clearSession()
     }
 
-    func authorizedData(path: String, method: String = "GET", body: Data? = nil) async throws -> (Data, HTTPURLResponse) {
+    var apiBase: String { baseURL.absoluteString }
+
+    func authorizedData(path: String, query: String? = nil, method: String = "GET", body: Data? = nil) async throws -> (Data, HTTPURLResponse) {
         guard !accessToken.isEmpty else { throw failure("Sign in to use Marketplace account actions.") }
-        var request = URLRequest(url: baseURL.appendingPathComponent(path), timeoutInterval: 45)
+        var url = baseURL.appendingPathComponent(path)
+        if let query, var components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            components.percentEncodedQuery = query
+            url = components.url ?? url
+        }
+        var request = URLRequest(url: url, timeoutInterval: 45)
         request.httpMethod = method; request.httpBody = body
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         if body != nil { request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
@@ -2022,7 +2032,7 @@ struct MobileMarketplaceView: View {
 
     init(onUseStarter: @escaping () -> Void) {
         self.onUseStarter = onUseStarter
-        _session = StateObject(wrappedValue: MobileMarketplaceSession())
+        _session = StateObject(wrappedValue: MobileMarketplaceSession.shared)
     }
 
     private var catalogPlugins: [MobileMarketPlugin] { marketArea == "core" ? plugins : communityPlugins }

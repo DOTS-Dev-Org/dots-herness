@@ -524,6 +524,8 @@ struct WorkspaceView: View {
             MobileBotsView { selectedTab = 0 }
         case 9:
             MobileMarketplaceView { selectedTab = 0 }
+        case 10:
+            MobileCloudView { selectedTab = 0 }
         default:
             SettingsView(
                 previewURL: $previewURL,
@@ -804,6 +806,7 @@ struct WorkspaceView: View {
         case 7: localization.text("rail.media")
         case 8: localization.text("rail.bots")
         case 9: localization.text("rail.marketplace")
+        case 10: localization.text("cloud.title")
         default: localization.text("mobile.nav.settings")
         }
     }
@@ -1248,6 +1251,7 @@ private struct MobileNavigationDrawer: View {
                             MobileDrawerItem(title: localization.text("rail.media"), systemImage: "photo.on.rectangle.angled", isSelected: selectedTab == 7, darkAppearance: darkAppearance) { onSelectTab?(7) }
                             MobileDrawerItem(title: localization.text("rail.bots"), systemImage: "person.2", isSelected: selectedTab == 8, darkAppearance: darkAppearance) { onSelectTab?(8) }
                             MobileDrawerItem(title: localization.text("rail.marketplace"), systemImage: "shippingbox", isSelected: selectedTab == 9, darkAppearance: darkAppearance) { onSelectTab?(9) }
+                            MobileDrawerItem(title: localization.text("cloud.title"), systemImage: "cloud", isSelected: selectedTab == 10, darkAppearance: darkAppearance) { onSelectTab?(10) }
                             MobileDrawerItem(title: settingsTitle, systemImage: "gearshape", isSelected: selectedTab == 4, darkAppearance: darkAppearance, action: onSettings)
                         }
                     } else {
@@ -1257,6 +1261,7 @@ private struct MobileNavigationDrawer: View {
                         MobileDrawerItem(title: localization.text("rail.media"), systemImage: "photo.on.rectangle.angled", isSelected: selectedTab == 7, darkAppearance: darkAppearance) { onSelectTab?(7) }
                         MobileDrawerItem(title: localization.text("rail.bots"), systemImage: "person.2", isSelected: selectedTab == 8, darkAppearance: darkAppearance) { onSelectTab?(8) }
                         MobileDrawerItem(title: localization.text("rail.marketplace"), systemImage: "shippingbox", isSelected: selectedTab == 9, darkAppearance: darkAppearance) { onSelectTab?(9) }
+                        MobileDrawerItem(title: localization.text("cloud.title"), systemImage: "cloud", isSelected: selectedTab == 10, darkAppearance: darkAppearance) { onSelectTab?(10) }
                     }
                 }
                 .padding(.horizontal, 14)

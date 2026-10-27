@@ -20,6 +20,8 @@ targets:
       - path: ../native/MobileGitClient.c
       - path: Resources
         buildPhase: resources
+      - path: ../../shared/cloud/herness-cloud.yml
+        buildPhase: resources
     resources:
       - path: Resources/Assets.xcassets
     info:

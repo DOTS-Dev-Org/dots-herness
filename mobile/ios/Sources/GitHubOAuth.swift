@@ -34,7 +34,7 @@ final class GitHubOAuth: NSObject, ObservableObject, ASWebAuthenticationPresenta
         components.queryItems = [
             URLQueryItem(name: "client_id", value: clientID),
             URLQueryItem(name: "redirect_uri", value: "herness://oauth/github"),
-            URLQueryItem(name: "scope", value: "read:user repo"),
+            URLQueryItem(name: "scope", value: "read:user repo workflow"),
             URLQueryItem(name: "state", value: state),
             URLQueryItem(name: "code_challenge", value: Self.challenge(verifier)),
             URLQueryItem(name: "code_challenge_method", value: "S256"),

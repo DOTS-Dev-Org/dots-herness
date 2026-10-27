@@ -540,4 +540,42 @@
     <string name="vault_new_project_entry">Proje bilgisi</string>
     <string name="vault_section_profile">Kullanıcı profili</string>
     <string name="vault_section_project">Proje bilgisi</string>
+    <string name="cloud_empty">Henüz bulut çalıştırması yok. Composer\'da Bulut\'u seçip bir görev gönder.</string>
+    <string name="cloud_error_api">HerNess %1$d döndürdü: %2$s</string>
+    <string name="cloud_error_attachments">Bulut çalıştırması yalnızca metin alır; ekleri kaldır.</string>
+    <string name="cloud_error_github">GitHub %1$d döndürdü: %2$s</string>
+    <string name="cloud_error_install_forbidden">GitHub workflow\'un eklenmesini reddetti. Token\'ın workflow yetkisi (Workflows: write) olmalı.</string>
+    <string name="cloud_error_limit">Zaten devam eden %1$d bulut çalıştırman var.</string>
+    <string name="cloud_error_no_token">GitHub token\'ı yok: gh auth login çalıştır ya da Bulut kurulumunda bir token kaydet.</string>
+    <string name="cloud_error_not_git_hub">Bulut çalıştırması, origin remote\'u github.com\'da olan bir proje gerektirir.</string>
+    <string name="cloud_error_not_signed_in">Görevleri bulutta çalıştırmak için HerNess hesabına giriş yap.</string>
+    <string name="cloud_error_workflow_missing">%1$s deposunun %2$s dalında herness-cloud.yml workflow\'u yok. Bulut kurulumundan kurup bu dala merge et.</string>
+    <string name="cloud_installed">Workflow %1$s deposuna, %2$s dalına kuruldu.</string>
+    <string name="cloud_no_repository">GitHub deposu yok</string>
+    <string name="cloud_open">Bulut çalıştırmaları…</string>
+    <string name="cloud_open_branch">%1$s dalını aç</string>
+    <string name="cloud_open_run">GitHub\'da aç</string>
+    <string name="cloud_prompt">Görev</string>
+    <string name="cloud_setup_install">Workflow\'u kur</string>
+    <string name="cloud_setup_model">Model (boş: sağlayıcı varsayılanı)</string>
+    <string name="cloud_setup_secrets">Actions secret\'larını aç</string>
+    <string name="cloud_setup_steps">1. Workflow\'u depoya kur.
+2. Model sağlayıcı anahtarını HERNESS_API_KEY adlı Actions secret\'ı olarak ekle (sağlayıcı anthropic değilse HERNESS_PROVIDER değişkenini de ekle).
+3. Çalıştığın dalı push\'la: runner GitHub\'daki hâlinden başlar.</string>
+    <string name="cloud_setup_title">Kurulum</string>
+    <string name="cloud_setup_token">GitHub token</string>
+    <string name="cloud_setup_token_hint">HerNess GitHub CLI oturumunu (gh auth login) ya da buraya kaydedilen, Actions ve Contents yazma izni olan bir token\'ı kullanır. Workflow\'u kurmak için Workflows yazma izni de gerekir.</string>
+    <string name="cloud_setup_token_saved">Anahtar zincirinde kayıtlı bir GitHub token\'ı var.</string>
+    <string name="cloud_sign_in">Giriş yap</string>
+    <string name="cloud_start">Bulutta çalıştır</string>
+    <string name="cloud_status_cancelled">İptal edildi</string>
+    <string name="cloud_status_failed">Başarısız</string>
+    <string name="cloud_status_queued">Sırada</string>
+    <string name="cloud_status_running">Çalışıyor</string>
+    <string name="cloud_status_succeeded">Tamamlandı</string>
+    <string name="cloud_subtitle">GitHub Actions · değişiklikler herness/cloud dalına gelir</string>
+    <string name="cloud_title">Bulut çalıştırmaları</string>
+    <string name="work_location_cloud">Bulut</string>
+    <string name="work_location_cloud_detail">%1$s deposunda GitHub Actions ile çalıştır</string>
+    <string name="work_location_cloud_unavailable">Origin\'i GitHub\'da olan bir proje gerekir</string>
 </resources>

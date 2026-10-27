@@ -323,6 +323,45 @@ MOBILE_KEYS.update(NO_PROJECT_KEYS)
 MOBILE_KEYS.add("conversation.copy")
 # Native clarification card; use the existing cross-platform translations.
 MOBILE_KEYS.update({"ask.defaultHeader", "ask.other", "ask.customPlaceholder", "ask.next", "ask.skipShort", "ask.submit"})
+# Cloud runs; the macOS and shared desktop catalogs carry the translations.
+MOBILE_KEYS.update({
+    "cloud.empty",
+    "cloud.error.api",
+    "cloud.error.attachments",
+    "cloud.error.github",
+    "cloud.error.installForbidden",
+    "cloud.error.limit",
+    "cloud.error.noToken",
+    "cloud.error.notGitHub",
+    "cloud.error.notSignedIn",
+    "cloud.error.workflowMissing",
+    "cloud.installed",
+    "cloud.noRepository",
+    "cloud.open",
+    "cloud.openBranch",
+    "cloud.openRun",
+    "cloud.prompt",
+    "cloud.setup.install",
+    "cloud.setup.model",
+    "cloud.setup.secrets",
+    "cloud.setup.steps",
+    "cloud.setup.title",
+    "cloud.setup.token",
+    "cloud.setup.tokenHint",
+    "cloud.setup.tokenSaved",
+    "cloud.signIn",
+    "cloud.start",
+    "cloud.status.cancelled",
+    "cloud.status.failed",
+    "cloud.status.queued",
+    "cloud.status.running",
+    "cloud.status.succeeded",
+    "cloud.subtitle",
+    "cloud.title",
+    "workLocation.cloud",
+    "workLocation.cloudDetail",
+    "workLocation.cloudUnavailable",
+})
 
 # English source values for the mobile-only keys. Every non-English value is
 # supplied by MOBILE_TRANSLATIONS in translation_catalog.py before generation.

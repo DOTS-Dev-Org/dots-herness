@@ -48,7 +48,7 @@ class GitHubOAuth(context: Context) {
         val uri = Uri.parse("https://github.com/login/oauth/authorize").buildUpon()
             .appendQueryParameter("client_id", clientId)
             .appendQueryParameter("redirect_uri", CALLBACK)
-            .appendQueryParameter("scope", "read:user repo")
+            .appendQueryParameter("scope", "read:user repo workflow")
             .appendQueryParameter("state", state)
             .appendQueryParameter("code_challenge", challenge(verifier))
             .appendQueryParameter("code_challenge_method", "S256")

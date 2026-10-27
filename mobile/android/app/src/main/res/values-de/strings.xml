@@ -509,4 +509,42 @@
     <string name="vault_new_project_entry">Projekteintrag</string>
     <string name="vault_section_profile">Benutzerprofil</string>
     <string name="vault_section_project">Projektwissen</string>
+    <string name="cloud_empty">No cloud runs yet. Choose Cloud in the composer and send a task.</string>
+    <string name="cloud_error_api">HerNess returned %1$d: %2$s</string>
+    <string name="cloud_error_attachments">Cloud runs take text only; remove the attachments.</string>
+    <string name="cloud_error_github">GitHub returned %1$d: %2$s</string>
+    <string name="cloud_error_install_forbidden">GitHub refused to add the workflow. The token needs the workflow scope (Workflows: write).</string>
+    <string name="cloud_error_limit">You already have %1$d cloud runs in progress.</string>
+    <string name="cloud_error_no_token">No GitHub token: run gh auth login or save a token in Cloud setup.</string>
+    <string name="cloud_error_not_git_hub">Cloud runs need a project whose origin remote is on github.com.</string>
+    <string name="cloud_error_not_signed_in">Sign in to your HerNess account to run tasks in the cloud.</string>
+    <string name="cloud_error_workflow_missing">%1$s has no herness-cloud.yml workflow on %2$s. Install it from Cloud setup and merge it into this branch.</string>
+    <string name="cloud_installed">Workflow installed in %1$s on %2$s.</string>
+    <string name="cloud_no_repository">No GitHub repository</string>
+    <string name="cloud_open">Cloud runs…</string>
+    <string name="cloud_open_branch">Open %1$s</string>
+    <string name="cloud_open_run">Open on GitHub</string>
+    <string name="cloud_prompt">Task</string>
+    <string name="cloud_setup_install">Install workflow</string>
+    <string name="cloud_setup_model">Model (empty: provider default)</string>
+    <string name="cloud_setup_secrets">Open Actions secrets</string>
+    <string name="cloud_setup_steps">1. Install the workflow into the repository.
+2. Add your model provider key as the HERNESS_API_KEY Actions secret (and HERNESS_PROVIDER as a variable if it is not anthropic).
+3. Push the branch you work on: the runner starts from what GitHub has.</string>
+    <string name="cloud_setup_title">Setup</string>
+    <string name="cloud_setup_token">GitHub token</string>
+    <string name="cloud_setup_token_hint">HerNess uses your GitHub CLI login (gh auth login), or a token saved here with Actions and Contents write access. Installing the workflow also needs Workflows write.</string>
+    <string name="cloud_setup_token_saved">A GitHub token is saved in the keychain.</string>
+    <string name="cloud_sign_in">Sign in</string>
+    <string name="cloud_start">Run in the cloud</string>
+    <string name="cloud_status_cancelled">Cancelled</string>
+    <string name="cloud_status_failed">Failed</string>
+    <string name="cloud_status_queued">Queued</string>
+    <string name="cloud_status_running">Running</string>
+    <string name="cloud_status_succeeded">Done</string>
+    <string name="cloud_subtitle">GitHub Actions · changes land on a herness/cloud branch</string>
+    <string name="cloud_title">Cloud runs</string>
+    <string name="work_location_cloud">Cloud</string>
+    <string name="work_location_cloud_detail">Run on GitHub Actions in %1$s</string>
+    <string name="work_location_cloud_unavailable">Needs a project whose origin is on GitHub</string>
 </resources>
