@@ -509,4 +509,7 @@
     <string name="vault_new_project_entry">پروجیکٹ اندراج</string>
     <string name="vault_section_profile">صارف پروفائل</string>
     <string name="vault_section_project">پروجیکٹ کی معلومات</string>
+    <string name="agent_run_service_channel">فعال رنز</string>
+    <string name="agent_run_service_title">ایجنٹ کام کر رہا ہے</string>
+    <string name="agent_run_service_text">جواب تیار ہونے تک HerNess پس منظر میں چلتا رہے گا۔</string>
 </resources>

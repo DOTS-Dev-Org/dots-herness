@@ -509,4 +509,7 @@
     <string name="vault_new_project_entry">Entri proyek</string>
     <string name="vault_section_profile">Profil pengguna</string>
     <string name="vault_section_project">Pengetahuan proyek</string>
+    <string name="agent_run_service_channel">Proses aktif</string>
+    <string name="agent_run_service_title">Agen sedang bekerja</string>
+    <string name="agent_run_service_text">HerNess tetap berjalan di latar belakang hingga respons siap.</string>
 </resources>

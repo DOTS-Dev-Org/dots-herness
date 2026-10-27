@@ -540,4 +540,7 @@
     <string name="vault_new_project_entry">Proje bilgisi</string>
     <string name="vault_section_profile">Kullanıcı profili</string>
     <string name="vault_section_project">Proje bilgisi</string>
+    <string name="agent_run_service_channel">Etkin çalışmalar</string>
+    <string name="agent_run_service_title">Ajan çalışıyor</string>
+    <string name="agent_run_service_text">HerNess yanıt hazır olana kadar arka planda çalışmaya devam eder.</string>
 </resources>

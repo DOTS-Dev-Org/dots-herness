@@ -509,4 +509,7 @@
     <string name="vault_new_project_entry">Záznam projektu</string>
     <string name="vault_section_profile">Uživatelský profil</string>
     <string name="vault_section_project">Znalosti o projektu</string>
+    <string name="agent_run_service_channel">Aktivní běhy</string>
+    <string name="agent_run_service_title">Agent pracuje</string>
+    <string name="agent_run_service_text">HerNess běží na pozadí, dokud nebude odpověď hotová.</string>
 </resources>

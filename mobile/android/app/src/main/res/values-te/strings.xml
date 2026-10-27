@@ -509,4 +509,7 @@
     <string name="vault_new_project_entry">ప్రాజెక్ట్ ఎంట్రీ</string>
     <string name="vault_section_profile">వినియోగదారు ప్రొఫైల్</string>
     <string name="vault_section_project">ప్రాజెక్ట్ జ్ఞానం</string>
+    <string name="agent_run_service_channel">సక్రియ రన్‌లు</string>
+    <string name="agent_run_service_title">ఏజెంట్ పని చేస్తోంది</string>
+    <string name="agent_run_service_text">సమాధానం సిద్ధమయ్యే వరకు HerNess నేపథ్యంలో నడుస్తుంది.</string>
 </resources>

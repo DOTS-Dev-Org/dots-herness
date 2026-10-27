@@ -509,4 +509,7 @@
     <string name="vault_new_project_entry">项目条目</string>
     <string name="vault_section_profile">用户资料</string>
     <string name="vault_section_project">项目知识</string>
+    <string name="agent_run_service_channel">正在运行</string>
+    <string name="agent_run_service_title">代理正在工作</string>
+    <string name="agent_run_service_text">HerNess 会在后台继续运行，直到回复就绪。</string>
 </resources>

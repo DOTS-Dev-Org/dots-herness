@@ -509,4 +509,7 @@
     <string name="vault_new_project_entry">प्रोजेक्ट प्रविष्टि</string>
     <string name="vault_section_profile">उपयोगकर्ता प्रोफ़ाइल</string>
     <string name="vault_section_project">प्रोजेक्ट जानकारी</string>
+    <string name="agent_run_service_channel">सक्रिय रन</string>
+    <string name="agent_run_service_title">एजेंट काम कर रहा है</string>
+    <string name="agent_run_service_text">जवाब तैयार होने तक HerNess बैकग्राउंड में चलता रहेगा।</string>
 </resources>

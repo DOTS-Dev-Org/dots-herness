@@ -509,4 +509,7 @@
     <string name="vault_new_project_entry">திட்ட உள்ளீடு</string>
     <string name="vault_section_profile">பயனர் சுயவிவரம்</string>
     <string name="vault_section_project">திட்ட அறிவு</string>
+    <string name="agent_run_service_channel">செயலில் உள்ள இயக்கங்கள்</string>
+    <string name="agent_run_service_title">ஏஜென்ட் வேலை செய்கிறது</string>
+    <string name="agent_run_service_text">பதில் தயாராகும் வரை HerNess பின்னணியில் இயங்கும்.</string>
 </resources>

@@ -509,4 +509,7 @@
     <string name="vault_new_project_entry">Projectitem</string>
     <string name="vault_section_profile">Gebruikersprofiel</string>
     <string name="vault_section_project">Projectkennis</string>
+    <string name="agent_run_service_channel">Actieve runs</string>
+    <string name="agent_run_service_title">Agent is bezig</string>
+    <string name="agent_run_service_text">HerNess blijft op de achtergrond draaien tot het antwoord klaar is.</string>
 </resources>

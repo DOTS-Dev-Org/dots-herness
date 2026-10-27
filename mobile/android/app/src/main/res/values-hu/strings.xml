@@ -509,4 +509,7 @@
     <string name="vault_new_project_entry">Projektbejegyzés</string>
     <string name="vault_section_profile">Felhasználói profil</string>
     <string name="vault_section_project">Projekttudás</string>
+    <string name="agent_run_service_channel">Aktív futások</string>
+    <string name="agent_run_service_title">Az ügynök dolgozik</string>
+    <string name="agent_run_service_text">A HerNess a háttérben fut tovább, amíg a válasz el nem készül.</string>
 </resources>

@@ -509,4 +509,7 @@
     <string name="vault_new_project_entry">Запись проекта</string>
     <string name="vault_section_profile">Профиль пользователя</string>
     <string name="vault_section_project">Знания о проекте</string>
+    <string name="agent_run_service_channel">Активные запуски</string>
+    <string name="agent_run_service_title">Агент работает</string>
+    <string name="agent_run_service_text">HerNess продолжает работу в фоне, пока ответ не будет готов.</string>
 </resources>

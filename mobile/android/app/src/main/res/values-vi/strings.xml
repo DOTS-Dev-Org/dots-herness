@@ -509,4 +509,7 @@
     <string name="vault_new_project_entry">Mục dự án</string>
     <string name="vault_section_profile">Hồ sơ người dùng</string>
     <string name="vault_section_project">Kiến thức dự án</string>
+    <string name="agent_run_service_channel">Lượt chạy đang hoạt động</string>
+    <string name="agent_run_service_title">Tác tử đang làm việc</string>
+    <string name="agent_run_service_text">HerNess tiếp tục chạy nền cho đến khi phản hồi sẵn sàng.</string>
 </resources>

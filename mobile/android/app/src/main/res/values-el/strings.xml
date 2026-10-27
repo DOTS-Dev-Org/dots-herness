@@ -509,4 +509,7 @@
     <string name="vault_new_project_entry">Καταχώριση έργου</string>
     <string name="vault_section_profile">Προφίλ χρήστη</string>
     <string name="vault_section_project">Γνώση έργου</string>
+    <string name="agent_run_service_channel">Ενεργές εκτελέσεις</string>
+    <string name="agent_run_service_title">Ο πράκτορας εργάζεται</string>
+    <string name="agent_run_service_text">Το HerNess συνεχίζει στο παρασκήνιο μέχρι να είναι έτοιμη η απάντηση.</string>
 </resources>

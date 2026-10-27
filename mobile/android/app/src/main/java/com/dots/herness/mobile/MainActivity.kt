@@ -156,6 +156,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.runtime.snapshotFlow
+import androidx.lifecycle.Lifecycle
 import androidx.window.layout.FoldingFeature
 import androidx.window.layout.WindowInfoTracker
 
@@ -188,10 +189,15 @@ private fun MobileProviderBrandMark(providerId: String, modifier: Modifier = Mod
 class MainActivity : ComponentActivity() {
     private var pendingPairUri by mutableStateOf<Uri?>(null)
     internal var lifecycleAgent: MobileAgent? = null
+    /** The agent seen in onStop; composition may already be disposed by onDestroy. */
+    private var backgroundedAgent: MobileAgent? = null
     private val playUpdates = PlayUpdates(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AgentRunService.onForegroundLost = {
+            if (!lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) lifecycleAgent?.pauseForLifecycleInterruption()
+        }
         pendingPairUri = intent.data
         enableEdgeToEdge()
         if (savedInstanceState == null) playUpdates.checkOnLaunch()
@@ -226,6 +232,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         playUpdates.close()
+        if (!isChangingConfigurations) {
+            // Task removed: no composition is left to post the completion
+            // notification, so fall back to the recovery barrier.
+            backgroundedAgent?.pauseForLifecycleInterruption()
+            AgentRunService.stop(this)
+        }
+        backgroundedAgent = null
+        AgentRunService.onForegroundLost = null
         super.onDestroy()
     }
 
@@ -235,9 +249,11 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        backgroundedAgent = lifecycleAgent
         // Android can kill a stopped process without giving the agent another
-        // chance to observe a provider/tool result.
-        lifecycleAgent?.pauseForLifecycleInterruption()
+        // chance to observe a provider/tool result. The foreground service keeps
+        // the process alive while a run is active; pause only without it.
+        if (!AgentRunService.isActive) lifecycleAgent?.pauseForLifecycleInterruption()
         super.onStop()
     }
 }
@@ -837,46 +853,57 @@ private fun WorkspaceShell(
     }
     val personalMemoryRoot = remember(context) { java.io.File(context.filesDir, "herness-memory") }
     val drawerWidth = minOf(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp * 0.64f, 260.dp)
-    var observedRunState by remember { mutableStateOf(agent.running) }
-    LaunchedEffect(agent.running) {
-        if (observedRunState && !agent.running) {
-            val failed = agent.runtimeState == "failed"
-            if (failed || agent.runtimeState == "completed") {
-                val turn = agent.transcript.lastOrNull { it.role == if (failed) "error" else "assistant" }
-                if (turn != null) {
-                    val title = context.getString(if (failed) R.string.notifications_operation_failed else R.string.notifications_response_ready)
-                    notificationInbox.append(
-                        kind = if (failed) "failed" else "completed",
-                        title = title,
-                        subtitle = client.selectedProject.name,
-                        detail = turn.text,
-                        conversationId = agent.activeConversationId,
-                        projectId = agent.projectId,
-                        conversationPath = client.workspaceRoot().absolutePath,
-                        isRead = false,
-                    )
-                    postAttentionNotification(turn.id, title, client.selectedProject.name, turn.text)
+    // snapshotFlow keeps observing while the activity is stopped; Compose pauses
+    // recomposition there, so keyed LaunchedEffects would miss background runs.
+    LaunchedEffect(agent) {
+        var wasRunning = agent.running
+        snapshotFlow { agent.running }.distinctUntilChanged().collect { running ->
+            if (running) {
+                AgentRunService.start(context)
+            } else {
+                AgentRunService.stop(context)
+            }
+            if (wasRunning && !running) {
+                val failed = agent.runtimeState == "failed"
+                if (failed || agent.runtimeState == "completed") {
+                    val turn = agent.transcript.lastOrNull { it.role == if (failed) "error" else "assistant" }
+                    if (turn != null) {
+                        val title = context.getString(if (failed) R.string.notifications_operation_failed else R.string.notifications_response_ready)
+                        notificationInbox.append(
+                            kind = if (failed) "failed" else "completed",
+                            title = title,
+                            subtitle = client.selectedProject.name,
+                            detail = turn.text,
+                            conversationId = agent.activeConversationId,
+                            projectId = agent.projectId,
+                            conversationPath = client.workspaceRoot().absolutePath,
+                            isRead = false,
+                        )
+                        postAttentionNotification(turn.id, title, client.selectedProject.name, turn.text)
+                    }
                 }
             }
+            wasRunning = running
         }
-        observedRunState = agent.running
     }
-    LaunchedEffect(agent.questionRequest?.id) {
-        val question = agent.questionRequest ?: return@LaunchedEffect
-        val detail = question.askUserQuestions.joinToString(" · ") { it.prompt }.ifBlank { question.question }
-        val title = context.getString(R.string.notifications_question)
-        val subtitle = client.selectedProject.name
-        notificationInbox.append(
-            kind = "question",
-            title = title,
-            subtitle = subtitle,
-            detail = detail,
-            conversationId = agent.activeConversationId,
-            projectId = agent.projectId,
-            conversationPath = client.workspaceRoot().absolutePath,
-            isRead = false,
-        )
-        postAttentionNotification(question.id, title, subtitle, detail)
+    LaunchedEffect(agent) {
+        snapshotFlow { agent.questionRequest }.distinctUntilChanged { old, new -> old?.id == new?.id }.collect { question ->
+            if (question == null) return@collect
+            val detail = question.askUserQuestions.joinToString(" · ") { it.prompt }.ifBlank { question.question }
+            val title = context.getString(R.string.notifications_question)
+            val subtitle = client.selectedProject.name
+            notificationInbox.append(
+                kind = "question",
+                title = title,
+                subtitle = subtitle,
+                detail = detail,
+                conversationId = agent.activeConversationId,
+                projectId = agent.projectId,
+                conversationPath = client.workspaceRoot().absolutePath,
+                isRead = false,
+            )
+            postAttentionNotification(question.id, title, subtitle, detail)
+        }
     }
     LaunchedEffect(agent.approvalRequest?.id) {
         val approval = agent.approvalRequest ?: return@LaunchedEffect

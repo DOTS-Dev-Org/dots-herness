@@ -509,4 +509,7 @@
     <string name="vault_new_project_entry">Intrare de proiect</string>
     <string name="vault_section_profile">Profil utilizator</string>
     <string name="vault_section_project">Cunoștințe despre proiect</string>
+    <string name="agent_run_service_channel">Rulări active</string>
+    <string name="agent_run_service_title">Agentul lucrează</string>
+    <string name="agent_run_service_text">HerNess continuă în fundal până când răspunsul este gata.</string>
 </resources>

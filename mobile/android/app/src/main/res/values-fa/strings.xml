@@ -509,4 +509,7 @@
     <string name="vault_new_project_entry">مدخل پروژه</string>
     <string name="vault_section_profile">نمایهٔ کاربر</string>
     <string name="vault_section_project">دانش پروژه</string>
+    <string name="agent_run_service_channel">اجراهای فعال</string>
+    <string name="agent_run_service_title">عامل در حال کار است</string>
+    <string name="agent_run_service_text">HerNess تا آماده شدن پاسخ در پس‌زمینه به کار ادامه می‌دهد.</string>
 </resources>
