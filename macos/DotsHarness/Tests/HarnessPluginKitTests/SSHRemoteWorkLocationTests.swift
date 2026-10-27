@@ -168,7 +168,7 @@ final class RemoteWorkLocationTests: XCTestCase {
     }
 
     func testWorkLocationSettingRoundTrips() {
-        for setting in [WorkLocationSetting.local, .localWorktree, .remote(alias: "box")] {
+        for setting in [WorkLocationSetting.local, .localWorktree, .remote(alias: "box"), .cloud] {
             XCTAssertEqual(WorkLocationSetting(storageValue: setting.storageValue), setting)
         }
         // A malformed stored value degrades to the local default.

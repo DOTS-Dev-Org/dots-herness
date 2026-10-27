@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Every platform prompt literal matches shared/prompts
         run: python3 tools/sync_prompts.py --check
-      - name: The macOS skill bundle matches shared/skills
+      - name: The macOS bundle matches shared/skills and shared/cloud
         run: python3 tools/sync_skills.py --check
       - name: AGENTS.md and CLAUDE.md are byte-identical
         run: cmp AGENTS.md CLAUDE.md

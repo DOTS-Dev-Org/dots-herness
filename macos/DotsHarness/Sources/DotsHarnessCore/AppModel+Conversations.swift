@@ -251,6 +251,10 @@ extension AppModel {
         historyError = nil
         guard canSend else { return }
         let text = promptTemplates.expand(rawText, workspacePath: bridge.workspacePath) ?? rawText
+        if workLocation.isCloud {
+            sendToCloud(text: text, draftText: rawText)
+            return
+        }
         let attachments = draftAttachments
         let isApproval = attachments.isEmpty
             && selected?.pendingPlanMessageID.flatMap { planID in
@@ -289,6 +293,14 @@ extension AppModel {
               ensureActiveProjectLocation(),
               canSend else { return false }
         let trimmed = promptTemplates.expand(rawText, workspacePath: bridge.workspacePath) ?? rawText
+        if workLocation.isCloud {
+            guard attachments.isEmpty else {
+                cloudNotice = AppCopy.text("cloud.error.attachments")
+                return false
+            }
+            sendToCloud(text: trimmed, draftText: nil)
+            return true
+        }
         let isApproval = attachments.isEmpty
             && selected?.pendingPlanMessageID.flatMap { planID in
                 selected?.messages.first(where: { $0.id == planID && $0.kind == .plan })

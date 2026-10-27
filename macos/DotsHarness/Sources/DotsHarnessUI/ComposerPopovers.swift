@@ -171,6 +171,8 @@ struct WorkLocationPopover: View {
     let hosts: [SSHHost]
     let sshAvailable: Bool
     let remotePath: String?
+    /// `owner/repo` of the project's GitHub origin; nil disables the Cloud row.
+    let cloudRepository: String?
     let onSelect: (WorkLocationSetting) -> Void
     let onManageHosts: () -> Void
     let onChooseFolder: () -> Void
@@ -192,6 +194,15 @@ struct WorkLocationPopover: View {
                     isEnabled: true
                 ) { onSelect(option.setting) }
             }
+
+            row(
+                icon: "cloud",
+                title: AppCopy.text("workLocation.cloud"),
+                detail: cloudRepository.map { AppCopy.format("workLocation.cloudDetail", $0) }
+                    ?? AppCopy.text("workLocation.cloudUnavailable"),
+                isSelected: selection.isCloud,
+                isEnabled: cloudRepository != nil
+            ) { onSelect(.cloud) }
 
             Divider().padding(.vertical, 5)
 

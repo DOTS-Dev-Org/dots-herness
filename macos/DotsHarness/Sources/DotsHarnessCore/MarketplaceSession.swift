@@ -190,9 +190,13 @@ public final class MarketplaceSession: ObservableObject {
         if profile != fetched { profile = fetched }
     }
 
-    public func authorizedData(path: String, method: String = "GET", body: Data? = nil, contentType: String? = nil) async throws -> (Data, HTTPURLResponse) {
+    public func authorizedData(path: String, query: String? = nil, method: String = "GET", body: Data? = nil, contentType: String? = nil) async throws -> (Data, HTTPURLResponse) {
         guard accessToken != nil else { throw MarketplaceSessionError.notSignedIn }
-        let url = apiBase.appendingPathComponent(path)
+        var url = apiBase.appendingPathComponent(path)
+        if let query, var components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            components.percentEncodedQuery = query
+            url = components.url ?? url
+        }
         var request = URLRequest(url: url, timeoutInterval: 60)
         request.httpMethod = method
         request.httpBody = body

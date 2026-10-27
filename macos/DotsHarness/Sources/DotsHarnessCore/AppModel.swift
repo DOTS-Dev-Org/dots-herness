@@ -385,7 +385,9 @@ public final class AppModel: ObservableObject {
         workspacePath.isEmpty && selected?.projectless == true
     }
     public var canSend: Bool {
-        bridge.isReady
+        // A cloud run needs no local model route: the runner brings its own.
+        if workLocation.isCloud { return activeProjectLocationAvailable && !cloudBusy }
+        return bridge.isReady
             && (isNoProjectScope || activeProjectLocationAvailable)
             && !bridge.historyMutationBusy
             && !sandboxCleanupPending
@@ -916,6 +918,14 @@ public final class AppModel: ObservableObject {
     @Published public var sshNotice: String?
     public let sshStore = SSHHostStore()
     public var isRemoteWorkLocation: Bool { workLocation.isRemote }
+    /// Cloud runs of the signed-in account, newest first (see AppModel+Cloud.swift).
+    @Published public internal(set) var cloudRuns: [CloudRun] = []
+    /// Transcript received so far, per run id.
+    @Published public internal(set) var cloudRunEvents: [String: [CloudRunEvent]] = [:]
+    @Published public var cloudNotice: String?
+    @Published public internal(set) var cloudBusy = false
+    @Published public var cloudPaneRequestID = 0
+    var cloudPollTask: Task<Void, Never>?
     /// `git commit`/`add` inside the sandbox worktree write to this worktree's
     /// `.git/worktrees/<name>` metadata and to the origin's shared
     /// `.git/objects` — both outside the worktree itself. Recomputed whenever

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Copy the cross-platform bundled skills from shared/skills into the macOS bundle.
+"""Copy the cross-platform bundled skills and files from shared/ into the macOS bundle.
 
 Windows and Linux link shared/skills straight from their csproj files. SwiftPM
 resources must live inside the target directory, so macOS keeps a copy; this
@@ -10,6 +10,8 @@ script is what keeps that copy identical. Run it after editing a shared skill:
 
 Platform-specific skills (device-verification) are not in shared/skills and are
 left alone in each platform's own Resources/skills folder.
+
+Single bundled files (the cloud-run workflow template) are copied the same way.
 """
 
 import shutil
@@ -21,6 +23,10 @@ SOURCE = ROOT / "shared" / "skills"
 TARGETS = [
     ROOT / "macos" / "DotsHarness" / "Sources" / "DotsHarnessCore" / "Resources" / "skills",
 ]
+FILES = {
+    ROOT / "shared" / "cloud" / "herness-cloud.yml":
+        ROOT / "macos" / "DotsHarness" / "Sources" / "DotsHarnessCore" / "Resources" / "herness-cloud.yml",
+}
 
 
 def files(directory: Path) -> dict[str, bytes]:
@@ -47,9 +53,15 @@ def main() -> int:
                 if destination.exists():
                     shutil.rmtree(destination)
                 shutil.copytree(skill, destination)
+    for source, destination in FILES.items():
+        if destination.is_file() and destination.read_bytes() == source.read_bytes():
+            continue
+        stale.append(destination.relative_to(ROOT).as_posix())
+        if not check:
+            shutil.copyfile(source, destination)
 
     if check and stale:
-        print("Stale skill copies (run python3 tools/sync_skills.py):", file=sys.stderr)
+        print("Stale bundle copies (run python3 tools/sync_skills.py):", file=sys.stderr)
         for path in stale:
             print(f"  {path}", file=sys.stderr)
         return 1

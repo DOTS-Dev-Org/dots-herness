@@ -356,52 +356,18 @@ extension AppModel {
     /// from `git remote.origin.url`. `nil` when the path isn't a git repo with an
     /// `origin` remote.
     public func forgeURL(for path: String) -> URL? {
-        guard !path.isEmpty else { return nil }
-        // Read .git/config directly: spawning a Process + waitUntilExit inside a
-        // SwiftUI body re-enters the run loop and crashes the app.
-        guard let config = try? String(contentsOfFile: path + "/.git/config", encoding: .utf8) else { return nil }
-        var inOrigin = false
-        var found: String?
-        for raw in config.split(whereSeparator: \.isNewline) {
-            let line = raw.trimmingCharacters(in: .whitespaces)
-            if line.hasPrefix("[") { inOrigin = line.replacingOccurrences(of: " ", with: "") == "[remote\"origin\"]" }
-            else if inOrigin, line.hasPrefix("url"), let eq = line.firstIndex(of: "=") {
-                found = line[line.index(after: eq)...].trimmingCharacters(in: .whitespaces)
-                break
-            }
-        }
-        guard var remote = found, !remote.isEmpty else { return nil }
-
-        if remote.hasSuffix(".git") { remote = String(remote.dropLast(4)) }
-
-        // Normalize scp-style (git@host:owner/repo) and ssh/https to https://host/owner/repo
-        var host = ""
-        var pathPart = ""
-        if let range = remote.range(of: "://") {
-            let rest = String(remote[range.upperBound...])
-            if let slash = rest.firstIndex(of: "/") {
-                host = String(rest[..<slash])
-                pathPart = String(rest[rest.index(after: slash)...])
-            }
-            if let at = host.firstIndex(of: "@") { host = String(host[host.index(after: at)...]) }
-        } else if let at = remote.firstIndex(of: "@"), let colon = remote.firstIndex(of: ":") {
-            host = String(remote[remote.index(after: at)..<colon])
-            pathPart = String(remote[remote.index(after: colon)...])
-        } else {
-            return nil
-        }
-        guard !host.isEmpty, !pathPart.isEmpty else { return nil }
-
-        let base = "https://\(host)/\(pathPart)"
-        let lowerHost = host.lowercased()
+        guard let url = GitRemote.originURL(atRepository: path),
+              let remote = GitRemote(url: url),
+              let base = remote.webURL else { return nil }
+        let lowerHost = remote.host.lowercased()
         if lowerHost.contains("github") {
-            return URL(string: base + "/pulls")
+            return base.appendingPathComponent("pulls")
         } else if lowerHost.contains("gitlab") {
-            return URL(string: base + "/-/merge_requests")
+            return base.appendingPathComponent("-/merge_requests")
         } else if lowerHost.contains("bitbucket") {
-            return URL(string: base + "/pull-requests")
+            return base.appendingPathComponent("pull-requests")
         }
-        return URL(string: base)
+        return base
     }
 
     public var activeProjectForgeURL: URL? {

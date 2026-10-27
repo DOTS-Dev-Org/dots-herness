@@ -239,7 +239,7 @@ extension AppModel {
     func restoreWorkLocation() {
         refreshSSHHosts()
         let stored = WorkLocationSetting(storageValue: host.settings.get("agent.workLocation")?.string ?? "local")
-        guard stored.isRemote else { return }
+        guard stored.isRemote || stored.isCloud else { return }
         setWorkLocation(stored)
     }
 

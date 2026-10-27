@@ -93,6 +93,8 @@ public enum WorkLocationSetting: Codable, Sendable, Equatable {
     case local
     case localWorktree
     case remote(alias: String)
+    /// GitHub Actions in the project's own repository (see CloudRuns.swift).
+    case cloud
 
     public var remoteAlias: String? {
         if case .remote(let alias) = self { return alias }
@@ -100,13 +102,15 @@ public enum WorkLocationSetting: Codable, Sendable, Equatable {
     }
 
     public var isRemote: Bool { remoteAlias != nil }
+    public var isCloud: Bool { self == .cloud }
 
-    /// Compact settings representation: `local`, `localWorktree`, `remote:<alias>`.
+    /// Compact settings representation: `local`, `localWorktree`, `remote:<alias>`, `cloud`.
     public var storageValue: String {
         switch self {
         case .local: return "local"
         case .localWorktree: return "localWorktree"
         case .remote(let alias): return "remote:\(alias)"
+        case .cloud: return "cloud"
         }
     }
 
@@ -116,6 +120,8 @@ public enum WorkLocationSetting: Codable, Sendable, Equatable {
             self = alias.isEmpty ? .local : .remote(alias: alias)
         } else if storageValue == "localWorktree" {
             self = .localWorktree
+        } else if storageValue == "cloud" {
+            self = .cloud
         } else {
             self = .local
         }

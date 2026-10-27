@@ -149,6 +149,7 @@ public struct RootView: View {
         .onChange(of: model.planPaneRequestID) { _, _ in dock.showPlan() }
         .onChange(of: model.reviewPaneRequestID) { _, _ in dock.showReview() }
         .onChange(of: model.tasksPaneRequestID) { _, _ in dock.showTasks() }
+        .onChange(of: model.cloudPaneRequestID) { _, _ in dock.showCloud() }
         .onChange(of: model.browserPaneRequestID) { _, _ in
             if let url = model.requestedBrowserURL { dock.openWebURL(url) }
         }

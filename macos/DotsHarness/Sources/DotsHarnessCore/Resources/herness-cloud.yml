@@ -1,0 +1,132 @@
+# HerNess cloud runs.
+#
+# Installed by the HerNess app ("Where HerNess runs" → Cloud). Each run is
+# dispatched by the app with your own GitHub token, runs the HerNess agent on
+# a fresh GitHub-hosted runner, pushes any changes to a herness/cloud-* branch
+# and streams the transcript back to the app.
+#
+# One-time setup in this repository's Settings → Secrets and variables → Actions:
+#   secret   HERNESS_API_KEY    model provider API key (required)
+#   variable HERNESS_PROVIDER   anthropic (default), openai, openrouter, gemini, ...
+#   variable HERNESS_BASE_URL   optional OpenAI-compatible endpoint instead of a provider
+name: HerNess Cloud
+run-name: "HerNess cloud run ${{ inputs.run_id }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: HerNess cloud run id
+        required: true
+        type: string
+      prompt:
+        description: Task for the agent
+        required: true
+        type: string
+      model:
+        description: Model id (empty = provider default)
+        required: false
+        default: ""
+        type: string
+      api_url:
+        description: HerNess API base URL
+        required: false
+        default: "https://dotsherness-unified-backend.dotsherness-unified-backend.workers.dev"
+        type: string
+      runner_version:
+        description: HerNess cloud runner release (latest or a version such as 0.1.0)
+        required: false
+        default: "latest"
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: herness-cloud-${{ inputs.run_id }}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      HERNESS_RUN_ID: ${{ inputs.run_id }}
+      HERNESS_API_URL: ${{ inputs.api_url }}
+      HERNESS_MODEL: ${{ inputs.model }}
+      HERNESS_RESULT: ${{ runner.temp }}/herness-result.json
+      HERNESS_BIN: ${{ runner.temp }}/herness-cloud/HerNessCloud
+      # Keep HerNess state outside the checkout so it is never committed.
+      XDG_DATA_HOME: ${{ runner.temp }}/herness-data
+    steps:
+      - name: Check out the requested branch
+        uses: actions/checkout@v4
+        with:
+          # The agent never sees a token that can push; only the push step does.
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install the HerNess cloud runner
+        env:
+          RUNNER_VERSION: ${{ inputs.runner_version }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$RUNNER_VERSION" =~ ^(latest|[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "runner_version must be latest or a version such as 0.1.0" >&2
+            exit 1
+          fi
+          base="https://github.com/DOTS-Dev-Org/dots-herness/releases"
+          if [[ "$RUNNER_VERSION" == "latest" ]]; then base="$base/latest/download"; else base="$base/download/v$RUNNER_VERSION"; fi
+          cd "$RUNNER_TEMP"
+          curl --fail --location --retry 3 -o herness-cloud-linux-x64.tar.gz "$base/herness-cloud-linux-x64.tar.gz"
+          curl --fail --location --retry 3 -o herness-cloud-linux-x64.tar.gz.sha256 "$base/herness-cloud-linux-x64.tar.gz.sha256"
+          sha256sum --check herness-cloud-linux-x64.tar.gz.sha256
+          mkdir -p herness-cloud
+          tar -xzf herness-cloud-linux-x64.tar.gz -C herness-cloud
+          chmod +x "$HERNESS_BIN"
+
+      - name: Run the agent
+        id: agent
+        continue-on-error: true
+        env:
+          # Inputs reach the shell only through the environment, never inline.
+          HERNESS_PROMPT: ${{ inputs.prompt }}
+          HERNESS_PROVIDER: ${{ vars.HERNESS_PROVIDER }}
+          HERNESS_BASE_URL: ${{ vars.HERNESS_BASE_URL }}
+          HERNESS_API_KEY: ${{ secrets.HERNESS_API_KEY }}
+        run: '"$HERNESS_BIN" run'
+
+      - name: Push changes to a herness/cloud branch
+        id: push
+        if: always()
+        env:
+          PUSH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "HerNess Cloud"
+          git config user.email "herness-cloud@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to push."
+            exit 0
+          fi
+          branch="herness/cloud-${HERNESS_RUN_ID:0:8}"
+          git switch -c "$branch"
+          git commit --quiet -m "HerNess cloud run ${HERNESS_RUN_ID}"
+          git push --quiet "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/$branch"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Report the result to HerNess
+        if: always()
+        env:
+          HERNESS_AGENT_OUTCOME: ${{ steps.agent.outcome }}
+          HERNESS_PUSH_OUTCOME: ${{ steps.push.outcome }}
+          HERNESS_RESULT_BRANCH: ${{ steps.push.outputs.branch }}
+          HERNESS_RESULT_COMMIT: ${{ steps.push.outputs.commit }}
+        run: |
+          if [[ -x "$HERNESS_BIN" ]]; then "$HERNESS_BIN" complete; else echo "Runner was not installed." >&2; exit 1; fi

@@ -36,6 +36,7 @@ final class RightDockState: ObservableObject {
         case browser
         case plan
         case tasks
+        case cloud
 
         var systemImage: String {
             switch self {
@@ -45,6 +46,7 @@ final class RightDockState: ObservableObject {
             case .browser: return "globe"
             case .plan: return "lightbulb"
             case .tasks: return "clock.arrow.circlepath"
+            case .cloud: return "cloud"
             }
         }
 
@@ -56,6 +58,7 @@ final class RightDockState: ObservableObject {
             case .browser: return KeyboardShortcutAction.browser.title
             case .plan: return AppCopy.text("plan.title")
             case .tasks: return AppCopy.text("backgroundTasks.title")
+            case .cloud: return AppCopy.text("cloud.title")
             }
         }
 
@@ -68,6 +71,7 @@ final class RightDockState: ObservableObject {
             case .browser: return "dock.edge.browser"
             case .plan: return "dock.edge.plan"
             case .tasks: return "dock.edge.tasks"
+            case .cloud: return "dock.edge.cloud"
             }
         }
     }
@@ -167,6 +171,10 @@ final class RightDockState: ObservableObject {
 
     func showTasks() {
         add(.tasks, unique: true)
+    }
+
+    func showCloud() {
+        add(.cloud, unique: true)
     }
 
     func showBrowser() {
@@ -357,6 +365,7 @@ struct RightDockView: View {
                     Button(action.title) { state.perform(action, model: model) }
                 }
                 Button(AppCopy.text("backgroundTasks.title")) { state.showTasks() }
+                Button(AppCopy.text("cloud.title")) { model.showCloudRuns() }
                 Divider()
                 Button(AppCopy.text("dock.bottomTerminal")) { state.openTerminal(model: model, at: .bottom) }
             }
@@ -477,6 +486,7 @@ struct RightDockView: View {
             }
         case .plan: DockPlanView(model: model)
         case .tasks: DockTasksView(model: model)
+        case .cloud: DockCloudView(model: model)
         }
     }
 

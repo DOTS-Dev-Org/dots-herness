@@ -56,6 +56,7 @@ struct ComposerView: View {
         case .local: return "laptopcomputer"
         case .localWorktree: return "arrow.up.right.square"
         case .remote: return "network"
+        case .cloud: return "cloud"
         }
     }
 
@@ -64,6 +65,7 @@ struct ComposerView: View {
         case .local: return AppCopy.text("workLocation.local")
         case .localWorktree: return AppCopy.text("workLocation.localWorktree")
         case .remote(let alias): return alias
+        case .cloud: return AppCopy.text("workLocation.cloud")
         }
     }
 
@@ -520,10 +522,12 @@ struct ComposerView: View {
             selection: model.workLocation,
             hosts: model.sshHosts,
             sshAvailable: SSHRunner.isAvailable,
-            remotePath: model.remoteWorkspace?.remotePath
+            remotePath: model.remoteWorkspace?.remotePath,
+            cloudRepository: model.cloudRepository?.fullName
         ) { setting in
             model.setWorkLocation(setting)
             showWorkLocationMenu = false
+            if setting.isCloud { model.showCloudRuns() }
         } onManageHosts: {
             showWorkLocationMenu = false
             model.presentSettings(tab: "general")
