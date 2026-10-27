@@ -15,11 +15,21 @@ extension WorkspaceMemory {
     }
 
     /// Settled project decisions are project facts too; the repository's Git history records who changed them.
-    public func recordProjectDecision(summary: String) throws {
-        let text = sanitizeSentence(summary, limit: Self.decisionLimit)
+    /// A reason and platforms given apart are kept whole beside the sentence; see `ProjectDecisions.compose`.
+    public func recordProjectDecision(summary: String, reason: String = "", platforms: [String] = []) throws {
+        let structured = !reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !platforms.isEmpty
+        let text = structured
+            ? ProjectDecisions.compose(statement: summary, reason: reason, platforms: platforms)
+            : sanitizeSentence(summary, limit: Self.decisionTextLimit)
         guard !text.isEmpty else { return }
-        let key = "decision-" + String(digest(Data(text.utf8)).prefix(12))
+        let key = "decision-" + String(digest(Data(ProjectDecisions.body(text).utf8)).prefix(12))
         try setProjectMemoryFact(kind: "decision", key: key, text: text)
+    }
+
+    /// Takes a decision out of the project's memory, and out of any review that suggested it.
+    public func forgetProjectDecision(key: String) throws {
+        try removeProjectMemoryFact(kind: "decision", key: key)
+        keepProjectDecision(key: key)
     }
 
     public var projectDefaults: [String: String] {
@@ -60,10 +70,78 @@ extension WorkspaceMemory {
 
     /// Project memory HerNess started in this checkout is trusted. Memory that was
     /// already there - cloned or pulled in - stays plain data until the user trusts it.
-    /// Keyed by the checkout's path: the project id is read from the repository and can be copied.
+    /// Keyed by the checkout's path, and by the project's identity so a checkout that moves,
+    /// or a second clone of the same repository, keeps the answer. An answer for this very
+    /// checkout wins over one for its project.
     public var projectMemoryTrust: Bool? {
         guard let key = workspaceURL?.standardizedFileURL.path else { return nil }
-        return trustDecisions()[key]
+        let decisions = trustDecisions()
+        if let trusted = decisions[key] { return trusted }
+        return repositoryIdentity.flatMap { decisions[$0] }
+    }
+
+    /// The project id from the manifest joined to the address the checkout was cloned from.
+    /// The id alone is read from the repository and can be copied into any other one; the
+    /// remote is this Mac's own record of where the code came from, so a repository that
+    /// copies a trusted project's id still does not share its trust. Mirrors WorkspaceFacts.cs.
+    var repositoryIdentity: String? {
+        guard let projectID, UUID(uuidString: projectID) != nil, let workspaceURL,
+              let origin = Self.gitOrigin(of: workspaceURL) else { return nil }
+        return "project:\(projectID.uppercased())@\(origin)"
+    }
+
+    /// The origin remote of a checkout, without scheme, user, credentials or ".git".
+    nonisolated static func gitOrigin(of workspace: URL) -> String? {
+        let fileManager = FileManager.default
+        let dotGit = workspace.appendingPathComponent(".git")
+        var isDirectory: ObjCBool = false
+        guard fileManager.fileExists(atPath: dotGit.path, isDirectory: &isDirectory) else { return nil }
+        var gitDir = dotGit
+        if !isDirectory.boolValue {
+            // A worktree or submodule: ".git" is a file naming the real folder.
+            guard let pointer = try? String(contentsOf: dotGit, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines),
+                  pointer.hasPrefix("gitdir:") else { return nil }
+            let target = pointer.dropFirst("gitdir:".count).trimmingCharacters(in: .whitespaces)
+            gitDir = target.hasPrefix("/") ? URL(fileURLWithPath: target) : workspace.appendingPathComponent(target)
+            if let common = try? String(contentsOf: gitDir.appendingPathComponent("commondir"), encoding: .utf8) {
+                let path = common.trimmingCharacters(in: .whitespacesAndNewlines)
+                gitDir = path.hasPrefix("/") ? URL(fileURLWithPath: path) : gitDir.appendingPathComponent(path)
+            }
+        }
+        guard let config = try? String(contentsOf: gitDir.appendingPathComponent("config"), encoding: .utf8) else { return nil }
+        var inOrigin = false
+        for raw in config.split(whereSeparator: \.isNewline) {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("[") {
+                inOrigin = line.range(of: #"^\[remote\s+"origin"\]$"#, options: .regularExpression) != nil
+                continue
+            }
+            guard inOrigin, let match = line.range(of: #"^url\s*=\s*"#, options: .regularExpression) else { continue }
+            return normalizeRemote(String(line[match.upperBound...]))
+        }
+        return nil
+    }
+
+    /// "git@github.com:owner/repo.git" and "https://github.com/owner/repo" are one repository:
+    /// "github.com/owner/repo". Nil for a remote that names no host and path.
+    nonisolated static func normalizeRemote(_ url: String) -> String? {
+        var value = url.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+        if !value.contains("://"),
+           let scp = value.range(of: #"^(?:[^@/\s]+@)?[^:/\s]+:"#, options: .regularExpression) {
+            let prefix = value[scp].dropLast()
+            let host = prefix.split(separator: "@").last.map(String.init) ?? String(prefix)
+            value = host + "/" + value[scp.upperBound...]
+        } else {
+            if let scheme = value.range(of: #"^[a-zA-Z][a-zA-Z0-9+.-]*://"#, options: .regularExpression) { value.removeSubrange(scheme) }
+            if let user = value.range(of: #"^[^@/]*@"#, options: .regularExpression) { value.removeSubrange(user) }
+        }
+        while value.hasSuffix("/") { value.removeLast() }
+        if value.lowercased().hasSuffix(".git") { value.removeLast(4) }
+        guard let slash = value.firstIndex(of: "/"), slash != value.startIndex, value.index(after: slash) != value.endIndex else { return nil }
+        // Host names are not case-sensitive; a path may be.
+        var host = value[..<slash].lowercased()
+        if let port = host.range(of: #":(22|443)$"#, options: .regularExpression) { host.removeSubrange(port) }
+        return host + value[slash...]
     }
 
     public var projectMemoryTrusted: Bool { projectMemoryTrust == true }
@@ -77,6 +155,7 @@ extension WorkspaceMemory {
         guard let key = workspaceURL?.standardizedFileURL.path else { throw WorkspaceMemoryError.noWorkspace }
         var decisions = trustDecisions()
         decisions[key] = trusted
+        if let identity = repositoryIdentity { decisions[identity] = trusted }
         try fileManager.createDirectory(at: paths.root, withIntermediateDirectories: true)
         try JSONSerialization.data(withJSONObject: decisions, options: [.sortedKeys]).write(to: trustURL, options: .atomic)
     }

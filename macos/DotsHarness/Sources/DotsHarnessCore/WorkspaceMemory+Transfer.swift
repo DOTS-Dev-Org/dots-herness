@@ -25,15 +25,14 @@ private struct MemoryTransferBundle: Codable {
 extension WorkspaceMemory {
     private static var maxTransferFacts: Int { 60 }
     /// A decision carries its reason, which is what lets a later task tell whether it still
-    /// applies; other facts are one sentence.
-    static let decisionLimit = 360
+    /// applies; other facts are one sentence. One text holding both may run to
+    /// `decisionTextLimit`; a decision recorded with its reason and platforms apart is
+    /// stored as up to `decisionLimit`. Mirrors WorkspaceFacts.cs.
+    static let decisionTextLimit = ProjectDecisions.decisionTextLimit
+    static let decisionLimit = ProjectDecisions.decisionLimit
 
     static func factLimit(kind: String, key: String) -> Int {
-        switch kind {
-        case "project": return ProjectKnowledge.limit(forKey: key)
-        case "decision": return decisionLimit
-        default: return 240
-        }
+        ProjectDecisions.factLimit(kind: kind, key: key)
     }
 
     public func exportMemory(_ scope: MemoryTransferScope) throws -> Data {
@@ -123,37 +122,20 @@ extension WorkspaceMemory {
                 appendDecision(key: key, summary: summary, to: &facts)
             }
         }
-        return Array(Self.tidied(facts).suffix(Self.maxTransferFacts))
-    }
-
-    /// Facts as a prompt should read them. Older builds cut every fact at its limit in the
-    /// middle of a word: such a text ends at its last whole sentence instead. A decision
-    /// stated twice in other words is kept once, in its fuller wording. The file itself is
-    /// rewritten tidy the next time a fact is recorded.
-    static func tidied(_ facts: [MemoryTransferFact]) -> [MemoryTransferFact] {
-        var kept: [MemoryTransferFact] = []
-        for var fact in facts {
-            let limit = factLimit(kind: fact.kind, key: fact.key)
-            // Older builds cut every decision at 240 characters.
-            if fact.text.count >= limit || fact.kind == "decision" && fact.text.count == 240, let last = fact.text.last, !".!?)…".contains(last) {
-                fact.text = SecretRedaction.clipped(fact.text, limit: fact.text.count - 1)
-            }
-            guard fact.kind == "decision",
-                  let twin = kept.firstIndex(where: { $0.kind == "decision" && sameDecision($0.text, fact.text) }) else {
-                kept.append(fact)
-                continue
-            }
-            if FeedbackStore.tokens(fact.text).count > FeedbackStore.tokens(kept[twin].text).count { kept[twin] = fact }
-        }
+        var kept = Self.tidied(facts)
+        ProjectDecisions.evict(&kept, max: Self.maxTransferFacts)
         return kept
     }
 
-    /// Two decisions sharing most of their words say the same thing.
-    /// ponytail: word overlap, not meaning; a reworded twin with few shared words stays.
+    /// Facts as a prompt should read them; see `ProjectDecisions.tidied`. The file itself is
+    /// rewritten tidy the next time a fact is recorded.
+    static func tidied(_ facts: [MemoryTransferFact]) -> [MemoryTransferFact] {
+        ProjectDecisions.tidied(facts)
+    }
+
+    /// Two decisions sharing most of their words say the same thing; see `ProjectDecisions.same`.
     static func sameDecision(_ left: String, _ right: String) -> Bool {
-        let a = FeedbackStore.tokens(left), b = FeedbackStore.tokens(right)
-        guard min(a.count, b.count) >= 5 else { return FeedbackStore.folded(left) == FeedbackStore.folded(right) }
-        return Double(a.intersection(b).count) / Double(a.union(b).count) >= 0.7
+        ProjectDecisions.same(left, right)
     }
 
     private func appendDecision(key: String, summary: String, to facts: inout [MemoryTransferFact]) {
@@ -196,15 +178,21 @@ extension WorkspaceMemory {
     private func writeProjectMemoryFacts(merging incoming: [MemoryTransferFact]) throws {
         guard let url = projectMemoryFactsURL else { throw WorkspaceMemoryError.noWorkspace }
         var facts = projectMemoryFacts()
-        for item in incoming {
-            // A decision restated in other words replaces the old wording.
-            facts.removeAll { $0.kind == item.kind && ($0.key == item.key || item.kind == "decision" && Self.sameDecision($0.text, item.text)) }
-            facts.append(item)
-        }
-        if facts.count > Self.maxTransferFacts {
-            facts = Array(facts.suffix(Self.maxTransferFacts))
-        }
+        // A decision restated in other words replaces the old wording.
+        for item in incoming { ProjectDecisions.upsert(&facts, item) }
+        // The oldest decision leaves first; what was learned of the code never does.
+        ProjectDecisions.evict(&facts, max: Self.maxTransferFacts)
         try writeFacts(facts, to: url)
+        writeIndexNote()
+    }
+
+    /// Rewrites the project's facts through `update`, as every other write does.
+    func updateProjectMemoryFacts(_ update: ([MemoryTransferFact]) -> [MemoryTransferFact]) throws {
+        guard let url = projectMemoryFactsURL else { throw WorkspaceMemoryError.noWorkspace }
+        var facts = update(projectMemoryFacts())
+        ProjectDecisions.evict(&facts, max: Self.maxTransferFacts)
+        try writeFacts(facts, to: url)
+        writeIndexNote()
     }
 
     func setProjectMemoryFact(kind: String, key: String, text: String) throws {
@@ -221,11 +209,13 @@ extension WorkspaceMemory {
         var facts = projectMemoryFacts()
         facts.removeAll { $0.kind == kind && $0.key == key }
         try writeFacts(facts, to: url)
+        writeIndexNote()
     }
 
     private func writeFacts(_ facts: [MemoryTransferFact], to url: URL) throws {
         let sections = ["project", "preference", "decision"].compactMap { kind -> String? in
-            let rows = facts.filter { $0.kind == kind }.sorted { $0.key < $1.key }
+            // In the order they were recorded: the oldest decision is the first to leave.
+            let rows = facts.filter { $0.kind == kind }
             guard !rows.isEmpty else { return nil }
             return "## \(kind)\n" + rows.map { "- \($0.key) — \($0.text)" }.joined(separator: "\n")
         }
@@ -253,13 +243,8 @@ extension WorkspaceMemory {
         let url = paths.root.appendingPathComponent("user-facts.md")
         let existing = personalFacts()
         var facts = existing
-        for item in incoming {
-            facts.removeAll { $0.kind == item.kind && $0.key == item.key }
-            facts.append(item)
-        }
-        if facts.count > Self.maxTransferFacts {
-            facts = Array(facts.suffix(Self.maxTransferFacts))
-        }
+        for item in incoming { ProjectDecisions.upsert(&facts, item) }
+        ProjectDecisions.evict(&facts, max: Self.maxTransferFacts)
         try fileManager.createDirectory(at: paths.root, withIntermediateDirectories: true)
         try writeFacts(facts, to: url)
     }

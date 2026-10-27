@@ -1324,4 +1324,6 @@
   <data name="plan.proposed" xml:space="preserve"><value>اقترح Claude خطة</value></data>
   <data name="plan.revise" xml:space="preserve"><value>تعديل…</value></data>
   <data name="plan.acceptAuto" xml:space="preserve"><value>قبول مع الوضع التلقائي</value></data>
+  <data name="memory.decision.review" xml:space="preserve"><value>تقترح مراجعة قرارات هذا المشروع إزالة هذا القرار: {0}</value></data>
+  <data name="memory.decision.keep" xml:space="preserve"><value>احتفظ به</value></data>
 </root>

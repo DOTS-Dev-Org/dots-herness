@@ -29,9 +29,12 @@ public static class WorkspaceFacts
 
     /// <summary>
     /// A decision carries its reason, which is what lets a later task tell whether it
-    /// still applies. Mirrors decisionLimit in WorkspaceMemory+Transfer.swift.
+    /// still applies. One text holding both may run to this; a decision recorded with its
+    /// reason and platforms apart is stored as up to <see cref="MaxDecisionLength"/>.
+    /// Mirrors decisionLimit in WorkspaceMemory+Transfer.swift.
     /// </summary>
-    public const int MaxDecisionLength = 360;
+    public const int DecisionTextLength = 360;
+    public const int MaxDecisionLength = 500;
 
     /// <summary>
     /// Project facts learned from the code rather than told by the user: how it
@@ -54,7 +57,8 @@ public static class WorkspaceFacts
         + "Project facts and decisions stay in project memory. One call per fact, with a short stable key so a "
         + "later fact on the same subject replaces it instead of piling up. Never record a secret; record where "
         + "it lives instead. Do not record what the repository already states, a temporary choice, or a guess. "
-        + "A lasting decision from completed work may be recorded when its evidence and reason are stated.";
+        + "A lasting decision from completed work may be recorded when its evidence and reason are stated: "
+        + "give the reason in \"reason\" and, when it holds on some platforms only, name them in \"platforms\".";
 
     public const string MalformedNotice =
         "That call was not usable. Send kind (\"project\", \"preference\" or \"decision\"), a short key naming "
@@ -102,6 +106,21 @@ public static class WorkspaceFacts
                     ["type"] = "string",
                     ["description"] = "The fact itself, one sentence, written so it stands alone months later.",
                 },
+                ["reason"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "For a decision: why it was made, in one sentence. Kept whole beside the text.",
+                },
+                ["platforms"] = new JsonObject
+                {
+                    ["type"] = "array",
+                    ["items"] = new JsonObject
+                    {
+                        ["type"] = "string",
+                        ["enum"] = new JsonArray("macos", "windows", "linux", "ios", "android", "desktop", "mobile", "all"),
+                    },
+                    ["description"] = "For a decision that holds on some platforms only. Omit when it holds everywhere.",
+                },
             },
             ["required"] = new JsonArray("kind", "key", "text"),
         });
@@ -112,11 +131,19 @@ public static class WorkspaceFacts
         JsonNode? node;
         try { node = JsonNode.Parse(arguments); }
         catch (System.Text.Json.JsonException) { return null; }
-        var kind = (node?["kind"]?.GetValue<string>() ?? "").Trim().ToLowerInvariant();
-        var key = Collapse(node?["key"]?.GetValue<string>() ?? "", MaxKeyLength).ToLowerInvariant();
-        var text = Collapse(node?["text"]?.GetValue<string>() ?? "", LimitFor(kind, key));
+        string Field(string name) => node?[name] is JsonValue value && value.TryGetValue<string>(out var text) ? text : "";
+        var kind = Field("kind").Trim().ToLowerInvariant();
+        var key = Collapse(Field("key"), MaxKeyLength).ToLowerInvariant();
+        var reason = Field("reason");
+        var platforms = node?["platforms"] is JsonArray array
+            ? array.Select(item => item is JsonValue value && value.TryGetValue<string>(out var name) ? name : "").ToList()
+            : [];
+        var text = kind == "decision" && (reason.Trim().Length > 0 || platforms.Count > 0)
+            ? ProjectDecisions.Compose(Field("text"), reason, platforms)
+            : Collapse(Field("text"), kind == "decision" ? DecisionTextLength : LimitFor(kind, key));
         if (!Kinds.Contains(kind) || text.Length == 0) return null;
-        if (key.Length == 0) key = kind == "decision" ? "decision" : "note";
+        // A decision without a key is named by its words, so two of them never overwrite each other.
+        if (key.Length == 0) key = kind == "decision" ? ProjectDecisions.KeyFor(ProjectDecisions.Body(text)) : "note";
         var requestedScope = (node?["scope"]?.GetValue<string>() ?? "").Trim().ToLowerInvariant();
         var scope = kind == "preference"
             ? requestedScope == "project" ? "project" : UserScope
@@ -170,16 +197,8 @@ public static class WorkspaceFacts
         // The first fact HerNess writes starts this checkout's memory: it is ours.
         var startsMemory = fact.Scope != UserScope && Read(workspace).Count == 0 && Trust(workspace, userRoot) is null;
 
-        var facts = ReadFile(path).Where(item => item.Kind != fact.Kind || item.Key != fact.Key).ToList();
-        facts.Add(fact);
-        if (facts.Count > MaxFacts) facts = facts.Skip(facts.Count - MaxFacts).ToList();
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            WorkspaceLessons.WriteAtomic(path, Render(facts));
-        }
-        catch (IOException) { return UnavailableNotice; }
-        catch (UnauthorizedAccessException) { return UnavailableNotice; }
+        var written = WriteFacts(path, ReadFile(path).ToList(), facts => ProjectDecisions.Upsert(facts, fact));
+        if (!written) return UnavailableNotice;
         if (startsMemory) SetTrust(workspace, userRoot, true);
         return $"Recorded {fact.Kind} {fact.Key}: {fact.Text}";
     }
@@ -188,7 +207,7 @@ public static class WorkspaceFacts
     // Older builds wrote project-scoped preferences into facts.md; never expose those
     // repository entries through prompts or portable project exports.
     public static IReadOnlyList<WorkspaceFact> Read(string? workspace) =>
-        ReadFile(StorePath(workspace)).Where(fact => fact.Kind != "preference").ToList();
+        ProjectDecisions.Tidy(ReadFile(StorePath(workspace)).Where(fact => fact.Kind != "preference"));
 
     public static IReadOnlyList<WorkspaceFact> ReadPersonal(string? userRoot) =>
         ReadFile(UserStorePath(userRoot)).Select(fact => fact with { Scope = UserScope }).ToList();
@@ -204,12 +223,7 @@ public static class WorkspaceFacts
             .ToList();
         return WriteProjectFacts(workspace, facts =>
         {
-            foreach (var fact in factsToMerge)
-            {
-                facts.RemoveAll(existing => existing.Kind == fact.Kind && existing.Key == fact.Key);
-                facts.Add(fact);
-            }
-            if (facts.Count > MaxFacts) facts.RemoveRange(0, facts.Count - MaxFacts);
+            foreach (var fact in factsToMerge) ProjectDecisions.Upsert(facts, fact);
         });
     }
 
@@ -225,12 +239,7 @@ public static class WorkspaceFacts
             .ToList();
         return WriteFacts(path, ReadFile(path).Select(fact => fact with { Scope = UserScope }).ToList(), facts =>
         {
-            foreach (var fact in factsToMerge)
-            {
-                facts.RemoveAll(existing => existing.Kind == fact.Kind && existing.Key == fact.Key);
-                facts.Add(fact);
-            }
-            if (facts.Count > MaxFacts) facts.RemoveRange(0, facts.Count - MaxFacts);
+            foreach (var fact in factsToMerge) ProjectDecisions.Upsert(facts, fact);
         });
     }
 
@@ -257,17 +266,35 @@ public static class WorkspaceFacts
         return WriteProjectFacts(workspace, facts => facts.RemoveAll(item => item.Kind == "project" && item.Key == key));
     }
 
+    public static bool ForgetDecision(string? workspace, string key)
+    {
+        if (string.IsNullOrWhiteSpace(workspace) || !Directory.Exists(workspace) || key.Trim().Length == 0) return false;
+        var removed = false;
+        return WriteProjectFacts(workspace, facts => removed = facts.RemoveAll(item => item.Kind == "decision" && item.Key == key.Trim()) > 0)
+            && removed;
+    }
+
+    /// <summary>Rewrites the project's facts through <paramref name="update"/>; false when the file cannot be written.</summary>
+    internal static bool UpdateProject(string? workspace, Action<List<WorkspaceFact>> update) =>
+        !string.IsNullOrWhiteSpace(workspace) && Directory.Exists(workspace) && WriteProjectFacts(workspace, update);
+
     private static bool WriteProjectFacts(string workspace, Action<List<WorkspaceFact>> update)
     {
         var path = StorePath(workspace)!;
         return WriteFacts(path, ReadFile(path).ToList(), update);
     }
 
+    /// <summary>
+    /// Every write goes through here: the file is tidied, then brought under <see cref="MaxFacts"/>
+    /// with the oldest decisions leaving first (see <see cref="ProjectDecisions.Evict"/>).
+    /// </summary>
     private static bool WriteFacts(string path, List<WorkspaceFact> facts, Action<List<WorkspaceFact>> update)
     {
         try
         {
+            facts = ProjectDecisions.Tidy(facts);
             update(facts);
+            ProjectDecisions.Evict(facts, MaxFacts);
             var kinds = Kinds.Concat(facts.Select(item => item.Kind).Where(kind => !Kinds.Contains(kind))
                 .Distinct(StringComparer.Ordinal).OrderBy(kind => kind, StringComparer.Ordinal));
             var sections = kinds.Select(kind => (Kind: kind, Items: facts.Where(item => item.Kind == kind).ToList()))
@@ -359,9 +386,11 @@ public static class WorkspaceFacts
     {
         if (StorePath(workspace) is null) return "";
         var facts = Read(workspace);
+        var decisions = ProjectDecisions.StableText(facts, ProjectDecisions.CurrentPlatform);
         var rendered = facts.Count == 0
             ? "Nothing recorded yet."
-            : Render(facts);
+            : string.Join("\n\n", new[] { Render(facts.Where(fact => fact.Kind != "decision").ToList()).Trim(), decisions }
+                .Where(part => part.Length > 0)) + "\n";
         var projectPreferences = WorkspaceLessons.ProjectPreferenceText(userRoot, workspace);
         var known = string.Join("\n\n", new[] { rendered, projectPreferences }.Where(part => part.Length > 0));
         var missing = KnowledgeKeys
@@ -387,13 +416,85 @@ public static class WorkspaceFacts
 
     // Trust in project memory that came with the repository. Memory HerNess started in
     // this checkout is trusted; memory that was already there - cloned or pulled in -
-    // stays plain data until the user trusts it. Keyed by the checkout's full path.
-    // Without a support folder there is no one to ask, and nothing is gated.
+    // stays plain data until the user trusts it. Keyed by the checkout's full path, and by
+    // the project's identity so a checkout that moves, or a second clone of the same
+    // repository, keeps the answer. Without a support folder there is no one to ask, and
+    // nothing is gated.
 
     public static bool? Trust(string? workspace, string? userRoot)
     {
         if (TrustPath(userRoot) is not { } path || string.IsNullOrWhiteSpace(workspace)) return null;
-        return TrustDecisions(path).TryGetValue(Path.GetFullPath(workspace), out var trusted) ? trusted : null;
+        var decisions = TrustDecisions(path);
+        // An answer given for this very checkout wins over one given for another clone.
+        if (decisions.TryGetValue(Path.GetFullPath(workspace), out var trusted)) return trusted;
+        return RepositoryIdentity(workspace) is { } identity && decisions.TryGetValue(identity, out trusted) ? trusted : null;
+    }
+
+    /// <summary>
+    /// The project id from the manifest joined to the address the checkout was cloned from.
+    /// The id alone is read from the repository and can be copied into any other one; the
+    /// remote is this machine's own record of where the code came from, so a repository that
+    /// copies a trusted project's id still does not share its trust. Null without either.
+    /// </summary>
+    public static string? RepositoryIdentity(string? workspace)
+    {
+        if (string.IsNullOrWhiteSpace(workspace) || WorkspaceInsights.ManifestId(workspace) is not { } id) return null;
+        return GitOrigin(workspace) is { } origin ? $"project:{id.ToUpperInvariant()}@{origin}" : null;
+    }
+
+    /// <summary>
+    /// The origin remote of a checkout, without scheme, user, credentials or ".git", so the
+    /// SSH and HTTPS addresses of one repository are the same: "github.com/owner/repo".
+    /// </summary>
+    public static string? GitOrigin(string workspace)
+    {
+        try
+        {
+            var dotGit = Path.Combine(workspace, ".git");
+            string? gitDir = Directory.Exists(dotGit) ? dotGit : null;
+            if (gitDir is null && File.Exists(dotGit))
+            {
+                // A worktree or submodule: ".git" is a file naming the real folder.
+                var pointer = File.ReadAllText(dotGit).Trim();
+                if (!pointer.StartsWith("gitdir:", StringComparison.Ordinal)) return null;
+                gitDir = Path.GetFullPath(Path.Combine(workspace, pointer[7..].Trim()));
+                var common = Path.Combine(gitDir, "commondir");
+                if (File.Exists(common)) gitDir = Path.GetFullPath(Path.Combine(gitDir, File.ReadAllText(common).Trim()));
+            }
+            var config = gitDir is null ? null : Path.Combine(gitDir, "config");
+            if (config is null || !File.Exists(config)) return null;
+            var inOrigin = false;
+            foreach (var raw in File.ReadLines(config))
+            {
+                var line = raw.Trim();
+                if (line.StartsWith('[')) { inOrigin = Regex.IsMatch(line, @"^\[remote\s+""origin""\]$"); continue; }
+                if (!inOrigin) continue;
+                var match = Regex.Match(line, @"^url\s*=\s*(.+)$");
+                if (match.Success) return NormalizeRemote(match.Groups[1].Value);
+            }
+            return null;
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException) { return null; }
+    }
+
+    public static string? NormalizeRemote(string url)
+    {
+        var value = url.Trim().Trim('"');
+        // scp-like SSH: git@github.com:owner/repo.git
+        var scp = Regex.Match(value, @"^(?:[^@/\s]+@)?([^:/\s]+):(?!//)(.+)$");
+        if (scp.Success && !value.Contains("://", StringComparison.Ordinal)) value = scp.Groups[1].Value + "/" + scp.Groups[2].Value;
+        else
+        {
+            value = Regex.Replace(value, @"^[a-z][a-z0-9+.-]*://", "", RegexOptions.IgnoreCase);
+            value = Regex.Replace(value, @"^[^@/]*@", "");
+        }
+        value = value.TrimEnd('/');
+        if (value.EndsWith(".git", StringComparison.OrdinalIgnoreCase)) value = value[..^4];
+        var slash = value.IndexOf('/');
+        if (slash <= 0 || slash == value.Length - 1) return null;
+        // Host names are not case-sensitive; a path may be.
+        var host = Regex.Replace(value[..slash].ToLowerInvariant(), @":(22|443)$", "");
+        return host + value[slash..];
     }
 
     public static bool Trusted(string? workspace, string? userRoot) =>
@@ -408,6 +509,7 @@ public static class WorkspaceFacts
         if (TrustPath(userRoot) is not { } path || string.IsNullOrWhiteSpace(workspace)) return false;
         var decisions = TrustDecisions(path);
         decisions[Path.GetFullPath(workspace)] = trusted;
+        if (RepositoryIdentity(workspace) is { } identity) decisions[identity] = trusted;
         try
         {
             Directory.CreateDirectory(userRoot!);

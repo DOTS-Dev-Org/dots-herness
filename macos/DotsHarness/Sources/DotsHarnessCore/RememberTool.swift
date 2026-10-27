@@ -23,6 +23,10 @@ public enum RememberTool {
         /// `user` for every project, `project` for this one. Only a preference has a
         /// choice here; a decision or a project entry is always `project`.
         public var scope = "project"
+        /// For a decision: why it was made, kept whole beside the text.
+        public var reason = ""
+        /// For a decision that holds on some platforms only; empty means every platform.
+        public var platforms: [String] = []
     }
 
     /// A preference that follows the person into every project.
@@ -39,7 +43,8 @@ public enum RememberTool {
         finished establishes a lasting project choice. This includes a decision not to make a requested \
         change because evidence from the work shows a lasting tradeoff; record the choice and its reason \
         together as kind "decision". For example, keep the existing effort level when changing it would \
-        invalidate the measured prompt cache. One call per fact. Do not record temporary choices, guesses, \
+        invalidate the measured prompt cache; give the reason in "reason" and, when it holds on some \
+        platforms only, name them in "platforms". One call per fact. Do not record temporary choices, guesses, \
         or anything the repository or memory sections already state. Give a short stable key so a later \
         fact on the same subject replaces it instead of piling up. Only claim it was saved after this tool \
         returns its Recorded confirmation; if memory is unavailable, keep the reason in the task result and \
@@ -82,6 +87,18 @@ public enum RememberTool {
                             + "\"architecture\", \"conventions\" and \"design-system\" may run to 1,200 characters."
                     ),
                 ]),
+                "reason": .object([
+                    "type": .string("string"),
+                    "description": .string("For a decision: why it was made, in one sentence. Kept whole beside the text."),
+                ]),
+                "platforms": .object([
+                    "type": .string("array"),
+                    "items": .object([
+                        "type": .string("string"),
+                        "enum": .array(["macos", "windows", "linux", "ios", "android", "desktop", "mobile", "all"].map { .string($0) }),
+                    ]),
+                    "description": .string("For a decision that holds on some platforms only. Omit when it holds everywhere."),
+                ]),
             ]),
             "required": .array([.string("kind"), .string("text")]),
         ])
@@ -107,7 +124,12 @@ public enum RememberTool {
         case .decision, .project: scope = projectScope
         }
         if kind != .decision && key.isEmpty { key = "note" }
-        return Entry(kind: kind.rawValue, key: key, text: text, scope: scope)
+        var entry = Entry(kind: kind.rawValue, key: key, text: text, scope: scope)
+        if kind == .decision {
+            entry.reason = (object["reason"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            entry.platforms = object["platforms"] as? [String] ?? []
+        }
+        return entry
     }
 
     public static let secretNotice = """
@@ -140,7 +162,9 @@ public enum RememberTool {
             #"-----BEGIN [A-Z ]*PRIVATE KEY-----"#,
             #"(?i)(api[_-]?key|token|password|secret)\s*[:=]\s*\S+"#,
         ]
-        return valuePatterns.contains { entry.text.range(of: $0, options: .regularExpression) != nil }
+        // A decision's reason is committed with it.
+        let text = entry.reason.isEmpty ? entry.text : entry.text + " " + entry.reason
+        return valuePatterns.contains { text.range(of: $0, options: .regularExpression) != nil }
     }
 
     public static func confirmation(_ entry: Entry) -> String {

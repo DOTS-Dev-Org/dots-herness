@@ -1832,6 +1832,8 @@
 "vault.layer.projectHint" = "Projectgeheugen uit het ondertekende gebeurtenislogboek in de repository.";
 "vault.notSaved.credential" = "Niet opgeslagen: dit lijkt op inloggegevens. Het geheugen wordt naar het model gestuurd en projectitems worden in de repository vastgelegd.";
 "vault.removeFromMemory" = "Uit geheugen verwijderen";
+"vault.decision.review" = "Een beoordeling van de beslissingen van dit project stelt voor deze te verwijderen: %@";
+"vault.decision.keep" = "Behouden";
 "vault.remove.hint" = "De ondertekende gebeurtenis blijft in het logboek; voor verwijderen uit de repositorygeschiedenis moet je de git-geschiedenis herschrijven.";
 "vault.rules.own" = "Je eigen regels";
 "vault.rules.add" = "Regel toevoegen";

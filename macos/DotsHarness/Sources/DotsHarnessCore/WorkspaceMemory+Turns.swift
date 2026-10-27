@@ -284,9 +284,13 @@ extension WorkspaceMemory {
             .sorted { $0.key < $1.key }
             .map { "- `\($0.key)`: \($0.text)" }
             .joined(separator: "\n")
-        let decisionCount = facts.filter { $0.kind == "decision" }.count
-        let decisions = allDecisionsText()
-            ?? "\(decisionCount) decisions; those this request names are in task_history, search the rest with \(RecallTool.name)."
+        let decisionCount = facts.filter { $0.kind == "decision" && ProjectDecisions.applies($0.text, platform: ProjectDecisions.currentPlatform) }.count
+        let elsewhere = otherPlatformDecisionCount()
+        let decisions = [
+            allDecisionsText()
+                ?? "\(decisionCount) decisions; those this request names are in task_history, search the rest with \(RecallTool.name).",
+            elsewhere == 0 ? "" : "\(elsewhere) more are about other platforms; \(RecallTool.name) finds them.",
+        ].filter { !$0.isEmpty }.joined(separator: "\n")
         return [
             projectMemoryTrusted
                 ? "Project memory, read from `.mem/facts.md` in the repository. Current user instructions are authoritative over it."

@@ -1323,4 +1323,6 @@
   <data name="plan.proposed" xml:space="preserve"><value>Το Claude πρότεινε ένα σχέδιο</value></data>
   <data name="plan.revise" xml:space="preserve"><value>Αναθεώρηση…</value></data>
   <data name="plan.acceptAuto" xml:space="preserve"><value>Αποδοχή και αυτόματη λειτουργία</value></data>
+  <data name="memory.decision.review" xml:space="preserve"><value>Ο έλεγχος των αποφάσεων αυτού του έργου προτείνει την αφαίρεση αυτής: {0}</value></data>
+  <data name="memory.decision.keep" xml:space="preserve"><value>Διατήρηση</value></data>
 </root>

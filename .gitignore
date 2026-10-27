@@ -36,7 +36,8 @@ mobile/ios/build/
 
 # A person's memory lives in the user layer on their Mac (app support), never in the
 # repository. Project memory - the manifest, facts.md (project facts and decisions), the
-# legacy signed events and the map - stays tracked.
+# index and the map - stays tracked. The legacy signed events are written into facts.md
+# and removed the first time a current build opens a trusted checkout.
 # These stay ignored in case an older build writes them into the repository.
 **/.mem/tasks/
 **/.mem/conversations/

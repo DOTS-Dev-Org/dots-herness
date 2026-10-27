@@ -1323,4 +1323,6 @@
   <data name="plan.proposed" xml:space="preserve"><value>Claude a propus un plan</value></data>
   <data name="plan.revise" xml:space="preserve"><value>Revizuiește…</value></data>
   <data name="plan.acceptAuto" xml:space="preserve"><value>Acceptă și mod automat</value></data>
+  <data name="memory.decision.review" xml:space="preserve"><value>O revizuire a deciziilor acestui proiect sugerează eliminarea acesteia: {0}</value></data>
+  <data name="memory.decision.keep" xml:space="preserve"><value>Păstrează</value></data>
 </root>

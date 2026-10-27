@@ -1832,6 +1832,8 @@
 "vault.layer.projectHint" = "Mémoire du projet, issue du journal d'événements signé du dépôt.";
 "vault.notSaved.credential" = "Non enregistré : cela ressemble à un identifiant. La mémoire est envoyée au modèle et les entrées du projet sont validées dans le dépôt.";
 "vault.removeFromMemory" = "Retirer de la mémoire";
+"vault.decision.review" = "Une revue des décisions de ce projet suggère de supprimer celle-ci : %@";
+"vault.decision.keep" = "Conserver";
 "vault.remove.hint" = "L'événement signé reste dans le journal ; le retirer de l'historique du dépôt implique de réécrire l'historique git.";
 "vault.rules.own" = "Vos propres règles";
 "vault.rules.add" = "Ajouter une règle";

@@ -1832,6 +1832,8 @@
 "vault.layer.projectHint" = "Memoria del progetto, dal registro eventi firmato nel repository.";
 "vault.notSaved.credential" = "Non salvato: sembra una credenziale. La memoria viene inviata al modello e le voci del progetto vengono incluse nel repository.";
 "vault.removeFromMemory" = "Rimuovi dalla memoria";
+"vault.decision.review" = "Una revisione delle decisioni di questo progetto suggerisce di rimuovere questa: %@";
+"vault.decision.keep" = "Mantieni";
 "vault.remove.hint" = "L'evento firmato resta nel registro; per rimuoverlo dalla cronologia del repository bisogna riscrivere la cronologia git.";
 "vault.rules.own" = "Le tue regole";
 "vault.rules.add" = "Aggiungi regola";

@@ -3617,6 +3617,25 @@ public partial class SettingsWindow : Window
             forget.Click += (_, _) => SaveMemory(new MemoryEdit(MemoryEditKind.ForgetInsight, Id: id), clearSelection: true);
             actions.Children.Add(save); actions.Children.Add(forget); panel.Children.Add(actions);
         }
+        else if (note.Kind == "decision")
+        {
+            // A decision is committed with the repository: it can be removed here, and a
+            // review's suggestion to remove it is the person's to accept or turn down.
+            panel.Children.Add(new TextBox { Text = note.Body, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 90, BorderThickness = new Thickness(0), Background = Brushes.Transparent, Foreground = TryBrush("TextPrimary") });
+            var reason = ProjectDecisions.ProposalReason(workspace, Model.Paths.Root, note.Title);
+            if (reason is not null)
+                panel.Children.Add(new TextBlock { Text = Model.L("memory.decision.review", reason), TextWrapping = TextWrapping.Wrap, Foreground = TryBrush("TextSecondary"), Margin = new Thickness(0, 6, 0, 0) });
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(0, 8, 0, 0) };
+            if (reason is not null)
+            {
+                var keep = new Button { Content = Model.L("memory.decision.keep"), Padding = new Thickness(10, 4) };
+                keep.Click += (_, _) => SaveMemory(new MemoryEdit(MemoryEditKind.KeepDecision, Key: note.Title));
+                actions.Children.Add(keep);
+            }
+            var forget = new Button { Content = Model.L("memory.forget"), Padding = new Thickness(10, 4) };
+            forget.Click += (_, _) => SaveMemory(new MemoryEdit(MemoryEditKind.ForgetDecision, Key: note.Title), clearSelection: true);
+            actions.Children.Add(forget); panel.Children.Add(actions);
+        }
         else if (note.Id == "learned_rules")
         {
             var manual = WorkspaceLessons.ManualRules(workspace);

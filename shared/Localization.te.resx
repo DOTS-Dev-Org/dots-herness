@@ -1323,4 +1323,6 @@
   <data name="plan.proposed" xml:space="preserve"><value>Claude ఒక ప్లాన్‌ను ప్రతిపాదించింది</value></data>
   <data name="plan.revise" xml:space="preserve"><value>సవరించు…</value></data>
   <data name="plan.acceptAuto" xml:space="preserve"><value>అంగీకరించి ఆటో మోడ్</value></data>
+  <data name="memory.decision.review" xml:space="preserve"><value>ఈ ప్రాజెక్ట్ నిర్ణయాల సమీక్ష దీనిని తొలగించమని సూచిస్తోంది: {0}</value></data>
+  <data name="memory.decision.keep" xml:space="preserve"><value>ఉంచు</value></data>
 </root>

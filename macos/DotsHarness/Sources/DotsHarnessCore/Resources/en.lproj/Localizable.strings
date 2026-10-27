@@ -1874,6 +1874,8 @@
 "vault.layer.projectHint" = "Project memory, from the signed event log in the repository.";
 "vault.notSaved.credential" = "Not saved: that looks like a credential. Memory is sent to the model, and project entries are committed with the repository.";
 "vault.removeFromMemory" = "Remove from memory";
+"vault.decision.review" = "A review of this project's decisions suggests removing this one: %@";
+"vault.decision.keep" = "Keep it";
 "vault.remove.hint" = "The signed event stays in the log; removing it from the repository history means rewriting git history.";
 "vault.rules.own" = "Your own rules";
 "vault.rules.add" = "Add rule";

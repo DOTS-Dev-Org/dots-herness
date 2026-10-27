@@ -1324,4 +1324,6 @@
   <data name="plan.proposed" xml:space="preserve"><value>Claude предложил план</value></data>
   <data name="plan.revise" xml:space="preserve"><value>Доработать…</value></data>
   <data name="plan.acceptAuto" xml:space="preserve"><value>Принять и авторежим</value></data>
+  <data name="memory.decision.review" xml:space="preserve"><value>Проверка решений этого проекта предлагает удалить это решение: {0}</value></data>
+  <data name="memory.decision.keep" xml:space="preserve"><value>Оставить</value></data>
 </root>

@@ -1387,6 +1387,8 @@
   <data name="memory.lesson.prompt" xml:space="preserve"><value>HerNess bunu önceki bir turdan çıkardı: “{0}” Doğru mu?</value></data>
   <data name="memory.lesson.keep" xml:space="preserve"><value>Doğru, sakla</value></data>
   <data name="memory.lesson.forget" xml:space="preserve"><value>Yanlış, unut</value></data>
+  <data name="memory.decision.review" xml:space="preserve"><value>Bu projenin kararlarını gözden geçiren inceleme bunun kaldırılmasını öneriyor: {0}</value></data>
+  <data name="memory.decision.keep" xml:space="preserve"><value>Sakla</value></data>
   <data name="settings.updates.auto" xml:space="preserve"><value>Güncellemeleri otomatik yükle</value></data>
   <data name="settings.updates.auto.hint" xml:space="preserve"><value>Açılışta yeni sürüm bulunursa indirilir, kurulur ve uygulama yeniden başlatılır.</value></data>
   <data name="settings.updates.installing" xml:space="preserve"><value>Güncelleme indiriliyor ve kuruluyor…</value></data>

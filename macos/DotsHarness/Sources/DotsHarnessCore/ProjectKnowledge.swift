@@ -71,11 +71,15 @@ public enum MemoryPreferenceScope: String, Sendable, Equatable {
 }
 
 /// A change a person makes to memory from the vault. Project entries and decisions
-/// change the repository's signed log, so they can only be taken out of the prompt.
+/// live in the repository's `.mem/facts.md`, so taking one out is a change Git records.
 /// Everything else is the person's and is deleted for good.
 public enum MemoryEdit: Sendable, Equatable {
     case setProject(key: String, value: String)
     case forgetProject(key: String)
+    /// Takes a decision out of the project's memory, suggested by a review or not.
+    case forgetDecision(key: String)
+    /// Keeps a decision a review suggested removing.
+    case keepDecision(key: String)
     case pinLesson(id: String)
     case forgetLesson(id: String)
     case editLesson(id: String, rule: String)

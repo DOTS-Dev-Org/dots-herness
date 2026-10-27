@@ -1323,4 +1323,6 @@
   <data name="plan.proposed" xml:space="preserve"><value>A Claude tervet javasolt</value></data>
   <data name="plan.revise" xml:space="preserve"><value>Átdolgozás…</value></data>
   <data name="plan.acceptAuto" xml:space="preserve"><value>Elfogadás és automatikus mód</value></data>
+  <data name="memory.decision.review" xml:space="preserve"><value>A projekt döntéseinek áttekintése ennek eltávolítását javasolja: {0}</value></data>
+  <data name="memory.decision.keep" xml:space="preserve"><value>Megtartás</value></data>
 </root>

@@ -1852,6 +1852,8 @@
 "vault.layer.projectHint" = "Memori proyek, dari log peristiwa bertanda tangan di repositori.";
 "vault.notSaved.credential" = "Tidak disimpan: teks itu tampak seperti kredensial. Memori dikirim ke model, dan entri proyek di-commit ke repositori.";
 "vault.removeFromMemory" = "Hapus dari memori";
+"vault.decision.review" = "Tinjauan keputusan proyek ini menyarankan untuk menghapus yang ini: %@";
+"vault.decision.keep" = "Simpan";
 "vault.remove.hint" = "Peristiwa bertanda tangan tetap ada di log; menghapusnya dari riwayat repositori berarti menulis ulang riwayat git.";
 "vault.rules.own" = "Aturan Anda sendiri";
 "vault.rules.add" = "Tambah aturan";

@@ -1323,4 +1323,6 @@
   <data name="plan.proposed" xml:space="preserve"><value>Claude ஒரு திட்டத்தை முன்மொழிந்தது</value></data>
   <data name="plan.revise" xml:space="preserve"><value>திருத்து…</value></data>
   <data name="plan.acceptAuto" xml:space="preserve"><value>ஏற்று, தானியங்கு முறை</value></data>
+  <data name="memory.decision.review" xml:space="preserve"><value>இந்தத் திட்டத்தின் முடிவுகளின் மதிப்பாய்வு இதை நீக்க பரிந்துரைக்கிறது: {0}</value></data>
+  <data name="memory.decision.keep" xml:space="preserve"><value>வைத்திரு</value></data>
 </root>

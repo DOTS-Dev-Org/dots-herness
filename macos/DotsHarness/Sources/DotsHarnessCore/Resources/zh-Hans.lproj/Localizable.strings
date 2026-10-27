@@ -1832,6 +1832,8 @@
 "vault.layer.projectHint" = "项目记忆，来自仓库中的签名事件日志。";
 "vault.notSaved.credential" = "未保存：这看起来像凭据。记忆会发送给模型，项目条目会随仓库一起提交。";
 "vault.removeFromMemory" = "从记忆中移除";
+"vault.decision.review" = "对本项目决策的审查建议删除此项：%@";
+"vault.decision.keep" = "保留";
 "vault.remove.hint" = "签名事件会保留在日志中；要从仓库历史中删除它，需要重写 git 历史。";
 "vault.rules.own" = "你的规则";
 "vault.rules.add" = "添加规则";

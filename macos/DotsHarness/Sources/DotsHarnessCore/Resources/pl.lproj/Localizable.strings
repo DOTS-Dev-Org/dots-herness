@@ -1852,6 +1852,8 @@
 "vault.layer.projectHint" = "Pamięć projektu z podpisanego dziennika zdarzeń w repozytorium.";
 "vault.notSaved.credential" = "Nie zapisano: wygląda to na dane logowania. Pamięć jest wysyłana do modelu, a wpisy projektu trafiają do repozytorium.";
 "vault.removeFromMemory" = "Usuń z pamięci";
+"vault.decision.review" = "Przegląd decyzji tego projektu sugeruje usunięcie tej: %@";
+"vault.decision.keep" = "Zachowaj";
 "vault.remove.hint" = "Podpisane zdarzenie zostaje w dzienniku; usunięcie go z historii repozytorium wymaga przepisania historii git.";
 "vault.rules.own" = "Twoje własne reguły";
 "vault.rules.add" = "Dodaj regułę";

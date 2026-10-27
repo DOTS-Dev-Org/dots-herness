@@ -206,7 +206,7 @@ public static class WorkspaceInsights
 
     private static string ManifestPath(string workspace) => Path.Combine(workspace, ".mem", "manifest.json");
 
-    private static string? ManifestId(string workspace)
+    internal static string? ManifestId(string workspace)
     {
         try
         {
@@ -504,7 +504,7 @@ public static class WorkspaceInsights
         return value.StartsWith('/') || value.Contains("..") || value.Contains(':') ? "" : value;
     }
 
-    private static JsonObject? ReplyObject(string reply)
+    internal static JsonObject? ReplyObject(string reply)
     {
         var start = reply.IndexOf('{');
         var end = reply.LastIndexOf('}');
@@ -513,7 +513,7 @@ public static class WorkspaceInsights
         catch (JsonException) { return null; }
     }
 
-    private static string Text(JsonNode? node) => node is JsonValue value && value.TryGetValue<string>(out var text) ? text : "";
+    internal static string Text(JsonNode? node) => node is JsonValue value && value.TryGetValue<string>(out var text) ? text : "";
 
     private static List<string> Strings(JsonNode? node, int limit) =>
         node is JsonArray array
@@ -525,7 +525,7 @@ public static class WorkspaceInsights
         node is JsonArray array ? array.Select(Text).Where(id => id.Length > 0).ToHashSet(StringComparer.Ordinal) : [];
 
     /// <summary>A text without case or diacritics, to tell when two findings say the same words.</summary>
-    private static string Folded(string text) => new(text.Normalize(NormalizationForm.FormD).ToLowerInvariant()
+    internal static string Folded(string text) => new(text.Normalize(NormalizationForm.FormD).ToLowerInvariant()
         .Where(character => char.GetUnicodeCategory(character) != System.Globalization.UnicodeCategory.NonSpacingMark).ToArray());
 
     /// <summary>
@@ -626,9 +626,11 @@ public static class WorkspaceInsights
     public static string Recall(string? workspace, string? userRoot, string query)
     {
         var findings = string.Join("\n", Ranked(Sorted(workspace, userRoot), query).Take(RecallLimit).Select(Line));
+        var decisions = ProjectDecisions.RecallText(WorkspaceFacts.Read(workspace), query);
         var tasks = RelevantTasks(workspace, userRoot, query);
         return string.Join("\n\n", new[]
         {
+            decisions.Length == 0 ? "" : "Project decisions:\n" + decisions,
             findings.Length == 0 ? "" : "Findings:\n" + findings,
             tasks.Length == 0 ? "" : "Earlier task outcomes:\n" + tasks,
         }.Where(section => section.Length > 0));
@@ -644,7 +646,7 @@ public static class WorkspaceInsights
         $"- [{item.Kind}] {item.Text}" + (item.Files.Count == 0 ? "" : $" ({string.Join(", ", item.Files.Take(4))})");
 
     /// <summary>The findings sharing a word with `text`, best first; the ones sharing none are left out.</summary>
-    private static List<MemoryInsight> Ranked(List<MemoryInsight> all, string text)
+    internal static List<MemoryInsight> Ranked(List<MemoryInsight> all, string text)
     {
         var terms = Tokens(text);
         static bool Matches(string term, string token) =>
@@ -675,10 +677,13 @@ public static class WorkspaceInsights
         var code = WorkspaceCodeGraph.Text(workspace, userRoot, prompt, includeMemory: memoryEnabled)
             ?? WorkspaceFileIndex.Text(workspace, prompt, memoryEnabled ? userRoot : null);
         if (!memoryEnabled) return code;
+        var decisions = ProjectDecisions.RequestText(WorkspaceFacts.Read(workspace), ProjectDecisions.CurrentPlatform, prompt);
         var known = Text(workspace, userRoot, prompt);
         var tasks = RelevantTasks(workspace, userRoot, prompt);
         return string.Join("\n\n", new[]
         {
+            decisions.Length == 0 ? "" : "## Project decisions recalled for this request"
+                + (WorkspaceFacts.Trusted(workspace, userRoot) ? "" : " (from the repository; the user has not trusted it)") + "\n" + decisions,
             known.Length == 0 ? "" : "## What earlier work in this project taught\nFindings recalled for this request. Trust the code over them when the two disagree.\n" + known,
             code,
             tasks.Length == 0 ? "" : "## Relevant task history\n" + tasks,

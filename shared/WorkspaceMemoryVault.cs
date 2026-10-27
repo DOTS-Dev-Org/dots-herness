@@ -22,7 +22,7 @@ public sealed record MemoryVault(IReadOnlyList<MemoryNote> Notes, IReadOnlyList<
     public static MemoryVault Empty { get; } = new([], []);
 }
 
-public enum MemoryEditKind { SetProject, ForgetProject, PinLesson, ForgetLesson, EditLesson, SetManualRules, EditInsight, ForgetInsight }
+public enum MemoryEditKind { SetProject, ForgetProject, PinLesson, ForgetLesson, EditLesson, SetManualRules, EditInsight, ForgetInsight, ForgetDecision, KeepDecision }
 public sealed record MemoryEdit(MemoryEditKind Kind, string Key = "", string Id = "", string Value = "");
 
 public static class WorkspaceMemoryVault
@@ -31,6 +31,8 @@ public static class WorkspaceMemoryVault
     private const string ProjectPrefix = "project:";
     public const string InsightPrefix = "insight:";
     public const string ToolPrefix = "tool:";
+    /// <summary>The tag of a decision a review suggested removing; see <see cref="ProjectDecisions.Proposals"/>.</summary>
+    public const string ReviewTag = "review";
 
     public static MemoryVault Read(string? workspace, string? userRoot = null)
     {
@@ -76,11 +78,13 @@ public static class WorkspaceMemoryVault
         AddLearned("learned_rules", "rule", "Learned rules", "learned_rules.md",
             learnedBody.Length == 0 ? "# Learned rules" : learnedBody);
 
+        var review = ProjectDecisions.Proposals(workspace, userRoot).Select(item => item.Key).ToHashSet(StringComparer.Ordinal);
         foreach (var fact in WorkspaceFacts.Read(workspace)
             .Where(item => item.Kind is "project" or "preference" or "decision")
             .OrderBy(item => item.Kind, StringComparer.Ordinal).ThenBy(item => item.Key, StringComparer.Ordinal))
-            AddLearned(fact.Kind == "decision" ? "decision-" + fact.Key : ProjectPrefix + fact.Key,
-                fact.Kind, fact.Key, fact.Kind == "decision" ? ".mem/facts.md" : "", fact.Text);
+            AddLearned(fact.Kind == "decision" ? ProjectDecisions.NoteId(fact.Key) : ProjectPrefix + fact.Key,
+                fact.Kind, fact.Key, fact.Kind == "decision" ? ".mem/facts.md" : "", fact.Text,
+                fact.Kind != "decision" ? [] : ProjectDecisions.PlatformsOf(fact.Text).Concat(review.Contains(fact.Key) ? [ReviewTag] : []));
 
         var profile = WorkspaceFacts.UserText(userRoot, workspace);
         if (profile.Length > 0) AddLearned("user-profile", "profile", "User profile", "", profile);
@@ -138,10 +142,10 @@ public static class WorkspaceMemoryVault
             { Backlinks = backlinks.GetValueOrDefault(id, []).OrderBy(item => item, StringComparer.Ordinal).ToList() }).ToList();
         return new MemoryVault(notes, edges);
 
-        void AddLearned(string id, string kind, string title, string path, string body)
+        void AddLearned(string id, string kind, string title, string path, string body, IEnumerable<string>? tags = null)
         {
             if (string.IsNullOrWhiteSpace(body)) return;
-            byId[id] = new MemoryNote(id, kind, title, path, body, [kind], ["index"], [], true);
+            byId[id] = new MemoryNote(id, kind, title, path, body, [kind, .. tags ?? []], ["index"], [], true);
             order.Add(id);
             if (byId.TryGetValue("index", out var indexNote) && !indexNote.Links.Contains(id, StringComparer.Ordinal))
                 byId["index"] = indexNote with { Links = indexNote.Links.Append(id).ToList() };
@@ -165,6 +169,8 @@ public static class WorkspaceMemoryVault
             MemoryEditKind.SetManualRules => WorkspaceLessons.SetManualRules(workspace, value, userRoot),
             MemoryEditKind.EditInsight => WorkspaceInsights.EditInsight(workspace, userRoot, edit.Id, value),
             MemoryEditKind.ForgetInsight => WorkspaceInsights.ForgetInsight(workspace, userRoot, edit.Id),
+            MemoryEditKind.ForgetDecision => ProjectDecisions.Forget(workspace, userRoot, edit.Key),
+            MemoryEditKind.KeepDecision => ProjectDecisions.Keep(workspace, userRoot, edit.Key),
             _ => false,
         };
     }

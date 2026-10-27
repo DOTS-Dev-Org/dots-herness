@@ -1323,4 +1323,6 @@
   <data name="plan.proposed" xml:space="preserve"><value>Claude ने एक प्लॅन सुचवला</value></data>
   <data name="plan.revise" xml:space="preserve"><value>सुधारा…</value></data>
   <data name="plan.acceptAuto" xml:space="preserve"><value>स्वीकारा आणि ऑटो मोड</value></data>
+  <data name="memory.decision.review" xml:space="preserve"><value>या प्रकल्पाच्या निर्णयांच्या पुनरावलोकनात हा काढून टाकण्याची सूचना आहे: {0}</value></data>
+  <data name="memory.decision.keep" xml:space="preserve"><value>ठेवा</value></data>
 </root>

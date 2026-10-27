@@ -1832,6 +1832,8 @@
 "vault.layer.projectHint" = "저장소의 서명된 이벤트 로그에서 가져온 프로젝트 메모리입니다.";
 "vault.notSaved.credential" = "저장되지 않았습니다: 자격 증명처럼 보입니다. 메모리는 모델에 전송되고 프로젝트 항목은 저장소에 커밋됩니다.";
 "vault.removeFromMemory" = "메모리에서 제거";
+"vault.decision.review" = "이 프로젝트의 결정 검토에서 이 항목을 삭제하도록 제안합니다: %@";
+"vault.decision.keep" = "유지";
 "vault.remove.hint" = "서명된 이벤트는 로그에 남습니다. 저장소 기록에서 지우려면 git 기록을 다시 작성해야 합니다.";
 "vault.rules.own" = "나만의 규칙";
 "vault.rules.add" = "규칙 추가";

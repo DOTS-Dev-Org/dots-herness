@@ -1852,6 +1852,8 @@
 "vault.layer.projectHint" = "Memoria proiectului, din jurnalul de evenimente semnat din depozit.";
 "vault.notSaved.credential" = "Nesalvat: pare a fi o dată de autentificare. Memoria este trimisă modelului, iar intrările proiectului sunt incluse în depozit.";
 "vault.removeFromMemory" = "Elimină din memorie";
+"vault.decision.review" = "O revizuire a deciziilor acestui proiect sugerează eliminarea acesteia: %@";
+"vault.decision.keep" = "Păstrează";
 "vault.remove.hint" = "Evenimentul semnat rămâne în jurnal; eliminarea lui din istoricul depozitului înseamnă rescrierea istoricului git.";
 "vault.rules.own" = "Regulile tale";
 "vault.rules.add" = "Adaugă regulă";

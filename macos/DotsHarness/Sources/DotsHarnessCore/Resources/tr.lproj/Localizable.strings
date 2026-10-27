@@ -1867,6 +1867,8 @@
 "vault.layer.projectHint" = "Proje belleği; repodaki imzalı olay günlüğünden.";
 "vault.notSaved.credential" = "Kaydedilmedi: metin bir kimlik bilgisine benziyor. Hafıza modele gönderilir; proje girdileri repoda commit edilir.";
 "vault.removeFromMemory" = "Bellekten çıkar";
+"vault.decision.review" = "Bu projenin kararlarını gözden geçiren inceleme bunun kaldırılmasını öneriyor: %@";
+"vault.decision.keep" = "Sakla";
 "vault.remove.hint" = "İmzalı olay günlükte kalır; repo geçmişinden de silmek için git geçmişini yeniden yazmak gerekir.";
 "vault.rules.own" = "Kendi kurallarınız";
 "vault.rules.add" = "Kural ekle";

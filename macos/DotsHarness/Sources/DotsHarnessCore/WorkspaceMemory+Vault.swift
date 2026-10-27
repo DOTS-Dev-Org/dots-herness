@@ -12,15 +12,16 @@ extension WorkspaceMemory {
     /// Regenerates `.mem/index.md`, the project's map of content. It links the map and
     /// the decisions only: tasks and chats belong to the person, and the repository
     /// never names them. Cheap; called after any decision write.
+    /// The tag of a decision a review suggested removing; see `decisionProposals`.
+    public static let decisionReviewTag = "review"
+
+    /// The index lists the decisions `.mem/facts.md` holds, which is where they have lived
+    /// since the signed event log; the `decisions/` notes were a projection of that log.
     func writeIndexNote() {
         guard let root = memoryDirectory else { return }
-        let decisionLines = sortedNotes(in: root.appendingPathComponent("decisions"))
-            .compactMap { url -> String? in
-                guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
-                let front = parseFrontmatter(text)
-                let id = front["id"] ?? url.deletingPathExtension().lastPathComponent
-                return "- [[\(id)]] — \(unquoted(front["title"] ?? id))"
-            }
+        let decisionLines = projectMemoryFacts().filter { $0.kind == "decision" }.map { fact in
+            "- [[\(ProjectDecisions.noteID(fact.key))]] — \(sanitize(ProjectDecisions.body(fact.text), limit: 120))"
+        }
         let front = frontmatter([
             "id": "index",
             "type": "index",
@@ -31,7 +32,7 @@ extension WorkspaceMemory {
             front,
             "# Memory index",
             "",
-            "Revision \(revision) · [[map]]",
+            "\(decisionLines.count) decisions · [[map]]",
             "",
             "## Decisions",
             "",
@@ -102,8 +103,10 @@ extension WorkspaceMemory {
         for (key, value) in projectDefaults.sorted(by: { $0.key < $1.key }) {
             learned(id: Self.projectNotePrefix + key, kind: "project", title: key, path: "", body: value, layer: .project)
         }
+        let review = Set(decisionProposals.map(\.key))
         for fact in projectMemoryFacts().filter({ $0.kind == "decision" }) {
-            learned(id: "decision-\(fact.key)", kind: "decision", title: fact.key, path: ".mem/facts.md", body: fact.text, layer: .project)
+            learned(id: ProjectDecisions.noteID(fact.key), kind: "decision", title: fact.key, path: ".mem/facts.md", body: fact.text, layer: .project,
+                    tags: ProjectDecisions.platforms(of: fact.text) + (review.contains(fact.key) ? [Self.decisionReviewTag] : []))
         }
 
         // The stack is the project's own knowledge: its manifests say it, the map names it.

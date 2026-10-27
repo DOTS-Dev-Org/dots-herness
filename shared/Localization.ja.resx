@@ -1324,4 +1324,6 @@
   <data name="plan.proposed" xml:space="preserve"><value>Claude がプランを提案しました</value></data>
   <data name="plan.revise" xml:space="preserve"><value>修正…</value></data>
   <data name="plan.acceptAuto" xml:space="preserve"><value>承認して自動モード</value></data>
+  <data name="memory.decision.review" xml:space="preserve"><value>このプロジェクトの決定事項のレビューで、これを削除するよう提案されています: {0}</value></data>
+  <data name="memory.decision.keep" xml:space="preserve"><value>残す</value></data>
 </root>

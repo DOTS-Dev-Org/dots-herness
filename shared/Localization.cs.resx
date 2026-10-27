@@ -1324,4 +1324,6 @@
   <data name="plan.proposed" xml:space="preserve"><value>Claude navrhl plán</value></data>
   <data name="plan.revise" xml:space="preserve"><value>Upravit…</value></data>
   <data name="plan.acceptAuto" xml:space="preserve"><value>Přijmout a automatický režim</value></data>
+  <data name="memory.decision.review" xml:space="preserve"><value>Kontrola rozhodnutí tohoto projektu navrhuje toto odstranit: {0}</value></data>
+  <data name="memory.decision.keep" xml:space="preserve"><value>Ponechat</value></data>
 </root>

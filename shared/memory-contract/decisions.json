@@ -1,0 +1,212 @@
+{
+  "_comment": "Cases the C# (shared/ProjectDecisionsTests.cs) and Swift (ProjectDecisionsTests.swift) decision logic must agree on.",
+  "same": [
+    {
+      "left": "macOS, Windows, and Linux provider settings display each supported account's reported 5-hour and weekly usage windows separately, including per-window percentages and reset times, instead of a single aggregated remaining-quota value; this k",
+      "right": "macOS provider settings display each account's reported 5-hour and weekly usage windows separately, including per-window usage percentages and reset times, instead of a single aggregated remaining-quota badge; this avoids conflating indepen",
+      "same": true
+    },
+    {
+      "left": "Across desktop and mobile, New Conversation preserves the active project's workspace/project ID; an active projectless conversation remains projectless. On Windows/Linux, explicitly choosing No Project restores the latest standalone chat or",
+      "right": "Across desktop and mobile, New Conversation preserves the active project's workspace/project ID; an active projectless conversation remains projectless. On Windows/Linux, explicitly choosing No Project restores the most recent standalone ch",
+      "same": true
+    },
+    {
+      "left": "In macOS, a new chat stays in the selected project; when no project is selected it uses the selected project's path or most-recent available project, unless a projectless chat is active. Explicitly choosing No Project restores the latest st",
+      "right": "Across desktop and mobile, New Conversation preserves the active project's workspace/project ID; an active projectless conversation remains projectless. On Windows/Linux, explicitly choosing No Project restores the latest standalone chat or",
+      "same": false
+    },
+    {
+      "left": "[macos] Ship SQLite, not Postgres. Reason: one file to back up.",
+      "right": "Ship SQLite, not Postgres. Reason: one file to back up.",
+      "same": true
+    },
+    {
+      "left": "Use tabs.",
+      "right": "use TABS.",
+      "same": true
+    },
+    {
+      "left": "Use tabs.",
+      "right": "Use spaces.",
+      "same": false
+    }
+  ],
+  "platforms": [
+    {
+      "text": "macOS sohbetinde token akarken otomatik takip durur.",
+      "platforms": [
+        "macos"
+      ]
+    },
+    {
+      "text": "macOS, Windows, and Linux provider settings display usage windows.",
+      "platforms": [
+        "macos",
+        "windows",
+        "linux"
+      ]
+    },
+    {
+      "text": "Across desktop and mobile, New Conversation preserves the project.",
+      "platforms": []
+    },
+    {
+      "text": "Quick replies on iOS and Android derive from the last question.",
+      "platforms": [
+        "ios",
+        "android"
+      ]
+    },
+    {
+      "text": "Windows sohbeti FileDrop, Linux/Avalonia sohbeti image bırakmalarını destekler.",
+      "platforms": [
+        "windows",
+        "linux"
+      ]
+    },
+    {
+      "text": "We ship SQLite, not Postgres.",
+      "platforms": []
+    },
+    {
+      "text": "[windows, linux] The tray icon stays.",
+      "platforms": [
+        "windows",
+        "linux"
+      ]
+    },
+    {
+      "text": "[macos] Covers macOS only even though Windows is named.",
+      "platforms": [
+        "macos"
+      ]
+    },
+    {
+      "text": "[todo] Not a tag; scenarios mention no platform.",
+      "platforms": []
+    }
+  ],
+  "applies": [
+    {
+      "text": "macOS only behaviour.",
+      "platform": "windows",
+      "applies": false
+    },
+    {
+      "text": "macOS only behaviour.",
+      "platform": "macos",
+      "applies": true
+    },
+    {
+      "text": "Applies to every client.",
+      "platform": "linux",
+      "applies": true
+    }
+  ],
+  "compose": [
+    {
+      "statement": "Keep the effort level",
+      "reason": "changing it invalidates the measured prompt cache",
+      "platforms": [
+        "desktop"
+      ],
+      "text": "[macos, windows, linux] Keep the effort level. Reason: changing it invalidates the measured prompt cache"
+    },
+    {
+      "statement": "Ship SQLite.",
+      "reason": "Reason: one file to back up.",
+      "platforms": [
+        "all"
+      ],
+      "text": "Ship SQLite. Reason: one file to back up."
+    },
+    {
+      "statement": "Use the system font",
+      "reason": "",
+      "platforms": [
+        "mac",
+        "ios",
+        "nonsense"
+      ],
+      "text": "[macos, ios] Use the system font"
+    }
+  ],
+  "tidy": [
+    {
+      "kind": "decision",
+      "key": "decision-cut",
+      "text": "macOS, Windows, and Linux provider settings display each supported account's reported 5-hour and weekly usage windows separately, including per-window percentages and reset times, instead of a single aggregated remaining-quota value; this k",
+      "tidied": "macOS, Windows, and Linux provider settings display each supported account's reported 5-hour and weekly usage windows separately, including per-window percentages and reset times, instead of a single aggregated remaining-quota value;"
+    },
+    {
+      "kind": "decision",
+      "key": "decision-whole",
+      "text": "Ship SQLite, not Postgres. Reason: one file to back up.",
+      "tidied": "Ship SQLite, not Postgres. Reason: one file to back up."
+    }
+  ],
+  "evict": {
+    "max": 4,
+    "facts": [
+      {
+        "kind": "project",
+        "key": "architecture",
+        "text": "Modules."
+      },
+      {
+        "kind": "project",
+        "key": "goal",
+        "text": "A goal."
+      },
+      {
+        "kind": "decision",
+        "key": "d1",
+        "text": "Oldest decision."
+      },
+      {
+        "kind": "decision",
+        "key": "d2",
+        "text": "Second decision."
+      },
+      {
+        "kind": "project",
+        "key": "conventions",
+        "text": "Naming."
+      },
+      {
+        "kind": "decision",
+        "key": "d3",
+        "text": "Newest decision."
+      }
+    ],
+    "kept": [
+      "architecture",
+      "goal",
+      "conventions",
+      "d3"
+    ]
+  },
+  "remotes": [
+    {
+      "url": "git@github.com:DOTS-Dev-Org/dots-herness.git",
+      "normalized": "github.com/DOTS-Dev-Org/dots-herness"
+    },
+    {
+      "url": "https://user:token@GitHub.com/DOTS-Dev-Org/dots-herness.git/",
+      "normalized": "github.com/DOTS-Dev-Org/dots-herness"
+    },
+    {
+      "url": "ssh://git@github.com:22/DOTS-Dev-Org/dots-herness",
+      "normalized": "github.com/DOTS-Dev-Org/dots-herness"
+    },
+    {
+      "url": "http://127.0.0.1:41000/git/DOTS-Dev-Org/dots-herness",
+      "normalized": "127.0.0.1:41000/git/DOTS-Dev-Org/dots-herness"
+    },
+    {
+      "url": "/srv/repos/project",
+      "normalized": null
+    }
+  ]
+}

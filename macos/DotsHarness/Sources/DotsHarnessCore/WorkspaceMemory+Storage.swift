@@ -48,6 +48,7 @@ extension WorkspaceMemory {
         // Replay old event files for compatibility. New project facts use `.mem/facts.md`;
         // signatures no longer grant repository access. Builds before this one left state.json.
         rebuildProjection()
+        retireLegacyProjectLog()
         mapText = (try? String(contentsOf: root.appendingPathComponent("map.md"), encoding: .utf8)) ?? ""
         if let projectID, let workspaceURL { profile.recordProject(name: workspaceURL.lastPathComponent, projectID: projectID) }
     }
@@ -487,6 +488,38 @@ extension WorkspaceMemory {
             state["lastMapRevision"] = payload["revision"] as? Int ?? (state["lastMapRevision"] as? Int ?? 0)
         default: break
         }
+    }
+
+    /// Writes what the old signed log still says - its accepted decisions, its `decisions/`
+    /// notes, and its project entries while there was no `.mem/facts.md` - into `.mem/facts.md`,
+    /// where every build reads them, then removes the log's project events, those notes and the
+    /// derived `state.json`. Nothing a prompt reads changes: `projectMemoryFacts` already folded
+    /// all of it in. Only memory this checkout trusts is rewritten, and only once: afterwards
+    /// there is nothing left to retire. A teammate's own records and unsigned files are not
+    /// project events and stay. Git history keeps every removed file.
+    func retireLegacyProjectLog() {
+        guard let root = memoryDirectory, !isSymbolicLink(root), projectMemoryTrusted else { return }
+        let eventsURL = root.appendingPathComponent("events", isDirectory: true)
+        let decisionsURL = root.appendingPathComponent("decisions", isDirectory: true)
+        let stateURL = root.appendingPathComponent("state.json")
+        let projectEvents = ((try? fileManager.contentsOfDirectory(at: eventsURL, includingPropertiesForKeys: nil)) ?? [])
+            .filter { url in
+                guard url.pathExtension == "json", !isSymbolicLink(url),
+                      let data = try? Data(contentsOf: url),
+                      let event = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return false }
+                return Self.sharedEventScopes.contains(event["scope"] as? String ?? "")
+            }
+        let decisionNotes = ((try? fileManager.contentsOfDirectory(at: decisionsURL, includingPropertiesForKeys: nil)) ?? [])
+            .filter { $0.pathExtension == "md" && !isSymbolicLink($0) }
+        guard !projectEvents.isEmpty || !decisionNotes.isEmpty || fileManager.fileExists(atPath: stateURL.path) else { return }
+        // Written first: a log is removed only once what it says is in facts.md.
+        do { try updateProjectMemoryFacts { $0 } } catch { return }
+        for url in projectEvents + decisionNotes { try? fileManager.removeItem(at: url) }
+        try? fileManager.removeItem(at: stateURL)
+        for folder in [eventsURL, decisionsURL] where (try? fileManager.contentsOfDirectory(atPath: folder.path))?.isEmpty == true {
+            try? fileManager.removeItem(at: folder)
+        }
+        rebuildProjection()
     }
 
     /// Used only while reading old repository events; new facts are stored in facts.md.

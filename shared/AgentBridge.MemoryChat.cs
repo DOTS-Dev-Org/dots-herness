@@ -50,6 +50,7 @@ public sealed partial class AgentBridge
     public static MemoryEdit? MemoryRemoval(MemoryNote note) => note.Kind switch
     {
         "project" => new MemoryEdit(MemoryEditKind.ForgetProject, Key: note.Title),
+        "decision" => new MemoryEdit(MemoryEditKind.ForgetDecision, Key: note.Title),
         "insight" when note.Id.StartsWith(WorkspaceMemoryVault.InsightPrefix, StringComparison.Ordinal) =>
             new MemoryEdit(MemoryEditKind.ForgetInsight, Id: note.Id[WorkspaceMemoryVault.InsightPrefix.Length..]),
         _ => null,

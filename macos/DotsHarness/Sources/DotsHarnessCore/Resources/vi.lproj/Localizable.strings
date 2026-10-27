@@ -1852,6 +1852,8 @@
 "vault.layer.projectHint" = "Bộ nhớ dự án, lấy từ nhật ký sự kiện đã ký trong kho mã.";
 "vault.notSaved.credential" = "Chưa lưu: nội dung giống thông tin xác thực. Bộ nhớ được gửi tới mô hình, còn các mục dự án được commit vào kho mã.";
 "vault.removeFromMemory" = "Xóa khỏi bộ nhớ";
+"vault.decision.review" = "Bản rà soát các quyết định của dự án này đề xuất xóa quyết định này: %@";
+"vault.decision.keep" = "Giữ lại";
 "vault.remove.hint" = "Sự kiện đã ký vẫn nằm trong nhật ký; muốn xóa khỏi lịch sử kho mã phải viết lại lịch sử git.";
 "vault.rules.own" = "Quy tắc của riêng bạn";
 "vault.rules.add" = "Thêm quy tắc";

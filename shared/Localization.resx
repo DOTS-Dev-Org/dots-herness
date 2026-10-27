@@ -1387,6 +1387,8 @@
   <data name="memory.lesson.prompt" xml:space="preserve"><value>HerNess inferred this from one earlier turn: “{0}” Is it right?</value></data>
   <data name="memory.lesson.keep" xml:space="preserve"><value>Right, keep it</value></data>
   <data name="memory.lesson.forget" xml:space="preserve"><value>Wrong, forget it</value></data>
+  <data name="memory.decision.review" xml:space="preserve"><value>A review of this project's decisions suggests removing this one: {0}</value></data>
+  <data name="memory.decision.keep" xml:space="preserve"><value>Keep it</value></data>
   <data name="notifications.title" xml:space="preserve"><value>Notifications</value></data>
   <data name="notifications.emptyTitle" xml:space="preserve"><value>You're all caught up</value></data>
   <data name="notifications.emptyBody" xml:space="preserve"><value>Questions and completed work will appear here.</value></data>

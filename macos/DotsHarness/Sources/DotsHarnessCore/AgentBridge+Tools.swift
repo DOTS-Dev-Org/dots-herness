@@ -600,6 +600,8 @@ extension NativeAgentHost {
     // MARK: - Editing memory from the vault
 
     public var lessons: [Lesson] { Lesson.ranked(feedbackStore?.lessons() ?? []) }
+    /// Why a review suggested removing this decision; nil when it did not.
+    public func decisionReviewReason(key: String) -> String? { memory.decisionProposalReason(key: key) }
     public var manualRules: String { feedbackStore?.manualRules() ?? "" }
 
     /// Every edit goes through here: what a person types into memory is sent to
@@ -612,7 +614,7 @@ extension NativeAgentHost {
         case .setProject(_, let value), .editLesson(_, let value), .setManualRules(let value), .addManualRule(let value),
              .setPreference(_, let value, _), .addInsight(_, let value), .editInsight(_, let value):
             text = value
-        case .forgetProject, .pinLesson, .forgetLesson, .deletePreference, .deleteTask, .deleteConversation, .deleteInsight: text = ""
+        case .forgetProject, .forgetDecision, .keepDecision, .pinLesson, .forgetLesson, .deletePreference, .deleteTask, .deleteConversation, .deleteInsight: text = ""
         }
         // What a person types is sent to the model, and project entries are committed.
         guard !RememberTool.looksLikeSecret(.init(kind: "project", key: "note", text: text)) else { return false }
@@ -623,6 +625,8 @@ extension NativeAgentHost {
                     ? try memory.forgetProjectDefault(key: key)
                     : try memory.setProjectDefault(key: key, value: value)
             case .forgetProject(let key): try memory.forgetProjectDefault(key: key)
+            case .forgetDecision(let key): try memory.forgetProjectDecision(key: key)
+            case .keepDecision(let key): memory.keepProjectDecision(key: key)
             case .pinLesson(let id): try feedbackStore?.pinLesson(id: id)
             case .forgetLesson(let id): try feedbackStore?.forgetLesson(id: id)
             case .editLesson(let id, let rule): try feedbackStore?.editLesson(id: id, rule: rule)
@@ -1358,7 +1362,7 @@ extension NativeAgentHost {
             case RememberTool.Kind.project.rawValue:
                 try memory.setProjectDefault(key: entry.key, value: entry.text)
             default:
-                try memory.recordProjectDecision(summary: entry.text)
+                try memory.recordProjectDecision(summary: entry.text, reason: entry.reason, platforms: entry.platforms)
             }
         } catch {
             return RememberTool.unavailableNotice

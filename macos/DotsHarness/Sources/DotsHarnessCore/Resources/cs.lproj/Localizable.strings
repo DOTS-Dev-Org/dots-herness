@@ -1852,6 +1852,8 @@
 "vault.layer.projectHint" = "Paměť projektu z podepsaného protokolu událostí v repozitáři.";
 "vault.notSaved.credential" = "Neuloženo: vypadá to jako přihlašovací údaj. Paměť se odesílá modelu a záznamy projektu se commitují do repozitáře.";
 "vault.removeFromMemory" = "Odebrat z paměti";
+"vault.decision.review" = "Kontrola rozhodnutí tohoto projektu navrhuje toto odstranit: %@";
+"vault.decision.keep" = "Ponechat";
 "vault.remove.hint" = "Podepsaná událost zůstává v protokolu; odstranění z historie repozitáře znamená přepsat historii gitu.";
 "vault.rules.own" = "Vaše vlastní pravidla";
 "vault.rules.add" = "Přidat pravidlo";

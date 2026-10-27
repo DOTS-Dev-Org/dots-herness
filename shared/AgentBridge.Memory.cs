@@ -30,8 +30,9 @@ public sealed partial class AgentBridge
           and decisions always use project scope.
           Before finishing a task, record every lasting, evidence-backed project decision you made,
           including deciding not to make a requested change because measured results or inspected
-          source show a durable tradeoff. Use kind "decision" and preserve its reason in the same
-          sentence. Do not wait for the background memory scan to infer it. Never record a secret,
+          source show a durable tradeoff. Use kind "decision", give its reason in "reason", and
+          name its platforms in "platforms" when it holds on some only. Do not wait for the
+          background memory scan to infer it. Never record a secret,
           a guess, a temporary choice, or anything those sections already state. Claim it was saved
           only after remember confirms it; if memory is unavailable, preserve the reason in the task
           outcome and say it was not saved as a durable fact.
@@ -87,7 +88,8 @@ public sealed partial class AgentBridge
     /// <summary>
     /// One step of the background work, for the open project only and only once a task has
     /// given it a memory: one unread part of it is studied, else its finished tasks are
-    /// scanned when that is due, else its findings are consolidated when they have grown.
+    /// scanned when that is due, else its findings are consolidated when they have grown,
+    /// else its decisions are reviewed when enough new ones were recorded.
     /// Returns whether a model was asked, which is when there may be more to do.
     /// </summary>
     public async Task<bool> TendMemoryAsync(bool force = false)
@@ -121,6 +123,13 @@ public sealed partial class AgentBridge
                 && await CheapCompletionAsync(WorkspaceInsights.ConsolidationSystemPrompt, payload) is { } consolidated)
             {
                 WorkspaceInsights.ApplyConsolidation(workspace, root, consolidated);
+                return true;
+            }
+            // The project's decisions: twins are merged, stale ones only suggested to the person.
+            if (ProjectDecisions.ConsolidationPayload(workspace, root) is { } decisions
+                && await CheapCompletionAsync(ProjectDecisions.ConsolidationSystemPrompt, decisions) is { } reviewed)
+            {
+                ProjectDecisions.ApplyConsolidation(workspace, root, reviewed);
                 return true;
             }
             return false;

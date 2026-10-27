@@ -1323,4 +1323,6 @@
   <data name="plan.proposed" xml:space="preserve"><value>Claude mengusulkan sebuah rencana</value></data>
   <data name="plan.revise" xml:space="preserve"><value>Revisi…</value></data>
   <data name="plan.acceptAuto" xml:space="preserve"><value>Terima dan mode otomatis</value></data>
+  <data name="memory.decision.review" xml:space="preserve"><value>Tinjauan keputusan proyek ini menyarankan untuk menghapus yang ini: {0}</value></data>
+  <data name="memory.decision.keep" xml:space="preserve"><value>Simpan</value></data>
 </root>

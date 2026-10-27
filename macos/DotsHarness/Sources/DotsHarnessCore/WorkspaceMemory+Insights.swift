@@ -334,27 +334,35 @@ extension WorkspaceMemory {
     /// with the request instead; see `decisionsText(for:)`.
     static let decisionBudget = 2_000
 
-    /// The project's decisions, from `.mem/facts.md`, in the shape recall ranks.
-    func decisionInsights() -> [MemoryInsight] {
-        projectMemoryFacts().filter { $0.kind == "decision" }.sorted { $0.key < $1.key }.map {
+    /// The project's decisions, from `.mem/facts.md`, in the shape recall ranks. With a
+    /// platform, only those about it; recall searches them all.
+    func decisionInsights(platform: String? = nil) -> [MemoryInsight] {
+        projectMemoryFacts().filter { fact in
+            fact.kind == "decision" && (platform.map { ProjectDecisions.applies(fact.text, platform: $0) } ?? true)
+        }.sorted { $0.key < $1.key }.map {
             MemoryInsight(id: $0.key, kind: .decision, text: $0.text, files: [], tools: [], keywords: nil,
                           runs: [], strength: 1, updatedAt: "")
         }
     }
 
-    /// Every decision while they fit the budget, unchanged from one request to the next so
-    /// the project memory stays cached; nil past it.
+    /// The decisions about other platforms, which leave the prompt to `recall`.
+    func otherPlatformDecisionCount() -> Int {
+        projectMemoryFacts().filter { $0.kind == "decision" && !ProjectDecisions.applies($0.text, platform: ProjectDecisions.currentPlatform) }.count
+    }
+
+    /// Every decision about this platform while they fit the budget, unchanged from one
+    /// request to the next so the project memory stays cached; nil past it.
     func allDecisionsText() -> String? {
-        let lines = decisionInsights().map { "- `\($0.id)`: \($0.text)" }
+        let lines = decisionInsights(platform: ProjectDecisions.currentPlatform).map { "- `\($0.id)`: \($0.text)" }
         return lines.reduce(0, { $0 + $1.count + 1 }) <= Self.decisionBudget ? lines.joined(separator: "\n") : nil
     }
 
-    /// Past the budget: the decisions sharing words with the request, best first, whole lines
-    /// until the budget is full. A decision the request does not name is left to `recall`.
+    /// Past the budget: this platform's decisions sharing words with the request, best first,
+    /// whole lines until the budget is full. A decision the request does not name is left to `recall`.
     func decisionsText(for prompt: String) -> String {
         guard allDecisionsText() == nil else { return "" }
         var used = 0
-        return rankedInsights(decisionInsights(), for: prompt).map { "- `\($0.id)`: \($0.text)" }.prefix { line in
+        return rankedInsights(decisionInsights(platform: ProjectDecisions.currentPlatform), for: prompt).map { "- `\($0.id)`: \($0.text)" }.prefix { line in
             used += line.count + 1
             return used <= Self.decisionBudget
         }.joined(separator: "\n")

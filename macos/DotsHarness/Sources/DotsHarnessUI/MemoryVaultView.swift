@@ -358,6 +358,8 @@ public struct MemoryVaultView: View {
                     Divider()
                     if note.kind == "project" {
                         projectEditor(note)
+                    } else if note.kind == "decision" {
+                        decisionEditor(note)
                     } else if note.id == "learned_rules" {
                         rulesEditor()
                     } else {
@@ -445,6 +447,30 @@ public struct MemoryVaultView: View {
             Text(AppCopy.text("vault.remove.hint"))
             .font(.caption)
             .foregroundStyle(.secondary)
+        }
+    }
+
+    /// One project decision: read, removed from `.mem/facts.md`, or kept when a review
+    /// suggested removing it. The suggestion is the person's to accept or turn down.
+    private func decisionEditor(_ note: MemoryNote) -> some View {
+        let reason = bridge.decisionReviewReason(key: note.title)
+        return VStack(alignment: .leading, spacing: 8) {
+            rendered(note.body)
+                .textSelection(.enabled)
+            if let reason {
+                Text(AppCopy.format("vault.decision.review", reason))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            HStack {
+                if reason != nil {
+                    Button(AppCopy.text("vault.decision.keep")) { save(.keepDecision(key: note.title)) }
+                }
+                Button(AppCopy.text("vault.removeFromMemory"), role: .destructive) {
+                    save(.forgetDecision(key: note.title))
+                    selectedID = nil
+                }
+            }
         }
     }
 

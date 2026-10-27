@@ -1832,6 +1832,8 @@
 "vault.layer.projectHint" = "Projektgedächtnis aus dem signierten Ereignisprotokoll im Repository.";
 "vault.notSaved.credential" = "Nicht gespeichert: Das sieht wie ein Zugangsdatum aus. Das Gedächtnis wird an das Modell gesendet, und Projekteinträge werden mit dem Repository committet.";
 "vault.removeFromMemory" = "Aus dem Gedächtnis entfernen";
+"vault.decision.review" = "Eine Prüfung der Entscheidungen dieses Projekts schlägt vor, diese zu entfernen: %@";
+"vault.decision.keep" = "Behalten";
 "vault.remove.hint" = "Das signierte Ereignis bleibt im Protokoll; um es aus der Repository-Historie zu entfernen, muss die Git-Historie umgeschrieben werden.";
 "vault.rules.own" = "Deine eigenen Regeln";
 "vault.rules.add" = "Regel hinzufügen";

@@ -1832,6 +1832,8 @@
 "vault.layer.projectHint" = "リポジトリ内の署名付きイベントログから読み込んだプロジェクトメモリです。";
 "vault.notSaved.credential" = "保存されませんでした: 認証情報のようです。メモリはモデルに送信され、プロジェクト項目はリポジトリにコミットされます。";
 "vault.removeFromMemory" = "メモリから削除";
+"vault.decision.review" = "このプロジェクトの決定事項のレビューで、これを削除するよう提案されています: %@";
+"vault.decision.keep" = "残す";
 "vault.remove.hint" = "署名付きイベントはログに残ります。リポジトリ履歴から消すには git 履歴の書き換えが必要です。";
 "vault.rules.own" = "自分のルール";
 "vault.rules.add" = "ルールを追加";

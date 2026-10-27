@@ -1852,6 +1852,8 @@
 "vault.layer.projectHint" = "Memori projek, daripada log peristiwa bertandatangan dalam repositori.";
 "vault.notSaved.credential" = "Tidak disimpan: teks itu kelihatan seperti kelayakan. Memori dihantar kepada model, dan entri projek di-commit bersama repositori.";
 "vault.removeFromMemory" = "Alih keluar daripada memori";
+"vault.decision.review" = "Semakan keputusan projek ini mencadangkan supaya yang ini dibuang: %@";
+"vault.decision.keep" = "Simpan";
 "vault.remove.hint" = "Peristiwa bertandatangan kekal dalam log; membuangnya daripada sejarah repositori bermakna menulis semula sejarah git.";
 "vault.rules.own" = "Peraturan anda sendiri";
 "vault.rules.add" = "Tambah peraturan";

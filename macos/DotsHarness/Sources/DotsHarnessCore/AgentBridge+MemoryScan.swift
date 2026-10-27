@@ -42,7 +42,8 @@ extension NativeAgentHost {
 
     /// One step of the background work, for the open project only and only once a prompt
     /// has given it a memory: it is compacted, its findings are consolidated when they have
-    /// grown, then one unread part of it is studied, then its finished tasks are scanned. With scanning off only the first step runs, which asks no model.
+    /// grown, its decisions are reviewed when enough were recorded, then one unread part of it
+    /// is studied, then its finished tasks are scanned. With scanning off only the first step runs, which asks no model.
     /// Returns whether a model was asked, which is when there may be more to do.
     func canStartAutomaticMemoryWork() -> Bool {
         !anyRunBusy && !memoryScanRunning
@@ -60,6 +61,8 @@ extension NativeAgentHost {
         guard !anyRunBusy else { return false }
         if await consolidate() { return true }
         guard !anyRunBusy else { return false }
+        if await reviewDecisions() { return true }
+        guard !anyRunBusy else { return false }
         if await study(memory) { return true }
         guard !anyRunBusy else { return false }
         return await scanMemory()
@@ -74,6 +77,20 @@ extension NativeAgentHost {
         guard let reply = await cheapCompletion(system: WorkspaceMemory.consolidationSystemPrompt, user: payload),
               !Task.isCancelled, memory.userMemoryDirectory == directory else { return false }
         memory.applyConsolidation(reply: reply)
+        memoryRevision += 1
+        return true
+    }
+
+    /// Asks a light model to merge the project's twin decisions and name the stale ones; see
+    /// WorkspaceMemory+Decisions. A stale one is only suggested to the person.
+    private func reviewDecisions() async -> Bool {
+        guard let payload = memory.decisionConsolidationPayload() else { return false }
+        memoryScanRunning = true
+        defer { memoryScanRunning = false }
+        let directory = memory.userMemoryDirectory
+        guard let reply = await cheapCompletion(system: ProjectDecisions.consolidationSystemPrompt, user: payload),
+              !Task.isCancelled, memory.userMemoryDirectory == directory else { return false }
+        memory.applyDecisionConsolidation(reply: reply)
         memoryRevision += 1
         return true
     }

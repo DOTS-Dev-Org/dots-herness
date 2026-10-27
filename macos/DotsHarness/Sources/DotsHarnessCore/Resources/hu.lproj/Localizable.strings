@@ -1852,6 +1852,8 @@
 "vault.layer.projectHint" = "Projektmemória a tároló aláírt eseménynaplójából.";
 "vault.notSaved.credential" = "Nincs mentve: ez hitelesítő adatnak tűnik. A memória a modellhez kerül, a projektbejegyzések pedig a tárolóba.";
 "vault.removeFromMemory" = "Eltávolítás a memóriából";
+"vault.decision.review" = "A projekt döntéseinek áttekintése ennek eltávolítását javasolja: %@";
+"vault.decision.keep" = "Megtartás";
 "vault.remove.hint" = "Az aláírt esemény a naplóban marad; a tároló előzményeiből csak a git-előzmények átírásával távolítható el.";
 "vault.rules.own" = "Saját szabályai";
 "vault.rules.add" = "Szabály hozzáadása";

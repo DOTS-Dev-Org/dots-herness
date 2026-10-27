@@ -41,6 +41,7 @@ extension MemoryEdit {
     public static func removal(of note: MemoryNote) -> MemoryEdit? {
         switch note.kind {
         case "project": return .forgetProject(key: note.title)
+        case "decision": return .forgetDecision(key: note.title)
         case "task" where note.id.hasPrefix("task-"): return .deleteTask(runID: String(note.id.dropFirst("task-".count)))
         case "conversation": return .deleteConversation(id: note.id)
         case "insight" where note.id.hasPrefix(WorkspaceMemory.insightNotePrefix): return .deleteInsight(id: String(note.id.dropFirst(WorkspaceMemory.insightNotePrefix.count)))

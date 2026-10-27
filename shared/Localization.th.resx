@@ -1323,4 +1323,6 @@
   <data name="plan.proposed" xml:space="preserve"><value>Claude เสนอแผน</value></data>
   <data name="plan.revise" xml:space="preserve"><value>แก้ไข…</value></data>
   <data name="plan.acceptAuto" xml:space="preserve"><value>ยอมรับและโหมดอัตโนมัติ</value></data>
+  <data name="memory.decision.review" xml:space="preserve"><value>การทบทวนการตัดสินใจของโปรเจกต์นี้แนะนำให้ลบรายการนี้: {0}</value></data>
+  <data name="memory.decision.keep" xml:space="preserve"><value>เก็บไว้</value></data>
 </root>
