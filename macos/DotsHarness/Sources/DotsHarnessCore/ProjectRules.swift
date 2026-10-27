@@ -1,7 +1,8 @@
 // Copyright (c) 2026 DOTS
 // Reads the rules files an agent-aware repository already ships - AGENTS.md,
-// CLAUDE.md, AGENTS.override.md, .cursor/rules - so HerNess honours the
-// conventions a project has already written down for other tools.
+// CLAUDE.md, AGENTS.override.md, .claude/rules, .cursor/rules and their
+// siblings - so HerNess honours the conventions a project has already written
+// down for other tools.
 //
 // Mirrors root-level loading in shared/ProjectRules.cs; scoped prompt context is
 // resolved by the macOS agent host when a workspace tool targets a subdirectory.
@@ -11,16 +12,24 @@ import Foundation
 public enum ProjectRules {
     /// Read in this order; the first entries carry the most weight because a
     /// repository that has both usually keeps AGENTS.md as the general file.
-    static let fileNames = ["AGENTS.md", "CLAUDE.md", ".cursorrules"]
+    static let fileNames = [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "CLAUDE.local.md",
+        ".claude/CLAUDE.md",
+        "GEMINI.md",
+        ".github/copilot-instructions.md",
+        ".cursorrules",
+    ]
     static let overrideFileName = "AGENTS.override.md"
     private static let scopedFileNames = [overrideFileName, "AGENTS.md", "CLAUDE.md"]
-    static let cursorRulesDirectory = ".cursor/rules"
+    static let rulesDirectories = [".claude/rules", ".cursor/rules"]
 
     /// Per-file and total ceilings. A rules file is meant to be short; a repo
     /// that pastes a novel into AGENTS.md must not evict the conversation.
     static let maxBytesPerFile = 16_000
     static let maxTotalBytes = 32_000
-    static let maxCursorRuleFiles = 10
+    static let maxRuleFilesPerDirectory = 10
 
     public struct ScopedContext: Sendable, Equatable {
         public let relativePath: String
@@ -132,9 +141,10 @@ public enum ProjectRules {
         var bodies: Set<String> = []
         var total = 0
 
+        // AGENTS.override.md replaces AGENTS.md/CLAUDE.md, not the other tools' files.
         let rootRuleNames = files[overrideFileName] == nil
             ? fileNames
-            : [overrideFileName, ".cursorrules"]
+            : [overrideFileName] + fileNames.filter { $0 != "AGENTS.md" && $0 != "CLAUDE.md" }
         for name in rootRuleNames {
             guard let data = files[name], let block = render(data, label: name) else { continue }
             // After sync AGENTS.md and CLAUDE.md hold the same text; emit it once.
@@ -145,7 +155,7 @@ public enum ProjectRules {
             blocks.append(block)
         }
 
-        for url in cursorRuleFiles(workspace: workspace) {
+        for url in ruleFiles(workspace: workspace) {
             let label = relativeLabel(url, workspace: workspace)
             guard let data = readData(url, workspace: workspace), let block = render(data, label: label) else { continue }
             guard total + block.utf8.count <= maxTotalBytes else { break }
@@ -315,9 +325,9 @@ public enum ProjectRules {
         for name in fileNames + [overrideFileName] {
             parts.append(fileStamp(workspace.appendingPathComponent(name), workspace: workspace))
         }
-        let cursorFiles = cursorRuleFiles(workspace: workspace)
-        parts.append("cursor:" + cursorFiles.map(\.lastPathComponent).joined(separator: "\u{0}"))
-        for url in cursorFiles {
+        let rules = ruleFiles(workspace: workspace)
+        parts.append("rules:" + rules.map { relativeLabel($0, workspace: workspace) }.joined(separator: "\u{0}"))
+        for url in rules {
             parts.append(fileStamp(url, workspace: workspace))
         }
         return parts.joined(separator: "\u{1}")
@@ -346,17 +356,29 @@ public enum ProjectRules {
         (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
     }
 
-    private static func cursorRuleFiles(workspace: URL) -> [URL] {
-        let directory = workspace.appendingPathComponent(cursorRulesDirectory, isDirectory: true)
-        guard let entries = try? FileManager.default.contentsOfDirectory(
-            at: directory,
-            includingPropertiesForKeys: nil
-        ) else { return [] }
-        return entries
-            .filter { ["md", "mdc"].contains($0.pathExtension.lowercased()) }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
-            .prefix(maxCursorRuleFiles)
-            .map { $0 }
+    private static func ruleFiles(workspace: URL) -> [URL] {
+        rulesDirectories.flatMap { relative -> [URL] in
+            let directory = workspace.appendingPathComponent(relative, isDirectory: true)
+            guard let entries = try? FileManager.default.contentsOfDirectory(
+                at: directory,
+                includingPropertiesForKeys: nil
+            ) else { return [] }
+            return entries
+                .filter { ["md", "mdc"].contains($0.pathExtension.lowercased()) }
+                .sorted { $0.lastPathComponent < $1.lastPathComponent }
+                .prefix(maxRuleFilesPerDirectory)
+                .map { $0 }
+        }
+    }
+
+    /// Largest prefix of `data`, at most `limit` bytes, that does not end inside a
+    /// multi-byte character. Decoding a mid-character cut fails, which would drop
+    /// the whole file instead of truncating it.
+    private static func utf8Prefix(_ data: Data, limit: Int) -> Data {
+        guard data.count > limit else { return data }
+        var cut = limit
+        while cut > 0, data[data.startIndex + cut] & 0xC0 == 0x80 { cut -= 1 }
+        return data.prefix(cut)
     }
 
     private static func readData(_ url: URL, workspace: URL) -> Data? {
@@ -369,7 +391,7 @@ public enum ProjectRules {
 
     private static func render(_ data: Data, label: String) -> String? {
         guard !data.isEmpty else { return nil }
-        let limited = data.prefix(maxBytesPerFile)
+        let limited = utf8Prefix(data, limit: maxBytesPerFile)
         guard let raw = String(data: limited, encoding: .utf8) else { return nil }
         let body = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !body.isEmpty else { return nil }

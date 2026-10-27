@@ -99,6 +99,51 @@ public sealed class ProjectRulesTests : IDisposable
     }
 
     [Fact]
+    public void ReadsClaudeAndCodexSiblingFilesAndRulesDirectories()
+    {
+        Write("CLAUDE.local.md", "my local tweak");
+        Write(".claude/CLAUDE.md", "nested claude rule");
+        Write("AGENTS.override.md", "codex override");
+        Write("GEMINI.md", "gemini rule");
+        Write(".github/copilot-instructions.md", "copilot rule");
+        Write(".claude/rules/testing.md", "always add tests");
+        Write(".claude/rules/notes.txt", "not a rules file");
+
+        var text = ProjectRules.Text(_workspace);
+
+        Assert.Contains("# CLAUDE.local.md\nmy local tweak", text);
+        Assert.Contains("# .claude/CLAUDE.md\nnested claude rule", text);
+        Assert.Contains("# AGENTS.override.md\ncodex override", text);
+        Assert.Contains("# GEMINI.md\ngemini rule", text);
+        Assert.Contains("# .github/copilot-instructions.md\ncopilot rule", text);
+        Assert.Contains("# .claude/rules/testing.md\nalways add tests", text);
+        Assert.DoesNotContain("not a rules file", text);
+    }
+
+    [Fact]
+    public void IdenticalNestedClaudeFileIsEmittedOnce()
+    {
+        Write("CLAUDE.md", "use tabs");
+        Write(".claude/CLAUDE.md", "use tabs");
+
+        var text = ProjectRules.Text(_workspace);
+
+        Assert.Equal(1, text.Split("use tabs").Length - 1);
+    }
+
+    [Fact]
+    public void TruncationNeverSplitsAMultiByteCharacter()
+    {
+        // "ş" is two bytes; 16000 is even, so an odd prefix forces the cut mid-character.
+        Write("AGENTS.md", "a" + new string('ş', ProjectRules.MaxBytesPerFile));
+
+        var text = ProjectRules.Text(_workspace);
+
+        Assert.EndsWith("… truncated", text);
+        Assert.DoesNotContain('\uFFFD', text);
+    }
+
+    [Fact]
     public void SymlinkEscapingTheWorkspaceIsIgnored()
     {
         var outside = Path.Combine(Path.GetTempPath(), $"outside-{Guid.NewGuid():N}.md");
