@@ -100,10 +100,13 @@ enum MobileLessons {
     /// What the user must settle about memory before a turn: whether memory that came
     /// with the repository is trusted, and whether a lesson inferred from a single turn
     /// is right. Nothing is assumed: an unanswered question leaves the memory untrusted
-    /// and the lesson a hint. Mirrors askMemoryQuestions on macOS.
+    /// and the lesson a hint. A lesson is only reviewed in the conversation it was
+    /// learned in: `learnedHere` holds that conversation's signal sources, so a lesson
+    /// from another conversation is never asked about. Mirrors askMemoryQuestions on macOS.
     static func memoryQuestions(
         root: URL,
         asked: Set<String>,
+        learnedHere: Set<String> = [],
         text: (String) -> String,
         userRoot: URL = MobilePersonalMemory.defaultRoot()
     ) -> [MemoryQuestion] {
@@ -117,7 +120,7 @@ enum MobileLessons {
         }
         let now = Date()
         for lesson in load(root: root, userRoot: userRoot)
-            .filter({ !$0.isConfirmed && $0.isActive(at: now) && $0.reviewPromptDismissed != true && !asked.contains("lesson-" + $0.id) })
+            .filter({ !$0.isConfirmed && $0.isActive(at: now) && $0.reviewPromptDismissed != true && !asked.contains("lesson-" + $0.id) && !learnedHere.isDisjoint(with: $0.sources) })
             .sorted(by: { $0.lastSeen > $1.lastSeen }) {
             questions.append(MemoryQuestion(
                 id: "lesson-" + lesson.id,

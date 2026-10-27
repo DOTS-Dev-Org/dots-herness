@@ -258,6 +258,12 @@ public enum LessonEvaluator {
         let hash = SHA256.hash(data: Data("\(conversationID):\(messageID)".utf8))
         return Lesson.signalPrefix + hash.map { String(format: "%02x", $0) }.joined().prefix(16)
     }
+
+    /// Every signal source a conversation's turns could have produced, so a lesson
+    /// can be traced back to the conversation it was learned in.
+    public static func signalSources(conversationID: String, messageIDs: [String]) -> Set<String> {
+        Set(messageIDs.map { signalSource(conversationID: conversationID, messageID: $0) })
+    }
 }
 
 extension FeedbackStore {

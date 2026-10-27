@@ -69,7 +69,9 @@ final class MobileLessonsTests: XCTestCase {
         [{"lastSeen":"\(now)","paths":[],"rule":"Avoid the X API.","sources":["signal:abc123"],"when":"","why":""}]
         """.write(to: folder.appendingPathComponent("lessons.json"), atomically: true, encoding: .utf8)
         XCTAssertTrue(MobileLessons.rulesText(root: root, userRoot: userRoot).contains("[abc123 unconfirmed] Avoid the X API."))
-        XCTAssertEqual(MobileLessons.memoryQuestions(root: root, asked: [], text: keys, userRoot: userRoot).map(\.id), ["lesson-signal:abc123"])
+        // A lesson learned in another conversation is never asked about here.
+        XCTAssertTrue(MobileLessons.memoryQuestions(root: root, asked: [], text: keys, userRoot: userRoot).isEmpty)
+        XCTAssertEqual(MobileLessons.memoryQuestions(root: root, asked: [], learnedHere: ["signal:abc123"], text: keys, userRoot: userRoot).map(\.id), ["lesson-signal:abc123"])
         MobileLessons.answerMemoryQuestion("lesson-signal:abc123", choice: 0, root: root, userRoot: userRoot)
         XCTAssertTrue(MobileLessons.rulesText(root: root, userRoot: userRoot).contains("[abc123 user] Avoid the X API."))
         XCTAssertTrue(MobileLessons.memoryQuestions(root: root, asked: [], text: keys, userRoot: userRoot).isEmpty)
