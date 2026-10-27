@@ -98,6 +98,8 @@ public final class LocalRuntime: @unchecked Sendable {
 
     private var process: Process?
     private var runningModel: String?
+    /// `sd-server` for the started image model; video runs `sd-cli` per request.
+    var diffusionProcess: Process?
 
     public init(paths: SupportPaths, port: Int = LocalRuntime.defaultPort) {
         self.paths = paths
@@ -177,7 +179,7 @@ public final class LocalRuntime: @unchecked Sendable {
         case .mlx, .repo:
             return paths.models.appendingPathComponent(spec.engine == .mlx ? "mlx" : "hub", isDirectory: true)
                 .appendingPathComponent(spec.filename, isDirectory: true)
-        case .llama, .file:
+        case .llama, .file, .diffusion:
             return paths.models.appendingPathComponent(spec.filename)
         }
     }
@@ -186,6 +188,7 @@ public final class LocalRuntime: @unchecked Sendable {
 
     public func isInstalled(_ spec: LocalModelSpec) -> Bool {
         let fm = FileManager.default
+        if let parts = spec.components { return parts.allSatisfy(isInstalled) }
         if spec.isDirectory { return fm.fileExists(atPath: mlxMarker(spec).path) }
         guard fm.fileExists(atPath: modelURL(spec).path) else { return false }
         if spec.localPath != nil { return true }
@@ -193,6 +196,7 @@ public final class LocalRuntime: @unchecked Sendable {
     }
 
     public func installedBytes(_ spec: LocalModelSpec) -> Int64 {
+        if let parts = spec.components { return parts.reduce(0) { $0 + installedBytes($1) } }
         let fm = FileManager.default
         let url = modelURL(spec)
         guard spec.isDirectory else {
@@ -204,6 +208,21 @@ public final class LocalRuntime: @unchecked Sendable {
 
     public func downloadModel(_ spec: LocalModelSpec, progress: (@Sendable (FileDownloader.Progress) -> Void)? = nil) async throws {
         guard spec.localPath == nil else { return }
+        if let parts = spec.components {
+            // Bundles share parts (one VAE, one encoder); finished ones are skipped.
+            let total = parts.reduce(0) { $0 + $1.bytes }
+            var done: Int64 = 0
+            for part in parts {
+                let finished = done
+                if !isInstalled(part) {
+                    try await downloadModel(part) { step in
+                        progress?(FileDownloader.Progress(received: finished + step.received, expected: total, bytesPerSecond: step.bytesPerSecond))
+                    }
+                }
+                done += part.bytes
+            }
+            return
+        }
         if spec.isDirectory { return try await downloadRepository(spec, progress: progress) }
         try await Self.retrying {
             try await FileDownloader.download(from: spec.url, to: self.modelURL(spec), expected: spec.bytes, sha256: spec.sha256, progress: progress)
@@ -255,6 +274,7 @@ public final class LocalRuntime: @unchecked Sendable {
         switch engine {
         case .llama: return FileManager.default.isExecutableFile(atPath: binaryURL.path)
         case .mlx: return FileManager.default.isExecutableFile(atPath: mlxServerURL.path)
+        case .diffusion: return FileManager.default.isExecutableFile(atPath: diffusionServerURL.path)
         case .file, .repo: return true
         }
     }
@@ -430,7 +450,7 @@ public final class LocalRuntime: @unchecked Sendable {
     }
 
     /// Runs a helper to completion off the caller's thread and returns its output.
-    private func run(_ executable: URL, _ arguments: [String]) async throws -> String {
+    func run(_ executable: URL, _ arguments: [String]) async throws -> String {
         let output = paths.runtime.appendingPathComponent("helper-\(UUID().uuidString).log")
         FileManager.default.createFile(atPath: output.path, contents: nil)
         defer { try? FileManager.default.removeItem(at: output) }

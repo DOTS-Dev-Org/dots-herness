@@ -25,6 +25,20 @@ final class LocalRuntimeTests: XCTestCase {
         XCTAssertEqual(weights.map(\.path), [gguf.path, "a.safetensors"])
     }
 
+    func testDiffusionBundlesNameEveryPartTheyLoad() {
+        XCTAssertEqual(HuggingFaceHub.spec(repo: "org/SDXL", file: HubFile(path: "sdxl.safetensors", size: 1, sha256: nil),
+                                           category: "image").engine, .diffusion)
+        for preset in LocalDiffusion.presets {
+            XCTAssertEqual(preset.engine, .diffusion)
+            XCTAssertTrue(preset.runnable)
+            XCTAssertEqual(preset.bytes, preset.components?.reduce(0) { $0 + $1.bytes })
+            XCTAssertTrue(preset.components?.allSatisfy { $0.engine == .file && $0.sha256 != nil } ?? false)
+        }
+        let wan = LocalModelCatalog.spec(id: "wan21-t2v-13b-q4")
+        XCTAssertEqual(wan?.category, "video")
+        XCTAssertEqual(wan?.components?.compactMap(\.role), ["--diffusion-model", "--vae", "--t5xxl"])
+    }
+
     func testCatalogIncludesLocalReasoningModel() {
         let ids = Set(LocalModelCatalog.models.map(\.id))
         XCTAssertTrue(ids.contains("qwen25-05b-q4"))

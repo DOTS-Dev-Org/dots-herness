@@ -1,22 +1,19 @@
 // Copyright (c) 2026 DOTS
 // Routes agent events into the native notifications and the in-app inbox.
 
-import AppKit
 import Foundation
 
 extension AppModel {
     func receiveAssistantResponse(_ event: AssistantResponseEvent) {
         desktopNotifications.showAssistantResponse(event)
         let conversation = bridge.conversations.first { $0.id == event.conversationID }
-        let isVisible = NSApplication.shared.isActive && bridge.selectedID == event.conversationID
         notificationInbox.append(InboxNotification(
             kind: .completed,
             title: AppCopy.text("notifications.responseReady"),
             subtitle: event.conversationTitle,
             detail: event.text,
             conversationID: event.conversationID.isEmpty ? nil : event.conversationID,
-            conversationPath: conversation?.cwd,
-            isRead: isVisible
+            conversationPath: conversation?.cwd
         ))
     }
 
@@ -29,15 +26,13 @@ extension AppModel {
 
         let detail = event.failureMessage ?? event.summary.cleanupNote
         let conversation = bridge.conversations.first { $0.id == event.conversationID }
-        let isVisible = NSApplication.shared.isActive && bridge.selectedID == event.conversationID
         notificationInbox.append(InboxNotification(
             kind: .failed,
             title: AppCopy.text("notifications.operationFailed"),
             subtitle: event.conversationTitle,
             detail: detail,
             conversationID: event.conversationID.isEmpty ? nil : event.conversationID,
-            conversationPath: conversation?.cwd,
-            isRead: isVisible
+            conversationPath: conversation?.cwd
         ))
     }
 
@@ -64,18 +59,16 @@ extension AppModel {
             : nil
         let detail = question?.questions.map(\.prompt).joined(separator: " · ") ?? event.detail
         let conversation = bridge.conversations.first { $0.id == event.conversationID }
-        let visible = NSApplication.shared.isActive && bridge.selectedID == event.conversationID
         notificationInbox.append(InboxNotification(
             kind: kind,
             title: title,
             subtitle: event.conversationTitle,
             detail: detail,
             conversationID: event.conversationID,
-            conversationPath: conversation?.cwd,
-            isRead: visible
+            conversationPath: conversation?.cwd
         ))
 
-        if !visible { desktopNotifications.showAttention(event) }
+        desktopNotifications.showAttention(event)
     }
 
     func receiveScheduledTask(_ task: ScheduledTask, result: TaskScheduler.RunResult) {

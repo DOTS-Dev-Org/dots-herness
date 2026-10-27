@@ -25,11 +25,11 @@
     "`macos\/DotsHarness\/README.md` - Dots Harness for macOS; Provider connections; Local models and sharing; Turkish speech runtime and signing",
     "`native\/vision-runtime\/README.md` - DOTS Vision native runtime"
   ],
-  "fingerprint" : "918de2c0c71a5127e060e739ac9c742a51e277f027fa0b5a15a0f44a311e3bea",
+  "fingerprint" : "423fc4c1351a71456d44f8d364d860cf01d5e194224ff7923a51499a219e4cf1",
   "manifests" : [
     "README.md"
   ],
-  "rootFingerprint" : "76aafeedf7b569ffbc0dbd8ae594be41e63e3387d226c6ea89754381e9009a49",
+  "rootFingerprint" : "228bf1ac49fa82c267807da4781c43c844f7a248d3954c479b430ac05abbe9a6",
   "schemaVersion" : 6,
   "technologies" : [
     ".NET",
@@ -44,7 +44,6 @@
     ".codex\/",
     ".github\/",
     ".gitignore",
-    ".wrangler\/",
     "AGENTS.md",
     "CLAUDE.md",
     "LICENSE",
@@ -63,5 +62,5 @@
     "tools\/",
     "windows\/"
   ],
-  "updatedAt" : "2026-10-27T11:03:58Z"
+  "updatedAt" : "2026-10-27T11:29:41Z"
 }

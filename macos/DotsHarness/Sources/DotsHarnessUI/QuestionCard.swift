@@ -9,7 +9,7 @@ struct QuestionCard: View {
     let onSubmit: ([String]) -> Void
     let onSkip: () -> Void
 
-    @State private var selection: [String: String] = [:]
+    @State private var selection: [String: Set<String>] = [:]
     @State private var custom: [String: String] = [:]
     @State private var page = 0
 
@@ -90,22 +90,37 @@ struct QuestionCard: View {
         return (String(option[..<range.lowerBound]), String(option[range.upperBound...]))
     }
 
-    private func checkbox(_ on: Bool) -> some View {
-        Image(systemName: on ? "checkmark.square.fill" : "square")
+    private func selectionIndicator(_ selected: Bool, allowsMultiple: Bool) -> some View {
+        let symbol = allowsMultiple
+            ? (selected ? "checkmark.square.fill" : "square")
+            : (selected ? "circle.inset.filled" : "circle")
+        return Image(systemName: symbol)
             .font(.title3)
-            .foregroundStyle(on ? Color.accentColor : .secondary)
+            .foregroundStyle(selected ? Color.accentColor : .secondary)
     }
 
     private func rowBackground() -> some ShapeStyle { Color.primary.opacity(0.07) }
+
+    private func toggle(_ option: String, for question: AskUserQuestion) {
+        if question.allowsMultipleSelection {
+            var selected = selection[question.id] ?? []
+            if !selected.insert(option).inserted {
+                selected.remove(option)
+            }
+            selection[question.id] = selected
+        } else {
+            selection[question.id] = [option]
+        }
+        custom[question.id] = ""
+    }
 
     private func optionRows(_ question: AskUserQuestion) -> some View {
         VStack(spacing: 6) {
             ForEach(question.options, id: \.self) { option in
                 let parts = split(option)
-                let on = selection[question.id] == option
+                let on = selection[question.id, default: []].contains(option)
                 Button {
-                    selection[question.id] = on ? nil : option
-                    custom[question.id] = ""
+                    toggle(option, for: question)
                 } label: {
                     HStack(spacing: 10) {
                         VStack(alignment: .leading, spacing: 2) {
@@ -116,7 +131,7 @@ struct QuestionCard: View {
                         }
                         .multilineTextAlignment(.leading)
                         Spacer(minLength: 8)
-                        checkbox(on)
+                        selectionIndicator(on, allowsMultiple: question.allowsMultipleSelection)
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 11)
@@ -133,7 +148,7 @@ struct QuestionCard: View {
                 HStack {
                     Text(AppCopy.text("ask.other")).font(.body)
                     Spacer(minLength: 8)
-                    checkbox(written)
+                    selectionIndicator(written, allowsMultiple: question.allowsMultipleSelection)
                 }
                 TextField(
                     AppCopy.text("ask.customPlaceholder"),
@@ -142,7 +157,7 @@ struct QuestionCard: View {
                         set: { value in
                             custom[question.id] = value
                             if !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                selection[question.id] = nil
+                                selection[question.id] = []
                             }
                         }
                     ),
@@ -159,6 +174,8 @@ struct QuestionCard: View {
 
     private func answer(for question: AskUserQuestion) -> String {
         let written = (custom[question.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        return written.isEmpty ? (selection[question.id] ?? "") : written
+        guard written.isEmpty else { return written }
+        let selected = question.options.filter { selection[question.id, default: []].contains($0) }
+        return selected.joined(separator: "\n")
     }
 }

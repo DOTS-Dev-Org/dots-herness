@@ -8,6 +8,9 @@ import PluginRuntime
 public final class LocalRuntimeController: ObservableObject {
     @Published public var runtimeReady = false
     @Published public var mlxReady = false
+    @Published public var diffusionReady = false
+    /// The started image or video model (see `LocalDiffusion.active`).
+    @Published public var diffusionModelID: String?
     @Published public var runtimeVersion: String?
     @Published public var runningModelID: String?
     @Published public var serving = false
@@ -41,7 +44,7 @@ public final class LocalRuntimeController: ObservableObject {
     }
 
     /// Everything that may be on disk: the catalog, imports and Hugging Face downloads.
-    public var allModels: [LocalModelSpec] { models + LocalModelCatalog.mlxModels + settings.hubModels }
+    public var allModels: [LocalModelSpec] { models + LocalModelCatalog.mlxModels + LocalDiffusion.presets + settings.hubModels }
 
     public var memoryBytes: UInt64 { ProcessInfo.processInfo.physicalMemory }
 
@@ -67,6 +70,7 @@ public final class LocalRuntimeController: ObservableObject {
         runningModelID = runtime.runningModelID()
         runtimeReady = runtime.runtimeInstalled()
         mlxReady = runtime.runtimeInstalled(.mlx)
+        diffusionReady = runtime.runtimeInstalled(.diffusion)
         if !serving { servedContext = nil }
     }
 
@@ -76,8 +80,8 @@ public final class LocalRuntimeController: ObservableObject {
 
     public func installRuntime(_ engine: LocalEngine = .llama) async {
         error = nil
-        let key = engine == .mlx ? "mlx" : "runtime"
-        status = AppCopy.text(engine == .mlx ? "local.installMLX" : "local.downloadingRuntime")
+        let key = engine == .mlx ? "mlx" : (engine == .diffusion ? "diffusion" : "runtime")
+        status = AppCopy.text(engine == .mlx ? "local.installMLX" : (engine == .diffusion ? "local.installDiffusion" : "local.downloadingRuntime"))
         downloads[key] = 0
         do {
             let report: @Sendable (FileDownloader.Progress) -> Void = { [weak self] progress in
@@ -85,6 +89,8 @@ public final class LocalRuntimeController: ObservableObject {
             }
             if engine == .mlx {
                 try await runtime.ensureMLX(progress: report)
+            } else if engine == .diffusion {
+                try await runtime.ensureDiffusion(progress: report)
             } else {
                 try await runtime.ensureRuntime(progress: report)
                 await refreshDevices()
@@ -127,6 +133,7 @@ public final class LocalRuntimeController: ObservableObject {
     }
 
     public func start(_ spec: LocalModelSpec) async {
+        if spec.engine == .diffusion { return await startDiffusion(spec) }
         error = nil
         do {
             if !runtime.runtimeInstalled(spec.engine) {
@@ -164,6 +171,32 @@ public final class LocalRuntimeController: ObservableObject {
         }
     }
 
+    /// Starts an image or video model; generation requests use it until it is stopped.
+    public func startDiffusion(_ spec: LocalModelSpec) async {
+        error = nil
+        do {
+            if !runtime.runtimeInstalled(.diffusion) {
+                await installRuntime(.diffusion)
+                if let error { throw RouterError(error) }
+            }
+            stopDiffusion()
+            status = AppCopy.format("local.startingModel", spec.name)
+            try await runtime.startDiffusion(spec)
+            LocalDiffusion.active = (runtime, spec)
+            diffusionModelID = spec.id
+            status = AppCopy.format(spec.category == "video" ? "local.videoReady" : "local.imageReady", spec.name)
+        } catch {
+            self.error = error.localizedDescription
+            status = AppCopy.text("local.startFailed")
+        }
+    }
+
+    public func stopDiffusion() {
+        runtime.stopDiffusion()
+        LocalDiffusion.active = nil
+        diffusionModelID = nil
+    }
+
     public func stop() {
         runtime.stop()
         refreshInstalled()
@@ -172,12 +205,16 @@ public final class LocalRuntimeController: ObservableObject {
 
     public func delete(_ spec: LocalModelSpec) {
         if runningModelID == spec.id { stop() }
+        if diffusionModelID == spec.id { stopDiffusion() }
         if let path = spec.localPath {
             // An imported file belongs to the user: forget it, never delete it.
             settings.importedModels.removeAll { $0 == path }
         } else {
-            try? FileManager.default.removeItem(at: runtime.modelURL(spec))
-            try? FileManager.default.removeItem(at: runtime.modelURL(spec).appendingPathExtension("part"))
+            // ponytail: bundle parts are shared (one VAE serves two bundles); deleting one bundle drops them for both.
+            for part in spec.components ?? [spec] {
+                try? FileManager.default.removeItem(at: runtime.modelURL(part))
+                try? FileManager.default.removeItem(at: runtime.modelURL(part).appendingPathExtension("part"))
+            }
             settings.hubModels.removeAll { $0.id == spec.id }
         }
         downloads[spec.id] = nil

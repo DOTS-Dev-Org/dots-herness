@@ -445,7 +445,7 @@ enum AgentTools {
     }
 
     private static func normalizeSkillID(_ value: String) -> String {
-        value.lowercased().map { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" ? $0 : "-" }
+        String(value.lowercased().map { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" ? $0 : "-" })
             .split(separator: "-").joined(separator: "-")
     }
 

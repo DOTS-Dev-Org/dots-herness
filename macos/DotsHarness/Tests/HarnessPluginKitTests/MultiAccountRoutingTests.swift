@@ -43,6 +43,59 @@ final class MultiAccountRoutingTests: XCTestCase {
     }
 
     @MainActor
+    func testFiveHourWindowWinsBeforeWeeklyQuotaAndPriority() {
+        let router = RouterController(baseURL: "http://127.0.0.1:1")
+        let accounts = [
+            account("dotsfarming", priority: 2),
+            account("dotsdonusum", priority: 0),
+            account("ulasafet", priority: 1),
+        ]
+        let usage: [String: AccountUsageSnapshot] = [
+            "dotsfarming": .init(remainingFraction: 0.89, windows: [
+                .init(kind: .fiveHour, usedPercent: 0, resetsAt: nil),
+                .init(kind: .week, usedPercent: 0.11, resetsAt: nil),
+            ]),
+            "dotsdonusum": .init(remainingFraction: 0.89, windows: [
+                .init(kind: .fiveHour, usedPercent: 0.11, resetsAt: nil),
+                .init(kind: .week, usedPercent: 0.08, resetsAt: nil),
+            ]),
+            "ulasafet": .init(remainingFraction: 0.88, windows: [
+                .init(kind: .fiveHour, usedPercent: 0.12, resetsAt: nil),
+                .init(kind: .week, usedPercent: 0.02, resetsAt: nil),
+            ]),
+        ]
+
+        let ordered = router.orderedRoutes(accounts, model: "", preferred: nil, usage: usage, now: Date())
+        XCTAssertEqual(ordered.map(\.id), ["dotsfarming", "dotsdonusum", "ulasafet"])
+    }
+
+    @MainActor
+    func testWeeklyQuotaBreaksFiveHourTieBeforeRoundRobin() {
+        let router = RouterController(baseURL: "http://127.0.0.1:1")
+        let accounts = [account("a", priority: 0), account("b", priority: 1)]
+        let usage: [String: AccountUsageSnapshot] = [
+            "a": .init(remainingFraction: 0.89, windows: [
+                .init(kind: .fiveHour, usedPercent: 0.10, resetsAt: nil),
+                .init(kind: .week, usedPercent: 0.11, resetsAt: nil),
+            ]),
+            "b": .init(remainingFraction: 0.90, windows: [
+                .init(kind: .fiveHour, usedPercent: 0.10, resetsAt: nil),
+                .init(kind: .week, usedPercent: 0.08, resetsAt: nil),
+            ]),
+        ]
+
+        let ordered = router.orderedRoutes(
+            accounts,
+            model: "",
+            preferred: nil,
+            usage: usage,
+            now: Date(),
+            roundRobinAfterByProvider: ["claude": "b"]
+        )
+        XCTAssertEqual(ordered.map(\.id), ["b", "a"])
+    }
+
+    @MainActor
     func testEqualQuotaAccountsRotateAfterLastAssignment() {
         let router = RouterController(baseURL: "http://127.0.0.1:1")
         let accounts = [account("a", priority: 0), account("b", priority: 1), account("c", priority: 2)]
@@ -131,7 +184,14 @@ final class MultiAccountRoutingTests: XCTestCase {
     func testPreferredAccountComesFirst() {
         let router = RouterController(baseURL: "http://127.0.0.1:1")
         let accounts = [account("a"), account("b"), account("c")]
-        let usage: [String: AccountUsageSnapshot] = ["a": .init(remainingFraction: 0.9)]
+        let usage: [String: AccountUsageSnapshot] = [
+            "a": .init(remainingFraction: 1, windows: [
+                .init(kind: .fiveHour, usedPercent: 0, resetsAt: nil),
+            ]),
+            "c": .init(remainingFraction: 0.1, windows: [
+                .init(kind: .fiveHour, usedPercent: 0.9, resetsAt: nil),
+            ]),
+        ]
         let ordered = router.orderedRoutes(accounts, model: "", preferred: "c", usage: usage, now: Date())
         XCTAssertEqual(ordered.first?.id, "c")
         XCTAssertEqual(Set(ordered.map(\.id)), ["a", "b", "c"])

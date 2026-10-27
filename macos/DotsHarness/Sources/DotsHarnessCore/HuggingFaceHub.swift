@@ -117,6 +117,8 @@ public enum HuggingFaceHub {
         }
         let lower = file.path.lowercased()
         let runnable = lower.hasSuffix(".gguf") && !lower.contains("mmproj") && LocalModelCategory.named(category)?.runnable != false
+        // ponytail: a lone image checkpoint (SD 1.x/2.x/XL) runs as is; FLUX-style splits need a bundle in LocalDiffusion.presets.
+        let checkpoint = category == "image" && ["gguf", "safetensors", "ckpt"].contains(URL(fileURLWithPath: lower).pathExtension)
         return LocalModelSpec(
             id: "hf:\(repo)/\(file.path)",
             name: URL(fileURLWithPath: file.path).deletingPathExtension().lastPathComponent,
@@ -128,7 +130,7 @@ public enum HuggingFaceHub {
             url: URL(string: "\(host)/\(repo)/resolve/main/\(file.path)")!,
             bytes: file.size,
             notes: repo,
-            engine: runnable ? .llama : .file,
+            engine: runnable ? .llama : (checkpoint ? .diffusion : .file),
             sha256: file.sha256,
             repo: repo,
             // Weights plus KV cache and runtime overhead, roughly.

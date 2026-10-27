@@ -2,7 +2,7 @@
 id: map
 title: Project map
 type: map
-updated: 2026-10-27T11:03:58Z
+updated: 2026-10-27T11:29:41Z
 tags: [map]
 links: ["index"]
 ---
@@ -17,7 +17,6 @@ links: ["index"]
 - `.codex/`
 - `.github/`
 - `.gitignore`
-- `.wrangler/`
 - `AGENTS.md`
 - `CLAUDE.md`
 - `LICENSE`
@@ -47,9 +46,6 @@ Folders two levels deep: what each holds, the files to open first. Start from th
   - `.codex/skills/` - mostly .md
 - `.github/` - mostly .yml
   - `.github/workflows/` - mostly .yml
-- `.wrangler/` - mostly .sqlite-shm, .sqlite-wal
-  - `.wrangler/state/` - mostly .sqlite-shm, .sqlite-wal
-  - `.wrangler/cache/` - mostly .json
 - `browser-extension/` - This MV3 extension is the explicit `Extension` backend. It owns only tabs - open: README.md
 - `cloudflare/` - Node package, mostly .ts, .sql - open: package.json, wrangler.jsonc
   - `cloudflare/src/` - mostly .ts - open: index.ts

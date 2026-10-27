@@ -198,7 +198,7 @@ public enum MediaGenerationClient {
             "model": provider.model,
             "prompt": prompt,
             "n": 1,
-            "size": "1024x1024",
+            "size": provider.size ?? "1024x1024",
         ])
 
         let (data, response) = try await session.data(for: request)

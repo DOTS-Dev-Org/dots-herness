@@ -179,11 +179,13 @@ private fun MobileProviderBrandMark(providerId: String, modifier: Modifier = Mod
 class MainActivity : ComponentActivity() {
     private var pendingPairUri by mutableStateOf<Uri?>(null)
     internal var lifecycleAgent: MobileAgent? = null
+    private val playUpdates = PlayUpdates(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         pendingPairUri = intent.data
         enableEdgeToEdge()
+        if (savedInstanceState == null) playUpdates.checkOnLaunch()
         setContent {
             val baseContext = LocalContext.current
             val preferences = remember { baseContext.getSharedPreferences("herness.preferences", Activity.MODE_PRIVATE) }
@@ -206,6 +208,16 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         pendingPairUri = intent.data
+    }
+
+    override fun onResume() {
+        super.onResume()
+        playUpdates.resume()
+    }
+
+    override fun onDestroy() {
+        playUpdates.close()
+        super.onDestroy()
     }
 
     override fun onStart() {

@@ -351,10 +351,10 @@ extension RouterController {
     /// Active accounts that can serve `model`, ordered best-first:
     /// 1. a live `preferred` account (conversation affinity) that is not cooling
     ///    down comes first, so follow-up turns keep the provider's prompt cache;
-    /// 2. otherwise accounts not in cooldown, most remaining quota first
-    ///    (unknown usage sorts below known-healthy but above known-exhausted),
-    ///    `priority` breaking ties; equal-quota accounts within a provider rotate
-    ///    across unpinned conversations;
+    /// 2. otherwise accounts not in cooldown, with the most five-hour quota left
+    ///    first and weekly quota breaking ties; unknown usage sorts below known-
+    ///    healthy but above known-exhausted, then `priority` breaks ties; equal-
+    ///    quota accounts within a provider rotate across unpinned conversations;
     /// 3. cooling-down accounts last, as a final fallback.
     /// Pure and side-effect free so it can be unit tested without the network.
     func orderedRoutes(
@@ -372,24 +372,40 @@ extension RouterController {
             guard let until = account.cooldownUntil else { return false }
             return until > now
         }
-        // nil usage -> 0 so it sorts between healthy (>0) and exhausted (<0).
-        func remainingRank(_ account: StoredProviderAccount) -> Double {
-            guard let fraction = usage[account.id]?.remainingFraction else { return 0 }
-            return fraction <= 0 ? -1 : fraction
+        // Unknown usage ranks between a positive remaining quota and exhaustion.
+        func remainingRank(_ fraction: Double?) -> Double {
+            guard let fraction else { return 0 }
+            let clamped = min(max(fraction, 0), 1)
+            return clamped <= 0 ? -1 : clamped
+        }
+        func fiveHourRank(_ account: StoredProviderAccount) -> Double {
+            guard let snapshot = usage[account.id] else { return 0 }
+            if let used = snapshot.windows.first(where: { $0.kind == .fiveHour })?.usedPercent {
+                return remainingRank(1 - min(max(used, 0), 1))
+            }
+            // Preserve routing for providers that report only an aggregate quota.
+            return remainingRank(snapshot.remainingFraction)
+        }
+        func weeklyRank(_ account: StoredProviderAccount) -> Double {
+            guard let used = usage[account.id]?.windows.first(where: { $0.kind == .week })?.usedPercent else {
+                return 0
+            }
+            return remainingRank(1 - min(max(used, 0), 1))
         }
 
         var ranked = serving.sorted { lhs, rhs in
             let lc = coolingDown(lhs), rc = coolingDown(rhs)
             if lc != rc { return !lc }
-            let lr = remainingRank(lhs), rr = remainingRank(rhs)
-            if lr != rr { return lr > rr }
+            let l5h = fiveHourRank(lhs), r5h = fiveHourRank(rhs)
+            if l5h != r5h { return l5h > r5h }
+            let lWeek = weeklyRank(lhs), rWeek = weeklyRank(rhs)
+            if lWeek != rWeek { return lWeek > rWeek }
             if lhs.priority != rhs.priority { return lhs.priority < rhs.priority }
             return lhs.id < rhs.id
         }
 
-        // Quota remains the primary ordering. Rotate only equal-quota accounts
-        // within a provider, so new conversations do not repeatedly pick the
-        // same account when usage snapshots are tied.
+        // Rotate only accounts tied on both quota windows; rotation must not
+        // undo the weekly tie-breaker.
         for (provider, previousID) in roundRobinAfterByProvider {
             guard let previous = ranked.first(where: { $0.id == previousID }),
                   previous.provider == provider,
@@ -398,7 +414,8 @@ extension RouterController {
                 let account = ranked[$0]
                 return account.provider == provider
                     && !coolingDown(account)
-                    && remainingRank(account) == remainingRank(previous)
+                    && fiveHourRank(account) == fiveHourRank(previous)
+                    && weeklyRank(account) == weeklyRank(previous)
             }
             guard let previousPeerIndex = peerIndices.firstIndex(where: { ranked[$0].id == previousID }),
                   peerIndices.count > 1 else { continue }

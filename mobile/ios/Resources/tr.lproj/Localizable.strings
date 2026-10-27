@@ -509,3 +509,8 @@
 "vault.new.projectEntry" = "Proje bilgisi";
 "vault.section.profile" = "Kullanıcı profili";
 "vault.section.project" = "Proje bilgisi";
+
+"updates.title" = "Güncelleme mevcut";
+"updates.available" = "Yeni sürüm mevcut: v%@";
+"updates.openStore" = "App Store'u aç";
+"updates.later" = "Sonra";

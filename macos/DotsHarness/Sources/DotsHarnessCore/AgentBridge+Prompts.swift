@@ -1116,7 +1116,10 @@ extension NativeAgentHost {
             let media: ChatMedia
             var fallbackNotice: String?
             let statusModel: String
-            if request.kind == .image {
+            if let local = try await LocalDiffusion.generate(kind: request.kind, prompt: prompt, paths: paths) {
+                media = local.media
+                statusModel = local.model
+            } else if request.kind == .image {
                 guard let router else {
                     return reportUnsupported()
                 }

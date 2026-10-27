@@ -2105,3 +2105,11 @@
 "local.context" = "Context";
 "local.memory" = "Bellek";
 "local.disk" = "Diskte";
+"local.installDiffusion" = "stable-diffusion.cpp'yi kur";
+"local.imageReady" = "%@ hazır: /imagegen ve Medya stüdyosu bununla çizer";
+"local.videoReady" = "%@ hazır: /videogen ve Medya stüdyosu bununla video üretir";
+"local.imageHint" = "Başlat, sonra sohbette /imagegen yaz ya da Medya stüdyosunda üret. Bu Mac'te çalışır; hiçbir şey dışarı çıkmaz.";
+"local.videoHint" = "Başlat, sonra sohbette /videogen yaz ya da Medya stüdyosunu kullan. 1 saniyelik 512×288 bir klip bu Mac'te birkaç dakika sürer.";
+"localModel.sdTurboNote" = "En hızlı yerel görsel modeli: tek adım, 512×512.";
+"localModel.fluxNote" = "Dört adımda yüksek kaliteli 1024×1024 görseller. Yaklaşık 16 GB bellek ister.";
+"localModel.wanNote" = "Metinden videoya: istemden kısa 512×288 klipler.";

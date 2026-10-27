@@ -509,3 +509,8 @@
 "vault.new.projectEntry" = "Project entry";
 "vault.section.profile" = "User profile";
 "vault.section.project" = "Project knowledge";
+
+"updates.title" = "Update available";
+"updates.available" = "New version available: v%@";
+"updates.openStore" = "Open App Store";
+"updates.later" = "Later";

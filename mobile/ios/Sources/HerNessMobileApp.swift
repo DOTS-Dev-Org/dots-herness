@@ -90,6 +90,7 @@ struct HerNessMobileApp: App {
                 .preferredColorScheme(theme.isDark ? .dark : .light)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .modifier(MobileWindowBehavior())
+                .modifier(AppStoreUpdatePrompt(localization: localization))
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .background { agent.pauseForLifecycleInterruption() }
                     if phase == .active { agent.resumeRecoveredConversationIfNeeded() }
@@ -186,3 +187,69 @@ private struct MobileWindowBehavior: ViewModifier {
         content
     }
 }
+
+/// Release the check-update endpoint reports for iOS, when it is newer than this build.
+struct StoreUpdate: Identifiable {
+    let version: String
+    let notes: String
+    let mandatory: Bool
+    let url: URL
+    var id: String { version }
+
+    static let endpoint = URL(string: "https://dotsherness-unified-backend.dotsherness-unified-backend.workers.dev/harness/check-update")!
+
+    static func check(bundle: Bundle = .main) async -> StoreUpdate? {
+        let version = bundle.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
+        let build = bundle.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "platform", value: "ios"),
+            URLQueryItem(name: "version", value: version),
+            URLQueryItem(name: "build", value: build),
+        ]
+        guard let (data, response) = try? await URLSession.shared.data(from: components.url!),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              json["update_available"] as? Bool == true,
+              let link = (json["download_url"] as? String).flatMap(URL.init(string:)),
+              // Only ever send the user to the App Store, whatever the server says.
+              link.scheme == "https", link.host?.lowercased() == "apps.apple.com"
+        else { return nil }
+        return StoreUpdate(
+            version: json["latest_version"] as? String ?? "",
+            notes: json["release_notes"] as? String ?? "",
+            mandatory: json["mandatory"] as? Bool ?? false,
+            url: link
+        )
+    }
+}
+
+/// iOS can't update itself; this only points the user at the App Store. A
+/// mandatory release keeps the alert up until the app is updated.
+struct AppStoreUpdatePrompt: ViewModifier {
+    @ObservedObject var localization: MobileLocalization
+    @Environment(\.openURL) private var openURL
+    @State private var update: StoreUpdate?
+
+    func body(content: Content) -> some View {
+        content
+            .task { update = await StoreUpdate.check() }
+            .alert(
+                localization.text("updates.title"),
+                isPresented: Binding(
+                    get: { update != nil },
+                    set: { if !$0, update?.mandatory != true { update = nil } }
+                ),
+                presenting: update
+            ) { update in
+                Button(localization.text("updates.openStore")) { openURL(update.url) }
+                if !update.mandatory {
+                    Button(localization.text("updates.later"), role: .cancel) {}
+                }
+            } message: { update in
+                Text([localization.format("updates.available", update.version), update.notes]
+                    .filter { !$0.isEmpty }.joined(separator: "\n\n"))
+            }
+    }
+}
+

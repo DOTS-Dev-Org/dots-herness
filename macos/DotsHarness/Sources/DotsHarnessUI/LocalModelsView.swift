@@ -120,7 +120,7 @@ struct LocalModelsView: View {
     }
 
     private var curated: [LocalModelSpec] {
-        (local.models + (local.mlxSupported ? LocalModelCatalog.mlxModels : [])).filter(matches)
+        (local.models + (local.mlxSupported ? LocalModelCatalog.mlxModels : []) + LocalDiffusion.presets).filter(matches)
     }
 
     var body: some View {
@@ -253,6 +253,7 @@ struct LocalModelsView: View {
                 Label(local.hardwareSummary, systemImage: "memorychip").textSelection(.enabled)
                 engineStatus("llama.cpp \(LocalRuntime.llamaTag)", ready: local.runtimeReady)
                 if local.mlxSupported { engineStatus("MLX \(LocalRuntime.mlxVersion)", ready: local.mlxReady) }
+                engineStatus("stable-diffusion.cpp", ready: local.diffusionReady)
                 if local.serving, let id = local.runningModelID {
                     Label(local.servedContext.map { AppCopy.format("local.servingContext", id, $0) } ?? id, systemImage: "dot.radiowaves.left.and.right")
                         .foregroundStyle(.green)
@@ -265,11 +266,14 @@ struct LocalModelsView: View {
                 if local.mlxSupported, !local.mlxReady {
                     Button(AppCopy.text("local.installMLX")) { Task { await local.installRuntime(.mlx) } }
                 }
+                if !local.diffusionReady {
+                    Button(AppCopy.text("local.installDiffusion")) { Task { await local.installRuntime(.diffusion) } }
+                }
                 if local.serving { Button(AppCopy.text("local.stopServer"), action: local.stop) }
             }
             .font(.system(size: 12))
             .foregroundStyle(.secondary)
-            ForEach(["runtime", "mlx"], id: \.self) { key in
+            ForEach(["runtime", "mlx", "diffusion"], id: \.self) { key in
                 if let fraction = local.downloads[key], fraction < 1 { ProgressView(value: fraction) }
             }
         }
@@ -346,7 +350,8 @@ struct LocalModelsView: View {
                 Text(spec.notes).fixedSize(horizontal: false, vertical: true)
             }
             HStack(spacing: 8) {
-                TagBadge(spec.engine == .mlx ? "MLX" : (spec.runnable ? "llama.cpp" : AppCopy.text("local.hub.fileOnly")))
+                TagBadge(spec.engine == .mlx ? "MLX" : spec.engine == .diffusion ? "stable-diffusion.cpp"
+                         : (spec.runnable ? "llama.cpp" : AppCopy.text("local.hub.fileOnly")))
                 if spec.reasoning { TagBadge(AppCopy.text("local.lrm"), background: AnyShapeStyle(Color.orange.opacity(0.18))) }
                 if spec.minMemoryGB > 0, !local.fits(spec) {
                     TagBadge(AppCopy.text("local.tooLarge"), background: AnyShapeStyle(Color.red.opacity(0.18)))
@@ -363,6 +368,20 @@ struct LocalModelsView: View {
             if let fraction = local.downloads[spec.id], fraction < 1, !installed { ProgressView(value: fraction) }
             if !spec.runnable, installed {
                 Text(AppCopy.text("local.hub.downloadOnly")).font(.callout).foregroundStyle(.secondary)
+            }
+            if spec.engine == .diffusion {
+                Text(AppCopy.text(spec.category == "video" ? "local.videoHint" : "local.imageHint"))
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            if let parts = spec.components, parts.count > 1 {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(AppCopy.text("local.hub.files")).font(.headline)
+                    ForEach(parts) { part in
+                        Label("\(URL(fileURLWithPath: part.filename).lastPathComponent) · \(part.sizeLabel)",
+                              systemImage: local.runtime.isInstalled(part) ? "checkmark.circle.fill" : "circle.dashed")
+                            .font(.callout).foregroundStyle(.secondary)
+                    }
+                }
             }
             HStack(spacing: 14) {
                 if let url = spec.hubURL { Link(AppCopy.text("local.hub.open"), destination: url) }
@@ -395,8 +414,8 @@ struct LocalModelAction: View {
         let installed = local.installed.contains(spec.id)
         if let fraction = local.downloads[spec.id], fraction < 1, !installed {
             ProgressView(value: fraction).progressViewStyle(.circular).controlSize(.small).frame(width: 28, height: 28)
-        } else if local.runningModelID == spec.id {
-            button("stop.circle", "common.stop") { local.stop() }
+        } else if local.runningModelID == spec.id || local.diffusionModelID == spec.id {
+            button("stop.circle", "common.stop") { spec.engine == .diffusion ? local.stopDiffusion() : local.stop() }
         } else if installed {
             if spec.runnable {
                 button("play.circle", "common.start") { Task { await local.start(spec) } }

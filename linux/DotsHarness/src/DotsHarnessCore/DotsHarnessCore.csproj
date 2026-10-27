@@ -31,6 +31,7 @@
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\AppModel.Sandbox.cs" Link="AppModel.Sandbox.cs" />
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\SessionProjector.cs" Link="SessionProjector.cs" />
     <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\NativeClipboard.cs" Link="NativeClipboard.cs" />
+    <Compile Include="..\..\..\..\windows\DotsHarness\src\DotsHarnessCore\NativePluginAuthor.cs" Link="NativePluginAuthor.cs" />
     <ProjectReference Include="..\HarnessPluginKit\HarnessPluginKit.csproj" />
     <ProjectReference Include="..\PluginRuntime\PluginRuntime.csproj" />
     <PackageReference Include="Whisper.net" Version="1.9.1" />

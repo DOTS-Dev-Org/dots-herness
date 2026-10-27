@@ -12,6 +12,8 @@ public enum LocalEngine: String, Sendable, Codable {
     case file
     /// Download-only: a whole Hugging Face repository (diffusers, 3D, TTS…).
     case repo
+    /// stable-diffusion.cpp: images through `sd-server`, video through `sd-cli`.
+    case diffusion
 }
 
 public struct LocalModelSpec: Identifiable, Sendable, Equatable, Hashable, Codable {
@@ -35,6 +37,12 @@ public struct LocalModelSpec: Identifiable, Sendable, Equatable, Hashable, Codab
     public var localPath: String?
     /// `LocalModelCategory` id.
     public var category: String
+    /// Diffusion bundles: the files `sd-*` loads together, each tagged with its `role` flag.
+    public var components: [LocalModelSpec]?
+    /// The `sd-*` flag a component is passed with (`--vae`, `--t5xxl`…); nil means `-m`.
+    public var role: String?
+    /// Generation defaults for a diffusion model (steps, guidance, size…).
+    public var diffusionArgs: [String]?
 
     public init(
         id: String,
@@ -52,7 +60,10 @@ public struct LocalModelSpec: Identifiable, Sendable, Equatable, Hashable, Codab
         repo: String? = nil,
         minMemoryGB: Int = 0,
         localPath: String? = nil,
-        category: String = "chat"
+        category: String = "chat",
+        components: [LocalModelSpec]? = nil,
+        role: String? = nil,
+        diffusionArgs: [String]? = nil
     ) {
         self.id = id
         self.name = name
@@ -70,10 +81,13 @@ public struct LocalModelSpec: Identifiable, Sendable, Equatable, Hashable, Codab
         self.minMemoryGB = minMemoryGB
         self.localPath = localPath
         self.category = category
+        self.components = components
+        self.role = role
+        self.diffusionArgs = diffusionArgs
     }
 
     /// llama.cpp or MLX can serve it; the rest is download-only.
-    public var runnable: Bool { engine == .llama || engine == .mlx }
+    public var runnable: Bool { engine == .llama || engine == .mlx || engine == .diffusion }
     /// Stored as a folder with a `.complete` marker rather than one file.
     public var isDirectory: Bool { engine == .mlx || engine == .repo }
 
@@ -225,7 +239,7 @@ public enum LocalModelCatalog {
     }
 
     public static func spec(id: String) -> LocalModelSpec? {
-        (models + mlxModels).first { $0.id == id }
+        (models + mlxModels + LocalDiffusion.presets).first { $0.id == id }
     }
 
     public static func prettyBytes(_ value: Int64) -> String {

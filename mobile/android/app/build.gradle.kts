@@ -69,6 +69,8 @@ dependencies {
     // Background loops; WorkManager is the only scheduler Android will honour
     // once the app is not in front.
     implementation("androidx.work:work-runtime-ktx:2.10.0")
+    // Play In-App Updates; a sideloaded build just never reports an update.
+    implementation("com.google.android.play:app-update:2.1.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
 }

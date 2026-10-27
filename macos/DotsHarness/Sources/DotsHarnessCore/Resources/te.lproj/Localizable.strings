@@ -2120,3 +2120,11 @@
 "local.context" = "Context";
 "local.memory" = "Memory";
 "local.disk" = "On disk";
+"local.installDiffusion" = "Install stable-diffusion.cpp";
+"local.imageReady" = "%@ is ready: /imagegen and Media studio draw with it";
+"local.videoReady" = "%@ is ready: /videogen and Media studio render with it";
+"local.imageHint" = "Start it, then use /imagegen in chat or generate in Media studio. It runs on this Mac; nothing leaves it.";
+"local.videoHint" = "Start it, then use /videogen in chat or Media studio. A one-second 512×288 clip takes several minutes on this Mac.";
+"localModel.sdTurboNote" = "Fastest local image model: one step, 512×512.";
+"localModel.fluxNote" = "High-quality 1024×1024 images in four steps. Needs about 16 GB of memory.";
+"localModel.wanNote" = "Text-to-video: short 512×288 clips from a prompt.";

@@ -667,6 +667,7 @@ public enum MediaStudioAI {
     /// Whether an image request has somewhere to go. A provider can still refuse; callers fall back then too.
     @MainActor
     public static func canGenerateImages(router: RouterController, settings: MediaStudioSettings) async -> Bool {
+        if LocalDiffusion.active?.spec.category == "image" { return true }
         if settings.imageSource == .local { return !settings.model(for: .image).isEmpty }
         if await router.mediaConfiguration(for: .image) != nil { return true }
         return router.imagePrimaryAccount != nil
@@ -706,6 +707,7 @@ public enum MediaStudioAI {
         seconds: Int? = nil,
         stem: MusicStemRequest? = nil
     ) async throws -> ChatMedia {
+        if let local = try await LocalDiffusion.generate(kind: kind, prompt: prompt, paths: paths) { return local.media }
         let model = settings.model(for: kind)
         if kind == .music, let endpoint = settings.musicEndpoint {
             var configuration = AgentConfiguration(baseURL: endpoint.baseURL, model: model, provider: endpoint.name)

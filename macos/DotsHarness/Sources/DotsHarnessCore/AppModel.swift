@@ -209,6 +209,7 @@ public final class AppModel: ObservableObject {
     /// Bumped to ask the UI to open the plan in the right dock.
     @Published public var planPaneRequestID = 0
     @Published public var reviewPaneRequestID = 0
+    @Published public var tasksPaneRequestID = 0
     /// Bumped to ask the dock to navigate a user-clicked web link in its browser.
     @Published public var browserPaneRequestID = 0
     @Published public var requestedBrowserURL: URL?

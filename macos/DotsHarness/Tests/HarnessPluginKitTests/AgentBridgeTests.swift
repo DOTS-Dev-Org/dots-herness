@@ -1355,7 +1355,7 @@ final class AgentBridgeTests: XCTestCase {
     func testAskUserParsesQuestionsAndDropsBrokenOnes() {
         let arguments = """
         {"questions":[
-          {"header":"Scope","question":"Which surface first?","options":["macOS","Windows","Linux","All three"]},
+          {"header":"Scope","question":"Which surface first?","options":["macOS","Windows","Linux","All three"],"allow_multiple":true},
           {"question":"  ","options":["ignored"]},
           {"question":"Migration?","options":["  ","Manual","Automatic","","Skip","Extra"]}
         ]}
@@ -1364,6 +1364,8 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertEqual(questions.count, 2)
         XCTAssertEqual(questions[0].header, "Scope")
         XCTAssertEqual(questions[0].options, ["macOS", "Windows", "Linux", "All three"])
+        XCTAssertTrue(questions[0].allowsMultipleSelection)
+        XCTAssertFalse(questions[1].allowsMultipleSelection)
         // Blank options fall out and the list is capped at four suggestions.
         XCTAssertEqual(questions[1].options, ["Manual", "Automatic", "Skip", "Extra"])
         XCTAssertFalse(questions[1].header.isEmpty)
@@ -1396,10 +1398,14 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertEqual(AskUserTool.definition.name, "ask_user")
         guard case let .object(parameters) = AskUserTool.definition.parameters,
               case let .object(properties) = parameters["properties"],
-              case let .object(questions) = properties["questions"] else {
+              case let .object(questions) = properties["questions"],
+              case let .object(item) = questions["items"],
+              case let .object(itemProperties) = item["properties"],
+              case let .object(allowMultiple) = itemProperties["allow_multiple"] else {
             return XCTFail("ask_user parameters are not an object")
         }
         XCTAssertEqual(questions["type"], .string("array"))
+        XCTAssertEqual(allowMultiple["type"], .string("boolean"))
     }
 
     func testAgentMessageAndToolsEncodeExpectedShape() {

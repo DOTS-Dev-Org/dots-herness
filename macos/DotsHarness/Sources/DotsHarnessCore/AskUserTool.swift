@@ -9,12 +9,14 @@ public struct AskUserQuestion: Sendable, Equatable, Identifiable {
     public let header: String
     public let prompt: String
     public let options: [String]
+    public let allowsMultipleSelection: Bool
 
-    public init(id: String, header: String, prompt: String, options: [String]) {
+    public init(id: String, header: String, prompt: String, options: [String], allowsMultipleSelection: Bool = false) {
         self.id = id
         self.header = header
         self.prompt = prompt
         self.options = options
+        self.allowsMultipleSelection = allowsMultipleSelection
     }
 }
 
@@ -92,6 +94,10 @@ public enum AskUserTool {
                                 "type": .string("string"),
                                 "description": .string("The question, written so a single answer resolves it."),
                             ]),
+                            "allow_multiple": .object([
+                                "type": .string("boolean"),
+                                "description": .string("Set true only when the user may select multiple options; omitted or false means one answer. Multiple selected labels are returned on separate lines."),
+                            ]),
                             "options": .object([
                                 "type": .string("array"),
                                 "description": .string("3 or 4 concrete suggested answers, each a real choice. Write each as \"Short title — one-line detail\"."),
@@ -123,7 +129,8 @@ public enum AskUserTool {
                 id: "q\(index)",
                 header: header.isEmpty ? AppCopy.format("ask.defaultHeader", index + 1) : header,
                 prompt: prompt,
-                options: Array(options.prefix(4))
+                options: Array(options.prefix(4)),
+                allowsMultipleSelection: item["allow_multiple"] as? Bool ?? false
             )
         }
     }

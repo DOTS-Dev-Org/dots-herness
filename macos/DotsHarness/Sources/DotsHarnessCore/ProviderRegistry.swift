@@ -13,11 +13,14 @@ public struct ProviderMediaSpec: Codable, Sendable, Equatable {
     public var path: String?
     /// Request shape when it is not the default one for the kind; music knows "elevenlabs".
     public var format: String?
+    /// Image size to ask for ("512x512"); nil asks for 1024×1024.
+    public var size: String?
 
-    public init(model: String, path: String? = nil, format: String? = nil) {
+    public init(model: String, path: String? = nil, format: String? = nil, size: String? = nil) {
         self.model = model
         self.path = path
         self.format = format
+        self.size = size
     }
 }
 
