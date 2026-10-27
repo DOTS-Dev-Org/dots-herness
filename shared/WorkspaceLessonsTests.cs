@@ -138,6 +138,11 @@ public sealed class WorkspaceLessonsTests : IDisposable
         Assert.Contains("What the agent did:\n✓ write_file Sources/App/Login.swift", payload);
         Assert.DoesNotContain("topsecretvalue", payload);
         Assert.StartsWith("signal:", WorkspaceLessons.SignalSource("conversation", "message"));
+        // A lesson is traced back to the conversation it was learned in, not another one.
+        Assert.Contains(WorkspaceLessons.SignalSource("conversation", "message"),
+            WorkspaceLessons.SignalSources("conversation", ["other", "message"]));
+        Assert.DoesNotContain(WorkspaceLessons.SignalSource("conversation", "message"),
+            WorkspaceLessons.SignalSources("another", ["message"]));
 
         Directory.CreateDirectory(Path.Combine(_workspace, ".mem"));
         File.WriteAllText(Path.Combine(_workspace, ".mem", "lessons.json"), """

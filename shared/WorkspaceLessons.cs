@@ -874,6 +874,13 @@ public static class WorkspaceLessons
         return Lesson.SignalPrefix + Convert.ToHexString(hash).ToLowerInvariant()[..16];
     }
 
+    /// <summary>
+    /// Every signal source a conversation's turns could have produced, so a lesson can be
+    /// traced back to the conversation it was learned in.
+    /// </summary>
+    public static HashSet<string> SignalSources(string conversationId, IEnumerable<string> messageIds) =>
+        messageIds.Select(messageId => SignalSource(conversationId, messageId)).ToHashSet(StringComparer.Ordinal);
+
     /// <summary>The same lesson in other words: most content words shared.</summary>
     public static bool Similar(string left, string right)
     {

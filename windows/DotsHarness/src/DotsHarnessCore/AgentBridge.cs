@@ -2001,7 +2001,7 @@ public sealed partial class AgentBridge : ObservableObject
                 Status = $"{generatedMedia.Provider} · {generatedMedia.Model}";
                 return;
             }
-            if (!request.IsContinuation) await AskMemoryQuestionsAsync(workspacePath, conversation.Id, run.Token);
+            if (!request.IsContinuation) await AskMemoryQuestionsAsync(workspacePath, conversation, run.Token);
             var promptSections = SystemPromptSections(workspacePath, request.PlanMode, request.Text);
             var systemPrompt = PromptAssembly.Assemble(promptSections.Where(section => section.Tag == "core_policy"));
             var turnContext = PromptAssembly.Assemble(promptSections.Where(section => section.Tag != "core_policy"));
@@ -4784,10 +4784,12 @@ public sealed partial class AgentBridge : ObservableObject
     /// Before a turn, the host asks what only the user can settle about memory: whether
     /// memory that came with the repository is trusted, and whether a lesson inferred from
     /// a single turn is right. Nothing is assumed: an unanswered question leaves the memory
-    /// untrusted and the lesson a hint. Mirrors askMemoryQuestions on macOS.
+    /// untrusted and the lesson a hint. A lesson is only reviewed in the conversation it was
+    /// learned in; another conversation never asks about it. Mirrors askMemoryQuestions on macOS.
     /// </summary>
-    private async Task AskMemoryQuestionsAsync(string workspacePath, string conversationId, CancellationToken ct)
+    private async Task AskMemoryQuestionsAsync(string workspacePath, Conversation conversation, CancellationToken ct)
     {
+        var conversationId = conversation.Id;
         if (NonInteractive || !MemoryEnabled || string.IsNullOrWhiteSpace(workspacePath)) return;
         var text = LocalizationService.Current;
         var questions = new List<AskUserQuestion>();
@@ -4798,10 +4800,12 @@ public sealed partial class AgentBridge : ObservableObject
         }
         string[] lessonOptions = [text.Get("memory.lesson.keep"), text.Get("memory.lesson.forget")];
         var now = DateTimeOffset.UtcNow;
+        var learnedHere = WorkspaceLessons.SignalSources(conversationId, conversation.Messages.Select(message => message.Id).ToList());
         // ponytail: three lessons a turn, newest first; the rest wait for the next turn.
         foreach (var lesson in WorkspaceLessons.Read(workspacePath, _paths.Root)
             .Where(lesson => !lesson.IsConfirmed && lesson.IsActive(now)
-                && !lesson.ReviewPromptDismissed && !_askedLessonIds.Contains(lesson.Id))
+                && !lesson.ReviewPromptDismissed && !_askedLessonIds.Contains(lesson.Id)
+                && lesson.Sources.Any(learnedHere.Contains))
             .OrderByDescending(lesson => lesson.LastSeen)
             .Take(3))
         {

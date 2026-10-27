@@ -1432,7 +1432,9 @@ extension NativeAgentHost {
     /// Before a turn, the host asks what only the user can settle about memory:
     /// whether memory that came with the repository is trusted, and whether a lesson
     /// inferred from a single turn is right. Nothing is assumed: an unanswered question
-    /// leaves the memory untrusted and the lesson a hint. True when the prompt must be rebuilt.
+    /// leaves the memory untrusted and the lesson a hint. A lesson is only reviewed in the
+    /// conversation it was learned in; another conversation never asks about it.
+    /// True when the prompt must be rebuilt.
     func askMemoryQuestions(conversationID: String, workspace: URL?) async -> Bool {
         guard !nonInteractive, isMemoryWorkspace(workspace) else { return false }
         var questions: [AskUserQuestion] = []
@@ -1446,9 +1448,14 @@ extension NativeAgentHost {
             ))
         }
         let lessonOptions = [AppCopy.text("memory.lesson.keep"), AppCopy.text("memory.lesson.forget")]
+        let learnedHere = LessonEvaluator.signalSources(
+            conversationID: conversationID,
+            messageIDs: conversations.first { $0.id == conversationID }?.messages.map(\.id) ?? []
+        )
         // ponytail: three lessons a turn, newest first; the rest wait for the next turn.
         let lessons = (feedbackStore?.lessons() ?? [])
             .filter { !$0.isConfirmed && $0.isActive() && $0.reviewPromptDismissed != true && !askedLessonIDs.contains($0.id) }
+            .filter { !learnedHere.isDisjoint(with: $0.sources) }
             .sorted { $0.lastSeen > $1.lastSeen }
             .prefix(3)
         for lesson in lessons {
