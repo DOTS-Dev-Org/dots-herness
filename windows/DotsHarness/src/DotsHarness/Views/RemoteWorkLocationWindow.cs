@@ -77,6 +77,27 @@ public sealed class RemoteWorkLocationWindow : Window
         var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0) };
         var local = new Button { Content = model.L("workLocation.useLocal"), Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 0, 8, 0) };
         local.Click += (_, _) => { if (_model.SetLocalWorkLocation()) Close(); };
+        var cloud = new Button
+        {
+            Content = model.L("workLocation.cloud"),
+            Padding = new Thickness(12, 6, 12, 6),
+            Margin = new Thickness(0, 0, 8, 0),
+            IsEnabled = model.Cloud.Repository is not null,
+            ToolTip = model.Cloud.Repository is { } repository
+                ? model.L("workLocation.cloudDetail", repository.FullName)
+                : model.L("workLocation.cloudUnavailable"),
+        };
+        ToolTipService.SetShowOnDisabled(cloud, true);
+        cloud.Click += (_, _) =>
+        {
+            if (!_model.SetCloudWorkLocation())
+            {
+                _status.Text = _model.SshNotice ?? "";
+                return;
+            }
+            CloudRunsWindow.ShowFor(_model, Owner);
+            Close();
+        };
         var cancel = new Button { Content = model.L("archive.cancel"), Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 0, 8, 0) };
         cancel.Click += (_, _) => Close();
         _connect.Content = model.L("workLocation.connect");
@@ -84,6 +105,7 @@ public sealed class RemoteWorkLocationWindow : Window
         _connect.IsDefault = true;
         _connect.Click += OnConnect;
         actions.Children.Add(local);
+        actions.Children.Add(cloud);
         actions.Children.Add(cancel);
         actions.Children.Add(_connect);
         body.Children.Add(actions);

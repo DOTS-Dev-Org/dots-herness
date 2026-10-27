@@ -436,7 +436,7 @@ public partial class ConversationView : UserControl
         ToolTip.SetTip(CancelPlanButton, Model.L("conversation.cancelPlanHelp"));
         CancelPlanButton.IsVisible = conversation?.PlanGateActive == true;
         SendButton.Content = canContinue ? Model.L("conversation.continue") : Model.L("conversation.send");
-        var projectLocationAvailable = Model.Bridge.CanSendSelectedConversation;
+        var projectLocationAvailable = Model.CanSendFromComposer;
         var missingProjectPath = Model.IsRemoteWorkLocation ? null : Model.MissingProjectPath;
         ProjectMissingBanner.IsVisible = missingProjectPath is not null;
         ProjectMissingText.Text = missingProjectPath is null ? "" : Model.L("project.missing.readOnly");
@@ -1608,7 +1608,7 @@ public partial class ConversationView : UserControl
     {
         if (Model is null) return;
         var model = Model;
-        if (!model.Bridge.CanSendSelectedConversation)
+        if (!model.CanSendFromComposer)
         {
             model.Draft = DraftBox.Text ?? "";
             return;
@@ -1622,6 +1622,7 @@ public partial class ConversationView : UserControl
         model.Draft = DraftBox.Text ?? "";
         model.Send(mode);
         DraftBox.Text = "";
+        if (model.IsCloudWorkLocation) CloudRunsWindow.ShowFor(model, TopLevel.GetTopLevel(this) as Window);
     }
 
     private void OnLocateProject(object? sender, RoutedEventArgs e)

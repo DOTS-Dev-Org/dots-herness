@@ -65,12 +65,32 @@ public sealed class RemoteWorkLocationWindow : Window
         var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8 };
         var local = new Button { Content = model.L("workLocation.useLocal"), Padding = new Thickness(12, 6) };
         local.Click += (_, _) => { if (_model.SetLocalWorkLocation()) Close(); };
+        var cloud = new Button
+        {
+            Content = model.L("workLocation.cloud"),
+            Padding = new Thickness(12, 6),
+            IsEnabled = model.Cloud.Repository is not null,
+        };
+        ToolTip.SetTip(cloud, model.Cloud.Repository is { } repository
+            ? model.L("workLocation.cloudDetail", repository.FullName)
+            : model.L("workLocation.cloudUnavailable"));
+        cloud.Click += (_, _) =>
+        {
+            if (!_model.SetCloudWorkLocation())
+            {
+                _status.Text = _model.SshNotice ?? "";
+                return;
+            }
+            CloudRunsWindow.ShowFor(_model, Owner as Window);
+            Close();
+        };
         var cancel = new Button { Content = model.L("archive.cancel"), Padding = new Thickness(12, 6) };
         cancel.Click += (_, _) => Close();
         _connect.Content = model.L("workLocation.connect");
         _connect.Padding = new Thickness(14, 6);
         _connect.Click += OnConnect;
         actions.Children.Add(local);
+        actions.Children.Add(cloud);
         actions.Children.Add(cancel);
         actions.Children.Add(_connect);
         body.Children.Add(actions);

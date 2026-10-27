@@ -40,6 +40,7 @@ public sealed partial class AppModel : ObservableObject
     private string _workspacePath;
     private IReadOnlyList<SshHost> _sshHosts = [];
     private string? _workLocationAlias;
+    private bool _cloudWorkLocation;
     private SshTarget? _remoteTarget;
     private string? _sshNotice;
     private string _draft = "";
@@ -242,15 +243,37 @@ public sealed partial class AppModel : ObservableObject
     }
 
     public bool IsRemoteWorkLocation => !string.IsNullOrWhiteSpace(_workLocationAlias);
+    /// GitHub Actions in the project's own repository (see shared/CloudRuns.cs).
+    public bool IsCloudWorkLocation => _cloudWorkLocation;
+    public CloudRunService Cloud { get; }
+
+    /// Model id passed to the cloud runner; empty uses the repository provider's default.
+    public string CloudModel
+    {
+        get => Host.Settings.Get("cloud.model")?.AsString() ?? "";
+        set
+        {
+            Host.Settings.Set("cloud.model", JsonValue.String(value.Trim()));
+            PersistSettings();
+            OnPropertyChanged();
+        }
+    }
+
+    /// The composer can send: a cloud run needs no local model route, the runner brings its own.
+    public bool CanSendFromComposer => IsCloudWorkLocation
+        ? ActiveProjectLocationAvailable && !Cloud.Busy
+        : Bridge.CanSendSelectedConversation;
     public string? SshNotice
     {
         get => _sshNotice;
         private set => SetProperty(ref _sshNotice, value);
     }
 
-    public string WorkLocationLabel => IsRemoteWorkLocation
-        ? RemoteTarget is { } target ? $"{target.Alias}: {target.RemotePath}" : _workLocationAlias ?? "SSH"
-        : L("workLocation.local");
+    public string WorkLocationLabel => IsCloudWorkLocation
+        ? L("workLocation.cloud")
+        : IsRemoteWorkLocation
+            ? RemoteTarget is { } target ? $"{target.Alias}: {target.RemotePath}" : _workLocationAlias ?? "SSH"
+            : L("workLocation.local");
 
     public string? TerminalWorkspacePath => IsRemoteWorkLocation
         ? RemoteTarget?.Identity
@@ -399,6 +422,11 @@ public sealed partial class AppModel : ObservableObject
         var credentialStore = providerSecrets ?? new PlatformProviderSecrets(Paths.Root);
         MarketplaceSession = new MarketplaceSession(credentialStore);
         MarketplacePublisher = new MarketplacePublisher(MarketplaceSession);
+        Cloud = new CloudRunService(new CloudRunApi(MarketplaceSession, L), credentialStore, () => WorkspacePath, () => CloudModel, L);
+        Cloud.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(CloudRunService.Busy)) OnPropertyChanged(nameof(CanSendFromComposer));
+        };
         Host = new PluginHost(Catalog, settings);
         _keyboardShortcuts = KeyboardShortcutCatalog.Load(Host.Settings);
         Marketplace = new NativeMarketplaceClient(Paths, Catalog, Host, Remount, session: MarketplaceSession);
@@ -576,6 +604,7 @@ public sealed partial class AppModel : ObservableObject
         _workLocationAlias = workLocation.StartsWith("remote:", StringComparison.Ordinal)
             ? workLocation["remote:".Length..]
             : null;
+        _cloudWorkLocation = workLocation == "cloud";
         Bridge.SetRemoteWorkLocationSelected(IsRemoteWorkLocation);
         if (_workLocationAlias is { Length: > 0 } alias
             && SshHosts.Any(host => host.Alias.Equals(alias, StringComparison.OrdinalIgnoreCase)))
@@ -1356,6 +1385,11 @@ public sealed partial class AppModel : ObservableObject
 
     public void Send(PromptMode mode = PromptMode.Queue)
     {
+        if (IsCloudWorkLocation)
+        {
+            _ = SendToCloudAsync();
+            return;
+        }
         if (!Bridge.CanSendSelectedConversation) return;
         var text = Draft.Trim();
         if (string.IsNullOrEmpty(text) && DraftAttachments.Count == 0)
@@ -1374,6 +1408,20 @@ public sealed partial class AppModel : ObservableObject
             Draft = "";
             DraftAttachments.Clear();
         });
+    }
+
+    /// The draft is cleared at once and restored if the run could not start.
+    private async Task SendToCloudAsync()
+    {
+        var text = Draft.Trim();
+        if (text.Length == 0 || !CanSendFromComposer) return;
+        if (DraftAttachments.Count > 0)
+        {
+            Cloud.Notice = L("cloud.error.attachments");
+            return;
+        }
+        Draft = "";
+        if (!await Cloud.StartAsync(text) && Draft.Length == 0) Draft = text;
     }
 
     /// Turns plan mode on when the message explicitly asks for a plan.
@@ -2015,6 +2063,7 @@ public sealed partial class AppModel : ObservableObject
             return false;
         }
         _workLocationAlias = null;
+        _cloudWorkLocation = false;
         RemoteTarget = null;
         Bridge.SetRemoteTarget(null);
         Host.Settings.Set("agent.workLocation", JsonValue.String("local"));
@@ -2066,6 +2115,7 @@ public sealed partial class AppModel : ObservableObject
             throw new InvalidOperationException(probe.CombinedOutput.Length > 0 ? probe.CombinedOutput : L("ssh.error.notReachable", alias));
         var resolved = await RemoteSsh.ResolveDirectoryAsync(alias, remotePath, ct);
         _workLocationAlias = alias;
+        _cloudWorkLocation = false;
         RemoteTarget = new SshTarget(alias, resolved);
         Bridge.SetRemoteTarget(RemoteTarget);
         Host.Settings.Set("agent.workLocation", JsonValue.String("remote:" + alias));
@@ -2077,9 +2127,40 @@ public sealed partial class AppModel : ObservableObject
 
     private static string RemotePathSettingKey(string alias) => "agent.ssh.remotePath." + alias;
 
+    /// Sends composer tasks to GitHub Actions. Needs a project whose origin is on github.com.
+    public bool SetCloudWorkLocation()
+    {
+        if (Bridge.AnyRunBusy)
+        {
+            SshNotice = L("ssh.busy");
+            return false;
+        }
+        if (ActiveSandbox is not null)
+        {
+            SshNotice = "Leave the active sandbox before working in the cloud.";
+            return false;
+        }
+        if (Cloud.Repository is null)
+        {
+            SshNotice = L("cloud.error.notGitHub");
+            return false;
+        }
+        _workLocationAlias = null;
+        _cloudWorkLocation = true;
+        RemoteTarget = null;
+        Bridge.SetRemoteTarget(null);
+        Host.Settings.Set("agent.workLocation", JsonValue.String("cloud"));
+        PersistSettings();
+        SshNotice = null;
+        NotifyWorkLocationChanged();
+        return true;
+    }
+
     private void NotifyWorkLocationChanged()
     {
         OnPropertyChanged(nameof(IsRemoteWorkLocation));
+        OnPropertyChanged(nameof(IsCloudWorkLocation));
+        OnPropertyChanged(nameof(CanSendFromComposer));
         OnPropertyChanged(nameof(WorkLocationLabel));
         OnPropertyChanged(nameof(TerminalWorkspacePath));
         OnPropertyChanged(nameof(SshHosts));

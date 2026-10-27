@@ -430,7 +430,7 @@ public partial class ConversationView : UserControl
             ? Visibility.Visible
             : Visibility.Collapsed;
         SendButton.Content = canContinue ? Model.L("conversation.continue") : Model.L("conversation.send");
-        var projectLocationAvailable = Model.Bridge.CanSendSelectedConversation;
+        var projectLocationAvailable = Model.CanSendFromComposer;
         var missingProjectPath = Model.IsRemoteWorkLocation ? null : Model.MissingProjectPath;
         ProjectMissingBanner.Visibility = missingProjectPath is null ? Visibility.Collapsed : Visibility.Visible;
         ProjectMissingText.Text = missingProjectPath is null ? "" : Model.L("project.missing.readOnly");
@@ -1572,7 +1572,7 @@ public partial class ConversationView : UserControl
     private async void Send(PromptMode mode)
     {
         if (Model is null) return;
-        if (!Model.Bridge.CanSendSelectedConversation)
+        if (!Model.CanSendFromComposer)
         {
             Model.Draft = DraftBox.Text;
             return;
@@ -1586,6 +1586,7 @@ public partial class ConversationView : UserControl
         Model.Draft = DraftBox.Text;
         Model.Send(mode);
         DraftBox.Text = "";
+        if (Model.IsCloudWorkLocation) CloudRunsWindow.ShowFor(Model, Window.GetWindow(this));
     }
 
     private void OnLocateProject(object sender, RoutedEventArgs e)

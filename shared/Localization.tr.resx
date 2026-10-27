@@ -1391,4 +1391,42 @@
   <data name="settings.updates.auto.hint" xml:space="preserve"><value>Açılışta yeni sürüm bulunursa indirilir, kurulur ve uygulama yeniden başlatılır.</value></data>
   <data name="settings.updates.installing" xml:space="preserve"><value>Güncelleme indiriliyor ve kuruluyor…</value></data>
   <data name="settings.updates.install" xml:space="preserve"><value>Güncelle ve yeniden başlat</value></data>
+  <data name="workLocation.cloud" xml:space="preserve"><value>Bulut</value></data>
+  <data name="workLocation.cloudDetail" xml:space="preserve"><value>{0} deposunda GitHub Actions ile çalıştır</value></data>
+  <data name="workLocation.cloudUnavailable" xml:space="preserve"><value>Origin'i GitHub'da olan bir proje gerekir</value></data>
+  <data name="cloud.title" xml:space="preserve"><value>Bulut çalıştırmaları</value></data>
+  <data name="cloud.subtitle" xml:space="preserve"><value>GitHub Actions · değişiklikler herness/cloud dalına gelir</value></data>
+  <data name="cloud.noRepository" xml:space="preserve"><value>GitHub deposu yok</value></data>
+  <data name="cloud.empty" xml:space="preserve"><value>Henüz bulut çalıştırması yok. Composer'da Bulut'u seçip bir görev gönder.</value></data>
+  <data name="cloud.setup.title" xml:space="preserve"><value>Kurulum</value></data>
+  <data name="cloud.setup.steps" xml:space="preserve"><value>1. Workflow'u depoya kur.
+2. Model sağlayıcı anahtarını HERNESS_API_KEY adlı Actions secret'ı olarak ekle (sağlayıcı anthropic değilse HERNESS_PROVIDER değişkenini de ekle).
+3. Çalıştığın dalı push'la: runner GitHub'daki hâlinden başlar.</value></data>
+  <data name="cloud.setup.install" xml:space="preserve"><value>Workflow'u kur</value></data>
+  <data name="cloud.setup.secrets" xml:space="preserve"><value>Actions secret'larını aç</value></data>
+  <data name="cloud.setup.token" xml:space="preserve"><value>GitHub token</value></data>
+  <data name="cloud.setup.tokenHint" xml:space="preserve"><value>HerNess GitHub CLI oturumunu (gh auth login) ya da buraya kaydedilen, Actions ve Contents yazma izni olan bir token'ı kullanır. Workflow'u kurmak için Workflows yazma izni de gerekir.</value></data>
+  <data name="cloud.setup.tokenSaved" xml:space="preserve"><value>Anahtar zincirinde kayıtlı bir GitHub token'ı var.</value></data>
+  <data name="cloud.setup.model" xml:space="preserve"><value>Model (boş: sağlayıcı varsayılanı)</value></data>
+  <data name="cloud.installed" xml:space="preserve"><value>Workflow {0} deposuna, {1} dalına kuruldu.</value></data>
+  <data name="cloud.openRun" xml:space="preserve"><value>GitHub'da aç</value></data>
+  <data name="cloud.openBranch" xml:space="preserve"><value>{0} dalını aç</value></data>
+  <data name="cloud.status.queued" xml:space="preserve"><value>Sırada</value></data>
+  <data name="cloud.status.running" xml:space="preserve"><value>Çalışıyor</value></data>
+  <data name="cloud.status.succeeded" xml:space="preserve"><value>Tamamlandı</value></data>
+  <data name="cloud.status.failed" xml:space="preserve"><value>Başarısız</value></data>
+  <data name="cloud.status.cancelled" xml:space="preserve"><value>İptal edildi</value></data>
+  <data name="cloud.error.notSignedIn" xml:space="preserve"><value>Görevleri bulutta çalıştırmak için HerNess hesabına giriş yap.</value></data>
+  <data name="cloud.error.notGitHub" xml:space="preserve"><value>Bulut çalıştırması, origin remote'u github.com'da olan bir proje gerektirir.</value></data>
+  <data name="cloud.error.noToken" xml:space="preserve"><value>GitHub token'ı yok: gh auth login çalıştır ya da Bulut kurulumunda bir token kaydet.</value></data>
+  <data name="cloud.error.workflowMissing" xml:space="preserve"><value>{0} deposunun {1} dalında herness-cloud.yml workflow'u yok. Bulut kurulumundan kurup bu dala merge et.</value></data>
+  <data name="cloud.error.installForbidden" xml:space="preserve"><value>GitHub workflow'un eklenmesini reddetti. Token'ın workflow yetkisi (Workflows: write) olmalı.</value></data>
+  <data name="cloud.error.limit" xml:space="preserve"><value>Zaten devam eden {0} bulut çalıştırman var.</value></data>
+  <data name="cloud.error.github" xml:space="preserve"><value>GitHub {0} döndürdü: {1}</value></data>
+  <data name="cloud.error.api" xml:space="preserve"><value>HerNess {0} döndürdü: {1}</value></data>
+  <data name="cloud.error.attachments" xml:space="preserve"><value>Bulut çalıştırması yalnızca metin alır; ekleri kaldır.</value></data>
+  <data name="cloud.open" xml:space="preserve"><value>Bulut çalıştırmaları…</value></data>
+  <data name="cloud.prompt" xml:space="preserve"><value>Görev</value></data>
+  <data name="cloud.start" xml:space="preserve"><value>Bulutta çalıştır</value></data>
+  <data name="cloud.signIn" xml:space="preserve"><value>Giriş yap</value></data>
 </root>

@@ -11,6 +11,9 @@
     <EmbeddedResource Include="..\..\..\..\shared\Localization.resx">
       <LogicalName>DotsHarnessCore.Localization.resources</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="..\..\..\..\shared\cloud\herness-cloud.yml">
+      <LogicalName>DotsHarnessCore.herness-cloud.yml</LogicalName>
+    </EmbeddedResource>
     <EmbeddedResource Include="..\..\..\..\shared\Localization.*.resx">
       <Link>%(Filename)%(Extension)</Link>
     </EmbeddedResource>

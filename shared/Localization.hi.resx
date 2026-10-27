@@ -1323,4 +1323,42 @@
   <data name="plan.proposed" xml:space="preserve"><value>Claude ने एक प्लान सुझाया</value></data>
   <data name="plan.revise" xml:space="preserve"><value>संशोधित करें…</value></data>
   <data name="plan.acceptAuto" xml:space="preserve"><value>स्वीकार करें और ऑटो मोड</value></data>
+  <data name="workLocation.cloud" xml:space="preserve"><value>Cloud</value></data>
+  <data name="workLocation.cloudDetail" xml:space="preserve"><value>Run on GitHub Actions in {0}</value></data>
+  <data name="workLocation.cloudUnavailable" xml:space="preserve"><value>Needs a project whose origin is on GitHub</value></data>
+  <data name="cloud.title" xml:space="preserve"><value>Cloud runs</value></data>
+  <data name="cloud.subtitle" xml:space="preserve"><value>GitHub Actions · changes land on a herness/cloud branch</value></data>
+  <data name="cloud.noRepository" xml:space="preserve"><value>No GitHub repository</value></data>
+  <data name="cloud.empty" xml:space="preserve"><value>No cloud runs yet. Choose Cloud in the composer and send a task.</value></data>
+  <data name="cloud.setup.title" xml:space="preserve"><value>Setup</value></data>
+  <data name="cloud.setup.steps" xml:space="preserve"><value>1. Install the workflow into the repository.
+2. Add your model provider key as the HERNESS_API_KEY Actions secret (and HERNESS_PROVIDER as a variable if it is not anthropic).
+3. Push the branch you work on: the runner starts from what GitHub has.</value></data>
+  <data name="cloud.setup.install" xml:space="preserve"><value>Install workflow</value></data>
+  <data name="cloud.setup.secrets" xml:space="preserve"><value>Open Actions secrets</value></data>
+  <data name="cloud.setup.token" xml:space="preserve"><value>GitHub token</value></data>
+  <data name="cloud.setup.tokenHint" xml:space="preserve"><value>HerNess uses your GitHub CLI login (gh auth login), or a token saved here with Actions and Contents write access. Installing the workflow also needs Workflows write.</value></data>
+  <data name="cloud.setup.tokenSaved" xml:space="preserve"><value>A GitHub token is saved in the keychain.</value></data>
+  <data name="cloud.setup.model" xml:space="preserve"><value>Model (empty: provider default)</value></data>
+  <data name="cloud.installed" xml:space="preserve"><value>Workflow installed in {0} on {1}.</value></data>
+  <data name="cloud.openRun" xml:space="preserve"><value>Open on GitHub</value></data>
+  <data name="cloud.openBranch" xml:space="preserve"><value>Open {0}</value></data>
+  <data name="cloud.status.queued" xml:space="preserve"><value>Queued</value></data>
+  <data name="cloud.status.running" xml:space="preserve"><value>Running</value></data>
+  <data name="cloud.status.succeeded" xml:space="preserve"><value>Done</value></data>
+  <data name="cloud.status.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="cloud.status.cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="cloud.error.notSignedIn" xml:space="preserve"><value>Sign in to your HerNess account to run tasks in the cloud.</value></data>
+  <data name="cloud.error.notGitHub" xml:space="preserve"><value>Cloud runs need a project whose origin remote is on github.com.</value></data>
+  <data name="cloud.error.noToken" xml:space="preserve"><value>No GitHub token: run gh auth login or save a token in Cloud setup.</value></data>
+  <data name="cloud.error.workflowMissing" xml:space="preserve"><value>{0} has no herness-cloud.yml workflow on {1}. Install it from Cloud setup and merge it into this branch.</value></data>
+  <data name="cloud.error.installForbidden" xml:space="preserve"><value>GitHub refused to add the workflow. The token needs the workflow scope (Workflows: write).</value></data>
+  <data name="cloud.error.limit" xml:space="preserve"><value>You already have {0} cloud runs in progress.</value></data>
+  <data name="cloud.error.github" xml:space="preserve"><value>GitHub returned {0}: {1}</value></data>
+  <data name="cloud.error.api" xml:space="preserve"><value>HerNess returned {0}: {1}</value></data>
+  <data name="cloud.error.attachments" xml:space="preserve"><value>Cloud runs take text only; remove the attachments.</value></data>
+  <data name="cloud.open" xml:space="preserve"><value>Cloud runs…</value></data>
+  <data name="cloud.prompt" xml:space="preserve"><value>Task</value></data>
+  <data name="cloud.start" xml:space="preserve"><value>Run in the cloud</value></data>
+  <data name="cloud.signIn" xml:space="preserve"><value>Sign in</value></data>
 </root>
