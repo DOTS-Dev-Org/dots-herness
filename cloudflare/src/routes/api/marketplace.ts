@@ -7,6 +7,7 @@ import { db, nowIso, uuid } from "../../db/client";
 import { requireAuth } from "../../middleware/auth";
 import { checkRateLimit, getClientIp, rateLimit } from "../../middleware/rate-limit";
 import { timingSafeEqual } from "../../lib/paytr";
+import { decodeBase64URL, verifyGitHubOIDC } from "../../lib/github_oidc";
 import { clientIpFromRequest, recordAudit } from "../../lib/audit";
 import {
   MARKETPLACE_REPORT_REASONS,
@@ -649,83 +650,17 @@ marketplacePublic.post(
   },
 );
 
-const GITHUB_OIDC_ISSUER = "https://token.actions.githubusercontent.com";
-let githubOIDCKeys: { expiresAt: number; keys: Record<string, JsonWebKey> } | null = null;
-
-function decodeBase64URL(value: string): Uint8Array {
-  const normalized = value.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (value.length % 4)) % 4);
-  const binary = atob(normalized);
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
-}
-
-async function githubOIDCKeySet(forceRefresh = false): Promise<Record<string, JsonWebKey>> {
-  if (!forceRefresh && githubOIDCKeys && githubOIDCKeys.expiresAt > Date.now()) return githubOIDCKeys.keys;
-  const response = await fetch(`${GITHUB_OIDC_ISSUER}/.well-known/jwks`);
-  if (!response.ok) throw new Error(`github_oidc_jwks_${response.status}`);
-  const body = await response.json() as { keys?: Array<JsonWebKey & { kid?: string }> };
-  const keys = Object.fromEntries((body.keys || []).filter((key) => key.kid).map((key) => [key.kid!, key]));
-  githubOIDCKeys = { expiresAt: Date.now() + 10 * 60 * 1000, keys };
-  return keys;
-}
-
 async function verifyGitHubOIDCToken(env: Env, token: string): Promise<boolean> {
   const audience = (env.MARKETPLACE_CI_OIDC_AUDIENCE || "").trim();
   const repository = (env.MARKETPLACE_CI_REPOSITORY || "").trim();
   const workflow = (env.MARKETPLACE_CI_WORKFLOW || "").trim();
   if (!audience || !repository || !workflow || !token) return false;
 
-  const parts = token.split(".");
-  if (parts.length !== 3) return false;
-  let header: { alg?: string; kid?: string };
-  let claims: {
-    iss?: string;
-    aud?: string | string[];
-    exp?: number;
-    nbf?: number;
-    repository?: string;
-    workflow_ref?: string;
-    sub?: string;
-  };
-  try {
-    header = JSON.parse(new TextDecoder().decode(decodeBase64URL(parts[0]))) as typeof header;
-    claims = JSON.parse(new TextDecoder().decode(decodeBase64URL(parts[1]))) as typeof claims;
-  } catch {
-    return false;
-  }
-  if (header.alg !== "RS256" || !header.kid || claims.iss !== GITHUB_OIDC_ISSUER) return false;
-  const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
-  if (!audiences.includes(audience) || claims.repository !== repository) return false;
+  const claims = await verifyGitHubOIDC(token, audience);
+  if (!claims || claims.repository !== repository) return false;
   if (claims.sub && !claims.sub.startsWith(`repo:${repository}:`)) return false;
   const workflowRef = claims.workflow_ref || "";
-  if (workflowRef.split("@", 1)[0] !== `${repository}/${workflow}`) return false;
-  const now = Math.floor(Date.now() / 1000);
-  if (typeof claims.exp !== "number" || claims.exp <= now || (typeof claims.nbf === "number" && claims.nbf > now + 30)) return false;
-
-  let keyMaterial: JsonWebKey | undefined;
-  try {
-    keyMaterial = (await githubOIDCKeySet())[header.kid];
-    if (!keyMaterial) keyMaterial = (await githubOIDCKeySet(true))[header.kid];
-  } catch {
-    return false;
-  }
-  if (!keyMaterial) return false;
-  try {
-    const key = await crypto.subtle.importKey(
-      "jwk",
-      keyMaterial,
-      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-      false,
-      ["verify"],
-    );
-    return await crypto.subtle.verify(
-      { name: "RSASSA-PKCS1-v1_5" },
-      key,
-      decodeBase64URL(parts[2]),
-      new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
-    );
-  } catch {
-    return false;
-  }
+  return workflowRef.split("@", 1)[0] === `${repository}/${workflow}`;
 }
 
 async function requireCi(

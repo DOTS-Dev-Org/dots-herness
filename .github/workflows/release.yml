@@ -61,6 +61,29 @@ jobs:
           name: linux
           path: linux/DotsHarness/dist/*.tar.xz
 
+  build-cloud-runner:
+    name: Build HerNess cloud runner
+    needs: verify-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Package
+        # Fixed asset name: herness-cloud.yml downloads it from releases/latest.
+        run: |
+          set -euo pipefail
+          dotnet publish linux/DotsHarness/src/HerNessCloud/HerNessCloud.csproj -c Release -r linux-x64 --self-contained false \
+            -p:Version="${GITHUB_REF_NAME#v}" -o dist/herness-cloud
+          mkdir -p dist/release
+          tar -czf dist/release/herness-cloud-linux-x64.tar.gz -C dist/herness-cloud .
+          (cd dist/release && sha256sum herness-cloud-linux-x64.tar.gz > herness-cloud-linux-x64.tar.gz.sha256)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cloud-runner
+          path: dist/release/*
+
   build-windows:
     name: Build Windows zip
     needs: verify-version
@@ -80,7 +103,7 @@ jobs:
 
   release:
     name: Publish GitHub Release
-    needs: [build-macos, build-linux, build-windows]
+    needs: [build-macos, build-linux, build-cloud-runner, build-windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -103,6 +126,8 @@ jobs:
             dist-artifacts/*.dmg
             dist-artifacts/*.tar.xz
             dist-artifacts/*.zip
+            dist-artifacts/herness-cloud-linux-x64.tar.gz
+            dist-artifacts/herness-cloud-linux-x64.tar.gz.sha256
 
   deploy-worker:
     name: Deploy version API (Cloudflare Worker)

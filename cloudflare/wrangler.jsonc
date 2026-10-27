@@ -32,6 +32,7 @@
     "MARKETPLACE_MAX_UPLOAD_BYTES": "52428800",
     "MARKETPLACE_BUILD_DISPATCH_URL": "https://api.github.com/repos/DOTS-Dev-Org/dots-herness/actions/workflows/marketplace-build.yml/dispatches",
     "MARKETPLACE_BUILD_DISPATCH_REF": "main",
+    "CLOUD_RUN_OIDC_AUDIENCE": "https://dots.net.tr/herness-cloud",
     "TYPESAFE_API_URL": "https://api.typesafe.ai",
     "TYPESAFE_MODEL": "jev-latest",
     "GOOGLE_CLIENT_ID": "1015533762406-cp3dlnadpqbaaslf6n1ubmnqa7vs620d.apps.googleusercontent.com",

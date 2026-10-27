@@ -34,6 +34,8 @@ entitlements) were intentionally left out.
 | `marketplace_likes` | one row per user like; `marketplace_plugins.likes/downloads/featured` (0006) carry the listing counters and the curated flag |
 | `marketplace_catalog_items` | skills and project starters (0007): listing payload plus downloads/likes/featured; `marketplace_catalog_likes` holds one row per user like |
 | `media_community_posts`, `media_community_likes` | canvases shared from the Media studio (hidden until an admin approves) and their per-user likes |
+| `cloud_runs` | HerNess cloud runs (`0009_cloud_runs.sql`): one agent task run by `herness-cloud.yml` in the user's repository; `github_run_id` is pinned by the first OIDC-authenticated runner call |
+| `cloud_run_events` | append-only transcript of a cloud run, `(run_id, seq)` primary key; kept 30 days after the run finishes |
 
 ## Apply
 

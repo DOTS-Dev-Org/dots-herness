@@ -60,6 +60,8 @@ export type Env = {
   /** GitHub App installation token or narrowly scoped workflow token. */
   MARKETPLACE_BUILD_DISPATCH_TOKEN?: string;
   MARKETPLACE_BUILD_DISPATCH_REF?: string;
+  /** GitHub Actions OIDC audience the herness-cloud.yml runner requests. */
+  CLOUD_RUN_OIDC_AUDIENCE?: string;
   /** Server-side TypeSafe key used only for Marketplace semantic classification. */
   TYPESAFE_API_KEY?: string;
   /** Lists Claude models for the hourly model-catalog sync. `wrangler secret put ANTHROPIC_API_KEY` */

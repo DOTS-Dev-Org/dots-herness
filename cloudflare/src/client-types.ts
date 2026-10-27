@@ -15,6 +15,7 @@ import legalRoutes from "./routes/api/legal";
 import aitrackRoutes from "./routes/aitrack/index";
 import { marketplaceApi } from "./routes/api/marketplace";
 import { mediaCommunityApi } from "./routes/api/media-community";
+import { cloudRunsApi } from "./routes/api/cloud-runs";
 
 export const apiApp = new Hono<{ Bindings: Env; Variables: AppVariables }>()
   .use("*", securityGuardMiddleware)
@@ -34,6 +35,7 @@ export const apiApp = new Hono<{ Bindings: Env; Variables: AppVariables }>()
   .route("/legal", legalRoutes)
   .route("/marketplace", marketplaceApi)
   .route("/media/community", mediaCommunityApi)
+  .route("/cloud-runs", cloudRunsApi)
   .route("/", publicRoutes);
 
 // The tracking app sits outside apiApp, so it needs the guard on its own:

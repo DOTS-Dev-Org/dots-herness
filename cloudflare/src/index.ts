@@ -27,6 +27,7 @@ import {
 } from "./lib/retention";
 import { syncClaudeCatalog } from "./lib/model_catalog";
 import { processDuePaidEntitlements } from "./lib/billing_fulfill";
+import { expireStaleCloudRuns, purgeOldCloudRuns } from "./routes/api/cloud-runs";
 
 function assetCacheControl(key: string): string {
   // User/provider uploads keep stable keys and may be replaced; keep their
@@ -152,12 +153,14 @@ export default {
     // handles auth/security retention; legacy subscription cleanup is separate.
     const now = new Date();
     ctx.waitUntil(processDuePaidEntitlements(env));
+    ctx.waitUntil(expireStaleCloudRuns(env));
     if (now.getUTCMinutes() === 0) ctx.waitUntil(syncClaudeCatalog(env));
     if (now.getUTCHours() === 3 && now.getUTCMinutes() === 0) {
       ctx.waitUntil(purgeStaleQrSessions(env));
       ctx.waitUntil(purgeExpiredRefreshTokens(env));
       ctx.waitUntil(purgeOldAuditEvents(env));
       ctx.waitUntil(purgeExpiredTransientState(env));
+      ctx.waitUntil(purgeOldCloudRuns(env));
     }
   },
 };
