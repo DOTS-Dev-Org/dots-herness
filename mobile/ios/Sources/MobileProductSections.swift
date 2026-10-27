@@ -2789,6 +2789,10 @@ final class MobileAttentionNotificationService: NSObject, UNUserNotificationCent
         center.delegate = self
     }
 
+    func requestAuthorization() {
+        center.requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+    }
+
     func show(title: String, subtitle: String, detail: String, identifier: String) {
         center.requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, _ in
             guard granted, let self else { return }

@@ -257,17 +257,7 @@ public partial class App : Application
     {
         if (_hideHintShown) return;
         _hideHintShown = true;
-        try
-        {
-            var start = new ProcessStartInfo("notify-send") { UseShellExecute = false, CreateNoWindow = true };
-            start.ArgumentList.Add(Model.L("app.title"));
-            start.ArgumentList.Add(Model.L("settings.closeToTray.hint"));
-            Process.Start(start)?.Dispose();
-        }
-        catch
-        {
-            // libnotify is optional on Linux; the tray icon still carries the app.
-        }
+        ShowNotification(Model.L("app.title"), Model.L("settings.closeToTray.hint"));
     }
 
     public void ExitApplication()
@@ -349,104 +339,117 @@ public partial class App : Application
 
     private void OnAssistantResponse(object? sender, AssistantResponseEventArgs e)
     {
-        try
-        {
-            var start = new ProcessStartInfo("notify-send")
-            {
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-            start.ArgumentList.Add(e.ConversationTitle);
-            start.ArgumentList.Add(Preview(e.Text));
-            Process.Start(start)?.Dispose();
-        }
-        catch
-        {
-            // libnotify is optional on Linux; the chat still contains the response.
-        }
+        ShowNotification(e.ConversationTitle, e.Text);
     }
 
     private void OnRunSummary(object? sender, RunSummaryEventArgs e)
     {
-        try
-        {
-            // The user stopped it themselves; nothing to tell them.
-            if (e.Outcome == "cancelled") return;
-            var failed = e.Outcome is "failed" or "paused";
-            var start = new ProcessStartInfo("notify-send") { UseShellExecute = false, CreateNoWindow = true };
-            if (failed) start.ArgumentList.Add("--urgency=critical");
-            start.ArgumentList.Add(e.ConversationTitle);
-            start.ArgumentList.Add(Preview(failed
+        // The user stopped it themselves; nothing to tell them.
+        if (e.Outcome == "cancelled") return;
+        var failed = e.Outcome is "failed" or "paused";
+        ShowNotification(
+            e.ConversationTitle,
+            failed
                 ? Model.L("settings.taskFailed") + ": " + e.FailureMessage
                 : Model.L("conversation.runSummary") + ": "
                     + Model.L("conversation.filesSummary", e.Summary.AddedCount, e.Summary.ModifiedCount, e.Summary.DeletedCount)
-                    + " · " + e.Summary.CleanupNote));
-            Process.Start(start)?.Dispose();
-        }
-        catch { }
+                    + " · " + e.Summary.CleanupNote,
+            critical: failed);
     }
 
     /// Only chats the user cannot see right now: the visible one shows its own card.
     private void OnAttentionNeeded(object? sender, RunAttentionEventArgs e)
     {
-        try
+        // Bridge events arrive from worker threads; Avalonia windows are UI-thread only.
+        Dispatcher.UIThread.Post(() =>
         {
             var window = (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
             var visible = window?.IsActive == true
                 && ReferenceEquals(Model.Bridge, sender)
                 && Model.Bridge.SelectedId == e.ConversationId;
             if (visible && e.Kind != "question") return;
-            var start = new ProcessStartInfo("notify-send") { UseShellExecute = false, CreateNoWindow = true };
-            if (e.Kind == "question") start.ArgumentList.Add("--urgency=critical");
-            start.ArgumentList.Add(e.ConversationTitle);
             var title = e.Kind switch
             {
                 "question" => Model.L("notifications.question"),
                 "approval" => Model.L("plan.waitingApproval"),
                 _ => Model.L("notifications.actionRequired"),
             };
-            start.ArgumentList.Add(Preview(title + ": " + e.Detail));
-            Process.Start(start)?.Dispose();
-        }
-        catch { }
+            ShowNotification(e.ConversationTitle, title + ": " + e.Detail, critical: e.Kind == "question");
+        });
     }
 
     private void OnScheduledTaskNotification(InboxNotification item)
     {
+        var failed = item.Detail.StartsWith(Model.L("tasks.notification.failed"), StringComparison.OrdinalIgnoreCase);
+        ShowNotification(
+            string.IsNullOrWhiteSpace(item.Subtitle) ? item.Title : item.Subtitle,
+            item.Detail,
+            critical: failed);
+    }
+
+    private void OnConnectionChanged(ConnectionTransition transition)
+    {
+        var previous = transition.PreviousConnectionLabel ?? Model.L("router.unknown");
+        var current = transition.CurrentConnectionLabel ?? Model.L("router.unknown");
+        var message = transition.Action switch
+        {
+            "removed" when transition.CleanupStatus == "verified" => Model.L("conversation.connectionRemoved"),
+            "removed" when transition.CleanupStatus == "failed" => Model.L("conversation.connectionCleanupFailed"),
+            "added" when transition.PreviousConnectionLabel is null => Model.L("conversation.connectionAdded", current),
+            "selected" => Model.L("conversation.connectionSelected", current),
+            _ => Model.L("conversation.connectionSummary", previous, current) + " · "
+                + Model.L("conversation.connectionPreserved", previous),
+        };
+        ShowNotification(Model.L("conversation.connectionChanged"), message);
+    }
+
+    /// <summary>
+    /// Desktop notification through libnotify's notify-send, or the freedesktop
+    /// D-Bus service via gdbus when notify-send is not installed. Both are
+    /// optional on Linux; the chat and the inbox still hold the content.
+    /// </summary>
+    private void ShowNotification(string? summary, string body, bool critical = false)
+    {
+        var title = string.IsNullOrWhiteSpace(summary) ? Model.L("app.title") : summary.Trim();
+        var text = Preview(body);
+        var appName = Model.L("app.title");
         try
         {
-            var failed = item.Detail.StartsWith(Model.L("tasks.notification.failed"), StringComparison.OrdinalIgnoreCase);
             var start = new ProcessStartInfo("notify-send") { UseShellExecute = false, CreateNoWindow = true };
-            if (failed) start.ArgumentList.Add("--urgency=critical");
-            start.ArgumentList.Add(string.IsNullOrWhiteSpace(item.Subtitle) ? item.Title : item.Subtitle);
-            start.ArgumentList.Add(Preview(item.Detail));
+            start.ArgumentList.Add("--app-name=" + appName);
+            start.ArgumentList.Add("--urgency=" + (critical ? "critical" : "normal"));
+            // Responses often start with "-" (markdown lists); without the
+            // separator notify-send parses them as options and shows nothing.
+            start.ArgumentList.Add("--");
+            start.ArgumentList.Add(title);
+            start.ArgumentList.Add(text);
+            Process.Start(start)?.Dispose();
+            return;
+        }
+        catch { }
+        try
+        {
+            var start = new ProcessStartInfo("gdbus") { UseShellExecute = false, CreateNoWindow = true };
+            foreach (var argument in new[]
+            {
+                "call", "--session",
+                "--dest", "org.freedesktop.Notifications",
+                "--object-path", "/org/freedesktop/Notifications",
+                "--method", "org.freedesktop.Notifications.Notify",
+                GVariantString(appName), "0", GVariantString(""),
+                GVariantString(title), GVariantString(text), "[]",
+                $"{{'urgency': <byte {(critical ? 2 : 1)}>}}", "5000",
+            })
+            {
+                start.ArgumentList.Add(argument);
+            }
             Process.Start(start)?.Dispose();
         }
         catch { }
     }
 
-    private void OnConnectionChanged(ConnectionTransition transition)
-    {
-        try
-        {
-            var previous = transition.PreviousConnectionLabel ?? Model.L("router.unknown");
-            var current = transition.CurrentConnectionLabel ?? Model.L("router.unknown");
-            var message = transition.Action switch
-            {
-                "removed" when transition.CleanupStatus == "verified" => Model.L("conversation.connectionRemoved"),
-                "removed" when transition.CleanupStatus == "failed" => Model.L("conversation.connectionCleanupFailed"),
-                "added" when transition.PreviousConnectionLabel is null => Model.L("conversation.connectionAdded", current),
-                "selected" => Model.L("conversation.connectionSelected", current),
-                _ => Model.L("conversation.connectionSummary", previous, current) + " · "
-                    + Model.L("conversation.connectionPreserved", previous),
-            };
-            var start = new ProcessStartInfo("notify-send") { UseShellExecute = false, CreateNoWindow = true };
-            start.ArgumentList.Add(Model.L("conversation.connectionChanged"));
-            start.ArgumentList.Add(Preview(message));
-            Process.Start(start)?.Dispose();
-        }
-        catch { }
-    }
+    private static string GVariantString(string value) =>
+        "'" + value.Replace("\\", "\\\\").Replace("'", "\\'") + "'";
 
     private static string Preview(string text)
     {

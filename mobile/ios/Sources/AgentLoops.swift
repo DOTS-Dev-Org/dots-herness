@@ -1,6 +1,5 @@
 import Foundation
 import BackgroundTasks
-import UserNotifications
 /// A prompt the phone re-runs on an interval — the mobile shape of the desktop's
 /// scheduled tasks.
 ///
@@ -102,14 +101,17 @@ final class LoopScheduler: ObservableObject {
     }
 
     func requestNotificationPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        MobileAttentionNotificationService.shared.requestAuthorization()
     }
 
     private func notify(name: String, result: String) {
-        let content = UNMutableNotificationContent()
-        content.title = name
-        content.body = String(result.prefix(300))
-        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+        // Through the shared service: it is the notification center's delegate,
+        // so the banner also shows while the app is in front.
+        MobileAttentionNotificationService.shared.show(
+            title: name,
+            subtitle: "",
+            detail: String(result.prefix(300)),
+            identifier: UUID().uuidString)
     }
 
     private func save() {

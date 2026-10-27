@@ -145,12 +145,7 @@ public partial class App : Application
     {
         if (_hideHintShown) return;
         _hideHintShown = true;
-        try
-        {
-            _notificationIcon?.ShowBalloonTip(
-                5000, Model.L("app.title"), Model.L("settings.closeToTray.hint"), FormsToolTipIcon.Info);
-        }
-        catch (ObjectDisposedException) { }
+        ShowBalloon(Model.L("app.title"), Model.L("settings.closeToTray.hint"), FormsToolTipIcon.Info);
     }
 
     public void ExitApplication()
@@ -216,37 +211,24 @@ public partial class App : Application
 
     private void OnAssistantResponse(object? sender, AssistantResponseEventArgs e)
     {
-        try
-        {
-            _notificationIcon?.ShowBalloonTip(5000, e.ConversationTitle, Preview(e.Text), FormsToolTipIcon.Info);
-        }
-        catch (ObjectDisposedException)
-        {
-            // The app can finish closing while an in-flight response completes.
-        }
+        ShowBalloon(e.ConversationTitle, e.Text, FormsToolTipIcon.Info);
     }
 
     private void OnRunSummary(object? sender, RunSummaryEventArgs e)
     {
         // The user stopped it themselves; nothing to tell them.
         if (e.Outcome == "cancelled") return;
-        try
-        {
-            var failed = e.Outcome is "failed" or "paused";
-            var summary = failed
-                ? Model.L("settings.taskFailed") + ": " + e.FailureMessage
-                : Model.L("conversation.runSummary") + ": "
-                    + Model.L("conversation.filesSummary", e.Summary.AddedCount, e.Summary.ModifiedCount, e.Summary.DeletedCount)
-                    + " · " + e.Summary.CleanupNote;
-            _notificationIcon?.ShowBalloonTip(5000, e.ConversationTitle, Preview(summary), failed ? FormsToolTipIcon.Error : FormsToolTipIcon.Info);
-        }
-        catch (ObjectDisposedException) { }
+        // A tray icon shows one balloon at a time, so a completion summary would
+        // replace the response balloon raised just before it. Only failures and
+        // pauses get their own balloon; the summary stays in the chat.
+        if (e.Outcome is not ("failed" or "paused")) return;
+        ShowBalloon(e.ConversationTitle, Model.L("settings.taskFailed") + ": " + e.FailureMessage, FormsToolTipIcon.Error);
     }
 
     /// Only chats the user cannot see right now: the visible one shows its own card.
     private void OnAttentionNeeded(object? sender, RunAttentionEventArgs e)
     {
-        try
+        Dispatcher.BeginInvoke(new Action(() =>
         {
             var visible = MainWindow?.IsActive == true
                 && ReferenceEquals(Model.Bridge, sender)
@@ -258,54 +240,58 @@ public partial class App : Application
                 "approval" => Model.L("plan.waitingApproval"),
                 _ => Model.L("notifications.actionRequired"),
             };
-            _notificationIcon?.ShowBalloonTip(
-                5000,
-                e.ConversationTitle,
-                Preview(title + ": " + e.Detail),
-                FormsToolTipIcon.Warning);
-        }
-        catch (ObjectDisposedException) { }
+            ShowBalloon(e.ConversationTitle, title + ": " + e.Detail, FormsToolTipIcon.Warning);
+        }));
     }
 
     private void OnScheduledTaskNotification(InboxNotification item)
     {
-        try
-        {
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                try
-                {
-                    var failed = item.Detail.StartsWith(Model.L("tasks.notification.failed"), StringComparison.OrdinalIgnoreCase);
-                    _notificationIcon?.ShowBalloonTip(
-                        5000,
-                        string.IsNullOrWhiteSpace(item.Subtitle) ? item.Title : item.Subtitle,
-                        Preview(item.Detail),
-                        failed ? FormsToolTipIcon.Error : FormsToolTipIcon.Info);
-                }
-                catch (ObjectDisposedException) { }
-            }));
-        }
-        catch (ObjectDisposedException) { }
+        var failed = item.Detail.StartsWith(Model.L("tasks.notification.failed"), StringComparison.OrdinalIgnoreCase);
+        ShowBalloon(
+            string.IsNullOrWhiteSpace(item.Subtitle) ? item.Title : item.Subtitle,
+            item.Detail,
+            failed ? FormsToolTipIcon.Error : FormsToolTipIcon.Info);
     }
 
     private void OnConnectionChanged(ConnectionTransition transition)
     {
+        var previous = transition.PreviousConnectionLabel ?? Model.L("router.unknown");
+        var current = transition.CurrentConnectionLabel ?? Model.L("router.unknown");
+        var message = transition.Action switch
+        {
+            "removed" when transition.CleanupStatus == "verified" => Model.L("conversation.connectionRemoved"),
+            "removed" when transition.CleanupStatus == "failed" => Model.L("conversation.connectionCleanupFailed"),
+            "added" when transition.PreviousConnectionLabel is null => Model.L("conversation.connectionAdded", current),
+            "selected" => Model.L("conversation.connectionSelected", current),
+            _ => Model.L("conversation.connectionSummary", previous, current) + " · "
+                + Model.L("conversation.connectionPreserved", previous),
+        };
+        ShowBalloon(Model.L("conversation.connectionChanged"), message, FormsToolTipIcon.Info);
+    }
+
+    /// <summary>
+    /// Tray balloon (a toast on Windows 10/11). Runs on the UI thread that owns
+    /// the tray icon; bridge and scheduler events arrive from worker threads.
+    /// </summary>
+    private void ShowBalloon(string? title, string text, FormsToolTipIcon icon)
+    {
+        var tipTitle = string.IsNullOrWhiteSpace(title) ? Model.L("app.title") : title.Trim();
+        // ShowBalloonTip throws on empty text, and that would surface inside the run.
+        var tipText = Preview(text);
+        if (tipText.Length == 0) tipText = tipTitle;
         try
         {
-            var previous = transition.PreviousConnectionLabel ?? Model.L("router.unknown");
-            var current = transition.CurrentConnectionLabel ?? Model.L("router.unknown");
-            var message = transition.Action switch
+            Dispatcher.BeginInvoke(new Action(() =>
             {
-                "removed" when transition.CleanupStatus == "verified" => Model.L("conversation.connectionRemoved"),
-                "removed" when transition.CleanupStatus == "failed" => Model.L("conversation.connectionCleanupFailed"),
-                "added" when transition.PreviousConnectionLabel is null => Model.L("conversation.connectionAdded", current),
-                "selected" => Model.L("conversation.connectionSelected", current),
-                _ => Model.L("conversation.connectionSummary", previous, current) + " · "
-                    + Model.L("conversation.connectionPreserved", previous),
-            };
-            _notificationIcon?.ShowBalloonTip(5000, Model.L("conversation.connectionChanged"), Preview(message), FormsToolTipIcon.Info);
+                try { _notificationIcon?.ShowBalloonTip(5000, tipTitle, tipText, icon); }
+                catch (ObjectDisposedException) { }
+                catch (ArgumentException) { }
+            }));
         }
-        catch (ObjectDisposedException) { }
+        catch (ObjectDisposedException)
+        {
+            // The app can finish closing while an in-flight run completes.
+        }
     }
 
     private static string Preview(string text)

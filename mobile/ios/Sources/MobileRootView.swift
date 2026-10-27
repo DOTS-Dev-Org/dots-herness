@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import UIKit
 import WebKit
@@ -372,6 +373,8 @@ struct WorkspaceView: View {
     @StateObject private var notificationInbox = MobileNotificationInbox.shared
     @State private var showingNotifications = false
     @State private var lastNotifiedTurnID: UUID?
+    @State private var observedRunning = false
+    @State private var runBackgroundTime = RunBackgroundTime()
 
     var files: [WorkspaceFile] { local.snapshot?.files.sorted { $0.path < $1.path } ?? client.snapshot?.files.sorted { $0.path < $1.path } ?? local.files() }
 
@@ -872,8 +875,17 @@ struct WorkspaceView: View {
         .sheet(isPresented: $showingNotifications) {
             MobileNotificationsView(inbox: notificationInbox, onSelect: openNotification)
         }
-        .onChange(of: agent.isRunning) { wasRunning, isRunning in
-            if wasRunning && !isRunning { recordCompletedRun() }
+        // Combine rather than onChange: view updates can lag while the app is in
+        // the background, and the completion notification must not wait for them.
+        .onReceive(agent.$isRunning.removeDuplicates().receive(on: RunLoop.main)) { isRunning in
+            let wasRunning = observedRunning
+            observedRunning = isRunning
+            if isRunning {
+                runBackgroundTime.begin()
+            } else {
+                if wasRunning { recordCompletedRun() }
+                runBackgroundTime.end()
+            }
         }
         .onChange(of: agent.questionRequest?.id) { _, id in
             guard id != nil, let request = agent.questionRequest else { return }
@@ -2402,4 +2414,24 @@ private struct PagesDeployLimits {
     let maxFileBytes = 5 * 1024 * 1024
     let maxTotalBytes = 50 * 1024 * 1024
     let maxFileCount = 5000
+}
+
+/// iOS suspends the app seconds after it leaves the screen. Holding background
+/// time while a run is active lets a short run finish and post its notification.
+@MainActor
+private final class RunBackgroundTime {
+    private var task: UIBackgroundTaskIdentifier = .invalid
+
+    func begin() {
+        guard task == .invalid else { return }
+        task = UIApplication.shared.beginBackgroundTask(withName: "herness.agent.run") { [weak self] in
+            self?.end()
+        }
+    }
+
+    func end() {
+        guard task != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(task)
+        task = .invalid
+    }
 }

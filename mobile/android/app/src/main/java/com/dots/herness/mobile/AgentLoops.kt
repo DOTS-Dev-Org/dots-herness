@@ -193,7 +193,11 @@ class LoopScheduler(private val context: Context, private val makeAgent: () -> M
         fun notify(context: Context, title: String, body: String) {
             val manager = context.getSystemService(NotificationManager::class.java) ?: return
             manager.createNotificationChannel(NotificationChannel(CHANNEL, "Loops", NotificationManager.IMPORTANCE_DEFAULT))
-            if (context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+            // POST_NOTIFICATIONS only exists from Android 13; older releases report it
+            // as denied, which used to drop every loop notification there.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) return
             val notification = NotificationCompat.Builder(context, CHANNEL)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle(title)

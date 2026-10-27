@@ -880,9 +880,10 @@ private fun WorkspaceShell(
     }
     LaunchedEffect(agent.approvalRequest?.id) {
         val approval = agent.approvalRequest ?: return@LaunchedEffect
+        val title = context.getString(R.string.notifications_approval)
         notificationInbox.append(
             kind = "approval",
-            title = context.getString(R.string.notifications_approval),
+            title = title,
             subtitle = client.selectedProject.name,
             detail = approval.toolName,
             conversationId = agent.activeConversationId,
@@ -890,6 +891,8 @@ private fun WorkspaceShell(
             conversationPath = client.workspaceRoot().absolutePath,
             isRead = tab == 0,
         )
+        // The agent tab shows the approval card itself; elsewhere the run would wait unseen.
+        if (tab != 0) postAttentionNotification(approval.id, title, client.selectedProject.name, approval.toolName)
     }
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
