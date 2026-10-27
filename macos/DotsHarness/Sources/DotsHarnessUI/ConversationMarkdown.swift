@@ -11,7 +11,7 @@ import DotsHarnessCore
 @MainActor
 final class MarkdownCache {
     static let shared = MarkdownCache()
-    private static let parsedCacheCostLimit = 16 * 1024 * 1024
+    private static let parsedCacheCostLimit = 8 * 1024 * 1024
     private static let maxCachedMarkdownBytes = 1024 * 1024
     private let cache = NSCache<NSString, ParsedPlanMarkdown>()
 
@@ -42,6 +42,20 @@ final class MarkdownCache {
             var index = 0
             while index < entries.count {
                 let entry = entries[index]
+                if !entry.isCode, index + 1 < entries.count, !entries[index + 1].isCode,
+                   isTableRow(entry.line), let alignments = tableAlignments(entries[index + 1].line) {
+                    let start = index
+                    var rows: [[String]] = []
+                    index += 2
+                    while index < entries.count, !entries[index].isCode, isTableRow(entries[index].line) {
+                        rows.append(tableCells(entries[index].line))
+                        index += 1
+                    }
+                    blocks.append(.table(start, MarkdownTable(
+                        header: tableCells(entry.line), alignments: alignments, rows: rows
+                    )))
+                    continue
+                }
                 guard entry.isCode, !entry.isChartFence, !isFence(entry.line) else {
                     blocks.append(.entry(index, entry))
                     index += 1
@@ -63,6 +77,36 @@ final class MarkdownCache {
 
         private static func isFence(_ line: String) -> Bool {
             line.trimmingCharacters(in: .whitespaces).hasPrefix("```")
+        }
+
+        private static func isTableRow(_ line: String) -> Bool {
+            line.trimmingCharacters(in: .whitespaces).hasPrefix("|")
+        }
+
+        // ponytail: splits on every `|`, so a pipe inside inline code breaks the cell; `\|` escapes it.
+        static func tableCells(_ line: String) -> [String] {
+            var body = line.trimmingCharacters(in: .whitespaces)
+            if body.hasPrefix("|") { body.removeFirst() }
+            if body.hasSuffix("|"), !body.hasSuffix("\\|") { body.removeLast() }
+            return body.replacingOccurrences(of: "\\|", with: "\u{0}")
+                .components(separatedBy: "|")
+                .map { $0.replacingOccurrences(of: "\u{0}", with: "|").trimmingCharacters(in: .whitespaces) }
+        }
+
+        /// The `|---|:--:|` row under a table header, or nil when the line is anything else.
+        static func tableAlignments(_ line: String) -> [HorizontalAlignment]? {
+            guard isTableRow(line) else { return nil }
+            let cells = tableCells(line)
+            guard cells.allSatisfy({ cell in
+                cell.contains("-") && cell.allSatisfy { $0 == "-" || $0 == ":" }
+            }) else { return nil }
+            return cells.map { cell in
+                switch (cell.hasPrefix(":"), cell.hasSuffix(":")) {
+                case (true, true): return .center
+                case (false, true): return .trailing
+                default: return .leading
+                }
+            }
         }
     }
 
@@ -160,7 +204,7 @@ final class MarkdownCache {
     private let lineCache: NSCache<NSString, EntryBox> = {
         let cache = NSCache<NSString, EntryBox>()
         cache.countLimit = 2_000
-        cache.totalCostLimit = 8 * 1024 * 1024
+        cache.totalCostLimit = 4 * 1024 * 1024
         return cache
     }()
 
@@ -246,10 +290,11 @@ enum MarkdownBlock: Identifiable {
     case entry(Int, MarkdownCache.ParsedPlanMarkdown.Entry)
     case code(Int, [String])
     case diagram(Int, DiagramSpec)
+    case table(Int, MarkdownTable)
 
     var id: Int {
         switch self {
-        case .entry(let index, _), .code(let index, _), .diagram(let index, _):
+        case .entry(let index, _), .code(let index, _), .diagram(let index, _), .table(let index, _):
             return index
         }
     }
@@ -276,6 +321,7 @@ struct PlanMarkdownView: View {
         case .entry(_, let entry): entryView(entry)
         case .code(_, let lines): CodeBlockView(lines: lines)
         case .diagram(_, let spec): DiagramView(spec: spec)
+        case .table(_, let table): MarkdownTableView(table: table)
         }
     }
 
@@ -428,6 +474,47 @@ struct CodeBlockView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.black.opacity(0.06), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+    }
+}
+
+/// A GitHub-style pipe table: header row, `|---|` alignment row, body rows.
+struct MarkdownTable {
+    let header: [String]
+    let alignments: [HorizontalAlignment]
+    let rows: [[String]]
+}
+
+struct MarkdownTableView: View {
+    let table: MarkdownTable
+
+    var body: some View {
+        let columns = table.header.count
+        Grid(alignment: .topLeading, horizontalSpacing: 0, verticalSpacing: 0) {
+            row(table.header, columns: columns, isHeader: true)
+            ForEach(table.rows.indices, id: \.self) { index in
+                Divider().gridCellUnsizedAxes(.horizontal)
+                row(table.rows[index], columns: columns, isHeader: false)
+            }
+        }
+        .font(.callout)
+        .textSelection(.enabled)
+        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color.primary.opacity(0.12)))
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+    }
+
+    private func row(_ cells: [String], columns: Int, isHeader: Bool) -> some View {
+        GridRow {
+            ForEach(0..<columns, id: \.self) { column in
+                let alignment = column < table.alignments.count ? table.alignments[column] : .leading
+                Text(inlineMarkdown(column < cells.count ? cells[column] : ""))
+                    .fontWeight(isHeader ? .semibold : nil)
+                    .multilineTextAlignment(alignment == .trailing ? .trailing : alignment == .center ? .center : .leading)
+                    .frame(maxWidth: .infinity, alignment: Alignment(horizontal: alignment, vertical: .top))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+            }
+        }
+        .background(isHeader ? Color.primary.opacity(0.06) : Color.clear)
     }
 }
 

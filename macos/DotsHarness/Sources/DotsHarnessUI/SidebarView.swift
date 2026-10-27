@@ -7,17 +7,30 @@ import DotsHarnessCore
 import HarnessPluginKit
 import PluginRuntime
 
+private struct SidebarMetricsPreferenceKey: PreferenceKey {
+    static let defaultValue: [String: CGFloat] = [:]
+
+    static func reduce(value: inout [String: CGFloat], nextValue: () -> [String: CGFloat]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, next in next })
+    }
+}
+
 struct SidebarView: View {
     @ObservedObject var model: AppModel
     let logo: Image?
+    let notificationPopoverWidth: CGFloat
 
     private var bridge: AgentBridge { model.bridge }
 
     @State private var isSearchVisible = false
     @State private var isNotificationPopoverPresented = false
     @State private var searchText = ""
+    @State private var searchedContentQuery = ""
+    @State private var searchedConversationIDs = Set<String>()
+    @State private var isSearchingConversationContent = false
     @State private var isProjectsExpanded = true
     @State private var isRecentExpanded = true
+    @State private var sidebarMetrics: [String: CGFloat] = [:]
     @State private var hoveredConversationID: String?
     @State private var projectPendingRemoval: String?
     @State private var projectEditorTarget: ProjectEditorTarget?
@@ -38,9 +51,10 @@ struct SidebarView: View {
             ?? ProcessInfo.processInfo.processName
     }()
 
-    init(model: AppModel, logo: Image? = nil) {
+    init(model: AppModel, logo: Image? = nil, notificationPopoverWidth: CGFloat = 340) {
         self.model = model
         self.logo = logo
+        self.notificationPopoverWidth = notificationPopoverWidth
     }
 
     var body: some View {
@@ -54,8 +68,8 @@ struct SidebarView: View {
 
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
-                        primaryNavigation
-
+                        VStack(spacing: 0) {
+                            primaryNavigation
                             sectionHeader(
                                 title: AppCopy.text("sidebar.projects"),
                                 isExpanded: $isProjectsExpanded,
@@ -65,18 +79,36 @@ struct SidebarView: View {
                             ) {
                                 projectsSectionActions
                             }
-
-                            if isProjectsExpanded {
-                                projectsSection
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: SidebarMetricsPreferenceKey.self,
+                                    value: ["projectChrome": proxy.size.height]
+                                )
                             }
+                        }
 
-                            sectionHeader(
-                                title: AppCopy.text("sidebar.recent"),
-                                isExpanded: $isRecentExpanded,
-                                showsStatusDot: recentHasRunningConversation
-                            ) {
-                                EmptyView()
+                        if isProjectsExpanded {
+                            projectsSection
+                        }
+
+                        sectionHeader(
+                            title: AppCopy.text("sidebar.recent"),
+                            isExpanded: $isRecentExpanded,
+                            showsStatusDot: recentHasRunningConversation
+                        ) {
+                            EmptyView()
+                        }
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: SidebarMetricsPreferenceKey.self,
+                                    value: ["recentHeader": proxy.size.height]
+                                )
                             }
+                        }
 
                         if isRecentExpanded {
                             recentSection
@@ -88,6 +120,20 @@ struct SidebarView: View {
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear.preference(
+                            key: SidebarMetricsPreferenceKey.self,
+                            value: ["viewport": proxy.size.height]
+                        )
+                    }
+                }
+                .onPreferenceChange(SidebarMetricsPreferenceKey.self) { measurements in
+                    for (key, value) in measurements {
+                        guard abs((sidebarMetrics[key] ?? 0) - value) > 0.5 else { continue }
+                        sidebarMetrics[key] = value
+                    }
+                }
 
             }
         }
@@ -120,6 +166,9 @@ struct SidebarView: View {
                 isProjectsExpanded = true
                 isRecentExpanded = true
             }
+        }
+        .task(id: "\(searchText)-\(bridge.conversationListRevision)") {
+            await updateContentSearch()
         }
         .onChange(of: model.workspacePath) { _, value in
             // Opening a project reveals its chats. Nothing is ever removed here:
@@ -196,7 +245,7 @@ struct SidebarView: View {
             .inWindowPopover(
                 isPresented: $isNotificationPopoverPresented,
                 alignment: .trailing,
-                width: 340,
+                width: notificationPopoverWidth,
                 cornerRadius: 18,
                 verticalEdge: .bottom
             ) {
@@ -224,6 +273,13 @@ struct SidebarView: View {
             TextField(AppCopy.text("sidebar.search"), text: $searchText)
                 .textFieldStyle(.plain)
                 .font(.system(size: 13))
+
+            if isSearchingConversationContent {
+                ProgressView()
+                    .controlSize(.mini)
+                    .frame(width: 14, height: 14)
+                    .accessibilityHidden(true)
+            }
 
             if !searchText.isEmpty {
                 Button {
@@ -432,15 +488,21 @@ struct SidebarView: View {
                 projectConversations(for: model.workspacePath)
             } else {
                 ForEach(projectGroups) { group in
-                    if let title = group.title {
-                        projectGroupTitle(title, group: group)
-                    }
-                    ForEach(visibleProjectPaths(for: group), id: \.self) { path in
-                        projectRow(path)
-
-                        if model.sidebarLayoutMode == .groupedByProject,
-                           model.expandedProjectPaths.contains(path) {
-                            projectConversations(for: path)
+                    if group.kind == .other {
+                        // Unsectioned projects start as the recent, fitting prefix;
+                        // the Other control belongs after that prefix, not above it.
+                        ForEach(visibleProjectPaths(for: group), id: \.self) { path in
+                            projectEntry(path)
+                        }
+                        if shouldRevealOtherProjects(for: group) {
+                            otherProjectsRevealControl
+                        }
+                    } else {
+                        if let title = group.title {
+                            projectGroupTitle(title)
+                        }
+                        ForEach(group.paths, id: \.self) { path in
+                            projectEntry(path)
                         }
                     }
                 }
@@ -451,25 +513,8 @@ struct SidebarView: View {
     }
 
     @ViewBuilder
-    private func projectGroupTitle(_ title: String, group: ProjectGroup) -> some View {
-        if group.kind == .other,
-           OtherProjectVisibility.shouldShowRevealControl(
-               group.paths,
-               isExpanded: model.showsAllOtherProjects
-           ) {
-            Button {
-                withAnimation(.easeOut(duration: 0.16)) {
-                    model.revealAllOtherProjects()
-                }
-            } label: {
-                projectGroupTitleLabel(title)
-            }
-            .buttonStyle(.plain)
-            .help(AppCopy.text("sidebar.showMore"))
-            .accessibilityHint(AppCopy.text("sidebar.showMore"))
-        } else {
-            projectGroupTitleLabel(title)
-        }
+    private func projectGroupTitle(_ title: String) -> some View {
+        projectGroupTitleLabel(title)
     }
 
     private func projectGroupTitleLabel(_ title: String) -> some View {
@@ -487,8 +532,109 @@ struct SidebarView: View {
         guard group.kind == .other else { return group.paths }
         return OtherProjectVisibility.visiblePaths(
             group.paths,
-            isExpanded: model.showsAllOtherProjects
+            isExpanded: model.showsAllOtherProjects,
+            limit: visibleOtherProjectCount(for: group)
         )
+    }
+
+    private func visibleOtherProjectCount(for group: ProjectGroup) -> Int {
+        guard !model.showsAllOtherProjects, !group.paths.isEmpty else { return group.paths.count }
+        guard let viewportHeight = sidebarMetrics["viewport"], viewportHeight > 0 else {
+            return min(group.paths.count, OtherProjectVisibility.limit)
+        }
+
+        let chromeHeight = sidebarMetrics["projectChrome"] ?? 134
+        let recentHeaderHeight = sidebarMetrics["recentHeader"] ?? 26
+        let scrollInsets: CGFloat = 12
+        let projectSectionInsets: CGFloat = 16
+        let groupsBeforeOther = projectGroups.prefix { $0.kind != .other }
+        let precedingProjectHeight = groupsBeforeOther.reduce(CGFloat.zero) { height, previousGroup in
+            height + estimatedProjectGroupHeight(previousGroup) + 2
+        }
+        let availableHeight = viewportHeight
+            - chromeHeight
+            - recentHeaderHeight
+            - scrollInsets
+            - projectSectionInsets
+            - precedingProjectHeight
+        let projectHeights = group.paths.map(estimatedProjectHeight(for:))
+        return OtherProjectVisibility.fittingPrefixCount(
+            itemHeights: projectHeights,
+            availableHeight: availableHeight,
+            revealControlHeight: 30
+        )
+    }
+
+    private func shouldRevealOtherProjects(for group: ProjectGroup) -> Bool {
+        OtherProjectVisibility.shouldShowRevealControl(
+            group.paths,
+            isExpanded: model.showsAllOtherProjects,
+            visibleCount: visibleOtherProjectCount(for: group)
+        )
+    }
+
+    private var otherProjectsRevealControl: some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.16)) {
+                model.revealAllOtherProjects()
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Text(AppCopy.text("sidebar.other"))
+                    .font(.system(size: 12, weight: .medium))
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(.tertiary)
+            .padding(.leading, 10)
+            .padding(.top, 5)
+            .padding(.bottom, 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(AppCopy.text("sidebar.showMore"))
+        .accessibilityHint(AppCopy.text("sidebar.showMore"))
+    }
+
+    private func projectEntry(_ path: String) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            projectRow(path)
+            if model.sidebarLayoutMode == .groupedByProject,
+               model.expandedProjectPaths.contains(path) {
+                projectConversations(for: path)
+            }
+        }
+    }
+
+    private func estimatedProjectGroupHeight(_ group: ProjectGroup) -> CGFloat {
+        let titleHeight: CGFloat = group.title == nil ? 0 : 24
+        let rows = group.paths.reduce(CGFloat.zero) { $0 + estimatedProjectHeight(for: $1) }
+        let rowSpacing = CGFloat(max(0, group.paths.count - 1)) * 2
+        return titleHeight + rows + rowSpacing
+    }
+
+    private func estimatedProjectHeight(for path: String) -> CGFloat {
+        var height: CGFloat = 32
+        guard model.sidebarLayoutMode == .groupedByProject,
+              model.expandedProjectPaths.contains(path) else {
+            return height
+        }
+
+        let conversations = path == model.workspacePath
+            ? model.conversations
+            : bridge.conversations(inProject: path)
+        let visibleCount = expandedChatLists.contains(path)
+            ? conversations.count
+            : min(conversations.count, visibleConversationLimit)
+        if visibleCount > 0 {
+            height += 2 + CGFloat(visibleCount) * 31
+        }
+        if conversations.count > visibleConversationLimit {
+            height += 28
+        }
+        return height
     }
 
     /// Opens a project's chat list without touching any other open list. An
@@ -834,7 +980,7 @@ struct SidebarView: View {
                     ))
 
                     Button {
-                        bridge.setArchived(conversation.id, archived: true)
+                        model.archiveConversation(conversation.id)
                     } label: {
                         Image(systemName: "archivebox")
                             .font(.system(size: 12, weight: .medium))
@@ -891,7 +1037,7 @@ struct SidebarView: View {
                 Label(AppCopy.text("sidebar.priority"), systemImage: "flag")
             }
             Button(AppCopy.text("sidebar.archiveChat"), systemImage: "archivebox") {
-                bridge.setArchived(conversation.id, archived: true)
+                model.archiveConversation(conversation.id)
             }
             Divider()
             Button(AppCopy.text("sidebar.deleteChat"), systemImage: "trash", role: .destructive) {
@@ -1032,8 +1178,25 @@ struct SidebarView: View {
         guard !query.isEmpty else { return visible }
         return visible.filter { conversation in
             conversation.title.localizedCaseInsensitiveContains(query)
-                || bridge.contentMatches(conversation, query: query)
+                || (searchedContentQuery == query && searchedConversationIDs.contains(conversation.id))
         }
+    }
+
+    @MainActor
+    private func updateContentSearch() async {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        searchedContentQuery = query
+        searchedConversationIDs.removeAll(keepingCapacity: true)
+        isSearchingConversationContent = false
+        guard !query.isEmpty else { return }
+
+        try? await Task.sleep(nanoseconds: 220_000_000)
+        guard !Task.isCancelled else { return }
+        isSearchingConversationContent = true
+        let matches = await bridge.contentMatchingConversationIDs(query: query)
+        guard !Task.isCancelled else { return }
+        searchedConversationIDs = matches
+        isSearchingConversationContent = false
     }
 }
 

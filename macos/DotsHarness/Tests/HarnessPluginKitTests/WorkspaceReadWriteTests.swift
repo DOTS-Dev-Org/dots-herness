@@ -35,6 +35,15 @@ final class WorkspaceReadWriteTests: XCTestCase {
         , conversationID: "test")
     }
 
+    private func grep(_ pattern: String) -> String {
+        let data = try! JSONSerialization.data(withJSONObject: ["pattern": pattern, "extensions": "txt"])
+        return WorkspaceTools.execute(
+            AgentToolCall(id: "g", name: "grep_files", arguments: String(data: data, encoding: .utf8)!),
+            workspace: workspace,
+            conversationID: "test"
+        )
+    }
+
     func testCommandTimeoutIsClampedAndATimeoutKeepsItsOutput() {
         XCTAssertEqual(WorkspaceTools.commandTimeout([:]), 120)
         XCTAssertEqual(WorkspaceTools.commandTimeout(["timeout_seconds": 900]), 600)
@@ -145,6 +154,40 @@ final class WorkspaceReadWriteTests: XCTestCase {
         _ = read(#"{"path":"b.txt"}"#)
         XCTAssertTrue(write("b.txt", "replaced").contains("b.txt"))
         XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), "replaced")
+    }
+
+    func testGrepBudgetRejectsOversizedAndExhaustedInputs() {
+        XCTAssertEqual(
+            WorkspaceTools.grepBudgetDecision(fileBytes: WorkspaceTools.grepMaxFileBytes, remainingBytes: WorkspaceTools.grepMaxTotalBytes),
+            .read(WorkspaceTools.grepMaxFileBytes)
+        )
+        XCTAssertEqual(
+            WorkspaceTools.grepBudgetDecision(fileBytes: WorkspaceTools.grepMaxFileBytes + 1, remainingBytes: WorkspaceTools.grepMaxTotalBytes),
+            .skip
+        )
+        XCTAssertEqual(WorkspaceTools.grepBudgetDecision(fileBytes: 1, remainingBytes: 0), .stop)
+        XCTAssertEqual(WorkspaceTools.grepBudgetDecision(fileBytes: nil, remainingBytes: 10), .skip)
+    }
+
+    func testGrepReportsTruncationWhenOversizedFilesAreSkipped() throws {
+        let large = workspace.appendingPathComponent("a-large.txt")
+        try String(repeating: "x", count: WorkspaceTools.grepMaxFileBytes + 1)
+            .write(to: large, atomically: true, encoding: .utf8)
+        try "needle".write(to: workspace.appendingPathComponent("b-match.txt"), atomically: true, encoding: .utf8)
+
+        let result = grep("needle")
+        XCTAssertTrue(result.contains("b-match.txt:1:needle"), result)
+        XCTAssertTrue(result.contains(AppCopy.text("tool.truncated")), result)
+    }
+
+    func testGrepNoMatchesStillReportsWhenTheScanWasTruncated() throws {
+        let large = workspace.appendingPathComponent("a-large.txt")
+        try String(repeating: "x", count: WorkspaceTools.grepMaxFileBytes + 1)
+            .write(to: large, atomically: true, encoding: .utf8)
+
+        let result = grep("needle")
+        XCTAssertTrue(result.contains(AppCopy.text("tool.noMatches")), result)
+        XCTAssertTrue(result.contains(AppCopy.text("tool.truncated")), result)
     }
 
     func testWriteIsRefusedWhenTheFileChangedOnDiskSinceTheRead() throws {

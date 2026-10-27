@@ -258,7 +258,8 @@ MOBILE_KEYS.update({
     "vault.entry.keyLanguage", "vault.entry.value", "vault.entry.scope", "vault.entry.everywhere", "vault.entry.thisProject",
     "vault.section.project", "vault.section.profile",
     "project.missing.title", "project.missing.message", "project.missing.locate", "project.missing.readOnly",
-    "sidebar.recent", "sidebar.noChats", "sidebar.noRecent",
+    "sidebar.recent", "sidebar.noChats", "sidebar.noRecent", "sidebar.archiveChat",
+    "archive.title", "archive.empty", "archive.restore",
     "common.cancel", "common.connect", "common.delete", "common.done", "common.download", "common.refresh", "common.remove", "common.save", "common.start", "common.stop",
     "settings.title", "settings.language", "settings.confirmBeforeExit", "settings.pluginsTitle", "settings.pluginsHint", "settings.reload", "settings.tab.providers", "router.provider",
     "settings.compactTrigger", "settings.compactTrigger.hint", "slash.compact",
@@ -286,6 +287,8 @@ MOBILE_KEYS.update({
     "mobile.workspace.savedLocal", "mobile.workspace.saveFailed", "mobile.workspace.codeEditor", "mobile.workspace.conflictMessage", "mobile.workspace.sandboxLabel",
     "mobile.artifact.ipaHint", "mobile.artifact.openOutput", "mobile.artifact.share", "mobile.artifact.fullOutput",
     "mobile.agent.newConversation", "mobile.agent.plan", "mobile.agent.approvalRequired", "mobile.agent.allowTool", "mobile.agent.clarification", "mobile.agent.answer", "mobile.agent.ask", "mobile.agent.queue", "mobile.agent.send", "mobile.agent.model", "mobile.agent.close", "mobile.agent.user", "mobile.agent.error",
+    "mobile.agent.fast",
+    "notifications.title", "notifications.emptyTitle", "notifications.emptyBody", "notifications.markAllRead", "notifications.clearAll", "notifications.itemCount", "notifications.unreadCount", "notifications.question", "notifications.approval", "notifications.actionRequired", "notifications.responseReady", "notifications.operationFailed",
     "mobile.terminal.title", "mobile.terminal.help", "mobile.terminal.run", "mobile.preview.pagesHint",
     "mobile.loops.title", "mobile.loops.every", "mobile.loops.lastRun", "mobile.loops.runNow", "mobile.loops.add", "mobile.loops.backgroundHint",
     "mobile.mcp.title", "mobile.mcp.bearerToken", "mobile.mcp.add", "mobile.mcp.reconnect", "mobile.mcp.httpsHint",
@@ -466,6 +469,11 @@ def localized_values(locale: str) -> dict[str, str]:
         if item.get("name")
     }
     values = {key: source_values.get(key, shared_values.get(key, MOBILE_DEFAULTS.get(key, key))) for key in MOBILE_KEYS}
+    if "mobile.agent.fast" in MOBILE_KEYS:
+        values["mobile.agent.fast"] = source_values.get("mobile.agent.fast") or {
+            "en": "Fast mode",
+            "tr": "Hızlı mod",
+        }.get(locale, shared_values.get("modelPicker.fast", "Fast mode"))
     for key, translations in CORE_TRANSLATIONS.items():
         value = translations.get(locale) or translations.get("en")
         if value:

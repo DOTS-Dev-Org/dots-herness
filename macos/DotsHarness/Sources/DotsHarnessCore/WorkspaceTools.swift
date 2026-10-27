@@ -22,36 +22,289 @@ public enum WorkspaceTools {
         ".sandbox-cache", ".gradle", "target", "vendor", ".next", ".venv", "__pycache__", "coverage",
     ]
 
-    /// Calls `visit` with each file a search under `root` looks at, until it returns false.
-    /// Inside a repository that is git's own list - tracked plus untracked, minus whatever
-    /// .gitignore excludes - so a project's ignored output is never read; elsewhere a walk.
-    /// Both skip `ignoredScanDirectories` and symlinks.
-    /// ponytail: git runs once per call; cache by .git/index stamp if large repositories feel it.
+    private struct ScanIgnoreRule {
+        let base: String
+        let negated: Bool
+        let directoryOnly: Bool
+        let hasSlash: Bool
+        let matcher: NSRegularExpression
+    }
+
+    final class ScanPathCache: @unchecked Sendable {
+        private let condition = NSCondition()
+        private var values: [String: (time: TimeInterval, paths: [String])] = [:]
+        private var scanning = Set<String>()
+        private var generation = 0
+        /// Every grep listed the repository again (two `git ls-files` runs) once a one-second
+        /// list expired: three chats searching at once spent seconds of CPU on it.
+        /// ponytail: ten seconds; the agent's own writes drop the list at once (`invalidate`),
+        /// a file someone else creates shows up within this window.
+        static let lifetime: TimeInterval = 10
+
+        /// A caller that arrives while the same root is being scanned waits for that scan
+        /// instead of starting its own: chats sent together each listed the whole
+        /// repository at once. ponytail: the waiter gets a list begun just before its
+        /// call, the same staleness the reuse window already allows.
+        func paths(for root: String, scan: () -> [String]) -> [String] {
+            condition.lock()
+            while true {
+                if let value = values[root], ProcessInfo.processInfo.systemUptime - value.time < Self.lifetime {
+                    condition.unlock()
+                    return value.paths
+                }
+                guard scanning.contains(root) else { break }
+                condition.wait()
+            }
+            scanning.insert(root)
+            let started = generation
+            condition.unlock()
+            let paths = scan()
+            condition.lock()
+            scanning.remove(root)
+            if values.count > 32 { values.removeAll(keepingCapacity: true) }
+            // A write during the scan may be missing from it: keep it for this caller only.
+            if generation == started { values[root] = (ProcessInfo.processInfo.systemUptime, paths) }
+            condition.broadcast()
+            condition.unlock()
+            return paths
+        }
+
+        /// The next call lists the workspace again.
+        func invalidate() {
+            condition.lock()
+            generation += 1
+            values.removeAll(keepingCapacity: true)
+            condition.unlock()
+        }
+    }
+
+    static let scanPathCache = ScanPathCache()
+    private static let normalizedIgnoredScanDirectories = Set(ignoredScanDirectories.map { $0.lowercased() })
+    private static let sensitiveScanExtensions: Set<String> = [
+        "db", "sqlite", "sqlite3", "pem", "key", "p8", "p12", "pfx", "jks", "keystore", "mobileprovision",
+    ]
+    private static let sensitiveScanNames: Set<String> = [
+        "provider-state.json", "conversations.json", "state.sqlite", "state.db", ".netrc", ".npmrc", ".pypirc",
+        "credentials", "credentials.json", "secrets", "secrets.json", "id_rsa", "id_ed25519", "id_ecdsa",
+    ]
+
+    /// The relative paths every automatic workspace scan may read. Graphs, maps, memory
+    /// study and the request file index all use this policy.
+    static func scanFilePaths(_ workspace: URL) -> [String] {
+        let root = workspace.standardizedFileURL
+        return scanPathCache.paths(for: root.path) { scanFilePathsUncached(root) }
+    }
+
+    private static func scanFilePathsUncached(_ root: URL) -> [String] {
+        let isRepository = WorkspaceMemory.gitLines(["rev-parse", "--is-inside-work-tree"], workspace: root).contains("true")
+        let hernessRules = readScanRules(at: root.appendingPathComponent(".hernessignore"), base: "")
+        var candidates: [String]
+        var gitIgnored = Set<String>()
+        if isRepository {
+            candidates = WorkspaceMemory.gitLines(["-c", "core.quotePath=false", "ls-files", "--cached", "--others", "--exclude-standard"], workspace: root)
+                .filter { !$0.hasPrefix("\"") }
+            gitIgnored = Set(WorkspaceMemory.gitLines(["-c", "core.quotePath=false", "ls-files", "--cached", "--ignored", "--exclude-standard"], workspace: root)
+                .filter { !$0.hasPrefix("\"") })
+        } else {
+            candidates = walkUnmanagedWorkspace(root: root, directory: root, inheritedRules: [])
+        }
+
+        let included = readScanIncludes(root)
+        var paths = Set<String>()
+        for candidate in candidates {
+            let relative = normalizeScanPath(candidate)
+            guard !relative.isEmpty, !isPrivateScanPath(relative), !isDefaultSkippedScanDirectory(relative), isRegularScanFile(root, relative) else { continue }
+            if included.contains(relative) || (!gitIgnored.contains(candidate) && !isScanPathIgnored(relative, by: hernessRules)) {
+                paths.insert(relative)
+            }
+        }
+        for relative in included where !isPrivateScanPath(relative) && isRegularScanFile(root, relative) {
+            paths.insert(relative)
+        }
+        return paths.sorted()
+    }
+
+    /// Calls `visit` in a stable order and stops when it returns false.
     static func scanFiles(_ root: URL, _ visit: (URL) -> Bool) {
-        let listed = WorkspaceMemory.gitLines(["-c", "core.quotePath=false", "ls-files", "--cached", "--others", "--exclude-standard"], workspace: root)
-        let keys: Set<URLResourceKey> = [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey]
-        if !listed.isEmpty {
-            for relative in listed {
-                // A path git had to quote is skipped, as the file index does.
-                guard !relative.hasPrefix("\""),
-                      !relative.split(separator: "/").contains(where: { ignoredScanDirectories.contains(String($0)) }) else { continue }
-                let url = root.appendingPathComponent(relative)
-                let values = try? url.resourceValues(forKeys: keys)
-                guard values?.isRegularFile == true, values?.isSymbolicLink != true else { continue }
-                if !visit(url) { return }
-            }
-            return
+        let base = root.standardizedFileURL
+        for relative in scanFilePaths(base) {
+            if !visit(base.appendingPathComponent(relative)) { return }
         }
-        guard let enumerator = FileManager.default.enumerator(at: root, includingPropertiesForKeys: Array(keys)) else { return }
-        while let candidate = enumerator.nextObject() as? URL {
-            let values = try? candidate.resourceValues(forKeys: keys)
+    }
+
+    static func scanRevision(_ root: URL, paths: [String]) -> String {
+        let base = root.standardizedFileURL
+        var entries = paths.map { relative -> String in
+            let url = base.appendingPathComponent(relative)
+            let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+            let modified = values?.contentModificationDate?.timeIntervalSince1970 ?? 0
+            return "\(relative)\t\(values?.fileSize ?? -1)\t\(Int64((modified * 1_000_000_000).rounded()))"
+        }
+        for name in [".gitignore", ".hernessignore", ".hernessinclude"] {
+            let url = base.appendingPathComponent(name)
+            let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+            if values?.fileSize != nil {
+                entries.append("\(name)\t\(values?.fileSize ?? -1)\t\(values?.contentModificationDate?.timeIntervalSince1970 ?? 0)")
+            }
+        }
+        return SHA256.hash(data: Data(entries.joined(separator: "\n").utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// A path-only workspace outline is available before the background project map and
+    /// Tree-sitter graph finish their first build.
+    static func quickProjectSkeleton(_ root: URL) -> String {
+        let paths = scanFilePaths(root)
+        var entries = Set<String>()
+        for path in paths.prefix(20_000) {
+            if let slash = path.firstIndex(of: "/") { entries.insert(String(path[..<slash]) + "/") }
+            else { entries.insert(path) }
+        }
+        guard !entries.isEmpty else { return "# Project skeleton\n\nNo eligible project files were found by the workspace scan policy." }
+        return "# Project skeleton\n\nQuick local file outline; the detailed map and code graph are building in the background.\n\n"
+            + entries.sorted().map { "- `\($0)`" }.joined(separator: "\n")
+    }
+
+    private static func walkUnmanagedWorkspace(root: URL, directory: URL, inheritedRules: [ScanIgnoreRule]) -> [String] {
+        let relativeDirectory = directory.path == root.path ? "" : relativeScanPath(directory, root: root)
+        var rules = inheritedRules
+        rules.append(contentsOf: readScanRules(at: directory.appendingPathComponent(".gitignore"), base: relativeDirectory))
+        guard let entries = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey], options: [])
+            else { return [] }
+        var files: [String] = []
+        for entry in entries.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+            let values = try? entry.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey])
+            guard values?.isSymbolicLink != true else { continue }
+            let relative = relativeScanPath(entry, root: root)
+            guard !isPrivateScanPath(relative), !isDefaultSkippedScanDirectory(relative) else { continue }
             if values?.isDirectory == true {
-                if values?.isSymbolicLink == true || ignoredScanDirectories.contains(candidate.lastPathComponent) { enumerator.skipDescendants() }
-                continue
+                files.append(contentsOf: walkUnmanagedWorkspace(root: root, directory: entry, inheritedRules: rules))
+            } else if values?.isRegularFile == true, !isScanPathIgnored(relative, by: rules) {
+                files.append(relative)
             }
-            guard values?.isSymbolicLink != true, values?.isRegularFile == true else { continue }
-            if !visit(candidate) { return }
         }
+        return files
+    }
+
+    private static func readScanRules(at url: URL, base: String) -> [ScanIgnoreRule] {
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        return content.split(whereSeparator: \.isNewline).compactMap { raw in
+            var pattern = String(raw).trimmingCharacters(in: .whitespaces)
+            guard !pattern.isEmpty, !pattern.hasPrefix("#") else { return nil }
+            let negated = pattern.hasPrefix("!")
+            if negated { pattern.removeFirst() }
+            let directoryOnly = pattern.hasSuffix("/")
+            let anchored = pattern.hasPrefix("/")
+            pattern = pattern.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            guard !pattern.isEmpty else { return nil }
+            let hasSlash = pattern.contains("/") || anchored
+            guard let matcher = scanGlob(pattern) else { return nil }
+            return ScanIgnoreRule(base: base, negated: negated, directoryOnly: directoryOnly, hasSlash: hasSlash, matcher: matcher)
+        }
+    }
+
+    private static func scanGlob(_ pattern: String) -> NSRegularExpression? {
+        var expression = "^"
+        let characters = Array(pattern)
+        var index = 0
+        while index < characters.count {
+            let character = characters[index]
+            if character == "*" {
+                if index + 1 < characters.count, characters[index + 1] == "*" {
+                    index += 1
+                    if index + 1 < characters.count, characters[index + 1] == "/" {
+                        index += 1
+                        expression += "(?:.*/)?"
+                    } else {
+                        expression += ".*"
+                    }
+                } else {
+                    expression += "[^/]*"
+                }
+            } else if character == "?" {
+                expression += "[^/]"
+            } else {
+                expression += NSRegularExpression.escapedPattern(for: String(character))
+            }
+            index += 1
+        }
+        expression += "$"
+        return try? NSRegularExpression(pattern: expression)
+    }
+
+    private static func isScanPathIgnored(_ path: String, by rules: [ScanIgnoreRule]) -> Bool {
+        var ignored = false
+        for rule in rules {
+            let candidate: String
+            if rule.base.isEmpty { candidate = path }
+            else if path.hasPrefix(rule.base + "/") { candidate = String(path.dropFirst(rule.base.count + 1)) }
+            else if path == rule.base { continue }
+            else { continue }
+            var components = candidate.split(separator: "/").map(String.init)
+            if rule.directoryOnly, !components.isEmpty { components.removeLast() }
+            let candidates: [String]
+            if rule.hasSlash {
+                let pathComponents = candidate.split(separator: "/").map(String.init)
+                let upperBound = rule.directoryOnly ? max(0, pathComponents.count - 1) : pathComponents.count
+                candidates = upperBound == 0 ? [] : (1...upperBound).map { pathComponents.prefix($0).joined(separator: "/") }
+            } else {
+                candidates = components
+            }
+            let matched = candidates.contains { value in
+                let range = NSRange(value.startIndex..<value.endIndex, in: value)
+                return rule.matcher.firstMatch(in: value, range: range) != nil
+            }
+            if matched { ignored = !rule.negated }
+        }
+        return ignored
+    }
+
+    private static func readScanIncludes(_ root: URL) -> Set<String> {
+        guard let content = try? String(contentsOf: root.appendingPathComponent(".hernessinclude"), encoding: .utf8) else { return [] }
+        return Set(content.split(whereSeparator: \.isNewline).compactMap { raw in
+            let line = String(raw).trimmingCharacters(in: .whitespaces)
+            guard !line.isEmpty, !line.hasPrefix("#"), !line.contains("*"), !line.contains("?"), !line.hasPrefix("/") else { return nil }
+            let path = normalizeScanPath(line)
+            guard !path.isEmpty, !path.split(separator: "/").contains(where: { $0 == ".." || $0 == "." }) else { return nil }
+            return path
+        })
+    }
+
+    private static func isRegularScanFile(_ root: URL, _ relative: String) -> Bool {
+        var cursor = root
+        let components = relative.split(separator: "/").map(String.init)
+        for (index, component) in components.enumerated() {
+            cursor.appendPathComponent(component)
+            let values = try? cursor.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
+            if values?.isSymbolicLink == true { return false }
+            if index == components.count - 1 { return values?.isRegularFile == true }
+        }
+        return false
+    }
+
+    private static func isDefaultSkippedScanDirectory(_ relative: String) -> Bool {
+        relative.split(separator: "/").contains { normalizedIgnoredScanDirectories.contains($0.lowercased()) }
+    }
+
+    private static func isPrivateScanPath(_ relative: String) -> Bool {
+        let components = relative.split(separator: "/").map(String.init)
+        guard let name = components.last else { return true }
+        if components.contains(where: { [".git", ".mem", ".ssh", ".gnupg"].contains($0.lowercased()) }) { return true }
+        let lower = name.lowercased()
+        if [".hernessignore", ".hernessinclude", ".netrc", ".npmrc", ".pypirc"].contains(lower)
+            || lower.hasPrefix(".env") || sensitiveScanNames.contains(lower) || lower.hasSuffix(".secret") { return true }
+        return sensitiveScanExtensions.contains(URL(fileURLWithPath: name).pathExtension.lowercased())
+    }
+
+    private static func normalizeScanPath(_ path: String) -> String {
+        var value = path.replacingOccurrences(of: "\\", with: "/")
+        while value.hasPrefix("./") { value.removeFirst(2) }
+        return value
+    }
+
+    private static func relativeScanPath(_ url: URL, root: URL) -> String {
+        let prefix = root.path.hasSuffix("/") ? root.path : root.path + "/"
+        guard url.standardizedFileURL.path.hasPrefix(prefix) else { return "" }
+        return String(url.standardizedFileURL.path.dropFirst(prefix.count))
     }
     private static let protectedNames: Set<String> = ["provider-state.json", "conversations.json", "state.sqlite", "state.db"]
     public static let definitions: [AgentToolDefinition] = workspaceDefinitions + FileEditTools.definitions + [generatedMediaDefinition, generatedMediaInspectionDefinition] + SimulatorTools.definitions + AndroidEmulatorTools.definitions
@@ -372,6 +625,8 @@ public enum WorkspaceTools {
             return AppCopy.format("tool.invalidArguments", call.name)
         }
 
+        // Anything but a read may have added or removed a file.
+        defer { if !readOnlyNames.contains(call.name) { scanPathCache.invalidate() } }
         do {
             switch call.name {
             case "list_files":
@@ -407,7 +662,8 @@ public enum WorkspaceTools {
                     path: object["path"] as? String ?? ".",
                     extensions: object["extensions"] as? String,
                     workspace: workspace,
-                    readRoots: readRoots
+                    readRoots: readRoots,
+                    isCancelled: isCancelled
                 )
             case FileEditTools.editName:
                 guard let path = object["path"] as? String else { return AppCopy.text("tool.missingPath") }
@@ -471,43 +727,92 @@ public enum WorkspaceTools {
         return names.isEmpty ? AppCopy.text("tool.empty") : names.joined(separator: "\n") + more
     }
 
-    private static let grepMaxMatches = 100
-    private static let grepMaxFiles = 5_000
-    private static let grepMaxLineCharacters = 240
+    static let grepMaxMatches = 100
+    static let grepMaxFiles = 5_000
+    static let grepMaxLineCharacters = 240
+    static let grepMaxFileBytes = 2 * 1_024 * 1_024
+    static let grepMaxTotalBytes = 32 * 1_024 * 1_024
 
-    private static func grepFiles(pattern: String, path: String, extensions: String?, workspace: URL, readRoots: [URL]) throws -> String {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else {
-            return AppCopy.format("tool.invalidPattern", pattern)
-        }
-        let root = try resolveRead(path, workspace: workspace, readRoots: readRoots)
-        let filter = Set(
-            (extensions ?? "")
-                .split(whereSeparator: { ", \n".contains($0) })
-                .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased() }
-        )
-        var matches: [String] = []
-        var scanned = 0
-        var truncated = false
-        scanFiles(root) { candidate in
-            if !filter.isEmpty, !filter.contains(candidate.pathExtension.lowercased()) { return true }
-            scanned += 1
-            if scanned > grepMaxFiles { truncated = true; return false }
-            guard let text = try? String(contentsOf: candidate, encoding: .utf8) else { return true }
-            let relative = relativePath(candidate, workspace: workspace.standardizedFileURL)
-            for (offset, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-                let value = String(line)
-                let range = NSRange(value.startIndex..<value.endIndex, in: value)
-                guard regex.firstMatch(in: value, range: range) != nil else { continue }
-                let shown = value.count > grepMaxLineCharacters
-                    ? String(value.prefix(grepMaxLineCharacters)) + "…"
-                    : value
-                matches.append("\(relative):\(offset + 1):\(shown)")
-                if matches.count >= grepMaxMatches { truncated = true; return false }
+    enum GrepBudgetDecision: Equatable {
+        case read(Int)
+        case skip
+        case stop
+    }
+
+    static func grepBudgetDecision(fileBytes: Int?, remainingBytes: Int) -> GrepBudgetDecision {
+        guard let fileBytes, fileBytes >= 0 else { return .skip }
+        guard fileBytes <= grepMaxFileBytes else { return .skip }
+        guard fileBytes <= remainingBytes else { return .stop }
+        return .read(fileBytes)
+    }
+
+    private static func grepFiles(
+        pattern: String,
+        path: String,
+        extensions: String?,
+        workspace: URL,
+        readRoots: [URL],
+        isCancelled: @Sendable () -> Bool
+    ) throws -> String {
+        let signpost = PerformanceSignposts.begin("WorkspaceGrep")
+        defer { PerformanceSignposts.end("WorkspaceGrep", signpost) }
+
+        guard let result = try AppBackgroundWorkLimiter.withCancellablePermit(isCancelled: isCancelled, {
+            guard let regex = try? NSRegularExpression(pattern: pattern) else {
+                return AppCopy.format("tool.invalidPattern", pattern)
             }
-            return true
-        }
-        if matches.isEmpty { return AppCopy.text("tool.noMatches") }
-        return matches.joined(separator: "\n") + (truncated ? "\n\n" + AppCopy.text("tool.truncated") : "")
+            let root = try resolveRead(path, workspace: workspace, readRoots: readRoots)
+            let filter = Set(
+                (extensions ?? "")
+                    .split(whereSeparator: { ", \n".contains($0) })
+                    .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased() }
+            )
+            var matches: [String] = []
+            var scanned = 0
+            var scannedBytes = 0
+            var truncated = false
+            var cancelled = false
+            scanFiles(root) { candidate in
+                guard !isCancelled() else { cancelled = true; return false }
+                if !filter.isEmpty, !filter.contains(candidate.pathExtension.lowercased()) { return true }
+                scanned += 1
+                if scanned > grepMaxFiles { truncated = true; return false }
+                let values = try? candidate.resourceValues(forKeys: [.fileSizeKey])
+                switch grepBudgetDecision(fileBytes: values?.fileSize, remainingBytes: grepMaxTotalBytes - scannedBytes) {
+                case .read(let bytes): scannedBytes += bytes
+                case .skip:
+                    truncated = true
+                    return true
+                case .stop:
+                    truncated = true
+                    return false
+                }
+                guard let text = try? String(contentsOf: candidate, encoding: .utf8) else { return true }
+                let relative = relativePath(candidate, workspace: workspace.standardizedFileURL)
+                for (offset, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+                    if offset.isMultiple(of: 128), isCancelled() {
+                        cancelled = true
+                        return false
+                    }
+                    let value = String(line)
+                    let range = NSRange(value.startIndex..<value.endIndex, in: value)
+                    guard regex.firstMatch(in: value, range: range) != nil else { continue }
+                    let shown = value.count > grepMaxLineCharacters
+                        ? String(value.prefix(grepMaxLineCharacters)) + "…"
+                        : value
+                    matches.append("\(relative):\(offset + 1):\(shown)")
+                    if matches.count >= grepMaxMatches { truncated = true; return false }
+                }
+                return true
+            }
+            if cancelled { return "Tool cancelled." }
+            if matches.isEmpty {
+                let noMatches = AppCopy.text("tool.noMatches")
+                return truncated ? noMatches + "\n\n" + AppCopy.text("tool.truncated") : noMatches
+            }
+            return matches.joined(separator: "\n") + (truncated ? "\n\n" + AppCopy.text("tool.truncated") : "")
+        }) else { return "Tool cancelled." }
+        return result
     }
 
     static let readMaxBytes = 60_000

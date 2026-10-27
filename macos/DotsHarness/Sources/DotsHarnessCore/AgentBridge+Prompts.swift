@@ -411,10 +411,15 @@ extension NativeAgentHost {
         subagentsOverride: Bool? = nil
     ) async {
         await waitForContent()
-        guard hasRunnableAgentScope(), canContinue, let conversationID = selectedID else {
+        guard hasRunnableAgentScope(), let conversationID = selectedID else {
             if requestedWorkspacePath != nil { status = AppCopy.text("agent.workspaceMissing") }
             return
         }
+        guard ensurePromptContextLoaded(conversationID) else {
+            status = AppCopy.text("conversation.historyUnavailable")
+            return
+        }
+        guard canContinue else { return }
         clearFollowUpSuggestion()
         limitResumeTask?.cancel()
         limitResumeTask = nil
@@ -793,7 +798,7 @@ extension NativeAgentHost {
                 turnID: turnID
             )
             let isFirstUserMessage = !conversations[index].messages.contains(where: { $0.kind == .user })
-            conversations[index].messages.append(userMessage)
+            conversations[index].appendChronologically(userMessage)
             if notice == nil, isFirstUserMessage || conversations[index].blank {
                 let titleText = text.isEmpty ? attachments.map { $0.name }.joined(separator: ", ") : text
                 conversations[index].title = Self.title(for: titleText)
@@ -801,6 +806,9 @@ extension NativeAgentHost {
             }
         }
         conversations[index].running = true
+        if continuationOnly, conversations[index].continuation?.reason == .userStopped {
+            conversations[index].continuation = nil
+        }
         activeTurnID = turnID
         let memoryPrompt = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? conversationPrompt(conversations[index])
@@ -827,10 +835,20 @@ extension NativeAgentHost {
         )
         // The first prompt of a new project creates its id, which names the user layer.
         syncFeedbackStore()
-        let hasStoredContext = !conversations[index].modelContext.isEmpty
+        // Request-specific file and code-graph scoring can cover thousands of
+        // paths or nodes. Finish it on the memory worker before assembling the
+        // prompt, leaving the main actor available to the composer.
+        let fileQuery = retrievalQuery(memoryPrompt)
+        await memory.prepareFileIndexForPrompt(workspace: runWorkspace, query: fileQuery)
+        await memory.prepareCodeGraphContext(
+            for: fileQuery,
+            lessons: feedbackStore?.lessons() ?? []
+        )
+        guard let contextIndex = conversations.firstIndex(where: { $0.id == conversationID }) else { return }
+        let hasStoredContext = !conversations[contextIndex].modelContext.isEmpty
         var context: [AgentMessage]
         if hasStoredContext {
-            var stored = conversations[index].modelContext
+            var stored = conversations[contextIndex].modelContext
             if hasUserContent || approvedPlanID != nil {
                 // Once per user turn, so the cached prefix moves at most once.
                 stored = AgentContextCompaction.supersedeRepeatedReads(stored)
@@ -839,7 +857,7 @@ extension NativeAgentHost {
             context = stored
         } else {
             context = makeAgentContext(
-                for: conversations[index],
+                for: conversations[contextIndex],
                 workspace: runWorkspace,
                 memoryPrompt: memoryPrompt,
                 planMode: planMode
@@ -861,7 +879,7 @@ extension NativeAgentHost {
             context[userIndex].content = AppCopy.text("plan.applyPrompt")
                 + "\n" + AppCopy.text("plan.applyLedger")
         }
-        conversations[index].modelContext = Self.durableContext(context)
+        conversations[contextIndex].modelContext = Self.durableContext(context)
         persist()
 
         let task = startRun(
@@ -1020,7 +1038,7 @@ extension NativeAgentHost {
         // provider's conversational memory/cache prefix.
         let userMessage = ChatMessage(kind: .user, text: userText, turnID: turnID)
         let isFirstUserMessage = !conversations[index].messages.contains(where: { $0.kind == .user })
-        conversations[index].messages.append(userMessage)
+        conversations[index].appendChronologically(userMessage)
         if isFirstUserMessage || conversations[index].blank {
             conversations[index].title = Self.title(for: userText)
             conversations[index].blank = false
@@ -1192,7 +1210,7 @@ extension NativeAgentHost {
     ) -> Task<Void, Never> {
         // The run's Task inherits this scope: it keeps running, with its own state,
         // while the user works in another chat.
-        AgentRunScope.$conversationID.withValue(conversationID) {
+        AgentRunScope.$conversationID.withValue(conversationID) { AgentRunScope.$workspace.withValue(workspace) {
             startRunInScope(
                 runID: runID,
                 conversationID: conversationID,
@@ -1206,7 +1224,7 @@ extension NativeAgentHost {
                 modelOverride: modelOverride,
                 allowAccountFailoverAfterLimit: allowAccountFailoverAfterLimit
             )
-        }
+        } }
     }
 
     private func startRunInScope(
@@ -1262,6 +1280,8 @@ extension NativeAgentHost {
         askedQuestionKeys = []
         activeRunTokens = 0
         activeRunTokenCountHasEstimate = false
+        activeRunUncachedInputTokens = 0
+        activeRunUncachedInputApproximate = false
         isBusy = true
         if let index = conversations.firstIndex(where: { $0.id == conversationID }) {
             if planMode || approvedPlanID != nil || conversations[index].planGateActive {
@@ -1284,6 +1304,11 @@ extension NativeAgentHost {
             var runContext = runContext
             var promptCPUMilliseconds = promptCPUMilliseconds
             if await self.askMemoryQuestions(conversationID: conversationID, workspace: workspace) {
+                guard !Task.isCancelled, self.activeRunID == runID else { return }
+                await self.memory.prepareCodeGraphContext(
+                    for: self.retrievalQuery(memoryPrompt.isEmpty ? self.promptFromContext(context) : memoryPrompt),
+                    lessons: self.feedbackStore?.lessons() ?? []
+                )
                 guard !Task.isCancelled, self.activeRunID == runID else { return }
                 let promptCPU = AgentStepCPUTrace.thread()
                 runContext = self.contextWithSystemPrompt(

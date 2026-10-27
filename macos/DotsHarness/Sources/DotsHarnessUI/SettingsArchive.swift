@@ -41,6 +41,9 @@ struct ConversationArchiveView: View {
     @State private var collapsedProjectIDs: Set<String> = []
     @State private var isDeletingConversations = false
     @State private var searchText = ""
+    @State private var searchedContentQuery = ""
+    @State private var searchedConversationIDs = Set<String>()
+    @State private var isSearchingConversationContent = false
     @State private var conversationFilter: ArchiveConversationFilter = .all
     @State private var selectedProjectID = "all"
     @AppStorage(ConversationArchiveRetention.preferenceKey) private var retentionDays = 0
@@ -97,7 +100,7 @@ struct ConversationArchiveView: View {
                     || (conversation.cwd?.localizedCaseInsensitiveContains(query) ?? false) {
                     return true
                 }
-                return model.bridge.contentMatches(conversation, query: query)
+                return searchedContentQuery == query && searchedConversationIDs.contains(conversation.id)
             }
             guard !matches.isEmpty else { return nil }
             return ConversationArchiveProject(
@@ -156,6 +159,9 @@ struct ConversationArchiveView: View {
         }
         .task {
             await model.bridge.deleteExpiredArchivedConversationsInBackground(retentionDays: retentionDays)
+        }
+        .task(id: "\(searchText)-\(model.bridge.conversationListRevision)") {
+            await updateContentSearch()
         }
         .confirmationDialog(
             AppCopy.text(deletionAtPresentation == .all ? "archive.confirmDeleteAll" : "archive.confirmDelete"),
@@ -258,6 +264,11 @@ struct ConversationArchiveView: View {
             TextField(AppCopy.text("archive.searchPlaceholder"), text: $searchText)
                 .textFieldStyle(.plain)
                 .accessibilityLabel(AppCopy.text("archive.searchPlaceholder"))
+            if isSearchingConversationContent {
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityHidden(true)
+            }
             if !searchText.isEmpty {
                 Button {
                     searchText = ""
@@ -274,6 +285,23 @@ struct ConversationArchiveView: View {
         .background(Color.secondary.opacity(0.11), in: Capsule())
         .overlay(Capsule().stroke(Color.secondary.opacity(0.2), lineWidth: 1))
         .frame(minWidth: 220, maxWidth: .infinity)
+    }
+
+    @MainActor
+    private func updateContentSearch() async {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        searchedContentQuery = query
+        searchedConversationIDs.removeAll(keepingCapacity: true)
+        isSearchingConversationContent = false
+        guard !query.isEmpty else { return }
+
+        try? await Task.sleep(nanoseconds: 220_000_000)
+        guard !Task.isCancelled else { return }
+        isSearchingConversationContent = true
+        let matches = await model.bridge.contentMatchingConversationIDs(query: query, includingArchived: true)
+        guard !Task.isCancelled else { return }
+        searchedConversationIDs = matches
+        isSearchingConversationContent = false
     }
 
     private var filterMenu: some View {
@@ -613,7 +641,7 @@ struct ConversationArchiveView: View {
             guard let page = await bridge.loadArchivedMessagePage(
                 id: conversation.id,
                 endingBefore: endIndex,
-                limit: 10
+                limit: ConversationStore.defaultTranscriptPageSize
             ),
             selectedTranscript?.id == conversation.id,
             selectedTranscript?.messageStartIndex == endIndex,

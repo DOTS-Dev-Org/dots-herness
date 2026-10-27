@@ -510,7 +510,10 @@ public final class AgentContextTelemetryStore {
     }
 
     private let cacheLock = NSLock()
-    private var cache: (modified: Date?, size: Int?, events: [AgentContextUsageEvent])?
+    private var cache: (modified: Date?, size: Int?, events: [AgentContextUsageEvent])? {
+        didSet { byConversation = nil }
+    }
+    private var byConversation: [String: [AgentContextUsageEvent]]?
 
     /// Views read this on every render, so the decoded ledger is kept while the
     /// file's modification date and size are unchanged; a stat is the whole cost.
@@ -533,6 +536,19 @@ public final class AgentContextTelemetryStore {
         cache = (modified, size, events)
         cacheLock.unlock()
         return events
+    }
+
+    /// One conversation's events. The composer asks several times per render while a
+    /// reply streams; grouping once per ledger version keeps that off the full list.
+    public func events(conversationID: String) -> [AgentContextUsageEvent] {
+        let all = events()
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        guard cache != nil else { return all.filter { $0.conversationID == conversationID } }
+        if byConversation == nil {
+            byConversation = Dictionary(grouping: all.filter { $0.conversationID != nil }) { $0.conversationID! }
+        }
+        return byConversation?[conversationID] ?? []
     }
 
     public func append(_ event: AgentContextUsageEvent) {

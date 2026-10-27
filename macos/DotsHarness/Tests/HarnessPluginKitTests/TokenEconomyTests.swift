@@ -138,10 +138,10 @@ final class TokenEconomyTests: XCTestCase {
             ["type": .string("message"), "content": .array([.object(["type": .string("output_text"), "text": .string("done")])])],
             ["type": .string("reasoning"), "id": .string("rs_1"), "encrypted_content": .string(String(repeating: "A", count: 16_000))],
         ])
-        // 16 KB of ciphertext replays as ~1k reasoning tokens, not 4k.
+        // 16 KB of ciphertext replays as ~570 reasoning tokens, not 4k.
         let extra = AgentContextCompaction.estimateTokens(replayed) - AgentContextCompaction.estimateTokens(plain)
-        XCTAssertGreaterThan(extra, 1_000)
-        XCTAssertLessThan(extra, 1_050)
+        XCTAssertGreaterThan(extra, 560)
+        XCTAssertLessThan(extra, 600)
     }
 
     func testObservedInputIsTheProviderCountPlusOnlyTheNewEstimate() {

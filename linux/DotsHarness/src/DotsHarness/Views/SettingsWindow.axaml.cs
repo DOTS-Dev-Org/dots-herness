@@ -37,6 +37,8 @@ public partial class SettingsWindow : Window
     private Conversation? _archivePreview;
     private readonly HashSet<string> _expandedArchiveToolIDs = new(StringComparer.Ordinal);
     private AppModel? _observedModel;
+    private RouterController? _observedRouter;
+    private readonly Dictionary<string, (RouterConnection Connection, RouterController Router, StackPanel Host)> _providerUsageHosts = new(StringComparer.Ordinal);
     private AgentBridge? _observedBridge;
     private McpRegistry? _observedMcpRegistry;
     private StackPanel? _mcpStatusRows;
@@ -108,12 +110,15 @@ public partial class SettingsWindow : Window
         DataContextChanged += (_, _) =>
         {
             if (_observedModel is not null) _observedModel.PropertyChanged -= OnModel;
+            if (_observedRouter is not null) _observedRouter.PropertyChanged -= OnRouter;
             if (_observedBridge is not null) _observedBridge.PropertyChanged -= OnBridge;
             if (_observedMcpRegistry is not null) _observedMcpRegistry.PropertyChanged -= OnMcpRegistry;
             _observedModel = DataContext as AppModel;
+            _observedRouter = _observedModel?.Router;
             _observedBridge = _observedModel?.Bridge;
             _observedMcpRegistry = _observedModel?.McpRegistry;
             if (_observedModel is not null) _observedModel.PropertyChanged += OnModel;
+            if (_observedRouter is not null) _observedRouter.PropertyChanged += OnRouter;
             if (_observedBridge is not null) _observedBridge.PropertyChanged += OnBridge;
             if (_observedMcpRegistry is not null) _observedMcpRegistry.PropertyChanged += OnMcpRegistry;
             RefreshLocalization();
@@ -121,9 +126,11 @@ public partial class SettingsWindow : Window
         Closed += (_, _) =>
         {
             if (_observedModel is not null) _observedModel.PropertyChanged -= OnModel;
+            if (_observedRouter is not null) _observedRouter.PropertyChanged -= OnRouter;
             if (_observedBridge is not null) _observedBridge.PropertyChanged -= OnBridge;
             if (_observedMcpRegistry is not null) _observedMcpRegistry.PropertyChanged -= OnMcpRegistry;
             _observedModel = null;
+            _observedRouter = null;
             _observedBridge = null;
             _observedMcpRegistry = null;
         };
@@ -200,6 +207,15 @@ public partial class SettingsWindow : Window
         }
         if (e.PropertyName is nameof(AppModel.Language) or nameof(AppModel.IsRightToLeft))
             Dispatcher.UIThread.Post(RefreshLocalization);
+    }
+
+    private void OnRouter(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(RouterController.AccountUsage)) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_tab == "providers") RefreshProviderUsageHosts();
+        });
     }
 
     private void OnBridge(object? sender, PropertyChangedEventArgs e)
@@ -1086,6 +1102,21 @@ public partial class SettingsWindow : Window
         parent.Children.Add(Label("settings.updates.title"));
         var version = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version ?? new Version(0, 1, 0);
         parent.Children.Add(Readonly("settings.updates.current", $"v{version.Major}.{version.Minor}.{Math.Max(version.Build, 0)}"));
+        var autoUpdate = new CheckBox
+        {
+            Content = Model.L("settings.updates.auto"),
+            IsChecked = Model.AutoUpdate,
+            Margin = new Thickness(0, 6, 0, 2),
+        };
+        autoUpdate.IsCheckedChanged += (_, _) => Model.SetAutoUpdate(autoUpdate.IsChecked == true);
+        parent.Children.Add(autoUpdate);
+        parent.Children.Add(new TextBlock
+        {
+            Text = Model.L("settings.updates.auto.hint"),
+            FontSize = 11,
+            Foreground = TryBrush("TextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+        });
         var status = new TextBlock
         {
             Text = Model.L("settings.updates.hint"),
@@ -1130,8 +1161,14 @@ public partial class SettingsWindow : Window
                     }
                     if (!string.IsNullOrWhiteSpace(result.DownloadUrl))
                     {
-                        var download = Ui.Button(Model.L("settings.updates.download"), () =>
+                        Button? download = null;
+                        download = Ui.Button(Model.L("settings.updates.install"), async () =>
                         {
+                            download!.IsEnabled = false;
+                            status.Text = Model.L("settings.updates.installing");
+                            if (await UpdateInstaller.InstallAndRelaunchAsync(result)) { (Application.Current as App)?.ExitApplication(); return; }
+                            download.IsEnabled = true;
+                            status.Text = Model.L("settings.updates.available", result.LatestVersion);
                             try
                             {
                                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(result.DownloadUrl) { UseShellExecute = true });
@@ -1442,8 +1479,9 @@ public partial class SettingsWindow : Window
     private void ShowProviders()
     {
         var router = Model.Router;
+        _providerUsageHosts.Clear();
         var panel = new StackPanel();
-        panel.Children.Add(HeaderRow("Providers", router.Status, () => _ = router.RefreshAsync()));
+        panel.Children.Add(HeaderRow("Providers", router.Status, () => _ = RefreshProviderDataAsync(router)));
         if (router.Error is { } err) panel.Children.Add(ErrorText(err));
         panel.Children.Add(Label("Provider"));
         var picker = new ComboBox
@@ -1617,6 +1655,10 @@ public partial class SettingsWindow : Window
         remove.Click += (_, _) => _ = router.RemoveAsync(connection);
         row.Children.Add(remove);
         stack.Children.Add(row);
+        var usageHost = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
+        _providerUsageHosts[connection.Id] = (connection, router, usageHost);
+        RefreshProviderUsageBlock(usageHost, connection, router);
+        stack.Children.Add(usageHost);
         var fallback = new CheckBox
         {
             Content = Model.L("settings.imageFallback"),
@@ -1628,6 +1670,70 @@ public partial class SettingsWindow : Window
         if (!string.IsNullOrEmpty(connection.Error)) stack.Children.Add(ErrorText(connection.Error));
         card.Child = stack;
         return card;
+    }
+
+    private async Task RefreshProviderDataAsync(RouterController router)
+    {
+        await router.RefreshAsync();
+        await router.RefreshAccountUsageAsync();
+    }
+
+    private void RefreshProviderUsageHosts()
+    {
+        foreach (var (connection, router, host) in _providerUsageHosts.Values)
+            RefreshProviderUsageBlock(host, connection, router);
+    }
+
+    private void RefreshProviderUsageBlock(StackPanel host, RouterConnection connection, RouterController router)
+    {
+        host.Children.Clear();
+        if (!connection.Active || connection.AuthType is not ("chatgpt" or "claudeOAuth")) return;
+        if (!router.AccountUsage.TryGetValue(connection.Id, out var usage) || usage.Windows.Count == 0)
+        {
+            host.Children.Add(UsageText(Model.L("usage.noLimitInfo"), 10, "TextSecondary"));
+            return;
+        }
+        foreach (var window in usage.Windows) host.Children.Add(UsageWindowRow(window));
+    }
+
+    private Control UsageWindowRow(UsageWindow window)
+    {
+        var row = new StackPanel { Spacing = 2, Margin = new Thickness(0, 4, 0, 0) };
+        var heading = new DockPanel();
+        var percentage = UsageText(
+            window.UsedFraction is { } used ? $"{Math.Round(Math.Clamp(used, 0, 1) * 100)}%" : Model.L("usage.noLimitInfo"),
+            10,
+            "TextSecondary",
+            FontWeight.SemiBold);
+        DockPanel.SetDock(percentage, Dock.Right);
+        heading.Children.Add(percentage);
+        heading.Children.Add(UsageText(Model.L(window.Weekly ? "usage.windowWeek" : "usage.window5h"), 11, "TextPrimary", FontWeight.Medium));
+        row.Children.Add(heading);
+        if (window.UsedFraction is { } fraction)
+            row.Children.Add(new ProgressBar { Minimum = 0, Maximum = 1, Value = Math.Clamp(fraction, 0, 1), Height = 4, Margin = new Thickness(0, 4, 0, 0) });
+        if (window.ResetsAt is { } reset)
+            row.Children.Add(UsageText(UsageResetText(reset), 10, "TextSecondary"));
+        return row;
+    }
+
+    private TextBlock UsageText(string text, double size, string brush, FontWeight? weight = null) => new()
+    {
+        Text = text,
+        FontSize = size,
+        FontWeight = weight ?? FontWeight.Normal,
+        Foreground = TryBrush(brush),
+        VerticalAlignment = VerticalAlignment.Center,
+    };
+
+    private string UsageResetText(DateTimeOffset at)
+    {
+        var left = at - DateTimeOffset.Now;
+        if (left >= TimeSpan.FromHours(24))
+            return Model.L("usage.resetsOn", at.ToLocalTime().ToString("ddd", Model.Localization.Culture));
+        var remaining = left.TotalMinutes < 60
+            ? $"{Math.Max(1, (int)left.TotalMinutes)}m"
+            : $"{(int)left.TotalHours}h {left.Minutes}m";
+        return Model.L("usage.resetsIn", remaining);
     }
 
     private Control ProviderHeader(

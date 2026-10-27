@@ -7,6 +7,24 @@ import PluginRuntime
 import DotsHarnessCore
 
 final class LocalRuntimeTests: XCTestCase {
+    func testHubSpecsRunTextGGUFAndStoreMediaAsDownloadOnly() {
+        let gguf = HubFile(path: "q/model-Q4_K_M.gguf", size: 2_000_000_000, sha256: "abc")
+        let text = HuggingFaceHub.spec(repo: "org/Model-GGUF", file: gguf, category: "coding")
+        XCTAssertEqual(text.engine, .llama)
+        XCTAssertEqual(text.filename, "hub/org--Model-GGUF/q/model-Q4_K_M.gguf")
+        XCTAssertEqual(text.hubURL?.absoluteString, "https://huggingface.co/org/Model-GGUF")
+        XCTAssertEqual(text.minMemoryGB, 3)
+        XCTAssertEqual(HuggingFaceHub.spec(repo: "org/Wan-GGUF", file: gguf, category: "video").engine, .file)
+        XCTAssertEqual(HuggingFaceHub.spec(repo: "org/Wan", file: nil, category: "video").engine, .repo)
+
+        let search = HuggingFaceHub.searchURL(LocalModelCategory.named("video"), query: "wan").absoluteString
+        XCTAssertTrue(search.contains("pipeline_tag=text-to-video") && search.contains("search=wan") && !search.contains("gguf"))
+        XCTAssertTrue(HuggingFaceHub.searchURL(LocalModelCategory.named("coding"), query: "").absoluteString.contains("filter=gguf"))
+        let weights = HuggingFaceHub.weights([HubFile(path: "README.md", size: 1, sha256: nil),
+                                             HubFile(path: "a.safetensors", size: 1, sha256: nil), gguf])
+        XCTAssertEqual(weights.map(\.path), [gguf.path, "a.safetensors"])
+    }
+
     func testCatalogIncludesLocalReasoningModel() {
         let ids = Set(LocalModelCatalog.models.map(\.id))
         XCTAssertTrue(ids.contains("qwen25-05b-q4"))

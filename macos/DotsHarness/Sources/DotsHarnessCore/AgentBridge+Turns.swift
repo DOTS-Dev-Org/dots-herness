@@ -126,13 +126,17 @@ extension NativeAgentHost {
         let summary = reason == .applicationClosed
             ? AppCopy.text("agent.applicationClosedMessage")
             : AppCopy.format("agent.userStopped", provider, model)
-        conversations[index].continuation = ContinuationState(
-            reason: reason,
-            provider: provider,
-            model: model,
-            message: summary,
-            subagentsOverride: state(for: conversationID).activeSubagentsOverride
-        )
+        let preserveUserStop = reason == .applicationClosed
+            && conversations[index].continuation?.reason == .userStopped
+        if !preserveUserStop {
+            conversations[index].continuation = ContinuationState(
+                reason: reason,
+                provider: provider,
+                model: model,
+                message: summary,
+                subagentsOverride: state(for: conversationID).activeSubagentsOverride
+            )
+        }
         if reason == .applicationClosed {
             conversations[index].requiresToolOutcomeRecovery = !conversations[index].inFlightToolCalls.isEmpty
         }
@@ -293,7 +297,7 @@ extension NativeAgentHost {
         )
         if let index = conversations.firstIndex(where: { $0.id == conversationID }) {
             let isFirstUserMessage = !conversations[index].messages.contains(where: { $0.kind == .user })
-            conversations[index].messages.append(message)
+            conversations[index].appendChronologically(message)
             if prompt.notice == nil, isFirstUserMessage || conversations[index].blank {
                 let titleText = prompt.text.isEmpty ? prompt.attachments.map { $0.name }.joined(separator: ", ") : prompt.text
                 conversations[index].title = Self.title(for: titleText)
@@ -561,15 +565,16 @@ extension NativeAgentHost {
             model: activeModel,
             status: status
         )
-        activeRunChangedFiles.append(contentsOf: changedFiles.filter { file in
-            !activeRunChangedFiles.contains(file)
-        })
+        for file in changedFiles {
+            _ = appendActiveRunChangedFileIfNeeded(file)
+        }
         if tracking.trackingStatus != "complete" && trackingWorkspace != nil { activeRunTrackingStatus = "incomplete" }
         activeRunCleanupStatus = combinedCleanupStatus(activeRunCleanupStatus, summary.cleanupStatus)
         if summary.testStatus != "not_reported" { activeRunTestStatus = summary.testStatus }
         if trackingWorkspace != nil {
-            let foreign = tracking.changedFiles.filter { !changedFiles.contains($0) }
-            for file in foreign where !concurrentChanges.contains(file) {
+            let changedFileSet = Set(changedFiles)
+            let foreign = tracking.changedFiles.filter { !changedFileSet.contains($0) }
+            for file in foreign where concurrentChangeSet.insert(file).inserted {
                 concurrentChanges.append(file)
             }
             if !foreign.isEmpty {
@@ -743,7 +748,7 @@ extension NativeAgentHost {
         if let turnID = message.turnID, let summary = completedTurnSummaries[turnID] {
             message.summary = summary
         }
-        conversations[index].messages.append(message)
+        conversations[index].appendChronologically(message)
         clearLiveReply(in: conversationID)
         if (message.kind == .assistant || message.kind == .plan),
            message.summary?.status == "completed",

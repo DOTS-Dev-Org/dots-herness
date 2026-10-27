@@ -20,17 +20,48 @@ struct ProjectGroup: Identifiable {
     var id: String { "\(title ?? "__other__"):\(paths.first ?? "")" }
 }
 
-/// Pure presentation rules for the unsectioned project group. Kept separate
-/// from `SidebarView` state so the five-project boundary remains unit-testable.
+/// Presentation rules for unsectioned projects. The sidebar passes the space
+/// remaining in its viewport so the reveal control follows the projects that fit.
 enum OtherProjectVisibility {
+    /// Used until the first sidebar layout measurement is available.
     static let limit = 5
 
-    static func visiblePaths(_ paths: [String], isExpanded: Bool) -> [String] {
-        isExpanded ? paths : Array(paths.prefix(limit))
+    static func visiblePaths(
+        _ paths: [String],
+        isExpanded: Bool,
+        limit: Int = limit
+    ) -> [String] {
+        isExpanded ? paths : Array(paths.prefix(max(1, limit)))
     }
 
-    static func shouldShowRevealControl(_ paths: [String], isExpanded: Bool) -> Bool {
-        !isExpanded && paths.count > limit
+    static func shouldShowRevealControl(
+        _ paths: [String],
+        isExpanded: Bool,
+        visibleCount: Int? = nil
+    ) -> Bool {
+        !isExpanded && paths.count > (visibleCount ?? limit)
+    }
+
+    static func fittingPrefixCount(
+        itemHeights: [CGFloat],
+        availableHeight: CGFloat,
+        revealControlHeight: CGFloat
+    ) -> Int {
+        guard !itemHeights.isEmpty else { return 0 }
+
+        var visibleCount = 0
+        var usedHeight: CGFloat = 0
+        for (index, itemHeight) in itemHeights.enumerated() {
+            let hasMoreItems = index < itemHeights.count - 1
+            let requiredHeight = usedHeight + itemHeight + (hasMoreItems ? revealControlHeight : 0)
+            guard requiredHeight <= availableHeight else { break }
+            usedHeight += itemHeight
+            visibleCount += 1
+        }
+
+        // Always leave the most recently opened project reachable, even in a
+        // short window where the row and reveal control need scrolling.
+        return max(1, visibleCount)
     }
 }
 

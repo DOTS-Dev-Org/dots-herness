@@ -30,7 +30,7 @@ final class PromptHistoryTests: XCTestCase {
         XCTAssertFalse(next.contains { $0.systemKind == .promptDynamic })
     }
 
-    func testTaskHistoryCapturesOnlyNewEntriesUntilTheBacklogChanges() {
+    func testTaskHistoryCapturesOnlyNewEntriesAndAReplacedBacklog() {
         func history(_ text: String) -> String {
             HerNessPrompt.assemble([PromptSection(tag: "task_history", trust: .data, text: text)])
         }
@@ -54,11 +54,19 @@ final class PromptHistoryTests: XCTestCase {
             "## Relevant task history\n- task A\n  Files: a.swift\n\n" + backlog))
         XCTAssertEqual(third.last?.content, "three")
 
-        // A finished backlog item is state: the section is captured whole.
+        // A finished backlog item is state: only the new backlog goes, and it replaces the old one.
         let fourth = capture(third + [AgentMessage(role: .user, content: "four")], context: history(
+            "## Relevant task history\n- task A\n  Files: a.swift\n- task D"))
+        let replaced = fourth.last!.content
+        XCTAssertTrue(replaced.contains(NativeAgentClient.taskHistoryBacklogMarker))
+        XCTAssertTrue(replaced.contains("## Unfinished work (backlog)\n- None"))
+        XCTAssertTrue(replaced.contains("- task D"))
+        XCTAssertFalse(replaced.contains("task A"))
+
+        // The replaced backlog is the one stated now: nothing is captured again.
+        let fifth = capture(fourth + [AgentMessage(role: .user, content: "five")], context: history(
             "## Relevant task history\n- task A\n  Files: a.swift"))
-        XCTAssertFalse(fourth.last!.content.contains(NativeAgentClient.taskHistoryAdditionsMarker))
-        XCTAssertTrue(fourth.last!.content.contains("task A"))
+        XCTAssertEqual(fifth.last?.content, "five")
     }
 
     func testUnchangedSectionsAreCapturedOnceAndRetiredOnesAreClosed() {

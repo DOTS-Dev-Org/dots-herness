@@ -1,0 +1,19 @@
+[0/1] Planning build
+Building for debugging...
+[0/6] Copying TrayIcon@2x.png
+[0/6] Write sources
+[2/9] Copying TrayIcon.png
+[3/9] Copying TrayIcon@3x.png
+[4/9] Copying WelcomeLogo.png
+[5/9] Write sources
+[6/9] Write swift-version--58304C5D6DBC2206.txt
+[8/12] Emitting module DotsHarnessUI
+[9/12] Compiling DotsHarnessUI BotsView.swift
+[10/12] Compiling DotsHarnessUI ConversationWelcome.swift
+[11/14] Emitting module DotsHarness
+[12/14] Compiling DotsHarness AppStatusItem.swift
+[13/15] Compiling DotsHarness DotsHarnessApp.swift
+[13/16] Write Objects.LinkFileList
+[14/16] Linking DotsHarness
+[15/16] Applying DotsHarness
+Build of product 'DotsHarness' complete! (14.29s)

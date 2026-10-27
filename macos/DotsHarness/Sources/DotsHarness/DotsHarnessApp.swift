@@ -254,7 +254,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelega
     }
 
     private func shouldAllowTermination() -> Bool {
-        guard let model, model.confirmBeforeExit else { return true }
+        guard let model, model.confirmBeforeExit, !model.updateChecker.isRelaunching else { return true }
 
         let panel = CloseConfirmationPanel()
         panel.center()

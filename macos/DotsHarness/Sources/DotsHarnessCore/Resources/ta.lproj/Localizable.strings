@@ -932,6 +932,8 @@
 "conversation.fileModified" = "மாற்றப்பட்டது";
 "conversation.filesSummary" = "சேர்க்கப்பட்டது %d, மாற்றப்பட்டது %d, நீக்கப்பட்டது %d";
 "conversation.runSummary" = "இயக்கச் சுருக்கம்";
+"conversation.runDuration" = "%@ நேரம் வேலை செய்தது";
+"conversation.runDurationDetails" = "தொடக்கம் %@ · முடிவு %@";
 "conversation.testStatus" = "சோதனைகள்: %@";
 "settings.seedProjectRules" = "AGENTS.md மற்றும் CLAUDE.md உருவாக்கு";
 "settings.selfVerification" = "மாற்றங்களைத் தானாகச் சரிபார்";
@@ -2093,3 +2095,28 @@
 "notifications.operationFailed" = "பணி தோல்வியடைந்தது";
 
 "simulator.back" = "Back";
+
+"claudeCLI.notInstalled" = "Claude Code CLI not found. Install it from claude.com/code, then run `claude update`.";
+"market.category.chat" = "Chat";
+"market.category.image" = "Image generation";
+"market.category.modeling" = "3D modeling";
+"market.category.video" = "Video generation";
+"market.category.audio" = "Audio generation";
+"local.search" = "Search models";
+"local.settings" = "Runtime settings";
+"local.recommended" = "Recommended";
+"local.downloaded" = "Downloaded from Hugging Face";
+"local.hub.title" = "Popular on Hugging Face";
+"local.hub.viewAll" = "View all on Hugging Face";
+"local.hub.open" = "Open on Hugging Face";
+"local.hub.empty" = "No models match this search.";
+"local.hub.files" = "Files";
+"local.hub.downloadRepo" = "Download the whole repository · %@";
+"local.hub.fileOnly" = "Download only";
+"local.hub.downloadOnly" = "Downloads to this Mac. DOTS runs text models itself; open image, video, 3D and audio models with an app that supports them.";
+"local.hub.attribution" = "Listed live from Hugging Face. Check each model's license before you use it.";
+"local.reveal" = "Show in Finder";
+"local.size" = "Size";
+"local.context" = "Context";
+"local.memory" = "Memory";
+"local.disk" = "On disk";

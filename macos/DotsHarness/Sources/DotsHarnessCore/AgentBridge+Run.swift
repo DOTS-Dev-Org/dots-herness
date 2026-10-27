@@ -109,6 +109,12 @@ extension NativeAgentHost {
         promptCPUMilliseconds: Int = 0,
         promptPreparationMetrics: PromptPreparationMetrics? = nil
     ) async {
+        // `enter_plan_mode` can turn a running turn into a plan.
+        var planMode = planMode
+        // The model picker is shared by every chat. Pin the model this run
+        // started with, so picking another provider in a different chat cannot
+        // reroute this run mid-turn onto a model its context was not built for.
+        let runModel = modelOverride ?? router?.selectedModelID
         // Whatever ends this run - a finished turn, a stop, a thrown error - its
         // write leases and its question to the user end with it, so no abandoned
         // run can hold a file hostage.
@@ -286,12 +292,12 @@ extension NativeAgentHost {
                 let overflowCompaction = forceDeterministicOverflowCompaction
                 forceDeterministicOverflowCompaction = false
                 let forcedCompaction = overflowCompaction || compactRequested.remove(conversationID) != nil
-                let requestedModel = modelOverride ?? router?.selectedModelID ?? configuration.model
+                let requestedModel = runModel ?? configuration.model
                 let targetPreferredAccountID = router.flatMap {
-                    preferredAccountID($0, conversationID: conversationID, modelOverride: modelOverride)
+                    preferredAccountID($0, conversationID: conversationID, modelOverride: runModel)
                 }
                 let targetPreferredModelID = router.flatMap {
-                    preferredModelID($0, conversationID: conversationID, modelOverride: modelOverride)
+                    preferredModelID($0, conversationID: conversationID, modelOverride: runModel)
                 }
                 let targetContextConfiguration = router?.contextConfiguration(
                     for: messages,
@@ -391,7 +397,7 @@ extension NativeAgentHost {
                             messages: request,
                             tools: requestTools,
                             cachePolicy: requestCachePolicy,
-                            model: modelOverride,
+                            model: runModel,
                             preferredAccountID: targetPreferredAccountID,
                             preferredModelID: targetPreferredModelID,
                             effort: executionEffort,
@@ -768,6 +774,15 @@ extension NativeAgentHost {
                     continue
                 }
                 let toolCalls = response.message.toolCalls.map { deferredTools.resolve($0, catalog: tools) }
+                if !planMode, onPlanModeEntered != nil,
+                   toolCalls.contains(where: { $0.name == DeferredToolSession.enterPlanName }) {
+                    // The model read the request as a plan request. The rest of the turn runs in
+                    // plan mode; its guidance arrives as the tool result, so the cached prefix holds.
+                    planMode = true
+                    activeRunPlanMode = true
+                    updateConversation(conversationID) { $0.planGateActive = true }
+                    onPlanModeEntered?()
+                }
                 var scopedRulesNeedReview: Set<String> = []
                 if let workspace {
                     // Resolve every path in the batch against the context the model
@@ -942,9 +957,9 @@ extension NativeAgentHost {
                             // the one Auto is already holding for this chat. Left to routing,
                             // the subagent's opening step would count as planning.
                             let delegateModel: String? = router.flatMap { router in
-                                let requested = modelOverride ?? router.selectedModelID
+                                let requested = runModel ?? router.selectedModelID
                                 return requested.isEmpty || requested == ModelRouter.autoModelID
-                                    ? preferredModelID(router, conversationID: conversationID, modelOverride: modelOverride)
+                                    ? preferredModelID(router, conversationID: conversationID, modelOverride: runModel)
                                     : requested
                             }
                             let complete: DelegateTool.Complete = { [router, weak self] messages, tools, effort, light in
@@ -1438,6 +1453,8 @@ extension NativeAgentHost {
         activeTask = nil
         activeConversationID = nil
         isBusy = false
+        let runFinishedAt = Date()
+        let runStartedAtForSummary = conversations.first(where: { $0.id == conversationID })?.runStartedAt
         let summary = WorkspaceRunSummary(
             runID: runID.uuidString,
             turnID: activeRunLastTurnID,
@@ -1451,7 +1468,9 @@ extension NativeAgentHost {
             testStatus: activeRunTestStatus,
             browser: browserSummary,
             undoAvailable: !activeRunChangedFiles.isEmpty && activeRunTrackingStatus == "complete",
-            attributionKnown: completedTurnSummaries[activeRunLastTurnID]?.attributionKnown
+            attributionKnown: completedTurnSummaries[activeRunLastTurnID]?.attributionKnown,
+            startedAt: runStartedAtForSummary,
+            finishedAt: runStartedAtForSummary == nil ? nil : runFinishedAt
         )
         if let index = conversations.firstIndex(where: { $0.id == conversationID }),
            let messageIndex = conversations[index].messages.lastIndex(where: { $0.turnID == activeRunLastTurnID }) {

@@ -305,6 +305,12 @@ extension AppModel {
         persistSettings()
     }
 
+    public func setAutoUpdate(_ value: Bool) {
+        autoUpdate = value
+        host.settings.set("updates.auto", .bool(value))
+        persistSettings()
+    }
+
 
     public func presentSettings(tab: String? = nil) {
         settingsInitialTab = tab

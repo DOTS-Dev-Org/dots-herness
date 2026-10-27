@@ -1,0 +1,2014 @@
+Another instance of SwiftPM (PID: 26888) is already running using '/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build', waiting until that process has finished execution...[0/1] Planning build
+Building for debugging...
+[0/12] Write sources
+[1/12] Write swift-version--58304C5D6DBC2206.txt
+[3/95] Emitting module HarnessPluginKitTests
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:263:77: warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+261 | /// Count transport attempts as well as logical probes: optional-field fallbacks
+262 | /// and ordinary retries must share the same fifty-request budget.
+263 | private final class CacheLiveRequestBudgetProtocol: URLProtocol, @unchecked Sendable {
+    |                     |                                                       `- warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+    |                     `- note: 'CacheLiveRequestBudgetProtocol' inherits conformance to protocol 'Sendable' from superclass here
+264 |     private final class Counter: @unchecked Sendable {
+265 |         private let lock = NSLock()
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/StreamLatencyTests.swift:196:63: warning: conformance of 'PacedSSEProtocol' to protocol 'Sendable' is already unavailable
+194 | 
+195 | /// Serves SSE one line at a time with a pause between lines, the way a model writes.
+196 | private final class PacedSSEProtocol: URLProtocol, @unchecked Sendable {
+    |                     |                                         `- warning: conformance of 'PacedSSEProtocol' to protocol 'Sendable' is already unavailable
+    |                     `- note: 'PacedSSEProtocol' inherits conformance to protocol 'Sendable' from superclass here
+197 |     nonisolated(unsafe) static var lines: [String] = []
+198 |     nonisolated(unsafe) static var json = ""
+[4/95] Compiling HarnessPluginKitTests SandboxProfileTests.swift
+[5/95] Compiling HarnessPluginKitTests SandboxWorkspaceTests.swift
+[6/95] Compiling HarnessPluginKitTests ScheduledTaskSuggestionTests.swift
+[7/95] Compiling HarnessPluginKitTests ScheduledTaskTests.swift
+[8/95] Compiling HarnessPluginKitTests SchedulerServiceTests.swift
+[9/95] Compiling HarnessPluginKitTests SecurityRedTeamTests.swift
+[10/95] Compiling HarnessPluginKitTests SidebarProjectExpansionTests.swift
+[11/95] Compiling HarnessPluginKitTests SimulatorToolsTests.swift
+[12/95] Compiling HarnessPluginKitTests SkillCatalogTests.swift
+[13/104] Compiling HarnessPluginKitTests ComputerUseToolsTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ConcurrentRunsTests.swift:120:23: warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+118 |         Self.gauge.enter()
+119 |         DispatchQueue.global().asyncAfter(deadline: .now() + Self.delay) { [weak self] in
+120 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+121 |             Self.gauge.leave()
+122 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[14/104] Compiling HarnessPluginKitTests ConcurrentRunsTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ConcurrentRunsTests.swift:120:23: warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+118 |         Self.gauge.enter()
+119 |         DispatchQueue.global().asyncAfter(deadline: .now() + Self.delay) { [weak self] in
+120 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+121 |             Self.gauge.leave()
+122 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[15/104] Compiling HarnessPluginKitTests ContextCompactionTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ConcurrentRunsTests.swift:120:23: warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+118 |         Self.gauge.enter()
+119 |         DispatchQueue.global().asyncAfter(deadline: .now() + Self.delay) { [weak self] in
+120 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+121 |             Self.gauge.leave()
+122 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[16/104] Compiling HarnessPluginKitTests ContextOverflowGateTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ConcurrentRunsTests.swift:120:23: warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+118 |         Self.gauge.enter()
+119 |         DispatchQueue.global().asyncAfter(deadline: .now() + Self.delay) { [weak self] in
+120 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+121 |             Self.gauge.leave()
+122 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[17/104] Compiling HarnessPluginKitTests ContextTelemetryTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ConcurrentRunsTests.swift:120:23: warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+118 |         Self.gauge.enter()
+119 |         DispatchQueue.global().asyncAfter(deadline: .now() + Self.delay) { [weak self] in
+120 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+121 |             Self.gauge.leave()
+122 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[18/104] Compiling HarnessPluginKitTests ContextWindowDocumentationTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ConcurrentRunsTests.swift:120:23: warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+118 |         Self.gauge.enter()
+119 |         DispatchQueue.global().asyncAfter(deadline: .now() + Self.delay) { [weak self] in
+120 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+121 |             Self.gauge.leave()
+122 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[19/104] Compiling HarnessPluginKitTests ContinuationStateTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ConcurrentRunsTests.swift:120:23: warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+118 |         Self.gauge.enter()
+119 |         DispatchQueue.global().asyncAfter(deadline: .now() + Self.delay) { [weak self] in
+120 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+121 |             Self.gauge.leave()
+122 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[20/104] Compiling HarnessPluginKitTests ConversationStoreIncrementalTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ConcurrentRunsTests.swift:120:23: warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+118 |         Self.gauge.enter()
+119 |         DispatchQueue.global().asyncAfter(deadline: .now() + Self.delay) { [weak self] in
+120 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+121 |             Self.gauge.leave()
+122 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[21/104] Compiling HarnessPluginKitTests DeclarativePluginTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ConcurrentRunsTests.swift:120:23: warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+118 |         Self.gauge.enter()
+119 |         DispatchQueue.global().asyncAfter(deadline: .now() + Self.delay) { [weak self] in
+120 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'SlowEchoURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+121 |             Self.gauge.leave()
+122 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[22/104] Compiling HarnessPluginKitTests MediaEditorStateTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:15:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:17:53: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    |                                                     `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 18 |     }
+ 19 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:21:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+    :
+ 19 | 
+ 20 |     override func tearDownWithError() throws {
+ 21 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 22 |     }
+ 23 | 
+[23/104] Compiling HarnessPluginKitTests MediaExportTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:15:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:17:53: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    |                                                     `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 18 |     }
+ 19 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:21:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+    :
+ 19 | 
+ 20 |     override func tearDownWithError() throws {
+ 21 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 22 |     }
+ 23 | 
+[24/104] Compiling HarnessPluginKitTests MediaStudioTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:15:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:17:53: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    |                                                     `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 18 |     }
+ 19 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:21:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+    :
+ 19 | 
+ 20 |     override func tearDownWithError() throws {
+ 21 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 22 |     }
+ 23 | 
+[25/104] Compiling HarnessPluginKitTests MemoryLayerTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:15:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:17:53: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    |                                                     `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 18 |     }
+ 19 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:21:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+    :
+ 19 | 
+ 20 |     override func tearDownWithError() throws {
+ 21 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 22 |     }
+ 23 | 
+[26/104] Compiling HarnessPluginKitTests ModelRouterTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:15:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:17:53: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    |                                                     `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 18 |     }
+ 19 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:21:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+    :
+ 19 | 
+ 20 |     override func tearDownWithError() throws {
+ 21 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 22 |     }
+ 23 | 
+[27/104] Compiling HarnessPluginKitTests ModelSelectionPersistenceTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:15:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:17:53: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    |                                                     `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 18 |     }
+ 19 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:21:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+    :
+ 19 | 
+ 20 |     override func tearDownWithError() throws {
+ 21 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 22 |     }
+ 23 | 
+[28/104] Compiling HarnessPluginKitTests MultiAccountRoutingTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:15:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:17:53: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    |                                                     `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 18 |     }
+ 19 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:21:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+    :
+ 19 | 
+ 20 |     override func tearDownWithError() throws {
+ 21 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 22 |     }
+ 23 | 
+[29/104] Compiling HarnessPluginKitTests NativeBrowserToolsTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:15:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:17:53: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    |                                                     `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 18 |     }
+ 19 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:21:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+    :
+ 19 | 
+ 20 |     override func tearDownWithError() throws {
+ 21 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 22 |     }
+ 23 | 
+[30/104] Compiling HarnessPluginKitTests NavigationHistoryTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:15:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:17:53: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+ 15 |         root = FileManager.default.temporaryDirectory
+ 16 |             .appendingPathComponent("MemoryLayerTests-\(UUID().uuidString)", isDirectory: true)
+ 17 |         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    |                                                     `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 18 |     }
+ 19 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/MemoryLayerTests.swift:21:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 10 | @MainActor
+ 11 | final class MemoryLayerTests: XCTestCase {
+ 12 |     private var root: URL!
+    |                 `- note: property declared here
+ 13 | 
+ 14 |     override func setUpWithError() throws {
+    :
+ 19 | 
+ 20 |     override func tearDownWithError() throws {
+ 21 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 22 |     }
+ 23 | 
+[31/104] Compiling HarnessPluginKitTests KeyboardShortcutTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:13:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+ 13 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:15:23: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 13 |         root = FileManager.default.temporaryDirectory
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+    |                       `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 16 |         paths = SupportPaths(
+ 17 |             root: support,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:16:9: warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+ 16 |         paths = SupportPaths(
+    |         `- warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+ 17 |             root: support,
+ 18 |             plugins: support.appendingPathComponent("plugins", isDirectory: true),
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:26:9: warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: property declared here
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 24 |             runtime: support.appendingPathComponent("runtime", isDirectory: true)
+ 25 |         )
+ 26 |         paths.ensure()
+    |         `- warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+ 27 |     }
+ 28 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:30:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 28 | 
+ 29 |     override func tearDownWithError() throws {
+ 30 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 31 |     }
+ 32 | 
+[32/104] Compiling HarnessPluginKitTests LearningMemoryTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:13:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+ 13 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:15:23: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 13 |         root = FileManager.default.temporaryDirectory
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+    |                       `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 16 |         paths = SupportPaths(
+ 17 |             root: support,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:16:9: warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+ 16 |         paths = SupportPaths(
+    |         `- warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+ 17 |             root: support,
+ 18 |             plugins: support.appendingPathComponent("plugins", isDirectory: true),
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:26:9: warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: property declared here
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 24 |             runtime: support.appendingPathComponent("runtime", isDirectory: true)
+ 25 |         )
+ 26 |         paths.ensure()
+    |         `- warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+ 27 |     }
+ 28 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:30:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 28 | 
+ 29 |     override func tearDownWithError() throws {
+ 30 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 31 |     }
+ 32 | 
+[33/104] Compiling HarnessPluginKitTests LiveProviderTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:13:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+ 13 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:15:23: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 13 |         root = FileManager.default.temporaryDirectory
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+    |                       `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 16 |         paths = SupportPaths(
+ 17 |             root: support,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:16:9: warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+ 16 |         paths = SupportPaths(
+    |         `- warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+ 17 |             root: support,
+ 18 |             plugins: support.appendingPathComponent("plugins", isDirectory: true),
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:26:9: warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: property declared here
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 24 |             runtime: support.appendingPathComponent("runtime", isDirectory: true)
+ 25 |         )
+ 26 |         paths.ensure()
+    |         `- warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+ 27 |     }
+ 28 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:30:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 28 | 
+ 29 |     override func tearDownWithError() throws {
+ 30 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 31 |     }
+ 32 | 
+[34/104] Compiling HarnessPluginKitTests LocalPiperSpeechTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:13:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+ 13 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:15:23: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 13 |         root = FileManager.default.temporaryDirectory
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+    |                       `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 16 |         paths = SupportPaths(
+ 17 |             root: support,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:16:9: warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+ 16 |         paths = SupportPaths(
+    |         `- warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+ 17 |             root: support,
+ 18 |             plugins: support.appendingPathComponent("plugins", isDirectory: true),
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:26:9: warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: property declared here
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 24 |             runtime: support.appendingPathComponent("runtime", isDirectory: true)
+ 25 |         )
+ 26 |         paths.ensure()
+    |         `- warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+ 27 |     }
+ 28 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:30:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 28 | 
+ 29 |     override func tearDownWithError() throws {
+ 30 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 31 |     }
+ 32 | 
+[35/104] Compiling HarnessPluginKitTests LocalRuntimeTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:13:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+ 13 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:15:23: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 13 |         root = FileManager.default.temporaryDirectory
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+    |                       `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 16 |         paths = SupportPaths(
+ 17 |             root: support,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:16:9: warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+ 16 |         paths = SupportPaths(
+    |         `- warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+ 17 |             root: support,
+ 18 |             plugins: support.appendingPathComponent("plugins", isDirectory: true),
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:26:9: warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: property declared here
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 24 |             runtime: support.appendingPathComponent("runtime", isDirectory: true)
+ 25 |         )
+ 26 |         paths.ensure()
+    |         `- warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+ 27 |     }
+ 28 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:30:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 28 | 
+ 29 |     override func tearDownWithError() throws {
+ 30 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 31 |     }
+ 32 | 
+[36/104] Compiling HarnessPluginKitTests LocalWhisperLiveTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:13:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+ 13 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:15:23: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 13 |         root = FileManager.default.temporaryDirectory
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+    |                       `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 16 |         paths = SupportPaths(
+ 17 |             root: support,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:16:9: warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+ 16 |         paths = SupportPaths(
+    |         `- warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+ 17 |             root: support,
+ 18 |             plugins: support.appendingPathComponent("plugins", isDirectory: true),
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:26:9: warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: property declared here
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 24 |             runtime: support.appendingPathComponent("runtime", isDirectory: true)
+ 25 |         )
+ 26 |         paths.ensure()
+    |         `- warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+ 27 |     }
+ 28 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:30:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 28 | 
+ 29 |     override func tearDownWithError() throws {
+ 30 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 31 |     }
+ 32 | 
+[37/104] Compiling HarnessPluginKitTests LocalizationTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:13:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+ 13 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:15:23: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 13 |         root = FileManager.default.temporaryDirectory
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+    |                       `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 16 |         paths = SupportPaths(
+ 17 |             root: support,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:16:9: warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+ 16 |         paths = SupportPaths(
+    |         `- warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+ 17 |             root: support,
+ 18 |             plugins: support.appendingPathComponent("plugins", isDirectory: true),
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:26:9: warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: property declared here
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 24 |             runtime: support.appendingPathComponent("runtime", isDirectory: true)
+ 25 |         )
+ 26 |         paths.ensure()
+    |         `- warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+ 27 |     }
+ 28 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:30:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 28 | 
+ 29 |     override func tearDownWithError() throws {
+ 30 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 31 |     }
+ 32 | 
+[38/104] Compiling HarnessPluginKitTests LoopCronTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:13:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+ 13 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:15:23: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 13 |         root = FileManager.default.temporaryDirectory
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+    |                       `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 16 |         paths = SupportPaths(
+ 17 |             root: support,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:16:9: warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+ 16 |         paths = SupportPaths(
+    |         `- warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+ 17 |             root: support,
+ 18 |             plugins: support.appendingPathComponent("plugins", isDirectory: true),
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:26:9: warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: property declared here
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 24 |             runtime: support.appendingPathComponent("runtime", isDirectory: true)
+ 25 |         )
+ 26 |         paths.ensure()
+    |         `- warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+ 27 |     }
+ 28 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:30:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 28 | 
+ 29 |     override func tearDownWithError() throws {
+ 30 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 31 |     }
+ 32 | 
+[39/104] Compiling HarnessPluginKitTests MCPAndToolBridgeTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:13:9: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+ 13 |         root = FileManager.default.temporaryDirectory
+    |         `- warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:15:23: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 13 |         root = FileManager.default.temporaryDirectory
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+    |                       `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 16 |         paths = SupportPaths(
+ 17 |             root: support,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:16:9: warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: mutation of this property is only permitted within the actor
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 14 |             .appendingPathComponent("LearningMemoryTests-\(UUID().uuidString)", isDirectory: true)
+ 15 |         let support = root.appendingPathComponent("support", isDirectory: true)
+ 16 |         paths = SupportPaths(
+    |         `- warning: main actor-isolated property 'paths' can not be mutated from a nonisolated context
+ 17 |             root: support,
+ 18 |             plugins: support.appendingPathComponent("plugins", isDirectory: true),
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:26:9: warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+ 10 |     private var paths: SupportPaths!
+    |                 `- note: property declared here
+ 11 | 
+ 12 |     override func setUpWithError() throws {
+    :
+ 24 |             runtime: support.appendingPathComponent("runtime", isDirectory: true)
+ 25 |         )
+ 26 |         paths.ensure()
+    |         `- warning: main actor-isolated property 'paths' can not be referenced from a nonisolated context
+ 27 |     }
+ 28 | 
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/LearningMemoryTests.swift:30:49: warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+  7 | @MainActor
+  8 | final class LearningMemoryTests: XCTestCase {
+  9 |     private var root: URL!
+    |                 `- note: property declared here
+ 10 |     private var paths: SupportPaths!
+ 11 | 
+    :
+ 28 | 
+ 29 |     override func tearDownWithError() throws {
+ 30 |         try? FileManager.default.removeItem(at: root)
+    |                                                 `- warning: main actor-isolated property 'root' can not be referenced from a nonisolated context
+ 31 |     }
+ 32 | 
+[40/104] Compiling HarnessPluginKitTests ResponseStyleTests.swift
+[41/104] Compiling HarnessPluginKitTests RightDockEdgeTests.swift
+[42/104] Compiling HarnessPluginKitTests RouterAPITests.swift
+[43/104] Compiling HarnessPluginKitTests RouterModelSelectionTests.swift
+[44/104] Compiling HarnessPluginKitTests RunningToolTextTests.swift
+[45/104] Compiling HarnessPluginKitTests SSHRemoteWorkLocationTests.swift
+[46/104] Compiling HarnessPluginKitTests SandboxAppModelTests.swift
+[47/104] Compiling HarnessPluginKitTests SandboxGitEscapeTests.swift
+[48/104] Compiling HarnessPluginKitTests SandboxPluginAndMCPEscapeTests.swift
+[49/104] Compiling HarnessPluginKitTests SkillSuggestionEngineTests.swift
+[50/104] Compiling HarnessPluginKitTests SpeechServerGuardTests.swift
+[51/104] Compiling HarnessPluginKitTests StreamLatencyTests.swift
+[52/104] Compiling HarnessPluginKitTests TerminalTests.swift
+[53/104] Compiling HarnessPluginKitTests TokenEconomyTests.swift
+[54/104] Compiling HarnessPluginKitTests UpdateCheckerTests.swift
+[55/104] Compiling HarnessPluginKitTests VisionFallbackTests.swift
+[56/104] Compiling HarnessPluginKitTests VoiceAPILiveTests.swift
+[57/104] Compiling HarnessPluginKitTests VoiceCredentialTests.swift
+[58/104] Compiling HarnessPluginKitTests AgentBridgeTests.swift
+[59/104] Compiling HarnessPluginKitTests AndroidEmulatorToolsTests.swift
+[60/104] Compiling HarnessPluginKitTests AssistantContinuationTests.swift
+[61/104] Compiling HarnessPluginKitTests BrowserContractsTests.swift
+[62/104] Compiling HarnessPluginKitTests CacheEpochAndReuseTests.swift
+[63/104] Compiling HarnessPluginKitTests ClaudeUsageTests.swift
+[64/104] Compiling HarnessPluginKitTests CompactionReplayTests.swift
+[65/104] Compiling HarnessPluginKitTests CompactionThresholdTests.swift
+[66/104] Compiling HarnessPluginKitTests CompositionLoaderTests.swift
+[67/104] Compiling HarnessPluginKitTests VoiceFixture.swift
+[68/104] Compiling HarnessPluginKitTests VoiceStreamingSessionTests.swift
+[69/104] Compiling HarnessPluginKitTests WebToolsPolicyTests.swift
+[70/104] Compiling HarnessPluginKitTests WorkspaceLeaseTests.swift
+[71/104] Compiling HarnessPluginKitTests WorkspaceMemoryLinkTests.swift
+[72/104] Compiling HarnessPluginKitTests WorkspaceMemoryMigrationTests.swift
+[73/104] Compiling HarnessPluginKitTests WorkspaceMemoryTaskTests.swift
+[74/104] Compiling HarnessPluginKitTests WorkspaceReadWriteTests.swift
+[75/104] Compiling HarnessPluginKitTests WorkspaceSnapshotIncrementalTests.swift
+[76/104] Compiling HarnessPluginKitTests NemotronIdleStopLiveTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ObservationHostTests.swift:354:23: warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+352 |         let response = HTTPURLResponse(url: request.url!, statusCode: Self.failsWithLimit ? 429 : 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+353 |         DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) { [weak self] in
+354 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+355 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+356 |             self.client?.urlProtocol(self, didLoad: data)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[77/104] Compiling HarnessPluginKitTests NetworkExfiltrationApprovalTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ObservationHostTests.swift:354:23: warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+352 |         let response = HTTPURLResponse(url: request.url!, statusCode: Self.failsWithLimit ? 429 : 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+353 |         DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) { [weak self] in
+354 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+355 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+356 |             self.client?.urlProtocol(self, didLoad: data)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[78/104] Compiling HarnessPluginKitTests ObservationHostTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ObservationHostTests.swift:354:23: warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+352 |         let response = HTTPURLResponse(url: request.url!, statusCode: Self.failsWithLimit ? 429 : 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+353 |         DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) { [weak self] in
+354 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+355 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+356 |             self.client?.urlProtocol(self, didLoad: data)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[79/104] Compiling HarnessPluginKitTests OtherProjectVisibilityTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ObservationHostTests.swift:354:23: warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+352 |         let response = HTTPURLResponse(url: request.url!, statusCode: Self.failsWithLimit ? 429 : 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+353 |         DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) { [weak self] in
+354 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+355 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+356 |             self.client?.urlProtocol(self, didLoad: data)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[80/104] Compiling HarnessPluginKitTests PlanningIntentTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ObservationHostTests.swift:354:23: warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+352 |         let response = HTTPURLResponse(url: request.url!, statusCode: Self.failsWithLimit ? 429 : 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+353 |         DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) { [weak self] in
+354 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+355 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+356 |             self.client?.urlProtocol(self, didLoad: data)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[81/104] Compiling HarnessPluginKitTests PluginAuthorTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ObservationHostTests.swift:354:23: warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+352 |         let response = HTTPURLResponse(url: request.url!, statusCode: Self.failsWithLimit ? 429 : 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+353 |         DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) { [weak self] in
+354 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+355 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+356 |             self.client?.urlProtocol(self, didLoad: data)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[82/104] Compiling HarnessPluginKitTests PluginBuilderTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ObservationHostTests.swift:354:23: warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+352 |         let response = HTTPURLResponse(url: request.url!, statusCode: Self.failsWithLimit ? 429 : 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+353 |         DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) { [weak self] in
+354 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+355 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+356 |             self.client?.urlProtocol(self, didLoad: data)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[83/104] Compiling HarnessPluginKitTests PluginContractTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ObservationHostTests.swift:354:23: warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+352 |         let response = HTTPURLResponse(url: request.url!, statusCode: Self.failsWithLimit ? 429 : 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+353 |         DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) { [weak self] in
+354 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+355 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+356 |             self.client?.urlProtocol(self, didLoad: data)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[84/104] Compiling HarnessPluginKitTests PluginPackageTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/ObservationHostTests.swift:354:23: warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+352 |         let response = HTTPURLResponse(url: request.url!, statusCode: Self.failsWithLimit ? 429 : 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+353 |         DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) { [weak self] in
+354 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'ToolStepsURLProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+355 |             self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+356 |             self.client?.urlProtocol(self, didLoad: data)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[85/104] Compiling HarnessPluginKitTests DelegateToolTests.swift
+[86/104] Compiling HarnessPluginKitTests EconomyPolicyTests.swift
+[87/104] Compiling HarnessPluginKitTests FeedbackLearningTests.swift
+[88/104] Compiling HarnessPluginKitTests FileEditToolsTests.swift
+[89/104] Compiling HarnessPluginKitTests FollowUpSuggestionTests.swift
+[90/104] Compiling HarnessPluginKitTests HerNessPromptTests.swift
+[91/104] Compiling HarnessPluginKitTests InstallPluginToolTests.swift
+[92/104] Compiling HarnessPluginKitTests JSONCodecTests.swift
+[93/104] Compiling HarnessPluginKitTests JSPluginTests.swift
+[94/104] Compiling HarnessPluginKitTests ProjectRulesTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:263:77: warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+261 | /// Count transport attempts as well as logical probes: optional-field fallbacks
+262 | /// and ordinary retries must share the same fifty-request budget.
+263 | private final class CacheLiveRequestBudgetProtocol: URLProtocol, @unchecked Sendable {
+    |                     |                                                       `- warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+    |                     `- note: 'CacheLiveRequestBudgetProtocol' inherits conformance to protocol 'Sendable' from superclass here
+264 |     private final class Counter: @unchecked Sendable {
+265 |         private let lock = NSLock()
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:46:9: warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 44 |         // Suppress them process-wide only while this synchronous read runs.
+ 45 |         var interactionAllowed: DarwinBoolean = false
+ 46 |         SecKeychainGetUserInteractionAllowed(&interactionAllowed)
+    |         `- warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:49:9: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+    |         `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+ 51 |         var value: CFTypeRef?
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:50:17: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+    |                 `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 51 |         var value: CFTypeRef?
+ 52 |         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:57: warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                         `- warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:88: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                                                        `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:341:23: warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+339 |         }
+340 |         dataTask = URLSession.shared.dataTask(with: forwarded) { [weak self] data, response, error in
+341 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+342 |             if let error { self.client?.urlProtocol(self, didFailWithError: error); return }
+343 |             if let response { self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed) }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[95/104] Compiling HarnessPluginKitTests ProjectSessionTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:263:77: warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+261 | /// Count transport attempts as well as logical probes: optional-field fallbacks
+262 | /// and ordinary retries must share the same fifty-request budget.
+263 | private final class CacheLiveRequestBudgetProtocol: URLProtocol, @unchecked Sendable {
+    |                     |                                                       `- warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+    |                     `- note: 'CacheLiveRequestBudgetProtocol' inherits conformance to protocol 'Sendable' from superclass here
+264 |     private final class Counter: @unchecked Sendable {
+265 |         private let lock = NSLock()
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:46:9: warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 44 |         // Suppress them process-wide only while this synchronous read runs.
+ 45 |         var interactionAllowed: DarwinBoolean = false
+ 46 |         SecKeychainGetUserInteractionAllowed(&interactionAllowed)
+    |         `- warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:49:9: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+    |         `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+ 51 |         var value: CFTypeRef?
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:50:17: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+    |                 `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 51 |         var value: CFTypeRef?
+ 52 |         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:57: warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                         `- warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:88: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                                                        `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:341:23: warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+339 |         }
+340 |         dataTask = URLSession.shared.dataTask(with: forwarded) { [weak self] data, response, error in
+341 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+342 |             if let error { self.client?.urlProtocol(self, didFailWithError: error); return }
+343 |             if let response { self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed) }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[96/104] Compiling HarnessPluginKitTests PromptCacheImprovementTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:263:77: warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+261 | /// Count transport attempts as well as logical probes: optional-field fallbacks
+262 | /// and ordinary retries must share the same fifty-request budget.
+263 | private final class CacheLiveRequestBudgetProtocol: URLProtocol, @unchecked Sendable {
+    |                     |                                                       `- warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+    |                     `- note: 'CacheLiveRequestBudgetProtocol' inherits conformance to protocol 'Sendable' from superclass here
+264 |     private final class Counter: @unchecked Sendable {
+265 |         private let lock = NSLock()
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:46:9: warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 44 |         // Suppress them process-wide only while this synchronous read runs.
+ 45 |         var interactionAllowed: DarwinBoolean = false
+ 46 |         SecKeychainGetUserInteractionAllowed(&interactionAllowed)
+    |         `- warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:49:9: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+    |         `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+ 51 |         var value: CFTypeRef?
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:50:17: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+    |                 `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 51 |         var value: CFTypeRef?
+ 52 |         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:57: warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                         `- warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:88: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                                                        `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:341:23: warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+339 |         }
+340 |         dataTask = URLSession.shared.dataTask(with: forwarded) { [weak self] data, response, error in
+341 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+342 |             if let error { self.client?.urlProtocol(self, didFailWithError: error); return }
+343 |             if let response { self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed) }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[97/104] Compiling HarnessPluginKitTests PromptCacheLiveTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:263:77: warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+261 | /// Count transport attempts as well as logical probes: optional-field fallbacks
+262 | /// and ordinary retries must share the same fifty-request budget.
+263 | private final class CacheLiveRequestBudgetProtocol: URLProtocol, @unchecked Sendable {
+    |                     |                                                       `- warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+    |                     `- note: 'CacheLiveRequestBudgetProtocol' inherits conformance to protocol 'Sendable' from superclass here
+264 |     private final class Counter: @unchecked Sendable {
+265 |         private let lock = NSLock()
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:46:9: warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 44 |         // Suppress them process-wide only while this synchronous read runs.
+ 45 |         var interactionAllowed: DarwinBoolean = false
+ 46 |         SecKeychainGetUserInteractionAllowed(&interactionAllowed)
+    |         `- warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:49:9: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+    |         `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+ 51 |         var value: CFTypeRef?
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:50:17: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+    |                 `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 51 |         var value: CFTypeRef?
+ 52 |         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:57: warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                         `- warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:88: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                                                        `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:341:23: warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+339 |         }
+340 |         dataTask = URLSession.shared.dataTask(with: forwarded) { [weak self] data, response, error in
+341 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+342 |             if let error { self.client?.urlProtocol(self, didFailWithError: error); return }
+343 |             if let response { self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed) }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[98/104] Compiling HarnessPluginKitTests PromptCacheProviderEvidenceTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:263:77: warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+261 | /// Count transport attempts as well as logical probes: optional-field fallbacks
+262 | /// and ordinary retries must share the same fifty-request budget.
+263 | private final class CacheLiveRequestBudgetProtocol: URLProtocol, @unchecked Sendable {
+    |                     |                                                       `- warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+    |                     `- note: 'CacheLiveRequestBudgetProtocol' inherits conformance to protocol 'Sendable' from superclass here
+264 |     private final class Counter: @unchecked Sendable {
+265 |         private let lock = NSLock()
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:46:9: warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 44 |         // Suppress them process-wide only while this synchronous read runs.
+ 45 |         var interactionAllowed: DarwinBoolean = false
+ 46 |         SecKeychainGetUserInteractionAllowed(&interactionAllowed)
+    |         `- warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:49:9: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+    |         `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+ 51 |         var value: CFTypeRef?
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:50:17: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+    |                 `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 51 |         var value: CFTypeRef?
+ 52 |         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:57: warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                         `- warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:88: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                                                        `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:341:23: warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+339 |         }
+340 |         dataTask = URLSession.shared.dataTask(with: forwarded) { [weak self] data, response, error in
+341 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+342 |             if let error { self.client?.urlProtocol(self, didFailWithError: error); return }
+343 |             if let response { self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed) }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[99/104] Compiling HarnessPluginKitTests PromptHistoryTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:263:77: warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+261 | /// Count transport attempts as well as logical probes: optional-field fallbacks
+262 | /// and ordinary retries must share the same fifty-request budget.
+263 | private final class CacheLiveRequestBudgetProtocol: URLProtocol, @unchecked Sendable {
+    |                     |                                                       `- warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+    |                     `- note: 'CacheLiveRequestBudgetProtocol' inherits conformance to protocol 'Sendable' from superclass here
+264 |     private final class Counter: @unchecked Sendable {
+265 |         private let lock = NSLock()
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:46:9: warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 44 |         // Suppress them process-wide only while this synchronous read runs.
+ 45 |         var interactionAllowed: DarwinBoolean = false
+ 46 |         SecKeychainGetUserInteractionAllowed(&interactionAllowed)
+    |         `- warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:49:9: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+    |         `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+ 51 |         var value: CFTypeRef?
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:50:17: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+    |                 `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 51 |         var value: CFTypeRef?
+ 52 |         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:57: warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                         `- warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:88: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                                                        `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:341:23: warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+339 |         }
+340 |         dataTask = URLSession.shared.dataTask(with: forwarded) { [weak self] data, response, error in
+341 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+342 |             if let error { self.client?.urlProtocol(self, didFailWithError: error); return }
+343 |             if let response { self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed) }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[100/104] Compiling HarnessPluginKitTests ProviderImageTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:263:77: warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+261 | /// Count transport attempts as well as logical probes: optional-field fallbacks
+262 | /// and ordinary retries must share the same fifty-request budget.
+263 | private final class CacheLiveRequestBudgetProtocol: URLProtocol, @unchecked Sendable {
+    |                     |                                                       `- warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+    |                     `- note: 'CacheLiveRequestBudgetProtocol' inherits conformance to protocol 'Sendable' from superclass here
+264 |     private final class Counter: @unchecked Sendable {
+265 |         private let lock = NSLock()
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:46:9: warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 44 |         // Suppress them process-wide only while this synchronous read runs.
+ 45 |         var interactionAllowed: DarwinBoolean = false
+ 46 |         SecKeychainGetUserInteractionAllowed(&interactionAllowed)
+    |         `- warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:49:9: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+    |         `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+ 51 |         var value: CFTypeRef?
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:50:17: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+    |                 `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 51 |         var value: CFTypeRef?
+ 52 |         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:57: warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                         `- warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:88: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                                                        `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:341:23: warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+339 |         }
+340 |         dataTask = URLSession.shared.dataTask(with: forwarded) { [weak self] data, response, error in
+341 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+342 |             if let error { self.client?.urlProtocol(self, didFailWithError: error); return }
+343 |             if let response { self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed) }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[101/104] Compiling HarnessPluginKitTests ProviderRegistryTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:263:77: warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+261 | /// Count transport attempts as well as logical probes: optional-field fallbacks
+262 | /// and ordinary retries must share the same fifty-request budget.
+263 | private final class CacheLiveRequestBudgetProtocol: URLProtocol, @unchecked Sendable {
+    |                     |                                                       `- warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+    |                     `- note: 'CacheLiveRequestBudgetProtocol' inherits conformance to protocol 'Sendable' from superclass here
+264 |     private final class Counter: @unchecked Sendable {
+265 |         private let lock = NSLock()
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:46:9: warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 44 |         // Suppress them process-wide only while this synchronous read runs.
+ 45 |         var interactionAllowed: DarwinBoolean = false
+ 46 |         SecKeychainGetUserInteractionAllowed(&interactionAllowed)
+    |         `- warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:49:9: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+    |         `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+ 51 |         var value: CFTypeRef?
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:50:17: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+    |                 `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 51 |         var value: CFTypeRef?
+ 52 |         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:57: warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                         `- warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:88: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                                                        `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:341:23: warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+339 |         }
+340 |         dataTask = URLSession.shared.dataTask(with: forwarded) { [weak self] data, response, error in
+341 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+342 |             if let error { self.client?.urlProtocol(self, didFailWithError: error); return }
+343 |             if let response { self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed) }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[102/104] Compiling HarnessPluginKitTests RememberToolTests.swift
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:263:77: warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+261 | /// Count transport attempts as well as logical probes: optional-field fallbacks
+262 | /// and ordinary retries must share the same fifty-request budget.
+263 | private final class CacheLiveRequestBudgetProtocol: URLProtocol, @unchecked Sendable {
+    |                     |                                                       `- warning: conformance of 'CacheLiveRequestBudgetProtocol' to protocol 'Sendable' is already unavailable
+    |                     `- note: 'CacheLiveRequestBudgetProtocol' inherits conformance to protocol 'Sendable' from superclass here
+264 |     private final class Counter: @unchecked Sendable {
+265 |         private let lock = NSLock()
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:46:9: warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 44 |         // Suppress them process-wide only while this synchronous read runs.
+ 45 |         var interactionAllowed: DarwinBoolean = false
+ 46 |         SecKeychainGetUserInteractionAllowed(&interactionAllowed)
+    |         `- warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:49:9: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 47 |         // DOTS_CACHE_KEYCHAIN_PROMPT=1: a person is at the keyboard and will answer the dialog.
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+    |         `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+ 51 |         var value: CFTypeRef?
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:50:17: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 48 |         let prompt = ProcessInfo.processInfo.environment["DOTS_CACHE_KEYCHAIN_PROMPT"] == "1"
+ 49 |         SecKeychainSetUserInteractionAllowed(prompt)
+ 50 |         defer { SecKeychainSetUserInteractionAllowed(interactionAllowed.boolValue) }
+    |                 `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 51 |         var value: CFTypeRef?
+ 52 |         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:57: warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                         `- warning: 'kSecUseAuthenticationUIAllow' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:56:88: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 54 |             kSecAttrAccount as String: account.credentialID,
+ 55 |             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+ 56 |             kSecUseAuthenticationUI as String: prompt ? kSecUseAuthenticationUIAllow : kSecUseAuthenticationUIFail]
+    |                                                                                        `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 57 |         let status = SecItemCopyMatching(query as CFDictionary, &value)
+ 58 |         try XCTSkipUnless(status == errSecSuccess, "CACHE_LIVE credential unavailable (Keychain status \(status)); no provider requests sent.")
+
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/Tests/HarnessPluginKitTests/PromptCacheLiveTests.swift:341:23: warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+339 |         }
+340 |         dataTask = URLSession.shared.dataTask(with: forwarded) { [weak self] data, response, error in
+341 |             guard let self else { return }
+    |                       `- warning: capture of 'self' with non-Sendable type 'CacheLiveRequestBudgetProtocol?' in a '@Sendable' closure [#SendableClosureCaptures]
+342 |             if let error { self.client?.urlProtocol(self, didFailWithError: error); return }
+343 |             if let response { self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed) }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable, ~Escapable where Wrapped : ~Copyable, Wrapped : ~Escapable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[102/104] Write Objects.LinkFileList
+[103/104] Linking DotsHarnessPackageTests
+Build complete! (16.03s)
+Test Suite 'Selected tests' started at 2026-10-10 07:04:18.168.
+Test Suite 'DotsHarnessPackageTests.xctest' started at 2026-10-10 07:04:18.169.
+Test Suite 'ScheduledTaskSuggestionTests' started at 2026-10-10 07:04:18.169.
+Test Case '-[HarnessPluginKitTests.ScheduledTaskSuggestionTests testCardsSwitchToHorizontalAndFitInShortOrNarrowWindows]' started.
+Test Case '-[HarnessPluginKitTests.ScheduledTaskSuggestionTests testCardsSwitchToHorizontalAndFitInShortOrNarrowWindows]' passed (0.005 seconds).
+Test Case '-[HarnessPluginKitTests.ScheduledTaskSuggestionTests testEightTemplatesHaveValidSchedulesAndCurrentMemoryInstructions]' started.
+Test Case '-[HarnessPluginKitTests.ScheduledTaskSuggestionTests testEightTemplatesHaveValidSchedulesAndCurrentMemoryInstructions]' passed (0.010 seconds).
+Test Case '-[HarnessPluginKitTests.ScheduledTaskSuggestionTests testGroundedPersonalizationPreservesScheduleAndFillsMissingCategories]' started.
+Test Case '-[HarnessPluginKitTests.ScheduledTaskSuggestionTests testGroundedPersonalizationPreservesScheduleAndFillsMissingCategories]' passed (0.001 seconds).
+Test Case '-[HarnessPluginKitTests.ScheduledTaskSuggestionTests testIncompletePersonalSetCannotReplaceTheFourPlusFourSelection]' started.
+Test Case '-[HarnessPluginKitTests.ScheduledTaskSuggestionTests testIncompletePersonalSetCannotReplaceTheFourPlusFourSelection]' passed (0.001 seconds).
+Test Case '-[HarnessPluginKitTests.ScheduledTaskSuggestionTests testMalformedOrUnsupportedOutputKeepsEightTemplates]' started.
+Test Case '-[HarnessPluginKitTests.ScheduledTaskSuggestionTests testMalformedOrUnsupportedOutputKeepsEightTemplates]' passed (0.001 seconds).
+Test Case '-[HarnessPluginKitTests.ScheduledTaskSuggestionTests testRemovedMemoryInvalidatesGroundingAndDuplicateCategoriesAreRejected]' started.
+Test Case '-[HarnessPluginKitTests.ScheduledTaskSuggestionTests testRemovedMemoryInvalidatesGroundingAndDuplicateCategoriesAreRejected]' passed (0.001 seconds).
+Test Case '-[HarnessPluginKitTests.ScheduledTaskSuggestionTests testUserPreferencesAreAvailableWithoutAnOpenProjectAndSecretsAreRedacted]' started.
+Test Case '-[HarnessPluginKitTests.ScheduledTaskSuggestionTests testUserPreferencesAreAvailableWithoutAnOpenProjectAndSecretsAreRedacted]' passed (0.007 seconds).
+Test Suite 'ScheduledTaskSuggestionTests' passed at 2026-10-10 07:04:18.196.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.025 (0.026) seconds
+Test Suite 'DotsHarnessPackageTests.xctest' passed at 2026-10-10 07:04:18.196.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.025 (0.026) seconds
+Test Suite 'Selected tests' passed at 2026-10-10 07:04:18.196.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.025 (0.028) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

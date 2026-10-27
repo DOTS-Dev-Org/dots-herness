@@ -490,7 +490,10 @@
                                                             <views:AudioPlayerRow Path="{Binding FilePath}" VerticalAlignment="Center" Margin="6,0,0,0"
                                                                                 Visibility="{Binding IsAudio, Converter={x:Static views:BoolToVis.Instance}}"/>
                                                             <StackPanel Width="170" Margin="6,0,0,0" VerticalAlignment="Center">
+                                                                <Button Tag="{Binding}" Click="OnOpenAttachment" Padding="0" Background="Transparent" BorderThickness="0"
+                                                                    HorizontalContentAlignment="Left">
                                                                 <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextPrimary}"/>
+                                                            </Button>
                                                                 <TextBlock Text="{Binding Kind}" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
                                                             </StackPanel>
                                                         </StackPanel>
@@ -841,7 +844,10 @@
                                                                Source="{Binding FilePath, Converter={x:Static views:AttachmentImage.Instance}}"
                                                                Visibility="{Binding IsImage, Converter={x:Static views:BoolToVis.Instance}}"/>
                                                         <StackPanel Width="170" Margin="6,0,0,0" VerticalAlignment="Center">
-                                                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextPrimary}"/>
+                                                            <Button Tag="{Binding}" Click="OnOpenAttachment" Padding="0" Background="Transparent" BorderThickness="0"
+                                                                    HorizontalContentAlignment="Left">
+                                                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextPrimary}"/>
+                                                            </Button>
                                                             <TextBlock Text="{Binding Kind}" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
                                                         </StackPanel>
                                                     </StackPanel>

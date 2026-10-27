@@ -16,18 +16,31 @@ extension NativeAgentClient {
         // The terminal output array is the provider's canonical order. Some
         // gateways omit stream items there, so retain any streamed items that
         // are missing after the terminal items (including compaction checkpoints).
-        for item in streamed where !merged.contains(where: { sameResponsesOutputItem($0, item) }) {
+        var itemIDs = Set<String>()
+        var callIDs = Set<String>()
+        var exactItems = Set<String>()
+        func exactKey(_ item: JSONObject) -> String? {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.sortedKeys]
+            guard let data = try? encoder.encode(item) else { return nil }
+            return String(decoding: data, as: UTF8.self)
+        }
+        func index(_ item: JSONObject) {
+            if let id = item["id"]?.string, !id.isEmpty { itemIDs.insert(id) }
+            if item["type"]?.string == "function_call",
+               let callID = item["call_id"]?.string, !callID.isEmpty { callIDs.insert(callID) }
+            if let key = exactKey(item) { exactItems.insert(key) }
+        }
+        for item in merged { index(item) }
+        for item in streamed {
+            let idMatches = item["id"]?.string.map { !$0.isEmpty && itemIDs.contains($0) } ?? false
+            let callIDMatches = item["call_id"]?.string.map { !$0.isEmpty && callIDs.contains($0) } ?? false
+            let exactMatches = exactKey(item).map(exactItems.contains) ?? false
+            guard !idMatches, !callIDMatches, !exactMatches else { continue }
             merged.append(item)
+            index(item)
         }
         return merged
-    }
-
-    private static func sameResponsesOutputItem(_ lhs: JSONObject, _ rhs: JSONObject) -> Bool {
-        if let leftID = lhs["id"]?.string, !leftID.isEmpty, leftID == rhs["id"]?.string { return true }
-        if lhs["type"]?.string == "function_call",
-           let leftCallID = lhs["call_id"]?.string, !leftCallID.isEmpty,
-           leftCallID == rhs["call_id"]?.string { return true }
-        return lhs == rhs
     }
 
     private static func anthropicContextEditStats(

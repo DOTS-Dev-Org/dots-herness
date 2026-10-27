@@ -1,0 +1,15 @@
+1
+00:00:00,220 --> 00:00:03,450
+Fikrini işe dönüştür.
+
+2
+00:00:03,650 --> 00:00:07,250
+Kodunu keşfet. İncele. Geliştir.
+
+3
+00:00:07,350 --> 00:00:11,100
+Botlar, görevler, tek çalışma alanı.
+
+4
+00:00:11,200 --> 00:00:14,750
+HerNess. Yapay zekâ çalışma alanın.

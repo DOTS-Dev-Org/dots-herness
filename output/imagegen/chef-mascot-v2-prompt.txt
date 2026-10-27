@@ -1,0 +1,8 @@
+Use case: style-transfer
+Asset type: small application mascot icon, high-resolution raster master
+Input image: Image 1 is the edit target, a blurry screenshot of an orange octopus chef mascot.
+Primary request: Carefully redraw and restore this same mascot into a polished, crisp, professional 2D cartoon icon. Preserve its identity: orange compact rounded-square octopus body, small friendly black eyes and smile, short curled tentacles, large white chef toque, left tentacle holding the same small dark cooking pot with golden food/steam, the overall pose and proportions. Improve the poor pixelated and blurry edges, form definition, balanced line weight and subtle clean shading. Keep the charming simple character, make it legible at tiny app sizes.
+Scene/backdrop: actual transparent background, no screenshot background.
+Style/medium: clean vector-like raster cartoon with restrained flat color regions, smooth antialiased contours, warm orange and white palette, thin dark warm outlines, narrow cream outer keyline for visibility on dark backgrounds. No pixel art.
+Composition: one centered complete mascot occupying about 85% of square canvas, keep every tentacle, hat and pot inside frame.
+Constraints: no text, no watermark, no extra objects or characters, no photorealism, no fuzzy glow, no elaborate textures, no checkerboard drawn into image. Maintain recognizable original character and expression.

@@ -136,7 +136,7 @@ extension NativeAgentClient {
     ) -> [String: Any] {
         // Tool schemas are part of the provider prefix. Plugin discovery order
         // is not, so canonicalize it before every transport body is built.
-        let canonicalTools = tools.sorted { AgentCacheNamespace.toolSortKey($0) < AgentCacheNamespace.toolSortKey($1) }
+        let canonicalTools = AgentCacheNamespace.canonicallySorted(tools)
         let providerMessages = AgentContextCompaction.providerContextMessages(messages)
         let replay = configuration.api == RouterAPIKind.chatGPT.rawValue
             ? AgentContextCompaction.responsesReplayMessages(providerMessages) : providerMessages
@@ -351,14 +351,28 @@ extension NativeAgentClient {
     /// The `<tag>…</tag>` blocks a captured context starts with, in order, and
     /// whether they were the whole text. Section bodies cannot contain a section
     /// tag (`PromptSection.defuse`), so the first closing tag ends the block.
-    static func leadingPromptSections(_ text: String) -> (sections: [(tag: String, block: String)], complete: Bool) {
+    static func leadingPromptSections(_ text: String) -> (sections: [(tag: String, block: String)], complete: Bool, rest: Substring) {
+        // `<tag( trust="x")?>\n…\n</tag>`, scanned by hand: the equivalent Swift Regex
+        // cost ~0.1 s per 30 KB captured turn, and this runs several times a step.
         var sections: [(tag: String, block: String)] = []
         var rest = Substring(text)
-        while let match = rest.prefixMatch(of: #/<([a-z_]+)(?: trust="[a-z]+")?>\n(?s:.*?)\n</\1>/#) {
-            sections.append((String(match.1), String(match.0)))
-            rest = rest[match.range.upperBound...].drop(while: \.isNewline)
+        while rest.first == "<", let close = rest.firstIndex(of: ">") {
+            let opening = rest[rest.index(after: rest.startIndex)..<close]
+            let tag = opening.prefix { $0 == "_" || ("a"..."z").contains($0) }
+            let attribute = opening.dropFirst(tag.count)
+            guard !tag.isEmpty,
+                  attribute.isEmpty || Self.isTrustAttribute(attribute),
+                  rest[close...].dropFirst().first == "\n",
+                  let end = rest.range(of: "\n</\(tag)>", range: rest.index(close, offsetBy: 2)..<rest.endIndex) else { break }
+            sections.append((String(tag), String(rest[..<end.upperBound])))
+            rest = rest[end.upperBound...].drop(while: \.isNewline)
         }
-        return (sections, rest.isEmpty)
+        return (sections, rest.isEmpty, rest)
+    }
+
+    private static func isTrustAttribute(_ text: Substring) -> Bool {
+        guard text.hasPrefix(" trust=\""), text.hasSuffix("\""), text.count > 9 else { return false }
+        return text.dropFirst(8).dropLast().allSatisfy { ("a"..."z").contains($0) }
     }
 
     /// What each context section has cost this transcript. A section is captured
@@ -413,11 +427,14 @@ extension NativeAgentClient {
 
     static let taskHistoryAdditionsMarker =
         "(Additions to the task_history captured earlier in this conversation; its earlier entries still hold.)"
+    static let taskHistoryBacklogMarker =
+        "(Additions to the task_history captured earlier in this conversation; its earlier entries still hold, except the backlog below, which replaces the earlier one.)"
 
     /// task_history is recalled for each request, so its text moves every turn while
     /// most entries repeat. Only entries the transcript has not seen since its last
     /// full copy are captured. The backlog is state rather than recall: when it
-    /// changed, the section is captured whole. nil when nothing is new.
+    /// changed, the new backlog is captured whole (an empty one as "None") under a
+    /// marker saying it replaces the earlier one. nil when nothing is new.
     static func taskHistoryAdditions(_ block: String, captured copies: [String]) -> String? {
         func body(_ block: String) -> [String] { Array(block.components(separatedBy: "\n").dropFirst().dropLast()) }
         // An entry is a line plus its indented continuation lines ("  Files: …").
@@ -428,25 +445,36 @@ extension NativeAgentClient {
             }
             return result
         }
-        func backlog(_ lines: [String]) -> [String] {
-            Array(entries(lines).drop { !$0.hasPrefix("## Unfinished work") }.prefix { !$0.hasPrefix("## ") || $0.hasPrefix("## Unfinished work") })
+        func backlogRange(_ entries: [String]) -> Range<Int> {
+            guard let start = entries.firstIndex(where: { $0.hasPrefix("## Unfinished work") }) else { return entries.endIndex..<entries.endIndex }
+            return start..<(entries[(start + 1)...].firstIndex { $0.hasPrefix("## ") } ?? entries.endIndex)
         }
+        func backlog(_ copy: String) -> [String] { let all = entries(body(copy)); return Array(all[backlogRange(all)]) }
+        let none = ["## Unfinished work (backlog)", "- None"]
+        let markers = [taskHistoryAdditionsMarker, taskHistoryBacklogMarker]
         guard copies.last != retiredPromptSection("task_history"),
-              let base = copies.lastIndex(where: { body($0).first != taskHistoryAdditionsMarker }) else { return block }
-        let current = body(block)
-        guard backlog(current) == backlog(body(copies[base])) else { return block }
+              let base = copies.lastIndex(where: { !markers.contains(body($0).first ?? "") }) else { return block }
+        // The backlog the transcript last stated: the full copy's, unless an addition replaced it.
+        let stated = copies[(base + 1)...].map(backlog).last { !$0.isEmpty } ?? backlog(copies[base])
+        var current = entries(body(block))
+        let range = backlogRange(current)
+        let currentBacklog = range.isEmpty ? none : Array(current[range])
+        current.removeSubrange(range)
+        let replaced = currentBacklog == (stated.isEmpty ? none : stated) ? [] : currentBacklog
         let seen = Set(copies[base...].flatMap { entries(body($0)) })
         var kept: [String] = []
         var heading: String?
-        for entry in entries(current) {
+        for entry in current {
             if entry.hasPrefix("## ") { heading = entry; continue }
             guard !seen.contains(entry) else { continue }
             if let pending = heading { kept.append(pending); heading = nil }
             kept.append(entry)
         }
+        kept += replaced
         guard !kept.isEmpty else { return nil }
         let lines = block.components(separatedBy: "\n")
-        return ([lines[0], taskHistoryAdditionsMarker] + kept + [lines[lines.count - 1]]).joined(separator: "\n")
+        let marker = replaced.isEmpty ? taskHistoryAdditionsMarker : taskHistoryBacklogMarker
+        return ([lines[0], marker] + kept + [lines[lines.count - 1]]).joined(separator: "\n")
     }
 
     /// At most four distinct markers: tools, invariant system, last accepted
@@ -699,10 +727,10 @@ extension NativeAgentClient {
         }
         if let budget {
             body["max_output_tokens"] = budget.maxOutputTokens
-            // Verbosity is a cached request setting. It follows the saved mode,
-            // never one prompt's wording, so a short question keeps the prefix.
+            // Low is the default output verbosity; an explicit Detailed preference
+            // leaves the provider's default verbosity intact. Economy still forces low.
             if configuration.usageMode == .economy
-                || [.concise, .ultra].contains(configuration.responseStylePreference) {
+                || configuration.responseStylePreference != .detailed {
                 body["text"] = ["verbosity": "low"]
             }
         }

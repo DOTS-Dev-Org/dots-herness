@@ -53,6 +53,8 @@ public sealed record SkillMarketplaceEntry(
 public sealed class SkillCatalog : ObservableObject
 {
     private const int MaximumSkillBytes = 200_000;
+    private const int MaximumSkillResourceBytes = 1_000_000;
+    private const int MaximumSkillResources = 200;
     private const int MaximumScanEntries = 2_000;
     private const int MaximumScanDepth = 6;
 
@@ -227,6 +229,51 @@ public sealed class SkillCatalog : ObservableObject
         var file = Path.GetFullPath(entry.Path);
         if (!IsInsideSkillRoot(file, entry.Source)) throw new InvalidOperationException("Skill path is outside an allowed skill root.");
         return ReadAndValidate(file);
+    }
+
+    public IReadOnlyList<string> Resources(string id)
+    {
+        var entry = Descriptor(id) ?? throw new InvalidOperationException($"Skill not found: {id}");
+        var skillDirectory = Path.GetFullPath(Path.GetDirectoryName(entry.Path)!);
+        if (!IsInsideSkillRoot(skillDirectory, entry.Source)) throw new InvalidOperationException("Skill path is outside an allowed skill root.");
+        var result = new List<string>();
+        Walk(skillDirectory, "");
+        return result.OrderBy(path => path, StringComparer.Ordinal).ToArray();
+
+        void Walk(string directory, string relative)
+        {
+            if (result.Count >= MaximumSkillResources) return;
+            foreach (var child in Directory.EnumerateFileSystemEntries(directory).OrderBy(path => path, StringComparer.Ordinal))
+            {
+                if (result.Count >= MaximumSkillResources) break;
+                var name = Path.GetFileName(child);
+                if (name.StartsWith('.') || IsSymlink(child)) continue;
+                var childRelative = string.IsNullOrEmpty(relative) ? name : Path.Combine(relative, name);
+                if (Directory.Exists(child)) Walk(child, childRelative);
+                else if (File.Exists(child) && !Path.GetFullPath(child).Equals(Path.GetFullPath(entry.Path), StringComparison.OrdinalIgnoreCase))
+                {
+                    try { if (new FileInfo(child).Length <= MaximumSkillResourceBytes) result.Add(childRelative.Replace(Path.DirectorySeparatorChar, '/')); }
+                    catch { }
+                }
+            }
+        }
+    }
+
+    public string ReadResource(string id, string relativePath)
+    {
+        var entry = Descriptor(id) ?? throw new InvalidOperationException($"Skill not found: {id}");
+        var skillDirectory = Path.GetFullPath(Path.GetDirectoryName(entry.Path)!);
+        if (!IsInsideSkillRoot(skillDirectory, entry.Source)) throw new InvalidOperationException("Skill path is outside an allowed skill root.");
+        if (string.IsNullOrWhiteSpace(relativePath) || Path.IsPathRooted(relativePath)) throw new InvalidOperationException("A relative skill resource path is required.");
+        var parts = relativePath.Replace('\\', '/').Split('/');
+        if (parts.Any(part => part.Length == 0 || part is "." or ".." || part.StartsWith('.'))) throw new InvalidOperationException("Skill resource path is not allowed.");
+        var file = Path.GetFullPath(Path.Combine(skillDirectory, Path.Combine(parts)));
+        var root = skillDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (!file.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+            || HasSymlinkComponent(file) || !File.Exists(file)) throw new InvalidOperationException("Skill resource is unavailable.");
+        var bytes = File.ReadAllBytes(file);
+        if (bytes.Length > MaximumSkillResourceBytes) throw new InvalidOperationException("Skill resource is larger than the supported limit.");
+        return ParseUtf8(bytes);
     }
 
     public void SetEnabled(string id, bool enabled)
@@ -636,6 +683,22 @@ public static class SkillTools
             ["properties"] = new JsonObject { ["id"] = new JsonObject { ["type"] = "string", ["description"] = "Canonical skill id." } },
             ["required"] = new JsonArray { JsonValue.Create("id") },
         }),
+        new("skill.resources", "List text companion files inside one enabled skill folder. Use this when SKILL.md references files in references/, scripts/, or assets/. Files are never executed by this tool.", new JsonObject
+        {
+            ["type"] = "object",
+            ["properties"] = new JsonObject { ["id"] = new JsonObject { ["type"] = "string", ["description"] = "Canonical skill id." } },
+            ["required"] = new JsonArray { JsonValue.Create("id") },
+        }),
+        new("skill.read_resource", "Read one UTF-8 companion file from an enabled skill folder by canonical skill id and skill-relative path. This only returns text; it never executes scripts.", new JsonObject
+        {
+            ["type"] = "object",
+            ["properties"] = new JsonObject
+            {
+                ["id"] = new JsonObject { ["type"] = "string", ["description"] = "Canonical skill id." },
+                ["path"] = new JsonObject { ["type"] = "string", ["description"] = "Skill-relative file path, for example references/guide.md." },
+            },
+            ["required"] = new JsonArray { JsonValue.Create("id"), JsonValue.Create("path") },
+        }),
         new("skill.suggest", "Propose saving a reusable procedure as a workspace skill. Use only when the user asks to save a workflow as a skill, or after you finished a multi-step workflow (several tool steps, a non-obvious order or gotcha) that the user said they will need again. Never for a single command, a one-off task, routine work such as building, testing, committing or answering a question, or something a project rule or lesson already covers. At most once per conversation; if it returns that no card was shown, do not retry or rephrase. This only shows the user a card; nothing is written unless they accept it.", new JsonObject
         {
             ["type"] = "object",
@@ -659,7 +722,7 @@ public static class SkillTools
         return page + (offset + limit < matches.Length ? $"\n[More skills: offset={offset + limit}]" : "");
     }
 
-    public static bool IsReadOnly(string name) => name is "skill.list" or "skill.read" or "skill.suggest";
+    public static bool IsReadOnly(string name) => name is "skill.list" or "skill.read" or "skill.resources" or "skill.read_resource" or "skill.suggest";
 
     public static string Execute(NativeToolCall call, SkillCatalog catalog, SkillSuggestionMonitor? suggestions = null)
     {
@@ -670,6 +733,10 @@ public static class SkillTools
             {
                 "skill.list" => Search(catalog, input),
                 "skill.read" => catalog.Read(input["id"]?.GetValue<string>() ?? throw new InvalidOperationException("A skill id is required.")),
+                "skill.resources" => string.Join('\n', catalog.Resources(input["id"]?.GetValue<string>() ?? throw new InvalidOperationException("A skill id is required."))),
+                "skill.read_resource" => catalog.ReadResource(
+                    input["id"]?.GetValue<string>() ?? throw new InvalidOperationException("A skill id is required."),
+                    input["path"]?.GetValue<string>() ?? throw new InvalidOperationException("A resource path is required.")),
                 "skill.suggest" => Suggest(input, suggestions),
                 _ => $"Unknown tool: {call.Name}",
             };

@@ -125,11 +125,20 @@ public partial class MainWindow : Window
     {
         var update = await CrossPlatformUpdateChecker.CheckOnStartupAsync("windows");
         if (update is null) return;
-        var model = ((App)Application.Current).Model;
-        var msg = $"{model.L("settings.updates.available", update.LatestVersion)}\n\n{update.ReleaseNotes}\n\n{model.L("settings.updates.download")}?";
-        if (MessageBox.Show(this, msg, model.L("settings.updates.title"), update.Mandatory ? MessageBoxButton.OK : MessageBoxButton.YesNo) is MessageBoxResult.Yes or MessageBoxResult.OK
-            && Uri.TryCreate(update.DownloadUrl, UriKind.Absolute, out var url) && url.Scheme == Uri.UriSchemeHttps)
-            Process.Start(new ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true });
+        var app = (App)Application.Current;
+        var model = app.Model;
+        if (model.AutoUpdate && await UpdateInstaller.InstallAndRelaunchAsync(update))
+        {
+            app.ExitApplication();
+            return;
+        }
+        var msg = $"{model.L("settings.updates.available", update.LatestVersion)}\n\n{update.ReleaseNotes}\n\n{model.L("settings.updates.install")}?";
+        if (MessageBox.Show(this, msg, model.L("settings.updates.title"), update.Mandatory ? MessageBoxButton.OK : MessageBoxButton.YesNo) is MessageBoxResult.Yes or MessageBoxResult.OK)
+        {
+            if (await UpdateInstaller.InstallAndRelaunchAsync(update)) { app.ExitApplication(); return; }
+            if (Uri.TryCreate(update.DownloadUrl, UriKind.Absolute, out var url) && url.Scheme == Uri.UriSchemeHttps)
+                Process.Start(new ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true });
+        }
         if (update.Mandatory) Application.Current.Shutdown();
     }
 
@@ -371,6 +380,12 @@ public partial class MainWindow : Window
         if (!_rightDockVisible) OnPanePicker(this, new RoutedEventArgs());
         if (url is null) RightDock.SelectTab("browser");
         else RightDock.OpenBrowser(url);
+    }
+
+    public void ShowFilePanel(string path, string displayName)
+    {
+        if (!_rightDockVisible) OnPanePicker(this, new RoutedEventArgs());
+        RightDock.OpenFile(path, displayName);
     }
 
     private bool _allowClose;

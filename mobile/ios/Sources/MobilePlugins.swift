@@ -44,7 +44,8 @@ final class MobilePlugins: ObservableObject {
               let entries = try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: [.isDirectoryKey]) else { return [] }
 
         for entry in entries.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
-            guard (try? entry.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else { continue }
+            guard (try? entry.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]).isDirectory) == true,
+                  !Self.hasSymlink(entry, under: root) else { continue }
             do { specs += try load(directory: entry) }
             catch { failures[entry.lastPathComponent] = error.localizedDescription }
         }
@@ -53,8 +54,21 @@ final class MobilePlugins: ObservableObject {
 
     private func load(directory: URL) throws -> [AgentToolSpec] {
         let manifestURL = directory.appendingPathComponent("plugin.json")
-        let manifest = try JSONDecoder().decode(PluginManifest.self, from: try Data(contentsOf: manifestURL))
-        let source = try String(contentsOf: directory.appendingPathComponent(manifest.main), encoding: .utf8)
+        guard !Self.hasSymlink(directory, under: directory.deletingLastPathComponent()),
+              !Self.hasSymlink(manifestURL, under: directory) else {
+            throw PluginError.message("plugin files cannot be symbolic links")
+        }
+        let manifestData = try Data(contentsOf: manifestURL)
+        guard manifestData.count <= 128_000 else { throw PluginError.message("plugin.json is larger than the supported limit") }
+        let manifest = try JSONDecoder().decode(PluginManifest.self, from: manifestData)
+        guard Self.isSafeID(manifest.id), manifest.id == directory.lastPathComponent,
+              Self.isSafeRelative(manifest.main) else { throw PluginError.message("plugin id or main path is not allowed") }
+        let sourceURL = manifest.main.split(separator: "/").reduce(directory) { $0.appendingPathComponent(String($1)) }
+        guard !Self.hasSymlink(sourceURL, under: directory),
+              let sourceData = try? Data(contentsOf: sourceURL), sourceData.count <= 1_000_000,
+              let source = String(data: sourceData, encoding: .utf8) else {
+            throw PluginError.message("plugin main file is missing, too large, or not UTF-8")
+        }
 
         guard let context = JSContext() else { throw PluginError.message("could not create a JS context") }
         var failure: String?
@@ -119,6 +133,30 @@ final class MobilePlugins: ObservableObject {
     private func append(log line: String) {
         log.append(line)
         if log.count > 500 { log.removeFirst(log.count - 500) }
+    }
+
+    private static func isSafeID(_ value: String) -> Bool {
+        !value.isEmpty && value.utf8.count <= 200 && !value.hasPrefix(".")
+            && !value.contains("..") && value.rangeOfCharacter(from: CharacterSet(charactersIn: "/\\\0")) == nil
+    }
+
+    private static func isSafeRelative(_ value: String) -> Bool {
+        !value.isEmpty && !value.hasPrefix("/") && !value.contains("\\") && !value.contains("\0")
+            && value.split(separator: "/", omittingEmptySubsequences: false).allSatisfy { !$0.isEmpty && $0 != "." && $0 != ".." && !$0.hasPrefix(".") }
+    }
+
+    private static func hasSymlink(_ url: URL, under root: URL) -> Bool {
+        let base = root.standardizedFileURL.path
+        let path = url.standardizedFileURL.path
+        guard path == base || path.hasPrefix(base + "/") else { return true }
+        var current = url.standardizedFileURL
+        while current.path != base {
+            guard let values = try? current.resourceValues(forKeys: [.isSymbolicLinkKey]), values.isSymbolicLink != true else { return true }
+            let parent = current.deletingLastPathComponent()
+            guard parent.path != current.path, parent.path == base || parent.path.hasPrefix(base + "/") else { return true }
+            current = parent
+        }
+        return false
     }
 }
 

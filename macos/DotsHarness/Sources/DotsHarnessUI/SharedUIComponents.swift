@@ -10,7 +10,7 @@ import DotsHarnessCore
 /// render. Keyed by path and modification date, so a rewritten file is reloaded.
 @MainActor
 enum ImageFileCache {
-    private static let costLimit = 48 * 1024 * 1024
+    private static let costLimit = 24 * 1024 * 1024
     private static let cache: NSCache<NSString, NSImage> = {
         let cache = NSCache<NSString, NSImage>()
         cache.countLimit = 96

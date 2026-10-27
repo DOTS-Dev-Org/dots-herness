@@ -1,0 +1,34 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-11T17:32:00Z",
+  "eventId" : "AFC3F7FB-47F9-4E36-9583-24D74BEF437C",
+  "lamport" : 1,
+  "parents" : [
+
+  ],
+  "payload" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "displayName" : "alibirkanbayram",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "projectId" : "83890830-337C-4DD1-B358-03FFDCEDD318",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw==",
+    "role" : "owner",
+    "score" : 100
+  },
+  "projectId" : "83890830-337C-4DD1-B358-03FFDCEDD318",
+  "schemaVersion" : 1,
+  "scope" : "project",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "l2V+vO9l4OC8oOQcKrCHm03ugVgIeug\/C\/A3pu\/ymTq0tYQFEAEa7ykmZEgHhEfJe4kKmVKRHgB4RWKmQq6OJA=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "workspace.initialized"
+}

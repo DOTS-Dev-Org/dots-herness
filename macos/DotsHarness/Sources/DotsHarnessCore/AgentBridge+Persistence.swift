@@ -21,7 +21,7 @@ extension NativeAgentHost {
     public func loadArchivedMessagePage(
         id: String,
         endingBefore offset: Int,
-        limit: Int = 10
+        limit: Int = ConversationStore.defaultTranscriptPageSize
     ) async -> ConversationTranscriptPage? {
         guard store.loadHeaders().contains(where: { $0.id == id && $0.archived && !$0.blank }) else { return nil }
         let store = self.store
@@ -34,12 +34,16 @@ extension NativeAgentHost {
     /// The original conversation record and its project path remain unchanged.
     public func openRecentConversation(_ id: String) {
         guard workspaceURL == nil,
-              let conversation = store.loadRecentConversation(id: id) else { return }
+              let page = store.loadRecentConversation(id: id, includeModelContext: false) else { return }
+        let needsRecoveryContext = page.requiresToolOutcomeRecovery || !page.inFlightToolCalls.isEmpty
+        let conversation = needsRecoveryContext
+            ? (store.loadRecentConversation(id: id) ?? page)
+            : page
         loadGeneration += 1
         contentTask?.cancel()
         contentTask = nil
         selectedID = nil
-        conversations = [recoverForContext(conversation)]
+        conversations = [recoverForContext(conversation, restoreMissingContext: needsRecoveryContext)]
         clearFollowUpSuggestion()
         select(id)
     }
@@ -82,8 +86,9 @@ extension NativeAgentHost {
         }
 
         let store = self.store
+        let needsRecoveryContext = conversation.requiresToolOutcomeRecovery || !conversation.inFlightToolCalls.isEmpty
         let decode = Task.detached(priority: .userInitiated) {
-            store.loadRecentConversation(id: id)
+            store.loadRecentConversation(id: id, includeModelContext: needsRecoveryContext)
         }
         contentTask = Task { @MainActor [weak self] in
             let stored = await decode.value
@@ -94,7 +99,7 @@ extension NativeAgentHost {
                   let stored,
                   let index = self.conversations.firstIndex(where: { $0.id == id }) else { return }
             let header = self.conversations[index]
-            var loaded = self.recoverForContext(stored)
+            var loaded = self.recoverForContext(stored, restoreMissingContext: needsRecoveryContext)
             loaded.applyMetadata(from: header)
             self.conversations[index] = loaded
             self.contentTask = nil
@@ -110,7 +115,12 @@ extension NativeAgentHost {
             Task { @MainActor [weak self] in
                 await self?.resumeRecoveredConversationIfNeeded(for: id)
             }
-        } else if !state(for: id).queuePausedAfterStop {
+        } else if !state(for: id).queuePausedAfterStop,
+                  let conversation = conversations.first(where: { $0.id == id }),
+                  // A queue left over from a long close would resend the whole history
+                  // on a cold cache; it then waits for the user like Continue does.
+                  conversation.messages.isEmpty
+                    || Self.isWarmForAutoResume(conversation, events: contextUsageEvents()) {
             startQueuedPromptIfReleased(in: id)
         }
     }
@@ -176,12 +186,16 @@ extension NativeAgentHost {
     func ensurePromptContextLoaded(_ conversationID: String? = nil) -> Bool {
         guard let id = conversationID ?? selectedID,
               let index = conversations.firstIndex(where: { $0.id == id }) else { return true }
-        if conversations[index].contentLoaded {
-            return conversations[index].transcriptComplete || !conversations[index].modelContext.isEmpty
-        }
+        if conversations[index].modelContextLoaded { return true }
         guard let stored = store.loadRecentConversation(id: id) else { return false }
         let header = conversations[index]
         var loaded = recoverForContext(stored)
+        if header.contentLoaded {
+            loaded.messages = header.messages
+            loaded.transcriptComplete = header.transcriptComplete
+            loaded.messageStartIndex = header.messageStartIndex
+            loaded.loadedTranscriptMessageIDs = header.loadedTranscriptMessageIDs
+        }
         guard loaded.transcriptComplete || !loaded.modelContext.isEmpty else { return false }
         loaded.applyMetadata(from: header)
         conversations[index] = loaded
@@ -192,7 +206,7 @@ extension NativeAgentHost {
     /// Loads another visible page from disk while keeping the full provider
     /// context and all previously requested pages intact.
     @discardableResult
-    public func loadOlderMessages(in conversationID: String, limit: Int = 10) async -> Bool {
+    public func loadOlderMessages(in conversationID: String, limit: Int = ConversationStore.defaultTranscriptPageSize) async -> Bool {
         guard selectedID == conversationID,
               let index = conversations.firstIndex(where: { $0.id == conversationID }),
               conversations[index].hasOlderTranscriptMessages else { return false }
@@ -287,8 +301,9 @@ extension NativeAgentHost {
         conversations.first(where: { $0.id == id })
     }
 
-    func recoverForContext(_ conversation: Conversation) -> Conversation {
+    func recoverForContext(_ conversation: Conversation, restoreMissingContext: Bool = true) -> Conversation {
         var recovered = Self.recover(conversation)
+        if !recovered.modelContextLoaded, !restoreMissingContext { return recovered }
         if recovered.modelContext.isEmpty, !recovered.transcriptComplete {
             let visibleMessages = recovered.messages
             let visibleStartIndex = recovered.messageStartIndex
@@ -301,6 +316,7 @@ extension NativeAgentHost {
                         for: recovered,
                         workspace: workspaceURL
                     )
+                    recovered.modelContextLoaded = true
                 }
                 // Legacy sessions may need their full transcript once to rebuild
                 // the provider context. Keep only the requested visible page in
@@ -321,6 +337,7 @@ extension NativeAgentHost {
                 for: recovered,
                 workspace: workspaceURL
             )
+            recovered.modelContextLoaded = true
         }
         return recovered
     }
@@ -462,7 +479,10 @@ extension NativeAgentHost {
                     toolCallID: call.id
                 ))
             }
-            if recovered.continuation?.reason != .applicationClosed, !recovered.turnFinished {
+            let existingPauseReason = recovered.continuation?.reason
+            if existingPauseReason != .applicationClosed,
+               existingPauseReason != .userStopped,
+               !recovered.turnFinished {
                 recovered.continuation = ContinuationState(
                     reason: .applicationClosed,
                     message: AppCopy.text("agent.applicationClosedMessage")

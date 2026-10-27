@@ -1347,8 +1347,8 @@ private fun FoldableSidebar(
     val notificationsLabel = if (notificationInbox.unreadCount > 0) {
         stringResource(R.string.notifications_unread_count, notificationInbox.unreadCount)
     } else stringResource(R.string.notifications_title)
-    LaunchedEffect(client.selectedProjectId, agent.transcript.size, agent.running, agent.runtimeState, agent.activeConversationId) {
-        conversations = withContext(Dispatchers.IO) { agent.recentConversations() }
+    LaunchedEffect(client.selectedProjectId, agent.projectId, agent.transcript.size, agent.running, agent.runtimeState, agent.activeConversationId, agent.conversationListRevision) {
+        conversations = withContext(Dispatchers.IO) { agent.projectConversations() }
     }
 
     Column(
@@ -1458,7 +1458,7 @@ private fun FoldableSidebar(
                     }
                     if (isSelected && isExpanded) {
                         Text(
-                            stringResource(R.string.sidebar_recent),
+                            if (agent.isNoProjectMode) stringResource(R.string.mobile_agent_no_project) else project.name,
                             modifier = Modifier.padding(start = 28.dp, top = 8.dp, bottom = 3.dp),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1532,8 +1532,8 @@ private fun FoldableBottomSidebar(
     val notificationsLabel = if (notificationInbox.unreadCount > 0) {
         stringResource(R.string.notifications_unread_count, notificationInbox.unreadCount)
     } else stringResource(R.string.notifications_title)
-    LaunchedEffect(client.selectedProjectId, agent.transcript.size, agent.running, agent.runtimeState, agent.activeConversationId) {
-        conversations = withContext(Dispatchers.IO) { agent.recentConversations() }
+    LaunchedEffect(client.selectedProjectId, agent.projectId, agent.transcript.size, agent.running, agent.runtimeState, agent.activeConversationId, agent.conversationListRevision) {
+        conversations = withContext(Dispatchers.IO) { agent.projectConversations() }
     }
 
     Column(
@@ -1569,7 +1569,10 @@ private fun FoldableBottomSidebar(
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.sidebar_recent), style = MaterialTheme.typography.titleSmall)
+            Text(
+                if (agent.isNoProjectMode) stringResource(R.string.mobile_agent_no_project) else client.selectedProject.name,
+                style = MaterialTheme.typography.titleSmall,
+            )
             if (conversations.isEmpty()) {
                 Spacer(Modifier.width(10.dp))
                 Text(stringResource(R.string.sidebar_no_chats), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -2069,6 +2072,7 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
     var questionAnswer by remember { mutableStateOf("") }
     var showModels by remember { mutableStateOf(false) }
     var showHistory by remember { mutableStateOf(false) }
+    var historyMode by remember { mutableIntStateOf(0) }
     var selectedHistoryId by remember { mutableStateOf<String?>(null) }
     var selectedHistoryPage by remember { mutableStateOf<StoredMobileMessagePage?>(null) }
     val transcriptListState = remember(agent.activeConversationId) { LazyListState() }
@@ -2581,13 +2585,39 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
         confirmButton = { TextButton({ showCacheResumeInfo = false }) { Text(stringResource(R.string.app_ok)) } },
     )
     if (showHistory) {
-        val conversations = agent.recentConversations()
+        val connectedProjectIds = client.projects
+            .filter { java.io.File(it.localRoot).isDirectory }
+            .map { it.id }
+        val conversations = remember(historyMode, connectedProjectIds, agent.conversationListRevision) {
+            when (historyMode) {
+                1 -> agent.projectConversations()
+                2 -> agent.archivedConversations()
+                else -> agent.recentConversations(connectedProjectIds)
+            }
+        }
         val selectedMessages = selectedHistoryPage?.messages.orEmpty()
         AlertDialog(
             onDismissRequest = { showHistory = false; selectedHistoryId = null },
-            title = { Text(stringResource(R.string.sidebar_recent)) },
+            title = {
+                Text(when (historyMode) {
+                    1 -> if (agent.isNoProjectMode) stringResource(R.string.mobile_agent_no_project) else client.selectedProject.name
+                    2 -> stringResource(R.string.archive_title)
+                    else -> stringResource(R.string.sidebar_recent)
+                })
+            },
             text = {
                 Column(Modifier.heightIn(max = 480.dp).fillMaxWidth()) {
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+                        TextButton(onClick = { historyMode = 0; selectedHistoryId = null; selectedHistoryPage = null }) {
+                            Text(stringResource(R.string.sidebar_recent))
+                        }
+                        TextButton(onClick = { historyMode = 1; selectedHistoryId = null; selectedHistoryPage = null }) {
+                            Text(if (agent.isNoProjectMode) stringResource(R.string.mobile_agent_no_project) else client.selectedProject.name)
+                        }
+                        TextButton(onClick = { historyMode = 2; selectedHistoryId = null; selectedHistoryPage = null }) {
+                            Text(stringResource(R.string.archive_title))
+                        }
+                    }
                     if (selectedHistoryId != null) {
                         TextButton({ selectedHistoryId = null; selectedHistoryPage = null }) {
                             Text("‹ " + stringResource(R.string.sidebar_recent))
@@ -2611,14 +2641,54 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
                                 MarkdownBody(message.content, Modifier.padding(bottom = 10.dp))
                             }
                         } else if (conversations.isEmpty()) {
-                            item { Text(stringResource(R.string.sidebar_no_chats)) }
+                            item {
+                                Text(stringResource(if (historyMode == 2) R.string.archive_empty else R.string.sidebar_no_chats))
+                            }
                         } else {
                             items(conversations, key = { it.id }) { conversation ->
-                                TextButton(onClick = {
-                                    selectedHistoryId = conversation.id
-                                    selectedHistoryPage = agent.storedMessagePage(conversation.id)
-                                }) {
-                                    Text(java.text.DateFormat.getDateTimeInstance().format(java.util.Date(conversation.updatedAt)))
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                ) {
+                                    TextButton(
+                                        onClick = {
+                                            selectedHistoryId = conversation.id
+                                            selectedHistoryPage = agent.storedMessagePage(conversation.id)
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Column(Modifier.fillMaxWidth()) {
+                                            Text(conversation.title.ifBlank {
+                                                java.text.DateFormat.getDateTimeInstance().format(java.util.Date(conversation.updatedAt))
+                                            }, maxLines = 2)
+                                            Text(conversation.status.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelSmall)
+                                        }
+                                    }
+                                    TextButton(
+                                        onClick = {
+                                            if (historyMode == 2) {
+                                                agent.restoreConversation(conversation.id)
+                                            } else {
+                                                val wasActive = conversation.id == agent.activeConversationId
+                                                if (agent.archiveConversation(conversation.id)) {
+                                                    if (wasActive) {
+                                                        showHistory = false
+                                                        selectedHistoryId = null
+                                                        selectedHistoryPage = null
+                                                    } else {
+                                                        historyMode = 2
+                                                        selectedHistoryId = null
+                                                        selectedHistoryPage = null
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        enabled = !agent.running && (historyMode == 2
+                                            || conversation.id != agent.activeConversationId
+                                            || agent.projectLocationAvailable),
+                                    ) {
+                                        Text(stringResource(if (historyMode == 2) R.string.archive_restore else R.string.sidebar_archive_chat))
+                                    }
                                 }
                             }
                         }

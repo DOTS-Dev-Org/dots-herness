@@ -34,7 +34,7 @@ class Plugins(private val root: () -> File) {
         failures = emptyMap()
         promptSections = emptyList()
         val directory = File(root(), DIRECTORY)
-        val entries = directory.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: return emptyList()
+        val entries = directory.listFiles()?.filter { it.isDirectory && !isSymbolicLink(it) }?.sortedBy { it.name } ?: return emptyList()
         val specs = mutableListOf<AgentToolSpec>()
         entries.forEach { entry ->
             runCatching { specs += load(entry) }.onFailure { failures = failures + (entry.name to (it.message ?: "Plugin failed to load.")) }
@@ -43,7 +43,10 @@ class Plugins(private val root: () -> File) {
     }
 
     private fun load(directory: File): List<AgentToolSpec> {
-        val manifestJson = JSONObject(File(directory, "plugin.json").readText())
+        require(!isSymbolicLink(directory)) { "plugin directory cannot be a symbolic link" }
+        val manifestFile = File(directory, "plugin.json")
+        require(!isSymbolicLink(manifestFile) && manifestFile.isFile && manifestFile.length() <= 128_000) { "plugin.json is missing, linked, or too large" }
+        val manifestJson = JSONObject(manifestFile.readBytes().decodeToString(throwOnInvalidSequence = true))
         val manifest = PluginManifest(
             manifestJson.getString("id"),
             manifestJson.optString("name", manifestJson.getString("id")),
@@ -51,7 +54,11 @@ class Plugins(private val root: () -> File) {
             manifestJson.optString("main", "plugin.js"),
             manifestJson.optString("description"),
         )
-        val source = File(directory, manifest.main).readText()
+        require(isSafeID(manifest.id) && manifest.id == directory.name && isSafeRelative(manifest.main)) { "plugin id or main path is not allowed" }
+        val sourceFile = manifest.main.split('/').fold(directory) { parent, component -> File(parent, component) }
+        require(isInside(sourceFile, directory) && !isSymbolicLinkUnder(sourceFile, directory)
+            && sourceFile.isFile && sourceFile.length() <= 1_000_000) { "plugin main file is missing, linked, or too large" }
+        val source = sourceFile.readBytes().decodeToString(throwOnInvalidSequence = true)
 
         val context = RhinoContext.enter().apply {
             // Rhino cannot generate bytecode on Android; the interpreter is the only mode.
@@ -116,6 +123,31 @@ class Plugins(private val root: () -> File) {
 
     private fun key(manifest: PluginManifest, tool: String) =
         "plugin__${manifest.id.replace(Regex("[^A-Za-z0-9_]"), "_")}__$tool"
+
+    private fun isSafeID(value: String): Boolean = value.isNotBlank() && value.length <= 200
+        && !value.startsWith('.') && ".." !in value && value.none { it == '/' || it == '\\' || it == '\u0000' }
+
+    private fun isSafeRelative(value: String): Boolean = value.isNotBlank() && !value.startsWith('/')
+        && '\\' !in value && '\u0000' !in value
+        && value.split('/').all { it.isNotBlank() && it != "." && it != ".." && !it.startsWith('.') }
+
+    private fun isInside(file: File, root: File): Boolean = runCatching {
+        file.absoluteFile.toPath().normalize().startsWith(root.absoluteFile.toPath().normalize())
+    }.getOrDefault(false)
+
+    private fun isSymbolicLink(file: File): Boolean = runCatching { java.nio.file.Files.isSymbolicLink(file.toPath()) }.getOrDefault(true)
+
+    private fun isSymbolicLinkUnder(file: File, root: File): Boolean {
+        if (!isInside(file, root)) return true
+        var current = file.absoluteFile.toPath().normalize()
+        val base = root.absoluteFile.toPath().normalize()
+        while (current.startsWith(base)) {
+            if (java.nio.file.Files.isSymbolicLink(current)) return true
+            if (current == base) return false
+            current = current.parent ?: return true
+        }
+        return true
+    }
 
     private fun jsonOf(context: RhinoContext, scope: Scriptable, value: Any?): JSONObject =
         runCatching { JSONObject(NativeJSON.stringify(context, scope, value, null, "").toString()) }

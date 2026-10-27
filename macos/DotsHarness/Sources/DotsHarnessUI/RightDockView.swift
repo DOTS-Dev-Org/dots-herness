@@ -177,6 +177,14 @@ final class RightDockState: ObservableObject {
         }
     }
 
+    func openWebURL(_ url: URL) {
+        guard let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              url.host != nil else { return }
+        showBrowser()
+        NativeBrowserService.shared.loadAddress(url.absoluteString)
+    }
+
     /// `point` is in window coordinates, like `dropArea`.
     func previewDrop(_ tab: Tab, at point: CGPoint, rightToLeft: Bool) {
         var target = dockEdge(
@@ -1180,52 +1188,58 @@ private struct DockFilesView: View {
     @State private var preview = ""
 
     var body: some View {
-        if model.workspacePath.isEmpty || model.remoteWorkspace != nil {
-            DockEmptyWorkspace(model: model)
-        } else {
-            HStack(spacing: 0) {
-                previewPane
-                Divider()
-                VStack(spacing: 6) {
-                    TextField(AppCopy.text("dock.filterFiles"), text: $filter)
-                        .textFieldStyle(.roundedBorder)
-                        .padding([.horizontal, .top], 8)
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 0) {
-                            if filter.isEmpty {
-                                ForEach(FileEntry.children(of: URL(fileURLWithPath: model.workspacePath))) {
-                                    FileTreeRow(entry: $0, depth: 0, selected: $selected)
+        Group {
+            if model.workspacePath.isEmpty || model.remoteWorkspace != nil {
+                if selected == nil {
+                    DockEmptyWorkspace(model: model)
+                } else {
+                    previewPane
+                }
+            } else {
+                HStack(spacing: 0) {
+                    previewPane
+                    Divider()
+                    VStack(spacing: 6) {
+                        TextField(AppCopy.text("dock.filterFiles"), text: $filter)
+                            .textFieldStyle(.roundedBorder)
+                            .padding([.horizontal, .top], 8)
+                        ScrollView {
+                            LazyVStack(alignment: .leading, spacing: 0) {
+                                if filter.isEmpty {
+                                    ForEach(FileEntry.children(of: URL(fileURLWithPath: model.workspacePath))) {
+                                        FileTreeRow(entry: $0, depth: 0, selected: $selected)
+                                    }
+                                } else {
+                                    ForEach(matches) { FileTreeRow(entry: $0, depth: 0, selected: $selected, showsPath: model.workspacePath) }
                                 }
-                            } else {
-                                ForEach(matches) { FileTreeRow(entry: $0, depth: 0, selected: $selected, showsPath: model.workspacePath) }
                             }
                         }
                     }
+                    .frame(width: 240)
                 }
-                .frame(width: 240)
-            }
-            .task(id: filter) {
-                guard !filter.isEmpty else { matches = []; return }
-                try? await Task.sleep(nanoseconds: 200_000_000)
-                guard !Task.isCancelled else { return }
-                let root = URL(fileURLWithPath: model.workspacePath)
-                let query = filter
-                matches = await Task.detached { Self.search(root: root, query: query) }.value
-            }
-            .onChange(of: model.filesPaneRequestID, initial: true) { _, _ in
-                if let file = model.requestedFile { selected = file }
-            }
-            .onChange(of: selected) { _, url in
-                guard let url else { preview = ""; return }
-                Task {
-                    preview = await Task.detached {
-                        guard let data = try? Data(contentsOf: url) else { return "" }
-                        guard let text = String(data: data.prefix(200_000), encoding: .utf8) else {
-                            return AppCopy.text("dock.binaryFile")
-                        }
-                        return text
-                    }.value
+                .task(id: filter) {
+                    guard !filter.isEmpty else { matches = []; return }
+                    try? await Task.sleep(nanoseconds: 200_000_000)
+                    guard !Task.isCancelled else { return }
+                    let root = URL(fileURLWithPath: model.workspacePath)
+                    let query = filter
+                    matches = await Task.detached { Self.search(root: root, query: query) }.value
                 }
+            }
+        }
+        .onChange(of: model.filesPaneRequestID, initial: true) { _, _ in
+            if let file = model.requestedFile { selected = file }
+        }
+        .onChange(of: selected) { _, url in
+            guard let url else { preview = ""; return }
+            Task {
+                preview = await Task.detached {
+                    guard let data = try? Data(contentsOf: url) else { return "" }
+                    guard let text = String(data: data.prefix(200_000), encoding: .utf8) else {
+                        return AppCopy.text("dock.binaryFile")
+                    }
+                    return text
+                }.value
             }
         }
     }

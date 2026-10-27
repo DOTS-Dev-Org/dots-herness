@@ -6,6 +6,14 @@ import CryptoKit
 import Foundation
 import PluginRuntime
 
+private struct PreparedFileIndex: Sendable {
+    let paths: [String]
+    let learned: [String: Set<String>]
+    let stamp: String
+    let index: FileIndex?
+    let fileContext: String
+}
+
 public enum WorkspaceBacklogText {
     public static func visibleText(_ text: String, hidePartialMarkerTail: Bool = false) -> String {
         // Runs on the whole live reply ten times a second. Without "backlog" anywhere no
@@ -116,7 +124,7 @@ extension WorkspaceMemory {
         // The files this task changed are now found by its words; see `taskFileTerms()`.
         // Marked stale, not dropped: dropping it rebuilt the index on the main actor at the
         // next prompt. The symbol cache is keyed by file date, so it stays valid.
-        fileIndex?.stamp = .distantPast
+        fileIndex?.stamp = ""
     }
 
     func writeDecisionNotes() {
@@ -351,57 +359,136 @@ extension WorkspaceMemory {
 
     /// The repository's files named like the request, so the agent opens them instead
     /// of sweeping the workspace for where to start.
-    /// ponytail: the list follows git's index, so a workspace that is not a repository
-    /// root gets none and a file not yet added is missed until the index moves.
+    /// The prompt gets a path-only index after its worker pass; source symbols and commit
+    /// subjects are added by a background rebuild.
+    func prepareFileIndexForPrompt(workspace: URL?, query: String) async {
+        guard let workspace,
+              workspaceURL?.standardizedFileURL == workspace.standardizedFileURL else { return }
+        let signpost = PerformanceSignposts.begin("WorkspaceFileIndex")
+        defer { PerformanceSignposts.end("WorkspaceFileIndex", signpost) }
+
+        let root = workspace.standardizedFileURL
+        let noteURLs = taskNoteURLs()
+        let existingIndex = fileIndex?.workspace == root ? fileIndex?.index : nil
+        let existingStamp = fileIndex?.workspace == root ? fileIndex?.stamp : nil
+        let existingChanges = fileIndex?.workspace == root ? fileIndex?.changes ?? [:] : [:]
+        let built = await MemoryWorkQueue.run {
+            let paths = WorkspaceTools.scanFilePaths(root)
+            let learned = Self.taskFileTerms(noteURLs)
+            let workspaceStamp = WorkspaceTools.scanRevision(root, paths: paths)
+            let stamp = Self.fileIndexCacheStamp(workspaceStamp: workspaceStamp, learned: learned)
+            let indexForQuery: FileIndex
+            let initialIndex: FileIndex?
+            if let existingIndex {
+                indexForQuery = existingIndex
+                initialIndex = nil
+            } else {
+                let index = FileIndex(paths: paths, learned: learned)
+                indexForQuery = index
+                initialIndex = index
+            }
+            let fileContext = Self.fileContextText(index: indexForQuery, prompt: query, changes: existingChanges)
+            return PreparedFileIndex(
+                paths: paths,
+                learned: learned,
+                stamp: stamp,
+                index: initialIndex,
+                fileContext: fileContext
+            )
+        }
+        guard workspaceURL?.standardizedFileURL == root else { return }
+        if fileIndex?.workspace != root, let index = built.index {
+            symbolCache = [:]
+            fileIndexGitStamp = nil
+            fileIndex = (root, built.stamp, index, [:])
+            scheduleFileIndexRebuild(root, stamp: built.stamp, paths: built.paths, learned: built.learned)
+        } else if fileIndex?.stamp != built.stamp, fileIndexRebuildStamp != built.stamp {
+            scheduleFileIndexRebuild(root, stamp: built.stamp, paths: built.paths, learned: built.learned)
+        }
+        preparedFileContext = (root, query, existingStamp ?? built.stamp, built.fileContext)
+    }
+
     func relevantFiles(for prompt: String) -> String {
         guard let workspaceURL,
-              let stamp = (try? fileManager.attributesOfItem(atPath: workspaceURL.appendingPathComponent(".git/index").path))?[.modificationDate] as? Date
-        else { return "" }
-        if fileIndex?.workspace != workspaceURL {
-            // First request in this workspace: it needs an index now.
-            let paths = Self.gitLines(["ls-files", "--cached", "--others", "--exclude-standard"], workspace: workspaceURL)
-            let learned = Self.taskFileTerms(taskNoteURLs())
-            let changes = Self.lastChanges(workspace: workspaceURL)
-            fileIndex = (workspaceURL, stamp, FileIndex(paths: paths, learned: learned, symbols: symbolCache.mapValues(\.names)), changes)
-            scheduleFileIndexRebuild(workspaceURL, stamp: stamp, paths: paths, learned: learned, changes: changes)
-        } else if fileIndex?.stamp != stamp, fileIndexRebuildStamp != stamp {
-            // Git's index moves on nearly every turn: answer from the previous index and
-            // rebuild off the main actor (two git runs, every task note, 20k paths).
-            scheduleFileIndexRebuild(workspaceURL, stamp: stamp, paths: nil, learned: nil, changes: nil)
+              let fileIndex,
+              fileIndex.workspace == workspaceURL.standardizedFileURL else { return "" }
+        if let preparedFileContext,
+           preparedFileContext.workspace == workspaceURL.standardizedFileURL,
+           preparedFileContext.prompt == prompt,
+           preparedFileContext.stamp == fileIndex.stamp {
+            return preparedFileContext.text
         }
-        guard let fileIndex else { return "" }
-        return fileIndex.index.hits(prompt).map { hit in
+        return Self.fileContextText(index: fileIndex.index, prompt: prompt, changes: fileIndex.changes)
+    }
+
+    private nonisolated static func fileContextText(
+        index: FileIndex,
+        prompt: String,
+        changes: [String: String]
+    ) -> String {
+        index.hits(prompt).map { hit in
             var line = "- `\(hit.path)`"
             if !hit.symbols.isEmpty { line += " (\(hit.symbols.joined(separator: ", ")))" }
-            if let change = fileIndex.changes[hit.path] { line += " - last changed \(sanitize(change, limit: 100))" }
+            if let change = changes[hit.path] { line += " - last changed \(SecretRedaction.sanitize(change, limit: 100))" }
             return line
         }.joined(separator: "\n")
     }
 
     /// Replaces `fileIndex` with one built off the main actor, symbols included. Reading
     /// every source file would hold a request up, so the current index answers until then.
+    /// Only what moved is read again: a source file whose date stands keeps its symbols,
+    /// from `symbols.json` after a relaunch, and `git log` runs only when HEAD moved.
     private func scheduleFileIndexRebuild(
-        _ workspaceURL: URL, stamp: Date,
-        paths: [String]?, learned: [String: Set<String>]?, changes: [String: String]?
+        _ workspaceURL: URL, stamp: String,
+        paths: [String]?, learned: [String: Set<String>]?
     ) {
         fileIndexRebuildStamp = stamp
         let known = symbolCache
         let noteURLs = taskNoteURLs()
+        let cacheURL = userMemoryDirectory?.appendingPathComponent("symbols.json")
+        let previousGitStamp = fileIndexGitStamp
+        let previousChanges = fileIndex?.workspace == workspaceURL ? fileIndex?.changes ?? [:] : [:]
         symbolScan?.cancel()
-        symbolScan = Task.detached(priority: .utility) { [weak self] in
-            let paths = paths ?? Self.gitLines(["ls-files", "--cached", "--others", "--exclude-standard"], workspace: workspaceURL)
-            let learned = learned ?? Self.taskFileTerms(noteURLs)
-            let changes = changes ?? Self.lastChanges(workspace: workspaceURL)
-            let scanned = FileIndex.scanSymbols(paths: paths, workspace: workspaceURL, known: known)
-            let index = FileIndex(paths: paths, learned: learned, symbols: scanned.mapValues(\.names))
-            guard !Task.isCancelled else { return }
-            await MainActor.run {
-                guard let self, self.workspaceURL == workspaceURL else { return }
-                self.symbolCache = scanned
-                if self.fileIndexRebuildStamp == stamp { self.fileIndexRebuildStamp = nil }
-                self.fileIndex = (workspaceURL, stamp, index, changes)
+        symbolScan = Task { @MainActor [weak self] in
+            let built = await MemoryWorkQueue.run {
+                let paths = paths ?? WorkspaceTools.scanFilePaths(workspaceURL)
+                let learned = learned ?? Self.taskFileTerms(noteURLs)
+                let gitStamp = Self.gitHistoryStamp(workspaceURL)
+                let changes = gitStamp != nil && gitStamp == previousGitStamp
+                    ? previousChanges : Self.lastChanges(workspace: workspaceURL)
+                let known = known.isEmpty ? FileIndex.loadSymbols(cacheURL) : known
+                let scanned = FileIndex.scanSymbols(paths: paths, workspace: workspaceURL, known: known)
+                if let cacheURL, scanned.count != known.count || scanned.contains(where: { known[$0.key]?.modified != $0.value.modified }) {
+                    FileIndex.saveSymbols(scanned, to: cacheURL)
+                }
+                let index = FileIndex(paths: paths, learned: learned, symbols: scanned.mapValues(\.names))
+                return (scanned, index, changes, gitStamp)
+            }
+            guard !Task.isCancelled, let self, self.workspaceURL == workspaceURL else { return }
+            self.symbolCache = built.0
+            self.fileIndexGitStamp = built.3
+            if self.fileIndexRebuildStamp == stamp { self.fileIndexRebuildStamp = nil }
+            self.fileIndex = (workspaceURL, stamp, built.1, built.2)
+        }
+    }
+
+    /// When HEAD last moved (commit, checkout, reset), from its reflog; nil when that
+    /// cannot be read, and the caller then runs `git log` again.
+    /// ponytail: a repository with reflogs off falls back to the index's date.
+    nonisolated static func gitHistoryStamp(_ workspace: URL) -> String? {
+        var gitDirectory = workspace.appendingPathComponent(".git")
+        // A worktree's `.git` is a file naming its directory.
+        if let text = try? String(contentsOf: gitDirectory, encoding: .utf8), text.hasPrefix("gitdir: ") {
+            let path = text.dropFirst(8).trimmingCharacters(in: .whitespacesAndNewlines)
+            gitDirectory = URL(fileURLWithPath: path, relativeTo: workspace).standardizedFileURL
+        }
+        for name in ["logs/HEAD", "index"] {
+            let values = try? gitDirectory.appendingPathComponent(name).resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+            if let date = values?.contentModificationDate {
+                return "\(name)\t\(date.timeIntervalSince1970)\t\(values?.fileSize ?? -1)"
             }
         }
+        return nil
     }
 
     /// Each file's latest commit, as "date subject", so the agent knows when and why a
@@ -433,6 +520,24 @@ extension WorkspaceMemory {
             }
         }
         return terms
+    }
+
+    nonisolated static func fileIndexCacheStamp(workspaceStamp: String, learned: [String: Set<String>]) -> String {
+        var data = Data()
+        func append(_ value: String) {
+            var byteCount = UInt64(value.utf8.count).bigEndian
+            withUnsafeBytes(of: &byteCount) { data.append(contentsOf: $0) }
+            data.append(contentsOf: value.utf8)
+        }
+        append(workspaceStamp)
+        append(String(learned.count))
+        for path in learned.keys.sorted() {
+            let terms = learned[path, default: []].sorted()
+            append(path)
+            append(String(terms.count))
+            for term in terms { append(term) }
+        }
+        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
     /// The person's preferences for this project. Preferences that hold everywhere
@@ -549,12 +654,19 @@ enum MemoryFileCache {
     }
 }
 
-struct FileIndex {
+struct FileIndex: Sendable {
     typealias Symbols = (modified: Date, names: [String])
+
+    struct Entry: Sendable {
+        let path: String
+        let tokens: Set<String>
+        let symbols: [String]
+        let symbolTokens: Set<String>
+    }
 
     /// ponytail: the first 20,000 files; a larger repository is indexed in part.
     static let limit = 20_000
-    let names: [(path: String, tokens: Set<String>, symbols: [String], symbolTokens: Set<String>)]
+    let names: [Entry]
     let frequency: [String: Int]
     let symbolFrequency: [String: Int]
 
@@ -567,7 +679,13 @@ struct FileIndex {
         names = paths.lazy.filter { !$0.hasPrefix("\"") && $0.count <= 200 }.prefix(Self.limit).map { path in
             let name = URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
             let declared = symbols[path] ?? []
-            return (path, Self.words(name).union(learned[path] ?? []), declared, declared.reduce(into: []) { $0.formUnion(Self.words($1)) })
+            let symbolTokens = declared.reduce(into: Set<String>()) { $0.formUnion(Self.words($1)) }
+            return Entry(
+                path: path,
+                tokens: Self.words(name).union(learned[path] ?? []),
+                symbols: declared,
+                symbolTokens: symbolTokens
+            )
         }
         frequency = names.reduce(into: [:]) { counts, entry in entry.tokens.forEach { counts[$0, default: 0] += 1 } }
         symbolFrequency = names.reduce(into: [:]) { counts, entry in entry.symbolTokens.forEach { counts[$0, default: 0] += 1 } }
@@ -628,6 +746,20 @@ struct FileIndex {
             .map { source.substring(with: $0.range(at: 1)) }
             .filter { seen.insert($0).inserted }
             .prefix(200).map { $0 }
+    }
+
+    private struct SavedSymbols: Codable { var modified: Date; var names: [String] }
+
+    static func loadSymbols(_ url: URL?) -> [String: Symbols] {
+        guard let url, let data = try? Data(contentsOf: url),
+              let saved = try? JSONDecoder().decode([String: SavedSymbols].self, from: data) else { return [:] }
+        return saved.mapValues { ($0.modified, $0.names) }
+    }
+
+    static func saveSymbols(_ symbols: [String: Symbols], to url: URL) {
+        guard let data = try? JSONEncoder().encode(symbols.mapValues { SavedSymbols(modified: $0.modified, names: $0.names) }) else { return }
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? data.write(to: url, options: .atomic)
     }
 
     /// Reads what each source file declares; a file whose date has not moved keeps what

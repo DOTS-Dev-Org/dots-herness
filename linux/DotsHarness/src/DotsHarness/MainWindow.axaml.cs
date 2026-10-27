@@ -336,6 +336,12 @@ public partial class MainWindow : Window
         else RightDock.OpenBrowser(url);
     }
 
+    public void ShowFilePanel(string path, string displayName)
+    {
+        if (!_rightDockVisible) OnPanePicker(this, new RoutedEventArgs());
+        RightDock.OpenFile(path, displayName);
+    }
+
     private void OpenSettings(string tab)
     {
         var model = ((App)Application.Current!).Model;

@@ -97,6 +97,8 @@ public final class RouterController: ObservableObject {
     /// `AgentBridge` reads these to pin the conversation to that account.
     @Published public internal(set) var lastServedAccountID: String?
     @Published public internal(set) var lastServedModelID: String?
+    /// Last account assigned to an unpinned conversation, per provider.
+    var lastRoundRobinAccountIDByProvider: [String: String] = [:]
     @Published public var flow: RouterFlow = .idle
     @Published public var callbackPaste: String = ""
     @Published public var apiKeyName: String = ""

@@ -467,7 +467,10 @@
                                                                    Source="{Binding FilePath, Converter={x:Static views:AttachmentImage.Instance}}"
                                                                    IsVisible="{Binding IsImage}"/>
                                                             <StackPanel Width="170" Margin="6,0,0,0" VerticalAlignment="Center">
-                                                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextPrimary}"/>
+                                                                <Button Tag="{Binding}" Click="OnOpenAttachment" Padding="0" Background="Transparent" BorderThickness="0"
+                                                                        HorizontalAlignment="Left" HorizontalContentAlignment="Left">
+                                                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextPrimary}"/>
+                                                                </Button>
                                                                 <TextBlock Text="{Binding Kind}" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
                                                             </StackPanel>
                                                         </StackPanel>

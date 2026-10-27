@@ -47,6 +47,17 @@ extension AppModel {
         commitNavigationDestination()
     }
 
+    /// Archiving the visible conversation should leave the user in a fresh chat.
+    /// Keep the selection and composer transitions on the model path so draft
+    /// state and navigation history are updated just like the New Conversation action.
+    public func archiveConversation(_ id: String) {
+        let wasSelected = bridge.selectedID == id
+        bridge.setArchived(id, archived: true)
+        guard wasSelected,
+              bridge.conversations.first(where: { $0.id == id })?.archived == true else { return }
+        newConversation()
+    }
+
     /// Prefills the composer without sending. Matches the `plugincreator` slash
     /// command: replaces the draft only when it is effectively empty, otherwise the
     /// user's text is left untouched. Always requests composer focus.
@@ -116,7 +127,7 @@ extension AppModel {
     }
 
     public func removeDraftAttachment(_ attachment: ChatAttachment) {
-        draftAttachments.removeAll { $0 == attachment }
+        draftAttachments.removeAll { $0.id == attachment.id }
     }
 
     public func reportHistoryError(_ message: String) {
@@ -179,14 +190,13 @@ extension AppModel {
         if isApproval { isPlanMode = false }
         let verdict = PlanningIntent.verdict(text)
         let effectivePlanMode = !isApproval && (isPlanMode || verdict == .yes)
-        let needsPlanIntentResolution = !isApproval && !isPlanMode && verdict == .ambiguous
         if effectivePlanMode { isPlanMode = true }
         let accepted = bridge.submitPrompt(
             text: text,
             attachments: attachments,
             mode: mode,
             planMode: effectivePlanMode,
-            needsPlanIntentResolution: needsPlanIntentResolution,
+            needsPlanIntentResolution: false,
             approvedPlanID: isApproval ? selected?.pendingPlanMessageID : nil,
             onPlanModeResolved: { [weak self] in self?.isPlanMode = true }
         )
@@ -217,14 +227,13 @@ extension AppModel {
         if isApproval { isPlanMode = false }
         let verdict = PlanningIntent.verdict(trimmed)
         let effectivePlanMode = !isApproval && (isPlanMode || verdict == .yes)
-        let needsPlanIntentResolution = !isApproval && !isPlanMode && verdict == .ambiguous
         if effectivePlanMode { isPlanMode = true }
         let accepted = bridge.submitPrompt(
             text: trimmed,
             attachments: attachments,
             mode: mode,
             planMode: effectivePlanMode,
-            needsPlanIntentResolution: needsPlanIntentResolution,
+            needsPlanIntentResolution: false,
             approvedPlanID: isApproval ? selected?.pendingPlanMessageID : nil,
             onPlanModeResolved: { [weak self] in self?.isPlanMode = true }
         )
@@ -304,6 +313,25 @@ extension AppModel {
         guard FileManager.default.fileExists(atPath: file.path) else { return false }
         requestedFile = file.standardizedFileURL
         filesPaneRequestID &+= 1
+        return true
+    }
+
+    /// Opens the immutable bytes of a conversation attachment in the Files pane.
+    public func openAttachmentInFilesPane(_ attachment: ChatAttachment) {
+        let file = attachment.providerURL ?? attachment.url
+        guard FileManager.default.fileExists(atPath: file.path) else { return }
+        requestedFile = file.standardizedFileURL
+        filesPaneRequestID &+= 1
+    }
+
+    /// Requests the in-app browser for a user-clicked web link. Other schemes remain
+    /// with the platform handler instead of entering the embedded web view.
+    public func openBrowserLink(_ url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              url.host != nil else { return false }
+        requestedBrowserURL = url
+        browserPaneRequestID &+= 1
         return true
     }
 

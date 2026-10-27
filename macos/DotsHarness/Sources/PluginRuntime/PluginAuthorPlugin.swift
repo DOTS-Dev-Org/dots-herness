@@ -22,7 +22,10 @@ public final class PluginAuthorPlugin: DefaultPlugin {
         guard let catalog = try ctx.require("catalog") as? PluginCatalog else {
             throw PluginError.missingService("catalog")
         }
-        let plugins = catalog.paths.plugins
+        // Source drafts stay outside the runtime catalog. Only signed marketplace
+        // artifacts are eligible for loading or explicit trust acceptance.
+        let drafts = catalog.paths.root.appendingPathComponent("plugin-drafts", isDirectory: true)
+        try FileManager.default.createDirectory(at: drafts, withIntermediateDirectories: true)
 
         ctx.prompt.section(name: "plugin-author", order: 60, text: """
         You can create native Dots Harness plugin drafts. Use plugin.schema for the
@@ -37,7 +40,7 @@ public final class PluginAuthorPlugin: DefaultPlugin {
 
         ctx.tools.register(
             name: "plugin.save",
-            description: "Write a native plugin source draft under the local plugins directory.",
+            description: "Write a native plugin source draft under the non-loadable local plugin-drafts directory.",
             parameters: [
                 ToolParameter(name: "id", type: "string", description: "Reverse-DNS plugin id, e.g. com.you.thing"),
                 ToolParameter(name: "files", type: "string", description: "JSON object of relative path to text content; plugin.yml and plugin.ir.json are required."),
@@ -51,16 +54,19 @@ public final class PluginAuthorPlugin: DefaultPlugin {
                   files["plugin.ir.json"] != nil else {
                 throw PluginError.package("files must include plugin.yml and plugin.ir.json")
             }
-            let folder = plugins.appendingPathComponent(id, isDirectory: true)
+            let folder = drafts.appendingPathComponent(id, isDirectory: true)
+            guard Self.isInside(folder, root: drafts) else { throw PluginError.package("draft path escaped its directory") }
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             for (name, contents) in files {
                 guard Self.isSafeRelative(name) else { throw PluginError.package("unsafe file path \(name)") }
                 let target = folder.appendingPathComponent(name)
+                guard Self.isInside(target, root: folder), !Self.hasSymlink(target, under: folder) else {
+                    throw PluginError.package("draft path is unsafe: \(name)")
+                }
                 try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try contents.write(to: target, atomically: true, encoding: .utf8)
             }
-            catalog.refresh()
-            return "saved native draft \(id) with \(files.count) file(s); build it in Marketplace before enabling it"
+            return "saved native draft \(id) with \(files.count) file(s) under \(folder.path); build and sign it in Marketplace before installing"
         }
 
         ctx.tools.register(
@@ -69,25 +75,32 @@ public final class PluginAuthorPlugin: DefaultPlugin {
             parameters: [ToolParameter(name: "id", type: "string", description: "plugin id")]
         ) { args in
             let id = args["id"] ?? ""
-            catalog.refresh()
-            guard let entry = catalog.entries.first(where: { $0.manifest.id == id }) else {
-                return "error: no plugin named \(id)"
+            guard Self.isSafeID(id) else { return "error: unsafe plugin id" }
+            let folder = drafts.appendingPathComponent(id, isDirectory: true)
+            guard Self.isInside(folder, root: drafts), !Self.hasSymlink(folder, under: drafts),
+                  let manifestData = try? Data(contentsOf: folder.appendingPathComponent("plugin.yml")),
+                  let manifestText = String(data: manifestData, encoding: .utf8),
+                  let manifest = try? MiniYAML.decode(PluginManifest.self, from: manifestText), manifest.id == id else {
+                return "error: no valid native draft named \(id)"
             }
-            if let broken = entry.broken { return "native validation: \(broken)" }
-            guard let folder = entry.url else { return "error: plugin has no source folder" }
-            guard FileManager.default.fileExists(atPath: folder.appendingPathComponent("plugin.ir.json").path) else {
-                return "error: plugin.ir.json is missing"
+            guard manifest.runtime.lowercased() == "native", let library = manifest.library,
+                  Self.isSafeRelative(library),
+                  let irData = try? Data(contentsOf: folder.appendingPathComponent("plugin.ir.json")),
+                  (try? JSONSerialization.jsonObject(with: irData)) != nil else {
+                return "error: draft needs runtime: native, a safe library entry, and valid plugin.ir.json"
             }
-            return "ok — native package is ready for marketplace CI; runtime loading requires a signed library and explicit trust"
+            return "ok — native source draft is structurally valid; build/sign it through Marketplace CI before installation"
         }
 
-        ctx.tools.register(name: "plugin.list", description: "List installed native plugin drafts.", parameters: []) { _ in
-            catalog.refresh()
-            if catalog.entries.isEmpty { return "no plugins installed" }
-            return catalog.entries.map {
-                "\($0.manifest.id) v\($0.manifest.version) [\($0.kind.rawValue)/\($0.trust.rawValue)]"
-                    + ($0.broken.map { " BROKEN: \($0)" } ?? "")
-            }.joined(separator: "\n")
+        ctx.tools.register(name: "plugin.list", description: "List native source drafts; drafts are not installed or loadable.", parameters: []) { _ in
+            let folders = (try? FileManager.default.contentsOfDirectory(at: drafts, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles])) ?? []
+            let rows = folders.sorted { $0.lastPathComponent < $1.lastPathComponent }.compactMap { folder -> String? in
+                guard Self.isInside(folder, root: drafts), !Self.hasSymlink(folder, under: drafts) else { return nil }
+                guard let text = try? String(contentsOf: folder.appendingPathComponent("plugin.yml"), encoding: .utf8),
+                      let manifest = try? MiniYAML.decode(PluginManifest.self, from: text) else { return "\(folder.lastPathComponent) [invalid draft]" }
+                return "\(manifest.id) v\(manifest.version) [source draft; not loadable]"
+            }
+            return rows.isEmpty ? "no plugin drafts found" : rows.joined(separator: "\n")
         }
 
         ctx.tools.register(
@@ -97,8 +110,8 @@ public final class PluginAuthorPlugin: DefaultPlugin {
         ) { args in
             let id = args["id"] ?? ""
             guard Self.isSafeID(id) else { throw PluginError.package("unsafe plugin id \(id)") }
-            let folder = plugins.appendingPathComponent(id, isDirectory: true)
-            guard folder.standardizedFileURL.path.hasPrefix(plugins.standardizedFileURL.path),
+            let folder = drafts.appendingPathComponent(id, isDirectory: true)
+            guard Self.isInside(folder, root: drafts), !Self.hasSymlink(folder, under: drafts),
                   FileManager.default.fileExists(atPath: folder.path) else {
                 throw PluginError.package("no such plugin \(id)")
             }
@@ -113,7 +126,24 @@ public final class PluginAuthorPlugin: DefaultPlugin {
     }
 
     static func isSafeRelative(_ path: String) -> Bool {
-        !path.isEmpty && !path.hasPrefix("/") && !path.contains("..") && !path.contains("\0")
+        !path.isEmpty && !path.hasPrefix("/") && !path.contains("\\") && !path.contains("..") && !path.contains("\0")
+            && path.split(separator: "/", omittingEmptySubsequences: false).allSatisfy { !$0.isEmpty && !$0.hasPrefix(".") }
+    }
+
+    private static func isInside(_ url: URL, root: URL) -> Bool {
+        url.standardizedFileURL.path.hasPrefix(root.standardizedFileURL.path + "/")
+    }
+
+    private static func hasSymlink(_ url: URL, under root: URL) -> Bool {
+        let base = root.standardizedFileURL.path
+        var current = url.standardizedFileURL
+        while current.path != base {
+            guard let values = try? current.resourceValues(forKeys: [.isSymbolicLinkKey]), values.isSymbolicLink != true else { return true }
+            let parent = current.deletingLastPathComponent()
+            guard parent.path != current.path, parent.path == base || parent.path.hasPrefix(base + "/") else { return true }
+            current = parent
+        }
+        return false
     }
 
     static let schema = """
@@ -131,6 +161,7 @@ public final class PluginAuthorPlugin: DefaultPlugin {
     library. plugin.ir.json is the shared IR for prompt sections, typed tools,
     events, settings/state, and supported panel components. Platform-specific
     source stays under its target directory; arbitrary SwiftUI cannot be
-    translated to C# automatically. Release versions and licenses are immutable.
+    translated to C# automatically. Local drafts are stored under Application Support/
+    DotsHarness/plugin-drafts, outside the runtime catalog. Release versions and licenses are immutable.
     """
 }

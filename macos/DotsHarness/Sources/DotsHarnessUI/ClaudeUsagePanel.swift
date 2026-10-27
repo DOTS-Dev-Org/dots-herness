@@ -44,7 +44,7 @@ struct ClaudeUsagePanel: View {
     }
 }
 
-private struct UsageWindowRow: View {
+struct UsageWindowRow: View {
     let window: ClaudeUsageWindow
 
     var body: some View {

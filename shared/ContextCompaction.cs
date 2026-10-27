@@ -135,12 +135,13 @@ public static class ContextCompaction
                 // Already counted through ToolCalls and Content.
                 return 0;
             case "reasoning":
-                // Encrypted reasoning is base64 of roughly 16 bytes per replayed
-                // token, so weigh it at a quarter of the plain-text rate.
+                // Encrypted reasoning replays as about one input token per reasoning
+                // token, ~28 bytes of ciphertext each (measured against provider-counted
+                // input on ChatGPT, 2026-10), so weigh it at a seventh of the plain-text rate.
                 var encrypted = item["encrypted_content"]?.GetValue<string>()?.Length ?? 0;
                 var visible = (JsonObject)item.DeepClone();
                 visible.Remove("encrypted_content");
-                return visible.ToJsonString().Length + encrypted / 4;
+                return visible.ToJsonString().Length + encrypted / 7;
             default:
                 return item.ToJsonString().Length;
         }
@@ -289,10 +290,32 @@ Arşiv kanıtı:
     /// </summary>
     private readonly record struct ReadSpan(string Path, int Offset, int End)
     {
-        public bool Covers(ReadSpan earlier) =>
-            string.Equals(Path, earlier.Path, StringComparison.Ordinal)
-            && Offset <= earlier.Offset
-            && End >= earlier.End;
+    }
+
+    private sealed class ReadSpanCoverageIndex
+    {
+        private readonly int[] _offsets;
+        private readonly int[] _maximumEnds;
+
+        public ReadSpanCoverageIndex(IEnumerable<ReadSpan> spans)
+        {
+            _offsets = spans.Select(span => span.Offset).Distinct().OrderBy(offset => offset).ToArray();
+            _maximumEnds = new int[_offsets.Length + 1];
+            Array.Fill(_maximumEnds, int.MinValue);
+        }
+
+        public bool IsSupersededAndInsert(ReadSpan span)
+        {
+            var coordinate = Array.BinarySearch(_offsets, span.Offset) + 1;
+            var maximumEnd = int.MinValue;
+            for (var index = coordinate; index > 0; index -= index & -index)
+                maximumEnd = Math.Max(maximumEnd, _maximumEnds[index]);
+
+            var superseded = maximumEnd >= span.End;
+            for (var index = coordinate; index < _maximumEnds.Length; index += index & -index)
+                _maximumEnds[index] = Math.Max(_maximumEnds[index], span.End);
+            return superseded;
+        }
     }
 
     public static List<NativeMessage> SupersedeRepeatedReads(IReadOnlyList<NativeMessage> messages)
@@ -330,10 +353,14 @@ Arşiv kanıtı:
         if (validReads.Count < 2) return messages.ToList();
 
         var result = messages.ToList();
-        for (var position = 0; position < validReads.Count; position++)
+        // Process later reads first and query interval coverage in O(log n) per read.
+        var coverageByPath = validReads
+            .GroupBy(read => read.Span.Path, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => new ReadSpanCoverageIndex(group.Select(read => read.Span)), StringComparer.Ordinal);
+        for (var position = validReads.Count - 1; position >= 0; position--)
         {
             var current = validReads[position];
-            var superseded = validReads.Skip(position + 1).Any(later => later.Span.Covers(current.Span));
+            var superseded = coverageByPath[current.Span.Path].IsSupersededAndInsert(current.Span);
             if (!superseded) continue;
             var message = result[current.Index];
             result[current.Index] = message with
@@ -387,24 +414,29 @@ Arşiv kanıtı:
             messages[i] = message with { Content = ClipTool(message.Content) };
             changed = true;
         }
-        while (EstimateTokens(messages) > ceiling)
+        var estimatedTokens = EstimateTokens(messages);
+        var candidates = new PriorityQueue<int, (int NegativeLength, int Index)>();
+        for (var i = 0; i < messages.Count; i++)
         {
-            var index = messages
-                .Select((message, index) => (message, index))
-                .Where(item => item.message.Role.Equals("tool", StringComparison.OrdinalIgnoreCase)
-                    && item.message.Content.Length > 160)
-                .OrderByDescending(item => item.message.Content.Length)
-                .Select(item => item.index)
-                .FirstOrDefault(-1);
-            if (index < 0) break;
+            var message = messages[i];
+            if (message.Role.Equals("tool", StringComparison.OrdinalIgnoreCase) && message.Content.Length > 160)
+                candidates.Enqueue(i, (-message.Content.Length, i));
+        }
+
+        while (estimatedTokens > ceiling && candidates.TryDequeue(out var index, out _))
+        {
             var current = messages[index];
             var shortened = Clip(current.Content, Math.Max(160, current.Content.Length / 2))
                 + "\n[tool output compacted; reread or rerun the tool]";
             // The notice itself costs characters: a short result clipped to the floor
             // and re-marked can grow back, which would never reach the ceiling.
             if (shortened.Length >= current.Content.Length) break;
-            messages[index] = current with { Content = shortened };
+            var replacement = current with { Content = shortened };
+            estimatedTokens += EstimateTokens(replacement) - EstimateTokens(current);
+            messages[index] = replacement;
             changed = true;
+            if (replacement.Content.Length > 160)
+                candidates.Enqueue(index, (-replacement.Content.Length, index));
         }
         return changed;
     }

@@ -112,6 +112,20 @@ public partial class RightDockView : UserControl
         OnOpenBrowser(this, new RoutedEventArgs());
     }
 
+    public void OpenFile(string path, string displayName)
+    {
+        if (!File.Exists(path)) return;
+        FilesTab.IsEnabled = true;
+        SelectTab("files");
+        _ = ShowAttachmentPreviewAsync(path, displayName);
+    }
+
+    private async Task ShowAttachmentPreviewAsync(string path, string displayName)
+    {
+        var content = await ReadTextPreviewAsync(path);
+        FilePreview.Text = $"{displayName}{Environment.NewLine}{Environment.NewLine}{content}";
+    }
+
     private async void OnTabChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!ReferenceEquals(sender, Tabs) || !e.AddedItems.OfType<TabItem>().Any()) return;

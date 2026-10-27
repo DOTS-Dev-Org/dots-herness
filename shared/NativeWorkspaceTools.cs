@@ -291,42 +291,10 @@ public static class NativeWorkspaceTools
     private const int GrepMaxLineCharacters = 240;
 
     /// <summary>
-    /// The files a search under `root` looks at. Inside a repository that is git's own list -
-    /// tracked plus untracked, minus whatever .gitignore excludes - so a project's ignored
-    /// output is never read; elsewhere a walk. Both skip IgnoredScanDirectories and symlinks.
+    /// The files an automatic scan under `root` may read. Graphs, maps, memory study,
+    /// search and the file index all use this same project policy.
     /// </summary>
-    internal static IEnumerable<string> ScanFiles(string root)
-    {
-        // ponytail: git runs once per call; cache by .git/index stamp if large repositories feel it.
-        var listed = WorkspaceFileIndex.Git(root, "-c", "core.quotePath=false", "ls-files", "--cached", "--others", "--exclude-standard");
-        if (listed.Count > 0)
-        {
-            foreach (var relative in listed)
-            {
-                // A path git had to quote is skipped, as FileIndex does.
-                if (relative.StartsWith('"') || relative.Split('/').Any(IgnoredScanDirectories.Contains)) continue;
-                var entry = Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));
-                if (File.Exists(entry) && !IsSymlink(entry)) yield return entry;
-            }
-            yield break;
-        }
-        var pending = new Stack<string>();
-        pending.Push(root);
-        while (pending.Count > 0)
-        {
-            IEnumerable<string> entries;
-            try { entries = Directory.EnumerateFileSystemEntries(pending.Pop()); } catch { continue; }
-            foreach (var entry in entries)
-            {
-                if (IsSymlink(entry)) continue;
-                if (Directory.Exists(entry))
-                {
-                    if (!IgnoredScanDirectories.Contains(Path.GetFileName(entry))) pending.Push(entry);
-                }
-                else if (File.Exists(entry)) yield return entry;
-            }
-        }
-    }
+    internal static IEnumerable<string> ScanFiles(string root) => WorkspaceScanPolicy.ScanFiles(root);
 
     /// Line-level regex search, bounded on three axes so one call can never flood
     /// the context: files scanned, matches returned, and characters per line.

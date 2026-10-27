@@ -23,8 +23,13 @@ extension NativeAgentHost {
     public func accountSwitched(in conversationID: String?) -> Bool {
         conversationID.map(accountSwitchedConversations.contains) ?? false
     }
-    public func liveReply(for conversationID: String) -> String? { liveReplies[conversationID] }
+    public func liveReplyParagraphs(for conversationID: String) -> [LiveReplyParagraph]? {
+        liveReplyParagraphs[conversationID]
+    }
     public func liveThinking(for conversationID: String) -> String? { liveThinking[conversationID] }
+    public func changedFilesRevision(for conversationID: String) -> Int {
+        changedFilesRevisions[conversationID] ?? 0
+    }
     /// Shells and background tasks the agent started in this conversation.
     public func backgroundTasks(in conversationID: String?) -> [TerminalSession] {
         agentTerminals[conversationID ?? ""] ?? []

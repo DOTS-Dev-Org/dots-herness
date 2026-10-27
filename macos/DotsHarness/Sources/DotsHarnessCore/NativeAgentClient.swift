@@ -71,6 +71,10 @@ public struct NativeAgentClient: Sendable {
         retryCount: Int,
         onDelta: StreamDeltaHandler? = nil
     ) async throws -> AgentResponse {
+        if configuration.api == RouterAPIKind.claudeCLI.rawValue {
+            return try await ClaudeCLIClient.complete(messages: messages, configuration: configuration,
+                                                      workspace: AgentRunScope.workspace, onDelta: onDelta)
+        }
         if configuration.api == RouterAPIKind.anthropic.rawValue,
            configuration.anthropicCacheTTL == .oneHour,
            !AgentPromptCacheComparisons.shared.supportsLongTTL(configuration) {

@@ -263,7 +263,7 @@ extension RouterController {
     /// Claude OAuth does not expose a supported model-catalog endpoint. All
     /// other providers try their account catalog and keep the registry as fallback.
     func registryOnlyModels(_ account: StoredProviderAccount) -> Bool {
-        account.provider == "claude" && account.authType == "oauth"
+        (account.provider == "claude" && account.authType == "oauth") || account.provider == "claude-cli"
     }
 
     /// Where to list this account's models. A provider may host the listing off

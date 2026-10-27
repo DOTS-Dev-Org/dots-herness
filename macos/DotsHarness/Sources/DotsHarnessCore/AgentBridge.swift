@@ -145,6 +145,8 @@ enum AgentRunScope {
     @TaskLocal static var conversationID: String?
     /// Per-prompt subagent permission, captured when the prompt is submitted.
     @TaskLocal static var subagentsOverride: Bool?
+    /// The run's workspace, for transports that execute there (the Claude CLI).
+    @TaskLocal static var workspace: URL?
 }
 
 /// Per-conversation run state: several conversations can run at once.
@@ -188,10 +190,14 @@ final class AgentRunState {
     var activeStopEventID: String? = nil
     var activeUsedSkills: [String] = []
     var activeUsedTools: [String] = []
-    /// Newly processed input (excluding cache reads) plus output/reasoning for the live status line.
+    /// Cumulative newly processed input (excluding cache reads) plus output/reasoning for this run.
     var activeRunTokens: Int = 0
-    /// True if any contribution to the live count used local estimates or lacked cache accounting.
+    /// True if any contribution to the cumulative run count used local estimates or lacked cache accounting.
     var activeRunTokenCountIncludesEstimate: Bool = false
+    /// Uncached input reported for the latest main-model request in this run.
+    var activeRunUncachedInputTokens: Int = 0
+    /// True when cache accounting was unavailable for the latest main-model request.
+    var activeRunUncachedInputIsApproximate: Bool = false
     var activeRunChangedFiles: [ChangedFile] = []
     @ObservationIgnored var activeRunChangedFileSet: Set<ChangedFile> = []
     var activeRunLastTurnID: String = ""
@@ -833,6 +839,12 @@ public final class NativeAgentHost {
     public var activeRunTokenCountIncludesEstimate: Bool {
         activeConversationID == selectedID && currentRun.activeRunTokenCountIncludesEstimate
     }
+    public var activeRunUncachedInputTokenCount: Int {
+        activeConversationID == selectedID ? currentRun.activeRunUncachedInputTokens : 0
+    }
+    public var activeRunUncachedInputIsApproximate: Bool {
+        activeConversationID == selectedID && currentRun.activeRunUncachedInputIsApproximate
+    }
 
     public init(
         paths: SupportPaths,
@@ -962,6 +974,14 @@ public final class NativeAgentHost {
         set {
             currentRun.activeRunTokenCountIncludesEstimate = newValue
         }
+    }
+    var activeRunUncachedInputTokens: Int {
+        get { currentRun.activeRunUncachedInputTokens }
+        set { currentRun.activeRunUncachedInputTokens = newValue }
+    }
+    var activeRunUncachedInputApproximate: Bool {
+        get { currentRun.activeRunUncachedInputIsApproximate }
+        set { currentRun.activeRunUncachedInputIsApproximate = newValue }
     }
     var activeUsedTools: [String] {
         get { currentRun.activeUsedTools }

@@ -1,0 +1,29 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-13T22:14:42Z",
+  "eventId" : "4160D681-0CBD-4EE8-BB78-5741AB0C03E0",
+  "lamport" : 4,
+  "parents" : [
+    "04238BFC-6223-44DC-918F-B9815A17C075"
+  ],
+  "payload" : {
+    "key" : "goal",
+    "value" : "Kullanıcının belirttiği bu çalışma için amaç, tüm depoda genel kod sağlığı analizi yapmak; güvenilirlik, güvenlik, bakım ve test risklerini değerlendirmek."
+  },
+  "projectId" : "83890830-337C-4DD1-B358-03FFDCEDD318",
+  "schemaVersion" : 1,
+  "scope" : "project",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "GVAqR9IaH\/eCnzplv9yrMyHxSuim3ttc7oSrbb4AayQP9lBaXxm8qDXMvZAMSLhAm2PhaN9JnLmHNj5zgqedTg=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "project.default.set"
+}

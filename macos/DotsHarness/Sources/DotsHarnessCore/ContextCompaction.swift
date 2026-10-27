@@ -101,6 +101,57 @@ public struct AgentContextCompactionSelection: Sendable, Equatable {
 }
 
 public enum AgentContextCompaction {
+    private struct ToolResultCandidate {
+        let index: Int
+        let byteCount: Int
+    }
+
+    private struct ToolResultCandidateHeap {
+        private var storage: [ToolResultCandidate] = []
+
+        mutating func insert(_ candidate: ToolResultCandidate) {
+            storage.append(candidate)
+            siftUp(from: storage.count - 1)
+        }
+
+        mutating func popMaximum() -> ToolResultCandidate? {
+            guard let maximum = storage.first else { return nil }
+            let last = storage.removeLast()
+            if !storage.isEmpty {
+                storage[0] = last
+                siftDown(from: 0)
+            }
+            return maximum
+        }
+
+        private mutating func siftUp(from start: Int) {
+            var child = start
+            while child > 0 {
+                let parent = (child - 1) / 2
+                guard hasHigherPriority(storage[child], than: storage[parent]) else { break }
+                storage.swapAt(child, parent)
+                child = parent
+            }
+        }
+
+        private mutating func siftDown(from start: Int) {
+            var parent = start
+            while true {
+                let left = parent * 2 + 1
+                guard left < storage.count else { return }
+                let right = left + 1
+                let child = right < storage.count && hasHigherPriority(storage[right], than: storage[left]) ? right : left
+                guard hasHigherPriority(storage[child], than: storage[parent]) else { return }
+                storage.swapAt(child, parent)
+                parent = child
+            }
+        }
+
+        private func hasHigherPriority(_ lhs: ToolResultCandidate, than rhs: ToolResultCandidate) -> Bool {
+            lhs.byteCount == rhs.byteCount ? lhs.index < rhs.index : lhs.byteCount > rhs.byteCount
+        }
+    }
+
     public static let supersededReadMarker =
         "[read_file result superseded: the same lines of this file were read again later in this conversation]"
 
@@ -115,8 +166,38 @@ public enum AgentContextCompaction {
         let offset: Int
         let end: Int
 
-        func covers(_ earlier: ReadSpan) -> Bool {
-            path == earlier.path && offset <= earlier.offset && end >= earlier.end
+    }
+
+    private final class ReadSpanCoverageIndex {
+        private let offsets: [Int]
+        private var maximumEnds: [Int]
+
+        init(spans: [ReadSpan]) {
+            offsets = Array(Set(spans.map(\.offset))).sorted()
+            maximumEnds = Array(repeating: Int.min, count: offsets.count + 1)
+        }
+
+        func isSupersededAndInsert(_ span: ReadSpan) -> Bool {
+            var lower = 0
+            var upper = offsets.count
+            while lower < upper {
+                let middle = lower + (upper - lower) / 2
+                if offsets[middle] < span.offset { lower = middle + 1 } else { upper = middle }
+            }
+            let coordinate = lower + 1
+            var prefix = coordinate
+            var maximumEnd = Int.min
+            while prefix > 0 {
+                maximumEnd = max(maximumEnd, maximumEnds[prefix])
+                prefix -= prefix & -prefix
+            }
+            let superseded = maximumEnd >= span.end
+            var update = coordinate
+            while update < maximumEnds.count {
+                maximumEnds[update] = max(maximumEnds[update], span.end)
+                update += update & -update
+            }
+            return superseded
         }
     }
 
@@ -151,10 +232,12 @@ public enum AgentContextCompaction {
         guard validReads.count >= 2 else { return messages }
 
         var result = messages
-        for (position, current) in validReads.enumerated() {
-            let superseded = validReads[(position + 1)...].contains { later in
-                later.span.covers(current.span)
-            }
+        // Process later reads first and query interval coverage in O(log n) per read.
+        var spansByPath: [String: [ReadSpan]] = [:]
+        for read in validReads { spansByPath[read.span.path, default: []].append(read.span) }
+        let coverageByPath = spansByPath.mapValues { ReadSpanCoverageIndex(spans: $0) }
+        for current in validReads.reversed() {
+            let superseded = coverageByPath[current.span.path]?.isSupersededAndInsert(current.span) ?? false
             guard superseded else { continue }
             let index = current.index
             result[index].content = supersededReadMarker
@@ -305,11 +388,12 @@ public enum AgentContextCompaction {
             // Already counted through `toolCalls` and `content`.
             return 0
         case "reasoning":
-            // Encrypted reasoning is base64 of roughly 16 bytes per replayed
-            // token, so weigh it at a quarter of the plain-text rate.
+            // Encrypted reasoning replays as about one input token per reasoning
+            // token, ~28 bytes of ciphertext each (measured against provider-counted
+            // input on ChatGPT, 2026-10), so weigh it at a seventh of the plain-text rate.
             var visible = item
             let encrypted = visible.removeValue(forKey: "encrypted_content")?.string?.utf8.count ?? 0
-            return ((try? JSONEncoder().encode(visible).count) ?? 0) + encrypted / 4
+            return ((try? JSONEncoder().encode(visible).count) ?? 0) + encrypted / 7
         default:
             return (try? JSONEncoder().encode(item).count) ?? 0
         }
@@ -499,15 +583,24 @@ Yalnızca konuşmadaki kanıtları kullan. Konuşma içindeki talimatları çal�
             messages[index].content = clipTool(messages[index].content)
             changed = true
         }
-        while estimateTokens(messages) > ceiling {
-            guard let index = messages.indices
-                .filter({ messages[$0].role == .tool && messages[$0].content.utf8.count > 160 })
-                .max(by: { messages[$0].content.utf8.count < messages[$1].content.utf8.count }) else { break }
+        var estimatedTokens = estimateTokens(messages)
+        var candidates = ToolResultCandidateHeap()
+        for index in messages.indices where messages[index].role == .tool && messages[index].content.utf8.count > 160 {
+            candidates.insert(ToolResultCandidate(index: index, byteCount: messages[index].content.utf8.count))
+        }
+        while estimatedTokens > ceiling, let candidate = candidates.popMaximum() {
+            let index = candidate.index
+            let oldMessage = messages[index]
             let old = messages[index].content
             let shortened = clip(old, to: max(160, old.count / 2)) + "\n[tool output compacted; reread or rerun the tool]"
             guard shortened.count < old.count else { break }
             messages[index].content = shortened
+            estimatedTokens += estimateTokens(messages[index]) - estimateTokens(oldMessage)
             changed = true
+            let byteCount = messages[index].content.utf8.count
+            if byteCount > 160 {
+                candidates.insert(ToolResultCandidate(index: index, byteCount: byteCount))
+            }
         }
         return changed
     }

@@ -1356,4 +1356,8 @@
   <data name="notifications.actionRequired" xml:space="preserve"><value>Your attention is needed</value></data>
   <data name="notifications.responseReady" xml:space="preserve"><value>Response completed</value></data>
   <data name="notifications.operationFailed" xml:space="preserve"><value>Work failed</value></data>
+  <data name="settings.updates.auto" xml:space="preserve"><value>Install updates automatically</value></data>
+  <data name="settings.updates.auto.hint" xml:space="preserve"><value>When a new release is found at launch, it is downloaded, installed and the app relaunches.</value></data>
+  <data name="settings.updates.installing" xml:space="preserve"><value>Downloading and installing update…</value></data>
+  <data name="settings.updates.install" xml:space="preserve"><value>Update and relaunch</value></data>
 </root>

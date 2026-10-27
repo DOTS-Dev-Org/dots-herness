@@ -21,6 +21,7 @@ data class StoredMobileConversation(
     val status: String,
     val updatedAt: Long,
     val title: String,
+    val archived: Boolean,
 )
 
 data class StoredMobileMessage(
@@ -421,20 +422,86 @@ class MobileStateStore(context: Context) {
      * read separately with [messages], so a listing stays cheap.
      */
     fun otherConversations(excluding: String?, projectId: String = "local-default", limit: Int = 20): List<StoredMobileConversation> =
-        helper.readableDatabase.rawQuery(
+        conversations(excluding, projectId, limit, archived = false)
+
+    fun archivedConversations(projectId: String? = null, limit: Int = 20): List<StoredMobileConversation> =
+        conversations(null, projectId, limit, archived = true)
+
+    fun setConversationArchived(conversationId: String, archived: Boolean): Boolean {
+        val values = ContentValues().apply { put("archived", if (archived) 1 else 0) }
+        return runCatching {
+            helper.writableDatabase.update("conversations", values, "id = ?", arrayOf(conversationId)) > 0
+        }.getOrDefault(false)
+    }
+
+    private fun conversations(
+        excluding: String?,
+        projectId: String?,
+        limit: Int,
+        archived: Boolean,
+    ): List<StoredMobileConversation> {
+        val projectFilter = if (projectId == null) "" else "c.project_id = ? AND "
+        val arguments = buildList {
+            if (projectId != null) add(projectId)
+            add(if (archived) "1" else "0")
+            add(limit.coerceIn(1, 100).toString())
+        }.toTypedArray()
+        return helper.readableDatabase.rawQuery(
             """SELECT c.id, c.project_id, c.status, c.updated_at,
-                COALESCE((SELECT m.content FROM messages m WHERE m.conversation_id = c.id AND m.role = 'user' ORDER BY m.rowid ASC LIMIT 1), '')
-                FROM conversations c WHERE c.project_id = ? ORDER BY c.updated_at DESC LIMIT ?""",
-            arrayOf(projectId, limit.coerceIn(1, 100).toString()),
+                COALESCE((SELECT m.content FROM messages m WHERE m.conversation_id = c.id AND m.role = 'user' ORDER BY m.rowid ASC LIMIT 1), ''),
+                c.archived FROM conversations c WHERE $projectFilter c.archived = ? ORDER BY c.updated_at DESC LIMIT ?""",
+            arguments,
         ).use { cursor ->
             buildList {
                 while (cursor.moveToNext()) {
                     val id = cursor.getString(0)
                     if (id == excluding) continue
-                    add(StoredMobileConversation(id, cursor.getString(1), cursor.getString(2), cursor.getLong(3), cursor.getString(4)))
+                    add(StoredMobileConversation(
+                        id,
+                        cursor.getString(1),
+                        cursor.getString(2),
+                        cursor.getLong(3),
+                        cursor.getString(4),
+                        cursor.getInt(5) != 0,
+                    ))
                 }
             }
         }
+    }
+
+    /** Conversations outside the currently connected projects, including the no-project workspace. */
+    fun unassignedConversations(
+        excluding: String? = null,
+        knownProjectIds: Collection<String>,
+        limit: Int = 30,
+    ): List<StoredMobileConversation> {
+        val knownIds = knownProjectIds.filter { it.isNotBlank() }.distinct().sorted()
+        val projectFilter = if (knownIds.isEmpty()) "WHERE c.archived = 0" else
+            "WHERE c.archived = 0 AND c.project_id NOT IN (${knownIds.joinToString(",") { "?" }})"
+        val arguments = (knownIds + limit.coerceIn(1, 100).toString()).toTypedArray()
+        return helper.readableDatabase.rawQuery(
+            """SELECT c.id, c.project_id, c.status, c.updated_at,
+                COALESCE((SELECT m.content FROM messages m WHERE m.conversation_id = c.id AND m.role = 'user' ORDER BY m.rowid ASC LIMIT 1), ''),
+                c.archived
+                FROM conversations c $projectFilter ORDER BY c.updated_at DESC LIMIT ?""",
+            arguments,
+        ).use { cursor ->
+            buildList {
+                while (cursor.moveToNext()) {
+                    val id = cursor.getString(0)
+                    if (id == excluding) continue
+                    add(StoredMobileConversation(
+                        id,
+                        cursor.getString(1),
+                        cursor.getString(2),
+                        cursor.getLong(3),
+                        cursor.getString(4),
+                        cursor.getInt(5) != 0,
+                    ))
+                }
+            }
+        }
+    }
 
     fun conversationStatus(conversationId: String): String? = helper.readableDatabase.query(
         "conversations", arrayOf("status"), "id = ?", arrayOf(conversationId), null, null, null, "1",
@@ -473,7 +540,7 @@ class MobileStateStore(context: Context) {
             database.execSQL("CREATE TABLE IF NOT EXISTS provider_accounts(id TEXT PRIMARY KEY, provider TEXT NOT NULL, model TEXT, credential_ref TEXT, created_at INTEGER NOT NULL)")
             database.execSQL("CREATE TABLE IF NOT EXISTS oauth_accounts(id TEXT PRIMARY KEY, provider TEXT NOT NULL, account_ref TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
             database.execSQL("CREATE TABLE IF NOT EXISTS repositories(id TEXT PRIMARY KEY, provider TEXT, owner TEXT, name TEXT, branch TEXT, local_path TEXT, base_commit TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
-            database.execSQL("CREATE TABLE IF NOT EXISTS conversations(id TEXT PRIMARY KEY, project_id TEXT NOT NULL DEFAULT 'local-default', status TEXT NOT NULL, mode TEXT NOT NULL, plan_mode INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
+            database.execSQL("CREATE TABLE IF NOT EXISTS conversations(id TEXT PRIMARY KEY, project_id TEXT NOT NULL DEFAULT 'local-default', status TEXT NOT NULL, mode TEXT NOT NULL, plan_mode INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, archived INTEGER NOT NULL DEFAULT 0)")
             database.execSQL("CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, tool_name TEXT, created_at INTEGER NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
             database.execSQL("CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id)")
             database.execSQL("CREATE TABLE IF NOT EXISTS model_context(conversation_id TEXT PRIMARY KEY, project_id TEXT NOT NULL DEFAULT 'local-default', content_json TEXT NOT NULL, updated_at INTEGER NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
@@ -504,9 +571,12 @@ class MobileStateStore(context: Context) {
                 database.execSQL("CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id)")
             }
             if (oldVersion < 6) createLookupIndexes(database)
+            if (oldVersion < 7) runCatching {
+                database.execSQL("ALTER TABLE conversations ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
+            }
         }
 
-        companion object { const val VERSION = 6 }
+        companion object { const val VERSION = 7 }
     }
 }
 

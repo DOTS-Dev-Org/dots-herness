@@ -4,6 +4,7 @@
 import AppKit
 import Combine
 import Foundation
+import Security
 
 public struct UpdateInfo: Codable, Sendable, Equatable {
     public let platform: String
@@ -61,6 +62,7 @@ public enum UpdateState: Equatable, Sendable {
     case updateAvailable(UpdateInfo)
     case upToDate(checkedAt: Date)
     case mandatoryUpdate(UpdateInfo)
+    case installing(UpdateInfo)
     case failed(message: String)
 
     public var isChecking: Bool {
@@ -78,10 +80,14 @@ public enum UpdateState: Equatable, Sendable {
 
 @MainActor
 public final class UpdateChecker: ObservableObject {
-    public static let defaultEndpoint = URL(string: "https://dots.net.tr/harness/check-update")!
+    // dots.net.tr is served by the cPanel host, which answers /harness/* with 403;
+    // the Worker that owns the route lives on workers.dev like the other APIs.
+    public static let defaultEndpoint = URL(string: "https://dotsherness-unified-backend.dotsherness-unified-backend.workers.dev/harness/check-update")!
 
     @Published public private(set) var state: UpdateState = .idle
     @Published public private(set) var lastCheckedAt: Date?
+    /// Set once the new bundle is staged, so quitting skips the exit prompt.
+    public private(set) var isRelaunching = false
     public let currentVersion: String
     public let currentBuild: String
 
@@ -180,6 +186,97 @@ public final class UpdateChecker: ObservableObject {
         NSWorkspace.shared.open(url)
     }
 
+    /// Downloads the release DMG, swaps it in for the running bundle once the
+    /// app quits, and relaunches. Falls back to the download page when the
+    /// app is not a writable `.app` bundle (e.g. `swift run`).
+    public func installUpdate() async {
+        let info: UpdateInfo
+        switch state {
+        case .updateAvailable(let i), .mandatoryUpdate(let i): info = i
+        default: return
+        }
+        let appURL = Bundle.main.bundleURL
+        guard appURL.pathExtension == "app", Self.runningAppTeamID() != nil,
+              FileManager.default.isWritableFile(atPath: appURL.deletingLastPathComponent().path),
+              let dmgURL = URL(string: info.downloadURL), Self.isAllowedDownloadURL(dmgURL),
+              dmgURL.pathExtension.lowercased() == "dmg" else {
+            openDownloadPage()
+            return
+        }
+
+        state = .installing(info)
+        do {
+            let (tmp, response) = try await session.download(from: dmgURL)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                throw UpdateInstallError.download
+            }
+            let mount = FileManager.default.temporaryDirectory.appendingPathComponent("DotsHarnessUpdate-\(UUID().uuidString)")
+            try await Self.run("/usr/bin/hdiutil", ["attach", tmp.path, "-nobrowse", "-readonly", "-noautoopen", "-mountpoint", mount.path])
+            guard let newApp = try FileManager.default.contentsOfDirectory(at: mount, includingPropertiesForKeys: nil)
+                    .first(where: { $0.pathExtension == "app" }),
+                  Self.signatureMatchesRunningApp(newApp) else {
+                try? await Self.run("/usr/bin/hdiutil", ["detach", mount.path, "-quiet"])
+                throw UpdateInstallError.signature
+            }
+
+            // Waits for this process to exit, swaps the bundle (restoring the old
+            // one if the copy fails), unmounts and relaunches. Paths go in as
+            // positional arguments so nothing is interpolated into the script.
+            let script = """
+            while kill -0 "$1" 2>/dev/null; do sleep 0.2; done
+            rm -rf "$3.old"
+            if mv "$3" "$3.old" && /usr/bin/ditto "$2" "$3"; then rm -rf "$3.old"; else rm -rf "$3"; mv "$3.old" "$3"; fi
+            /usr/bin/hdiutil detach "$4" -quiet
+            /usr/bin/open "$3"
+            """
+            let swap = Process()
+            swap.executableURL = URL(fileURLWithPath: "/bin/sh")
+            swap.arguments = ["-c", script, "sh", String(ProcessInfo.processInfo.processIdentifier), newApp.path, appURL.path, mount.path]
+            try swap.run()
+            isRelaunching = true
+            NSApplication.shared.terminate(nil)
+        } catch {
+            state = .failed(message: AppCopy.text("updates.error.install"))
+        }
+    }
+
+    /// The new bundle must carry a valid signature with the running app's
+    /// bundle id and team id. An unsigned or ad-hoc running app has no team
+    /// to pin, so it never self-installs.
+    nonisolated static func signatureMatchesRunningApp(_ candidate: URL) -> Bool {
+        func signing(_ url: URL) -> [String: Any]? {
+            var code: SecStaticCode?
+            guard SecStaticCodeCreateWithPath(url as CFURL, [], &code) == errSecSuccess, let code,
+                  SecStaticCodeCheckValidity(code, SecCSFlags(rawValue: kSecCSCheckAllArchitectures | kSecCSStrictValidate), nil) == errSecSuccess else { return nil }
+            var info: CFDictionary?
+            guard SecCodeCopySigningInformation(code, SecCSFlags(rawValue: kSecCSSigningInformation), &info) == errSecSuccess else { return nil }
+            return info as? [String: Any]
+        }
+        guard let currentTeam = signing(Bundle.main.bundleURL)?[kSecCodeInfoTeamIdentifier as String] as? String,
+              let new = signing(candidate),
+              new[kSecCodeInfoIdentifier as String] as? String == Bundle.main.bundleIdentifier else { return false }
+        return new[kSecCodeInfoTeamIdentifier as String] as? String == currentTeam
+    }
+
+    nonisolated static func runningAppTeamID() -> String? {
+        var code: SecStaticCode?
+        var info: CFDictionary?
+        guard SecStaticCodeCreateWithPath(Bundle.main.bundleURL as CFURL, [], &code) == errSecSuccess, let code,
+              SecCodeCopySigningInformation(code, SecCSFlags(rawValue: kSecCSSigningInformation), &info) == errSecSuccess
+        else { return nil }
+        return (info as? [String: Any])?[kSecCodeInfoTeamIdentifier as String] as? String
+    }
+
+    private static func run(_ tool: String, _ args: [String]) async throws {
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: tool)
+            p.arguments = args
+            p.terminationHandler = { $0.terminationStatus == 0 ? cont.resume() : cont.resume(throwing: UpdateInstallError.tool) }
+            do { try p.run() } catch { cont.resume(throwing: error) }
+        }
+    }
+
     /// Hosts that may serve an update, and nothing else.
     nonisolated static let allowedDownloadHosts = ["dots.net.tr", "github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com"]
 
@@ -190,3 +287,5 @@ public final class UpdateChecker: ObservableObject {
         return allowedDownloadHosts.contains { host == $0 || host.hasSuffix("." + $0) }
     }
 }
+
+private enum UpdateInstallError: Error { case download, signature, tool }

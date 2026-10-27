@@ -89,7 +89,7 @@ public partial class SidebarView : UserControl
         ConversationList.ItemsSource = conversations;
         ConversationList.SelectedItem = Model.Selected;
 
-        var recent = Model.Bridge.RecentConversations(Model.Projects)
+        var recent = Model.Bridge.RecentConversations(Model.ConnectedProjectPaths)
             .Where(item => !item.Archived)
             .Where(item => MatchesConversation(item, query))
             .OrderByDescending(RecentStamp)
@@ -250,8 +250,10 @@ public partial class SidebarView : UserControl
 
     private void OnArchiveConversation(object sender, RoutedEventArgs e)
     {
-        if (sender is Button { Tag: Conversation conversation })
-            Model?.Bridge.SetArchived(conversation.Id, true);
+        if (sender is Button { Tag: Conversation conversation } && Model is { } model
+            && model.Bridge.SetArchived(conversation.Id, true)
+            && model.Bridge.SelectedId == conversation.Id)
+            model.NewConversation();
         e.Handled = true;
     }
 

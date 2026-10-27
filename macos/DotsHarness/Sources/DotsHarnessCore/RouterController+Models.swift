@@ -320,6 +320,7 @@ extension RouterController {
         for account in activeAccounts {
             let owner = RouterCatalog.label(for: account.provider)
             let specModels = RouterCatalog.spec(for: account.provider)?.models ?? []
+            let specsByID = Dictionary(specModels.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
             // Prefer model-specific effort levels from live catalogs when present;
             // the registry and id-based inference keep older providers covered.
             func model(
@@ -330,7 +331,7 @@ extension RouterController {
                 fast: Bool? = nil,
                 tools: Bool? = nil
             ) -> RouterModel {
-                let spec = specModels.first { $0.id == id }
+                let spec = specsByID[id]
                 let efforts: [String] = {
                     if let discoveredEfforts, !discoveredEfforts.isEmpty { return discoveredEfforts }
                     if let explicit = spec?.efforts, !explicit.isEmpty { return explicit }
@@ -426,9 +427,8 @@ extension RouterController {
             }
         }
         modelListIssues = issues
-        models = next.reduce(into: []) { result, model in
-            if !result.contains(where: { $0.id == model.id && $0.provider == model.provider }) { result.append(model) }
-        }
+        var seenModels = Set<String>()
+        models = next.filter { seenModels.insert($0.provider + "\0" + $0.id).inserted }
         if selectedModelID.isEmpty {
             select(modelID: models.first?.id ?? "")
         }
@@ -444,6 +444,7 @@ extension RouterController {
     /// disconnected accounts and registry entries not returned by a live API.
     public var modelContextSettings: [RouterModel] {
         var result = models
+        var seen = Set(models.map { $0.provider + "\0" + $0.id })
         for account in store.state.accounts {
             let specs = RouterCatalog.spec(for: account.provider)?.models ?? []
             var candidates = specs
@@ -460,7 +461,7 @@ extension RouterController {
                     supportsLegacyThinkingBudget: false
                 ))
             }
-            for spec in candidates where !result.contains(where: { $0.provider == account.provider && $0.id == spec.id }) {
+            for spec in candidates where seen.insert(account.provider + "\0" + spec.id).inserted {
                 result.append(RouterModel(
                     id: spec.id,
                     owner: RouterCatalog.label(for: account.provider),

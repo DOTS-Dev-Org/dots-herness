@@ -65,6 +65,8 @@ public struct ProviderSpec: Codable, Sendable, Identifiable, Equatable {
         /// Google Cloud Code Assist: a Gemini payload wrapped in
         /// `{project, model, request}` and posted to a `:method` style URL.
         case geminiCLI = "gemini-cli"
+        /// The locally installed `claude` binary, run as a complete agent.
+        case claudeCLI = "claude-cli"
     }
 
     public enum Encoding: String, Codable, Sendable {

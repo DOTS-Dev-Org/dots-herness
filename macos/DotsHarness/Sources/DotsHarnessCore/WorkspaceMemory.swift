@@ -144,8 +144,11 @@ public final class WorkspaceMemory {
     /// Turns already known to have a complete snapshot. The chat asks for every message
     /// on every redraw (each check reads and decodes a manifest from disk), and a
     /// complete snapshot cannot turn incomplete again except through the calls below,
-    /// which clear this. Only positive answers are kept: an unfinished turn may complete.
+    /// which clear this.
     var completeSnapshotTurns = Set<String>()
+    /// Turns known to lack one. A turn only completes when it finishes, so finishing a
+    /// turn clears this; without it every unfinished turn hit the disk on each redraw.
+    var incompleteSnapshotTurns = Set<String>()
     var workspaceURL: URL?
     var identity: StoredIdentity?
     var manifest: [String: Any]?
@@ -158,15 +161,25 @@ public final class WorkspaceMemory {
     var mapText = ""
     var mapRefreshInFlight = Set<String>()
     /// The repository's file names, kept until git's index moves; see `relevantFiles`.
-    var fileIndex: (workspace: URL, stamp: Date, index: FileIndex, changes: [String: String])?
+    var fileIndex: (workspace: URL, stamp: String, index: FileIndex, changes: [String: String])?
+    /// Request-specific file hits computed with the index on a worker, then consumed
+    /// while the prompt sections are assembled on the main actor.
+    var preparedFileContext: (workspace: URL, prompt: String, stamp: String, text: String)?
     /// What each source file declares, by path, kept while the file's date stands; read
     /// off the main actor by `symbolScan`, so the first request may go without it.
     var symbolCache: [String: FileIndex.Symbols] = [:]
     var symbolScan: Task<Void, Never>?
-    /// The git index date a background `fileIndex` rebuild is running for.
-    var fileIndexRebuildStamp: Date?
+    /// HEAD's reflog date when `fileIndex.changes` was read; see `gitHistoryStamp`.
+    var fileIndexGitStamp: String?
+    /// The shared scan-policy revision a background file-index rebuild is running for.
+    var fileIndexRebuildStamp: String?
     /// Current local Tree-sitter graph and refresh jobs, kept separate from user preferences.
-    var codeGraphCache: ProjectCodeGraph?
+    var codeGraphCache: ProjectCodeGraph? {
+        didSet { codeGraphGeneration += 1; preparedCodeGraphContext = nil }
+    }
+    var codeGraphGeneration = 0
+    /// Graph hints scored off the main actor for the prompt about to be sent.
+    var preparedCodeGraphContext: (prompt: String, text: String?)?
     var codeGraphLookupLoadAttempted = Set<String>()
     var codeGraphRefreshInFlight = Set<String>()
     var codeGraphCheckInFlight = false
@@ -222,4 +235,45 @@ public final class WorkspaceMemory {
 
     var pendingSnapshots: [String: SnapshotJob] = [:]
     let pendingSnapshotsLock = NSLock()
+}
+
+/// CPU-heavy workspace operations share this process-wide limit, even when they
+/// originate in different chats or UI features. Two permits preserve useful
+/// parallelism while preventing grep, snapshots, graphs and indexes piling up.
+public enum AppBackgroundWorkLimiter {
+    private static let permits = DispatchSemaphore(value: 2)
+
+    @discardableResult
+    public static func withPermit<T: Sendable>(_ work: @Sendable () throws -> T) rethrows -> T {
+        permits.wait()
+        defer { permits.signal() }
+        return try work()
+    }
+
+    @discardableResult
+    public static func withCancellablePermit<T: Sendable>(
+        isCancelled: @Sendable () -> Bool,
+        _ work: @Sendable () throws -> T
+    ) rethrows -> T? {
+        while permits.wait(timeout: .now() + .milliseconds(50)) == .timedOut {
+            if isCancelled() { return nil }
+        }
+        defer { permits.signal() }
+        guard !isCancelled() else { return nil }
+        return try work()
+    }
+}
+
+/// Memory's background work - file index, project map, code graph - runs on a
+/// serial queue and also respects the process-wide limit shared with other work.
+enum MemoryWorkQueue {
+    private static let queue = DispatchQueue(label: "dots.memory.work", qos: .background)
+
+    static func run<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
+        await withCheckedContinuation { continuation in
+            queue.async {
+                continuation.resume(returning: AppBackgroundWorkLimiter.withPermit(work))
+            }
+        }
+    }
 }

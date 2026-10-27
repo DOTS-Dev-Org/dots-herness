@@ -1297,6 +1297,37 @@ public partial class ConversationView : UserControl
         e.Handled = true;
     }
 
+    private async void OnOpenAttachment(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: ChatAttachment attachment }) return;
+        var path = File.Exists(attachment.ProviderFilePath) ? attachment.ProviderFilePath : attachment.FilePath;
+        if (!File.Exists(path)) return;
+
+        if (attachment.IsImage)
+        {
+            if (AttachmentImage.Instance.Convert(path, typeof(Bitmap), null!, CultureInfo.InvariantCulture) is not Bitmap bitmap) return;
+            var preview = new Window
+            {
+                Title = attachment.Name,
+                Width = 900,
+                Height = 700,
+                MinWidth = 360,
+                MinHeight = 260,
+                Content = new Border
+                {
+                    Padding = new Thickness(12),
+                    Child = new Image { Source = bitmap, Stretch = Stretch.Uniform },
+                },
+            };
+            if (TopLevel.GetTopLevel(this) is Window owner) await preview.ShowDialog(owner);
+            else preview.Show();
+            return;
+        }
+
+        if (TopLevel.GetTopLevel(this) is DotsHarness.MainWindow window)
+            window.ShowFilePanel(path, attachment.Name);
+    }
+
     /// <summary>
     /// Plays a generated audio file. Linux has no inline player in the shell, so
     /// the file goes to the system's default player.

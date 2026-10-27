@@ -34,6 +34,25 @@ final class LocalizationTests: XCTestCase {
         }
     }
 
+    func testRunDurationCopyIsLocalizedInEveryLanguage() {
+        AppCopy.setLanguage(.en)
+        let englishDuration = AppCopy.format("conversation.runDuration", "3d 35s")
+
+        for language in AppLanguage.supported {
+            AppCopy.setLanguage(language)
+            let duration = AppCopy.format("conversation.runDuration", "3d 35s")
+            let details = AppCopy.format("conversation.runDurationDetails", "start", "finish")
+            XCTAssertNotEqual(duration, "conversation.runDuration", language.rawValue)
+            XCTAssertTrue(duration.contains("3d 35s"), language.rawValue)
+            XCTAssertNotEqual(details, "conversation.runDurationDetails", language.rawValue)
+            XCTAssertTrue(details.contains("start"), language.rawValue)
+            XCTAssertTrue(details.contains("finish"), language.rawValue)
+            if language != .en {
+                XCTAssertNotEqual(duration, englishDuration, "\(language.rawValue) fell back to English")
+            }
+        }
+    }
+
     func testEveryLanguageResolvesTheFollowUpHintWithoutEnglishFallback() {
         AppCopy.setLanguage(.en)
         let englishHint = AppCopy.text("composer.followUp.hint")

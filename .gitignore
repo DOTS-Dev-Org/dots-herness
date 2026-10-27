@@ -49,3 +49,6 @@ mobile/ios/build/
 # Derived from the signed events on every load; a committed copy only conflicts.
 **/.mem/state.json
 **/.mem/code-graph/
+
+.wrangler/
+.sandbox-cache/

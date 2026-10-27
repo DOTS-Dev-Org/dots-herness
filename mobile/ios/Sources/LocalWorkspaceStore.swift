@@ -341,11 +341,11 @@ final class LocalWorkspaceStore: ObservableObject {
 
     func importSnapshot(_ value: WorkspaceSnapshot, read: (String) async throws -> Data) async {
         do {
-            let previous = snapshot
+            let previous = Dictionary((snapshot?.files ?? []).map { ($0.path, $0) }, uniquingKeysWith: { first, _ in first })
             var conflicts: [String] = []
             for file in value.files {
                 let target = try resolve(file.path)
-                if let old = previous?.files.first(where: { $0.path == file.path }),
+                if let old = previous[file.path],
                    let localData = try? Data(contentsOf: target),
                    Self.digest(localData) != old.sha256 {
                     if file.sha256 != old.sha256 { conflicts.append(file.path) }

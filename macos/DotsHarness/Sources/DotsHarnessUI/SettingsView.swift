@@ -660,7 +660,7 @@ public struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            SettingsUpdateSection(checker: model.updateChecker)
+            SettingsUpdateSection(model: model, checker: model.updateChecker)
             Section(AppCopy.text("settings.storage")) {
                 LabeledContent(AppCopy.text("settings.supportFolder")) {
                     Text(model.paths.root.path)
@@ -727,6 +727,7 @@ public struct SettingsView: View {
 }
 
 private struct SettingsUpdateSection: View {
+    @ObservedObject var model: AppModel
     @ObservedObject var checker: UpdateChecker
 
     var body: some View {
@@ -736,8 +737,22 @@ private struct SettingsUpdateSection: View {
                     .font(.subheadline.monospaced())
                     .foregroundStyle(.secondary)
             }
+            Toggle(AppCopy.text("settings.updates.auto"), isOn: Binding(
+                get: { model.autoUpdate },
+                set: { model.setAutoUpdate($0) }
+            ))
+            Text(AppCopy.text("settings.updates.auto.hint"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             switch checker.state {
+            case .installing:
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text(AppCopy.text("settings.updates.installing"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             case .checking:
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
@@ -771,8 +786,8 @@ private struct SettingsUpdateSection: View {
                     }
 
                     HStack(spacing: 8) {
-                        Button(AppCopy.text("settings.updates.download")) {
-                            checker.openDownloadPage()
+                        Button(AppCopy.text("settings.updates.install")) {
+                            Task { await checker.installUpdate() }
                         }
                         .buttonStyle(.borderedProminent)
 

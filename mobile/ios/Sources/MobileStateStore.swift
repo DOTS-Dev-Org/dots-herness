@@ -31,6 +31,7 @@ struct StoredMobileConversation: Identifiable, Equatable, Sendable {
     let status: String
     let updatedAt: Date
     let title: String
+    let archived: Bool
 }
 
 struct StoredMobileModelContext: Equatable, Sendable {
@@ -384,13 +385,44 @@ final class MobileStateStore {
     /// Every project conversation except the caller's own, newest first. The transcript itself is
     /// read separately with `messages`, so a listing stays cheap.
     func otherConversations(excluding conversationID: String?, projectID: String = "local-default", limit: Int = 20) -> [StoredMobileConversation] {
+        conversations(excluding: conversationID, projectID: projectID, limit: limit, archived: false)
+    }
+
+    func archivedConversations(projectID: String? = nil, limit: Int = 20) -> [StoredMobileConversation] {
+        conversations(excluding: nil, projectID: projectID, limit: limit, archived: true)
+    }
+
+    @discardableResult
+    func setConversationArchived(_ conversationID: String, archived: Bool) -> Bool {
+        guard let database, conversationStatus(conversationID) != nil else { return false }
+        do {
+            try execute("UPDATE conversations SET archived = ? WHERE id = ?", [archived ? "1" : "0", conversationID])
+            return sqlite3_changes(database) > 0
+        } catch {
+            return false
+        }
+    }
+
+    private func conversations(
+        excluding conversationID: String?,
+        projectID: String?,
+        limit: Int,
+        archived: Bool
+    ) -> [StoredMobileConversation] {
         guard let database else { return [] }
         var statement: OpaquePointer?
         defer { sqlite3_finalize(statement) }
-        guard sqlite3_prepare_v2(database, "SELECT id, project_id, status, updated_at, COALESCE((SELECT content FROM messages WHERE conversation_id = conversations.id AND role = 'user' ORDER BY rowid ASC LIMIT 1), '') FROM conversations WHERE project_id = ? ORDER BY updated_at DESC LIMIT ?", -1, &statement, nil) == SQLITE_OK,
+        let projectFilter = projectID == nil ? "" : "project_id = ? AND "
+        let sql = "SELECT id, project_id, status, updated_at, COALESCE((SELECT content FROM messages WHERE conversation_id = conversations.id AND role = 'user' ORDER BY rowid ASC LIMIT 1), ''), archived FROM conversations WHERE \(projectFilter)archived = ? ORDER BY updated_at DESC LIMIT ?"
+        guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK,
               let statement else { return [] }
-        sqlite3_bind_text(statement, 1, projectID, -1, transient)
-        sqlite3_bind_int(statement, 2, Int32(max(1, min(limit, 100))))
+        var bindIndex: Int32 = 1
+        if let projectID {
+            sqlite3_bind_text(statement, bindIndex, projectID, -1, transient)
+            bindIndex += 1
+        }
+        sqlite3_bind_int(statement, bindIndex, archived ? 1 : 0)
+        sqlite3_bind_int(statement, bindIndex + 1, Int32(max(1, min(limit, 100))))
         var result: [StoredMobileConversation] = []
         while sqlite3_step(statement) == SQLITE_ROW {
             let id = String(cString: sqlite3_column_text(statement, 0))
@@ -400,7 +432,52 @@ final class MobileStateStore {
                 projectID: String(cString: sqlite3_column_text(statement, 1)),
                 status: String(cString: sqlite3_column_text(statement, 2)),
                 updatedAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 3)),
-                title: sqlite3_column_text(statement, 4).map { String(cString: $0) } ?? ""))
+                title: sqlite3_column_text(statement, 4).map { String(cString: $0) } ?? "",
+                archived: sqlite3_column_int(statement, 5) != 0))
+        }
+        return result
+    }
+
+    /// Conversations outside the currently connected projects, including the
+    /// no-project workspace. Deleted project IDs remain in history and therefore
+    /// fall outside `knownProjectIDs`.
+    func unassignedConversations(
+        excluding conversationID: String? = nil,
+        knownProjectIDs: [String],
+        limit: Int = 30
+    ) -> [StoredMobileConversation] {
+        guard let database else { return [] }
+        let knownIDs = Array(Set(knownProjectIDs.filter {
+            !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        })).sorted()
+        let projectFilter = knownIDs.isEmpty
+            ? "WHERE archived = 0"
+            : "WHERE archived = 0 AND project_id NOT IN (\(Array(repeating: "?", count: knownIDs.count).joined(separator: ",")))"
+        let sql = """
+            SELECT id, project_id, status, updated_at,
+                COALESCE((SELECT content FROM messages WHERE conversation_id = conversations.id AND role = 'user' ORDER BY rowid ASC LIMIT 1), ''),
+                archived
+            FROM conversations \(projectFilter) ORDER BY updated_at DESC LIMIT ?
+            """
+        var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
+        guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK,
+              let statement else { return [] }
+        for (offset, projectID) in knownIDs.enumerated() {
+            sqlite3_bind_text(statement, Int32(offset + 1), projectID, -1, transient)
+        }
+        sqlite3_bind_int(statement, Int32(knownIDs.count + 1), Int32(max(1, min(limit, 100))))
+        var result: [StoredMobileConversation] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            let id = String(cString: sqlite3_column_text(statement, 0))
+            if id == conversationID { continue }
+            result.append(StoredMobileConversation(
+                id: id,
+                projectID: String(cString: sqlite3_column_text(statement, 1)),
+                status: String(cString: sqlite3_column_text(statement, 2)),
+                updatedAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 3)),
+                title: sqlite3_column_text(statement, 4).map { String(cString: $0) } ?? "",
+                archived: sqlite3_column_int(statement, 5) != 0))
         }
         return result
     }
@@ -442,7 +519,7 @@ final class MobileStateStore {
             try execute("CREATE TABLE IF NOT EXISTS provider_accounts(id TEXT PRIMARY KEY, provider TEXT NOT NULL, model TEXT, credential_ref TEXT, created_at REAL NOT NULL)")
             try execute("CREATE TABLE IF NOT EXISTS oauth_accounts(id TEXT PRIMARY KEY, provider TEXT NOT NULL, account_ref TEXT, created_at REAL NOT NULL, updated_at REAL NOT NULL)")
             try execute("CREATE TABLE IF NOT EXISTS repositories(id TEXT PRIMARY KEY, provider TEXT, owner TEXT, name TEXT, branch TEXT, local_path TEXT, base_commit TEXT, created_at REAL NOT NULL, updated_at REAL NOT NULL)")
-            try execute("CREATE TABLE IF NOT EXISTS conversations(id TEXT PRIMARY KEY, project_id TEXT NOT NULL DEFAULT 'local-default', status TEXT NOT NULL, mode TEXT NOT NULL, plan_mode INTEGER NOT NULL DEFAULT 0, created_at REAL NOT NULL, updated_at REAL NOT NULL)")
+            try execute("CREATE TABLE IF NOT EXISTS conversations(id TEXT PRIMARY KEY, project_id TEXT NOT NULL DEFAULT 'local-default', status TEXT NOT NULL, mode TEXT NOT NULL, plan_mode INTEGER NOT NULL DEFAULT 0, created_at REAL NOT NULL, updated_at REAL NOT NULL, archived INTEGER NOT NULL DEFAULT 0)")
             try execute("CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, tool_name TEXT, created_at REAL NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
             try execute("CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id)")
             try execute("CREATE TABLE IF NOT EXISTS model_context(conversation_id TEXT PRIMARY KEY, project_id TEXT NOT NULL DEFAULT 'local-default', content_json TEXT NOT NULL, updated_at REAL NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
@@ -450,6 +527,7 @@ final class MobileStateStore {
             try execute("CREATE TABLE IF NOT EXISTS pending_actions(id TEXT PRIMARY KEY, conversation_id TEXT, kind TEXT NOT NULL, payload_json TEXT NOT NULL, status TEXT NOT NULL, created_at REAL NOT NULL, updated_at REAL NOT NULL)")
             try execute("CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY, conversation_id TEXT, project_id TEXT NOT NULL DEFAULT 'local-default', kind TEXT NOT NULL, payload_json TEXT NOT NULL, created_at REAL NOT NULL)")
             try addColumnIfMissing(table: "conversations", column: "project_id", definition: "TEXT NOT NULL DEFAULT 'local-default'")
+            try addColumnIfMissing(table: "conversations", column: "archived", definition: "INTEGER NOT NULL DEFAULT 0")
             try addColumnIfMissing(table: "model_context", column: "project_id", definition: "TEXT NOT NULL DEFAULT 'local-default'")
             try addColumnIfMissing(table: "events", column: "project_id", definition: "TEXT NOT NULL DEFAULT 'local-default'")
             try execute("CREATE INDEX IF NOT EXISTS idx_events_project ON events(project_id)")

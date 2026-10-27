@@ -209,7 +209,9 @@ public final class AppModel: ObservableObject {
     /// Bumped to ask the UI to open the plan in the right dock.
     @Published public var planPaneRequestID = 0
     @Published public var reviewPaneRequestID = 0
-    @Published public var tasksPaneRequestID = 0
+    /// Bumped to ask the dock to navigate a user-clicked web link in its browser.
+    @Published public var browserPaneRequestID = 0
+    @Published public var requestedBrowserURL: URL?
     /// Bumped with `requestedFile` set to show that file in the dock's Files pane.
     @Published public var filesPaneRequestID = 0
     @Published public var requestedFile: URL?
@@ -222,6 +224,8 @@ public final class AppModel: ObservableObject {
     @Published public var confirmBeforeExit = true
     /// Closing the window keeps the app alive in the menu bar so runs continue.
     @Published public var closeToTray = true
+    /// Installs a found release on launch and relaunches. Default on.
+    @Published public var autoUpdate = true
     /// Agent runs its own build/test/check after each change. Default on.
     @Published public var selfVerification = true
     /// Seed AGENTS.md and CLAUDE.md into a workspace that ships neither. Default on.
@@ -244,9 +248,9 @@ public final class AppModel: ObservableObject {
     /// Paths whose project folders have disappeared since they were added.
     /// Refreshing this set keeps the sidebar and composer in sync with filesystem changes.
     @Published public internal(set) var unavailableProjectPaths: Set<String> = []
-    /// Session-only state for the unsectioned project group in the sidebar.
-    /// Deliberately not persisted: a new app session starts with the compact
-    /// five-project view again.
+    /// Session-only expansion state for projects that overflow the sidebar.
+    /// Deliberately not persisted: a new app session starts with the
+    /// viewport-fitting project list again.
     @Published public internal(set) var showsAllOtherProjects = false
     @Published public internal(set) var projectMetadata: [String: ProjectMetadata] = [:]
     @Published public internal(set) var projectSections: [String] = []
@@ -587,6 +591,9 @@ public final class AppModel: ObservableObject {
         if let stored = settings.get("ui.closeToTray")?.bool {
             self.closeToTray = stored
         }
+        if let stored = settings.get("updates.auto")?.bool {
+            self.autoUpdate = stored
+        }
         if let stored = settings.get("agent.selfVerification")?.bool {
             self.selfVerification = stored
         }
@@ -786,6 +793,7 @@ public final class AppModel: ObservableObject {
         }
         bridge.onAttentionNeeded = attentionNeeded
         bridge.onPlanAutoApproved = { [weak self] in self?.endPlanMode() }
+        bridge.onPlanModeEntered = { [weak self] in self?.isPlanMode = true }
         let connectionChanged: (ConnectionTransition) -> Void = { [weak self, weak remoteControl] transition in
             self?.desktopNotifications.showConnectionChange(transition)
             remoteControl?.publish("connection.changed", [

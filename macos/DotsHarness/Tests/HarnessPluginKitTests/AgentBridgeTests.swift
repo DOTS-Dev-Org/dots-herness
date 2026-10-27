@@ -631,6 +631,23 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertFalse(storedUnread())
     }
 
+    /// The edit button reads this from the view body: finishing must leave it cached.
+    @MainActor
+    func testAsyncTurnFinishCachesSnapshotCompleteness() async throws {
+        let paths = temporaryPaths()
+        let workspace = paths.root.appendingPathComponent("finish-cache-project", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        try Data("before".utf8).write(to: workspace.appendingPathComponent("file.txt"))
+        let memory = WorkspaceMemory(paths: paths)
+        memory.setWorkspace(workspace)
+        XCTAssertTrue(memory.beginTurn(conversationID: "chat", turnID: "t", workspace: workspace))
+        try Data("after".utf8).write(to: workspace.appendingPathComponent("file.txt"))
+
+        _ = await memory.finishTurnResultAsync(conversationID: "chat", turnID: "t", workspace: workspace)
+
+        XCTAssertTrue(memory.completeSnapshotTurns.contains("chat|t|\(workspace.standardizedFileURL.path)"))
+    }
+
     @MainActor
     func testWorkspaceSnapshotsCaptureNetChangesAndPreserveConflicts() throws {
         let paths = temporaryPaths()
@@ -1094,6 +1111,36 @@ final class AgentBridgeTests: XCTestCase {
     }
 
     @MainActor
+    func testModelCanSwitchARunningTurnToPlanMode() async throws {
+        URLProtocol.registerClass(ApprovalURLProtocol.self)
+        defer { ApprovalURLProtocol.reset(); URLProtocol.unregisterClass(ApprovalURLProtocol.self) }
+        ApprovalURLProtocol.responses = [
+            DeferredToolScript.reply(["id": "plan-1", "type": "function",
+                "function": ["name": DeferredToolSession.enterPlanName, "arguments": "{}"]]),
+            Data(#"{"choices":[{"message":{"role":"assistant","content":"1. Read the code"}}]}"#.utf8),
+        ]
+        let paths = temporaryPaths()
+        let workspace = paths.root.appendingPathComponent("plan-project", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        let host = NativeAgentHost(
+            paths: paths,
+            endpoint: AgentEndpointController(baseURL: "http://approval.test", modelID: "test-model")
+        )
+        var entered = false
+        host.onPlanModeEntered = { entered = true }
+        host.start(workspacePath: workspace.path)
+        await host.refreshConnection()
+
+        await host.send(text: "bu özelliği nasıl kuracağımızı adım adım düşünelim, kod yazma", mode: .queue)
+        for _ in 0..<200 where host.selected?.running == true { try await Task.sleep(for: .milliseconds(10)) }
+
+        XCTAssertTrue(entered)
+        let plan = try XCTUnwrap(host.selected?.messages.last)
+        XCTAssertEqual(plan.kind, .plan)
+        XCTAssertEqual(host.selected?.pendingPlanMessageID, plan.id)
+    }
+
+    @MainActor
     func testDroppedConnectionPausesAndResumesWhenNetworkReturns() async throws {
         URLProtocol.registerClass(ApprovalURLProtocol.self)
         defer { ApprovalURLProtocol.reset(); URLProtocol.unregisterClass(ApprovalURLProtocol.self) }
@@ -1222,6 +1269,61 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertTrue(restored.requiresToolOutcomeRecovery)
         XCTAssertEqual(restored.inFlightToolCalls.first?.id, "write-1")
         XCTAssertEqual(restored.continuation?.reason, .applicationClosed)
+    }
+
+    @MainActor
+    func testShutdownPausePreservesAnExplicitUserStop() throws {
+        let paths = temporaryPaths()
+        let workspace = paths.root.appendingPathComponent("stopped-project", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        let host = NativeAgentHost(
+            paths: paths,
+            endpoint: AgentEndpointController(baseURL: "http://approval.test", modelID: "test-model")
+        )
+        host.start(workspacePath: workspace.path)
+
+        let write = InFlightToolCall(id: "write-1", name: "write_file", arguments: #"{"path":"a.txt"}"#)
+        host.conversations = [Conversation(
+            id: "stopped-chat",
+            modelContext: [AgentMessage(role: .assistant, content: "", toolCalls: [write])],
+            continuation: ContinuationState(reason: .userStopped, provider: "OpenAI", model: "test-model"),
+            running: true,
+            blank: false,
+            planGateActive: true,
+            inFlightToolCalls: [write],
+            cwd: workspace.path
+        )]
+
+        host.pauseCurrentConversation("stopped-chat", reason: .applicationClosed)
+
+        XCTAssertEqual(host.conversations.first?.continuation?.reason, .userStopped)
+        XCTAssertTrue(host.conversations.first?.requiresToolOutcomeRecovery == true)
+    }
+
+    @MainActor
+    func testRecoveryPreservesUserStopAndUncertainToolOutcome() throws {
+        let write = InFlightToolCall(id: "write-1", name: "write_file", arguments: #"{"path":"a.txt"}"#)
+        let conversation = Conversation(
+            id: "stopped-chat",
+            modelContext: [AgentMessage(role: .assistant, content: "", toolCalls: [write])],
+            continuation: ContinuationState(reason: .userStopped, provider: "OpenAI", model: "test-model"),
+            running: true,
+            blank: false,
+            planGateActive: true,
+            inFlightToolCalls: [write]
+        )
+
+        let recovered = NativeAgentHost.recover(conversation)
+
+        XCTAssertFalse(recovered.running)
+        XCTAssertEqual(recovered.continuation?.reason, .userStopped)
+        XCTAssertTrue(recovered.canContinue)
+        XCTAssertTrue(recovered.requiresToolOutcomeRecovery)
+        XCTAssertNotNil(recovered.modelContext.first {
+            $0.role == AgentMessage.Role.tool
+                && $0.toolCallID == "write-1"
+                && $0.content.contains("result of this tool call was durably known")
+        })
     }
 
     func testPlanMessagesAndPendingIDPersist() throws {

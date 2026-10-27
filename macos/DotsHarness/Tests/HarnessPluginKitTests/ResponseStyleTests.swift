@@ -138,4 +138,19 @@ final class ResponseStyleTests: XCTestCase {
         }
         XCTAssertEqual(lines, ["┌─┐", "└─┘"])
     }
+
+    func testPipeTableIsOneBlock() async {
+        let blocks = await MainActor.run {
+            MarkdownCache.shared.parsed(
+                for: "Fark:\n| Özellik | `actor` | x |\n|---|:---:|--:|\n| Tür | a \\| b | 1 |\n| Kalıtım | yok |\nSon",
+                store: false
+            ).blocks
+        }
+        XCTAssertEqual(blocks.count, 3)
+        guard case .table(_, let table) = blocks[1] else { return XCTFail("expected a table, got \(blocks)") }
+        XCTAssertEqual(table.header, ["Özellik", "`actor`", "x"])
+        XCTAssertEqual(table.rows, [["Tür", "a | b", "1"], ["Kalıtım", "yok"]])
+        XCTAssertEqual(table.alignments.count, 3)
+        XCTAssertNil(MarkdownCache.ParsedPlanMarkdown.tableAlignments("| a | b |"))
+    }
 }

@@ -684,10 +684,79 @@ private struct NewEntrySheet: View {
 
 // MARK: - Graph
 
-/// The graph's size and content, so the layout is recomputed only when either changes.
+/// The graph's content. Stable layout coordinates let window resizing transform
+/// existing drawing data without starting another force calculation.
 private struct GraphLayoutKey: Equatable {
     let vault: MemoryVault
-    let size: CGSize
+}
+
+private struct GraphDrawingData {
+    struct Node: Identifiable {
+        let id: String
+        let position: CGPoint
+        let title: String
+        let kind: String
+        let degree: Int
+        let color: Color
+    }
+
+    struct Edge {
+        let path: Path
+        let lineWidth: CGFloat
+    }
+
+    var nodes: [Node] = []
+    var edges: [Edge] = []
+
+    init() {}
+
+    init(vault: MemoryVault, positions: [String: CGPoint]) {
+        var degree: [String: Int] = [:]
+        for edge in vault.edges {
+            degree[edge.from, default: 0] += 1
+            degree[edge.to, default: 0] += 1
+        }
+        edges = vault.edges.compactMap { edge in
+            guard let from = positions[edge.from], let to = positions[edge.to] else { return nil }
+            var path = Path()
+            path.move(to: from)
+            path.addLine(to: to)
+            let lineWidth = min(3, 1 + log2(CGFloat(max(1, edge.weight))) / 2)
+            return Edge(path: path, lineWidth: lineWidth)
+        }
+        nodes = vault.notes.compactMap { note in
+            guard let position = positions[note.id] else { return nil }
+            let title = note.title.count > 32 ? String(note.title.prefix(31)) + "…" : note.title
+            let kind = MemoryVaultView.group(note)
+            return Node(
+                id: note.id,
+                position: position,
+                title: title,
+                kind: note.kind,
+                degree: degree[note.id] ?? 0,
+                color: Self.color(for: kind)
+            )
+        }
+    }
+
+    private static func color(for kind: String) -> Color {
+        switch kind {
+        case "task": return .blue
+        case "decision": return .green
+        case "conversation": return .teal
+        case "index": return .orange
+        case "map": return .purple
+        case "preference", "profile": return .pink
+        case "rule": return .cyan
+        case "error": return .red
+        case "lesson": return .mint
+        case "file": return .gray
+        case "technology": return .indigo
+        case "tool": return .brown
+        case "skill": return .yellow
+        default: return .secondary
+        }
+    }
 }
 
 private struct GraphView: View {
@@ -696,8 +765,8 @@ private struct GraphView: View {
     /// Notes the search matches; the rest are dimmed. Nil shows every note alike.
     var matches: Set<String>? = nil
     @Binding var showsAll: Bool
-    /// Node positions in unzoomed graph coordinates.
-    @State private var positions: [String: CGPoint] = [:]
+    /// Paths, labels and colors in stable, unzoomed graph coordinates.
+    @State private var drawing = GraphDrawingData()
     @State private var zoom: CGFloat = 1
     @State private var pan = CGSize.zero
     @GestureState private var pinch: CGFloat = 1
@@ -709,39 +778,41 @@ private struct GraphView: View {
         GeometryReader { geo in
             let scale = Self.clamp(zoom * pinch)
             let offset = CGSize(width: pan.width + drag.width, height: pan.height + drag.height)
-            let screen = screenPositions(size: geo.size, scale: scale, offset: offset)
-            let degree = vault.edges.reduce(into: [String: Int]()) { counts, edge in
-                counts[edge.from, default: 0] += 1
-                counts[edge.to, default: 0] += 1
-            }
+            let graphScale = Self.fitScale(for: geo.size) * scale
             Canvas { context, _ in
-                for edge in vault.edges {
-                    guard let a = screen[edge.from], let b = screen[edge.to] else { continue }
-                    var path = Path()
-                    path.move(to: a)
-                    path.addLine(to: b)
-                    // A link that fired more often is drawn heavier, up to three points.
-                    context.stroke(path, with: .color(.secondary.opacity(0.35)), lineWidth: min(3, 1 + log2(CGFloat(max(1, edge.weight))) / 2))
+                guard graphScale > 0 else { return }
+                var graphContext = context
+                graphContext.translateBy(x: geo.size.width / 2 + offset.width, y: geo.size.height / 2 + offset.height)
+                graphContext.scaleBy(x: graphScale, y: graphScale)
+                graphContext.translateBy(
+                    x: -ForceLayout.referenceSize.width / 2,
+                    y: -ForceLayout.referenceSize.height / 2
+                )
+                for edge in drawing.edges {
+                    graphContext.stroke(
+                        edge.path,
+                        with: .color(.secondary.opacity(0.35)),
+                        lineWidth: edge.lineWidth / graphScale
+                    )
                 }
-                for note in vault.notes {
-                    guard let p = screen[note.id] else { continue }
-                    let selected = note.id == selectedID
+                for node in drawing.nodes {
+                    let p = screenPoint(node.position, size: geo.size, graphScale: graphScale, offset: offset)
+                    let selected = node.id == selectedID
                     // A project's root is the larger node its notes branch from.
-                    let r: CGFloat = note.kind == "index" ? 9 : selected ? 7 : 5
+                    let r: CGFloat = node.kind == "index" ? 9 : selected ? 7 : 5
                     let rect = CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)
-                    let dimmed = matches.map { !$0.contains(note.id) } ?? false
-                    context.fill(Path(ellipseIn: rect), with: .color(color(for: MemoryVaultView.group(note)).opacity(dimmed ? 0.18 : 1)))
+                    let dimmed = matches.map { !$0.contains(node.id) } ?? false
+                    context.fill(Path(ellipseIn: rect), with: .color(node.color.opacity(dimmed ? 0.18 : 1)))
                     if selected {
                         context.stroke(Path(ellipseIn: rect.insetBy(dx: -3, dy: -3)), with: .color(.primary), lineWidth: 1.5)
                     }
                     // Every label at once piles up: the selected note, the roots, the hubs and the
                     // search's matches are named; the rest once zoomed in.
-                    let hub = (degree[note.id] ?? 0) >= 8
-                    if selected || note.kind == "index" || (matches != nil && !dimmed)
+                    let hub = node.degree >= 8
+                    if selected || node.kind == "index" || (matches != nil && !dimmed)
                         || (matches == nil && (hub || scale >= 1.6)) {
-                        let title = note.title.count > 32 ? String(note.title.prefix(31)) + "…" : note.title
                         context.draw(
-                            Text(title).font(.caption2).foregroundStyle(.secondary),
+                            Text(node.title).font(.caption2).foregroundStyle(.secondary),
                             at: CGPoint(x: p.x, y: p.y + r + 7)
                         )
                     }
@@ -762,20 +833,27 @@ private struct GraphView: View {
                     }
             )
             .onTapGesture { location in
-                let hit = screen.min { distance($0.value, location) < distance($1.value, location) }
-                if let hit, distance(hit.value, location) < 22 { selectedID = hit.key }
+                let hit = drawing.nodes
+                    .map { ($0.id, screenPoint($0.position, size: geo.size, graphScale: graphScale, offset: offset)) }
+                    .min { distance($0.1, location) < distance($1.1, location) }
+                if let hit, distance(hit.1, location) < 22 { selectedID = hit.0 }
             }
             .overlay(alignment: .bottomTrailing) { zoomControls }
-            .task(id: GraphLayoutKey(vault: vault, size: geo.size)) {
+            .task(id: GraphLayoutKey(vault: vault)) {
                 let notes = vault.notes.map(\.id)
                 let edges = vault.edges.map { ($0.from, $0.to) }
-                let size = geo.size
-                // Off the main thread: the layout is O(n²) per pass and froze the window.
-                let laidOut = await Task.detached(priority: .userInitiated) {
-                    ForceLayout.positions(notes: notes, edges: edges, size: size)
-                }.value
+                let layoutTask = Task.detached(priority: .userInitiated) {
+                    AppBackgroundWorkLimiter.withCancellablePermit(isCancelled: { Task.isCancelled }) {
+                        ForceLayout.positions(notes: notes, edges: edges, size: ForceLayout.referenceSize)
+                    } ?? [:]
+                }
+                let laidOut = await withTaskCancellationHandler {
+                    await layoutTask.value
+                } onCancel: {
+                    layoutTask.cancel()
+                }
                 guard !Task.isCancelled else { return }
-                positions = laidOut
+                drawing = GraphDrawingData(vault: vault, positions: laidOut)
             }
         }
         .background(Color(nsColor: .textBackgroundColor).opacity(0.4))
@@ -804,38 +882,21 @@ private struct GraphView: View {
         .padding(8)
     }
 
-    /// Zoom is about the graph's centre, then the pan moves it.
-    private func screenPositions(size: CGSize, scale: CGFloat, offset: CGSize) -> [String: CGPoint] {
-        let center = CGPoint(x: size.width / 2, y: size.height / 2)
-        return positions.mapValues { p in
-            CGPoint(
-                x: center.x + (p.x - center.x) * scale + offset.width,
-                y: center.y + (p.y - center.y) * scale + offset.height
-            )
-        }
+    /// Fit stable reference coordinates to the viewport, then apply zoom and pan.
+    private func screenPoint(_ point: CGPoint, size: CGSize, graphScale: CGFloat, offset: CGSize) -> CGPoint {
+        return CGPoint(
+            x: size.width / 2 + (point.x - ForceLayout.referenceSize.width / 2) * graphScale + offset.width,
+            y: size.height / 2 + (point.y - ForceLayout.referenceSize.height / 2) * graphScale + offset.height
+        )
+    }
+
+    private static func fitScale(for size: CGSize) -> CGFloat {
+        guard size.width > 0, size.height > 0 else { return 0 }
+        return min(size.width / ForceLayout.referenceSize.width, size.height / ForceLayout.referenceSize.height)
     }
 
     private static func clamp(_ value: CGFloat) -> CGFloat {
         min(max(value, zoomRange.lowerBound), zoomRange.upperBound)
-    }
-
-    private func color(for kind: String) -> Color {
-        switch kind {
-        case "task": return .blue
-        case "decision": return .green
-        case "conversation": return .teal
-        case "index": return .orange
-        case "map": return .purple
-        case "preference", "profile": return .pink
-        case "rule": return .cyan
-        case "error": return .red
-        case "lesson": return .mint
-        case "file": return .gray
-        case "technology": return .indigo
-        case "tool": return .brown
-        case "skill": return .yellow
-        default: return .secondary
-        }
     }
 
     private func distance(_ a: CGPoint, _ b: CGPoint) -> CGFloat {
@@ -847,18 +908,22 @@ private struct GraphView: View {
 /// node, the steps cool off, and a pull towards the centre keeps loose notes off the edges.
 /// ponytail: O(n²) per iteration; fine for a few hundred notes, Barnes-Hut past that.
 private enum ForceLayout {
+    static let referenceSize = CGSize(width: 1200, height: 800)
+
     static func positions(notes: [String], edges: [(String, String)], size: CGSize) -> [String: CGPoint] {
         guard !notes.isEmpty, size.width > 0, size.height > 0 else { return [:] }
         // Index-based so the n² inner loop allocates nothing; duplicate ids collapse to one node.
         var index: [String: Int] = [:]
         var ids: [String] = []
         for id in notes where index[id] == nil {
+            if ids.count.isMultiple(of: 64), Task.isCancelled { return [:] }
             index[id] = ids.count
             ids.append(id)
         }
         let n = ids.count
         var linked = [Bool](repeating: false, count: n * n)
         for (a, b) in edges {
+            if Task.isCancelled { return [:] }
             guard let i = index[a], let j = index[b] else { continue }
             linked[i * n + j] = true
             linked[j * n + i] = true
@@ -869,6 +934,7 @@ private enum ForceLayout {
         var xs = [Double](repeating: 0, count: n)
         var ys = [Double](repeating: 0, count: n)
         for i in 0..<n {
+            if i.isMultiple(of: 64), Task.isCancelled { return [:] }
             let angle = Double(i) / Double(n) * 2 * .pi
             xs[i] = cx + cos(angle) * radius
             ys[i] = cy + sin(angle) * radius
@@ -880,11 +946,13 @@ private enum ForceLayout {
         var dxs = [Double](repeating: 0, count: n)
         var dys = [Double](repeating: 0, count: n)
         for _ in 0..<200 {
-            if Task.isCancelled { break }
+            if Task.isCancelled { return [:] }
             for a in 0..<n {
+                if a.isMultiple(of: 8), Task.isCancelled { return [:] }
                 var dx = 0.0, dy = 0.0
                 let ax = xs[a], ay = ys[a], row = a * n
                 for b in 0..<n where b != a {
+                    if b.isMultiple(of: 128), Task.isCancelled { return [:] }
                     let ex = ax - xs[b], ey = ay - ys[b]
                     let d = max(0.01, (ex * ex + ey * ey).squareRoot())
                     var force = k * k / d

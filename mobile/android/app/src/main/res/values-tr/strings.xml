@@ -7,6 +7,9 @@
     <string name="agent_running_tool">%1$s çalıştırılıyor…</string>
     <string name="agent_steering_queued">Öncelikli talimat kuyruğa alındı</string>
     <string name="app_ok">Tamam</string>
+    <string name="archive_empty">Arşivlenmiş konuşma yok.</string>
+    <string name="archive_restore">Arşivden çıkar</string>
+    <string name="archive_title">Arşivlenmiş konuşmalar</string>
     <string name="ask_custom_placeholder">Kendi cevabını yaz…</string>
     <string name="ask_default_header">Soru %1$d</string>
     <string name="ask_next">İleri</string>
@@ -205,6 +208,7 @@
     <string name="mobile_agent_continue_plan">Plana devam et</string>
     <string name="mobile_agent_dictate">İsteği sesle yaz</string>
     <string name="mobile_agent_error">Hata</string>
+    <string name="mobile_agent_fast">Hızlı mod</string>
     <string name="mobile_agent_model">Model</string>
     <string name="mobile_agent_new_conversation">Yeni konuşma</string>
     <string name="mobile_agent_no_project">Projesiz</string>
@@ -219,7 +223,6 @@
     <string name="mobile_agent_send">Gönder</string>
     <string name="mobile_agent_subagents">Alt ajanları kullan</string>
     <string name="mobile_agent_subagents_hint">Büyük kod aramalarını paralel alt ajanlara devreder, konuşmaya yalnızca özetleri girer. Her biri ayrı bir model çağrısıdır; maliyeti düşürmek için kapatın.</string>
-    <string name="mobile_agent_fast">Hızlı mod</string>
     <string name="mobile_agent_subagents_section">Alt ajanlar</string>
     <string name="mobile_agent_use_project">Projeyi kullan</string>
     <string name="mobile_agent_user">Siz</string>
@@ -370,6 +373,18 @@
     <string name="model_picker_model">Modeli</string>
     <string name="model_picker_no_model">Bağlı model bulunamadı</string>
     <string name="model_picker_select_model">Model seç</string>
+    <string name="notifications_action_required">İşleminiz gerekiyor</string>
+    <string name="notifications_approval">notifications.approval</string>
+    <string name="notifications_clear_all">Tümünü temizle</string>
+    <string name="notifications_empty_body">Sorular ve tamamlanan işler burada görünür.</string>
+    <string name="notifications_empty_title">Güncelsiniz</string>
+    <string name="notifications_item_count">%1$d bildirim</string>
+    <string name="notifications_mark_all_read">Tümünü okundu işaretle</string>
+    <string name="notifications_operation_failed">İşlem başarısız oldu</string>
+    <string name="notifications_question">Yanıtınız bekleniyor</string>
+    <string name="notifications_response_ready">Yanıt tamamlandı</string>
+    <string name="notifications_title">Bildirimler</string>
+    <string name="notifications_unread_count">%1$d okunmamış bildirim</string>
     <string name="permission_allow_once">Bir kez izin ver</string>
     <string name="permission_approval_title">%1$s için izin verilsin mi?</string>
     <string name="permission_more_info">Daha fazla bilgi</string>
@@ -409,6 +424,7 @@
     <string name="settings_tab_repository">Depo</string>
     <string name="settings_tab_tools">Araçlar</string>
     <string name="settings_title">Ayarlar</string>
+    <string name="sidebar_archive_chat">Sohbeti arşivle</string>
     <string name="sidebar_no_chats">Henüz konuşma yok</string>
     <string name="sidebar_no_recent">Yakın zamanda konuşma yok</string>
     <string name="sidebar_other">Diğer</string>

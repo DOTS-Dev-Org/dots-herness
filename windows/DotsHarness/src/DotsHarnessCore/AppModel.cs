@@ -28,6 +28,7 @@ public sealed partial class AppModel : ObservableObject
     private AppearanceKind _appearance = AppearanceKind.System;
     private bool _confirmBeforeExit = true;
     private bool _closeToTray = true;
+    private bool _autoUpdate = true;
     private bool _selfVerification = true;
     private bool _skillSuggestionsEnabled = true;
     private bool _computerUseEnabled;
@@ -118,6 +119,13 @@ public sealed partial class AppModel : ObservableObject
     {
         get => _closeToTray;
         private set => SetProperty(ref _closeToTray, value);
+    }
+
+    /// <summary>Installs a found release on launch and relaunches. Default on.</summary>
+    public bool AutoUpdate
+    {
+        get => _autoUpdate;
+        private set => SetProperty(ref _autoUpdate, value);
     }
 
     /// <summary>Agent runs its own build/test/check after each change. Default on.</summary>
@@ -250,6 +258,9 @@ public sealed partial class AppModel : ObservableObject
     public bool ActiveProjectLocationAvailable =>
         !string.IsNullOrWhiteSpace(WorkspacePath) && Directory.Exists(WorkspacePath);
 
+    public IReadOnlyList<string> ConnectedProjectPaths =>
+        Projects.Where(path => Directory.Exists(path)).ToArray();
+
     public bool IsNoProjectScope => Bridge.IsNoProjectScope;
 
     public string? MissingProjectPath
@@ -356,6 +367,7 @@ public sealed partial class AppModel : ObservableObject
         SessionAreaMigration.Run(Paths);
         Voice = new VoiceInputController(Paths);
         Catalog = new PluginCatalog(Paths);
+        Catalog.RegisterBuiltin(() => new NativePluginAuthor(Catalog));
         if (builtins is not null)
         {
             foreach (var builtin in builtins) Catalog.RegisterBuiltin(builtin);
@@ -504,6 +516,10 @@ public sealed partial class AppModel : ObservableObject
         {
             CloseToTray = closeToTray;
         }
+        if (settings.Get("updates.auto")?.AsBool() is { } autoUpdate)
+        {
+            AutoUpdate = autoUpdate;
+        }
         if (settings.Get("agent.selfVerification")?.AsBool() is { } selfVerification)
         {
             SelfVerification = selfVerification;
@@ -600,6 +616,7 @@ public sealed partial class AppModel : ObservableObject
             {
                 IsPlanMode = false;
             };
+            bridge.PlanModeEntered += (_, _) => IsPlanMode = true;
             bridge.RunSummaryReceived += (_, _) =>
             {
                 ScanSkillSuggestions();
@@ -1234,7 +1251,7 @@ public sealed partial class AppModel : ObservableObject
         });
     }
 
-    /// Turns plan mode on when the message asks for a plan (the model decides ambiguous wording).
+    /// Turns plan mode on when the message explicitly asks for a plan.
     private async Task SendResolvedAsync(
         AgentBridge bridge,
         string text,
@@ -1580,6 +1597,13 @@ public sealed partial class AppModel : ObservableObject
     {
         CloseToTray = value;
         Host.Settings.Set("ui.closeToTray", JsonValue.Bool(value));
+        PersistSettings();
+    }
+
+    public void SetAutoUpdate(bool value)
+    {
+        AutoUpdate = value;
+        Host.Settings.Set("updates.auto", JsonValue.Bool(value));
         PersistSettings();
     }
 

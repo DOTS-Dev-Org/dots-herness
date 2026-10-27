@@ -128,10 +128,10 @@ final class ConversationStoreIncrementalTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: legacyURL), legacyData)
         XCTAssertEqual(store.loadHeaders().map(\.id), ["legacy"])
         let latest = try XCTUnwrap(store.loadRecentConversation(id: "legacy"))
-        XCTAssertEqual(latest.messages.count, 10)
-        XCTAssertEqual(latest.messages.first?.text, "legacy message 2")
+        XCTAssertEqual(latest.messages.count, 5)
+        XCTAssertEqual(latest.messages.first?.text, "legacy message 7")
         XCTAssertEqual(latest.messages.last?.text, "legacy message 11")
-        XCTAssertEqual(latest.messageStartIndex, 2)
+        XCTAssertEqual(latest.messageStartIndex, 7)
     }
 
     func testHeadersObserveWritesFromAnotherStore() {
@@ -199,14 +199,14 @@ final class ConversationStoreIncrementalTests: XCTestCase {
         XCTAssertTrue(store.save([original]))
 
         var loaded = try XCTUnwrap(store.loadRecentConversation(id: original.id))
-        XCTAssertEqual(loaded.messages.count, 10)
+        XCTAssertEqual(loaded.messages.count, 5)
         XCTAssertTrue(loaded.hasOlderTranscriptMessages)
 
         while loaded.hasOlderTranscriptMessages {
             let older = try XCTUnwrap(store.loadMessagePage(
                 id: original.id,
                 endingBefore: loaded.messageStartIndex,
-                limit: 10
+                limit: ConversationStore.defaultTranscriptPageSize
             ))
             XCTAssertFalse(older.messages.isEmpty, "an older page should exist while the start index is nonzero")
             loaded.messages.insert(contentsOf: older.messages, at: 0)
@@ -216,5 +216,27 @@ final class ConversationStoreIncrementalTests: XCTestCase {
 
         XCTAssertEqual(loaded.messages.map(\.id), original.messages.map(\.id))
         XCTAssertEqual(loaded.messages.map(\.text), original.messages.map(\.text))
+    }
+
+    func testRecentPageDefersProviderContextAndPartialSavePreservesIt() throws {
+        let store = ConversationStore(paths: paths)
+        var original = conversation("lazy-context", cwd: "/tmp/lazy-context", messages: 20)
+        original.modelContext = (0..<8).map { AgentMessage(role: .user, content: "context \($0)") }
+        XCTAssertTrue(store.save([original]))
+
+        var visible = try XCTUnwrap(store.loadRecentConversation(id: original.id, includeModelContext: false))
+        XCTAssertEqual(visible.messages.count, 5)
+        XCTAssertFalse(visible.modelContextLoaded)
+        XCTAssertTrue(visible.modelContext.isEmpty)
+        visible.unread = true
+        XCTAssertTrue(store.save([visible]))
+
+        let restored = try XCTUnwrap(store.loadRecentConversation(id: original.id))
+        XCTAssertEqual(restored.messages.count, 5)
+        XCTAssertTrue(restored.modelContextLoaded)
+        XCTAssertEqual(restored.modelContext, original.modelContext)
+
+        let older = try XCTUnwrap(store.loadMessagePage(id: original.id, endingBefore: visible.messageStartIndex))
+        XCTAssertEqual(older.messages.count, 5)
     }
 }

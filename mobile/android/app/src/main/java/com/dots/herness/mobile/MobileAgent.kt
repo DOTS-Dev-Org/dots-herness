@@ -266,6 +266,7 @@ class MobileHarnessRuntime(
     /** Prompt text contributed by loaded plugins, appended to the system prompt. */
     var pluginPrompt by mutableStateOf("")
     var projectId by mutableStateOf("local-default"); private set
+    var conversationListRevision by mutableStateOf(0); private set
     val isNoProjectMode: Boolean get() = projectId == NO_PROJECT_ID
     val activeConversationId: String? get() = conversationId
     val projectLocationAvailable: Boolean get() = isNoProjectMode || isProjectLocationAvailable()
@@ -588,7 +589,9 @@ class MobileHarnessRuntime(
         val restoredConversation = conversationId
         val restoredStatus = restoredConversation?.let { stateStore?.conversationStatus(it) }
         if (restoredConversation != null && !running && !planGateActive && !requiresToolOutcomeRecovery &&
-            (restoredStatus == "queued" || restoredStatus == "completed" || restoredStatus == "cancelled")
+            (restoredStatus == "queued" || restoredStatus == "completed" || restoredStatus == "cancelled") &&
+            // A queue left over from a long close would resend the history on a cold cache.
+            (transcript.isEmpty() || cacheState.allowsAutomaticResume(model))
         ) {
             drainNextQueuedPromptIfReleased()
         }
@@ -686,8 +689,29 @@ class MobileHarnessRuntime(
         start()
     }
 
-    fun recentConversations(limit: Int = 30): List<StoredMobileConversation> =
+    fun projectConversations(limit: Int = 30): List<StoredMobileConversation> =
         stateStore?.otherConversations(excluding = null, projectId = projectId, limit = limit).orEmpty()
+
+    fun archivedConversations(limit: Int = 30): List<StoredMobileConversation> =
+        stateStore?.archivedConversations(limit = limit).orEmpty()
+
+    fun archiveConversation(id: String): Boolean {
+        if (running || (conversationId == id && !projectLocationAvailable)
+            || stateStore?.setConversationArchived(id, archived = true) != true
+        ) return false
+        if (conversationId == id) newConversation()
+        conversationListRevision++
+        return true
+    }
+
+    fun restoreConversation(id: String): Boolean {
+        if (stateStore?.setConversationArchived(id, archived = false) != true) return false
+        conversationListRevision++
+        return true
+    }
+
+    fun recentConversations(knownProjectIds: Collection<String>, limit: Int = 30): List<StoredMobileConversation> =
+        stateStore?.unassignedConversations(knownProjectIds = knownProjectIds, limit = limit).orEmpty()
 
     fun storedMessages(conversationId: String): List<StoredMobileMessage> =
         stateStore?.messages(conversationId).orEmpty()

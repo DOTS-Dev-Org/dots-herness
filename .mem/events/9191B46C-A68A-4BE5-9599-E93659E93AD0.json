@@ -1,0 +1,29 @@
+{
+  "actor" : {
+    "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
+    "keyId" : "device-14b4a881c0326754",
+    "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
+    "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw=="
+  },
+  "createdAt" : "2026-10-13T22:14:47Z",
+  "eventId" : "9191B46C-A68A-4BE5-9599-E93659E93AD0",
+  "lamport" : 6,
+  "parents" : [
+    "D32B35D3-6739-4088-8261-B0FBEAB61F31"
+  ],
+  "payload" : {
+    "key" : "out-of-scope",
+    "value" : "Kullanıcı henüz analiz dışında bırakılmasını istediği bir modül, platform veya konu belirtmedi."
+  },
+  "projectId" : "83890830-337C-4DD1-B358-03FFDCEDD318",
+  "schemaVersion" : 1,
+  "scope" : "project",
+  "signature" : {
+    "algorithm" : "P-256-SHA256",
+    "value" : "5vyQsbNlBYD0EphLMaSrFfbCrpHpO7bl8OcK8KtTiX4QyEA3MIRsOndSrS5vYFtFdrsHLCpRUdMFdorJ9HhAdw=="
+  },
+  "supersedes" : [
+
+  ],
+  "type" : "project.default.set"
+}

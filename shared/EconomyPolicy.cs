@@ -145,13 +145,17 @@ public static class EconomyPolicy
         // creates a false cache miss. The complete result remains in the durable
         // transcript; this is only the reversible provider-facing view.
         var result = new List<NativeMessage>(messages.Count);
-        for (var index = 0; index < messages.Count; index++)
+        // Nearest preceding assistant call per id, built in one forward pass.
+        var callsById = new Dictionary<string, NativeToolCall>(StringComparer.Ordinal);
+        foreach (var message in messages)
         {
-            var message = messages[index];
+            if (message.Role == "assistant" && message.ToolCalls is { } toolCalls)
+            {
+                for (var i = toolCalls.Count - 1; i >= 0; i--)
+                    if (toolCalls[i].Id is { } id) callsById[id] = toolCalls[i];
+            }
             if (message.Role != "tool") { result.Add(message); continue; }
-            var call = messages.Take(index).Reverse()
-                .SelectMany(item => item.Role == "assistant" ? item.ToolCalls ?? [] : [])
-                .FirstOrDefault(item => string.Equals(item.Id, message.ToolCallId, StringComparison.Ordinal));
+            var call = message.ToolCallId is { } callId ? callsById.GetValueOrDefault(callId) : null;
             var unwrapped = call is null ? null : UnwrapCall(call);
             var body = NormalizeToolOutput(message.Content, unwrapped?.Name ?? message.ToolCallId ?? "tool", unwrapped?.Arguments ?? "");
             result.Add(message with

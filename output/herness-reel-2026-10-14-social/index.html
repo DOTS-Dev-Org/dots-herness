@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="tr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=1080, initial-scale=1">
+<title>HerNess — dikey tanıtım videosu</title>
+<style>
+/* CSS delays are absolute seconds on the 20-second reel timeline. render.mjs
+   pauses every animation and seeks it to t; no wall-clock animation is used. */
+:root {
+  --ink:#091120; --ink2:#111e33; --ink3:#182944; --line:#2b3d5d;
+  --cream:#f7f8fc; --mute:#b1bfd5; --blue:#4c83f3; --orange:#ff963d;
+  --mint:#68e0b0; --red:#ff827a;
+}
+* { box-sizing:border-box; margin:0; }
+html,body { width:1080px; height:1920px; overflow:hidden; background:var(--ink); }
+body { position:relative; color:var(--cream); font-family:-apple-system,"SF Pro Display","Helvetica Neue",sans-serif;
+       -webkit-font-smoothing:antialiased; }
+.mono { font-family:"SF Mono",Menlo,monospace; }
+.backdrop { position:absolute; inset:0; overflow:hidden;
+  background:radial-gradient(circle,rgba(108,145,205,.15) 1.5px,transparent 2px) 0 0/46px 46px,
+             linear-gradient(155deg,#0a1323 0%,#091120 48%,#10182a 100%); }
+.glow { position:absolute; width:1450px; height:1450px; left:-220px; top:100px; border-radius:50%;
+  background:radial-gradient(circle,rgba(47,111,237,.28),rgba(47,111,237,0) 65%);
+  animation:drift 20s linear both; }
+.warm-glow { position:absolute; width:780px; height:780px; right:-300px; bottom:50px; border-radius:50%;
+  background:radial-gradient(circle,rgba(255,150,61,.16),rgba(255,150,61,0) 68%); }
+@keyframes drift { from { transform:translate(-90px,-150px) scale(.94); } to { transform:translate(130px,310px) scale(1.16); } }
+.orbit { position:absolute; width:790px; height:790px; border:1px solid rgba(123,157,210,.14); border-radius:50%;
+  left:145px; top:500px; transform:rotate(-18deg) scaleY(.72); }
+.orbit::before,.orbit::after { content:""; position:absolute; inset:52px; border:1px solid rgba(123,157,210,.1); border-radius:50%; }
+.orbit::after { inset:110px; }
+
+.scene { position:absolute; inset:0; padding:250px 72px 400px; display:flex; flex-direction:column;
+  justify-content:center; opacity:0; animation:sceneIn .36s ease-out both var(--in),sceneOut .26s ease-in forwards var(--out); }
+@keyframes sceneIn { from { opacity:0; } to { opacity:1; } }
+@keyframes sceneOut { from { opacity:1; transform:scale(1); } to { opacity:0; transform:scale(1.025); } }
+.center { align-items:center; text-align:center; }
+.rise { animation:rise .52s cubic-bezier(.2,.9,.2,1) both var(--d); }
+@keyframes rise { from { opacity:0; transform:translateY(54px); } to { opacity:1; transform:none; } }
+.pop { animation:pop .48s cubic-bezier(.3,1.45,.5,1) both var(--d); }
+@keyframes pop { from { opacity:0; transform:scale(.55); } to { opacity:1; transform:none; } }
+.kicker { color:#a9c6ff; font-size:30px; font-weight:750; letter-spacing:5px; margin-bottom:26px; }
+h1 { max-width:930px; font-size:112px; line-height:1.01; font-weight:820; letter-spacing:-4px; }
+h1 em { color:var(--orange); font-style:normal; }
+.sub { color:var(--mute); font-size:42px; line-height:1.25; font-weight:520; margin-top:27px; }
+.mono-label { color:#91a7c8; font:700 22px/1.2 "SF Mono",Menlo,monospace; letter-spacing:1.5px; }
+
+/* Brand */
+.mascot { width:450px; height:450px; object-fit:contain; filter:drop-shadow(0 30px 70px rgba(0,0,0,.55)); }
+.bob { animation:bob 1.3s ease-in-out infinite; }
+@keyframes bob { 50% { transform:translateY(-14px) rotate(-1.5deg); } }
+.word { margin-top:10px; font-size:150px; line-height:1; font-weight:850; letter-spacing:-7px; }
+.word b { color:var(--orange); }
+.brand-rule { width:136px; height:7px; margin:25px auto 0; border-radius:9px;
+  background:linear-gradient(90deg,var(--blue),var(--orange)); }
+
+/* Provider breadth */
+.rows { margin:48px -72px 0; padding:0 72px; display:flex; flex-direction:column; gap:14px; overflow:hidden; }
+.row { display:flex; width:max-content; gap:16px; white-space:nowrap; animation:slideL 4.4s linear both var(--d); }
+.row:nth-child(even) { animation-name:slideR; }
+@keyframes slideL { from { transform:translateX(16px); } to { transform:translateX(-16px); } }
+@keyframes slideR { from { transform:translateX(-16px); } to { transform:translateX(16px); } }
+.chip { padding:16px 26px; border-radius:60px; color:#dce7f9; background:rgba(19,32,54,.9);
+  border:1px solid #344766; font-size:38px; font-weight:650; }
+.chip.hot { color:#071120; background:var(--orange); border-color:var(--orange); }
+
+/* Drawn project workspace: neutral sample data, not an application screenshot. */
+.win { height:690px; margin-top:38px; border:1px solid #405477; border-radius:28px; overflow:hidden;
+  background:#0e192c; box-shadow:0 38px 90px rgba(0,0,0,.48); display:flex; flex-direction:column; }
+.bar { height:60px; flex:none; display:flex; align-items:center; gap:11px; padding:0 22px;
+  background:#142139; border-bottom:1px solid var(--line); }
+.dot { width:13px; height:13px; border-radius:50%; background:#587092; }
+.bar-title { margin-left:13px; color:#c1cee2; font-size:25px; font-weight:600; }
+.bar-state { margin-left:auto; color:#8ca4c9; font-size:21px; }
+.work-top { height:344px; flex:none; display:flex; border-bottom:1px solid var(--line); }
+.side { width:230px; flex:none; padding:20px 16px; border-right:1px solid var(--line); color:#aab8ce;
+  display:flex; flex-direction:column; gap:12px; font-size:25px; }
+.side span { padding:8px 12px; border-radius:10px; }
+.side .selected { color:#fff; background:#203657; border:1px solid #33517e; }
+.side .section-label { padding:8px 12px 0; color:#8297b5; font-size:20px; letter-spacing:1px; }
+.chat { flex:1; min-width:0; padding:22px 24px; display:flex; flex-direction:column; gap:12px; }
+.ask { align-self:flex-end; max-width:95%; padding:12px 18px; border-radius:18px 18px 5px 18px;
+  color:white; background:#2f6fed; font-size:27px; font-weight:620; }
+.tool { color:#c0cee2; font-size:23px; padding:5px 0; opacity:0; animation:rise .38s ease-out both var(--d); }
+.tool b { color:#f5c37c; font-weight:700; }
+.tool code { color:#e6edf8; }
+.working { margin-top:auto; padding:12px 15px; border-radius:13px; color:#afc2df; background:#14243d;
+  border:1px solid #2e4568; font-size:23px; opacity:0; animation:rise .38s ease-out both 10.25s; }
+.working i { display:inline-block; width:10px; height:10px; margin-right:9px; border-radius:50%; background:var(--mint); }
+.tabs { display:flex; gap:8px; padding:13px 18px 0; }
+.tab { position:relative; padding:11px 20px; border-radius:11px; color:#9fb0ca; font-size:24px; font-weight:650; }
+.tab::before { content:""; position:absolute; inset:0; z-index:-1; border-radius:11px; background:#f5a057;
+  opacity:0; animation:tabOn .14s both var(--a),tabOff .14s forwards var(--b); }
+.tab span { animation:tabInk .14s both var(--a),tabUnink .14s forwards var(--b); }
+@keyframes tabOn { to { opacity:1; } } @keyframes tabOff { to { opacity:0; } }
+@keyframes tabInk { to { color:#11192a; } } @keyframes tabUnink { to { color:#9fb0ca; } }
+.panels { position:relative; flex:1; min-height:0; padding:14px 24px; }
+.panel { position:absolute; inset:14px 24px; color:#c2cee0; font-size:23px; line-height:1.55; opacity:0;
+  animation:panelIn .18s both var(--a),tabOff .15s forwards var(--b); }
+@keyframes panelIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+.panel .file { color:#91a7c8; margin-bottom:7px; }
+.del,.add { display:block; padding:0 11px; border-radius:5px; }
+.del { color:#ffaaa5; background:rgba(255,90,80,.12); }
+.add { color:#8ce4ba; background:rgba(75,204,142,.12); }
+.term-line { color:#8ce4ba; }
+.tree { color:#a9c6ff; }
+.address { margin-bottom:12px; padding:7px 14px; border-radius:20px; background:#182944; color:#a9bbd4; }
+.skeleton { height:28px; margin-bottom:12px; border-radius:8px; background:#1a2b46; }
+
+/* Scheduled-task examples */
+.tasks { margin-top:40px; display:flex; flex-direction:column; gap:18px; }
+.task { display:flex; align-items:center; gap:22px; min-height:136px; padding:24px 28px; border-radius:25px;
+  background:linear-gradient(105deg,rgba(22,38,63,.98),rgba(16,28,47,.96)); border:1px solid #314765;
+  box-shadow:0 16px 38px rgba(0,0,0,.2); }
+.task-icon { display:grid; place-items:center; width:68px; height:68px; flex:none; border-radius:20px;
+  color:#10192a; background:var(--blue); font-size:35px; font-weight:800; }
+.task:nth-child(2) .task-icon { background:var(--orange); }
+.task:nth-child(3) .task-icon { color:#092016; background:var(--mint); }
+.task-copy { min-width:0; }
+.when { color:#b3c7e5; font-size:25px; font-weight:700; letter-spacing:1px; }
+.what { margin-top:7px; color:#fff; font-size:38px; font-weight:720; }
+.task-dot { margin-left:auto; width:18px; height:18px; flex:none; border-radius:50%; background:var(--mint);
+  box-shadow:0 0 20px rgba(104,224,176,.45); }
+.task-note { margin-top:24px; color:#aabbd4; font-size:38px; }
+.task-note b { color:var(--cream); }
+
+/* Platforms and end card */
+.platforms { margin-top:54px; display:flex; flex-wrap:wrap; justify-content:center; gap:18px; }
+.platform { padding:21px 32px; border-radius:23px; border:1px solid #344968; background:#14223a;
+  color:#edf3ff; font-size:47px; font-weight:730; }
+.platform:nth-child(2n) { border-color:#5b472f; color:#ffd5ae; }
+.platform.primary { color:#091120; border-color:#ff963d; background:var(--orange); }
+.cta { margin-top:46px; padding:22px 34px; border:1px solid #6394fa; border-radius:56px;
+  color:white; background:linear-gradient(110deg,#2f6fed,#447cf0); box-shadow:0 14px 38px rgba(47,111,237,.28);
+  font-size:39px; font-weight:750; letter-spacing:.2px; }
+.dots { margin-top:29px; color:#a9b9d1; font-size:27px; font-weight:750; letter-spacing:10px; }
+.end-sub { max-width:750px; margin-top:20px; color:#c2cee0; font-size:40px; }
+</style>
+
+<div class="backdrop"></div><div class="glow"></div><div class="warm-glow"></div><div class="orbit"></div>
+
+<!-- 1 · 0–3s — Logo, product name, promise -->
+<section class="scene center" style="--in:0s;--out:2.75s">
+  <img class="mascot pop" style="--d:.1s" src="../../shared/branding/herness-logo.webp" alt="HerNess maskotu">
+  <div class="word rise" style="--d:.55s">Her<b>Ness</b></div>
+  <div class="brand-rule rise" style="--d:.78s"></div>
+  <div class="sub rise" style="--d:1.02s">Fikrinden çalışan çözüme.</div>
+</section>
+
+<!-- 2 · 3–7s — 25 distinct built-in provider names -->
+<section class="scene" style="--in:3s;--out:6.75s">
+  <div class="kicker rise" style="--d:3.04s">MODEL ÖZGÜRLÜĞÜ</div>
+  <h1 class="rise" style="--d:3.14s"><em>25 hazır</em><br>sağlayıcı.</h1>
+  <div class="sub rise" style="--d:3.43s">İhtiyacına göre seç.</div>
+  <div class="rows rise" style="--d:3.7s">
+    <div class="row" style="--d:3.05s"><span class="chip hot">OpenAI</span><span class="chip">Anthropic</span><span class="chip">Gemini</span></div>
+    <div class="row" style="--d:3.05s"><span class="chip">Grok</span><span class="chip">DeepSeek</span><span class="chip">Qwen</span></div>
+    <div class="row" style="--d:3.05s"><span class="chip">Mistral</span><span class="chip">Perplexity</span><span class="chip hot">OpenRouter</span></div>
+    <div class="row" style="--d:3.05s"><span class="chip">Together AI</span><span class="chip">Fireworks</span><span class="chip">NVIDIA NIM</span></div>
+  </div>
+</section>
+
+<!-- 3 · 7–11.5s — Drawn project workflow -->
+<section class="scene" style="--in:7s;--out:11.25s">
+  <div class="kicker rise" style="--d:7.04s">PROJENDE ÜRET</div>
+  <h1 class="rise" style="--d:7.14s">Oku. Düzenle.<br><em>Çalıştır.</em></h1>
+  <div class="win rise" style="--d:7.45s">
+    <div class="bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="bar-title">HerNess · örnek proje</span><span class="bar-state">● Çalışma alanı</span></div>
+    <div class="work-top">
+      <div class="side"><span class="section-label">ÇALIŞMA ALANI</span><span class="selected">▦ &nbsp; Projeler</span><span>◉ &nbsp; Konuşmalar</span><span>◷ &nbsp; Görevler</span></div>
+      <div class="chat">
+        <div class="ask rise" style="--d:7.88s">Profil kartını sadeleştir.</div>
+        <div class="tool mono" style="--d:8.24s">› <b>read_file</b> &nbsp;<code>ProfileCard.swift</code></div>
+        <div class="tool mono" style="--d:8.68s">› <b>edit_file</b> &nbsp;<code>ProfileCard.swift</code></div>
+        <div class="tool mono" style="--d:9.12s">› <b>run_command</b> &nbsp;<code>npm run build</code></div>
+        <div class="working"><i></i>Değişiklikler proje içinde işleniyor</div>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab" style="--a:7.9s;--b:8.72s"><span>İnceleme</span></div>
+      <div class="tab" style="--a:8.72s;--b:9.55s"><span>Terminal</span></div>
+      <div class="tab" style="--a:9.55s;--b:10.5s"><span>Dosyalar</span></div>
+      <div class="tab" style="--a:10.5s;--b:99s"><span>Tarayıcı</span></div>
+    </div>
+    <div class="panels mono">
+      <div class="panel" style="--a:7.9s;--b:8.72s"><div class="file">ProfileCard.swift</div><span class="del">- VStack(spacing: 28) {</span><span class="add">+ VStack(spacing: 16) {</span><span class="add">+     ProfileSummary()</span></div>
+      <div class="panel" style="--a:8.72s;--b:9.55s"><div class="file">Terminal · örnek komut</div><span class="term-line">$ npm run build</span><br><span>Komut proje çalışma alanında çalışır.</span></div>
+      <div class="panel" style="--a:9.55s;--b:10.5s"><div class="file">▾ Sources</div><span class="tree">&nbsp;&nbsp;▸ Components</span><br><span class="tree">&nbsp;&nbsp;● ProfileCard.swift</span><br><span class="tree">&nbsp;&nbsp;○ ProfileSummary.swift</span></div>
+      <div class="panel" style="--a:10.5s;--b:99s"><div class="address">Önizleme · yerel proje</div><div class="skeleton" style="width:72%"></div><div class="skeleton"></div><div class="skeleton" style="width:52%;background:#2f6fed"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 · 11.5–14.5s — Scheduled-task examples -->
+<section class="scene" style="--in:11.5s;--out:14.25s">
+  <div class="kicker rise" style="--d:11.54s">ZAMANLANMIŞ GÖREVLER</div>
+  <h1 class="rise" style="--d:11.64s">Sen planla.<br><em>O çalışsın.</em></h1>
+  <div class="tasks">
+    <div class="task rise" style="--d:11.98s"><div class="task-icon">↻</div><div class="task-copy"><div class="when">HER GÜN · 09.00</div><div class="what">Günlük proje özeti</div></div><i class="task-dot"></i></div>
+    <div class="task rise" style="--d:12.18s"><div class="task-icon">⌘</div><div class="task-copy"><div class="when">HER PAZARTESİ</div><div class="what">PR inceleme notu</div></div><i class="task-dot"></i></div>
+    <div class="task rise" style="--d:12.38s"><div class="task-icon">✦</div><div class="task-copy"><div class="when">İSTEDİĞİN ZAMAN</div><div class="what">Şimdi çalıştır</div></div><i class="task-dot"></i></div>
+  </div>
+  <div class="task-note rise" style="--d:12.78s">Örnek planlar, <b>senin kontrolünde.</b></div>
+</section>
+
+<!-- 5 · 14.5–17.5s — Five supported platforms -->
+<section class="scene center" style="--in:14.5s;--out:17.25s">
+  <div class="kicker rise" style="--d:14.54s">MASAÜSTÜ + MOBİL</div>
+  <h1 class="rise" style="--d:14.64s">HerNess<br><em>her cihazda.</em></h1>
+  <div class="platforms">
+    <div class="platform pop" style="--d:14.98s">macOS</div><div class="platform pop" style="--d:15.16s">Windows</div>
+    <div class="platform primary pop" style="--d:15.34s">Linux</div><div class="platform pop" style="--d:15.52s">iOS</div>
+    <div class="platform pop" style="--d:15.7s">Android</div>
+  </div>
+  <div class="sub rise" style="--d:15.94s">Projelerinle birlikte, yanında.</div>
+</section>
+
+<!-- 6 · 17.5–20s — End card -->
+<section class="scene center" style="--in:17.5s;--out:99s">
+  <img class="mascot pop bob" style="--d:17.54s;width:360px;height:360px" src="../../shared/branding/herness-logo.webp" alt="HerNess maskotu">
+  <div class="word rise" style="--d:17.78s">Her<b>Ness</b></div>
+  <div class="end-sub rise" style="--d:18.05s">Yapay zekâ çalışma alanın.</div>
+  <div class="cta pop" style="--d:18.42s">herness.dots.net.tr</div>
+  <div class="dots rise" style="--d:18.78s">DOTS</div>
+</section>
+
+<script>
+function seek(t) {
+  for (const a of document.getAnimations()) { a.pause(); a.currentTime = t * 1000; }
+  return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+</script>
+</html>

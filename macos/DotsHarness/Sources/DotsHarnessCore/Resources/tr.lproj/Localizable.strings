@@ -936,6 +936,8 @@
 "conversation.used" = "Kullanılanlar";
 "conversation.thinking" = "Düşünme Süreci";
 "conversation.runSummary" = "Çalışma özeti";
+"conversation.runDuration" = "%@ çalıştı";
+"conversation.runDurationDetails" = "Başlangıç %@ · bitiş %@";
 "conversation.filesSummary" = "Eklendi %d, değiştirildi %d, silindi %d";
 "conversation.fileAdded" = "Eklendi";
 "conversation.fileModified" = "Değiştirildi";
@@ -1295,7 +1297,7 @@
 "conversation.runningTools" = "Araçlar çalışıyor…";
 "conversation.thinkingPhase" = "Düşünüyor…";
 "conversation.tokensCount" = "%@ token";
-"conversation.processedTokensCount" = "%@ yeni işlenen token";
+"conversation.processedTokensCount" = "%@ token";
 "usage.context.window" = "Bağlam penceresi";
 "usage.planLimits" = "Plan kullanım limitleri";
 "ask.other" = "Diğer";
@@ -2072,3 +2074,34 @@
 "memory.lesson.forget" = "Yanlış, unut";
 
 "simulator.back" = "Geri";
+
+"claudeCLI.notInstalled" = "Claude Code CLI bulunamadı. claude.com/code adresinden kurup `claude update` çalıştırın.";
+
+"settings.updates.auto" = "Güncellemeleri otomatik yükle";
+"settings.updates.auto.hint" = "Açılışta yeni sürüm bulunursa indirilir, kurulur ve uygulama yeniden başlatılır.";
+"settings.updates.installing" = "Güncelleme indiriliyor ve kuruluyor…";
+"settings.updates.install" = "Güncelle ve yeniden başlat";
+"updates.error.install" = "Güncelleme kurulamadı";
+"market.category.chat" = "Sohbet";
+"market.category.image" = "Görsel üretimi";
+"market.category.modeling" = "3B modelleme";
+"market.category.video" = "Video üretimi";
+"market.category.audio" = "Ses üretimi";
+"local.search" = "Model ara";
+"local.settings" = "Çalışma zamanı ayarları";
+"local.recommended" = "Önerilenler";
+"local.downloaded" = "Hugging Face'ten indirilenler";
+"local.hub.title" = "Hugging Face'te popüler";
+"local.hub.viewAll" = "Tümünü Hugging Face'te gör";
+"local.hub.open" = "Hugging Face'te aç";
+"local.hub.empty" = "Bu aramaya uyan model yok.";
+"local.hub.files" = "Dosyalar";
+"local.hub.downloadRepo" = "Tüm repoyu indir · %@";
+"local.hub.fileOnly" = "Yalnızca indirme";
+"local.hub.downloadOnly" = "Bu Mac'e indirilir. DOTS metin modellerini kendisi çalıştırır; görsel, video, 3B ve ses modellerini destekleyen bir uygulamayla aç.";
+"local.hub.attribution" = "Liste Hugging Face'ten canlı gelir. Kullanmadan önce her modelin lisansını kontrol et.";
+"local.reveal" = "Finder'da göster";
+"local.size" = "Boyut";
+"local.context" = "Context";
+"local.memory" = "Bellek";
+"local.disk" = "Diskte";

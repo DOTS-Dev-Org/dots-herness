@@ -7,6 +7,9 @@
 "agent.runningTool" = "%@ çalıştırılıyor…";
 "agent.steeringQueued" = "Öncelikli talimat kuyruğa alındı";
 "app.ok" = "Tamam";
+"archive.empty" = "Arşivlenmiş konuşma yok.";
+"archive.restore" = "Arşivden çıkar";
+"archive.title" = "Arşivlenmiş konuşmalar";
 "ask.customPlaceholder" = "Kendi cevabını yaz…";
 "ask.defaultHeader" = "Soru %d";
 "ask.next" = "İleri";
@@ -205,6 +208,7 @@
 "mobile.agent.continuePlan" = "Plana devam et";
 "mobile.agent.dictate" = "İsteği sesle yaz";
 "mobile.agent.error" = "Hata";
+"mobile.agent.fast" = "Hızlı mod";
 "mobile.agent.model" = "Model";
 "mobile.agent.newConversation" = "Yeni konuşma";
 "mobile.agent.noProject" = "Projesiz";
@@ -219,7 +223,6 @@
 "mobile.agent.send" = "Gönder";
 "mobile.agent.subagents" = "Alt ajanları kullan";
 "mobile.agent.subagentsHint" = "Büyük kod aramalarını paralel alt ajanlara devreder, konuşmaya yalnızca özetleri girer. Her biri ayrı bir model çağrısıdır; maliyeti düşürmek için kapatın.";
-"mobile.agent.fast" = "Hızlı mod";
 "mobile.agent.subagentsSection" = "Alt ajanlar";
 "mobile.agent.useProject" = "Projeyi kullan";
 "mobile.agent.user" = "Siz";
@@ -370,6 +373,18 @@
 "modelPicker.model" = "Modeli";
 "modelPicker.noModel" = "Bağlı model bulunamadı";
 "modelPicker.selectModel" = "Model seç";
+"notifications.actionRequired" = "İşleminiz gerekiyor";
+"notifications.approval" = "notifications.approval";
+"notifications.clearAll" = "Tümünü temizle";
+"notifications.emptyBody" = "Sorular ve tamamlanan işler burada görünür.";
+"notifications.emptyTitle" = "Güncelsiniz";
+"notifications.itemCount" = "%d bildirim";
+"notifications.markAllRead" = "Tümünü okundu işaretle";
+"notifications.operationFailed" = "İşlem başarısız oldu";
+"notifications.question" = "Yanıtınız bekleniyor";
+"notifications.responseReady" = "Yanıt tamamlandı";
+"notifications.title" = "Bildirimler";
+"notifications.unreadCount" = "%d okunmamış bildirim";
 "permission.allowOnce" = "Bir kez izin ver";
 "permission.approvalTitle" = "%@ için izin verilsin mi?";
 "permission.moreInfo" = "Daha fazla bilgi";
@@ -409,6 +424,7 @@
 "settings.tab.repository" = "Depo";
 "settings.tab.tools" = "Araçlar";
 "settings.title" = "Ayarlar";
+"sidebar.archiveChat" = "Sohbeti arşivle";
 "sidebar.noChats" = "Henüz konuşma yok";
 "sidebar.noRecent" = "Yakın zamanda konuşma yok";
 "sidebar.other" = "Diğer";

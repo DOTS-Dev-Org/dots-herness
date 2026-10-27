@@ -49,7 +49,7 @@ public sealed class EconomyPolicyTests
     }
 
     [Fact]
-    public void TaskHistoryCapturesOnlyNewEntriesUntilTheBacklogChanges()
+    public void TaskHistoryCapturesOnlyNewEntriesAndAReplacedBacklog()
     {
         static string History(string text) => "<task_history trust=\"data\">\n" + text + "\n</task_history>";
         const string backlog = "## Unfinished work (backlog)\n- `t1` — port the parser";
@@ -72,11 +72,19 @@ public sealed class EconomyPolicyTests
             History("## Relevant task history\n- task A\n  Files: a.cs\n\n" + backlog));
         Assert.Equal("three", third.Last().Content);
 
-        // A finished backlog item is state: the section is captured whole.
+        // A finished backlog item is state: only the new backlog goes, and it replaces the old one.
         var fourth = NativePromptHistory.Prepare(third.Concat([new NativeMessage("user", "four")]).ToList(), "policy",
+            History("## Relevant task history\n- task A\n  Files: a.cs\n- task D"));
+        var replaced = fourth.Last().Content;
+        Assert.Contains(NativePromptHistory.TaskHistoryBacklogMarker, replaced);
+        Assert.Contains("## Unfinished work (backlog)\n- None", replaced);
+        Assert.Contains("- task D", replaced);
+        Assert.DoesNotContain("task A", replaced);
+
+        // The replaced backlog is the one stated now: nothing is captured again.
+        var fifth = NativePromptHistory.Prepare(fourth.Concat([new NativeMessage("user", "five")]).ToList(), "policy",
             History("## Relevant task history\n- task A\n  Files: a.cs"));
-        Assert.DoesNotContain(NativePromptHistory.TaskHistoryAdditionsMarker, fourth.Last().Content);
-        Assert.Contains("task A", fourth.Last().Content);
+        Assert.Equal("five", fifth.Last().Content);
     }
 
     [Fact]
@@ -205,9 +213,9 @@ public sealed class EconomyPolicyTests
                 new JsonObject { ["type"] = "reasoning", ["id"] = "rs_1", ["encrypted_content"] = new string('A', 16_000) },
             ],
         };
-        // 16 KB of ciphertext replays as ~1k reasoning tokens, not 4k.
+        // 16 KB of ciphertext replays as ~570 reasoning tokens, not 4k.
         var extra = ContextCompaction.EstimateTokens(replayed) - ContextCompaction.EstimateTokens(plain);
-        Assert.InRange(extra, 1_001, 1_049);
+        Assert.InRange(extra, 560, 600);
     }
 
     [Fact]

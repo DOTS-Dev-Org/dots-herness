@@ -1151,6 +1151,31 @@ final class MobileHarnessRuntime: ObservableObject {
         stateStore.otherConversations(excluding: nil, projectID: projectID, limit: limit)
     }
 
+    func archivedConversations(limit: Int = 30) -> [StoredMobileConversation] {
+        stateStore.archivedConversations(limit: limit)
+    }
+
+    @discardableResult
+    func archiveConversation(_ id: String) -> Bool {
+        guard !isRunning,
+              (conversationID != id || projectLocationAvailable),
+              stateStore.setConversationArchived(id, archived: true) else { return false }
+        if conversationID == id { newConversation() }
+        objectWillChange.send()
+        return true
+    }
+
+    @discardableResult
+    func restoreConversation(_ id: String) -> Bool {
+        guard stateStore.setConversationArchived(id, archived: false) else { return false }
+        objectWillChange.send()
+        return true
+    }
+
+    func recentConversations(knownProjectIDs: [String], limit: Int = 30) -> [StoredMobileConversation] {
+        stateStore.unassignedConversations(knownProjectIDs: knownProjectIDs, limit: limit)
+    }
+
     func openConversation(_ id: String) -> Bool {
         guard !isRunning, !id.isEmpty,
               let stored = stateStore.modelContext(conversationID: id),
@@ -1462,7 +1487,9 @@ final class MobileHarnessRuntime: ObservableObject {
            !requiresToolOutcomeRecovery,
            !planGateActive,
            !isRunning,
-           ["queued", "completed", "cancelled"].contains(stateStore.conversationStatus(conversationID) ?? "") {
+           ["queued", "completed", "cancelled"].contains(stateStore.conversationStatus(conversationID) ?? ""),
+           // A queue left over from a long close would resend the history on a cold cache.
+           transcript.isEmpty || cacheState.allowsAutomaticResume(model: model, now: Date().timeIntervalSince1970) {
             drainNextQueuedPromptIfReleased()
         }
     }
@@ -2029,7 +2056,8 @@ final class MobileHarnessRuntime: ObservableObject {
             let summary = "Files: +\(diff.added.count) added, \(diff.modified.count) changed, \(diff.deleted.count) removed. " + cleanupNote(status: cleanupStatus, trackingStatus: diff.trackingStatus)
             transcript.append(AgentTurn(role: .system, text: summary))
             stateStore.appendMessage(conversationID: conversationID, role: "system", content: summary)
-            for path in diff.added + diff.modified { emit("file.changed", ["runId": activeRunID.uuidString, "turnId": activeTurnID, "path": path, "operation": diff.added.contains(path) ? "added" : "modified"]) }
+            let addedPaths = Set(diff.added)
+            for path in diff.added + diff.modified { emit("file.changed", ["runId": activeRunID.uuidString, "turnId": activeTurnID, "path": path, "operation": addedPaths.contains(path) ? "added" : "modified"]) }
             for path in diff.deleted { emit("file.deleted", ["runId": activeRunID.uuidString, "turnId": activeTurnID, "path": path, "operation": "deleted"]) }
             emit("run.summary", [
                 "runId": activeRunID.uuidString,

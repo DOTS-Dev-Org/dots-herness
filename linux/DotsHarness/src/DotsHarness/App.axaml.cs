@@ -40,7 +40,12 @@ public partial class App : Application
     {
         var update = await CrossPlatformUpdateChecker.CheckOnStartupAsync("linux");
         if (update is null || desktop.MainWindow is not { } owner) return;
-        var open = new Button { Content = Model.L("settings.updates.download") };
+        if (Model.AutoUpdate && await UpdateInstaller.InstallAndRelaunchAsync(update))
+        {
+            ExitApplication();
+            return;
+        }
+        var open = new Button { Content = Model.L("settings.updates.install") };
         var later = new Button { Content = Model.L("common.cancel"), IsVisible = !update.Mandatory };
         var dialog = new Window
         {
@@ -59,8 +64,10 @@ public partial class App : Application
                 },
             },
         };
-        open.Click += (_, _) =>
+        open.Click += async (_, _) =>
         {
+            open.IsEnabled = false;
+            if (await UpdateInstaller.InstallAndRelaunchAsync(update)) { dialog.Close(); ExitApplication(); return; }
             if (Uri.TryCreate(update.DownloadUrl, UriKind.Absolute, out var url) && url.Scheme == Uri.UriSchemeHttps)
                 Process.Start(new ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true })?.Dispose();
             dialog.Close();

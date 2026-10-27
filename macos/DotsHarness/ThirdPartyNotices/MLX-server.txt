@@ -1,0 +1,29 @@
+MLX server (dotsmlx)
+====================
+
+The `dotsmlx` helper serves MLX models on Apple Silicon. Dots Harness downloads
+it on demand; it is not included in the application bundle. It is built from
+these Swift packages, pinned in Package.resolved:
+
+mlx-swift 0.32.3 — MIT
+https://github.com/ml-explore/mlx-swift
+
+mlx-swift-lm 3.32.3 — MIT
+https://github.com/ml-explore/mlx-swift-lm
+
+swift-transformers, swift-huggingface, swift-jinja — Apache License 2.0
+https://github.com/huggingface/swift-transformers
+https://github.com/huggingface/swift-huggingface
+https://github.com/huggingface/swift-jinja
+
+swift-collections, swift-crypto, swift-asn1, swift-numerics — Apache License 2.0
+https://github.com/apple/swift-collections
+https://github.com/apple/swift-crypto
+https://github.com/apple/swift-asn1
+https://github.com/apple/swift-numerics
+
+yyjson — MIT
+https://github.com/ibireme/yyjson
+
+EventSource — MIT
+https://github.com/mattt/EventSource

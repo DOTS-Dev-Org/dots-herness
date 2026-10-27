@@ -410,6 +410,15 @@ struct LocalAgentView: View {
         return steps
     }
 
+    private var connectedProjectIDs: [String] {
+        local.projects.compactMap { project in
+            var isDirectory: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: project.localRoot, isDirectory: &isDirectory),
+                  isDirectory.boolValue else { return nil }
+            return project.id
+        }
+    }
+
     private var completedPlanSummaryID: String { "completed-plan-\(agent.activeConversationId ?? "none")" }
 
     /// Live checklist from the agent's latest update_plan, pinned above the composer.
@@ -891,6 +900,12 @@ struct LocalAgentView: View {
                         }
                         Toggle(localization.text("mobile.agent.plan"), isOn: $agent.planMode)
                             .disabled(!local.selectedProjectLocationAvailable || agent.isNoProjectMode)
+                        Button {
+                            if let id = agent.activeConversationId { _ = agent.archiveConversation(id) }
+                        } label: {
+                            Label(localization.text("sidebar.archiveChat"), systemImage: "archivebox")
+                        }
+                        .disabled(agent.isRunning || agent.activeConversationId == nil || !agent.projectLocationAvailable)
                         Button(localization.text("sidebar.recent")) { showingConversationHistory = true }
                         if !local.selectedProjectLocationAvailable {
                             Button(localization.text("project.missing.locate")) {
@@ -927,7 +942,11 @@ struct LocalAgentView: View {
                 }
             }
             .sheet(isPresented: $showingConversationHistory) {
-                MobileConversationHistorySheet(agent: agent)
+                MobileConversationHistorySheet(
+                    agent: agent,
+                    knownProjectIDs: connectedProjectIDs,
+                    projectName: local.selectedProject.name
+                )
             }
             .alert(localization.text("sidebar.recent"), isPresented: Binding(
                 get: { projectImportError != nil },
@@ -1054,32 +1073,78 @@ private struct MobileConversationHistorySheet: View {
     @EnvironmentObject private var localization: MobileLocalization
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var agent: MobileAgent
+    let knownProjectIDs: [String]
+    let projectName: String
+    @State private var historyMode = 0
+
+    private var projectConversationTitle: String {
+        agent.isNoProjectMode ? localization.text("mobile.agent.noProject") : projectName
+    }
 
     var body: some View {
         NavigationStack {
-            List {
-                let conversations = agent.previousConversations()
-                if conversations.isEmpty {
-                    Text(localization.text("sidebar.noChats"))
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(conversations) { conversation in
-                        NavigationLink {
-                            MobileConversationHistoryTranscript(agent: agent, conversationID: conversation.id)
-                                .navigationTitle(conversation.updatedAt.formatted(date: .abbreviated, time: .shortened))
-                                .navigationBarTitleDisplayMode(.inline)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(conversation.updatedAt.formatted(date: .abbreviated, time: .shortened))
-                                Text(conversation.status.capitalized)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+            VStack(spacing: 0) {
+                Picker(localization.text("sidebar.recent"), selection: $historyMode) {
+                    Text(localization.text("sidebar.recent")).tag(0)
+                    Text(projectConversationTitle).tag(1)
+                    Text(localization.text("archive.title")).tag(2)
+                }
+                .pickerStyle(.segmented)
+                .padding()
+
+                List {
+                    let conversations = historyMode == 1
+                        ? agent.previousConversations()
+                        : historyMode == 2
+                            ? agent.archivedConversations()
+                            : agent.recentConversations(knownProjectIDs: knownProjectIDs)
+                    if conversations.isEmpty {
+                        Text(localization.text(historyMode == 2 ? "archive.empty" : "sidebar.noChats"))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(conversations) { conversation in
+                            HStack(spacing: 8) {
+                                NavigationLink {
+                                    MobileConversationHistoryTranscript(agent: agent, conversationID: conversation.id)
+                                        .navigationTitle(conversation.updatedAt.formatted(date: .abbreviated, time: .shortened))
+                                        .navigationBarTitleDisplayMode(.inline)
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(conversation.title.isEmpty
+                                            ? conversation.updatedAt.formatted(date: .abbreviated, time: .shortened)
+                                            : conversation.title)
+                                            .lineLimit(2)
+                                        Text(conversation.status.capitalized)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+
+                                Button {
+                                    if historyMode == 2 {
+                                        _ = agent.restoreConversation(conversation.id)
+                                    } else {
+                                        let wasActive = agent.activeConversationId == conversation.id
+                                        if agent.archiveConversation(conversation.id), wasActive { dismiss() }
+                                    }
+                                } label: {
+                                    Image(systemName: historyMode == 2 ? "arrow.uturn.backward" : "archivebox")
+                                }
+                                .buttonStyle(.borderless)
+                                .accessibilityLabel(localization.text(
+                                    historyMode == 2 ? "archive.restore" : "sidebar.archiveChat"
+                                ))
+                                .disabled(agent.isRunning || (historyMode != 2
+                                    && agent.activeConversationId == conversation.id
+                                    && !agent.projectLocationAvailable))
                             }
                         }
                     }
                 }
             }
-            .navigationTitle(localization.text("sidebar.recent"))
+            .navigationTitle(historyMode == 1
+                ? projectConversationTitle
+                : historyMode == 2 ? localization.text("archive.title") : localization.text("sidebar.recent"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(localization.text("mobile.agent.close")) { dismiss() }

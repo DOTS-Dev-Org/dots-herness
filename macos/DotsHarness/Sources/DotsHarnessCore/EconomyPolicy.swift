@@ -69,7 +69,7 @@ public struct AgentOutputBudget: Sendable, Equatable {
         }
         let selectedDecision = decision ?? ResponseStyleResolver.resolve(
             preference: configuration.responseStylePreference,
-            prompt: messages.last(where: { $0.role == .user })?.content
+            prompt: messages.last(where: { $0.role == .user })?.authoredContent
         )
         let detectedStyle = selectedDecision.style
         let visibleBase: Int
@@ -206,12 +206,15 @@ public enum EconomyToolOutputPolicy {
         // rewrite the already-sent provider prefix and cause a false cache miss.
         // The complete result remains in the durable transcript; this is only the
         // reversible provider-facing view.
-        return messages.enumerated().map { index, message in
+        // Nearest preceding assistant call per id, built in one forward pass.
+        var callsByID: [String: AgentToolCall] = [:]
+        return messages.map { message in
+            if message.role == .assistant {
+                for call in message.toolCalls.reversed() { callsByID[call.id] = call }
+            }
             guard message.role == .tool else { return message }
             var copy = message
-            let matchedCall = messages[..<index].reversed().first(where: {
-                $0.role == .assistant && $0.toolCalls.contains(where: { $0.id == message.toolCallID })
-            })?.toolCalls.first(where: { $0.id == message.toolCallID }).map(unwrapCall)
+            let matchedCall = message.toolCallID.flatMap { callsByID[$0] }.map(unwrapCall)
             let arguments = matchedCall?.arguments ?? ""
             let toolName: String
             if let name = message.name, !name.isEmpty, name != DeferredToolSession.invokeName {

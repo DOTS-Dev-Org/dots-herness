@@ -391,6 +391,8 @@ public struct WorkspaceRunSummary: Hashable, Sendable, Codable, Equatable {
     /// False when the turn ran something whose writes could not be traced to paths,
     /// so its changed files are the whole workspace diff. Nil on older records.
     public let attributionKnown: Bool?
+    public let startedAt: Date?
+    public let finishedAt: Date?
 
     public init(
         runID: String,
@@ -405,7 +407,9 @@ public struct WorkspaceRunSummary: Hashable, Sendable, Codable, Equatable {
         testStatus: String,
         browser: BrowserRunSummary? = nil,
         undoAvailable: Bool? = nil,
-        attributionKnown: Bool? = nil
+        attributionKnown: Bool? = nil,
+        startedAt: Date? = nil,
+        finishedAt: Date? = nil
     ) {
         self.runID = runID
         self.turnID = turnID
@@ -420,6 +424,8 @@ public struct WorkspaceRunSummary: Hashable, Sendable, Codable, Equatable {
         self.browser = browser
         self.undoAvailable = undoAvailable
         self.attributionKnown = attributionKnown
+        self.startedAt = startedAt
+        self.finishedAt = finishedAt
     }
 }
 
@@ -823,8 +829,10 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
     /// `ConversationStore.loadHeaders`). Headers are never written over full records.
     public var contentLoaded = true
     /// False while only a window of the visible transcript is resident. The
-    /// provider modelContext remains fully loaded for the selected conversation.
+    /// provider modelContext can be fetched separately when the user sends a prompt.
     public var transcriptComplete = true
+    /// False when the visible page is loaded but the provider request history is still in SQLite.
+    public var modelContextLoaded = true
     /// Absolute index of the first visible message currently loaded from disk.
     public var messageStartIndex = 0
     /// IDs loaded from disk pages, used to merge edits back without decoding the
@@ -850,6 +858,7 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         header.headerActivityAt = activityDate
         header.messages = []
         header.modelContext = []
+        header.modelContextLoaded = false
         header.transcriptComplete = false
         header.messageStartIndex = 0
         header.loadedTranscriptMessageIDs = []
@@ -885,6 +894,7 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
 
         messages: [ChatMessage] = [],
         modelContext: [AgentMessage] = [],
+        modelContextLoaded: Bool = true,
         contextSummary: String = "",
         contextCompactionCount: Int = 0,
         lastContextInputTokens: Int = 0,
@@ -916,6 +926,7 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         self.title = title
         self.messages = messages
         self.modelContext = modelContext
+        self.modelContextLoaded = modelContextLoaded
         self.contextSummary = contextSummary
         self.contextCompactionCount = contextCompactionCount
         self.lastContextInputTokens = lastContextInputTokens
@@ -946,12 +957,28 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
 
     public var canContinue: Bool { !running && continuation != nil && !turnFinished }
 
+    /// Wall-clock corrections can make a newly appended message appear older
+    /// than the message immediately before it. Preserve transcript order in
+    /// the persisted timestamps when that happens.
+    mutating func appendChronologically(_ message: ChatMessage) {
+        var message = message
+        if let previous = messages.last?.createdAt ?? headerActivityAt,
+           message.createdAt < previous {
+            message.createdAt = previous
+        }
+        messages.append(message)
+    }
+
     /// The model already gave its final answer (no pending tool calls), so a
     /// stop or shutdown that landed after it left nothing to continue. A paused
     /// plan stays resumable even after a separate promoted request finishes.
     public var turnFinished: Bool {
-        guard inFlightToolCalls.isEmpty, !planGateActive, pendingPlanMessageID == nil,
-              let last = modelContext.last(where: { $0.role != .system }) else { return false }
+        guard inFlightToolCalls.isEmpty, !planGateActive, pendingPlanMessageID == nil else { return false }
+        if !modelContextLoaded {
+            let last = messages.last { $0.kind != .system }
+            return last?.kind == .assistant || last?.kind == .plan
+        }
+        guard let last = modelContext.last(where: { $0.role != .system }) else { return false }
         return last.role == .assistant && last.toolCalls.isEmpty
     }
 
@@ -959,6 +986,7 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         case id, title, messages, modelContext, contextSummary, contextCompactionCount, lastContextInputTokens, lastContextEstimatedTokens, contextWindow, contextRouteIdentity
         case continuation, pendingPrompts, running, pinned, priority, archived, archivedAt, blank, unread, planGateActive, pendingPlanMessageID, cwd, projectless, agentPreset
         case inFlightToolCalls, requiresToolOutcomeRecovery, stickyAccountID, stickyModelID, modelPreferenceID, lastActivityAt, cacheEpoch
+        case modelContextLoaded
     }
 
     private struct ActivityStamp: Decodable {
@@ -974,6 +1002,7 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
             // Sidebar header: skip the transcript and provider context entirely.
             messages = []
             modelContext = []
+            modelContextLoaded = false
             contentLoaded = false
             transcriptComplete = false
             headerActivityAt = try container.decodeIfPresent(Date.self, forKey: .lastActivityAt)
@@ -982,6 +1011,7 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         } else {
             messages = try container.decodeIfPresent([ChatMessage].self, forKey: .messages) ?? []
             modelContext = try container.decodeIfPresent([AgentMessage].self, forKey: .modelContext) ?? []
+            modelContextLoaded = try container.decodeIfPresent(Bool.self, forKey: .modelContextLoaded) ?? true
             contentLoaded = true
             transcriptComplete = true
             messageStartIndex = 0
@@ -1027,6 +1057,7 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
         try container.encode(title, forKey: .title)
         try container.encode(messages, forKey: .messages)
         try container.encode(modelContext, forKey: .modelContext)
+        try container.encode(modelContextLoaded, forKey: .modelContextLoaded)
         try container.encode(contextSummary, forKey: .contextSummary)
         try container.encode(contextCompactionCount, forKey: .contextCompactionCount)
         try container.encode(lastContextInputTokens, forKey: .lastContextInputTokens)
@@ -1061,6 +1092,8 @@ public struct Conversation: Identifiable, Sendable, Equatable, Codable {
 /// SQLite-backed conversation store. A first install creates an empty database;
 /// an existing sessions.json archive is imported once and kept as a backup.
 public final class ConversationStore: @unchecked Sendable {
+    public static let defaultTranscriptPageSize = 5
+
     private struct JSONMemberSlice {
         let keyRange: Range<Int>
         let valueRange: Range<Int>
@@ -1074,7 +1107,7 @@ public final class ConversationStore: @unchecked Sendable {
     private let cacheLock = NSLock()
     static let headersOnlyKey = CodingUserInfoKey(rawValue: "dots.conversationHeadersOnly")!
     private var revisionValue = 0
-    private var headersCache: (revision: Int, headers: [Conversation])?
+    private var headersCache: (revision: Int, dataVersion: Int64, headers: [Conversation])?
 
     /// Bumped whenever the stored database changes. Sidebar-derived lists use this
     /// to invalidate their small metadata-only cache.
@@ -1167,17 +1200,19 @@ public final class ConversationStore: @unchecked Sendable {
     public func loadHeaders() -> [Conversation] {
         guard databaseReady else { return [] }
         // The sidebar asks on every redraw; decoding every row's state_json each time
-        // was a main-thread hot spot. Only save/delete change rows, and both bump revision.
+        // was a main-thread hot spot. The SQLite data version catches writes from
+        // other ConversationStore instances sharing this database.
         let revision = self.revision
+        let dataVersion = database?.dataVersion ?? 0
         cacheLock.lock()
-        if let cached = headersCache, cached.revision == revision {
+        if let cached = headersCache, cached.revision == revision, cached.dataVersion == dataVersion {
             cacheLock.unlock()
             return cached.headers
         }
         cacheLock.unlock()
         let headers = database?.headers() ?? []
         cacheLock.lock()
-        headersCache = (revision, headers)
+        headersCache = (revision, dataVersion, headers)
         cacheLock.unlock()
         return headers
     }
@@ -1192,7 +1227,7 @@ public final class ConversationStore: @unchecked Sendable {
     /// Message bodies outside that page are never decoded into model objects.
     func loadRecentConversation(
         id: String,
-        limit: Int = 10,
+        limit: Int = ConversationStore.defaultTranscriptPageSize,
         includeModelContext: Bool = true
     ) -> Conversation? {
         guard databaseReady, limit > 0 else { return nil }
@@ -1206,12 +1241,17 @@ public final class ConversationStore: @unchecked Sendable {
         return database?.transcript(id: id)
     }
 
+    func transcriptContains(id: String, query: String, shouldCancel: @Sendable () -> Bool) -> Bool {
+        guard databaseReady else { return false }
+        return database?.transcriptContains(id: id, query: query, shouldCancel: shouldCancel) ?? false
+    }
+
     /// Reads one older message page. The offset is an exclusive index into the
     /// stored transcript, so newly appended messages do not shift older pages.
     func loadMessagePage(
         id: String,
         endingBefore offset: Int,
-        limit: Int = 10
+        limit: Int = ConversationStore.defaultTranscriptPageSize
     ) -> ConversationTranscriptPage? {
         guard databaseReady else { return nil }
         return database?.messagePage(id: id, endingBefore: offset, limit: limit)

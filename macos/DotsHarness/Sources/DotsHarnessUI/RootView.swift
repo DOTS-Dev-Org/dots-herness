@@ -149,6 +149,9 @@ public struct RootView: View {
         .onChange(of: model.planPaneRequestID) { _, _ in dock.showPlan() }
         .onChange(of: model.reviewPaneRequestID) { _, _ in dock.showReview() }
         .onChange(of: model.tasksPaneRequestID) { _, _ in dock.showTasks() }
+        .onChange(of: model.browserPaneRequestID) { _, _ in
+            if let url = model.requestedBrowserURL { dock.openWebURL(url) }
+        }
         .onChange(of: model.filesPaneRequestID) { _, _ in dock.add(.files, unique: true) }
         .onChange(of: model.workspacePath, initial: true) { _, path in
             dock.projectName = path.isEmpty ? "" : model.projectTitle(for: path)
@@ -165,7 +168,11 @@ public struct RootView: View {
                 if model.section.showsProjectSidebar, !isSidebarCompact, navigationState.visibility != .detailOnly {
                     let maximumSidebarWidth = min(520, max(180, proxy.size.width - sidebarDetailWidthReserve))
                     let actualSidebarWidth = min(configuredHomeSidebarWidth, maximumSidebarWidth)
-                    SidebarView(model: model, logo: logo)
+                    SidebarView(
+                        model: model,
+                        logo: logo,
+                        notificationPopoverWidth: min(340, max(140, actualSidebarWidth - 24))
+                    )
                         .frame(width: actualSidebarWidth)
                     WorkspaceDivider(
                         horizontal: false,
@@ -225,14 +232,19 @@ public struct RootView: View {
     }
 
     private func compactSidebar(for width: CGFloat) -> some View {
-        ZStack(alignment: model.isRTL ? .trailing : .leading) {
+        let compactWidth = min(300, max(250, width - 48))
+        return ZStack(alignment: model.isRTL ? .trailing : .leading) {
             Color.black.opacity(0.18)
                 .contentShape(Rectangle())
                 .onTapGesture { dismissCompactSidebar() }
                 .accessibilityHidden(true)
 
-            SidebarView(model: model, logo: logo)
-                .frame(width: min(300, max(250, width - 48)))
+            SidebarView(
+                model: model,
+                logo: logo,
+                notificationPopoverWidth: min(340, max(140, compactWidth - 24))
+            )
+                .frame(width: compactWidth)
                 .frame(maxHeight: .infinity)
                 .shadow(color: .black.opacity(0.2), radius: 12, x: model.isRTL ? -4 : 4)
         }

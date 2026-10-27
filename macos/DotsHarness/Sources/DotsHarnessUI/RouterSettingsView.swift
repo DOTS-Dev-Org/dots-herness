@@ -70,13 +70,14 @@ struct RouterProvidersView: View {
                     }
                 } else {
                     let groups = RouterCatalog.groups(from: router.connections)
+                    let contextModels = router.modelContextSettings
                     ForEach(Array(groups.enumerated()), id: \.element.id) { index, group in
                         Section {
                             ForEach(group.accounts) { connection in
                                 connectionRow(connection)
                             }
                             if group.provider.hasPrefix("custom:") {
-                                let models = router.modelContextSettings.filter { $0.provider == group.provider }
+                                let models = contextModels.filter { $0.provider == group.provider }
                                 if !models.isEmpty {
                                     Text(AppCopy.text("usage.context.window"))
                                         .font(.subheadline.weight(.semibold))
@@ -143,7 +144,12 @@ struct RouterProvidersView: View {
             Text(router.status)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Button(AppCopy.text("common.refresh")) { Task { await router.refresh() } }
+            Button(AppCopy.text("common.refresh")) {
+                Task {
+                    await router.refresh()
+                    await router.refreshAccountUsage()
+                }
+            }
         }
         .padding()
     }
@@ -235,9 +241,6 @@ struct RouterProvidersView: View {
             HStack(spacing: 8) {
                 TagBadge(connection.status)
                 TagBadge(authLabel(connection.authType))
-                if let fraction = router.accountUsage[connection.id]?.remainingFraction {
-                    TagBadge(AppCopy.format("router.quotaRemaining", Int((fraction * 100).rounded())))
-                }
                 if let email = connection.email {
                     Text(email).font(.caption).foregroundStyle(.secondary)
                 }
@@ -257,6 +260,7 @@ struct RouterProvidersView: View {
                 .help(AppCopy.text("common.remove"))
                 .accessibilityLabel(AppCopy.text("common.remove"))
             }
+            accountUsageDetails(for: connection)
             Toggle(AppCopy.text("router.imageFallback"), isOn: Binding(
                 get: { connection.imageFallbackEnabled },
                 set: { _ in Task { await router.toggleImageFallback(connection) } }
@@ -267,6 +271,39 @@ struct RouterProvidersView: View {
             }
         }
         .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private func accountUsageDetails(for connection: RouterConnection) -> some View {
+        let windows = usageWindows(for: connection)
+        if !windows.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(windows, id: \.kind) { UsageWindowRow(window: $0) }
+            }
+            .padding(.vertical, 4)
+        } else if hasUsageEndpoint(for: connection) {
+            Text(AppCopy.text(router.accountUsage[connection.id] == nil ? "usage.loading" : "usage.noLimitInfo"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func usageWindows(for connection: RouterConnection) -> [ClaudeUsageWindow] {
+        if let snapshot = router.accountUsage[connection.id] {
+            return snapshot.windows
+        }
+        if connection.provider == "claude", connection.authType == "oauth",
+           case .loaded(let usage) = router.claudeUsage {
+            return usage.windows
+        }
+        return []
+    }
+
+    private func hasUsageEndpoint(for connection: RouterConnection) -> Bool {
+        connection.active && (
+            connection.provider == "claude" && connection.authType == "oauth"
+                || connection.authType == "chatgpt"
+        )
     }
 
     private func providerHeader(_ group: ProviderAccountGroup, order: [String], index: Int) -> some View {
@@ -376,7 +413,7 @@ struct ProviderLogoView: View {
 enum ProviderLogoSource {
     private static let marks: [String: String] = [
         "gpt": "OpenAIMark", "openai": "OpenAIMark",
-        "claude": "AnthropicMark", "anthropic": "AnthropicMark",
+        "claude": "AnthropicMark", "claude-cli": "AnthropicMark", "anthropic": "AnthropicMark",
         "grok-cli": "GrokMark", "grok": "GrokMark", "xai": "SpaceXAIMark",
         "gemini-cli": "GeminiMark", "gemini": "GeminiMark",
         "antigravity": "AntigravityMark", "opencode": "OpenCodeMark", "opencode-go": "OpenCodeMark",

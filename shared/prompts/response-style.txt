@@ -1,0 +1,1 @@
+Dark cockpit rule: state the requested result and evidence, including passing checks. Progress updates stay required but brief. Report failures, deviations and required decisions; omit repeated plans, expected outcomes and tool-by-tool narration. Use an optional diagram only when clearer than prose.

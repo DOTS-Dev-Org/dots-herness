@@ -221,7 +221,9 @@ public struct MarketplaceView: View {
                     Text(actionError).font(.caption).foregroundStyle(.red)
                 }
 
-                if filtered.isEmpty {
+                // `filtered` re-filters the whole catalog; asking it per row made each render O(n²).
+                let entries = filtered
+                if entries.isEmpty {
                     ContentUnavailableView(
                         selectedArea == "core" ? AppCopy.text("marketplace.empty") : AppCopy.text("market.community.empty"),
                         systemImage: "shippingbox",
@@ -231,11 +233,12 @@ public struct MarketplaceView: View {
                     )
                     .frame(maxWidth: .infinity, minHeight: 260)
                 } else {
-                    ForEach(MarketItem.sections(filtered.map(item)), id: \.title) { section in
+                    let entriesByID = Dictionary(entries.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+                    ForEach(MarketItem.sections(entries.map(item)), id: \.title) { section in
                         Text(section.title).font(.system(size: 16, weight: .medium)).padding(.top, 10)
                         LazyVGrid(columns: MarketRowLayout.columns, alignment: .leading, spacing: 20) {
                             ForEach(section.items) { listing in
-                                if let entry = filtered.first(where: { $0.id == listing.id }) { row(entry) }
+                                if let entry = entriesByID[listing.id] { row(entry) }
                             }
                         }
                     }

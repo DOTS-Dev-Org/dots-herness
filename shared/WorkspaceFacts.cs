@@ -455,11 +455,6 @@ public static class WorkspaceFacts
 /// </summary>
 public static class WorkspaceStack
 {
-    private static readonly HashSet<string> Ignored = new(StringComparer.Ordinal)
-    {
-        ".git", ".mem", "node_modules", "vendor", "build", "dist", ".build", "bin", "obj", "target", "Pods",
-    };
-
     private static readonly HashSet<string> Manifests = new(StringComparer.Ordinal)
     {
         "pubspec.yaml", "Package.swift", "package.json", "wrangler.toml", "wrangler.json", "wrangler.jsonc",
@@ -495,39 +490,24 @@ public static class WorkspaceStack
         || name.EndsWith(".sln", StringComparison.Ordinal);
 
     /// <summary>
-    /// Scans the manifests. Monorepos keep them a level or two down
-    /// (mobile/android/), so the walk is breadth-first, two levels, 200
-    /// directories at most; a deeper layout is missed until a run touches its
-    /// manifest.
+    /// Scans manifests from the shared project file set, at the root and two
+    /// folders down, so ignored files cannot change the inferred project stack.
     /// </summary>
     public static IReadOnlyList<string> Detect(string? workspace)
     {
         if (string.IsNullOrWhiteSpace(workspace) || !Directory.Exists(workspace)) return [];
+        workspace = Path.GetFullPath(workspace);
         var found = new SortedSet<string>(StringComparer.Ordinal);
-        var level = new List<string> { workspace };
-        var listed = 0;
-        for (var depth = 0; depth <= 2; depth++)
+        foreach (var path in NativeWorkspaceTools.ScanFiles(workspace))
         {
-            var next = new List<string>();
-            foreach (var directory in level)
-            {
-                if (listed++ >= 200) break;
-                foreach (var entry in Entries(directory))
-                {
-                    var name = Path.GetFileName(entry);
-                    if (name.Length == 0 || name[0] == '.') continue;
-                    if (Directory.Exists(entry))
-                    {
-                        if (name.EndsWith(".xcodeproj", StringComparison.Ordinal)) found.Add("Swift");
-                        else if (depth < 2 && !Ignored.Contains(name)) next.Add(entry);
-                    }
-                    else if (IsManifest(name))
-                    {
-                        foreach (var technology in InManifest(entry)) found.Add(technology);
-                    }
-                }
-            }
-            level = next;
+            var relative = Path.GetRelativePath(workspace, path).Replace(Path.DirectorySeparatorChar, '/');
+            var components = relative.Split('/');
+            if (components.Length > 3) continue;
+            if (components.Take(Math.Min(2, components.Length - 1)).Any(component => component.EndsWith(".xcodeproj", StringComparison.OrdinalIgnoreCase)))
+                found.Add("Swift");
+            var name = Path.GetFileName(path);
+            if (!IsManifest(name)) continue;
+            foreach (var technology in InManifest(path)) found.Add(technology);
         }
         return found.ToList();
     }
@@ -541,9 +521,8 @@ public static class WorkspaceStack
     public static IReadOnlyList<string> Current(string? workspace, string? userRoot, bool rescan = false)
     {
         if (string.IsNullOrWhiteSpace(workspace) || !Directory.Exists(workspace)) return [];
-        var listing = string.Join(
-            "\n",
-            Entries(workspace).Select(entry => Path.GetFileName(entry)).OrderBy(name => name, StringComparer.Ordinal));
+        var scan = NativeWorkspaceTools.ScanFiles(workspace).ToList();
+        var listing = WorkspaceScanPolicy.Revision(workspace, scan);
         lock (Gate)
         {
             if (!rescan && Cache.TryGetValue(workspace, out var cached) && cached.Listing == listing)
@@ -581,13 +560,6 @@ public static class WorkspaceStack
             : "## Technologies the user's projects use (project count)\n"
                 + string.Join("\n", ranked.Select(pair => $"- {pair.Key} ({pair.Value.Count})"))
                 + "\nWhen a new project leaves the stack open, use the most used one that fits instead of asking.";
-    }
-
-    private static string[] Entries(string directory)
-    {
-        try { return Directory.GetFileSystemEntries(directory); }
-        catch (IOException) { return []; }
-        catch (UnauthorizedAccessException) { return []; }
     }
 
     private static string Body(string path)

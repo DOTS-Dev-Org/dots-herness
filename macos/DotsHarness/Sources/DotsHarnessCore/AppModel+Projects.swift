@@ -31,12 +31,13 @@ extension AppModel {
         commitNavigationDestination()
         cancelEditing()
         workspacePath = normalized
-        if !normalized.isEmpty, !projectPaths.contains(normalized) {
-            projectPaths.insert(normalized, at: 0)
-            // The unsectioned group only lists five projects and a new entry lands
-            // at the top, so reveal the group rather than push a visible project out.
-            showsAllOtherProjects = true
-            persistProjectPaths()
+        if !normalized.isEmpty {
+            let currentIndex = projectPaths.firstIndex(of: normalized)
+            if currentIndex != 0 {
+                projectPaths.removeAll { $0 == normalized }
+                projectPaths.insert(normalized, at: 0)
+                persistProjectPaths()
+            }
         }
         refreshProjectLocationAvailability()
         remoteControl.setWorkspacePath(normalized)
@@ -322,7 +323,11 @@ extension AppModel {
     }
 
     public func archiveChats(forProject path: String) {
+        let selectedID = bridge.selectedID
         bridge.archiveAll(forWorkspace: path)
+        guard let selectedID,
+              bridge.conversations.first(where: { $0.id == selectedID })?.archived == true else { return }
+        newConversation()
     }
 
     public func createPermanentWorktree(from originPath: String, named name: String) {

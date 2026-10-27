@@ -182,6 +182,19 @@ public sealed class NativeCacheSession
         return tokens;
     }
 
+    /// Automatic recovery resends the whole conversation. It runs only while the latest
+    /// request proved a large cache hit that is still inside its retention window.
+    public bool IsWarmForAutoResume(DateTimeOffset now, int minimumTokens = 8_192)
+    {
+        var latest = Events.LastOrDefault();
+        if (latest is null || latest.Local || ExpiredLargePrefixTokens(now, minimumTokens) is not null
+            || Math.Max(latest.Usage?.CachedInputTokens ?? 0, latest.CacheReuseEvidence.ReusedTokens ?? 0) < minimumTokens)
+            return false;
+        var ttl = Math.Min(latest.CacheReuseEvidence.EffectiveTTLSeconds ?? 3_600, 3_600);
+        var age = now - latest.Timestamp;
+        return ttl > 0 && age >= TimeSpan.Zero && age < TimeSpan.FromSeconds(ttl);
+    }
+
     public IReadOnlyDictionary<string, NativeCacheSummary> SummariesByRoute() => Events
         .GroupBy(value => value.ScopeFingerprint).ToDictionary(group => group.Key, NativeCacheSummary.From);
 }

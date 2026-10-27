@@ -1,0 +1,26 @@
+Starting a Gradle Daemon, 3 incompatible and 1 stopped Daemons could not be reused, use --status for details
+
+> Configure project :app
+WARNING: The option setting 'android.r8.optimizedResourceShrinking=true' is experimental.
+The current default is 'false'.
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:processDebugNavigationResources
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:mergeDebugResources
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugResources
+
+BUILD SUCCESSFUL in 6s
+15 actionable tasks: 7 executed, 8 up-to-date

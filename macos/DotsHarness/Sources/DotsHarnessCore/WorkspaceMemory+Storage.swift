@@ -100,7 +100,6 @@ extension WorkspaceMemory {
         let update = try Self.makeMapUpdate(
             workspace: workspaceURL,
             root: root,
-            fileManager: fileManager,
             deep: deep,
             existingMapText: mapText
         )
@@ -116,19 +115,13 @@ extension WorkspaceMemory {
         let cachedMapText = mapText
 
         Task { @MainActor [weak self] in
-            let update: WorkspaceProjectMapUpdate?
-            do {
-                update = try await Task.detached(priority: .utility) {
-                    try Self.makeMapUpdate(
-                        workspace: workspaceURL,
-                        root: root,
-                        fileManager: .default,
-                        deep: false,
-                        existingMapText: cachedMapText
-                    )
-                }.value
-            } catch {
-                update = nil
+            let update = await MemoryWorkQueue.run {
+                try? Self.makeMapUpdate(
+                    workspace: workspaceURL,
+                    root: root,
+                    deep: false,
+                    existingMapText: cachedMapText
+                )
             }
             guard let self else { return }
             self.mapRefreshInFlight.remove(requestKey)
@@ -156,11 +149,11 @@ extension WorkspaceMemory {
     nonisolated private static func makeMapUpdate(
         workspace: URL,
         root: URL,
-        fileManager: FileManager,
         deep: Bool,
         existingMapText: String
     ) throws -> WorkspaceProjectMapUpdate {
-        let structure = mapStructure(workspace, fileManager: fileManager)
+        let scanPaths = WorkspaceTools.scanFilePaths(workspace)
+        let structure = mapStructure(workspace, paths: scanPaths)
         let indexURL = root.appendingPathComponent("index.json")
         let index = (try? Data(contentsOf: indexURL))
             .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
@@ -179,8 +172,8 @@ extension WorkspaceMemory {
             )
         }
 
-        let technologies = detectTechnologies(in: workspace, fileManager: fileManager)
-        let documents = documentOutlines(in: workspace, fileManager: fileManager)
+        let technologies = detectTechnologies(in: workspace, paths: scanPaths)
+        let documents = documentOutlines(in: workspace, paths: scanPaths)
         if rootUnchanged, known == technologies, index["documents"] as? [String] == documents {
             return WorkspaceProjectMapUpdate(
                 root: root,
@@ -192,7 +185,7 @@ extension WorkspaceMemory {
             )
         }
 
-        let markdown = mapMarkdown(workspace, structure: structure, technologies: technologies, documents: documents)
+        let markdown = mapMarkdown(workspace, paths: scanPaths, structure: structure, technologies: technologies, documents: documents)
         let fingerprintInput = structure.fingerprint + "\n" + technologies.joined(separator: ",") + "\n" + documents.joined(separator: "\n")
         let fingerprint = SHA256.hash(data: Data(fingerprintInput.utf8))
             .map { String(format: "%02x", $0) }.joined()
@@ -237,48 +230,34 @@ extension WorkspaceMemory {
         ISO8601DateFormatter().string(from: Date())
     }
 
-    /// 3: the map no longer names the workspace's absolute path. 4: it lists the documents.
-    /// 5: it shows the structure two folders deep.
-    nonisolated static let mapSchemaVersion = 5
-
-    nonisolated static var ignoredDirectories: Set<String> { WorkspaceTools.ignoredScanDirectories }
+    /// 6: all map sections use the same ignore and sensitive-path policy as the code graph.
+    nonisolated static let mapSchemaVersion = 6
 
     nonisolated private static func mapStructure(
         _ workspace: URL,
-        fileManager: FileManager
+        paths: [String]
     ) -> (fingerprint: String, topLevel: [String], manifests: [String]) {
-        let urls = (try? fileManager.contentsOfDirectory(at: workspace, includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey], options: [.skipsHiddenFiles])) ?? []
-        var topLevel: [String] = []
+        var topLevel = Set<String>()
         var manifestPaths: [String] = []
-        var fingerprint: [String] = []
-        for url in urls.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
-            let name = url.lastPathComponent
-            guard !Self.ignoredDirectories.contains(name) else { continue }
-            let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey])
-            let directory = values?.isDirectory == true
-            let large = (values?.fileSize ?? 0) > 1_000_000
-            if !directory && (large || Self.binaryFileName(name)) {
-                fingerprint.append("\(name):ignored")
-                continue
+        for path in paths {
+            let components = path.split(separator: "/").map(String.init)
+            guard let first = components.first else { continue }
+            if components.count == 1 {
+                let url = workspace.appendingPathComponent(path)
+                let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
+                guard size <= 1_000_000, !Self.binaryFileName(first) else { continue }
+                topLevel.insert(first)
+                if Self.isManifest(first) { manifestPaths.append(first) }
+            } else {
+                topLevel.insert(first + "/")
             }
-            topLevel.append(directory ? "\(name)/" : name)
-            fingerprint.append("\(name):\(directory ? "d" : "f")")
-            // The structure section goes two folders deep, so a folder added there rebuilds it.
-            // ponytail: counts are not fingerprinted - they refresh with the next rebuild - so
-            // adding a file never rewrites the map or signs an event.
-            if directory {
-                let children = (try? fileManager.contentsOfDirectory(at: url, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles])) ?? []
-                for child in children where (try? child.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
-                    fingerprint.append("\(name)/\(child.lastPathComponent):d")
-                }
-            }
-            if Self.isManifest(name) { manifestPaths.append(name) }
         }
-        return (fingerprint.joined(separator: "\n"), topLevel, manifestPaths.sorted())
+        return (WorkspaceTools.scanRevision(workspace, paths: paths), topLevel.sorted(), manifestPaths.sorted())
     }
 
     nonisolated private static func mapMarkdown(
         _ workspace: URL,
+        paths: [String],
         structure: (fingerprint: String, topLevel: [String], manifests: [String]),
         technologies: [String],
         documents: [String]
@@ -288,7 +267,7 @@ extension WorkspaceMemory {
         lines.append(contentsOf: structure.topLevel.map { "- `\($0)`" })
         lines += ["", "## Important files", ""]
         lines.append(contentsOf: structure.manifests.map { "- `\($0)`" })
-        let layout = ProjectMap.markdown(ProjectMap.files(in: workspace)) { ProjectMap.head(workspace.appendingPathComponent($0)) }
+        let layout = ProjectMap.markdown(Array(paths.prefix(ProjectMap.maxFiles))) { ProjectMap.head(workspace.appendingPathComponent($0)) }
         if !layout.isEmpty { lines += ["", layout] }
         if !documents.isEmpty {
             lines += ["", "## Documents", "", "Each with its headings. Read the one that covers the request before searching the code."]
@@ -303,21 +282,13 @@ extension WorkspaceMemory {
     /// ponytail: three levels down, 24 documents, read again only when the map is rebuilt -
     /// the root listing moved or a task changed a document. An edit made outside the app
     /// waits for one of those; add a stamp to the per-prompt check if that bites.
-    nonisolated private static func documentOutlines(in workspace: URL, fileManager: FileManager) -> [String] {
+    nonisolated private static func documentOutlines(in workspace: URL, paths: [String]) -> [String] {
         var found: [(path: String, url: URL)] = []
-        let walker = fileManager.enumerator(at: workspace, includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey], options: [.skipsHiddenFiles])
-        var visited = 0
-        while let url = walker?.nextObject() as? URL, visited < 3_000 {
-            visited += 1
-            let name = url.lastPathComponent
-            if (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
-                if Self.ignoredDirectories.contains(name) || (walker?.level ?? 1) >= 3 { walker?.skipDescendants() }
-            } else if name.lowercased().hasSuffix(".md"), !["AGENTS.md", "CLAUDE.md"].contains(name) {
-                // The two rule files are sent whole as project rules already. The path is
-                // counted from the walk, not cut from the URL: a temporary folder is
-                // reached through a link and comes back under another prefix.
-                found.append((url.pathComponents.suffix(walker?.level ?? 1).joined(separator: "/"), url))
-            }
+        for path in paths.prefix(3_000) {
+            let components = path.split(separator: "/")
+            let name = String(components.last ?? "")
+            guard components.count <= 3, name.lowercased().hasSuffix(".md"), !["AGENTS.md", "CLAUDE.md"].contains(name) else { continue }
+            found.append((path, workspace.appendingPathComponent(path)))
         }
         return found
             .sorted { ($0.url.pathComponents.count, $0.path) < ($1.url.pathComponents.count, $1.path) }
@@ -345,29 +316,18 @@ extension WorkspaceMemory {
     /// of the user. Monorepos keep them a level or two down (`mobile/android/`).
     /// ponytail: breadth-first, two levels, 200 directories; a deeper layout is
     /// missed until a task touches its manifest - raise the bounds if that bites.
-    nonisolated static func detectTechnologies(in workspace: URL, fileManager: FileManager = .default) -> [String] {
+    nonisolated static func detectTechnologies(in workspace: URL, paths: [String]) -> [String] {
         var found = Set<String>()
-        var level = [workspace]
-        var listed = 0
-        for depth in 0...2 {
-            var next: [URL] = []
-            for directory in level where listed < 200 {
-                listed += 1
-                let urls = (try? fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles])) ?? []
-                for url in urls {
-                    let name = url.lastPathComponent
-                    if (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
-                        if name.hasSuffix(".xcodeproj") {
-                            found.insert("Swift")
-                        } else if depth < 2, !ignoredDirectories.contains(name) {
-                            next.append(url)
-                        }
-                    } else if isStackManifest(name) {
-                        found.formUnion(technologies(inManifest: url))
-                    }
-                }
+        for path in paths.prefix(3_000) {
+            let components = path.split(separator: "/").map(String.init)
+            guard components.count <= 3 else { continue }
+            if components.dropLast().prefix(2).contains(where: { $0.lowercased().hasSuffix(".xcodeproj") }) {
+                found.insert("Swift")
             }
-            level = next
+            let url = workspace.appendingPathComponent(path)
+            if isStackManifest(url.lastPathComponent) {
+                found.formUnion(technologies(inManifest: url))
+            }
         }
         return found.sorted()
     }

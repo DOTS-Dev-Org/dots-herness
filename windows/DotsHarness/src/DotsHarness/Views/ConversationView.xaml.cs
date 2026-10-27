@@ -1348,6 +1348,44 @@ public partial class ConversationView : UserControl
         e.Handled = true;
     }
 
+    private void OnOpenAttachment(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: ChatAttachment attachment }) return;
+        var path = File.Exists(attachment.ProviderFilePath) ? attachment.ProviderFilePath : attachment.FilePath;
+        if (!File.Exists(path)) return;
+
+        if (attachment.IsImage)
+        {
+            var source = AttachmentImage.Instance.Convert(path, typeof(ImageSource), null!, CultureInfo.InvariantCulture) as ImageSource;
+            if (source is null) return;
+            var owner = Window.GetWindow(this);
+            var preview = new Window
+            {
+                Title = attachment.Name,
+                Width = 900,
+                Height = 700,
+                MinWidth = 360,
+                MinHeight = 260,
+                WindowStartupLocation = owner is null ? WindowStartupLocation.CenterScreen : WindowStartupLocation.CenterOwner,
+                Content = new Border
+                {
+                    Padding = new Thickness(12),
+                    Child = new Image { Source = source, Stretch = Stretch.Uniform },
+                },
+            };
+            if (owner is null) preview.Show();
+            else
+            {
+                preview.Owner = owner;
+                preview.ShowDialog();
+            }
+            return;
+        }
+
+        if (Window.GetWindow(this) is DotsHarness.MainWindow window)
+            window.ShowFilePanel(path, attachment.Name);
+    }
+
     private void OnStartVoiceIntro(object sender, RoutedEventArgs e)
     {
         Model?.DismissVoiceIntro();

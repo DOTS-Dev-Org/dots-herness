@@ -21,6 +21,11 @@ extension NativeAgentHost {
         return contextTelemetry.events()
     }
 
+    public func contextUsageEvents(in conversationID: String) -> [AgentContextUsageEvent] {
+        _ = listTick
+        return contextTelemetry.events(conversationID: conversationID)
+    }
+
     @discardableResult
     func recordContextUsage(
         _ response: AgentResponse?,
@@ -118,6 +123,16 @@ extension NativeAgentHost {
                 conversations[index].cacheEpoch?.priorBoundary = boundary
             }
             if requestKind == .main { conversations[index].cacheEpoch?.lastChangeReason = nil }
+        }
+        if conversationID == activeConversationID, requestKind == .main {
+            if let usage = response?.usage {
+                let breakdown = usage.breakdown(forAPI: servedConfiguration.api)
+                activeRunUncachedInputTokens = breakdown.uncachedInputTokens
+                activeRunUncachedInputApproximate = !breakdown.cacheAccountingAvailable
+            } else {
+                activeRunUncachedInputTokens = 0
+                activeRunUncachedInputApproximate = false
+            }
         }
         if conversationID == activeConversationID {
             let usage = response?.usage
@@ -644,7 +659,10 @@ extension NativeAgentHost {
         if let turnID = turn.turnID {
             conversations[conversationIndex].messages[messageIndex].turnID = turnID
         }
-        conversations[conversationIndex].messages[messageIndex].changedFiles = turn.changedFiles
+        if conversations[conversationIndex].messages[messageIndex].changedFiles != turn.changedFiles {
+            conversations[conversationIndex].messages[messageIndex].changedFiles = turn.changedFiles
+            markChangedFilesUpdated(in: conversationID)
+        }
         if let turnID = turn.turnID, let metadata = completedTurnMetadata[turnID] {
             conversations[conversationIndex].messages[messageIndex].usedSkills = metadata.skills
             conversations[conversationIndex].messages[messageIndex].usedTools = metadata.tools
@@ -708,7 +726,8 @@ extension NativeAgentHost {
                 ?? mediaOutcomeContextMessage(for: message, mediaTurnIDs: mediaTurnIDs)
         }
         var changed = false
-        for artifact in artifacts where !conversation.modelContext.contains(where: { $0.content == artifact.content }) {
+        var knownContents = Set(conversation.modelContext.map(\.content))
+        for artifact in artifacts where knownContents.insert(artifact.content).inserted {
             conversation.modelContext.append(artifact)
             changed = true
         }

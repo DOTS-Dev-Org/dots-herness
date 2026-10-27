@@ -262,9 +262,16 @@ public struct AgentMessage: Sendable, Equatable, Codable {
         isTransientProgressText = true
     }
 
+    /// A captured turn starts with ~30 KB of folded prompt sections; only the person's words
+    /// carry a style cue. Normalizing the whole text cost ~0.5 s per call, several calls a step.
+    var authoredContent: String {
+        guard promptContextCaptured else { return content }
+        return String(NativeAgentClient.leadingPromptSections(content).rest)
+    }
+
     public static func responseStylePrompt(in messages: [AgentMessage]) -> String? {
-        if let originalPrompt = messages.last(where: { $0.role == .user && $0.responseContinuationID == nil })?.content {
-            return originalPrompt
+        if let original = messages.last(where: { $0.role == .user && $0.responseContinuationID == nil }) {
+            return original.authoredContent
         }
         guard let continuationPrompt = messages.last(where: {
             $0.role == .user && $0.responseContinuationID != nil

@@ -38,6 +38,8 @@ public struct LocalRuntimeSettings: Codable, Sendable, Equatable {
     public var extraArgs = ""
     public var mlxExtraArgs = ""
     public var importedModels: [String] = []
+    /// Files and repositories downloaded from Hugging Face.
+    public var hubModels: [LocalModelSpec] = []
 
     public init() {}
 
@@ -52,6 +54,7 @@ public struct LocalRuntimeSettings: Codable, Sendable, Equatable {
         extraArgs = try values.decodeIfPresent(String.self, forKey: .extraArgs) ?? ""
         mlxExtraArgs = try values.decodeIfPresent(String.self, forKey: .mlxExtraArgs) ?? ""
         importedModels = try values.decodeIfPresent([String].self, forKey: .importedModels) ?? []
+        hubModels = try values.decodeIfPresent([LocalModelSpec].self, forKey: .hubModels) ?? []
     }
 }
 
@@ -170,18 +173,20 @@ public final class LocalRuntime: @unchecked Sendable {
 
     public func modelURL(_ spec: LocalModelSpec) -> URL {
         if let path = spec.localPath { return URL(fileURLWithPath: path) }
-        if spec.engine == .mlx {
-            return paths.models.appendingPathComponent("mlx", isDirectory: true)
+        switch spec.engine {
+        case .mlx, .repo:
+            return paths.models.appendingPathComponent(spec.engine == .mlx ? "mlx" : "hub", isDirectory: true)
                 .appendingPathComponent(spec.filename, isDirectory: true)
+        case .llama, .file:
+            return paths.models.appendingPathComponent(spec.filename)
         }
-        return paths.models.appendingPathComponent(spec.filename)
     }
 
     private func mlxMarker(_ spec: LocalModelSpec) -> URL { modelURL(spec).appendingPathComponent(".complete") }
 
     public func isInstalled(_ spec: LocalModelSpec) -> Bool {
         let fm = FileManager.default
-        if spec.engine == .mlx { return fm.fileExists(atPath: mlxMarker(spec).path) }
+        if spec.isDirectory { return fm.fileExists(atPath: mlxMarker(spec).path) }
         guard fm.fileExists(atPath: modelURL(spec).path) else { return false }
         if spec.localPath != nil { return true }
         return installedBytes(spec) >= max(1, spec.bytes / 2)
@@ -190,37 +195,28 @@ public final class LocalRuntime: @unchecked Sendable {
     public func installedBytes(_ spec: LocalModelSpec) -> Int64 {
         let fm = FileManager.default
         let url = modelURL(spec)
-        guard spec.engine == .mlx else {
+        guard spec.isDirectory else {
             return (try? fm.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value ?? 0
         }
-        let files = (try? fm.contentsOfDirectory(at: url, includingPropertiesForKeys: [.fileSizeKey])) ?? []
+        let files = fm.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey])?.allObjects as? [URL] ?? []
         return files.reduce(0) { $0 + Int64((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
     }
 
     public func downloadModel(_ spec: LocalModelSpec, progress: (@Sendable (FileDownloader.Progress) -> Void)? = nil) async throws {
         guard spec.localPath == nil else { return }
-        if spec.engine == .mlx { return try await downloadMLXModel(spec, progress: progress) }
+        if spec.isDirectory { return try await downloadRepository(spec, progress: progress) }
         try await Self.retrying {
             try await FileDownloader.download(from: spec.url, to: self.modelURL(spec), expected: spec.bytes, sha256: spec.sha256, progress: progress)
         }
     }
 
-    /// An MLX model is a flat Hugging Face repository. Every LFS file is checked
-    /// against the digest the listing publishes.
-    private func downloadMLXModel(_ spec: LocalModelSpec, progress: (@Sendable (FileDownloader.Progress) -> Void)?) async throws {
-        guard let repo = spec.repo, let listing = URL(string: "https://huggingface.co/api/models/\(repo)/tree/main") else {
+    /// An MLX model (or a download-only repository) is a whole Hugging Face
+    /// repository. Every LFS file is checked against the digest the listing publishes.
+    private func downloadRepository(_ spec: LocalModelSpec, progress: (@Sendable (FileDownloader.Progress) -> Void)?) async throws {
+        guard let repo = spec.repo else {
             throw RouterError(AppCopy.format("localRuntime.downloadFirst", spec.name))
         }
-        let (data, response) = try await URLSession.shared.data(from: listing)
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard (200..<300).contains(status), let rows = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
-            throw RouterError(AppCopy.format("download.failed", status))
-        }
-        let files: [(path: String, size: Int64, sha256: String?)] = rows.compactMap { row in
-            guard row["type"] as? String == "file", let path = row["path"] as? String,
-                  !path.hasPrefix("."), path != "README.md" else { return nil }
-            return (path, (row["size"] as? NSNumber)?.int64Value ?? 0, (row["lfs"] as? [String: Any])?["oid"] as? String)
-        }
+        let files = try await HuggingFaceHub.tree(repo).filter { !$0.path.hasPrefix(".") && $0.path != "README.md" }
         let total = files.reduce(0) { $0 + $1.size }
         let directory = modelURL(spec)
         var done: Int64 = 0
@@ -254,8 +250,13 @@ public final class LocalRuntime: @unchecked Sendable {
 
     // MARK: Runtimes
 
+    /// Download-only engines need no server, so they always count as installed.
     public func runtimeInstalled(_ engine: LocalEngine = .llama) -> Bool {
-        FileManager.default.isExecutableFile(atPath: (engine == .mlx ? mlxServerURL : binaryURL).path)
+        switch engine {
+        case .llama: return FileManager.default.isExecutableFile(atPath: binaryURL.path)
+        case .mlx: return FileManager.default.isExecutableFile(atPath: mlxServerURL.path)
+        case .file, .repo: return true
+        }
     }
 
     public func runningModelID() -> String? { runningModel }
@@ -354,7 +355,7 @@ public final class LocalRuntime: @unchecked Sendable {
             return serverURL
         }
         stop()
-        guard runtimeInstalled(spec.engine) else { throw RouterError(AppCopy.text("localRuntime.installFirst")) }
+        guard spec.runnable, runtimeInstalled(spec.engine) else { throw RouterError(AppCopy.text("localRuntime.installFirst")) }
         guard isInstalled(spec) else { throw RouterError(AppCopy.format("localRuntime.downloadFirst", spec.name)) }
 
         let process = Process()

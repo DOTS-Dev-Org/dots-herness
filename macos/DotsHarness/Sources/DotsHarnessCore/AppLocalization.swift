@@ -171,11 +171,21 @@ public enum AppLocalization {
 
     fileprivate static func bundle(for language: AppLanguage) -> Bundle {
         let effective = language == .system ? effectiveLanguage : language
+        lock.lock()
+        let cached = bundles[effective]
+        lock.unlock()
+        if let cached { return cached }
+        // Views call this on every render; the lproj lookup is file system work.
+        // A miss is not kept, so a language pack that downloads later is picked up.
         guard let path = LanguagePacks.lproj(effective), let bundle = Bundle(path: path) else {
             return Bundle.module
         }
+        lock.lock()
+        bundles[effective] = bundle
+        lock.unlock()
         return bundle
     }
+    nonisolated(unsafe) private static var bundles: [AppLanguage: Bundle] = [:]
 }
 
 /// A release ships only en and tr. scripts/package-dmg.sh moves the other

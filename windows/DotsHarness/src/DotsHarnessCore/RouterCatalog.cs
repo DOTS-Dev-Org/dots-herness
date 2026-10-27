@@ -2,7 +2,7 @@ using HarnessPluginKit;
 
 namespace DotsHarnessCore;
 
-public enum RouterAuthKind { OauthBrowser, OauthDevice, ApiKey }
+public enum RouterAuthKind { OauthBrowser, OauthDevice, ApiKey, Passthrough }
 
 public sealed record RouterProviderKind(
     string Id,
@@ -24,6 +24,7 @@ public static class RouterCatalog
     {
         new RouterProviderKind("gpt", "ChatGPT", RouterAuthKind.OauthBrowser, "Sign in with ChatGPT", "https://chatgpt.com/backend-api/codex", "gpt-6.1-sol", NativeProviderProtocol.ChatGpt, "openai"),
         new RouterProviderKind("claude", "Anthropic", RouterAuthKind.OauthBrowser, "Sign in with Claude", "https://api.anthropic.com/v1", "claude-sonnet-5-5", NativeProviderProtocol.Anthropic, "anthropic"),
+        new RouterProviderKind("claude-cli", "Claude Code CLI", RouterAuthKind.Passthrough, "Uses your installed claude CLI and its sign-in", "local:claude", "claude-sonnet-5-5", NativeProviderProtocol.ClaudeCli, "anthropic"),
         new RouterProviderKind("gemini", "Gemini", RouterAuthKind.ApiKey, "API key", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-3.8-pro", LogoKey: "gemini"),
         new RouterProviderKind("antigravity", "Antigravity", RouterAuthKind.ApiKey, "API key or Custom API", LogoKey: "antigravity"),
         new RouterProviderKind("iflow", "iFlow", RouterAuthKind.ApiKey, "API key or Custom API", LogoKey: "iflow"),
@@ -102,6 +103,7 @@ public static class RouterCatalog
     {
         RouterAuthKind.OauthBrowser => "browser",
         RouterAuthKind.OauthDevice => "device",
+        RouterAuthKind.Passthrough => "passthrough",
         _ => "apiKey",
     }, kind.Hint, kind.LogoKey);
 }

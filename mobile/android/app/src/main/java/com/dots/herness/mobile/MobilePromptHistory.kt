@@ -34,8 +34,28 @@ internal class MobilePromptHistory(initialPolicy: String? = null) {
          * Changes [wire] in place and says whether anything changed.
          */
         private data class ReadSpan(val path: String, val offset: Int, val end: Int) {
-            fun covers(earlier: ReadSpan): Boolean =
-                path == earlier.path && offset <= earlier.offset && end >= earlier.end
+        }
+
+        private class ReadSpanCoverageIndex(spans: List<ReadSpan>) {
+            private val offsets = spans.map { it.offset }.distinct().sorted()
+            private val maximumEnds = IntArray(offsets.size + 1) { Int.MIN_VALUE }
+
+            fun isSupersededAndInsert(span: ReadSpan): Boolean {
+                val coordinate = offsets.binarySearch(span.offset) + 1
+                var prefix = coordinate
+                var maximumEnd = Int.MIN_VALUE
+                while (prefix > 0) {
+                    maximumEnd = maxOf(maximumEnd, maximumEnds[prefix])
+                    prefix -= prefix and -prefix
+                }
+                val superseded = maximumEnd >= span.end
+                var update = coordinate
+                while (update < maximumEnds.size) {
+                    maximumEnds[update] = maxOf(maximumEnds[update], span.end)
+                    update += update and -update
+                }
+                return superseded
+            }
         }
 
         fun supersedeRepeatedReads(wire: List<JSONObject>): Boolean {
@@ -73,9 +93,12 @@ internal class MobilePromptHistory(initialPolicy: String? = null) {
             }
             if (results.size < 2) return false
             var changed = false
-            for (position in results.indices) {
+            // Process later reads first and query interval coverage in O(log n) per read.
+            val coverageByPath = results.groupBy { it.second.path }
+                .mapValues { (_, reads) -> ReadSpanCoverageIndex(reads.map { it.second }) }
+            for (position in results.indices.reversed()) {
                 val (block, span) = results[position]
-                val superseded = results.subList(position + 1, results.size).any { (_, later) -> later.covers(span) }
+                val superseded = coverageByPath[span.path]?.isSupersededAndInsert(span) ?: false
                 if (!superseded) continue
                 block.put("content", SUPERSEDED_READ_MARKER)
                 changed = true

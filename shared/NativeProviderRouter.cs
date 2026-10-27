@@ -20,6 +20,8 @@ public enum NativeProviderProtocol
     Anthropic,
     ChatGpt,
     OpenAiResponses,
+    /// The locally installed, official `claude` binary, run as a complete agent.
+    ClaudeCli,
 }
 
 /// <summary>Maps provider identities to bundled corporate marks shared by the desktop hosts.</summary>
@@ -28,7 +30,7 @@ public static class ProviderMarkCatalog
     private static readonly IReadOnlyDictionary<string, string> Marks = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["gpt"] = "OpenAIMark", ["openai"] = "OpenAIMark",
-        ["claude"] = "AnthropicMark", ["anthropic"] = "AnthropicMark",
+        ["claude"] = "AnthropicMark", ["claude-cli"] = "AnthropicMark", ["anthropic"] = "AnthropicMark",
         ["grok"] = "GrokMark", ["grok-cli"] = "GrokMark",
         ["xai"] = "SpaceXAIMark", ["spacexai"] = "SpaceXAIMark",
         ["gemini"] = "GeminiMark", ["gemini-cli"] = "GeminiMark",
@@ -194,7 +196,9 @@ public sealed class NativeProviderStore
         string? sessionAccountId = null,
         string? refreshSecret = null)
     {
-        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(secret)) throw new NativeProviderException("Name and API key are required.");
+        // The CLI signs in on its own: no key, and its address is not an HTTP endpoint.
+        var cli = provider.Protocol == NativeProviderProtocol.ClaudeCli;
+        if (string.IsNullOrWhiteSpace(name) || (!cli && string.IsNullOrWhiteSpace(secret))) throw new NativeProviderException("Name and API key are required.");
         var id = Guid.NewGuid().ToString();
         var account = new NativeProviderAccount
         {
@@ -206,7 +210,7 @@ public sealed class NativeProviderStore
             SessionAccountId = sessionAccountId,
             Model = model ?? provider.DefaultModel,
             Models = string.IsNullOrWhiteSpace(model) ? [provider.DefaultModel] : [model],
-            BaseUrl = NormalizeUrl(baseUrl ?? provider.BaseUrl),
+            BaseUrl = cli ? provider.BaseUrl : NormalizeUrl(baseUrl ?? provider.BaseUrl),
             Protocol = provider.Protocol,
             AuthType = authType,
             CredentialId = $"account.{id}",
@@ -479,11 +483,14 @@ public static class NativePromptHistory
 
     public const string TaskHistoryAdditionsMarker =
         "(Additions to the task_history captured earlier in this conversation; its earlier entries still hold.)";
+    public const string TaskHistoryBacklogMarker =
+        "(Additions to the task_history captured earlier in this conversation; its earlier entries still hold, except the backlog below, which replaces the earlier one.)";
 
     /// task_history is recalled for each request, so its text moves every turn while
     /// most entries repeat. Only entries the transcript has not seen since its last
     /// full copy are captured. The backlog is state rather than recall: when it
-    /// changed, the section is captured whole. Null when nothing is new.
+    /// changed, the new backlog is captured whole (an empty one as "None") under a
+    /// marker saying it replaces the earlier one. Null when nothing is new.
     public static string? TaskHistoryAdditions(string block, IReadOnlyList<string> copies)
     {
         static string[] Body(string block) => block.Split('\n')[1..^1];
@@ -496,30 +503,49 @@ public static class NativePromptHistory
                 else result.Add(line);
             return result;
         }
-        static List<string> Backlog(IEnumerable<string> lines) => Entries(lines)
-            .SkipWhile(entry => !entry.StartsWith("## Unfinished work", StringComparison.Ordinal))
-            .TakeWhile((entry, index) => index == 0 || !entry.StartsWith("## ", StringComparison.Ordinal)).ToList();
+        static (int Start, int Count) BacklogRange(List<string> entries)
+        {
+            var start = entries.FindIndex(entry => entry.StartsWith("## Unfinished work", StringComparison.Ordinal));
+            if (start < 0) return (entries.Count, 0);
+            var end = entries.FindIndex(start + 1, entry => entry.StartsWith("## ", StringComparison.Ordinal));
+            return (start, (end < 0 ? entries.Count : end) - start);
+        }
+        static List<string> Backlog(string copy)
+        {
+            var all = Entries(Body(copy));
+            var (start, count) = BacklogRange(all);
+            return all.GetRange(start, count);
+        }
+        List<string> none = ["## Unfinished work (backlog)", "- None"];
+        string[] markers = [TaskHistoryAdditionsMarker, TaskHistoryBacklogMarker];
 
         if (copies.Count == 0 || copies[^1] == Retired("task_history")) return block;
         var baseIndex = -1;
         for (var index = copies.Count - 1; index >= 0 && baseIndex < 0; index--)
-            if (Body(copies[index]).FirstOrDefault() != TaskHistoryAdditionsMarker) baseIndex = index;
+            if (!markers.Contains(Body(copies[index]).FirstOrDefault())) baseIndex = index;
         if (baseIndex < 0) return block;
-        var current = Body(block);
-        if (!Backlog(current).SequenceEqual(Backlog(Body(copies[baseIndex])))) return block;
+        // The backlog the transcript last stated: the full copy's, unless an addition replaced it.
+        var stated = copies.Skip(baseIndex + 1).Select(Backlog).LastOrDefault(backlog => backlog.Count > 0) ?? Backlog(copies[baseIndex]);
+        var current = Entries(Body(block));
+        var (backlogStart, backlogCount) = BacklogRange(current);
+        var currentBacklog = backlogCount == 0 ? none : current.GetRange(backlogStart, backlogCount);
+        current.RemoveRange(backlogStart, backlogCount);
+        List<string> replaced = currentBacklog.SequenceEqual(stated.Count == 0 ? none : stated) ? [] : currentBacklog;
         var seen = copies.Skip(baseIndex).SelectMany(copy => Entries(Body(copy))).ToHashSet(StringComparer.Ordinal);
         var kept = new List<string>();
         string? heading = null;
-        foreach (var entry in Entries(current))
+        foreach (var entry in current)
         {
             if (entry.StartsWith("## ", StringComparison.Ordinal)) { heading = entry; continue; }
             if (seen.Contains(entry)) continue;
             if (heading is not null) { kept.Add(heading); heading = null; }
             kept.Add(entry);
         }
+        kept.AddRange(replaced);
         if (kept.Count == 0) return null;
         var lines = block.Split('\n');
-        return string.Join("\n", new[] { lines[0], TaskHistoryAdditionsMarker }.Concat(kept).Append(lines[^1]));
+        var marker = replaced.Count == 0 ? TaskHistoryAdditionsMarker : TaskHistoryBacklogMarker;
+        return string.Join("\n", new[] { lines[0], marker }.Concat(kept).Append(lines[^1]));
     }
 
     /// An opaque Responses checkpoint replaces the earlier provider history.
@@ -944,6 +970,8 @@ public sealed class NativeProviderRouter
         string? cacheComparisonScope = null,
         NativeCacheSession? cacheSession = null)
     {
+        if (route.Protocol == NativeProviderProtocol.ClaudeCli)
+            return await ClaudeCliClient.CompleteAsync(messages, model ?? route.Model, effortOverride ?? Effort, ct);
         var preparationStartedAt = DateTimeOffset.UtcNow;
         var key = _store.Secrets.Read(route.CredentialId);
         if ((route.Protocol is NativeProviderProtocol.Anthropic or NativeProviderProtocol.ChatGpt || route.AuthType == "oauth") && string.IsNullOrEmpty(key)) throw new NativeProviderException("The provider credential is unavailable.");

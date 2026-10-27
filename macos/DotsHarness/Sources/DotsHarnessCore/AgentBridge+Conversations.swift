@@ -186,7 +186,8 @@ extension NativeAgentHost {
         }
         let turn = conversation.messages[start...assistantIndex]
         var changed: [String] = []
-        for file in turn.flatMap(\.changedFiles) where !changed.contains(file.path) { changed.append(file.path) }
+        var changedPaths = Set<String>()
+        for file in turn.flatMap(\.changedFiles) where changedPaths.insert(file.path).inserted { changed.append(file.path) }
         let metadata = feedbackStore?.metadata(forTurnID: message.turnID)
         return LessonEvidence(
             signal: signal,
@@ -811,7 +812,7 @@ extension NativeAgentHost {
 
         var updated = Self.truncated(conversation, before: messageIndex)
         if !result.conflictPaths.isEmpty {
-            updated.messages.append(
+            updated.appendChronologically(
                 ChatMessage(
                     kind: .system,
                     text: AppCopy.format(

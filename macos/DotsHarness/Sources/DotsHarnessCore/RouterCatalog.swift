@@ -16,6 +16,7 @@ public enum RouterAPIKind: String, Sendable, Hashable {
     case anthropic = "anthropic"
     case chatGPT = "chatgpt"
     case geminiCLI = "gemini-cli"
+    case claudeCLI = "claude-cli"
 }
 
 public struct RouterProviderKind: Identifiable, Sendable, Equatable, Hashable {
@@ -84,6 +85,9 @@ public enum RouterCatalog {
         switch format {
         case .openaiChat, .responses, .anthropic, .geminiCLI:
             return true
+        case .claudeCLI:
+            // The CLI runs its own tools; HerNess must not count on tool calls coming back.
+            return false
         }
     }
 
@@ -131,6 +135,7 @@ public enum RouterCatalog {
         case .anthropic: return .anthropic
         case .responses: return .chatGPT
         case .geminiCLI: return .geminiCLI
+        case .claudeCLI: return .claudeCLI
         }
     }
 

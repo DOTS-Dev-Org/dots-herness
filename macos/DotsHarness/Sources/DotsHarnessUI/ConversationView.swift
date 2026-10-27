@@ -17,6 +17,7 @@ struct ConversationView: View {
     @State private var isTerminalVisible = false
     @State private var isNewPaneMenuPresented = false
     @State private var isDropTargeted = false
+    @State private var previewingAttachment: ChatAttachment?
     @State private var draggedPromptID: String?
     @State private var expandedFileMessageIDs = Set<String>()
     @State private var translations: [String: String] = [:]
@@ -70,8 +71,32 @@ struct ConversationView: View {
             handleFileDrop(providers) { model.addDraftAttachments($0) }
         }
         .environment(\.openURL, OpenURLAction { url in
-            model.openFileLink(url) ? .handled : .systemAction
+            if model.openFileLink(url) { return .handled }
+            if model.openBrowserLink(url) { return .handled }
+            return .systemAction
         })
+        .sheet(item: $previewingAttachment) { attachment in
+            let url = attachment.providerURL ?? attachment.url
+            VStack(spacing: 0) {
+                HStack {
+                    Text(attachment.name).font(.headline).lineLimit(1)
+                    Spacer()
+                    Button(AppCopy.text("common.done")) { previewingAttachment = nil }
+                        .keyboardShortcut(.cancelAction)
+                }
+                .padding(12)
+                Divider()
+                if let image = ImageFileCache.image(at: url) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .padding(16)
+                } else {
+                    missingMediaView.padding()
+                }
+            }
+            .frame(minWidth: 480, idealWidth: 840, minHeight: 360, idealHeight: 620)
+        }
         .sheet(item: $model.feedbackRequest) { target in
             FeedbackSheet(
                 target: target,
@@ -841,7 +866,7 @@ struct ConversationView: View {
             let canFeedback = bridge.workspacePath?.isEmpty == false && message.kind != .user && hasOutput
             let feedback = canFeedback ? bridge.feedback(for: message.id, in: conversation.id) : nil
             HStack(spacing: 16) {
-                CopyFeedbackButton(text: message.text)
+                CopyFeedbackButton(text: ConversationCopyText.text(for: message, in: conversation.messages))
 
                 if message.kind == .user, latestUser {
                     actionButton("pencil", actionHelp("conversation.edit", available: canEdit)) {
@@ -1053,14 +1078,14 @@ struct ConversationView: View {
         }
     }
 
-    /// "2m 16s · 1.4K tokens · Running tools…"
+    /// "2m 16s · 7.1K tokens · Running tools…"
     private func liveStatusText(start: Date?, now: Date, toolsRunning: Bool) -> String {
         var parts = [elapsedText(from: start, now: now)]
-        let tokens = bridge.activeRunTokenCount
+        let tokens = bridge.activeRunUncachedInputTokenCount
         if tokens > 0 {
             let count = compactTokens(tokens)
-            let displayedCount = bridge.activeRunTokenCountIncludesEstimate ? "≈\(count)" : count
-            parts.append(AppCopy.format("conversation.processedTokensCount", displayedCount))
+            let displayedCount = bridge.activeRunUncachedInputIsApproximate ? "≈\(count)" : count
+            parts.append(AppCopy.format("conversation.tokensCount", displayedCount))
         }
         if toolsRunning { parts.append(AppCopy.text("conversation.runningTools")) }
         return parts.joined(separator: " · ")
@@ -1162,6 +1187,28 @@ struct ConversationView: View {
 
     @ViewBuilder
     private func runSummaryView(for message: ChatMessage) -> some View {
+        if let summary = message.summary,
+           let startedAt = summary.startedAt,
+           let finishedAt = summary.finishedAt {
+            let duration = compactRunDuration(finishedAt.timeIntervalSince(startedAt))
+            StillDisclosureGroup(trailingChevron: true) {
+                Text(AppCopy.format(
+                    "conversation.runDurationDetails",
+                    startedAt.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened, locale: AppCopy.locale)),
+                    finishedAt.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened, locale: AppCopy.locale))
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.leading, 4)
+                .padding(.top, 4)
+            } label: {
+                Text(AppCopy.format("conversation.runDuration", duration))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityLabel(AppCopy.format("conversation.runDuration", duration))
+            .padding(.top, 2)
+        }
         if let summary = message.summary, message.changedFiles.isEmpty {
             VStack(alignment: .leading, spacing: 3) {
                 Label(AppCopy.text("conversation.runSummary"), systemImage: "checkmark.shield")
@@ -1179,6 +1226,18 @@ struct ConversationView: View {
             .padding(.top, 2)
             .accessibilityElement(children: .combine)
         }
+    }
+
+    private func compactRunDuration(_ interval: TimeInterval) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = AppCopy.locale
+        let formatter = DateComponentsFormatter()
+        formatter.calendar = calendar
+        formatter.allowedUnits = [.day, .hour, .minute, .second]
+        formatter.maximumUnitCount = 2
+        formatter.unitsStyle = .abbreviated
+        formatter.zeroFormattingBehavior = .dropAll
+        return formatter.string(from: max(0, interval)) ?? "0s"
     }
 
     @ViewBuilder
@@ -1815,10 +1874,15 @@ struct ConversationView: View {
 
     private func attachmentCard(_ attachment: ChatAttachment) -> some View {
         Button {
-            NSWorkspace.shared.open(attachment.url)
+            if attachment.kind == .image {
+                previewingAttachment = attachment
+            } else {
+                model.openAttachmentInFilesPane(attachment)
+            }
         } label: {
             VStack(alignment: .leading, spacing: 0) {
-                if attachment.kind == .image, let image = ImageFileCache.image(at: attachment.url) {
+                if attachment.kind == .image,
+                   let image = ImageFileCache.image(at: attachment.providerURL ?? attachment.url) {
                     Image(nsImage: image)
                         .resizable()
                         .scaledToFill()

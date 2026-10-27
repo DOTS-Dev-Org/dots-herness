@@ -1,0 +1,44 @@
+Urun: DotsHarness
+Yapilandirma: debug
+Native Swift macOS uygulamasi derleniyor...
+Building for debugging...
+[0/4] Write sources
+[1/4] Write swift-version--58304C5D6DBC2206.txt
+[3/6] Compiling DotsHarnessUI DraggableTaskCards.swift
+[4/6] Emitting module DotsHarnessUI
+[5/7] Compiling DotsHarnessUI TasksView.swift
+[6/9] Emitting module DotsHarness
+[6/9] Write Objects.LinkFileList
+[7/9] Linking DotsHarness
+[8/9] Applying DotsHarness
+Build of product 'DotsHarness' complete! (16.21s)
+WhisperVoice yardimci dylib derleniyor...
+Building for debugging...
+[0/2] Write swift-version--58304C5D6DBC2206.txt
+Build of product 'WhisperVoice' complete! (0.23s)
+Uygulama binarysi: /Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness
+macOS .app bundle olusturuluyor...
+Statik framework atlandi: SherpaOnnxC.framework
+Statik framework atlandi: onnxruntime.framework
+Imzalama kimligi: Apple Development: Ali Birkan Bayram (JQC58L74BJ)
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app/Contents/MacOS/libFableThinkingPlugin.dylib: replacing existing signature
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app/Contents/MacOS/libHarnessPluginKit.dylib: replacing existing signature
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app/Contents/MacOS/libHelloPlugin.dylib: replacing existing signature
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app/Contents/MacOS/libWhisperVoice.dylib: replacing existing signature
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app/Contents/MacOS/whisper.framework: replacing existing signature
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app: replacing existing signature
+--prepared:/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app/Contents/MacOS/libFableThinkingPlugin.dylib
+--validated:/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app/Contents/MacOS/libFableThinkingPlugin.dylib
+--prepared:/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app/Contents/MacOS/libHelloPlugin.dylib
+--validated:/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app/Contents/MacOS/libHelloPlugin.dylib
+--prepared:/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app/Contents/MacOS/whisper.framework/Versions/Current/.
+--validated:/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app/Contents/MacOS/whisper.framework/Versions/Current/.
+--prepared:/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app/Contents/MacOS/libHarnessPluginKit.dylib
+--validated:/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app/Contents/MacOS/libHarnessPluginKit.dylib
+--prepared:/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app/Contents/MacOS/libWhisperVoice.dylib
+--validated:/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app/Contents/MacOS/libWhisperVoice.dylib
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app: valid on disk
+/Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app: satisfies its Designated Requirement
+Uygulama bundle: /Volumes/HIKVISION/Projects/DOTS/DOTS Dev/dots_hernes/macos/DotsHarness/.build/arm64-apple-macosx/debug/DotsHarness.app
+Uygulama boyutu: 75M
+Derleme tamamlandi.

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext only to this device's own loopback. Everything that leaves the
+  phone — the desktop gateway on the LAN (TLS, certificate pinned by the
+  pairing QR), the cloud tunnel, provider APIs, MCP servers, web fetches —
+  has to be HTTPS, so a bearer token or an API key is never sent in the clear.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">::1</domain>
+    </domain-config>
+</network-security-config>

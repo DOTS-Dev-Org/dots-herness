@@ -124,18 +124,49 @@ final class PromptNSTextView: NSTextView {
     }
 
     override func paste(_ sender: Any?) {
-        guard let onPasteImage,
-              let png = Self.pngImageData(from: .general) else {
+        guard pasteImage(from: .general) else {
             super.paste(sender)
             return
         }
+    }
+
+    @discardableResult
+    func pasteImage(from pasteboard: NSPasteboard) -> Bool {
+        guard let onPasteImage,
+              let png = Self.pngImageData(from: pasteboard) else { return false }
         onPasteImage(png)
+        return true
     }
 
     static func pngImageData(from pasteboard: NSPasteboard) -> Data? {
+        let imageTypes = [UTType.png, .tiff, .jpeg, .heic, .gif].map {
+            NSPasteboard.PasteboardType($0.identifier)
+        }
+        for item in pasteboard.pasteboardItems ?? [] {
+            for type in imageTypes {
+                guard let data = item.data(forType: type),
+                      let png = pngImageData(from: data) else { continue }
+                return png
+            }
+        }
+
+        let fileURLs = pasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        ) as? [URL] ?? []
+        for url in fileURLs where UTType(filenameExtension: url.pathExtension)?.conforms(to: .image) == true {
+            guard let data = try? Data(contentsOf: url),
+                  let png = pngImageData(from: data) else { continue }
+            return png
+        }
+
         guard let image = NSImage(pasteboard: pasteboard),
-              let tiff = image.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiff) else { return nil }
+              let tiff = image.tiffRepresentation else { return nil }
+        return pngImageData(from: tiff)
+    }
+
+    private static func pngImageData(from data: Data) -> Data? {
+        guard let bitmap = NSBitmapImageRep(data: data) else { return nil }
         return bitmap.representation(using: .png, properties: [:])
     }
 

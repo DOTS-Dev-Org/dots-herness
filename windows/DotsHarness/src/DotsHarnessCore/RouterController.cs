@@ -178,8 +178,23 @@ public sealed class RouterController : ObservableObject, IDisposable
         RouterAuthKind.ApiKey => CreateApiKeyAsync(),
         RouterAuthKind.OauthBrowser => StartBrowserAsync(),
         RouterAuthKind.OauthDevice => StartDeviceAsync(),
+        RouterAuthKind.Passthrough => ConnectPassthroughAsync(),
         _ => Task.CompletedTask,
     };
+
+    /// <summary>Providers that sign in on their own (the claude CLI). Records a keyless account.</summary>
+    public async Task ConnectPassthroughAsync()
+    {
+        try
+        {
+            var previous = CurrentAccount?.Name;
+            var added = _store.AddAccount(RouterCatalog.Descriptor(SelectedKind), SelectedKind.Name, "", authType: "passthrough");
+            ConnectionChanged?.Invoke(new ConnectionTransition("added", previous, added.Name, "preserved", []));
+            Status = $"Connected {SelectedKind.Name}";
+            await RefreshAsync();
+        }
+        catch (Exception ex) { Error = ex.Message; }
+    }
 
     public async Task CreateApiKeyAsync()
     {
@@ -416,7 +431,7 @@ public sealed class RouterController : ObservableObject, IDisposable
         try
         {
             var account = _store.State.Accounts.FirstOrDefault(a => a.Id == connection.Id) ?? throw new NativeProviderException("Connection not found.");
-            if (account.AuthType is "chatgpt" or "claudeOAuth" or "oauth")
+            if (account.AuthType is "chatgpt" or "claudeOAuth" or "oauth" or "passthrough")
             {
                 await _router.CompleteAsync([new NativeMessage("user", "ping")], [], account.Model);
                 Status = $"Connected {RouterCatalog.LabelFor(account.Provider)}";
@@ -1052,7 +1067,8 @@ public sealed class RouterController : ObservableObject, IDisposable
         var fallback = ModelsFor(account).ToList();
         var contexts = new Dictionary<string, int>(StringComparer.Ordinal);
         if ((account.Provider == "claude" && account.AuthType == "claudeOAuth")
-            || (account.Provider == "grok-cli" && account.AuthType == "oauth"))
+            || (account.Provider == "grok-cli" && account.AuthType == "oauth")
+            || account.Provider == "claude-cli")
             return new(fallback, contexts);
         try
         {
@@ -1209,6 +1225,12 @@ public sealed class RouterController : ObservableObject, IDisposable
         {
             yield return "grok-build";
             yield return "grok-4.5";
+            yield break;
+        }
+        if (account.Provider == "claude-cli")
+        {
+            // The CLI accepts any model its sign-in can use; these are the current ones.
+            foreach (var model in new[] { "claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5", "claude-fable-5-1" }) yield return model;
             yield break;
         }
         if ((account.Models ?? []).Count > 0)
@@ -1458,6 +1480,7 @@ public sealed class RouterController : ObservableObject, IDisposable
                 : await LoadChatGptUsageAsync(account, ct).ConfigureAwait(false)))).ConfigureAwait(false);
         _accountUsage = loaded.Where(item => item.Usage is not null).ToDictionary(item => item.Id, item => item.Usage!);
         _router.RefreshUsage = () => _accountUsage;
+        OnPropertyChanged(nameof(AccountUsage));
     }
 
     public bool OpenClaudeResetPage(string accountId)

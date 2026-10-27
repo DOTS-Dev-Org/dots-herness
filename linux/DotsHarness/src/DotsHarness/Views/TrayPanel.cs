@@ -118,7 +118,7 @@ internal sealed class TrayPanel : Window
     private void Refresh()
     {
         var known = _model.Bridge.Conversations
-            .Concat(_model.Bridge.RecentConversations(_model.Projects))
+            .Concat(_model.Bridge.RecentConversations(_model.ConnectedProjectPaths))
             .Where(item => !item.Blank && !item.Archived)
             .DistinctBy(item => item.Id)
             .OrderByDescending(SessionProjector.LastActivity)

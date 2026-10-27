@@ -96,9 +96,12 @@ final class EconomyPolicyTests: XCTestCase {
         }
         let normal = request("explain the project structure")
         let short = request("en fazla 200 token kullan")
-        XCTAssertNil(short["text"])
+        XCTAssertEqual((normal["text"] as? [String: String])?["verbosity"], "low")
+        XCTAssertEqual((short["text"] as? [String: String])?["verbosity"], "low")
         XCTAssertNotNil(short["max_output_tokens"])
         XCTAssertEqual(settings(normal), settings(short))
+        configuration.responseStylePreference = .detailed
+        XCTAssertNil(request("explain")["text"])
         configuration.responseStylePreference = .concise
         XCTAssertEqual((request("explain")["text"] as? [String: String])?["verbosity"], "low")
     }

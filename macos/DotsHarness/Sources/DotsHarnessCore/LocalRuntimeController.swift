@@ -40,6 +40,9 @@ public final class LocalRuntimeController: ObservableObject {
         LocalModelCatalog.models + settings.importedModels.map(LocalModelSpec.imported(path:))
     }
 
+    /// Everything that may be on disk: the catalog, imports and Hugging Face downloads.
+    public var allModels: [LocalModelSpec] { models + LocalModelCatalog.mlxModels + settings.hubModels }
+
     public var memoryBytes: UInt64 { ProcessInfo.processInfo.physicalMemory }
 
     /// "Apple M3 Pro · 13.3 GB" once the runtime can list devices, else RAM only.
@@ -59,7 +62,7 @@ public final class LocalRuntimeController: ObservableObject {
     }
 
     public func refreshInstalled() {
-        installed = Set((models + LocalModelCatalog.mlxModels).filter { runtime.isInstalled($0) }.map(\.id))
+        installed = Set(allModels.filter { runtime.isInstalled($0) }.map(\.id))
         serving = runtime.isServing()
         runningModelID = runtime.runningModelID()
         runtimeReady = runtime.runtimeInstalled()
@@ -112,6 +115,9 @@ public final class LocalRuntimeController: ObservableObject {
                 }
             }
             downloads[spec.id] = 1
+            if spec.id.hasPrefix("hf:"), !settings.hubModels.contains(where: { $0.id == spec.id }) {
+                settings.hubModels.append(spec)
+            }
             refreshInstalled()
             status = AppCopy.format("local.modelDownloaded", spec.name)
         } catch {
@@ -172,6 +178,7 @@ public final class LocalRuntimeController: ObservableObject {
         } else {
             try? FileManager.default.removeItem(at: runtime.modelURL(spec))
             try? FileManager.default.removeItem(at: runtime.modelURL(spec).appendingPathExtension("part"))
+            settings.hubModels.removeAll { $0.id == spec.id }
         }
         downloads[spec.id] = nil
         refreshInstalled()

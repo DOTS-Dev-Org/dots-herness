@@ -128,6 +128,8 @@ public final class SkillCatalog: ObservableObject {
     }
 
     public static let maximumSkillBytes = 200_000
+    private static let maximumSkillResourceBytes = 1_000_000
+    private static let maximumSkillResources = 200
     private static let workspaceDirectoriesCheckedDirectly: Set<String> = [
         ".dotsherness", ".codex", ".agent", ".claude",
     ]
@@ -303,6 +305,64 @@ public final class SkillCatalog: ObservableObject {
             throw SkillCatalogError.invalid("Skill path is outside an allowed skill root.")
         }
         return try Self.readAndValidate(url: url)
+    }
+
+    public func resources(id: String) throws -> [String] {
+        guard let entry = descriptor(for: id) else { throw SkillCatalogError.notFound(id) }
+        let directory = URL(fileURLWithPath: entry.path).deletingLastPathComponent().standardizedFileURL
+        guard isInsideSkillRoot(directory, source: entry.source) else {
+            throw SkillCatalogError.invalid("Skill path is outside an allowed skill root.")
+        }
+        var result: [String] = []
+        walk(directory, relative: "")
+        return result.sorted()
+
+        func walk(_ parent: URL, relative: String) {
+            guard result.count < Self.maximumSkillResources,
+                  let children = try? FileManager.default.contentsOfDirectory(
+                    at: parent,
+                    includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey],
+                    options: [.skipsHiddenFiles]
+                  ) else { return }
+            for child in children.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+                guard result.count < Self.maximumSkillResources,
+                      let values = try? child.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]),
+                      values.isSymbolicLink != true else { continue }
+                let path = relative.isEmpty ? child.lastPathComponent : relative + "/" + child.lastPathComponent
+                if values.isDirectory == true { walk(child, relative: path); continue }
+                guard child.path != URL(fileURLWithPath: entry.path).standardizedFileURL.path,
+                      let size = try? child.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+                      size <= Self.maximumSkillResourceBytes else { continue }
+                result.append(path)
+            }
+        }
+    }
+
+    public func readResource(id: String, path: String) throws -> String {
+        guard let entry = descriptor(for: id) else { throw SkillCatalogError.notFound(id) }
+        guard !path.isEmpty, !path.hasPrefix("/"), !path.contains("\\"), path.utf8.count <= 500 else {
+            throw SkillCatalogError.invalid("A safe skill-relative resource path is required.")
+        }
+        let parts = path.split(separator: "/", omittingEmptySubsequences: false)
+        guard parts.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." && !$0.hasPrefix(".") }) else {
+            throw SkillCatalogError.invalid("Skill resource path is not allowed.")
+        }
+        let directory = URL(fileURLWithPath: entry.path).deletingLastPathComponent().standardizedFileURL
+        let file = parts.reduce(directory) { $0.appendingPathComponent(String($1)) }.standardizedFileURL
+        guard isInsideSkillRoot(directory, source: entry.source),
+              file.path.hasPrefix(directory.path + "/"),
+              !hasSymbolicLinkBetween(file, and: directory),
+              FileManager.default.fileExists(atPath: file.path) else {
+            throw SkillCatalogError.invalid("Skill resource is unavailable.")
+        }
+        let data = try Data(contentsOf: file)
+        guard data.count <= Self.maximumSkillResourceBytes else {
+            throw SkillCatalogError.invalid("Skill resource is larger than the supported limit.")
+        }
+        guard let text = String(data: data, encoding: .utf8) else {
+            throw SkillCatalogError.invalid("Skill resource is not valid UTF-8.")
+        }
+        return text
     }
 
     public func setEnabled(_ id: String, _ enabled: Bool) {
@@ -742,6 +802,27 @@ public enum SkillTools {
             ])
         ),
         AgentToolDefinition(
+            name: "skill.resources",
+            description: "List text companion files inside one enabled skill folder. Use this when SKILL.md references files in references/, scripts/, or assets/. Files are never executed by this tool.",
+            parameters: .object([
+                "type": .string("object"),
+                "properties": .object(["id": stringParameter("id", description: "Canonical skill id.")]),
+                "required": .array([.string("id")]),
+            ])
+        ),
+        AgentToolDefinition(
+            name: "skill.read_resource",
+            description: "Read one UTF-8 companion file from an enabled skill folder by canonical skill id and skill-relative path. This only returns text; it never executes scripts.",
+            parameters: .object([
+                "type": .string("object"),
+                "properties": .object([
+                    "id": stringParameter("id", description: "Canonical skill id."),
+                    "path": stringParameter("path", description: "Skill-relative path such as references/guide.md."),
+                ]),
+                "required": .array([.string("id"), .string("path")]),
+            ])
+        ),
+        AgentToolDefinition(
             name: "skill.suggest",
             description: "Propose saving a reusable procedure as a workspace skill. Use only when the user asks to save a workflow as a skill, or after you finished a multi-step workflow (several tool steps, a non-obvious order or gotcha) that the user said they will need again. Never for a single command, a one-off task, routine work such as building, testing, committing or answering a question, or something a project rule or lesson already covers. At most once per conversation; if it returns that no card was shown, do not retry or rephrase. This only shows the user a card; nothing is written unless they accept it.",
             parameters: .object([
@@ -757,7 +838,7 @@ public enum SkillTools {
     ]
 
     public static func isReadOnly(_ name: String) -> Bool {
-        name == "skill.list" || name == "skill.read" || name == "skill.suggest"
+        name == "skill.list" || name == "skill.read" || name == "skill.resources" || name == "skill.read_resource" || name == "skill.suggest"
     }
 
     public static func execute(_ call: AgentToolCall, catalog: SkillCatalog, suggestions: SkillSuggestionMonitor? = nil) -> String {
@@ -776,6 +857,15 @@ public enum SkillTools {
         case "skill.read":
             guard let id = object["id"] as? String, !id.isEmpty else { return "A skill id is required." }
             do { return try catalog.read(id: id) }
+            catch { return error.localizedDescription }
+        case "skill.resources":
+            guard let id = object["id"] as? String, !id.isEmpty else { return "A skill id is required." }
+            do { return try catalog.resources(id: id).joined(separator: "\n") }
+            catch { return error.localizedDescription }
+        case "skill.read_resource":
+            guard let id = object["id"] as? String, !id.isEmpty,
+                  let path = object["path"] as? String, !path.isEmpty else { return "A skill id and resource path are required." }
+            do { return try catalog.readResource(id: id, path: path) }
             catch { return error.localizedDescription }
         case "skill.suggest":
             guard let suggestions else { return "Skill suggestions are not available in this context." }

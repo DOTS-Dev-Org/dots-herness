@@ -373,8 +373,9 @@ struct ComposerView: View {
     }
 
     private var latestServedLocally: Bool {
-        bridge.contextUsageEvents()
-            .filter { $0.conversationID == model.selectedConversationID && $0.requestKind == .main && $0.errorKind == nil }
+        guard let conversationID = model.selectedConversationID else { return false }
+        return bridge.contextUsageEvents(in: conversationID)
+            .filter { $0.requestKind == .main && $0.errorKind == nil }
             .max { $0.timestamp < $1.timestamp }?.cacheTrace?.local == true
     }
 
@@ -403,8 +404,8 @@ struct ComposerView: View {
 
     private var latestMainUsage: AgentContextUsageEvent? {
         guard let conversationID = model.selectedConversationID else { return nil }
-        return bridge.contextUsageEvents()
-            .filter { $0.conversationID == conversationID && $0.requestKind == .main }
+        return bridge.contextUsageEvents(in: conversationID)
+            .filter { $0.requestKind == .main }
             .max { $0.timestamp < $1.timestamp }
     }
 
@@ -430,10 +431,10 @@ struct ComposerView: View {
             : model.selectedModelID
         guard let currentModel else { return nil }
 
-        let mainEvents = bridge.contextUsageEvents().filter {
+        let mainEvents = bridge.contextUsageEvents(in: conversationID).filter {
             // A failed request carries no TTL or cache usage; it must not hide
             // the warning computed from the last request that actually ran.
-            $0.conversationID == conversationID && $0.requestKind == .main && $0.model == currentModel
+            $0.requestKind == .main && $0.model == currentModel
                 && $0.errorKind == nil
         }
         guard let latest = mainEvents.max(by: { $0.timestamp < $1.timestamp }) else { return nil }
@@ -1164,7 +1165,10 @@ struct ComposerView: View {
     }
 
     private var contextEvents: [AgentContextUsageEvent] {
-        bridge.contextUsageEvents().filter { $0.conversationID == model.selectedConversationID }
+        guard let conversationID = model.selectedConversationID else {
+            return bridge.contextUsageEvents().filter { $0.conversationID == nil }
+        }
+        return bridge.contextUsageEvents(in: conversationID)
     }
 
     private func contextWindow(for event: AgentContextUsageEvent) -> Int? {

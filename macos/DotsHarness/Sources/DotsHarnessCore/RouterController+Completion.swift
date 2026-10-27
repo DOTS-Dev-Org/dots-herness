@@ -353,7 +353,8 @@ extension RouterController {
     ///    down comes first, so follow-up turns keep the provider's prompt cache;
     /// 2. otherwise accounts not in cooldown, most remaining quota first
     ///    (unknown usage sorts below known-healthy but above known-exhausted),
-    ///    `priority` (provider order) breaking ties;
+    ///    `priority` breaking ties; equal-quota accounts within a provider rotate
+    ///    across unpinned conversations;
     /// 3. cooling-down accounts last, as a final fallback.
     /// Pure and side-effect free so it can be unit tested without the network.
     func orderedRoutes(
@@ -361,7 +362,8 @@ extension RouterController {
         model: String,
         preferred: String?,
         usage: [String: AccountUsageSnapshot],
-        now: Date
+        now: Date,
+        roundRobinAfterByProvider: [String: String] = [:]
     ) -> [StoredProviderAccount] {
         let serving = accounts
             .filter { $0.active && canServe($0, model: model) }
@@ -376,13 +378,36 @@ extension RouterController {
             return fraction <= 0 ? -1 : fraction
         }
 
-        let ranked = serving.sorted { lhs, rhs in
+        var ranked = serving.sorted { lhs, rhs in
             let lc = coolingDown(lhs), rc = coolingDown(rhs)
             if lc != rc { return !lc }
             let lr = remainingRank(lhs), rr = remainingRank(rhs)
             if lr != rr { return lr > rr }
             if lhs.priority != rhs.priority { return lhs.priority < rhs.priority }
             return lhs.id < rhs.id
+        }
+
+        // Quota remains the primary ordering. Rotate only equal-quota accounts
+        // within a provider, so new conversations do not repeatedly pick the
+        // same account when usage snapshots are tied.
+        for (provider, previousID) in roundRobinAfterByProvider {
+            guard let previous = ranked.first(where: { $0.id == previousID }),
+                  previous.provider == provider,
+                  !coolingDown(previous) else { continue }
+            let peerIndices = ranked.indices.filter {
+                let account = ranked[$0]
+                return account.provider == provider
+                    && !coolingDown(account)
+                    && remainingRank(account) == remainingRank(previous)
+            }
+            guard let previousPeerIndex = peerIndices.firstIndex(where: { ranked[$0].id == previousID }),
+                  peerIndices.count > 1 else { continue }
+            let peerAccounts = peerIndices.map { ranked[$0] }
+            let rotated = Array(peerAccounts.dropFirst(previousPeerIndex + 1))
+                + Array(peerAccounts.prefix(previousPeerIndex + 1))
+            for (index, account) in zip(peerIndices, rotated) {
+                ranked[index] = account
+            }
         }
 
         if let preferred,
@@ -433,7 +458,8 @@ extension RouterController {
             model: requestedModel ?? "",
             preferred: preferredAccountID,
             usage: accountUsage,
-            now: Date()
+            now: Date(),
+            roundRobinAfterByProvider: lastRoundRobinAccountIDByProvider
         )
         if excludeKnownExhaustedAccounts {
             routes.removeAll { account in
@@ -445,6 +471,11 @@ extension RouterController {
         var failures: [NativeAgentError] = []
         var limitFailures: [NativeAgentError] = []
         routeLoop: for account in routes {
+            if preferredAccountID == nil, recordRouteState {
+                // Reserve the route before awaiting the provider so concurrent new
+                // conversations receive different equal-quota accounts.
+                lastRoundRobinAccountIDByProvider[account.provider] = account.id
+            }
             var refreshed = false
             while true {
                 do {
@@ -670,7 +701,8 @@ extension RouterController {
             model: resolvedModel,
             preferred: preferredAccountID,
             usage: accountUsage,
-            now: Date()
+            now: Date(),
+            roundRobinAfterByProvider: lastRoundRobinAccountIDByProvider
         )
         guard let account = routes.first else { return nil }
         return try? configuration(for: account, model: resolvedModel, loadCredentials: false)

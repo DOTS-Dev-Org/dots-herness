@@ -43,6 +43,57 @@ final class MultiAccountRoutingTests: XCTestCase {
     }
 
     @MainActor
+    func testEqualQuotaAccountsRotateAfterLastAssignment() {
+        let router = RouterController(baseURL: "http://127.0.0.1:1")
+        let accounts = [account("a", priority: 0), account("b", priority: 1), account("c", priority: 2)]
+        let ordered = router.orderedRoutes(
+            accounts,
+            model: "",
+            preferred: nil,
+            usage: [:],
+            now: Date(),
+            roundRobinAfterByProvider: ["claude": "a"]
+        )
+        XCTAssertEqual(ordered.map(\.id), ["b", "c", "a"])
+    }
+
+    @MainActor
+    func testHigherQuotaStillWinsAndTiedTopAccountsRotate() {
+        let router = RouterController(baseURL: "http://127.0.0.1:1")
+        let accounts = [account("a", priority: 0), account("b", priority: 1), account("c", priority: 2)]
+        let usage: [String: AccountUsageSnapshot] = [
+            "a": .init(remainingFraction: 0.1),
+            "b": .init(remainingFraction: 0.9),
+            "c": .init(remainingFraction: 0.9),
+        ]
+        let ordered = router.orderedRoutes(
+            accounts,
+            model: "",
+            preferred: nil,
+            usage: usage,
+            now: Date(),
+            roundRobinAfterByProvider: ["claude": "b"]
+        )
+        XCTAssertEqual(ordered.map(\.id), ["c", "b", "a"])
+    }
+
+    @MainActor
+    func testPreferredConversationAccountOverridesRoundRobinOrder() {
+        let router = RouterController(baseURL: "http://127.0.0.1:1")
+        let accounts = [account("a", priority: 0), account("b", priority: 1), account("c", priority: 2)]
+        let ordered = router.orderedRoutes(
+            accounts,
+            model: "",
+            preferred: "a",
+            usage: [:],
+            now: Date(),
+            roundRobinAfterByProvider: ["claude": "b"]
+        )
+        XCTAssertEqual(ordered.first?.id, "a")
+        XCTAssertEqual(Set(ordered.map(\.id)), ["a", "b", "c"])
+    }
+
+    @MainActor
     func testUnknownUsageSortsBetweenHealthyAndExhausted() {
         let router = RouterController(baseURL: "http://127.0.0.1:1")
         let accounts = [account("healthy", priority: 2), account("unknown", priority: 1), account("empty", priority: 0)]

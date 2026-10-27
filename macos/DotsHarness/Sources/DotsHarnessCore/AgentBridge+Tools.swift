@@ -517,7 +517,8 @@ extension NativeAgentHost {
             .map(\.id)
         store.forEachRecentChangedFiles(ids: conversationIDs, since: cutoff) { _, title, changedFiles in
             var paths: [String] = []
-            for file in changedFiles where !paths.contains(file.path) {
+            var seenPaths = Set<String>()
+            for file in changedFiles where seenPaths.insert(file.path).inserted {
                 paths.append(file.path)
             }
             guard !paths.isEmpty else { return }

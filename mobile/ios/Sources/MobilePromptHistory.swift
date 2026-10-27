@@ -31,8 +31,38 @@ struct MobilePromptHistory: Codable {
         let offset: Int
         let end: Int
 
-        func covers(_ earlier: ReadSpan) -> Bool {
-            path == earlier.path && offset <= earlier.offset && end >= earlier.end
+    }
+
+    private final class ReadSpanCoverageIndex {
+        private let offsets: [Int]
+        private var maximumEnds: [Int]
+
+        init(spans: [ReadSpan]) {
+            offsets = Array(Set(spans.map(\.offset))).sorted()
+            maximumEnds = Array(repeating: Int.min, count: offsets.count + 1)
+        }
+
+        func isSupersededAndInsert(_ span: ReadSpan) -> Bool {
+            var lower = 0
+            var upper = offsets.count
+            while lower < upper {
+                let middle = lower + (upper - lower) / 2
+                if offsets[middle] < span.offset { lower = middle + 1 } else { upper = middle }
+            }
+            let coordinate = lower + 1
+            var prefix = coordinate
+            var maximumEnd = Int.min
+            while prefix > 0 {
+                maximumEnd = max(maximumEnd, maximumEnds[prefix])
+                prefix -= prefix & -prefix
+            }
+            let superseded = maximumEnd >= span.end
+            var update = coordinate
+            while update < maximumEnds.count {
+                maximumEnds[update] = max(maximumEnds[update], span.end)
+                update += update & -update
+            }
+            return superseded
         }
     }
 
@@ -66,10 +96,12 @@ struct MobilePromptHistory: Codable {
         guard results.count >= 2 else { return wire }
 
         var result = wire
-        for (position, entry) in results.enumerated() {
-            let superseded = results[(position + 1)...].contains { later in
-                later.span.covers(entry.span)
-            }
+        // Process later reads first and query interval coverage in O(log n) per read.
+        var spansByPath: [String: [ReadSpan]] = [:]
+        for entry in results { spansByPath[entry.span.path, default: []].append(entry.span) }
+        let coverageByPath = spansByPath.mapValues { ReadSpanCoverageIndex(spans: $0) }
+        for entry in results.reversed() {
+            let superseded = coverageByPath[entry.span.path]?.isSupersededAndInsert(entry.span) ?? false
             guard superseded,
                   var content = result[entry.message]["content"] as? [[String: Any]] else { continue }
             content[entry.block]["content"] = supersededReadMarker

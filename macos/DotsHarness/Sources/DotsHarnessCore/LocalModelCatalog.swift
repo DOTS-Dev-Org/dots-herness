@@ -8,9 +8,13 @@ import Foundation
 public enum LocalEngine: String, Sendable, Codable {
     case llama
     case mlx
+    /// Download-only: one Hugging Face file the bundled servers cannot run.
+    case file
+    /// Download-only: a whole Hugging Face repository (diffusers, 3D, TTS…).
+    case repo
 }
 
-public struct LocalModelSpec: Identifiable, Sendable, Equatable, Hashable {
+public struct LocalModelSpec: Identifiable, Sendable, Equatable, Hashable, Codable {
     public var id: String
     public var name: String
     public var family: String
@@ -29,6 +33,8 @@ public struct LocalModelSpec: Identifiable, Sendable, Equatable, Hashable {
     public var minMemoryGB: Int
     /// A GGUF the user imported; it is served in place, never downloaded.
     public var localPath: String?
+    /// `LocalModelCategory` id.
+    public var category: String
 
     public init(
         id: String,
@@ -45,7 +51,8 @@ public struct LocalModelSpec: Identifiable, Sendable, Equatable, Hashable {
         sha256: String? = nil,
         repo: String? = nil,
         minMemoryGB: Int = 0,
-        localPath: String? = nil
+        localPath: String? = nil,
+        category: String = "chat"
     ) {
         self.id = id
         self.name = name
@@ -62,6 +69,20 @@ public struct LocalModelSpec: Identifiable, Sendable, Equatable, Hashable {
         self.repo = repo
         self.minMemoryGB = minMemoryGB
         self.localPath = localPath
+        self.category = category
+    }
+
+    /// llama.cpp or MLX can serve it; the rest is download-only.
+    public var runnable: Bool { engine == .llama || engine == .mlx }
+    /// Stored as a folder with a `.complete` marker rather than one file.
+    public var isDirectory: Bool { engine == .mlx || engine == .repo }
+
+    /// The model's Hugging Face page, for the backlink.
+    public var hubURL: URL? {
+        if let repo { return URL(string: "https://huggingface.co/\(repo)") }
+        guard url.host == "huggingface.co" else { return nil }
+        let parts = url.pathComponents.filter { $0 != "/" }.prefix(2)
+        return parts.count == 2 ? URL(string: "https://huggingface.co/\(parts.joined(separator: "/"))") : nil
     }
 
     /// A GGUF file the user picked from disk.
@@ -145,7 +166,8 @@ public enum LocalModelCatalog {
             bytes: 4_683_074_336,
             notes: AppCopy.format("localModel.needsMemory", 8),
             sha256: "1664fccab734674a50763490a8c6931b70e3f2f8ec10031b54806d30e5f956b6",
-            minMemoryGB: 8
+            minMemoryGB: 8,
+            category: "coding"
         ),
         LocalModelSpec(
             id: "qwen25-coder-14b-q4",
@@ -158,7 +180,8 @@ public enum LocalModelCatalog {
             bytes: 8_988_111_072,
             notes: AppCopy.format("localModel.needsMemory", 12),
             sha256: "2946d28c9e1bb2bcae6d42e8678863a31775df6f740315c7d7e6d6b6411f5937",
-            minMemoryGB: 12
+            minMemoryGB: 12,
+            category: "coding"
         ),
         LocalModelSpec(
             id: "gpt-oss-20b-q4",
@@ -196,7 +219,8 @@ public enum LocalModelCatalog {
             url: URL(string: "https://huggingface.co/\(repo)")!,
             bytes: bytes,
             notes: AppCopy.format("localModel.needsMemory", memory),
-            engine: .mlx, repo: repo, minMemoryGB: memory
+            engine: .mlx, repo: repo, minMemoryGB: memory,
+            category: name.contains("Coder") ? "coding" : "chat"
         )
     }
 

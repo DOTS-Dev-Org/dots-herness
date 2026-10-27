@@ -87,6 +87,9 @@ extension AppModel {
                 self.bridge.resolvePendingPlanIntents()
                 await self.bridge.resumeRecoveredConversationIfNeeded()
                 _ = await updates
+                if self.autoUpdate, self.updateChecker.state.hasUpdate {
+                    await self.updateChecker.installUpdate()
+                }
             }
 
             self.scheduler.runsDueTasks = !self.isBackgroundDaemonEnabled

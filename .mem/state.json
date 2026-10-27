@@ -2,26 +2,13 @@
   "acceptedDecisions" : [
 
   ],
-  "activePreferences" : {
-
-  },
-  "conversationStates" : {
-    "B298D70B-4E7A-410B-8FC6-BF966A9E5B71" : {
-      "conversationId" : "B298D70B-4E7A-410B-8FC6-BF966A9E5B71",
-      "eventId" : "EE7E43B3-5DB2-4489-B88F-0917179A9D8C",
-      "revision" : 183,
-      "state" : "restored",
-      "title" : "MacOS, Windows ve Linux boyutlarımız ne kadar? P",
-      "updatedAt" : "2026-10-08T22:30:00Z"
-    }
-  },
-  "lastMapRevision" : 4,
+  "lastMapRevision" : 3,
   "members" : [
     {
       "deviceId" : "14b4a881c0326754e4d84de321f0d66cc4269a07a8bd52aecebf47d52b7f99c2",
       "displayName" : "alibirkanbayram",
       "personId" : "A0A5F046-9722-4968-B564-BCD224F8F922",
-      "projectId" : "0984C757-B10E-4892-87BA-47431B4D28FE",
+      "projectId" : "83890830-337C-4DD1-B358-03FFDCEDD318",
       "publicKey" : "iYZg1vM0jDAl62a783O+of4F6XYV0IeAJBtLvpJTRaYifHzl72xfGThhoLBqCPLAQCMtZUrzs1FU0eEC+kjJhw==",
       "role" : "owner",
       "score" : 100
@@ -31,14 +18,12 @@
 
   ],
   "projectDefaults" : {
-    "architecture" : "macOS app is a Swift Package: DotsHarness executable composes DotsHarnessUI over DotsHarnessCore; RootView renders NavigationSplitView\/ConversationView and AppModel coordinates state. AgentBridge is a UI-facing facade over @Observable NativeAgentHost; the host owns conversation\/run state and streams provider deltas to UI, with ConversationStore persistence. Sources: macos\/DotsHarness\/Package.swift, Sources\/DotsHarnessUI\/RootView.swift, Sources\/DotsHarnessUI\/ConversationView.swift, Sources\/DotsHarnessCore\/AppModel.swift, Sources\/DotsHarnessCore\/AgentBridge.swift, Sources\/DotsHarnessCore\/AgentBridgeFacade.swift.",
-    "constraints" : "Projenin en önemli kısıtı platformlar arası uyumluluktur.",
-    "conventions" : "macOS uses Swift 6 package targets and domain-split Swift files (AppModel+..., AgentBridge+...); UI is SwiftUI and core models\/host use Observation with main-actor isolation for app state. Tests are XCTest in macos\/DotsHarness\/Tests\/HarnessPluginKitTests, imported with @testable; run from macos\/DotsHarness using swift test (package target in Package.swift).",
-    "design-system" : "No centralized macOS color\/spacing token palette was found. UI follows SwiftUI semantic colors (primary\/secondary\/accentColor and AppKit semantic backgrounds), system text styles, and rounded-card primitives; reusable small components live in SharedUIComponents.swift. Sources: macos\/DotsHarness\/Sources\/DotsHarnessUI\/SharedUIComponents.swift, ConversationView.swift, RootView.swift.",
-    "goal" : "Bu proje masaüstü ve mobil uygulama olarak kullanılıyor.",
-    "out-of-scope" : "Tasarım değişiklikleri bu projenin kapsamı dışındadır."
+    "constraints" : "Analiz kapsamı güvenilirlik, güvenlik, bakım ve test riskleridir; kullanıcı bu yanıtında ek sert kısıt belirtmedi.",
+    "goal" : "Kullanıcının belirttiği bu çalışma için amaç, tüm depoda genel kod sağlığı analizi yapmak; güvenilirlik, güvenlik, bakım ve test risklerini değerlendirmek.",
+    "out-of-scope" : "Kullanıcı henüz analiz dışında bırakılmasını istediği bir modül, platform veya konu belirtmedi."
   },
-  "revision" : 314,
+  "revision" : 7,
+  "schemaVersion" : 2,
   "supersededValues" : [
 
   ]

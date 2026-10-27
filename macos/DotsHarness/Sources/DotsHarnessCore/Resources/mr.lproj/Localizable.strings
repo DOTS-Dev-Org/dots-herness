@@ -932,6 +932,8 @@
 "conversation.fileModified" = "बदलले";
 "conversation.filesSummary" = "जोडले %d, बदलले %d, हटवले %d";
 "conversation.runSummary" = "रनचा सारांश";
+"conversation.runDuration" = "%@ वेळ काम केले";
+"conversation.runDurationDetails" = "सुरुवात %@ · समाप्ती %@";
 "conversation.testStatus" = "चाचण्या: %@";
 "settings.seedProjectRules" = "AGENTS.md आणि CLAUDE.md तयार करा";
 "settings.selfVerification" = "बदलांची आपोआप पडताळणी करा";
@@ -2093,3 +2095,28 @@
 "notifications.operationFailed" = "काम अयशस्वी झाले";
 
 "simulator.back" = "Back";
+
+"claudeCLI.notInstalled" = "Claude Code CLI not found. Install it from claude.com/code, then run `claude update`.";
+"market.category.chat" = "Chat";
+"market.category.image" = "Image generation";
+"market.category.modeling" = "3D modeling";
+"market.category.video" = "Video generation";
+"market.category.audio" = "Audio generation";
+"local.search" = "Search models";
+"local.settings" = "Runtime settings";
+"local.recommended" = "Recommended";
+"local.downloaded" = "Downloaded from Hugging Face";
+"local.hub.title" = "Popular on Hugging Face";
+"local.hub.viewAll" = "View all on Hugging Face";
+"local.hub.open" = "Open on Hugging Face";
+"local.hub.empty" = "No models match this search.";
+"local.hub.files" = "Files";
+"local.hub.downloadRepo" = "Download the whole repository · %@";
+"local.hub.fileOnly" = "Download only";
+"local.hub.downloadOnly" = "Downloads to this Mac. DOTS runs text models itself; open image, video, 3D and audio models with an app that supports them.";
+"local.hub.attribution" = "Listed live from Hugging Face. Check each model's license before you use it.";
+"local.reveal" = "Show in Finder";
+"local.size" = "Size";
+"local.context" = "Context";
+"local.memory" = "Memory";
+"local.disk" = "On disk";
