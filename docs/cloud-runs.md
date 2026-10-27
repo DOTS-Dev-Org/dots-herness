@@ -5,6 +5,12 @@ repository instead of running it on this computer. The run keeps going when the 
 closed; its transcript streams back to the app and its changes land on a
 `herness/cloud-<id>` branch.
 
+| Platform | Where |
+|---|---|
+| macOS | Composer work-location picker → Cloud; right-dock **Cloud** pane |
+| Windows, Linux | Work-location window → Cloud; **Cloud runs** window (opens after each cloud send) |
+| iOS, Android | Navigation drawer → **Cloud runs** (prompt box, run list, transcript) for the selected GitHub project |
+
 ## How a run works
 
 1. The app reads the project's `origin` remote (it must be on github.com) and the checked-out
@@ -34,9 +40,15 @@ The model is the provider default unless a model id is set in the Cloud pane.
 
 ## Credentials
 
-- **GitHub:** a token saved in the Cloud pane (Keychain), then `GH_TOKEN`/`GITHUB_TOKEN`, then
+- **GitHub (desktop):** a token saved in the Cloud pane/window (Keychain on macOS, the
+  platform credential store on Windows/Linux), then `GH_TOKEN`/`GITHUB_TOKEN`, then
   `gh auth token`. Dispatch needs Actions write; installing the workflow needs Contents and
   Workflows write. The token is only sent to api.github.com.
+- **GitHub (mobile):** the GitHub sign-in from Settings. It now asks for the `workflow` scope
+  as well, so accounts signed in before this change must sign in again to install the workflow
+  (dispatching works with the old `repo` scope).
+- **HerNess account:** the same session as Marketplace. On mobile it is one shared instance,
+  because refresh tokens are single-use and two copies would revoke each other.
 - **HerNess API, runner side:** no secret is stored in the repository. Every runner call carries
   a GitHub Actions OIDC token for the `https://dots.net.tr/herness-cloud` audience
   (`CLOUD_RUN_OIDC_AUDIENCE`). The Worker accepts it only when its `repository` claim matches the
@@ -61,7 +73,11 @@ The model is the provider default unless a model id is set in the Cloud pane.
 | Runner | `shared/CloudRunner.cs`, `linux/DotsHarness/src/HerNessCloud/Program.cs` |
 | Workflow template | `shared/cloud/herness-cloud.yml` (macOS copy kept by `tools/sync_skills.py`) |
 | macOS client and UI | `CloudRuns.swift`, `AppModel+Cloud.swift`, `DockCloudView.swift` |
+| Windows/Linux client | `shared/CloudRuns.cs` (`CloudRunService`), `AppModel.cs` (`SetCloudWorkLocation`, `CanSendFromComposer`) |
+| Windows/Linux UI | `windows/.../Views/CloudRunsWindow.cs` (WPF), `linux/.../Views/CloudRunsWindow.cs` (Avalonia), Cloud button in `RemoteWorkLocationWindow.cs` |
+| iOS | `mobile/ios/Sources/MobileCloudRuns.swift`, drawer tab 10 in `MobileRootView.swift` |
+| Android | `mobile/android/.../MobileCloudRuns.kt`, tab 10 in `MainActivity.kt`, template from `shared/cloud` as an asset |
 | Release asset | `build-cloud-runner` job in `.github/workflows/release.yml` |
 
-Windows and Linux do not offer the Cloud work location yet; the runner they share is the
-headless part only.
+On the phone the run uses the selected project's GitHub repository and branch as recorded
+in Settings; projects without a GitHub repository cannot run in the cloud.

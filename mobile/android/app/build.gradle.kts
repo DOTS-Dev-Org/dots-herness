@@ -43,6 +43,8 @@ android { namespace = "com.dots.herness.mobile"; compileSdk = 36
         }
     }
     buildFeatures { compose = true }
+    // herness-cloud.yml, installed into the user's repository from the Cloud screen.
+    sourceSets["main"].assets.srcDir("../../../shared/cloud")
     testOptions {
         unitTests.isReturnDefaultValues = true
     }

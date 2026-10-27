@@ -62,6 +62,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.CreateNewFolder
@@ -1137,6 +1138,7 @@ private fun WorkspaceShell(
                                         7 -> stringResource(R.string.rail_media)
                                         8 -> stringResource(R.string.rail_bots)
                                         9 -> stringResource(R.string.rail_marketplace)
+                                        10 -> stringResource(R.string.cloud_title)
                                         else -> stringResource(R.string.mobile_nav_settings)
                                     },
                                     style = MaterialTheme.typography.titleMedium,
@@ -1175,6 +1177,7 @@ private fun WorkspaceShell(
                             7 -> MobileMediaStudioScreen(client)
                             8 -> MobileBotsScreen(client, agent) { tab = 0 }
                             9 -> MobileMarketplaceScreen(client, agent) { tab = 0 }
+                            10 -> MobileCloudScreen(client) { tab = 0 }
                             else -> SettingsScreen(client, agent, plugins, mcp, loops, github, chatGPT, legal, selectedLanguage, onLanguageChange, isDarkTheme, onThemeToggle, confirmBeforeExit, onConfirmBeforeExitChange, ::requestExit)
                         }
                     }
@@ -1337,6 +1340,7 @@ private fun foldableNavigationItems() = listOf(
     FoldableNavigationItem(7, stringResource(R.string.rail_media), Icons.Filled.AutoAwesome),
     FoldableNavigationItem(8, stringResource(R.string.rail_bots), Icons.Filled.Psychology),
     FoldableNavigationItem(9, stringResource(R.string.rail_marketplace), Icons.Filled.Folder),
+    FoldableNavigationItem(10, stringResource(R.string.cloud_title), Icons.Filled.Cloud),
     FoldableNavigationItem(4, stringResource(R.string.mobile_nav_settings), Icons.Filled.Settings),
 )
 
@@ -1812,6 +1816,7 @@ private fun FoldableWorkspaceContent(
                     7 -> MobileMediaStudioScreen(client)
                     8 -> MobileBotsScreen(client, agent, onReturnToAgent)
                     9 -> MobileMarketplaceScreen(client, agent, onReturnToAgent)
+                    10 -> MobileCloudScreen(client, onReturnToAgent)
                     else -> SettingsScreen(
                         client, agent, plugins, mcp, loops, github, chatGPT, legal,
                         selectedLanguage, onLanguageChange, isDarkTheme, onThemeToggle,

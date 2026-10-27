@@ -66,8 +66,10 @@
 
 ## Cloud Work Location (GitHub Actions)
 - macOS "Şurada çalış" seçicisine **Bulut** eklendi (`WorkLocationSetting.cloud`). Görev, projenin GitHub deposundaki `herness-cloud.yml` workflow'una kullanıcının kendi GitHub token'ıyla dispatch edilir; transcript sağ dock'taki Cloud sekmesine akar, değişiklikler `herness/cloud-*` dalına push'lanır. Ayrıntı: `docs/cloud-runs.md`.
-- Runner Windows/Linux ile ortak `shared/CloudRunner.cs` üzerinde çalışan başsız .NET aracıdır (`linux/DotsHarness/src/HerNessCloud`); release'te `herness-cloud-linux-x64.tar.gz` olarak yayımlanır. Windows/Linux arayüzünde Bulut konumu henüz yok.
-- Worker uçları ve runner, yerel D1 ve sahte API/sağlayıcı ile test edildi; gerçek bir GitHub Actions koşusu (OIDC dahil) bu görevde çalıştırılmadı. macOS kodu bu Linux ortamında derlenemedi; CI'daki `swift test` ile doğrulanır.
+- Runner Windows/Linux ile ortak `shared/CloudRunner.cs` üzerinde çalışan başsız .NET aracıdır (`linux/DotsHarness/src/HerNessCloud`); release'te `herness-cloud-linux-x64.tar.gz` olarak yayımlanır.
+- Windows/Linux: `shared/CloudRuns.cs` içindeki `CloudRunService` aynı akışı uygular. Çalışma konumu penceresine **Bulut** düğmesi ve ayrı bir **Bulut çalıştırmaları** penceresi (WPF ve Avalonia) eklendi; composer gönderimi bulut konumunda bu servise gider.
+- iOS/Android: çekmecede **Bulut çalıştırmaları** ekranı (sekme 10). Seçili projenin GitHub deposu/dalı, Ayarlar'daki GitHub oturumu ve Marketplace ile paylaşılan HerNess hesabı kullanılır. GitHub OAuth kapsamına `workflow` eklendi.
+- Worker uçları ve runner, yerel D1 ve sahte API/sağlayıcı ile test edildi; gerçek bir GitHub Actions koşusu (OIDC dahil) bu görevde çalıştırılmadı. macOS ve iOS SwiftUI kodu bu Linux ortamında derlenemedi (mantık katmanları Swift 6 ile tip denetiminden geçti); Linux ve WPF arayüzleri derlendi.
 
 ## MCP tools
 - macOS MCP istemcisi (`MCPClient.swift`, revizyon `2025-06-18`) HTTP ve stdio üzerinden şunları uygular: `tools/list|call` (sayfalı, `structuredContent` ve image/resource/resource_link blokları metne çevrilir), `resources/list|read|templates/list` ve `prompts/list|get`. Resources/prompts ajan için sunucu başına `mcp__<sunucu>__mcp_list_resources`, `mcp_read_resource`, `mcp_list_prompts`, `mcp_get_prompt` araçları olarak açılır ve araçlarla aynı onay kuralına tabidir.

@@ -1956,14 +1956,25 @@ private fun JSONArray?.toResponseText(): String = this?.let { output -> (0 until
 
 private data class PhoneMarketEntry(val id: String, val name: String, val description: String, val category: String, val version: String, val author: String, val status: String, val permissions: List<String>, val homepage: String, val sourceUrl: String, val downloadUrl: String, val sha256: String, val title: String, val detail: String, val prompt: String, val likes: Int = 0, val catalogScope: String = "", val riskLevel: String = "unknown", val featured: Boolean = false, val downloads: Int = 0, val releaseID: String = "", val license: String = "")
 
-private class MobileMarketplaceSession(private val client: RemoteClient) {
+/**
+ * HerNess account session shared by Marketplace and Cloud runs. One instance:
+ * refresh tokens are single-use, so two copies would revoke each other.
+ */
+internal class MobileMarketplaceSession private constructor(private val client: RemoteClient) {
+    companion object {
+        private var instance: MobileMarketplaceSession? = null
+
+        fun shared(client: RemoteClient): MobileMarketplaceSession =
+            instance?.takeIf { it.client === client } ?: MobileMarketplaceSession(client).also { instance = it }
+    }
+
     var isSignedIn by mutableStateOf(client.phoneSecret("marketplace.access").isNotBlank())
         private set
     var email by mutableStateOf("")
         private set
     private var accessToken = client.phoneSecret("marketplace.access")
     private var refreshToken = client.phoneSecret("marketplace.refresh")
-    private val base = "https://dotsherness-unified-backend.dotsherness-unified-backend.workers.dev"
+    val base = "https://dotsherness-unified-backend.dotsherness-unified-backend.workers.dev"
 
     suspend fun restore() {
         if (!isSignedIn) return
@@ -2042,7 +2053,7 @@ private class MobileMarketplaceSession(private val client: RemoteClient) {
 fun MobileMarketplaceScreen(client: RemoteClient, agent: MobileAgent, onUseStarter: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val session = remember(client) { MobileMarketplaceSession(client) }
+    val session = remember(client) { MobileMarketplaceSession.shared(client) }
     var tab by remember { mutableStateOf("plugins") }
     var query by remember { mutableStateOf("") }
     var marketArea by remember { mutableStateOf("core") }
