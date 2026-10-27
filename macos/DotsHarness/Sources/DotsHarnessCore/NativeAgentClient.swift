@@ -156,7 +156,8 @@ public struct NativeAgentClient: Sendable {
         }
 
         do {
-            let (responseData, response, firstTokenMilliseconds) = try await Self.dataTimingFirstDelta(for: request, session: session, api: api, onDelta: onDelta)
+            let (responseData, response, firstTokenMilliseconds) = try await streamedData(
+                for: request, body: body, cachePolicy: cachePolicy, onDelta: onDelta)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             let value = (try? JSONCodec.parse(responseData)) ?? .null
             guard (200..<300).contains(status) else {

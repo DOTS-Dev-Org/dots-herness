@@ -404,33 +404,53 @@ extension NativeAgentClient {
         api: String,
         onDelta: StreamDeltaHandler? = nil
     ) async throws -> (Data, URLResponse, Int?) {
-        let started = Date()
+        var collector = StreamCollector(api: api, onDelta: onDelta)
         let (bytes, response) = try await session.bytes(for: request)
-        var data = Data()
-        var lineStart = 0
-        var firstDelta: Int?
+        for try await line in bytes.lines { await collector.consume(line) }
+        await collector.finish()
+        return (collector.data, response, collector.firstDelta)
+    }
+
+    /// Buffers stream lines for the final parse, notes the first output delta and
+    /// forwards deltas. Shared by the HTTP and WebSocket transports.
+    struct StreamCollector {
+        let api: String
+        let onDelta: StreamDeltaHandler?
+        let started = Date()
+        private(set) var data = Data()
+        private(set) var firstDelta: Int?
         // Each delta hopped to the main actor on its own, a job per token. Deltas are
         // sent in 50 ms batches instead, adjacent ones of a kind joined into one.
-        var pending: [StreamDelta] = []
-        var flushedAt = Date.distantPast
-        for try await byte in bytes {
-            data.append(byte)
-            guard byte == 0x0A else { continue }
-            let output = streamOutput(fromLine: data[lineStart...], api: api)
+        private var pending: [StreamDelta] = []
+        private var flushedAt = Date.distantPast
+
+        init(api: String, onDelta: StreamDeltaHandler?) {
+            self.api = api
+            self.onDelta = onDelta
+        }
+
+        mutating func consume(_ line: String) async {
+            let lineData = Data(line.utf8)
+            data.append(contentsOf: lineData)
+            data.append(0x0A)
+            let output = NativeAgentClient.streamOutput(fromLine: lineData, api: api)
             if firstDelta == nil, output.isOutput {
                 firstDelta = Int(Date().timeIntervalSince(started) * 1_000)
             }
-            lineStart = data.count
-            guard let onDelta else { continue }
+            guard let onDelta else { return }
             pending.append(contentsOf: output.deltas)
             if !pending.isEmpty, Date().timeIntervalSince(flushedAt) >= 0.05 {
-                for delta in joinedDeltas(pending) { await onDelta(delta) }
+                for delta in NativeAgentClient.joinedDeltas(pending) { await onDelta(delta) }
                 pending.removeAll(keepingCapacity: true)
                 flushedAt = Date()
             }
         }
-        if let onDelta { for delta in joinedDeltas(pending) { await onDelta(delta) } }
-        return (data, response, firstDelta)
+
+        mutating func finish() async {
+            guard let onDelta else { return }
+            for delta in NativeAgentClient.joinedDeltas(pending) { await onDelta(delta) }
+            pending.removeAll()
+        }
     }
 
     static func joinedDeltas(_ deltas: [StreamDelta]) -> [StreamDelta] {
